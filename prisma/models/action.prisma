@@ -1,0 +1,94 @@
+model ItemAction {
+    id              String         @id @default(uuid())
+    comment         CommentAction? @relation(fields: [commentActionId], references: [id])
+    commentActionId String?        @unique
+    create          CreateAction?  @relation(fields: [createActionId], references: [id])
+    createActionId  String?        @unique
+    delete          DeleteAction?  @relation(fields: [deleteActionId], references: [id])
+    deleteActionId  String?        @unique
+    edit            EditAction?    @relation(fields: [editActionId], references: [id])
+    editActionId    String?        @unique
+    move            MoveAction?    @relation(fields: [moveActionId], references: [id])
+    moveActionId    String?        @unique
+    rename          RenameAction?  @relation(fields: [renameActionId], references: [id])
+    renameActionId  String?        @unique
+    restore         RestoreAction? @relation(fields: [restoreActionId], references: [id])
+    restoreActionId String?        @unique
+    share           ShareAction?   @relation(fields: [shareActionId], references: [id])
+    shareActionId   String?        @unique
+    version         VersionAction? @relation(fields: [versionActionId], references: [id])
+    versionActionId String?        @unique
+    activity        Activity?      @relation(fields: [activityId], references: [id])
+    activityId      String?        @unique
+}
+
+// Track when an item is accessed, such as when a user views or opens a file or folder.
+model AccessAction {
+    id         String    @id @default(uuid())
+    activityId String?   @unique
+    activity   Activity? @relation(fields: [activityId], references: [id])
+}
+
+// Track the comments made on items, such as files or folders.
+model CommentAction {
+    id           String      @id @default(uuid())
+    isReply      Boolean     @default(false)
+    authorId     String
+    participants String[]
+    action       ItemAction?
+}
+
+// Track the creation of items, such as files or folders.
+model CreateAction {
+    id     String      @id @default(uuid())
+    action ItemAction?
+}
+
+// Track the deletion of items, such as files or folders.
+model DeleteAction {
+    id       String      @id @default(uuid())
+    name     String
+    itemType ObjectType
+    action   ItemAction?
+}
+
+model EditAction {
+    id     String      @id @default(uuid())
+    action ItemAction?
+}
+
+model MoveAction {
+    id     String      @id @default(uuid())
+    from   String
+    to     String
+    action ItemAction?
+}
+
+model RenameAction {
+    id      String      @id @default(uuid())
+    oldName String
+    newName String
+    action  ItemAction?
+}
+
+model RestoreAction {
+    id     String      @id @default(uuid())
+    action ItemAction?
+}
+
+model ShareAction {
+    id         String      @id @default(uuid())
+    recipients String[]
+    action     ItemAction?
+}
+
+model VersionAction {
+    id         String      @id @default(uuid())
+    newVersion String
+    action     ItemAction?
+}
+
+enum ObjectType {
+    file
+    folder
+}

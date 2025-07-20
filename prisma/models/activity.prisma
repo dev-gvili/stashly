@@ -1,0 +1,16 @@
+model Activity {
+    id      String        @id @default(uuid())
+    timeId  String?       @unique
+    time    ActivityTime? @relation(fields: [timeId], references: [id])
+    itemId  String?
+    item    Item?         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+    action  ItemAction? // what action was taken on the item
+    access  AccessAction? // represents access to the item
+}
+
+model ActivityTime {
+    id         String        @id @default(uuid())
+    observedAt DateTime?
+    reportedAt DateTime?
+    activity   Activity?
+}

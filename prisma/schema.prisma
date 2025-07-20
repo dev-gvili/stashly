@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/services/prisma"
+
+  // Optional
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  // output   = "../app/services/database/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Preview {
+  id        String   @id @default(uuid())
+  fileId    String
+  preview   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FileShare {
+  id           String    @id @default(uuid())
+  fileId       String
+  accessKey    String    @unique // For public sharing
+  expiresAt    DateTime?
+  maxDownloads Int?
+  downloads    Int       @default(0)
+
+  @@index([expiresAt])
+}
+
+model ItemLock {
+  id         String @id @default(uuid())
+  itemId     String @unique
+  item       Item   @relation(fields: [itemId], references: [id])
+  lockedById String
+
+  lockedAt  DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model View {
+  id        String    @id @default(uuid())
+  viewType  ViewType
+  sortBy    SortBy
+  sortOrder SortOrder
+  folderId  String?   @unique
+  folder    Folder?   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+}
+
+enum ViewType {
+  list
+  grid
+  details
+  gallery
+}
+
+enum SortBy {
+  name
+  date
+  size
+  type
+}
+
+enum SortOrder {
+  ascending
+  descending
+}

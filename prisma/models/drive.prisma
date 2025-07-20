@@ -1,0 +1,22 @@
+model Drive {
+    id        String    @id @default(uuid())
+    name      String    @default("Stashly Drive")
+    driveType DriveType @default(personal) // personal or business
+    quota     Quota? // One-to-one relation with Quota, optional for personal drives
+    items     Item[]
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+
+    ownerId String @unique
+    owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+    
+    @@index([name])
+    @@index([driveType])
+    @@unique([ownerId, driveType])
+}
+
+enum DriveType {
+    personal
+    business
+}

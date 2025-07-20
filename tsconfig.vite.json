@@ -1,0 +1,60 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    ".react-router/types/**/*",
+    "app/**/*",
+    "app/**/.server/**/*",
+    "app/**/.client/**/*",
+    "database/**/*",
+    "server/**/*"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "strict": true,
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2022"
+    ],
+    "types": [
+      "vite/client"
+    ],
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "rootDirs": [
+      ".",
+      "./.react-router/types"
+    ],
+    "paths": {
+      "@/*": [
+        "./app/*"
+      ],
+      "@/db/*": [
+        "./app/services/db"
+      ],
+      "@/prisma/*": [
+        "./app/services/prisma/*"
+      ],
+      "@/utils/*": [
+        "./app/utils/*"
+      ],
+      "@/components/*": [
+        "./app/components/*"
+      ],
+      "@/ui/*": [
+        "./app/components/ui/*"
+      ],
+      "@/hooks/*": [
+        "./app/hooks/*"
+      ],
+      "@/services/*": [
+        "./app/services/*"
+      ],
+    },
+    "esModuleInterop": true,
+    "resolveJsonModule": true
+  }
+}

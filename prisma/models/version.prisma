@@ -1,0 +1,11 @@
+model ItemVersion {
+  id        String    @id @default(uuid())
+  updatedAt DateTime? @updatedAt @db.Timestamp()
+  createdAt DateTime? @default(now()) @db.Timestamp()
+  size      Int?
+  content   Bytes?    @db.ByteA // { contentBytes, contentStream }
+  label     String? // { label, name, title }
+  version   String? // { version, versionId, versionLabel }
+  itemId    String?
+  item      Item?     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}

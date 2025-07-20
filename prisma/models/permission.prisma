@@ -1,0 +1,26 @@
+model Permission {
+    id           String         @id @default(uuid())
+    createdAt    DateTime       @default(now()) @db.Timestamp()
+    updatedAt    DateTime       @updatedAt @db.Timestamp()
+    roles        PermissionRole @default(read)
+    invitationId String?        @unique
+    invitation   Invitation?    @relation(fields: [invitationId], references: [id])
+    linkId       String?
+    link         ShareLink?     @relation(fields: [linkId], references: [id])
+    itemId       String?
+    item         Item?          @relation(fields: [itemId], references: [id])
+    identities   User[]
+
+    @@index([createdAt(sort: Desc)])
+    @@index([updatedAt(sort: Desc)])
+    @@index([roles])
+    @@index([invitationId])
+    @@index([linkId])
+    @@index([itemId])
+}
+
+enum PermissionRole {
+    owner
+    read
+    write
+}

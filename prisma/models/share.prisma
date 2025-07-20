@@ -1,0 +1,35 @@
+
+model ShareLink {
+    id           String          @id @default(uuid())
+    type         ShareLinkType
+    scope        ShareScope
+    url          String?
+    downloadable Boolean?
+    password     String?
+    expiresAt    DateTime?
+    createdAt    DateTime        @default(now())
+    updatedAt    DateTime        @updatedAt
+    permission   Permission[]
+
+    @@index([createdAt(sort: Desc)])
+    @@index([updatedAt(sort: Desc)])
+    @@index([expiresAt])
+    @@index([type])
+    @@index([scope])
+}
+
+
+enum ShareLinkType {
+    view
+    edit
+    embed
+    upload
+}
+
+enum ShareScope {
+    anonymous
+    organization
+    users
+}
+
+

@@ -1,0 +1,132 @@
+import { parse } from 'qs'
+import { z } from 'zod'
+
+type ParseSearchParamsConfig<T extends z.ZodTypeAny> = {
+	schema: T
+} & (
+	| {
+			request: Request
+			searchParams?: never
+	  }
+	| {
+			request?: never
+			searchParams: URLSearchParams
+	  }
+)
+
+export function parseSearchParams<T extends z.ZodTypeAny>(
+	config: ParseSearchParamsConfig<T>
+): z.infer<T> {
+	// Get search params string from either request or URLSearchParams
+	const searchParamsString = config.request
+		? new URL(config.request.url).searchParams.toString()
+		: config.searchParams.toString()
+
+	// Parse search params using qs library
+	const parsedParams = parse(searchParamsString, {
+		decoder: (value) => {
+			// Handle boolean values
+			if (value === 'true') return true
+			if (value === 'false') return false
+			// Handle numbers
+			// if (!isNaN(Number(value))) return Number(value)
+			// Return original value for other types
+			return value
+		},
+	})
+
+	// Validate and transform using provided schema
+	const result = config.schema.safeParse(parsedParams)
+
+	if (!result.success) {
+		throw new Error(`Invalid search params: ${result.error.message}`)
+	}
+
+	return result.data
+}
+
+/**
+ * Parse form data using zod schema
+ */
+
+interface ParseFormDataOptions<T extends z.ZodTypeAny> {
+	schema: T
+}
+
+/**
+ * Smart form data parser that automatically handles nested and flat structures
+ */
+export async function parseFormData<T extends z.ZodTypeAny>({
+	request,
+	schema,
+}: {
+	request: Request
+} & ParseFormDataOptions<T>): Promise<z.infer<T>> {
+	const contentType = request.headers.get('content-type') || ''
+	let parsed: unknown
+
+	if (contentType.includes('application/x-www-form-urlencoded')) {
+		// Handle URL-encoded data (typically nested objects using qs syntax)
+		const text = await request.text()
+		parsed = parse(text, {
+			arrayLimit: 100,
+			depth: 5,
+			decoder(str) {
+				if (str === 'true') return true
+				if (str === 'false') return false
+				if (str === 'null') return null
+				if (str === 'undefined') return undefined
+				const num = Number(str)
+				if (!Number.isNaN(num) && str.trim() !== '') return num
+				return str
+			},
+		})
+	} else {
+		// Handle multipart/form-data or plain FormData
+		const formData = await request.formData()
+		const entries = Array.from(formData.entries())
+
+		// Check if any key contains [] or . to detect nested structure
+		const hasNestedSyntax = entries.some(
+			([key]) => key.includes('[') || key.includes('.')
+		)
+
+		if (hasNestedSyntax) {
+			// Convert FormData to qs-like structure
+			const qsData = entries.reduce((acc, [key, value]) => {
+				acc[key] = typeof value === 'string' ? value : String(value)
+				return acc
+			}, {} as Record<string, string>)
+
+			parsed = parse(new URLSearchParams(qsData).toString())
+		} else {
+			// Handle flat structure
+			const data: Record<string, unknown> = {}
+			for (const [key, value] of entries) {
+				if (key in data) {
+					data[key] = Array.isArray(data[key])
+						? [...(data[key] as unknown[]), value]
+						: [data[key], value]
+				} else {
+					data[key] = value
+				}
+			}
+			parsed = data
+		}
+	}
+
+	// Validate with schema
+	const result = schema.safeParse(parsed)
+
+	if (!result.success) {
+		throw new Error(`Validation failed: ${result.error.message}`)
+	}
+
+	return result.data as z.infer<T>
+}
+
+// parse file extension from filename
+export function getFileExtension(filename: string): string {
+	const parts = filename.split('.')
+	return parts.length > 1 ? parts.pop()! : ''
+}

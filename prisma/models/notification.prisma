@@ -1,0 +1,13 @@
+model Notification {
+    id        String   @id @default(uuid())
+    type      String
+    message   String
+    read      Boolean  @default(false)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+
+    userId String
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([createdAt])
+}

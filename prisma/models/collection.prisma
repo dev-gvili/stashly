@@ -1,0 +1,24 @@
+model Collection {
+    id   String @id @default(uuid())
+    name String
+    size Int    @default(0)
+    item Item @relation(fields: [id], references: [id], onDelete: Cascade)
+    items CollectionItem[]
+
+    @@index([name])
+}
+
+model CollectionItem {
+    id           String     @id @default(uuid())
+    collectionId String
+    collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+    itemId       String
+    item         Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+    createdAt    DateTime   @default(now())
+    updatedAt    DateTime   @updatedAt
+
+    @@unique([collectionId, itemId])
+    @@index([collectionId])
+    @@index([itemId])
+    @@index([createdAt(sort: Desc)])
+}

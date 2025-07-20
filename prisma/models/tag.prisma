@@ -1,0 +1,10 @@
+model Tag {
+    id        String   @id @default(uuid())
+    name      String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+
+    items Item[]
+
+    // @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+}

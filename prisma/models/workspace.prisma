@@ -1,0 +1,36 @@
+model Workspace {
+    id          String            @id @default(uuid())
+    name        String            @unique
+    description String?
+    default     Boolean           @default(false)
+    iamRoleArn  String? // Add this field
+    createdAt   DateTime          @default(now())
+    updatedAt   DateTime          @updatedAt
+    items       Item[]
+    invitations Invitation[]
+    members     WorkspaceMember[]
+
+    @@index([name])
+    @@index([default])
+    @@index([createdAt])
+    @@index([updatedAt])
+}
+
+model WorkspaceMember {
+    id          String              @id @default(uuid())
+    role        WorkspaceMemberRole @default(member)
+    userId      String
+    user        User                @relation(fields: [userId], references: [id])
+    workspaceId String
+    workspace   Workspace           @relation(fields: [workspaceId], references: [id])
+
+    @@unique([userId, workspaceId]) // Ensure a user can only be a member of a
+    @@index([role])
+}
+
+enum WorkspaceMemberRole {
+    viewer
+    member
+    admin
+    owner
+}

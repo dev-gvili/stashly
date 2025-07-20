@@ -1,0 +1,23 @@
+enum InvitationStatus {
+    pending
+    accepted
+    rejected
+    expired
+}
+
+model Invitation {
+    id         String           @id @default(uuid())
+    createdAt  DateTime         @default(now()) @db.Timestamp()
+    expiresAt  DateTime?        @db.Timestamp()
+    email      String
+    status     InvitationStatus @default(pending)
+    senderId   String
+    sender     User             @relation(fields: [senderId], references: [id])
+    // For item sharing
+    permission Permission?
+
+    // For workspace invitation
+    workspaceId String?
+    workspace   Workspace?           @relation(fields: [workspaceId], references: [id])
+    role        WorkspaceMemberRole? // For workspace invitations
+}

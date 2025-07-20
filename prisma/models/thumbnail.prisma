@@ -1,0 +1,23 @@
+model Thumbnail {
+    id        String        @id @default(uuid())
+    createdAt DateTime      @default(now())
+    updatedAt DateTime      @updatedAt
+    width     Int?
+    height    Int?
+    url       String?
+    content   Bytes?        @db.ByteA
+    size      ThumbnailSize @default(custom)
+    itemId    String?
+    item      Item?         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+enum ThumbnailSize {
+    small // e.g., 100x100
+    medium // e.g., 400x400
+    large // e.g., 800x800
+    custom // e.g., custom size or original 
+}
+// what are the recommended sizes for thumbnails based on shopify
+// - small: 100x100
+// - medium: 400x400
+// - large: 800x800 

@@ -1,0 +1,45 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.vite.json"
+    }
+  ],
+  "compilerOptions": {
+    "checkJs": true,
+    "verbatimModuleSyntax": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@/db/*": [
+        "./app/services/db"
+      ],
+      "@/prisma/*": [
+        "./app/services/prisma/*"
+      ],
+      "@/utils/*": [
+        "./app/utils/*"
+      ],
+      "@/components/*": [
+        "./app/components/*"
+      ],
+      "@/ui/*": [
+        "./app/components/ui/*"
+      ],
+      "@/hooks/*": [
+        "./app/hooks/*"
+      ],
+      "@/services/*": [
+        "./app/services/*"
+      ],
+    },
+    "noEmit": true
+  }
+}

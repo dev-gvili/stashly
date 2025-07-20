@@ -1,0 +1,17 @@
+model Quota {
+    id        String     @id @default(uuid())
+    deleted   BigInt     @default(0) // Total space consumed by files in the recycle bin, in bytes. Read-only.
+    remaining BigInt     @default(0) // Total space remaining before reaching the quota limit.
+    total     BigInt     @default(0) // Total allowed storage space, in bytes. Read-only.
+    used      BigInt     @default(0) // Total space used, in bytes. Read-only.
+    state     QuotaState @default(normal)
+    driveId   String     @unique
+    drive     Drive      @relation(fields: [driveId], references: [id], onDelete: Cascade)
+}
+
+enum QuotaState {
+    normal // The drive has plenty of remaining quota left.
+    warning // Remaining quota is less than 10% of total quota space.
+    critical // Remaining quota is less than 1% of total quota space.
+    exceeded // The used quota has exceeded the total quota. New files or folders cannot be added to the drive until it is under the total quota amount or more storage space is purchased.
+}

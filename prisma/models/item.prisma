@@ -1,0 +1,98 @@
+model Item {
+    id       String       @id @default(uuid())
+    name     String       @db.VarChar(50)
+    size     Int          @default(0)
+    path     String
+    type     ItemType     @default(file)
+    category ItemCategory @default(unknown)
+    status   ItemStatus   @default(normal)
+
+    createdAt DateTime  @default(now()) @db.Timestamp()
+    updatedAt DateTime  @updatedAt @db.Timestamp()
+    deletedAt DateTime? @db.Timestamp()
+
+    // Facets (optional, only one may be present per item)
+    file       File?
+    folder     Folder?
+    image      Image?
+    video      Video?
+    audio      Audio?
+    photo      Photo?
+    collection Collection?
+
+    ownerId String
+    owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+    workspaceId String?
+    workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+
+    driveId String
+    drive   Drive  @relation(fields: [driveId], references: [id], onDelete: Cascade)
+
+    // Self relation for parent-child relationship (tree structure)
+    parentId String?
+    children Item[]  @relation("ParentChild")
+    parent   Item?   @relation("ParentChild", fields: [parentId], references: [id], onDelete: Cascade)
+
+    // Location and Storage
+    trash       TrashItem?
+    collections CollectionItem[]
+
+    // Access Control
+    lock        ItemLock?
+    permissions Permission[]
+
+    // Versioning and thumbnails
+    versions   ItemVersion[]
+    thumbnails Thumbnail[]
+
+    // Additional Information
+    tags Tag[]
+
+    // Monitoring and Auditing
+    activities Activity[]
+    comments   Comment[]
+    logs       AuditLog[]
+
+    // Miscellaneous  
+    favoritedBy Favorite[]
+
+    @@index([type])
+    @@index([name(sort: Asc)])
+    @@index([workspaceId])
+    @@index([createdAt(sort: Asc)])
+    @@index([updatedAt(sort: Desc)])
+}
+
+enum ItemType {
+    folder
+    file
+    collection
+    // image
+    // video
+    // audio
+    // photo
+}
+
+enum ItemCategory {
+    video // video files (mp4, avi, etc.)
+    audio // audio files (mp3, wav, etc.)
+    image // image files (jpg, png, etc.)
+    document // office documents (doc, docx, etc.)
+    spreadsheet // spreadsheets and data files (xls, xlsx, etc.)
+    presentation // office documents (ppt, pptx, etc.)
+    text // plain text files (txt, md, json, etc.)
+    pdf // PDF files (pdf)
+    archive // compressed files (zip, tar, etc.)
+    code // source code files (js, ts, cs, etc.)
+    script // shell scripts (sh, bash, ps1, etc.)
+    binaries // compiled files (exe, bin, app, dylib, dll, so, etc.)
+    graphic // graphic files and 3D models (svg, obj, 3ds, ps, etc.)
+    unknown // unknown or unsupported files
+}
+
+enum ItemStatus {
+    normal
+    archived
+    trashed
+}

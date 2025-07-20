@@ -1,0 +1,10 @@
+model Favorite {
+    favoritedById String
+    favoritedBy   User     @relation(fields: [favoritedById], references: [id])
+    itemId        String
+    item          Item     @relation(fields: [itemId], references: [id])
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+
+    @@unique([favoritedById, itemId])
+}

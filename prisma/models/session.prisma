@@ -1,0 +1,16 @@
+model Session {
+  id                String   @id
+  expiresAt         DateTime
+  token             String
+  createdAt         DateTime
+  updatedAt         DateTime
+  ipAddress         String?
+  userAgent         String?
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impersonatedBy    String?
+  activeWorkspaceId String?
+
+  @@unique([token])
+  @@map("session")
+}
