@@ -21,7 +21,7 @@ import {
 } from '@/components/icons'
 import { toUserInitial } from '@/utils/converters'
 import type { User } from 'better-auth'
-import { authClient } from '../services/auth.client'
+import { authClient } from '@/.client/auth'
 import type { Route } from '../routes/+types/layout'
 
 export function UserMenu() {

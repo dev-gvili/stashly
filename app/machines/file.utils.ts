@@ -1,4 +1,4 @@
-import type { MediaFileUploadInfo } from "./types"
+import type { MediaFileUploadInfo } from "./machine.types"
 import { mediafileUploadInfo } from "./schema.zod"
 
 export const getTimeLeft = (secondsRemaining: number) => {
@@ -26,7 +26,7 @@ export const parseHeaders = (xhr: XMLHttpRequest) => {
 	const parsedHeaders: MediaFileUploadInfo = {
 		"x-amz-version-id": "",
 		"x-amz-request-id": "",
-		etag: "",
+		Etag: "",
 	}
 	headersArray.forEach((header) => {
 		const [name, value] = header.split(": ")
@@ -34,7 +34,7 @@ export const parseHeaders = (xhr: XMLHttpRequest) => {
 	})
 	let headers = mediafileUploadInfo.parse(parsedHeaders)
 	return {
-		etag: headers.etag,
+		etag: headers.Etag,
 		version: headers["x-amz-version-id"],
 	}
 }

@@ -71,11 +71,6 @@ const sidebarItems: SidebarItemProps[] = [
 		to: '/dashboard/trash',
 		tooltip: 'trash',
 	},
-	{
-		icon: <RiDeleteBin7Line className="mr-2 h-4 w-4" />,
-		to: '/admin/studio',
-		tooltip: 'studio',
-	},
 ]
 
 export const AppSidebar = () => {

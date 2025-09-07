@@ -1,48 +1,96 @@
-import { z } from 'zod'
+import { redirect } from 'react-router'
+import { S3Service } from '@/services/s3'
 import type { Route } from './+types/upload'
+import { auth } from '@/services/auth'
+import { z } from 'zod'
+import { UploadService } from '@/services/upload'
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-	// TODO: implement loader logic
-	return null
-}
-
-const schema = z.object({
-	files: z.array(z.instanceof(File)).or(z.instanceof(File)),
+const defaults = z.object({
+	key: z.string(),
+	uploadId: z.string(),
 })
 
-export async function action({ request, params }: Route.ActionArgs) {
-	// TODO: implement action logic
-	// const session = await auth.api.getSession(request)
-	// const data = await parseFormData({ request, schema })
-	// if (!data) {
-	// 	return { error: 'Invalid form data', data }
-	// }
+const uploadFileSchema = z.object({
+	action: z.literal('upload-file'),
+	file: z.instanceof(File),
+	workspaceId: z.string().optional(),
+})
 
-	// const files = data.files
-	// if (Array.isArray(files)) {
-	// 	files.forEach((file) => {
-	// 		uploadService.send({
-	// 			type: 'START',
-	// 			file,
-	// 			user: session?.user!,
-	// 		})
-	// 	})
-	// } else {
-	// 	uploadService.send({
-	// 		type: 'START',
-	// 		file: files,
-	// 		user: session?.user!,
-	// 	})
-	// }
+const create_multipart_upload = defaults
+	.pick({
+		key: true,
+	})
+	.extend({
+		action: z.literal('create-multipart-upload'),
+		metadata: z.record(z.string()),
+	})
 
-	// uploadService.subscribe(({ context, value, output }) => {
-	// 	console.log('Upload state changed:', context, value, output)
+const get_presigned_url = defaults.extend({
+	action: z.literal('get-presigned-url'),
+	partNumber: z.number(),
+})
+
+const complete_multipart_upload = defaults.extend({
+	action: z.literal('complete-multipart-upload'),
+	parts: z.array(z.object({ ETag: z.string(), PartNumber: z.number() })),
+})
+
+const abort_multipart_upload = defaults.extend({
+	action: z.literal('abort-multipart-upload'),
+})
+
+const uploadFormData = z.discriminatedUnion('action', [
+	create_multipart_upload,
+	complete_multipart_upload,
+	get_presigned_url,
+	abort_multipart_upload,
+	uploadFileSchema,
+])
+
+export async function action({ request }: Route.ActionArgs) {
+	let session = await auth.api.getSession(request)
+	if (!session) throw redirect('/auth/sign-in')
+	let { user } = session
+
+	// const values = await parseFormData({
+	// 	request,
+	// 	schema: uploadFormData,
 	// })
+	let data = await request.json()
+	let values = uploadFormData.parse(data)
 
-	// parse incoming form data and handle file uploads
-	// return appropriate response based on upload success or failure
-	// e.g., return { results: [{ id: 'file1', success: true }] }
-	// For now, just return null to avoid errors
+	const s3 = new UploadService({
+		s3Service: new S3Service(user.bucket),
+		user,
+	})
 
-	return null
+	await s3.fixCors()
+	switch (values.action) {
+		case 'create-multipart-upload': {
+			const { key, metadata } = values
+			const UploadId = await s3.createMultipartUpload({ key, metadata })
+			return { uploadId: UploadId }
+		}
+		case 'get-presigned-url': {
+			const { key, uploadId, partNumber } = values
+			const url = await s3.getPresignedUrlForPart({
+				key,
+				uploadId,
+				partNumber,
+			})
+			return { url }
+		}
+		case 'complete-multipart-upload': {
+			const { key, uploadId, parts } = values
+			return await s3.completeMultipartUpload({ key, uploadId, parts })
+		}
+		case 'abort-multipart-upload': {
+			const { key, uploadId } = values
+			await s3.abortMultipartUpload({ key, uploadId })
+			return { success: true }
+		}
+		default: {
+			return data({ error: 'Invalid action' }, { status: 400 })
+		}
+	}
 }

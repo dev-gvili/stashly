@@ -1,11 +1,12 @@
 model StoragePlan {
-    id             String          @id @default(cuid())
-    name           String // e.g., "Free", "Basic", "Standard", "Premium"
-    type           StoragePlanType @default(free) // Enum for plan type
-    storageLimitGB BigInt // e.g., 15, 100, 200, 2000
-    priceMonthly   Decimal // e.g., 0.00, 1.99, 2.99, 9.99
-    priceAnnual    Decimal? // Optional: e.g., 19.99 (for discounted annual)
-    subscriptions  Subscription[] // One-to-many relation with UserSubscription
+    id            String          @id @default(cuid())
+    name          String // e.g., "Free", "Basic", "Standard", "Premium"
+    type          StoragePlanType @default(free) // Enum for plan type
+    storageLimit  BigInt // e.g., 15, 100, 200, 2000
+    stripePriceId String?         @unique // Stripe price ID for this plan
+
+    // Relations
+    subscriptions Subscription[] // One-to-many relation with UserSubscription
 
     @@index([name])
     @@index([type])
@@ -13,8 +14,8 @@ model StoragePlan {
 }
 
 enum StoragePlanType {
-    free // Free plan with limited features and 10 GB storage space.
-    basic // Basic plan with additional features and 100 GB storage space.
-    standard // Standard plan with advanced features and 200 GB storage space.
-    premium // Premium plan with all features and 2 TB storage space.
+    free // 10 GB storage space.
+    basic // 100 GB storage space.
+    standard // 200 GB storage space.
+    premium // 2 TB storage space.
 }

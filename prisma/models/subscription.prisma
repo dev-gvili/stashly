@@ -1,61 +1,30 @@
 model Subscription {
-    id               String             @id @default(uuid())
-    type             SubscriptionType   @default(monthly) // Enum for subscription type
-    createdAt        DateTime           @default(now())
-    updatedAt        DateTime           @default(now()) @updatedAt
-    metadata         Json?
-    isCurrent        Boolean            @default(true) // Flag to easily identify the active subscription
-    startDate        DateTime           @default(now()) // Start date of the subscription
-    endDate          DateTime? // End date of the subscription, can be null if ongoing
-    status           SubscriptionStatus @default(active) // e.g., "active", "cancelled", "expired"
+    id       String             @id @default(uuid())
+    status   SubscriptionStatus @default(active) // e.g., "active", "cancelled", "expired"
+    metadata Json?
+
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @default(now()) @updatedAt
+    endedAt   DateTime? // End date of the subscription, can be null if ongoing
 
     // Storage plan details
-    storagePlanType  StoragePlanType    @default(free)
-    storagePlanId    String? // Foreign key to StoragePlan
-    storagePlan      StoragePlan?       @relation(fields: [storagePlanId], references: [id], onDelete: Cascade)
-    
+    storagePlanId String // Foreign key to StoragePlan
+    storagePlan   StoragePlan @relation(fields: [storagePlanId], references: [id], onDelete: Cascade)
+
     // Stripe integration
-    stripeCustomerId String?            @unique // Stripe customer ID
+    stripeSubscriptionId String? @unique // Stripe subscription ID
 
     // Relations
-    userId String 
-    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    // Subscription history
-    history SubscriptionHistory[] // One-to-many relation with SubscriptionHistory
-}
-
-enum SubscriptionType {
-    free
-    monthly
-    annual
+    ownerId String @unique
+    owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 }
 
 enum SubscriptionStatus {
     active
-    cancelled
-    expired
-}
-
-enum SubscriptionChangeType {
-    upgrade
-    downgrade
-    renewal
-    cancellation
-    trial
-}
-
-model SubscriptionHistory {
-    id             String           @id @default(uuid())
-    subscriptionId String // Foreign key to Subscription
-    subscription   Subscription     @relation(fields: [subscriptionId], references: [id])
-    changeType     SubscriptionChangeType // e.g., "upgrade", "downgrade", "renewal"
-    changeDate     DateTime         @default(now())
-    previousPlan   StoragePlanType? // Previous plan before the change
-    newPlan        StoragePlanType? // New plan after the change
-    metadata       Json? // Additional metadata about the change
-
-    @@index([subscriptionId])
-    @@index([changeType])
-    @@index([changeDate])
+    canceled
+    incomplete
+    incomplete_expired
+    past_due
+    trialing
+    unpaid
 }

@@ -1,7 +1,7 @@
 import { useFetcher } from 'react-router'
 import { Button } from './ui/button'
 import { StoragePlanType } from '@/prisma/enums'
-import { SubscriptionType } from './../services/prisma/enums'
+import { SubscriptionType } from '@/prisma/enums'
 
 const SubscriptionButton = ({
 	storagePlanType,

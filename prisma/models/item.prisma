@@ -6,6 +6,7 @@ model Item {
     type     ItemType     @default(file)
     category ItemCategory @default(unknown)
     status   ItemStatus   @default(normal)
+    uploadId String?
 
     createdAt DateTime  @default(now()) @db.Timestamp()
     updatedAt DateTime  @updatedAt @db.Timestamp()

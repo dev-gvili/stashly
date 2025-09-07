@@ -5,7 +5,7 @@ import {
 	type Drive,
 	type Item,
 	type StoragePlan,
-} from '../app/services/prisma/client'
+} from '../app/.server/prisma/client'
 import type { User } from 'better-auth'
 import { customAlphabet } from 'nanoid'
 import {
@@ -13,11 +13,8 @@ import {
 	DriveType,
 	StoragePlanType,
 	type ThumbnailSize,
-} from '../app/services/prisma/enums'
+} from '../app/.server/prisma/enums'
 import { inspect } from 'node:util'
-import { toQuota } from './../app/services/subscription.utils'
-import { onboardUserMachine } from './../app/services/onboard.machine'
-import { formatSize } from './../app/utils/formaters'
 
 const prisma = new PrismaClient()
 
@@ -27,9 +24,7 @@ const DEFAULTS = {
 	STORAGE_PLAN: {
 		type: StoragePlanType.free,
 		name: 'Free Plan',
-		priceAnnual: new Prisma.Decimal(0.0),
-		priceMonthly: new Prisma.Decimal(0.0),
-		storageLimitGB: BigInt(10 * 1024 * 1024 * 1024), // 10 GB for free plan
+		storageLimit: BigInt(10 * 1024 * 1024 * 1024), // 10 GB for free plan
 	} as StoragePlan,
 	QUOTA_SIZE: 10 * 1024 * 1024 * 1024, // 10GB
 } as const
@@ -85,22 +80,16 @@ const generateUniqueDriveName = (prefix: string, user: User): string => {
 const generateStoragePlan = ({
 	type,
 	name,
-	priceMonthly,
-	priceAnnual,
-	storageLimitGB,
+	storageLimit,
 }: {
 	type: StoragePlanType
 	name: string
-	priceAnnual: Prisma.Decimal
-	priceMonthly: Prisma.Decimal
-	storageLimitGB: bigint
+	storageLimit: bigint
 }): Prisma.StoragePlanCreateInput => {
 	return {
 		type,
 		name,
-		priceMonthly,
-		priceAnnual,
-		storageLimitGB,
+		storageLimit,
 	}
 }
 
@@ -109,30 +98,22 @@ const generateMockStoragePlans = () => {
 		generateStoragePlan({
 			type: StoragePlanType.free,
 			name: 'Free',
-			priceMonthly: new Prisma.Decimal(0.0),
-			priceAnnual: new Prisma.Decimal(0.0),
-			storageLimitGB: toQuota(StoragePlanType.free),
+			storageLimit: BigInt(15 * 1024 * 1024 * 1024), // 15 GB
 		}),
 		generateStoragePlan({
 			type: StoragePlanType.basic,
 			name: 'Basic',
-			priceMonthly: new Prisma.Decimal(8),
-			priceAnnual: new Prisma.Decimal(90),
-			storageLimitGB: toQuota(StoragePlanType.basic),
+			storageLimit: BigInt(100 * 1024 * 1024 * 1024), // 100 GB
 		}),
 		generateStoragePlan({
 			type: StoragePlanType.standard,
 			name: 'Standard',
-			priceMonthly: new Prisma.Decimal(16),
-			priceAnnual: new Prisma.Decimal(180),
-			storageLimitGB: toQuota(StoragePlanType.standard),
+			storageLimit: BigInt(200 * 1024 * 1024 * 1024), // 200 GB
 		}),
 		generateStoragePlan({
 			type: StoragePlanType.premium,
 			name: 'Premium',
-			priceMonthly: new Prisma.Decimal(32),
-			priceAnnual: new Prisma.Decimal(360),
-			storageLimitGB: toQuota(StoragePlanType.premium),
+			storageLimit: BigInt(2 * 1024 * 1024 * 1024), // 2 TB
 		}),
 	]
 }
@@ -162,8 +143,7 @@ const generateMockQuota = (
 ): Prisma.QuotaUncheckedCreateWithoutDriveInput => {
 	return {
 		state: 'normal',
-		total: toQuota(storagePlan.type),
-		remaining: toQuota(storagePlan.type),
+		total: storagePlan.storageLimit,
 		deleted: 0,
 		used: 0,
 	}
@@ -179,12 +159,10 @@ const generateMockDrive = (
 		ownerId: user.id,
 		quota: {
 			create: {
-				total: toQuota(storagePlan.type),
-				remaining: toQuota(storagePlan.type),
+				total: storagePlan.storageLimit,
 				used: 0,
 				deleted: 0,
 				state: 'normal',
-				// ...generateMockQuota(storagePlan),
 			},
 		},
 	}
@@ -314,7 +292,6 @@ async function main(): Promise<void> {
 	try {
 		await prisma.$transaction([
 			prisma.trashItem.deleteMany(),
-			prisma.subscriptionHistory.deleteMany(),
 			prisma.subscription.deleteMany(),
 			prisma.storagePlan.deleteMany(),
 			prisma.user.deleteMany(),
@@ -353,13 +330,9 @@ async function main(): Promise<void> {
 		// Create subscriptions for the user
 		const subscription = await prisma.subscription.create({
 			data: {
-				userId: user.id,
+				ownerId: user.id,
 				storagePlanId: createdStoragePlans[1].id,
-				storagePlanType: createdStoragePlans[1].type,
 				status: 'active',
-				type:
-					createdStoragePlans[1].type === 'free' ? 'free' : 'monthly',
-				isCurrent: true,
 				metadata: {
 					userId: user.id,
 					storagePlanId: createdStoragePlans[1].id,
@@ -422,8 +395,8 @@ async function main(): Promise<void> {
 
 		console.log(
 			inspect(
-				`Seeded database with ${createdStoragePlans.length} storage plans, 1 user, 1 drive, ${createdTopFolders.length} top-level folders, ${createdFolders.length} subfolders, and ${createdFiles.length} files.`
-			, { depth: null, colors: true }
+				`Seeded database with ${createdStoragePlans.length} storage plans, 1 user, 1 drive, ${createdTopFolders.length} top-level folders, ${createdFolders.length} subfolders, and ${createdFiles.length} files.`,
+				{ depth: null, colors: true }
 			)
 		)
 	} catch (error) {

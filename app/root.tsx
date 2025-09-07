@@ -9,7 +9,7 @@ import {
 	type ShouldRevalidateFunction,
 } from 'react-router'
 import { PreventFlashOnWrongTheme, Theme, ThemeProvider, useTheme } from 'remix-themes'
-import { themeService } from '@/services/theme.server'
+import { themeService } from '@/.server/theme'
 import styles from './styles/global.css?url'
 import type { Route } from './+types/root'
 

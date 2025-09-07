@@ -126,7 +126,18 @@ export async function parseFormData<T extends z.ZodTypeAny>({
 }
 
 // parse file extension from filename
-export function getFileExtension(filename: string): string {
+export function parseFileExtension(filename: string): string {
 	const parts = filename.split('.')
 	return parts.length > 1 ? parts.pop()! : ''
+}
+
+export function parseEtag(etag: string) {
+  // Step 1: Remove outer quotes (single or double)
+  let cleaned = etag.replace(/^["']|["']$/g, "");
+
+  // Step 2: Remove escape characters around quotes
+  cleaned = cleaned.replace(/\\"/g, "\"");
+
+  // Step 3: Add a single pair of double quotes back
+  return `"${cleaned}"`;
 }

@@ -8,20 +8,24 @@ import {
 	sendTo,
 } from 'xstate'
 import { fileMachine } from './file.machine'
-import type { UploadManagerData, UploadManagerEvents } from './types'
-import { config, mediafile } from './schema.zod'
+import type { UploadManagerData, UploadManagerEvents } from './machine.types'
+import { config, mediafile, uploadProgress } from './schema.zod'
 import type { User } from 'better-auth'
 
 let initialData: UploadManagerData = {
 	config: {
 		bucketName: '',
 		ownerId: '',
-		user: undefined as unknown as User & { bucket: string },
+		user: undefined as unknown as User & {
+			bucket: string
+			subscriptionId: string
+			storagePlanId: string
+		},
 		maxConcurrentUploads: 5,
 		maxFileSize: 10000000000,
 	},
 	mediaFiles: new Map(),
-	uploads: new Map(),
+	fileActors: new Map(),
 	queues: {
 		active: new Set(),
 		skipped: new Set(),
@@ -41,7 +45,10 @@ const uploadMachine = setup({
 	actions: {
 		updateConfig: enqueueActions(({ enqueue, context, event }) => {
 			assertEvent(event, 'upload.config')
-			let parsedConfig = config.parse({...event.config, user: event.user})
+			let parsedConfig = config.parse({
+				...event.config,
+				user: event.user,
+			})
 			enqueue.assign({
 				config: {
 					...context.config,
@@ -87,8 +94,8 @@ const uploadMachine = setup({
 							mediaFile: mediaFile.data,
 						},
 					})
-					let uploads = context.uploads.set(mediaFile.data.id, actor)
-					return { uploads }
+					let actors = context.fileActors.set(mediaFile.data.id, actor)
+					return { fileActors: actors }
 				})
 				enqueue.raise({
 					type: 'upload.start',
@@ -115,11 +122,12 @@ const uploadMachine = setup({
 		}),
 		updateProgress: assign(({ context, event }) => {
 			assertEvent(event, 'progress.change')
-			let mediaFile = mediafile.parse(event.mediaFile)
-			let mediaFiles = context.mediaFiles.set(mediaFile.id, mediaFile)
-			return {
-				mediaFiles,
-			}
+			let mediafileId = event.mediaFileId
+			let mediaFile = uploadProgress.parse(event.progress)
+			let mediafileToUpdate = context.mediaFiles.get(mediafileId)
+			mediafileToUpdate!['progress'] = event.progress
+			context.mediaFiles.set(mediafileId, mediafileToUpdate!)
+			return context
 		}),
 		markAsAborted: assign(({ context, event }) => {
 			assertEvent(event, 'upload.aborted')
@@ -143,12 +151,7 @@ const uploadMachine = setup({
 			let pendingFiles = Array.from(context.mediaFiles.values()).filter(
 				(file) => file.status === 'pending'
 			)
-			if (
-				//@ts-ignore
-				check('hasPendingUploads') &&
-				//@ts-ignore
-				check({ type: 'concurrentLessThenMax' })
-			) {
+			if (pendingFiles.length > 0) {
 				// The guard ensures config is valid, so we can parse without safeParse here.
 				const parsedConfig = config.parse(context.config)
 				let slotLeft =
@@ -181,8 +184,8 @@ const uploadMachine = setup({
 			enqueue.stopChild(mediaFile.id)
 
 			enqueue.assign({
-				uploads: new Map(
-					[...context.uploads.entries()].filter(
+				fileActors: new Map(
+					[...context.fileActors.entries()].filter(
 						([id]) => id !== mediaFile.id
 					)
 				),
@@ -198,8 +201,7 @@ const uploadMachine = setup({
 		),
 		sendAbortUpload: enqueueActions(({ event, enqueue }) => {
 			assertEvent(event, 'upload.abort')
-			let mediaFile = mediafile.parse(event.mediaFile)
-			enqueue.sendTo(mediaFile.id, {
+			enqueue.sendTo(event.mediaFileId, {
 				type: 'abort',
 			})
 		}),
@@ -207,6 +209,19 @@ const uploadMachine = setup({
 			assertEvent(event, 'upload.done')
 			let mediaFile = mediafile.parse(event.mediaFile)
 			let mediaFiles = context.mediaFiles.set(mediaFile.id, mediaFile)
+			return {
+				mediaFiles,
+			}
+		}),
+		markAsStarted: assign(({ context, event }) => {
+			assertEvent(event, 'upload.started')
+			let mediafileToUpdate = mediafile.parse(
+				context.mediaFiles.get(event.mediaFileId)
+			)
+			let mediaFiles = context.mediaFiles.set(event.mediaFileId, {
+				...mediafileToUpdate,
+				status: 'uploading',
+			})
 			return {
 				mediaFiles,
 			}
@@ -219,7 +234,8 @@ const uploadMachine = setup({
 				return false
 			}
 			return (
-				context.queues.active.size < parsedConfig.data.maxConcurrentUploads
+				context.queues.active.size <
+				parsedConfig.data.maxConcurrentUploads
 			)
 		},
 		hasPendingUploads: ({ context }) =>
@@ -266,7 +282,7 @@ const uploadMachine = setup({
 					{ actions: 'addFile' },
 				],
 				'upload.spawn': {
-					actions: 'spawnAndAssign',
+					actions: 'startMultipartUpload',
 				},
 				'upload.start': {
 					guard: and(['concurrentLessThenMax', not('inActiveQueue')]),
@@ -279,6 +295,9 @@ const uploadMachine = setup({
 						'removeFromUploads',
 						'uploadPendingFiles',
 					],
+				},
+				'upload.started': {
+					actions: 'markAsStarted'
 				},
 				'upload.done': {
 					actions: [

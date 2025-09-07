@@ -1,8 +1,9 @@
 import { assign, createMachine, fromPromise, setup } from 'xstate'
+import type { User as FullUser } from '@/services/auth.types'
 import type { User } from 'better-auth'
-import { prisma } from '../services/db.server'
-import { S3Service } from '../services/s3.server'
-import { toQuota } from '../services/subscription.utils'
+import { prisma } from '@/services/db'
+import { S3Service } from '@/services/s3'
+import { toQuotaTotalSize } from '@/services/subscription.utils'
 
 // The context (extended state) for the machine
 interface OnboardingContext {
@@ -25,53 +26,56 @@ export const onboardingMachine = setup({
 				})
 			}
 		),
-		runDBTransaction: fromPromise(
-			async ({
-				input,
-			}: {
-				input: { user: User; bucketName: string }
-			}) => {
-				return prisma.$transaction(async (tx) => {
-					const storagePlan = await tx.storagePlan.findFirstOrThrow({
-						where: { type: 'free' },
-					})
-					const subscription = await tx.subscription.create({
-						data: {
-							userId: input.user.id,
-							storagePlanType: storagePlan.type,
-							storagePlanId: storagePlan.id,
-							status: 'active',
-							type: 'free',
-							isCurrent: true,
-						},
-					})
-					await tx.drive.create({
-						data: {
-							name: input.bucketName,
-							ownerId: input.user.id,
-							driveType: 'personal',
-							quota: {
-								create: {
-									total: toQuota(storagePlan.type),
-									remaining: toQuota(storagePlan.type),
-									used: 0,
-									deleted: 0,
-									state: 'normal',
-								},
+		runDBTransaction: fromPromise<
+			FullUser,
+			{ user: User; bucketName: string }
+		>(async ({ input }) => {
+			const user = await prisma.$transaction(async (tx) => {
+				const storagePlan = await tx.storagePlan.findFirstOrThrow({
+					where: { type: 'free' },
+				})
+				const subscription = await tx.subscription.create({
+					data: {
+						userId: input.user.id,
+						storagePlanType: storagePlan.type,
+						storagePlanId: storagePlan.id,
+						status: 'active',
+						type: 'free',
+						isCurrent: true,
+					},
+				})
+				const drive = await tx.drive.create({
+					data: {
+						name: input.bucketName,
+						ownerId: input.user.id,
+						driveType: 'personal',
+						quota: {
+							create: {
+								total: toQuotaTotalSize(storagePlan.type),
+								used: 0,
+								deleted: 0,
+								state: 'normal',
 							},
 						},
-					})
-					await tx.user.update({
-						where: { id: input.user.id },
-						data: {
-							bucket: input.bucketName,
-							subscriptionId: subscription.id,
-							storagePlanId: storagePlan.id,
-						},
-					})
+					},
 				})
+				return await tx.user.update({
+					where: { id: input.user.id },
+					data: {
+						bucket: input.bucketName,
+						subscriptionId: subscription.id,
+						storagePlanId: storagePlan.id,
+						driveId: drive.id,
+					},
+				})
+			})
+
+			if (!user.storagePlanId || !user.subscriptionId) {
+				throw new Error('Failed to create user')
 			}
-		),
+
+			return user as FullUser
+		}),
 		createS3Bucket: fromPromise<string, { user: User }>(
 			async ({ input }) => {
 				const s3Service = new S3Service()

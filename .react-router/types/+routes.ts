@@ -28,7 +28,7 @@ type Pages = {
   "/api/notifications": {
     params: {};
   };
-  "/api/upload": {
+  "/api/stripe": {
     params: {};
   };
   "/api/favorites": {
@@ -43,6 +43,9 @@ type Pages = {
   "/api/shares": {
     params: {};
   };
+  "/api/quota": {
+    params: {};
+  };
   "/api/versions": {
     params: {};
   };
@@ -55,18 +58,11 @@ type Pages = {
   "/api/workspaces": {
     params: {};
   };
-  "/api/s3/*": {
-    params: {
-      "*": string;
-    };
-  };
   "/api/members": {
     params: {};
   };
-  "/api/collections/*": {
-    params: {
-      "*": string;
-    };
+  "/api/collections": {
+    params: {};
   };
   "/api/settings": {
     params: {};
@@ -84,6 +80,15 @@ type Pages = {
     params: {
       "*": string;
     };
+  };
+  "/api/s3/sts-token": {
+    params: {};
+  };
+  "/api/s3/presigned-url": {
+    params: {};
+  };
+  "/api/s3/upload": {
+    params: {};
   };
   "/dashboard": {
     params: {};
@@ -163,7 +168,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/auth/sign-in" | "/auth/sign-out" | "/api/health" | "/api/invitations" | "/api/notifications" | "/api/upload" | "/api/favorites" | "/api/users" | "/api/subscription" | "/api/shares" | "/api/versions" | "/api/theme" | "/api/items" | "/api/workspaces" | "/api/s3/*" | "/api/members" | "/api/collections/*" | "/api/settings" | "/api/view" | "/api/search" | "/api/images" | "/api/auth/*" | "/dashboard" | "/dashboard/items/*" | "/dashboard/shared" | "/dashboard/recent" | "/dashboard/trash" | "/dashboard/collections" | "/dashboard/collections/:collectionId" | "/dashboard/search" | "/workspaces" | "/workspaces/create" | "/workspaces/:workspaceId" | "/workspaces/:workspaceId/settings" | "/workspaces/:workspaceId/members" | "/workspaces/:workspaceId/items/:itemId" | "/settings/profile" | "/settings/account" | "/settings/security" | "/settings/billing" | "/settings/notifications" | "/settings/appearance";
+    page: "/" | "/auth/sign-in" | "/auth/sign-out" | "/api/health" | "/api/invitations" | "/api/notifications" | "/api/stripe" | "/api/favorites" | "/api/users" | "/api/subscription" | "/api/shares" | "/api/quota" | "/api/versions" | "/api/theme" | "/api/items" | "/api/workspaces" | "/api/members" | "/api/collections" | "/api/settings" | "/api/view" | "/api/search" | "/api/images" | "/api/auth/*" | "/api/s3/sts-token" | "/api/s3/presigned-url" | "/api/s3/upload" | "/dashboard" | "/dashboard/items/*" | "/dashboard/shared" | "/dashboard/recent" | "/dashboard/trash" | "/dashboard/collections" | "/dashboard/collections/:collectionId" | "/dashboard/search" | "/workspaces" | "/workspaces/create" | "/workspaces/:workspaceId" | "/workspaces/:workspaceId/settings" | "/workspaces/:workspaceId/members" | "/workspaces/:workspaceId/items/:itemId" | "/settings/profile" | "/settings/account" | "/settings/security" | "/settings/billing" | "/settings/notifications" | "/settings/appearance";
   };
   "routes/auth/layout.tsx": {
     id: "routes/auth/layout";
@@ -189,9 +194,9 @@ type RouteFiles = {
     id: "api.notifications";
     page: "/api/notifications";
   };
-  "routes/api/upload.ts": {
-    id: "api.upload";
-    page: "/api/upload";
+  "routes/api/stripe.ts": {
+    id: "api.stripe";
+    page: "/api/stripe";
   };
   "routes/api/favorites.ts": {
     id: "api.favorites";
@@ -209,6 +214,10 @@ type RouteFiles = {
     id: "api.shares";
     page: "/api/shares";
   };
+  "routes/api/quota.ts": {
+    id: "api.quota";
+    page: "/api/quota";
+  };
   "routes/api/versions.ts": {
     id: "api.versions";
     page: "/api/versions";
@@ -225,17 +234,13 @@ type RouteFiles = {
     id: "api.workspaces";
     page: "/api/workspaces";
   };
-  "routes/api/s3.ts": {
-    id: "api.s3";
-    page: "/api/s3/*";
-  };
   "routes/api/members.ts": {
     id: "api.members";
     page: "/api/members";
   };
   "routes/api/collections.ts": {
     id: "api.collections";
-    page: "/api/collections/*";
+    page: "/api/collections";
   };
   "routes/api/settings.ts": {
     id: "api.settings";
@@ -256,6 +261,18 @@ type RouteFiles = {
   "routes/api/auth.ts": {
     id: "api.auth";
     page: "/api/auth/*";
+  };
+  "routes/api/s3/sts-token.ts": {
+    id: "api.s3.sts-token";
+    page: "/api/s3/sts-token";
+  };
+  "routes/api/s3/presigned-url.ts": {
+    id: "api.s3.presigned-url";
+    page: "/api/s3/presigned-url";
+  };
+  "routes/api/upload.ts": {
+    id: "api.s3.upload";
+    page: "/api/s3/upload";
   };
   "routes/layout.tsx": {
     id: "layout";

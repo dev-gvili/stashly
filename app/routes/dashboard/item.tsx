@@ -1,6 +1,6 @@
 import { ItemCard } from "../../components/dashboard/ItemCard"
 import { Grid } from "../../components/Grid"
-import { prisma } from "../../services/db.server"
+import { prisma } from "@/.server/db"
 import type { Route } from "./+types/item"
 
 export async function loader({ request, params }: Route.LoaderArgs) {

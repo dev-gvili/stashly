@@ -7,11 +7,12 @@ model User {
     emailVerified    Boolean
     createdAt        DateTime       @default(now())
     updatedAt        DateTime       @updatedAt
-    role             String?
     bucket           String         @default("default-bucket")
+    driveId          String?        @unique // drive ID for the user
     subscriptionId   String?        @unique // Subscription ID for the user
     storagePlanId    String?        @unique // Storage plan ID for the user
     stripeCustomerId String?        @unique // Stripe customer ID
+    
     // Monitoring and Auditing
     notifications    Notification[]
 
@@ -30,7 +31,7 @@ model User {
 
     // Data Management
     items     Item[]
-    drives    Drive?
+    drive     Drive?
     favorites Favorite[]
 
     @@index([email])

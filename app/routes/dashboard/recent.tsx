@@ -1,5 +1,5 @@
 import type { Route } from './+types/recent'
-import { auth } from '@/services/auth.server'
+import { auth } from '@/.server/auth'
 import {
 	DropArea,
 	MediaUploadRoot,

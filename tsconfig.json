@@ -19,10 +19,10 @@
         "./*"
       ],
       "@/db/*": [
-        "./app/services/db"
+        "./app/.server/db"
       ],
       "@/prisma/*": [
-        "./app/services/prisma/*"
+        "./app/.server/prisma/*"
       ],
       "@/utils/*": [
         "./app/utils/*"
@@ -37,7 +37,7 @@
         "./app/hooks/*"
       ],
       "@/services/*": [
-        "./app/services/*"
+        "./app/.server/*"
       ],
     },
     "noEmit": true

@@ -6,14 +6,36 @@ import {
 	log,
 	type ErrorActorEvent,
 	type DoneActorEvent,
+	fromPromise,
+	sendTo,
 } from 'xstate'
 import type {
 	MediaFileData,
 	MediaFileStatus,
 	MediaFileEvents,
 	MediaFileInput,
-} from './types'
-import { createItem, requestPresignedUrl, uploadHandler } from './file.actors'
+	MediaFile,
+} from './machine.types'
+import { createItem, multipart, api } from './file.actors'
+import { toCategory } from '@/utils/converters'
+
+// ====================================================== //
+// ==================== Custom Actors =================== //
+// ====================================================== //
+
+const create = fromPromise<
+	Awaited<ReturnType<typeof api.createMultipartUpload>>,
+	{ bucket: string; key: string; metadata?: Record<string, string> }
+>(async ({ input: { bucket, key, metadata } }) => {
+	return await api.createMultipartUpload(bucket, key, metadata)
+})
+
+const complete = fromPromise<
+	Awaited<ReturnType<typeof api.completeMultipartUpload>>,
+	Parameters<typeof api.completeMultipartUpload>[0]
+>(async ({ input }) => {
+	return await api.completeMultipartUpload(input)
+})
 
 // ====================================================== //
 // Machine                                                //
@@ -24,105 +46,118 @@ const fileMachine = setup({
 		input: {} as MediaFileInput,
 		context: {} as MediaFileData,
 		events: {} as MediaFileEvents,
+		output: {} as {
+			mediaFile: MediaFile
+			uploadId: string
+		},
 	},
 	actions: {
-		updateUploadProgress: assign(({ context, event }) => {
+		UPDATE_PROGRESS: assign(({ context, event }) => {
 			assertEvent(event, 'progress')
 			return {
 				mediaFile: {
 					...context.mediaFile,
 					progress: event.progress,
-					uploadSpeedMbps: event.uploadSpeedMbps,
-					runTime: event.runTime,
-					timeLeft: event.timeLeft,
 				},
 			}
 		}),
-		updateEtagAndVersion: enqueueActions(({ context, event, enqueue }) => {
-			assertEvent(event, 'done')
-			enqueue.assign({
-				mediaFile: {
-					...context.mediaFile,
-					etag: event.etag,
-					version: event.version,
-				},
-			})
-		}),
-		sendProgressChange: enqueueActions(({ context, event, enqueue }) => {
-			assertEvent(event, 'progress')
-			let { type, ...data } = event
-			enqueue.sendTo(context.parentRef!, {
-				type: 'progress.change',
-				mediaFile: {
-					...context.mediaFile,
-					...data,
-				},
-			})
-		}),
-		sendUploadAborted: enqueueActions(({ context, enqueue }) => {
-			enqueue.sendTo(context.parentRef!, {
+		SEND_PARENT_PROGRESS_CHANGED: enqueueActions(
+			({ context, event, enqueue }) => {
+				assertEvent(event, 'progress')
+				enqueue.sendParent({
+					type: 'progress.change',
+					mediaFileId: context.mediaFile.id,
+					progress: event.progress,
+				})
+			}
+		),
+		SEND_PARENT_UPLOAD_ABORTED: enqueueActions(({ context, enqueue }) => {
+			enqueue.sendParent({
 				type: 'upload.aborted',
 				mediaFile: context.mediaFile,
 			})
 		}),
-		sendUploadDone: enqueueActions(({ context, enqueue }) => {
-			enqueue.sendTo(context.parentRef!, {
-				type: 'upload.done',
-				mediaFile: context.mediaFile,
+		NOTIFY_QUOTA: sendTo(
+			({ system }) => system.get('quotaService'),
+			({ context }) => ({
+				type: '@quota.update.used',
+				userId: '',
+				fileSizeInBytes: context.mediaFile.file.size,
+			})
+		),
+		// enqueue.sendParent({
+		// 	type: 'upload.done',
+		// 	mediaFile: context.mediaFile,
+		// })
+		SEND_PARENT_UPLOAD_DONE: enqueueActions(
+			({ context, enqueue }) => {
+				enqueue.sendParent({
+					type: 'upload.done',
+					mediaFile: context.mediaFile,
+				})
+			}
+		),
+		SEND_PARENT_UPLOAD_STARTED: enqueueActions(({ context, enqueue }) => {
+			enqueue.sendParent({
+				type: 'upload.started',
+				mediaFileId: context.mediaFile.id,
 			})
 		}),
-		sendCleanupToParent: enqueueActions(({ context, enqueue }) => {
-			enqueue.sendTo(context.parentRef!, {
+		// not in used, just an idea.
+		notifyParent: enqueueActions(({ context, enqueue, event }) => {
+			enqueue.sendParent({
+				type: event.type,
+				mediaFileId: context.mediaFile.id,
+			})
+		}),
+		SEND_PARENT_REMOVE_UPLOAD: enqueueActions(({ context, enqueue }) => {
+			enqueue.sendParent({
 				type: 'upload.remove',
 				id: context.mediaFile.id,
 			})
 		}),
-		sendAbortUpload: enqueueActions(({ context, enqueue }) => {
+		ABORT_UPLOAD: enqueueActions(({ context, enqueue }) => {
 			enqueue.sendTo(context.uploadRef!, {
 				type: 'abort',
-			})
-		}),
-		sendCheckHeaders: enqueueActions(({ context, enqueue }) => {
-			enqueue.sendTo(context.uploadRef!, {
-				type: 'headers.check',
 			})
 		}),
 		stopActor: enqueueActions(({ context, enqueue }) => {
 			enqueue.stopChild(context.uploadRef!)
 		}),
-		markAsUploading: assign(({ context }) => ({
+		CHANGE_STATUS_TO_UPLOADING: assign(({ context }) => ({
 			mediaFile: {
 				...context.mediaFile,
 				status: 'uploading' as MediaFileStatus,
 			},
 		})),
-		markAsDone: assign(({ context, event }) => {
-			assertEvent(event, 'done')
+		CHANGE_STATUS_TO_DONE: assign(({ context }) => {
 			return {
 				mediaFile: {
 					...context.mediaFile,
-					timeLeft: {
-						hours: 0,
-						minutes: 0,
-						seconds: 0,
-					},
 					status: 'done' as MediaFileStatus,
 				},
 			}
 		}),
-		markAsAborted: assign(({ context }) => ({
+		CHANGE_STATUS_TO_ABORTED: assign(({ context }) => ({
 			mediaFile: {
 				...context.mediaFile,
 				status: 'aborted' as MediaFileStatus,
 			},
 		})),
-		assignError: assign({
+		SAVE_ERROR: assign({
 			error: ({ event }) => {
 				return (event as unknown as ErrorActorEvent<unknown, string>)
 					.error as Error
 			},
 		}),
-		assignUploadUrl: assign({
+		SAVE_UPLOAD_ID: assign({
+			uploadId: ({ event }) => {
+				return (
+					event as unknown as DoneActorEvent<{ uploadId: string }>
+				).output.uploadId
+			},
+		}),
+		SAVE_UPLOAD_URL: assign({
 			mediaFile: ({ context, event }) => {
 				return {
 					...context.mediaFile,
@@ -131,35 +166,47 @@ const fileMachine = setup({
 				}
 			},
 		}),
-		spawnAndAssign: enqueueActions(({ context, event, enqueue }) => {
+		UPDATE_MEDIAFILE: assign({
+			mediaFile: ({ context, event }) => {
+				return {
+					...context.mediaFile,
+					...(
+						event as unknown as DoneActorEvent<{
+							eytag: string
+							versionId: string
+						}>
+					).output,
+					status: 'done' as MediaFileStatus,
+				}
+			},
+		}),
+		START_UPLOAD_SERVICE: enqueueActions(({ context, event, enqueue }) => {
 			enqueue.assign(({ spawn }) => {
-				let actor = spawn('uploadHandler', {
-					id: 's3.UploadHandler',
+				let actor = spawn('upload', {
+					id: '@s3.multipart.upload',
 					input: {
-						bucket: context.bucketName,
-						user: context.user,
-						mediaFile: context.mediaFile,
+						file: context.mediaFile.file,
+						key: context.mediaFile.file.name,
+						uploadId: context.uploadId,
 					},
 				})
 				return { uploadRef: actor }
 			})
 		}),
-		logToConsole: log(({ context, event }) =>
+		CONSOLE_LOG: log(({ context, event }) =>
 			console.log({ context, event })
 		),
 	},
 	actors: {
-		requestPresignedUrl,
-		uploadHandler,
 		createItem,
+		create,
+		upload: multipart,
+		complete,
 	},
 }).createMachine({
 	context: ({ input }) => ({
-		bucketName: input.bucketName,
-		ownerId: input.ownerId,
-		mediaFile: input.mediaFile,
-		user: input.user,
-		parentRef: input.parentRef,
+		...input,
+		uploadId: '',
 		error: undefined,
 	}),
 	initial: 'pending',
@@ -173,38 +220,72 @@ const fileMachine = setup({
 		},
 		init: {
 			invoke: {
-				id: 'minio.presignedPutUrl',
-				src: 'requestPresignedUrl',
+				id: '@s3.multipart.create',
+				src: 'create',
 				input: ({ context }) => ({
-					file: context.mediaFile.file,
-					bucketName: context.bucketName,
+					metadata: {
+						subscriptionId: context.user.subscriptionId,
+						storagePlanId: context.user.storagePlanId,
+						uploadedById: context.user.id,
+						category: toCategory(context.mediaFile.file),
+					},
+					key: context.mediaFile.file.name,
+					bucket: context.bucketName,
 				}),
 				onDone: {
 					target: 'uploading',
-					actions: 'assignUploadUrl',
+					actions: 'SAVE_UPLOAD_ID',
 				},
 				onError: {
 					target: 'error',
-					actions: 'assignError',
+					actions: 'SAVE_ERROR',
 				},
 			},
 		},
 		uploading: {
-			entry: ['markAsUploading', 'spawnAndAssign'],
+			entry: [
+				'CHANGE_STATUS_TO_UPLOADING',
+				'START_UPLOAD_SERVICE',
+				'SEND_PARENT_UPLOAD_STARTED',
+			],
 			on: {
 				progress: {
-					actions: ['updateUploadProgress', 'sendProgressChange'],
+					actions: [
+						'UPDATE_PROGRESS',
+						'SEND_PARENT_PROGRESS_CHANGED',
+					],
 				},
 				abort: {
-					actions: 'sendAbortUpload',
+					actions: [console.log, 'ABORT_UPLOAD'],
 				},
 				aborted: {
 					target: 'aborted',
-					actions: 'markAsAborted',
+					actions: 'CHANGE_STATUS_TO_ABORTED',
 				},
 				done: {
-					target: 'creatingItem',
-					actions: ['updateEtagAndVersion', 'markAsDone'],
+					target: 'completingUpload',
+				},
+			},
+		},
+		completingUpload: {
+			invoke: {
+				id: '@s3.multipart.complete',
+				src: 'complete',
+				input: ({ context, event }) => {
+					assertEvent(event, 'done')
+					return {
+						parts: event.parts,
+						key: context.mediaFile.file.name,
+						uploadId: context.uploadId,
+					}
+				},
+				onDone: {
+					target: 'success',
+					actions: ['UPDATE_MEDIAFILE', 'NOTIFY_QUOTA'],
+				},
+				onError: {
+					target: 'error',
+					actions: 'SAVE_ERROR',
 				},
 			},
 		},
@@ -220,11 +301,11 @@ const fileMachine = setup({
 				}),
 				onDone: {
 					target: 'success',
-					actions: 'logToConsole',
+					actions: 'CONSOLE_LOG',
 				},
 				onError: {
 					target: 'error',
-					actions: 'assignError',
+					actions: 'SAVE_ERROR',
 				},
 			},
 		},
@@ -234,13 +315,19 @@ const fileMachine = setup({
 					target: 'pending',
 				},
 			},
-			entry: 'sendUploadAborted',
+			entry: 'SEND_PARENT_UPLOAD_ABORTED',
 		},
 		success: {
-			entry: 'sendUploadDone',
+			entry: 'SEND_PARENT_UPLOAD_DONE',
+			// type: 'final',
+			output: ({ context }) => ({
+				mediaFile: context.mediaFile,
+				uploadId: context.uploadId,
+			}),
 		},
 		error: {
-			entry: 'logToConsole',
+			entry: 'CONSOLE_LOG',
+			type: 'final',
 		},
 	},
 })

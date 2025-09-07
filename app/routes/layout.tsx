@@ -1,5 +1,5 @@
 import { Outlet, redirect, type ShouldRevalidateFunction } from 'react-router'
-import { auth } from '@/services/auth.server'
+import { auth } from '@/.server/auth'
 import type { Route } from './+types/layout'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/AppSidebar'
