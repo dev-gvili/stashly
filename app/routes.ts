@@ -17,35 +17,84 @@ export default [
 
 	// API routes
 	...prefix('api', [
-		route('health', 'routes/api/health.ts', { id: 'api.health' }), // Health check API route
+		// Health check API route
+		route('health', 'routes/api/health.ts', { id: 'api.health' }),
+		// Invitations API route
 		route('invitations', 'routes/api/invitations.ts', {
 			id: 'api.invitations',
-		}), // Invitations API route
+		}),
+		// Notifications API route
 		route('notifications', 'routes/api/notifications.ts', {
 			id: 'api.notifications',
-		}), // Notifications API route
-		route('upload', 'routes/api/upload.ts', { id: 'api.upload' }), // Upload API route
-		route('favorites', 'routes/api/favorites.ts', { id: 'api.favorites' }), // Favorites API route
-	   route('users', 'routes/api/users.ts', { id: 'api.users' }), // Users API route
-	   route('subscription', 'routes/api/subscription.ts', { id: 'api.subscription' }), // Subscription API route
-		route('shares', 'routes/api/shares.ts', { id: 'api.shares' }), // Shares API route
-		route('versions', 'routes/api/versions.ts', { id: 'api.versions' }), // Version API route
-		route('theme', 'routes/api/theme.ts', { id: 'api.theme' }), // Theme management API route
-		route('items', 'routes/api/items.ts', { id: 'api.items' }), // Items API route
+		}),
+		// Stripe API route
+		route('stripe', 'routes/api/stripe.ts', { id: 'api.stripe' }),
+		// Favorites API route
+		route('favorites', 'routes/api/favorites.ts', { id: 'api.favorites' }),
+		// Users API route
+		route('users', 'routes/api/users.ts', { id: 'api.users' }),
+		// Subscription API route
+		route('subscription', 'routes/api/subscription.ts', {
+			id: 'api.subscription',
+		}),
+		// Shares API route
+		route('shares', 'routes/api/shares.ts', { id: 'api.shares' }),
+		// Quota API route
+		route('quota', 'routes/api/quota.ts', { id: 'api.quota' }),
+		// Version API route
+		route('versions', 'routes/api/versions.ts', { id: 'api.versions' }),
+		// Theme management API route
+		route('theme', 'routes/api/theme.ts', { id: 'api.theme' }),
+		// Items API route
+		route('items', 'routes/api/items.ts', { id: 'api.items' }),
+		// Workspaces API route
 		route('workspaces', 'routes/api/workspaces.ts', {
 			id: 'api.workspaces',
-		}), // Workspaces API route
-		route('s3/*', 'routes/api/s3.ts', { id: 'api.s3' }), // S3 API route
-		route('members', 'routes/api/members.ts', { id: 'api.members' }), // Members API route
-		route('collections/*', 'routes/api/collections.ts', {
-				id: 'api.collections',
-		}), // Collections API route
-		route('settings', 'routes/api/settings.ts', { id: 'api.settings' }), // Settings API route
-		route('view', 'routes/api/view.ts', { id: 'api.view' }), // Folder View API route
-		route('search', 'routes/api/search.ts', { id: 'api.search' }), // Search API route
-		route('images', 'routes/api/images.ts', { id: 'api.images' }), // Images API route
-		route('auth/*', 'routes/api/auth.ts', { id: 'api.auth' }), // Authentication API route, wildcard to handle all auth-related requests
+		}),
+		// Members API route
+		route('members', 'routes/api/members.ts', { id: 'api.members' }),
+		// Collections API route
+		route('collections', 'routes/api/collections.ts', {
+			id: 'api.collections',
+		}),
+		// Settings API route
+		route('settings', 'routes/api/settings.ts', { id: 'api.settings' }),
+		// Folder View API route
+		route('view', 'routes/api/view.ts', { id: 'api.view' }),
+		// Search API route
+		route('search', 'routes/api/search.ts', { id: 'api.search' }),
+		// Images API route
+		route('images', 'routes/api/images.ts', { id: 'api.images' }),
+		// Authentication API route; wildcard handles login, logout, registration, password reset, and other auth-related requests
+		route('auth/*', 'routes/api/auth.ts', { id: 'api.auth' }),
+		// S3 & Upload API routes
+		...prefix('s3', [
+			route('sts-token', 'routes/api/s3/sts-token.ts', {
+				id: 'api.s3.sts-token',
+			}),
+			route('presigned-url', 'routes/api/s3/presigned-url.ts', {
+				id: 'api.s3.presigned-url',
+			}),
+			route('upload', 'routes/api/upload.ts', {
+				id: 'api.s3.upload',
+			}),
+			// ...prefix('multipart', [
+			// 	route('create', 'routes/api/s3/multipart/create.ts', {
+			// 		id: 'api.s3.multipart.create',
+			// 	}),
+			// 	route('complete', 'routes/api/s3/multipart/complete.ts', {
+			// 		id: 'api.s3.multipart.complete',
+			// 	}),
+			// 	route('abort', 'routes/api/s3/multipart/abort.ts', {
+			// 		id: 'api.s3.multipart.abort',
+			// 	}),
+			// 	route('part-url', 'routes/api/s3/multipart/part-url.ts', {
+			// 		id: 'api.s3.multipart.part-url',
+			// 	}),
+			// ]),
+		]),
 	]),
+
 	layout('routes/layout.tsx', { id: 'layout' }, [
 		// Main layout for the application, wraps all routes
 		index('routes/index.tsx'), // Default route, can be used for landing page or overview

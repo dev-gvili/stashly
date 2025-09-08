@@ -37,7 +37,7 @@ export const ProgressBarCircle = React.forwardRef<
 	React.ComponentPropsWithoutRef<"circle">
 >(({ children, className, radius = 24, ...props }, forwardRef) => {
 	let styles =
-		"dark:stroke-white/20 fill-transparent stroke-inherit group-data-[state=aborted]:dark:stroke-white/40"
+		"dark:stroke-white/20 fill-transparent stroke-black/20 group-data-[state=aborted]:dark:stroke-white/40"
 	return (
 		<circle
 			ref={forwardRef}
@@ -63,7 +63,7 @@ export const Indicator = React.forwardRef<
 		const circumference = 2 * Math.PI * Number(radius)
 		let offsets = circumference - (progress / 100) * circumference
 		let styles =
-			"progress-ring__circle stroke-white group-data-[state=aborted]:dark:stroke-white/40"
+			"progress-ring__circle stroke-foreground group-data-[state=aborted]:dark:stroke-white/40"
 		return (
 			<circle
 				ref={forwardRef}

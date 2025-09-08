@@ -6,11 +6,12 @@
 
 generator client {
   provider = "prisma-client"
-  output   = "../app/services/prisma"
+  output   = "../app/.server/prisma"
 
   // Optional
   moduleFormat           = "esm"
   generatedFileExtension = "ts"
+  previewFeatures        = ["nativeDistinct", "relationJoins"]
   // output   = "../app/services/database/prisma"
 }
 

@@ -6,7 +6,7 @@ import {
 	Total,
 	CountDown
 } from '@/components/file-upload'
-import { auth } from '@/services/auth.server'
+import { auth } from '@/.server/auth'
 import type { Route } from './+types/collections'
 import { RiUpload2Fill } from '@remixicon/react'
 

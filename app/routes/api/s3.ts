@@ -1,8 +1,8 @@
 import { z } from 'zod'
 import type { Route } from './+types/s3'
 import { parseFormData } from '@/utils/parsers'
-import { S3Service } from '@/services/s3.server'
-import { auth } from '@/services/auth.server'
+import { S3Service } from '@/.server/s3'
+import { auth } from '@/services/auth'
 import { data } from 'react-router'
 
 const PresignUrlSchema = z.object({
@@ -22,7 +22,7 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
 		schema: PresignUrlSchema,
 	})
 	const s3 = new S3Service(session.user.bucket)
-	const presignUrl = await s3.generatePresignedUrl(
+	const presignUrl = await s3.getPresignedUrl(
 		parsedData.intent === 'put_url' ? 'put' : 'get',
 		parsedData.fileName
 	)

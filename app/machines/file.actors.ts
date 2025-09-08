@@ -1,14 +1,10 @@
-import { fromCallback, fromPromise } from 'xstate'
-import { fileUploadHandler } from './file.handlers'
-import type { MediaFile } from './types'
-import { parseHeaders, getStats, getPresignUrl } from './file.utils'
+import { fromCallback, fromPromise, type ExtractEvent } from 'xstate'
+import { getPresignUrl } from './file.utils'
 import type { Item } from '@/prisma/client'
-import { getFileExtension } from '@/utils/parsers'
-import type { UploadProgress } from '@/services/s3.server'
-import type { User } from 'better-auth'
-import { Upload } from '@aws-sdk/lib-storage'
-import { S3Client } from '@aws-sdk/client-s3'
-
+import { parseFileExtension } from '@/utils/parsers'
+import type { MediaFile, User, UploadProgress, MediaFileEvents } from './machine.types' // Ensure UploadProgress is
+// import { uploadFileInPartsStream } from './file.stream.actor'
+import { streamParts } from './s3.multipart.stream'
 // ====================================================== //
 // Actors												  //
 // ====================================================== //
@@ -25,7 +21,7 @@ export const createItem = fromPromise<Item, { mediafile: MediaFile }>(
 	async ({ input }) => {
 		const { mediafile } = input
 		// let regex = new RegExp(/.(\w+)$/)
-		let ext = getFileExtension(mediafile.file.name)
+		let ext = parseFileExtension(mediafile.file.name)
 		// let ext = mediafile.file?.name?.match(regex)
 		console.log('EXT', ext)
 		let formData = new FormData()
@@ -43,91 +39,6 @@ export const createItem = fromPromise<Item, { mediafile: MediaFile }>(
 		return data.item
 	}
 )
-
-/**
- * xstate callback actor that upload a file to minio server using XMLHttpRequest
- * i'm using XMLHttpRequest and NOT fetch beacuse i need to track the upload progress, I can't do that with fetch and in XMLHttpRequest it's built-in 
- * this actor will send back to it's parent a `progress` event every time the uploaded bytes changes.
- * it's also listen for an `abort` even to abort the upload, when received it will execute `xhr.abort()` and send back to the parent an `aborted` event.
- * there is one more event the `done` event, we send this event when `XMLHttpRequest.readyState is DONE (4)`, before we send this event we parsed the response headers, those headers contains the `etag` and the `version` for the uploaded file assigned by `minio server`
- * 
- * 
- * Example of response headers
- * @example 
-		accept-ranges: bytes
-		access-control-allow-credentials: true
-		access-control-allow-origin: http://localhost:5173
-		access-control-expose-headers: Date, Etag, Server, Connection, Accept-Ranges, Content-Range, Content-Encoding, Content-Length, Content-Type, Content-Disposition, Last-Modified, Content-Language, Cache-Control, Retry-After, X-Amz-Bucket-Region, Expires, X-Amz*, X-Amz*, *
-		content-length: 0
-		content-type: text/plain; charset=utf-8
-		date: Sun, 04 Aug 2024 19:59:00 GMT
-		etag: "010ca4824d52fddc247f21f77b72601a"
-		server: MinIO
-		strict-transport-security: max-age=31536000; includeSubDomains
-		vary: Origin, Accept-Encoding
-		x-amz-id-2: dd9025bab4ad464b049177c95eb6ebf374d3b3fd1af9251148b658df7ac2e3e8
-		x-amz-request-id: 17E89EDF9448F040
-		x-amz-version-id: bbe66fe8-4ac4-4c0d-b6f8-67ca3783dab5
-		x-content-type-options: nosniff
-		x-xss-protection: 1; mode=block
- */
-export const uploadHandler = fromCallback<
-	{ type: 'abort' },
-	{ mediaFile: MediaFile; user: User; bucket: string }
->(({ sendBack, receive, input }) => {
-	let {
-		mediaFile: { file, url },
-		user,
-		bucket,
-	} = input
-	const xhr = new XMLHttpRequest()
-	const startTime = new Date().valueOf()
-
-	xhr.onreadystatechange = () => {
-		if (xhr.readyState === 4) {
-			let data = parseHeaders(xhr)
-			if (!data.etag) {
-				return
-			}
-			sendBack({
-				type: 'done',
-				etag: data.etag,
-				version: data.version,
-			})
-		}
-	}
-
-	uploadFile(file, bucket, user, undefined, (progress) => {
-		sendBack({
-			type: 'progress',
-			...progress,
-		})
-	})
-
-	// fileUploadHandler(
-	// 	url,
-	// 	file,
-	// 	(loadedBytes) => {
-	// 		let stats = getStats(loadedBytes, startTime, file)
-	// 		sendBack({
-	// 			type: 'progress',
-	// 			...stats,
-	// 		})
-	// 	},
-	// 	() => {
-	// 		sendBack({
-	// 			type: 'aborted',
-	// 		})
-	// 	},
-	// 	xhr
-	// )
-
-	receive(({ type }) => {
-		if (type === 'abort') {
-			xhr.abort()
-		}
-	})
-})
 
 function toUploadSpeed(loadedDelta: number, timeDelta: number) {
 	const speedBytesPerSec = loadedDelta / timeDelta
@@ -166,133 +77,342 @@ function generateFileKey(workspaceId: string | undefined, file: File): string {
 }
 
 function parseProgress(loadedBytes: number, size: number) {
-	let progress = (loadedBytes / size) * 100
+	let progress = Math.round((loadedBytes / size) * 100)
 	return parseInt(progress.toFixed(0))
 }
 
-async function uploadFile(
+export const api = {
+	async createMultipartUpload(
+		bucket: string,
+		key: string,
+		metadata?: Record<string, string>
+	): Promise<{ uploadId: string }> {
+		const res = await fetch('/api/s3/upload', {
+			method: 'POST',
+			body: JSON.stringify({
+				bucket,
+				key,
+				metadata,
+				action: 'create-multipart-upload',
+			}),
+			headers: { 'Content-Type': 'application/json' },
+		})
+		const { uploadId } = await res.json()
+		return { uploadId }
+	},
+	async getPresignedUrl(
+		partNumber: number,
+		uploadId: string,
+		key: string,
+		bucket: string
+	): Promise<{ url: string }> {
+		const res = await fetch('/api/s3/upload', {
+			method: 'POST',
+			body: JSON.stringify({
+				bucket,
+				key,
+				uploadId,
+				partNumber,
+				action: 'get-presigned-url',
+			}),
+			headers: { 'Content-Type': 'application/json' },
+		})
+		const { url } = await res.json()
+		return { url }
+	},
+	async completeMultipartUpload({
+		parts,
+		key,
+		uploadId,
+	}: {
+		parts: { ETag: string; PartNumber: number }[]
+		key: string
+		uploadId: string
+	}): Promise<{
+		etag: string
+		key: string
+		bucket: string
+		versionId: string
+	}> {
+		let res = await fetch('/api/s3/upload', {
+			method: 'POST',
+			body: JSON.stringify({
+				key,
+				uploadId,
+				parts,
+				action: 'complete-multipart-upload',
+			}),
+			headers: { 'Content-Type': 'application/json' },
+		})
+		return await res.json()
+	},
+	async abortMultipartUpload(bucket: string, key: string, uploadId: string) {
+		let res = await fetch('/api/s3/upload', {
+			method: 'POST',
+			body: JSON.stringify({
+				bucket,
+				key,
+				uploadId,
+				action: 'abort-multipart-upload',
+			}),
+			headers: { 'Content-Type': 'application/json' },
+		})
+		let { success } = await res.json()
+		return { success }
+	},
+}
+
+// Assuming your uploadChunk and uploadFileInParts are in a separate utility file, e.g., './upload.utils.ts'
+// For this example, I'll put them directly below for self-containment.
+
+// ====================================================== //
+// Helper functions (could be in a separate upload.utils.ts)
+// ====================================================== //
+
+// A function that wraps XHR in a Promise to upload one chunk
+export function uploadChunk(
+	url: string,
+	chunk: Blob,
+	xhr: XMLHttpRequest,
+	onProgress: (loaded: number, total: number) => void // Updated
+): Promise<{ etag: string | null }> {
+	return new Promise((resolve, reject) => {
+		xhr.open('PUT', url, true)
+
+		xhr.upload.onprogress = (event) => {
+			onProgress(event.loaded, event.total) // Report loaded and total bytes for this chunk
+		}
+
+		xhr.onreadystatechange = () => {
+			if (xhr.readyState === 4) {
+				let headers = xhr.getAllResponseHeaders()
+				console.log(
+					'UploadChunk:xhr.onreadystatechange:headers ',
+					headers
+				)
+				// let data = parseHeaders(xhr)
+				if (!headers.includes('etag')) return
+				const Etag_first = xhr.getResponseHeader('Etag')
+				const ETag_second = xhr.getResponseHeader('ETag')
+				const etag_third = xhr.getResponseHeader('etag')
+				console.log({ Etag_first, ETag_second, etag_third })
+				// resolve({ etag: ETag_second })
+			}
+		}
+
+		xhr.onload = () => {
+			if (xhr.status >= 200 && xhr.status < 300) {
+				const etag = xhr.getResponseHeader('ETag')
+				resolve({ etag })
+			} else {
+				reject(
+					console.error(
+						`Upload failed with status: ${xhr.status} - ${xhr.statusText}`
+					)
+				)
+			}
+		}
+
+		xhr.upload.onerror = () =>
+			reject(new Error('Network error during chunk upload.'))
+		xhr.upload.onabort = () => reject(new Error('Chunk upload aborted.'))
+
+		xhr.send(chunk)
+	})
+}
+
+// The main orchestration function, now with detailed progress reporting
+export async function uploadFileInParts(
 	file: File,
-	bucket: string,
-	user: User,
-	workspaceId: string | undefined,
-	onProgress?: (progress: UploadProgress) => void,
-	abortController?: AbortController
-) {
-	const s3Client = new S3Client({
-		region: 'auto',
-		endpoint:
-			process.env.AWS_ENDPOINT_URL || import.meta.env.AWS_ENDPOINT_URL,
-		credentials: {
-			accessKeyId:
-				process.env.AWS_ACCESS_KEY || import.meta.env.AWS_ACCESS_KEY,
-			secretAccessKey:
-				process.env.AWS_SECRET_KEY || import.meta.env.AWS_SECRET_KEY,
-		},
-		forcePathStyle: false,
-	})
-	// Generate unique key.
-	const key = generateFileKey(workspaceId, file)
-	let uploadStartTime = Date.now()
-	let lastLoaded = 0
-	let lastLoadedTime = uploadStartTime
+	uploadId: string,
+	key: string,
+	onTotalProgress: (progress: UploadProgress) => void, // Updated signature
+	onPartsUploaded: (args: {
+		key: string | undefined
+		bucket: string | undefined
+		etag: string | undefined
+		versionId: string | undefined
+	}) => void,
+	abortController: AbortController // Pass AbortController for cancellation
+): Promise<void> {
+	const CHUNK_SIZE = 50 * 1024 * 1024 // 50MB
+	const totalParts = Math.ceil(file.size / CHUNK_SIZE)
+	const partProgress: number[] = Array(totalParts).fill(0) // Holds loaded bytes for each part
+	const uploadedParts: { ETag: string; PartNumber: number }[] = []
 
-	// Create a new upload instance
-	const upload = new Upload({
-		client: s3Client,
-		abortController,
-		tags: [
-			{ Key: 'WorkspaceId', Value: workspaceId },
-			{ Key: 'UploadedBy', Value: user.id },
-			{ Key: 'FileName', Value: file.name },
-		],
-		params: {
-			Bucket: bucket,
-			Key: key,
-			Body: file.stream(),
-			ContentType: file.type,
-			ContentLength: file.size,
-			Metadata: {
-				workspaceId: workspaceId || '',
-				uploadedBy: user.id,
-				uploadedAt: new Date().toISOString(),
-			},
-		},
-	})
+	const uploadPromises: Promise<any>[] = [] // Array to hold promises for each chunk upload
+	const startTime = Date.now() // Record start time
+	const xhr = new XMLHttpRequest()
 
-	// Handle cancellation
-	if (abortController) {
-		abortController.signal.addEventListener('abort', () => {
-			upload.abort()
-			console.log(`Upload for ${key} has been cancelled.`)
+	for (let i = 0; i < totalParts; i++) {
+		// Check for abort signal before starting new chunk upload
+		if (abortController.signal.aborted) {
+			console.log('Upload aborted before starting new chunk.')
+			break // Exit loop if aborted
+		}
+
+		const partNumber = i + 1
+		const start = i * CHUNK_SIZE
+		const end = Math.min(start + CHUNK_SIZE, file.size)
+		const chunk = file.slice(start, end)
+
+		// Fetch pre-signed URL for this specific part
+		let { url } = await api.getPresignedUrl(partNumber, uploadId, key, '')
+
+		const uploadPromise = uploadChunk(url, chunk, xhr, (loadedForChunk) => {
+			partProgress[i] = loadedForChunk // Update loaded bytes for this specific part
+
+			const totalLoaded = partProgress.reduce(
+				(acc, loaded) => acc + loaded,
+				0
+			)
+
+			// NOTE: code was replace by parseProgress function
+
+			// const totalPercentage = Math.round(
+			// 	(totalLoaded * 100) / file.size
+			// )
+
+			const currentTime = Date.now()
+			const elapsedTimeInSeconds = (currentTime - startTime) / 1000 // in seconds
+
+			let speedValue = 0
+			if (elapsedTimeInSeconds > 0) {
+				speedValue = totalLoaded / elapsedTimeInSeconds // bytes per second
+			}
+
+			let timeLeftSeconds = 0
+			if (totalLoaded > 0 && speedValue > 0) {
+				const remainingBytes = file.size - totalLoaded
+				timeLeftSeconds = remainingBytes / speedValue
+			}
+
+			// Convert speed to KB/s or MB/s
+			// let speedUnit: 'KB/s' | 'MB/s' = 'KB/s'
+			// let formattedSpeed = speedValue / 1024 // KB/s
+			// if (formattedSpeed > 1024) {
+			// 	formattedSpeed /= 1024 // MB/s
+			// 	speedUnit = 'MB/s'
+			// }
+
+			/**
+			 * Note: code was replace by toTimeLeft function
+			 *
+			 * const hours = Math.floor(timeLeftSeconds / 3600)
+			 * const minutes = Math.floor((timeLeftSeconds % 3600) / 60)
+			 * const seconds = Math.floor(timeLeftSeconds % 60)
+			 */
+
+			onTotalProgress({
+				percentage: parseProgress(totalLoaded, file.size),
+				timeLeft: toTimeLeft(timeLeftSeconds),
+				speed: toUploadSpeed(totalLoaded, elapsedTimeInSeconds).speed,
+				// Note: this code was replaced by toUploadSpeed
+
+				// {
+				// 	value: parseFloat(formattedSpeed.toFixed(2)),
+				// 	unit: speedUnit,
+				// },
+			})
 		})
+			.then((result) => {
+				if (result.etag) {
+					// Remove quotes from ETag if present
+					uploadedParts.push({
+						ETag: result.etag.replace(/"/g, ''),
+						PartNumber: partNumber,
+					})
+				}
+			})
+			.catch((error) => {
+				// Re-throw if it's not an abort error, so the Promise.all catches it
+				if (error.name !== 'AbortError') {
+					throw error
+				}
+			})
+
+		uploadPromises.push(uploadPromise)
 	}
-	// Track upload progress
-	upload.on('httpUploadProgress', (progress) => {
-		if (!progress.loaded || !progress.total) {
-			console.warn(`No upload data available for ${key}`)
-			return
-		}
 
-		const currentTime = Date.now()
-		const stats = getStats(progress.loaded, uploadStartTime, file)
-		// const elapsedTime = (currentTime - uploadStartTime) / 1000 // in seconds
-		const loadedDelta = progress.loaded - lastLoaded
-		const timeDelta = (currentTime - lastLoadedTime) / 1000 // in seconds
-
-		// // Calculate upload speed
-		const { speedBytesPerSec, speed } = toUploadSpeed(
-			loadedDelta,
-			timeDelta
-		)
-
-		// // If no time has passed, skip progress update
-		if (timeDelta <= 0) {
-			console.warn(`No time elapsed for ${key}, skipping progress update`)
-			return
-		}
-		const percentage = parseProgress(progress.loaded, file.size)
-
-		// Calculate time
-		const remainingBytes = progress.total - progress.loaded
-		const remainingSeconds = remainingBytes / speedBytesPerSec
-		const timeLeft = toTimeLeft(remainingSeconds)
-
-		// Update progress tracking
-		lastLoaded = progress.loaded
-		lastLoadedTime = currentTime
-
-		// Call progress callback if provided
-		onProgress?.({
-			percentage,
-			timeLeft,
-			speed,
-		})
-
-		// Log progress
-		console.log(
-			`Upload Progress for ${key}:`,
-			`${percentage}% |`,
-			`Speed: ${speed.value.toFixed(2)} ${speed.unit} |`,
-			`Time left: ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s`
-		)
-	})
-
+	// Wait for all parts to finish uploading, or for an abort
 	try {
-		// Check if already aborted before starting
-		if (abortController?.signal.aborted) {
-			throw new Error('Upload aborted')
+		await Promise.all(uploadPromises)
+	} catch (error: any) {
+		if (error.name === 'AbortError') {
+			console.log('Multipart upload aborted by AbortController.')
+			// Do not re-throw, the actor will handle the 'aborted' state
+		} else {
+			throw error // Re-throw other errors
 		}
+	}
 
-		const response = await upload.done()
-
-		return {
+	// After all parts are uploaded (or aborted), notify the machine with the collected parts
+	// Only call onPartsUploaded if not aborted
+	if (!abortController.signal.aborted) {
+		console.log('All the parts uploaded', uploadedParts.length)
+		console.log('All parts uploaded for:', key)
+		const {
+			etag,
+			bucket,
+			key: fileKey,
+			versionId,
+		} = await api.completeMultipartUpload({
+			parts: uploadedParts,
 			key,
-			etag: response.ETag,
-			versionId: response.VersionId,
-			metadata: response.$metadata,
-		}
-	} catch (error) {
-		console.error('Error uploading file:', error)
-		throw new Error('Failed to upload file to S3')
+			uploadId,
+		})
+		console.log('Complete multipart upload - etag', etag)
+		// Ensure 100% and final speed/time values are reported
+		onPartsUploaded({ etag, key: fileKey, bucket, versionId })
+		onTotalProgress({
+			percentage: 100,
+			timeLeft: { hours: 0, minutes: 0, seconds: 0 },
+			speed: { value: 0, unit: 'KB/s' }, // Speed can be 0 or final average if needed
+		})
 	}
 }
+
+// ====================================================== //
+// XState Actor Definition
+// ====================================================== //
+
+export interface MultipartUploadInput {
+	file: File
+	key: string
+	uploadId: string
+}
+
+export interface MultipartUploadOutput {
+	etag: string
+	versionId: string
+	key: string
+	bucket: string
+}
+
+export const multipart = fromCallback<
+	ExtractEvent<MediaFileEvents, 'abort'>,
+	MultipartUploadInput
+>(({ sendBack, receive, input }) => {
+	const abortController = new AbortController()
+
+	// 1. Create a multipart upload
+	streamParts({
+		...input,
+		abortController,
+		onDone: (parts) => {
+			sendBack({ type: 'done', parts })
+		},
+		onProgress: (progress) => {
+			sendBack({ type: 'progress', progress })
+		},
+	})
+
+	// Listen for 'abort' event from the parent machine
+	receive(({ type }) => {
+		if (type === 'abort') {
+			console.log('Multipart actor received abort signal.')
+			abortController.abort() // Trigger abort on the controller
+			sendBack({ type: 'aborted' }) // Notify fileMachine that actor is aborted
+		}
+	})
+})

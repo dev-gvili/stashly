@@ -1,12 +1,12 @@
 import type { Route } from '../+types'
-import { auth } from '@/services/auth.server'
+import { auth } from '@/services/auth'
 import {
 	getUserSubscription,
 	updateUserSubscription,
-} from '@/services/subscription.server'
-import { parseFormData } from '../../utils/parsers'
+} from '@/.server/subscription'
+import { parseFormData } from '@/utils/parsers'
 import { z } from 'zod'
-import { StoragePlanType, SubscriptionType } from '../../services/prisma/enums'
+import { StoragePlanType, SubscriptionType } from '@/prisma/client'
 
 const schema = z.object({
 	storagePlanType: z.nativeEnum(StoragePlanType),

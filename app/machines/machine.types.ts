@@ -1,0 +1,97 @@
+import { z } from 'zod'
+import {
+	config,
+	fileMachineContext,
+	mediafile,
+	mediaFileStatus,
+	mediafileUploadInfo,
+	uiConfig,
+	uploadManagerSchema,
+	uploadManagerEvents,
+	mediafileEvents,
+	mediafileMachineInput,
+	user,
+	uploadProgress,
+	multipartEvents,
+	output,
+	multipartContext,
+	multipartPart,
+	multipartParts,
+	multipartInput,
+	quotaContext,
+	quotaEvents,
+	quotaOutput,
+	subscriptionEvents,
+	subscriptionOutput,
+	type subscriptionInput,
+	type subscriptionContext,
+} from './schema.zod'
+
+// ====================================================== //
+// ==================== Shared Types ==================== //
+// ====================================================== //
+
+export type User = z.infer<typeof user>
+export type Config = z.infer<typeof config>
+export type UIConfig = z.infer<typeof uiConfig>
+export type UploadProgress = z.infer<typeof uploadProgress>
+
+// ====================================================== //
+// =============== MediaFile Machine Types ============== //
+// ====================================================== //
+
+export type MediaFileInput = z.infer<typeof mediafileMachineInput>
+export type MediaFileEvents = z.infer<typeof mediafileEvents>
+export type MediaFileData = z.infer<typeof fileMachineContext>
+export type MediaFileStatus = z.infer<typeof mediaFileStatus>
+export type MediaFileUploadInfo = z.infer<typeof mediafileUploadInfo>
+export type MediaFile = z.infer<typeof mediafile>
+
+// ====================================================== //
+// ================ Upload Machine Types ================ //
+// ====================================================== //
+
+export type UploadManagerData = z.infer<typeof uploadManagerSchema>
+export type UploadManagerEvents = z.infer<typeof uploadManagerEvents>
+
+// ====================================================== //
+// =============== Multipart Machine Types ============== //
+// ====================================================== //
+
+export type MultipartEvents = z.infer<typeof multipartEvents>
+export type MultipartOutput = z.infer<typeof output>
+export type MultipartContext = z.infer<typeof multipartContext>
+export type MultipartPart = z.infer<typeof multipartPart>
+export type MultipartParts = z.infer<typeof multipartParts>
+export type MultipartInput = z.infer<typeof multipartInput>
+
+// ====================================================== //
+// ================= Quota Machine Types ================ //
+// ====================================================== //
+
+export type QuotaEvents = z.infer<typeof quotaEvents>
+export type QuotaContext = z.infer<typeof quotaContext>
+export type QuotaOutput = z.infer<typeof quotaOutput>
+
+// ====================================================== //
+// ================ OnBoard Machine Types =============== //
+// ====================================================== //
+
+export type OnBoardEvents = z.infer<typeof onBoardEvents>
+export type OnBoardContext = z.infer<typeof onBoardContext>
+export type OnBoardOutput = z.infer<typeof onBoardOutput>
+export type OnBoardInput = z.infer<typeof onBoardInput>
+
+// ====================================================== //
+// ================= Queue Machine Types ================ //
+// ====================================================== //
+
+
+// ====================================================== //
+// ============= Subscription Machine Types ============= //
+// ====================================================== //
+
+export type SubscriptionEvents = z.infer<typeof subscriptionEvents>
+export type SubscriptionContext = z.infer<typeof subscriptionContext>
+export type SubscriptionOutput = z.infer<typeof subscriptionOutput>
+export type SubscriptionInput = z.infer<typeof subscriptionInput>

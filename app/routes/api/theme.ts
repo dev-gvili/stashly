@@ -1,4 +1,4 @@
 import { createThemeAction } from 'remix-themes'
-import { themeService } from '@/services/theme.server'
+import { themeService } from '@/.server/theme'
 
 export const action = createThemeAction(themeService)

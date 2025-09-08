@@ -1,5 +1,5 @@
 import { redirect } from 'react-router'
-import { authClient } from '@/services/auth.client'
+import { authClient } from '@/.client/auth'
 
 export async function loader() {
 	await authClient.signOut()

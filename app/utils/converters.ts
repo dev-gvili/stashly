@@ -15,7 +15,7 @@ import {
 	RiTerminalLine,
 } from '@/components/icons'
 import crypto from 'crypto-js'
-import type { MediaFile } from '../machines/types'
+import type { MediaFile } from '../machines/machine.types'
 
 /**
  * Convert an AsyncIterable of Uint8Array to buffer
@@ -325,17 +325,21 @@ export let toMediaFile = (file: File): MediaFile => {
 	return {
 		id: generateId(file.name),
 		file: file,
-		runTime: 0,
-		progress: 0,
-		uploadSpeedMbps: 0,
-		status: "pending",
-		etag: "",
-		version: "",
-		url: "",
-		timeLeft: {
-			hours: 0,
-			minutes: 0,
-			seconds: 0,
+		progress: {
+			percentage: 0,
+			speed: {
+				unit: 'KB/s',
+				value: 0,
+			},
+			timeLeft: {
+				hours: 0,
+				minutes: 0,
+				seconds: 0,
+			},
 		},
+		status: 'pending',
+		etag: '',
+		version: '',
+		url: '',
 	}
 }

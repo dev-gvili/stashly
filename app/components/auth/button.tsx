@@ -1,6 +1,6 @@
 import { Button } from "@/ui/button";
 import { cn } from "@/utils/styles";
-import { authClient } from "@/services/auth.client";
+import { authClient } from "@/.client/auth";
 import {
   RiAppleFill,
   RiCircleLine,
@@ -8,7 +8,7 @@ import {
   RiGoogleFill,
   RiMicrosoftFill,
 } from "@remixicon/react";
-import type {auth} from "@/services/auth.server";
+import type {auth} from "@/.server/auth";
 
 type Providers = keyof typeof auth.options.socialProviders
 interface AuthButtonProps extends React.ComponentProps<typeof Button> {
