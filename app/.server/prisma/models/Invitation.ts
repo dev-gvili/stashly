@@ -270,7 +270,7 @@ export type InvitationScalarWhereWithAggregatesInput = {
 }
 
 export type InvitationCreateInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
   email: string
@@ -282,7 +282,7 @@ export type InvitationCreateInput = {
 }
 
 export type InvitationUncheckedCreateInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
   email: string
@@ -318,7 +318,7 @@ export type InvitationUncheckedUpdateInput = {
 }
 
 export type InvitationCreateManyInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
   email: string
@@ -505,7 +505,7 @@ export type InvitationUncheckedUpdateManyWithoutWorkspaceNestedInput = {
 }
 
 export type InvitationCreateWithoutPermissionInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
   email: string
@@ -516,7 +516,7 @@ export type InvitationCreateWithoutPermissionInput = {
 }
 
 export type InvitationUncheckedCreateWithoutPermissionInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
   email: string
@@ -565,7 +565,7 @@ export type InvitationUncheckedUpdateWithoutPermissionInput = {
 }
 
 export type InvitationCreateWithoutSenderInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
   email: string
@@ -576,7 +576,7 @@ export type InvitationCreateWithoutSenderInput = {
 }
 
 export type InvitationUncheckedCreateWithoutSenderInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
   email: string
@@ -627,7 +627,7 @@ export type InvitationScalarWhereInput = {
 }
 
 export type InvitationCreateWithoutWorkspaceInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
   email: string
@@ -638,7 +638,7 @@ export type InvitationCreateWithoutWorkspaceInput = {
 }
 
 export type InvitationUncheckedCreateWithoutWorkspaceInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
   email: string
@@ -675,7 +675,7 @@ export type InvitationUpdateManyWithWhereWithoutWorkspaceInput = {
 }
 
 export type InvitationCreateManySenderInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
   email: string
@@ -717,7 +717,7 @@ export type InvitationUncheckedUpdateManyWithoutSenderInput = {
 }
 
 export type InvitationCreateManyWorkspaceInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
   email: string

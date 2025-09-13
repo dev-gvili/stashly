@@ -26,7 +26,7 @@ export type AggregateDrive = {
 export type DriveMinAggregateOutputType = {
   id: string | null
   name: string | null
-  driveType: $Enums.DriveType | null
+  type: $Enums.DriveType | null
   createdAt: Date | null
   updatedAt: Date | null
   ownerId: string | null
@@ -35,7 +35,7 @@ export type DriveMinAggregateOutputType = {
 export type DriveMaxAggregateOutputType = {
   id: string | null
   name: string | null
-  driveType: $Enums.DriveType | null
+  type: $Enums.DriveType | null
   createdAt: Date | null
   updatedAt: Date | null
   ownerId: string | null
@@ -44,7 +44,7 @@ export type DriveMaxAggregateOutputType = {
 export type DriveCountAggregateOutputType = {
   id: number
   name: number
-  driveType: number
+  type: number
   createdAt: number
   updatedAt: number
   ownerId: number
@@ -55,7 +55,7 @@ export type DriveCountAggregateOutputType = {
 export type DriveMinAggregateInputType = {
   id?: true
   name?: true
-  driveType?: true
+  type?: true
   createdAt?: true
   updatedAt?: true
   ownerId?: true
@@ -64,7 +64,7 @@ export type DriveMinAggregateInputType = {
 export type DriveMaxAggregateInputType = {
   id?: true
   name?: true
-  driveType?: true
+  type?: true
   createdAt?: true
   updatedAt?: true
   ownerId?: true
@@ -73,7 +73,7 @@ export type DriveMaxAggregateInputType = {
 export type DriveCountAggregateInputType = {
   id?: true
   name?: true
-  driveType?: true
+  type?: true
   createdAt?: true
   updatedAt?: true
   ownerId?: true
@@ -155,7 +155,7 @@ export type DriveGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
 export type DriveGroupByOutputType = {
   id: string
   name: string
-  driveType: $Enums.DriveType
+  type: $Enums.DriveType
   createdAt: Date
   updatedAt: Date
   ownerId: string
@@ -185,7 +185,7 @@ export type DriveWhereInput = {
   NOT?: Prisma.DriveWhereInput | Prisma.DriveWhereInput[]
   id?: Prisma.StringFilter<"Drive"> | string
   name?: Prisma.StringFilter<"Drive"> | string
-  driveType?: Prisma.EnumDriveTypeFilter<"Drive"> | $Enums.DriveType
+  type?: Prisma.EnumDriveTypeFilter<"Drive"> | $Enums.DriveType
   createdAt?: Prisma.DateTimeFilter<"Drive"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Drive"> | Date | string
   ownerId?: Prisma.StringFilter<"Drive"> | string
@@ -197,7 +197,7 @@ export type DriveWhereInput = {
 export type DriveOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  driveType?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   ownerId?: Prisma.SortOrder
@@ -209,23 +209,23 @@ export type DriveOrderByWithRelationInput = {
 export type DriveWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   ownerId?: string
-  ownerId_driveType?: Prisma.DriveOwnerIdDriveTypeCompoundUniqueInput
+  ownerId_type?: Prisma.DriveOwnerIdTypeCompoundUniqueInput
   AND?: Prisma.DriveWhereInput | Prisma.DriveWhereInput[]
   OR?: Prisma.DriveWhereInput[]
   NOT?: Prisma.DriveWhereInput | Prisma.DriveWhereInput[]
   name?: Prisma.StringFilter<"Drive"> | string
-  driveType?: Prisma.EnumDriveTypeFilter<"Drive"> | $Enums.DriveType
+  type?: Prisma.EnumDriveTypeFilter<"Drive"> | $Enums.DriveType
   createdAt?: Prisma.DateTimeFilter<"Drive"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Drive"> | Date | string
   quota?: Prisma.XOR<Prisma.QuotaNullableScalarRelationFilter, Prisma.QuotaWhereInput> | null
   items?: Prisma.ItemListRelationFilter
   owner?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
-}, "id" | "ownerId" | "ownerId_driveType">
+}, "id" | "ownerId" | "ownerId_type">
 
 export type DriveOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  driveType?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   ownerId?: Prisma.SortOrder
@@ -240,16 +240,16 @@ export type DriveScalarWhereWithAggregatesInput = {
   NOT?: Prisma.DriveScalarWhereWithAggregatesInput | Prisma.DriveScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Drive"> | string
   name?: Prisma.StringWithAggregatesFilter<"Drive"> | string
-  driveType?: Prisma.EnumDriveTypeWithAggregatesFilter<"Drive"> | $Enums.DriveType
+  type?: Prisma.EnumDriveTypeWithAggregatesFilter<"Drive"> | $Enums.DriveType
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Drive"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Drive"> | Date | string
   ownerId?: Prisma.StringWithAggregatesFilter<"Drive"> | string
 }
 
 export type DriveCreateInput = {
-  id?: string
+  id: string
   name?: string
-  driveType?: $Enums.DriveType
+  type?: $Enums.DriveType
   createdAt?: Date | string
   updatedAt?: Date | string
   quota?: Prisma.QuotaCreateNestedOneWithoutDriveInput
@@ -258,9 +258,9 @@ export type DriveCreateInput = {
 }
 
 export type DriveUncheckedCreateInput = {
-  id?: string
+  id: string
   name?: string
-  driveType?: $Enums.DriveType
+  type?: $Enums.DriveType
   createdAt?: Date | string
   updatedAt?: Date | string
   ownerId: string
@@ -271,7 +271,7 @@ export type DriveUncheckedCreateInput = {
 export type DriveUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  driveType?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
+  type?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quota?: Prisma.QuotaUpdateOneWithoutDriveNestedInput
@@ -282,7 +282,7 @@ export type DriveUpdateInput = {
 export type DriveUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  driveType?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
+  type?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -291,9 +291,9 @@ export type DriveUncheckedUpdateInput = {
 }
 
 export type DriveCreateManyInput = {
-  id?: string
+  id: string
   name?: string
-  driveType?: $Enums.DriveType
+  type?: $Enums.DriveType
   createdAt?: Date | string
   updatedAt?: Date | string
   ownerId: string
@@ -302,7 +302,7 @@ export type DriveCreateManyInput = {
 export type DriveUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  driveType?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
+  type?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -310,21 +310,21 @@ export type DriveUpdateManyMutationInput = {
 export type DriveUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  driveType?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
+  type?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
-export type DriveOwnerIdDriveTypeCompoundUniqueInput = {
+export type DriveOwnerIdTypeCompoundUniqueInput = {
   ownerId: string
-  driveType: $Enums.DriveType
+  type: $Enums.DriveType
 }
 
 export type DriveCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  driveType?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   ownerId?: Prisma.SortOrder
@@ -333,7 +333,7 @@ export type DriveCountOrderByAggregateInput = {
 export type DriveMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  driveType?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   ownerId?: Prisma.SortOrder
@@ -342,7 +342,7 @@ export type DriveMaxOrderByAggregateInput = {
 export type DriveMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  driveType?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   ownerId?: Prisma.SortOrder
@@ -423,9 +423,9 @@ export type DriveUncheckedUpdateOneWithoutOwnerNestedInput = {
 }
 
 export type DriveCreateWithoutItemsInput = {
-  id?: string
+  id: string
   name?: string
-  driveType?: $Enums.DriveType
+  type?: $Enums.DriveType
   createdAt?: Date | string
   updatedAt?: Date | string
   quota?: Prisma.QuotaCreateNestedOneWithoutDriveInput
@@ -433,9 +433,9 @@ export type DriveCreateWithoutItemsInput = {
 }
 
 export type DriveUncheckedCreateWithoutItemsInput = {
-  id?: string
+  id: string
   name?: string
-  driveType?: $Enums.DriveType
+  type?: $Enums.DriveType
   createdAt?: Date | string
   updatedAt?: Date | string
   ownerId: string
@@ -461,7 +461,7 @@ export type DriveUpdateToOneWithWhereWithoutItemsInput = {
 export type DriveUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  driveType?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
+  type?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quota?: Prisma.QuotaUpdateOneWithoutDriveNestedInput
@@ -471,7 +471,7 @@ export type DriveUpdateWithoutItemsInput = {
 export type DriveUncheckedUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  driveType?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
+  type?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -479,9 +479,9 @@ export type DriveUncheckedUpdateWithoutItemsInput = {
 }
 
 export type DriveCreateWithoutQuotaInput = {
-  id?: string
+  id: string
   name?: string
-  driveType?: $Enums.DriveType
+  type?: $Enums.DriveType
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.ItemCreateNestedManyWithoutDriveInput
@@ -489,9 +489,9 @@ export type DriveCreateWithoutQuotaInput = {
 }
 
 export type DriveUncheckedCreateWithoutQuotaInput = {
-  id?: string
+  id: string
   name?: string
-  driveType?: $Enums.DriveType
+  type?: $Enums.DriveType
   createdAt?: Date | string
   updatedAt?: Date | string
   ownerId: string
@@ -517,7 +517,7 @@ export type DriveUpdateToOneWithWhereWithoutQuotaInput = {
 export type DriveUpdateWithoutQuotaInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  driveType?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
+  type?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.ItemUpdateManyWithoutDriveNestedInput
@@ -527,7 +527,7 @@ export type DriveUpdateWithoutQuotaInput = {
 export type DriveUncheckedUpdateWithoutQuotaInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  driveType?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
+  type?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -535,9 +535,9 @@ export type DriveUncheckedUpdateWithoutQuotaInput = {
 }
 
 export type DriveCreateWithoutOwnerInput = {
-  id?: string
+  id: string
   name?: string
-  driveType?: $Enums.DriveType
+  type?: $Enums.DriveType
   createdAt?: Date | string
   updatedAt?: Date | string
   quota?: Prisma.QuotaCreateNestedOneWithoutDriveInput
@@ -545,9 +545,9 @@ export type DriveCreateWithoutOwnerInput = {
 }
 
 export type DriveUncheckedCreateWithoutOwnerInput = {
-  id?: string
+  id: string
   name?: string
-  driveType?: $Enums.DriveType
+  type?: $Enums.DriveType
   createdAt?: Date | string
   updatedAt?: Date | string
   quota?: Prisma.QuotaUncheckedCreateNestedOneWithoutDriveInput
@@ -573,7 +573,7 @@ export type DriveUpdateToOneWithWhereWithoutOwnerInput = {
 export type DriveUpdateWithoutOwnerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  driveType?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
+  type?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quota?: Prisma.QuotaUpdateOneWithoutDriveNestedInput
@@ -583,7 +583,7 @@ export type DriveUpdateWithoutOwnerInput = {
 export type DriveUncheckedUpdateWithoutOwnerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  driveType?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
+  type?: Prisma.EnumDriveTypeFieldUpdateOperationsInput | $Enums.DriveType
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quota?: Prisma.QuotaUncheckedUpdateOneWithoutDriveNestedInput
@@ -624,7 +624,7 @@ export type DriveCountOutputTypeCountItemsArgs<ExtArgs extends runtime.Types.Ext
 export type DriveSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   name?: boolean
-  driveType?: boolean
+  type?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   ownerId?: boolean
@@ -637,7 +637,7 @@ export type DriveSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
 export type DriveSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   name?: boolean
-  driveType?: boolean
+  type?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   ownerId?: boolean
@@ -647,7 +647,7 @@ export type DriveSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
 export type DriveSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   name?: boolean
-  driveType?: boolean
+  type?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   ownerId?: boolean
@@ -657,13 +657,13 @@ export type DriveSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
 export type DriveSelectScalar = {
   id?: boolean
   name?: boolean
-  driveType?: boolean
+  type?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   ownerId?: boolean
 }
 
-export type DriveOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "driveType" | "createdAt" | "updatedAt" | "ownerId", ExtArgs["result"]["drive"]>
+export type DriveOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "type" | "createdAt" | "updatedAt" | "ownerId", ExtArgs["result"]["drive"]>
 export type DriveInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   quota?: boolean | Prisma.Drive$quotaArgs<ExtArgs>
   items?: boolean | Prisma.Drive$itemsArgs<ExtArgs>
@@ -687,7 +687,7 @@ export type $DrivePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     name: string
-    driveType: $Enums.DriveType
+    type: $Enums.DriveType
     createdAt: Date
     updatedAt: Date
     ownerId: string
@@ -1119,7 +1119,7 @@ export interface Prisma__DriveClient<T, Null = never, ExtArgs extends runtime.Ty
 export interface DriveFieldRefs {
   readonly id: Prisma.FieldRef<"Drive", 'String'>
   readonly name: Prisma.FieldRef<"Drive", 'String'>
-  readonly driveType: Prisma.FieldRef<"Drive", 'DriveType'>
+  readonly type: Prisma.FieldRef<"Drive", 'DriveType'>
   readonly createdAt: Prisma.FieldRef<"Drive", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Drive", 'DateTime'>
   readonly ownerId: Prisma.FieldRef<"Drive", 'String'>

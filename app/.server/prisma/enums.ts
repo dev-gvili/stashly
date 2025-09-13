@@ -71,6 +71,24 @@ export const ItemStatus = {
 export type ItemStatus = (typeof ItemStatus)[keyof typeof ItemStatus]
 
 
+export const NotificationType = {
+  info: 'info',
+  warning: 'warning',
+  error: 'error',
+  success: 'success'
+} as const
+
+export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType]
+
+
+export const NotificationStatus = {
+  read: 'read',
+  unread: 'unread'
+} as const
+
+export type NotificationStatus = (typeof NotificationStatus)[keyof typeof NotificationStatus]
+
+
 export const PermissionRole = {
   owner: 'owner',
   read: 'read',
@@ -80,14 +98,14 @@ export const PermissionRole = {
 export type PermissionRole = (typeof PermissionRole)[keyof typeof PermissionRole]
 
 
-export const QuotaState = {
+export const QuotaStatus = {
   normal: 'normal',
   warning: 'warning',
   critical: 'critical',
   exceeded: 'exceeded'
 } as const
 
-export type QuotaState = (typeof QuotaState)[keyof typeof QuotaState]
+export type QuotaStatus = (typeof QuotaStatus)[keyof typeof QuotaStatus]
 
 
 export const ShareLinkType = {

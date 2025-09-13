@@ -31,6 +31,7 @@ export type FileMinAggregateOutputType = {
   bucket: string | null
   key: string | null
   etag: string | null
+  itemId: string | null
 }
 
 export type FileMaxAggregateOutputType = {
@@ -41,6 +42,7 @@ export type FileMaxAggregateOutputType = {
   bucket: string | null
   key: string | null
   etag: string | null
+  itemId: string | null
 }
 
 export type FileCountAggregateOutputType = {
@@ -51,6 +53,7 @@ export type FileCountAggregateOutputType = {
   bucket: number
   key: number
   etag: number
+  itemId: number
   _all: number
 }
 
@@ -63,6 +66,7 @@ export type FileMinAggregateInputType = {
   bucket?: true
   key?: true
   etag?: true
+  itemId?: true
 }
 
 export type FileMaxAggregateInputType = {
@@ -73,6 +77,7 @@ export type FileMaxAggregateInputType = {
   bucket?: true
   key?: true
   etag?: true
+  itemId?: true
 }
 
 export type FileCountAggregateInputType = {
@@ -83,6 +88,7 @@ export type FileCountAggregateInputType = {
   bucket?: true
   key?: true
   etag?: true
+  itemId?: true
   _all?: true
 }
 
@@ -166,6 +172,7 @@ export type FileGroupByOutputType = {
   bucket: string
   key: string
   etag: string | null
+  itemId: string
   _count: FileCountAggregateOutputType | null
   _min: FileMinAggregateOutputType | null
   _max: FileMaxAggregateOutputType | null
@@ -197,6 +204,7 @@ export type FileWhereInput = {
   bucket?: Prisma.StringFilter<"File"> | string
   key?: Prisma.StringFilter<"File"> | string
   etag?: Prisma.StringNullableFilter<"File"> | string | null
+  itemId?: Prisma.StringFilter<"File"> | string
   item?: Prisma.XOR<Prisma.ItemScalarRelationFilter, Prisma.ItemWhereInput>
 }
 
@@ -208,11 +216,13 @@ export type FileOrderByWithRelationInput = {
   bucket?: Prisma.SortOrder
   key?: Prisma.SortOrder
   etag?: Prisma.SortOrderInput | Prisma.SortOrder
+  itemId?: Prisma.SortOrder
   item?: Prisma.ItemOrderByWithRelationInput
 }
 
 export type FileWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  itemId?: string
   AND?: Prisma.FileWhereInput | Prisma.FileWhereInput[]
   OR?: Prisma.FileWhereInput[]
   NOT?: Prisma.FileWhereInput | Prisma.FileWhereInput[]
@@ -223,7 +233,7 @@ export type FileWhereUniqueInput = Prisma.AtLeast<{
   key?: Prisma.StringFilter<"File"> | string
   etag?: Prisma.StringNullableFilter<"File"> | string | null
   item?: Prisma.XOR<Prisma.ItemScalarRelationFilter, Prisma.ItemWhereInput>
-}, "id">
+}, "id" | "itemId">
 
 export type FileOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -233,6 +243,7 @@ export type FileOrderByWithAggregationInput = {
   bucket?: Prisma.SortOrder
   key?: Prisma.SortOrder
   etag?: Prisma.SortOrderInput | Prisma.SortOrder
+  itemId?: Prisma.SortOrder
   _count?: Prisma.FileCountOrderByAggregateInput
   _max?: Prisma.FileMaxOrderByAggregateInput
   _min?: Prisma.FileMinOrderByAggregateInput
@@ -249,29 +260,33 @@ export type FileScalarWhereWithAggregatesInput = {
   bucket?: Prisma.StringWithAggregatesFilter<"File"> | string
   key?: Prisma.StringWithAggregatesFilter<"File"> | string
   etag?: Prisma.StringNullableWithAggregatesFilter<"File"> | string | null
+  itemId?: Prisma.StringWithAggregatesFilter<"File"> | string
 }
 
 export type FileCreateInput = {
+  id: string
   mimeType?: string | null
   hash?: string | null
   extension?: string | null
   bucket: string
   key: string
   etag?: string | null
-  item?: Prisma.ItemCreateNestedOneWithoutFileInput
+  item: Prisma.ItemCreateNestedOneWithoutFileInput
 }
 
 export type FileUncheckedCreateInput = {
-  id?: string
+  id: string
   mimeType?: string | null
   hash?: string | null
   extension?: string | null
   bucket: string
   key: string
   etag?: string | null
+  itemId: string
 }
 
 export type FileUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   extension?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -289,19 +304,22 @@ export type FileUncheckedUpdateInput = {
   bucket?: Prisma.StringFieldUpdateOperationsInput | string
   key?: Prisma.StringFieldUpdateOperationsInput | string
   etag?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  itemId?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type FileCreateManyInput = {
-  id?: string
+  id: string
   mimeType?: string | null
   hash?: string | null
   extension?: string | null
   bucket: string
   key: string
   etag?: string | null
+  itemId: string
 }
 
 export type FileUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   extension?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -318,6 +336,7 @@ export type FileUncheckedUpdateManyInput = {
   bucket?: Prisma.StringFieldUpdateOperationsInput | string
   key?: Prisma.StringFieldUpdateOperationsInput | string
   etag?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  itemId?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type FileCountOrderByAggregateInput = {
@@ -328,6 +347,7 @@ export type FileCountOrderByAggregateInput = {
   bucket?: Prisma.SortOrder
   key?: Prisma.SortOrder
   etag?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type FileMaxOrderByAggregateInput = {
@@ -338,6 +358,7 @@ export type FileMaxOrderByAggregateInput = {
   bucket?: Prisma.SortOrder
   key?: Prisma.SortOrder
   etag?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type FileMinOrderByAggregateInput = {
@@ -348,6 +369,7 @@ export type FileMinOrderByAggregateInput = {
   bucket?: Prisma.SortOrder
   key?: Prisma.SortOrder
   etag?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type FileNullableScalarRelationFilter = {
@@ -388,6 +410,7 @@ export type FileUncheckedUpdateOneWithoutItemNestedInput = {
 }
 
 export type FileCreateWithoutItemInput = {
+  id: string
   mimeType?: string | null
   hash?: string | null
   extension?: string | null
@@ -397,6 +420,7 @@ export type FileCreateWithoutItemInput = {
 }
 
 export type FileUncheckedCreateWithoutItemInput = {
+  id: string
   mimeType?: string | null
   hash?: string | null
   extension?: string | null
@@ -422,6 +446,7 @@ export type FileUpdateToOneWithWhereWithoutItemInput = {
 }
 
 export type FileUpdateWithoutItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   extension?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -431,6 +456,7 @@ export type FileUpdateWithoutItemInput = {
 }
 
 export type FileUncheckedUpdateWithoutItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   extension?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -449,6 +475,7 @@ export type FileSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   bucket?: boolean
   key?: boolean
   etag?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["file"]>
 
@@ -460,6 +487,7 @@ export type FileSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   bucket?: boolean
   key?: boolean
   etag?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["file"]>
 
@@ -471,6 +499,7 @@ export type FileSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   bucket?: boolean
   key?: boolean
   etag?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["file"]>
 
@@ -482,9 +511,10 @@ export type FileSelectScalar = {
   bucket?: boolean
   key?: boolean
   etag?: boolean
+  itemId?: boolean
 }
 
-export type FileOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "mimeType" | "hash" | "extension" | "bucket" | "key" | "etag", ExtArgs["result"]["file"]>
+export type FileOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "mimeType" | "hash" | "extension" | "bucket" | "key" | "etag" | "itemId", ExtArgs["result"]["file"]>
 export type FileInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
 }
@@ -508,6 +538,7 @@ export type $FilePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     bucket: string
     key: string
     etag: string | null
+    itemId: string
   }, ExtArgs["result"]["file"]>
   composites: {}
 }
@@ -939,6 +970,7 @@ export interface FileFieldRefs {
   readonly bucket: Prisma.FieldRef<"File", 'String'>
   readonly key: Prisma.FieldRef<"File", 'String'>
   readonly etag: Prisma.FieldRef<"File", 'String'>
+  readonly itemId: Prisma.FieldRef<"File", 'String'>
 }
     
 

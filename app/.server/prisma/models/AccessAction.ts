@@ -192,12 +192,12 @@ export type AccessActionScalarWhereWithAggregatesInput = {
 }
 
 export type AccessActionCreateInput = {
-  id?: string
+  id: string
   activity?: Prisma.ActivityCreateNestedOneWithoutAccessInput
 }
 
 export type AccessActionUncheckedCreateInput = {
-  id?: string
+  id: string
   activityId?: string | null
 }
 
@@ -212,7 +212,7 @@ export type AccessActionUncheckedUpdateInput = {
 }
 
 export type AccessActionCreateManyInput = {
-  id?: string
+  id: string
   activityId?: string | null
 }
 
@@ -278,11 +278,11 @@ export type AccessActionUncheckedUpdateOneWithoutActivityNestedInput = {
 }
 
 export type AccessActionCreateWithoutActivityInput = {
-  id?: string
+  id: string
 }
 
 export type AccessActionUncheckedCreateWithoutActivityInput = {
-  id?: string
+  id: string
 }
 
 export type AccessActionCreateOrConnectWithoutActivityInput = {
@@ -1002,7 +1002,7 @@ export type AccessActionCreateArgs<ExtArgs extends runtime.Types.Extensions.Inte
   /**
    * The data needed to create a AccessAction.
    */
-  data?: Prisma.XOR<Prisma.AccessActionCreateInput, Prisma.AccessActionUncheckedCreateInput>
+  data: Prisma.XOR<Prisma.AccessActionCreateInput, Prisma.AccessActionUncheckedCreateInput>
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }
 

@@ -23,13 +23,11 @@ export function parseSearchParams<T extends z.ZodTypeAny>(
 		: config.searchParams.toString()
 
 	// Parse search params using qs library
-	const parsedParams = parse(searchParamsString, {
+	const parsedParams = parse(decodeURIComponent(searchParamsString), {
 		decoder: (value) => {
 			// Handle boolean values
 			if (value === 'true') return true
 			if (value === 'false') return false
-			// Handle numbers
-			// if (!isNaN(Number(value))) return Number(value)
 			// Return original value for other types
 			return value
 		},
@@ -39,6 +37,7 @@ export function parseSearchParams<T extends z.ZodTypeAny>(
 	const result = config.schema.safeParse(parsedParams)
 
 	if (!result.success) {
+		console.log("Parsed Params: ", parsedParams)
 		throw new Error(`Invalid search params: ${result.error.message}`)
 	}
 

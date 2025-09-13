@@ -1,5 +1,5 @@
 model Metadata {
-    id        String   @id @default(uuid())
+    id        String   @id
     key       String
     value     String
     createdAt DateTime @default(now())

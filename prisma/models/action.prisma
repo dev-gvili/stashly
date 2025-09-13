@@ -1,5 +1,5 @@
 model ItemAction {
-    id              String         @id @default(uuid())
+    id              String         @id
     comment         CommentAction? @relation(fields: [commentActionId], references: [id])
     commentActionId String?        @unique
     create          CreateAction?  @relation(fields: [createActionId], references: [id])
@@ -20,18 +20,20 @@ model ItemAction {
     versionActionId String?        @unique
     activity        Activity?      @relation(fields: [activityId], references: [id])
     activityId      String?        @unique
+    copy            CopyAction?    @relation(fields: [copyActionIdId], references: [id])
+    copyActionIdId  String?        @unique
 }
 
 // Track when an item is accessed, such as when a user views or opens a file or folder.
 model AccessAction {
-    id         String    @id @default(uuid())
+    id         String    @id
     activityId String?   @unique
     activity   Activity? @relation(fields: [activityId], references: [id])
 }
 
 // Track the comments made on items, such as files or folders.
 model CommentAction {
-    id           String      @id @default(uuid())
+    id           String      @id
     isReply      Boolean     @default(false)
     authorId     String
     participants String[]
@@ -40,50 +42,57 @@ model CommentAction {
 
 // Track the creation of items, such as files or folders.
 model CreateAction {
-    id     String      @id @default(uuid())
+    id     String      @id
     action ItemAction?
 }
 
 // Track the deletion of items, such as files or folders.
 model DeleteAction {
-    id       String      @id @default(uuid())
+    id       String      @id
     name     String
     itemType ObjectType
     action   ItemAction?
 }
 
 model EditAction {
-    id     String      @id @default(uuid())
+    id     String      @id
     action ItemAction?
 }
 
 model MoveAction {
-    id     String      @id @default(uuid())
+    id     String      @id
+    from   String
+    to     String
+    action ItemAction?
+}
+
+model CopyAction {
+    id     String      @id
     from   String
     to     String
     action ItemAction?
 }
 
 model RenameAction {
-    id      String      @id @default(uuid())
+    id      String      @id
     oldName String
     newName String
     action  ItemAction?
 }
 
 model RestoreAction {
-    id     String      @id @default(uuid())
+    id     String      @id
     action ItemAction?
 }
 
 model ShareAction {
-    id         String      @id @default(uuid())
+    id         String      @id
     recipients String[]
     action     ItemAction?
 }
 
 model VersionAction {
-    id         String      @id @default(uuid())
+    id         String      @id
     newVersion String
     action     ItemAction?
 }

@@ -1,9 +1,8 @@
 model Workspace {
-    id          String            @id @default(uuid())
+    id          String            @id
     name        String            @unique
     description String?
     default     Boolean           @default(false)
-    iamRoleArn  String? // Add this field
     createdAt   DateTime          @default(now())
     updatedAt   DateTime          @updatedAt
     items       Item[]
@@ -17,14 +16,14 @@ model Workspace {
 }
 
 model WorkspaceMember {
-    id          String              @id @default(uuid())
+    id          String              @id
     role        WorkspaceMemberRole @default(member)
-    userId      String
-    user        User                @relation(fields: [userId], references: [id])
+    memberId    String
+    member      User                @relation(fields: [memberId], references: [id])
     workspaceId String
     workspace   Workspace           @relation(fields: [workspaceId], references: [id])
 
-    @@unique([userId, workspaceId]) // Ensure a user can only be a member of a
+    @@unique([memberId, workspaceId])
     @@index([role])
 }
 

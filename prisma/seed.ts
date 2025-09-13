@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker'
+import { addMinutes } from 'date-fns'
 import {
 	Prisma,
 	PrismaClient,
@@ -15,6 +16,11 @@ import {
 	type ThumbnailSize,
 } from '../app/.server/prisma/enums'
 import { inspect } from 'node:util'
+import {
+	getPrefixForModel,
+	toObjectId,
+	type StashlyObjectType,
+} from '../app/utils/misc'
 
 const prisma = new PrismaClient()
 
@@ -86,7 +92,10 @@ const generateStoragePlan = ({
 	name: string
 	storageLimit: bigint
 }): Prisma.StoragePlanCreateInput => {
+	const prefix = getPrefixForModel('StoragePlan')
+	const id = toObjectId(prefix)
 	return {
+		id,
 		type,
 		name,
 		storageLimit,
@@ -119,7 +128,12 @@ const generateMockStoragePlans = () => {
 }
 
 function generateMockUser() {
+	const prefix = getPrefixForModel('User')
+	const id = toObjectId(prefix)
+	const accprefix = getPrefixForModel('Account')
+	const accid = toObjectId(accprefix)
 	return {
+		id,
 		email: faker.internet.email(),
 		name: faker.person.firstName(),
 		displayName: faker.person.fullName(),
@@ -128,6 +142,7 @@ function generateMockUser() {
 		accounts: {
 			create: [
 				{
+					id: accid,
 					providerId: 'github',
 					accountId: faker.string.numeric(8),
 					accessToken: 'github_access_token',
@@ -141,8 +156,11 @@ function generateMockUser() {
 const generateMockQuota = (
 	storagePlan: StoragePlan
 ): Prisma.QuotaUncheckedCreateWithoutDriveInput => {
+	const prefix = getPrefixForModel('Quota')
+	const id = toObjectId(prefix)
 	return {
-		state: 'normal',
+		id,
+		status: 'normal',
 		total: storagePlan.storageLimit,
 		deleted: 0,
 		used: 0,
@@ -153,16 +171,17 @@ const generateMockDrive = (
 	user: User,
 	storagePlan: StoragePlan
 ): Prisma.DriveUncheckedCreateInput => {
+	const prefix = getPrefixForModel('Drive')
+	const id = toObjectId(prefix)
+
 	return {
+		id,
 		name: generateUniqueDriveName('stashly', user),
-		driveType: 'personal' as DriveType,
+		type: 'personal' as DriveType,
 		ownerId: user.id,
 		quota: {
 			create: {
-				total: storagePlan.storageLimit,
-				used: 0,
-				deleted: 0,
-				state: 'normal',
+				...generateMockQuota(storagePlan),
 			},
 		},
 	}
@@ -171,11 +190,17 @@ const generateMockDrive = (
 const generateMockItemWithFolder = (
 	user: User,
 	drive: Pick<Drive, 'name' | 'id'>,
-	parent?: Item
+	parent?: Item,
+	name?: string
 ) => {
-	const name = faker.system.directoryPath().split('/').pop()
 	// const name = faker.git.branch()
+	const prefix = getPrefixForModel('Item')
+	const id = toObjectId(prefix)
+	const fdprefix = getPrefixForModel('Folder')
+	const fdid = toObjectId(fdprefix)
+
 	return {
+		id,
 		name: name,
 		size: 0,
 		path: `${generateItemPath(drive.name, parent?.path)}/${name}`,
@@ -186,6 +211,7 @@ const generateMockItemWithFolder = (
 		parentId: parent ? parent.id : null,
 		folder: {
 			create: {
+				id: fdid,
 				childCount: 0,
 				view: {
 					create: {
@@ -205,7 +231,13 @@ const generateMockItemWithFile = (
 	parent?: Item
 ): Prisma.ItemUncheckedCreateInput => {
 	const { filename, mimetype, ext } = generateFileInfo()
+	const prefix = getPrefixForModel('Item')
+	const id = toObjectId(prefix)
+	const flprefix = getPrefixForModel('File')
+	const flid = toObjectId(flprefix)
+
 	return {
+		id,
 		name: filename,
 		size: faker.number.int({ min: 100, max: 1000000, multipleOf: 1024 }), // Random size between 100 bytes and 1 MB
 		// Use the drive name and filename for the path
@@ -216,20 +248,32 @@ const generateMockItemWithFile = (
 		type: 'file',
 		ownerId: user.id,
 		driveId: drive.id,
+		tags: faker.helpers.arrayElements(
+			['tag1', 'tag2', 'tag3', 'tag4', 'tag5'],
+			{ min: 0, max: 2 }
+		),
 		category: faker.helpers.arrayElement([
 			faker.helpers.enumValue(ItemCategory),
 		]) as ItemCategory,
 		thumbnails: {
 			create: [
 				{
+					id: toObjectId(getPrefixForModel('Thumbnail')),
+					size: 'custom',
+					url: generateThumbnail('custom'),
+				},
+				{
+					id: toObjectId(getPrefixForModel('Thumbnail')),
 					size: 'small',
 					url: generateThumbnail('small'),
 				},
 				{
+					id: toObjectId(getPrefixForModel('Thumbnail')),
 					size: 'medium',
 					url: generateThumbnail('medium'),
 				},
 				{
+					id: toObjectId(getPrefixForModel('Thumbnail')),
 					size: 'large',
 					url: generateThumbnail('large'),
 				},
@@ -237,6 +281,7 @@ const generateMockItemWithFile = (
 		},
 		file: {
 			create: {
+				id: flid,
 				mimeType: mimetype,
 				extension: ext,
 				bucket: drive.name,
@@ -256,14 +301,16 @@ function generateMockItemsWithFolder({
 	user,
 	drive,
 	parent,
+	name,
 }: {
 	count: number
 	user: User
 	drive: Drive
 	parent?: Item
+	name?: string
 }) {
 	return faker.helpers.multiple(
-		() => generateMockItemWithFolder(user, drive, parent),
+		() => generateMockItemWithFolder(user, drive, parent, name),
 		{
 			count,
 		}
@@ -288,12 +335,57 @@ function generateMockItemsWithFile({
 	)
 }
 
+function generateMockLockedItem(
+	itemId: string,
+	lockedById: string,
+	id: string
+) {
+	return {
+		id,
+		itemId,
+		lockedById,
+		expiresAt: addMinutes(Date.now(), 45),
+	} as Prisma.LockedItemUncheckedCreateInput
+}
+
+function generateMockFavoriteItem(itemId: string, favoritedById: string) {
+	const prefix = getPrefixForModel('Favorite')
+	const id = toObjectId(prefix)
+	return {
+		id,
+		itemId,
+		favoritedById,
+	} as Prisma.FavoriteUncheckedCreateInput
+}
+
+function generateMockLockedItems({
+	count,
+	lockedById,
+	itemId,
+	id,
+}: {
+	id: string
+	count: number
+	lockedById: string
+	itemId: string
+}) {
+	return faker.helpers.multiple(
+		() => generateMockLockedItem(itemId, lockedById, id),
+		{
+			count,
+		}
+	)
+}
+
 async function main(): Promise<void> {
 	try {
 		await prisma.$transaction([
 			prisma.trashItem.deleteMany(),
 			prisma.subscription.deleteMany(),
 			prisma.storagePlan.deleteMany(),
+			prisma.lockedItem.deleteMany(),
+			prisma.favorite.deleteMany(),
+			prisma.item.deleteMany(),
 			prisma.user.deleteMany(),
 		])
 
@@ -330,6 +422,7 @@ async function main(): Promise<void> {
 		// Create subscriptions for the user
 		const subscription = await prisma.subscription.create({
 			data: {
+				id: toObjectId(getPrefixForModel('Subscription')),
 				ownerId: user.id,
 				storagePlanId: createdStoragePlans[1].id,
 				status: 'active',
@@ -350,11 +443,20 @@ async function main(): Promise<void> {
 		})
 
 		// Create multiple folders and files
-		const top_folders = generateMockItemsWithFolder({
-			count: faker.number.int({ min: 2, max: 4 }),
-			user,
-			drive,
-		})
+		const top_folders = faker.helpers.multiple(
+			() =>
+				generateMockItemWithFolder(
+					user,
+					drive,
+					undefined,
+					faker.system.directoryPath().split('/').pop()
+				),
+			{
+				count: faker.number.int({ min: 2, max: 4 }),
+			}
+		)
+
+		console.log(inspect(top_folders, { colors: true, depth: null }))
 
 		const createdTopFolders = await prisma.$transaction([
 			...top_folders.map((folder) =>
@@ -364,12 +466,18 @@ async function main(): Promise<void> {
 			),
 		])
 
-		const folders = generateMockItemsWithFolder({
-			count: faker.number.int({ min: 8, max: 12 }),
-			user,
-			drive,
-			parent: faker.helpers.arrayElement(createdTopFolders),
-		})
+		const folders = faker.helpers.multiple(
+			() =>
+				generateMockItemWithFolder(
+					user,
+					drive,
+					faker.helpers.arrayElement(createdTopFolders),
+					faker.git.branch()
+				),
+			{
+				count: faker.number.int({ min: 6, max: 12 }),
+			}
+		)
 		const createdFolders = await prisma.$transaction([
 			...folders.map((folder) =>
 				prisma.item.create({
@@ -379,7 +487,7 @@ async function main(): Promise<void> {
 		])
 
 		const files = generateMockItemsWithFile({
-			count: faker.number.int({ min: 23, max: 100 }),
+			count: faker.number.int({ min: 15, max: 25 }),
 			user,
 			drive,
 			parent: faker.helpers.arrayElement(createdFolders),
@@ -393,12 +501,72 @@ async function main(): Promise<void> {
 			),
 		])
 
+		const lockedItems = faker.helpers.multiple(
+			() => {
+				let item = faker.helpers.arrayElement(createdFiles)
+				const liPrefix = getPrefixForModel('LockedItem')
+				const liId = toObjectId(liPrefix)
+
+				return generateMockLockedItem(item.id, item.ownerId, liId)
+			},
+			{
+				count: 5,
+			}
+		)
+
+		const favoritedItems = faker.helpers.multiple(
+			() => {
+				let item = faker.helpers.arrayElement(
+					createdFiles.map((file) => file.id)
+				)
+				return generateMockFavoriteItem(item, user.id)
+			},
+			{
+				count: 2,
+			}
+		)
+
+		const createdFavoritedItems = await prisma.$transaction([
+			...favoritedItems.map((item) =>
+				prisma.favorite.create({
+					data: item,
+				})
+			),
+		])
+
+		console.log(inspect(favoritedItems, { colors: true, depth: null }))
+		// console.log(inspect(createdFavoritedItems, { colors: true, depth: null }))
+
+		const createdLockedItems = await prisma.$transaction([
+			...lockedItems.map((item) =>
+				prisma.lockedItem.create({
+					data: item,
+				})
+			),
+		])
+
 		console.log(
 			inspect(
 				`Seeded database with ${createdStoragePlans.length} storage plans, 1 user, 1 drive, ${createdTopFolders.length} top-level folders, ${createdFolders.length} subfolders, and ${createdFiles.length} files.`,
 				{ depth: null, colors: true }
 			)
 		)
+
+		console.log(inspect(`userId: ${user.id}`))
+		// // console.log(
+		// 	inspect(
+		// 		createdFiles.map((file) => ({
+		// 			name: file.name,
+		// 			category: file.category,
+		// 			type: file.type,
+		// 			status: file.status,
+		// 		})),
+		// 		{
+		// 			colors: true,
+		// 			depth: null,
+		// 		}
+		// 	)
+		// )
 	} catch (error) {
 		console.error('Error seeding database:', error)
 	}

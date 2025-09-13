@@ -1,7 +1,9 @@
 model Permission {
-    id           String         @id @default(uuid())
-    createdAt    DateTime       @default(now()) @db.Timestamp()
+    id           String         @id
+    createdAt    DateTime       @default(now())
     updatedAt    DateTime       @updatedAt @db.Timestamp()
+    expiresAt    DateTime?      @db.Timestamp()
+    deletedAt    DateTime?      @db.Timestamp()
     roles        PermissionRole @default(read)
     invitationId String?        @unique
     invitation   Invitation?    @relation(fields: [invitationId], references: [id])
@@ -9,7 +11,7 @@ model Permission {
     link         ShareLink?     @relation(fields: [linkId], references: [id])
     itemId       String?
     item         Item?          @relation(fields: [itemId], references: [id])
-    identities   User[]
+    users        User[]
 
     @@index([createdAt(sort: Desc)])
     @@index([updatedAt(sort: Desc)])

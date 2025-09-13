@@ -192,13 +192,13 @@ export type VersionActionScalarWhereWithAggregatesInput = {
 }
 
 export type VersionActionCreateInput = {
-  id?: string
+  id: string
   newVersion: string
   action?: Prisma.ItemActionCreateNestedOneWithoutVersionInput
 }
 
 export type VersionActionUncheckedCreateInput = {
-  id?: string
+  id: string
   newVersion: string
   action?: Prisma.ItemActionUncheckedCreateNestedOneWithoutVersionInput
 }
@@ -216,7 +216,7 @@ export type VersionActionUncheckedUpdateInput = {
 }
 
 export type VersionActionCreateManyInput = {
-  id?: string
+  id: string
   newVersion: string
 }
 
@@ -267,12 +267,12 @@ export type VersionActionUpdateOneWithoutActionNestedInput = {
 }
 
 export type VersionActionCreateWithoutActionInput = {
-  id?: string
+  id: string
   newVersion: string
 }
 
 export type VersionActionUncheckedCreateWithoutActionInput = {
-  id?: string
+  id: string
   newVersion: string
 }
 

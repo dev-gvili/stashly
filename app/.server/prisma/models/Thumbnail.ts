@@ -316,7 +316,7 @@ export type ThumbnailScalarWhereWithAggregatesInput = {
 }
 
 export type ThumbnailCreateInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   updatedAt?: Date | string
   width?: number | null
@@ -328,7 +328,7 @@ export type ThumbnailCreateInput = {
 }
 
 export type ThumbnailUncheckedCreateInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   updatedAt?: Date | string
   width?: number | null
@@ -364,7 +364,7 @@ export type ThumbnailUncheckedUpdateInput = {
 }
 
 export type ThumbnailCreateManyInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   updatedAt?: Date | string
   width?: number | null
@@ -505,7 +505,7 @@ export type EnumThumbnailSizeFieldUpdateOperationsInput = {
 }
 
 export type ThumbnailCreateWithoutItemInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   updatedAt?: Date | string
   width?: number | null
@@ -516,7 +516,7 @@ export type ThumbnailCreateWithoutItemInput = {
 }
 
 export type ThumbnailUncheckedCreateWithoutItemInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   updatedAt?: Date | string
   width?: number | null
@@ -568,7 +568,7 @@ export type ThumbnailScalarWhereInput = {
 }
 
 export type ThumbnailCreateManyItemInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   updatedAt?: Date | string
   width?: number | null

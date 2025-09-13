@@ -1,14 +1,13 @@
-
 model ShareLink {
-    id           String          @id @default(uuid())
+    id           String        @id
     type         ShareLinkType
     scope        ShareScope
     url          String?
     downloadable Boolean?
     password     String?
     expiresAt    DateTime?
-    createdAt    DateTime        @default(now())
-    updatedAt    DateTime        @updatedAt
+    createdAt    DateTime      @default(now())
+    updatedAt    DateTime      @updatedAt
     permission   Permission[]
 
     @@index([createdAt(sort: Desc)])
@@ -17,7 +16,6 @@ model ShareLink {
     @@index([type])
     @@index([scope])
 }
-
 
 enum ShareLinkType {
     view
@@ -31,5 +29,3 @@ enum ShareScope {
     organization
     users
 }
-
-

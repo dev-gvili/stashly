@@ -1,15 +1,17 @@
 model Activity {
-    id      String        @id @default(uuid())
-    timeId  String?       @unique
-    time    ActivityTime? @relation(fields: [timeId], references: [id])
-    itemId  String?
-    item    Item?         @relation(fields: [itemId], references: [id], onDelete: Cascade)
-    action  ItemAction? // what action was taken on the item
-    access  AccessAction? // represents access to the item
+    id     String        @id
+    timeId String?       @unique
+    time   ActivityTime? @relation(fields: [timeId], references: [id])
+    itemId String?
+    item   Item?         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+    action ItemAction? // what action was taken on the item
+    access AccessAction? // represents access to the item
+
+    @@unique([itemId, timeId])
 }
 
 model ActivityTime {
-    id         String        @id @default(uuid())
+    id         String    @id
     observedAt DateTime?
     reportedAt DateTime?
     activity   Activity?

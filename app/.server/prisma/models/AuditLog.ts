@@ -224,7 +224,7 @@ export type AuditLogScalarWhereWithAggregatesInput = {
 }
 
 export type AuditLogCreateInput = {
-  id?: string
+  id: string
   action: string
   timestamp?: Date | string
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -232,7 +232,7 @@ export type AuditLogCreateInput = {
 }
 
 export type AuditLogUncheckedCreateInput = {
-  id?: string
+  id: string
   action: string
   timestamp?: Date | string
   itemId?: string | null
@@ -256,7 +256,7 @@ export type AuditLogUncheckedUpdateInput = {
 }
 
 export type AuditLogCreateManyInput = {
-  id?: string
+  id: string
   action: string
   timestamp?: Date | string
   itemId?: string | null
@@ -353,14 +353,14 @@ export type AuditLogUncheckedUpdateManyWithoutItemNestedInput = {
 }
 
 export type AuditLogCreateWithoutItemInput = {
-  id?: string
+  id: string
   action: string
   timestamp?: Date | string
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
 }
 
 export type AuditLogUncheckedCreateWithoutItemInput = {
-  id?: string
+  id: string
   action: string
   timestamp?: Date | string
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -404,7 +404,7 @@ export type AuditLogScalarWhereInput = {
 }
 
 export type AuditLogCreateManyItemInput = {
-  id?: string
+  id: string
   action: string
   timestamp?: Date | string
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue

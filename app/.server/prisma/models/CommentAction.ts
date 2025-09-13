@@ -212,7 +212,7 @@ export type CommentActionScalarWhereWithAggregatesInput = {
 }
 
 export type CommentActionCreateInput = {
-  id?: string
+  id: string
   isReply?: boolean
   authorId: string
   participants?: Prisma.CommentActionCreateparticipantsInput | string[]
@@ -220,7 +220,7 @@ export type CommentActionCreateInput = {
 }
 
 export type CommentActionUncheckedCreateInput = {
-  id?: string
+  id: string
   isReply?: boolean
   authorId: string
   participants?: Prisma.CommentActionCreateparticipantsInput | string[]
@@ -244,7 +244,7 @@ export type CommentActionUncheckedUpdateInput = {
 }
 
 export type CommentActionCreateManyInput = {
-  id?: string
+  id: string
   isReply?: boolean
   authorId: string
   participants?: Prisma.CommentActionCreateparticipantsInput | string[]
@@ -326,14 +326,14 @@ export type CommentActionUpdateparticipantsInput = {
 }
 
 export type CommentActionCreateWithoutActionInput = {
-  id?: string
+  id: string
   isReply?: boolean
   authorId: string
   participants?: Prisma.CommentActionCreateparticipantsInput | string[]
 }
 
 export type CommentActionUncheckedCreateWithoutActionInput = {
-  id?: string
+  id: string
   isReply?: boolean
   authorId: string
   participants?: Prisma.CommentActionCreateparticipantsInput | string[]

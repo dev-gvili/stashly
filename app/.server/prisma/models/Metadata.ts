@@ -225,7 +225,7 @@ export type MetadataScalarWhereWithAggregatesInput = {
 }
 
 export type MetadataCreateInput = {
-  id?: string
+  id: string
   key: string
   value: string
   createdAt?: Date | string
@@ -233,7 +233,7 @@ export type MetadataCreateInput = {
 }
 
 export type MetadataUncheckedCreateInput = {
-  id?: string
+  id: string
   key: string
   value: string
   createdAt?: Date | string
@@ -257,7 +257,7 @@ export type MetadataUncheckedUpdateInput = {
 }
 
 export type MetadataCreateManyInput = {
-  id?: string
+  id: string
   key: string
   value: string
   createdAt?: Date | string

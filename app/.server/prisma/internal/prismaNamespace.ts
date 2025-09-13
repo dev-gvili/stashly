@@ -402,6 +402,7 @@ export const ModelName = {
   DeleteAction: 'DeleteAction',
   EditAction: 'EditAction',
   MoveAction: 'MoveAction',
+  CopyAction: 'CopyAction',
   RenameAction: 'RenameAction',
   RestoreAction: 'RestoreAction',
   ShareAction: 'ShareAction',
@@ -422,6 +423,7 @@ export const ModelName = {
   Favorite: 'Favorite',
   Invitation: 'Invitation',
   Item: 'Item',
+  LockedItem: 'LockedItem',
   Metadata: 'Metadata',
   Notification: 'Notification',
   Permission: 'Permission',
@@ -442,7 +444,6 @@ export const ModelName = {
   WorkspaceMember: 'WorkspaceMember',
   Preview: 'Preview',
   FileShare: 'FileShare',
-  ItemLock: 'ItemLock',
   View: 'View'
 } as const
 
@@ -459,7 +460,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "account" | "itemAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "activity" | "activityTime" | "auditLog" | "collection" | "collectionItem" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "photo" | "favorite" | "invitation" | "item" | "metadata" | "notification" | "permission" | "quota" | "search" | "session" | "shareLink" | "storagePlan" | "subscription" | "tag" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "workspace" | "workspaceMember" | "preview" | "fileShare" | "itemLock" | "view"
+    modelProps: "account" | "itemAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "activity" | "activityTime" | "auditLog" | "collection" | "collectionItem" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "photo" | "favorite" | "invitation" | "item" | "lockedItem" | "metadata" | "notification" | "permission" | "quota" | "search" | "session" | "shareLink" | "storagePlan" | "subscription" | "tag" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "workspace" | "workspaceMember" | "preview" | "fileShare" | "view"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1052,6 +1053,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.MoveActionCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.MoveActionCountAggregateOutputType> | number
+        }
+      }
+    }
+    CopyAction: {
+      payload: Prisma.$CopyActionPayload<ExtArgs>
+      fields: Prisma.CopyActionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CopyActionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopyActionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CopyActionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopyActionPayload>
+        }
+        findFirst: {
+          args: Prisma.CopyActionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopyActionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CopyActionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopyActionPayload>
+        }
+        findMany: {
+          args: Prisma.CopyActionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopyActionPayload>[]
+        }
+        create: {
+          args: Prisma.CopyActionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopyActionPayload>
+        }
+        createMany: {
+          args: Prisma.CopyActionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CopyActionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopyActionPayload>[]
+        }
+        delete: {
+          args: Prisma.CopyActionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopyActionPayload>
+        }
+        update: {
+          args: Prisma.CopyActionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopyActionPayload>
+        }
+        deleteMany: {
+          args: Prisma.CopyActionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CopyActionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CopyActionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopyActionPayload>[]
+        }
+        upsert: {
+          args: Prisma.CopyActionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CopyActionPayload>
+        }
+        aggregate: {
+          args: Prisma.CopyActionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCopyAction>
+        }
+        groupBy: {
+          args: Prisma.CopyActionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CopyActionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CopyActionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CopyActionCountAggregateOutputType> | number
         }
       }
     }
@@ -2535,6 +2610,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    LockedItem: {
+      payload: Prisma.$LockedItemPayload<ExtArgs>
+      fields: Prisma.LockedItemFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.LockedItemFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LockedItemPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.LockedItemFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LockedItemPayload>
+        }
+        findFirst: {
+          args: Prisma.LockedItemFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LockedItemPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.LockedItemFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LockedItemPayload>
+        }
+        findMany: {
+          args: Prisma.LockedItemFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LockedItemPayload>[]
+        }
+        create: {
+          args: Prisma.LockedItemCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LockedItemPayload>
+        }
+        createMany: {
+          args: Prisma.LockedItemCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.LockedItemCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LockedItemPayload>[]
+        }
+        delete: {
+          args: Prisma.LockedItemDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LockedItemPayload>
+        }
+        update: {
+          args: Prisma.LockedItemUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LockedItemPayload>
+        }
+        deleteMany: {
+          args: Prisma.LockedItemDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.LockedItemUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.LockedItemUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LockedItemPayload>[]
+        }
+        upsert: {
+          args: Prisma.LockedItemUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LockedItemPayload>
+        }
+        aggregate: {
+          args: Prisma.LockedItemAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateLockedItem>
+        }
+        groupBy: {
+          args: Prisma.LockedItemGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LockedItemGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.LockedItemCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LockedItemCountAggregateOutputType> | number
+        }
+      }
+    }
     Metadata: {
       payload: Prisma.$MetadataPayload<ExtArgs>
       fields: Prisma.MetadataFieldRefs
@@ -2855,18 +3004,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
           args: Prisma.SearchFindManyArgs<ExtArgs>
           result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchPayload>[]
         }
-        create: {
-          args: Prisma.SearchCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchPayload>
-        }
-        createMany: {
-          args: Prisma.SearchCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.SearchCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchPayload>[]
-        }
         delete: {
           args: Prisma.SearchDeleteArgs<ExtArgs>
           result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchPayload>
@@ -2886,10 +3023,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         updateManyAndReturn: {
           args: Prisma.SearchUpdateManyAndReturnArgs<ExtArgs>
           result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchPayload>[]
-        }
-        upsert: {
-          args: Prisma.SearchUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchPayload>
         }
         aggregate: {
           args: Prisma.SearchAggregateArgs<ExtArgs>
@@ -4015,80 +4148,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-    ItemLock: {
-      payload: Prisma.$ItemLockPayload<ExtArgs>
-      fields: Prisma.ItemLockFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.ItemLockFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ItemLockPayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.ItemLockFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ItemLockPayload>
-        }
-        findFirst: {
-          args: Prisma.ItemLockFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ItemLockPayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.ItemLockFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ItemLockPayload>
-        }
-        findMany: {
-          args: Prisma.ItemLockFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ItemLockPayload>[]
-        }
-        create: {
-          args: Prisma.ItemLockCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ItemLockPayload>
-        }
-        createMany: {
-          args: Prisma.ItemLockCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.ItemLockCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ItemLockPayload>[]
-        }
-        delete: {
-          args: Prisma.ItemLockDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ItemLockPayload>
-        }
-        update: {
-          args: Prisma.ItemLockUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ItemLockPayload>
-        }
-        deleteMany: {
-          args: Prisma.ItemLockDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.ItemLockUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.ItemLockUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ItemLockPayload>[]
-        }
-        upsert: {
-          args: Prisma.ItemLockUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ItemLockPayload>
-        }
-        aggregate: {
-          args: Prisma.ItemLockAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateItemLock>
-        }
-        groupBy: {
-          args: Prisma.ItemLockGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.ItemLockGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.ItemLockCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.ItemLockCountAggregateOutputType> | number
-        }
-      }
-    }
     View: {
       payload: Prisma.$ViewPayload<ExtArgs>
       fields: Prisma.ViewFieldRefs
@@ -4240,7 +4299,8 @@ export const ItemActionScalarFieldEnum = {
   restoreActionId: 'restoreActionId',
   shareActionId: 'shareActionId',
   versionActionId: 'versionActionId',
-  activityId: 'activityId'
+  activityId: 'activityId',
+  copyActionIdId: 'copyActionIdId'
 } as const
 
 export type ItemActionScalarFieldEnum = (typeof ItemActionScalarFieldEnum)[keyof typeof ItemActionScalarFieldEnum]
@@ -4294,6 +4354,15 @@ export const MoveActionScalarFieldEnum = {
 } as const
 
 export type MoveActionScalarFieldEnum = (typeof MoveActionScalarFieldEnum)[keyof typeof MoveActionScalarFieldEnum]
+
+
+export const CopyActionScalarFieldEnum = {
+  id: 'id',
+  from: 'from',
+  to: 'to'
+} as const
+
+export type CopyActionScalarFieldEnum = (typeof CopyActionScalarFieldEnum)[keyof typeof CopyActionScalarFieldEnum]
 
 
 export const RenameActionScalarFieldEnum = {
@@ -4392,7 +4461,7 @@ export type CommentScalarFieldEnum = (typeof CommentScalarFieldEnum)[keyof typeo
 export const DriveScalarFieldEnum = {
   id: 'id',
   name: 'name',
-  driveType: 'driveType',
+  type: 'type',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   ownerId: 'ownerId'
@@ -4408,7 +4477,8 @@ export const FileScalarFieldEnum = {
   extension: 'extension',
   bucket: 'bucket',
   key: 'key',
-  etag: 'etag'
+  etag: 'etag',
+  itemId: 'itemId'
 } as const
 
 export type FileScalarFieldEnum = (typeof FileScalarFieldEnum)[keyof typeof FileScalarFieldEnum]
@@ -4416,7 +4486,8 @@ export type FileScalarFieldEnum = (typeof FileScalarFieldEnum)[keyof typeof File
 
 export const FolderScalarFieldEnum = {
   id: 'id',
-  childCount: 'childCount'
+  childCount: 'childCount',
+  itemId: 'itemId'
 } as const
 
 export type FolderScalarFieldEnum = (typeof FolderScalarFieldEnum)[keyof typeof FolderScalarFieldEnum]
@@ -4432,10 +4503,12 @@ export const ImageScalarFieldEnum = {
   cameraModel: 'cameraModel',
   exposureDenominator: 'exposureDenominator',
   exposureNumerator: 'exposureNumerator',
+  exposureTime: 'exposureTime',
   focalLength: 'focalLength',
   fNumber: 'fNumber',
   iso: 'iso',
-  takenDateTime: 'takenDateTime'
+  takenDateTime: 'takenDateTime',
+  itemId: 'itemId'
 } as const
 
 export type ImageScalarFieldEnum = (typeof ImageScalarFieldEnum)[keyof typeof ImageScalarFieldEnum]
@@ -4452,7 +4525,8 @@ export const VideoScalarFieldEnum = {
   audioFormat: 'audioFormat',
   audioSamplesPerSecond: 'audioSamplesPerSecond',
   frameRate: 'frameRate',
-  fourCC: 'fourCC'
+  fourCC: 'fourCC',
+  itemId: 'itemId'
 } as const
 
 export type VideoScalarFieldEnum = (typeof VideoScalarFieldEnum)[keyof typeof VideoScalarFieldEnum]
@@ -4475,7 +4549,8 @@ export const AudioScalarFieldEnum = {
   title: 'title',
   track: 'track',
   trackCount: 'trackCount',
-  year: 'year'
+  year: 'year',
+  itemId: 'itemId'
 } as const
 
 export type AudioScalarFieldEnum = (typeof AudioScalarFieldEnum)[keyof typeof AudioScalarFieldEnum]
@@ -4490,13 +4565,15 @@ export const PhotoScalarFieldEnum = {
   fNumber: 'fNumber',
   focalLength: 'focalLength',
   iso: 'iso',
-  takenDateTime: 'takenDateTime'
+  takenDateTime: 'takenDateTime',
+  itemId: 'itemId'
 } as const
 
 export type PhotoScalarFieldEnum = (typeof PhotoScalarFieldEnum)[keyof typeof PhotoScalarFieldEnum]
 
 
 export const FavoriteScalarFieldEnum = {
+  id: 'id',
   favoritedById: 'favoritedById',
   itemId: 'itemId',
   createdAt: 'createdAt',
@@ -4531,14 +4608,25 @@ export const ItemScalarFieldEnum = {
   uploadId: 'uploadId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  deletedAt: 'deletedAt',
   ownerId: 'ownerId',
   workspaceId: 'workspaceId',
   driveId: 'driveId',
-  parentId: 'parentId'
+  parentId: 'parentId',
+  tags: 'tags'
 } as const
 
 export type ItemScalarFieldEnum = (typeof ItemScalarFieldEnum)[keyof typeof ItemScalarFieldEnum]
+
+
+export const LockedItemScalarFieldEnum = {
+  id: 'id',
+  itemId: 'itemId',
+  lockedById: 'lockedById',
+  lockedAt: 'lockedAt',
+  expiresAt: 'expiresAt'
+} as const
+
+export type LockedItemScalarFieldEnum = (typeof LockedItemScalarFieldEnum)[keyof typeof LockedItemScalarFieldEnum]
 
 
 export const MetadataScalarFieldEnum = {
@@ -4554,9 +4642,9 @@ export type MetadataScalarFieldEnum = (typeof MetadataScalarFieldEnum)[keyof typ
 
 export const NotificationScalarFieldEnum = {
   id: 'id',
-  type: 'type',
   message: 'message',
-  read: 'read',
+  type: 'type',
+  status: 'status',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   userId: 'userId'
@@ -4569,6 +4657,8 @@ export const PermissionScalarFieldEnum = {
   id: 'id',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
+  expiresAt: 'expiresAt',
+  deletedAt: 'deletedAt',
   roles: 'roles',
   invitationId: 'invitationId',
   linkId: 'linkId',
@@ -4580,10 +4670,12 @@ export type PermissionScalarFieldEnum = (typeof PermissionScalarFieldEnum)[keyof
 
 export const QuotaScalarFieldEnum = {
   id: 'id',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
   deleted: 'deleted',
   total: 'total',
   used: 'used',
-  state: 'state',
+  status: 'status',
   driveId: 'driveId'
 } as const
 
@@ -4592,9 +4684,11 @@ export type QuotaScalarFieldEnum = (typeof QuotaScalarFieldEnum)[keyof typeof Qu
 
 export const SearchScalarFieldEnum = {
   id: 'id',
+  type: 'type',
   content: 'content',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  itemId: 'itemId'
 } as const
 
 export type SearchScalarFieldEnum = (typeof SearchScalarFieldEnum)[keyof typeof SearchScalarFieldEnum]
@@ -4635,7 +4729,8 @@ export const StoragePlanScalarFieldEnum = {
   id: 'id',
   name: 'name',
   type: 'type',
-  storageLimit: 'storageLimit'
+  storageLimit: 'storageLimit',
+  stripePriceId: 'stripePriceId'
 } as const
 
 export type StoragePlanScalarFieldEnum = (typeof StoragePlanScalarFieldEnum)[keyof typeof StoragePlanScalarFieldEnum]
@@ -4751,7 +4846,6 @@ export const WorkspaceScalarFieldEnum = {
   name: 'name',
   description: 'description',
   default: 'default',
-  iamRoleArn: 'iamRoleArn',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -4762,7 +4856,7 @@ export type WorkspaceScalarFieldEnum = (typeof WorkspaceScalarFieldEnum)[keyof t
 export const WorkspaceMemberScalarFieldEnum = {
   id: 'id',
   role: 'role',
-  userId: 'userId',
+  memberId: 'memberId',
   workspaceId: 'workspaceId'
 } as const
 
@@ -4790,17 +4884,6 @@ export const FileShareScalarFieldEnum = {
 } as const
 
 export type FileShareScalarFieldEnum = (typeof FileShareScalarFieldEnum)[keyof typeof FileShareScalarFieldEnum]
-
-
-export const ItemLockScalarFieldEnum = {
-  id: 'id',
-  itemId: 'itemId',
-  lockedById: 'lockedById',
-  lockedAt: 'lockedAt',
-  expiresAt: 'expiresAt'
-} as const
-
-export type ItemLockScalarFieldEnum = (typeof ItemLockScalarFieldEnum)[keyof typeof ItemLockScalarFieldEnum]
 
 
 export const ViewScalarFieldEnum = {
@@ -4925,16 +5008,16 @@ export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$Prisma
 
 
 /**
- * Reference to a field of type 'Int'
+ * Reference to a field of type 'BigInt'
  */
-export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
+export type BigIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BigInt'>
     
 
 
 /**
- * Reference to a field of type 'Int[]'
+ * Reference to a field of type 'BigInt[]'
  */
-export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+export type ListBigIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BigInt[]'>
     
 
 
@@ -4949,6 +5032,20 @@ export type EnumDriveTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$Prisma
  * Reference to a field of type 'DriveType[]'
  */
 export type ListEnumDriveTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DriveType[]'>
+    
+
+
+/**
+ * Reference to a field of type 'Int'
+ */
+export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
+    
+
+
+/**
+ * Reference to a field of type 'Int[]'
+ */
+export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
     
 
 
@@ -5037,6 +5134,34 @@ export type ListEnumItemStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$P
 
 
 /**
+ * Reference to a field of type 'NotificationType'
+ */
+export type EnumNotificationTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NotificationType'>
+    
+
+
+/**
+ * Reference to a field of type 'NotificationType[]'
+ */
+export type ListEnumNotificationTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NotificationType[]'>
+    
+
+
+/**
+ * Reference to a field of type 'NotificationStatus'
+ */
+export type EnumNotificationStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NotificationStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'NotificationStatus[]'
+ */
+export type ListEnumNotificationStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NotificationStatus[]'>
+    
+
+
+/**
  * Reference to a field of type 'PermissionRole'
  */
 export type EnumPermissionRoleFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PermissionRole'>
@@ -5051,30 +5176,16 @@ export type ListEnumPermissionRoleFieldRefInput<$PrismaModel> = FieldRefInputTyp
 
 
 /**
- * Reference to a field of type 'BigInt'
+ * Reference to a field of type 'QuotaStatus'
  */
-export type BigIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BigInt'>
+export type EnumQuotaStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QuotaStatus'>
     
 
 
 /**
- * Reference to a field of type 'BigInt[]'
+ * Reference to a field of type 'QuotaStatus[]'
  */
-export type ListBigIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BigInt[]'>
-    
-
-
-/**
- * Reference to a field of type 'QuotaState'
- */
-export type EnumQuotaStateFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QuotaState'>
-    
-
-
-/**
- * Reference to a field of type 'QuotaState[]'
- */
-export type ListEnumQuotaStateFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QuotaState[]'>
+export type ListEnumQuotaStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QuotaStatus[]'>
     
 
 
@@ -5286,6 +5397,7 @@ export type GlobalOmitConfig = {
   deleteAction?: Prisma.DeleteActionOmit
   editAction?: Prisma.EditActionOmit
   moveAction?: Prisma.MoveActionOmit
+  copyAction?: Prisma.CopyActionOmit
   renameAction?: Prisma.RenameActionOmit
   restoreAction?: Prisma.RestoreActionOmit
   shareAction?: Prisma.ShareActionOmit
@@ -5306,6 +5418,7 @@ export type GlobalOmitConfig = {
   favorite?: Prisma.FavoriteOmit
   invitation?: Prisma.InvitationOmit
   item?: Prisma.ItemOmit
+  lockedItem?: Prisma.LockedItemOmit
   metadata?: Prisma.MetadataOmit
   notification?: Prisma.NotificationOmit
   permission?: Prisma.PermissionOmit
@@ -5326,7 +5439,6 @@ export type GlobalOmitConfig = {
   workspaceMember?: Prisma.WorkspaceMemberOmit
   preview?: Prisma.PreviewOmit
   fileShare?: Prisma.FileShareOmit
-  itemLock?: Prisma.ItemLockOmit
   view?: Prisma.ViewOmit
 }
 

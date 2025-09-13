@@ -6,18 +6,25 @@ enum InvitationStatus {
 }
 
 model Invitation {
-    id         String           @id @default(uuid())
-    createdAt  DateTime         @default(now()) @db.Timestamp()
-    expiresAt  DateTime?        @db.Timestamp()
-    email      String
-    status     InvitationStatus @default(pending)
-    senderId   String
-    sender     User             @relation(fields: [senderId], references: [id])
+    id        String    @id
+    createdAt DateTime  @default(now()) @db.Timestamp()
+    expiresAt DateTime? @db.Timestamp()
+
+    // Recipient email
+    email String
+
+    // Track the status
+    status InvitationStatus @default(pending)
+
+    // Who send the invitation 
+    senderId String
+    sender   User   @relation(fields: [senderId], references: [id])
+
     // For item sharing
     permission Permission?
 
     // For workspace invitation
     workspaceId String?
     workspace   Workspace?           @relation(fields: [workspaceId], references: [id])
-    role        WorkspaceMemberRole? // For workspace invitations
+    role        WorkspaceMemberRole?
 }

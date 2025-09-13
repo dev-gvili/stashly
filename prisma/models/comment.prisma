@@ -1,8 +1,8 @@
 model Comment {
-    id        String   @id @default(uuid())
+    id        String   @id
     content   String
     createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+    updatedAt DateTime @updatedAt
 
     itemId String
     item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
@@ -10,5 +10,6 @@ model Comment {
     ownerId String
     owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
+    @@unique([itemId, ownerId])
     @@index([createdAt])
 }

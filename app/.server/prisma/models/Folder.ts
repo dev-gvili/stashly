@@ -36,16 +36,19 @@ export type FolderSumAggregateOutputType = {
 export type FolderMinAggregateOutputType = {
   id: string | null
   childCount: number | null
+  itemId: string | null
 }
 
 export type FolderMaxAggregateOutputType = {
   id: string | null
   childCount: number | null
+  itemId: string | null
 }
 
 export type FolderCountAggregateOutputType = {
   id: number
   childCount: number
+  itemId: number
   _all: number
 }
 
@@ -61,16 +64,19 @@ export type FolderSumAggregateInputType = {
 export type FolderMinAggregateInputType = {
   id?: true
   childCount?: true
+  itemId?: true
 }
 
 export type FolderMaxAggregateInputType = {
   id?: true
   childCount?: true
+  itemId?: true
 }
 
 export type FolderCountAggregateInputType = {
   id?: true
   childCount?: true
+  itemId?: true
   _all?: true
 }
 
@@ -163,6 +169,7 @@ export type FolderGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalA
 export type FolderGroupByOutputType = {
   id: string
   childCount: number | null
+  itemId: string
   _count: FolderCountAggregateOutputType | null
   _avg: FolderAvgAggregateOutputType | null
   _sum: FolderSumAggregateOutputType | null
@@ -191,6 +198,7 @@ export type FolderWhereInput = {
   NOT?: Prisma.FolderWhereInput | Prisma.FolderWhereInput[]
   id?: Prisma.StringFilter<"Folder"> | string
   childCount?: Prisma.IntNullableFilter<"Folder"> | number | null
+  itemId?: Prisma.StringFilter<"Folder"> | string
   view?: Prisma.XOR<Prisma.ViewNullableScalarRelationFilter, Prisma.ViewWhereInput> | null
   item?: Prisma.XOR<Prisma.ItemScalarRelationFilter, Prisma.ItemWhereInput>
 }
@@ -198,23 +206,26 @@ export type FolderWhereInput = {
 export type FolderOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   childCount?: Prisma.SortOrderInput | Prisma.SortOrder
+  itemId?: Prisma.SortOrder
   view?: Prisma.ViewOrderByWithRelationInput
   item?: Prisma.ItemOrderByWithRelationInput
 }
 
 export type FolderWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  itemId?: string
   AND?: Prisma.FolderWhereInput | Prisma.FolderWhereInput[]
   OR?: Prisma.FolderWhereInput[]
   NOT?: Prisma.FolderWhereInput | Prisma.FolderWhereInput[]
   childCount?: Prisma.IntNullableFilter<"Folder"> | number | null
   view?: Prisma.XOR<Prisma.ViewNullableScalarRelationFilter, Prisma.ViewWhereInput> | null
   item?: Prisma.XOR<Prisma.ItemScalarRelationFilter, Prisma.ItemWhereInput>
-}, "id">
+}, "id" | "itemId">
 
 export type FolderOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   childCount?: Prisma.SortOrderInput | Prisma.SortOrder
+  itemId?: Prisma.SortOrder
   _count?: Prisma.FolderCountOrderByAggregateInput
   _avg?: Prisma.FolderAvgOrderByAggregateInput
   _max?: Prisma.FolderMaxOrderByAggregateInput
@@ -228,21 +239,25 @@ export type FolderScalarWhereWithAggregatesInput = {
   NOT?: Prisma.FolderScalarWhereWithAggregatesInput | Prisma.FolderScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Folder"> | string
   childCount?: Prisma.IntNullableWithAggregatesFilter<"Folder"> | number | null
+  itemId?: Prisma.StringWithAggregatesFilter<"Folder"> | string
 }
 
 export type FolderCreateInput = {
+  id: string
   childCount?: number | null
   view?: Prisma.ViewCreateNestedOneWithoutFolderInput
-  item?: Prisma.ItemCreateNestedOneWithoutFolderInput
+  item: Prisma.ItemCreateNestedOneWithoutFolderInput
 }
 
 export type FolderUncheckedCreateInput = {
-  id?: string
+  id: string
   childCount?: number | null
+  itemId: string
   view?: Prisma.ViewUncheckedCreateNestedOneWithoutFolderInput
 }
 
 export type FolderUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   childCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   view?: Prisma.ViewUpdateOneWithoutFolderNestedInput
   item?: Prisma.ItemUpdateOneRequiredWithoutFolderNestedInput
@@ -251,26 +266,31 @@ export type FolderUpdateInput = {
 export type FolderUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   childCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  itemId?: Prisma.StringFieldUpdateOperationsInput | string
   view?: Prisma.ViewUncheckedUpdateOneWithoutFolderNestedInput
 }
 
 export type FolderCreateManyInput = {
-  id?: string
+  id: string
   childCount?: number | null
+  itemId: string
 }
 
 export type FolderUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   childCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type FolderUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   childCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  itemId?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type FolderCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   childCount?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type FolderAvgOrderByAggregateInput = {
@@ -280,11 +300,13 @@ export type FolderAvgOrderByAggregateInput = {
 export type FolderMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   childCount?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type FolderMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   childCount?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type FolderSumOrderByAggregateInput = {
@@ -353,11 +375,13 @@ export type FolderUpdateOneWithoutViewNestedInput = {
 }
 
 export type FolderCreateWithoutItemInput = {
+  id: string
   childCount?: number | null
   view?: Prisma.ViewCreateNestedOneWithoutFolderInput
 }
 
 export type FolderUncheckedCreateWithoutItemInput = {
+  id: string
   childCount?: number | null
   view?: Prisma.ViewUncheckedCreateNestedOneWithoutFolderInput
 }
@@ -379,23 +403,27 @@ export type FolderUpdateToOneWithWhereWithoutItemInput = {
 }
 
 export type FolderUpdateWithoutItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   childCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   view?: Prisma.ViewUpdateOneWithoutFolderNestedInput
 }
 
 export type FolderUncheckedUpdateWithoutItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   childCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   view?: Prisma.ViewUncheckedUpdateOneWithoutFolderNestedInput
 }
 
 export type FolderCreateWithoutViewInput = {
+  id: string
   childCount?: number | null
-  item?: Prisma.ItemCreateNestedOneWithoutFolderInput
+  item: Prisma.ItemCreateNestedOneWithoutFolderInput
 }
 
 export type FolderUncheckedCreateWithoutViewInput = {
-  id?: string
+  id: string
   childCount?: number | null
+  itemId: string
 }
 
 export type FolderCreateOrConnectWithoutViewInput = {
@@ -415,6 +443,7 @@ export type FolderUpdateToOneWithWhereWithoutViewInput = {
 }
 
 export type FolderUpdateWithoutViewInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   childCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   item?: Prisma.ItemUpdateOneRequiredWithoutFolderNestedInput
 }
@@ -422,6 +451,7 @@ export type FolderUpdateWithoutViewInput = {
 export type FolderUncheckedUpdateWithoutViewInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   childCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  itemId?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 
@@ -429,6 +459,7 @@ export type FolderUncheckedUpdateWithoutViewInput = {
 export type FolderSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   childCount?: boolean
+  itemId?: boolean
   view?: boolean | Prisma.Folder$viewArgs<ExtArgs>
   item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["folder"]>
@@ -436,21 +467,24 @@ export type FolderSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
 export type FolderSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   childCount?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["folder"]>
 
 export type FolderSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   childCount?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["folder"]>
 
 export type FolderSelectScalar = {
   id?: boolean
   childCount?: boolean
+  itemId?: boolean
 }
 
-export type FolderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "childCount", ExtArgs["result"]["folder"]>
+export type FolderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "childCount" | "itemId", ExtArgs["result"]["folder"]>
 export type FolderInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   view?: boolean | Prisma.Folder$viewArgs<ExtArgs>
   item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
@@ -471,6 +505,7 @@ export type $FolderPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     childCount: number | null
+    itemId: string
   }, ExtArgs["result"]["folder"]>
   composites: {}
 }
@@ -898,6 +933,7 @@ export interface Prisma__FolderClient<T, Null = never, ExtArgs extends runtime.T
 export interface FolderFieldRefs {
   readonly id: Prisma.FieldRef<"Folder", 'String'>
   readonly childCount: Prisma.FieldRef<"Folder", 'Int'>
+  readonly itemId: Prisma.FieldRef<"Folder", 'String'>
 }
     
 

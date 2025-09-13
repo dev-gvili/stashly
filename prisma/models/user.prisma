@@ -1,20 +1,20 @@
 model User {
-    id               String         @id @default(uuid())
-    name             String         @db.VarChar(50)
+    id               String   @id
+    name             String   @db.VarChar(50)
     displayName      String?
-    email            String         @unique
+    email            String   @unique
     image            String?
     emailVerified    Boolean
-    createdAt        DateTime       @default(now())
-    updatedAt        DateTime       @updatedAt
-    bucket           String         @default("default-bucket")
-    driveId          String?        @unique // drive ID for the user
-    subscriptionId   String?        @unique // Subscription ID for the user
-    storagePlanId    String?        @unique // Storage plan ID for the user
-    stripeCustomerId String?        @unique // Stripe customer ID
-    
+    createdAt        DateTime @default(now())
+    updatedAt        DateTime @updatedAt
+    bucket           String   @default("default-bucket")
+    driveId          String?  @unique // drive ID for the user
+    subscriptionId   String?  @unique // Subscription ID for the user
+    storagePlanId    String?  @unique // Storage plan ID for the user
+    stripeCustomerId String?  @unique // Stripe customer ID
+
     // Monitoring and Auditing
-    notifications    Notification[]
+    notifications Notification[]
 
     // Authentication and Authorization 
     permissions Permission[]
@@ -30,9 +30,10 @@ model User {
     invitations Invitation[]
 
     // Data Management
-    items     Item[]
-    drive     Drive?
-    favorites Favorite[]
+    items       Item[]
+    lockedItems LockedItem[]
+    drive       Drive?
+    favorites   Favorite[]
 
     @@index([email])
     @@index([name])

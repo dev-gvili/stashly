@@ -59,6 +59,7 @@ export type VideoMinAggregateOutputType = {
   audioSamplesPerSecond: number | null
   frameRate: number | null
   fourCC: string | null
+  itemId: string | null
 }
 
 export type VideoMaxAggregateOutputType = {
@@ -73,6 +74,7 @@ export type VideoMaxAggregateOutputType = {
   audioSamplesPerSecond: number | null
   frameRate: number | null
   fourCC: string | null
+  itemId: string | null
 }
 
 export type VideoCountAggregateOutputType = {
@@ -87,6 +89,7 @@ export type VideoCountAggregateOutputType = {
   audioSamplesPerSecond: number
   frameRate: number
   fourCC: number
+  itemId: number
   _all: number
 }
 
@@ -125,6 +128,7 @@ export type VideoMinAggregateInputType = {
   audioSamplesPerSecond?: true
   frameRate?: true
   fourCC?: true
+  itemId?: true
 }
 
 export type VideoMaxAggregateInputType = {
@@ -139,6 +143,7 @@ export type VideoMaxAggregateInputType = {
   audioSamplesPerSecond?: true
   frameRate?: true
   fourCC?: true
+  itemId?: true
 }
 
 export type VideoCountAggregateInputType = {
@@ -153,6 +158,7 @@ export type VideoCountAggregateInputType = {
   audioSamplesPerSecond?: true
   frameRate?: true
   fourCC?: true
+  itemId?: true
   _all?: true
 }
 
@@ -254,6 +260,7 @@ export type VideoGroupByOutputType = {
   audioSamplesPerSecond: number | null
   frameRate: number | null
   fourCC: string | null
+  itemId: string | null
   _count: VideoCountAggregateOutputType | null
   _avg: VideoAvgAggregateOutputType | null
   _sum: VideoSumAggregateOutputType | null
@@ -291,6 +298,7 @@ export type VideoWhereInput = {
   audioSamplesPerSecond?: Prisma.IntNullableFilter<"Video"> | number | null
   frameRate?: Prisma.FloatNullableFilter<"Video"> | number | null
   fourCC?: Prisma.StringNullableFilter<"Video"> | string | null
+  itemId?: Prisma.StringNullableFilter<"Video"> | string | null
   item?: Prisma.XOR<Prisma.ItemNullableScalarRelationFilter, Prisma.ItemWhereInput> | null
 }
 
@@ -306,11 +314,13 @@ export type VideoOrderByWithRelationInput = {
   audioSamplesPerSecond?: Prisma.SortOrderInput | Prisma.SortOrder
   frameRate?: Prisma.SortOrderInput | Prisma.SortOrder
   fourCC?: Prisma.SortOrderInput | Prisma.SortOrder
+  itemId?: Prisma.SortOrderInput | Prisma.SortOrder
   item?: Prisma.ItemOrderByWithRelationInput
 }
 
 export type VideoWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  itemId?: string
   AND?: Prisma.VideoWhereInput | Prisma.VideoWhereInput[]
   OR?: Prisma.VideoWhereInput[]
   NOT?: Prisma.VideoWhereInput | Prisma.VideoWhereInput[]
@@ -325,7 +335,7 @@ export type VideoWhereUniqueInput = Prisma.AtLeast<{
   frameRate?: Prisma.FloatNullableFilter<"Video"> | number | null
   fourCC?: Prisma.StringNullableFilter<"Video"> | string | null
   item?: Prisma.XOR<Prisma.ItemNullableScalarRelationFilter, Prisma.ItemWhereInput> | null
-}, "id">
+}, "id" | "itemId">
 
 export type VideoOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -339,6 +349,7 @@ export type VideoOrderByWithAggregationInput = {
   audioSamplesPerSecond?: Prisma.SortOrderInput | Prisma.SortOrder
   frameRate?: Prisma.SortOrderInput | Prisma.SortOrder
   fourCC?: Prisma.SortOrderInput | Prisma.SortOrder
+  itemId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.VideoCountOrderByAggregateInput
   _avg?: Prisma.VideoAvgOrderByAggregateInput
   _max?: Prisma.VideoMaxOrderByAggregateInput
@@ -361,9 +372,11 @@ export type VideoScalarWhereWithAggregatesInput = {
   audioSamplesPerSecond?: Prisma.IntNullableWithAggregatesFilter<"Video"> | number | null
   frameRate?: Prisma.FloatNullableWithAggregatesFilter<"Video"> | number | null
   fourCC?: Prisma.StringNullableWithAggregatesFilter<"Video"> | string | null
+  itemId?: Prisma.StringNullableWithAggregatesFilter<"Video"> | string | null
 }
 
 export type VideoCreateInput = {
+  id: string
   bitrate?: number | null
   duration?: number | null
   height?: number | null
@@ -378,7 +391,7 @@ export type VideoCreateInput = {
 }
 
 export type VideoUncheckedCreateInput = {
-  id?: string
+  id: string
   bitrate?: number | null
   duration?: number | null
   height?: number | null
@@ -389,9 +402,11 @@ export type VideoUncheckedCreateInput = {
   audioSamplesPerSecond?: number | null
   frameRate?: number | null
   fourCC?: string | null
+  itemId?: string | null
 }
 
 export type VideoUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   bitrate?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   duration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   height?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -417,10 +432,11 @@ export type VideoUncheckedUpdateInput = {
   audioSamplesPerSecond?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   frameRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fourCC?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type VideoCreateManyInput = {
-  id?: string
+  id: string
   bitrate?: number | null
   duration?: number | null
   height?: number | null
@@ -431,9 +447,11 @@ export type VideoCreateManyInput = {
   audioSamplesPerSecond?: number | null
   frameRate?: number | null
   fourCC?: string | null
+  itemId?: string | null
 }
 
 export type VideoUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   bitrate?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   duration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   height?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -458,6 +476,7 @@ export type VideoUncheckedUpdateManyInput = {
   audioSamplesPerSecond?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   frameRate?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fourCC?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type VideoCountOrderByAggregateInput = {
@@ -472,6 +491,7 @@ export type VideoCountOrderByAggregateInput = {
   audioSamplesPerSecond?: Prisma.SortOrder
   frameRate?: Prisma.SortOrder
   fourCC?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type VideoAvgOrderByAggregateInput = {
@@ -497,6 +517,7 @@ export type VideoMaxOrderByAggregateInput = {
   audioSamplesPerSecond?: Prisma.SortOrder
   frameRate?: Prisma.SortOrder
   fourCC?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type VideoMinOrderByAggregateInput = {
@@ -511,6 +532,7 @@ export type VideoMinOrderByAggregateInput = {
   audioSamplesPerSecond?: Prisma.SortOrder
   frameRate?: Prisma.SortOrder
   fourCC?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type VideoSumOrderByAggregateInput = {
@@ -562,6 +584,7 @@ export type VideoUncheckedUpdateOneWithoutItemNestedInput = {
 }
 
 export type VideoCreateWithoutItemInput = {
+  id: string
   bitrate?: number | null
   duration?: number | null
   height?: number | null
@@ -575,6 +598,7 @@ export type VideoCreateWithoutItemInput = {
 }
 
 export type VideoUncheckedCreateWithoutItemInput = {
+  id: string
   bitrate?: number | null
   duration?: number | null
   height?: number | null
@@ -604,6 +628,7 @@ export type VideoUpdateToOneWithWhereWithoutItemInput = {
 }
 
 export type VideoUpdateWithoutItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   bitrate?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   duration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   height?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -617,6 +642,7 @@ export type VideoUpdateWithoutItemInput = {
 }
 
 export type VideoUncheckedUpdateWithoutItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   bitrate?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   duration?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   height?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -643,6 +669,7 @@ export type VideoSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   audioSamplesPerSecond?: boolean
   frameRate?: boolean
   fourCC?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.Video$itemArgs<ExtArgs>
 }, ExtArgs["result"]["video"]>
 
@@ -658,6 +685,7 @@ export type VideoSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   audioSamplesPerSecond?: boolean
   frameRate?: boolean
   fourCC?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.Video$itemArgs<ExtArgs>
 }, ExtArgs["result"]["video"]>
 
@@ -673,6 +701,7 @@ export type VideoSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   audioSamplesPerSecond?: boolean
   frameRate?: boolean
   fourCC?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.Video$itemArgs<ExtArgs>
 }, ExtArgs["result"]["video"]>
 
@@ -688,9 +717,10 @@ export type VideoSelectScalar = {
   audioSamplesPerSecond?: boolean
   frameRate?: boolean
   fourCC?: boolean
+  itemId?: boolean
 }
 
-export type VideoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "bitrate" | "duration" | "height" | "width" | "audioBitsPerSample" | "audioChannels" | "audioFormat" | "audioSamplesPerSecond" | "frameRate" | "fourCC", ExtArgs["result"]["video"]>
+export type VideoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "bitrate" | "duration" | "height" | "width" | "audioBitsPerSample" | "audioChannels" | "audioFormat" | "audioSamplesPerSecond" | "frameRate" | "fourCC" | "itemId", ExtArgs["result"]["video"]>
 export type VideoInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   item?: boolean | Prisma.Video$itemArgs<ExtArgs>
 }
@@ -718,6 +748,7 @@ export type $VideoPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     audioSamplesPerSecond: number | null
     frameRate: number | null
     fourCC: string | null
+    itemId: string | null
   }, ExtArgs["result"]["video"]>
   composites: {}
 }
@@ -1153,6 +1184,7 @@ export interface VideoFieldRefs {
   readonly audioSamplesPerSecond: Prisma.FieldRef<"Video", 'Int'>
   readonly frameRate: Prisma.FieldRef<"Video", 'Float'>
   readonly fourCC: Prisma.FieldRef<"Video", 'String'>
+  readonly itemId: Prisma.FieldRef<"Video", 'String'>
 }
     
 
@@ -1376,7 +1408,7 @@ export type VideoCreateArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
   /**
    * The data needed to create a Video.
    */
-  data?: Prisma.XOR<Prisma.VideoCreateInput, Prisma.VideoUncheckedCreateInput>
+  data: Prisma.XOR<Prisma.VideoCreateInput, Prisma.VideoUncheckedCreateInput>
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }
 

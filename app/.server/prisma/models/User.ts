@@ -254,6 +254,7 @@ export type UserWhereInput = {
   comments?: Prisma.CommentListRelationFilter
   invitations?: Prisma.InvitationListRelationFilter
   items?: Prisma.ItemListRelationFilter
+  lockedItems?: Prisma.LockedItemListRelationFilter
   drive?: Prisma.XOR<Prisma.DriveNullableScalarRelationFilter, Prisma.DriveWhereInput> | null
   favorites?: Prisma.FavoriteListRelationFilter
 }
@@ -281,6 +282,7 @@ export type UserOrderByWithRelationInput = {
   comments?: Prisma.CommentOrderByRelationAggregateInput
   invitations?: Prisma.InvitationOrderByRelationAggregateInput
   items?: Prisma.ItemOrderByRelationAggregateInput
+  lockedItems?: Prisma.LockedItemOrderByRelationAggregateInput
   drive?: Prisma.DriveOrderByWithRelationInput
   favorites?: Prisma.FavoriteOrderByRelationAggregateInput
 }
@@ -311,6 +313,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   comments?: Prisma.CommentListRelationFilter
   invitations?: Prisma.InvitationListRelationFilter
   items?: Prisma.ItemListRelationFilter
+  lockedItems?: Prisma.LockedItemListRelationFilter
   drive?: Prisma.XOR<Prisma.DriveNullableScalarRelationFilter, Prisma.DriveWhereInput> | null
   favorites?: Prisma.FavoriteListRelationFilter
 }, "id" | "email" | "driveId" | "subscriptionId" | "storagePlanId" | "stripeCustomerId">
@@ -354,7 +357,7 @@ export type UserScalarWhereWithAggregatesInput = {
 }
 
 export type UserCreateInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -368,20 +371,21 @@ export type UserCreateInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
 }
 
 export type UserUncheckedCreateInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -395,14 +399,15 @@ export type UserUncheckedCreateInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
 }
@@ -422,14 +427,15 @@ export type UserUpdateInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
 }
@@ -449,20 +455,21 @@ export type UserUncheckedUpdateInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
 }
 
 export type UserCreateManyInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -656,6 +663,20 @@ export type UserUpdateOneRequiredWithoutItemsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutItemsInput, Prisma.UserUpdateWithoutItemsInput>, Prisma.UserUncheckedUpdateWithoutItemsInput>
 }
 
+export type UserCreateNestedOneWithoutLockedItemsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutLockedItemsInput, Prisma.UserUncheckedCreateWithoutLockedItemsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutLockedItemsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutLockedItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutLockedItemsInput, Prisma.UserUncheckedCreateWithoutLockedItemsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutLockedItemsInput
+  upsert?: Prisma.UserUpsertWithoutLockedItemsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutLockedItemsInput, Prisma.UserUpdateWithoutLockedItemsInput>, Prisma.UserUncheckedUpdateWithoutLockedItemsInput>
+}
+
 export type UserCreateNestedOneWithoutNotificationsInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutNotificationsInput, Prisma.UserUncheckedCreateWithoutNotificationsInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutNotificationsInput
@@ -751,7 +772,7 @@ export type UserUpdateOneRequiredWithoutWorkspacesNestedInput = {
 }
 
 export type UserCreateWithoutAccountsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -765,19 +786,20 @@ export type UserCreateWithoutAccountsInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutUsersInput
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
 }
 
 export type UserUncheckedCreateWithoutAccountsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -791,13 +813,14 @@ export type UserUncheckedCreateWithoutAccountsInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutUsersInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
 }
@@ -833,13 +856,14 @@ export type UserUpdateWithoutAccountsInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutUsersNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
 }
@@ -859,19 +883,20 @@ export type UserUncheckedUpdateWithoutAccountsInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutUsersNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
 }
 
 export type UserCreateWithoutCommentsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -885,19 +910,20 @@ export type UserCreateWithoutCommentsInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
 }
 
 export type UserUncheckedCreateWithoutCommentsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -911,13 +937,14 @@ export type UserUncheckedCreateWithoutCommentsInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
 }
@@ -953,13 +980,14 @@ export type UserUpdateWithoutCommentsInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
 }
@@ -979,19 +1007,20 @@ export type UserUncheckedUpdateWithoutCommentsInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
 }
 
 export type UserCreateWithoutDriveInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1005,19 +1034,20 @@ export type UserCreateWithoutDriveInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
 }
 
 export type UserUncheckedCreateWithoutDriveInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1031,14 +1061,15 @@ export type UserUncheckedCreateWithoutDriveInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
 }
 
@@ -1073,14 +1104,15 @@ export type UserUpdateWithoutDriveInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
 }
 
@@ -1099,19 +1131,20 @@ export type UserUncheckedUpdateWithoutDriveInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
 }
 
 export type UserCreateWithoutFavoritesInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1125,19 +1158,20 @@ export type UserCreateWithoutFavoritesInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
 }
 
 export type UserUncheckedCreateWithoutFavoritesInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1151,14 +1185,15 @@ export type UserUncheckedCreateWithoutFavoritesInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
 }
 
@@ -1193,14 +1228,15 @@ export type UserUpdateWithoutFavoritesInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
 }
 
@@ -1219,19 +1255,20 @@ export type UserUncheckedUpdateWithoutFavoritesInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
 }
 
 export type UserCreateWithoutInvitationsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1245,19 +1282,20 @@ export type UserCreateWithoutInvitationsInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentCreateNestedManyWithoutOwnerInput
   items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
 }
 
 export type UserUncheckedCreateWithoutInvitationsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1271,13 +1309,14 @@ export type UserUncheckedCreateWithoutInvitationsInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOwnerInput
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
 }
@@ -1313,13 +1352,14 @@ export type UserUpdateWithoutInvitationsInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOwnerNestedInput
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
 }
@@ -1339,19 +1379,20 @@ export type UserUncheckedUpdateWithoutInvitationsInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOwnerNestedInput
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
 }
 
 export type UserCreateWithoutItemsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1365,19 +1406,20 @@ export type UserCreateWithoutItemsInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutSenderInput
+  lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
 }
 
 export type UserUncheckedCreateWithoutItemsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1391,13 +1433,14 @@ export type UserUncheckedCreateWithoutItemsInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutSenderInput
+  lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
 }
@@ -1433,13 +1476,14 @@ export type UserUpdateWithoutItemsInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutSenderNestedInput
+  lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
 }
@@ -1459,19 +1503,20 @@ export type UserUncheckedUpdateWithoutItemsInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutSenderNestedInput
+  lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
 }
 
-export type UserCreateWithoutNotificationsInput = {
-  id?: string
+export type UserCreateWithoutLockedItemsInput = {
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1484,10 +1529,11 @@ export type UserCreateWithoutNotificationsInput = {
   subscriptionId?: string | null
   storagePlanId?: string | null
   stripeCustomerId?: string | null
-  permissions?: Prisma.PermissionCreateNestedManyWithoutIdentitiesInput
+  notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutSenderInput
@@ -1496,8 +1542,8 @@ export type UserCreateWithoutNotificationsInput = {
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
 }
 
-export type UserUncheckedCreateWithoutNotificationsInput = {
-  id?: string
+export type UserUncheckedCreateWithoutLockedItemsInput = {
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1510,14 +1556,139 @@ export type UserUncheckedCreateWithoutNotificationsInput = {
   subscriptionId?: string | null
   storagePlanId?: string | null
   stripeCustomerId?: string | null
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutIdentitiesInput
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
+  drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
+  favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+}
+
+export type UserCreateOrConnectWithoutLockedItemsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutLockedItemsInput, Prisma.UserUncheckedCreateWithoutLockedItemsInput>
+}
+
+export type UserUpsertWithoutLockedItemsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutLockedItemsInput, Prisma.UserUncheckedUpdateWithoutLockedItemsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutLockedItemsInput, Prisma.UserUncheckedCreateWithoutLockedItemsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutLockedItemsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutLockedItemsInput, Prisma.UserUncheckedUpdateWithoutLockedItemsInput>
+}
+
+export type UserUpdateWithoutLockedItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bucket?: Prisma.StringFieldUpdateOperationsInput | string
+  driveId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutUsersNestedInput
+  accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutMemberNestedInput
+  subscriptions?: Prisma.SubscriptionUpdateManyWithoutOwnerNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOwnerNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutSenderNestedInput
+  items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
+  drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
+  favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+}
+
+export type UserUncheckedUpdateWithoutLockedItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bucket?: Prisma.StringFieldUpdateOperationsInput | string
+  driveId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutUsersNestedInput
+  accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutMemberNestedInput
+  subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOwnerNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutSenderNestedInput
+  items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
+  drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
+  favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+}
+
+export type UserCreateWithoutNotificationsInput = {
+  id: string
+  name: string
+  displayName?: string | null
+  email: string
+  image?: string | null
+  emailVerified: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bucket?: string
+  driveId?: string | null
+  subscriptionId?: string | null
+  storagePlanId?: string | null
+  stripeCustomerId?: string | null
+  permissions?: Prisma.PermissionCreateNestedManyWithoutUsersInput
+  accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutMemberInput
+  subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutOwnerInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOwnerInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutSenderInput
+  items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
+  drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
+  favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+}
+
+export type UserUncheckedCreateWithoutNotificationsInput = {
+  id: string
+  name: string
+  displayName?: string | null
+  email: string
+  image?: string | null
+  emailVerified: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bucket?: string
+  driveId?: string | null
+  subscriptionId?: string | null
+  storagePlanId?: string | null
+  stripeCustomerId?: string | null
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutUsersInput
+  accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutMemberInput
+  subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutOwnerInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOwnerInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutSenderInput
+  items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
 }
@@ -1552,14 +1723,15 @@ export type UserUpdateWithoutNotificationsInput = {
   subscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  permissions?: Prisma.PermissionUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
 }
@@ -1578,20 +1750,21 @@ export type UserUncheckedUpdateWithoutNotificationsInput = {
   subscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
 }
 
 export type UserCreateWithoutPermissionsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1607,17 +1780,18 @@ export type UserCreateWithoutPermissionsInput = {
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
 }
 
 export type UserUncheckedCreateWithoutPermissionsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1633,11 +1807,12 @@ export type UserUncheckedCreateWithoutPermissionsInput = {
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
 }
@@ -1683,7 +1858,7 @@ export type UserScalarWhereInput = {
 }
 
 export type UserCreateWithoutSessionsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1697,19 +1872,20 @@ export type UserCreateWithoutSessionsInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
 }
 
 export type UserUncheckedCreateWithoutSessionsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1723,13 +1899,14 @@ export type UserUncheckedCreateWithoutSessionsInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutMemberInput
   subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
 }
@@ -1765,13 +1942,14 @@ export type UserUpdateWithoutSessionsInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
 }
@@ -1791,19 +1969,20 @@ export type UserUncheckedUpdateWithoutSessionsInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
 }
 
 export type UserCreateWithoutSubscriptionsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1817,19 +1996,20 @@ export type UserCreateWithoutSubscriptionsInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutMemberInput
   comments?: Prisma.CommentCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
 }
 
 export type UserUncheckedCreateWithoutSubscriptionsInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1843,13 +2023,14 @@ export type UserUncheckedCreateWithoutSubscriptionsInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutMemberInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
 }
@@ -1885,13 +2066,14 @@ export type UserUpdateWithoutSubscriptionsInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutMemberNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
 }
@@ -1911,19 +2093,20 @@ export type UserUncheckedUpdateWithoutSubscriptionsInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutMemberNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
 }
 
 export type UserCreateWithoutWorkspacesInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1937,19 +2120,20 @@ export type UserCreateWithoutWorkspacesInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
   subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
 }
 
 export type UserUncheckedCreateWithoutWorkspacesInput = {
-  id?: string
+  id: string
   name: string
   displayName?: string | null
   email: string
@@ -1963,13 +2147,14 @@ export type UserUncheckedCreateWithoutWorkspacesInput = {
   storagePlanId?: string | null
   stripeCustomerId?: string | null
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutIdentitiesInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutUsersInput
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
   subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutOwnerInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOwnerInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutSenderInput
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
 }
@@ -2005,13 +2190,14 @@ export type UserUpdateWithoutWorkspacesInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
   subscriptions?: Prisma.SubscriptionUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
 }
@@ -2031,13 +2217,14 @@ export type UserUncheckedUpdateWithoutWorkspacesInput = {
   storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutIdentitiesNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutUsersNestedInput
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
   subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
 }
@@ -2059,11 +2246,12 @@ export type UserUpdateWithoutPermissionsInput = {
   notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
 }
@@ -2085,11 +2273,12 @@ export type UserUncheckedUpdateWithoutPermissionsInput = {
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
-  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutMemberNestedInput
   subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutOwnerNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutSenderNestedInput
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
 }
@@ -2125,6 +2314,7 @@ export type UserCountOutputType = {
   comments: number
   invitations: number
   items: number
+  lockedItems: number
   favorites: number
 }
 
@@ -2138,6 +2328,7 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   comments?: boolean | UserCountOutputTypeCountCommentsArgs
   invitations?: boolean | UserCountOutputTypeCountInvitationsArgs
   items?: boolean | UserCountOutputTypeCountItemsArgs
+  lockedItems?: boolean | UserCountOutputTypeCountLockedItemsArgs
   favorites?: boolean | UserCountOutputTypeCountFavoritesArgs
 }
 
@@ -2217,6 +2408,13 @@ export type UserCountOutputTypeCountItemsArgs<ExtArgs extends runtime.Types.Exte
 /**
  * UserCountOutputType without action
  */
+export type UserCountOutputTypeCountLockedItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.LockedItemWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
 export type UserCountOutputTypeCountFavoritesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.FavoriteWhereInput
 }
@@ -2245,6 +2443,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   comments?: boolean | Prisma.User$commentsArgs<ExtArgs>
   invitations?: boolean | Prisma.User$invitationsArgs<ExtArgs>
   items?: boolean | Prisma.User$itemsArgs<ExtArgs>
+  lockedItems?: boolean | Prisma.User$lockedItemsArgs<ExtArgs>
   drive?: boolean | Prisma.User$driveArgs<ExtArgs>
   favorites?: boolean | Prisma.User$favoritesArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
@@ -2309,6 +2508,7 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   comments?: boolean | Prisma.User$commentsArgs<ExtArgs>
   invitations?: boolean | Prisma.User$invitationsArgs<ExtArgs>
   items?: boolean | Prisma.User$itemsArgs<ExtArgs>
+  lockedItems?: boolean | Prisma.User$lockedItemsArgs<ExtArgs>
   drive?: boolean | Prisma.User$driveArgs<ExtArgs>
   favorites?: boolean | Prisma.User$favoritesArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
@@ -2328,6 +2528,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     comments: Prisma.$CommentPayload<ExtArgs>[]
     invitations: Prisma.$InvitationPayload<ExtArgs>[]
     items: Prisma.$ItemPayload<ExtArgs>[]
+    lockedItems: Prisma.$LockedItemPayload<ExtArgs>[]
     drive: Prisma.$DrivePayload<ExtArgs> | null
     favorites: Prisma.$FavoritePayload<ExtArgs>[]
   }
@@ -2748,6 +2949,7 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   comments<T extends Prisma.User$commentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$commentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   invitations<T extends Prisma.User$invitationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$invitationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvitationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   items<T extends Prisma.User$itemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$itemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  lockedItems<T extends Prisma.User$lockedItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$lockedItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LockedItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   drive<T extends Prisma.User$driveArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$driveArgs<ExtArgs>>): Prisma.Prisma__DriveClient<runtime.Types.Result.GetResult<Prisma.$DrivePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   favorites<T extends Prisma.User$favoritesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$favoritesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FavoritePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
@@ -3402,6 +3604,30 @@ export type User$itemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
   take?: number
   skip?: number
   distinct?: Prisma.ItemScalarFieldEnum | Prisma.ItemScalarFieldEnum[]
+}
+
+/**
+ * User.lockedItems
+ */
+export type User$lockedItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the LockedItem
+   */
+  select?: Prisma.LockedItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the LockedItem
+   */
+  omit?: Prisma.LockedItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.LockedItemInclude<ExtArgs> | null
+  where?: Prisma.LockedItemWhereInput
+  orderBy?: Prisma.LockedItemOrderByWithRelationInput | Prisma.LockedItemOrderByWithRelationInput[]
+  cursor?: Prisma.LockedItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.LockedItemScalarFieldEnum | Prisma.LockedItemScalarFieldEnum[]
 }
 
 /**

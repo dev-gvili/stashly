@@ -1,13 +1,27 @@
 model Notification {
-    id        String   @id @default(uuid())
-    type      String
+    id        String             @id
     message   String
-    read      Boolean  @default(false)
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+    type      NotificationType
+    status    NotificationStatus @default(unread)
+    createdAt DateTime           @default(now())
+    updatedAt DateTime           @default(now()) @updatedAt
 
     userId String
     user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@index([createdAt])
+    @@index([type])
+    @@index([status])
+}
+
+enum NotificationType {
+    info
+    warning
+    error
+    success
+}
+
+enum NotificationStatus {
+    read
+    unread
 }

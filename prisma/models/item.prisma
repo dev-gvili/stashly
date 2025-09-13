@@ -1,16 +1,17 @@
 model Item {
-    id       String       @id @default(uuid())
+    id       String       @id
     name     String       @db.VarChar(50)
-    size     Int          @default(0)
-    path     String
+    size     BigInt       @default(0)
+    path     String       @unique
     type     ItemType     @default(file)
     category ItemCategory @default(unknown)
     status   ItemStatus   @default(normal)
+
+    // Integration with 33 multipart upload
     uploadId String?
 
-    createdAt DateTime  @default(now()) @db.Timestamp()
-    updatedAt DateTime  @updatedAt @db.Timestamp()
-    deletedAt DateTime? @db.Timestamp()
+    createdAt DateTime @default(now()) @db.Timestamp()
+    updatedAt DateTime @updatedAt @db.Timestamp()
 
     // Facets (optional, only one may be present per item)
     file       File?
@@ -40,15 +41,15 @@ model Item {
     collections CollectionItem[]
 
     // Access Control
-    lock        ItemLock?
+    locked      LockedItem?
     permissions Permission[]
 
-    // Versioning and thumbnails
-    versions   ItemVersion[]
+    // previews
     thumbnails Thumbnail[]
 
-    // Additional Information
-    tags Tag[]
+    // Additional Information and Filtering
+    tags     String[]
+    versions ItemVersion[]
 
     // Monitoring and Auditing
     activities Activity[]
@@ -58,7 +59,11 @@ model Item {
     // Miscellaneous  
     favoritedBy Favorite[]
 
+    //  Search Functionality (optional)
+    search Search?
+
     @@index([type])
+    @@index([category])
     @@index([name(sort: Asc)])
     @@index([workspaceId])
     @@index([createdAt(sort: Asc)])
@@ -96,4 +101,18 @@ enum ItemStatus {
     normal
     archived
     trashed
+}
+
+model LockedItem {
+    id         String @id
+    itemId     String @unique
+    item       Item   @relation(fields: [itemId], references: [id])
+    lockedById String
+    lockedBy   User   @relation(fields: [lockedById], references: [id])
+
+    lockedAt  DateTime  @default(now())
+    expiresAt DateTime?
+
+    @@unique([itemId, lockedById])
+    @@index([expiresAt])
 }

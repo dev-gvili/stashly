@@ -30,13 +30,13 @@ export type ItemAvgAggregateOutputType = {
 }
 
 export type ItemSumAggregateOutputType = {
-  size: number | null
+  size: bigint | null
 }
 
 export type ItemMinAggregateOutputType = {
   id: string | null
   name: string | null
-  size: number | null
+  size: bigint | null
   path: string | null
   type: $Enums.ItemType | null
   category: $Enums.ItemCategory | null
@@ -44,7 +44,6 @@ export type ItemMinAggregateOutputType = {
   uploadId: string | null
   createdAt: Date | null
   updatedAt: Date | null
-  deletedAt: Date | null
   ownerId: string | null
   workspaceId: string | null
   driveId: string | null
@@ -54,7 +53,7 @@ export type ItemMinAggregateOutputType = {
 export type ItemMaxAggregateOutputType = {
   id: string | null
   name: string | null
-  size: number | null
+  size: bigint | null
   path: string | null
   type: $Enums.ItemType | null
   category: $Enums.ItemCategory | null
@@ -62,7 +61,6 @@ export type ItemMaxAggregateOutputType = {
   uploadId: string | null
   createdAt: Date | null
   updatedAt: Date | null
-  deletedAt: Date | null
   ownerId: string | null
   workspaceId: string | null
   driveId: string | null
@@ -80,11 +78,11 @@ export type ItemCountAggregateOutputType = {
   uploadId: number
   createdAt: number
   updatedAt: number
-  deletedAt: number
   ownerId: number
   workspaceId: number
   driveId: number
   parentId: number
+  tags: number
   _all: number
 }
 
@@ -108,7 +106,6 @@ export type ItemMinAggregateInputType = {
   uploadId?: true
   createdAt?: true
   updatedAt?: true
-  deletedAt?: true
   ownerId?: true
   workspaceId?: true
   driveId?: true
@@ -126,7 +123,6 @@ export type ItemMaxAggregateInputType = {
   uploadId?: true
   createdAt?: true
   updatedAt?: true
-  deletedAt?: true
   ownerId?: true
   workspaceId?: true
   driveId?: true
@@ -144,11 +140,11 @@ export type ItemCountAggregateInputType = {
   uploadId?: true
   createdAt?: true
   updatedAt?: true
-  deletedAt?: true
   ownerId?: true
   workspaceId?: true
   driveId?: true
   parentId?: true
+  tags?: true
   _all?: true
 }
 
@@ -241,7 +237,7 @@ export type ItemGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 export type ItemGroupByOutputType = {
   id: string
   name: string
-  size: number
+  size: bigint
   path: string
   type: $Enums.ItemType
   category: $Enums.ItemCategory
@@ -249,11 +245,11 @@ export type ItemGroupByOutputType = {
   uploadId: string | null
   createdAt: Date
   updatedAt: Date
-  deletedAt: Date | null
   ownerId: string
   workspaceId: string | null
   driveId: string
   parentId: string | null
+  tags: string[]
   _count: ItemCountAggregateOutputType | null
   _avg: ItemAvgAggregateOutputType | null
   _sum: ItemSumAggregateOutputType | null
@@ -282,7 +278,7 @@ export type ItemWhereInput = {
   NOT?: Prisma.ItemWhereInput | Prisma.ItemWhereInput[]
   id?: Prisma.StringFilter<"Item"> | string
   name?: Prisma.StringFilter<"Item"> | string
-  size?: Prisma.IntFilter<"Item"> | number
+  size?: Prisma.BigIntFilter<"Item"> | bigint | number
   path?: Prisma.StringFilter<"Item"> | string
   type?: Prisma.EnumItemTypeFilter<"Item"> | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFilter<"Item"> | $Enums.ItemCategory
@@ -290,11 +286,11 @@ export type ItemWhereInput = {
   uploadId?: Prisma.StringNullableFilter<"Item"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Item"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Item"> | Date | string
-  deletedAt?: Prisma.DateTimeNullableFilter<"Item"> | Date | string | null
   ownerId?: Prisma.StringFilter<"Item"> | string
   workspaceId?: Prisma.StringNullableFilter<"Item"> | string | null
   driveId?: Prisma.StringFilter<"Item"> | string
   parentId?: Prisma.StringNullableFilter<"Item"> | string | null
+  tags?: Prisma.StringNullableListFilter<"Item">
   file?: Prisma.XOR<Prisma.FileNullableScalarRelationFilter, Prisma.FileWhereInput> | null
   folder?: Prisma.XOR<Prisma.FolderNullableScalarRelationFilter, Prisma.FolderWhereInput> | null
   image?: Prisma.XOR<Prisma.ImageNullableScalarRelationFilter, Prisma.ImageWhereInput> | null
@@ -309,15 +305,15 @@ export type ItemWhereInput = {
   parent?: Prisma.XOR<Prisma.ItemNullableScalarRelationFilter, Prisma.ItemWhereInput> | null
   trash?: Prisma.XOR<Prisma.TrashItemNullableScalarRelationFilter, Prisma.TrashItemWhereInput> | null
   collections?: Prisma.CollectionItemListRelationFilter
-  lock?: Prisma.XOR<Prisma.ItemLockNullableScalarRelationFilter, Prisma.ItemLockWhereInput> | null
+  locked?: Prisma.XOR<Prisma.LockedItemNullableScalarRelationFilter, Prisma.LockedItemWhereInput> | null
   permissions?: Prisma.PermissionListRelationFilter
-  versions?: Prisma.ItemVersionListRelationFilter
   thumbnails?: Prisma.ThumbnailListRelationFilter
-  tags?: Prisma.TagListRelationFilter
+  versions?: Prisma.ItemVersionListRelationFilter
   activities?: Prisma.ActivityListRelationFilter
   comments?: Prisma.CommentListRelationFilter
   logs?: Prisma.AuditLogListRelationFilter
   favoritedBy?: Prisma.FavoriteListRelationFilter
+  search?: Prisma.XOR<Prisma.SearchNullableScalarRelationFilter, Prisma.SearchWhereInput> | null
 }
 
 export type ItemOrderByWithRelationInput = {
@@ -331,11 +327,11 @@ export type ItemOrderByWithRelationInput = {
   uploadId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   ownerId?: Prisma.SortOrder
   workspaceId?: Prisma.SortOrderInput | Prisma.SortOrder
   driveId?: Prisma.SortOrder
   parentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  tags?: Prisma.SortOrder
   file?: Prisma.FileOrderByWithRelationInput
   folder?: Prisma.FolderOrderByWithRelationInput
   image?: Prisma.ImageOrderByWithRelationInput
@@ -350,36 +346,36 @@ export type ItemOrderByWithRelationInput = {
   parent?: Prisma.ItemOrderByWithRelationInput
   trash?: Prisma.TrashItemOrderByWithRelationInput
   collections?: Prisma.CollectionItemOrderByRelationAggregateInput
-  lock?: Prisma.ItemLockOrderByWithRelationInput
+  locked?: Prisma.LockedItemOrderByWithRelationInput
   permissions?: Prisma.PermissionOrderByRelationAggregateInput
-  versions?: Prisma.ItemVersionOrderByRelationAggregateInput
   thumbnails?: Prisma.ThumbnailOrderByRelationAggregateInput
-  tags?: Prisma.TagOrderByRelationAggregateInput
+  versions?: Prisma.ItemVersionOrderByRelationAggregateInput
   activities?: Prisma.ActivityOrderByRelationAggregateInput
   comments?: Prisma.CommentOrderByRelationAggregateInput
   logs?: Prisma.AuditLogOrderByRelationAggregateInput
   favoritedBy?: Prisma.FavoriteOrderByRelationAggregateInput
+  search?: Prisma.SearchOrderByWithRelationInput
 }
 
 export type ItemWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  path?: string
   AND?: Prisma.ItemWhereInput | Prisma.ItemWhereInput[]
   OR?: Prisma.ItemWhereInput[]
   NOT?: Prisma.ItemWhereInput | Prisma.ItemWhereInput[]
   name?: Prisma.StringFilter<"Item"> | string
-  size?: Prisma.IntFilter<"Item"> | number
-  path?: Prisma.StringFilter<"Item"> | string
+  size?: Prisma.BigIntFilter<"Item"> | bigint | number
   type?: Prisma.EnumItemTypeFilter<"Item"> | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFilter<"Item"> | $Enums.ItemCategory
   status?: Prisma.EnumItemStatusFilter<"Item"> | $Enums.ItemStatus
   uploadId?: Prisma.StringNullableFilter<"Item"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Item"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Item"> | Date | string
-  deletedAt?: Prisma.DateTimeNullableFilter<"Item"> | Date | string | null
   ownerId?: Prisma.StringFilter<"Item"> | string
   workspaceId?: Prisma.StringNullableFilter<"Item"> | string | null
   driveId?: Prisma.StringFilter<"Item"> | string
   parentId?: Prisma.StringNullableFilter<"Item"> | string | null
+  tags?: Prisma.StringNullableListFilter<"Item">
   file?: Prisma.XOR<Prisma.FileNullableScalarRelationFilter, Prisma.FileWhereInput> | null
   folder?: Prisma.XOR<Prisma.FolderNullableScalarRelationFilter, Prisma.FolderWhereInput> | null
   image?: Prisma.XOR<Prisma.ImageNullableScalarRelationFilter, Prisma.ImageWhereInput> | null
@@ -394,16 +390,16 @@ export type ItemWhereUniqueInput = Prisma.AtLeast<{
   parent?: Prisma.XOR<Prisma.ItemNullableScalarRelationFilter, Prisma.ItemWhereInput> | null
   trash?: Prisma.XOR<Prisma.TrashItemNullableScalarRelationFilter, Prisma.TrashItemWhereInput> | null
   collections?: Prisma.CollectionItemListRelationFilter
-  lock?: Prisma.XOR<Prisma.ItemLockNullableScalarRelationFilter, Prisma.ItemLockWhereInput> | null
+  locked?: Prisma.XOR<Prisma.LockedItemNullableScalarRelationFilter, Prisma.LockedItemWhereInput> | null
   permissions?: Prisma.PermissionListRelationFilter
-  versions?: Prisma.ItemVersionListRelationFilter
   thumbnails?: Prisma.ThumbnailListRelationFilter
-  tags?: Prisma.TagListRelationFilter
+  versions?: Prisma.ItemVersionListRelationFilter
   activities?: Prisma.ActivityListRelationFilter
   comments?: Prisma.CommentListRelationFilter
   logs?: Prisma.AuditLogListRelationFilter
   favoritedBy?: Prisma.FavoriteListRelationFilter
-}, "id">
+  search?: Prisma.XOR<Prisma.SearchNullableScalarRelationFilter, Prisma.SearchWhereInput> | null
+}, "id" | "path">
 
 export type ItemOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -416,11 +412,11 @@ export type ItemOrderByWithAggregationInput = {
   uploadId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   ownerId?: Prisma.SortOrder
   workspaceId?: Prisma.SortOrderInput | Prisma.SortOrder
   driveId?: Prisma.SortOrder
   parentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  tags?: Prisma.SortOrder
   _count?: Prisma.ItemCountOrderByAggregateInput
   _avg?: Prisma.ItemAvgOrderByAggregateInput
   _max?: Prisma.ItemMaxOrderByAggregateInput
@@ -434,7 +430,7 @@ export type ItemScalarWhereWithAggregatesInput = {
   NOT?: Prisma.ItemScalarWhereWithAggregatesInput | Prisma.ItemScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Item"> | string
   name?: Prisma.StringWithAggregatesFilter<"Item"> | string
-  size?: Prisma.IntWithAggregatesFilter<"Item"> | number
+  size?: Prisma.BigIntWithAggregatesFilter<"Item"> | bigint | number
   path?: Prisma.StringWithAggregatesFilter<"Item"> | string
   type?: Prisma.EnumItemTypeWithAggregatesFilter<"Item"> | $Enums.ItemType
   category?: Prisma.EnumItemCategoryWithAggregatesFilter<"Item"> | $Enums.ItemCategory
@@ -442,17 +438,17 @@ export type ItemScalarWhereWithAggregatesInput = {
   uploadId?: Prisma.StringNullableWithAggregatesFilter<"Item"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Item"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Item"> | Date | string
-  deletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Item"> | Date | string | null
   ownerId?: Prisma.StringWithAggregatesFilter<"Item"> | string
   workspaceId?: Prisma.StringNullableWithAggregatesFilter<"Item"> | string | null
   driveId?: Prisma.StringWithAggregatesFilter<"Item"> | string
   parentId?: Prisma.StringNullableWithAggregatesFilter<"Item"> | string | null
+  tags?: Prisma.StringNullableListFilter<"Item">
 }
 
 export type ItemCreateInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -460,7 +456,7 @@ export type ItemCreateInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -475,21 +471,21 @@ export type ItemCreateInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -497,11 +493,11 @@ export type ItemUncheckedCreateInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -512,21 +508,21 @@ export type ItemUncheckedCreateInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -534,7 +530,7 @@ export type ItemUpdateInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -549,21 +545,21 @@ export type ItemUpdateInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -571,11 +567,11 @@ export type ItemUncheckedUpdateInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -586,21 +582,21 @@ export type ItemUncheckedUpdateInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateManyInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -608,17 +604,17 @@ export type ItemCreateManyInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
 }
 
 export type ItemUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -626,13 +622,13 @@ export type ItemUpdateManyMutationInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
 }
 
 export type ItemUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -640,11 +636,11 @@ export type ItemUncheckedUpdateManyInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
 }
 
 export type ItemNullableScalarRelationFilter = {
@@ -678,11 +674,11 @@ export type ItemCountOrderByAggregateInput = {
   uploadId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deletedAt?: Prisma.SortOrder
   ownerId?: Prisma.SortOrder
   workspaceId?: Prisma.SortOrder
   driveId?: Prisma.SortOrder
   parentId?: Prisma.SortOrder
+  tags?: Prisma.SortOrder
 }
 
 export type ItemAvgOrderByAggregateInput = {
@@ -700,7 +696,6 @@ export type ItemMaxOrderByAggregateInput = {
   uploadId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deletedAt?: Prisma.SortOrder
   ownerId?: Prisma.SortOrder
   workspaceId?: Prisma.SortOrder
   driveId?: Prisma.SortOrder
@@ -718,7 +713,6 @@ export type ItemMinOrderByAggregateInput = {
   uploadId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deletedAt?: Prisma.SortOrder
   ownerId?: Prisma.SortOrder
   workspaceId?: Prisma.SortOrder
   driveId?: Prisma.SortOrder
@@ -951,6 +945,10 @@ export type ItemUpdateOneRequiredWithoutFavoritedByNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutFavoritedByInput, Prisma.ItemUpdateWithoutFavoritedByInput>, Prisma.ItemUncheckedUpdateWithoutFavoritedByInput>
 }
 
+export type ItemCreatetagsInput = {
+  set: string[]
+}
+
 export type ItemCreateNestedManyWithoutParentInput = {
   create?: Prisma.XOR<Prisma.ItemCreateWithoutParentInput, Prisma.ItemUncheckedCreateWithoutParentInput> | Prisma.ItemCreateWithoutParentInput[] | Prisma.ItemUncheckedCreateWithoutParentInput[]
   connectOrCreate?: Prisma.ItemCreateOrConnectWithoutParentInput | Prisma.ItemCreateOrConnectWithoutParentInput[]
@@ -981,6 +979,11 @@ export type EnumItemCategoryFieldUpdateOperationsInput = {
 
 export type EnumItemStatusFieldUpdateOperationsInput = {
   set?: $Enums.ItemStatus
+}
+
+export type ItemUpdatetagsInput = {
+  set?: string[]
+  push?: string | string[]
 }
 
 export type ItemUpdateManyWithoutParentNestedInput = {
@@ -1021,6 +1024,20 @@ export type ItemUncheckedUpdateManyWithoutParentNestedInput = {
   deleteMany?: Prisma.ItemScalarWhereInput | Prisma.ItemScalarWhereInput[]
 }
 
+export type ItemCreateNestedOneWithoutLockedInput = {
+  create?: Prisma.XOR<Prisma.ItemCreateWithoutLockedInput, Prisma.ItemUncheckedCreateWithoutLockedInput>
+  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutLockedInput
+  connect?: Prisma.ItemWhereUniqueInput
+}
+
+export type ItemUpdateOneRequiredWithoutLockedNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemCreateWithoutLockedInput, Prisma.ItemUncheckedCreateWithoutLockedInput>
+  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutLockedInput
+  upsert?: Prisma.ItemUpsertWithoutLockedInput
+  connect?: Prisma.ItemWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutLockedInput, Prisma.ItemUpdateWithoutLockedInput>, Prisma.ItemUncheckedUpdateWithoutLockedInput>
+}
+
 export type ItemCreateNestedOneWithoutPermissionsInput = {
   create?: Prisma.XOR<Prisma.ItemCreateWithoutPermissionsInput, Prisma.ItemUncheckedCreateWithoutPermissionsInput>
   connectOrCreate?: Prisma.ItemCreateOrConnectWithoutPermissionsInput
@@ -1037,42 +1054,12 @@ export type ItemUpdateOneWithoutPermissionsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutPermissionsInput, Prisma.ItemUpdateWithoutPermissionsInput>, Prisma.ItemUncheckedUpdateWithoutPermissionsInput>
 }
 
-export type ItemCreateNestedManyWithoutTagsInput = {
-  create?: Prisma.XOR<Prisma.ItemCreateWithoutTagsInput, Prisma.ItemUncheckedCreateWithoutTagsInput> | Prisma.ItemCreateWithoutTagsInput[] | Prisma.ItemUncheckedCreateWithoutTagsInput[]
-  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutTagsInput | Prisma.ItemCreateOrConnectWithoutTagsInput[]
-  connect?: Prisma.ItemWhereUniqueInput | Prisma.ItemWhereUniqueInput[]
-}
-
-export type ItemUncheckedCreateNestedManyWithoutTagsInput = {
-  create?: Prisma.XOR<Prisma.ItemCreateWithoutTagsInput, Prisma.ItemUncheckedCreateWithoutTagsInput> | Prisma.ItemCreateWithoutTagsInput[] | Prisma.ItemUncheckedCreateWithoutTagsInput[]
-  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutTagsInput | Prisma.ItemCreateOrConnectWithoutTagsInput[]
-  connect?: Prisma.ItemWhereUniqueInput | Prisma.ItemWhereUniqueInput[]
-}
-
-export type ItemUpdateManyWithoutTagsNestedInput = {
-  create?: Prisma.XOR<Prisma.ItemCreateWithoutTagsInput, Prisma.ItemUncheckedCreateWithoutTagsInput> | Prisma.ItemCreateWithoutTagsInput[] | Prisma.ItemUncheckedCreateWithoutTagsInput[]
-  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutTagsInput | Prisma.ItemCreateOrConnectWithoutTagsInput[]
-  upsert?: Prisma.ItemUpsertWithWhereUniqueWithoutTagsInput | Prisma.ItemUpsertWithWhereUniqueWithoutTagsInput[]
-  set?: Prisma.ItemWhereUniqueInput | Prisma.ItemWhereUniqueInput[]
-  disconnect?: Prisma.ItemWhereUniqueInput | Prisma.ItemWhereUniqueInput[]
-  delete?: Prisma.ItemWhereUniqueInput | Prisma.ItemWhereUniqueInput[]
-  connect?: Prisma.ItemWhereUniqueInput | Prisma.ItemWhereUniqueInput[]
-  update?: Prisma.ItemUpdateWithWhereUniqueWithoutTagsInput | Prisma.ItemUpdateWithWhereUniqueWithoutTagsInput[]
-  updateMany?: Prisma.ItemUpdateManyWithWhereWithoutTagsInput | Prisma.ItemUpdateManyWithWhereWithoutTagsInput[]
-  deleteMany?: Prisma.ItemScalarWhereInput | Prisma.ItemScalarWhereInput[]
-}
-
-export type ItemUncheckedUpdateManyWithoutTagsNestedInput = {
-  create?: Prisma.XOR<Prisma.ItemCreateWithoutTagsInput, Prisma.ItemUncheckedCreateWithoutTagsInput> | Prisma.ItemCreateWithoutTagsInput[] | Prisma.ItemUncheckedCreateWithoutTagsInput[]
-  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutTagsInput | Prisma.ItemCreateOrConnectWithoutTagsInput[]
-  upsert?: Prisma.ItemUpsertWithWhereUniqueWithoutTagsInput | Prisma.ItemUpsertWithWhereUniqueWithoutTagsInput[]
-  set?: Prisma.ItemWhereUniqueInput | Prisma.ItemWhereUniqueInput[]
-  disconnect?: Prisma.ItemWhereUniqueInput | Prisma.ItemWhereUniqueInput[]
-  delete?: Prisma.ItemWhereUniqueInput | Prisma.ItemWhereUniqueInput[]
-  connect?: Prisma.ItemWhereUniqueInput | Prisma.ItemWhereUniqueInput[]
-  update?: Prisma.ItemUpdateWithWhereUniqueWithoutTagsInput | Prisma.ItemUpdateWithWhereUniqueWithoutTagsInput[]
-  updateMany?: Prisma.ItemUpdateManyWithWhereWithoutTagsInput | Prisma.ItemUpdateManyWithWhereWithoutTagsInput[]
-  deleteMany?: Prisma.ItemScalarWhereInput | Prisma.ItemScalarWhereInput[]
+export type ItemUpdateOneRequiredWithoutSearchNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemCreateWithoutSearchInput, Prisma.ItemUncheckedCreateWithoutSearchInput>
+  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutSearchInput
+  upsert?: Prisma.ItemUpsertWithoutSearchInput
+  connect?: Prisma.ItemWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutSearchInput, Prisma.ItemUpdateWithoutSearchInput>, Prisma.ItemUncheckedUpdateWithoutSearchInput>
 }
 
 export type ItemCreateNestedOneWithoutThumbnailsInput = {
@@ -1205,24 +1192,10 @@ export type ItemUncheckedUpdateManyWithoutWorkspaceNestedInput = {
   deleteMany?: Prisma.ItemScalarWhereInput | Prisma.ItemScalarWhereInput[]
 }
 
-export type ItemCreateNestedOneWithoutLockInput = {
-  create?: Prisma.XOR<Prisma.ItemCreateWithoutLockInput, Prisma.ItemUncheckedCreateWithoutLockInput>
-  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutLockInput
-  connect?: Prisma.ItemWhereUniqueInput
-}
-
-export type ItemUpdateOneRequiredWithoutLockNestedInput = {
-  create?: Prisma.XOR<Prisma.ItemCreateWithoutLockInput, Prisma.ItemUncheckedCreateWithoutLockInput>
-  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutLockInput
-  upsert?: Prisma.ItemUpsertWithoutLockInput
-  connect?: Prisma.ItemWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutLockInput, Prisma.ItemUpdateWithoutLockInput>, Prisma.ItemUncheckedUpdateWithoutLockInput>
-}
-
 export type ItemCreateWithoutActivitiesInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -1230,7 +1203,7 @@ export type ItemCreateWithoutActivitiesInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -1245,20 +1218,20 @@ export type ItemCreateWithoutActivitiesInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutActivitiesInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -1266,11 +1239,11 @@ export type ItemUncheckedCreateWithoutActivitiesInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -1281,14 +1254,14 @@ export type ItemUncheckedCreateWithoutActivitiesInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutActivitiesInput = {
@@ -1310,7 +1283,7 @@ export type ItemUpdateToOneWithWhereWithoutActivitiesInput = {
 export type ItemUpdateWithoutActivitiesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -1318,7 +1291,7 @@ export type ItemUpdateWithoutActivitiesInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -1333,20 +1306,20 @@ export type ItemUpdateWithoutActivitiesInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutActivitiesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -1354,11 +1327,11 @@ export type ItemUncheckedUpdateWithoutActivitiesInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -1369,20 +1342,20 @@ export type ItemUncheckedUpdateWithoutActivitiesInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutLogsInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -1390,7 +1363,7 @@ export type ItemCreateWithoutLogsInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -1405,20 +1378,20 @@ export type ItemCreateWithoutLogsInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutLogsInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -1426,11 +1399,11 @@ export type ItemUncheckedCreateWithoutLogsInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -1441,14 +1414,14 @@ export type ItemUncheckedCreateWithoutLogsInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutLogsInput = {
@@ -1470,7 +1443,7 @@ export type ItemUpdateToOneWithWhereWithoutLogsInput = {
 export type ItemUpdateWithoutLogsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -1478,7 +1451,7 @@ export type ItemUpdateWithoutLogsInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -1493,20 +1466,20 @@ export type ItemUpdateWithoutLogsInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutLogsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -1514,11 +1487,11 @@ export type ItemUncheckedUpdateWithoutLogsInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -1529,20 +1502,20 @@ export type ItemUncheckedUpdateWithoutLogsInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutCollectionInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -1550,7 +1523,7 @@ export type ItemCreateWithoutCollectionInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -1564,21 +1537,21 @@ export type ItemCreateWithoutCollectionInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutCollectionInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -1586,11 +1559,11 @@ export type ItemUncheckedCreateWithoutCollectionInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -1600,15 +1573,15 @@ export type ItemUncheckedCreateWithoutCollectionInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutCollectionInput = {
@@ -1630,7 +1603,7 @@ export type ItemUpdateToOneWithWhereWithoutCollectionInput = {
 export type ItemUpdateWithoutCollectionInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -1638,7 +1611,7 @@ export type ItemUpdateWithoutCollectionInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -1652,21 +1625,21 @@ export type ItemUpdateWithoutCollectionInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutCollectionInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -1674,11 +1647,11 @@ export type ItemUncheckedUpdateWithoutCollectionInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -1688,21 +1661,21 @@ export type ItemUncheckedUpdateWithoutCollectionInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutCollectionsInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -1710,7 +1683,7 @@ export type ItemCreateWithoutCollectionsInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -1724,21 +1697,21 @@ export type ItemCreateWithoutCollectionsInput = {
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutCollectionsInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -1746,11 +1719,11 @@ export type ItemUncheckedCreateWithoutCollectionsInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -1760,15 +1733,15 @@ export type ItemUncheckedCreateWithoutCollectionsInput = {
   collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutCollectionsInput = {
@@ -1790,7 +1763,7 @@ export type ItemUpdateToOneWithWhereWithoutCollectionsInput = {
 export type ItemUpdateWithoutCollectionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -1798,7 +1771,7 @@ export type ItemUpdateWithoutCollectionsInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -1812,21 +1785,21 @@ export type ItemUpdateWithoutCollectionsInput = {
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutCollectionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -1834,11 +1807,11 @@ export type ItemUncheckedUpdateWithoutCollectionsInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -1848,21 +1821,21 @@ export type ItemUncheckedUpdateWithoutCollectionsInput = {
   collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutCommentsInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -1870,7 +1843,7 @@ export type ItemCreateWithoutCommentsInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -1885,20 +1858,20 @@ export type ItemCreateWithoutCommentsInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutCommentsInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -1906,11 +1879,11 @@ export type ItemUncheckedCreateWithoutCommentsInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -1921,14 +1894,14 @@ export type ItemUncheckedCreateWithoutCommentsInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutCommentsInput = {
@@ -1950,7 +1923,7 @@ export type ItemUpdateToOneWithWhereWithoutCommentsInput = {
 export type ItemUpdateWithoutCommentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -1958,7 +1931,7 @@ export type ItemUpdateWithoutCommentsInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -1973,20 +1946,20 @@ export type ItemUpdateWithoutCommentsInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutCommentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -1994,11 +1967,11 @@ export type ItemUncheckedUpdateWithoutCommentsInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -2009,20 +1982,20 @@ export type ItemUncheckedUpdateWithoutCommentsInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutDriveInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2030,7 +2003,7 @@ export type ItemCreateWithoutDriveInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -2044,21 +2017,21 @@ export type ItemCreateWithoutDriveInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutDriveInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2066,10 +2039,10 @@ export type ItemUncheckedCreateWithoutDriveInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -2080,15 +2053,15 @@ export type ItemUncheckedCreateWithoutDriveInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutDriveInput = {
@@ -2123,7 +2096,7 @@ export type ItemScalarWhereInput = {
   NOT?: Prisma.ItemScalarWhereInput | Prisma.ItemScalarWhereInput[]
   id?: Prisma.StringFilter<"Item"> | string
   name?: Prisma.StringFilter<"Item"> | string
-  size?: Prisma.IntFilter<"Item"> | number
+  size?: Prisma.BigIntFilter<"Item"> | bigint | number
   path?: Prisma.StringFilter<"Item"> | string
   type?: Prisma.EnumItemTypeFilter<"Item"> | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFilter<"Item"> | $Enums.ItemCategory
@@ -2131,17 +2104,17 @@ export type ItemScalarWhereInput = {
   uploadId?: Prisma.StringNullableFilter<"Item"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Item"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Item"> | Date | string
-  deletedAt?: Prisma.DateTimeNullableFilter<"Item"> | Date | string | null
   ownerId?: Prisma.StringFilter<"Item"> | string
   workspaceId?: Prisma.StringNullableFilter<"Item"> | string | null
   driveId?: Prisma.StringFilter<"Item"> | string
   parentId?: Prisma.StringNullableFilter<"Item"> | string | null
+  tags?: Prisma.StringNullableListFilter<"Item">
 }
 
 export type ItemCreateWithoutFileInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2149,7 +2122,7 @@ export type ItemCreateWithoutFileInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
@@ -2163,21 +2136,21 @@ export type ItemCreateWithoutFileInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutFileInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2185,11 +2158,11 @@ export type ItemUncheckedCreateWithoutFileInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
@@ -2199,15 +2172,15 @@ export type ItemUncheckedCreateWithoutFileInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutFileInput = {
@@ -2229,7 +2202,7 @@ export type ItemUpdateToOneWithWhereWithoutFileInput = {
 export type ItemUpdateWithoutFileInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -2237,7 +2210,7 @@ export type ItemUpdateWithoutFileInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
@@ -2251,21 +2224,21 @@ export type ItemUpdateWithoutFileInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutFileInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -2273,11 +2246,11 @@ export type ItemUncheckedUpdateWithoutFileInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
@@ -2287,21 +2260,21 @@ export type ItemUncheckedUpdateWithoutFileInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutFolderInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2309,7 +2282,7 @@ export type ItemCreateWithoutFolderInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
@@ -2323,21 +2296,21 @@ export type ItemCreateWithoutFolderInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutFolderInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2345,11 +2318,11 @@ export type ItemUncheckedCreateWithoutFolderInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
@@ -2359,15 +2332,15 @@ export type ItemUncheckedCreateWithoutFolderInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutFolderInput = {
@@ -2389,7 +2362,7 @@ export type ItemUpdateToOneWithWhereWithoutFolderInput = {
 export type ItemUpdateWithoutFolderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -2397,7 +2370,7 @@ export type ItemUpdateWithoutFolderInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
@@ -2411,21 +2384,21 @@ export type ItemUpdateWithoutFolderInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutFolderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -2433,11 +2406,11 @@ export type ItemUncheckedUpdateWithoutFolderInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
@@ -2447,21 +2420,21 @@ export type ItemUncheckedUpdateWithoutFolderInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutImageInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2469,7 +2442,7 @@ export type ItemCreateWithoutImageInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
@@ -2483,21 +2456,21 @@ export type ItemCreateWithoutImageInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutImageInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2505,11 +2478,11 @@ export type ItemUncheckedCreateWithoutImageInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
@@ -2519,15 +2492,15 @@ export type ItemUncheckedCreateWithoutImageInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutImageInput = {
@@ -2549,7 +2522,7 @@ export type ItemUpdateToOneWithWhereWithoutImageInput = {
 export type ItemUpdateWithoutImageInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -2557,7 +2530,7 @@ export type ItemUpdateWithoutImageInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
@@ -2571,21 +2544,21 @@ export type ItemUpdateWithoutImageInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutImageInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -2593,11 +2566,11 @@ export type ItemUncheckedUpdateWithoutImageInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
@@ -2607,21 +2580,21 @@ export type ItemUncheckedUpdateWithoutImageInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutVideoInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2629,7 +2602,7 @@ export type ItemCreateWithoutVideoInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -2643,21 +2616,21 @@ export type ItemCreateWithoutVideoInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutVideoInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2665,11 +2638,11 @@ export type ItemUncheckedCreateWithoutVideoInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -2679,15 +2652,15 @@ export type ItemUncheckedCreateWithoutVideoInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutVideoInput = {
@@ -2709,7 +2682,7 @@ export type ItemUpdateToOneWithWhereWithoutVideoInput = {
 export type ItemUpdateWithoutVideoInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -2717,7 +2690,7 @@ export type ItemUpdateWithoutVideoInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -2731,21 +2704,21 @@ export type ItemUpdateWithoutVideoInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutVideoInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -2753,11 +2726,11 @@ export type ItemUncheckedUpdateWithoutVideoInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -2767,21 +2740,21 @@ export type ItemUncheckedUpdateWithoutVideoInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutAudioInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2789,7 +2762,7 @@ export type ItemCreateWithoutAudioInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -2803,21 +2776,21 @@ export type ItemCreateWithoutAudioInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutAudioInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2825,11 +2798,11 @@ export type ItemUncheckedCreateWithoutAudioInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -2839,15 +2812,15 @@ export type ItemUncheckedCreateWithoutAudioInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutAudioInput = {
@@ -2869,7 +2842,7 @@ export type ItemUpdateToOneWithWhereWithoutAudioInput = {
 export type ItemUpdateWithoutAudioInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -2877,7 +2850,7 @@ export type ItemUpdateWithoutAudioInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -2891,21 +2864,21 @@ export type ItemUpdateWithoutAudioInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutAudioInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -2913,11 +2886,11 @@ export type ItemUncheckedUpdateWithoutAudioInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -2927,21 +2900,21 @@ export type ItemUncheckedUpdateWithoutAudioInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutPhotoInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2949,7 +2922,7 @@ export type ItemCreateWithoutPhotoInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -2963,21 +2936,21 @@ export type ItemCreateWithoutPhotoInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutPhotoInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -2985,11 +2958,11 @@ export type ItemUncheckedCreateWithoutPhotoInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -2999,15 +2972,15 @@ export type ItemUncheckedCreateWithoutPhotoInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutPhotoInput = {
@@ -3029,7 +3002,7 @@ export type ItemUpdateToOneWithWhereWithoutPhotoInput = {
 export type ItemUpdateWithoutPhotoInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -3037,7 +3010,7 @@ export type ItemUpdateWithoutPhotoInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -3051,21 +3024,21 @@ export type ItemUpdateWithoutPhotoInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutPhotoInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -3073,11 +3046,11 @@ export type ItemUncheckedUpdateWithoutPhotoInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -3087,21 +3060,21 @@ export type ItemUncheckedUpdateWithoutPhotoInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutFavoritedByInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -3109,7 +3082,7 @@ export type ItemCreateWithoutFavoritedByInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -3124,20 +3097,20 @@ export type ItemCreateWithoutFavoritedByInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutFavoritedByInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -3145,11 +3118,11 @@ export type ItemUncheckedCreateWithoutFavoritedByInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -3160,14 +3133,14 @@ export type ItemUncheckedCreateWithoutFavoritedByInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutFavoritedByInput = {
@@ -3189,7 +3162,7 @@ export type ItemUpdateToOneWithWhereWithoutFavoritedByInput = {
 export type ItemUpdateWithoutFavoritedByInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -3197,7 +3170,7 @@ export type ItemUpdateWithoutFavoritedByInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -3212,20 +3185,20 @@ export type ItemUpdateWithoutFavoritedByInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutFavoritedByInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -3233,11 +3206,11 @@ export type ItemUncheckedUpdateWithoutFavoritedByInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -3248,20 +3221,20 @@ export type ItemUncheckedUpdateWithoutFavoritedByInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutParentInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -3269,7 +3242,7 @@ export type ItemCreateWithoutParentInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -3283,21 +3256,21 @@ export type ItemCreateWithoutParentInput = {
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutParentInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -3305,10 +3278,10 @@ export type ItemUncheckedCreateWithoutParentInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -3319,15 +3292,15 @@ export type ItemUncheckedCreateWithoutParentInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutParentInput = {
@@ -3341,9 +3314,9 @@ export type ItemCreateManyParentInputEnvelope = {
 }
 
 export type ItemCreateWithoutChildrenInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -3351,7 +3324,7 @@ export type ItemCreateWithoutChildrenInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -3365,21 +3338,21 @@ export type ItemCreateWithoutChildrenInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutChildrenInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -3387,11 +3360,11 @@ export type ItemUncheckedCreateWithoutChildrenInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -3401,15 +3374,15 @@ export type ItemUncheckedCreateWithoutChildrenInput = {
   collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutChildrenInput = {
@@ -3447,7 +3420,7 @@ export type ItemUpdateToOneWithWhereWithoutChildrenInput = {
 export type ItemUpdateWithoutChildrenInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -3455,7 +3428,7 @@ export type ItemUpdateWithoutChildrenInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -3469,21 +3442,21 @@ export type ItemUpdateWithoutChildrenInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutChildrenInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -3491,11 +3464,11 @@ export type ItemUncheckedUpdateWithoutChildrenInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -3505,21 +3478,21 @@ export type ItemUncheckedUpdateWithoutChildrenInput = {
   collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
-export type ItemCreateWithoutPermissionsInput = {
-  id?: string
+export type ItemCreateWithoutLockedInput = {
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -3527,7 +3500,7 @@ export type ItemCreateWithoutPermissionsInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -3542,20 +3515,20 @@ export type ItemCreateWithoutPermissionsInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
-export type ItemUncheckedCreateWithoutPermissionsInput = {
-  id?: string
+export type ItemUncheckedCreateWithoutLockedInput = {
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -3563,11 +3536,11 @@ export type ItemUncheckedCreateWithoutPermissionsInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -3578,14 +3551,174 @@ export type ItemUncheckedCreateWithoutPermissionsInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+}
+
+export type ItemCreateOrConnectWithoutLockedInput = {
+  where: Prisma.ItemWhereUniqueInput
+  create: Prisma.XOR<Prisma.ItemCreateWithoutLockedInput, Prisma.ItemUncheckedCreateWithoutLockedInput>
+}
+
+export type ItemUpsertWithoutLockedInput = {
+  update: Prisma.XOR<Prisma.ItemUpdateWithoutLockedInput, Prisma.ItemUncheckedUpdateWithoutLockedInput>
+  create: Prisma.XOR<Prisma.ItemCreateWithoutLockedInput, Prisma.ItemUncheckedCreateWithoutLockedInput>
+  where?: Prisma.ItemWhereInput
+}
+
+export type ItemUpdateToOneWithWhereWithoutLockedInput = {
+  where?: Prisma.ItemWhereInput
+  data: Prisma.XOR<Prisma.ItemUpdateWithoutLockedInput, Prisma.ItemUncheckedUpdateWithoutLockedInput>
+}
+
+export type ItemUpdateWithoutLockedInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  path?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
+  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
+  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
+  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  tags?: Prisma.ItemUpdatetagsInput | string[]
+  file?: Prisma.FileUpdateOneWithoutItemNestedInput
+  folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
+  image?: Prisma.ImageUpdateOneWithoutItemNestedInput
+  video?: Prisma.VideoUpdateOneWithoutItemNestedInput
+  audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
+  photo?: Prisma.PhotoUpdateOneWithoutItemNestedInput
+  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
+  owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
+  workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
+  drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
+  children?: Prisma.ItemUpdateManyWithoutParentNestedInput
+  parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
+  trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
+  collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
+  activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
+  logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
+  favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+}
+
+export type ItemUncheckedUpdateWithoutLockedInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  path?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
+  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
+  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
+  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ownerId?: Prisma.StringFieldUpdateOperationsInput | string
+  workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  driveId?: Prisma.StringFieldUpdateOperationsInput | string
+  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
+  file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
+  folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
+  image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
+  video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
+  audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
+  photo?: Prisma.PhotoUncheckedUpdateOneWithoutItemNestedInput
+  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
+  children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
+  trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
+  collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
+  activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
+  logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
+  favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+}
+
+export type ItemCreateWithoutPermissionsInput = {
+  id: string
+  name: string
+  size?: bigint | number
+  path: string
+  type?: $Enums.ItemType
+  category?: $Enums.ItemCategory
+  status?: $Enums.ItemStatus
+  uploadId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  tags?: Prisma.ItemCreatetagsInput | string[]
+  file?: Prisma.FileCreateNestedOneWithoutItemInput
+  folder?: Prisma.FolderCreateNestedOneWithoutItemInput
+  image?: Prisma.ImageCreateNestedOneWithoutItemInput
+  video?: Prisma.VideoCreateNestedOneWithoutItemInput
+  audio?: Prisma.AudioCreateNestedOneWithoutItemInput
+  photo?: Prisma.PhotoCreateNestedOneWithoutItemInput
+  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
+  owner: Prisma.UserCreateNestedOneWithoutItemsInput
+  workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
+  drive: Prisma.DriveCreateNestedOneWithoutItemsInput
+  children?: Prisma.ItemCreateNestedManyWithoutParentInput
+  parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
+  trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
+  collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
+  thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
+  activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
+  comments?: Prisma.CommentCreateNestedManyWithoutItemInput
+  logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
+  favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
+}
+
+export type ItemUncheckedCreateWithoutPermissionsInput = {
+  id: string
+  name: string
+  size?: bigint | number
+  path: string
+  type?: $Enums.ItemType
+  category?: $Enums.ItemCategory
+  status?: $Enums.ItemStatus
+  uploadId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  ownerId: string
+  workspaceId?: string | null
+  driveId: string
+  parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
+  file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
+  folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
+  image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
+  video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
+  audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
+  photo?: Prisma.PhotoUncheckedCreateNestedOneWithoutItemInput
+  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
+  children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
+  trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
+  collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
+  thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
+  activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
+  logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
+  favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutPermissionsInput = {
@@ -3607,7 +3740,7 @@ export type ItemUpdateToOneWithWhereWithoutPermissionsInput = {
 export type ItemUpdateWithoutPermissionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -3615,7 +3748,7 @@ export type ItemUpdateWithoutPermissionsInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -3630,20 +3763,20 @@ export type ItemUpdateWithoutPermissionsInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutPermissionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -3651,11 +3784,11 @@ export type ItemUncheckedUpdateWithoutPermissionsInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -3666,113 +3799,180 @@ export type ItemUncheckedUpdateWithoutPermissionsInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
+  activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
+  logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
+  favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+}
+
+export type ItemCreateWithoutSearchInput = {
+  id: string
+  name: string
+  size?: bigint | number
+  path: string
+  type?: $Enums.ItemType
+  category?: $Enums.ItemCategory
+  status?: $Enums.ItemStatus
+  uploadId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  tags?: Prisma.ItemCreatetagsInput | string[]
+  file?: Prisma.FileCreateNestedOneWithoutItemInput
+  folder?: Prisma.FolderCreateNestedOneWithoutItemInput
+  image?: Prisma.ImageCreateNestedOneWithoutItemInput
+  video?: Prisma.VideoCreateNestedOneWithoutItemInput
+  audio?: Prisma.AudioCreateNestedOneWithoutItemInput
+  photo?: Prisma.PhotoCreateNestedOneWithoutItemInput
+  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
+  owner: Prisma.UserCreateNestedOneWithoutItemsInput
+  workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
+  drive: Prisma.DriveCreateNestedOneWithoutItemsInput
+  children?: Prisma.ItemCreateNestedManyWithoutParentInput
+  parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
+  trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
+  collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
+  activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
+  comments?: Prisma.CommentCreateNestedManyWithoutItemInput
+  logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
+  favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+}
+
+export type ItemUncheckedCreateWithoutSearchInput = {
+  id: string
+  name: string
+  size?: bigint | number
+  path: string
+  type?: $Enums.ItemType
+  category?: $Enums.ItemCategory
+  status?: $Enums.ItemStatus
+  uploadId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  ownerId: string
+  workspaceId?: string | null
+  driveId: string
+  parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
+  file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
+  folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
+  image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
+  video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
+  audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
+  photo?: Prisma.PhotoUncheckedCreateNestedOneWithoutItemInput
+  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
+  children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
+  trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
+  collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
+  activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
+  logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
+  favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+}
+
+export type ItemCreateOrConnectWithoutSearchInput = {
+  where: Prisma.ItemWhereUniqueInput
+  create: Prisma.XOR<Prisma.ItemCreateWithoutSearchInput, Prisma.ItemUncheckedCreateWithoutSearchInput>
+}
+
+export type ItemUpsertWithoutSearchInput = {
+  update: Prisma.XOR<Prisma.ItemUpdateWithoutSearchInput, Prisma.ItemUncheckedUpdateWithoutSearchInput>
+  create: Prisma.XOR<Prisma.ItemCreateWithoutSearchInput, Prisma.ItemUncheckedCreateWithoutSearchInput>
+  where?: Prisma.ItemWhereInput
+}
+
+export type ItemUpdateToOneWithWhereWithoutSearchInput = {
+  where?: Prisma.ItemWhereInput
+  data: Prisma.XOR<Prisma.ItemUpdateWithoutSearchInput, Prisma.ItemUncheckedUpdateWithoutSearchInput>
+}
+
+export type ItemUpdateWithoutSearchInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  path?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
+  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
+  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
+  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  tags?: Prisma.ItemUpdatetagsInput | string[]
+  file?: Prisma.FileUpdateOneWithoutItemNestedInput
+  folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
+  image?: Prisma.ImageUpdateOneWithoutItemNestedInput
+  video?: Prisma.VideoUpdateOneWithoutItemNestedInput
+  audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
+  photo?: Prisma.PhotoUpdateOneWithoutItemNestedInput
+  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
+  owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
+  workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
+  drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
+  children?: Prisma.ItemUpdateManyWithoutParentNestedInput
+  parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
+  trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
+  collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
+  activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
+  logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
+  favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+}
+
+export type ItemUncheckedUpdateWithoutSearchInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  path?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
+  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
+  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
+  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ownerId?: Prisma.StringFieldUpdateOperationsInput | string
+  workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  driveId?: Prisma.StringFieldUpdateOperationsInput | string
+  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
+  file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
+  folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
+  image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
+  video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
+  audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
+  photo?: Prisma.PhotoUncheckedUpdateOneWithoutItemNestedInput
+  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
+  children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
+  trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
+  collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
 }
 
-export type ItemCreateWithoutTagsInput = {
-  id?: string
-  name: string
-  size?: number
-  path: string
-  type?: $Enums.ItemType
-  category?: $Enums.ItemCategory
-  status?: $Enums.ItemStatus
-  uploadId?: string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  deletedAt?: Date | string | null
-  file?: Prisma.FileCreateNestedOneWithoutItemInput
-  folder?: Prisma.FolderCreateNestedOneWithoutItemInput
-  image?: Prisma.ImageCreateNestedOneWithoutItemInput
-  video?: Prisma.VideoCreateNestedOneWithoutItemInput
-  audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  photo?: Prisma.PhotoCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
-  owner: Prisma.UserCreateNestedOneWithoutItemsInput
-  workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
-  drive: Prisma.DriveCreateNestedOneWithoutItemsInput
-  children?: Prisma.ItemCreateNestedManyWithoutParentInput
-  parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
-  trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
-  permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
-  thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
-  comments?: Prisma.CommentCreateNestedManyWithoutItemInput
-  logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
-  favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
-}
-
-export type ItemUncheckedCreateWithoutTagsInput = {
-  id?: string
-  name: string
-  size?: number
-  path: string
-  type?: $Enums.ItemType
-  category?: $Enums.ItemCategory
-  status?: $Enums.ItemStatus
-  uploadId?: string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  deletedAt?: Date | string | null
-  ownerId: string
-  workspaceId?: string | null
-  driveId: string
-  parentId?: string | null
-  file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
-  folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
-  image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
-  video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
-  audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  photo?: Prisma.PhotoUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
-  children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
-  trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
-  thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
-  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
-  logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
-  favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
-}
-
-export type ItemCreateOrConnectWithoutTagsInput = {
-  where: Prisma.ItemWhereUniqueInput
-  create: Prisma.XOR<Prisma.ItemCreateWithoutTagsInput, Prisma.ItemUncheckedCreateWithoutTagsInput>
-}
-
-export type ItemUpsertWithWhereUniqueWithoutTagsInput = {
-  where: Prisma.ItemWhereUniqueInput
-  update: Prisma.XOR<Prisma.ItemUpdateWithoutTagsInput, Prisma.ItemUncheckedUpdateWithoutTagsInput>
-  create: Prisma.XOR<Prisma.ItemCreateWithoutTagsInput, Prisma.ItemUncheckedCreateWithoutTagsInput>
-}
-
-export type ItemUpdateWithWhereUniqueWithoutTagsInput = {
-  where: Prisma.ItemWhereUniqueInput
-  data: Prisma.XOR<Prisma.ItemUpdateWithoutTagsInput, Prisma.ItemUncheckedUpdateWithoutTagsInput>
-}
-
-export type ItemUpdateManyWithWhereWithoutTagsInput = {
-  where: Prisma.ItemScalarWhereInput
-  data: Prisma.XOR<Prisma.ItemUpdateManyMutationInput, Prisma.ItemUncheckedUpdateManyWithoutTagsInput>
-}
-
 export type ItemCreateWithoutThumbnailsInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -3780,7 +3980,7 @@ export type ItemCreateWithoutThumbnailsInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -3795,20 +3995,20 @@ export type ItemCreateWithoutThumbnailsInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutThumbnailsInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -3816,11 +4016,11 @@ export type ItemUncheckedCreateWithoutThumbnailsInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -3831,14 +4031,14 @@ export type ItemUncheckedCreateWithoutThumbnailsInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutThumbnailsInput = {
@@ -3860,7 +4060,7 @@ export type ItemUpdateToOneWithWhereWithoutThumbnailsInput = {
 export type ItemUpdateWithoutThumbnailsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -3868,7 +4068,7 @@ export type ItemUpdateWithoutThumbnailsInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -3883,20 +4083,20 @@ export type ItemUpdateWithoutThumbnailsInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutThumbnailsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -3904,11 +4104,11 @@ export type ItemUncheckedUpdateWithoutThumbnailsInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -3919,20 +4119,20 @@ export type ItemUncheckedUpdateWithoutThumbnailsInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutTrashInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -3940,7 +4140,7 @@ export type ItemCreateWithoutTrashInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -3954,21 +4154,21 @@ export type ItemCreateWithoutTrashInput = {
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutTrashInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -3976,11 +4176,11 @@ export type ItemUncheckedCreateWithoutTrashInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -3990,15 +4190,15 @@ export type ItemUncheckedCreateWithoutTrashInput = {
   collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutTrashInput = {
@@ -4020,7 +4220,7 @@ export type ItemUpdateToOneWithWhereWithoutTrashInput = {
 export type ItemUpdateWithoutTrashInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -4028,7 +4228,7 @@ export type ItemUpdateWithoutTrashInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -4042,21 +4242,21 @@ export type ItemUpdateWithoutTrashInput = {
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutTrashInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -4064,11 +4264,11 @@ export type ItemUncheckedUpdateWithoutTrashInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -4078,21 +4278,21 @@ export type ItemUncheckedUpdateWithoutTrashInput = {
   collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutOwnerInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -4100,7 +4300,7 @@ export type ItemCreateWithoutOwnerInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -4114,21 +4314,21 @@ export type ItemCreateWithoutOwnerInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutOwnerInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -4136,10 +4336,10 @@ export type ItemUncheckedCreateWithoutOwnerInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -4150,15 +4350,15 @@ export type ItemUncheckedCreateWithoutOwnerInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutOwnerInput = {
@@ -4188,9 +4388,9 @@ export type ItemUpdateManyWithWhereWithoutOwnerInput = {
 }
 
 export type ItemCreateWithoutVersionsInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -4198,7 +4398,7 @@ export type ItemCreateWithoutVersionsInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -4213,20 +4413,20 @@ export type ItemCreateWithoutVersionsInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutVersionsInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -4234,11 +4434,11 @@ export type ItemUncheckedCreateWithoutVersionsInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -4249,14 +4449,14 @@ export type ItemUncheckedCreateWithoutVersionsInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutVersionsInput = {
@@ -4278,7 +4478,7 @@ export type ItemUpdateToOneWithWhereWithoutVersionsInput = {
 export type ItemUpdateWithoutVersionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -4286,7 +4486,7 @@ export type ItemUpdateWithoutVersionsInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -4301,20 +4501,20 @@ export type ItemUpdateWithoutVersionsInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutVersionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -4322,11 +4522,11 @@ export type ItemUncheckedUpdateWithoutVersionsInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -4337,20 +4537,20 @@ export type ItemUncheckedUpdateWithoutVersionsInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutWorkspaceInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -4358,7 +4558,7 @@ export type ItemCreateWithoutWorkspaceInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
@@ -4372,21 +4572,21 @@ export type ItemCreateWithoutWorkspaceInput = {
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutWorkspaceInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -4394,10 +4594,10 @@ export type ItemUncheckedCreateWithoutWorkspaceInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
   file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
@@ -4408,15 +4608,15 @@ export type ItemUncheckedCreateWithoutWorkspaceInput = {
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
   collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  lock?: Prisma.ItemLockUncheckedCreateNestedOneWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutWorkspaceInput = {
@@ -4445,170 +4645,10 @@ export type ItemUpdateManyWithWhereWithoutWorkspaceInput = {
   data: Prisma.XOR<Prisma.ItemUpdateManyMutationInput, Prisma.ItemUncheckedUpdateManyWithoutWorkspaceInput>
 }
 
-export type ItemCreateWithoutLockInput = {
-  id?: string
-  name: string
-  size?: number
-  path: string
-  type?: $Enums.ItemType
-  category?: $Enums.ItemCategory
-  status?: $Enums.ItemStatus
-  uploadId?: string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  deletedAt?: Date | string | null
-  file?: Prisma.FileCreateNestedOneWithoutItemInput
-  folder?: Prisma.FolderCreateNestedOneWithoutItemInput
-  image?: Prisma.ImageCreateNestedOneWithoutItemInput
-  video?: Prisma.VideoCreateNestedOneWithoutItemInput
-  audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  photo?: Prisma.PhotoCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
-  owner: Prisma.UserCreateNestedOneWithoutItemsInput
-  workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
-  drive: Prisma.DriveCreateNestedOneWithoutItemsInput
-  children?: Prisma.ItemCreateNestedManyWithoutParentInput
-  parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
-  trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collections?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
-  thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagCreateNestedManyWithoutItemsInput
-  activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
-  comments?: Prisma.CommentCreateNestedManyWithoutItemInput
-  logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
-  favoritedBy?: Prisma.FavoriteCreateNestedManyWithoutItemInput
-}
-
-export type ItemUncheckedCreateWithoutLockInput = {
-  id?: string
-  name: string
-  size?: number
-  path: string
-  type?: $Enums.ItemType
-  category?: $Enums.ItemCategory
-  status?: $Enums.ItemStatus
-  uploadId?: string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  deletedAt?: Date | string | null
-  ownerId: string
-  workspaceId?: string | null
-  driveId: string
-  parentId?: string | null
-  file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
-  folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
-  image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
-  video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
-  audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  photo?: Prisma.PhotoUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
-  children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
-  trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collections?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
-  thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  tags?: Prisma.TagUncheckedCreateNestedManyWithoutItemsInput
-  activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
-  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
-  logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
-  favoritedBy?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
-}
-
-export type ItemCreateOrConnectWithoutLockInput = {
-  where: Prisma.ItemWhereUniqueInput
-  create: Prisma.XOR<Prisma.ItemCreateWithoutLockInput, Prisma.ItemUncheckedCreateWithoutLockInput>
-}
-
-export type ItemUpsertWithoutLockInput = {
-  update: Prisma.XOR<Prisma.ItemUpdateWithoutLockInput, Prisma.ItemUncheckedUpdateWithoutLockInput>
-  create: Prisma.XOR<Prisma.ItemCreateWithoutLockInput, Prisma.ItemUncheckedCreateWithoutLockInput>
-  where?: Prisma.ItemWhereInput
-}
-
-export type ItemUpdateToOneWithWhereWithoutLockInput = {
-  where?: Prisma.ItemWhereInput
-  data: Prisma.XOR<Prisma.ItemUpdateWithoutLockInput, Prisma.ItemUncheckedUpdateWithoutLockInput>
-}
-
-export type ItemUpdateWithoutLockInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
-  path?: Prisma.StringFieldUpdateOperationsInput | string
-  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
-  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
-  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
-  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  file?: Prisma.FileUpdateOneWithoutItemNestedInput
-  folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
-  image?: Prisma.ImageUpdateOneWithoutItemNestedInput
-  video?: Prisma.VideoUpdateOneWithoutItemNestedInput
-  audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  photo?: Prisma.PhotoUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
-  owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
-  workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
-  drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
-  children?: Prisma.ItemUpdateManyWithoutParentNestedInput
-  parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
-  trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
-  thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
-  activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
-  comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
-  logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
-  favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
-}
-
-export type ItemUncheckedUpdateWithoutLockInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
-  path?: Prisma.StringFieldUpdateOperationsInput | string
-  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
-  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
-  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
-  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  ownerId?: Prisma.StringFieldUpdateOperationsInput | string
-  workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  driveId?: Prisma.StringFieldUpdateOperationsInput | string
-  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
-  folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
-  image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
-  video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
-  audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  photo?: Prisma.PhotoUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
-  children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
-  trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
-  thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
-  activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
-  comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
-  logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
-  favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
-}
-
 export type ItemCreateManyDriveInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -4616,16 +4656,16 @@ export type ItemCreateManyDriveInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
 }
 
 export type ItemUpdateWithoutDriveInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -4633,7 +4673,7 @@ export type ItemUpdateWithoutDriveInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -4647,21 +4687,21 @@ export type ItemUpdateWithoutDriveInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutDriveInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -4669,10 +4709,10 @@ export type ItemUncheckedUpdateWithoutDriveInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -4683,21 +4723,21 @@ export type ItemUncheckedUpdateWithoutDriveInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateManyWithoutDriveInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -4705,16 +4745,16 @@ export type ItemUncheckedUpdateManyWithoutDriveInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
 }
 
 export type ItemCreateManyParentInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -4722,16 +4762,16 @@ export type ItemCreateManyParentInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   workspaceId?: string | null
   driveId: string
+  tags?: Prisma.ItemCreatetagsInput | string[]
 }
 
 export type ItemUpdateWithoutParentInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -4739,7 +4779,7 @@ export type ItemUpdateWithoutParentInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -4753,21 +4793,21 @@ export type ItemUpdateWithoutParentInput = {
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutParentInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -4775,10 +4815,10 @@ export type ItemUncheckedUpdateWithoutParentInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -4789,21 +4829,21 @@ export type ItemUncheckedUpdateWithoutParentInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateManyWithoutParentInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -4811,106 +4851,16 @@ export type ItemUncheckedUpdateManyWithoutParentInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
-}
-
-export type ItemUpdateWithoutTagsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
-  path?: Prisma.StringFieldUpdateOperationsInput | string
-  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
-  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
-  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
-  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  file?: Prisma.FileUpdateOneWithoutItemNestedInput
-  folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
-  image?: Prisma.ImageUpdateOneWithoutItemNestedInput
-  video?: Prisma.VideoUpdateOneWithoutItemNestedInput
-  audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  photo?: Prisma.PhotoUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
-  owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
-  workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
-  drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
-  children?: Prisma.ItemUpdateManyWithoutParentNestedInput
-  parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
-  trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
-  permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
-  thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
-  comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
-  logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
-  favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
-}
-
-export type ItemUncheckedUpdateWithoutTagsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
-  path?: Prisma.StringFieldUpdateOperationsInput | string
-  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
-  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
-  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
-  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  ownerId?: Prisma.StringFieldUpdateOperationsInput | string
-  workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  driveId?: Prisma.StringFieldUpdateOperationsInput | string
-  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
-  folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
-  image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
-  video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
-  audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  photo?: Prisma.PhotoUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
-  children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
-  trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
-  thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
-  comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
-  logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
-  favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
-}
-
-export type ItemUncheckedUpdateManyWithoutTagsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
-  path?: Prisma.StringFieldUpdateOperationsInput | string
-  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
-  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
-  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
-  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  ownerId?: Prisma.StringFieldUpdateOperationsInput | string
-  workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  driveId?: Prisma.StringFieldUpdateOperationsInput | string
-  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
 }
 
 export type ItemCreateManyOwnerInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -4918,16 +4868,16 @@ export type ItemCreateManyOwnerInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   workspaceId?: string | null
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
 }
 
 export type ItemUpdateWithoutOwnerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -4935,7 +4885,7 @@ export type ItemUpdateWithoutOwnerInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -4949,21 +4899,21 @@ export type ItemUpdateWithoutOwnerInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutOwnerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -4971,10 +4921,10 @@ export type ItemUncheckedUpdateWithoutOwnerInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -4985,21 +4935,21 @@ export type ItemUncheckedUpdateWithoutOwnerInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateManyWithoutOwnerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -5007,16 +4957,16 @@ export type ItemUncheckedUpdateManyWithoutOwnerInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
 }
 
 export type ItemCreateManyWorkspaceInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   path: string
   type?: $Enums.ItemType
   category?: $Enums.ItemCategory
@@ -5024,16 +4974,16 @@ export type ItemCreateManyWorkspaceInput = {
   uploadId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deletedAt?: Date | string | null
   ownerId: string
   driveId: string
   parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
 }
 
 export type ItemUpdateWithoutWorkspaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -5041,7 +4991,7 @@ export type ItemUpdateWithoutWorkspaceInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
@@ -5055,21 +5005,21 @@ export type ItemUpdateWithoutWorkspaceInput = {
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutWorkspaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -5077,10 +5027,10 @@ export type ItemUncheckedUpdateWithoutWorkspaceInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
   file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
@@ -5091,21 +5041,21 @@ export type ItemUncheckedUpdateWithoutWorkspaceInput = {
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
   collections?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  lock?: Prisma.ItemLockUncheckedUpdateOneWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  tags?: Prisma.TagUncheckedUpdateManyWithoutItemsNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favoritedBy?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateManyWithoutWorkspaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   path?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
   category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
@@ -5113,10 +5063,10 @@ export type ItemUncheckedUpdateManyWithoutWorkspaceInput = {
   uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
 }
 
 
@@ -5128,9 +5078,8 @@ export type ItemCountOutputType = {
   children: number
   collections: number
   permissions: number
-  versions: number
   thumbnails: number
-  tags: number
+  versions: number
   activities: number
   comments: number
   logs: number
@@ -5141,9 +5090,8 @@ export type ItemCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   children?: boolean | ItemCountOutputTypeCountChildrenArgs
   collections?: boolean | ItemCountOutputTypeCountCollectionsArgs
   permissions?: boolean | ItemCountOutputTypeCountPermissionsArgs
-  versions?: boolean | ItemCountOutputTypeCountVersionsArgs
   thumbnails?: boolean | ItemCountOutputTypeCountThumbnailsArgs
-  tags?: boolean | ItemCountOutputTypeCountTagsArgs
+  versions?: boolean | ItemCountOutputTypeCountVersionsArgs
   activities?: boolean | ItemCountOutputTypeCountActivitiesArgs
   comments?: boolean | ItemCountOutputTypeCountCommentsArgs
   logs?: boolean | ItemCountOutputTypeCountLogsArgs
@@ -5184,13 +5132,6 @@ export type ItemCountOutputTypeCountPermissionsArgs<ExtArgs extends runtime.Type
 /**
  * ItemCountOutputType without action
  */
-export type ItemCountOutputTypeCountVersionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  where?: Prisma.ItemVersionWhereInput
-}
-
-/**
- * ItemCountOutputType without action
- */
 export type ItemCountOutputTypeCountThumbnailsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.ThumbnailWhereInput
 }
@@ -5198,8 +5139,8 @@ export type ItemCountOutputTypeCountThumbnailsArgs<ExtArgs extends runtime.Types
 /**
  * ItemCountOutputType without action
  */
-export type ItemCountOutputTypeCountTagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  where?: Prisma.TagWhereInput
+export type ItemCountOutputTypeCountVersionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ItemVersionWhereInput
 }
 
 /**
@@ -5242,11 +5183,11 @@ export type ItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   uploadId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  deletedAt?: boolean
   ownerId?: boolean
   workspaceId?: boolean
   driveId?: boolean
   parentId?: boolean
+  tags?: boolean
   file?: boolean | Prisma.Item$fileArgs<ExtArgs>
   folder?: boolean | Prisma.Item$folderArgs<ExtArgs>
   image?: boolean | Prisma.Item$imageArgs<ExtArgs>
@@ -5261,15 +5202,15 @@ export type ItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   parent?: boolean | Prisma.Item$parentArgs<ExtArgs>
   trash?: boolean | Prisma.Item$trashArgs<ExtArgs>
   collections?: boolean | Prisma.Item$collectionsArgs<ExtArgs>
-  lock?: boolean | Prisma.Item$lockArgs<ExtArgs>
+  locked?: boolean | Prisma.Item$lockedArgs<ExtArgs>
   permissions?: boolean | Prisma.Item$permissionsArgs<ExtArgs>
-  versions?: boolean | Prisma.Item$versionsArgs<ExtArgs>
   thumbnails?: boolean | Prisma.Item$thumbnailsArgs<ExtArgs>
-  tags?: boolean | Prisma.Item$tagsArgs<ExtArgs>
+  versions?: boolean | Prisma.Item$versionsArgs<ExtArgs>
   activities?: boolean | Prisma.Item$activitiesArgs<ExtArgs>
   comments?: boolean | Prisma.Item$commentsArgs<ExtArgs>
   logs?: boolean | Prisma.Item$logsArgs<ExtArgs>
   favoritedBy?: boolean | Prisma.Item$favoritedByArgs<ExtArgs>
+  search?: boolean | Prisma.Item$searchArgs<ExtArgs>
   _count?: boolean | Prisma.ItemCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["item"]>
 
@@ -5284,11 +5225,11 @@ export type ItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   uploadId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  deletedAt?: boolean
   ownerId?: boolean
   workspaceId?: boolean
   driveId?: boolean
   parentId?: boolean
+  tags?: boolean
   owner?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   workspace?: boolean | Prisma.Item$workspaceArgs<ExtArgs>
   drive?: boolean | Prisma.DriveDefaultArgs<ExtArgs>
@@ -5306,11 +5247,11 @@ export type ItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   uploadId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  deletedAt?: boolean
   ownerId?: boolean
   workspaceId?: boolean
   driveId?: boolean
   parentId?: boolean
+  tags?: boolean
   owner?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   workspace?: boolean | Prisma.Item$workspaceArgs<ExtArgs>
   drive?: boolean | Prisma.DriveDefaultArgs<ExtArgs>
@@ -5328,14 +5269,14 @@ export type ItemSelectScalar = {
   uploadId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  deletedAt?: boolean
   ownerId?: boolean
   workspaceId?: boolean
   driveId?: boolean
   parentId?: boolean
+  tags?: boolean
 }
 
-export type ItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "size" | "path" | "type" | "category" | "status" | "uploadId" | "createdAt" | "updatedAt" | "deletedAt" | "ownerId" | "workspaceId" | "driveId" | "parentId", ExtArgs["result"]["item"]>
+export type ItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "size" | "path" | "type" | "category" | "status" | "uploadId" | "createdAt" | "updatedAt" | "ownerId" | "workspaceId" | "driveId" | "parentId" | "tags", ExtArgs["result"]["item"]>
 export type ItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   file?: boolean | Prisma.Item$fileArgs<ExtArgs>
   folder?: boolean | Prisma.Item$folderArgs<ExtArgs>
@@ -5351,15 +5292,15 @@ export type ItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   parent?: boolean | Prisma.Item$parentArgs<ExtArgs>
   trash?: boolean | Prisma.Item$trashArgs<ExtArgs>
   collections?: boolean | Prisma.Item$collectionsArgs<ExtArgs>
-  lock?: boolean | Prisma.Item$lockArgs<ExtArgs>
+  locked?: boolean | Prisma.Item$lockedArgs<ExtArgs>
   permissions?: boolean | Prisma.Item$permissionsArgs<ExtArgs>
-  versions?: boolean | Prisma.Item$versionsArgs<ExtArgs>
   thumbnails?: boolean | Prisma.Item$thumbnailsArgs<ExtArgs>
-  tags?: boolean | Prisma.Item$tagsArgs<ExtArgs>
+  versions?: boolean | Prisma.Item$versionsArgs<ExtArgs>
   activities?: boolean | Prisma.Item$activitiesArgs<ExtArgs>
   comments?: boolean | Prisma.Item$commentsArgs<ExtArgs>
   logs?: boolean | Prisma.Item$logsArgs<ExtArgs>
   favoritedBy?: boolean | Prisma.Item$favoritedByArgs<ExtArgs>
+  search?: boolean | Prisma.Item$searchArgs<ExtArgs>
   _count?: boolean | Prisma.ItemCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ItemIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -5392,20 +5333,20 @@ export type $ItemPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     parent: Prisma.$ItemPayload<ExtArgs> | null
     trash: Prisma.$TrashItemPayload<ExtArgs> | null
     collections: Prisma.$CollectionItemPayload<ExtArgs>[]
-    lock: Prisma.$ItemLockPayload<ExtArgs> | null
+    locked: Prisma.$LockedItemPayload<ExtArgs> | null
     permissions: Prisma.$PermissionPayload<ExtArgs>[]
-    versions: Prisma.$ItemVersionPayload<ExtArgs>[]
     thumbnails: Prisma.$ThumbnailPayload<ExtArgs>[]
-    tags: Prisma.$TagPayload<ExtArgs>[]
+    versions: Prisma.$ItemVersionPayload<ExtArgs>[]
     activities: Prisma.$ActivityPayload<ExtArgs>[]
     comments: Prisma.$CommentPayload<ExtArgs>[]
     logs: Prisma.$AuditLogPayload<ExtArgs>[]
     favoritedBy: Prisma.$FavoritePayload<ExtArgs>[]
+    search: Prisma.$SearchPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     name: string
-    size: number
+    size: bigint
     path: string
     type: $Enums.ItemType
     category: $Enums.ItemCategory
@@ -5413,11 +5354,11 @@ export type $ItemPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     uploadId: string | null
     createdAt: Date
     updatedAt: Date
-    deletedAt: Date | null
     ownerId: string
     workspaceId: string | null
     driveId: string
     parentId: string | null
+    tags: string[]
   }, ExtArgs["result"]["item"]>
   composites: {}
 }
@@ -5826,15 +5767,15 @@ export interface Prisma__ItemClient<T, Null = never, ExtArgs extends runtime.Typ
   parent<T extends Prisma.Item$parentArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$parentArgs<ExtArgs>>): Prisma.Prisma__ItemClient<runtime.Types.Result.GetResult<Prisma.$ItemPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   trash<T extends Prisma.Item$trashArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$trashArgs<ExtArgs>>): Prisma.Prisma__TrashItemClient<runtime.Types.Result.GetResult<Prisma.$TrashItemPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   collections<T extends Prisma.Item$collectionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$collectionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CollectionItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-  lock<T extends Prisma.Item$lockArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$lockArgs<ExtArgs>>): Prisma.Prisma__ItemLockClient<runtime.Types.Result.GetResult<Prisma.$ItemLockPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  locked<T extends Prisma.Item$lockedArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$lockedArgs<ExtArgs>>): Prisma.Prisma__LockedItemClient<runtime.Types.Result.GetResult<Prisma.$LockedItemPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   permissions<T extends Prisma.Item$permissionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$permissionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-  versions<T extends Prisma.Item$versionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$versionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ItemVersionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   thumbnails<T extends Prisma.Item$thumbnailsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$thumbnailsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ThumbnailPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-  tags<T extends Prisma.Item$tagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$tagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TagPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  versions<T extends Prisma.Item$versionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$versionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ItemVersionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   activities<T extends Prisma.Item$activitiesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$activitiesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   comments<T extends Prisma.Item$commentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$commentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   logs<T extends Prisma.Item$logsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$logsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AuditLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   favoritedBy<T extends Prisma.Item$favoritedByArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$favoritedByArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FavoritePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  search<T extends Prisma.Item$searchArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$searchArgs<ExtArgs>>): Prisma.Prisma__SearchClient<runtime.Types.Result.GetResult<Prisma.$SearchPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -5866,7 +5807,7 @@ export interface Prisma__ItemClient<T, Null = never, ExtArgs extends runtime.Typ
 export interface ItemFieldRefs {
   readonly id: Prisma.FieldRef<"Item", 'String'>
   readonly name: Prisma.FieldRef<"Item", 'String'>
-  readonly size: Prisma.FieldRef<"Item", 'Int'>
+  readonly size: Prisma.FieldRef<"Item", 'BigInt'>
   readonly path: Prisma.FieldRef<"Item", 'String'>
   readonly type: Prisma.FieldRef<"Item", 'ItemType'>
   readonly category: Prisma.FieldRef<"Item", 'ItemCategory'>
@@ -5874,11 +5815,11 @@ export interface ItemFieldRefs {
   readonly uploadId: Prisma.FieldRef<"Item", 'String'>
   readonly createdAt: Prisma.FieldRef<"Item", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Item", 'DateTime'>
-  readonly deletedAt: Prisma.FieldRef<"Item", 'DateTime'>
   readonly ownerId: Prisma.FieldRef<"Item", 'String'>
   readonly workspaceId: Prisma.FieldRef<"Item", 'String'>
   readonly driveId: Prisma.FieldRef<"Item", 'String'>
   readonly parentId: Prisma.FieldRef<"Item", 'String'>
+  readonly tags: Prisma.FieldRef<"Item", 'String[]'>
 }
     
 
@@ -6522,22 +6463,22 @@ export type Item$collectionsArgs<ExtArgs extends runtime.Types.Extensions.Intern
 }
 
 /**
- * Item.lock
+ * Item.locked
  */
-export type Item$lockArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+export type Item$lockedArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
-   * Select specific fields to fetch from the ItemLock
+   * Select specific fields to fetch from the LockedItem
    */
-  select?: Prisma.ItemLockSelect<ExtArgs> | null
+  select?: Prisma.LockedItemSelect<ExtArgs> | null
   /**
-   * Omit specific fields from the ItemLock
+   * Omit specific fields from the LockedItem
    */
-  omit?: Prisma.ItemLockOmit<ExtArgs> | null
+  omit?: Prisma.LockedItemOmit<ExtArgs> | null
   /**
    * Choose, which related nodes to fetch as well
    */
-  include?: Prisma.ItemLockInclude<ExtArgs> | null
-  where?: Prisma.ItemLockWhereInput
+  include?: Prisma.LockedItemInclude<ExtArgs> | null
+  where?: Prisma.LockedItemWhereInput
 }
 
 /**
@@ -6565,30 +6506,6 @@ export type Item$permissionsArgs<ExtArgs extends runtime.Types.Extensions.Intern
 }
 
 /**
- * Item.versions
- */
-export type Item$versionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the ItemVersion
-   */
-  select?: Prisma.ItemVersionSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the ItemVersion
-   */
-  omit?: Prisma.ItemVersionOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.ItemVersionInclude<ExtArgs> | null
-  where?: Prisma.ItemVersionWhereInput
-  orderBy?: Prisma.ItemVersionOrderByWithRelationInput | Prisma.ItemVersionOrderByWithRelationInput[]
-  cursor?: Prisma.ItemVersionWhereUniqueInput
-  take?: number
-  skip?: number
-  distinct?: Prisma.ItemVersionScalarFieldEnum | Prisma.ItemVersionScalarFieldEnum[]
-}
-
-/**
  * Item.thumbnails
  */
 export type Item$thumbnailsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -6613,27 +6530,27 @@ export type Item$thumbnailsArgs<ExtArgs extends runtime.Types.Extensions.Interna
 }
 
 /**
- * Item.tags
+ * Item.versions
  */
-export type Item$tagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+export type Item$versionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
-   * Select specific fields to fetch from the Tag
+   * Select specific fields to fetch from the ItemVersion
    */
-  select?: Prisma.TagSelect<ExtArgs> | null
+  select?: Prisma.ItemVersionSelect<ExtArgs> | null
   /**
-   * Omit specific fields from the Tag
+   * Omit specific fields from the ItemVersion
    */
-  omit?: Prisma.TagOmit<ExtArgs> | null
+  omit?: Prisma.ItemVersionOmit<ExtArgs> | null
   /**
    * Choose, which related nodes to fetch as well
    */
-  include?: Prisma.TagInclude<ExtArgs> | null
-  where?: Prisma.TagWhereInput
-  orderBy?: Prisma.TagOrderByWithRelationInput | Prisma.TagOrderByWithRelationInput[]
-  cursor?: Prisma.TagWhereUniqueInput
+  include?: Prisma.ItemVersionInclude<ExtArgs> | null
+  where?: Prisma.ItemVersionWhereInput
+  orderBy?: Prisma.ItemVersionOrderByWithRelationInput | Prisma.ItemVersionOrderByWithRelationInput[]
+  cursor?: Prisma.ItemVersionWhereUniqueInput
   take?: number
   skip?: number
-  distinct?: Prisma.TagScalarFieldEnum | Prisma.TagScalarFieldEnum[]
+  distinct?: Prisma.ItemVersionScalarFieldEnum | Prisma.ItemVersionScalarFieldEnum[]
 }
 
 /**
@@ -6730,6 +6647,25 @@ export type Item$favoritedByArgs<ExtArgs extends runtime.Types.Extensions.Intern
   take?: number
   skip?: number
   distinct?: Prisma.FavoriteScalarFieldEnum | Prisma.FavoriteScalarFieldEnum[]
+}
+
+/**
+ * Item.search
+ */
+export type Item$searchArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Search
+   */
+  select?: Prisma.SearchSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Search
+   */
+  omit?: Prisma.SearchOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SearchInclude<ExtArgs> | null
+  where?: Prisma.SearchWhereInput
 }
 
 /**

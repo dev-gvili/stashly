@@ -1,6 +1,6 @@
 model Subscription {
-    id       String             @id @default(uuid())
-    status   SubscriptionStatus @default(active) // e.g., "active", "cancelled", "expired"
+    id       String             @id
+    status   SubscriptionStatus @default(active)
     metadata Json?
 
     createdAt DateTime  @default(now())
@@ -17,6 +17,12 @@ model Subscription {
     // Relations
     ownerId String @unique
     owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+    @@unique([ownerId, storagePlanId])
+    @@index([storagePlanId])
+    @@index([status])
+    @@index([createdAt])
+    @@index([endedAt])
 }
 
 enum SubscriptionStatus {

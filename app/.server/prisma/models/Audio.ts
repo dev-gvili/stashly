@@ -63,6 +63,7 @@ export type AudioMinAggregateOutputType = {
   track: number | null
   trackCount: number | null
   year: number | null
+  itemId: string | null
 }
 
 export type AudioMaxAggregateOutputType = {
@@ -83,6 +84,7 @@ export type AudioMaxAggregateOutputType = {
   track: number | null
   trackCount: number | null
   year: number | null
+  itemId: string | null
 }
 
 export type AudioCountAggregateOutputType = {
@@ -103,6 +105,7 @@ export type AudioCountAggregateOutputType = {
   track: number
   trackCount: number
   year: number
+  itemId: number
   _all: number
 }
 
@@ -145,6 +148,7 @@ export type AudioMinAggregateInputType = {
   track?: true
   trackCount?: true
   year?: true
+  itemId?: true
 }
 
 export type AudioMaxAggregateInputType = {
@@ -165,6 +169,7 @@ export type AudioMaxAggregateInputType = {
   track?: true
   trackCount?: true
   year?: true
+  itemId?: true
 }
 
 export type AudioCountAggregateInputType = {
@@ -185,6 +190,7 @@ export type AudioCountAggregateInputType = {
   track?: true
   trackCount?: true
   year?: true
+  itemId?: true
   _all?: true
 }
 
@@ -292,6 +298,7 @@ export type AudioGroupByOutputType = {
   track: number | null
   trackCount: number | null
   year: number | null
+  itemId: string | null
   _count: AudioCountAggregateOutputType | null
   _avg: AudioAvgAggregateOutputType | null
   _sum: AudioSumAggregateOutputType | null
@@ -335,6 +342,7 @@ export type AudioWhereInput = {
   track?: Prisma.IntNullableFilter<"Audio"> | number | null
   trackCount?: Prisma.IntNullableFilter<"Audio"> | number | null
   year?: Prisma.IntNullableFilter<"Audio"> | number | null
+  itemId?: Prisma.StringNullableFilter<"Audio"> | string | null
   item?: Prisma.XOR<Prisma.ItemNullableScalarRelationFilter, Prisma.ItemWhereInput> | null
 }
 
@@ -356,11 +364,13 @@ export type AudioOrderByWithRelationInput = {
   track?: Prisma.SortOrderInput | Prisma.SortOrder
   trackCount?: Prisma.SortOrderInput | Prisma.SortOrder
   year?: Prisma.SortOrderInput | Prisma.SortOrder
+  itemId?: Prisma.SortOrderInput | Prisma.SortOrder
   item?: Prisma.ItemOrderByWithRelationInput
 }
 
 export type AudioWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  itemId?: string
   AND?: Prisma.AudioWhereInput | Prisma.AudioWhereInput[]
   OR?: Prisma.AudioWhereInput[]
   NOT?: Prisma.AudioWhereInput | Prisma.AudioWhereInput[]
@@ -381,7 +391,7 @@ export type AudioWhereUniqueInput = Prisma.AtLeast<{
   trackCount?: Prisma.IntNullableFilter<"Audio"> | number | null
   year?: Prisma.IntNullableFilter<"Audio"> | number | null
   item?: Prisma.XOR<Prisma.ItemNullableScalarRelationFilter, Prisma.ItemWhereInput> | null
-}, "id">
+}, "id" | "itemId">
 
 export type AudioOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -401,6 +411,7 @@ export type AudioOrderByWithAggregationInput = {
   track?: Prisma.SortOrderInput | Prisma.SortOrder
   trackCount?: Prisma.SortOrderInput | Prisma.SortOrder
   year?: Prisma.SortOrderInput | Prisma.SortOrder
+  itemId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.AudioCountOrderByAggregateInput
   _avg?: Prisma.AudioAvgOrderByAggregateInput
   _max?: Prisma.AudioMaxOrderByAggregateInput
@@ -429,9 +440,11 @@ export type AudioScalarWhereWithAggregatesInput = {
   track?: Prisma.IntNullableWithAggregatesFilter<"Audio"> | number | null
   trackCount?: Prisma.IntNullableWithAggregatesFilter<"Audio"> | number | null
   year?: Prisma.IntNullableWithAggregatesFilter<"Audio"> | number | null
+  itemId?: Prisma.StringNullableWithAggregatesFilter<"Audio"> | string | null
 }
 
 export type AudioCreateInput = {
+  id: string
   album?: string | null
   albumArtist?: string | null
   artist?: string | null
@@ -452,7 +465,7 @@ export type AudioCreateInput = {
 }
 
 export type AudioUncheckedCreateInput = {
-  id?: string
+  id: string
   album?: string | null
   albumArtist?: string | null
   artist?: string | null
@@ -469,9 +482,11 @@ export type AudioUncheckedCreateInput = {
   track?: number | null
   trackCount?: number | null
   year?: number | null
+  itemId?: string | null
 }
 
 export type AudioUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   album?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   albumArtist?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artist?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -509,10 +524,11 @@ export type AudioUncheckedUpdateInput = {
   track?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   trackCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   year?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type AudioCreateManyInput = {
-  id?: string
+  id: string
   album?: string | null
   albumArtist?: string | null
   artist?: string | null
@@ -529,9 +545,11 @@ export type AudioCreateManyInput = {
   track?: number | null
   trackCount?: number | null
   year?: number | null
+  itemId?: string | null
 }
 
 export type AudioUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   album?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   albumArtist?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artist?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -568,6 +586,7 @@ export type AudioUncheckedUpdateManyInput = {
   track?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   trackCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   year?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type AudioCountOrderByAggregateInput = {
@@ -588,6 +607,7 @@ export type AudioCountOrderByAggregateInput = {
   track?: Prisma.SortOrder
   trackCount?: Prisma.SortOrder
   year?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type AudioAvgOrderByAggregateInput = {
@@ -618,6 +638,7 @@ export type AudioMaxOrderByAggregateInput = {
   track?: Prisma.SortOrder
   trackCount?: Prisma.SortOrder
   year?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type AudioMinOrderByAggregateInput = {
@@ -638,6 +659,7 @@ export type AudioMinOrderByAggregateInput = {
   track?: Prisma.SortOrder
   trackCount?: Prisma.SortOrder
   year?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type AudioSumOrderByAggregateInput = {
@@ -692,6 +714,7 @@ export type AudioUncheckedUpdateOneWithoutItemNestedInput = {
 }
 
 export type AudioCreateWithoutItemInput = {
+  id: string
   album?: string | null
   albumArtist?: string | null
   artist?: string | null
@@ -711,6 +734,7 @@ export type AudioCreateWithoutItemInput = {
 }
 
 export type AudioUncheckedCreateWithoutItemInput = {
+  id: string
   album?: string | null
   albumArtist?: string | null
   artist?: string | null
@@ -746,6 +770,7 @@ export type AudioUpdateToOneWithWhereWithoutItemInput = {
 }
 
 export type AudioUpdateWithoutItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   album?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   albumArtist?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artist?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -765,6 +790,7 @@ export type AudioUpdateWithoutItemInput = {
 }
 
 export type AudioUncheckedUpdateWithoutItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   album?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   albumArtist?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   artist?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -803,6 +829,7 @@ export type AudioSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   track?: boolean
   trackCount?: boolean
   year?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.Audio$itemArgs<ExtArgs>
 }, ExtArgs["result"]["audio"]>
 
@@ -824,6 +851,7 @@ export type AudioSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   track?: boolean
   trackCount?: boolean
   year?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.Audio$itemArgs<ExtArgs>
 }, ExtArgs["result"]["audio"]>
 
@@ -845,6 +873,7 @@ export type AudioSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   track?: boolean
   trackCount?: boolean
   year?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.Audio$itemArgs<ExtArgs>
 }, ExtArgs["result"]["audio"]>
 
@@ -866,9 +895,10 @@ export type AudioSelectScalar = {
   track?: boolean
   trackCount?: boolean
   year?: boolean
+  itemId?: boolean
 }
 
-export type AudioOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "album" | "albumArtist" | "artist" | "bitrate" | "composers" | "copyright" | "disc" | "discCount" | "duration" | "genre" | "hasDrm" | "isVariableBitrate" | "title" | "track" | "trackCount" | "year", ExtArgs["result"]["audio"]>
+export type AudioOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "album" | "albumArtist" | "artist" | "bitrate" | "composers" | "copyright" | "disc" | "discCount" | "duration" | "genre" | "hasDrm" | "isVariableBitrate" | "title" | "track" | "trackCount" | "year" | "itemId", ExtArgs["result"]["audio"]>
 export type AudioInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   item?: boolean | Prisma.Audio$itemArgs<ExtArgs>
 }
@@ -902,6 +932,7 @@ export type $AudioPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     track: number | null
     trackCount: number | null
     year: number | null
+    itemId: string | null
   }, ExtArgs["result"]["audio"]>
   composites: {}
 }
@@ -1343,6 +1374,7 @@ export interface AudioFieldRefs {
   readonly track: Prisma.FieldRef<"Audio", 'Int'>
   readonly trackCount: Prisma.FieldRef<"Audio", 'Int'>
   readonly year: Prisma.FieldRef<"Audio", 'Int'>
+  readonly itemId: Prisma.FieldRef<"Audio", 'String'>
 }
     
 
@@ -1566,7 +1598,7 @@ export type AudioCreateArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
   /**
    * The data needed to create a Audio.
    */
-  data?: Prisma.XOR<Prisma.AudioCreateInput, Prisma.AudioUncheckedCreateInput>
+  data: Prisma.XOR<Prisma.AudioCreateInput, Prisma.AudioUncheckedCreateInput>
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }
 
