@@ -35,6 +35,7 @@ export type ItemActionMinAggregateOutputType = {
   shareActionId: string | null
   versionActionId: string | null
   activityId: string | null
+  copyActionIdId: string | null
 }
 
 export type ItemActionMaxAggregateOutputType = {
@@ -49,6 +50,7 @@ export type ItemActionMaxAggregateOutputType = {
   shareActionId: string | null
   versionActionId: string | null
   activityId: string | null
+  copyActionIdId: string | null
 }
 
 export type ItemActionCountAggregateOutputType = {
@@ -63,6 +65,7 @@ export type ItemActionCountAggregateOutputType = {
   shareActionId: number
   versionActionId: number
   activityId: number
+  copyActionIdId: number
   _all: number
 }
 
@@ -79,6 +82,7 @@ export type ItemActionMinAggregateInputType = {
   shareActionId?: true
   versionActionId?: true
   activityId?: true
+  copyActionIdId?: true
 }
 
 export type ItemActionMaxAggregateInputType = {
@@ -93,6 +97,7 @@ export type ItemActionMaxAggregateInputType = {
   shareActionId?: true
   versionActionId?: true
   activityId?: true
+  copyActionIdId?: true
 }
 
 export type ItemActionCountAggregateInputType = {
@@ -107,6 +112,7 @@ export type ItemActionCountAggregateInputType = {
   shareActionId?: true
   versionActionId?: true
   activityId?: true
+  copyActionIdId?: true
   _all?: true
 }
 
@@ -194,6 +200,7 @@ export type ItemActionGroupByOutputType = {
   shareActionId: string | null
   versionActionId: string | null
   activityId: string | null
+  copyActionIdId: string | null
   _count: ItemActionCountAggregateOutputType | null
   _min: ItemActionMinAggregateOutputType | null
   _max: ItemActionMaxAggregateOutputType | null
@@ -229,6 +236,7 @@ export type ItemActionWhereInput = {
   shareActionId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
   versionActionId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
   activityId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
+  copyActionIdId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
   comment?: Prisma.XOR<Prisma.CommentActionNullableScalarRelationFilter, Prisma.CommentActionWhereInput> | null
   create?: Prisma.XOR<Prisma.CreateActionNullableScalarRelationFilter, Prisma.CreateActionWhereInput> | null
   delete?: Prisma.XOR<Prisma.DeleteActionNullableScalarRelationFilter, Prisma.DeleteActionWhereInput> | null
@@ -239,6 +247,7 @@ export type ItemActionWhereInput = {
   share?: Prisma.XOR<Prisma.ShareActionNullableScalarRelationFilter, Prisma.ShareActionWhereInput> | null
   version?: Prisma.XOR<Prisma.VersionActionNullableScalarRelationFilter, Prisma.VersionActionWhereInput> | null
   activity?: Prisma.XOR<Prisma.ActivityNullableScalarRelationFilter, Prisma.ActivityWhereInput> | null
+  copy?: Prisma.XOR<Prisma.CopyActionNullableScalarRelationFilter, Prisma.CopyActionWhereInput> | null
 }
 
 export type ItemActionOrderByWithRelationInput = {
@@ -253,6 +262,7 @@ export type ItemActionOrderByWithRelationInput = {
   shareActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   versionActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   activityId?: Prisma.SortOrderInput | Prisma.SortOrder
+  copyActionIdId?: Prisma.SortOrderInput | Prisma.SortOrder
   comment?: Prisma.CommentActionOrderByWithRelationInput
   create?: Prisma.CreateActionOrderByWithRelationInput
   delete?: Prisma.DeleteActionOrderByWithRelationInput
@@ -263,6 +273,7 @@ export type ItemActionOrderByWithRelationInput = {
   share?: Prisma.ShareActionOrderByWithRelationInput
   version?: Prisma.VersionActionOrderByWithRelationInput
   activity?: Prisma.ActivityOrderByWithRelationInput
+  copy?: Prisma.CopyActionOrderByWithRelationInput
 }
 
 export type ItemActionWhereUniqueInput = Prisma.AtLeast<{
@@ -277,6 +288,7 @@ export type ItemActionWhereUniqueInput = Prisma.AtLeast<{
   shareActionId?: string
   versionActionId?: string
   activityId?: string
+  copyActionIdId?: string
   AND?: Prisma.ItemActionWhereInput | Prisma.ItemActionWhereInput[]
   OR?: Prisma.ItemActionWhereInput[]
   NOT?: Prisma.ItemActionWhereInput | Prisma.ItemActionWhereInput[]
@@ -290,7 +302,8 @@ export type ItemActionWhereUniqueInput = Prisma.AtLeast<{
   share?: Prisma.XOR<Prisma.ShareActionNullableScalarRelationFilter, Prisma.ShareActionWhereInput> | null
   version?: Prisma.XOR<Prisma.VersionActionNullableScalarRelationFilter, Prisma.VersionActionWhereInput> | null
   activity?: Prisma.XOR<Prisma.ActivityNullableScalarRelationFilter, Prisma.ActivityWhereInput> | null
-}, "id" | "commentActionId" | "createActionId" | "deleteActionId" | "editActionId" | "moveActionId" | "renameActionId" | "restoreActionId" | "shareActionId" | "versionActionId" | "activityId">
+  copy?: Prisma.XOR<Prisma.CopyActionNullableScalarRelationFilter, Prisma.CopyActionWhereInput> | null
+}, "id" | "commentActionId" | "createActionId" | "deleteActionId" | "editActionId" | "moveActionId" | "renameActionId" | "restoreActionId" | "shareActionId" | "versionActionId" | "activityId" | "copyActionIdId">
 
 export type ItemActionOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -304,6 +317,7 @@ export type ItemActionOrderByWithAggregationInput = {
   shareActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   versionActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   activityId?: Prisma.SortOrderInput | Prisma.SortOrder
+  copyActionIdId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ItemActionCountOrderByAggregateInput
   _max?: Prisma.ItemActionMaxOrderByAggregateInput
   _min?: Prisma.ItemActionMinOrderByAggregateInput
@@ -324,10 +338,11 @@ export type ItemActionScalarWhereWithAggregatesInput = {
   shareActionId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
   versionActionId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
   activityId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
+  copyActionIdId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
 }
 
 export type ItemActionCreateInput = {
-  id?: string
+  id: string
   comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
   create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
   delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
@@ -338,10 +353,11 @@ export type ItemActionCreateInput = {
   share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
   version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateInput = {
-  id?: string
+  id: string
   commentActionId?: string | null
   createActionId?: string | null
   deleteActionId?: string | null
@@ -352,6 +368,7 @@ export type ItemActionUncheckedCreateInput = {
   shareActionId?: string | null
   versionActionId?: string | null
   activityId?: string | null
+  copyActionIdId?: string | null
 }
 
 export type ItemActionUpdateInput = {
@@ -366,6 +383,7 @@ export type ItemActionUpdateInput = {
   share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
   version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateInput = {
@@ -380,10 +398,11 @@ export type ItemActionUncheckedUpdateInput = {
   shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionIdId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateManyInput = {
-  id?: string
+  id: string
   commentActionId?: string | null
   createActionId?: string | null
   deleteActionId?: string | null
@@ -394,6 +413,7 @@ export type ItemActionCreateManyInput = {
   shareActionId?: string | null
   versionActionId?: string | null
   activityId?: string | null
+  copyActionIdId?: string | null
 }
 
 export type ItemActionUpdateManyMutationInput = {
@@ -412,6 +432,7 @@ export type ItemActionUncheckedUpdateManyInput = {
   shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionIdId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCountOrderByAggregateInput = {
@@ -426,6 +447,7 @@ export type ItemActionCountOrderByAggregateInput = {
   shareActionId?: Prisma.SortOrder
   versionActionId?: Prisma.SortOrder
   activityId?: Prisma.SortOrder
+  copyActionIdId?: Prisma.SortOrder
 }
 
 export type ItemActionMaxOrderByAggregateInput = {
@@ -440,6 +462,7 @@ export type ItemActionMaxOrderByAggregateInput = {
   shareActionId?: Prisma.SortOrder
   versionActionId?: Prisma.SortOrder
   activityId?: Prisma.SortOrder
+  copyActionIdId?: Prisma.SortOrder
 }
 
 export type ItemActionMinOrderByAggregateInput = {
@@ -454,6 +477,7 @@ export type ItemActionMinOrderByAggregateInput = {
   shareActionId?: Prisma.SortOrder
   versionActionId?: Prisma.SortOrder
   activityId?: Prisma.SortOrder
+  copyActionIdId?: Prisma.SortOrder
 }
 
 export type ItemActionNullableScalarRelationFilter = {
@@ -621,6 +645,38 @@ export type ItemActionUncheckedUpdateOneWithoutMoveNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutMoveInput, Prisma.ItemActionUpdateWithoutMoveInput>, Prisma.ItemActionUncheckedUpdateWithoutMoveInput>
 }
 
+export type ItemActionCreateNestedOneWithoutCopyInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutCopyInput, Prisma.ItemActionUncheckedCreateWithoutCopyInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutCopyInput
+  connect?: Prisma.ItemActionWhereUniqueInput
+}
+
+export type ItemActionUncheckedCreateNestedOneWithoutCopyInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutCopyInput, Prisma.ItemActionUncheckedCreateWithoutCopyInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutCopyInput
+  connect?: Prisma.ItemActionWhereUniqueInput
+}
+
+export type ItemActionUpdateOneWithoutCopyNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutCopyInput, Prisma.ItemActionUncheckedCreateWithoutCopyInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutCopyInput
+  upsert?: Prisma.ItemActionUpsertWithoutCopyInput
+  disconnect?: Prisma.ItemActionWhereInput | boolean
+  delete?: Prisma.ItemActionWhereInput | boolean
+  connect?: Prisma.ItemActionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutCopyInput, Prisma.ItemActionUpdateWithoutCopyInput>, Prisma.ItemActionUncheckedUpdateWithoutCopyInput>
+}
+
+export type ItemActionUncheckedUpdateOneWithoutCopyNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutCopyInput, Prisma.ItemActionUncheckedCreateWithoutCopyInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutCopyInput
+  upsert?: Prisma.ItemActionUpsertWithoutCopyInput
+  disconnect?: Prisma.ItemActionWhereInput | boolean
+  delete?: Prisma.ItemActionWhereInput | boolean
+  connect?: Prisma.ItemActionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutCopyInput, Prisma.ItemActionUpdateWithoutCopyInput>, Prisma.ItemActionUncheckedUpdateWithoutCopyInput>
+}
+
 export type ItemActionCreateNestedOneWithoutRenameInput = {
   create?: Prisma.XOR<Prisma.ItemActionCreateWithoutRenameInput, Prisma.ItemActionUncheckedCreateWithoutRenameInput>
   connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutRenameInput
@@ -782,7 +838,7 @@ export type ItemActionUncheckedUpdateOneWithoutActivityNestedInput = {
 }
 
 export type ItemActionCreateWithoutCommentInput = {
-  id?: string
+  id: string
   create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
   delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
   edit?: Prisma.EditActionCreateNestedOneWithoutActionInput
@@ -792,10 +848,11 @@ export type ItemActionCreateWithoutCommentInput = {
   share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
   version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutCommentInput = {
-  id?: string
+  id: string
   createActionId?: string | null
   deleteActionId?: string | null
   editActionId?: string | null
@@ -805,6 +862,7 @@ export type ItemActionUncheckedCreateWithoutCommentInput = {
   shareActionId?: string | null
   versionActionId?: string | null
   activityId?: string | null
+  copyActionIdId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutCommentInput = {
@@ -834,6 +892,7 @@ export type ItemActionUpdateWithoutCommentInput = {
   share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
   version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutCommentInput = {
@@ -847,10 +906,11 @@ export type ItemActionUncheckedUpdateWithoutCommentInput = {
   shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionIdId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutCreateInput = {
-  id?: string
+  id: string
   comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
   delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
   edit?: Prisma.EditActionCreateNestedOneWithoutActionInput
@@ -860,10 +920,11 @@ export type ItemActionCreateWithoutCreateInput = {
   share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
   version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutCreateInput = {
-  id?: string
+  id: string
   commentActionId?: string | null
   deleteActionId?: string | null
   editActionId?: string | null
@@ -873,6 +934,7 @@ export type ItemActionUncheckedCreateWithoutCreateInput = {
   shareActionId?: string | null
   versionActionId?: string | null
   activityId?: string | null
+  copyActionIdId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutCreateInput = {
@@ -902,6 +964,7 @@ export type ItemActionUpdateWithoutCreateInput = {
   share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
   version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutCreateInput = {
@@ -915,10 +978,11 @@ export type ItemActionUncheckedUpdateWithoutCreateInput = {
   shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionIdId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutDeleteInput = {
-  id?: string
+  id: string
   comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
   create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
   edit?: Prisma.EditActionCreateNestedOneWithoutActionInput
@@ -928,10 +992,11 @@ export type ItemActionCreateWithoutDeleteInput = {
   share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
   version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutDeleteInput = {
-  id?: string
+  id: string
   commentActionId?: string | null
   createActionId?: string | null
   editActionId?: string | null
@@ -941,6 +1006,7 @@ export type ItemActionUncheckedCreateWithoutDeleteInput = {
   shareActionId?: string | null
   versionActionId?: string | null
   activityId?: string | null
+  copyActionIdId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutDeleteInput = {
@@ -970,6 +1036,7 @@ export type ItemActionUpdateWithoutDeleteInput = {
   share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
   version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutDeleteInput = {
@@ -983,10 +1050,11 @@ export type ItemActionUncheckedUpdateWithoutDeleteInput = {
   shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionIdId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutEditInput = {
-  id?: string
+  id: string
   comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
   create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
   delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
@@ -996,10 +1064,11 @@ export type ItemActionCreateWithoutEditInput = {
   share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
   version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutEditInput = {
-  id?: string
+  id: string
   commentActionId?: string | null
   createActionId?: string | null
   deleteActionId?: string | null
@@ -1009,6 +1078,7 @@ export type ItemActionUncheckedCreateWithoutEditInput = {
   shareActionId?: string | null
   versionActionId?: string | null
   activityId?: string | null
+  copyActionIdId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutEditInput = {
@@ -1038,6 +1108,7 @@ export type ItemActionUpdateWithoutEditInput = {
   share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
   version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutEditInput = {
@@ -1051,10 +1122,11 @@ export type ItemActionUncheckedUpdateWithoutEditInput = {
   shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionIdId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutMoveInput = {
-  id?: string
+  id: string
   comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
   create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
   delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
@@ -1064,10 +1136,11 @@ export type ItemActionCreateWithoutMoveInput = {
   share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
   version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutMoveInput = {
-  id?: string
+  id: string
   commentActionId?: string | null
   createActionId?: string | null
   deleteActionId?: string | null
@@ -1077,6 +1150,7 @@ export type ItemActionUncheckedCreateWithoutMoveInput = {
   shareActionId?: string | null
   versionActionId?: string | null
   activityId?: string | null
+  copyActionIdId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutMoveInput = {
@@ -1106,6 +1180,7 @@ export type ItemActionUpdateWithoutMoveInput = {
   share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
   version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutMoveInput = {
@@ -1119,10 +1194,83 @@ export type ItemActionUncheckedUpdateWithoutMoveInput = {
   shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionIdId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+}
+
+export type ItemActionCreateWithoutCopyInput = {
+  id: string
+  comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
+  create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
+  delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
+  edit?: Prisma.EditActionCreateNestedOneWithoutActionInput
+  move?: Prisma.MoveActionCreateNestedOneWithoutActionInput
+  rename?: Prisma.RenameActionCreateNestedOneWithoutActionInput
+  restore?: Prisma.RestoreActionCreateNestedOneWithoutActionInput
+  share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
+  version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
+  activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+}
+
+export type ItemActionUncheckedCreateWithoutCopyInput = {
+  id: string
+  commentActionId?: string | null
+  createActionId?: string | null
+  deleteActionId?: string | null
+  editActionId?: string | null
+  moveActionId?: string | null
+  renameActionId?: string | null
+  restoreActionId?: string | null
+  shareActionId?: string | null
+  versionActionId?: string | null
+  activityId?: string | null
+}
+
+export type ItemActionCreateOrConnectWithoutCopyInput = {
+  where: Prisma.ItemActionWhereUniqueInput
+  create: Prisma.XOR<Prisma.ItemActionCreateWithoutCopyInput, Prisma.ItemActionUncheckedCreateWithoutCopyInput>
+}
+
+export type ItemActionUpsertWithoutCopyInput = {
+  update: Prisma.XOR<Prisma.ItemActionUpdateWithoutCopyInput, Prisma.ItemActionUncheckedUpdateWithoutCopyInput>
+  create: Prisma.XOR<Prisma.ItemActionCreateWithoutCopyInput, Prisma.ItemActionUncheckedCreateWithoutCopyInput>
+  where?: Prisma.ItemActionWhereInput
+}
+
+export type ItemActionUpdateToOneWithWhereWithoutCopyInput = {
+  where?: Prisma.ItemActionWhereInput
+  data: Prisma.XOR<Prisma.ItemActionUpdateWithoutCopyInput, Prisma.ItemActionUncheckedUpdateWithoutCopyInput>
+}
+
+export type ItemActionUpdateWithoutCopyInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  comment?: Prisma.CommentActionUpdateOneWithoutActionNestedInput
+  create?: Prisma.CreateActionUpdateOneWithoutActionNestedInput
+  delete?: Prisma.DeleteActionUpdateOneWithoutActionNestedInput
+  edit?: Prisma.EditActionUpdateOneWithoutActionNestedInput
+  move?: Prisma.MoveActionUpdateOneWithoutActionNestedInput
+  rename?: Prisma.RenameActionUpdateOneWithoutActionNestedInput
+  restore?: Prisma.RestoreActionUpdateOneWithoutActionNestedInput
+  share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
+  version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
+  activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+}
+
+export type ItemActionUncheckedUpdateWithoutCopyInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  commentActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deleteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  moveActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  renameActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  restoreActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutRenameInput = {
-  id?: string
+  id: string
   comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
   create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
   delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
@@ -1132,10 +1280,11 @@ export type ItemActionCreateWithoutRenameInput = {
   share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
   version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutRenameInput = {
-  id?: string
+  id: string
   commentActionId?: string | null
   createActionId?: string | null
   deleteActionId?: string | null
@@ -1145,6 +1294,7 @@ export type ItemActionUncheckedCreateWithoutRenameInput = {
   shareActionId?: string | null
   versionActionId?: string | null
   activityId?: string | null
+  copyActionIdId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutRenameInput = {
@@ -1174,6 +1324,7 @@ export type ItemActionUpdateWithoutRenameInput = {
   share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
   version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutRenameInput = {
@@ -1187,10 +1338,11 @@ export type ItemActionUncheckedUpdateWithoutRenameInput = {
   shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionIdId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutRestoreInput = {
-  id?: string
+  id: string
   comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
   create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
   delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
@@ -1200,10 +1352,11 @@ export type ItemActionCreateWithoutRestoreInput = {
   share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
   version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutRestoreInput = {
-  id?: string
+  id: string
   commentActionId?: string | null
   createActionId?: string | null
   deleteActionId?: string | null
@@ -1213,6 +1366,7 @@ export type ItemActionUncheckedCreateWithoutRestoreInput = {
   shareActionId?: string | null
   versionActionId?: string | null
   activityId?: string | null
+  copyActionIdId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutRestoreInput = {
@@ -1242,6 +1396,7 @@ export type ItemActionUpdateWithoutRestoreInput = {
   share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
   version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutRestoreInput = {
@@ -1255,10 +1410,11 @@ export type ItemActionUncheckedUpdateWithoutRestoreInput = {
   shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionIdId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutShareInput = {
-  id?: string
+  id: string
   comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
   create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
   delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
@@ -1268,10 +1424,11 @@ export type ItemActionCreateWithoutShareInput = {
   restore?: Prisma.RestoreActionCreateNestedOneWithoutActionInput
   version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutShareInput = {
-  id?: string
+  id: string
   commentActionId?: string | null
   createActionId?: string | null
   deleteActionId?: string | null
@@ -1281,6 +1438,7 @@ export type ItemActionUncheckedCreateWithoutShareInput = {
   restoreActionId?: string | null
   versionActionId?: string | null
   activityId?: string | null
+  copyActionIdId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutShareInput = {
@@ -1310,6 +1468,7 @@ export type ItemActionUpdateWithoutShareInput = {
   restore?: Prisma.RestoreActionUpdateOneWithoutActionNestedInput
   version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutShareInput = {
@@ -1323,10 +1482,11 @@ export type ItemActionUncheckedUpdateWithoutShareInput = {
   restoreActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionIdId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutVersionInput = {
-  id?: string
+  id: string
   comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
   create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
   delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
@@ -1336,10 +1496,11 @@ export type ItemActionCreateWithoutVersionInput = {
   restore?: Prisma.RestoreActionCreateNestedOneWithoutActionInput
   share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutVersionInput = {
-  id?: string
+  id: string
   commentActionId?: string | null
   createActionId?: string | null
   deleteActionId?: string | null
@@ -1349,6 +1510,7 @@ export type ItemActionUncheckedCreateWithoutVersionInput = {
   restoreActionId?: string | null
   shareActionId?: string | null
   activityId?: string | null
+  copyActionIdId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutVersionInput = {
@@ -1378,6 +1540,7 @@ export type ItemActionUpdateWithoutVersionInput = {
   restore?: Prisma.RestoreActionUpdateOneWithoutActionNestedInput
   share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutVersionInput = {
@@ -1391,10 +1554,11 @@ export type ItemActionUncheckedUpdateWithoutVersionInput = {
   restoreActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionIdId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutActivityInput = {
-  id?: string
+  id: string
   comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
   create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
   delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
@@ -1404,10 +1568,11 @@ export type ItemActionCreateWithoutActivityInput = {
   restore?: Prisma.RestoreActionCreateNestedOneWithoutActionInput
   share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
   version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutActivityInput = {
-  id?: string
+  id: string
   commentActionId?: string | null
   createActionId?: string | null
   deleteActionId?: string | null
@@ -1417,6 +1582,7 @@ export type ItemActionUncheckedCreateWithoutActivityInput = {
   restoreActionId?: string | null
   shareActionId?: string | null
   versionActionId?: string | null
+  copyActionIdId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutActivityInput = {
@@ -1446,6 +1612,7 @@ export type ItemActionUpdateWithoutActivityInput = {
   restore?: Prisma.RestoreActionUpdateOneWithoutActionNestedInput
   share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
   version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutActivityInput = {
@@ -1459,6 +1626,7 @@ export type ItemActionUncheckedUpdateWithoutActivityInput = {
   restoreActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionIdId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 
@@ -1475,6 +1643,7 @@ export type ItemActionSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   shareActionId?: boolean
   versionActionId?: boolean
   activityId?: boolean
+  copyActionIdId?: boolean
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
   create?: boolean | Prisma.ItemAction$createArgs<ExtArgs>
   delete?: boolean | Prisma.ItemAction$deleteArgs<ExtArgs>
@@ -1485,6 +1654,7 @@ export type ItemActionSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   share?: boolean | Prisma.ItemAction$shareArgs<ExtArgs>
   version?: boolean | Prisma.ItemAction$versionArgs<ExtArgs>
   activity?: boolean | Prisma.ItemAction$activityArgs<ExtArgs>
+  copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
 }, ExtArgs["result"]["itemAction"]>
 
 export type ItemActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1499,6 +1669,7 @@ export type ItemActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   shareActionId?: boolean
   versionActionId?: boolean
   activityId?: boolean
+  copyActionIdId?: boolean
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
   create?: boolean | Prisma.ItemAction$createArgs<ExtArgs>
   delete?: boolean | Prisma.ItemAction$deleteArgs<ExtArgs>
@@ -1509,6 +1680,7 @@ export type ItemActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   share?: boolean | Prisma.ItemAction$shareArgs<ExtArgs>
   version?: boolean | Prisma.ItemAction$versionArgs<ExtArgs>
   activity?: boolean | Prisma.ItemAction$activityArgs<ExtArgs>
+  copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
 }, ExtArgs["result"]["itemAction"]>
 
 export type ItemActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1523,6 +1695,7 @@ export type ItemActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   shareActionId?: boolean
   versionActionId?: boolean
   activityId?: boolean
+  copyActionIdId?: boolean
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
   create?: boolean | Prisma.ItemAction$createArgs<ExtArgs>
   delete?: boolean | Prisma.ItemAction$deleteArgs<ExtArgs>
@@ -1533,6 +1706,7 @@ export type ItemActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   share?: boolean | Prisma.ItemAction$shareArgs<ExtArgs>
   version?: boolean | Prisma.ItemAction$versionArgs<ExtArgs>
   activity?: boolean | Prisma.ItemAction$activityArgs<ExtArgs>
+  copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
 }, ExtArgs["result"]["itemAction"]>
 
 export type ItemActionSelectScalar = {
@@ -1547,9 +1721,10 @@ export type ItemActionSelectScalar = {
   shareActionId?: boolean
   versionActionId?: boolean
   activityId?: boolean
+  copyActionIdId?: boolean
 }
 
-export type ItemActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "commentActionId" | "createActionId" | "deleteActionId" | "editActionId" | "moveActionId" | "renameActionId" | "restoreActionId" | "shareActionId" | "versionActionId" | "activityId", ExtArgs["result"]["itemAction"]>
+export type ItemActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "commentActionId" | "createActionId" | "deleteActionId" | "editActionId" | "moveActionId" | "renameActionId" | "restoreActionId" | "shareActionId" | "versionActionId" | "activityId" | "copyActionIdId", ExtArgs["result"]["itemAction"]>
 export type ItemActionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
   create?: boolean | Prisma.ItemAction$createArgs<ExtArgs>
@@ -1561,6 +1736,7 @@ export type ItemActionInclude<ExtArgs extends runtime.Types.Extensions.InternalA
   share?: boolean | Prisma.ItemAction$shareArgs<ExtArgs>
   version?: boolean | Prisma.ItemAction$versionArgs<ExtArgs>
   activity?: boolean | Prisma.ItemAction$activityArgs<ExtArgs>
+  copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
 }
 export type ItemActionIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
@@ -1573,6 +1749,7 @@ export type ItemActionIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.E
   share?: boolean | Prisma.ItemAction$shareArgs<ExtArgs>
   version?: boolean | Prisma.ItemAction$versionArgs<ExtArgs>
   activity?: boolean | Prisma.ItemAction$activityArgs<ExtArgs>
+  copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
 }
 export type ItemActionIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
@@ -1585,6 +1762,7 @@ export type ItemActionIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   share?: boolean | Prisma.ItemAction$shareArgs<ExtArgs>
   version?: boolean | Prisma.ItemAction$versionArgs<ExtArgs>
   activity?: boolean | Prisma.ItemAction$activityArgs<ExtArgs>
+  copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
 }
 
 export type $ItemActionPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1600,6 +1778,7 @@ export type $ItemActionPayload<ExtArgs extends runtime.Types.Extensions.Internal
     share: Prisma.$ShareActionPayload<ExtArgs> | null
     version: Prisma.$VersionActionPayload<ExtArgs> | null
     activity: Prisma.$ActivityPayload<ExtArgs> | null
+    copy: Prisma.$CopyActionPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1613,6 +1792,7 @@ export type $ItemActionPayload<ExtArgs extends runtime.Types.Extensions.Internal
     shareActionId: string | null
     versionActionId: string | null
     activityId: string | null
+    copyActionIdId: string | null
   }, ExtArgs["result"]["itemAction"]>
   composites: {}
 }
@@ -2017,6 +2197,7 @@ export interface Prisma__ItemActionClient<T, Null = never, ExtArgs extends runti
   share<T extends Prisma.ItemAction$shareArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$shareArgs<ExtArgs>>): Prisma.Prisma__ShareActionClient<runtime.Types.Result.GetResult<Prisma.$ShareActionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   version<T extends Prisma.ItemAction$versionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$versionArgs<ExtArgs>>): Prisma.Prisma__VersionActionClient<runtime.Types.Result.GetResult<Prisma.$VersionActionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   activity<T extends Prisma.ItemAction$activityArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$activityArgs<ExtArgs>>): Prisma.Prisma__ActivityClient<runtime.Types.Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  copy<T extends Prisma.ItemAction$copyArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$copyArgs<ExtArgs>>): Prisma.Prisma__CopyActionClient<runtime.Types.Result.GetResult<Prisma.$CopyActionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2057,6 +2238,7 @@ export interface ItemActionFieldRefs {
   readonly shareActionId: Prisma.FieldRef<"ItemAction", 'String'>
   readonly versionActionId: Prisma.FieldRef<"ItemAction", 'String'>
   readonly activityId: Prisma.FieldRef<"ItemAction", 'String'>
+  readonly copyActionIdId: Prisma.FieldRef<"ItemAction", 'String'>
 }
     
 
@@ -2280,7 +2462,7 @@ export type ItemActionCreateArgs<ExtArgs extends runtime.Types.Extensions.Intern
   /**
    * The data needed to create a ItemAction.
    */
-  data?: Prisma.XOR<Prisma.ItemActionCreateInput, Prisma.ItemActionUncheckedCreateInput>
+  data: Prisma.XOR<Prisma.ItemActionCreateInput, Prisma.ItemActionUncheckedCreateInput>
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }
 
@@ -2649,6 +2831,25 @@ export type ItemAction$activityArgs<ExtArgs extends runtime.Types.Extensions.Int
    */
   include?: Prisma.ActivityInclude<ExtArgs> | null
   where?: Prisma.ActivityWhereInput
+}
+
+/**
+ * ItemAction.copy
+ */
+export type ItemAction$copyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CopyAction
+   */
+  select?: Prisma.CopyActionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CopyAction
+   */
+  omit?: Prisma.CopyActionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CopyActionInclude<ExtArgs> | null
+  where?: Prisma.CopyActionWhereInput
 }
 
 /**

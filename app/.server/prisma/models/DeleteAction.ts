@@ -204,14 +204,14 @@ export type DeleteActionScalarWhereWithAggregatesInput = {
 }
 
 export type DeleteActionCreateInput = {
-  id?: string
+  id: string
   name: string
   itemType: $Enums.ObjectType
   action?: Prisma.ItemActionCreateNestedOneWithoutDeleteInput
 }
 
 export type DeleteActionUncheckedCreateInput = {
-  id?: string
+  id: string
   name: string
   itemType: $Enums.ObjectType
   action?: Prisma.ItemActionUncheckedCreateNestedOneWithoutDeleteInput
@@ -232,7 +232,7 @@ export type DeleteActionUncheckedUpdateInput = {
 }
 
 export type DeleteActionCreateManyInput = {
-  id?: string
+  id: string
   name: string
   itemType: $Enums.ObjectType
 }
@@ -293,13 +293,13 @@ export type EnumObjectTypeFieldUpdateOperationsInput = {
 }
 
 export type DeleteActionCreateWithoutActionInput = {
-  id?: string
+  id: string
   name: string
   itemType: $Enums.ObjectType
 }
 
 export type DeleteActionUncheckedCreateWithoutActionInput = {
-  id?: string
+  id: string
   name: string
   itemType: $Enums.ObjectType
 }

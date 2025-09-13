@@ -204,14 +204,14 @@ export type MoveActionScalarWhereWithAggregatesInput = {
 }
 
 export type MoveActionCreateInput = {
-  id?: string
+  id: string
   from: string
   to: string
   action?: Prisma.ItemActionCreateNestedOneWithoutMoveInput
 }
 
 export type MoveActionUncheckedCreateInput = {
-  id?: string
+  id: string
   from: string
   to: string
   action?: Prisma.ItemActionUncheckedCreateNestedOneWithoutMoveInput
@@ -232,7 +232,7 @@ export type MoveActionUncheckedUpdateInput = {
 }
 
 export type MoveActionCreateManyInput = {
-  id?: string
+  id: string
   from: string
   to: string
 }
@@ -289,13 +289,13 @@ export type MoveActionUpdateOneWithoutActionNestedInput = {
 }
 
 export type MoveActionCreateWithoutActionInput = {
-  id?: string
+  id: string
   from: string
   to: string
 }
 
 export type MoveActionUncheckedCreateWithoutActionInput = {
-  id?: string
+  id: string
   from: string
   to: string
 }

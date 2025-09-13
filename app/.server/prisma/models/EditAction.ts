@@ -180,12 +180,12 @@ export type EditActionScalarWhereWithAggregatesInput = {
 }
 
 export type EditActionCreateInput = {
-  id?: string
+  id: string
   action?: Prisma.ItemActionCreateNestedOneWithoutEditInput
 }
 
 export type EditActionUncheckedCreateInput = {
-  id?: string
+  id: string
   action?: Prisma.ItemActionUncheckedCreateNestedOneWithoutEditInput
 }
 
@@ -200,7 +200,7 @@ export type EditActionUncheckedUpdateInput = {
 }
 
 export type EditActionCreateManyInput = {
-  id?: string
+  id: string
 }
 
 export type EditActionUpdateManyMutationInput = {
@@ -245,11 +245,11 @@ export type EditActionUpdateOneWithoutActionNestedInput = {
 }
 
 export type EditActionCreateWithoutActionInput = {
-  id?: string
+  id: string
 }
 
 export type EditActionUncheckedCreateWithoutActionInput = {
-  id?: string
+  id: string
 }
 
 export type EditActionCreateOrConnectWithoutActionInput = {
@@ -957,7 +957,7 @@ export type EditActionCreateArgs<ExtArgs extends runtime.Types.Extensions.Intern
   /**
    * The data needed to create a EditAction.
    */
-  data?: Prisma.XOR<Prisma.EditActionCreateInput, Prisma.EditActionUncheckedCreateInput>
+  data: Prisma.XOR<Prisma.EditActionCreateInput, Prisma.EditActionUncheckedCreateInput>
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }
 

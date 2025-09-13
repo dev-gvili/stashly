@@ -82,6 +82,11 @@ export type EditAction = Prisma.EditActionModel
  */
 export type MoveAction = Prisma.MoveActionModel
 /**
+ * Model CopyAction
+ * 
+ */
+export type CopyAction = Prisma.CopyActionModel
+/**
  * Model RenameAction
  * 
  */
@@ -181,6 +186,11 @@ export type Invitation = Prisma.InvitationModel
  * 
  */
 export type Item = Prisma.ItemModel
+/**
+ * Model LockedItem
+ * 
+ */
+export type LockedItem = Prisma.LockedItemModel
 /**
  * Model Metadata
  * 
@@ -282,11 +292,6 @@ export type Preview = Prisma.PreviewModel
  */
 export type FileShare = Prisma.FileShareModel
 /**
- * Model ItemLock
- * 
- */
-export type ItemLock = Prisma.ItemLockModel
-/**
  * Model View
  * 
  */
@@ -310,11 +315,17 @@ export const ItemCategory = $Enums.ItemCategory
 export type ItemStatus = $Enums.ItemStatus
 export const ItemStatus = $Enums.ItemStatus
 
+export type NotificationType = $Enums.NotificationType
+export const NotificationType = $Enums.NotificationType
+
+export type NotificationStatus = $Enums.NotificationStatus
+export const NotificationStatus = $Enums.NotificationStatus
+
 export type PermissionRole = $Enums.PermissionRole
 export const PermissionRole = $Enums.PermissionRole
 
-export type QuotaState = $Enums.QuotaState
-export const QuotaState = $Enums.QuotaState
+export type QuotaStatus = $Enums.QuotaStatus
+export const QuotaStatus = $Enums.QuotaStatus
 
 export type ShareLinkType = $Enums.ShareLinkType
 export const ShareLinkType = $Enums.ShareLinkType

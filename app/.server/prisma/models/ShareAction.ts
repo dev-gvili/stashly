@@ -188,13 +188,13 @@ export type ShareActionScalarWhereWithAggregatesInput = {
 }
 
 export type ShareActionCreateInput = {
-  id?: string
+  id: string
   recipients?: Prisma.ShareActionCreaterecipientsInput | string[]
   action?: Prisma.ItemActionCreateNestedOneWithoutShareInput
 }
 
 export type ShareActionUncheckedCreateInput = {
-  id?: string
+  id: string
   recipients?: Prisma.ShareActionCreaterecipientsInput | string[]
   action?: Prisma.ItemActionUncheckedCreateNestedOneWithoutShareInput
 }
@@ -212,7 +212,7 @@ export type ShareActionUncheckedUpdateInput = {
 }
 
 export type ShareActionCreateManyInput = {
-  id?: string
+  id: string
   recipients?: Prisma.ShareActionCreaterecipientsInput | string[]
 }
 
@@ -270,12 +270,12 @@ export type ShareActionUpdaterecipientsInput = {
 }
 
 export type ShareActionCreateWithoutActionInput = {
-  id?: string
+  id: string
   recipients?: Prisma.ShareActionCreaterecipientsInput | string[]
 }
 
 export type ShareActionUncheckedCreateWithoutActionInput = {
-  id?: string
+  id: string
   recipients?: Prisma.ShareActionCreaterecipientsInput | string[]
 }
 
@@ -992,7 +992,7 @@ export type ShareActionCreateArgs<ExtArgs extends runtime.Types.Extensions.Inter
   /**
    * The data needed to create a ShareAction.
    */
-  data?: Prisma.XOR<Prisma.ShareActionCreateInput, Prisma.ShareActionUncheckedCreateInput>
+  data: Prisma.XOR<Prisma.ShareActionCreateInput, Prisma.ShareActionUncheckedCreateInput>
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }
 

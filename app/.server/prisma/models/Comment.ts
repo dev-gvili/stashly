@@ -206,6 +206,7 @@ export type CommentOrderByWithRelationInput = {
 
 export type CommentWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  itemId_ownerId?: Prisma.CommentItemIdOwnerIdCompoundUniqueInput
   AND?: Prisma.CommentWhereInput | Prisma.CommentWhereInput[]
   OR?: Prisma.CommentWhereInput[]
   NOT?: Prisma.CommentWhereInput | Prisma.CommentWhereInput[]
@@ -216,7 +217,7 @@ export type CommentWhereUniqueInput = Prisma.AtLeast<{
   ownerId?: Prisma.StringFilter<"Comment"> | string
   item?: Prisma.XOR<Prisma.ItemScalarRelationFilter, Prisma.ItemWhereInput>
   owner?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
-}, "id">
+}, "id" | "itemId_ownerId">
 
 export type CommentOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -243,7 +244,7 @@ export type CommentScalarWhereWithAggregatesInput = {
 }
 
 export type CommentCreateInput = {
-  id?: string
+  id: string
   content: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -252,7 +253,7 @@ export type CommentCreateInput = {
 }
 
 export type CommentUncheckedCreateInput = {
-  id?: string
+  id: string
   content: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -279,7 +280,7 @@ export type CommentUncheckedUpdateInput = {
 }
 
 export type CommentCreateManyInput = {
-  id?: string
+  id: string
   content: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -301,6 +302,11 @@ export type CommentUncheckedUpdateManyInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   itemId?: Prisma.StringFieldUpdateOperationsInput | string
   ownerId?: Prisma.StringFieldUpdateOperationsInput | string
+}
+
+export type CommentItemIdOwnerIdCompoundUniqueInput = {
+  itemId: string
+  ownerId: string
 }
 
 export type CommentCountOrderByAggregateInput = {
@@ -425,7 +431,7 @@ export type CommentUncheckedUpdateManyWithoutOwnerNestedInput = {
 }
 
 export type CommentCreateWithoutItemInput = {
-  id?: string
+  id: string
   content: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -433,7 +439,7 @@ export type CommentCreateWithoutItemInput = {
 }
 
 export type CommentUncheckedCreateWithoutItemInput = {
-  id?: string
+  id: string
   content: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -479,7 +485,7 @@ export type CommentScalarWhereInput = {
 }
 
 export type CommentCreateWithoutOwnerInput = {
-  id?: string
+  id: string
   content: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -487,7 +493,7 @@ export type CommentCreateWithoutOwnerInput = {
 }
 
 export type CommentUncheckedCreateWithoutOwnerInput = {
-  id?: string
+  id: string
   content: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -521,7 +527,7 @@ export type CommentUpdateManyWithWhereWithoutOwnerInput = {
 }
 
 export type CommentCreateManyItemInput = {
-  id?: string
+  id: string
   content: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -553,7 +559,7 @@ export type CommentUncheckedUpdateManyWithoutItemInput = {
 }
 
 export type CommentCreateManyOwnerInput = {
-  id?: string
+  id: string
   content: string
   createdAt?: Date | string
   updatedAt?: Date | string

@@ -30,14 +30,14 @@ export type ItemVersionAvgAggregateOutputType = {
 }
 
 export type ItemVersionSumAggregateOutputType = {
-  size: number | null
+  size: bigint | null
 }
 
 export type ItemVersionMinAggregateOutputType = {
   id: string | null
   updatedAt: Date | null
   createdAt: Date | null
-  size: number | null
+  size: bigint | null
   content: Uint8Array | null
   label: string | null
   version: string | null
@@ -48,7 +48,7 @@ export type ItemVersionMaxAggregateOutputType = {
   id: string | null
   updatedAt: Date | null
   createdAt: Date | null
-  size: number | null
+  size: bigint | null
   content: Uint8Array | null
   label: string | null
   version: string | null
@@ -200,7 +200,7 @@ export type ItemVersionGroupByOutputType = {
   id: string
   updatedAt: Date | null
   createdAt: Date | null
-  size: number | null
+  size: bigint | null
   content: Uint8Array | null
   label: string | null
   version: string | null
@@ -234,7 +234,7 @@ export type ItemVersionWhereInput = {
   id?: Prisma.StringFilter<"ItemVersion"> | string
   updatedAt?: Prisma.DateTimeNullableFilter<"ItemVersion"> | Date | string | null
   createdAt?: Prisma.DateTimeNullableFilter<"ItemVersion"> | Date | string | null
-  size?: Prisma.IntNullableFilter<"ItemVersion"> | number | null
+  size?: Prisma.BigIntNullableFilter<"ItemVersion"> | bigint | number | null
   content?: Prisma.BytesNullableFilter<"ItemVersion"> | Uint8Array | null
   label?: Prisma.StringNullableFilter<"ItemVersion"> | string | null
   version?: Prisma.StringNullableFilter<"ItemVersion"> | string | null
@@ -261,7 +261,7 @@ export type ItemVersionWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.ItemVersionWhereInput | Prisma.ItemVersionWhereInput[]
   updatedAt?: Prisma.DateTimeNullableFilter<"ItemVersion"> | Date | string | null
   createdAt?: Prisma.DateTimeNullableFilter<"ItemVersion"> | Date | string | null
-  size?: Prisma.IntNullableFilter<"ItemVersion"> | number | null
+  size?: Prisma.BigIntNullableFilter<"ItemVersion"> | bigint | number | null
   content?: Prisma.BytesNullableFilter<"ItemVersion"> | Uint8Array | null
   label?: Prisma.StringNullableFilter<"ItemVersion"> | string | null
   version?: Prisma.StringNullableFilter<"ItemVersion"> | string | null
@@ -292,7 +292,7 @@ export type ItemVersionScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"ItemVersion"> | string
   updatedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ItemVersion"> | Date | string | null
   createdAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ItemVersion"> | Date | string | null
-  size?: Prisma.IntNullableWithAggregatesFilter<"ItemVersion"> | number | null
+  size?: Prisma.BigIntNullableWithAggregatesFilter<"ItemVersion"> | bigint | number | null
   content?: Prisma.BytesNullableWithAggregatesFilter<"ItemVersion"> | Uint8Array | null
   label?: Prisma.StringNullableWithAggregatesFilter<"ItemVersion"> | string | null
   version?: Prisma.StringNullableWithAggregatesFilter<"ItemVersion"> | string | null
@@ -300,10 +300,10 @@ export type ItemVersionScalarWhereWithAggregatesInput = {
 }
 
 export type ItemVersionCreateInput = {
-  id?: string
+  id: string
   updatedAt?: Date | string | null
   createdAt?: Date | string | null
-  size?: number | null
+  size?: bigint | number | null
   content?: Uint8Array | null
   label?: string | null
   version?: string | null
@@ -311,10 +311,10 @@ export type ItemVersionCreateInput = {
 }
 
 export type ItemVersionUncheckedCreateInput = {
-  id?: string
+  id: string
   updatedAt?: Date | string | null
   createdAt?: Date | string | null
-  size?: number | null
+  size?: bigint | number | null
   content?: Uint8Array | null
   label?: string | null
   version?: string | null
@@ -325,7 +325,7 @@ export type ItemVersionUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   updatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  size?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  size?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | Uint8Array | null
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   version?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -336,7 +336,7 @@ export type ItemVersionUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   updatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  size?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  size?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | Uint8Array | null
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   version?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -344,10 +344,10 @@ export type ItemVersionUncheckedUpdateInput = {
 }
 
 export type ItemVersionCreateManyInput = {
-  id?: string
+  id: string
   updatedAt?: Date | string | null
   createdAt?: Date | string | null
-  size?: number | null
+  size?: bigint | number | null
   content?: Uint8Array | null
   label?: string | null
   version?: string | null
@@ -358,7 +358,7 @@ export type ItemVersionUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   updatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  size?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  size?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | Uint8Array | null
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   version?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -368,7 +368,7 @@ export type ItemVersionUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   updatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  size?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  size?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | Uint8Array | null
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   version?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -468,21 +468,29 @@ export type ItemVersionUncheckedUpdateManyWithoutItemNestedInput = {
   deleteMany?: Prisma.ItemVersionScalarWhereInput | Prisma.ItemVersionScalarWhereInput[]
 }
 
+export type NullableBigIntFieldUpdateOperationsInput = {
+  set?: bigint | number | null
+  increment?: bigint | number
+  decrement?: bigint | number
+  multiply?: bigint | number
+  divide?: bigint | number
+}
+
 export type ItemVersionCreateWithoutItemInput = {
-  id?: string
+  id: string
   updatedAt?: Date | string | null
   createdAt?: Date | string | null
-  size?: number | null
+  size?: bigint | number | null
   content?: Uint8Array | null
   label?: string | null
   version?: string | null
 }
 
 export type ItemVersionUncheckedCreateWithoutItemInput = {
-  id?: string
+  id: string
   updatedAt?: Date | string | null
   createdAt?: Date | string | null
-  size?: number | null
+  size?: bigint | number | null
   content?: Uint8Array | null
   label?: string | null
   version?: string | null
@@ -521,7 +529,7 @@ export type ItemVersionScalarWhereInput = {
   id?: Prisma.StringFilter<"ItemVersion"> | string
   updatedAt?: Prisma.DateTimeNullableFilter<"ItemVersion"> | Date | string | null
   createdAt?: Prisma.DateTimeNullableFilter<"ItemVersion"> | Date | string | null
-  size?: Prisma.IntNullableFilter<"ItemVersion"> | number | null
+  size?: Prisma.BigIntNullableFilter<"ItemVersion"> | bigint | number | null
   content?: Prisma.BytesNullableFilter<"ItemVersion"> | Uint8Array | null
   label?: Prisma.StringNullableFilter<"ItemVersion"> | string | null
   version?: Prisma.StringNullableFilter<"ItemVersion"> | string | null
@@ -529,10 +537,10 @@ export type ItemVersionScalarWhereInput = {
 }
 
 export type ItemVersionCreateManyItemInput = {
-  id?: string
+  id: string
   updatedAt?: Date | string | null
   createdAt?: Date | string | null
-  size?: number | null
+  size?: bigint | number | null
   content?: Uint8Array | null
   label?: string | null
   version?: string | null
@@ -542,7 +550,7 @@ export type ItemVersionUpdateWithoutItemInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   updatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  size?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  size?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | Uint8Array | null
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   version?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -552,7 +560,7 @@ export type ItemVersionUncheckedUpdateWithoutItemInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   updatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  size?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  size?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | Uint8Array | null
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   version?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -562,7 +570,7 @@ export type ItemVersionUncheckedUpdateManyWithoutItemInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   updatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  size?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  size?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | Uint8Array | null
   label?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   version?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -637,7 +645,7 @@ export type $ItemVersionPayload<ExtArgs extends runtime.Types.Extensions.Interna
     id: string
     updatedAt: Date | null
     createdAt: Date | null
-    size: number | null
+    size: bigint | null
     content: Uint8Array | null
     label: string | null
     version: string | null
@@ -1069,7 +1077,7 @@ export interface ItemVersionFieldRefs {
   readonly id: Prisma.FieldRef<"ItemVersion", 'String'>
   readonly updatedAt: Prisma.FieldRef<"ItemVersion", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"ItemVersion", 'DateTime'>
-  readonly size: Prisma.FieldRef<"ItemVersion", 'Int'>
+  readonly size: Prisma.FieldRef<"ItemVersion", 'BigInt'>
   readonly content: Prisma.FieldRef<"ItemVersion", 'Bytes'>
   readonly label: Prisma.FieldRef<"ItemVersion", 'String'>
   readonly version: Prisma.FieldRef<"ItemVersion", 'String'>
@@ -1297,7 +1305,7 @@ export type ItemVersionCreateArgs<ExtArgs extends runtime.Types.Extensions.Inter
   /**
    * The data needed to create a ItemVersion.
    */
-  data?: Prisma.XOR<Prisma.ItemVersionCreateInput, Prisma.ItemVersionUncheckedCreateInput>
+  data: Prisma.XOR<Prisma.ItemVersionCreateInput, Prisma.ItemVersionUncheckedCreateInput>
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }
 

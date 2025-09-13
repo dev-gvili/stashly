@@ -192,13 +192,13 @@ export type TrashScalarWhereWithAggregatesInput = {
 }
 
 export type TrashCreateInput = {
-  id?: string
+  id: string
   updatedAt?: Date | string
   items?: Prisma.TrashItemCreateNestedManyWithoutTrashInput
 }
 
 export type TrashUncheckedCreateInput = {
-  id?: string
+  id: string
   updatedAt?: Date | string
   items?: Prisma.TrashItemUncheckedCreateNestedManyWithoutTrashInput
 }
@@ -216,7 +216,7 @@ export type TrashUncheckedUpdateInput = {
 }
 
 export type TrashCreateManyInput = {
-  id?: string
+  id: string
   updatedAt?: Date | string
 }
 
@@ -265,12 +265,12 @@ export type TrashUpdateOneRequiredWithoutItemsNestedInput = {
 }
 
 export type TrashCreateWithoutItemsInput = {
-  id?: string
+  id: string
   updatedAt?: Date | string
 }
 
 export type TrashUncheckedCreateWithoutItemsInput = {
-  id?: string
+  id: string
   updatedAt?: Date | string
 }
 

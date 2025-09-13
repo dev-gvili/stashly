@@ -39,28 +39,34 @@ export type QuotaSumAggregateOutputType = {
 
 export type QuotaMinAggregateOutputType = {
   id: string | null
+  createdAt: Date | null
+  updatedAt: Date | null
   deleted: bigint | null
   total: bigint | null
   used: bigint | null
-  state: $Enums.QuotaState | null
+  status: $Enums.QuotaStatus | null
   driveId: string | null
 }
 
 export type QuotaMaxAggregateOutputType = {
   id: string | null
+  createdAt: Date | null
+  updatedAt: Date | null
   deleted: bigint | null
   total: bigint | null
   used: bigint | null
-  state: $Enums.QuotaState | null
+  status: $Enums.QuotaStatus | null
   driveId: string | null
 }
 
 export type QuotaCountAggregateOutputType = {
   id: number
+  createdAt: number
+  updatedAt: number
   deleted: number
   total: number
   used: number
-  state: number
+  status: number
   driveId: number
   _all: number
 }
@@ -80,28 +86,34 @@ export type QuotaSumAggregateInputType = {
 
 export type QuotaMinAggregateInputType = {
   id?: true
+  createdAt?: true
+  updatedAt?: true
   deleted?: true
   total?: true
   used?: true
-  state?: true
+  status?: true
   driveId?: true
 }
 
 export type QuotaMaxAggregateInputType = {
   id?: true
+  createdAt?: true
+  updatedAt?: true
   deleted?: true
   total?: true
   used?: true
-  state?: true
+  status?: true
   driveId?: true
 }
 
 export type QuotaCountAggregateInputType = {
   id?: true
+  createdAt?: true
+  updatedAt?: true
   deleted?: true
   total?: true
   used?: true
-  state?: true
+  status?: true
   driveId?: true
   _all?: true
 }
@@ -194,10 +206,12 @@ export type QuotaGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
 
 export type QuotaGroupByOutputType = {
   id: string
+  createdAt: Date
+  updatedAt: Date
   deleted: bigint
   total: bigint
   used: bigint
-  state: $Enums.QuotaState
+  status: $Enums.QuotaStatus
   driveId: string
   _count: QuotaCountAggregateOutputType | null
   _avg: QuotaAvgAggregateOutputType | null
@@ -226,20 +240,24 @@ export type QuotaWhereInput = {
   OR?: Prisma.QuotaWhereInput[]
   NOT?: Prisma.QuotaWhereInput | Prisma.QuotaWhereInput[]
   id?: Prisma.StringFilter<"Quota"> | string
+  createdAt?: Prisma.DateTimeFilter<"Quota"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Quota"> | Date | string
   deleted?: Prisma.BigIntFilter<"Quota"> | bigint | number
   total?: Prisma.BigIntFilter<"Quota"> | bigint | number
   used?: Prisma.BigIntFilter<"Quota"> | bigint | number
-  state?: Prisma.EnumQuotaStateFilter<"Quota"> | $Enums.QuotaState
+  status?: Prisma.EnumQuotaStatusFilter<"Quota"> | $Enums.QuotaStatus
   driveId?: Prisma.StringFilter<"Quota"> | string
   drive?: Prisma.XOR<Prisma.DriveScalarRelationFilter, Prisma.DriveWhereInput>
 }
 
 export type QuotaOrderByWithRelationInput = {
   id?: Prisma.SortOrder
+  createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   deleted?: Prisma.SortOrder
   total?: Prisma.SortOrder
   used?: Prisma.SortOrder
-  state?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   driveId?: Prisma.SortOrder
   drive?: Prisma.DriveOrderByWithRelationInput
 }
@@ -250,19 +268,23 @@ export type QuotaWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.QuotaWhereInput | Prisma.QuotaWhereInput[]
   OR?: Prisma.QuotaWhereInput[]
   NOT?: Prisma.QuotaWhereInput | Prisma.QuotaWhereInput[]
+  createdAt?: Prisma.DateTimeFilter<"Quota"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Quota"> | Date | string
   deleted?: Prisma.BigIntFilter<"Quota"> | bigint | number
   total?: Prisma.BigIntFilter<"Quota"> | bigint | number
   used?: Prisma.BigIntFilter<"Quota"> | bigint | number
-  state?: Prisma.EnumQuotaStateFilter<"Quota"> | $Enums.QuotaState
+  status?: Prisma.EnumQuotaStatusFilter<"Quota"> | $Enums.QuotaStatus
   drive?: Prisma.XOR<Prisma.DriveScalarRelationFilter, Prisma.DriveWhereInput>
 }, "id" | "driveId">
 
 export type QuotaOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
+  createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   deleted?: Prisma.SortOrder
   total?: Prisma.SortOrder
   used?: Prisma.SortOrder
-  state?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   driveId?: Prisma.SortOrder
   _count?: Prisma.QuotaCountOrderByAggregateInput
   _avg?: Prisma.QuotaAvgOrderByAggregateInput
@@ -276,72 +298,88 @@ export type QuotaScalarWhereWithAggregatesInput = {
   OR?: Prisma.QuotaScalarWhereWithAggregatesInput[]
   NOT?: Prisma.QuotaScalarWhereWithAggregatesInput | Prisma.QuotaScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Quota"> | string
+  createdAt?: Prisma.DateTimeWithAggregatesFilter<"Quota"> | Date | string
+  updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Quota"> | Date | string
   deleted?: Prisma.BigIntWithAggregatesFilter<"Quota"> | bigint | number
   total?: Prisma.BigIntWithAggregatesFilter<"Quota"> | bigint | number
   used?: Prisma.BigIntWithAggregatesFilter<"Quota"> | bigint | number
-  state?: Prisma.EnumQuotaStateWithAggregatesFilter<"Quota"> | $Enums.QuotaState
+  status?: Prisma.EnumQuotaStatusWithAggregatesFilter<"Quota"> | $Enums.QuotaStatus
   driveId?: Prisma.StringWithAggregatesFilter<"Quota"> | string
 }
 
 export type QuotaCreateInput = {
-  id?: string
+  id: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
   deleted?: bigint | number
   total?: bigint | number
   used?: bigint | number
-  state?: $Enums.QuotaState
+  status?: $Enums.QuotaStatus
   drive: Prisma.DriveCreateNestedOneWithoutQuotaInput
 }
 
 export type QuotaUncheckedCreateInput = {
-  id?: string
+  id: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
   deleted?: bigint | number
   total?: bigint | number
   used?: bigint | number
-  state?: $Enums.QuotaState
+  status?: $Enums.QuotaStatus
   driveId: string
 }
 
 export type QuotaUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deleted?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   total?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   used?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
-  state?: Prisma.EnumQuotaStateFieldUpdateOperationsInput | $Enums.QuotaState
+  status?: Prisma.EnumQuotaStatusFieldUpdateOperationsInput | $Enums.QuotaStatus
   drive?: Prisma.DriveUpdateOneRequiredWithoutQuotaNestedInput
 }
 
 export type QuotaUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deleted?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   total?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   used?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
-  state?: Prisma.EnumQuotaStateFieldUpdateOperationsInput | $Enums.QuotaState
+  status?: Prisma.EnumQuotaStatusFieldUpdateOperationsInput | $Enums.QuotaStatus
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type QuotaCreateManyInput = {
-  id?: string
+  id: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
   deleted?: bigint | number
   total?: bigint | number
   used?: bigint | number
-  state?: $Enums.QuotaState
+  status?: $Enums.QuotaStatus
   driveId: string
 }
 
 export type QuotaUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deleted?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   total?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   used?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
-  state?: Prisma.EnumQuotaStateFieldUpdateOperationsInput | $Enums.QuotaState
+  status?: Prisma.EnumQuotaStatusFieldUpdateOperationsInput | $Enums.QuotaStatus
 }
 
 export type QuotaUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deleted?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   total?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   used?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
-  state?: Prisma.EnumQuotaStateFieldUpdateOperationsInput | $Enums.QuotaState
+  status?: Prisma.EnumQuotaStatusFieldUpdateOperationsInput | $Enums.QuotaStatus
   driveId?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
@@ -352,10 +390,12 @@ export type QuotaNullableScalarRelationFilter = {
 
 export type QuotaCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   deleted?: Prisma.SortOrder
   total?: Prisma.SortOrder
   used?: Prisma.SortOrder
-  state?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   driveId?: Prisma.SortOrder
 }
 
@@ -367,19 +407,23 @@ export type QuotaAvgOrderByAggregateInput = {
 
 export type QuotaMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   deleted?: Prisma.SortOrder
   total?: Prisma.SortOrder
   used?: Prisma.SortOrder
-  state?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   driveId?: Prisma.SortOrder
 }
 
 export type QuotaMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   deleted?: Prisma.SortOrder
   total?: Prisma.SortOrder
   used?: Prisma.SortOrder
-  state?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   driveId?: Prisma.SortOrder
 }
 
@@ -421,32 +465,28 @@ export type QuotaUncheckedUpdateOneWithoutDriveNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.QuotaUpdateToOneWithWhereWithoutDriveInput, Prisma.QuotaUpdateWithoutDriveInput>, Prisma.QuotaUncheckedUpdateWithoutDriveInput>
 }
 
-export type BigIntFieldUpdateOperationsInput = {
-  set?: bigint | number
-  increment?: bigint | number
-  decrement?: bigint | number
-  multiply?: bigint | number
-  divide?: bigint | number
-}
-
-export type EnumQuotaStateFieldUpdateOperationsInput = {
-  set?: $Enums.QuotaState
+export type EnumQuotaStatusFieldUpdateOperationsInput = {
+  set?: $Enums.QuotaStatus
 }
 
 export type QuotaCreateWithoutDriveInput = {
-  id?: string
+  id: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
   deleted?: bigint | number
   total?: bigint | number
   used?: bigint | number
-  state?: $Enums.QuotaState
+  status?: $Enums.QuotaStatus
 }
 
 export type QuotaUncheckedCreateWithoutDriveInput = {
-  id?: string
+  id: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
   deleted?: bigint | number
   total?: bigint | number
   used?: bigint | number
-  state?: $Enums.QuotaState
+  status?: $Enums.QuotaStatus
 }
 
 export type QuotaCreateOrConnectWithoutDriveInput = {
@@ -467,62 +507,74 @@ export type QuotaUpdateToOneWithWhereWithoutDriveInput = {
 
 export type QuotaUpdateWithoutDriveInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deleted?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   total?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   used?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
-  state?: Prisma.EnumQuotaStateFieldUpdateOperationsInput | $Enums.QuotaState
+  status?: Prisma.EnumQuotaStatusFieldUpdateOperationsInput | $Enums.QuotaStatus
 }
 
 export type QuotaUncheckedUpdateWithoutDriveInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deleted?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   total?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   used?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
-  state?: Prisma.EnumQuotaStateFieldUpdateOperationsInput | $Enums.QuotaState
+  status?: Prisma.EnumQuotaStatusFieldUpdateOperationsInput | $Enums.QuotaStatus
 }
 
 
 
 export type QuotaSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  createdAt?: boolean
+  updatedAt?: boolean
   deleted?: boolean
   total?: boolean
   used?: boolean
-  state?: boolean
+  status?: boolean
   driveId?: boolean
   drive?: boolean | Prisma.DriveDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["quota"]>
 
 export type QuotaSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  createdAt?: boolean
+  updatedAt?: boolean
   deleted?: boolean
   total?: boolean
   used?: boolean
-  state?: boolean
+  status?: boolean
   driveId?: boolean
   drive?: boolean | Prisma.DriveDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["quota"]>
 
 export type QuotaSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  createdAt?: boolean
+  updatedAt?: boolean
   deleted?: boolean
   total?: boolean
   used?: boolean
-  state?: boolean
+  status?: boolean
   driveId?: boolean
   drive?: boolean | Prisma.DriveDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["quota"]>
 
 export type QuotaSelectScalar = {
   id?: boolean
+  createdAt?: boolean
+  updatedAt?: boolean
   deleted?: boolean
   total?: boolean
   used?: boolean
-  state?: boolean
+  status?: boolean
   driveId?: boolean
 }
 
-export type QuotaOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "deleted" | "total" | "used" | "state" | "driveId", ExtArgs["result"]["quota"]>
+export type QuotaOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "deleted" | "total" | "used" | "status" | "driveId", ExtArgs["result"]["quota"]>
 export type QuotaInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   drive?: boolean | Prisma.DriveDefaultArgs<ExtArgs>
 }
@@ -540,10 +592,12 @@ export type $QuotaPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
+    createdAt: Date
+    updatedAt: Date
     deleted: bigint
     total: bigint
     used: bigint
-    state: $Enums.QuotaState
+    status: $Enums.QuotaStatus
     driveId: string
   }, ExtArgs["result"]["quota"]>
   composites: {}
@@ -970,10 +1024,12 @@ export interface Prisma__QuotaClient<T, Null = never, ExtArgs extends runtime.Ty
  */
 export interface QuotaFieldRefs {
   readonly id: Prisma.FieldRef<"Quota", 'String'>
+  readonly createdAt: Prisma.FieldRef<"Quota", 'DateTime'>
+  readonly updatedAt: Prisma.FieldRef<"Quota", 'DateTime'>
   readonly deleted: Prisma.FieldRef<"Quota", 'BigInt'>
   readonly total: Prisma.FieldRef<"Quota", 'BigInt'>
   readonly used: Prisma.FieldRef<"Quota", 'BigInt'>
-  readonly state: Prisma.FieldRef<"Quota", 'QuotaState'>
+  readonly status: Prisma.FieldRef<"Quota", 'QuotaStatus'>
   readonly driveId: Prisma.FieldRef<"Quota", 'String'>
 }
     

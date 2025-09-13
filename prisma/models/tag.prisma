@@ -1,10 +1,8 @@
 model Tag {
-    id        String   @id @default(uuid())
+    id        String   @id
     name      String
     createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+    updatedAt DateTime @updatedAt
 
-    items Item[]
-
-    // @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+    @@index([name])
 }

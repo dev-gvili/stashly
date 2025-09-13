@@ -30,19 +30,19 @@ export type CollectionAvgAggregateOutputType = {
 }
 
 export type CollectionSumAggregateOutputType = {
-  size: number | null
+  size: bigint | null
 }
 
 export type CollectionMinAggregateOutputType = {
   id: string | null
   name: string | null
-  size: number | null
+  size: bigint | null
 }
 
 export type CollectionMaxAggregateOutputType = {
   id: string | null
   name: string | null
-  size: number | null
+  size: bigint | null
 }
 
 export type CollectionCountAggregateOutputType = {
@@ -169,7 +169,7 @@ export type CollectionGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inter
 export type CollectionGroupByOutputType = {
   id: string
   name: string
-  size: number
+  size: bigint
   _count: CollectionCountAggregateOutputType | null
   _avg: CollectionAvgAggregateOutputType | null
   _sum: CollectionSumAggregateOutputType | null
@@ -198,7 +198,7 @@ export type CollectionWhereInput = {
   NOT?: Prisma.CollectionWhereInput | Prisma.CollectionWhereInput[]
   id?: Prisma.StringFilter<"Collection"> | string
   name?: Prisma.StringFilter<"Collection"> | string
-  size?: Prisma.IntFilter<"Collection"> | number
+  size?: Prisma.BigIntFilter<"Collection"> | bigint | number
   item?: Prisma.XOR<Prisma.ItemScalarRelationFilter, Prisma.ItemWhereInput>
   items?: Prisma.CollectionItemListRelationFilter
 }
@@ -217,7 +217,7 @@ export type CollectionWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.CollectionWhereInput[]
   NOT?: Prisma.CollectionWhereInput | Prisma.CollectionWhereInput[]
   name?: Prisma.StringFilter<"Collection"> | string
-  size?: Prisma.IntFilter<"Collection"> | number
+  size?: Prisma.BigIntFilter<"Collection"> | bigint | number
   item?: Prisma.XOR<Prisma.ItemScalarRelationFilter, Prisma.ItemWhereInput>
   items?: Prisma.CollectionItemListRelationFilter
 }, "id">
@@ -239,26 +239,26 @@ export type CollectionScalarWhereWithAggregatesInput = {
   NOT?: Prisma.CollectionScalarWhereWithAggregatesInput | Prisma.CollectionScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Collection"> | string
   name?: Prisma.StringWithAggregatesFilter<"Collection"> | string
-  size?: Prisma.IntWithAggregatesFilter<"Collection"> | number
+  size?: Prisma.BigIntWithAggregatesFilter<"Collection"> | bigint | number
 }
 
 export type CollectionCreateInput = {
   name: string
-  size?: number
-  item?: Prisma.ItemCreateNestedOneWithoutCollectionInput
+  size?: bigint | number
+  item: Prisma.ItemCreateNestedOneWithoutCollectionInput
   items?: Prisma.CollectionItemCreateNestedManyWithoutCollectionInput
 }
 
 export type CollectionUncheckedCreateInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
   items?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutCollectionInput
 }
 
 export type CollectionUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   item?: Prisma.ItemUpdateOneRequiredWithoutCollectionNestedInput
   items?: Prisma.CollectionItemUpdateManyWithoutCollectionNestedInput
 }
@@ -266,25 +266,25 @@ export type CollectionUpdateInput = {
 export type CollectionUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   items?: Prisma.CollectionItemUncheckedUpdateManyWithoutCollectionNestedInput
 }
 
 export type CollectionCreateManyInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
 }
 
 export type CollectionUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
 }
 
 export type CollectionUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
 }
 
 export type CollectionCountOrderByAggregateInput = {
@@ -323,12 +323,12 @@ export type CollectionNullableScalarRelationFilter = {
   isNot?: Prisma.CollectionWhereInput | null
 }
 
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
+export type BigIntFieldUpdateOperationsInput = {
+  set?: bigint | number
+  increment?: bigint | number
+  decrement?: bigint | number
+  multiply?: bigint | number
+  divide?: bigint | number
 }
 
 export type CollectionCreateNestedOneWithoutItemsInput = {
@@ -379,14 +379,14 @@ export type CollectionUncheckedUpdateOneWithoutItemNestedInput = {
 
 export type CollectionCreateWithoutItemsInput = {
   name: string
-  size?: number
-  item?: Prisma.ItemCreateNestedOneWithoutCollectionInput
+  size?: bigint | number
+  item: Prisma.ItemCreateNestedOneWithoutCollectionInput
 }
 
 export type CollectionUncheckedCreateWithoutItemsInput = {
-  id?: string
+  id: string
   name: string
-  size?: number
+  size?: bigint | number
 }
 
 export type CollectionCreateOrConnectWithoutItemsInput = {
@@ -407,25 +407,25 @@ export type CollectionUpdateToOneWithWhereWithoutItemsInput = {
 
 export type CollectionUpdateWithoutItemsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   item?: Prisma.ItemUpdateOneRequiredWithoutCollectionNestedInput
 }
 
 export type CollectionUncheckedUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
 }
 
 export type CollectionCreateWithoutItemInput = {
   name: string
-  size?: number
+  size?: bigint | number
   items?: Prisma.CollectionItemCreateNestedManyWithoutCollectionInput
 }
 
 export type CollectionUncheckedCreateWithoutItemInput = {
   name: string
-  size?: number
+  size?: bigint | number
   items?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutCollectionInput
 }
 
@@ -447,13 +447,13 @@ export type CollectionUpdateToOneWithWhereWithoutItemInput = {
 
 export type CollectionUpdateWithoutItemInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   items?: Prisma.CollectionItemUpdateManyWithoutCollectionNestedInput
 }
 
 export type CollectionUncheckedUpdateWithoutItemInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.IntFieldUpdateOperationsInput | number
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   items?: Prisma.CollectionItemUncheckedUpdateManyWithoutCollectionNestedInput
 }
 
@@ -539,7 +539,7 @@ export type $CollectionPayload<ExtArgs extends runtime.Types.Extensions.Internal
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     name: string
-    size: number
+    size: bigint
   }, ExtArgs["result"]["collection"]>
   composites: {}
 }
@@ -967,7 +967,7 @@ export interface Prisma__CollectionClient<T, Null = never, ExtArgs extends runti
 export interface CollectionFieldRefs {
   readonly id: Prisma.FieldRef<"Collection", 'String'>
   readonly name: Prisma.FieldRef<"Collection", 'String'>
-  readonly size: Prisma.FieldRef<"Collection", 'Int'>
+  readonly size: Prisma.FieldRef<"Collection", 'BigInt'>
 }
     
 

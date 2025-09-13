@@ -1,5 +1,5 @@
 model StoragePlan {
-    id            String          @id @default(cuid())
+    id            String          @id
     name          String // e.g., "Free", "Basic", "Standard", "Premium"
     type          StoragePlanType @default(free) // Enum for plan type
     storageLimit  BigInt // e.g., 15, 100, 200, 2000
@@ -10,7 +10,6 @@ model StoragePlan {
 
     @@index([name])
     @@index([type])
-    @@map("storage_plans")
 }
 
 enum StoragePlanType {

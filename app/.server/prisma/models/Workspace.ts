@@ -28,7 +28,6 @@ export type WorkspaceMinAggregateOutputType = {
   name: string | null
   description: string | null
   default: boolean | null
-  iamRoleArn: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -38,7 +37,6 @@ export type WorkspaceMaxAggregateOutputType = {
   name: string | null
   description: string | null
   default: boolean | null
-  iamRoleArn: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -48,7 +46,6 @@ export type WorkspaceCountAggregateOutputType = {
   name: number
   description: number
   default: number
-  iamRoleArn: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -60,7 +57,6 @@ export type WorkspaceMinAggregateInputType = {
   name?: true
   description?: true
   default?: true
-  iamRoleArn?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -70,7 +66,6 @@ export type WorkspaceMaxAggregateInputType = {
   name?: true
   description?: true
   default?: true
-  iamRoleArn?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -80,7 +75,6 @@ export type WorkspaceCountAggregateInputType = {
   name?: true
   description?: true
   default?: true
-  iamRoleArn?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -163,7 +157,6 @@ export type WorkspaceGroupByOutputType = {
   name: string
   description: string | null
   default: boolean
-  iamRoleArn: string | null
   createdAt: Date
   updatedAt: Date
   _count: WorkspaceCountAggregateOutputType | null
@@ -194,7 +187,6 @@ export type WorkspaceWhereInput = {
   name?: Prisma.StringFilter<"Workspace"> | string
   description?: Prisma.StringNullableFilter<"Workspace"> | string | null
   default?: Prisma.BoolFilter<"Workspace"> | boolean
-  iamRoleArn?: Prisma.StringNullableFilter<"Workspace"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Workspace"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Workspace"> | Date | string
   items?: Prisma.ItemListRelationFilter
@@ -207,7 +199,6 @@ export type WorkspaceOrderByWithRelationInput = {
   name?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   default?: Prisma.SortOrder
-  iamRoleArn?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   items?: Prisma.ItemOrderByRelationAggregateInput
@@ -223,7 +214,6 @@ export type WorkspaceWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.WorkspaceWhereInput | Prisma.WorkspaceWhereInput[]
   description?: Prisma.StringNullableFilter<"Workspace"> | string | null
   default?: Prisma.BoolFilter<"Workspace"> | boolean
-  iamRoleArn?: Prisma.StringNullableFilter<"Workspace"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Workspace"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Workspace"> | Date | string
   items?: Prisma.ItemListRelationFilter
@@ -236,7 +226,6 @@ export type WorkspaceOrderByWithAggregationInput = {
   name?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   default?: Prisma.SortOrder
-  iamRoleArn?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.WorkspaceCountOrderByAggregateInput
@@ -252,17 +241,15 @@ export type WorkspaceScalarWhereWithAggregatesInput = {
   name?: Prisma.StringWithAggregatesFilter<"Workspace"> | string
   description?: Prisma.StringNullableWithAggregatesFilter<"Workspace"> | string | null
   default?: Prisma.BoolWithAggregatesFilter<"Workspace"> | boolean
-  iamRoleArn?: Prisma.StringNullableWithAggregatesFilter<"Workspace"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Workspace"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Workspace"> | Date | string
 }
 
 export type WorkspaceCreateInput = {
-  id?: string
+  id: string
   name: string
   description?: string | null
   default?: boolean
-  iamRoleArn?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.ItemCreateNestedManyWithoutWorkspaceInput
@@ -271,11 +258,10 @@ export type WorkspaceCreateInput = {
 }
 
 export type WorkspaceUncheckedCreateInput = {
-  id?: string
+  id: string
   name: string
   description?: string | null
   default?: boolean
-  iamRoleArn?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutWorkspaceInput
@@ -288,7 +274,6 @@ export type WorkspaceUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   default?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  iamRoleArn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.ItemUpdateManyWithoutWorkspaceNestedInput
@@ -301,7 +286,6 @@ export type WorkspaceUncheckedUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   default?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  iamRoleArn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.ItemUncheckedUpdateManyWithoutWorkspaceNestedInput
@@ -310,11 +294,10 @@ export type WorkspaceUncheckedUpdateInput = {
 }
 
 export type WorkspaceCreateManyInput = {
-  id?: string
+  id: string
   name: string
   description?: string | null
   default?: boolean
-  iamRoleArn?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -324,7 +307,6 @@ export type WorkspaceUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   default?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  iamRoleArn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -334,7 +316,6 @@ export type WorkspaceUncheckedUpdateManyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   default?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  iamRoleArn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -349,7 +330,6 @@ export type WorkspaceCountOrderByAggregateInput = {
   name?: Prisma.SortOrder
   description?: Prisma.SortOrder
   default?: Prisma.SortOrder
-  iamRoleArn?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -359,7 +339,6 @@ export type WorkspaceMaxOrderByAggregateInput = {
   name?: Prisma.SortOrder
   description?: Prisma.SortOrder
   default?: Prisma.SortOrder
-  iamRoleArn?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -369,7 +348,6 @@ export type WorkspaceMinOrderByAggregateInput = {
   name?: Prisma.SortOrder
   description?: Prisma.SortOrder
   default?: Prisma.SortOrder
-  iamRoleArn?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -426,11 +404,10 @@ export type WorkspaceUpdateOneRequiredWithoutMembersNestedInput = {
 }
 
 export type WorkspaceCreateWithoutInvitationsInput = {
-  id?: string
+  id: string
   name: string
   description?: string | null
   default?: boolean
-  iamRoleArn?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.ItemCreateNestedManyWithoutWorkspaceInput
@@ -438,11 +415,10 @@ export type WorkspaceCreateWithoutInvitationsInput = {
 }
 
 export type WorkspaceUncheckedCreateWithoutInvitationsInput = {
-  id?: string
+  id: string
   name: string
   description?: string | null
   default?: boolean
-  iamRoleArn?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutWorkspaceInput
@@ -470,7 +446,6 @@ export type WorkspaceUpdateWithoutInvitationsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   default?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  iamRoleArn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.ItemUpdateManyWithoutWorkspaceNestedInput
@@ -482,7 +457,6 @@ export type WorkspaceUncheckedUpdateWithoutInvitationsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   default?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  iamRoleArn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.ItemUncheckedUpdateManyWithoutWorkspaceNestedInput
@@ -490,11 +464,10 @@ export type WorkspaceUncheckedUpdateWithoutInvitationsInput = {
 }
 
 export type WorkspaceCreateWithoutItemsInput = {
-  id?: string
+  id: string
   name: string
   description?: string | null
   default?: boolean
-  iamRoleArn?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   invitations?: Prisma.InvitationCreateNestedManyWithoutWorkspaceInput
@@ -502,11 +475,10 @@ export type WorkspaceCreateWithoutItemsInput = {
 }
 
 export type WorkspaceUncheckedCreateWithoutItemsInput = {
-  id?: string
+  id: string
   name: string
   description?: string | null
   default?: boolean
-  iamRoleArn?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutWorkspaceInput
@@ -534,7 +506,6 @@ export type WorkspaceUpdateWithoutItemsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   default?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  iamRoleArn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   invitations?: Prisma.InvitationUpdateManyWithoutWorkspaceNestedInput
@@ -546,7 +517,6 @@ export type WorkspaceUncheckedUpdateWithoutItemsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   default?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  iamRoleArn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutWorkspaceNestedInput
@@ -554,11 +524,10 @@ export type WorkspaceUncheckedUpdateWithoutItemsInput = {
 }
 
 export type WorkspaceCreateWithoutMembersInput = {
-  id?: string
+  id: string
   name: string
   description?: string | null
   default?: boolean
-  iamRoleArn?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.ItemCreateNestedManyWithoutWorkspaceInput
@@ -566,11 +535,10 @@ export type WorkspaceCreateWithoutMembersInput = {
 }
 
 export type WorkspaceUncheckedCreateWithoutMembersInput = {
-  id?: string
+  id: string
   name: string
   description?: string | null
   default?: boolean
-  iamRoleArn?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutWorkspaceInput
@@ -598,7 +566,6 @@ export type WorkspaceUpdateWithoutMembersInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   default?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  iamRoleArn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.ItemUpdateManyWithoutWorkspaceNestedInput
@@ -610,7 +577,6 @@ export type WorkspaceUncheckedUpdateWithoutMembersInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   default?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  iamRoleArn?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.ItemUncheckedUpdateManyWithoutWorkspaceNestedInput
@@ -671,7 +637,6 @@ export type WorkspaceSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   name?: boolean
   description?: boolean
   default?: boolean
-  iamRoleArn?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   items?: boolean | Prisma.Workspace$itemsArgs<ExtArgs>
@@ -685,7 +650,6 @@ export type WorkspaceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   name?: boolean
   description?: boolean
   default?: boolean
-  iamRoleArn?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["workspace"]>
@@ -695,7 +659,6 @@ export type WorkspaceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   name?: boolean
   description?: boolean
   default?: boolean
-  iamRoleArn?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["workspace"]>
@@ -705,12 +668,11 @@ export type WorkspaceSelectScalar = {
   name?: boolean
   description?: boolean
   default?: boolean
-  iamRoleArn?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type WorkspaceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "default" | "iamRoleArn" | "createdAt" | "updatedAt", ExtArgs["result"]["workspace"]>
+export type WorkspaceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "default" | "createdAt" | "updatedAt", ExtArgs["result"]["workspace"]>
 export type WorkspaceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   items?: boolean | Prisma.Workspace$itemsArgs<ExtArgs>
   invitations?: boolean | Prisma.Workspace$invitationsArgs<ExtArgs>
@@ -732,7 +694,6 @@ export type $WorkspacePayload<ExtArgs extends runtime.Types.Extensions.InternalA
     name: string
     description: string | null
     default: boolean
-    iamRoleArn: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["workspace"]>
@@ -1165,7 +1126,6 @@ export interface WorkspaceFieldRefs {
   readonly name: Prisma.FieldRef<"Workspace", 'String'>
   readonly description: Prisma.FieldRef<"Workspace", 'String'>
   readonly default: Prisma.FieldRef<"Workspace", 'Boolean'>
-  readonly iamRoleArn: Prisma.FieldRef<"Workspace", 'String'>
   readonly createdAt: Prisma.FieldRef<"Workspace", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Workspace", 'DateTime'>
 }

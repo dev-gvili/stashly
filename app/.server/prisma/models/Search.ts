@@ -25,46 +25,58 @@ export type AggregateSearch = {
 
 export type SearchMinAggregateOutputType = {
   id: string | null
+  type: string | null
   content: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  itemId: string | null
 }
 
 export type SearchMaxAggregateOutputType = {
   id: string | null
+  type: string | null
   content: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  itemId: string | null
 }
 
 export type SearchCountAggregateOutputType = {
   id: number
+  type: number
   content: number
   createdAt: number
   updatedAt: number
+  itemId: number
   _all: number
 }
 
 
 export type SearchMinAggregateInputType = {
   id?: true
+  type?: true
   content?: true
   createdAt?: true
   updatedAt?: true
+  itemId?: true
 }
 
 export type SearchMaxAggregateInputType = {
   id?: true
+  type?: true
   content?: true
   createdAt?: true
   updatedAt?: true
+  itemId?: true
 }
 
 export type SearchCountAggregateInputType = {
   id?: true
+  type?: true
   content?: true
   createdAt?: true
   updatedAt?: true
+  itemId?: true
   _all?: true
 }
 
@@ -142,9 +154,11 @@ export type SearchGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalA
 
 export type SearchGroupByOutputType = {
   id: string
-  content: string
+  type: string
+  content: string | null
   createdAt: Date
   updatedAt: Date
+  itemId: string
   _count: SearchCountAggregateOutputType | null
   _min: SearchMinAggregateOutputType | null
   _max: SearchMaxAggregateOutputType | null
@@ -170,33 +184,44 @@ export type SearchWhereInput = {
   OR?: Prisma.SearchWhereInput[]
   NOT?: Prisma.SearchWhereInput | Prisma.SearchWhereInput[]
   id?: Prisma.StringFilter<"Search"> | string
-  content?: Prisma.StringFilter<"Search"> | string
+  type?: Prisma.StringFilter<"Search"> | string
+  content?: Prisma.StringNullableFilter<"Search"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Search"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Search"> | Date | string
+  itemId?: Prisma.StringFilter<"Search"> | string
+  item?: Prisma.XOR<Prisma.ItemScalarRelationFilter, Prisma.ItemWhereInput>
 }
 
 export type SearchOrderByWithRelationInput = {
   id?: Prisma.SortOrder
-  content?: Prisma.SortOrder
+  type?: Prisma.SortOrder
+  content?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
+  item?: Prisma.ItemOrderByWithRelationInput
 }
 
 export type SearchWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  itemId?: string
   AND?: Prisma.SearchWhereInput | Prisma.SearchWhereInput[]
   OR?: Prisma.SearchWhereInput[]
   NOT?: Prisma.SearchWhereInput | Prisma.SearchWhereInput[]
-  content?: Prisma.StringFilter<"Search"> | string
+  type?: Prisma.StringFilter<"Search"> | string
+  content?: Prisma.StringNullableFilter<"Search"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Search"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Search"> | Date | string
-}, "id">
+  item?: Prisma.XOR<Prisma.ItemScalarRelationFilter, Prisma.ItemWhereInput>
+}, "id" | "itemId">
 
 export type SearchOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
-  content?: Prisma.SortOrder
+  type?: Prisma.SortOrder
+  content?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
   _count?: Prisma.SearchCountOrderByAggregateInput
   _max?: Prisma.SearchMaxOrderByAggregateInput
   _min?: Prisma.SearchMinOrderByAggregateInput
@@ -207,121 +232,175 @@ export type SearchScalarWhereWithAggregatesInput = {
   OR?: Prisma.SearchScalarWhereWithAggregatesInput[]
   NOT?: Prisma.SearchScalarWhereWithAggregatesInput | Prisma.SearchScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Search"> | string
-  content?: Prisma.StringWithAggregatesFilter<"Search"> | string
+  type?: Prisma.StringWithAggregatesFilter<"Search"> | string
+  content?: Prisma.StringNullableWithAggregatesFilter<"Search"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Search"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Search"> | Date | string
-}
-
-export type SearchCreateInput = {
-  id?: string
-  content: string
-  createdAt?: Date | string
-  updatedAt?: Date | string
-}
-
-export type SearchUncheckedCreateInput = {
-  id?: string
-  content: string
-  createdAt?: Date | string
-  updatedAt?: Date | string
+  itemId?: Prisma.StringWithAggregatesFilter<"Search"> | string
 }
 
 export type SearchUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  content?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
+  content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  item?: Prisma.ItemUpdateOneRequiredWithoutSearchNestedInput
 }
 
 export type SearchUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  content?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
+  content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-}
-
-export type SearchCreateManyInput = {
-  id?: string
-  content: string
-  createdAt?: Date | string
-  updatedAt?: Date | string
+  itemId?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type SearchUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  content?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
+  content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type SearchUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  content?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
+  content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  itemId?: Prisma.StringFieldUpdateOperationsInput | string
+}
+
+export type SearchNullableScalarRelationFilter = {
+  is?: Prisma.SearchWhereInput | null
+  isNot?: Prisma.SearchWhereInput | null
 }
 
 export type SearchCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   content?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type SearchMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   content?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type SearchMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  type?: Prisma.SortOrder
   content?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
+}
+
+export type SearchCreateNestedOneWithoutItemInput = {
+  connect?: Prisma.SearchWhereUniqueInput
+}
+
+export type SearchUncheckedCreateNestedOneWithoutItemInput = {
+  connect?: Prisma.SearchWhereUniqueInput
+}
+
+export type SearchUpdateOneWithoutItemNestedInput = {
+  disconnect?: Prisma.SearchWhereInput | boolean
+  delete?: Prisma.SearchWhereInput | boolean
+  connect?: Prisma.SearchWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SearchUpdateToOneWithWhereWithoutItemInput, Prisma.SearchUpdateWithoutItemInput>, Prisma.SearchUncheckedUpdateWithoutItemInput>
+}
+
+export type SearchUncheckedUpdateOneWithoutItemNestedInput = {
+  disconnect?: Prisma.SearchWhereInput | boolean
+  delete?: Prisma.SearchWhereInput | boolean
+  connect?: Prisma.SearchWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SearchUpdateToOneWithWhereWithoutItemInput, Prisma.SearchUpdateWithoutItemInput>, Prisma.SearchUncheckedUpdateWithoutItemInput>
+}
+
+export type SearchUpdateToOneWithWhereWithoutItemInput = {
+  where?: Prisma.SearchWhereInput
+  data: Prisma.XOR<Prisma.SearchUpdateWithoutItemInput, Prisma.SearchUncheckedUpdateWithoutItemInput>
+}
+
+export type SearchUpdateWithoutItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
+  content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type SearchUncheckedUpdateWithoutItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
+  content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 
 
 export type SearchSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  type?: boolean
   content?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  itemId?: boolean
+  item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["search"]>
 
-export type SearchSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  content?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-}, ExtArgs["result"]["search"]>
 
 export type SearchSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  type?: boolean
   content?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  itemId?: boolean
+  item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["search"]>
 
 export type SearchSelectScalar = {
   id?: boolean
+  type?: boolean
   content?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  itemId?: boolean
 }
 
-export type SearchOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "content" | "createdAt" | "updatedAt", ExtArgs["result"]["search"]>
+export type SearchOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "type" | "content" | "createdAt" | "updatedAt" | "itemId", ExtArgs["result"]["search"]>
+export type SearchInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
+}
+export type SearchIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
+}
 
 export type $SearchPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Search"
-  objects: {}
+  objects: {
+    item: Prisma.$ItemPayload<ExtArgs>
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
-    content: string
+    type: string
+    content: string | null
     createdAt: Date
     updatedAt: Date
+    itemId: string
   }, ExtArgs["result"]["search"]>
   composites: {}
 }
@@ -410,58 +489,6 @@ export interface SearchDelegate<ExtArgs extends runtime.Types.Extensions.Interna
    * 
    */
   findMany<T extends SearchFindManyArgs>(args?: Prisma.SelectSubset<T, SearchFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SearchPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
-
-  /**
-   * Create a Search.
-   * @param {SearchCreateArgs} args - Arguments to create a Search.
-   * @example
-   * // Create one Search
-   * const Search = await prisma.search.create({
-   *   data: {
-   *     // ... data to create a Search
-   *   }
-   * })
-   * 
-   */
-  create<T extends SearchCreateArgs>(args: Prisma.SelectSubset<T, SearchCreateArgs<ExtArgs>>): Prisma.Prisma__SearchClient<runtime.Types.Result.GetResult<Prisma.$SearchPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-  /**
-   * Create many Searches.
-   * @param {SearchCreateManyArgs} args - Arguments to create many Searches.
-   * @example
-   * // Create many Searches
-   * const search = await prisma.search.createMany({
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   *     
-   */
-  createMany<T extends SearchCreateManyArgs>(args?: Prisma.SelectSubset<T, SearchCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
-
-  /**
-   * Create many Searches and returns the data saved in the database.
-   * @param {SearchCreateManyAndReturnArgs} args - Arguments to create many Searches.
-   * @example
-   * // Create many Searches
-   * const search = await prisma.search.createManyAndReturn({
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Create many Searches and only return the `id`
-   * const searchWithIdOnly = await prisma.search.createManyAndReturn({
-   *   select: { id: true },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  createManyAndReturn<T extends SearchCreateManyAndReturnArgs>(args?: Prisma.SelectSubset<T, SearchCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SearchPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
 
   /**
    * Delete a Search.
@@ -556,25 +583,6 @@ export interface SearchDelegate<ExtArgs extends runtime.Types.Extensions.Interna
    * 
    */
   updateManyAndReturn<T extends SearchUpdateManyAndReturnArgs>(args: Prisma.SelectSubset<T, SearchUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SearchPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-  /**
-   * Create or update one Search.
-   * @param {SearchUpsertArgs} args - Arguments to update or create a Search.
-   * @example
-   * // Update or create a Search
-   * const search = await prisma.search.upsert({
-   *   create: {
-   *     // ... data to create a Search
-   *   },
-   *   update: {
-   *     // ... in case it already exists, update
-   *   },
-   *   where: {
-   *     // ... the filter for the Search we want to update
-   *   }
-   * })
-   */
-  upsert<T extends SearchUpsertArgs>(args: Prisma.SelectSubset<T, SearchUpsertArgs<ExtArgs>>): Prisma.Prisma__SearchClient<runtime.Types.Result.GetResult<Prisma.$SearchPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
 
   /**
@@ -716,6 +724,7 @@ readonly fields: SearchFieldRefs;
  */
 export interface Prisma__SearchClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  item<T extends Prisma.ItemDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemDefaultArgs<ExtArgs>>): Prisma.Prisma__ItemClient<runtime.Types.Result.GetResult<Prisma.$ItemPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -746,9 +755,11 @@ export interface Prisma__SearchClient<T, Null = never, ExtArgs extends runtime.T
  */
 export interface SearchFieldRefs {
   readonly id: Prisma.FieldRef<"Search", 'String'>
+  readonly type: Prisma.FieldRef<"Search", 'String'>
   readonly content: Prisma.FieldRef<"Search", 'String'>
   readonly createdAt: Prisma.FieldRef<"Search", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Search", 'DateTime'>
+  readonly itemId: Prisma.FieldRef<"Search", 'String'>
 }
     
 
@@ -765,6 +776,10 @@ export type SearchFindUniqueArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Omit specific fields from the Search
    */
   omit?: Prisma.SearchOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SearchInclude<ExtArgs> | null
   /**
    * Filter, which Search to fetch.
    */
@@ -785,6 +800,10 @@ export type SearchFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.Extensions
    */
   omit?: Prisma.SearchOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SearchInclude<ExtArgs> | null
+  /**
    * Filter, which Search to fetch.
    */
   where: Prisma.SearchWhereUniqueInput
@@ -803,6 +822,10 @@ export type SearchFindFirstArgs<ExtArgs extends runtime.Types.Extensions.Interna
    * Omit specific fields from the Search
    */
   omit?: Prisma.SearchOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SearchInclude<ExtArgs> | null
   /**
    * Filter, which Search to fetch.
    */
@@ -853,6 +876,10 @@ export type SearchFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Extensions.
    */
   omit?: Prisma.SearchOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SearchInclude<ExtArgs> | null
+  /**
    * Filter, which Search to fetch.
    */
   where?: Prisma.SearchWhereInput
@@ -902,6 +929,10 @@ export type SearchFindManyArgs<ExtArgs extends runtime.Types.Extensions.Internal
    */
   omit?: Prisma.SearchOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SearchInclude<ExtArgs> | null
+  /**
    * Filter, which Searches to fetch.
    */
   where?: Prisma.SearchWhereInput
@@ -934,55 +965,6 @@ export type SearchFindManyArgs<ExtArgs extends runtime.Types.Extensions.Internal
 }
 
 /**
- * Search create
- */
-export type SearchCreateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the Search
-   */
-  select?: Prisma.SearchSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the Search
-   */
-  omit?: Prisma.SearchOmit<ExtArgs> | null
-  /**
-   * The data needed to create a Search.
-   */
-  data: Prisma.XOR<Prisma.SearchCreateInput, Prisma.SearchUncheckedCreateInput>
-  relationLoadStrategy?: Prisma.RelationLoadStrategy
-}
-
-/**
- * Search createMany
- */
-export type SearchCreateManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * The data used to create many Searches.
-   */
-  data: Prisma.SearchCreateManyInput | Prisma.SearchCreateManyInput[]
-  skipDuplicates?: boolean
-}
-
-/**
- * Search createManyAndReturn
- */
-export type SearchCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the Search
-   */
-  select?: Prisma.SearchSelectCreateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the Search
-   */
-  omit?: Prisma.SearchOmit<ExtArgs> | null
-  /**
-   * The data used to create many Searches.
-   */
-  data: Prisma.SearchCreateManyInput | Prisma.SearchCreateManyInput[]
-  skipDuplicates?: boolean
-}
-
-/**
  * Search update
  */
 export type SearchUpdateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -994,6 +976,10 @@ export type SearchUpdateArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
    * Omit specific fields from the Search
    */
   omit?: Prisma.SearchOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SearchInclude<ExtArgs> | null
   /**
    * The data needed to update a Search.
    */
@@ -1047,33 +1033,10 @@ export type SearchUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensio
    * Limit how many Searches to update.
    */
   limit?: number
-}
-
-/**
- * Search upsert
- */
-export type SearchUpsertArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
-   * Select specific fields to fetch from the Search
+   * Choose, which related nodes to fetch as well
    */
-  select?: Prisma.SearchSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the Search
-   */
-  omit?: Prisma.SearchOmit<ExtArgs> | null
-  /**
-   * The filter to search for the Search to update in case it exists.
-   */
-  where: Prisma.SearchWhereUniqueInput
-  /**
-   * In case the Search found by the `where` argument doesn't exist, create a new Search with this data.
-   */
-  create: Prisma.XOR<Prisma.SearchCreateInput, Prisma.SearchUncheckedCreateInput>
-  /**
-   * In case the Search was found with the provided `where` argument, update it with this data.
-   */
-  update: Prisma.XOR<Prisma.SearchUpdateInput, Prisma.SearchUncheckedUpdateInput>
-  relationLoadStrategy?: Prisma.RelationLoadStrategy
+  include?: Prisma.SearchIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1088,6 +1051,10 @@ export type SearchDeleteArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
    * Omit specific fields from the Search
    */
   omit?: Prisma.SearchOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SearchInclude<ExtArgs> | null
   /**
    * Filter which Search to delete.
    */
@@ -1121,4 +1088,8 @@ export type SearchDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * Omit specific fields from the Search
    */
   omit?: Prisma.SearchOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SearchInclude<ExtArgs> | null
 }

@@ -204,14 +204,14 @@ export type ActivityTimeScalarWhereWithAggregatesInput = {
 }
 
 export type ActivityTimeCreateInput = {
-  id?: string
+  id: string
   observedAt?: Date | string | null
   reportedAt?: Date | string | null
   activity?: Prisma.ActivityCreateNestedOneWithoutTimeInput
 }
 
 export type ActivityTimeUncheckedCreateInput = {
-  id?: string
+  id: string
   observedAt?: Date | string | null
   reportedAt?: Date | string | null
   activity?: Prisma.ActivityUncheckedCreateNestedOneWithoutTimeInput
@@ -232,7 +232,7 @@ export type ActivityTimeUncheckedUpdateInput = {
 }
 
 export type ActivityTimeCreateManyInput = {
-  id?: string
+  id: string
   observedAt?: Date | string | null
   reportedAt?: Date | string | null
 }
@@ -289,13 +289,13 @@ export type ActivityTimeUpdateOneWithoutActivityNestedInput = {
 }
 
 export type ActivityTimeCreateWithoutActivityInput = {
-  id?: string
+  id: string
   observedAt?: Date | string | null
   reportedAt?: Date | string | null
 }
 
 export type ActivityTimeUncheckedCreateWithoutActivityInput = {
-  id?: string
+  id: string
   observedAt?: Date | string | null
   reportedAt?: Date | string | null
 }
@@ -1021,7 +1021,7 @@ export type ActivityTimeCreateArgs<ExtArgs extends runtime.Types.Extensions.Inte
   /**
    * The data needed to create a ActivityTime.
    */
-  data?: Prisma.XOR<Prisma.ActivityTimeCreateInput, Prisma.ActivityTimeUncheckedCreateInput>
+  data: Prisma.XOR<Prisma.ActivityTimeCreateInput, Prisma.ActivityTimeUncheckedCreateInput>
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }
 

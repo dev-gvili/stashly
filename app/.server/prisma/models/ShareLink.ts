@@ -276,7 +276,7 @@ export type ShareLinkScalarWhereWithAggregatesInput = {
 }
 
 export type ShareLinkCreateInput = {
-  id?: string
+  id: string
   type: $Enums.ShareLinkType
   scope: $Enums.ShareScope
   url?: string | null
@@ -289,7 +289,7 @@ export type ShareLinkCreateInput = {
 }
 
 export type ShareLinkUncheckedCreateInput = {
-  id?: string
+  id: string
   type: $Enums.ShareLinkType
   scope: $Enums.ShareScope
   url?: string | null
@@ -328,7 +328,7 @@ export type ShareLinkUncheckedUpdateInput = {
 }
 
 export type ShareLinkCreateManyInput = {
-  id?: string
+  id: string
   type: $Enums.ShareLinkType
   scope: $Enums.ShareScope
   url?: string | null
@@ -429,7 +429,7 @@ export type EnumShareScopeFieldUpdateOperationsInput = {
 }
 
 export type ShareLinkCreateWithoutPermissionInput = {
-  id?: string
+  id: string
   type: $Enums.ShareLinkType
   scope: $Enums.ShareScope
   url?: string | null
@@ -441,7 +441,7 @@ export type ShareLinkCreateWithoutPermissionInput = {
 }
 
 export type ShareLinkUncheckedCreateWithoutPermissionInput = {
-  id?: string
+  id: string
   type: $Enums.ShareLinkType
   scope: $Enums.ShareScope
   url?: string | null

@@ -1,8 +1,9 @@
 model Favorite {
+    id            String   @id
     favoritedById String
-    favoritedBy   User     @relation(fields: [favoritedById], references: [id])
+    favoritedBy   User     @relation(fields: [favoritedById], references: [id], onDelete: Cascade)
     itemId        String
-    item          Item     @relation(fields: [itemId], references: [id])
+    item          Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
     createdAt     DateTime @default(now())
     updatedAt     DateTime @updatedAt
 

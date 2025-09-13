@@ -204,14 +204,14 @@ export type RenameActionScalarWhereWithAggregatesInput = {
 }
 
 export type RenameActionCreateInput = {
-  id?: string
+  id: string
   oldName: string
   newName: string
   action?: Prisma.ItemActionCreateNestedOneWithoutRenameInput
 }
 
 export type RenameActionUncheckedCreateInput = {
-  id?: string
+  id: string
   oldName: string
   newName: string
   action?: Prisma.ItemActionUncheckedCreateNestedOneWithoutRenameInput
@@ -232,7 +232,7 @@ export type RenameActionUncheckedUpdateInput = {
 }
 
 export type RenameActionCreateManyInput = {
-  id?: string
+  id: string
   oldName: string
   newName: string
 }
@@ -289,13 +289,13 @@ export type RenameActionUpdateOneWithoutActionNestedInput = {
 }
 
 export type RenameActionCreateWithoutActionInput = {
-  id?: string
+  id: string
   oldName: string
   newName: string
 }
 
 export type RenameActionUncheckedCreateWithoutActionInput = {
-  id?: string
+  id: string
   oldName: string
   newName: string
 }

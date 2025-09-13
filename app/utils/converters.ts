@@ -16,6 +16,7 @@ import {
 } from '@/components/icons'
 import crypto from 'crypto-js'
 import type { MediaFile } from '../machines/machine.types'
+import { z } from 'zod'
 
 /**
  * Convert an AsyncIterable of Uint8Array to buffer
@@ -32,7 +33,12 @@ export async function toBuffer(data: AsyncIterable<Uint8Array>) {
  * return base64 encoded string
  */
 export const toBase64 = (input: string): string => {
-	return crypto.MD5(input).toString(crypto.enc.Base64)
+	return crypto
+		.MD5(input)
+		.toString(crypto.enc.Base64)
+		.replace(/\+/g, '-')
+		.replace(/\//g, '_')
+		.replace(/=/g, '')
 }
 
 /**
@@ -342,4 +348,47 @@ export let toMediaFile = (file: File): MediaFile => {
 		version: '',
 		url: '',
 	}
+}
+
+
+/**
+ * Creates a Zod schema that transforms a comma-separated string into a validated array.
+ *
+ * This function is highly generic and can be used to validate any type of array
+ * derived from a string. It works in two steps: a transformation and a validation pipe.
+ *
+ * 1. **Transform:** It splits the input string (e.g., "tag1,tag2,tag3") into an array of strings.
+ * For robustness, it also trims whitespace from each resulting tag.
+ * 2. **Validate:** It uses a `.pipe()` to ensure that every element in the array
+ * conforms to the provided `elementSchema`.
+ *
+ * @template T The Zod schema type for each element in the final array.
+ * @param {T} elementSchema The Zod schema to apply to each element of the array.
+ * A Zod schema that takes a string and returns a validated array.
+ *
+ * @example
+ * // Example 1: Validating against a native enum (like the original function)
+ * enum ItemCategory {
+ * AUDIO = 'AUDIO',
+ * VIDEO = 'VIDEO',
+ * }
+ * const categorySchema = toZodArraySchema(z.nativeEnum(ItemCategory));
+ * categorySchema.parse('AUDIO,VIDEO'); // Returns ['AUDIO', 'VIDEO']
+ *
+ * @example
+ * // Example 2: Validating a simple array of strings (like for a "tags" filter)
+ * // We use `z.string().trim().min(1)` to ensure each tag is a non-empty string.
+ * const tagsSchema = toZodArraySchema(z.string().trim().min(1));
+ * tagsSchema.parse('red,  blue , green'); // Returns ['red', 'blue', 'green']
+ *
+ * @example
+ * // Example 3: Validating an array of numbers
+ * const numbersSchema = toZodArraySchema(z.coerce.number());
+ * numbersSchema.parse('1,2,3'); // Returns [1, 2, 3]
+ */
+export const toZodArraySchema = <T extends z.ZodTypeAny>(elementSchema: T) => {
+	return z
+		.string()
+		.transform((str) => str.split(','))
+		.pipe(z.array(elementSchema))
 }

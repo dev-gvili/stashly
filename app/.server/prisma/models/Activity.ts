@@ -184,6 +184,7 @@ export type ActivityOrderByWithRelationInput = {
 export type ActivityWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   timeId?: string
+  itemId_timeId?: Prisma.ActivityItemIdTimeIdCompoundUniqueInput
   AND?: Prisma.ActivityWhereInput | Prisma.ActivityWhereInput[]
   OR?: Prisma.ActivityWhereInput[]
   NOT?: Prisma.ActivityWhereInput | Prisma.ActivityWhereInput[]
@@ -192,7 +193,7 @@ export type ActivityWhereUniqueInput = Prisma.AtLeast<{
   item?: Prisma.XOR<Prisma.ItemNullableScalarRelationFilter, Prisma.ItemWhereInput> | null
   action?: Prisma.XOR<Prisma.ItemActionNullableScalarRelationFilter, Prisma.ItemActionWhereInput> | null
   access?: Prisma.XOR<Prisma.AccessActionNullableScalarRelationFilter, Prisma.AccessActionWhereInput> | null
-}, "id" | "timeId">
+}, "id" | "timeId" | "itemId_timeId">
 
 export type ActivityOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -213,7 +214,7 @@ export type ActivityScalarWhereWithAggregatesInput = {
 }
 
 export type ActivityCreateInput = {
-  id?: string
+  id: string
   time?: Prisma.ActivityTimeCreateNestedOneWithoutActivityInput
   item?: Prisma.ItemCreateNestedOneWithoutActivitiesInput
   action?: Prisma.ItemActionCreateNestedOneWithoutActivityInput
@@ -221,7 +222,7 @@ export type ActivityCreateInput = {
 }
 
 export type ActivityUncheckedCreateInput = {
-  id?: string
+  id: string
   timeId?: string | null
   itemId?: string | null
   action?: Prisma.ItemActionUncheckedCreateNestedOneWithoutActivityInput
@@ -245,7 +246,7 @@ export type ActivityUncheckedUpdateInput = {
 }
 
 export type ActivityCreateManyInput = {
-  id?: string
+  id: string
   timeId?: string | null
   itemId?: string | null
 }
@@ -263,6 +264,11 @@ export type ActivityUncheckedUpdateManyInput = {
 export type ActivityNullableScalarRelationFilter = {
   is?: Prisma.ActivityWhereInput | null
   isNot?: Prisma.ActivityWhereInput | null
+}
+
+export type ActivityItemIdTimeIdCompoundUniqueInput = {
+  itemId: string
+  timeId: string
 }
 
 export type ActivityCountOrderByAggregateInput = {
@@ -400,14 +406,14 @@ export type ActivityUncheckedUpdateManyWithoutItemNestedInput = {
 }
 
 export type ActivityCreateWithoutActionInput = {
-  id?: string
+  id: string
   time?: Prisma.ActivityTimeCreateNestedOneWithoutActivityInput
   item?: Prisma.ItemCreateNestedOneWithoutActivitiesInput
   access?: Prisma.AccessActionCreateNestedOneWithoutActivityInput
 }
 
 export type ActivityUncheckedCreateWithoutActionInput = {
-  id?: string
+  id: string
   timeId?: string | null
   itemId?: string | null
   access?: Prisma.AccessActionUncheckedCreateNestedOneWithoutActivityInput
@@ -444,14 +450,14 @@ export type ActivityUncheckedUpdateWithoutActionInput = {
 }
 
 export type ActivityCreateWithoutAccessInput = {
-  id?: string
+  id: string
   time?: Prisma.ActivityTimeCreateNestedOneWithoutActivityInput
   item?: Prisma.ItemCreateNestedOneWithoutActivitiesInput
   action?: Prisma.ItemActionCreateNestedOneWithoutActivityInput
 }
 
 export type ActivityUncheckedCreateWithoutAccessInput = {
-  id?: string
+  id: string
   timeId?: string | null
   itemId?: string | null
   action?: Prisma.ItemActionUncheckedCreateNestedOneWithoutActivityInput
@@ -488,14 +494,14 @@ export type ActivityUncheckedUpdateWithoutAccessInput = {
 }
 
 export type ActivityCreateWithoutTimeInput = {
-  id?: string
+  id: string
   item?: Prisma.ItemCreateNestedOneWithoutActivitiesInput
   action?: Prisma.ItemActionCreateNestedOneWithoutActivityInput
   access?: Prisma.AccessActionCreateNestedOneWithoutActivityInput
 }
 
 export type ActivityUncheckedCreateWithoutTimeInput = {
-  id?: string
+  id: string
   itemId?: string | null
   action?: Prisma.ItemActionUncheckedCreateNestedOneWithoutActivityInput
   access?: Prisma.AccessActionUncheckedCreateNestedOneWithoutActivityInput
@@ -532,14 +538,14 @@ export type ActivityUncheckedUpdateWithoutTimeInput = {
 }
 
 export type ActivityCreateWithoutItemInput = {
-  id?: string
+  id: string
   time?: Prisma.ActivityTimeCreateNestedOneWithoutActivityInput
   action?: Prisma.ItemActionCreateNestedOneWithoutActivityInput
   access?: Prisma.AccessActionCreateNestedOneWithoutActivityInput
 }
 
 export type ActivityUncheckedCreateWithoutItemInput = {
-  id?: string
+  id: string
   timeId?: string | null
   action?: Prisma.ItemActionUncheckedCreateNestedOneWithoutActivityInput
   access?: Prisma.AccessActionUncheckedCreateNestedOneWithoutActivityInput
@@ -581,7 +587,7 @@ export type ActivityScalarWhereInput = {
 }
 
 export type ActivityCreateManyItemInput = {
-  id?: string
+  id: string
   timeId?: string | null
 }
 
@@ -1319,7 +1325,7 @@ export type ActivityCreateArgs<ExtArgs extends runtime.Types.Extensions.Internal
   /**
    * The data needed to create a Activity.
    */
-  data?: Prisma.XOR<Prisma.ActivityCreateInput, Prisma.ActivityUncheckedCreateInput>
+  data: Prisma.XOR<Prisma.ActivityCreateInput, Prisma.ActivityUncheckedCreateInput>
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }
 

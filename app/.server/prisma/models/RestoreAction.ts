@@ -180,12 +180,12 @@ export type RestoreActionScalarWhereWithAggregatesInput = {
 }
 
 export type RestoreActionCreateInput = {
-  id?: string
+  id: string
   action?: Prisma.ItemActionCreateNestedOneWithoutRestoreInput
 }
 
 export type RestoreActionUncheckedCreateInput = {
-  id?: string
+  id: string
   action?: Prisma.ItemActionUncheckedCreateNestedOneWithoutRestoreInput
 }
 
@@ -200,7 +200,7 @@ export type RestoreActionUncheckedUpdateInput = {
 }
 
 export type RestoreActionCreateManyInput = {
-  id?: string
+  id: string
 }
 
 export type RestoreActionUpdateManyMutationInput = {
@@ -245,11 +245,11 @@ export type RestoreActionUpdateOneWithoutActionNestedInput = {
 }
 
 export type RestoreActionCreateWithoutActionInput = {
-  id?: string
+  id: string
 }
 
 export type RestoreActionUncheckedCreateWithoutActionInput = {
-  id?: string
+  id: string
 }
 
 export type RestoreActionCreateOrConnectWithoutActionInput = {
@@ -957,7 +957,7 @@ export type RestoreActionCreateArgs<ExtArgs extends runtime.Types.Extensions.Int
   /**
    * The data needed to create a RestoreAction.
    */
-  data?: Prisma.XOR<Prisma.RestoreActionCreateInput, Prisma.RestoreActionUncheckedCreateInput>
+  data: Prisma.XOR<Prisma.RestoreActionCreateInput, Prisma.RestoreActionUncheckedCreateInput>
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }
 

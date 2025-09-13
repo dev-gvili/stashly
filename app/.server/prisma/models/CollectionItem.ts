@@ -232,7 +232,7 @@ export type CollectionItemScalarWhereWithAggregatesInput = {
 }
 
 export type CollectionItemCreateInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   updatedAt?: Date | string
   collection: Prisma.CollectionCreateNestedOneWithoutItemsInput
@@ -240,7 +240,7 @@ export type CollectionItemCreateInput = {
 }
 
 export type CollectionItemUncheckedCreateInput = {
-  id?: string
+  id: string
   collectionId: string
   itemId: string
   createdAt?: Date | string
@@ -264,7 +264,7 @@ export type CollectionItemUncheckedUpdateInput = {
 }
 
 export type CollectionItemCreateManyInput = {
-  id?: string
+  id: string
   collectionId: string
   itemId: string
   createdAt?: Date | string
@@ -409,14 +409,14 @@ export type CollectionItemUncheckedUpdateManyWithoutItemNestedInput = {
 }
 
 export type CollectionItemCreateWithoutCollectionInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   updatedAt?: Date | string
   item: Prisma.ItemCreateNestedOneWithoutCollectionsInput
 }
 
 export type CollectionItemUncheckedCreateWithoutCollectionInput = {
-  id?: string
+  id: string
   itemId: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -460,14 +460,14 @@ export type CollectionItemScalarWhereInput = {
 }
 
 export type CollectionItemCreateWithoutItemInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   updatedAt?: Date | string
   collection: Prisma.CollectionCreateNestedOneWithoutItemsInput
 }
 
 export type CollectionItemUncheckedCreateWithoutItemInput = {
-  id?: string
+  id: string
   collectionId: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -500,7 +500,7 @@ export type CollectionItemUpdateManyWithWhereWithoutItemInput = {
 }
 
 export type CollectionItemCreateManyCollectionInput = {
-  id?: string
+  id: string
   itemId: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -528,7 +528,7 @@ export type CollectionItemUncheckedUpdateManyWithoutCollectionInput = {
 }
 
 export type CollectionItemCreateManyItemInput = {
-  id?: string
+  id: string
   collectionId: string
   createdAt?: Date | string
   updatedAt?: Date | string

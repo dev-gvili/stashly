@@ -1,40 +1,44 @@
 model File {
-    id         String  @id @default(uuid())
-    mimeType   String?
-    hash       String?
-    extension  String?
-    bucket     String
-    key        String
-    etag       String?
-    item       Item    @relation(fields: [id], references: [id], onDelete: Cascade)
+    id        String  @id
+    mimeType  String?
+    hash      String?
+    extension String?
+    bucket    String
+    key       String
+    etag      String?
+    itemId    String @unique
+    item      Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model Folder {
-    id         String @id @default(uuid())
+    id         String @id
     childCount Int?
     view       View?
-    item       Item   @relation(fields: [id], references: [id], onDelete: Cascade)
+    itemId     String @unique
+    item       Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model Image {
-    id                   String    @id @default(uuid())
+    id                   String    @id
     height               Int?
     width                Int?
     horizontalResolution Int?
     verticalResolution   Int?
     cameraMake           String?
     cameraModel          String?
-    exposureDenominator  Float?
+    exposureDenominator  Int?
     exposureNumerator    Float?
+    exposureTime         String?
     focalLength          Float?
     fNumber              Float?
     iso                  Int?
     takenDateTime        DateTime?
-    item                 Item?     @relation(fields: [id], references: [id], onDelete: Cascade)
+    itemId               String?   @unique
+    item                 Item?   @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model Video {
-    id                    String  @id @default(uuid())
+    id                    String  @id
     bitrate               Int?
     duration              Int?
     height                Int?
@@ -45,11 +49,12 @@ model Video {
     audioSamplesPerSecond Int?
     frameRate             Float?
     fourCC                String?
-    item                  Item?   @relation(fields: [id], references: [id], onDelete: Cascade)
+    itemId                String? @unique
+    item                  Item?   @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model Audio {
-    id                String   @id @default(uuid())
+    id                String   @id
     album             String?
     albumArtist       String?
     artist            String?
@@ -66,11 +71,12 @@ model Audio {
     track             Int?
     trackCount        Int?
     year              Int?
-    item              Item?    @relation(fields: [id], references: [id], onDelete: Cascade)
+    itemId            String?  @unique
+    item              Item?    @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model Photo {
-    id                  String    @id @default(uuid())
+    id                  String    @id
     cameraMake          String?
     cameraModel         String?
     exposureDenominator Float?
@@ -79,5 +85,6 @@ model Photo {
     focalLength         Float?
     iso                 Int?
     takenDateTime       DateTime?
-    item                Item?     @relation(fields: [id], references: [id], onDelete: Cascade)
+    itemId              String?   @unique
+    item                Item?     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }

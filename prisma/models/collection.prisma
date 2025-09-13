@@ -1,15 +1,15 @@
 model Collection {
-    id   String @id @default(uuid())
-    name String
-    size Int    @default(0)
-    item Item @relation(fields: [id], references: [id], onDelete: Cascade)
+    id    String           @id
+    name  String
+    size  BigInt           @default(0)
+    item  Item             @relation(fields: [id], references: [id], onDelete: Cascade)
     items CollectionItem[]
 
     @@index([name])
 }
 
 model CollectionItem {
-    id           String     @id @default(uuid())
+    id           String     @id
     collectionId String
     collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
     itemId       String

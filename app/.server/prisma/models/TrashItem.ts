@@ -244,7 +244,7 @@ export type TrashItemScalarWhereWithAggregatesInput = {
 }
 
 export type TrashItemCreateInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   restoredAt?: Date | string | null
   deletedAt?: Date | string | null
@@ -253,7 +253,7 @@ export type TrashItemCreateInput = {
 }
 
 export type TrashItemUncheckedCreateInput = {
-  id?: string
+  id: string
   itemId: string
   trashId: string
   createdAt?: Date | string
@@ -280,7 +280,7 @@ export type TrashItemUncheckedUpdateInput = {
 }
 
 export type TrashItemCreateManyInput = {
-  id?: string
+  id: string
   itemId: string
   trashId: string
   createdAt?: Date | string
@@ -426,7 +426,7 @@ export type TrashItemUncheckedUpdateManyWithoutTrashNestedInput = {
 }
 
 export type TrashItemCreateWithoutItemInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   restoredAt?: Date | string | null
   deletedAt?: Date | string | null
@@ -434,7 +434,7 @@ export type TrashItemCreateWithoutItemInput = {
 }
 
 export type TrashItemUncheckedCreateWithoutItemInput = {
-  id?: string
+  id: string
   trashId: string
   createdAt?: Date | string
   restoredAt?: Date | string | null
@@ -474,7 +474,7 @@ export type TrashItemUncheckedUpdateWithoutItemInput = {
 }
 
 export type TrashItemCreateWithoutTrashInput = {
-  id?: string
+  id: string
   createdAt?: Date | string
   restoredAt?: Date | string | null
   deletedAt?: Date | string | null
@@ -482,7 +482,7 @@ export type TrashItemCreateWithoutTrashInput = {
 }
 
 export type TrashItemUncheckedCreateWithoutTrashInput = {
-  id?: string
+  id: string
   itemId: string
   createdAt?: Date | string
   restoredAt?: Date | string | null
@@ -528,7 +528,7 @@ export type TrashItemScalarWhereInput = {
 }
 
 export type TrashItemCreateManyTrashInput = {
-  id?: string
+  id: string
   itemId: string
   createdAt?: Date | string
   restoredAt?: Date | string | null

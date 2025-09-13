@@ -59,10 +59,12 @@ export type ImageMinAggregateOutputType = {
   cameraModel: string | null
   exposureDenominator: number | null
   exposureNumerator: number | null
+  exposureTime: string | null
   focalLength: number | null
   fNumber: number | null
   iso: number | null
   takenDateTime: Date | null
+  itemId: string | null
 }
 
 export type ImageMaxAggregateOutputType = {
@@ -75,10 +77,12 @@ export type ImageMaxAggregateOutputType = {
   cameraModel: string | null
   exposureDenominator: number | null
   exposureNumerator: number | null
+  exposureTime: string | null
   focalLength: number | null
   fNumber: number | null
   iso: number | null
   takenDateTime: Date | null
+  itemId: string | null
 }
 
 export type ImageCountAggregateOutputType = {
@@ -91,10 +95,12 @@ export type ImageCountAggregateOutputType = {
   cameraModel: number
   exposureDenominator: number
   exposureNumerator: number
+  exposureTime: number
   focalLength: number
   fNumber: number
   iso: number
   takenDateTime: number
+  itemId: number
   _all: number
 }
 
@@ -133,10 +139,12 @@ export type ImageMinAggregateInputType = {
   cameraModel?: true
   exposureDenominator?: true
   exposureNumerator?: true
+  exposureTime?: true
   focalLength?: true
   fNumber?: true
   iso?: true
   takenDateTime?: true
+  itemId?: true
 }
 
 export type ImageMaxAggregateInputType = {
@@ -149,10 +157,12 @@ export type ImageMaxAggregateInputType = {
   cameraModel?: true
   exposureDenominator?: true
   exposureNumerator?: true
+  exposureTime?: true
   focalLength?: true
   fNumber?: true
   iso?: true
   takenDateTime?: true
+  itemId?: true
 }
 
 export type ImageCountAggregateInputType = {
@@ -165,10 +175,12 @@ export type ImageCountAggregateInputType = {
   cameraModel?: true
   exposureDenominator?: true
   exposureNumerator?: true
+  exposureTime?: true
   focalLength?: true
   fNumber?: true
   iso?: true
   takenDateTime?: true
+  itemId?: true
   _all?: true
 }
 
@@ -268,10 +280,12 @@ export type ImageGroupByOutputType = {
   cameraModel: string | null
   exposureDenominator: number | null
   exposureNumerator: number | null
+  exposureTime: string | null
   focalLength: number | null
   fNumber: number | null
   iso: number | null
   takenDateTime: Date | null
+  itemId: string | null
   _count: ImageCountAggregateOutputType | null
   _avg: ImageAvgAggregateOutputType | null
   _sum: ImageSumAggregateOutputType | null
@@ -305,12 +319,14 @@ export type ImageWhereInput = {
   verticalResolution?: Prisma.IntNullableFilter<"Image"> | number | null
   cameraMake?: Prisma.StringNullableFilter<"Image"> | string | null
   cameraModel?: Prisma.StringNullableFilter<"Image"> | string | null
-  exposureDenominator?: Prisma.FloatNullableFilter<"Image"> | number | null
+  exposureDenominator?: Prisma.IntNullableFilter<"Image"> | number | null
   exposureNumerator?: Prisma.FloatNullableFilter<"Image"> | number | null
+  exposureTime?: Prisma.StringNullableFilter<"Image"> | string | null
   focalLength?: Prisma.FloatNullableFilter<"Image"> | number | null
   fNumber?: Prisma.FloatNullableFilter<"Image"> | number | null
   iso?: Prisma.IntNullableFilter<"Image"> | number | null
   takenDateTime?: Prisma.DateTimeNullableFilter<"Image"> | Date | string | null
+  itemId?: Prisma.StringNullableFilter<"Image"> | string | null
   item?: Prisma.XOR<Prisma.ItemNullableScalarRelationFilter, Prisma.ItemWhereInput> | null
 }
 
@@ -324,15 +340,18 @@ export type ImageOrderByWithRelationInput = {
   cameraModel?: Prisma.SortOrderInput | Prisma.SortOrder
   exposureDenominator?: Prisma.SortOrderInput | Prisma.SortOrder
   exposureNumerator?: Prisma.SortOrderInput | Prisma.SortOrder
+  exposureTime?: Prisma.SortOrderInput | Prisma.SortOrder
   focalLength?: Prisma.SortOrderInput | Prisma.SortOrder
   fNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   iso?: Prisma.SortOrderInput | Prisma.SortOrder
   takenDateTime?: Prisma.SortOrderInput | Prisma.SortOrder
+  itemId?: Prisma.SortOrderInput | Prisma.SortOrder
   item?: Prisma.ItemOrderByWithRelationInput
 }
 
 export type ImageWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  itemId?: string
   AND?: Prisma.ImageWhereInput | Prisma.ImageWhereInput[]
   OR?: Prisma.ImageWhereInput[]
   NOT?: Prisma.ImageWhereInput | Prisma.ImageWhereInput[]
@@ -342,14 +361,15 @@ export type ImageWhereUniqueInput = Prisma.AtLeast<{
   verticalResolution?: Prisma.IntNullableFilter<"Image"> | number | null
   cameraMake?: Prisma.StringNullableFilter<"Image"> | string | null
   cameraModel?: Prisma.StringNullableFilter<"Image"> | string | null
-  exposureDenominator?: Prisma.FloatNullableFilter<"Image"> | number | null
+  exposureDenominator?: Prisma.IntNullableFilter<"Image"> | number | null
   exposureNumerator?: Prisma.FloatNullableFilter<"Image"> | number | null
+  exposureTime?: Prisma.StringNullableFilter<"Image"> | string | null
   focalLength?: Prisma.FloatNullableFilter<"Image"> | number | null
   fNumber?: Prisma.FloatNullableFilter<"Image"> | number | null
   iso?: Prisma.IntNullableFilter<"Image"> | number | null
   takenDateTime?: Prisma.DateTimeNullableFilter<"Image"> | Date | string | null
   item?: Prisma.XOR<Prisma.ItemNullableScalarRelationFilter, Prisma.ItemWhereInput> | null
-}, "id">
+}, "id" | "itemId">
 
 export type ImageOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -361,10 +381,12 @@ export type ImageOrderByWithAggregationInput = {
   cameraModel?: Prisma.SortOrderInput | Prisma.SortOrder
   exposureDenominator?: Prisma.SortOrderInput | Prisma.SortOrder
   exposureNumerator?: Prisma.SortOrderInput | Prisma.SortOrder
+  exposureTime?: Prisma.SortOrderInput | Prisma.SortOrder
   focalLength?: Prisma.SortOrderInput | Prisma.SortOrder
   fNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   iso?: Prisma.SortOrderInput | Prisma.SortOrder
   takenDateTime?: Prisma.SortOrderInput | Prisma.SortOrder
+  itemId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ImageCountOrderByAggregateInput
   _avg?: Prisma.ImageAvgOrderByAggregateInput
   _max?: Prisma.ImageMaxOrderByAggregateInput
@@ -383,15 +405,18 @@ export type ImageScalarWhereWithAggregatesInput = {
   verticalResolution?: Prisma.IntNullableWithAggregatesFilter<"Image"> | number | null
   cameraMake?: Prisma.StringNullableWithAggregatesFilter<"Image"> | string | null
   cameraModel?: Prisma.StringNullableWithAggregatesFilter<"Image"> | string | null
-  exposureDenominator?: Prisma.FloatNullableWithAggregatesFilter<"Image"> | number | null
+  exposureDenominator?: Prisma.IntNullableWithAggregatesFilter<"Image"> | number | null
   exposureNumerator?: Prisma.FloatNullableWithAggregatesFilter<"Image"> | number | null
+  exposureTime?: Prisma.StringNullableWithAggregatesFilter<"Image"> | string | null
   focalLength?: Prisma.FloatNullableWithAggregatesFilter<"Image"> | number | null
   fNumber?: Prisma.FloatNullableWithAggregatesFilter<"Image"> | number | null
   iso?: Prisma.IntNullableWithAggregatesFilter<"Image"> | number | null
   takenDateTime?: Prisma.DateTimeNullableWithAggregatesFilter<"Image"> | Date | string | null
+  itemId?: Prisma.StringNullableWithAggregatesFilter<"Image"> | string | null
 }
 
 export type ImageCreateInput = {
+  id: string
   height?: number | null
   width?: number | null
   horizontalResolution?: number | null
@@ -400,6 +425,7 @@ export type ImageCreateInput = {
   cameraModel?: string | null
   exposureDenominator?: number | null
   exposureNumerator?: number | null
+  exposureTime?: string | null
   focalLength?: number | null
   fNumber?: number | null
   iso?: number | null
@@ -408,7 +434,7 @@ export type ImageCreateInput = {
 }
 
 export type ImageUncheckedCreateInput = {
-  id?: string
+  id: string
   height?: number | null
   width?: number | null
   horizontalResolution?: number | null
@@ -417,21 +443,25 @@ export type ImageUncheckedCreateInput = {
   cameraModel?: string | null
   exposureDenominator?: number | null
   exposureNumerator?: number | null
+  exposureTime?: string | null
   focalLength?: number | null
   fNumber?: number | null
   iso?: number | null
   takenDateTime?: Date | string | null
+  itemId?: string | null
 }
 
 export type ImageUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   height?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   width?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   horizontalResolution?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   verticalResolution?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   cameraMake?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cameraModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  exposureDenominator?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  exposureDenominator?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   exposureNumerator?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  exposureTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   focalLength?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fNumber?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   iso?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -447,16 +477,18 @@ export type ImageUncheckedUpdateInput = {
   verticalResolution?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   cameraMake?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cameraModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  exposureDenominator?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  exposureDenominator?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   exposureNumerator?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  exposureTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   focalLength?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fNumber?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   iso?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   takenDateTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ImageCreateManyInput = {
-  id?: string
+  id: string
   height?: number | null
   width?: number | null
   horizontalResolution?: number | null
@@ -465,21 +497,25 @@ export type ImageCreateManyInput = {
   cameraModel?: string | null
   exposureDenominator?: number | null
   exposureNumerator?: number | null
+  exposureTime?: string | null
   focalLength?: number | null
   fNumber?: number | null
   iso?: number | null
   takenDateTime?: Date | string | null
+  itemId?: string | null
 }
 
 export type ImageUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   height?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   width?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   horizontalResolution?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   verticalResolution?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   cameraMake?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cameraModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  exposureDenominator?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  exposureDenominator?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   exposureNumerator?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  exposureTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   focalLength?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fNumber?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   iso?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -494,12 +530,14 @@ export type ImageUncheckedUpdateManyInput = {
   verticalResolution?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   cameraMake?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cameraModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  exposureDenominator?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  exposureDenominator?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   exposureNumerator?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  exposureTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   focalLength?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fNumber?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   iso?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   takenDateTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ImageCountOrderByAggregateInput = {
@@ -512,10 +550,12 @@ export type ImageCountOrderByAggregateInput = {
   cameraModel?: Prisma.SortOrder
   exposureDenominator?: Prisma.SortOrder
   exposureNumerator?: Prisma.SortOrder
+  exposureTime?: Prisma.SortOrder
   focalLength?: Prisma.SortOrder
   fNumber?: Prisma.SortOrder
   iso?: Prisma.SortOrder
   takenDateTime?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type ImageAvgOrderByAggregateInput = {
@@ -540,10 +580,12 @@ export type ImageMaxOrderByAggregateInput = {
   cameraModel?: Prisma.SortOrder
   exposureDenominator?: Prisma.SortOrder
   exposureNumerator?: Prisma.SortOrder
+  exposureTime?: Prisma.SortOrder
   focalLength?: Prisma.SortOrder
   fNumber?: Prisma.SortOrder
   iso?: Prisma.SortOrder
   takenDateTime?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type ImageMinOrderByAggregateInput = {
@@ -556,10 +598,12 @@ export type ImageMinOrderByAggregateInput = {
   cameraModel?: Prisma.SortOrder
   exposureDenominator?: Prisma.SortOrder
   exposureNumerator?: Prisma.SortOrder
+  exposureTime?: Prisma.SortOrder
   focalLength?: Prisma.SortOrder
   fNumber?: Prisma.SortOrder
   iso?: Prisma.SortOrder
   takenDateTime?: Prisma.SortOrder
+  itemId?: Prisma.SortOrder
 }
 
 export type ImageSumOrderByAggregateInput = {
@@ -620,6 +664,7 @@ export type ImageUncheckedUpdateOneWithoutItemNestedInput = {
 }
 
 export type ImageCreateWithoutItemInput = {
+  id: string
   height?: number | null
   width?: number | null
   horizontalResolution?: number | null
@@ -628,6 +673,7 @@ export type ImageCreateWithoutItemInput = {
   cameraModel?: string | null
   exposureDenominator?: number | null
   exposureNumerator?: number | null
+  exposureTime?: string | null
   focalLength?: number | null
   fNumber?: number | null
   iso?: number | null
@@ -635,6 +681,7 @@ export type ImageCreateWithoutItemInput = {
 }
 
 export type ImageUncheckedCreateWithoutItemInput = {
+  id: string
   height?: number | null
   width?: number | null
   horizontalResolution?: number | null
@@ -643,6 +690,7 @@ export type ImageUncheckedCreateWithoutItemInput = {
   cameraModel?: string | null
   exposureDenominator?: number | null
   exposureNumerator?: number | null
+  exposureTime?: string | null
   focalLength?: number | null
   fNumber?: number | null
   iso?: number | null
@@ -666,14 +714,16 @@ export type ImageUpdateToOneWithWhereWithoutItemInput = {
 }
 
 export type ImageUpdateWithoutItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   height?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   width?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   horizontalResolution?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   verticalResolution?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   cameraMake?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cameraModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  exposureDenominator?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  exposureDenominator?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   exposureNumerator?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  exposureTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   focalLength?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fNumber?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   iso?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -681,14 +731,16 @@ export type ImageUpdateWithoutItemInput = {
 }
 
 export type ImageUncheckedUpdateWithoutItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   height?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   width?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   horizontalResolution?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   verticalResolution?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   cameraMake?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cameraModel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  exposureDenominator?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  exposureDenominator?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   exposureNumerator?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  exposureTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   focalLength?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fNumber?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   iso?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
@@ -707,10 +759,12 @@ export type ImageSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   cameraModel?: boolean
   exposureDenominator?: boolean
   exposureNumerator?: boolean
+  exposureTime?: boolean
   focalLength?: boolean
   fNumber?: boolean
   iso?: boolean
   takenDateTime?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.Image$itemArgs<ExtArgs>
 }, ExtArgs["result"]["image"]>
 
@@ -724,10 +778,12 @@ export type ImageSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   cameraModel?: boolean
   exposureDenominator?: boolean
   exposureNumerator?: boolean
+  exposureTime?: boolean
   focalLength?: boolean
   fNumber?: boolean
   iso?: boolean
   takenDateTime?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.Image$itemArgs<ExtArgs>
 }, ExtArgs["result"]["image"]>
 
@@ -741,10 +797,12 @@ export type ImageSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   cameraModel?: boolean
   exposureDenominator?: boolean
   exposureNumerator?: boolean
+  exposureTime?: boolean
   focalLength?: boolean
   fNumber?: boolean
   iso?: boolean
   takenDateTime?: boolean
+  itemId?: boolean
   item?: boolean | Prisma.Image$itemArgs<ExtArgs>
 }, ExtArgs["result"]["image"]>
 
@@ -758,13 +816,15 @@ export type ImageSelectScalar = {
   cameraModel?: boolean
   exposureDenominator?: boolean
   exposureNumerator?: boolean
+  exposureTime?: boolean
   focalLength?: boolean
   fNumber?: boolean
   iso?: boolean
   takenDateTime?: boolean
+  itemId?: boolean
 }
 
-export type ImageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "height" | "width" | "horizontalResolution" | "verticalResolution" | "cameraMake" | "cameraModel" | "exposureDenominator" | "exposureNumerator" | "focalLength" | "fNumber" | "iso" | "takenDateTime", ExtArgs["result"]["image"]>
+export type ImageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "height" | "width" | "horizontalResolution" | "verticalResolution" | "cameraMake" | "cameraModel" | "exposureDenominator" | "exposureNumerator" | "exposureTime" | "focalLength" | "fNumber" | "iso" | "takenDateTime" | "itemId", ExtArgs["result"]["image"]>
 export type ImageInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   item?: boolean | Prisma.Image$itemArgs<ExtArgs>
 }
@@ -790,10 +850,12 @@ export type $ImagePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     cameraModel: string | null
     exposureDenominator: number | null
     exposureNumerator: number | null
+    exposureTime: string | null
     focalLength: number | null
     fNumber: number | null
     iso: number | null
     takenDateTime: Date | null
+    itemId: string | null
   }, ExtArgs["result"]["image"]>
   composites: {}
 }
@@ -1225,12 +1287,14 @@ export interface ImageFieldRefs {
   readonly verticalResolution: Prisma.FieldRef<"Image", 'Int'>
   readonly cameraMake: Prisma.FieldRef<"Image", 'String'>
   readonly cameraModel: Prisma.FieldRef<"Image", 'String'>
-  readonly exposureDenominator: Prisma.FieldRef<"Image", 'Float'>
+  readonly exposureDenominator: Prisma.FieldRef<"Image", 'Int'>
   readonly exposureNumerator: Prisma.FieldRef<"Image", 'Float'>
+  readonly exposureTime: Prisma.FieldRef<"Image", 'String'>
   readonly focalLength: Prisma.FieldRef<"Image", 'Float'>
   readonly fNumber: Prisma.FieldRef<"Image", 'Float'>
   readonly iso: Prisma.FieldRef<"Image", 'Int'>
   readonly takenDateTime: Prisma.FieldRef<"Image", 'DateTime'>
+  readonly itemId: Prisma.FieldRef<"Image", 'String'>
 }
     
 
@@ -1454,7 +1518,7 @@ export type ImageCreateArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
   /**
    * The data needed to create a Image.
    */
-  data?: Prisma.XOR<Prisma.ImageCreateInput, Prisma.ImageUncheckedCreateInput>
+  data: Prisma.XOR<Prisma.ImageCreateInput, Prisma.ImageUncheckedCreateInput>
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }
 

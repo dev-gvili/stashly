@@ -231,6 +231,7 @@ export type SubscriptionWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   stripeSubscriptionId?: string
   ownerId?: string
+  ownerId_storagePlanId?: Prisma.SubscriptionOwnerIdStoragePlanIdCompoundUniqueInput
   AND?: Prisma.SubscriptionWhereInput | Prisma.SubscriptionWhereInput[]
   OR?: Prisma.SubscriptionWhereInput[]
   NOT?: Prisma.SubscriptionWhereInput | Prisma.SubscriptionWhereInput[]
@@ -242,7 +243,7 @@ export type SubscriptionWhereUniqueInput = Prisma.AtLeast<{
   storagePlanId?: Prisma.StringFilter<"Subscription"> | string
   storagePlan?: Prisma.XOR<Prisma.StoragePlanScalarRelationFilter, Prisma.StoragePlanWhereInput>
   owner?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
-}, "id" | "stripeSubscriptionId" | "ownerId">
+}, "id" | "stripeSubscriptionId" | "ownerId" | "ownerId_storagePlanId">
 
 export type SubscriptionOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -275,7 +276,7 @@ export type SubscriptionScalarWhereWithAggregatesInput = {
 }
 
 export type SubscriptionCreateInput = {
-  id?: string
+  id: string
   status?: $Enums.SubscriptionStatus
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -287,7 +288,7 @@ export type SubscriptionCreateInput = {
 }
 
 export type SubscriptionUncheckedCreateInput = {
-  id?: string
+  id: string
   status?: $Enums.SubscriptionStatus
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -323,7 +324,7 @@ export type SubscriptionUncheckedUpdateInput = {
 }
 
 export type SubscriptionCreateManyInput = {
-  id?: string
+  id: string
   status?: $Enums.SubscriptionStatus
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -364,6 +365,11 @@ export type SubscriptionListRelationFilter = {
 
 export type SubscriptionOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
+}
+
+export type SubscriptionOwnerIdStoragePlanIdCompoundUniqueInput = {
+  ownerId: string
+  storagePlanId: string
 }
 
 export type SubscriptionCountOrderByAggregateInput = {
@@ -489,7 +495,7 @@ export type SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput = {
 }
 
 export type SubscriptionCreateWithoutStoragePlanInput = {
-  id?: string
+  id: string
   status?: $Enums.SubscriptionStatus
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -500,7 +506,7 @@ export type SubscriptionCreateWithoutStoragePlanInput = {
 }
 
 export type SubscriptionUncheckedCreateWithoutStoragePlanInput = {
-  id?: string
+  id: string
   status?: $Enums.SubscriptionStatus
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -552,7 +558,7 @@ export type SubscriptionScalarWhereInput = {
 }
 
 export type SubscriptionCreateWithoutOwnerInput = {
-  id?: string
+  id: string
   status?: $Enums.SubscriptionStatus
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -563,7 +569,7 @@ export type SubscriptionCreateWithoutOwnerInput = {
 }
 
 export type SubscriptionUncheckedCreateWithoutOwnerInput = {
-  id?: string
+  id: string
   status?: $Enums.SubscriptionStatus
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -600,7 +606,7 @@ export type SubscriptionUpdateManyWithWhereWithoutOwnerInput = {
 }
 
 export type SubscriptionCreateManyStoragePlanInput = {
-  id?: string
+  id: string
   status?: $Enums.SubscriptionStatus
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -644,7 +650,7 @@ export type SubscriptionUncheckedUpdateManyWithoutStoragePlanInput = {
 }
 
 export type SubscriptionCreateManyOwnerInput = {
-  id?: string
+  id: string
   status?: $Enums.SubscriptionStatus
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string

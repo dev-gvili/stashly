@@ -38,6 +38,7 @@ export type StoragePlanMinAggregateOutputType = {
   name: string | null
   type: $Enums.StoragePlanType | null
   storageLimit: bigint | null
+  stripePriceId: string | null
 }
 
 export type StoragePlanMaxAggregateOutputType = {
@@ -45,6 +46,7 @@ export type StoragePlanMaxAggregateOutputType = {
   name: string | null
   type: $Enums.StoragePlanType | null
   storageLimit: bigint | null
+  stripePriceId: string | null
 }
 
 export type StoragePlanCountAggregateOutputType = {
@@ -52,6 +54,7 @@ export type StoragePlanCountAggregateOutputType = {
   name: number
   type: number
   storageLimit: number
+  stripePriceId: number
   _all: number
 }
 
@@ -69,6 +72,7 @@ export type StoragePlanMinAggregateInputType = {
   name?: true
   type?: true
   storageLimit?: true
+  stripePriceId?: true
 }
 
 export type StoragePlanMaxAggregateInputType = {
@@ -76,6 +80,7 @@ export type StoragePlanMaxAggregateInputType = {
   name?: true
   type?: true
   storageLimit?: true
+  stripePriceId?: true
 }
 
 export type StoragePlanCountAggregateInputType = {
@@ -83,6 +88,7 @@ export type StoragePlanCountAggregateInputType = {
   name?: true
   type?: true
   storageLimit?: true
+  stripePriceId?: true
   _all?: true
 }
 
@@ -177,6 +183,7 @@ export type StoragePlanGroupByOutputType = {
   name: string
   type: $Enums.StoragePlanType
   storageLimit: bigint
+  stripePriceId: string | null
   _count: StoragePlanCountAggregateOutputType | null
   _avg: StoragePlanAvgAggregateOutputType | null
   _sum: StoragePlanSumAggregateOutputType | null
@@ -207,6 +214,7 @@ export type StoragePlanWhereInput = {
   name?: Prisma.StringFilter<"StoragePlan"> | string
   type?: Prisma.EnumStoragePlanTypeFilter<"StoragePlan"> | $Enums.StoragePlanType
   storageLimit?: Prisma.BigIntFilter<"StoragePlan"> | bigint | number
+  stripePriceId?: Prisma.StringNullableFilter<"StoragePlan"> | string | null
   subscriptions?: Prisma.SubscriptionListRelationFilter
 }
 
@@ -215,11 +223,13 @@ export type StoragePlanOrderByWithRelationInput = {
   name?: Prisma.SortOrder
   type?: Prisma.SortOrder
   storageLimit?: Prisma.SortOrder
+  stripePriceId?: Prisma.SortOrderInput | Prisma.SortOrder
   subscriptions?: Prisma.SubscriptionOrderByRelationAggregateInput
 }
 
 export type StoragePlanWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  stripePriceId?: string
   AND?: Prisma.StoragePlanWhereInput | Prisma.StoragePlanWhereInput[]
   OR?: Prisma.StoragePlanWhereInput[]
   NOT?: Prisma.StoragePlanWhereInput | Prisma.StoragePlanWhereInput[]
@@ -227,13 +237,14 @@ export type StoragePlanWhereUniqueInput = Prisma.AtLeast<{
   type?: Prisma.EnumStoragePlanTypeFilter<"StoragePlan"> | $Enums.StoragePlanType
   storageLimit?: Prisma.BigIntFilter<"StoragePlan"> | bigint | number
   subscriptions?: Prisma.SubscriptionListRelationFilter
-}, "id">
+}, "id" | "stripePriceId">
 
 export type StoragePlanOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   type?: Prisma.SortOrder
   storageLimit?: Prisma.SortOrder
+  stripePriceId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.StoragePlanCountOrderByAggregateInput
   _avg?: Prisma.StoragePlanAvgOrderByAggregateInput
   _max?: Prisma.StoragePlanMaxOrderByAggregateInput
@@ -249,21 +260,24 @@ export type StoragePlanScalarWhereWithAggregatesInput = {
   name?: Prisma.StringWithAggregatesFilter<"StoragePlan"> | string
   type?: Prisma.EnumStoragePlanTypeWithAggregatesFilter<"StoragePlan"> | $Enums.StoragePlanType
   storageLimit?: Prisma.BigIntWithAggregatesFilter<"StoragePlan"> | bigint | number
+  stripePriceId?: Prisma.StringNullableWithAggregatesFilter<"StoragePlan"> | string | null
 }
 
 export type StoragePlanCreateInput = {
-  id?: string
+  id: string
   name: string
   type?: $Enums.StoragePlanType
   storageLimit: bigint | number
+  stripePriceId?: string | null
   subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutStoragePlanInput
 }
 
 export type StoragePlanUncheckedCreateInput = {
-  id?: string
+  id: string
   name: string
   type?: $Enums.StoragePlanType
   storageLimit: bigint | number
+  stripePriceId?: string | null
   subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutStoragePlanInput
 }
 
@@ -272,6 +286,7 @@ export type StoragePlanUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumStoragePlanTypeFieldUpdateOperationsInput | $Enums.StoragePlanType
   storageLimit?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptions?: Prisma.SubscriptionUpdateManyWithoutStoragePlanNestedInput
 }
 
@@ -280,14 +295,16 @@ export type StoragePlanUncheckedUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumStoragePlanTypeFieldUpdateOperationsInput | $Enums.StoragePlanType
   storageLimit?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutStoragePlanNestedInput
 }
 
 export type StoragePlanCreateManyInput = {
-  id?: string
+  id: string
   name: string
   type?: $Enums.StoragePlanType
   storageLimit: bigint | number
+  stripePriceId?: string | null
 }
 
 export type StoragePlanUpdateManyMutationInput = {
@@ -295,6 +312,7 @@ export type StoragePlanUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumStoragePlanTypeFieldUpdateOperationsInput | $Enums.StoragePlanType
   storageLimit?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type StoragePlanUncheckedUpdateManyInput = {
@@ -302,6 +320,7 @@ export type StoragePlanUncheckedUpdateManyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumStoragePlanTypeFieldUpdateOperationsInput | $Enums.StoragePlanType
   storageLimit?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type StoragePlanCountOrderByAggregateInput = {
@@ -309,6 +328,7 @@ export type StoragePlanCountOrderByAggregateInput = {
   name?: Prisma.SortOrder
   type?: Prisma.SortOrder
   storageLimit?: Prisma.SortOrder
+  stripePriceId?: Prisma.SortOrder
 }
 
 export type StoragePlanAvgOrderByAggregateInput = {
@@ -320,6 +340,7 @@ export type StoragePlanMaxOrderByAggregateInput = {
   name?: Prisma.SortOrder
   type?: Prisma.SortOrder
   storageLimit?: Prisma.SortOrder
+  stripePriceId?: Prisma.SortOrder
 }
 
 export type StoragePlanMinOrderByAggregateInput = {
@@ -327,6 +348,7 @@ export type StoragePlanMinOrderByAggregateInput = {
   name?: Prisma.SortOrder
   type?: Prisma.SortOrder
   storageLimit?: Prisma.SortOrder
+  stripePriceId?: Prisma.SortOrder
 }
 
 export type StoragePlanSumOrderByAggregateInput = {
@@ -357,17 +379,19 @@ export type StoragePlanUpdateOneRequiredWithoutSubscriptionsNestedInput = {
 }
 
 export type StoragePlanCreateWithoutSubscriptionsInput = {
-  id?: string
+  id: string
   name: string
   type?: $Enums.StoragePlanType
   storageLimit: bigint | number
+  stripePriceId?: string | null
 }
 
 export type StoragePlanUncheckedCreateWithoutSubscriptionsInput = {
-  id?: string
+  id: string
   name: string
   type?: $Enums.StoragePlanType
   storageLimit: bigint | number
+  stripePriceId?: string | null
 }
 
 export type StoragePlanCreateOrConnectWithoutSubscriptionsInput = {
@@ -391,6 +415,7 @@ export type StoragePlanUpdateWithoutSubscriptionsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumStoragePlanTypeFieldUpdateOperationsInput | $Enums.StoragePlanType
   storageLimit?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type StoragePlanUncheckedUpdateWithoutSubscriptionsInput = {
@@ -398,6 +423,7 @@ export type StoragePlanUncheckedUpdateWithoutSubscriptionsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumStoragePlanTypeFieldUpdateOperationsInput | $Enums.StoragePlanType
   storageLimit?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 
@@ -436,6 +462,7 @@ export type StoragePlanSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   name?: boolean
   type?: boolean
   storageLimit?: boolean
+  stripePriceId?: boolean
   subscriptions?: boolean | Prisma.StoragePlan$subscriptionsArgs<ExtArgs>
   _count?: boolean | Prisma.StoragePlanCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["storagePlan"]>
@@ -445,6 +472,7 @@ export type StoragePlanSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   name?: boolean
   type?: boolean
   storageLimit?: boolean
+  stripePriceId?: boolean
 }, ExtArgs["result"]["storagePlan"]>
 
 export type StoragePlanSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -452,6 +480,7 @@ export type StoragePlanSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   name?: boolean
   type?: boolean
   storageLimit?: boolean
+  stripePriceId?: boolean
 }, ExtArgs["result"]["storagePlan"]>
 
 export type StoragePlanSelectScalar = {
@@ -459,9 +488,10 @@ export type StoragePlanSelectScalar = {
   name?: boolean
   type?: boolean
   storageLimit?: boolean
+  stripePriceId?: boolean
 }
 
-export type StoragePlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "type" | "storageLimit", ExtArgs["result"]["storagePlan"]>
+export type StoragePlanOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "type" | "storageLimit" | "stripePriceId", ExtArgs["result"]["storagePlan"]>
 export type StoragePlanInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   subscriptions?: boolean | Prisma.StoragePlan$subscriptionsArgs<ExtArgs>
   _count?: boolean | Prisma.StoragePlanCountOutputTypeDefaultArgs<ExtArgs>
@@ -479,6 +509,7 @@ export type $StoragePlanPayload<ExtArgs extends runtime.Types.Extensions.Interna
     name: string
     type: $Enums.StoragePlanType
     storageLimit: bigint
+    stripePriceId: string | null
   }, ExtArgs["result"]["storagePlan"]>
   composites: {}
 }
@@ -907,6 +938,7 @@ export interface StoragePlanFieldRefs {
   readonly name: Prisma.FieldRef<"StoragePlan", 'String'>
   readonly type: Prisma.FieldRef<"StoragePlan", 'StoragePlanType'>
   readonly storageLimit: Prisma.FieldRef<"StoragePlan", 'BigInt'>
+  readonly stripePriceId: Prisma.FieldRef<"StoragePlan", 'String'>
 }
     
 
