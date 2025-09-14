@@ -1,7 +1,10 @@
-export interface IRepository<T> {
-  findById(id: number | string): Promise<T | null>;
-  findAll(): Promise<T[]>;
-  create(data: any): Promise<T>;
-  update(id: number | string, data: any): Promise<T>;
-  delete(id: number | string): Promise<T>;
+import type { Prisma } from "../prisma/client"
+
+export interface IRepository<T, U extends Prisma.ModelName = Prisma.ModelName> {
+  name: U 
+  findById(args: unknown): Promise<T | null>;
+  findAll(args: unknown): Promise<T[]>;
+  create(args: unknown): Promise<T>;
+  update(args: unknown): Promise<T>;
+  delete(args: unknown): Promise<T>;
 }
