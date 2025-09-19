@@ -127,6 +127,9 @@ erDiagram
   DriveType type
   DateTime createdAt
   DateTime updatedAt
+  Int workspaceLimit
+  Int memberLimit
+  BigInt storageLimit
   String ownerId FK,UK
 }
 "File" {
@@ -319,8 +322,14 @@ erDiagram
 "StoragePlan" {
   String id PK
   String name
+  String description "nullable"
   StoragePlanType type
   BigInt storageLimit
+  Int workspaceLimit
+  Int memberLimit
+  String features
+  Int priceCents "nullable"
+  String currency "nullable"
   String stripePriceId UK "nullable"
 }
 "Subscription" {
@@ -396,41 +405,30 @@ erDiagram
   String version "nullable"
   String itemId FK "nullable"
 }
-"Workspace" {
-  String id PK
-  String name UK
-  String description "nullable"
-  Boolean default
-  DateTime createdAt
-  DateTime updatedAt
-}
-"WorkspaceMember" {
-  String id PK
-  WorkspaceMemberRole role
-  String memberId FK
-  String workspaceId FK
-}
-"Preview" {
-  String id PK
-  String fileId
-  String preview
-  DateTime createdAt
-  DateTime updatedAt
-}
-"FileShare" {
-  String id PK
-  String fileId
-  String accessKey UK
-  DateTime expiresAt "nullable"
-  Int maxDownloads "nullable"
-  Int downloads
-}
 "View" {
   String id PK
   ViewType viewType
   SortBy sortBy
   SortOrder sortOrder
   String folderId FK,UK "nullable"
+  DateTime createdAt
+  DateTime updatedAt
+}
+"Workspace" {
+  String id PK
+  String name
+  String slug UK
+  String description "nullable"
+  Boolean default
+  DateTime createdAt
+  DateTime updatedAt
+  String storagePlanId FK "nullable"
+}
+"WorkspaceMember" {
+  String id PK
+  WorkspaceMemberRole role
+  String memberId FK
+  String workspaceId FK
 }
 "_PermissionToUser" {
   String A FK
@@ -487,9 +485,10 @@ erDiagram
 "TrashItem" |o--|| "Item" : item
 "TrashItem" }o--|| "Trash" : trash
 "ItemVersion" }o--o| "Item" : item
+"View" |o--o| "Folder" : folder
+"Workspace" }o--o| "StoragePlan" : storagePlan
 "WorkspaceMember" }o--|| "user" : member
 "WorkspaceMember" }o--|| "Workspace" : workspace
-"View" |o--o| "Folder" : folder
 "_PermissionToUser" }o--|| "Permission" : Permission
 "_PermissionToUser" }o--|| "user" : User
 ```
@@ -673,6 +672,9 @@ Properties as follows:
 - `type`:
 - `createdAt`:
 - `updatedAt`:
+- `workspaceLimit`:
+- `memberLimit`:
+- `storageLimit`:
 - `ownerId`:
 
 ### `File`
@@ -919,8 +921,14 @@ Properties as follows:
 
 - `id`:
 - `name`:
+- `description`:
 - `type`:
 - `storageLimit`:
+- `workspaceLimit`:
+- `memberLimit`:
+- `features`:
+- `priceCents`:
+- `currency`:
 - `stripePriceId`:
 
 ### `Subscription`
@@ -1020,47 +1028,6 @@ Properties as follows:
 - `version`:
 - `itemId`:
 
-### `Workspace`
-
-Properties as follows:
-
-- `id`:
-- `name`:
-- `description`:
-- `default`:
-- `createdAt`:
-- `updatedAt`:
-
-### `WorkspaceMember`
-
-Properties as follows:
-
-- `id`:
-- `role`:
-- `memberId`:
-- `workspaceId`:
-
-### `Preview`
-
-Properties as follows:
-
-- `id`:
-- `fileId`:
-- `preview`:
-- `createdAt`:
-- `updatedAt`:
-
-### `FileShare`
-
-Properties as follows:
-
-- `id`:
-- `fileId`:
-- `accessKey`:
-- `expiresAt`:
-- `maxDownloads`:
-- `downloads`:
-
 ### `View`
 
 Properties as follows:
@@ -1070,6 +1037,30 @@ Properties as follows:
 - `sortBy`:
 - `sortOrder`:
 - `folderId`:
+- `createdAt`:
+- `updatedAt`:
+
+### `Workspace`
+
+Properties as follows:
+
+- `id`:
+- `name`:
+- `slug`:
+- `description`:
+- `default`:
+- `createdAt`:
+- `updatedAt`:
+- `storagePlanId`:
+
+### `WorkspaceMember`
+
+Properties as follows:
+
+- `id`:
+- `role`:
+- `memberId`:
+- `workspaceId`:
 
 ### `_PermissionToUser`
 

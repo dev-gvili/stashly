@@ -1,0 +1,36 @@
+
+model View {
+  id        String    @id @default(uuid())
+  viewType  ViewType
+  // Default is 'name' for sortBy; see ERD for details
+  sortBy    SortBy    @default(name)
+  sortOrder SortOrder
+  folderId  String?   @unique
+  folder    Folder?   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([viewType])
+  @@index([sortBy])
+  @@index([folderId])
+  @@unique([folderId, viewType]) // A folder can only have one view of a specific type
+}
+
+enum ViewType {
+  list
+  grid
+  details
+  gallery
+}
+
+enum SortBy {
+  name
+  date
+  size
+  type
+}
+
+enum SortOrder {
+  ascending
+  descending
+}

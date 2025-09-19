@@ -8,7 +8,7 @@ model Subscription {
     endedAt   DateTime? // End date of the subscription, can be null if ongoing
 
     // Storage plan details
-    storagePlanId String // Foreign key to StoragePlan
+    storagePlanId String
     storagePlan   StoragePlan @relation(fields: [storagePlanId], references: [id], onDelete: Cascade)
 
     // Stripe integration
@@ -19,6 +19,9 @@ model Subscription {
     owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
     @@unique([ownerId, storagePlanId])
+    // A user can only have one active Stripe subscription at a time. This unique constraint
+    // ensures that a user cannot have multiple active Stripe subscriptions simultaneously.
+    @@unique([ownerId, stripeSubscriptionId]) // This constraint is only valid if stripeSubscriptionId is not null      
     @@index([storagePlanId])
     @@index([status])
     @@index([createdAt])

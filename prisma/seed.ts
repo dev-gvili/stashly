@@ -87,10 +87,14 @@ const generateStoragePlan = ({
 	type,
 	name,
 	storageLimit,
+	workspaceLimit,
+	memberLimit,
 }: {
 	type: StoragePlanType
 	name: string
 	storageLimit: bigint
+	workspaceLimit: number
+	memberLimit: number
 }): Prisma.StoragePlanCreateInput => {
 	const prefix = getPrefixForModel('StoragePlan')
 	const id = toObjectId(prefix)
@@ -99,6 +103,8 @@ const generateStoragePlan = ({
 		type,
 		name,
 		storageLimit,
+		workspaceLimit,
+		memberLimit,
 	}
 }
 
@@ -108,21 +114,29 @@ const generateMockStoragePlans = () => {
 			type: StoragePlanType.free,
 			name: 'Free',
 			storageLimit: BigInt(15 * 1024 * 1024 * 1024), // 15 GB
+			workspaceLimit: 5,
+			memberLimit: 5,
 		}),
 		generateStoragePlan({
 			type: StoragePlanType.basic,
 			name: 'Basic',
 			storageLimit: BigInt(100 * 1024 * 1024 * 1024), // 100 GB
+			workspaceLimit: 10,
+			memberLimit: 10,
 		}),
 		generateStoragePlan({
 			type: StoragePlanType.standard,
 			name: 'Standard',
 			storageLimit: BigInt(200 * 1024 * 1024 * 1024), // 200 GB
+						workspaceLimit: 50,
+			memberLimit: 50
 		}),
 		generateStoragePlan({
 			type: StoragePlanType.premium,
 			name: 'Premium',
 			storageLimit: BigInt(2 * 1024 * 1024 * 1024), // 2 TB
+						workspaceLimit: 1000,
+			memberLimit: 1000
 		}),
 	]
 }
@@ -379,16 +393,25 @@ function generateMockLockedItems({
 
 async function main(): Promise<void> {
 	try {
-		await prisma.$transaction([
-			prisma.trashItem.deleteMany(),
-			prisma.subscription.deleteMany(),
+  await prisma.$transaction([
+			// Start with models that have foreign keys to Item or User
+ 			prisma.trashItem.deleteMany(),
+ 			prisma.subscription.deleteMany(),
 			prisma.storagePlan.deleteMany(),
-			prisma.lockedItem.deleteMany(),
-			prisma.favorite.deleteMany(),
-			prisma.item.deleteMany(),
-			prisma.user.deleteMany(),
-		])
+ 			prisma.lockedItem.deleteMany(),
+ 			prisma.favorite.deleteMany(),
+			prisma.folder.deleteMany(), // This was the cause of the error
+			prisma.file.deleteMany(),
+			prisma.thumbnail.deleteMany(),
+			
+			// Now it's safe to delete Items
+ 			prisma.item.deleteMany(),
 
+			// These are mostly independent or are safe to delete now
+			prisma.drive.deleteMany(),
+			prisma.storagePlan.deleteMany(),
+ 			prisma.user.deleteMany(),
+ 		])
 		// Create storage plans
 		const storagePlans = generateMockStoragePlans()
 		const createdStoragePlans =
