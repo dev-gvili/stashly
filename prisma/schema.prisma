@@ -5,18 +5,17 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../app/.server/prisma"
+  provider               = "prisma-client"
+  output                 = "../app/.server/prisma"
   // Optional
   moduleFormat           = "esm"
   generatedFileExtension = "ts"
   previewFeatures        = ["nativeDistinct", "relationJoins", "postgresqlExtensions"]
-  // output   = "../app/services/database/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
   extensions = [vector, pg_trgm]
 }
 
@@ -26,50 +25,3 @@ generator markdown {
   title    = "Stashly"
 }
 
-model Preview {
-  id        String   @id @default(uuid())
-  fileId    String
-  preview   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model FileShare {
-  id           String    @id @default(uuid())
-  fileId       String
-  accessKey    String    @unique // For public sharing
-  expiresAt    DateTime?
-  maxDownloads Int?
-  downloads    Int       @default(0)
-
-  @@index([expiresAt])
-}
-
-
-model View {
-  id        String    @id @default(uuid())
-  viewType  ViewType
-  sortBy    SortBy
-  sortOrder SortOrder
-  folderId  String?   @unique
-  folder    Folder?   @relation(fields: [folderId], references: [id], onDelete: Cascade)
-}
-
-enum ViewType {
-  list
-  grid
-  details
-  gallery
-}
-
-enum SortBy {
-  name
-  date
-  size
-  type
-}
-
-enum SortOrder {
-  ascending
-  descending
-}

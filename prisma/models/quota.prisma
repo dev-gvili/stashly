@@ -9,8 +9,11 @@ model Quota {
     driveId   String      @unique
     drive     Drive       @relation(fields: [driveId], references: [id], onDelete: Cascade)
 
+    @@index([driveId])
+
     @@index([status])
     @@index([createdAt])
+    @@index([updatedAt])    
 }
 
 enum QuotaStatus {
