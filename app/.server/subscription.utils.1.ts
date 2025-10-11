@@ -1,14 +1,10 @@
 import {
 	StoragePlanType,
-	SubscriptionEventType,
 	SubscriptionStatus,
-	SubscriptionType,
 } from '@/prisma/enums'
 import {
 	Prisma,
 	type StoragePlan,
-	type Subscription,
-	type SubscriptionHistory,
 } from '@/prisma/client'
 import { prisma } from './db'
 import { ApiError, ApiErrorCode } from './api.errors'

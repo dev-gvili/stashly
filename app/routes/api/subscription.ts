@@ -4,14 +4,7 @@ import {
 	getUserSubscription,
 	updateUserSubscription,
 } from '@/.server/subscription'
-import { parseFormData } from '@/utils/parsers'
-import { z } from 'zod'
-import { StoragePlanType, SubscriptionType } from '@/prisma/client'
 
-const schema = z.object({
-	storagePlanType: z.nativeEnum(StoragePlanType),
-	subscriptionType: z.nativeEnum(SubscriptionType),
-})
 
 // GET: Get current user's subscription
 export async function loader({ request }: Route.LoaderArgs) {
@@ -28,14 +21,4 @@ export async function loader({ request }: Route.LoaderArgs) {
 export async function action({ request }: Route.ActionArgs) {
 	const session = await auth.api.getSession(request)
 	const userId = session?.user.id || '' // Replace with actual user extraction
-	const { storagePlanType, subscriptionType } = await parseFormData({
-		request,
-		schema,
-	})
-	const updated = await updateUserSubscription(
-		userId,
-		storagePlanType,
-		subscriptionType
-	)
-	return updated
 }

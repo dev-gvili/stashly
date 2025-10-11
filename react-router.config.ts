@@ -7,4 +7,7 @@ export default {
 	routeDiscovery: {
 		mode: 'initial',
 	},
+	future:{
+		unstable_middleware: true,
+	}
 } satisfies Config

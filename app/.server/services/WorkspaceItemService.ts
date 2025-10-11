@@ -5,6 +5,7 @@ import { ApiError, ApiErrorCode } from '../api.errors'
 import type { Prisma, Item, Permission } from '@/prisma/client'
 import { toObjectId, getPrefixForModel } from '@/utils/misc'
 import { PermissionRole } from '../prisma/enums'
+import { prisma } from '../db'
 
 export class WorkspaceItemService {
 	/**
@@ -28,6 +29,7 @@ export class WorkspaceItemService {
 
 		const item = await itemRepository.create({
 			...data,
+			id: toObjectId(getPrefixForModel('Item')),
 			workspace: { connect: { id: workspaceId } },
 			owner: { connect: { id: userId } },
 		})
@@ -110,18 +112,13 @@ export class WorkspaceItemService {
 	 * List items in a workspace that the user can access.
 	 * Requires workspace membership.
 	 */
-	async listWorkspaceItems(
-		userId: string,
-		workspaceId: string,
-		page = 1,
-		pageSize = 20
-	): Promise<Item[]> {
+	async listWorkspaceItems(userId: string, workspaceId: string) {
 		await workspaceMemberRepository.requireMembership(userId, workspaceId, {
 			statusCode: 403,
 			message: 'You are not a member of this workspace',
 		})
 
-		return itemRepository.findByWorkspace(workspaceId, page, pageSize)
+		return itemRepository.findByWorkspace(workspaceId)
 	}
 
 	/**
@@ -267,15 +264,11 @@ export class WorkspaceItemService {
 		return permissionRepository.findByItemId(itemId)
 	}
 
-	/**
-	 * Sync a user's item-level permissions with their workspace role.
-	 * Call this after changing a user's workspace role.
-	 */
 	async syncItemPermissionsWithWorkspaceRole(
 		userId: string,
-		workspaceId: string
+		workspaceId: string,
+		client: Prisma.TransactionClient
 	): Promise<void> {
-		// 1. Get the member record
 		const member = await workspaceMemberRepository.findByUserAndWorkspace(
 			userId,
 			workspaceId
@@ -287,7 +280,6 @@ export class WorkspaceItemService {
 			)
 		}
 
-		// 2. Decide the desired item permission role based on workspace role
 		let desiredItemRole: PermissionRole | null = null
 		switch (member.role) {
 			case 'owner':
@@ -299,55 +291,71 @@ export class WorkspaceItemService {
 				break
 			case 'viewer':
 			default:
-				desiredItemRole = null // no explicit item permissions
+				desiredItemRole = null
 				break
 		}
 
-		// 3. Fetch all items in the workspace
-		const allItems = await itemRepository.findByWorkspace(
-			workspaceId,
-			1,
-			Number.MAX_SAFE_INTEGER
-		)
+		const allItems = await client.item.findMany({
+			where: { workspaceId },
+			select: { id: true },
+		})
 
-		// 4. Fetch all current item permissions for this user
-		const currentPerms: Permission[] = []
-		for (const item of allItems) {
-			const perms = await permissionRepository.findByItemId(item.id)
-			const userPerm = perms.find((p) =>
-				p.users.some((u) => u.id === userId)
-			)
-			if (userPerm) currentPerms.push(userPerm)
-		}
+		for (const { id: itemId } of allItems) {
+			const perms = await client.permission.findMany({
+				where: { itemId, users: { some: { id: userId } } },
+				select: { id: true, roles: true },
+			})
 
-		// 5. Update permissions
-		for (const item of allItems) {
-			const existing = currentPerms.find((p) => p.itemId === item.id)
+			const existing = perms[0]
 
 			if (desiredItemRole) {
-				// If they should have a role but don't, create it
 				if (!existing) {
-					await permissionRepository.create({
-                        id: toObjectId(getPrefixForModel('Permission')),
-						item: { connect: { id: item.id } },
-						users: { connect: { id: userId } },
-						roles: desiredItemRole,
+					await client.permission.create({
+						data: {
+							id: toObjectId(getPrefixForModel('Permission')),
+							item: { connect: { id: itemId } },
+							users: { connect: { id: userId } },
+							roles: desiredItemRole,
+						},
 					})
-				}
-				// If they have a different role, update it
-				else if (existing.roles !== desiredItemRole) {
-					await permissionRepository.update({
+				} else if (existing.roles !== desiredItemRole) {
+					await client.permission.update({
 						where: { id: existing.id },
 						data: { roles: desiredItemRole },
 					})
 				}
 			} else {
-				// If they shouldn't have any explicit item permission, remove it
 				if (existing) {
-					await permissionRepository.delete({
+					await client.permission.delete({
 						where: { id: existing.id },
 					})
 				}
+			}
+		}
+	}
+
+	async removeAllItemPermissionsForUser(
+		userId: string,
+		workspaceId: string,
+		client: Prisma.TransactionClient
+	): Promise<void> {
+		// Get all items in the workspace
+		const allItems = await client.item.findMany({
+			where: { workspaceId },
+			select: { id: true },
+		})
+
+		for (const { id: itemId } of allItems) {
+			const perms = await client.permission.findMany({
+				where: {
+					itemId,
+					users: { some: { id: userId } },
+				},
+				select: { id: true },
+			})
+
+			for (const { id: permId } of perms) {
+				await client.permission.delete({ where: { id: permId } })
 			}
 		}
 	}

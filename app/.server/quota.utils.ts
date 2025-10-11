@@ -1,6 +1,6 @@
-import { QuotaState } from '@/prisma/enums'
 import type { Quota, StoragePlanType } from '@/prisma/client'
 import type { QuotaOutput } from './quota'
+import { QuotaStatus } from '@/prisma/enums';
 
 /**
  * Calculates the QuotaState based on used and total space.
@@ -8,10 +8,10 @@ import type { QuotaOutput } from './quota'
  * @param total - The total space in bytes.
  * @returns The calculated QuotaState.
  */
-export function toQuotaState({
+export function toQuotaStatus({
 	used,
 	total,
-}: Pick<QuotaOutput, 'used' | 'total'>): QuotaState {
+}: Pick<QuotaOutput, 'used' | 'total'>): QuotaStatus {
 	if (total === 0n) return used > 0n ? 'exceeded' : 'normal'
 
 	const usageRatio = Number((used * 1000n) / total) / 1000
@@ -34,7 +34,7 @@ export function toQuotaState({
 export function calculateQuota(
 	current: Pick<QuotaOutput, 'used' | 'deleted' | 'total'>,
 	data: Partial<Pick<Quota, 'used' | 'deleted' | 'total'>>
-): Pick<QuotaOutput, 'used' | 'deleted' | 'total' | 'state' | 'remaining'> {
+): Pick<QuotaOutput, 'used' | 'deleted' | 'total' | 'status' | 'remaining'> {
 	const total = data.total ?? current.total
 
 	// Apply deltas and ensure values don't go below zero.
@@ -47,14 +47,14 @@ export function calculateQuota(
 	const remaining = total - used
 
 	// The state is now calculated here.
-	const state = toQuotaState({ used, total })
+	const status = toQuotaStatus({ used, total })
 
 	return {
 		total,
 		used,
 		deleted,
 		remaining,
-		state,
+		status,
 	}
 }
 
@@ -77,4 +77,14 @@ export function toQuotaTotalSize(plan: StoragePlanType): bigint {
 		default:
 			return BigInt(0)
 	}
+}
+
+
+export function toQuota(quota: Quota): QuotaOutput {
+	const total = quota.total
+	const used = quota.used
+	const deleted = quota.deleted
+	const remaining = total - used
+	const status = toQuotaStatus({ used, total })
+	return { ...quota, total, used, deleted, remaining, status }
 }

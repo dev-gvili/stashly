@@ -1,10 +1,17 @@
 import type { Prisma } from '../prisma/client'
 import type { Quota as PrismaQuota, StoragePlan } from '@/prisma/client'
 import { prisma } from '@/services/db'
+import {
+	buildQuotaFilters,
+	quotaFilterSchema,
+	quotaFilters,
+} from '@/services/filters/quota.filters'
+import { z } from 'zod'
 import type { IRepository } from './IRepository'
 import { calculateQuota, toQuota } from '../quota.utils'
 import { storagePlanRepository } from './StoragePlanRepository'
 import { getPrefixForModel, toObjectId } from '../../utils/misc'
+import { searchFactory } from '@/utils/search'
 
 export interface Quota extends PrismaQuota {
 	remaining: bigint
@@ -21,6 +28,16 @@ export interface UpdateAfterInput {
 	dataSize: bigint
 }
 
+const defaultInclude = {
+	drive: true,
+}
+
+const defaultOrderBy = (
+	params: z.infer<typeof quotaFilterSchema>
+): Prisma.QuotaOrderByWithRelationInput => ({
+	updatedAt: 'desc',
+})
+
 /**
  * Repository for the `Quota` model.
  * Provides CRUD operations plus a handful of convenience helpers.
@@ -32,12 +49,20 @@ class QuotaRepository implements IRepository<Quota, 'Quota'> {
 
 	private storagePlan: typeof storagePlanRepository
 
+	private searchQuotas
+
 	constructor(
 		dbClient: typeof prisma = prisma,
 		storagePlan: typeof storagePlanRepository
 	) {
 		this.db = dbClient
 		this.storagePlan = storagePlan
+		this.searchQuotas = searchFactory({
+			dbDelegate: this.db.quota,
+			buildFilters: buildQuotaFilters,
+			defaultInclude,
+			defaultOrderBy,
+		})
 	}
 
 	// ------------------------------------------------------------------
@@ -286,9 +311,20 @@ class QuotaRepository implements IRepository<Quota, 'Quota'> {
 			toQuota
 		)
 	}
+
+	async countWithFilters(
+		filters: z.infer<typeof quotaFilterSchema>
+	): Promise<number> {
+		const where = buildQuotaFilters(filters)
+		return this.db.quota.count({ where })
+	}
 }
 
 export const quotaRepository = new QuotaRepository(
 	prisma,
 	storagePlanRepository
 )
+
+export type QuotaRepo = InstanceType<typeof QuotaRepository>
+
+export { quotaFilterSchema, quotaFilters }

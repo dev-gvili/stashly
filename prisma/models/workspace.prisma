@@ -1,24 +1,24 @@
 model Workspace {
-    id          String            @id
+    id          String   @id
     name        String
-    slug        String            @unique
-    description String?           @default("")
-    default     Boolean           @default(false)
-    createdAt   DateTime          @default(now())
-    updatedAt   DateTime          @updatedAt
+    slug        String   @unique
+    description String?  @default("")
+    default     Boolean  @default(false)
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
 
     // Relations
-    storagePlan StoragePlan?      @relation(fields: [storagePlanId], references: [id])
+    storagePlan   StoragePlan? @relation(fields: [storagePlanId], references: [id])
     storagePlanId String?
 
-    items       Item[] // Collections
-    invitations Invitation[] // Collections
+    items       Item[]
+    invitations Invitation[]
     members     WorkspaceMember[]
 
     @@index([name])
     @@index([default])
+    @@index([storagePlanId])
     @@index([slug])
-    
 }
 
 model WorkspaceMember {

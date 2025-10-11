@@ -46,15 +46,50 @@ export default [
 		// Theme management API route
 		route('theme', 'routes/api/theme.ts', { id: 'api.theme' }),
 		// Items API route
-		route('items', 'routes/api/items.ts', { id: 'api.items' }),
+		route('items/*', 'routes/api/items.ts', { id: 'api.items' }),
 		// Workspaces API route
-		route('workspaces', 'routes/api/workspaces.ts', {
+		route('workspaces/*', 'routes/api/workspaces.ts', {
 			id: 'api.workspaces',
 		}),
+
 		// Members API route
-		route('members', 'routes/api/members.ts', { id: 'api.members' }),
+
+		route('members/*', 'routes/api/members.ts', { id: 'api.members' }),
+		// Teams API route
+		route('teams/*', 'routes/api/teams.ts', { id: 'api.teams' }),
+		// Roles API route
+		route('roles/*', 'routes/api/roles.ts', { id: 'api.roles' }),
+		// Permissions API route
+		route('permissions/*', 'routes/api/permissions.ts', {
+			id: 'api.permissions',
+		}),
+		// Audit Logs API route
+		route('audit-logs/*', 'routes/api/audit-logs.ts', {
+			id: 'api.audit-logs',
+		}),
+		// Webhooks API route
+		route('webhooks/*', 'routes/api/webhooks.ts', { id: 'api.webhooks' }),
+		// Integrations API route
+		route('integrations/*', 'routes/api/integrations.ts', {
+			id: 'api.integrations',
+		}),
+		// Templates API route
+		route('templates/*', 'routes/api/templates.ts', {
+			id: 'api.templates',
+		}),
+		// Assets API route
+		route('assets/*', 'routes/api/assets.ts', { id: 'api.assets' }),
+		// Tags API route
+		route('tags/*', 'routes/api/tags.ts', { id: 'api.tags' }),
+		// Categories API route
+		route('categories/*', 'routes/api/categories.ts', {
+			id: 'api.categories',
+		}),
+		// Comments API route
+		route('comments/*', 'routes/api/comments.ts', { id: 'api.comments' }),
+
 		// Collections API route
-		route('collections', 'routes/api/collections.ts', {
+		route('collections/*', 'routes/api/collections.ts', {
 			id: 'api.collections',
 		}),
 		// Settings API route
@@ -78,20 +113,6 @@ export default [
 			route('upload', 'routes/api/upload.ts', {
 				id: 'api.s3.upload',
 			}),
-			// ...prefix('multipart', [
-			// 	route('create', 'routes/api/s3/multipart/create.ts', {
-			// 		id: 'api.s3.multipart.create',
-			// 	}),
-			// 	route('complete', 'routes/api/s3/multipart/complete.ts', {
-			// 		id: 'api.s3.multipart.complete',
-			// 	}),
-			// 	route('abort', 'routes/api/s3/multipart/abort.ts', {
-			// 		id: 'api.s3.multipart.abort',
-			// 	}),
-			// 	route('part-url', 'routes/api/s3/multipart/part-url.ts', {
-			// 		id: 'api.s3.multipart.part-url',
-			// 	}),
-			// ]),
 		]),
 	]),
 
@@ -102,12 +123,16 @@ export default [
 		// Dashboard routes
 		...prefix('dashboard', [
 			index('routes/dashboard/index.tsx'), // Default route for dashboard, can be used for overview
+			route('integrations', 'routes/dashboard/integrations.tsx', {
+				id: 'dashboard.integrations',
+			}), // Route for managing integrations in the dashboard
 			route('items/*', 'routes/dashboard/item.tsx', {
 				id: 'dashboard.items',
 			}), // Route for viewing a specific item in the dashboard
 			route('shared', 'routes/dashboard/shared.tsx', {
 				id: 'dashboard.shared',
 			}), // Route for shared items in the dashboard
+
 			route('recent', 'routes/dashboard/recent.tsx', {
 				id: 'dashboard.recent',
 			}), // Route for recent items in the dashboard
@@ -117,11 +142,30 @@ export default [
 			route('collections', 'routes/dashboard/collections.tsx', {
 				id: 'dashboard.collections',
 			}), // Route for collections in the dashboard
+			route('collections/new', 'routes/dashboard/new-collection.tsx'), // Route for creating a new collection in the dashboard
 			route(
 				'collections/:collectionId',
 				'routes/dashboard/collection.tsx',
-				{ id: 'dashboard.collection' }
+				{
+					id: 'dashboard.collection',
+				}
 			), // Route for a specific collection in the dashboard
+			route(
+				'collections/:collectionId/items/*',
+				'routes/dashboard/collection-items.tsx',
+				{
+					id: 'dashboard.collection.items',
+				}
+			), // Route for items in a specific collection
+
+			route('collections/:collectionId/settings', 'routes/dashboard/collection-settings.tsx', {
+				id: 'dashboard.collection.settings',
+			}), // Route for collection settings	
+
+			route('collections/:collectionId/items/:itemId', 'routes/dashboard/collection-item.tsx', {
+				id: 'dashboard.collection.item',
+			}), // Route for a specific item within a collection
+
 			route('search', 'routes/dashboard/search.tsx', {
 				id: 'dashboard.search',
 			}), // Route for search functionality in the dashboard
@@ -140,6 +184,19 @@ export default [
 				route('members', 'routes/workspaces/members.tsx', {
 					id: 'workspaces.members',
 				}), // Route for workspace members
+				route('collections', 'routes/workspaces/collections.tsx', {
+					id: 'workspaces.collections',
+				}), // Route for collections within a workspace	
+				route('collections/:collectionId', 'routes/workspaces/collection.tsx', {
+					id: 'workspaces.collection',
+				}), // Route for a specific collection within a workspace	
+				route('collections/:collectionId/items/:itemId', 'routes/workspaces/collection-item.tsx', {
+					id: 'workspaces.collection.item',
+				}), // Route for a specific item within a collection in a workspace	
+
+				route('collections/:collectionId/settings', 'routes/workspaces/collection-settings.tsx', {
+					id: 'workspaces.collection.settings',
+				}), // Route for collection settings within a workspace		
 				route('items/:itemId', 'routes/workspaces/item.tsx', {
 					id: 'workspaces.item',
 				}),

@@ -363,17 +363,14 @@ export let toMediaFile = (file: File): MediaFile => {
  * conforms to the provided `elementSchema`.
  *
  * @template T The Zod schema type for each element in the final array.
- * @param {T} elementSchema The Zod schema to apply to each element of the array.
- * A Zod schema that takes a string and returns a validated array.
- *
  * @example
  * // Example 1: Validating against a native enum (like the original function)
  * enum ItemCategory {
- * AUDIO = 'AUDIO',
- * VIDEO = 'VIDEO',
+ * audio = 'audio',
+ * video = 'video',
  * }
  * const categorySchema = toZodArraySchema(z.nativeEnum(ItemCategory));
- * categorySchema.parse('AUDIO,VIDEO'); // Returns ['AUDIO', 'VIDEO']
+ * categorySchema.parse('audio,video'); // Returns ['audio', 'video']
  *
  * @example
  * // Example 2: Validating a simple array of strings (like for a "tags" filter)
@@ -385,10 +382,140 @@ export let toMediaFile = (file: File): MediaFile => {
  * // Example 3: Validating an array of numbers
  * const numbersSchema = toZodArraySchema(z.coerce.number());
  * numbersSchema.parse('1,2,3'); // Returns [1, 2, 3]
+ *
+ * @example
+ * // Example 4: Throwing an error for invalid values
+ * enum ItemCategory {
+ * 	audio = 'audio',
+ * 	video = 'video',
+ * }
+ * const categorySchema = toZodArraySchema(z.nativeEnum(ItemCategory));
+ * categorySchema.parse('audio,video,pdf'); // Throws ZodError: "Invalid enum value. Expected 'audio' | 'video', received 'pdf'"
+ *
+ * @returns {z.ZodEffects<z.ZodString, Array<z.infer<T>>, string>} A Zod schema that transforms a comma-separated string into an array of validated elements.
  */
 export const toZodArraySchema = <T extends z.ZodTypeAny>(elementSchema: T) => {
 	return z
 		.string()
-		.transform((str) => str.split(','))
+		.transform((str) => str.split(',').map((s) => s.trim()))
 		.pipe(z.array(elementSchema))
 }
+
+/**
+ * Creates a Zod schema that transforms a string like "field:direction,nested.field:direction"
+ * into a Prisma-compatible `orderBy` object, with a type assertion.
+ *
+ * @example
+ * // returns { createdAt: 'desc', owner: { name: 'asc' } }
+ * toZodOrderBySchema().parse('createdAt:desc,owner.name:asc');
+ *
+ * @returns A Zod schema for parsing and transforming an orderBy string.
+ */
+export const toZodOrderBySchema = <T extends object>() => {
+	return z.string().transform((str, ctx) => {
+		const orderByObject: Record<string, any> = {}
+		const pairs = str.split(',').map((s) => s.trim())
+
+		for (const pair of pairs) {
+			const [key, direction] = pair.split(':')
+
+			if (!key || (direction !== 'asc' && direction !== 'desc')) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: `Invalid orderBy pair: ${pair}. Expected format is 'field:asc' or 'field:desc'.`,
+				})
+				return z.NEVER
+			}
+
+			const keys = key.split('.')
+			let current = orderByObject
+
+			for (let i = 0; i < keys.length - 1; i++) {
+				const currentKey = keys[i]
+				current[currentKey] = current[currentKey] || {}
+				current = current[currentKey]
+			}
+
+			current[keys[keys.length - 1]] = direction
+		}
+
+		// This is the controlled type assertion. We are trusting that the user-provided
+		// field paths are valid for the Prisma model.
+		return orderByObject as T
+	})
+}
+
+/**
+ * Creates a flexible Zod schema for search queries, combining model-specific filters
+ * with dynamic pagination and common search options.
+ *
+ * The resulting schema validates:
+ * 1.  **Custom Filters**: Fields defined in the provided `filterSchema`.
+ * 2.  **Common Options**: `orderBy` and `include` fields.
+ * 3.  **Pagination**: A discriminated union based on the `strategy` field:
+ *     - `strategy: 'page'`: Requires `page` and `take`.
+ *     - `strategy: 'cursor'`: Requires `cursor` and `take`.
+ *     - `strategy: 'stream'`: Requires `take`.
+ *
+ * All fields in the final schema are marked as optional (`.partial()`) to accommodate
+ * various search scenarios.
+ *
+ * @template TFilterSchema - A Zod object schema for the model-specific filters.
+ * @template TOrderBy - The expected object type for the `orderBy` parameter.
+ * @param {TFilterSchema} filterSchema - The Zod schema for custom filter fields.
+ * @returns A comprehensive Zod schema for search parameters.
+ */
+export const toZodSearchSchema = <
+	TFilterSchema extends z.AnyZodObject,
+	TOrderBy extends object,
+>(
+	filterSchema: TFilterSchema,
+) => {
+	// Base options common to all search strategies
+	const baseSearchOptions = z.object({
+		orderBy: z.record(z.string(), z.enum(['asc', 'desc'])),
+		include: z.record(z.string(), z.boolean()),
+		take: z.coerce.number(),
+	}).partial()
+
+
+	// Strategy-specific schemas that will be part of the discriminated union
+	const cursorPagination = z.object({
+		strategy: z.literal('cursor'),
+		cursor: z.string().optional(),
+		take: z.coerce.number(),
+	})
+
+	// RENAMED: 'pagePagination' to 'offsetPagination' and 'strategy: 'page'' to 'strategy: 'offset''
+	const offsetPagination = z.object({
+		strategy: z.literal('offset'),
+		page: z.coerce.number(),
+		take: z.coerce.number(),
+	})
+
+	const streamPagination = z.object({
+		strategy: z.literal('stream'),
+		take: z.coerce.number(),
+	})
+
+	let paginateUnion = z.union([offsetPagination, cursorPagination, streamPagination]).and(
+		baseSearchOptions,
+	).and(filterSchema)
+
+
+	// Create a discriminated union of the pagination strategies.
+	const paginationUnion = z.discriminatedUnion('strategy', [
+		cursorPagination,
+		streamPagination,
+		offsetPagination, // Updated to use the new variable name
+	]).and(baseSearchOptions).and(filterSchema)
+
+	// The final schema is a combination of:
+	// 1. The custom filters.
+	// 2. The base search options (orderBy, include).
+	// 3. The pagination strategy union.
+	// All fields are made optional for flexibility in search queries.
+	return paginateUnion // Use .and() for intersection with a union type
+}
+
+

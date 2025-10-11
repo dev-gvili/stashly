@@ -1,7 +1,8 @@
 
+import { config } from '@dotenvx/dotenvx'
 import Stripe from 'stripe'
-
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
+config({logLevel: undefined, quiet: true})
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   // https://github.com/stripe/stripe-node#configuration
   apiVersion: '2025-06-30.basil',
-});
+})

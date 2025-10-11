@@ -2,16 +2,7 @@ import { data } from 'react-router'
 import Stripe from 'stripe'
 import type { Route } from './+types/stripe'
 import { inspect } from 'util'
-
-// The secret key and webhook secret should be loaded from environment variables
-const STRIPE_SECRET_KEY =
-	'sk_test_51OEJoUEeqViwfo2AVQUB1PB1IAUs5xNxv7byIPgt2QRJyERCSCcJvC6TR3bhyFvaU2jsGJ5Z8YnPK3c1bw4SqE4G00ycvnM6rZ'
-const STRIPE_WEBHOOK_SECRET =
-	'whsec_2af29d96b91c9f815bfe3c99d3c0327644df7fd571f0863055e08ee57d5ba5ba'
-// const STRIPE_WEBHOOK_SECRET = 'whsec_EjPLcogRf87ONvrPafUFQJgAzneLkVFV'
-const stripe = new Stripe(STRIPE_SECRET_KEY, {
-	apiVersion: '2025-06-30.basil',
-})
+import { stripe } from '../../.server/stripe'
 
 // This is a Remix action that acts as an API endpoint for Stripe webhooks.
 export const action = async ({ request }: Route.ActionArgs) => {
@@ -32,7 +23,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
 		const event = stripe.webhooks.constructEvent(
 			rawBody,
 			signature,
-			STRIPE_WEBHOOK_SECRET
+			process.env.STRIPE_WEBHOOK_SECRET
 		)
 
 		// Handle different event types related to subscriptions.

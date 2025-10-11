@@ -1,42 +1,69 @@
 import { Prisma, type Item } from '@/prisma/client'
-import { prisma } from '@/services/db' // Assuming your prisma client is exported from here
+import { prisma } from '@/services/db'
+import { getPrefixForModel, toObjectId } from '@/utils/misc'
+import { searchFactory } from '@/utils/search'
+import { z } from 'zod'
+import { buildItemFilters, itemFilterSchema } from '../filters/item.filters'
 import type { IRepository } from './IRepository'
-import { getPrefixForModel, toObjectId } from '../../utils/misc'
 
-class ItemRepository implements IRepository<Item, "Item"> {
+const defaultInclude = {
+	owner: true,
+	workspace: true,
+}
 
-	name = "Item" as const
-	
+type ModelWithRelations = Prisma.ItemGetPayload<{
+	include: typeof defaultInclude
+}>
+
+const defaultOrderBy = (
+	params?: z.infer<typeof itemFilterSchema>
+): Prisma.ItemOrderByWithRelationInput => {
+	return { createdAt: 'desc' }
+}
+
+class ItemRepository implements IRepository<Item, 'Item'> {
+	name = 'Item' as const
 	private db: typeof prisma
-
+	public search
 	constructor(dbClient: typeof prisma) {
 		this.db = dbClient
-	 }
-
-
-	async findById(args: Prisma.ItemFindUniqueArgs) {
-		return this.db.item.findUnique({
-			...args,
+		this.search = searchFactory({
+			dbDelegate: prisma.item,
+			buildFilters: buildItemFilters,
+			defaultOrderBy,
 		})
 	}
 
-	async findAll(args: Prisma.ItemFindManyArgs): Promise<Item[]> {
-		return this.db.item.findMany(args)
+	async findById(
+		args: Prisma.ItemFindUniqueArgs
+	): Promise<ModelWithRelations> {
+		return this.db.item.findUniqueOrThrow({
+			...args,
+			include: defaultInclude,
+		})
 	}
 
-	async create(data: Prisma.ItemCreateInput): Promise<Item> {
-		return this.db.item.create({ data })
+	async create(data: Prisma.ItemCreateInput): Promise<ModelWithRelations> {
+		return this.db.item.create({
+			data: {
+				...data,
+				id: toObjectId(getPrefixForModel('Item')),
+			},
+			include: defaultInclude,
+		})
 	}
 
-	async update(args: Prisma.ItemUpdateArgs): Promise<Item> {
+	async update(args: Prisma.ItemUpdateArgs): Promise<ModelWithRelations> {
 		return this.db.item.update({
 			...args,
+			include: defaultInclude,
 		})
 	}
 
-	async delete(id: string): Promise<Item> {
+	async delete(id: string): Promise<ModelWithRelations> {
 		return this.db.item.delete({
 			where: { id },
+			include: defaultInclude,
 		})
 	}
 
@@ -46,23 +73,18 @@ class ItemRepository implements IRepository<Item, "Item"> {
 	 * Finds all items within a specific workspace, with pagination.
 	 * This is a good example of a complex, reusable query.
 	 * @param workspaceId The ID of the workspace.
-	 * @param page The page number for pagination (1-based).
-	 * @param pageSize The number of items per page.
 	 */
-	async findByWorkspace(
-		workspaceId: string,
-		page: number = 1,
-		pageSize: number = 20
-	): Promise<Item[]> {
-		return this.db.item.findMany({
-			where: {
-				workspaceId: workspaceId,
+	async findByWorkspace(workspaceId: string) {
+		// Now you can specify the include at the call site, and the
+		// return type will be inferred correctly.
+		return await this.search({
+			workspace: workspaceId,
+			strategy: 'cursor',
+			include: {
+				owner: true,
+				workspace: true,
 			},
-			orderBy: {
-				createdAt: 'desc',
-			},
-			skip: (page - 1) * pageSize,
-			take: pageSize,
+			take: 10,
 		})
 	}
 
@@ -70,8 +92,8 @@ class ItemRepository implements IRepository<Item, "Item"> {
 	 * Finds items belonging to a user that are marked as favorites.
 	 * @param userId The ID of the user.
 	 */
-	async findFavoritesByOwner(userId: string): Promise<Item[]> {
-		return this.db.item.findMany({
+	async findFavoritesByUserId(userId: string): Promise<ModelWithRelations[]> {
+		return await this.db.item.findMany({
 			where: {
 				ownerId: userId,
 				favoritedBy: {
@@ -80,6 +102,7 @@ class ItemRepository implements IRepository<Item, "Item"> {
 					},
 				},
 			},
+			include: defaultInclude,
 		})
 	}
 
@@ -88,18 +111,21 @@ class ItemRepository implements IRepository<Item, "Item"> {
 	 * @param itemId The ID of the item to favorite.
 	 * @param userId The ID of the user who is favoriting the item.
 	 */
-	async favorite(itemId: string, userId: string): Promise<Item> {
+	async favorite(
+		itemId: string,
+		userId: string
+	): Promise<ModelWithRelations> {
 		return this.db.item.update({
 			where: { id: itemId },
 			data: {
 				favoritedBy: {
 					create: {
-						// Changed from `ownerId` to `userId`
 						favoritedById: userId,
 						id: toObjectId(getPrefixForModel('Favorite')),
 					},
 				},
 			},
+			include: defaultInclude,
 		})
 	}
 
@@ -108,7 +134,10 @@ class ItemRepository implements IRepository<Item, "Item"> {
 	 * @param itemId The ID of the item to unfavorite.
 	 * @param userId The ID of the user who is unfavoriting the item.
 	 */
-	async unfavorite(itemId: string, userId: string): Promise<Item> {
+	async unfavorite(
+		itemId: string,
+		userId: string
+	): Promise<ModelWithRelations> {
 		return this.db.item.update({
 			where: { id: itemId },
 			data: {
@@ -121,6 +150,7 @@ class ItemRepository implements IRepository<Item, "Item"> {
 					},
 				},
 			},
+			include: defaultInclude,
 		})
 	}
 }
