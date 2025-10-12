@@ -29,7 +29,6 @@ export class WorkspaceRepository implements IRepository<ModelWithRelations, 'Wor
 		this.search = searchFactory({
 			dbDelegate: this.db.workspace,
 			buildFilters: buildWorkspaceFilters,
-			defaultInclude,
 			defaultOrderBy
 		}
 		);
