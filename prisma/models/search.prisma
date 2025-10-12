@@ -1,31 +1,17 @@
 model Search {
-    id      String @id
-    type    String
+    id      String  @id
     content String? @db.Text // Combined searchable content (e.g., name, metadata, tags, versions)
 
     vector    Unsupported("vector(768)")
-    createdAt DateTime              @default(now())
-    updatedAt DateTime              @updatedAt
+    createdAt DateTime                   @default(now())
+    updatedAt DateTime                   @updatedAt
 
     itemId String @unique
     item   Item   @relation(fields: [itemId], references: [id])
 
     // Creating an index on the vector field for fast similarity searches.
-    // The 'gist_vector_ops' is a common operator class for pgvector.
     @@index([vector], map: "Search_vector_idx")
     // @@index([content(ops: raw("gin_trgm_ops"))], type: Gin) // Full-text search index
     @@index([createdAt])
     @@index([updatedAt])
-    @@index([type])
 }
-
-// enum SearchType {
-//     ITEM
-//     VERSION
-//     TAG
-//     COLLECTION
-//     METADATA
-//     USER
-//     COMMENT
-//     FILE
-// }

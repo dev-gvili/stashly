@@ -49,7 +49,7 @@ class QuotaRepository implements IRepository<Quota, 'Quota'> {
 
 	private storagePlan: typeof storagePlanRepository
 
-	private searchQuotas
+	public search
 
 	constructor(
 		dbClient: typeof prisma = prisma,
@@ -57,10 +57,9 @@ class QuotaRepository implements IRepository<Quota, 'Quota'> {
 	) {
 		this.db = dbClient
 		this.storagePlan = storagePlan
-		this.searchQuotas = searchFactory({
+		this.search = searchFactory({
 			dbDelegate: this.db.quota,
 			buildFilters: buildQuotaFilters,
-			defaultInclude,
 			defaultOrderBy,
 		})
 	}

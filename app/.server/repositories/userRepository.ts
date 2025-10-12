@@ -20,21 +20,23 @@ const defaultInclude = {
   favorites: true
 };
 type ModelWithRelations = Prisma.UserGetPayload<{ include: typeof defaultInclude }>;
-
+const defaultOrderBy = (
+	params: z.infer<typeof userFilterSchema>
+): Prisma.UserOrderByWithRelationInput => ({
+	updatedAt: 'desc',
+})
 export class UserRepository implements IRepository<ModelWithRelations, 'User'> {
 	name = 'User' as const;
 	private db: typeof prisma;
-	private searchUsers;
+	public search
 
-	constructor(dbClient: typeof prisma) {
+	constructor(dbClient: typeof prisma = prisma) {
 		this.db = dbClient;
-		this.searchUsers = searchFactory(
-			this.db.user,
-			buildUserFilters,
-			defaultInclude,
-			// Default order by can be customized here
-			() => ({ createdAt: 'desc' })
-		);
+		this.search = searchFactory({
+			dbDelegate: this.db.user,
+			buildFilters: buildUserFilters,
+			defaultOrderBy
+		});
 	}
 
 	// ------------------------------------------------------------------
@@ -62,10 +64,9 @@ export class UserRepository implements IRepository<ModelWithRelations, 'User'> {
 		});
 	}
 
-	async update(id: string, data: Prisma.UserUpdateInput): Promise<ModelWithRelations> {
+	async update(args: Prisma.UserUpdateArgs): Promise<ModelWithRelations> {
 		return this.db.user.update({
-			where: { id },
-			data,
+			...args,
 			include: defaultInclude,
 		});
 	}
@@ -75,23 +76,6 @@ export class UserRepository implements IRepository<ModelWithRelations, 'User'> {
 			where: { id },
 			include: defaultInclude,
 		});
-	}
-
-	// ------------------------------------------------------------------
-	// Search and Advanced Queries
-	// ------------------------------------------------------------------
-
-	async search(options: z.infer<typeof userFilterSchema> & {
-		page?: number;
-		pageSize?: number;
-		cursor?: string;
-		limit?: number;
-		batchSize?: number;
-		orderBy?: Prisma.UserOrderByWithRelationInput;
-		maxNoPaginationLimit?: number;
-		stream?: true;
-	}) {
-		return this.searchUsers(options);
 	}
 
 	// ------------------------------------------------------------------

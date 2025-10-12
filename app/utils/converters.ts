@@ -350,7 +350,6 @@ export let toMediaFile = (file: File): MediaFile => {
 	}
 }
 
-
 /**
  * Creates a Zod schema that transforms a comma-separated string into a validated array.
  *
@@ -467,26 +466,25 @@ export const toZodOrderBySchema = <T extends object>() => {
  */
 export const toZodSearchSchema = <
 	TFilterSchema extends z.AnyZodObject,
-	TOrderBy extends object,
+	TOrderBy extends object
 >(
-	filterSchema: TFilterSchema,
+	filterSchema: TFilterSchema
 ) => {
 	// Base options common to all search strategies
-	const baseSearchOptions = z.object({
-		orderBy: z.record(z.string(), z.enum(['asc', 'desc'])),
-		include: z.record(z.string(), z.boolean()),
-		take: z.coerce.number(),
-	}).partial()
+	const baseSearchOptions = z
+		.object({
+			orderBy: z.record(z.string(), z.enum(['asc', 'desc'])),
+			include: z.record(z.string(), z.boolean()),
+			semantic: z.boolean(),
+		})
+		.partial()
 
-
-	// Strategy-specific schemas that will be part of the discriminated union
 	const cursorPagination = z.object({
 		strategy: z.literal('cursor'),
 		cursor: z.string().optional(),
 		take: z.coerce.number(),
 	})
 
-	// RENAMED: 'pagePagination' to 'offsetPagination' and 'strategy: 'page'' to 'strategy: 'offset''
 	const offsetPagination = z.object({
 		strategy: z.literal('offset'),
 		page: z.coerce.number(),
@@ -498,24 +496,10 @@ export const toZodSearchSchema = <
 		take: z.coerce.number(),
 	})
 
-	let paginateUnion = z.union([offsetPagination, cursorPagination, streamPagination]).and(
-		baseSearchOptions,
-	).and(filterSchema)
+	let paginateUnion = z
+		.union([offsetPagination, cursorPagination, streamPagination])
+		.and(baseSearchOptions)
+		.and(filterSchema)
 
-
-	// Create a discriminated union of the pagination strategies.
-	const paginationUnion = z.discriminatedUnion('strategy', [
-		cursorPagination,
-		streamPagination,
-		offsetPagination, // Updated to use the new variable name
-	]).and(baseSearchOptions).and(filterSchema)
-
-	// The final schema is a combination of:
-	// 1. The custom filters.
-	// 2. The base search options (orderBy, include).
-	// 3. The pagination strategy union.
-	// All fields are made optional for flexibility in search queries.
-	return paginateUnion // Use .and() for intersection with a union type
+	return paginateUnion 
 }
-
-

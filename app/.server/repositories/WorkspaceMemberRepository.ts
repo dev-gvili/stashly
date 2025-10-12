@@ -62,7 +62,6 @@ export class WorkspaceMemberRepository
 		this.search = searchFactory({
 			dbDelegate: this.db.workspaceMember,
 			buildFilters: buildWorkspaceMemberFilters,
-			defaultInclude,
 			defaultOrderBy,
 		})
 	}

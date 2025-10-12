@@ -1,4 +1,4 @@
-import { workspaceMemberRepository } from '@/services/repositories/WorkspaceMemberRepository'
+import { workspaceMemberRepository } from '@/services/repositories/workspaceMember.repository'
 import { permissionRepository } from '@/services/repositories/PermissionRepository'
 import { itemRepository } from '@/services/repositories/ItemRepository'
 import { ApiError, ApiErrorCode } from '../api.errors'

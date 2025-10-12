@@ -3,5 +3,7 @@ onlyBuiltDependencies:
   - '@prisma/engines'
   - '@tailwindcss/oxide'
   - esbuild
+  - onnxruntime-node
   - prisma
+  - protobufjs
   - sharp
