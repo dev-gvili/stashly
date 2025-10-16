@@ -44,7 +44,7 @@ export const workspaceMemberService = {
 	 * Removes a member from a workspace and cleans up all their associated
 	 * item-level permissions within that workspace. This is a transactional operation.
 	 * @param userId The ID of the user to remove.
-		 * @param workspaceId The ID of the workspace from which to remove the user.
+	 * @param workspaceId The ID of the workspace from which to remove the user.
 	 * @returns The data of the member that was removed.
 	 */
 	async removeMember(

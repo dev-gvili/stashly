@@ -475,7 +475,6 @@ export const toZodSearchSchema = <
 		.object({
 			orderBy: z.record(z.string(), z.enum(['asc', 'desc'])),
 			include: z.record(z.string(), z.boolean()),
-			semantic: z.boolean(),
 		})
 		.partial()
 

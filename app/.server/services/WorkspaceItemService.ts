@@ -62,6 +62,7 @@ export class WorkspaceItemService {
 			itemId,
 			'write'
 		)
+		
 		if (!canEdit && item.workspaceId) {
 			await workspaceMemberRepository.requireAtLeastRole(
 				userId,

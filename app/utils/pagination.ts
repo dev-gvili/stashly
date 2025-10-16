@@ -1,3 +1,5 @@
+import type { Prisma, PrismaClient } from "../.server/prisma/client"
+
 /**
  * Represents the Prisma delegate methods required for pagination.
  * This includes `findMany` for fetching records and `count` for calculating total records.
@@ -21,6 +23,16 @@ export type DbDelegate<
 		cursor?: { id: string }
 	}) => Promise<TModel[]>
 	count: (args: { where: TWhere }) => Promise<number>
+}
+
+export type CDelegate<
+	TModelName extends Uncapitalize<Prisma.ModelName>,
+	TWhere,
+	TOrderBy,
+	TInclude
+> = {
+	findMany: PrismaClient[TModelName]['findMany']
+	count: PrismaClient[TModelName]['count']
 }
 
 // --- Pagination Return Types ---

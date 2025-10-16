@@ -34,6 +34,11 @@ export interface SearchFactoryConfig<
 // --- Search Function Overloaded Type (Public API) ---
 // This remains verbose to accurately represent the public API structure for type inference.
 
+/**
+ *  In the provided TypeScript code snippet, `TParams` is a generic type parameter used in the
+`searchFactory` function. It represents the type of the high-level search parameters that are used
+by the `buildFilters` function to generate the `where` clause for the database query. 
+F*/
 export type SearchFunction<
 	TWhereInput,
 	TOrderBy,
