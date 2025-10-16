@@ -88,7 +88,7 @@ export const itemFilters = {
 			extension: { in: extensions },
 		},
 	})),
-	
+
 	category: createItemFilter(
 		z.array(z.nativeEnum(ItemCategory)),
 		(categories) => ({
@@ -210,26 +210,16 @@ export const itemFilters = {
 	query: createItemFilter(z.string().min(1), (query, params) => {
 		if (params.workspace) {
 			// Scoped query: only item fields
-			return {
-				OR: [
-					{ name: { contains: query, mode: 'insensitive' } },
-					{ description: { contains: query, mode: 'insensitive' } },
-				],
-			}
+			return { name: { search: query } }
 		}
 		// Global query: item + workspace fields
 		return {
 			OR: [
-				{ name: { contains: query, mode: 'insensitive' } },
-				{ description: { contains: query, mode: 'insensitive' } },
+				{ name: { search: query } },
 				{
 					workspace: {
-						name: { contains: query, mode: 'insensitive' },
-					},
-				},
-				{
-					workspace: {
-						description: { contains: query, mode: 'insensitive' },
+						name: { search: query },
+						description: { search: query },
 					},
 				},
 			],

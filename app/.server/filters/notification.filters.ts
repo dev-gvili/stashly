@@ -2,21 +2,20 @@ import { z } from 'zod'
 import { createFilter, buildFiltersFactory } from '@/utils/filters'
 import { Prisma } from '@/prisma/client'
 import { NotificationStatus, NotificationType } from '@/prisma/enums'
+import { date } from './schema.zod'
+import { toZodArraySchema } from '../../utils/converters'
 
 // Define the Zod schema for base query parameters.
 export const notificationFilterSchema = z
 	.object({
-		id: z.string().nonempty(), // Assuming ID is a string (UUID)
-		message: z.string(), // Message is a string
-		date: z.object({
-			before: z.date({ coerce: true }).or(z.string().date()).optional(),
-			after: z.date({ coerce: true }).or(z.string().date()).optional(),
-		}),
-		userId: z.string(), // User ID is a string (UUID)
-		status: z.nativeEnum(NotificationStatus), // Status is an enum
-		type: z.nativeEnum(NotificationType), // Type is an enum
+		id: z.string().nonempty(),
+		date,
+		message: z.string(),
+		userId: z.string(),
+		status: z.nativeEnum(NotificationStatus),
+		type: toZodArraySchema(z.nativeEnum(NotificationType)),
 	})
-	.optional()
+	.partial()
 
 const createNotificationFilter = createFilter<
 	Prisma.NotificationWhereInput,
@@ -24,16 +23,46 @@ const createNotificationFilter = createFilter<
 >()
 
 export const notificationFilters = {
-	id: createNotificationFilter(z.string().nonempty(), (id) => ({ id })),
-	message: createNotificationFilter(z.string().nonempty(), (message) => ({
-		message,
+	message: createNotificationFilter(z.string(), (message) => ({
+		message: {
+			search: message,
+		},
 	})),
-	userId: createNotificationFilter(z.string().nonempty(), (userId) => ({
+	user: createNotificationFilter(z.string().nonempty(), (userId) => ({
 		userId,
 	})),
 	status: createNotificationFilter(
 		z.nativeEnum(NotificationStatus),
 		(status) => ({ status })
+	),
+	/**
+	 * Filter items by creation date.
+	 * Accepts an object with optional `before` and `after` Date properties.
+	 * At least one of the properties must be provided.
+	 * Example: { before: new Date('2023-01-01'), after: new Date('2022-01-01') }
+	 * This will filter items created between Jan 1, 2022 and Jan 1, 2023.
+	 * If only `before` is provided, it filters items created before that date.
+	 * If only `after` is provided, it filters items created after that date.
+	 * If neither is provided, the filter is ignored.
+	 * If both are provided, it filters items created within the range.
+	 * If the input is invalid, an error is logged and the filter is ignored.
+	 * @see {@link notificationFilterSchema} for input validation.
+	 * @example
+	 * // Filter items created before Jan 1, 2023
+	 * { date: { before: new Date('2023-01-01') } }
+	 * // Filter items created after Jan 1, 2022
+	 * { date: { after: new Date('2022-01-01') } }
+	 * // Filter items created between Jan 1, 2022 and Jan 1, 2023
+	 * { date: { before: new Date('2023-01-01'), after: new Date('2022-01-01') } }
+	 * @throws Will log an error if the input is invalid.
+	 */
+	date: createNotificationFilter(
+		date.refine(({ before, after }) => before || after, {
+			message: 'At least one of before or after must be provided.',
+		}),
+		({ before, after }) => ({
+			createdAt: { lte: before, gte: after },
+		})
 	),
 }
 
