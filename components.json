@@ -11,11 +11,11 @@
         "prefix": ""
     },
     "aliases": {
-        "components": "@/app/components",
-        "utils": "@/app/utils/styles",
-        "ui": "@/app/components/ui",
-        "lib": "@/app/lib",
-        "hooks": "@/app/hooks"
+        "components": "@/components",
+        "utils": "@/utils/styles",
+        "ui": "@/ui",
+        "lib": "@/lib",
+        "hooks": "@/hooks"
     },
     "iconLibrary": "remixicon"
 }

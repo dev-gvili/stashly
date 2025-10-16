@@ -42,7 +42,7 @@ prisma/.env
 app/utils/aimodel.test.ts
 # app/utils/test.ts
 # app/utils/dev.ts
-app/utils/dev.ts
+# app/utils/dev.ts
 app/utils/Perfect, אלון — let’s refactor both your.md
 app/utils/test.ts
 stashly.code-workspace

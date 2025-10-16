@@ -1,0 +1,63 @@
+{
+  "attributesForFaceting": [
+    "searchable(name)",
+    "type",
+    "category",
+    "status",
+    "workspaceId",
+    "driveId",
+    "ownerId",
+    "collectionIds",
+    "collectionId",
+    "tags",
+    "hasImage",
+    "hasVideo",
+    "hasAudio",
+    "hasFile"
+  ],
+  "searchableAttributes": [
+    "unordered(name)",
+    "unordered(primaryTitle)",
+    "unordered(path)"
+  ],
+  "customRanking": [
+    "desc(popularity)",
+    "desc(itemCount)",
+    "desc(updatedAt)"
+  ],
+  "ranking": [
+    "typo",
+    "words",
+    "proximity",
+    "attribute",
+    "exact",
+    "custom"
+  ],
+  "attributesToRetrieve": [
+    "objectID",
+    "id",
+    "name",
+    "path",
+    "type",
+    "category",
+    "status",
+    "size",
+    "size_human",
+    "primaryMediaType",
+    "primaryMediaId",
+    "primaryTitle",
+    "thumbnail_small",
+    "thumbnail_medium",
+    "thumbnail_large",
+    "itemCount",
+    "collectionIds",
+    "ownerId",
+    "workspaceId",
+    "driveId",
+    "tags",
+    "createdAt",
+    "updatedAt"
+  ],
+  "attributeForDistinct": "id",
+  "distinct": true
+}
