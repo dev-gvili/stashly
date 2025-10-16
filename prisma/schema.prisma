@@ -10,7 +10,7 @@ generator client {
   // Optional
   moduleFormat           = "esm"
   generatedFileExtension = "ts"
-  previewFeatures        = ["nativeDistinct", "relationJoins", "postgresqlExtensions"]
+  previewFeatures        = ["nativeDistinct", "relationJoins", "postgresqlExtensions", "fullTextSearchPostgres"]
 }
 
 datasource db {
@@ -24,4 +24,3 @@ generator markdown {
   output   = "./ERD.md"
   title    = "Stashly"
 }
-

@@ -12,6 +12,7 @@ model Notification {
     @@index([createdAt])
     @@index([type])
     @@index([status])
+    @@index([message(raw: "gin_trgm_ops")], type: SpGist)
 }
 
 enum NotificationType {

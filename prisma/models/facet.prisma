@@ -26,20 +26,22 @@ model Image {
     verticalResolution   Int?
     cameraMake           String?
     cameraModel          String?
-    exposureDenominator  Int?
-    exposureNumerator    Float?
-    exposureTime         String?
+    exposureTime         Float?
     focalLength          Float?
     fNumber              Float?
     iso                  Int?
     takenDateTime        DateTime?
-    itemId               String?   @unique
-    item                 Item?   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+    latitude             Float?
+    longitude            Float?
+    itemId               String    @unique
+    item                 Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model Video {
     id                    String  @id
     bitrate               Int?
+    codec                 String?
+    container             String?
     duration              Int?
     height                Int?
     width                 Int?
@@ -49,8 +51,8 @@ model Video {
     audioSamplesPerSecond Int?
     frameRate             Float?
     fourCC                String?
-    itemId                String? @unique
-    item                  Item?   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+    itemId                String  @unique
+    item                  Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model Audio {
@@ -58,6 +60,7 @@ model Audio {
     album             String?
     albumArtist       String?
     artist            String?
+    composer          String?
     bitrate           Int?
     composers         String?
     copyright         String?
@@ -71,20 +74,8 @@ model Audio {
     track             Int?
     trackCount        Int?
     year              Int?
-    itemId            String?  @unique
-    item              Item?    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+    itemId            String   @unique
+    item              Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
-model Photo {
-    id                  String    @id
-    cameraMake          String?
-    cameraModel         String?
-    exposureDenominator Float?
-    exposureNumerator   Float?
-    fNumber             Float?
-    focalLength         Float?
-    iso                 Int?
-    takenDateTime       DateTime?
-    itemId              String?   @unique
-    item                Item?     @relation(fields: [itemId], references: [id], onDelete: Cascade)
-}
+

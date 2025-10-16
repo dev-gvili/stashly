@@ -1,5 +1,5 @@
 model Item {
-    id       String       @id
+    id       String       @id @unique
     name     String       @db.VarChar(50)
     size     BigInt       @default(0)
     path     String       @unique
@@ -19,7 +19,10 @@ model Item {
     image      Image?
     video      Video?
     audio      Audio?
-    photo      Photo?
+    /**
+        * One-to-one relationship between Item and Collection
+        * An Item can be a Collection itself
+    */
     collection Collection?
 
     ownerId String
@@ -33,12 +36,27 @@ model Item {
 
     // Self relation for parent-child relationship (tree structure)
     parentId String?
+    /** 
+        `One-to-Many` self-relation to represent hierarchical structure
+        An Item can have multiple children (sub-items) and one parent (container item)
+        On deletion of a parent item, all its children are also deleted (Cascade)
+    */
     children Item[]  @relation("ParentChild")
+    /** 
+        * Many-to-One self-relation to represent hierarchical structure
+        * An Item can have multiple children (sub-items) and one parent (container item)
+        * On deletion of a parent item, all its children are also deleted (Cascade)
+    */
     parent   Item?   @relation("ParentChild", fields: [parentId], references: [id], onDelete: Cascade)
 
     // Location and Storage
     trash       TrashItem?
-    collections CollectionItem[]
+    /**
+        * Many-to-Many relationship between Item and Collection through CollectionItem junction table
+        * An Item can belong to multiple Collections and a Collection can contain multiple Items
+        * The relationship is managed through the CollectionItem junction table
+    */
+    collectionItems CollectionItem[]
 
     // Access Control
     locked      LockedItem?
@@ -62,22 +80,22 @@ model Item {
     //  Search Functionality (optional)
     search Search?
 
+    @@unique([createdAt, id], name: "cursor_pagination_idx", map: "cursor_pagination_idx")
     @@index([type])
     @@index([category])
     @@index([name(sort: Asc)])
     @@index([workspaceId])
-    @@index([createdAt(sort: Asc)])
-    @@index([updatedAt(sort: Desc)])
+    @@index([createdAt])
+    @@index([updatedAt])
+    @@index([tags], type: Gin)
+    @@index([status])
+    @@index([createdAt, name], map: "search_cursor")
 }
 
 enum ItemType {
     folder
     file
     collection
-    // image
-    // video
-    // audio
-    // photo
 }
 
 enum ItemCategory {
