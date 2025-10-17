@@ -3,16 +3,19 @@ import { parseSearchParams } from './parsers'
 import { prisma } from '../.server/db'
 import { parseArgs, type ParseArgsConfig } from 'node:util'
 import { itemRepository } from '../.server/repositories/ItemRepository'
-import type { Prisma } from '../.server/prisma/client'
+import type { ItemCategory, ItemType, Prisma } from '../.server/prisma/client'
 import { subscriptionRepository } from '../.server/repositories/SubscriptionRepository'
 import {
 	buildItemFilters,
 	itemFilterSchema,
 } from '../.server/filters/item.filters'
-import { toZodSearchSchema } from '../utils/converters'
+import { toSearchSchema } from '../utils/converters'
 import { z } from 'zod'
-import {initEmbeddingModel, encodeText} from '../services/embeddings'
-
+import { searchItems } from '../.server/services/search.service'
+import {
+	buildItemAlgoliaFilters,
+	itemAlgoliaFilterSchema,
+} from '../.server/filters/item.algolia.filters'
 
 const options: ParseArgsConfig = {
 	options: {
@@ -27,7 +30,6 @@ const options: ParseArgsConfig = {
 } as const
 
 async function main() {
-	await initEmbeddingModel()
 	const {
 		values: { itemId, ownerId, action, json, urlSearchParams },
 		positionals,
@@ -43,102 +45,132 @@ async function main() {
 	}
 
 	if (action === 'search') {
-		const searchSchema = toZodSearchSchema<
-			typeof itemFilterSchema,
-			Prisma.ItemOrderByWithRelationInput
-		>(itemFilterSchema)
+		// const searchParams = new URLSearchParams(`${urlSearchParams}`)
 
-		// Infer the type from the Zod schema to ensure `params` is strongly typed.
-		type SearchParams = z.infer<typeof searchSchema>
+		// let params = parseSearchParams({
+		// 	schema: itemAlgoliaFilterSchema.extend({ take: z.coerce.number() }),
+		// 	searchParams,
+		// })
+
+		// console.log('Params: ', params)
+
+		// const indexes = await searchItems({
+		// 	...params,
+		// 	mode: 'algolia',
+		// 	buildFilters: buildItemAlgoliaFilters,
+		// })
+		// console.log(inspect({ indexes }, { colors: true, depth: null }))
+
+		const searchParams = new URLSearchParams(`${urlSearchParams}`)
 
 		let params = parseSearchParams({
-			schema: searchSchema,
-			searchParams: new URLSearchParams(`${urlSearchParams}`),
+			schema: itemFilterSchema,
+			searchParams,
 		})
 
-		console.log('url search params: ', params)
-		console.log('build item filters: ', buildItemFilters(params))
+		let algparams = parseSearchParams({
+			schema: itemAlgoliaFilterSchema,
+			searchParams,
+		})
 
-		if (params.strategy === 'stream') {
-			// The `search` function is now correctly typed, so we can pass `params` directly.
-			for await (const batch of await itemRepository.search({
+		let cursorId: string | undefined = undefined
+		// For Postgres Search:
+		// Paginate through all results
+		console.log('Searching...')
+		// while (true) {
+			console.log('Postgres Search with params:', { ...params, cursorId })
+			const items = await searchItems({
 				...params,
-				strategy: 'stream',
-			})) {
-				console.log(
-					'stream started: ',
-					inspect(
-						{
-							data: batch.data.map((i) => ({
-								id: i.id,
-							})),
-							metadata: batch.metadata,
-						},
-						{ colors: true, depth: null }
-					)
-				)
-				if (batch.metadata.isComplete) {
-					break
-				}
-			}
-		}
-		if (params.strategy === 'cursor') {
-			let { cursor, ...rest } = params
-			while (true) {
-				// Pass the strongly-typed `params` object directly to the search function.
-				// The correct overload will be resolved, and `res` will have the proper type.
-				let res = await itemRepository.search({
-					...rest,
-					strategy: 'cursor',
-				})
-
-				if (res.metadata.nextCursor) {
-					cursor = res.metadata.nextCursor
-					console.log(
-						inspect(
-							{
-								data: res.data.map((i) => ({
-									id: i.id,
-								})),
-								metadata: res.metadata,
-							},
-							{ colors: true, depth: null }
-						)
-					)
-				}
-				if (res.metadata.isComplete || !res.data.length) {
-					console.log(
-						inspect(
-							{
-								data: res.data.map((i) => ({
-									id: i.id,
-								})),
-								metadata: res.metadata,
-							},
-							{ colors: true, depth: null }
-						)
-					)
-					console.log('Pagination Complete')
-					break
-				}
-			}
-		}
-		if (params.strategy === 'offset') {
-			let res = await itemRepository.search({
-				...params,
+				mode: 'postgres',
+				include: { owner: true, workspace: true },
+				buildFilters: buildItemFilters,
 			})
-			console.log(res)
-		}
+
+			// For Algolia Search:
+			console.log('Algolia Search with params:', { ...algparams })
+			const hits = await searchItems({
+				...algparams,
+				mode: 'algolia',
+				buildFilters: buildItemAlgoliaFilters,
+			})
+
+			console.log(inspect({ items }, { colors: true, depth: null }))
+			console.log('inspect', { items: items.data?.length, hits: hits?.length })
+			// console.log(inspect(items, { colors: true, depth: null }))
+			// if (items.metadata.nextCursor) {
+			// 	console.log(
+			// 		inspect(
+			// 			items.data.map((i) => ({ name: i.name })),
+			// 			{ colors: true, depth: null }
+			// 		)
+			// 	)
+			// 	console.log('Search From Cursor', items.metadata.previousCursor)
+			// 	cursorId = items.metadata.nextCursor
+			// }
+			// console.log('Search Until Cursor', items.metadata.nextCursor)
+			// if (items.metadata.isComplete) {
+			// 	console.log(
+			// 		inspect(
+			// 			items.data.map((i) => ({ name: i.name })),
+			// 			{ colors: true, depth: null }
+			// 		)
+			// 	)
+			// 	console.log('Search Completed')
+			// 	break
+			// }
+		// }
 	}
+	// if (action === 'search') {
+	// 	const searchParams = new URLSearchParams(`${urlSearchParams}`)
+	// 	const searchSchema = toZodSearchSchema<
+	// 		typeof itemFilterSchema,
+	// 		Prisma.ItemOrderByWithRelationInput
+	// 	>(itemFilterSchema)
+
+	// 	let params = parseSearchParams({
+	// 		schema: searchSchema,
+	// 		searchParams,
+	// 	})
+
+	// 	if (params.strategy === 'stream') {
+	// 		for await (const batch of await itemRepository.search({
+	// 			...params,
+	// 			strategy: 'stream',
+	// 		})) {
+	// 			console.log(batch.data.map(i => ({name: i.name})))
+	// 			if (batch.metadata.isComplete) break
+	// 		}
+	// 	}
+	// 	if (params.strategy === 'cursor') {
+	// 		while (true) {
+	// 			let res = await itemRepository.search({
+	// 				...params,
+	// 				strategy: 'cursor',
+	// 			})
+	// 			if (res.metadata.nextCursor) {
+	// 				params.cursor = res.metadata.nextCursor
+	// 			}
+	// 			if (res.metadata.isComplete) {
+	// 				console.log('Pagination Complete')
+	// 				break
+	// 			}
+	// 		}
+	// 	}
+	// 	if (params.strategy === 'offset') {
+	// 		let res = await itemRepository.search({
+	// 			...params,
+	// 			page: 1,
+	// 			take: 10,
+	// 			strategy: 'offset',
+	// 		})
+	// 		console.log(res)
+	// 	}
+	// }
 	if (action === 'stripeCustomerId') {
 		item = await subscriptionRepository.findStripeCustomerId(`${ownerId}`)
 	}
 	if (action === 'prices') {
 		item = await subscriptionRepository.listPrices()
-	}
-	if (action === 'embed') {
-		let text = encodeText('Hello world!')
-		console.log('encoded text: ', await text)
 	}
 	if (json) {
 		console.log(JSON.stringify(item, null, 2))

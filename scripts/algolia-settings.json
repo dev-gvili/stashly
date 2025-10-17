@@ -13,17 +13,25 @@
     "hasImage",
     "hasVideo",
     "hasAudio",
-    "hasFile"
+    "hasFile",
+    "extension",
+    "primaryMediaType",
+    "favorited",
+    "locked",
+    "trashed"
   ],
   "searchableAttributes": [
-    "unordered(name)",
+    "name",
     "unordered(primaryTitle)",
-    "unordered(path)"
+    "unordered(path)",
+    "unordered(tags)",
+    "unordered(extension)"
   ],
   "customRanking": [
     "desc(popularity)",
     "desc(itemCount)",
-    "desc(updatedAt)"
+    "desc(updatedAt)",
+    "desc(createdAt)"
   ],
   "ranking": [
     "typo",
@@ -50,6 +58,10 @@
     "thumbnail_medium",
     "thumbnail_large",
     "itemCount",
+    "extension",
+    "duration",
+    "popularity",
+    "mimeType",
     "collectionIds",
     "ownerId",
     "workspaceId",
@@ -59,5 +71,6 @@
     "updatedAt"
   ],
   "attributeForDistinct": "id",
-  "distinct": true
+  "distinct": true,
+  "removeWordsIfNoResults": "allOptional"
 }

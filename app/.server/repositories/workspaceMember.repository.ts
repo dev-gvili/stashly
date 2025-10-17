@@ -52,9 +52,10 @@ const defaultOrderBy: (
 		  }),
 })
 
+/** Repository for the `WorkspaceMember` model.
+ * Provides CRUD operations plus a handful of convenience helpers.
+ */
 export const workspaceMemberRepository = {
-	name: 'WorkspaceMember' as const,
-
 	search: searchFactory({
 		dbDelegate: prisma.workspaceMember,
 		buildFilters: buildWorkspaceMemberFilters,
@@ -65,10 +66,7 @@ export const workspaceMemberRepository = {
 	// =================== CRUD Operations ================== //
 	// ====================================================== //
 
-	findById(
-		id: string,
-		tx?: PrismaTx
-	): Promise<WorkspaceMember | null> {
+	findById(id: string, tx?: PrismaTx): Promise<WorkspaceMember | null> {
 		const db = tx || prisma
 		return db.workspaceMember.findUnique({ where: { id } })
 	},
@@ -128,7 +126,11 @@ export const workspaceMemberRepository = {
 		role: WorkspaceMemberRole,
 		tx?: PrismaTx
 	): Promise<boolean> {
-		const member = await this.findByUserAndWorkspace(userId, workspaceId, tx)
+		const member = await this.findByUserAndWorkspace(
+			userId,
+			workspaceId,
+			tx
+		)
 		return !!member && member.role === role
 	},
 
@@ -138,7 +140,11 @@ export const workspaceMemberRepository = {
 		role: WorkspaceMemberRole,
 		tx?: PrismaTx
 	): Promise<boolean> {
-		const member = await this.findByUserAndWorkspace(userId, workspaceId, tx)
+		const member = await this.findByUserAndWorkspace(
+			userId,
+			workspaceId,
+			tx
+		)
 		if (!member) return false
 		const order = ['viewer', 'member', 'admin', 'owner'] as const
 		return order.indexOf(member.role) >= order.indexOf(role)

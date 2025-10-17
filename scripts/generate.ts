@@ -17,7 +17,7 @@ program
 	.option(
 		'--format [format]',
 		'Output docs as JSON or Markdown',
-        'markdown',
+		'markdown'
 	)
 	.description('Generate filter and repository files for a Prisma model')
 	.helpOption('-h, --help', 'Display help for command')
@@ -111,13 +111,6 @@ function parseModelFields(modelBlock: string): ParsedFields {
 
 // --- Template Generation ---
 
-const OPERATORS = {
-	string: ['equals'],
-	array: ['in', 'notIn'],
-	default: ['equals'],
-	range: ['gte', 'lte'],
-}
-
 const ZOD_TYPE_MAP: Record<string, string> = {
 	String: 'z.string()',
 	Int: 'z.number().int()',
@@ -130,18 +123,6 @@ const ZOD_TYPE_MAP: Record<string, string> = {
 	Bytes: 'z.instanceof(Buffer)',
 }
 
-function getOperatorsForType(type: string): string[] {
-	return type === 'String'
-		? OPERATORS.string
-		: OPERATORS.default.concat(OPERATORS.array)
-}
-
-function getRangeOperatorsForType(type: string): string[] {
-	return ['Int', 'Float', 'Decimal', 'DateTime'].includes(type)
-		? OPERATORS.range
-		: []
-}
-
 /**
  * Generates the content for the filter configuration file.
  */
@@ -151,111 +132,58 @@ function createFiltersTemplate(
 ) {
 	const lower = modelName.charAt(0).toLowerCase() + modelName.slice(1)
 	const enumImports = enumTypes.length
-		? `import { ${enumTypes.join(', ')} } from '@/prisma/enums';\n`
+		? `import { ${enumTypes.join(', ')} } from '@/prisma/client';\n`
 		: ''
 
 	const schemaFields = scalarFields
 		.map((field) => {
-			const baseType =
-				ZOD_TYPE_MAP[field.type] || `z.nativeEnum(${field.type})`
-			const operators = getOperatorsForType(field.type).concat(
-				getRangeOperatorsForType(field.type)
-			)
-			const shape = `z.object({ ${operators
-				.map((op) => `${op}: ${baseType}.optional()`)
-				.join(', ')} }).optional()`
-			return `    ${field.name}: ${shape},`
+			const zodType =
+				ZOD_TYPE_MAP[field.type] || `z.enum(${field.type})`
+			return `		${field.name}: ${zodType},`
 		})
 		.join('\n')
 
 	const filterObjects = scalarFields
 		.map((field) => {
-			const operators = getOperatorsForType(field.type).concat(
-				getRangeOperatorsForType(field.type)
-			)
-			const shape = `z.object({ ${operators
-				.map(
-					(op) =>
-						`${op}: z.${
-							op === 'contains' ? 'string' : 'any'
-						}().optional()`
-				)
-				.join(', ')} }).optional()`
-			return `  ${field.name}: create${modelName}Filter(${shape}, (${field.name}) => ({ ${field.name} })),`
+			const zodType =
+				ZOD_TYPE_MAP[field.type] || `z.enum(${field.type})`
+			return `	${field.name}: create${modelName}Filter(${zodType}, (value) => ({ ${field.name}: value })),`
 		})
 		.join('\n')
 
-	const docs =
-		options.format === 'json'
-			? createJsonDocs(lower, scalarFields)
-			: createMarkdownDocs(scalarFields)
-
 	return `import { z } from 'zod';
 import { Prisma } from '@/prisma/client';
-${enumImports}import { createFilterFactory, buildFiltersFactory } from '@/utils/filters';
+${enumImports}import { createFilter, buildFiltersFactory } from '@/utils/filters';
 
 export const ${lower}FilterSchema = z
-  .object({
+	.object({
 ${schemaFields}
-  })
-  .partial();
+	})
+	.partial();
 
-const create${modelName}Filter = createFilterFactory<
-  Prisma.${modelName}WhereInput,
-  z.infer<typeof ${lower}FilterSchema>
+/**
+ * Factory for creating ${lower}-specific filters.
+ */
+const create${modelName}Filter = createFilter<
+	Prisma.${modelName}WhereInput,
+	z.infer<typeof ${lower}FilterSchema>
 >();
 
+/**
+ * All available ${lower} filters.
+ */
 export const ${lower}Filters = {
 ${filterObjects}
 };
 
+/**
+ * Build ${lower} filters from provided params.
+ */
 export const build${modelName}Filters = buildFiltersFactory({
-  filters: ${lower}Filters,
-  schema: ${lower}FilterSchema,
+	filters: ${lower}Filters,
+	schema: ${lower}FilterSchema,
 });
-
-export type ${modelName}FilterParams = z.infer<typeof ${lower}FilterSchema>;
-
-${docs}
 `
-}
-
-function createJsonDocs(
-	lower: string,
-	scalarFields: { name: string; type: string }[]
-) {
-	const docObject = Object.fromEntries(
-		scalarFields.map((field) => [
-			field.name,
-			{
-				type: field.type,
-				operators: getOperatorsForType(field.type).concat(
-					getRangeOperatorsForType(field.type)
-				),
-			},
-		])
-	)
-	return `export const ${lower}FilterDocs = ${JSON.stringify(
-		docObject,
-		null,
-		2
-	)};`
-}
-
-function createMarkdownDocs(scalarFields: { name: string; type: string }[]) {
-	const rows = scalarFields.map((field) => {
-		const operators = getOperatorsForType(field.type).concat(
-			getRangeOperatorsForType(field.type)
-		)
-		return `| ${field.name} | ${field.type} | ${operators.join(', ')} |`
-	})
-	return `/**
- * Filter Documentation (Markdown)
- *
- * | Field       | Type     | Operators                               |
- * |-------------|----------|-----------------------------------------|
-${rows.join('\n')}
- */`
 }
 
 const getDefaultOrderBy = (modelName: string) => {
@@ -263,7 +191,8 @@ const getDefaultOrderBy = (modelName: string) => {
 	return `const defaultOrderBy = (
 	params: z.infer<typeof ${lower}FilterSchema>
 ): Prisma.${modelName}OrderByWithRelationInput => ({
-	// Modify as needed (e.g., use 'updatedAt' if available)
+	// TODO: Define a default order-by for the model
+	createdAt: 'desc',
 })`
 }
 
@@ -275,104 +204,99 @@ function createRepoTemplate(
 	{ relationFields }: ParsedFields
 ) {
 	const lower = modelName.charAt(0).toLowerCase() + modelName.slice(1)
-	const defaultIncludeObj = relationFields.length
-		? `{\n  ${relationFields.map((r) => `${r}: true`).join(',\n  ')}\n}`
-		: '{}'
 
 	const defaultOrderBy = getDefaultOrderBy(modelName)
 
-	return `import { Prisma } from '@/prisma/client';
-import { prisma } from '@/services/db';
-import { build${modelName}Filters, ${lower}FilterSchema } from '@/services/filters/${lower}.filters';
-import { searchFactory } from '@/utils/search';
-import type { IRepository } from './IRepository';
-import { getPrefixForModel, toObjectId } from '@/utils/misc'
-import type { z } from 'zod'
+	return `import { prisma } from '@/services/db'
+import type { Prisma, ${modelName} } from '@/prisma/client'
+import {
+	build${modelName}Filters,
+	${lower}FilterSchema,
+} from '@/services/filters/${lower}.filters'
+import { z } from 'zod'
+import { searchFactory } from '@/utils/search'
 
-const defaultInclude = ${defaultIncludeObj};
-${defaultOrderBy};
-type ModelWithRelations = Prisma.${modelName}GetPayload<{ include: typeof defaultInclude }>;
+/**
+ * A Prisma transaction client, compatible with the full client.
+ */
+type PrismaTx = Omit<
+	typeof prisma,
+	'$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+>
 
-export class ${modelName}Repository implements IRepository<ModelWithRelations, '${modelName}'> {
-	name = '${modelName}' as const;
-	private db: typeof prisma;
-	private search;
+${defaultOrderBy}
 
-	constructor(dbClient: typeof prisma) {
-		this.db = dbClient;
-		this.search = searchFactory(
-			this.db.${lower},
-			build${modelName}Filters,
-			defaultInclude,
-			defaultOrderBy
-		);
-	}
+/** Repository for the \`${modelName}\` model.
+ * Provides CRUD operations plus a handful of convenience helpers.
+ */
+export const ${lower}Repository = {
+	search: searchFactory({
+		dbDelegate: prisma.${lower},
+		buildFilters: build${modelName}Filters,
+		defaultOrderBy,
+	}),
 
-	// --- Basic CRUD ---
+	// ====================================================== //
+	// =================== CRUD Operations ================== //
+	// ====================================================== //
 
-	async findById(id: string): Promise<ModelWithRelations | null> {
-		return this.db.${lower}.findUnique({
-			where: { id },
-			include: defaultInclude,
-		});
-	}
+	findById(id: string, tx?: PrismaTx): Promise<${modelName} | null> {
+		const db = tx || prisma
+		return db.${lower}.findUnique({ where: { id } })
+	},
 
-	async findAll(args?: Prisma.${modelName}FindManyArgs): Promise<ModelWithRelations[]> {
-		return this.db.${lower}.findMany({
-			...args,
-			include: defaultInclude,
-		});
-	}
+	findAll(args: Prisma.${modelName}FindManyArgs, tx?: PrismaTx): Promise<${modelName}[]> {
+		const db = tx || prisma
+		return db.${lower}.findMany(args)
+	},
 
-	async create(data: Prisma.${modelName}CreateInput): Promise<ModelWithRelations> {
-		return this.db.${lower}.create({
-			data:{
-                ...data,
-                id: toObjectId(getPrefixForModel('${modelName}'))
-            },
-			include: defaultInclude,
-		});
-	}
+	create(
+		data: Prisma.${modelName}CreateInput,
+		tx?: PrismaTx
+	): Promise<${modelName}> {
+		const db = tx || prisma
+		return db.${lower}.create({ data })
+	},
 
-	async update(args: Prisma.${modelName}UpdateArgs): Promise<ModelWithRelations> {
-		return this.db.${lower}.update({
-            ...args,
-			include: defaultInclude,
-		});
-	}
+	update(
+		args: Prisma.${modelName}UpdateArgs,
+		tx?: PrismaTx
+	): Promise<${modelName}> {
+		const db = tx || prisma
+		return db.${lower}.update(args)
+	},
 
-	async delete(id: string): Promise<ModelWithRelations> {
-		return this.db.${lower}.delete({
-			where: { id },
-			include: defaultInclude,
-		});
-	}
+	delete(
+		id: string,
+		tx?: PrismaTx
+	): Promise<${modelName}> {
+		const db = tx || prisma
+		return db.${lower}.delete({ where: { id } })
+	},
 
-	// --- Custom Methods ---
+	// =========================================================
+	//  CUSTOM METHODS
+	// =========================================================
 
-	// Example:
-	// async findByEmail(email: string): Promise<ModelWithRelations | null> {
-	//   return this.db.${lower}.findUnique({ where: { email }, include: defaultInclude });
-	// }
 }
-
-// Export a singleton instance
-export const ${lower}Repository = new ${modelName}Repository(prisma);
 `
 }
 
 // --- Main Execution ---
 
 async function main() {
-	// 1. Get model name
-	const { modelName } = await inquirer.prompt<{ modelName: string }>([
-		{
-			type: 'input',
-			name: 'modelName',
-			message: 'Enter the Prisma model name (e.g., User, Item):',
-			validate: (s) => !!s.trim() || 'Model name is required',
-		},
-	])
+	let modelName = options.model
+	if (!modelName) {
+		const answer = await inquirer.prompt<{ modelName: string }>([
+			{
+				type: 'input',
+				name: 'modelName',
+				message: 'Enter the Prisma model name (e.g., User, Item):',
+				validate: (s) => !!s.trim() || 'Model name is required',
+			},
+		])
+		modelName = answer.modelName
+	}
 
 	// 2. Find and parse model
 	const modelsDir = path.join(process.cwd(), 'prisma', 'models')
@@ -394,7 +318,7 @@ async function main() {
 	const filtersDir = path.join('app', '.server', 'filters')
 	const reposDir = path.join('app', '.server', 'repositories')
 	const filterFile = `${lower}.filters.ts`
-	const repoFile = `${modelName}Repository.ts`
+	const repoFile = `${lower}.repository.ts` // Corrected file name
 	const filterPath = path.join(filtersDir, filterFile)
 	const repoPath = path.join(reposDir, repoFile)
 
@@ -418,7 +342,6 @@ async function main() {
 			parsedFields.relationFields.join(', ') || '(none)'
 		}`
 	)
-	console.log(`ℹ️  Docs format: ${options.format.toUpperCase()}`)
 }
 
 main().catch((error) => {

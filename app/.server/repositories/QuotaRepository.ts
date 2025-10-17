@@ -7,7 +7,6 @@ import {
 	quotaFilters,
 } from '@/services/filters/quota.filters'
 import { z } from 'zod'
-import type { IRepository } from './IRepository'
 import { calculateQuota, toQuota } from '../quota.utils'
 import { storagePlanRepository } from './StoragePlanRepository'
 import { getPrefixForModel, toObjectId } from '../../utils/misc'
@@ -28,10 +27,6 @@ export interface UpdateAfterInput {
 	dataSize: bigint
 }
 
-const defaultInclude = {
-	drive: true,
-}
-
 const defaultOrderBy = (
 	params: z.infer<typeof quotaFilterSchema>
 ): Prisma.QuotaOrderByWithRelationInput => ({
@@ -42,40 +37,31 @@ const defaultOrderBy = (
  * Repository for the `Quota` model.
  * Provides CRUD operations plus a handful of convenience helpers.
  */
-class QuotaRepository implements IRepository<Quota, 'Quota'> {
-	name = 'Quota' as const
+export const quotaRepository = {
 
-	private db: typeof prisma
+	// Dependencies
+	db: prisma,
+	storagePlan: storagePlanRepository,
 
-	private storagePlan: typeof storagePlanRepository
-
-	public search
-
-	constructor(
-		dbClient: typeof prisma = prisma,
-		storagePlan: typeof storagePlanRepository
-	) {
-		this.db = dbClient
-		this.storagePlan = storagePlan
-		this.search = searchFactory({
-			dbDelegate: this.db.quota,
-			buildFilters: buildQuotaFilters,
-			defaultOrderBy,
-		})
-	}
+	// Search functionality
+	search: searchFactory({
+		dbDelegate: prisma.quota,
+		buildFilters: buildQuotaFilters,
+		defaultOrderBy,
+	}),
 
 	// ------------------------------------------------------------------
 	// Basic CRUD
 	// ------------------------------------------------------------------
 	async findById(id: string): Promise<Quota> {
-		const quota = await this.db.quota.findUniqueOrThrow({ where: { id } })
+		const quota = await prisma.quota.findUniqueOrThrow({ where: { id } })
 		return toQuota(quota)
-	}
+	},
 
 	async findAll(args: Prisma.QuotaFindManyArgs): Promise<Quota[]> {
-		const quotas = await this.db.quota.findMany(args)
+		const quotas = await prisma.quota.findMany(args)
 		return quotas.map(toQuota)
-	}
+	},
 
 	/**
 	 * Creates a new quota record.
@@ -112,9 +98,9 @@ class QuotaRepository implements IRepository<Quota, 'Quota'> {
 		}
 		args.id = toObjectId(getPrefixForModel('Quota'))
 
-		const quota = await this.db.quota.create({ data: args })
+		const quota = await prisma.quota.create({ data: args })
 		return toQuota(quota)
-	}
+	},
 
 	/**
 	 * Updates an existing quota record.
@@ -153,35 +139,35 @@ class QuotaRepository implements IRepository<Quota, 'Quota'> {
 			data as PrismaQuota
 		)
 		// Update the quota in the database
-		const updated = await this.db.quota.update({
+		const updated = await prisma.quota.update({
 			where: { id: current.id },
 			data: { ...data, ...quota },
 		})
 		// Return the updated quota
 		return toQuota(updated)
-	}
+	},
 
 	async delete(args: Prisma.QuotaDeleteArgs): Promise<Quota> {
-		const quota = await this.db.quota.delete(args)
+		const quota = await prisma.quota.delete(args)
 		return toQuota(quota)
-	}
+	},
 
 	// ------------------------------------------------------------------
 	// Convenience lookups
 	// ------------------------------------------------------------------
 	/** Find a quota by the owning user ID */
 	async findByUserId(userId: string): Promise<Quota | null> {
-		const quota = await this.db.quota.findFirst({
+		const quota = await prisma.quota.findFirst({
 			where: { drive: { ownerId: userId } },
 		})
 		return quota ? toQuota(quota) : null
-	}
+	},
 
 	/** Find a quota by the drive ID */
 	async findByDriveId(driveId: string): Promise<Quota | null> {
-		const quota = await this.db.quota.findFirst({ where: { driveId } })
+		const quota = await prisma.quota.findFirst({ where: { driveId } })
 		return quota ? toQuota(quota) : null
-	}
+	},
 
 	/** Find a quota by both user and drive */
 	async findByUserAndDrive(
@@ -192,30 +178,31 @@ class QuotaRepository implements IRepository<Quota, 'Quota'> {
 			where: { drive: { ownerId: userId }, driveId },
 		})
 		return quota ? toQuota(quota) : null
-	}
+	},
 
 	// ------------------------------------------------------------------
 	// Validation helpers
 	// ------------------------------------------------------------------
+
 	/** Throw if a quota with the given ID does not exist */
 	async assertExists(id: string): Promise<Quota> {
-		const quota = await this.db.quota.findUnique({ where: { id } })
+		const quota = await prisma.quota.findUnique({ where: { id } })
 		if (!quota) throw new Error(`Quota ${id} not found`)
 		return toQuota(quota)
-	}
+	},
 
 	/** Ensure a user has a quota record */
 	async ensureUserQuota(userId: string): Promise<Quota> {
 		const quota = await this.findByUserId(userId)
 		if (!quota) throw new Error(`User ${userId} has no quota`)
 		return quota
-	}
+	},
 
 	/** Validate that the quota has enough free space for a given size */
 	validateFreeSpace(quota: Quota, size: bigint): void {
 		const remaining = quota.total - quota.used
 		if (remaining < size) throw new Error('Insufficient quota')
-	}
+	},
 
 	// ====================================================== //
 	// ==================== After Action ==================== //
@@ -232,7 +219,7 @@ class QuotaRepository implements IRepository<Quota, 'Quota'> {
 		dataSize,
 	}: UpdateAfterInput): Promise<Quota> {
 		return await this.update({ userId, used: dataSize })
-	}
+	},
 
 	/**
 	 * Updates the quota after items are copied.
@@ -244,7 +231,7 @@ class QuotaRepository implements IRepository<Quota, 'Quota'> {
 		dataSize,
 	}: UpdateAfterInput): Promise<Quota> {
 		return await this.update({ userId, used: dataSize })
-	}
+	},
 
 	/**
 	 * Updates the quota after items are moved to trash.
@@ -256,7 +243,7 @@ class QuotaRepository implements IRepository<Quota, 'Quota'> {
 		dataSize,
 	}: UpdateAfterInput): Promise<Quota> {
 		return await this.update({ userId, used: -dataSize, deleted: dataSize })
-	}
+	},
 
 	/**
 	 * Updates the quota after items are restored from trash.
@@ -268,7 +255,7 @@ class QuotaRepository implements IRepository<Quota, 'Quota'> {
 		dataSize,
 	}: UpdateAfterInput): Promise<Quota> {
 		return await this.update({ userId, used: dataSize, deleted: -dataSize })
-	}
+	},
 
 	/**
 	 * Updates the quota after items are permanently deleted from trash.
@@ -280,7 +267,7 @@ class QuotaRepository implements IRepository<Quota, 'Quota'> {
 		dataSize,
 	}: UpdateAfterInput): Promise<Quota> {
 		return await this.update({ userId, deleted: -dataSize })
-	}
+	},
 
 	/**
 	 * Updates the total quota for a user.
@@ -292,38 +279,33 @@ class QuotaRepository implements IRepository<Quota, 'Quota'> {
 		dataSize,
 	}: UpdateAfterInput): Promise<Quota> {
 		return await this.update({ userId, total: dataSize })
-	}
+	},
 
 	// ------------------------------------------------------------------
 	// Pagination / counting
 	// ------------------------------------------------------------------
 	async count(args: Prisma.QuotaCountArgs): Promise<number> {
-		return this.db.quota.count(args as any)
-	}
+		return prisma.quota.count(args as any)
+	},
 
 	async findAllWithPagination(
 		page: number,
 		pageSize: number
 	): Promise<Quota[]> {
 		const skip = (page - 1) * pageSize
-		return (await this.db.quota.findMany({ skip, take: pageSize })).map(
+		return (await prisma.quota.findMany({ skip, take: pageSize })).map(
 			toQuota
 		)
-	}
+	},
 
 	async countWithFilters(
 		filters: z.infer<typeof quotaFilterSchema>
 	): Promise<number> {
 		const where = buildQuotaFilters(filters)
-		return this.db.quota.count({ where })
-	}
+		return prisma.quota.count({ where })
+	},
 }
 
-export const quotaRepository = new QuotaRepository(
-	prisma,
-	storagePlanRepository
-)
-
-export type QuotaRepo = InstanceType<typeof QuotaRepository>
+export type QuotaRepo = typeof quotaRepository
 
 export { quotaFilterSchema, quotaFilters }

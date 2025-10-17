@@ -3,7 +3,7 @@ import { permissionRepository } from '@/services/repositories/PermissionReposito
 import { workspaceMemberRepository } from '@/services/repositories/workspaceMember.repository'
 import { quotaRepository } from '@/services/repositories/QuotaRepository'
 import { ApiError, ApiErrorCode } from '../api.errors'
-import { getPrefixForModel, toObjectId } from '../../utils/misc'
+import { getPrefixForModel, toObjectId } from '@/utils/misc'
 
 export const itemService = {
 	/**

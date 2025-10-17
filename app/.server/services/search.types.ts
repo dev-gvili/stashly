@@ -39,15 +39,15 @@ export type SearchOutput<TData> = {
 export type SearchMode = 'postgres' | 'algolia'
 
 export interface BaseSearchOptions<TParams> {
-	query: string
+	query?: string
 	mode: SearchMode
 	take?: number
 }
 
 export interface PostgresSearchOptions<
 	TParams,
-	TInclude = undefined,
-	TOrderBy = undefined
+	TInclude = Prisma.ItemInclude,
+	TOrderBy = Prisma.ItemOrderByWithRelationInput
 > extends BaseSearchOptions<TParams> {
 	cursorId?: string
 	mode: 'postgres'
@@ -58,14 +58,13 @@ export interface PostgresSearchOptions<
 
 export interface AlgoliaSearchOptions<
 	TParams,
-	TMode extends SearchMode = 'algolia'
 > extends BaseSearchOptions<TParams> {
 	mode: 'algolia'
 	page?: number
 	buildFilters: (params: TParams) => string
 }
 
-export type SearchOptions<TParams, TInclude> =
+export type SearchOptions<TParams, TInclude, TMode> =
 	| PostgresSearchOptions<TParams, TInclude>
 	| AlgoliaSearchOptions<TParams>
 

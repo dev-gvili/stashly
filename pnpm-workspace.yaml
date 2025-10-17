@@ -7,3 +7,4 @@ onlyBuiltDependencies:
   - prisma
   - protobufjs
   - sharp
+  - storybook-addon-remix-react-router

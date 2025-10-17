@@ -6,6 +6,7 @@ declare module "react-router" {
   interface Register {
     pages: Pages
     routeFiles: RouteFiles
+    routeModules: RouteModules
   }
 }
 
@@ -52,17 +53,25 @@ type Pages = {
   "/api/theme": {
     params: {};
   };
-  "/api/items": {
-    params: {};
+  "/api/items/*": {
+    params: {
+      "*": string;
+    };
   };
-  "/api/workspaces": {
-    params: {};
+  "/api/workspaces/*": {
+    params: {
+      "*": string;
+    };
   };
-  "/api/members": {
-    params: {};
+  "/api/members/*": {
+    params: {
+      "*": string;
+    };
   };
-  "/api/collections": {
-    params: {};
+  "/api/collections/*": {
+    params: {
+      "*": string;
+    };
   };
   "/api/settings": {
     params: {};
@@ -168,7 +177,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/auth/sign-in" | "/auth/sign-out" | "/api/health" | "/api/invitations" | "/api/notifications" | "/api/stripe" | "/api/favorites" | "/api/users" | "/api/subscription" | "/api/shares" | "/api/quota" | "/api/versions" | "/api/theme" | "/api/items" | "/api/workspaces" | "/api/members" | "/api/collections" | "/api/settings" | "/api/view" | "/api/search" | "/api/images" | "/api/auth/*" | "/api/s3/sts-token" | "/api/s3/presigned-url" | "/api/s3/upload" | "/dashboard" | "/dashboard/items/*" | "/dashboard/shared" | "/dashboard/recent" | "/dashboard/trash" | "/dashboard/collections" | "/dashboard/collections/:collectionId" | "/dashboard/search" | "/workspaces" | "/workspaces/create" | "/workspaces/:workspaceId" | "/workspaces/:workspaceId/settings" | "/workspaces/:workspaceId/members" | "/workspaces/:workspaceId/items/:itemId" | "/settings/profile" | "/settings/account" | "/settings/security" | "/settings/billing" | "/settings/notifications" | "/settings/appearance";
+    page: "/" | "/auth/sign-in" | "/auth/sign-out" | "/api/health" | "/api/invitations" | "/api/notifications" | "/api/stripe" | "/api/favorites" | "/api/users" | "/api/subscription" | "/api/shares" | "/api/quota" | "/api/versions" | "/api/theme" | "/api/items/*" | "/api/workspaces/*" | "/api/members/*" | "/api/collections/*" | "/api/settings" | "/api/view" | "/api/search" | "/api/images" | "/api/auth/*" | "/api/s3/sts-token" | "/api/s3/presigned-url" | "/api/s3/upload" | "/dashboard" | "/dashboard/items/*" | "/dashboard/shared" | "/dashboard/recent" | "/dashboard/trash" | "/dashboard/collections" | "/dashboard/collections/:collectionId" | "/dashboard/search" | "/workspaces" | "/workspaces/create" | "/workspaces/:workspaceId" | "/workspaces/:workspaceId/settings" | "/workspaces/:workspaceId/members" | "/workspaces/:workspaceId/items/:itemId" | "/settings/profile" | "/settings/account" | "/settings/security" | "/settings/billing" | "/settings/notifications" | "/settings/appearance";
   };
   "routes/auth/layout.tsx": {
     id: "routes/auth/layout";
@@ -228,19 +237,19 @@ type RouteFiles = {
   };
   "routes/api/items.ts": {
     id: "api.items";
-    page: "/api/items";
+    page: "/api/items/*";
   };
   "routes/api/workspaces.ts": {
     id: "api.workspaces";
-    page: "/api/workspaces";
+    page: "/api/workspaces/*";
   };
   "routes/api/members.ts": {
     id: "api.members";
-    page: "/api/members";
+    page: "/api/members/*";
   };
   "routes/api/collections.ts": {
     id: "api.collections";
-    page: "/api/collections";
+    page: "/api/collections/*";
   };
   "routes/api/settings.ts": {
     id: "api.settings";
@@ -362,4 +371,56 @@ type RouteFiles = {
     id: "settings.appearance";
     page: "/settings/appearance";
   };
+};
+
+type RouteModules = {
+  "root": typeof import("./app/root.tsx");
+  "routes/auth/layout": typeof import("./app/routes/auth/layout.tsx");
+  "routes/auth/sign-in": typeof import("./app/routes/auth/sign-in.tsx");
+  "routes/auth/sign-out": typeof import("./app/routes/auth/sign-out.tsx");
+  "api.health": typeof import("./app/routes/api/health.ts");
+  "api.invitations": typeof import("./app/routes/api/invitations.ts");
+  "api.notifications": typeof import("./app/routes/api/notifications.ts");
+  "api.stripe": typeof import("./app/routes/api/stripe.ts");
+  "api.favorites": typeof import("./app/routes/api/favorites.ts");
+  "api.users": typeof import("./app/routes/api/users.ts");
+  "api.subscription": typeof import("./app/routes/api/subscription.ts");
+  "api.shares": typeof import("./app/routes/api/shares.ts");
+  "api.quota": typeof import("./app/routes/api/quota.ts");
+  "api.versions": typeof import("./app/routes/api/versions.ts");
+  "api.theme": typeof import("./app/routes/api/theme.ts");
+  "api.items": typeof import("./app/routes/api/items.ts");
+  "api.workspaces": typeof import("./app/routes/api/workspaces.ts");
+  "api.members": typeof import("./app/routes/api/members.ts");
+  "api.collections": typeof import("./app/routes/api/collections.ts");
+  "api.settings": typeof import("./app/routes/api/settings.ts");
+  "api.view": typeof import("./app/routes/api/view.ts");
+  "api.search": typeof import("./app/routes/api/search.ts");
+  "api.images": typeof import("./app/routes/api/images.ts");
+  "api.auth": typeof import("./app/routes/api/auth.ts");
+  "api.s3.sts-token": typeof import("./app/routes/api/s3/sts-token.ts");
+  "api.s3.presigned-url": typeof import("./app/routes/api/s3/presigned-url.ts");
+  "api.s3.upload": typeof import("./app/routes/api/upload.ts");
+  "layout": typeof import("./app/routes/layout.tsx");
+  "routes/index": typeof import("./app/routes/index.tsx");
+  "routes/dashboard/index": typeof import("./app/routes/dashboard/index.tsx");
+  "dashboard.items": typeof import("./app/routes/dashboard/item.tsx");
+  "dashboard.shared": typeof import("./app/routes/dashboard/shared.tsx");
+  "dashboard.recent": typeof import("./app/routes/dashboard/recent.tsx");
+  "dashboard.trash": typeof import("./app/routes/dashboard/trash.tsx");
+  "dashboard.collections": typeof import("./app/routes/dashboard/collections.tsx");
+  "dashboard.collection": typeof import("./app/routes/dashboard/collection.tsx");
+  "dashboard.search": typeof import("./app/routes/dashboard/search.tsx");
+  "routes/workspaces/index": typeof import("./app/routes/workspaces/index.tsx");
+  "workspaces.create": typeof import("./app/routes/workspaces/create.tsx");
+  "routes/workspaces/workspace": typeof import("./app/routes/workspaces/workspace.tsx");
+  "workspaces.settings": typeof import("./app/routes/workspaces/settings.tsx");
+  "workspaces.members": typeof import("./app/routes/workspaces/members.tsx");
+  "workspaces.item": typeof import("./app/routes/workspaces/item.tsx");
+  "settings.profile": typeof import("./app/routes/settings/profile.tsx");
+  "settings.account": typeof import("./app/routes/settings/account.tsx");
+  "settings.security": typeof import("./app/routes/settings/security.tsx");
+  "settings.billing": typeof import("./app/routes/settings/billing.tsx");
+  "settings.notifications": typeof import("./app/routes/settings/notifications.tsx");
+  "settings.appearance": typeof import("./app/routes/settings/appearance.tsx");
 };

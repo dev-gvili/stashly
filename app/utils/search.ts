@@ -102,7 +102,7 @@ type StreamSearchImplementationOptions<TParams, TOrderBy, TInclude> = {
 	orderBy?: TOrderBy
 } & TParams
 
-type SearchImplementationOptions<TParams, TOrderBy, TInclude> =
+export type SearchImplementationOptions<TParams, TOrderBy, TInclude> =
 	| OffsetSearchImplementationOptions<TParams, TOrderBy, TInclude>
 	| CursorSearchImplementationOptions<TParams, TOrderBy, TInclude>
 	| StreamSearchImplementationOptions<TParams, TOrderBy, TInclude>

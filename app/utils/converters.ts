@@ -368,7 +368,7 @@ export let toMediaFile = (file: File): MediaFile => {
  * audio = 'audio',
  * video = 'video',
  * }
- * const categorySchema = toZodArraySchema(z.nativeEnum(ItemCategory));
+ * const categorySchema = toZodArraySchema(z.enum(ItemCategory));
  * categorySchema.parse('audio,video'); // Returns ['audio', 'video']
  *
  * @example
@@ -391,9 +391,8 @@ export let toMediaFile = (file: File): MediaFile => {
  * const categorySchema = toZodArraySchema(z.nativeEnum(ItemCategory));
  * categorySchema.parse('audio,video,pdf'); // Throws ZodError: "Invalid enum value. Expected 'audio' | 'video', received 'pdf'"
  *
- * @returns {z.ZodEffects<z.ZodString, Array<z.infer<T>>, string>} A Zod schema that transforms a comma-separated string into an array of validated elements.
  */
-export const toZodArraySchema = <T extends z.ZodTypeAny>(elementSchema: T) => {
+export const toZodArraySchema = <T extends z.ZodType<any, string, any>>(elementSchema: T) => {
 	return z
 		.string()
 		.transform((str) => str.split(',').map((s) => s.trim()))
@@ -452,7 +451,7 @@ export const toZodOrderBySchema = <T extends object>() => {
  * 1.  **Custom Filters**: Fields defined in the provided `filterSchema`.
  * 2.  **Common Options**: `orderBy` and `include` fields.
  * 3.  **Pagination**: A discriminated union based on the `strategy` field:
- *     - `strategy: 'page'`: Requires `page` and `take`.
+ *     - `strategy: 'offset'`: Requires `page` and `take`.
  *     - `strategy: 'cursor'`: Requires `cursor` and `take`.
  *     - `strategy: 'stream'`: Requires `take`.
  *
@@ -464,9 +463,8 @@ export const toZodOrderBySchema = <T extends object>() => {
  * @param {TFilterSchema} filterSchema - The Zod schema for custom filter fields.
  * @returns A comprehensive Zod schema for search parameters.
  */
-export const toZodSearchSchema = <
-	TFilterSchema extends z.AnyZodObject,
-	TOrderBy extends object
+export const toSearchSchema = <
+	TFilterSchema extends z.ZodObject<any>,
 >(
 	filterSchema: TFilterSchema
 ) => {
@@ -481,18 +479,18 @@ export const toZodSearchSchema = <
 	const cursorPagination = z.object({
 		strategy: z.literal('cursor'),
 		cursor: z.string().optional(),
-		take: z.coerce.number(),
+		take: z.coerce.number().default(10),
 	})
 
 	const offsetPagination = z.object({
 		strategy: z.literal('offset'),
 		page: z.coerce.number(),
-		take: z.coerce.number(),
+		take: z.coerce.number().default(10),
 	})
 
 	const streamPagination = z.object({
 		strategy: z.literal('stream'),
-		take: z.coerce.number(),
+		take: z.coerce.number().default(10),
 	})
 
 	let paginateUnion = z

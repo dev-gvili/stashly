@@ -2,7 +2,7 @@ import { reactRouter } from '@react-router/dev/vite'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, loadEnv } from 'vite'
 import tsconfigPaths from 'vite-tsconfig-paths'
-
+const isStorybook = process.argv[1]?.includes('storybook');
 export default defineConfig(({ isSsrBuild, mode }) => ({
 	define: {
 		env: JSON.stringify(loadEnv(mode, process.cwd(), '')),
@@ -17,5 +17,5 @@ export default defineConfig(({ isSsrBuild, mode }) => ({
 			  }
 			: undefined,
 	},
-	plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+	plugins: [tailwindcss(), !isStorybook && reactRouter(), tsconfigPaths()],
 }))

@@ -11,6 +11,7 @@ import type {
 
 import { config } from '@dotenvx/dotenvx'
 import { buildItemAlgoliaFilters } from '../filters/item.algolia.filters'
+import { inspect } from 'node:util'
 
 config()
 
@@ -30,11 +31,10 @@ export async function searchItems<
 	TParams,
 	TMode extends SearchMode = 'postgres',
 	TInclude extends Prisma.ItemInclude | undefined = undefined
->(opts: SearchOptions<TParams, TMode> & { include?: TInclude }) {
-	const { take = 10, query, include, ...rest } = opts
+>(opts: SearchOptions<TParams, TInclude, TMode> & { include?: TInclude }) {
 
-	if (rest.mode === 'postgres') {
-		const { buildFilters, cursorId, orderBy } = rest
+	if (opts.mode === 'postgres') {
+		const { buildFilters, cursorId, orderBy, include, take = 10, ...rest} = opts
 		const where = buildFilters(rest as TParams)
 		const items = await prisma.item.findMany({
 			where,
@@ -60,9 +60,9 @@ export async function searchItems<
 		}
 	}
 
-	if (rest.mode === 'algolia') {
-		const { page, buildFilters } = rest
-		const filters = buildFilters(rest as TParams)
+	if (opts.mode === 'algolia') {
+		const { page, buildFilters, query, take = 10, ...rest} = opts
+		const filters = buildFilters(opts as TParams)
 
 		console.log('Filters:', filters)
 
@@ -79,8 +79,9 @@ export async function searchItems<
 			],
 		})
 
-		return results[0].hits as SearchReturn<TInclude, TMode>
+		console.log('Algolia Results:', inspect(results, { colors: true, depth: null }))
+		return results[0].hits 
 	}
 
-	throw new Error(`Unsupported search mode: ${opts.mode}`)
+	throw new Error(`Unsupported search mode`)
 }

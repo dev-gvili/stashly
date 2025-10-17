@@ -1,7 +1,7 @@
 import { prisma } from '@/services/db'
 import type { Prisma, WorkspaceMember } from '@/prisma/client'
 import type { WorkspaceMemberRole } from '@/prisma/enums'
-import { workspaceItemService } from '../services/WorkspaceItemService'
+import { workspaceItemService } from '../services/workspaceItem.service'
 import {
 	buildWorkspaceMemberFilters,
 	workspaceMemberFilterSchema,

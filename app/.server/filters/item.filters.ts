@@ -7,21 +7,21 @@ import { date } from './schema.zod'
 
 export const itemFilterSchema = z
 	.object({
-		category: toZodArraySchema(z.nativeEnum(ItemCategory)),
+		category: toZodArraySchema(z.enum(ItemCategory)),
 		collection: z.string().nonempty(),
 		date,
 		favorited: z.boolean(),
 		parent: z.string().nonempty(),
 		query: z.string().min(1),
-		status: z.nativeEnum(ItemStatus),
+		status: z.enum(ItemStatus),
 		tags: toZodArraySchema(z.string().trim().min(1)),
-		type: toZodArraySchema(z.nativeEnum(ItemType)),
+		type: toZodArraySchema(z.enum(ItemType)),
 		workspace: z.string().nonempty(),
 		locked: z.boolean(),
 		trashed: z.boolean(),
 		owner: z.string().nonempty(),
 		roles: toZodArraySchema(
-			z.nativeEnum(PermissionRole).or(z.nativeEnum(WorkspaceMemberRole))
+			z.enum(PermissionRole).or(z.enum(WorkspaceMemberRole))
 		),
 		id: z.string().nonempty(),
 		permission: toZodArraySchema(z.string().nonempty()),
@@ -80,7 +80,7 @@ export const itemFilters = {
 			createdAt: { lte: before, gte: after },
 		})
 	),
-	type: createItemFilter(z.array(z.nativeEnum(ItemType)), (types) => ({
+	type: createItemFilter(z.array(z.enum(ItemType)), (types) => ({
 		type: { in: types },
 	})),
 	extension: createItemFilter(z.array(z.string()), (extensions) => ({
@@ -90,12 +90,12 @@ export const itemFilters = {
 	})),
 
 	category: createItemFilter(
-		z.array(z.nativeEnum(ItemCategory)),
+		z.array(z.enum(ItemCategory)),
 		(categories) => ({
 			category: { in: categories },
 		})
 	),
-	status: createItemFilter(z.nativeEnum(ItemStatus), (status) => ({
+	status: createItemFilter(z.enum(ItemStatus), (status) => ({
 		status,
 	})),
 	parent: createItemFilter(z.string(), (parentId) => ({
@@ -167,8 +167,8 @@ export const itemFilters = {
 	 */
 	roles: createItemFilter(
 		z
-			.array(z.nativeEnum(PermissionRole))
-			.or(z.array(z.nativeEnum(WorkspaceMemberRole))),
+			.array(z.enum(PermissionRole))
+			.or(z.array(z.enum(WorkspaceMemberRole))),
 		(roles, params) => {
 			if (params.workspace) {
 				return {

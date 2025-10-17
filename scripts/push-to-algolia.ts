@@ -1,14 +1,14 @@
 // scripts/push-to-algolia.mjs
 import { config } from '@dotenvx/dotenvx'
+import { algoliasearch, type IndexSettings } from 'algoliasearch'
+import pLimit from 'p-limit'
 import {
-	PrismaClient,
-	type Item,
 	Prisma,
+	PrismaClient,
 	type Thumbnail,
 } from '../app/.server/prisma/client'
-import { algoliasearch } from 'algoliasearch'
-import pLimit from 'p-limit'
 import settings from './algolia-settings.json' assert { type: 'json' }
+import { inspect } from 'node:util'
 
 config() // Load .env file
 
@@ -176,7 +176,9 @@ function toAlgoliaObject(
 	 * This allows users to filter items by collection in Algolia.
 	 * @see {@link item.collections} for details.
 	 */
-	const collectionIds = (item.collectionItems || []).map((ci) => ci.collectionId)
+	const collectionIds = (item.collectionItems || []).map(
+		(ci) => ci.collectionId
+	)
 	/**
 	 * Boolean flags for media types: These help with filtering.
 	 * E.g., hasImage, hasVideo, hasAudio, hasFile, hasFolder, hasCollection.
@@ -291,12 +293,14 @@ async function pushBatch(records: any[]) {
 
 export async function run() {
 	console.log('Applying settings to Algolia index:', INDEX_NAME)
-	await client.setSettings({ indexName: INDEX_NAME, indexSettings: settings })
+	await client.setSettings({ indexName: INDEX_NAME, indexSettings: settings as IndexSettings })
 	console.log('Settings applied successfully.')
 
 	console.log('Starting push to Algolia index:', INDEX_NAME)
 	let cursor = null
 	let total = 0
+	let objectShape: ReturnType<typeof toAlgoliaObject> | null = null
+ 
 	while (true) {
 		const items = await fetchItems(cursor)
 		if (!items || items.length === 0) break
@@ -304,9 +308,16 @@ export async function run() {
 		await Promise.all([limit(() => pushBatch(objects))])
 		total += objects.length
 		cursor = items[items.length - 1].id
-		if (items.length < BATCH_SIZE) break
+		if (items.length < BATCH_SIZE) {
+			objectShape = objects[0] || null
+			break
+		}
 	}
 	console.log('Finished. Total objects pushed:', total)
+	
+	console.log(inspect(objectShape, { colors: true, depth: null }))
+	
+	console.log('Disconnecting from database.')
 	await prisma.$disconnect()
 }
 

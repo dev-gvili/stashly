@@ -1,42 +1,35 @@
 import { Prisma, type Subscription, type StoragePlan } from '@/prisma/client'
 import { prisma } from '@/services/db'
-import type { IRepository } from './IRepository'
 import { StoragePlanType, SubscriptionStatus } from '../prisma/enums'
 import { getPrefixForModel, toObjectId } from '../../utils/misc'
 import { stripe } from '../stripe'
 import type Stripe from 'stripe'
 
-class SubscriptionRepository implements IRepository<Subscription> {
+export const subscriptionRepository = {
 	// --- Standard CRUD Methods (kept for basic operations) ---
-	private db: typeof prisma
-
-	constructor(dbClient: typeof prisma) {
-		this.db = dbClient
-	}
-
-	name = 'Subscription' as const
+	db: prisma,
 
 	async findById(
 		args: Prisma.SubscriptionFindUniqueArgs
 	): Promise<Subscription | null> {
 		return this.db.subscription.findUnique(args)
-	}
+	},
 
 	async findAll(): Promise<Subscription[]> {
 		return this.db.subscription.findMany()
-	}
+	},
 
 	async create(data: Prisma.SubscriptionCreateInput): Promise<Subscription> {
 		return this.db.subscription.create({ data })
-	}
+	},
 
 	async update(args: Prisma.SubscriptionUpdateArgs): Promise<Subscription> {
 		return this.db.subscription.update(args)
-	}
+	},
 
 	async delete(id: string): Promise<Subscription> {
 		return prisma.subscription.delete({ where: { id } })
-	}
+	},
 
 	// --- Production-Ready Custom Methods ---
 
@@ -87,7 +80,8 @@ class SubscriptionRepository implements IRepository<Subscription> {
 
 		// Return ID: Finally, it returns the valid customer ID.
 		return customer.id
-	}
+	},
+	
 	async findActiveByOwnerId(ownerId: string): Promise<Subscription | null> {
 		return this.db.subscription.findFirst({
 			where: {
@@ -95,7 +89,7 @@ class SubscriptionRepository implements IRepository<Subscription> {
 				status: { in: [SubscriptionStatus.active] },
 			},
 		})
-	}
+	},
 
 	async findActiveByStripeCustomerId(
 		stripeCustomerId: string
@@ -108,7 +102,7 @@ class SubscriptionRepository implements IRepository<Subscription> {
 				status: { in: [SubscriptionStatus.active] },
 			},
 		})
-	}
+	},
 
 	async findActiveByStoragePlanType(
 		storagePlanType: StoragePlanType
@@ -121,7 +115,7 @@ class SubscriptionRepository implements IRepository<Subscription> {
 				status: { in: [SubscriptionStatus.active] },
 			},
 		})
-	}
+	},
 
 	async findActive({
 		ownerId,
@@ -144,7 +138,7 @@ class SubscriptionRepository implements IRepository<Subscription> {
 				status: { in: [SubscriptionStatus.active] },
 			},
 		})
-	}
+	},
 
 	async findByStripeSubscriptionId(
 		stripeSubscriptionId: string
@@ -152,7 +146,7 @@ class SubscriptionRepository implements IRepository<Subscription> {
 		return this.db.subscription.findUnique({
 			where: { stripeSubscriptionId },
 		})
-	}
+	},
 
 	async listPrices() {
 		const prices = await stripe.prices.list({
@@ -162,43 +156,43 @@ class SubscriptionRepository implements IRepository<Subscription> {
 			active: true,
 		})
 		return prices.data
-	}
+	},
 
 	async listProducts() {
 		return stripe.products.list()
-	}
+	},
 
 	async findPriceById(priceId: string) {
 		return stripe.prices.retrieve(priceId, { expand: ['product'] })
-	}
+	},
 
 	async findProductById(productId: string) {
 		return stripe.products.retrieve(productId)
-	}
+	},
 
 	async findProductByPriceId(priceId: string) {
 		return stripe.prices
 			.retrieve(priceId, { expand: ['product'] })
 			.then((price) => price.product)
-	}
+	},
 
 	async findSubscriptionByCustomerId(customerId: string) {
 		return stripe.subscriptions.list({ customer: customerId })
-	}
+	},
 
 	async findSubscriptionById(subscriptionId: string) {
 		return stripe.subscriptions.retrieve(subscriptionId)
-	}
+	},
 
 	async findCustomerById(customerId: string) {
 		return stripe.customers.retrieve(customerId)
-	}
+	},
 
 	async findCustomerByEmail(email: string) {
 		return stripe.customers
 			.list({ email, limit: 1 })
 			.then((customers) => customers.data[0])
-	}
+	},
 
 	async createCustomer(email: string, name?: string, userId?: string) {
 		return stripe.customers.create({
@@ -206,27 +200,27 @@ class SubscriptionRepository implements IRepository<Subscription> {
 			name,
 			metadata: userId ? { userId } : undefined,
 		})
-	}
+	},
 
 	async createSubscription(customerId: string, priceId: string) {
 		return stripe.subscriptions.create({
 			customer: customerId,
 			items: [{ price: priceId }],
 		})
-	}
+	},
 
 	async cancelSubscription(subscriptionId: string) {
 		return stripe.subscriptions.update(subscriptionId, {
 			cancel_at_period_end: true,
 		})
-	}
+	},
 
 	async updateSubscription(
 		subscriptionId: string,
 		data: Stripe.SubscriptionUpdateParams
 	) {
 		return stripe.subscriptions.update(subscriptionId, data)
-	}
+	},
 
 	async updateByStripeId(
 		stripeSubscriptionId: string,
@@ -236,7 +230,7 @@ class SubscriptionRepository implements IRepository<Subscription> {
 			where: { stripeSubscriptionId },
 			data,
 		})
-	}
+	},
 
 	// --- New Transactional, Multi-Model Methods ---
 
@@ -280,7 +274,7 @@ class SubscriptionRepository implements IRepository<Subscription> {
 
 			return newSubscription
 		})
-	}
+	},
 
 	/**
 	 * Changes a subscription's plan, updates the quota, and logs the event.
@@ -319,7 +313,7 @@ class SubscriptionRepository implements IRepository<Subscription> {
 
 			return updatedSubscription
 		})
-	}
+	},
 
 	/**
 	 * Sets a subscription to be canceled and logs the event in the history.
@@ -341,8 +335,5 @@ class SubscriptionRepository implements IRepository<Subscription> {
 
 			return canceledSubscription
 		})
-	}
+	},
 }
-
-// Export a singleton instance for use throughout your application
-export const subscriptionRepository = new SubscriptionRepository(prisma)

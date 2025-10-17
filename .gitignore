@@ -38,11 +38,20 @@ prisma/.env
 
 .vscode/settings.json
 .react-router
-.github
+# .github
 app/utils/aimodel.test.ts
 # app/utils/test.ts
 # app/utils/dev.ts
-# app/utils/dev.ts
-app/utils/Perfect, אלון — let’s refactor both your.md
 app/utils/test.ts
 stashly.code-workspace
+
+*storybook.log
+storybook-static
+app/utils/Perfect, אלון — let’s refactor both your.md
+copilot_exports/copilot_export_2025-10-13T01-31-12-977Z.json
+copilot_exports/copilot_export_2025-10-13T01-51-49-942Z.json
+copilot_exports/copilot_export_2025-10-14T19-52-12-086Z.json
+copilot_exports/copilot_export_2025-10-15T01-34-47-017Z.json
+copilot_exports/copilot_export_2025-10-16T11-05-17-412Z.json
+copilot_exports/copilot_export_2025-10-16T11-05-28-552Z.json
+copilot_exports/copilot_export_2025-10-17T15-26-07-163Z.json

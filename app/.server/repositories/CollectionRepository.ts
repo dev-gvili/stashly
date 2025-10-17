@@ -1,11 +1,11 @@
 import { Prisma } from '@/prisma/client'
 import { prisma } from '@/services/db'
-import type { IRepository } from '@/services/repositories/IRepository'
 import {
 	buildCollectionFilters,
 	collectionFilterSchema,
 } from '@/services/filters/collection.filters'
 import { searchFactory } from '@/utils/search'
+import { getPrefixForModel, toObjectId } from '@/utils/misc'
 import { z } from 'zod'
 
 const defaultInclude = {
@@ -17,65 +17,72 @@ type CollectionWithRelations = Prisma.CollectionGetPayload<{
 	include: typeof defaultInclude
 }>
 
-const defaultOrderBy = (
+const defaultOrderBy: (
 	params: z.infer<typeof collectionFilterSchema>
-): Prisma.CollectionOrderByWithRelationInput => ({
-	// updatedAt: 'desc',
-})
+) => Prisma.CollectionOrderByWithRelationInput = (params) => ({})
 
-export class CollectionRepository
-	implements IRepository<CollectionWithRelations, 'Collection'>
-{
-	name = 'Collection' as const
-
-	private db: typeof prisma
-
-	private search
-
-	constructor(dbClient: typeof prisma) {
-		this.db = dbClient
-		this.search = searchFactory({
-			dbDelegate: this.db.collection,
-			buildFilters: buildCollectionFilters,
-			defaultOrderBy,
-		})
-	}
+export const collectionRepository = {
+	db: prisma,
+	search: searchFactory({
+		dbDelegate: prisma.collection,
+		buildFilters: buildCollectionFilters,
+		defaultOrderBy,
+	}),
 
 	// ------------------------------------------------------------------
 	// Basic CRUD
 	// ------------------------------------------------------------------
 
 	async findById(id: string): Promise<CollectionWithRelations | null> {
-		return this.db.collection.findUnique({
+		return prisma.collection.findUnique({
 			where: { id },
 			include: defaultInclude,
 		})
-	}
+	},
 
 	async findAll(
 		args: Prisma.CollectionFindManyArgs
 	): Promise<CollectionWithRelations[]> {
-		return this.db.collection.findMany({ ...args, include: defaultInclude })
-	}
+		return prisma.collection.findMany({ ...args, include: defaultInclude })
+	},
 
 	async create(
-		args: Prisma.CollectionCreateInput
+		data: Prisma.CollectionUncheckedCreateInput
 	): Promise<CollectionWithRelations> {
-		return this.db.collection.create({
-			data: args,
+		return await this.db.collection.create({
+			data: {
+				...data,
+				id: toObjectId(getPrefixForModel('Collection')),
+			},
 			include: defaultInclude,
 		})
-	}
+	},
 
 	async update(
 		args: Prisma.CollectionUpdateArgs
 	): Promise<CollectionWithRelations> {
-		return this.db.collection.update({ ...args, include: defaultInclude })
-	}
+		return prisma.collection.update({ ...args, include: defaultInclude })
+	},
 
 	async delete(
 		args: Prisma.CollectionDeleteArgs
 	): Promise<CollectionWithRelations> {
-		return this.db.collection.delete({ ...args, include: defaultInclude })
-	}
+		return prisma.collection.delete({ ...args, include: defaultInclude })
+	},
+
+	async findMany(
+		args: Prisma.CollectionFindManyArgs
+	): Promise<CollectionWithRelations[]> {
+		return prisma.collection.findMany({ ...args, include: defaultInclude })
+	},
+
+	async findFirst(
+		args: Prisma.CollectionFindFirstArgs
+	): Promise<CollectionWithRelations | null> {
+		return prisma.collection.findFirst({ ...args, include: defaultInclude })
+	},
+
+	async count(args: Prisma.CollectionCountArgs): Promise<number> {
+		return prisma.collection.count(args)
+	},
 }

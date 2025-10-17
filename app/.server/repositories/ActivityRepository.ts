@@ -5,7 +5,6 @@ import {
 	activityFilterSchema,
 } from '@/services/filters/activity.filters'
 import { searchFactory } from '@/utils/search'
-import type { IRepository } from './IRepository'
 import { getPrefixForModel, toObjectId } from '@/utils/misc'
 import type { z } from 'zod'
 
@@ -25,66 +24,74 @@ type ModelWithRelations = Prisma.ActivityGetPayload<{
 	include: typeof defaultInclude
 }>
 
-export class ActivityRepository
-	implements IRepository<ModelWithRelations, 'Activity'>
-{
-	name = 'Activity' as const
-	private db: typeof prisma
-	private search
-
-	constructor(dbClient: typeof prisma) {
-		this.db = dbClient
-		this.search = searchFactory({
-			dbDelegate: this.db.activity,
-			buildFilters: buildActivityFilters,
-			defaultInclude,
-			defaultOrderBy,
-		})
-	}
+export const activityRepository = {
+	name: 'Activity' as const,
+	db: prisma,
+	search: searchFactory({
+		dbDelegate: prisma.activity,
+		buildFilters: buildActivityFilters,
+		defaultOrderBy,
+	}),
 
 	// --- Basic CRUD ---
 
 	async findById(id: string): Promise<ModelWithRelations | null> {
-		return this.db.activity.findUnique({
+		return prisma.activity.findUnique({
 			where: { id },
 			include: defaultInclude,
 		})
-	}
+	},
 
 	async findAll(
 		args?: Prisma.ActivityFindManyArgs
 	): Promise<ModelWithRelations[]> {
-		return this.db.activity.findMany({
+		return prisma.activity.findMany({
 			...args,
 			include: defaultInclude,
 		})
-	}
+	},
 
 	async create(
 		data: Prisma.ActivityCreateInput
 	): Promise<ModelWithRelations> {
-		return this.db.activity.create({
+		return prisma.activity.create({
 			data: {
 				...data,
 				id: toObjectId(getPrefixForModel('Activity')),
 			},
 			include: defaultInclude,
 		})
-	}
+	},
 
 	async update(args: Prisma.ActivityUpdateArgs): Promise<ModelWithRelations> {
-		return this.db.activity.update({
+		return prisma.activity.update({
 			...args,
 			include: defaultInclude,
 		})
-	}
+	},
 
 	async delete(id: string): Promise<ModelWithRelations> {
-		return this.db.activity.delete({
+		return prisma.activity.delete({
 			where: { id },
 			include: defaultInclude,
 		})
-	}
+	},
+
+	async findMany(
+		args: Prisma.ActivityFindManyArgs
+	): Promise<ModelWithRelations[]> {
+		return prisma.activity.findMany({ ...args, include: defaultInclude })
+	},
+
+	async findFirst(
+		args: Prisma.ActivityFindFirstArgs
+	): Promise<ModelWithRelations | null> {
+		return prisma.activity.findFirst({ ...args, include: defaultInclude })
+	},
+
+	async count(args: Prisma.ActivityCountArgs): Promise<number> {
+		return prisma.activity.count(args)
+	},
 
 	// --- Custom Methods ---
 
@@ -93,6 +100,3 @@ export class ActivityRepository
 	//   return this.db.activity.findUnique({ where: { email }, include: defaultInclude });
 	// }
 }
-
-// Export a singleton instance
-export const activityRepository = new ActivityRepository(prisma)

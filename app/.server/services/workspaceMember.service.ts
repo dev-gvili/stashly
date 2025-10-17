@@ -1,6 +1,6 @@
 import { prisma } from '@/services/db'
 import { workspaceMemberRepository } from '../repositories/workspaceMember.repository'
-import { workspaceItemService } from './WorkspaceItemService'
+import { workspaceItemService } from './workspaceItem.service'
 import type { WorkspaceMember, WorkspaceMemberRole } from '@/prisma/client'
 
 export const workspaceMemberService = {
