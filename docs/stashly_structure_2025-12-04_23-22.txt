@@ -1,0 +1,770 @@
+Folder map of p:\Projects\stashly
+==================================================
+
+├── .git/
+├── .github/
+│   ├── instructions/
+│   │   └── copilot-instructions.md
+│   ├── prompts/
+│   │   ├── new.prompt.prompt.md
+│   │   └── rules.prompt.md
+│   ├── # Copilot Instructions for Stashly.md
+│   ├── architect.chatmode.md
+│   ├── ask.chatmode.md
+│   ├── code.chatmode.md
+│   ├── copilot-instructions.md
+│   └── debug.chatmode.md
+├── .react-router/
+│   └── types/
+│       ├── app/
+│       │   ├── +types/
+│       │   │   └── root.ts
+│       │   └── routes/
+│       │       ├── +types/
+│       │       │   ├── index.ts
+│       │       │   ├── layout.ts
+│       │       │   └── not-found.ts
+│       │       ├── api/
+│       │       │   ├── +types/
+│       │       │   │   ├── auth.ts
+│       │       │   │   ├── collections.ts
+│       │       │   │   ├── comments.ts
+│       │       │   │   ├── favorites.ts
+│       │       │   │   ├── health.ts
+│       │       │   │   ├── images.ts
+│       │       │   │   ├── invitations.ts
+│       │       │   │   ├── items.ts
+│       │       │   │   ├── members.ts
+│       │       │   │   ├── notifications.ts
+│       │       │   │   ├── permissions.ts
+│       │       │   │   ├── quota.ts
+│       │       │   │   ├── search.ts
+│       │       │   │   ├── settings.ts
+│       │       │   │   ├── shares.ts
+│       │       │   │   ├── stripe.ts
+│       │       │   │   ├── subscription.ts
+│       │       │   │   ├── theme.ts
+│       │       │   │   ├── upload.ts
+│       │       │   │   ├── users.ts
+│       │       │   │   ├── versions.ts
+│       │       │   │   ├── view.ts
+│       │       │   │   └── workspaces.ts
+│       │       │   └── s3/
+│       │       │       └── +types/
+│       │       ├── auth/
+│       │       │   └── +types/
+│       │       │       ├── layout.ts
+│       │       │       ├── sign-in.ts
+│       │       │       └── sign-out.ts
+│       │       ├── settings/
+│       │       │   └── +types/
+│       │       │       ├── account.ts
+│       │       │       ├── appearance.ts
+│       │       │       ├── billing.ts
+│       │       │       ├── notifications.ts
+│       │       │       ├── profile.ts
+│       │       │       └── security.ts
+│       │       ├── stash/
+│       │       │   └── +types/
+│       │       │       ├── collection.ts
+│       │       │       ├── collections.ts
+│       │       │       ├── favorites.ts
+│       │       │       ├── file.ts
+│       │       │       ├── folder.ts
+│       │       │       ├── gallery.ts
+│       │       │       ├── index.ts
+│       │       │       ├── recent.ts
+│       │       │       ├── search.ts
+│       │       │       ├── shares.ts
+│       │       │       └── trash.ts
+│       │       └── workspaces/
+│       │           └── +types/
+│       │               ├── collection.ts
+│       │               ├── collections.ts
+│       │               ├── create.ts
+│       │               ├── favorites.ts
+│       │               ├── file.ts
+│       │               ├── folder.ts
+│       │               ├── index.ts
+│       │               ├── members.ts
+│       │               ├── recent.ts
+│       │               ├── settings.ts
+│       │               ├── shares.ts
+│       │               ├── trash.ts
+│       │               └── workspace.ts
+│       ├── +future.ts
+│       ├── +routes.ts
+│       └── +server-build.d.ts
+├── .vscode/
+├── app/
+│   ├── .client/
+│   │   └── auth.ts
+│   ├── .server/
+│   │   ├── repositories/
+│   │   │   ├── ActivityRepository.ts
+│   │   │   ├── CollectionRepository.ts
+│   │   │   ├── ItemRepository.ts
+│   │   │   ├── NotificationRepository.ts
+│   │   │   ├── PermissionRepository.ts
+│   │   │   ├── QuotaRepository.ts
+│   │   │   ├── shareLink.repository.ts
+│   │   │   ├── StoragePlanRepository.ts
+│   │   │   ├── SubscriptionRepository.ts
+│   │   │   ├── userRepository.ts
+│   │   │   ├── workspaceMember.repository.ts
+│   │   │   └── WorkspaceRepository.ts
+│   │   ├── search/
+│   │   │   ├── .gitkeep
+│   │   │   ├── embeddings.ts
+│   │   │   ├── filters.ts
+│   │   │   ├── item.filters.ts
+│   │   │   ├── METHODS.md
+│   │   │   ├── schema.zod.ts
+│   │   │   ├── search.repository.ts
+│   │   │   ├── search.service.ts
+│   │   │   └── search.ts
+│   │   ├── services/
+│   │   │   ├── ItemService.ts
+│   │   │   ├── README.md
+│   │   │   ├── search.service.ts
+│   │   │   ├── search.types.ts
+│   │   │   ├── shareLink.service.ts
+│   │   │   ├── workspaceItem.service.ts
+│   │   │   ├── WorkspaceItemService.ts
+│   │   │   └── workspaceMember.service.ts
+│   │   ├── algolia.ts
+│   │   ├── api.errors.ts
+│   │   ├── api.utils.ts
+│   │   ├── auth.ts
+│   │   ├── auth.types.ts
+│   │   ├── db.ts
+│   │   ├── email.ts
+│   │   ├── env.ts
+│   │   ├── onboard.ts
+│   │   ├── quota.ts
+│   │   ├── quota.utils.ts
+│   │   ├── s3.ts
+│   │   ├── stripe.ts
+│   │   ├── theme.ts
+│   │   ├── upload.ts
+│   │   └── workspace.ts
+│   ├── assets/
+│   │   ├── add-square-svgrepo-com.svg
+│   │   ├── adobe-acrobat-reader-svgrepo-com.svg
+│   │   ├── album-svgrepo-com.svg
+│   │   ├── archive-svgrepo-com.svg
+│   │   ├── backup-cloud-document-svgrepo-com.svg
+│   │   ├── benzene-ring-svgrepo-com.svg
+│   │   ├── camera-square-svgrepo-com.svg
+│   │   ├── chat-square-arrow-svgrepo-com.svg
+│   │   ├── chat-square-call-svgrepo-com.svg
+│   │   ├── clapperboard-play-svgrepo-com.svg
+│   │   ├── clock-square-svgrepo-com.svg
+│   │   ├── close-circle-svgrepo-com.svg
+│   │   ├── close-square-svgrepo-com.svg
+│   │   ├── cloud-file-svgrepo-com.svg
+│   │   ├── cloud-storage-svgrepo-com.svg
+│   │   ├── code-file-svgrepo-com.svg
+│   │   ├── code-square-svgrepo-com (1).svg
+│   │   ├── code-square-svgrepo-com.svg
+│   │   ├── confounded-square-svgrepo-com.svg
+│   │   ├── copy-svgrepo-com.svg
+│   │   ├── danger-square-svgrepo-com.svg
+│   │   ├── dialog-2-svgrepo-com.svg
+│   │   ├── document-add-svgrepo-com.svg
+│   │   ├── document-text-svgrepo-com.svg
+│   │   ├── documents-svgrepo-com.svg
+│   │   ├── download-minimalistic-svgrepo-com.svg
+│   │   ├── download-svgrepo-com.svg
+│   │   ├── exit-svgrepo-com.svg
+│   │   ├── expressionless-square-svgrepo-com.svg
+│   │   ├── file-download-svgrepo-com.svg
+│   │   ├── file-svgrepo-com.svg
+│   │   ├── filter-svgrepo-com.svg
+│   │   ├── folder-2-svgrepo-com.svg
+│   │   ├── folder-with-files-svgrepo-com.svg
+│   │   ├── gallery-minimalistic-svgrepo-com.svg
+│   │   ├── gallery-wide-svgrepo-com.svg
+│   │   ├── hashtag-square-svgrepo-com.svg
+│   │   ├── headphones-square-sound-svgrepo-com.svg
+│   │   ├── heart-angle-svgrepo-com.svg
+│   │   ├── hearts-svgrepo-com.svg
+│   │   ├── history-svgrepo-com.svg
+│   │   ├── key-square-2-svgrepo-com.svg
+│   │   ├── layers-minimalistic-svgrepo-com.svg
+│   │   ├── library-svgrepo-com.svg
+│   │   ├── lock-svgrepo-com.svg
+│   │   ├── login-2-svgrepo-com.svg
+│   │   ├── logout-3-svgrepo-com.svg
+│   │   ├── magnifer-svgrepo-com.svg
+│   │   ├── menu-dots-square-svgrepo-com.svg
+│   │   ├── menu-dots-svgrepo-com (1).svg
+│   │   ├── menu-dots-svgrepo-com.svg
+│   │   ├── moon-fog-svgrepo-com.svg
+│   │   ├── moon-svgrepo-com.svg
+│   │   ├── move-to-folder-svgrepo-com.svg
+│   │   ├── music-note-slider-2-svgrepo-com.svg
+│   │   ├── notes-minimalistic-svgrepo-com.svg
+│   │   ├── notes-svgrepo-com.svg
+│   │   ├── paper-bin-svgrepo-com.svg
+│   │   ├── pause-svgrepo-com.svg
+│   │   ├── pdf-icon.svg
+│   │   ├── posts-carousel-horizontal-svgrepo-com (1).svg
+│   │   ├── posts-carousel-horizontal-svgrepo-com (2).svg
+│   │   ├── posts-carousel-horizontal-svgrepo-com.svg
+│   │   ├── posts-carousel-vertical-svgrepo-com (2).svg
+│   │   ├── posts-carousel-vertical-svgrepo-com.svg
+│   │   ├── printer-minimalistic-svgrepo-com.svg
+│   │   ├── programming-svgrepo-com.svg
+│   │   ├── pulse-svgrepo-com.svg
+│   │   ├── refresh-square-svgrepo-com.svg
+│   │   ├── reply-svgrepo-com (1).svg
+│   │   ├── reply-svgrepo-com.svg
+│   │   ├── server-square-cloud-svgrepo-com.svg
+│   │   ├── server-svgrepo-com.svg
+│   │   ├── settings-minimalistic-svgrepo-com.svg
+│   │   ├── settings-svgrepo-com.svg
+│   │   ├── share-circle-svgrepo-com.svg
+│   │   ├── share-svgrepo-com.svg
+│   │   ├── sidebar-minimalistic-svgrepo-com.svg
+│   │   ├── slider-horizontal-svgrepo-com (1).svg
+│   │   ├── slider-horizontal-svgrepo-com.svg
+│   │   ├── slider-minimalistic-horizontal-svgrepo-com (1).svg
+│   │   ├── slider-minimalistic-horizontal-svgrepo-com.svg
+│   │   ├── slider-vertical-minimalistic-svgrepo-com.svg
+│   │   ├── slider-vertical-svgrepo-com.svg
+│   │   ├── smile-square-svgrepo-com.svg
+│   │   ├── sort-from-bottom-to-top-svgrepo-com.svg
+│   │   ├── sort-from-top-to-bottom-svgrepo-com.svg
+│   │   ├── soundwave-square-svgrepo-com (1).svg
+│   │   ├── soundwave-square-svgrepo-com.svg
+│   │   ├── soundwave-svgrepo-com.svg
+│   │   ├── square-alt-arrow-left-svgrepo-com (1).svg
+│   │   ├── square-alt-arrow-left-svgrepo-com.svg
+│   │   ├── square-alt-arrow-right-svgrepo-com (1).svg
+│   │   ├── square-alt-arrow-right-svgrepo-com.svg
+│   │   ├── square-arrow-left-svgrepo-com.svg
+│   │   ├── square-share-line-svgrepo-com.svg
+│   │   ├── ssd-square-svgrepo-com.svg
+│   │   ├── sticker-smile-square-svgrepo-com.svg
+│   │   ├── sticker-square-svgrepo-com.svg
+│   │   ├── sun-2-svgrepo-com.svg
+│   │   ├── sun-fog-svgrepo-com.svg
+│   │   ├── three-squares-svgrepo-com.svg
+│   │   ├── trace.svg
+│   │   ├── user-circle-svgrepo-com.svg
+│   │   ├── user-svgrepo-com.svg
+│   │   └── users-group-rounded-svgrepo-com.svg
+│   ├── auth/
+│   │   ├── middleware/
+│   │   ├── plugins/
+│   │   └── permissions.ts
+│   ├── components/
+│   │   ├── auth/
+│   │   │   └── button.tsx
+│   │   ├── circle-progress-bar/
+│   │   │   └── index.tsx
+│   │   ├── dropbox ui/
+│   │   │   ├── comments-panel.1.tsx
+│   │   │   ├── comments-panel.tsx
+│   │   │   ├── file-card.1.tsx
+│   │   │   ├── file-card.tsx
+│   │   │   ├── file-grid.1.tsx
+│   │   │   ├── file-grid.tsx
+│   │   │   ├── file-list-item.1.tsx
+│   │   │   ├── file-list-item.tsx
+│   │   │   ├── file-manager.1.tsx
+│   │   │   ├── file-manager.tsx
+│   │   │   ├── file-preview.1.tsx
+│   │   │   ├── file-preview.tsx
+│   │   │   ├── folder-card.1.tsx
+│   │   │   ├── folder-card.tsx
+│   │   │   ├── globals.css
+│   │   │   ├── page.tsx
+│   │   │   ├── settings-page.1.tsx
+│   │   │   ├── settings-page.tsx
+│   │   │   ├── share-folder-modal.1.tsx
+│   │   │   ├── share-folder-modal.tsx
+│   │   │   ├── sidebar.tsx
+│   │   │   ├── storage-panel.1.tsx
+│   │   │   └── storage-panel.tsx
+│   │   ├── filters/
+│   │   │   ├── Filter.tsx
+│   │   │   ├── FilterList.tsx
+│   │   │   └── FilterListItem.tsx
+│   │   ├── layouts/
+│   │   │   ├── buildRows.ts
+│   │   │   ├── grid.tsx
+│   │   │   ├── list-item.tsx
+│   │   │   ├── list.tsx
+│   │   │   ├── mockData.ts
+│   │   │   ├── river.tsx
+│   │   │   ├── types.ts
+│   │   │   ├── variants.ts
+│   │   │   └── waterfall.tsx
+│   │   ├── navigation/
+│   │   │   ├── nav-media.tsx
+│   │   │   └── nav-workspaces.tsx
+│   │   ├── pages/
+│   │   │   └── 404.tsx
+│   │   ├── stash/
+│   │   │   ├── item-card.tsx
+│   │   │   └── ItemCard.tsx
+│   │   ├── ui/
+│   │   │   ├── accordion.tsx
+│   │   │   ├── alert-dialog.tsx
+│   │   │   ├── alert.tsx
+│   │   │   ├── aspect-ratio.tsx
+│   │   │   ├── avatar.tsx
+│   │   │   ├── badge.tsx
+│   │   │   ├── breadcrumb.tsx
+│   │   │   ├── button-group.tsx
+│   │   │   ├── button.tsx
+│   │   │   ├── calendar.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── carousel.tsx
+│   │   │   ├── chart.tsx
+│   │   │   ├── checkbox.tsx
+│   │   │   ├── collapsible.tsx
+│   │   │   ├── command.tsx
+│   │   │   ├── context-menu.tsx
+│   │   │   ├── dialog.tsx
+│   │   │   ├── drawer.tsx
+│   │   │   ├── dropdown-menu.tsx
+│   │   │   ├── empty.tsx
+│   │   │   ├── field.tsx
+│   │   │   ├── form.tsx
+│   │   │   ├── hover-card.tsx
+│   │   │   ├── image.tsx
+│   │   │   ├── input-group.tsx
+│   │   │   ├── input-otp.tsx
+│   │   │   ├── input.tsx
+│   │   │   ├── item.tsx
+│   │   │   ├── kbd.tsx
+│   │   │   ├── label.tsx
+│   │   │   ├── layout-menu.tsx
+│   │   │   ├── menubar.tsx
+│   │   │   ├── navigation-menu.tsx
+│   │   │   ├── pagination.tsx
+│   │   │   ├── popover.tsx
+│   │   │   ├── progress.tsx
+│   │   │   ├── radio-group.tsx
+│   │   │   ├── resizable.tsx
+│   │   │   ├── scroll-area.tsx
+│   │   │   ├── select.tsx
+│   │   │   ├── separator.tsx
+│   │   │   ├── sheet.tsx
+│   │   │   ├── sidebar.tsx
+│   │   │   ├── skeleton.tsx
+│   │   │   ├── slider.tsx
+│   │   │   ├── sonner.tsx
+│   │   │   ├── switch.tsx
+│   │   │   ├── table.tsx
+│   │   │   ├── tabs.tsx
+│   │   │   ├── textarea.tsx
+│   │   │   ├── toggle-group.tsx
+│   │   │   ├── toggle.tsx
+│   │   │   └── tooltip.tsx
+│   │   ├── upload/
+│   │   │   ├── index.tsx
+│   │   │   └── README.md
+│   │   ├── workspace/
+│   │   ├── app-content.tsx
+│   │   ├── app-header.tsx
+│   │   ├── app-sidebar.tsx
+│   │   ├── AppContentSection.tsx
+│   │   ├── Breadcrumbs.tsx
+│   │   ├── CollectionComponents.tsx
+│   │   ├── color-mode.tsx
+│   │   ├── CommentsThreadPanel.tsx
+│   │   ├── DocumentViewer.tsx
+│   │   ├── file-preview.tsx
+│   │   ├── file-uploader.tsx
+│   │   ├── FileIcon.tsx
+│   │   ├── FileManagementDashboard.tsx
+│   │   ├── Gallery.tsx
+│   │   ├── Gemini3Dashboard.tsx
+│   │   ├── Gemini3DashboardFiles.tsx
+│   │   ├── Grid.tsx
+│   │   ├── icons.tsx
+│   │   ├── item-card-actions.tsx
+│   │   ├── layout-toggle.tsx
+│   │   ├── logo.tsx
+│   │   ├── SharedUtils.tsx
+│   │   ├── SubscriptionButton.tsx
+│   │   └── user-menu.tsx
+│   ├── hooks/
+│   │   ├── use-mobile.ts
+│   │   ├── use-slots.ts
+│   │   ├── useInfiniteScroll.ts
+│   │   ├── usePagination.tsx
+│   │   └── usePagination.ts
+│   ├── machines/
+│   │   ├── actors/
+│   │   │   ├── multipart.machine.ts
+│   │   │   ├── queue.machine.ts
+│   │   │   ├── quota.machine.ts
+│   │   │   ├── system.machine.1.ts
+│   │   │   ├── types.ts
+│   │   │   └── Uploader.tsx
+│   │   ├── multipart/
+│   │   │   ├── s3.mulipart.utils.ts
+│   │   │   ├── s3.multipart.stream.ts
+│   │   │   └── s3.multipart.ts
+│   │   ├── onboard/
+│   │   │   └── onboard.machine.ts
+│   │   ├── pagination/
+│   │   │   └── infinite-scroll.machine.ts
+│   │   ├── queue/
+│   │   │   └── queue.machine.1.ts
+│   │   ├── quota/
+│   │   │   ├── quota_machine.png
+│   │   │   ├── quota.actors.ts
+│   │   │   ├── quota.machine.ts
+│   │   │   └── quota.utils.ts
+│   │   ├── reviset/
+│   │   │   ├── file.machine.ts
+│   │   │   ├── queue.machine.1.ts
+│   │   │   ├── queue.machine.ts
+│   │   │   └── upload.machine.v2.ts
+│   │   ├── sidebar/
+│   │   │   └── sidebar.machine.ts
+│   │   ├── subscription/
+│   │   │   ├── subscription.actors.ts
+│   │   │   └── subscription.machine.ts
+│   │   ├── upload/
+│   │   │   ├── file.machine.ts
+│   │   │   └── upload.machine.ts
+│   │   ├── infiniteScroll.machine.ts
+│   │   ├── machine.types.ts
+│   │   ├── README.md
+│   │   ├── schema.zod.ts
+│   │   └── sessionStorage.machine.ts
+│   ├── prisma/
+│   │   ├── internal/
+│   │   │   ├── class.ts
+│   │   │   ├── prismaNamespace.ts
+│   │   │   └── prismaNamespaceBrowser.ts
+│   │   ├── models/
+│   │   │   ├── AccessAction.ts
+│   │   │   ├── Account.ts
+│   │   │   ├── Activity.ts
+│   │   │   ├── ActivityTime.ts
+│   │   │   ├── Audio.ts
+│   │   │   ├── AuditLog.ts
+│   │   │   ├── Collection.ts
+│   │   │   ├── CollectionItem.ts
+│   │   │   ├── Comment.ts
+│   │   │   ├── CommentAction.ts
+│   │   │   ├── CopyAction.ts
+│   │   │   ├── CreateAction.ts
+│   │   │   ├── DeleteAction.ts
+│   │   │   ├── Drive.ts
+│   │   │   ├── EditAction.ts
+│   │   │   ├── Favorite.ts
+│   │   │   ├── File.ts
+│   │   │   ├── Folder.ts
+│   │   │   ├── Image.ts
+│   │   │   ├── Invitation.ts
+│   │   │   ├── Item.ts
+│   │   │   ├── ItemAction.ts
+│   │   │   ├── ItemVersion.ts
+│   │   │   ├── LockedItem.ts
+│   │   │   ├── Metadata.ts
+│   │   │   ├── MoveAction.ts
+│   │   │   ├── Notification.ts
+│   │   │   ├── Permission.ts
+│   │   │   ├── Quota.ts
+│   │   │   ├── RenameAction.ts
+│   │   │   ├── RestoreAction.ts
+│   │   │   ├── Search.ts
+│   │   │   ├── Session.ts
+│   │   │   ├── ShareAction.ts
+│   │   │   ├── ShareLink.ts
+│   │   │   ├── StoragePlan.ts
+│   │   │   ├── Subscription.ts
+│   │   │   ├── Tag.ts
+│   │   │   ├── Thumbnail.ts
+│   │   │   ├── Trash.ts
+│   │   │   ├── TrashItem.ts
+│   │   │   ├── User.ts
+│   │   │   ├── Verification.ts
+│   │   │   ├── VersionAction.ts
+│   │   │   ├── Video.ts
+│   │   │   ├── View.ts
+│   │   │   ├── Workspace.ts
+│   │   │   └── WorkspaceMember.ts
+│   │   ├── browser.ts
+│   │   ├── client.ts
+│   │   ├── commonInputTypes.ts
+│   │   ├── enums.ts
+│   │   └── models.ts
+│   ├── routes/
+│   │   ├── admin/
+│   │   ├── api/
+│   │   │   ├── s3/
+│   │   │   │   ├── multipart/
+│   │   │   │   ├── presigned.ts
+│   │   │   │   └── sts-token.ts
+│   │   │   ├── api.types.ts
+│   │   │   ├── auth.ts
+│   │   │   ├── collections.ts
+│   │   │   ├── comments.ts
+│   │   │   ├── favorites.ts
+│   │   │   ├── health.ts
+│   │   │   ├── images.ts
+│   │   │   ├── invitations.ts
+│   │   │   ├── items.ts
+│   │   │   ├── members.ts
+│   │   │   ├── notifications.ts
+│   │   │   ├── permissions.ts
+│   │   │   ├── quota.ts
+│   │   │   ├── s3.ts
+│   │   │   ├── schema.zod.ts
+│   │   │   ├── search.ts
+│   │   │   ├── settings.ts
+│   │   │   ├── shares.ts
+│   │   │   ├── stripe.ts
+│   │   │   ├── subscription.ts
+│   │   │   ├── theme.ts
+│   │   │   ├── upload.ts
+│   │   │   ├── users.ts
+│   │   │   ├── versions.ts
+│   │   │   ├── view.ts
+│   │   │   └── workspaces.ts
+│   │   ├── auth/
+│   │   │   ├── layout.tsx
+│   │   │   ├── sign-in.tsx
+│   │   │   └── sign-out.tsx
+│   │   ├── settings/
+│   │   │   ├── account.tsx
+│   │   │   ├── appearance.tsx
+│   │   │   ├── billing.tsx
+│   │   │   ├── notifications.tsx
+│   │   │   ├── profile.tsx
+│   │   │   └── security.tsx
+│   │   ├── stash/
+│   │   │   ├── collection.tsx
+│   │   │   ├── collections.tsx
+│   │   │   ├── favorites.tsx
+│   │   │   ├── file.tsx
+│   │   │   ├── folder.tsx
+│   │   │   ├── gallery.tsx
+│   │   │   ├── index.tsx
+│   │   │   ├── recent.tsx
+│   │   │   ├── search.tsx
+│   │   │   ├── shares.tsx
+│   │   │   └── trash.tsx
+│   │   ├── workspaces/
+│   │   │   ├── collection.tsx
+│   │   │   ├── collections.tsx
+│   │   │   ├── create.tsx
+│   │   │   ├── favorites.tsx
+│   │   │   ├── file.tsx
+│   │   │   ├── folder.tsx
+│   │   │   ├── gallery.tsx
+│   │   │   ├── index.tsx
+│   │   │   ├── members.tsx
+│   │   │   ├── recent.tsx
+│   │   │   ├── search.tsx
+│   │   │   ├── settings.tsx
+│   │   │   ├── shares.tsx
+│   │   │   ├── trash.tsx
+│   │   │   └── workspace.tsx
+│   │   ├── index.tsx
+│   │   ├── layout.tsx
+│   │   └── not-found.tsx
+│   ├── styles/
+│   │   ├── global.css
+│   │   ├── globals.css
+│   │   └── theme.css
+│   ├── types/
+│   │   └── react.d.ts
+│   ├── utils/
+│   │   ├── filters/
+│   │   │   ├── activity.filters.ts
+│   │   │   ├── collection.filters.ts
+│   │   │   ├── drive.filters.ts
+│   │   │   ├── item.algolia.filters.ts
+│   │   │   ├── item.filters.ts
+│   │   │   ├── notification.filters.ts
+│   │   │   ├── quota.filters.ts
+│   │   │   ├── schema.zod.ts
+│   │   │   ├── shareLink.filters.ts
+│   │   │   ├── user.filters.ts
+│   │   │   ├── workspace.filters.ts
+│   │   │   └── workspaceMember.filters.ts
+│   │   ├── aimodel.test.ts
+│   │   ├── algolia-filters.ts
+│   │   ├── breadcrmb.ts
+│   │   ├── collection-actions.ts
+│   │   ├── converters.ts
+│   │   ├── dev.ts
+│   │   ├── filters.ts
+│   │   ├── formaters.ts
+│   │   ├── item-actions.ts
+│   │   ├── misc.ts
+│   │   ├── pagination.ts
+│   │   ├── parsers.ts
+│   │   ├── Perfect, אלון — let’s refactor both your.md
+│   │   ├── query-params.ts
+│   │   ├── search.ts
+│   │   ├── searchItems.ts
+│   │   ├── styles.ts
+│   │   └── test.ts
+│   ├── root.tsx
+│   ├── routes.ts
+│   └── stashly.d.ts
+├── docs/
+│   ├── api/
+│   ├── architecture/
+│   ├── workflows/
+│   ├── Combined-Roadmap.md
+│   ├── Combining TypeScript files into a new file.md
+│   ├── Deep Dive Getting Started.md
+│   ├── Deep Dive Handling Stops.md
+│   ├── Deep Dive Sending Chunks.md
+│   ├── faker-js-mock-generation.md
+│   ├── Integrating Semantic Search with Existing Pagination System.md
+│   ├── Pagination - examples.md
+│   ├── prisma-schema-and-sql-triggers.md
+│   ├── Property 'initIndex' does not exist on type 'Algoliasearch'.md
+│   ├── README.md
+│   ├── readme1.md
+│   ├── Roadmap-Overview.md
+│   ├── roadmap.md
+│   ├── S3 MultiPart Upload.md
+│   ├── searchItems.service.md
+│   ├── Sementic Search.md
+│   ├── Two Sidebars Example.md
+│   ├── typescript-function-overloads-refactor.md
+│   ├── Updating GitHub Copilot instructions for codebase.md
+│   ├── Updating quota state machine for service integration.md
+│   ├── upload chunks using web stream.md
+│   ├── Using a private variable for user quota management.md
+│   └── Using-Route-Handles.md
+├── hooks/
+│   └── use-mobile.ts
+├── memory-bank/
+│   ├── activeContext.md
+│   ├── architect.md
+│   ├── decisionLog.md
+│   ├── productContext.md
+│   ├── progress.md
+│   ├── projectBrief.md
+│   └── systemPatterns.md
+├── node_modules/
+├── prisma/
+│   ├── migrations/
+│   │   ├── 20250620154142_init/
+│   │   │   └── migration.sql
+│   │   ├── 20250714054805_test/
+│   │   │   └── migration.sql
+│   │   ├── 20250714225523_add_update_size_function_and_drop_the_old_one/
+│   │   │   └── migration.sql
+│   │   ├── 20250715114545_add_item_category/
+│   │   │   └── migration.sql
+│   │   ├── 20250715114717_add_item_status/
+│   │   │   └── migration.sql
+│   │   ├── 20250912192122_add_sementic_search/
+│   │   │   └── migration.sql
+│   │   ├── 20250912194337_add_search/
+│   │   │   └── migration.sql
+│   │   ├── 20250912194650_search/
+│   │   │   └── migration.sql
+│   │   ├── 20250913081203_make_item_path_unique/
+│   │   │   └── migration.sql
+│   │   ├── 20250919115626_updates/
+│   │   │   └── migration.sql
+│   │   ├── 20250919124809_add_child_count_function/
+│   │   │   └── migration.sql
+│   │   ├── 20250919131158_add_child_count_function/
+│   │   │   └── migration.sql
+│   │   ├── 20251113161739_update_item/
+│   │   │   └── migration.sql
+│   │   ├── 20251127001530_update_item_indexes/
+│   │   │   └── migration.sql
+│   │   ├── 20251128074106_add_tag_to_storage_plan/
+│   │   │   └── migration.sql
+│   │   ├── 20251128081140_add_default_to_folder_child_count/
+│   │   │   └── migration.sql
+│   │   └── migration_lock.toml
+│   ├── models/
+│   │   ├── account.prisma
+│   │   ├── action.prisma
+│   │   ├── activity.prisma
+│   │   ├── auditlog.prisma
+│   │   ├── collection.prisma
+│   │   ├── comment.prisma
+│   │   ├── drive.prisma
+│   │   ├── facet.prisma
+│   │   ├── favorite.prisma
+│   │   ├── invitation.prisma
+│   │   ├── item.prisma
+│   │   ├── metadata.prisma
+│   │   ├── notification.prisma
+│   │   ├── permission.prisma
+│   │   ├── quota.prisma
+│   │   ├── schema.prisma
+│   │   ├── search.prisma
+│   │   ├── session.prisma
+│   │   ├── share.prisma
+│   │   ├── storage.prisma
+│   │   ├── subscription.prisma
+│   │   ├── tag.prisma
+│   │   ├── thumbnail.prisma
+│   │   ├── trash.prisma
+│   │   ├── user.prisma
+│   │   ├── verification.prisma
+│   │   ├── version.prisma
+│   │   ├── view.prisma
+│   │   └── workspace.prisma
+│   ├── seedData/
+│   │   ├── data.ts
+│   │   └── seed.ts
+│   └── ERD.md
+├── public/
+│   ├── .well-known/
+│   │   └── appspecific/
+│   │       └── com.chrome.devtools.json
+│   └── favicon.ico
+├── scripts/
+│   ├── algolia-settings.json
+│   ├── apply-index-settings.ts
+│   ├── gen.ts
+│   ├── generate.ts
+│   └── push-to-algolia.ts
+├── server/
+│   ├── adapters/
+│   │   ├── files.ts
+│   │   └── workspace.ts
+│   ├── middleware/
+│   ├── plugins/
+│   └── app.ts
+├── tests/
+│   ├── e2e/
+│   ├── integration/
+│   └── unit/
+├── .dockerignore
+├── .env
+├── .gitignore
+├── .hintrc
+├── .prettierrc
+├── components.json
+├── Dockerfile
+├── GEMINI.md
+├── package.json
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── prisma.config.ts
+├── react-router.config.ts
+├── README.md
+├── Roadmap.md
+├── server.js
+├── stashly.svg
+├── tsconfig.json
+├── tsconfig.node.json
+├── tsconfig.node.tsbuildinfo
+├── tsconfig.vite.json
+├── tsconfig.vite.tsbuildinfo
+└── vite.config.ts

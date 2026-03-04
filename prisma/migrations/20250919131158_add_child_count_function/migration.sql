@@ -4,9 +4,9 @@
 CREATE OR REPLACE FUNCTION update_child_count()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Handle DELETE: Decrement the child count of the old parent
+  -- Handle DELETE: Decrement the child count if the item was not 'trashed'.
   IF TG_OP = 'DELETE' THEN
-    IF OLD."parentId" IS NOT NULL THEN
+    IF OLD."parentId" IS NOT NULL AND OLD.status != 'trashed' THEN
       UPDATE "Folder"
       SET "childCount" = "childCount" - 1
       WHERE "itemId" = OLD."parentId";
@@ -14,9 +14,9 @@ BEGIN
     RETURN OLD;
   END IF;
 
-  -- Handle INSERT: Increment the child count of the new parent
+  -- Handle INSERT: Increment the child count if the item is not 'trashed'.
   IF TG_OP = 'INSERT' THEN
-    IF NEW."parentId" IS NOT NULL THEN
+    IF NEW."parentId" IS NOT NULL AND NEW.status != 'trashed' THEN
       UPDATE "Folder"
       SET "childCount" = "childCount" + 1
       WHERE "itemId" = NEW."parentId";
@@ -24,21 +24,38 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- Handle UPDATE: This is for when an item is moved (parentId changes)
+  -- Handle UPDATE: This covers moving items and changing their 'trashed' status.
   IF TG_OP = 'UPDATE' THEN
-    -- Only proceed if the parentId has actually changed
+    -- If parentId changed (item moved)
     IF OLD."parentId" IS DISTINCT FROM NEW."parentId" THEN
-      -- Decrement the child count of the old parent
-      IF OLD."parentId" IS NOT NULL THEN
+      -- Decrement count for the old parent if the item was not 'trashed'
+      IF OLD."parentId" IS NOT NULL AND OLD.status != 'trashed' THEN
         UPDATE "Folder"
         SET "childCount" = "childCount" - 1
         WHERE "itemId" = OLD."parentId";
       END IF;
-      -- Increment the child count of the new parent
-      IF NEW."parentId" IS NOT NULL THEN
+      -- Increment count for the new parent if the item is not 'trashed'
+      IF NEW."parentId" IS NOT NULL AND NEW.status != 'trashed' THEN
         UPDATE "Folder"
         SET "childCount" = "childCount" + 1
         WHERE "itemId" = NEW."parentId";
+      END IF;
+    -- If parentId is the same but status changed (item trashed or restored)
+    ELSIF OLD.status IS DISTINCT FROM NEW.status THEN
+      -- Item was restored from trash
+      IF OLD.status = 'trashed' AND NEW.status != 'trashed' THEN
+        IF NEW."parentId" IS NOT NULL THEN
+          UPDATE "Folder"
+          SET "childCount" = "childCount" + 1
+          WHERE "itemId" = NEW."parentId";
+        END IF;
+      -- Item was trashed
+      ELSIF OLD.status != 'trashed' AND NEW.status = 'trashed' THEN
+        IF NEW."parentId" IS NOT NULL THEN
+          UPDATE "Folder"
+          SET "childCount" = "childCount" - 1
+          WHERE "itemId" = NEW."parentId";
+        END IF;
       END IF;
     END IF;
     RETURN NEW;

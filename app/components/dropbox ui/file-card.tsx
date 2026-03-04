@@ -1,7 +1,5 @@
-"use client"
-
-import { Star, MoreVertical } from "lucide-react"
-import type { FileType } from "@/components/file-manager"
+import { Star, MoreVertical } from 'lucide-react'
+import type { FileType } from '@/components/dropbox ui/file-manager'
 
 type FileCardProps = {
   file: FileType
@@ -14,13 +12,13 @@ export function FileCard({ file, onClick, isSelected }: FileCardProps) {
     <button
       onClick={onClick}
       className={`bg-card rounded-lg overflow-hidden hover:bg-accent transition-colors text-left ${
-        isSelected ? "ring-2 ring-primary" : ""
+        isSelected ? 'ring-2 ring-primary' : ''
       }`}
     >
-      {file.type === "mp4" && file.thumbnail ? (
+      {file.type === 'mp4' && file.thumbnail ? (
         <div className="relative aspect-video">
           <img
-            src={file.thumbnail || "/placeholder.svg?height=200&width=300"}
+            src={file.thumbnail || '/placeholder.svg?height=200&width=300'}
             alt={file.name}
             className="w-full h-full object-cover"
           />
@@ -50,7 +48,9 @@ export function FileCard({ file, onClick, isSelected }: FileCardProps) {
 
       {/* File info section */}
       <div className="p-4">
-        <h3 className="text-foreground text-sm font-medium mb-3 line-clamp-1">{file.name}</h3>
+        <h3 className="text-foreground text-sm font-medium mb-3 line-clamp-1">
+          {file.name}
+        </h3>
 
         <div className="flex items-center justify-between">
           <div>

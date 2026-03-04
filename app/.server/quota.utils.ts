@@ -1,6 +1,6 @@
 import type { Quota, StoragePlanType } from '@/prisma/client'
 import type { QuotaOutput } from './quota'
-import { QuotaStatus } from '@/prisma/enums';
+import { QuotaStatus } from '@/prisma/enums'
 
 /**
  * Calculates the QuotaState based on used and total space.
@@ -9,18 +9,18 @@ import { QuotaStatus } from '@/prisma/enums';
  * @returns The calculated QuotaState.
  */
 export function toQuotaStatus({
-	used,
-	total,
+  used,
+  total,
 }: Pick<QuotaOutput, 'used' | 'total'>): QuotaStatus {
-	if (total === 0n) return used > 0n ? 'exceeded' : 'normal'
+  if (total === 0n) return used > 0n ? 'exceeded' : 'normal'
 
-	const usageRatio = Number((used * 1000n) / total) / 1000
+  const usageRatio = Number((used * 1000n) / total) / 1000
 
-	if (usageRatio > 1) return 'exceeded'
-	if (usageRatio > 0.99) return 'critical' // Remaining < 1%
-	if (usageRatio > 0.9) return 'warning' // Remaining < 10%
+  if (usageRatio > 1) return 'exceeded'
+  if (usageRatio > 0.99) return 'critical' // Remaining < 1%
+  if (usageRatio > 0.9) return 'warning' // Remaining < 10%
 
-	return 'normal'
+  return 'normal'
 }
 
 /**
@@ -32,59 +32,39 @@ export function toQuotaStatus({
  * @returns A new quota object with the updated `used`, `deleted`, `total`, `remaining`, and `state` values.
  */
 export function calculateQuota(
-	current: Pick<QuotaOutput, 'used' | 'deleted' | 'total'>,
-	data: Partial<Pick<Quota, 'used' | 'deleted' | 'total'>>
+  current: Pick<QuotaOutput, 'used' | 'deleted' | 'total'>,
+  data: Partial<Pick<Quota, 'used' | 'deleted' | 'total'>>
 ): Pick<QuotaOutput, 'used' | 'deleted' | 'total' | 'status' | 'remaining'> {
-	const total = data.total ?? current.total
+  const total = data.total ?? current.total
 
-	// Apply deltas and ensure values don't go below zero.
-	let used = current.used + (data.used ?? 0n)
-	if (used < 0n) used = 0n
+  // Apply deltas and ensure values don't go below zero.
+  let used = current.used + (data.used ?? 0n)
+  if (used < 0n) used = 0n
 
-	let deleted = current.deleted + (data.deleted ?? 0n)
-	if (deleted < 0n) deleted = 0n
+  let deleted = current.deleted + (data.deleted ?? 0n)
+  if (deleted < 0n) deleted = 0n
 
-	const remaining = total - used
+  const remaining = total - used
 
-	// The state is now calculated here.
-	const status = toQuotaStatus({ used, total })
+  // The state is now calculated here.
+  const status = toQuotaStatus({ used, total })
 
-	return {
-		total,
-		used,
-		deleted,
-		remaining,
-		status,
-	}
+  return {
+    total,
+    used,
+    deleted,
+    remaining,
+    status,
+  }
 }
 
-
-/**
- * Maps a storage plan type to its total quota size in bytes.
- * @param plan The storage plan type.
- * @returns The total quota size in bytes.
- */
-export function toQuotaTotalSize(plan: StoragePlanType): bigint {
-	switch (plan) {
-		case 'free':
-			return BigInt(15 * 1_000_000_000) // 15 GB
-		case 'basic':
-			return BigInt(100 * 1_000_000_000) // 100 GB in decimal bytes
-		case 'standard':
-			return BigInt(200 * 1_000_000_000) // 200 GB in decimal bytes
-		case 'premium':
-			return BigInt(2 * 1_000_000_000_000) // 2 TB in decimal bytes
-		default:
-			return BigInt(0)
-	}
-}
-
-
-export function toQuota(quota: Quota): QuotaOutput {
-	const total = quota.total
-	const used = quota.used
-	const deleted = quota.deleted
-	const remaining = total - used
-	const status = toQuotaStatus({ used, total })
-	return { ...quota, total, used, deleted, remaining, status }
+export function toQuota(
+  quota: Omit<Quota, 'createdAt' | 'updatedAt'>
+): QuotaOutput {
+  const total = quota.total
+  const used = quota.used
+  const deleted = quota.deleted
+  const remaining = total - used
+  const status = toQuotaStatus({ used, total })
+  return { ...quota, total, used, deleted, remaining, status }
 }

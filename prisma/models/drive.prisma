@@ -1,20 +1,24 @@
 model Drive {
-    id        String    @id
-    name      String    @default("Stashly Drive")
-    type      DriveType @default(personal) // personal or business
-    quota     Quota?
-    items     Item[]
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
+    id    String    @id
+    name  String    @default("Stashly Drive")
+    // personal or business
+    type  DriveType @default(personal)
+    quota Quota?
+    items Item[]
 
     // --- New limit columns ---------------------------------------------
-    workspaceLimit Int    @default(5) // Max workspaces per user
-    memberLimit    Int    @default(5) // Max members per workspace
-    storageLimit   BigInt @default(100000000000) // 100 GB in bytes
+    workspaceLimit Int? // Max workspaces per user
+    memberLimit    Int? // Max members per workspace
+    storageLimit   BigInt? // 100 GB in bytes
     // -------------------------------------------------------------------
+
+    storage StoragePlan? @relation(fields: [memberLimit, workspaceLimit, storageLimit], references: [memberLimit, workspaceLimit, storageLimit], onDelete: Cascade)
 
     ownerId String @unique
     owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 
     @@unique([ownerId, type])
     @@index([name])

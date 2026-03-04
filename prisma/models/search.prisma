@@ -2,7 +2,7 @@ model Search {
     id      String  @id
     content String? @db.Text // Combined searchable content (e.g., name, metadata, tags, versions)
 
-    vector    Unsupported("vector(768)")
+    vector    Unsupported("vector(768)") 
     createdAt DateTime                   @default(now())
     updatedAt DateTime                   @updatedAt
 

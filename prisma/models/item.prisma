@@ -1,17 +1,18 @@
 model Item {
-    id       String       @id @unique
-    name     String       @db.VarChar(50)
-    size     BigInt       @default(0)
-    path     String       @unique
-    type     ItemType     @default(file)
-    category ItemCategory @default(unknown)
-    status   ItemStatus   @default(normal)
+    id            String       @id @unique
+    name          String       @db.VarChar(50)
+    size          BigInt       @default(0)
+    inclusiveSize BigInt       @default(0)
+    type          ItemType     @default(file)
+    category      ItemCategory @default(unknown)
+    status        ItemStatus   @default(normal)
 
     // Integration with 33 multipart upload
     uploadId String?
 
-    createdAt DateTime @default(now()) @db.Timestamp()
-    updatedAt DateTime @updatedAt @db.Timestamp()
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+    openedAt  DateTime?
 
     // Facets (optional, only one may be present per item)
     file       File?
@@ -20,9 +21,9 @@ model Item {
     video      Video?
     audio      Audio?
     /**
-        * One-to-one relationship between Item and Collection
-        * An Item can be a Collection itself
-    */
+     * One-to-one relationship between Item and Collection
+     * An Item can be a Collection itself
+     */
     collection Collection?
 
     ownerId String
@@ -36,26 +37,26 @@ model Item {
 
     // Self relation for parent-child relationship (tree structure)
     parentId String?
-    /** 
-        `One-to-Many` self-relation to represent hierarchical structure
-        An Item can have multiple children (sub-items) and one parent (container item)
-        On deletion of a parent item, all its children are also deleted (Cascade)
-    */
+    /**
+     * `One-to-Many` self-relation to represent hierarchical structure
+     * An Item can have multiple children (sub-items) and one parent (container item)
+     * On deletion of a parent item, all its children are also deleted (Cascade)
+     */
     children Item[]  @relation("ParentChild")
-    /** 
-        * Many-to-One self-relation to represent hierarchical structure
-        * An Item can have multiple children (sub-items) and one parent (container item)
-        * On deletion of a parent item, all its children are also deleted (Cascade)
-    */
+    /**
+     * Many-to-One self-relation to represent hierarchical structure
+     * An Item can have multiple children (sub-items) and one parent (container item)
+     * On deletion of a parent item, all its children are also deleted (Cascade)
+     */
     parent   Item?   @relation("ParentChild", fields: [parentId], references: [id], onDelete: Cascade)
 
     // Location and Storage
-    trash       TrashItem?
+    trash           TrashItem?
     /**
-        * Many-to-Many relationship between Item and Collection through CollectionItem junction table
-        * An Item can belong to multiple Collections and a Collection can contain multiple Items
-        * The relationship is managed through the CollectionItem junction table
-    */
+     * Many-to-Many relationship between Item and Collection through CollectionItem junction table
+     * An Item can belong to multiple Collections and a Collection can contain multiple Items
+     * The relationship is managed through the CollectionItem junction table
+     */
     collectionItems CollectionItem[]
 
     // Access Control
@@ -75,27 +76,44 @@ model Item {
     logs       AuditLog[]
 
     // Miscellaneous  
-    favoritedBy Favorite[]
+    favorites Favorite[]
 
     //  Search Functionality (optional)
     search Search?
 
-    @@unique([createdAt, id], name: "cursor_pagination_idx", map: "cursor_pagination_idx")
-    @@index([type])
-    @@index([category])
-    @@index([name(sort: Asc)])
-    @@index([workspaceId])
-    @@index([createdAt])
-    @@index([updatedAt])
-    @@index([tags], type: Gin)
-    @@index([status])
+    @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "item_name_trgm_idx")
+    @@index([tags], type: Gin, map: "tags_gin_idx")
     @@index([createdAt, name], map: "search_cursor")
+    //  parent indexs
+    @@index([parentId, name(sort: Asc)], map: "parent_cursor")
+    @@index([parentId, createdAt(sort: Desc)], map: "parent_created_at")
+    @@index([parentId, updatedAt(sort: Desc)], map: "parent_updated_at")
+    @@index([parentId, category, name(sort: Asc)], map: "parent_category_cursor")
+    @@index([parentId, status, name(sort: Asc)], map: "parent_status_cursor")
+    @@index([parentId, type, name(sort: Asc)], map: "parent_type_name_cursor")
+    @@index([parentId, type, createdAt(sort: Desc)], map: "parent_type_created_at_cursor")
+    @@index([parentId, status, type, name(sort: Asc)], map: "parent_status_type_name_cursor")
+    // workspace indexs
+    @@index([workspaceId, name(sort: Asc)], map: "workspace_cursor")
+    @@index([workspaceId, createdAt(sort: Desc)], map: "workspace_created_at")
+    // tanent indexs
+    @@index([driveId, parentId, name(sort: Asc)], map: "drive_parent_name_cursor")
+    @@index([driveId, parentId, createdAt(sort: Desc)], map: "drive_parent_created_at")
+    @@index([driveId, createdAt(sort: Desc)], map: "drive_created_at")
 }
 
-enum ItemType {
-    folder
-    file
-    collection
+model LockedItem {
+    id         String @id
+    itemId     String @unique
+    item       Item   @relation(fields: [itemId], references: [id])
+    lockedById String
+    lockedBy   User   @relation(fields: [lockedById], references: [id])
+
+    lockedAt  DateTime  @default(now())
+    expiresAt DateTime?
+
+    @@unique([itemId, lockedById])
+    @@index([expiresAt])
 }
 
 enum ItemCategory {
@@ -119,18 +137,12 @@ enum ItemStatus {
     normal
     archived
     trashed
+    locked
+    shared
 }
 
-model LockedItem {
-    id         String @id
-    itemId     String @unique
-    item       Item   @relation(fields: [itemId], references: [id])
-    lockedById String
-    lockedBy   User   @relation(fields: [lockedById], references: [id])
-
-    lockedAt  DateTime  @default(now())
-    expiresAt DateTime?
-
-    @@unique([itemId, lockedById])
-    @@index([expiresAt])
+enum ItemType {
+    folder
+    file
+    collection
 }

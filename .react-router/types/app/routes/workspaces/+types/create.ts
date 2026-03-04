@@ -16,7 +16,7 @@ type Matches = [{
   id: "layout";
   module: typeof import("../../layout.js");
 }, {
-  id: "workspaces.create";
+  id: "routes/workspaces/create";
   module: typeof import("../create.js");
 }];
 

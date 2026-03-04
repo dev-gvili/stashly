@@ -7,6 +7,8 @@ model Session {
   ipAddress         String?
   userAgent         String?
   userId            String
+  rootId            String?
+  driveId           String?
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   impersonatedBy    String?
   activeWorkspaceId String?

@@ -16,7 +16,7 @@ type Matches = [{
   id: "layout";
   module: typeof import("../../layout.js");
 }, {
-  id: "settings.notifications";
+  id: "routes/settings/notifications";
   module: typeof import("../notifications.js");
 }];
 

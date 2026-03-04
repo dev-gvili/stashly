@@ -11,12 +11,12 @@ export enum Permission {
   CREATE_WORKSPACE = 'create:workspace',
   UPDATE_WORKSPACE = 'update:workspace',
   DELETE_WORKSPACE = 'delete:workspace',
-  
+
   // Member permissions
   INVITE_MEMBER = 'invite:member',
   REMOVE_MEMBER = 'remove:member',
   UPDATE_MEMBER_ROLE = 'update:member:role',
-  
+
   // File permissions
   CREATE_FILE = 'create:file',
   READ_FILE = 'read:file',
@@ -43,8 +43,5 @@ export const rolePermissions: Record<Role, Permission[]> = {
     Permission.UPDATE_FILE,
     Permission.DELETE_FILE,
   ],
-  [Role.VIEWER]: [
-    Permission.READ_FILE,
-  ],
+  [Role.VIEWER]: [Permission.READ_FILE],
 }
-

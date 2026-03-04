@@ -18,12 +18,13 @@ model View {
 
 enum ViewType {
   list
-  grid
-  details
-  gallery
+  grid // Default, square base image ( e.g aspect ratio 16:9  / 4:3 )
+  river // height base image ( e.g row )
+  waterfall // width base image ( e.g column )
 }
 
 enum SortBy {
+  id
   name
   date
   size

@@ -1,4 +1,4 @@
-import { itemRepository } from "./repositories/ItemRepository"
+import { itemRepository } from './repositories/ItemRepository'
 
 /**
  * Get all items in a workspace.
@@ -13,10 +13,10 @@ import { itemRepository } from "./repositories/ItemRepository"
  * console.log(items);
  * ```
  * @throws Will throw an error if the workspaceId is invalid or if there is a database issue.
- * @see itemRepository.findByWorkspace for the underlying data access method.
+ * @see itemRepository.findWorkspaceItems for the underlying data access method.
  */
 export async function getWorkspaceItems(workspaceId: string) {
   // The complex query is now handled by the repository.
   // The service layer is clean and easy to read.
-  return await itemRepository.findByWorkspace(workspaceId);
+  return await itemRepository.findWorkspaceItems(workspaceId)
 }

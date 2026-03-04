@@ -1,8 +1,10 @@
-import { betterAuth } from 'better-auth'
+import { betterAuth } from 'better-auth/minimal'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { prisma } from '@/services/db'
-import { openAPI } from 'better-auth/plugins'
+import { customSession, openAPI } from 'better-auth/plugins'
 import { onboardNewUser } from './onboard'
+import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import type { Session, User } from '../machines/machine.types'
 
 // const envs = toRequiredEnv({
 // 	env: [
@@ -18,7 +20,7 @@ import { onboardNewUser } from './onboard'
 
 // describe this constant
 /**
- * 
+ *
  */
 /**
  * Initializes and configures the authentication service for the Stashly application.
@@ -40,58 +42,112 @@ import { onboardNewUser } from './onboard'
  * ```
  */
 export const auth = betterAuth({
-	appName: 'Stashly',
-	secret: process.env.BETTER_AUTH_SECRET,
-	database: prismaAdapter(prisma, {
-		provider: 'postgresql',
-	}),
-	databaseHooks: {
-		user: {
-			create: {
-				after: async (user) => {
-					// Call your onboarding logic here
-					await onboardNewUser(user)
-				},
-			},
-		},
-	},
-	user: {
-		additionalFields: {
-			bucket: {
-				type: 'string',
-				required: true,
-			},
-			subscriptionId: {
-				type: 'string',
-				required: true,
-			},
-			storagePlanId: {
-				type: 'string',
-				required: true,
-			},
-			driveId: {
-				type: 'string',
-				required: true,
-			},
-			role: {
-				type: 'string',
-				required: false,
-			},
-		},
-	},
-	socialProviders: {
-		github: {
-			clientId: process.env.GITHUB_CLIENT_ID,
-			clientSecret: process.env.GITHUB_CLIENT_SECRET,
-		},
-		google: {
-			clientId: process.env.GOOGLE_CLIENT_ID,
-			clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-		},
-		microsoft: {
-			clientId: process.env.MICROSOFT_CLIENT_ID,
-			clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-		},
-	},
-	plugins: [openAPI()],
+  appName: 'Stashly',
+  secret: process.env.BETTER_AUTH_SECRET,
+  database: prismaAdapter(prisma, {
+    provider: 'postgresql',
+  }),
+  session: {
+    additionalFields: {
+      rootId: {
+        type: 'string',
+        required: false,
+      },
+      driveId: {
+        type: 'string',
+        required: false,
+      },
+    },
+  },
+
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (session, ctx) => {
+          session.id = toObjectId(getPrefixForModel('Session'))
+          return { data: session, ctx }
+        },
+      },
+    },
+    user: {
+      create: {
+        before: async (user, ctx) => {
+          user.id = toObjectId(getPrefixForModel('User'))
+          return {
+            data: user,
+            ctx,
+          }
+        },
+        after: async (user) => {
+          await onboardNewUser(user)
+        },
+      },
+    },
+  },
+
+  user: {
+    additionalFields: {
+      bucket: {
+        type: 'string',
+        required: true,
+        input: false,
+      },
+      subscriptionId: {
+        type: 'string',
+        required: true,
+        input: false
+      },
+      storagePlanId: {
+        type: 'string',
+        required: true,
+        input: false
+      },
+      driveId: {
+        type: 'string',
+        required: true,
+        input: false
+      },
+      rootId: {
+        type: 'string',
+        required: true,
+        input: false
+      },
+      role: {
+        type: 'string',
+        required: false,
+        input: false
+      },
+    },
+  },
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    },
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    },
+    microsoft: {
+      clientId: process.env.MICROSOFT_CLIENT_ID!,
+      clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+    },
+  },
+
+  plugins: [
+    customSession(async ({ user, session }) => {
+      let extendedUser = user as User
+      let extendedSession = {
+        ...session,
+        rootId: extendedUser.rootId,
+        driveId: extendedUser.driveId,
+      } as Session
+      
+      return {
+        user: extendedUser,
+        session: extendedSession,
+      }
+    }),
+    openAPI(),
+  ],
 })

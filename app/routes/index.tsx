@@ -1,22 +1,19 @@
-// import logo2 from '@/assets/logo2.png?url'
-// import { AspectRatio } from '../components/ui/aspect-ratio'
-// import logo1 from '@/assets/logo1.png?url'
+import { auth } from '@/.server/auth'
+import { redirect } from 'react-router'
+import type { Route } from './+types'
 
-import { redirect } from "react-router"
-
-export const loader = async () => {
-	// return { logo1, logo2 }
-	return redirect('/dashboard')
+export const loader = async ({ request }: Route.LoaderArgs) => {
+  const session = await auth.api.getSession(request)
+  if (!session) return null
+  return redirect(`${session?.user?.id}/stash?layout=grid&take=100`)
 }
 
 export default function Index() {
-	return (
-		<div className="flex flex-col items-center justify-center min-h-screen font-sans">
-			<h1>Welcome to Stashly</h1>
-			<p className="text-gray-500">
-				Your personal file management system.
-			</p>
-			<p className="text-gray-500">Please sign in to continue.</p>
-		</div>
-	)
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen font-sans">
+      <h1>Welcome to Stashly</h1>
+      <p className="text-gray-500">Your personal file management system.</p>
+      <p className="text-gray-500">Please sign in to continue.</p>
+    </div>
+  )
 }

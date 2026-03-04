@@ -6,8 +6,8 @@ import { z } from 'zod'
  * @template TParams - The full params object type (from schema).
  */
 type AlgoliaFilter<T, TParams> = {
-	schema: z.ZodType<T>
-	apply: (value: unknown, params: TParams) => string | string[]
+  schema: z.ZodType<T>
+  apply: (value: unknown, params: TParams) => string | string[]
 }
 
 /**
@@ -17,14 +17,14 @@ type AlgoliaFilter<T, TParams> = {
  * and returns a Filter definition.
  */
 export const createAlgoliaFilter = <TParams = Record<string, unknown>>() => {
-	return <T>(
-		schema: z.ZodType<T>,
-		filterFn: (value: T, params: TParams) => string | string[]
-	): AlgoliaFilter<T, TParams> => ({
-		schema,
-		apply: (value: unknown, params: TParams) =>
-			filterFn(schema.parse(value), params),
-	})
+  return <T>(
+    schema: z.ZodType<T>,
+    filterFn: (value: T, params: TParams) => string | string[]
+  ): AlgoliaFilter<T, TParams> => ({
+    schema,
+    apply: (value: unknown, params: TParams) =>
+      filterFn(schema.parse(value), params),
+  })
 }
 
 /**
@@ -33,56 +33,50 @@ export const createAlgoliaFilter = <TParams = Record<string, unknown>>() => {
  * @template TParams - Full params type from Zod schema.
  */
 export class AlgoliaFilterBuilder<
-	TFilters extends Record<string, AlgoliaFilter<any, TParams>>,
-	TParams
+  TFilters extends Record<string, AlgoliaFilter<any, TParams>>,
+  TParams,
 > {
-	private conditions: string[] = []
+  private conditions: string[] = []
 
-	constructor(
-		private availableFilters: TFilters,
-		private params: TParams
-	) {}
+  constructor(
+    private availableFilters: TFilters,
+    private params: TParams
+  ) {}
 
-	addFilter<TKey extends keyof TFilters>(key: TKey, value: unknown): this {
-		if (
-			value !== undefined &&
-			value !== null &&
-			(Array.isArray(value) ? value.length > 0 : true)
-		) {
-			try {
-				const filterResult = this.availableFilters[key].apply(
-					value,
-					this.params
-				)
-				if (Array.isArray(filterResult)) {
-					this.conditions.push(...filterResult)
-				} else {
-					this.conditions.push(filterResult)
-				}
-			} catch (error) {
-				console.error(
-					`Invalid value for filter '${String(key)}':`,
-					error
-				)
-			}
-		}
-		return this
-	}
+  addFilter<TKey extends keyof TFilters>(key: TKey, value: unknown): this {
+    if (
+      value !== undefined &&
+      value !== null &&
+      (Array.isArray(value) ? value.length > 0 : true)
+    ) {
+      try {
+        const filterResult = this.availableFilters[key].apply(
+          value,
+          this.params
+        )
+        if (Array.isArray(filterResult)) {
+          this.conditions.push(...filterResult)
+        } else {
+          this.conditions.push(filterResult)
+        }
+      } catch (error) {
+        console.error(`Invalid value for filter '${String(key)}':`, error)
+      }
+    }
+    return this
+  }
 
-	build(): string {
-		return this.conditions.join(' AND ')
-	}
+  build(): string {
+    return this.conditions.join(' AND ')
+  }
 }
 
 /**
  * Factory to build a type-safe Algolia filter builder function.
  */
 interface BuildAlgoliaFiltersFactoryInput<TSchema extends z.ZodType<any>> {
-	schema: TSchema
-	filters: Record<
-		string,
-		AlgoliaFilter<unknown, z.infer<TSchema>>
-	>
+  schema: TSchema
+  filters: Record<string, AlgoliaFilter<unknown, z.infer<TSchema>>>
 }
 
 /**
@@ -92,22 +86,22 @@ interface BuildAlgoliaFiltersFactoryInput<TSchema extends z.ZodType<any>> {
  * @returns A function that takes the full params object and returns the Algolia filter string.
  */
 export const buildAlgoliaFiltersFactory = <TSchema extends z.ZodType<any>>({
-	filters,
-	schema,
+  filters,
+  schema,
 }: BuildAlgoliaFiltersFactoryInput<TSchema>) => {
-	return (params: z.infer<typeof schema>): string => {
-		const builder = new AlgoliaFilterBuilder<typeof filters, z.infer<TSchema>>(
-			filters,
-			params
-		)
+  return (params: z.infer<typeof schema>): string => {
+    const builder = new AlgoliaFilterBuilder<typeof filters, z.infer<TSchema>>(
+      filters,
+      params
+    )
 
-		const keys = Object.keys(params) as Array<keyof typeof params>
-		for (const key of keys) {
-			if (key in filters) {
-				builder.addFilter(key as keyof typeof filters, params[key])
-			}
-		}
+    const keys = Object.keys(params) as Array<keyof typeof params>
+    for (const key of keys) {
+      if (key in filters) {
+        builder.addFilter(key as keyof typeof filters, params[key])
+      }
+    }
 
-		return builder.build()
-	}
+    return builder.build()
+  }
 }

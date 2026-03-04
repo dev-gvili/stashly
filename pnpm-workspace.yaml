@@ -1,10 +1,13 @@
 onlyBuiltDependencies:
-  - '@prisma/client'
   - '@prisma/engines'
-  - '@tailwindcss/oxide'
+  - '@seydx/node-av-win32-x64-mingw'
+  - '@seydx/node-av-win32-x64-msvc'
   - esbuild
+  - msw
+  - node-av
+  - node-llama-cpp
   - onnxruntime-node
   - prisma
-  - protobufjs
-  - sharp
-  - storybook-addon-remix-react-router
+  - tesseract
+  - tesseract.js
+  - webgpu

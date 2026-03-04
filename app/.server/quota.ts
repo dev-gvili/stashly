@@ -3,19 +3,19 @@ import { calculateQuota } from './quota.utils'
 import { prisma } from '@/services/db'
 
 interface UpdateQuotaInput {
-	userId: string
-	used?: bigint
-	deleted?: bigint
-	total?: bigint
+  userId: string
+  used?: bigint
+  deleted?: bigint
+  total?: bigint
 }
 
 export interface QuotaInput {
-	userId: string
-	dataSize: bigint
+  userId: string
+  dataSize: bigint
 }
 
-export interface QuotaOutput extends Quota {
-	remaining: bigint
+export interface QuotaOutput extends Omit<Quota, 'createdAt' | 'updatedAt'> {
+  remaining: bigint
 }
 
 interface FindQuotaInput extends Pick<QuotaInput, 'userId'> {}
@@ -27,24 +27,24 @@ interface FindQuotaInput extends Pick<QuotaInput, 'userId'> {}
  * @returns The user's quota.
  */
 export async function findQuota({
-	userId,
+  userId,
 }: FindQuotaInput): Promise<QuotaOutput> {
-	const quota = await prisma.quota.findFirst({
-		where: {
-			drive: {
-				ownerId: userId,
-			},
-		},
-	})
+  const quota = await prisma.quota.findFirst({
+    where: {
+      drive: {
+        ownerId: userId,
+      },
+    },
+  })
 
-	if (!quota) {
-		throw new Error(`Quota not found for user ${userId}`)
-	}
+  if (!quota) {
+    throw new Error(`Quota not found for user ${userId}`)
+  }
 
-	return {
-		...quota,
-		remaining: quota.total - quota.used,
-	}
+  return {
+    ...quota,
+    remaining: quota.total - quota.used,
+  }
 }
 
 /**
@@ -55,7 +55,28 @@ export async function findQuota({
  * @returns True if the user has enough free quota, false otherwise.
  */
 export function verifyFreeQuota(quota: QuotaOutput, dataSize: bigint): boolean {
-	return quota.remaining >= dataSize
+  return quota.remaining >= dataSize
+}
+
+export function checkFreeQuota(
+  itemId: string,
+  quota: QuotaOutput,
+  dataSize: bigint
+): {
+  itemId: string
+  result: 'allowed' | 'denied'
+} {
+  if (verifyFreeQuota(quota, dataSize)) {
+    return {
+      itemId,
+      result: 'allowed',
+    }
+  } else {
+    return {
+      itemId,
+      result: 'denied',
+    }
+  }
 }
 
 /**
@@ -68,26 +89,26 @@ export function verifyFreeQuota(quota: QuotaOutput, dataSize: bigint): boolean {
  * @returns The updated quota information.
  */
 async function update({
-	userId,
-	...args
+  userId,
+  ...args
 }: UpdateQuotaInput): Promise<QuotaOutput> {
-	return prisma.$transaction(async (tx) => {
-		const current = await findQuota({ userId })
+  return prisma.$transaction(async (tx) => {
+    const current = await findQuota({ userId })
 
-		const { remaining, ...data } = calculateQuota(current, {
-			...args,
-		})
+    const { remaining, ...data } = calculateQuota(current, {
+      ...args,
+    })
 
-		let quota = await tx.quota.update({
-			where: { id: current.id },
-			data,
-		})
+    let quota = await tx.quota.update({
+      where: { id: current.id },
+      data,
+    })
 
-		return {
-			...quota,
-			remaining,
-		}
-	})
+    return {
+      ...quota,
+      remaining,
+    }
+  })
 }
 
 /**
@@ -97,10 +118,10 @@ async function update({
  * @param dataSize - The sum of the sizes of the uploaded items.
  */
 export async function onItemsUploaded({
-	userId,
-	dataSize,
+  userId,
+  dataSize,
 }: QuotaInput): Promise<QuotaOutput> {
-	return await update({ userId, used: dataSize })
+  return await update({ userId, used: dataSize })
 }
 
 /**
@@ -110,10 +131,10 @@ export async function onItemsUploaded({
  * @param dataSize - The sum of the sizes of the copied items.
  */
 export async function onItemsCopied({
-	userId,
-	dataSize,
+  userId,
+  dataSize,
 }: QuotaInput): Promise<QuotaOutput> {
-	return await update({ userId, used: dataSize })
+  return await update({ userId, used: dataSize })
 }
 
 /**
@@ -123,10 +144,10 @@ export async function onItemsCopied({
  * @param dataSize - The sum of the sizes of the trashed items.
  */
 export async function onItemsTrashed({
-	userId,
-	dataSize,
+  userId,
+  dataSize,
 }: QuotaInput): Promise<QuotaOutput> {
-	return await update({ userId, used: -dataSize, deleted: dataSize })
+  return await update({ userId, used: -dataSize, deleted: dataSize })
 }
 
 /**
@@ -136,10 +157,10 @@ export async function onItemsTrashed({
  * @param dataSize - The sum of the sizes of the restored items.
  */
 export async function onItemsRestored({
-	userId,
-	dataSize,
+  userId,
+  dataSize,
 }: QuotaInput): Promise<QuotaOutput> {
-	return await update({ userId, used: dataSize, deleted: -dataSize })
+  return await update({ userId, used: dataSize, deleted: -dataSize })
 }
 
 /**
@@ -149,10 +170,10 @@ export async function onItemsRestored({
  * @param dataSize - The sum of the sizes of the deleted items.
  */
 export async function onItemsDeleted({
-	userId,
-	dataSize,
+  userId,
+  dataSize,
 }: QuotaInput): Promise<QuotaOutput> {
-	return await update({ userId, deleted: -dataSize })
+  return await update({ userId, deleted: -dataSize })
 }
 
 /**
@@ -163,8 +184,8 @@ export async function onItemsDeleted({
  * @returns The updated quota information.
  */
 export async function updateTotalQuota({
-	userId,
-	dataSize,
+  userId,
+  dataSize,
 }: QuotaInput): Promise<QuotaOutput> {
-	return await update({ userId, total: dataSize })
+  return await update({ userId, total: dataSize })
 }

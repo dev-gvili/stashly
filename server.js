@@ -1,52 +1,52 @@
-import compression from "compression";
-import express from "express";
-import morgan from "morgan";
+import compression from 'compression'
+import express from 'express'
+import morgan from 'morgan'
 
 // Short-circuit the type-checking of the built output.
-const BUILD_PATH = "./build/server/index.js";
-const DEVELOPMENT = process.env.NODE_ENV === "development";
-const PORT = Number.parseInt(process.env.PORT || "3000");
+const BUILD_PATH = './build/server/index.js'
+const DEVELOPMENT = process.env.NODE_ENV === 'development'
+const PORT = Number.parseInt(process.env.PORT || '3000')
 
-const app = express();
+const app = express()
 
-app.use(compression());
-app.disable("x-powered-by");
+app.use(compression())
+app.disable('x-powered-by')
 
-  
 if (DEVELOPMENT) {
-  console.log("Starting development server");
+  console.log('Starting development server')
 
-
-  
-  const viteDevServer = await import("vite").then((vite) =>
+  const HMR_PORT = Number(
+    process.env.VITE_HMR_PORT || process.env.HMR_PORT || 24678
+  )
+  const viteDevServer = await import('vite').then((vite) =>
     vite.createServer({
-      server: { middlewareMode: true },
-    }),
-  );
-  app.use(viteDevServer.middlewares);
+      server: { middlewareMode: true, hmr: { port: HMR_PORT } },
+    })
+  )
+  app.use(viteDevServer.middlewares)
   app.use(async (req, res, next) => {
     try {
-      const source = await viteDevServer.ssrLoadModule("./server/app.ts");
-      return await source.app(req, res, next);
+      const source = await viteDevServer.ssrLoadModule('./server/app.ts')
+      return await source.app(req, res, next)
     } catch (error) {
-      if (typeof error === "object" && error instanceof Error) {
-        viteDevServer.ssrFixStacktrace(error);
+      if (typeof error === 'object' && error instanceof Error) {
+        viteDevServer.ssrFixStacktrace(error)
       }
-      next(error);
+      next(error)
     }
-  });
+  })
 } else {
-  console.log("Starting production server");
+  console.log('Starting production server')
   app.use(
-    "/assets",
-    express.static("build/client/assets", { immutable: true, maxAge: "1y" }),
-  );
-  app.use(morgan("tiny"));
-  app.use(express.static("build/client", { maxAge: "1h" }));
-  app.use(await import(BUILD_PATH).then((mod) => mod.app));
-}import { createPrismaPostgresHttpClient } from '@prisma/studio-core/data/ppg';
-
+    '/assets',
+    express.static('build/client/assets', { immutable: true, maxAge: '1y' })
+  )
+  app.use(morgan('tiny'))
+  app.use(express.static('build/client', { maxAge: '1h' }))
+  app.use(await import(BUILD_PATH).then((mod) => mod.app))
+}
+import { createPrismaPostgresHttpClient } from '@prisma/studio-core/data/ppg'
 
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+  console.log(`Server is running on http://localhost:${PORT}`)
+})

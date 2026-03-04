@@ -6,14 +6,17 @@ model Thumbnail {
     height    Int?
     url       String?
     content   Bytes?        @db.ByteA
-    size      ThumbnailSize @default(custom)
+    view      ViewType      @default(grid)
+    size      ThumbnailSize @default(original)
     itemId    String?
     item      Item?         @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 enum ThumbnailSize {
-    small // e.g., 100x100
-    medium // e.g., 400x400
-    large // e.g., 800x800
-    custom // e.g., custom size or original 
+    small // e.g., 256x256
+    medium // e.g., 512x512
+    large // e.g., 1024x1024
+    original // e.g., original size
+    custom // The custom size is used when the thumbnail is generated with specific dimensions not matching the predefined sizes.
 }
+

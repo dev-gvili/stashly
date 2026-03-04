@@ -6,8 +6,8 @@ import { z } from 'zod'
  * @template TParams - The full params object type (from schema).
  */
 type Filter<T, TWhereInput, TParams> = {
-	schema: z.ZodType<T>
-	apply: (value: unknown, params: TParams) => TWhereInput
+  schema: z.ZodType<T>
+  apply: (value: unknown, params: TParams) => TWhereInput
 }
 
 /**
@@ -18,22 +18,21 @@ type Filter<T, TWhereInput, TParams> = {
  * and returns a Filter definition.
  * @see {@link Filter} for details.
  * @example
- * // Example usage:
  * const createItemFilter = createFilter<Prisma.ItemWhereInput, z.infer<typeof itemFilterSchema>>()
  * const idFilter = createItemFilter(z.string(), (id) => ({ id }))
  */
 export const createFilter = <
-	TWhereInput,
-	TParams = Record<string, unknown>
+  TWhereInput,
+  TParams = Record<string, unknown>,
 >() => {
-	return <T>(
-		schema: z.ZodType<T>,
-		filterFn: (value: T, params: TParams) => TWhereInput
-	): Filter<T, TWhereInput, TParams> => ({
-		schema,
-		apply: (value: unknown, params: TParams) =>
-			filterFn(schema.parse(value), params),
-	})
+  return <T>(
+    schema: z.ZodType<T>,
+    filterFn: (value: T, params: TParams) => TWhereInput
+  ): Filter<T, TWhereInput, TParams> => ({
+    schema,
+    apply: (value: unknown, params: TParams) =>
+      filterFn(schema.parse(value), params),
+  })
 }
 
 /**
@@ -50,58 +49,58 @@ export const createFilter = <
  * @see {@link Filter} for details.
  */
 export class FilterBuilder<
-	TWhereInput,
-	TFilters extends Record<string, Filter<any, TWhereInput, TParams>>,
-	TParams
+  TWhereInput,
+  TFilters extends Record<string, Filter<any, TWhereInput, TParams>>,
+  TParams,
 > {
-	private filters: Map<keyof TFilters, TWhereInput> = new Map()
-	private conditions: TWhereInput[] = []
+  private filters: Map<keyof TFilters, TWhereInput> = new Map()
+  private conditions: TWhereInput[] = []
 
-	constructor(private availableFilters: TFilters, private params: TParams) {}
+  constructor(
+    private availableFilters: TFilters,
+    private params: TParams
+  ) {}
 
-	addFilter<TKey extends keyof TFilters>(key: TKey, value: unknown): this {
-		if (
-			value !== undefined &&
-			value !== null &&
-			(Array.isArray(value) ? value.length > 0 : true)
-		) {
-			try {
-				this.filters.set(
-					key,
-					this.availableFilters[key].apply(value, this.params)
-				)
-				this.rebuildConditions()
-			} catch (error) {
-				console.error(
-					`Invalid value for filter '${String(key)}':`,
-					error
-				)
-			}
-		}
-		return this
-	}
+  addFilter<TKey extends keyof TFilters>(key: TKey, value: unknown): this {
+    if (
+      value !== undefined &&
+      value !== null &&
+      (Array.isArray(value) ? value.length > 0 : true)
+    ) {
+      try {
+        this.filters.set(
+          key,
+          this.availableFilters[key].apply(value, this.params)
+        )
+        this.rebuildConditions()
+      } catch (error) {
+        console.error(`Invalid value for filter '${String(key)}':`, error)
+      }
+    }
+    return this
+  }
 
-	private rebuildConditions(): void {
-		this.conditions = Array.from(this.filters.values())
-	}
+  private rebuildConditions(): void {
+    this.conditions = Array.from(this.filters.values())
+  }
 
-	build(): TWhereInput {
-		if (this.conditions.length === 0) {
-			return [] as TWhereInput
-		}
-		return { AND: this.conditions } as TWhereInput
-	}
+  build(): TWhereInput {
+    if (this.conditions.length === 0) {
+      return [] as TWhereInput
+    }
+    return { AND: this.conditions } as TWhereInput
+  }
 }
 
 /**
  * Factory to build a type‑safe filter builder function.
  */
 interface BuildFiltersFactoryInput<
-	TWhereInput,
-	TSchema extends z.ZodType<any>
+  TWhereInput,
+  TSchema extends z.ZodType<any>,
 > {
-	schema: TSchema
-	filters: Record<string, Filter<unknown, TWhereInput, z.infer<TSchema>>>
+  schema: TSchema
+  filters: Record<string, Filter<unknown, TWhereInput, z.infer<TSchema>>>
 }
 
 /**
@@ -112,26 +111,26 @@ interface BuildFiltersFactoryInput<
  * @returns A function that takes the full params object and returns the Prisma WhereInput.
  */
 export const buildFiltersFactory = <
-	TWhereInput,
-	TSchema extends z.ZodType<any>
+  TWhereInput,
+  TSchema extends z.ZodType<any>,
 >({
-	filters,
-	schema,
+  filters,
+  schema,
 }: BuildFiltersFactoryInput<TWhereInput, TSchema>) => {
-	return (params: z.infer<typeof schema>): TWhereInput => {
-		const builder = new FilterBuilder<
-			TWhereInput,
-			typeof filters,
-			z.infer<TSchema>
-		>(filters, params)
-		
-		const keys = Object.keys(params) as Array<keyof typeof params>
-		for (const key of keys) {
-			if (key in filters) {
-				builder.addFilter(key as keyof typeof filters, params[key])
-			}
-		}
+  return (params: z.infer<typeof schema>): TWhereInput => {
+    const builder = new FilterBuilder<
+      TWhereInput,
+      typeof filters,
+      z.infer<TSchema>
+    >(filters, params)
 
-		return builder.build()
-	}
+    const keys = Object.keys(params) as Array<keyof typeof params>
+    for (const key of keys) {
+      if (key in filters) {
+        builder.addFilter(key as keyof typeof filters, params[key])
+      }
+    }
+
+    return builder.build()
+  }
 }
