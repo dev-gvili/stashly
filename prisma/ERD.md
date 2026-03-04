@@ -625,11 +625,10 @@ Properties as follows:
 
 ### `Collection`
 
-*
- * Represents a collection of items, linked to a specific item by its ID.
- * Each collection has a unique name and tracks the total size of its items.
- * The relationship with items is managed through the CollectionItem junction table.
- * Index on name for efficient querying.
+- - Represents a collection of items, linked to a specific item by its ID.
+  - Each collection has a unique name and tracks the total size of its items.
+  - The relationship with items is managed through the CollectionItem junction table.
+  - Index on name for efficient querying.
 
 Properties as follows:
 
@@ -639,12 +638,11 @@ Properties as follows:
 
 ### `CollectionItem`
 
-*
-    * Junction table for many-to-many relationship between Collection and Item
-    * Each entry represents an association of an Item with a Collection
-    * Includes timestamps for tracking when the association was created and last updated
-    * Enforces uniqueness on the combination of collectionId and itemId to prevent duplicate associations
-    * Indexes on collectionId, itemId, and createdAt for efficient querying and sorting.
+- - Junction table for many-to-many relationship between Collection and Item
+  - Each entry represents an association of an Item with a Collection
+  - Includes timestamps for tracking when the association was created and last updated
+  - Enforces uniqueness on the combination of collectionId and itemId to prevent duplicate associations
+  - Indexes on collectionId, itemId, and createdAt for efficient querying and sorting.
 
 Properties as follows:
 

@@ -12,7 +12,8 @@ model File {
 
 model Folder {
     id         String @id
-    childCount Int?
+    childCount Int?    @default(0)
+    inclusiveChildCount Int @default(0)
     view       View?
     itemId     String @unique
     item       Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)

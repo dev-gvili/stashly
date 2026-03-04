@@ -1,10 +1,22 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Share2, Edit, Trash2, Play, MessageSquare, FileText } from "lucide-react"
-import type { FileType } from "@/components/file-manager"
-import { ShareFolderModal } from "@/components/share-folder-modal"
-import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter } from "@/components/ui/sidebar"
+import { useState } from 'react'
+import {
+  Share2,
+  Edit,
+  Trash2,
+  Play,
+  MessageSquare,
+  FileText,
+} from 'lucide-react'
+import type { FileType } from '@/components/dropbox ui/file-manager'
+import { ShareFolderModal } from '@/components/dropbox ui/share-folder-modal'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarFooter,
+} from '@/components/ui/sidebar'
 
 type FilePreviewProps = {
   file: FileType | null
@@ -24,7 +36,9 @@ export function FilePreview({ file, onShowComments }: FilePreviewProps) {
         <SidebarHeader className="h-[72px] border-b border-border flex flex-row items-center px-6">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 border border-muted-foreground rounded" />
-            <h2 className="text-foreground text-sm font-medium">File Preview</h2>
+            <h2 className="text-foreground text-sm font-medium">
+              File Preview
+            </h2>
           </div>
           {file && onShowComments && (
             <button
@@ -43,17 +57,20 @@ export function FilePreview({ file, onShowComments }: FilePreviewProps) {
             <div className="w-24 h-24 rounded-lg bg-card flex items-center justify-center mb-4">
               <FileText className="w-12 h-12 text-muted-foreground" />
             </div>
-            <h3 className="text-foreground text-base font-medium mb-2">No File Selected</h3>
+            <h3 className="text-foreground text-base font-medium mb-2">
+              No File Selected
+            </h3>
             <p className="text-muted-foreground text-sm text-center leading-relaxed">
-              When you'll select one of the files, you'll be able to see all the details and managing options
+              When you'll select one of the files, you'll be able to see all the
+              details and managing options
             </p>
           </SidebarContent>
         ) : (
           <SidebarContent className="p-6">
-            {file.type === "mp4" && file.thumbnail ? (
+            {file.type === 'mp4' && file.thumbnail ? (
               <div className="relative mb-6 rounded-lg overflow-hidden">
                 <img
-                  src={file.thumbnail || "/placeholder.svg"}
+                  src={file.thumbnail || '/placeholder.svg'}
                   alt="Video thumbnail"
                   className="w-full h-auto aspect-video object-cover"
                 />
@@ -73,29 +90,39 @@ export function FilePreview({ file, onShowComments }: FilePreviewProps) {
 
             {/* File Info */}
             <div className="mb-6">
-              <h3 className="text-foreground text-base font-medium mb-1 text-balance">{file.name}</h3>
+              <h3 className="text-foreground text-base font-medium mb-1 text-balance">
+                {file.name}
+              </h3>
               <p className="text-muted-foreground text-xs">
-                {file.size}, {file.type === "mp4" ? "01H-40M-45S" : file.date}
+                {file.size}, {file.type === 'mp4' ? '01H-40M-45S' : file.date}
               </p>
             </div>
 
             {/* File Description */}
             {file.description && (
               <div className="mb-6">
-                <h4 className="text-foreground text-sm font-medium mb-2">File Description</h4>
-                <p className="text-muted-foreground text-sm leading-relaxed">{file.description}</p>
+                <h4 className="text-foreground text-sm font-medium mb-2">
+                  File Description
+                </h4>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {file.description}
+                </p>
               </div>
             )}
 
             <div className="mb-6">
-              <h4 className="text-foreground text-sm font-medium mb-3">File Shared With:</h4>
+              <h4 className="text-foreground text-sm font-medium mb-3">
+                File Shared With:
+              </h4>
               <div className="flex flex-col gap-3">
                 {file.sharedWith.map((user, index) => (
                   <div key={index} className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded bg-muted flex items-center justify-center text-foreground text-sm font-medium flex-shrink-0">
                       {user.initial}
                     </div>
-                    <span className="text-muted-foreground text-sm">{user.name}</span>
+                    <span className="text-muted-foreground text-sm">
+                      {user.name}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -127,7 +154,9 @@ export function FilePreview({ file, onShowComments }: FilePreviewProps) {
         )}
       </Sidebar>
 
-      {showShareModal && <ShareFolderModal onClose={() => setShowShareModal(false)} />}
+      {showShareModal && (
+        <ShareFolderModal onClose={() => setShowShareModal(false)} />
+      )}
     </>
   )
 }

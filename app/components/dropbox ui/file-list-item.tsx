@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { FileText, Star, MoreVertical, Film, FileCode } from "lucide-react"
-import type { FileType } from "@/components/file-manager"
+import { FileText, Star, MoreVertical, Film, FileCode } from 'lucide-react'
+import type { FileType } from '@/components/file-manager'
 
 type FileListItemProps = {
   file: FileType
@@ -18,17 +18,17 @@ const fileIcons = {
 }
 
 export function FileListItem({ file, onClick, isSelected }: FileListItemProps) {
-  const Icon = fileIcons[file.type]
+  const Icon = fileIcons[file.type as keyof typeof fileIcons]
 
   return (
     <button
       onClick={onClick}
       className={`flex items-center gap-4 p-3 rounded-lg transition-colors ${
-        isSelected ? "bg-accent" : "hover:bg-card"
+        isSelected ? 'bg-accent' : 'hover:bg-card'
       }`}
     >
       {/* File Icon */}
-      <div className="w-10 h-10 rounded bg-muted flex items-center justify-center flex-shrink-0">
+      <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
         <Icon className="w-5 h-5 text-muted-foreground" />
       </div>
 
@@ -38,7 +38,9 @@ export function FileListItem({ file, onClick, isSelected }: FileListItemProps) {
       </div>
 
       {/* Date */}
-      <div className="text-muted-foreground text-sm w-24 text-right">{file.date}</div>
+      <div className="text-muted-foreground text-sm w-24 text-right">
+        {file.date}
+      </div>
 
       {/* Shared With Badges */}
       <div className="flex items-center gap-1">

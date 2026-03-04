@@ -1,11 +1,13 @@
-import type { Route } from "./+types/search"
+import { href } from 'react-router'
+import type { Route } from './+types/search'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
+  href('/api/search/:type?/:query', { type: 'semantics', query: 'test' })
   // TODO: implement loader logic
-  return null;
+  return null
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   // TODO: implement action logic
-  return null;
+  return null
 }

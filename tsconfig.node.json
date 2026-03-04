@@ -1,18 +1,11 @@
 {
   "extends": "./tsconfig.json",
-  "include": [
-    "server.js",
-    "vite.config.ts"
-  ],
+  "include": ["server.js", "vite.config.ts"],
   "compilerOptions": {
     "composite": true,
     "strict": true,
-    "types": [
-      "node"
-    ],
-    "lib": [
-      "ES2022"
-    ],
+    "types": ["node", "@webgpu/types"],
+    "lib": ["ES2022"],
     "forceConsistentCasingInFileNames": true,
     "target": "ES2022",
     "module": "ES2022",

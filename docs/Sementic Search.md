@@ -7,38 +7,32 @@
 
 ## 📚 Table of Contents
 
-* [Semantic Search for a File‑Hosting App (TypeScript + Prisma + PostgreSQL)](#semantic-search-for-a-filehosting-app-typescript--prisma--postgresql)
-
-  * [📚 Table of Contents](#-table-of-contents)
-  * [Prerequisites](#prerequisites)
-  * [Choose the embedding model](#choose-the-embedding-model)
-  * [Install dependencies](#install-dependencies)
-  * [Load the model from Node – src/embeddings.ts](#load-the-model-from-node--srcembeddingsts)
-  * [PostgreSQL + Prisma configuration](#postgresql--prisma-configuration)
-
-    * [Install pgvector extension (once)](#install-pgvector-extension-once)
-    * [Prisma schema (prisma/schema.prisma)](#prisma-schema-prismaschemaprisma)
-
-      * [Run migrations](#run-migrations)
-
-  * [Extracting file content (optional but recommended)](#extracting-file-content-optional-but-recommended)
-
-    * [Extract text from pdf file stored in s3 using streaming](#extract-text-from-pdf-file-stored-in-s3-using-streaming)
-    * [How it works, step‑by‑step](#how-it-works-stepbystep)
-
-  * [Up‑sert a file + its embedding](#upsert-a-file--its-embedding)
-  * [Semantic search function (searchService.ts)](#semantic-search-function-searchservicets)
+- [Semantic Search for a File‑Hosting App (TypeScript + Prisma + PostgreSQL)](#semantic-search-for-a-filehosting-app-typescript--prisma--postgresql)
+  - [📚 Table of Contents](#-table-of-contents)
+  - [Prerequisites](#prerequisites)
+  - [Choose the embedding model](#choose-the-embedding-model)
+  - [Install dependencies](#install-dependencies)
+  - [Load the model from Node – src/embeddings.ts](#load-the-model-from-node--srcembeddingsts)
+  - [PostgreSQL + Prisma configuration](#postgresql--prisma-configuration)
+    - [Install pgvector extension (once)](#install-pgvector-extension-once)
+    - [Prisma schema (prisma/schema.prisma)](#prisma-schema-prismaschemaprisma)
+      - [Run migrations](#run-migrations)
+  - [Extracting file content (optional but recommended)](#extracting-file-content-optional-but-recommended)
+    - [Extract text from pdf file stored in s3 using streaming](#extract-text-from-pdf-file-stored-in-s3-using-streaming)
+    - [How it works, step‑by‑step](#how-it-works-stepbystep)
+  - [Up‑sert a file + its embedding](#upsert-a-file--its-embedding)
+  - [Semantic search function (searchService.ts)](#semantic-search-function-searchservicets)
 
 ---
 
 ## Prerequisites
 
-| Tool                  | Version (or higher)                      |
-| --------------------- | ---------------------------------------- |
+| Tool                              | Version (or higher)                         |
+| --------------------------------- | ------------------------------------------- |
 | \\\*\\\*Node.js\\\*\\\*           | 18.x (supports ES modules \\\& WebAssembly) |
-| \\\*\\\*PostgreSQL\\\*\\\*        | 13+ (must support extensions)            |
-| \\\*\\\*pnpm / npm / yarn\\\*\\\* | any                                      |
-| \\\*\\\*Git\\\*\\\* (optional)    | –                                        |
+| \\\*\\\*PostgreSQL\\\*\\\*        | 13+ (must support extensions)               |
+| \\\*\\\*pnpm / npm / yarn\\\*\\\* | any                                         |
+| \\\*\\\*Git\\\*\\\* (optional)    | –                                           |
 
 Make sure your PostgreSQL instance allows installing extensions (you may need superuser rights the first time).
 
@@ -46,9 +40,9 @@ Make sure your PostgreSQL instance allows installing extensions (you may need su
 
 ## Choose the embedding model
 
-| Model                                    | Output dim | License                      | Why it works                                                                                                         |
-| ---------------------------------------- | ---------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `sentence‑transformers/all‑MiniLM‑L6‑v2` | \\\*\\\*384\\\*\\\*    | Apache‑2.0 (commercial‑free) | Small (≈33 M params), < 1 GB RAM, fast on CPU, solid quality for names, descriptions, tags, and extracted file text. |
+| Model                                    | Output dim          | License                      | Why it works                                                                                                         |
+| ---------------------------------------- | ------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `sentence‑transformers/all‑MiniLM‑L6‑v2` | \\\*\\\*384\\\*\\\* | Apache‑2.0 (commercial‑free) | Small (≈33 M params), < 1 GB RAM, fast on CPU, solid quality for names, descriptions, tags, and extracted file text. |
 
 > \\\*\\\*Alternative\\\*\\\* (if you need higher accuracy \\\& have more RAM): `intfloat/e5-large-v2` (1024‑dim, Apache‑2.0).
 
@@ -136,8 +130,8 @@ model Item {
 
 > Note:
 >
-> -   `@db.Vector(384)` tells \\\*\\\*Prisma\\\*\\\* that the column is a \\\*\\\*vector(384)\\\*\\\* in Postgres.
-> -   The \\\*\\\*GIST\\\*\\\* index allows fast `<=>` (cosine distance) queries.
+> - `@db.Vector(384)` tells \\\*\\\*Prisma\\\*\\\* that the column is a \\\*\\\*vector(384)\\\*\\\* in Postgres.
+> - The \\\*\\\*GIST\\\*\\\* index allows fast `<=>` (cosine distance) queries.
 
 #### Run migrations
 
@@ -160,7 +154,7 @@ import { extract as extractText } from 'textract';
 import { getDocument } from 'pdf-parse';
 
 /\\\*\\\* Extracts text content from various file types. \\\*/
- \\\* 
+ \\\*
 export async function extractFileContent(filePath: string): Promise<string> {
   const buffer = readFileSync(filePath);
   const fileType = await fileTypeFromBuffer(buffer);
@@ -387,7 +381,8 @@ class S3DataRangeTransport extends pdfjsLib.PDFDataRangeTransport {
     length: number // total size of the PDF (bytes)
   ) {
     // `disableAutoFetch = false` – let pdf.js decide when to ask for the next range.
-    super(length, false);
+    // Call signature is (length, initialData, progressiveDone). Pass `null` for initialData.
+    super(length, null, false);
     this.client = client;
     this.bucket = bucket;
     this.key = key;
@@ -486,8 +481,6 @@ export async function extractPdfTextFromS3(params: {
 | Iterate pages → getTextContent() | For each page pdf.js parses the received bytes and returns the text items.                                                             | After a page is processed its buffers are released (via page.cleanup() or at the end via pdfDocument.cleanup()).                                                    |
 | Result                           | All page strings are concatenated and returned.                                                                                        | Memory usage stays roughly proportional to the rangeChunkSize (≈64 KB) plus a few page‑level structures – even a 5 GB PDF only needs a few MB of RAM at any moment. |
 
-
-
 > Tip: Store the extracted text (content column) only if you later want to display a preview or re‑embed it after a model upgrade. It isn’t required for the search itself – you could delete the column to save space.
 
 ---
@@ -551,7 +544,7 @@ export async function upsertFile(params: {
 }
 ```
 
->Batch uploads – you can call encodeText(\\\[txt1, txt2, …]) to get many vectors in one go and then use prisma.file.createMany.
+> Batch uploads – you can call encodeText(\\\[txt1, txt2, …]) to get many vectors in one go and then use prisma.file.createMany.
 
 ---
 
@@ -597,7 +590,6 @@ export async function semanticSearch(query: string, topK = 10): Promise<SearchRe
 }
 ```
 
-> Note:    
-> `<=>` = cosine `distance` (provided by \\\*\\\*pgvector\\\*\\\*).    
+> Note:  
+> `<=>` = cosine `distance` (provided by \\\*\\\*pgvector\\\*\\\*).  
 > `1 - distance` converts it to an intuitive similarity score.
-

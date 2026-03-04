@@ -10,7 +10,8 @@ model User {
     bucket           String   @default("default-bucket")
     driveId          String?  @unique // drive ID for the user
     subscriptionId   String?  @unique // Subscription ID for the user
-    storagePlanId    String?  @unique // Storage plan ID for the user
+    rootId           String?  @unique // Root folder ID for the user
+    storagePlanId    String? // Storage plan ID for the user
     stripeCustomerId String?  @unique // Stripe customer ID
 
     // Monitoring and Auditing

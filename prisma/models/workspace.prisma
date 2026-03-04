@@ -1,9 +1,9 @@
 model Workspace {
-    id          String   @id
+    id          String   @id @unique
     name        String
-    slug        String   @unique
+    slug        String?  @unique
     description String?  @default("")
-    default     Boolean  @default(false)
+    default     Boolean? @default(false)
     createdAt   DateTime @default(now())
     updatedAt   DateTime @updatedAt
 

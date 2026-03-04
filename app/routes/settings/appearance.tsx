@@ -1,17 +1,17 @@
-import type { Route } from "./+types/appearance";
+import type { Route } from './+types/appearance'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   // TODO: implement loader logic
-  return null;
+  return null
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   // TODO: implement action logic
-  return null;
+  return null
 }
 
 export default () => {
   // This is a placeholder component for the workspace route.
   // You can implement your workspace UI here.
-  return <div>Appearance Route</div>;
+  return <div>Appearance Route</div>
 }

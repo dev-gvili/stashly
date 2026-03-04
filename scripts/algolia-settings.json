@@ -33,14 +33,7 @@
     "desc(updatedAt)",
     "desc(createdAt)"
   ],
-  "ranking": [
-    "typo",
-    "words",
-    "proximity",
-    "attribute",
-    "exact",
-    "custom"
-  ],
+  "ranking": ["typo", "words", "proximity", "attribute", "exact", "custom"],
   "attributesToRetrieve": [
     "objectID",
     "id",

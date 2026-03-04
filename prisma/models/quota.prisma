@@ -1,19 +1,24 @@
 model Quota {
-    id        String      @id
+    id        String      @id @unique
     createdAt DateTime    @default(now())
     updatedAt DateTime    @updatedAt
-    deleted   BigInt      @default(0) // Total space consumed by files in the trash.
-    total     BigInt      @default(0) // Total allowed storage space, in bytes. based on the value storageLimit in StoragePlan model.
-    used      BigInt      @default(0) // Total space used, in bytes. Read-only.
+    // Total space consumed by files in the trash.
+    deleted   BigInt      @default(0)
+    // Total allowed storage space, in bytes.
+    // This is based on the value storageLimit in StoragePlan model.
+    total     BigInt      @default(0)
+    // Total space used, in bytes. Read-only.
+    used      BigInt      @default(0)
     status    QuotaStatus @default(normal)
-    driveId   String      @unique
-    drive     Drive       @relation(fields: [driveId], references: [id], onDelete: Cascade)
+
+    // Relations
+    driveId String @unique
+    drive   Drive  @relation(fields: [driveId], references: [id], onDelete: Cascade)
 
     @@index([driveId])
-
     @@index([status])
     @@index([createdAt])
-    @@index([updatedAt])    
+    @@index([updatedAt])
 }
 
 enum QuotaStatus {

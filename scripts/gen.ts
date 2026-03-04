@@ -16,7 +16,10 @@ program
     'json'
   )
 program.parse(process.argv)
-const options = program.opts<{ withPresets: boolean; docsFormat: 'json' | 'markdown' }>()
+const options = program.opts<{
+  withPresets: boolean
+  docsFormat: 'json' | 'markdown'
+}>()
 
 async function main() {
   // 1. Prompt for model name
@@ -36,7 +39,9 @@ async function main() {
     process.exit(1)
   }
 
-  const prismaFiles = fs.readdirSync(modelsDir).filter(f => f.endsWith('.prisma'))
+  const prismaFiles = fs
+    .readdirSync(modelsDir)
+    .filter((f) => f.endsWith('.prisma'))
   let modelBlock: string | null = null
   for (const file of prismaFiles) {
     const content = fs.readFileSync(path.join(modelsDir, file), 'utf-8')
@@ -55,8 +60,15 @@ async function main() {
 
   // 3. Extract scalar & enum fields
   const PRISMA_SCALARS = new Set([
-    'String', 'Int', 'BigInt', 'Float', 'Decimal',
-    'Boolean', 'DateTime', 'Json', 'Bytes',
+    'String',
+    'Int',
+    'BigInt',
+    'Float',
+    'Decimal',
+    'Boolean',
+    'DateTime',
+    'Json',
+    'Bytes',
   ])
   const scalarFields: { name: string; type: string }[] = []
   const fieldRe = /^\s*(\w+)\s+([A-Za-z0-9_]+)/gm
@@ -72,9 +84,7 @@ async function main() {
   // detect enum imports
   const enumTypes = Array.from(
     new Set(
-      scalarFields
-        .map(f => f.type)
-        .filter(t => !PRISMA_SCALARS.has(t))
+      scalarFields.map((f) => f.type).filter((t) => !PRISMA_SCALARS.has(t))
     )
   )
   const enumImports = enumTypes.length
@@ -83,18 +93,19 @@ async function main() {
 
   // 4. Operators helpers
   const stringOps = [
-    'equals', 'in', 'notIn',
-    'contains', 'startsWith', 'endsWith',
+    'equals',
+    'in',
+    'notIn',
+    'contains',
+    'startsWith',
+    'endsWith',
   ]
-  const defaultOps = [
-    'equals', 'in', 'notIn',
-    'lt', 'lte', 'gt', 'gte',
-  ]
+  const defaultOps = ['equals', 'in', 'notIn', 'lt', 'lte', 'gt', 'gte']
   const operatorsFor = (type: string) =>
     type === 'String' ? stringOps : defaultOps
   const rangeOpsFor = (type: string) =>
-    ['gte', 'lte'].filter(op =>
-      ['Int','Float','Decimal','DateTime'].includes(type)
+    ['gte', 'lte'].filter((op) =>
+      ['Int', 'Float', 'Decimal', 'DateTime'].includes(type)
     )
 
   // 5. Preset shape
@@ -112,24 +123,44 @@ ${enumImports}import { createFilterFactory, buildFiltersFactory } from '@/utils/
 ${presetShapeLine}export const ${lower}FilterSchema = z
   .object({
 ${scalarFields
-  .map(f => {
+  .map((f) => {
     // base zod type
     let base = ''
     switch (f.type) {
-      case 'String':   base = 'z.string()'; break
-      case 'Int':      base = 'z.number().int()'; break
-      case 'BigInt':   base = 'z.coerce.bigint()'; break
-      case 'Float':    base = 'z.number()'; break
-      case 'Decimal':  base = 'z.number()'; break
-      case 'Boolean':  base = 'z.coerce.boolean()'; break
-      case 'DateTime': base = 'z.date()'; break
-      case 'Json':     base = 'z.any()'; break
-      case 'Bytes':    base = 'z.instanceof(Buffer)'; break
-      default:         base = `z.nativeEnum(${f.type})`; break
+      case 'String':
+        base = 'z.string()'
+        break
+      case 'Int':
+        base = 'z.number().int()'
+        break
+      case 'BigInt':
+        base = 'z.coerce.bigint()'
+        break
+      case 'Float':
+        base = 'z.number()'
+        break
+      case 'Decimal':
+        base = 'z.number()'
+        break
+      case 'Boolean':
+        base = 'z.coerce.boolean()'
+        break
+      case 'DateTime':
+        base = 'z.date()'
+        break
+      case 'Json':
+        base = 'z.any()'
+        break
+      case 'Bytes':
+        base = 'z.instanceof(Buffer)'
+        break
+      default:
+        base = `z.nativeEnum(${f.type})`
+        break
     }
     const ops = operatorsFor(f.type).concat(rangeOpsFor(f.type))
     const shape = `z.object({${ops
-      .map(op => `${op}: ${base}.optional()`)
+      .map((op) => `${op}: ${base}.optional()`)
       .join(',')}}).optional()`
     return `    ${f.name}: ${shape},`
   })
@@ -145,10 +176,10 @@ const create${modelName}Filter = createFilterFactory<
 
 export const ${lower}Filters = {
 ${scalarFields
-  .map(f => {
+  .map((f) => {
     const ops = operatorsFor(f.type).concat(rangeOpsFor(f.type))
     const shape = `z.object({${ops
-      .map(op =>
+      .map((op) =>
         op === 'contains'
           ? `contains: z.string().optional()`
           : `${op}: z.any().optional()`
@@ -164,23 +195,24 @@ export const build${modelName}Filters = buildFiltersFactory({
   schema: ${lower}FilterSchema,
 })
 
-${options.docsFormat === 'json'
+${
+  options.docsFormat === 'json'
     ? `export const ${lower}FilterDocs = ${JSON.stringify(
         Object.fromEntries(
-          scalarFields.map(f => [
+          scalarFields.map((f) => [
             f.name,
             {
               type: f.type,
-              operators: operatorsFor(f.type)
-                .concat(rangeOpsFor(f.type)),
+              operators: operatorsFor(f.type).concat(rangeOpsFor(f.type)),
             },
           ])
         ),
-        null, 2
+        null,
+        2
       )}`
     : (() => {
         // markdown table
-        const rows = scalarFields.map(f => {
+        const rows = scalarFields.map((f) => {
           const ops = operatorsFor(f.type).concat(rangeOpsFor(f.type))
           return `| ${f.name} | ${f.type} | ${ops.join(', ')} |`
         })
@@ -197,7 +229,7 @@ ${options.docsFormat === 'json'
 
   // 7. Repo template (unchanged from earlier full script)
   const relationFields: string[] = [] // detect as before if you need includes
-  const defaultIncludeObj = '{}'        // fill in dynamically if desired
+  const defaultIncludeObj = '{}' // fill in dynamically if desired
   const repoTemplate = `import { Prisma } from '@/prisma/client'
 import { prisma } from '@/services/db'  
 import { build${modelName}Filters, ${lower}FilterSchema } from './${lower}Filters'

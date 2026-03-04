@@ -1,7 +1,7 @@
 model StoragePlan {
     id             String          @id
     name           String // e.g., "Free", "Basic", "Standard", "Premium"
-    // slug           String          @unique // A URL-friendly identifier for the plan
+    tag            String          @unique // A short, unique tag for the plan (e.g., "free", "basic")  
     description    String? // A short description of the plan
     type           StoragePlanType @default(free) // Enum for plan type
     storageLimit   BigInt // e.g., 15, 100, 200, 2000
@@ -9,14 +9,17 @@ model StoragePlan {
     memberLimit    Int // 5, 10, …
     features       String[] // List of features included in the plan
 
-    priceCents Int? // Price in cents, null for free plan
-    currency   String? // e.g., "USD", null for free plan
+    // Pricing
+    priceCents    Int? // Price in cents, null for free plan
+    currency      String? // e.g., "USD", null for free plan
     stripePriceId String? @unique // Stripe price ID for this plan
 
     // Relations
-    subscriptions Subscription[]    
+    subscriptions Subscription[]
     workspaces    Workspace[]
+    drives        Drive[]
 
+    @@unique([memberLimit, workspaceLimit, storageLimit])
     @@index([name])
     @@index([type])
     @@index([stripePriceId]) // Index for quick lookup by Stripe Price ID

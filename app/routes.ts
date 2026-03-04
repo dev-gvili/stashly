@@ -1,193 +1,131 @@
 import {
-	type RouteConfig,
-	index,
-	layout,
-	prefix,
-	route,
+  type RouteConfig,
+  index,
+  layout,
+  prefix,
+  route,
 } from '@react-router/dev/routes'
 
 export default [
-	// Auth routes
-	...prefix('auth', [
-		layout('routes/auth/layout.tsx', [
-			route('sign-in', 'routes/auth/sign-in.tsx'),
-			route('sign-out', 'routes/auth/sign-out.tsx'),
-		]),
-	]),
+  // Auth routes
+  ...prefix('auth', [
+    layout('routes/auth/layout.tsx', [
+      route('sign-in', 'routes/auth/sign-in.tsx'),
+      route('sign-out', 'routes/auth/sign-out.tsx'),
+    ]),
+  ]),
 
-	// API routes
-	...prefix('api', [
-		// Health check API route
-		route('health', 'routes/api/health.ts', { id: 'api.health' }),
-		// Invitations API route
-		route('invitations', 'routes/api/invitations.ts', {
-			id: 'api.invitations',
-		}),
-		// Notifications API route
-		route('notifications', 'routes/api/notifications.ts', {
-			id: 'api.notifications',
-		}),
-		// Stripe API route
-		route('stripe', 'routes/api/stripe.ts', { id: 'api.stripe' }),
-		// Favorites API route
-		route('favorites', 'routes/api/favorites.ts', { id: 'api.favorites' }),
-		// Users API route
-		route('users', 'routes/api/users.ts', { id: 'api.users' }),
-		// Subscription API route
-		route('subscription', 'routes/api/subscription.ts', {
-			id: 'api.subscription',
-		}),
-		// Shares API route
-		route('shares', 'routes/api/shares.ts', { id: 'api.shares' }),
-		// Quota API route
-		route('quota', 'routes/api/quota.ts', { id: 'api.quota' }),
-		// Version API route
-		route('versions', 'routes/api/versions.ts', { id: 'api.versions' }),
-		// Theme management API route
-		route('theme', 'routes/api/theme.ts', { id: 'api.theme' }),
-		// Items API route
-		route('items/*', 'routes/api/items.ts', { id: 'api.items' }),
-		// Workspaces API route
-		route('workspaces/*', 'routes/api/workspaces.ts', {
-			id: 'api.workspaces',
-		}),
+  // API routes
+  ...prefix('api', [
+    route('auth/*', 'routes/api/auth.ts'),
+    route('items/*', 'routes/api/items.ts'),
+    route('workspaces/*', 'routes/api/workspaces.ts'),
+    route('members/*', 'routes/api/members.ts'),
+    route('collections/*', 'routes/api/collections.ts'),
+    route('permissions/*', 'routes/api/permissions.ts'),
+    route('comments/*', 'routes/api/comments.ts'),
+    route('health', 'routes/api/health.ts'),
+    route('invitations', 'routes/api/invitations.ts'),
+    route('notifications', 'routes/api/notifications.ts'),
+    route('stripe', 'routes/api/stripe.ts'),
+    route('favorites', 'routes/api/favorites.ts'),
+    route('users', 'routes/api/users.ts'),
+    route('subscription', 'routes/api/subscription.ts'),
+    route('shares', 'routes/api/shares.ts'),
+    route('quota', 'routes/api/quota.ts'),
+    route('versions', 'routes/api/versions.ts'),
+    route('theme', 'routes/api/theme.ts'),
+    route('images', 'routes/api/images.ts'),
+    route('settings', 'routes/api/settings.ts'),
+    route('view', 'routes/api/view.ts'),
+    route('sidebar', 'routes/api/sidebar.ts'),
+    route('search/:type', 'routes/api/search.ts'),
 
-		// Members API route
+    ...prefix('ai', [
+      route('embed', 'routes/api/ai.ts', { id: 'ai-embed' }),
+      route('caption', 'routes/api/ai.ts', { id: 'ai-caption' }),
+      route('translate', 'routes/api/ai.ts', { id: 'ai-translate' }),
+      route('transcribe', 'routes/api/ai.ts', { id: 'ai-transcribe' }),
+      route('suggestion', 'routes/api/ai.ts', { id: 'ai-suggestion' }),
+      route('summarize', 'routes/api/ai.ts', { id: 'ai-summarize' }),
+      route('chat', 'routes/api/ai.ts', { id: 'ai-chat' }),
+    ]),
+    // S3 (object storage) API routes
+    ...prefix('s3', [
+      route('sts-token', 'routes/api/s3/sts-token.ts', { id: 's3-sts-token' }),
+      route('presigned', 'routes/api/s3.ts', { id: 's3-presigned' }),
+      route('upload', 'routes/api/upload.ts', { id: 's3-upload' }),
+      // route("list", "routes/api/list.ts"),
+      // route("list/", "routes/api/list.ts"),
+      // route("copy", "routes/api/copy.ts"),
+      // route("move", "routes/api/move.ts"),
+      // route("restore", "routes/api/restore.ts"),
+    ]),
+  ]),
 
-		route('members/*', 'routes/api/members.ts', { id: 'api.members' }),
-		// // Teams API route
-		// route('teams/*', 'routes/api/teams.ts', { id: 'api.teams' }),
-		// // Roles API route
-		// route('roles/*', 'routes/api/roles.ts', { id: 'api.roles' }),
-		// // Permissions API route
-		// route('permissions/*', 'routes/api/permissions.ts', {
-		// 	id: 'api.permissions',
-		// }),
-		
-		// Tags API route
-		// route('tags/*', 'routes/api/tags.ts', { id: 'api.tags' }),
-		// // Categories API route
-		// route('categories/*', 'routes/api/categories.ts', {
-		// 	id: 'api.categories',
-		// }),
-		// Comments API route
-		// route('comments/*', 'routes/api/comments.ts', { id: 'api.comments' }),
+  // App main layout, shared between dashboard, workspaces
+  layout('routes/layout.tsx', { id: 'layout' }, [
+    // Index route, for redirect after signin
+    index('routes/index.tsx'),
 
-		// Collections API route
-		route('collections/*', 'routes/api/collections.ts', {
-			id: 'api.collections',
-		}),
-		// Settings API route
-		route('settings', 'routes/api/settings.ts', { id: 'api.settings' }),
-		// Folder View API route
-		route('view', 'routes/api/view.ts', { id: 'api.view' }),
-		// Search API route
-		route('search', 'routes/api/search.ts', { id: 'api.search' }),
-		// Images API route
-		route('images', 'routes/api/images.ts', { id: 'api.images' }),
-		// Authentication API route; wildcard handles login, logout, registration, password reset, and other auth-related requests
-		route('auth/*', 'routes/api/auth.ts', { id: 'api.auth' }),
-		// S3 & Upload API routes
-		...prefix('s3', [
-			route('sts-token', 'routes/api/s3/sts-token.ts', {
-				id: 'api.s3.sts-token',
-			}),
-			route('presigned-url', 'routes/api/s3/presigned-url.ts', {
-				id: 'api.s3.presigned-url',
-			}),
-			route('upload', 'routes/api/upload.ts', {
-				id: 'api.s3.upload',
-			}),
-		]),
-	]),
+    // Dashboard routes
+    ...prefix(':me', [
+      ...prefix('stash', [
+        index('routes/stash/home.tsx'),
+        route('all', 'routes/stash/all.tsx'),
+        route('collections', 'routes/stash/collections.tsx'),
+        route('collections/:collectionId', 'routes/stash/collection.tsx'),
+        route('favorites', 'routes/stash/favorites.tsx'),
+        route('folders/:folderId', 'routes/stash/folder.tsx'),
+        route('folders/:folderId/files/:fileId', 'routes/stash/file.tsx'),
+        route('gallery', 'routes/stash/gallery.tsx'),
+        route('recent', 'routes/stash/recent.tsx'),
+        route('search', 'routes/stash/search.tsx'),
+        route('shares', 'routes/stash/shares.tsx'),
+        route('trash', 'routes/stash/trash.tsx'),
+        route('demo', 'routes/stash/demo.tsx'),
+      ]),
+      // workspaces routes
+      ...prefix('workspaces', [
+        index('routes/workspaces/index.tsx'),
+        route('create', 'routes/workspaces/create.tsx'),
+        route(':workspaceId', 'routes/workspaces/workspace.tsx'),
+        route(':workspaceId/settings', 'routes/workspaces/settings.tsx'),
+        route(':workspaceId/members', 'routes/workspaces/members.tsx'),
+        route(':workspaceId/folders/:folderId', 'routes/workspaces/folder.tsx'),
+        route(
+          ':workspaceId/folders/:folderId/files/:fileId',
+          'routes/workspaces/file.tsx'
+        ),
+        route(':workspaceId/shares', 'routes/workspaces/shares.tsx'),
+        route(':workspaceId/favorites', 'routes/workspaces/favorites.tsx'),
+        route(':workspaceId/collections', 'routes/workspaces/collections.tsx'),
+        route(
+          ':workspaceId/collections/:collectionId',
+          'routes/workspaces/collection.tsx'
+        ),
+        route(':workspaceId/trash', 'routes/workspaces/trash.tsx'),
+        route(':workspaceId/recent', 'routes/workspaces/recent.tsx'),
+        route(':workspaceId/gallery', 'routes/stash/gallery.tsx', {
+          id: 'workspace-gallery',
+        }),
+      ]),
 
-	layout('routes/layout.tsx', { id: 'layout' }, [
-		// Main layout for the application, wraps all routes
-		index('routes/index.tsx'), // Default route, can be used for landing page or overview
+      // Settings routes
+      ...prefix('settings', [
+        route('profile', 'routes/settings/profile.tsx'),
+        route('account', 'routes/settings/account.tsx'),
+        route('security', 'routes/settings/security.tsx'),
+        route('billing', 'routes/settings/billing.tsx'),
+        route('notifications', 'routes/settings/notifications.tsx'),
+        route('appearance', 'routes/settings/appearance.tsx'),
+      ]),
+    ]),
 
-		// Dashboard routes
-		...prefix('dashboard', [
-			index('routes/dashboard/index.tsx'), // Default route for dashboard, can be used for overview
-			route('items/*', 'routes/dashboard/item.tsx', {
-				id: 'dashboard.items',
-			}), // Route for viewing a specific item in the dashboard
-			route('shared', 'routes/dashboard/shared.tsx', {
-				id: 'dashboard.shared',
-			}), // Route for shared items in the dashboard
+    route('*', 'routes/not-found.tsx', { id: 'not-found' }), // Catch-all route for 404
+  ]),
 
-			route('recent', 'routes/dashboard/recent.tsx', {
-				id: 'dashboard.recent',
-			}), // Route for recent items in the dashboard
-			route('trash', 'routes/dashboard/trash.tsx', {
-				id: 'dashboard.trash',
-			}), // Route for trashed items in the dashboard
-			route('collections', 'routes/dashboard/collections.tsx', {
-				id: 'dashboard.collections',
-			}), // Route for collections in the dashboard
-			route(
-				'collections/:collectionId',
-				'routes/dashboard/collection.tsx',
-				{
-					id: 'dashboard.collection',
-				}
-			), // Route for a specific collection in the dashboard
-			route('search', 'routes/dashboard/search.tsx', {
-				id: 'dashboard.search',
-			}), // Route for search functionality in the dashboard
-		]),
-
-		// workspaces routes
-		...prefix('workspaces', [
-			index('routes/workspaces/index.tsx'), // Default route for workspaces, can be used for overview
-			route('create', 'routes/workspaces/create.tsx', {
-				id: 'workspaces.create',
-			}), // Route for creating a new workspace
-			route(':workspaceId', 'routes/workspaces/workspace.tsx', [
-				route('settings', 'routes/workspaces/settings.tsx', {
-					id: 'workspaces.settings',
-				}), // Route for workspace settings
-				route('members', 'routes/workspaces/members.tsx', {
-					id: 'workspaces.members',
-				}), // Route for workspace members
-				// route('collections', 'routes/workspaces/collections.tsx', {
-				// 	id: 'workspaces.collections',
-				// }), // Route for collections within a workspace	
-				// route('collections/:collectionId', 'routes/workspaces/collection.tsx', {
-				// 	id: 'workspaces.collection',
-				// }), // Route for a specific collection within a workspace	
-				// route('collections/:collectionId/items/:itemId', 'routes/workspaces/collection-item.tsx', {
-				// 	id: 'workspaces.collection.item',
-				// }), // Route for a specific item within a collection in a workspace	
-
-				// route('collections/:collectionId/settings', 'routes/workspaces/collection-settings.tsx', {
-				// 	id: 'workspaces.collection.settings',
-				// }), // Route for collection settings within a workspace		
-				route('items/:itemId', 'routes/workspaces/item.tsx', {
-					id: 'workspaces.item',
-				}),
-			]),
-		]),
-
-		// Settings routes
-		...prefix('settings', [
-			route('profile', 'routes/settings/profile.tsx', {
-				id: 'settings.profile',
-			}), // Route for user profile settings
-			route('account', 'routes/settings/account.tsx', {
-				id: 'settings.account',
-			}), // Route for account settings
-			route('security', 'routes/settings/security.tsx', {
-				id: 'settings.security',
-			}), // Route for security settings
-			route('billing', 'routes/settings/billing.tsx', {
-				id: 'settings.billing',
-			}), // Route for billing settings
-			route('notifications', 'routes/settings/notifications.tsx', {
-				id: 'settings.notifications',
-			}), // Route for notification settings
-			route('appearance', 'routes/settings/appearance.tsx', {
-				id: 'settings.appearance',
-			}), // Route for appearance settings
-		]),
-	]),
+  route('test', 'routes/stash/recent.tsx', {
+    id: 'test-route',
+  }), // Public share route
 ] satisfies RouteConfig

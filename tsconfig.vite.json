@@ -6,7 +6,8 @@
     "app/**/.server/**/*",
     "app/**/.client/**/*",
     "database/**/*",
-    "server/**/*"
+    "server/**/*",
+    "prisma/seedData/stress-test.ts"
   ],
   "compilerOptions": {
     "composite": true,
@@ -17,7 +18,12 @@
       "ES2022"
     ],
     "types": [
-      "vite/client"
+      "vite/client",
+      "@webgpu/types"
+    ],
+    "typeRoots": [
+       // or ensure typeRoots include node_modules
+      "./node_modules/@webgpu/types"
     ],
     "target": "ES2022",
     "module": "ES2022",
@@ -36,7 +42,7 @@
         "./app/.server/db"
       ],
       "@/prisma/*": [
-        "./app/.server/prisma/*"
+        "./app/prisma/*"
       ],
       "@/utils/*": [
         "./app/utils/*"
@@ -53,6 +59,9 @@
       "@/services/*": [
         "./app/.server/*"
       ],
+      "@/machines/*": [
+        "./app/machines/*"
+      ]
     },
     "esModuleInterop": true,
     "resolveJsonModule": true

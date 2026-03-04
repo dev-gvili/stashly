@@ -4,43 +4,50 @@
 -- Create new 
 CREATE OR REPLACE FUNCTION update_size()
 RETURNS TRIGGER AS $$
+DECLARE
+  old_contrib BIGINT;
+  new_contrib BIGINT;
 BEGIN
-  -- Handle DELETE: decrement old parent
+  -- Handle DELETE
   IF TG_OP = 'DELETE' THEN
-    IF OLD."parentId" IS NOT NULL AND OLD."size" IS NOT NULL THEN
-      UPDATE "Item"
-      SET "size" = "size" - OLD."size"
-      WHERE "id" = OLD."parentId";
+    old_contrib := CASE WHEN OLD.status != 'trashed' THEN COALESCE(OLD.size, 0) ELSE 0 END;
+    IF OLD."parentId" IS NOT NULL AND old_contrib > 0 THEN
+      UPDATE "Item" SET "size" = "size" - old_contrib WHERE "id" = OLD."parentId";
     END IF;
     RETURN OLD;
   END IF;
 
-  -- Handle INSERT: increment new parent
+  -- Handle INSERT
   IF TG_OP = 'INSERT' THEN
-    IF NEW."parentId" IS NOT NULL AND NEW."size" IS NOT NULL THEN
-      UPDATE "Item"
-      SET "size" = "size" + NEW."size"
-      WHERE "id" = NEW."parentId";
+    new_contrib := CASE WHEN NEW.status != 'trashed' THEN COALESCE(NEW.size, 0) ELSE 0 END;
+    IF NEW."parentId" IS NOT NULL AND new_contrib > 0 THEN
+      UPDATE "Item" SET "size" = "size" + new_contrib WHERE "id" = NEW."parentId";
     END IF;
     RETURN NEW;
   END IF;
 
-  -- Handle UPDATE: parentId or size changed
+  -- Handle UPDATE
   IF TG_OP = 'UPDATE' THEN
-    IF (OLD."parentId" IS DISTINCT FROM NEW."parentId") OR (OLD."size" IS DISTINCT FROM NEW."size") THEN
+    old_contrib := CASE WHEN OLD.status != 'trashed' THEN COALESCE(OLD.size, 0) ELSE 0 END;
+    new_contrib := CASE WHEN NEW.status != 'trashed' THEN COALESCE(NEW.size, 0) ELSE 0 END;
+
+    -- If item was moved
+    IF OLD."parentId" IS DISTINCT FROM NEW."parentId" THEN
       -- Decrement old parent
-      IF OLD."parentId" IS NOT NULL AND OLD."size" IS NOT NULL THEN
-        UPDATE "Item"
-        SET "size" = "size" - OLD."size"
-        WHERE "id" = OLD."parentId";
+      IF OLD."parentId" IS NOT NULL AND old_contrib > 0 THEN
+        UPDATE "Item" SET "size" = "size" - old_contrib WHERE "id" = OLD."parentId";
       END IF;
       -- Increment new parent
-      IF NEW."parentId" IS NOT NULL AND NEW."size" IS NOT NULL THEN
-        UPDATE "Item"
-        SET "size" = "size" + NEW."size"
-        WHERE "id" = NEW."parentId";
+      IF NEW."parentId" IS NOT NULL AND new_contrib > 0 THEN
+        UPDATE "Item" SET "size" = "size" + new_contrib WHERE "id" = NEW."parentId";
+      END IF;
+    -- If item was not moved, but its contribution to parent size changed
+    ELSIF old_contrib != new_contrib THEN
+      IF NEW."parentId" IS NOT NULL THEN
+        UPDATE "Item" SET "size" = "size" + (new_contrib - old_contrib) WHERE "id" = NEW."parentId";
       END IF;
     END IF;
+    
     RETURN NEW;
   END IF;
 

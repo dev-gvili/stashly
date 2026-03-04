@@ -1,16 +1,52 @@
-import { Folder } from "lucide-react"
-import type { FolderType } from "@/components/file-manager"
+import React from 'react'
+import {
+  Card,
+  CardTitle,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardFooter,
+} from '@/ui/card'
+import { AspectRatio } from '@/ui/aspect-ratio'
+import { RiFolderFill } from '@remixicon/react'
+import { Link, useLocation, type LinkProps } from 'react-router'
+import { formatSize } from '@/utils/formaters'
 
-type FolderCardProps = {
-  folder: FolderType
+interface FolderCardProps extends LinkProps {
+  id: string
+  name: string
+  size: number
+  childCount: number
 }
 
-export function FolderCard({ folder }: FolderCardProps) {
+export const FolderCard = ({ to, size, ...props }: FolderCardProps) => {
   return (
-    <button className="flex flex-col items-start p-4 bg-card hover:bg-accent rounded-lg transition-colors border border-transparent hover:border-border">
-      <Folder className="w-12 h-12 text-muted-foreground mb-3" />
-      <h3 className="text-foreground text-sm font-medium mb-1">{folder.name}</h3>
-      <p className="text-muted-foreground text-xs">{folder.fileCount} files</p>
-    </button>
+    <Link to={to} {...props} prefetch="intent">
+      <Card className="p-4 shadow-none flex items-start rounded flex-1">
+        <CardHeader>
+          <RiFolderFill className="size-16 text-foreground font-stashly" />
+        </CardHeader>
+        <CardContent className="flex flex-row  w-full justify-start aspect-video">
+          <section className="w-full ">
+            <CardTitle
+              title={props.name}
+              className="truncate text-foreground font-stashly"
+            >
+              {props.name}
+            </CardTitle>
+            {/* <div className="flex justify-between items-center w-full">
+              </div> */}
+          </section>
+        </CardContent>
+        <CardFooter>
+          <CardDescription className="text-sm font-serif truncate font-normal text-muted-foreground font-stashly ">
+            {formatSize('byte', 'unit', size)}
+          </CardDescription>
+          <CardDescription className="text-sm.0p font-serif font-normal text-muted-foreground font-stashly place-self-end">
+            {props.childCount} items
+          </CardDescription>
+        </CardFooter>
+      </Card>
+    </Link>
   )
 }

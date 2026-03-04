@@ -1,34 +1,34 @@
-import { Prisma } from '@/prisma/client'
+import { Prisma } from '@/prisma/browser'
 import {
-	paginate,
-	type DbDelegate,
-	type PaginationCursorData,
-	type PaginationOffsetData,
-	type PaginationStreamData,
+  paginate,
+  type DbDelegate,
+  type PaginationCursorData,
+  type PaginationOffsetData,
+  type PaginationStreamData,
 } from './pagination'
 
 // --- Utility Type ---
 
 type InferredModel<
-	TDelegate extends DbDelegate<any, any, any, any>,
-	TInclude
+  TDelegate extends DbDelegate<any, any, any, any>,
+  TInclude,
 > = Prisma.Result<
-	TDelegate,
-	{ include: TInclude & Parameters<TDelegate['findMany']>[0]['include'] },
-	'findMany'
+  TDelegate,
+  { include: TInclude & Parameters<TDelegate['findMany']>[0]['include'] },
+  'findMany'
 >[number]
 
 // --- Factory Configuration Type ---
 
 export interface SearchFactoryConfig<
-	TWhereInput,
-	TOrderBy,
-	TParams,
-	TDelegate extends DbDelegate<any, TWhereInput, TOrderBy, any>
+  TWhereInput,
+  TOrderBy,
+  TParams,
+  TDelegate extends DbDelegate<any, TWhereInput, TOrderBy, any>,
 > {
-	dbDelegate: TDelegate
-	buildFilters: (params: TParams) => TWhereInput
-	defaultOrderBy?: (params: TParams) => TOrderBy
+  dbDelegate: TDelegate
+  buildFilters: (params: TParams) => TWhereInput
+  defaultOrderBy?: (params: TParams) => TOrderBy
 }
 
 // --- Search Function Overloaded Type (Public API) ---
@@ -40,39 +40,39 @@ export interface SearchFactoryConfig<
 by the `buildFilters` function to generate the `where` clause for the database query. 
 F*/
 export type SearchFunction<
-	TWhereInput,
-	TOrderBy,
-	TParams,
-	TDelegate extends DbDelegate<any, TWhereInput, TOrderBy, any>
+  TWhereInput,
+  TOrderBy,
+  TParams,
+  TDelegate extends DbDelegate<any, TWhereInput, TOrderBy, any>,
 > = {
-	<TInclude = undefined>(
-		options: {
-			strategy: 'offset'
-			page: number
-			take: number
-			include?: TInclude
-			orderBy?: TOrderBy
-		} & TParams
-	): Promise<PaginationOffsetData<InferredModel<TDelegate, TInclude>>>
+  <TInclude = undefined>(
+    options: {
+      strategy: 'offset'
+      page: number
+      take: number
+      include?: TInclude
+      orderBy?: TOrderBy
+    } & TParams
+  ): Promise<PaginationOffsetData<InferredModel<TDelegate, TInclude>>>
 
-	<TInclude = undefined>(
-		options: {
-			strategy: 'cursor'
-			cursor?: string
-			take: number
-			include?: TInclude
-			orderBy?: TOrderBy
-		} & TParams
-	): Promise<PaginationCursorData<InferredModel<TDelegate, TInclude>>>
+  <TInclude = undefined>(
+    options: {
+      strategy: 'cursor'
+      cursor?: string
+      take: number
+      include?: TInclude
+      orderBy?: TOrderBy
+    } & TParams
+  ): Promise<PaginationCursorData<InferredModel<TDelegate, TInclude>>>
 
-	<TInclude = undefined>(
-		options: {
-			strategy: 'stream'
-			take: number
-			include?: TInclude
-			orderBy?: TOrderBy
-		} & TParams
-	): Promise<PaginationStreamData<InferredModel<TDelegate, TInclude>>>
+  <TInclude = undefined>(
+    options: {
+      strategy: 'stream'
+      take: number
+      include?: TInclude
+      orderBy?: TOrderBy
+    } & TParams
+  ): Promise<PaginationStreamData<InferredModel<TDelegate, TInclude>>>
 }
 
 // --- Explicit Search Options for Implementation (Internal Type) ---
@@ -80,32 +80,32 @@ export type SearchFunction<
 // explicitly omitting 'where', which aligns with the ToSearchOptions pattern.
 
 type OffsetSearchImplementationOptions<TParams, TOrderBy, TInclude> = {
-	strategy: 'offset'
-	page: number
-	take: number
-	include?: TInclude // Using 'any' for simpler internal type definition
-	orderBy?: TOrderBy
+  strategy: 'offset'
+  page: number
+  take: number
+  include?: TInclude // Using 'any' for simpler internal type definition
+  orderBy?: TOrderBy
 } & TParams
 
 type CursorSearchImplementationOptions<TParams, TOrderBy, TInclude> = {
-	strategy: 'cursor'
-	cursor?: string
-	take: number
-	include?: TInclude
-	orderBy?: TOrderBy
+  strategy: 'cursor'
+  cursor?: string
+  take: number
+  include?: TInclude
+  orderBy?: TOrderBy
 } & TParams
 
 type StreamSearchImplementationOptions<TParams, TOrderBy, TInclude> = {
-	strategy: 'stream'
-	take: number
-	include?: TInclude
-	orderBy?: TOrderBy
+  strategy: 'stream'
+  take: number
+  include?: TInclude
+  orderBy?: TOrderBy
 } & TParams
 
 export type SearchImplementationOptions<TParams, TOrderBy, TInclude> =
-	| OffsetSearchImplementationOptions<TParams, TOrderBy, TInclude>
-	| CursorSearchImplementationOptions<TParams, TOrderBy, TInclude>
-	| StreamSearchImplementationOptions<TParams, TOrderBy, TInclude>
+  | OffsetSearchImplementationOptions<TParams, TOrderBy, TInclude>
+  | CursorSearchImplementationOptions<TParams, TOrderBy, TInclude>
+  | StreamSearchImplementationOptions<TParams, TOrderBy, TInclude>
 
 // --- searchFactory Implementation ---
 
@@ -139,87 +139,84 @@ export type SearchImplementationOptions<TParams, TOrderBy, TInclude> =
  * });
  */
 export function searchFactory<
-	TWhereInput,
-	TOrderBy,
-	TParams,
-	TDelegate extends DbDelegate<any, TWhereInput, TOrderBy, any>
+  TWhereInput,
+  TOrderBy,
+  TParams,
+  TDelegate extends DbDelegate<any, TWhereInput, TOrderBy, any>,
 >({
-	dbDelegate,
-	buildFilters,
-	defaultOrderBy,
-}: SearchFactoryConfig<TWhereInput, TOrderBy, TParams, TDelegate>) {
-	const search = async <TInclude>(
-		// Use the clean union type. 'where' is not required here because it is
-		// generated by `buildFilters` below.
-		options: SearchImplementationOptions<TParams, TOrderBy, TInclude>
-	) => {
-		// Key step: The 'where' clause is generated here based on the high-level options (TParams).
-		const where = buildFilters(options as TParams)
-		const orderBy = options.orderBy ?? defaultOrderBy?.(options as TParams)
+  dbDelegate,
+  buildFilters,
+  defaultOrderBy,
+}: SearchFactoryConfig<
+  TWhereInput,
+  TOrderBy,
+  TParams,
+  TDelegate
+>): SearchFunction<TWhereInput, TOrderBy, TParams, TDelegate> {
+  const search = async <TInclude>(
+    // Use the clean union type. 'where' is not required here because it is
+    // generated by `buildFilters` below.
+    options: SearchImplementationOptions<TParams, TOrderBy, TInclude>
+  ): Promise<
+    | PaginationOffsetData<InferredModel<TDelegate, TInclude>>
+    | PaginationCursorData<InferredModel<TDelegate, TInclude>>
+    | PaginationStreamData<InferredModel<TDelegate, TInclude>>
+  > => {
+    // Key step: The 'where' clause is generated here based on the high-level options (TParams).
+    const where = buildFilters(options as TParams)
+    const orderBy = options.orderBy ?? defaultOrderBy?.(options as TParams)
 
-		// Infer the model type based on the delegate and the include options
-		type TModel = InferredModel<TDelegate, typeof options.include> & {
-			id: string
-		}
+    // Infer the model type based on the delegate and the include options
+    type TModel = InferredModel<TDelegate, TInclude> & {
+      id: string
+    }
 
-		// The switch statement correctly narrows the type of `options`
-		switch (options.strategy) {
-			case 'offset': {
-				return paginate<
-					TModel,
-					TWhereInput,
-					TOrderBy,
-					typeof options.include
-				>(dbDelegate, {
-					...options,
-					where, // <-- 'where' is added internally here
-					orderBy,
-					strategy: 'offset',
-				})
-			}
-			case 'cursor': {
-				// The options for cursor (cursor, take) match what paginate expects.
-				const res = paginate<
-					TModel,
-					TWhereInput,
-					TOrderBy,
-					typeof options.include
-				>(dbDelegate, {
-					...options,
-					where,
-					orderBy,
-					strategy: 'cursor',
-				})
-				return res
-			}
-			case 'stream': {
-				// The options for stream (take) match what paginate expects.
-				return paginate<
-					TModel,
-					TWhereInput,
-					TOrderBy,
-					typeof options.include
-				>(dbDelegate, {
-					...options,
-					where,
-					orderBy,
-					strategy: 'stream',
-				})
-			}
-			default: {
-				// This should be unreachable if the type system is correct, but required for exhaustive switch.
-				throw new Error(
-					`Unsupported pagination strategy: ${
-						(options as any).strategy
-					}`
-				)
-			}
-		}
-	}
-	return search as unknown as SearchFunction<
-		TWhereInput,
-		TOrderBy,
-		TParams,
-		TDelegate
-	>
+    // The switch statement correctly narrows the type of `options`
+    switch (options.strategy) {
+      case 'offset': {
+        return await paginate<TModel, TWhereInput, TOrderBy, TInclude>(
+          dbDelegate,
+          {
+            ...options,
+            where, // <-- 'where' is added internally here
+            orderBy,
+            strategy: 'offset',
+          }
+        )
+      }
+      case 'cursor': {
+        // The options for cursor (cursor, take) match what paginate expects.
+        return await paginate<TModel, TWhereInput, TOrderBy, TInclude>(
+          dbDelegate,
+          {
+            ...options,
+            where: where ?? ([] as TWhereInput),
+            orderBy,
+            strategy: 'cursor',
+          }
+        )
+      }
+      case 'stream': {
+        // The options for stream (take) match what paginate expects.
+        return paginate<TModel, TWhereInput, TOrderBy, TInclude>(dbDelegate, {
+          ...options,
+          where,
+          orderBy,
+          strategy: 'stream',
+        })
+      }
+      default: {
+        // This should be unreachable if the type system is correct, but required for exhaustive switch.
+        throw new Error(
+          `Unsupported pagination strategy: ${(options as any).strategy}`
+        )
+      }
+    }
+  }
+  return search as unknown as SearchFunction<
+    TWhereInput,
+    TOrderBy,
+    TParams,
+    TDelegate
+  >
 }
