@@ -1,5 +1,11 @@
 onlyBuiltDependencies:
   - '@prisma/engines'
+  - '@seydx/node-av-darwin-arm64'
+  - '@seydx/node-av-darwin-x64'
+  - '@seydx/node-av-linux-arm64'
+  - '@seydx/node-av-linux-x64'
+  - '@seydx/node-av-win32-arm64-mingw'
+  - '@seydx/node-av-win32-arm64-msvc'
   - '@seydx/node-av-win32-x64-mingw'
   - '@seydx/node-av-win32-x64-msvc'
   - esbuild
@@ -8,6 +14,8 @@ onlyBuiltDependencies:
   - node-llama-cpp
   - onnxruntime-node
   - prisma
+  - protobufjs
+  - sharp
   - tesseract
   - tesseract.js
   - webgpu

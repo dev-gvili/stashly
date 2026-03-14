@@ -21,10 +21,6 @@
       "vite/client",
       "@webgpu/types"
     ],
-    "typeRoots": [
-       // or ensure typeRoots include node_modules
-      "./node_modules/@webgpu/types"
-    ],
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "bundler",
