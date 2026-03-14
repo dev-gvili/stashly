@@ -1,6 +1,6 @@
 import { parse } from 'qs'
 import { z } from 'zod'
-import { presignedUrl } from '../machines/schema.zod'
+import { presignedUrl } from '@/schemas/machine.schemas'
 
 type ParseSearchParamsConfig<T extends z.ZodTypeAny> = {
   schema: T
@@ -135,11 +135,11 @@ export function parseFileExtension(filename: string): string {
 }
 
 export function parseEtag(etag: string) {
-  // Step 1: Remove outer quotes (single or double)
-  let cleaned = etag.replace(/^["']|["']$/g, '')
+  // Step 1: Remove escape characters around quotes
+  let cleaned = etag.replace(/\\"/g, '"')
 
-  // Step 2: Remove escape characters around quotes
-  cleaned = cleaned.replace(/\\"/g, '"')
+  // Step 2: Remove outer quotes (single or double)
+  cleaned = cleaned.replace(/^["']|["']$/g, '')
 
   // Step 3: Add a single pair of double quotes back
   return `"${cleaned}"`
