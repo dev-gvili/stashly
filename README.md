@@ -62,26 +62,59 @@ pnpm start    # Run production server
 
 ```
 app/
-  .server/        # Server-only code (never bundled to client)
-    services/     # Business logic and permission enforcement
-    repositories/ # Prisma-based data access (auto-generated)
-    search/       # Algolia + pgvector search integrations
-  .client/        # Client-only code (browser APIs)
-  routes/         # React Router routes (UI + loaders/actions)
-    api/          # REST API resource routes
-    stash/        # Personal stash views
-    workspaces/   # Workspace views
-    settings/     # User settings views
-  machines/       # XState state machines (upload, quota, session)
-  workers/        # Web Workers for AI inference and tokenization
-  schemas/        # Zod validation schemas (API + machine events)
-  types/          # Shared TypeScript type definitions
-  components/     # UI components (shadcn/ui in components/ui/)
-  hooks/          # Reusable React hooks
-  utils/          # Shared utilities
+├── .server/              # Server-only — excluded from client bundle
+│   ├── auth.ts           # better-auth configuration (OAuth, sessions)
+│   ├── db.ts             # Prisma client singleton
+│   ├── env.ts            # Validated server env vars
+│   ├── api.errors.ts     # ApiError / ApiErrorCode helpers
+│   ├── repositories/     # Data access via Prisma (auto-generated — don't hand-edit)
+│   ├── services/         # Business logic + permission enforcement
+│   ├── search/           # Algolia full-text + pgvector semantic search
+│   └── s3.ts             # S3-compatible storage client (Tigris)
+├── .client/              # Client-only — browser APIs, client AI helpers
+├── routes/               # React Router 7 pages + loaders/actions
+│   ├── layout.tsx        # Authenticated app shell
+│   ├── api/              # REST resource routes (/api/items, /api/ai, …)
+│   ├── stash/            # Personal stash views (home, file, folder, trash, shares)
+│   ├── workspaces/       # Collaborative workspace views
+│   └── settings/         # User / billing settings
+├── machines/             # XState 5 state machines
+│   ├── upload/           # File upload (parent + per-file actors)
+│   ├── upload-v2/        # Upload manager v2 (queue + worker actors)
+│   ├── multipart/        # S3 multipart upload utilities
+│   ├── quota/            # Storage quota tracking + enforcement
+│   ├── ai/               # Caption + transcription pipelines
+│   ├── onboard/          # Onboarding flow
+│   ├── subscription/     # Stripe subscription state
+│   └── actors/           # Shared spawned child actors
+├── workers/              # Web Workers (off main thread)
+│   └── stash.worker.ts   # Language detection + tokenization (ONNX / Transformers.js)
+├── schemas/              # Zod schemas — source of truth for validation
+│   ├── api.schemas.ts    # API request / response shapes
+│   └── machine.schemas.ts# XState machine event payloads
+├── types/                # Derived TypeScript types (inferred from schemas + manual)
+│   ├── api.types.ts
+│   ├── machine.types.ts
+│   └── upload-actors.types.ts
+├── components/
+│   ├── ui/               # shadcn/ui primitives (source-owned, Radix-based)
+│   ├── stash/            # Stash-specific compound components
+│   ├── upload/           # Upload dropzone + progress UI
+│   ├── views/            # Gallery / grid / list view variants
+│   └── navigation/       # Sidebar, header, toolbar
+├── hooks/                # Reusable React hooks
+├── utils/                # Shared pure utilities
+│   └── __tests__/        # Vitest unit tests
+└── styles/               # Global CSS + Tailwind theme
+
 prisma/
-  models/         # Split Prisma schema files (merged at build)
-scripts/          # Code generation scripts
+├── models/               # One .prisma file per model (merged at build)
+│   └── *.prisma          # user, item, collection, permission, quota, …
+├── migrations/           # Migration history
+└── schema.prisma         # Generated merged schema (don't edit directly)
+
+scripts/                  # Code-gen + dev utilities
+  generateRepository.v2.ts  # Scaffold repository + filters for a Prisma model
 ```
 
 ## Key Commands
