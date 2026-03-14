@@ -1,6 +1,6 @@
 // queue.machine.ts
 import { assign, setup, assertEvent, sendTo, type AnyActorRef } from 'xstate'
-import type { Config as UploadManagerConfig, MediaFile } from '../machine.types'
+import type { Config as UploadManagerConfig, MediaFile } from '@/types/machine.types'
 
 // Define a leaner type for what the queue machine needs to know about a file's status
 interface QueueItem {

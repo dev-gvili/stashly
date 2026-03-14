@@ -1,9 +1,9 @@
 import type { ActorRefFrom, AnyActorRef } from 'xstate'
 import { z } from 'zod'
-import { multipart } from './multipart/s3.multipart'
-import { fileMachine } from './upload/file.v2.machine'
+import { multipart } from '../machines/multipart/s3.multipart'
+import { fileMachine } from '../machines/upload/file.v2.machine'
 import { itemFilterSchema } from '@/utils/filters/item.filters'
-import type { quotaMachine } from './quota/quota.machine'
+import type { quotaMachine } from '../machines/quota/quota.machine'
 
 const UPLOAD = 'upload'
 const QUEUE = 'queue'

@@ -29,7 +29,7 @@ import {
   type authSession,
   type authSchema,
   type processingStatus,
-} from './schema.zod'
+} from '@/schemas/machine.schemas'
 
 // ====================================================== //
 // ==================== Shared Types ==================== //

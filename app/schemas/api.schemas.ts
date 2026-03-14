@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { toZodArraySchema } from '../../utils/converters'
+import { toZodArraySchema } from '../utils/converters'
 
 // ====================================================== //
 // =================== Quota Api Route ================== //

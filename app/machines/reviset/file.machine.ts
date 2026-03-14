@@ -15,7 +15,7 @@ import type {
   MediaFileStatus,
   MediaFileEvents,
   MediaFileInput,
-} from '../machine.types'
+} from '@/types/machine.types'
 import {
   completeUpload,
   createUpload,

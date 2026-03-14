@@ -7,7 +7,7 @@ import {
   type ActorRefFrom,
 } from 'xstate'
 import type { User } from '@/services/auth.types'
-import { config } from '../schema.zod'
+import { config } from '@/schemas/machine.schemas'
 import { uploadQueueMachineV2 } from './upload-queue.machine'
 import  { quotaMachine } from '../quota/quota.machine'
 import  { uploadWorkerMachine } from './upload-worker.machine'

@@ -9,7 +9,7 @@ import {
   buildItemFilters,
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
-import { getPaginatedItems } from '@/utils/item-actions.server'
+import { getPaginatedItems } from '@/services/item-actions'
 import { parseSearchParams } from '@/utils/parsers'
 import { redirect } from 'react-router'
 import { Fragment } from 'react/jsx-runtime'

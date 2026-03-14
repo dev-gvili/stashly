@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createActor } from 'xstate'
 import { systemMachine } from '@/machines/actors/system.machine.1'
-import type { UploadFile } from '@/machines/machine.types'
+import type { UploadFile } from '@/types/machine.types'
 import type { FileUpload, UploadProgress } from './types'
 
 interface UploadItemProps {

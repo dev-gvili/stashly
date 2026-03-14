@@ -10,8 +10,8 @@ import {
 import { fileMachine } from './file.machine'
 import { queueMachine } from './queue.machine' // Import the new queue machine
 import { quotaMachine } from './quota.machine' // Import the new queue machine
-import type { UploadManagerData, UploadManagerEvents, User } from './machine.types'
-import { config, mediafile, uploadProgress } from './schema.zod'
+import type { UploadManagerData, UploadManagerEvents, User } from '@/types/machine.types'
+import { config, mediafile, uploadProgress } from '@/schemas/machine.schemas'
 
 type UploadManagerContext = Omit<UploadManagerData, 'queues'> & {
 	queueRef?: AnyActorRef

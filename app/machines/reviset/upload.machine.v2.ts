@@ -12,7 +12,7 @@ import type {
   UploadManagerData,
   UploadManagerEvents,
   User,
-} from '../machine.types'
+} from '@/types/machine.types'
 
 // The parent machine's context, acting as the single source of truth.
 type UploadManagerContext = Omit<UploadManagerData, 'queues'> & {

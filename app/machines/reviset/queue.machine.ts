@@ -1,6 +1,6 @@
 // queue.machine.ts
 import { assign, setup, assertEvent, enqueueActions, log, sendTo } from 'xstate'
-import { status, uploadProgress } from '../schema.zod'
+import { status, uploadProgress } from '@/schemas/machine.schemas'
 import z from 'zod'
 
 // Define a leaner type for what the queue machine needs to know about a file's status

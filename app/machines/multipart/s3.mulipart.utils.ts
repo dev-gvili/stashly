@@ -9,7 +9,7 @@ import type {
   GetPresignedUrlForPartInput,
   GetPresignedUrlForPartOutput,
 } from '@/.server/upload'
-import type { MultipartEvents } from '../machine.types'
+import type { MultipartEvents } from '@/types/machine.types'
 import { streamParts } from './s3.multipart.stream'
 
 const FetchInit: RequestInit = {

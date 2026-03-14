@@ -10,7 +10,7 @@ import type {
   SubscriptionEvents,
   SubscriptionInput,
   SubscriptionOutput,
-} from '../machine.types'
+} from '@/types/machine.types'
 import { stripe } from '../../.server/stripe'
 
 export const machine = setup({

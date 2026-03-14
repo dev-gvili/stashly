@@ -8,8 +8,8 @@ import {
 	sendTo,
 } from 'xstate'
 import { fileMachine } from './file.machine'
-import type { UploadManagerData, UploadManagerEvents } from './machine.types'
-import { config, mediafile, uploadProgress } from './schema.zod'
+import type { UploadManagerData, UploadManagerEvents } from '@/types/machine.types'
+import { config, mediafile, uploadProgress } from '@/schemas/machine.schemas'
 import type { User } from 'better-auth'
 
 let initialData: UploadManagerData = {

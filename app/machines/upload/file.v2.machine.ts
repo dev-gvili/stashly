@@ -17,7 +17,7 @@ import type {
   MediaFileInput,
   MediaFile,
   ProcessingStatus,
-} from '../machine.types'
+} from '@/types/machine.types'
 import { toCategory } from '@/utils/converters'
 import {
   abortUpload,
@@ -25,7 +25,7 @@ import {
   createUpload,
   uploadParts,
 } from '@/machines/multipart/s3.mulipart.utils'
-import { StashlyAI } from '../../utils/stashly-ai'
+import { StashlyAI } from '../../.client/stashly-ai'
 // import { encodeImage, encodeText } from '@/utils/embeddings'
 // import { imageToText } from '../../root'
 

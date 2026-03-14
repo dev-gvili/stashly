@@ -1,5 +1,5 @@
 import { assertEvent, sendTo, setup, assign } from 'xstate'
-import type { QuotaContext, QuotaEvents, QuotaOutput } from '../machine.types'
+import type { QuotaContext, QuotaEvents, QuotaOutput } from '@/types/machine.types'
 import { verifyQuota, findQuota, updateQuota, checkQuota } from './quota.actors'
 
 export const quotaMachine = setup({

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/breadcrumb'
 import { Link } from 'react-router'
 import { href } from 'react-router'
-import { getBreadcrumbs } from '@/utils/breadcrmb'
+import { getBreadcrumbs } from '@/services/breadcrumbs'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   let crumbs = await getBreadcrumbs(params.fileId)

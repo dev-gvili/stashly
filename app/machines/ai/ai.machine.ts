@@ -2,7 +2,7 @@ import { assertEvent, assign, fromPromise, setup, log, and } from 'xstate'
 import { z } from 'zod'
 import { parsePresignedUrl } from '../../utils/parsers'
 import type { TranscribeOptions } from '../../.server/ai.utils'
-import { presignedUrl } from '../schema.zod'
+import { presignedUrl } from '@/schemas/machine.schemas'
 import { toCategory } from '../../utils/converters'
 
 // ============================================================================

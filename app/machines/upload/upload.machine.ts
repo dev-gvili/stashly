@@ -10,8 +10,8 @@ import {
 import { fileMachine } from './file.v2.machine'
 // import { fileMachine } from './file.machine'
 import { quotaMachine } from '@/machines/quota/quota.machine'
-import type { UploadManagerData, UploadManagerEvents } from '../machine.types'
-import { config, mediafile, uploadProgress } from '../schema.zod'
+import type { UploadManagerData, UploadManagerEvents } from '@/types/machine.types'
+import { config, mediafile, uploadProgress } from '@/schemas/machine.schemas'
 import type { User } from '@/services/auth.types'
 
 let initialData: UploadManagerData = {

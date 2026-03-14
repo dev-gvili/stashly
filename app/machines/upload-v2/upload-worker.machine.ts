@@ -1,4 +1,4 @@
-import { user } from '@/machines/schema.zod';
+import { user } from '@/schemas/machine.schemas';
 import {
   assign,
   setup,
@@ -12,7 +12,7 @@ import type {
   MediaFileStatus,
   MediaFile,
   UploadProgress,
-} from '../machine.types'
+} from '@/types/machine.types'
 import { toCategory, toMediaFile } from '@/utils/converters'
 import {
   completeUpload,

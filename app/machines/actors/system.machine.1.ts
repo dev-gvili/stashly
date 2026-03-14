@@ -5,8 +5,8 @@ import { quotaMachine } from '../quota/quota.machine'
 import { queueMachine } from '../reviset/queue.machine'
 // import { queueMachine } from './queue.machine';
 import { multipart } from '../multipart/s3.multipart'
-import type { Status, UploadFile, UploadProgress } from '../machine.types'
-// import type { UploadFile } from '../machine.types'
+import type { Status, UploadFile, UploadProgress } from '@/types/machine.types'
+// import type { UploadFile } from '@/types/machine.types'
 
 interface SystemContext {
   userId: string

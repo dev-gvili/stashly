@@ -10,7 +10,7 @@ import type {
   MultipartEvents,
   MultipartInput,
   MultipartOutput,
-} from '../machine.types'
+} from '@/types/machine.types'
 
 export const multipart = setup({
   types: {

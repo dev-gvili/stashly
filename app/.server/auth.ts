@@ -4,7 +4,7 @@ import { prisma } from '@/services/db'
 import { customSession, openAPI } from 'better-auth/plugins'
 import { onboardNewUser } from './onboard'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
-import type { Session, User } from '../machines/machine.types'
+import type { Session, User } from '@/types/machine.types'
 
 // const envs = toRequiredEnv({
 // 	env: [

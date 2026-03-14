@@ -6,7 +6,7 @@ import type { ShouldRevalidateFunction } from 'react-router'
 import { getQueryParamArray } from '@/utils/query-params'
 import { FilesEmptyState } from '@/components/states/files-empty-state'
 import { SuggestionsView } from '@/components/views/suggestions-view'
-import { getSuggestedItems } from '@/utils/item-actions.server'
+import { getSuggestedItems } from '@/services/item-actions'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 

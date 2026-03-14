@@ -1,7 +1,7 @@
 import type { Route } from './+types/all'
 import { auth } from '@/.server/auth'
 import { redirect } from 'react-router'
-import { getFolderContent } from '@/utils/item-actions.server'
+import { getFolderContent } from '@/services/item-actions'
 import {
   buildItemFilters,
   itemFilterSchema,
