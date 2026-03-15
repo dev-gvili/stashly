@@ -89,3 +89,22 @@ export function toChunk(text: string, maxLength: number): string[] {
 
   return chunks
 }
+
+/**
+ * Parses LLM-generated tag output into a clean array of tag strings.
+ * Handles common LLM formatting quirks: leading bullets, numbers, quotes, parens.
+ * @param raw - Raw text output from the LLM
+ * @returns Array of up to 10 cleaned tag strings
+ */
+export function parseTags(raw: string): string[] {
+  return raw
+    .split(',')
+    .map((t) =>
+      t
+        .replace(/^[\s\-*•#\d.()\[\]"']+/, '') // strip leading decorators
+        .replace(/[\s\-*•#.()\[\]"']+$/, '') // strip trailing decorators
+        .trim()
+    )
+    .filter((t) => t.length > 0 && t.length <= 60)
+    .slice(0, 10)
+}

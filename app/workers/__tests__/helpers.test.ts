@@ -3,6 +3,7 @@ import {
   extractAudioChunk,
   makeChunks,
   toChunk,
+  parseTags,
 } from '../stash.worker.helpers'
 
 // ─── extractAudioChunk ────────────────────────────────────────────────────────
@@ -132,5 +133,47 @@ describe('toChunk', () => {
     // each fragment appears somewhere in the result
     expect(chunks.some((c) => c.includes('Is this working?'))).toBe(true)
     expect(chunks.some((c) => c.includes('Great.'))).toBe(true)
+  })
+})
+
+// ─── parseTags ────────────────────────────────────────────────────────────────
+
+describe('parseTags', () => {
+  it('parses normal comma-separated output', () => {
+    expect(parseTags('machine learning, neural networks, image recognition')).toEqual([
+      'machine learning',
+      'neural networks',
+      'image recognition',
+    ])
+  })
+
+  it('strips leading bullet decorators', () => {
+    expect(parseTags('- cooking, • travel, * sports')).toEqual(['cooking', 'travel', 'sports'])
+  })
+
+  it('strips leading numbered list prefixes', () => {
+    expect(parseTags('1. cooking, 2. travel, 3. sports')).toEqual(['cooking', 'travel', 'sports'])
+  })
+
+  it('handles extra whitespace around tags', () => {
+    expect(parseTags('  cooking  ,  travel  ')).toEqual(['cooking', 'travel'])
+  })
+
+  it('handles trailing comma', () => {
+    expect(parseTags('cooking, travel,')).toEqual(['cooking', 'travel'])
+  })
+
+  it('truncates output to 10 tags when more are provided', () => {
+    const input = Array.from({ length: 15 }, (_, i) => `tag${i + 1}`).join(', ')
+    expect(parseTags(input)).toHaveLength(10)
+  })
+
+  it('returns empty array for empty string', () => {
+    expect(parseTags('')).toEqual([])
+  })
+
+  it('filters out tags longer than 60 characters', () => {
+    const longTag = 'a'.repeat(61)
+    expect(parseTags(`valid tag, ${longTag}, another tag`)).toEqual(['valid tag', 'another tag'])
   })
 })

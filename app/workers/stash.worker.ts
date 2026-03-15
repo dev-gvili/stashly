@@ -1,6 +1,11 @@
 /// <reference types="@webgpu/types" />
 import { pipeline, env, type SupportedTasks } from '@huggingface/transformers'
-import { extractAudioChunk, makeChunks, toChunk } from './stash.worker.helpers'
+import {
+  extractAudioChunk,
+  makeChunks,
+  toChunk,
+  parseTags,
+} from './stash.worker.helpers'
 
 // -------------------------
 // Constants
@@ -118,6 +123,14 @@ const LID_SHORT_CHUNK_SEC = 8
 /** Retry audio chunk duration (seconds) when initial confidence is low */
 const LID_LONG_CHUNK_SEC = 15
 
+/** System prompt for tag generation */
+const GENERATE_TAGS_SYSTEM_PROMPT =
+  'You are a tagging assistant. Generate 7 to 10 short topic tags (1 to 3 words each) ' +
+  'in the same language as the input text. ' +
+  'Include tags for the main topics AND any person names, locations, brand names, products, artists, or organizations mentioned. ' +
+  'Output ONLY a comma-separated list of tags. No explanations, no numbering, no bullets. ' +
+  'Example output: machine learning, neural networks, image recognition'
+
 /** System prompt used for all summarization requests */
 const SUMMARIZE_SYSTEM_PROMPT =
   'You are an expert summarization AI. Summarize the following text. Use the language of the input text. Be concise and focus on the main points. Use bullet points (2 bullets max per section) for clarity. Use up to 2 section max. Include all person names and details in the summary. If the text is very short, provide a single-sentence summary. If the text is a list of items, summarize each item concisely. If the text is a conversation, summarize the key topics and outcomes. USE THE SAME LANGUAGE AS THE INPUT TEXT. Do not output anything else other than the summary, If the text is in a language other than English, summarize in that language.'
@@ -152,7 +165,7 @@ type WorkerMessageType =
 type WorkerMessage =
   | {
       type: 'transcribe'
-      payload: { audio: Float32Array; sampleRate: number; duration: number }
+      payload: { audio: Float32Array; sampleRate: number; duration: number; language: string }
     }
   | {
       type: 'detect-language'
@@ -161,6 +174,7 @@ type WorkerMessage =
   | { type: 'summarize'; payload: { text: string } }
   | { type: 'classify'; payload: { text: string } }
   | { type: 'extract-keywords'; payload: { text: string } }
+  | { type: 'generate-tags'; payload: { text: string } }
 
 /** Message sent from worker to main thread */
 interface WorkerResponse {
@@ -227,7 +241,23 @@ if (DEBUG) {
 env.allowLocalModels = false
 env.useBrowserCache = true // Enable browser cache for faster model re-loads
 env.allowRemoteModels = true
-// env.backends!.onnx!.wasm!.proxy = true
+
+// ~~~~~~~~~~~~~~~~ Utils ~~~~~~~~~~~~~~~~ //
+
+const progress = (data: ProgressData) =>
+  self.postMessage({ type: 'progress', payload: data } as WorkerResponse)
+
+const report = ({ type, payload, task }: WorkerResponse) =>
+  self.postMessage({ type, payload, task } as WorkerResponse)
+
+const error = (payload: string) => report({ type: 'error', payload })
+const debug = (payload: string) => report({ type: 'debug', payload })
+const status = (payload: string) => report({ type: 'status', payload })
+const result = (
+  payload: any,
+  task: string,
+  type: WorkerMessageType = 'result'
+) => report({ type, payload, task })
 
 // -------------------------
 // WebGPU Device Manager
@@ -268,7 +298,7 @@ const WebGPUDeviceManager = {
         console.warn('WebGPU device restored')
 
         // Reset pipelines so they rebuild with the new device
-        PipelineManager.resetAllPipelines()
+        await PipelineManager.resetAllPipelines()
       })
     }
 
@@ -280,15 +310,17 @@ const WebGPUDeviceManager = {
 // Pipeline Manager
 // -------------------------
 class PipelineManager {
-  static instances: Record<string, any> = {}
+  static instances: Record<string, SupportedTasks[keyof SupportedTasks]> = {}
 
-  static resetAllPipelines(): void {
+  static async resetAllPipelines(): Promise<void> {
     console.warn('Resetting all pipelines due to device loss')
     for (const key in this.instances) {
       try {
-        this.instances[key].dispose?.()
+        await this.instances[key].dispose?.()
       } catch (e) {
-        console.warn('Error disposing pipeline during reset', key, e)
+        debug(
+          `Error disposing pipeline during reset ${key}: ${e instanceof Error ? e.message : String(e)}`
+        )
       }
     }
     this.instances = {}
@@ -308,13 +340,6 @@ class PipelineManager {
           device: 'webgpu',
           dtype: (MODEL_DTYPE[model] ?? 'fp16') as any,
           progress_callback: progressCallback,
-          session_options: {
-            extra: {
-              optimization: {
-                enable_gelu_approximation: 1,
-              },
-            },
-          },
         })
       } catch (error) {
         self.postMessage({
@@ -359,9 +384,7 @@ async function detectLanguage(
 
   const pipe = await PipelineManager.getPipeline(
     'audio-classification',
-    'Xenova/mms-lid-256',
-    (data) =>
-      self.postMessage({ type: 'progress', payload: data } as WorkerResponse)
+    'Xenova/mms-lid-256'
   )
 
   let audioChunk = extractAudioChunk({
@@ -420,30 +443,15 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
   const { type, payload } = event.data
   try {
     if (type === 'transcribe') {
-      const { audio: audioInput, sampleRate, duration } = payload
+      const { audio: audioInput, sampleRate, duration, language: detectedLanguage } = payload
 
       self.postMessage({
         type: 'audio-duration',
         payload: Math.round(duration),
       } as WorkerResponse)
-      // -------------------------
-      // 1. LANGUAGE DETECTION (LID)
-      // -------------------------
-      self.postMessage({
-        type: 'status',
-        payload: 'detecting-language',
-      } as WorkerResponse)
-
-      const { language: detectedLanguage, confidence } =
-        await detectLanguage(audioInput)
-
-      self.postMessage({
-        type: 'language-detected',
-        payload: { language: detectedLanguage, confidence },
-      } as WorkerResponse)
 
       // -------------------------
-      // 2. TRANSCRIPTION (WHISPER)
+      // TRANSCRIPTION (WHISPER)
       // -------------------------
       self.postMessage({
         type: 'status',
@@ -795,7 +803,8 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
           .map((word, i) => {
             const start = i * dim
             let score = 0
-            for (let j = 0; j < dim; j++) score += wordData[start + j] * docData[j]
+            for (let j = 0; j < dim; j++)
+              score += wordData[start + j] * docData[j]
             return { word, score }
           })
           .sort((a, b) => b.score - a.score)
@@ -809,6 +818,72 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       } catch (err: any) {
         self.postMessage({ type: 'error', payload: err.message })
       }
+    } else if (type === 'generate-tags') {
+      // -------------------------
+      // GENERATE TAGS (onnx-community/tiny-aya-global-ONNX)
+      // -------------------------
+      self.postMessage({
+        type: 'status',
+        payload: 'generating-tags',
+      } as WorkerResponse)
+      self.postMessage({
+        type: 'debug',
+        payload: 'Loading tag generation model...',
+      } as WorkerResponse)
+      await PipelineManager.resetAllPipelines()
+
+      const pipe = await PipelineManager.getPipeline(
+        'text-generation',
+        'onnx-community/tiny-aya-global-ONNX',
+        (data) =>
+          self.postMessage({
+            type: 'progress',
+            payload: data,
+          } as WorkerResponse)
+      )
+
+      self.postMessage({
+        type: 'debug',
+        payload: 'Generating tags...',
+      } as WorkerResponse)
+
+      // Sample beginning + end of the document so long texts don't lose tail content.
+      // For short texts, the whole thing fits; for long texts, take first 600 + last 400 chars.
+      const text = payload.text
+      const inputText =
+        text.length <= 1024
+          ? text
+          : text.slice(0, 600) + ' [...] ' + text.slice(-400)
+
+      const messages: ChatMessage[] = [
+        { role: 'system', content: GENERATE_TAGS_SYSTEM_PROMPT },
+        { role: 'user', content: inputText },
+      ]
+
+      const prompt = pipe.tokenizer.apply_chat_template(messages, {
+        tokenize: false,
+        add_generation_prompt: true,
+      }) as string
+
+      const output = await pipe(prompt, {
+        max_new_tokens: 100,
+        do_sample: false,
+        repetition_penalty: 1.1,
+        return_full_text: false,
+      })
+
+      const tags = parseTags(output[0].generated_text)
+
+      self.postMessage({
+        type: 'result',
+        task: 'generate-tags',
+        payload: { tags },
+      } as WorkerResponse)
+
+      await PipelineManager.disposePipeline(
+        'text-generation',
+        'onnx-community/tiny-aya-global-ONNX'
+      )
     } else {
       self.postMessage({
         type: 'debug',

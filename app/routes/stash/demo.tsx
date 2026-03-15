@@ -12,6 +12,7 @@ import {
   Sparkles,
   GithubIcon,
   BarChart2,
+  Tag,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/ui/card'
 import { Button } from '@/ui/button'
@@ -54,6 +55,7 @@ type ModelStatus =
   | 'summarizing'
   | 'classifying'
   | 'extract-keywords'
+  | 'generating-tags'
   | 'error'
 
 interface ChunkProgress {
@@ -99,10 +101,17 @@ export default function App() {
   const [sentiment, setSentiment] = useState<any>(null)
   const [summary, setSummary] = useState<string>('')
   const [keywords, setKeywords] = useState<string[]>([])
+  const [generatedTags, setGeneratedTags] = useState<string[]>([])
   const [captioningImage, setCaptioningImage] = useState<string | null>(null)
 
   const [caption, setCaption] = useState<string>('')
   const worker = useRef<Worker | null>(null)
+  // Holds audio data while waiting for detect-language to complete before sending transcribe
+  const pendingAudioRef = useRef<{
+    audio: Float32Array
+    sampleRate: number
+    duration: number
+  } | null>(null)
 
   useEffect(() => {
     // detect GPU/provider for display
@@ -243,6 +252,8 @@ export default function App() {
             setModelName('Florence-2-base-ft')
           } else if (payload === 'extract-keywords') {
             setModelName('bert-base-multilingual-cased-ner-hrl')
+          } else if (payload === 'generating-tags') {
+            setModelName('tiny-aya-global-ONNX')
           }
           if (payload === 'ready') {
             setProgress(null)
@@ -255,6 +266,15 @@ export default function App() {
 
         case 'language-detected':
           setDetectedLanguage(payload)
+          // If we're waiting to transcribe, now we have the language — fire transcribe
+          if (pendingAudioRef.current) {
+            const { audio, sampleRate, duration } = pendingAudioRef.current
+            pendingAudioRef.current = null
+            worker.current?.postMessage({
+              type: 'transcribe',
+              payload: { audio, sampleRate, duration, language: payload.language },
+            })
+          }
           break
 
         case 'result':
@@ -291,6 +311,8 @@ export default function App() {
             setCaption(payload.caption)
           } else if (task === 'extract-keywords') {
             setKeywords(payload.keywords)
+          } else if (task === 'generate-tags') {
+            setGeneratedTags(payload.tags)
           }
           setTranscriptProgress(null)
           setStatus('ready')
@@ -342,13 +364,12 @@ export default function App() {
         duration,
       })
 
+      // Store audio so we can send `transcribe` once language detection completes
+      pendingAudioRef.current = { audio: audioData, sampleRate, duration }
+
       worker.current?.postMessage({
-        type: 'transcribe',
-        payload: {
-          audio: audioData,
-          sampleRate: sampleRate,
-          duration: duration,
-        },
+        type: 'detect-language',
+        payload: { audio: audioData, sampleRate },
       })
       // await ctx.close()
     } catch (error) {
@@ -414,6 +435,18 @@ export default function App() {
     worker.current?.postMessage({
       type: 'extract-keywords',
       payload: { text: target, lang: detectedLanguage?.language || 'en' },
+    })
+  }
+
+  const runGenerateTags = () => {
+    const target = summary || transcript || inputText
+    if (!target) return
+    setGeneratedTags([])
+    setStatus('loading')
+    setModelName('tiny-aya-global-ONNX')
+    worker.current?.postMessage({
+      type: 'generate-tags',
+      payload: { text: target },
     })
   }
 
@@ -490,6 +523,11 @@ export default function App() {
         text: 'Extracting Keywords',
         description: 'Extracting keywords from text',
       },
+      'generating-tags': {
+        color: 'bg-primary',
+        text: 'Generating Tags',
+        description: 'Generating tags from content',
+      },
       ready: {
         color: 'bg-primary',
         text: 'Done',
@@ -515,6 +553,7 @@ export default function App() {
               status === 'summarizing' ||
               status === 'captioning' ||
               status === 'extract-keywords' ||
+              status === 'generating-tags' ||
               status === 'classifying') && (
               <span
                 className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${current.color}`}
@@ -881,6 +920,13 @@ export default function App() {
                           <BarChart2 className="w-4 h-4" />
                         </button>
                         <button
+                          onClick={runGenerateTags}
+                          className="p-2 hover:bg-primary/10 hover:text-primary rounded text-muted-foreground transition-all"
+                          title="Generate Tags"
+                        >
+                          <Tag className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => handleCopy(transcript)}
                           className="p-2 hover:bg-primary/10 hover:text-primary rounded text-muted-foreground transition-all"
                           title="Copy"
@@ -931,6 +977,24 @@ export default function App() {
                           variant="outline"
                         >
                           {keyword}
+                        </Badge>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+                {generatedTags && generatedTags.length > 0 && (
+                  <Card className="bg-muted p-4">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-xs text-muted-foreground font-medium w-full mb-1">
+                        Generated Tags
+                      </span>
+                      {generatedTags.map((tag, index) => (
+                        <Badge
+                          key={index}
+                          className="bg-primary/10 text-primary text-xs font-stashly rounded-md"
+                          variant="outline"
+                        >
+                          {tag}
                         </Badge>
                       ))}
                     </div>
