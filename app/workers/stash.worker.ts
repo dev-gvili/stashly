@@ -59,16 +59,11 @@ type WorkerMessageType =
   | 'audio-duration'
 
 /** Message sent from main thread to worker */
-interface WorkerMessage {
-  type: 'transcribe' | 'summarize' | 'classify' | 'caption' | 'extract-keywords'
-  payload: {
-    audio: Float32Array
-    sampleRate: number
-    duration: number
-    text?: string
-    uri?: string
-  }
-}
+type WorkerMessage =
+  | { type: 'transcribe'; payload: { audio: Float32Array; sampleRate: number; duration: number } }
+  | { type: 'summarize'; payload: { text: string } }
+  | { type: 'classify'; payload: { text: string } }
+  | { type: 'extract-keywords'; payload: { text: string } }
 
 /** Message sent from worker to main thread */
 interface WorkerResponse {
@@ -263,16 +258,14 @@ await WebGPUDeviceManager.init()
 // -------------------------
 self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
   const { type, payload } = event.data
-  const audioInput = payload.audio
-  const sampleRate = payload.sampleRate
-  const duration = payload.duration
-
-  self.postMessage({
-    type: 'audio-duration',
-    payload: Math.round(duration),
-  } as WorkerResponse)
   try {
     if (type === 'transcribe') {
+      const { audio: audioInput, sampleRate, duration } = payload
+
+      self.postMessage({
+        type: 'audio-duration',
+        payload: Math.round(duration),
+      } as WorkerResponse)
       // -------------------------
       // 1. LANGUAGE DETECTION (LID)
       // -------------------------
