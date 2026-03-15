@@ -3,44 +3,8 @@ import {
   pipeline,
   env,
   type SupportedTasks,
-  AutoTokenizer,
 } from '@huggingface/transformers'
 
-import * as ort from 'onnxruntime-web/webgpu'
-
-// Configuration
-env.allowLocalModels = false
-env.useBrowserCache = true
-
-/**
- * Singleton to manage ONNX Runtime sessions
- */
-class OnnxManager {
-  static sessions: Record<string, ort.InferenceSession> = {}
-  static tokenizers: Record<string, any> = {}
-
-  static async getSession(modelPath: string) {
-    if (!this.sessions[modelPath]) {
-      console.log(`Loading ONNX model: ${modelPath}`)
-      // Initialize session with WebGPU if available, falling back to WASM
-      // bert-large is memory intensive; WebGPU is highly recommended
-      this.sessions[modelPath] = await ort.InferenceSession.create(modelPath, {
-        executionProviders: ['webgpu', 'wasm'],
-        graphOptimizationLevel: 'all',
-      })
-    }
-    return this.sessions[modelPath]
-  }
-
-  static async getTokenizer(modelName: string) {
-    if (!this.tokenizers[modelName]) {
-      // AutoTokenizer handles the complex vocab loading and logic
-      this.tokenizers[modelName] =
-        await AutoTokenizer.from_pretrained(modelName)
-    }
-    return this.tokenizers[modelName]
-  }
-}
 
 // -------------------------
 // Type Definitions
@@ -53,7 +17,6 @@ type WorkerMessageType =
   | 'classify'
   | 'caption'
   | 'extract-keywords'
-  | 'caption-'
   | 'status'
   | 'progress'
   | 'debug'
@@ -131,11 +94,6 @@ interface ChatMessage {
   content: string
 }
 
-/** Multi-modal chat message for image-to-text tasks */
-interface MultiModalChatMessage {
-  role: 'system' | 'user' | 'assistant'
-  content: string | Array<{ type: string; image?: any; text?: string }>
-}
 
 // -------------------------
 // Environment configuration
@@ -149,7 +107,7 @@ env.backends.onnx!.webgpu!.profiling = {
     }),
 }
 env.allowLocalModels = false
-env.useBrowserCache = true // Disable browser cache to prevent corrupted model downloads
+env.useBrowserCache = true // Enable browser cache for faster model re-loads
 env.allowRemoteModels = true
 // env.backends!.onnx!.wasm!.proxy = true
 
@@ -632,7 +590,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       )
     } else if (type === 'summarize') {
       // -------------------------
-      // 3. SUMMARIZATION (Phi-4-mini-instruct-ONNX-GQA)
+      // 3. SUMMARIZATION (onnx-community/tiny-aya-global-ONNX)
       // -------------------------
       self.postMessage({
         type: 'status',
@@ -644,408 +602,152 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       } as WorkerResponse)
       PipelineManager.resetAllPipelines()
 
-      //----------------------------//
-
-      type TinyAyaInputName = "input_ids";
-type TinyAyaOutputName = "logits";
-
-interface ModelShapes {
-  input: [batch: number, seqLen: number];
-  output: [batch: number, seqLen: number, vocab: number];
-}
-
-// ---------- DType helpers ----------
-
-type OrtDType = "float32" | "float16" | "int32" | "int64";
-
-function bytesForShape(dtype: OrtDType, shape: number[]): number {
-  const typeBytes: Record<OrtDType, number> = {
-    float32: 4,
-    float16: 2,
-    int32: 4,
-    int64: 8,
-  };
-  const count = shape.reduce((a, b) => a * b, 1);
-  return count * typeBytes[dtype];
-}
-
-async function createGpuTensor(
-  dtype: OrtDType,
-  shape: number[]
-): Promise<ort.Tensor> {
-  const byteLength = bytesForShape(dtype, shape);
-  const gpuBuffer: GPUBuffer = await ort.env.webgpu.createGPUBuffer(byteLength);
-  // `data` is the underlying buffer; we mark it as GPU-backed via the options
-  return new ort.Tensor(dtype, gpuBuffer, shape, { gpu: true });
-}
-
-// ---------- Tokenizer ----------
-
-async function loadTokenizer(url: string): Promise<Tokenizer> {
-  const json = await fetch(url).then((r) => r.json());
-  return Tokenizer.fromConfig(json);
-}
-
-// ---------- Session (WebGPU EP) ----------
-
-async function createWebGpuSession(modelUrl: string): Promise<ort.InferenceSession> {
-  // Enable WebGPU
-  ort.env.webgpu.enabled = true;
-  ort.env.webgpu.deviceType = "default"; // or "high-performance" if supported
-
-  // Optional: tune other env flags here (queue size, etc.)
-
-  return ort.InferenceSession.create(modelUrl, {
-    executionProviders: ["webgpu"],
-  });
-}
-
-// ---------- Forward pass with IO binding ----------
-
-interface ForwardPassConfig {
-  session: ort.InferenceSession;
-  inputName: TinyAyaInputName;
-  outputName: TinyAyaOutputName;
-  inputTensor: ort.Tensor;
-  outputTensor: ort.Tensor;
-}
-
-async function runForwardPass({
-  session,
-  inputName,
-  outputName,
-  inputTensor,
-  outputTensor,
-}: ForwardPassConfig): Promise<Float32Array> {
-  const binding = session.ioBinding();
-
-  binding.bindInput(inputName, inputTensor);
-  binding.bindOutput(outputName, {
-    type: "float32",
-    gpuBuffer: outputTensor.data as GPUBuffer,
-  });
-
-  await session.runWithBinding(binding);
-
-  const resultBuffer = await binding.getOutputData(outputName);
-  return new Float32Array(resultBuffer);
-}
-
-// ---------- Simple sampling (argmax) ----------
-
-function sampleArgmax(arr: Float32Array): number {
-  let max = -Infinity;
-  let idx = 0;
-  for (let i = 0; i < arr.length; i++) {
-    if (arr[i] > max) {
-      max = arr[i];
-      idx = i;
-    }
-  }
-  return idx;
-}
-
-// ---------- Generation loop (skeleton) ----------
-
-interface GenerateConfig {
-  session: ort.InferenceSession;
-  tokenizer: Tokenizer;
-  inputName: TinyAyaInputName;
-  outputName: TinyAyaOutputName;
-  maxNewTokens: number;
-  seqLen: number;
-  vocabSize: number;
-}
-
-async function generateText(
-  prompt: string,
-  config: GenerateConfig
-): Promise<number[]> {
-  const {
-    session,
-    tokenizer,
-    inputName,
-    outputName,
-    maxNewTokens,
-    seqLen,
-    vocabSize,
-  } = config;
-
-  const encoded = tokenizer.encode(prompt);
-  let tokens = [...encoded.ids];
-
-  const inputShape: ModelShapes["input"] = [1, seqLen];
-  const outputShape: ModelShapes["output"] = [1, seqLen, vocabSize];
-
-  const inputTensor = await createGpuTensor("int32", inputShape);
-  const outputTensor = await createGpuTensor("float32", outputShape);
-
-  for (let step = 0; step < maxNewTokens; step++) {
-    // Prepare CPU input buffer for this step
-    const cpuInput = new Int32Array(seqLen);
-    const slice = tokens.slice(-seqLen);
-    cpuInput.set(slice, seqLen - slice.length);
-
-    // Copy to GPU once per step
-    await ort.env.webgpu.writeToGPUBuffer(
-      inputTensor.data as GPUBuffer,
-      cpuInput.buffer
-    );
-
-    const logits = await runForwardPass({
-      session,
-      inputName,
-      outputName,
-      inputTensor,
-      outputTensor,
-    });
-
-    // Take logits of last position
-    const lastPosOffset = (seqLen - 1) * vocabSize;
-    const lastTokenLogits = logits.subarray(
-      lastPosOffset,
-      lastPosOffset + vocabSize
-    );
-
-    const nextToken = sampleArgmax(lastTokenLogits);
-    tokens.push(nextToken);
-  }
-
-  return tokens;
-}
-
- const MODEL_URL = "https://huggingface.co/onnx-community/tiny-aya-global-ONNX/resolve/main/onnx/model_fp16.onnx";
-  const TOKENIZER_URL = "https://huggingface.co/onnx-community/tiny-aya-global-ONNX/resolve/main/tokenizer.json";
-
-  // These must match your exported ONNX model
-  const SEQ_LEN = 64;        // context length used in the ONNX export
-  const VOCAB_SIZE = 262144;  // vocab size of tiny-aya
-
-  const tokenizer = await loadTokenizer(TOKENIZER_URL);
-  const session = await createWebGpuSession(MODEL_URL);
-
-  const tokens = await generateText("Hello, world", {
-    session,
-    tokenizer,
-    inputName: "input_ids",
-    outputName: "logits",
-    maxNewTokens: 32,
-    seqLen: SEQ_LEN,
-    vocabSize: VOCAB_SIZE,
-  });
-
-  console.log("Generated token IDs:", tokens);
-
-  //------------------------------//
-
-
-//       const pipe = await PipelineManager.getPipeline(
-//         'text-generation',
-//         'onnx-community/tiny-aya-global-ONNX',
-//         (data) =>
-//           self.postMessage({
-//             type: 'progress',
-//             payload: data,
-//           } as WorkerResponse)
-//       )
-
-//       self.postMessage({
-//         type: 'debug',
-//         payload: 'Loaded summarization model',
-//       } as WorkerResponse)
-//       self.postMessage({
-//         type: 'debug',
-//         payload: 'Preparing prompt for summarization...',
-//       } as WorkerResponse)
-
-//       let messages: ChatMessage[] = []
-//       let chunks: string[] = []
-//       let summarizedChunks: string[] = []
-
-//       if (payload.text && payload.text.length > 512) {
-//         chunks = toChunk(payload.text, 512)
-//         self.postMessage({
-//           type: 'debug',
-//           payload: `Text too long, splitting into ${chunks.length} chunks`,
-//         })
-
-//         for (const chunk of chunks) {
-//           messages = [
-//             {
-//               role: 'system',
-//               content:
-//                 'You are an expert summarization AI. Summarize the following text. Use the language of the input text. Be concise and focus on the main points. Use bullet points (2 bullets max per section) for clarity. Use up to 2 section max. Include all person names and details in the summary. If the text is very short, provide a single-sentence summary. If the text is a list of items, summarize each item concisely. If the text is a conversation, summarize the key topics and outcomes. USE THE SAME LANGUAGE AS THE INPUT TEXT. Do not output anything else other than the summary, If the text is in a language other than English, summarize in that language.',
-//             },
-//             {
-//               role: 'user',
-//               content: chunk || '',
-//             },
-//           ]
-
-//           self.postMessage({
-//             type: 'debug',
-//             payload: 'Applying chat template...',
-//           } as WorkerResponse)
-
-//           const prompt = pipe.tokenizer.apply_chat_template(messages, {
-//             tokenize: false,
-//             add_generation_prompt: true,
-//           }) as string
-
-//           self.postMessage({
-//             type: 'debug',
-//             payload: `Generating summary for chunk ${chunks.indexOf(chunk) + 1} of ${chunks.length}`,
-//           } as WorkerResponse)
-
-//           const output = await pipe(prompt, {
-//             max_new_tokens: 128,
-//             temperature: 0.7,
-//             top_p: 0.95,
-//             do_sample: true,
-//             repetition_penalty: 1.1,
-//             return_full_text: false, // Only return the newly generated tokens
-//           })
-//           summarizedChunks.push(output[0].generated_text)
-//           console.log('Summarization output', output[0].generated_text)
-//         }
-//         // generate final summarization from all the summarized chunks
-
-//         self.postMessage({
-//           type: 'debug',
-//           payload: 'Generating final summary...',
-//         } as WorkerResponse)
-
-//         messages = [
-//           {
-//             role: 'system',
-//             content:
-//               'You are an expert summarization AI. Summarize the following text. Use the language of the input text. Be concise and focus on the main points. Use bullet points (2 bullets max per section) for clarity. Use up to 2 section max. Include all person names and details in the summary. If the text is very short, provide a single-sentence summary. If the text is a list of items, summarize each item concisely. If the text is a conversation, summarize the key topics and outcomes. USE THE SAME LANGUAGE AS THE INPUT TEXT. Do not output anything else other than the summary, If the text is in a language other than English, summarize in that language.',
-//           },
-//           {
-//             role: 'user',
-//             content: summarizedChunks.join(' '),
-//           },
-//         ]
-
-//         const finalPrompt = pipe.tokenizer.apply_chat_template(messages, {
-//           tokenize: false,
-//           add_generation_prompt: true,
-//         }) as string
-
-//         const finalOutput = await pipe(finalPrompt, {
-//           max_new_tokens: 256,
-//           temperature: 0.7,
-//           top_p: 0.95,
-//           do_sample: true,
-//           repetition_penalty: 1.1,
-//           return_full_text: false, // Only return the newly generated tokens
-//         })
-//         summarizedChunks = [finalOutput[0].generated_text]
-//         self.postMessage({
-//           type: 'debug',
-//           payload: 'Final summary generated',
-//         } as WorkerResponse)
-//       } else {
-//         self.postMessage({
-//           type: 'debug',
-//           payload: 'Applying chat template...',
-//         } as WorkerResponse)
-
-//         const prompt = pipe.tokenizer.apply_chat_template(messages, {
-//           tokenize: false,
-//           add_generation_prompt: true,
-//         }) as string
-
-//         self.postMessage({
-//           type: 'debug',
-//           payload: 'Generating summary...',
-//         } as WorkerResponse)
-
-//         const output = await pipe(prompt, {
-//           max_new_tokens: 256,
-//           temperature: 0.7,
-//           top_p: 0.95,
-//           do_sample: true,
-//           repetition_penalty: 1.1,
-//           return_full_text: false, // Only return the newly generated tokens
-//         })
-
-//         console.log('Summarization output', output)
-//         summarizedChunks.push(output[0].generated_text)
-//         // send final summarization result to main thread
-//       }
-//       // send final summarization result to main thread
-//       self.postMessage({
-//         type: 'result',
-//         task: 'summarization',
-//         payload: { generated_text: summarizedChunks.join(' ') },
-//       } as WorkerResponse)
-//       // 3. Construct a chat-templated prompt
-
-//       // console.log('Constructed messages for summarization:', messages);
-
-//       // dispose summarization pipeline to free resources for text generation
-//       await PipelineManager.disposePipeline(
-//         'text-generation',
-//         'onnx-community/tiny-aya-global-ONNX'
-//       )
-//     } else if (type === 'classify') {
-//       // -------------------------
-//       // 4. SENTIMENT ANALYSIS (DISTILBERT-SST-2)
-//       // -------------------------
-//       self.postMessage({
-//         type: 'status',
-//         payload: 'classifying',
-//       } as WorkerResponse)
-
-//       // This is a small, efficient model fine-tuned for sentiment analysis on the SST-2 dataset. It's quantized to 4-bit for fast inference on WebGPU, making it suitable for client-side sentiment classification tasks.
-//       const pipe = await PipelineManager.getPipeline(
-//         'text-generation',
-//         'onnx-community/tiny-aya-global-ONNX',
-//         (data) =>
-//           self.postMessage({
-//             type: 'progress',
-//             payload: data,
-//           } as WorkerResponse)
-//       )
-
-//       const messages: ChatMessage[] = [
-//         {
-//           role: 'user',
-//           content: `Describe the tone of the following text. ${payload.text}
-// `,
-//         },
-//       ]
-
-//       // console.log('Constructed messages for summarization:', messages);
-
-//       self.postMessage({
-//         type: 'debug',
-//         payload: 'Applying chat template...',
-//       } as WorkerResponse)
-//       const prompt = pipe.tokenizer.apply_chat_template(messages, {
-//         tokenize: false,
-//         add_generation_prompt: true,
-//       }) as string
-
-//       // we classify the sentiment of the input text (could be transcript or user input)
-//       const output = await pipe(prompt, {
-//         return_full_text: false,
-//       })
-
-//       console.log('Classification output', output)
-//       // send final sentiment classification result to main thread
-//       self.postMessage({
-//         type: 'result',
-//         task: 'classification',
-//         payload: output,
-//       } as WorkerResponse)
-
-//       // dispose classification pipeline to free resources for text classification
-//       await PipelineManager.disposePipeline(
-//         'text-generation',
-//         'onnx-community/tiny-aya-global-ONNX'
-//       )
+      const pipe = await PipelineManager.getPipeline(
+        'text-generation',
+        'onnx-community/tiny-aya-global-ONNX',
+        (data) =>
+          self.postMessage({
+            type: 'progress',
+            payload: data,
+          } as WorkerResponse)
+      )
+
+      self.postMessage({
+        type: 'debug',
+        payload: 'Loaded summarization model',
+      } as WorkerResponse)
+      self.postMessage({
+        type: 'debug',
+        payload: 'Preparing prompt for summarization...',
+      } as WorkerResponse)
+
+      let messages: ChatMessage[] = []
+      let chunks: string[] = []
+      let summarizedChunks: string[] = []
+
+      if (payload.text && payload.text.length > 512) {
+        chunks = toChunk(payload.text, 512)
+        self.postMessage({
+          type: 'debug',
+          payload: `Text too long, splitting into ${chunks.length} chunks`,
+        })
+
+        for (const chunk of chunks) {
+          messages = [
+            {
+              role: 'system',
+              content:
+                'You are an expert summarization AI. Summarize the following text. Use the language of the input text. Be concise and focus on the main points. Use bullet points (2 bullets max per section) for clarity. Use up to 2 section max. Include all person names and details in the summary. If the text is very short, provide a single-sentence summary. If the text is a list of items, summarize each item concisely. If the text is a conversation, summarize the key topics and outcomes. USE THE SAME LANGUAGE AS THE INPUT TEXT. Do not output anything else other than the summary, If the text is in a language other than English, summarize in that language.',
+            },
+            {
+              role: 'user',
+              content: chunk || '',
+            },
+          ]
+
+          self.postMessage({
+            type: 'debug',
+            payload: 'Applying chat template...',
+          } as WorkerResponse)
+
+          const prompt = pipe.tokenizer.apply_chat_template(messages, {
+            tokenize: false,
+            add_generation_prompt: true,
+          }) as string
+
+          self.postMessage({
+            type: 'debug',
+            payload: `Generating summary for chunk ${chunks.indexOf(chunk) + 1} of ${chunks.length}`,
+          } as WorkerResponse)
+
+          const output = await pipe(prompt, {
+            max_new_tokens: 128,
+            temperature: 0.7,
+            top_p: 0.95,
+            do_sample: true,
+            repetition_penalty: 1.1,
+            return_full_text: false, // Only return the newly generated tokens
+          })
+          summarizedChunks.push(output[0].generated_text)
+          console.log('Summarization output', output[0].generated_text)
+        }
+        // generate final summarization from all the summarized chunks
+
+        self.postMessage({
+          type: 'debug',
+          payload: 'Generating final summary...',
+        } as WorkerResponse)
+
+        messages = [
+          {
+            role: 'system',
+            content:
+              'You are an expert summarization AI. Summarize the following text. Use the language of the input text. Be concise and focus on the main points. Use bullet points (2 bullets max per section) for clarity. Use up to 2 section max. Include all person names and details in the summary. If the text is very short, provide a single-sentence summary. If the text is a list of items, summarize each item concisely. If the text is a conversation, summarize the key topics and outcomes. USE THE SAME LANGUAGE AS THE INPUT TEXT. Do not output anything else other than the summary, If the text is in a language other than English, summarize in that language.',
+          },
+          {
+            role: 'user',
+            content: summarizedChunks.join(' '),
+          },
+        ]
+
+        const finalPrompt = pipe.tokenizer.apply_chat_template(messages, {
+          tokenize: false,
+          add_generation_prompt: true,
+        }) as string
+
+        const finalOutput = await pipe(finalPrompt, {
+          max_new_tokens: 256,
+          temperature: 0.7,
+          top_p: 0.95,
+          do_sample: true,
+          repetition_penalty: 1.1,
+          return_full_text: false, // Only return the newly generated tokens
+        })
+        summarizedChunks = [finalOutput[0].generated_text]
+        self.postMessage({
+          type: 'debug',
+          payload: 'Final summary generated',
+        } as WorkerResponse)
+      } else {
+        self.postMessage({
+          type: 'debug',
+          payload: 'Applying chat template...',
+        } as WorkerResponse)
+
+        const prompt = pipe.tokenizer.apply_chat_template(messages, {
+          tokenize: false,
+          add_generation_prompt: true,
+        }) as string
+
+        self.postMessage({
+          type: 'debug',
+          payload: 'Generating summary...',
+        } as WorkerResponse)
+
+        const output = await pipe(prompt, {
+          max_new_tokens: 256,
+          temperature: 0.7,
+          top_p: 0.95,
+          do_sample: true,
+          repetition_penalty: 1.1,
+          return_full_text: false, // Only return the newly generated tokens
+        })
+
+        console.log('Summarization output', output)
+        summarizedChunks.push(output[0].generated_text)
+        // send final summarization result to main thread
+      }
+      // send final summarization result to main thread
+      self.postMessage({
+        type: 'result',
+        task: 'summarization',
+        payload: { generated_text: summarizedChunks.join(' ') },
+      } as WorkerResponse)
+      // dispose summarization pipeline to free resources
+      await PipelineManager.disposePipeline(
+        'text-generation',
+        'onnx-community/tiny-aya-global-ONNX'
+      )
     } else if (type === 'caption') {
       // -------------------------
       // 5. IMAGE CAPTIONING (BLIP-2 or LFM2.5-VL-1.6B-ONNX)
@@ -1063,54 +765,54 @@ async function generateText(
     } else if (type === 'extract-keywords') {
       try {
         self.postMessage({ type: 'status', payload: 'extract-keywords' })
-            const model = await PipelineManager.getPipeline(
-              'text-classification',
-              'Xenova/xlm-roberta-base',
-              // 'Xenova/bert-base-multilingual-cased',
-              (data) =>
-                self.postMessage({
-                  type: 'progress',
-                  payload: data,
-                } as WorkerResponse)
-            )
+        const model = await PipelineManager.getPipeline(
+          'text-classification',
+          'Xenova/xlm-roberta-base',
+          // 'Xenova/bert-base-multilingual-cased',
+          (data) =>
+            self.postMessage({
+              type: 'progress',
+              payload: data,
+            } as WorkerResponse)
+        )
 
-            // Run Entity Recognition
-            const results = await model(payload.text!)
-            console.log('Entity Recognition Results:', results)
+        // Run Entity Recognition
+        const results = await model(payload.text!)
+        console.log('Entity Recognition Results:', results)
         // Post-process: Reassemble sub-tokens into full words
-          // BERT uses '##' to indicate a sub-token that belongs to the previous token.
-          const processedKeywords: string[] = [];
-          let currentWord = "";
+        // BERT uses '##' to indicate a sub-token that belongs to the previous token.
+        const processedKeywords: string[] = []
+        let currentWord = ''
 
-          results.forEach((r: any) => {
-            if (r.score > 0.4) { // Slightly lower threshold to capture Hebrew parts accurately
-              const wordPart = r.word;
+        results.forEach((r: any) => {
+          if (r.score > 0.4) {
+            // Slightly lower threshold to capture Hebrew parts accurately
+            const wordPart = r.word
 
-              if (wordPart.startsWith("##")) {
-                // Append sub-token to the current word
-                currentWord += wordPart.replace("##", "");
-              } else {
-                // New word started; save the previous one if it exists
-                if (currentWord.length > 2) {
-                  processedKeywords.push(currentWord);
-                }
-                currentWord = wordPart;
+            if (wordPart.startsWith('##')) {
+              // Append sub-token to the current word
+              currentWord += wordPart.replace('##', '')
+            } else {
+              // New word started; save the previous one if it exists
+              if (currentWord.length > 2) {
+                processedKeywords.push(currentWord)
               }
+              currentWord = wordPart
             }
-          });
-
-          // Push the final word
-          if (currentWord.length > 2) {
-            processedKeywords.push(currentWord);
           }
+        })
 
-          // Return unique keywords
-          const finalKeywords = Array.from(new Set(processedKeywords));
-          console.log('Final Keywords:', finalKeywords);
+        // Push the final word
+        if (currentWord.length > 2) {
+          processedKeywords.push(currentWord)
+        }
+
+        // Return unique keywords
+        const finalKeywords = Array.from(new Set(processedKeywords))
+        console.log('Final Keywords:', finalKeywords)
 
         // 1. Load Model & Tokenizer
         // Model: protectai/bert-large-NER-onnx
-    
       } catch (err: any) {
         self.postMessage({ type: 'error', payload: err.message })
       }
@@ -1193,64 +895,7 @@ function makeChunks(
   return chunks
 }
 
-/**
- * Optional fallback for WebAudio-based audio extraction
- * @param audioData - The full audio buffer
- * @param startSec - Start time in seconds
- * @param durationSec - Duration in seconds
- * @param sampleRate - Sample rate in Hz (default: 16000)
- * @returns Audio chunk as Float32Array
- */
-async function extractAudioChunkWithWebAudio(
-  audioData: Float32Array,
-  startSec: number,
-  durationSec: number,
-  sampleRate: number = 16000
-): Promise<Float32Array> {
-  const OfflineCtx =
-    (self as any).OfflineAudioContext || (self as any).webkitOfflineAudioContext
 
-  if (!OfflineCtx) {
-    const startSample = Math.floor(startSec * sampleRate)
-    const endSample = Math.min(
-      Math.ceil((startSec + durationSec) * sampleRate),
-      audioData.length
-    )
-    return audioData.slice(startSample, endSample)
-  }
-
-  const audioDataLength = audioData.length
-  const offlineContext = new OfflineCtx(1, audioDataLength, sampleRate)
-
-  const buffer = offlineContext.createBuffer(1, audioDataLength, sampleRate)
-  buffer.getChannelData(0).set(audioData)
-
-  const source = offlineContext.createBufferSource()
-  source.buffer = buffer
-  source.connect(offlineContext.destination)
-  source.start(0)
-
-  const renderedBuffer = await offlineContext.startRendering()
-  const renderedData = renderedBuffer.getChannelData(0)
-
-  const startSample = Math.floor(startSec * sampleRate)
-  const endSample = Math.min(
-    Math.ceil((startSec + durationSec) * sampleRate),
-    renderedData.length
-  )
-
-  return renderedData.slice(startSample, endSample)
-}
-// function cleanText(text: string){
-//   if (!text) return ''
-//   return text
-//     .replace(/Subtitle by [a-zA-Z0-9\s\.]+/gi, '')
-//     .replace(/Amara\.org/gi, '')
-//     .replace(/\[Music\]|\[Applause\]|\[Laughter\]/gi, '')
-//     .replace(/([A-Z][^.!?]*[.!?])\s*\\1\s*\\1+/g, '$1') // Collapse 3+ sentence repetitions
-//     .replace(/\s+/g, ' ')
-//     .trim()
-// }
 function toChunk(text: string, maxLength: number): string[] {
   const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text]
   const chunks: string[] = []
