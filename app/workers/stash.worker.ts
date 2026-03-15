@@ -129,13 +129,16 @@ interface ChatMessage {
 // -------------------------
 // Environment configuration
 // -------------------------
-env.backends.onnx!.webgpu!.profiling = {
-  mode: 'default',
-  ondata: (data) =>
-    self.postMessage({
-      type: 'debug',
-      payload: `WebGPU profiling: ${JSON.stringify(data, null, 2)}`,
-    }),
+const DEBUG = false // flip to true for local WebGPU profiling
+if (DEBUG) {
+  env.backends.onnx!.webgpu!.profiling = {
+    mode: 'default',
+    ondata: (data) =>
+      self.postMessage({
+        type: 'debug',
+        payload: `WebGPU profiling: ${JSON.stringify(data, null, 2)}`,
+      }),
+  }
 }
 env.allowLocalModels = false
 env.useBrowserCache = true // Enable browser cache for faster model re-loads
@@ -253,9 +256,6 @@ class PipelineManager {
     }
   }
 }
-
-// Ensure device is initialized early
-await WebGPUDeviceManager.init()
 
 // -------------------------
 // Worker message handler
