@@ -32,6 +32,10 @@ const LID_SHORT_CHUNK_SEC = 8
 /** Retry audio chunk duration (seconds) when initial confidence is low */
 const LID_LONG_CHUNK_SEC = 15
 
+/** System prompt used for all summarization requests */
+const SUMMARIZE_SYSTEM_PROMPT =
+  'You are an expert summarization AI. Summarize the following text. Use the language of the input text. Be concise and focus on the main points. Use bullet points (2 bullets max per section) for clarity. Use up to 2 section max. Include all person names and details in the summary. If the text is very short, provide a single-sentence summary. If the text is a list of items, summarize each item concisely. If the text is a conversation, summarize the key topics and outcomes. USE THE SAME LANGUAGE AS THE INPUT TEXT. Do not output anything else other than the summary, If the text is in a language other than English, summarize in that language.'
+
 /** Per-model dtype overrides; all other models default to 'fp16' */
 const MODEL_DTYPE: Record<string, string | Record<string, string>> = {
   'onnx-community/tiny-aya-global-ONNX': 'q4',
@@ -372,7 +376,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       } as WorkerResponse)
 
       let asrPipe
-      let modelUsed = ''
+      let modelPath = ''
 
       // Try primary model first
       try {
@@ -391,7 +395,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
               payload: data,
             } as WorkerResponse)
         )
-        modelUsed = 'whisper-large-v3-turbo'
+        modelPath = 'onnx-community/whisper-large-v3-turbo'
 
         self.postMessage({
           type: 'debug',
@@ -413,7 +417,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
                 payload: data,
               } as WorkerResponse)
           )
-          modelUsed = 'whisper-small'
+          modelPath = 'Xenova/whisper-small'
 
           self.postMessage({
             type: 'debug',
@@ -434,7 +438,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
                 payload: data,
               } as WorkerResponse)
           )
-          modelUsed = 'whisper-tiny'
+          modelPath = 'Xenova/whisper-tiny'
 
           self.postMessage({
             type: 'debug',
@@ -445,7 +449,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 
       self.postMessage({
         type: 'debug',
-        payload: `Starting transcription with ${modelUsed}...`,
+        payload: `Starting transcription with ${modelPath}...`,
       } as WorkerResponse)
 
       const chunks = makeChunks(audioInput, sampleRate, 30, 0)
@@ -497,12 +501,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       } as WorkerResponse)
 
       // dispose ASR pipeline to free resources for summarization
-      await PipelineManager.disposePipeline(
-        'automatic-speech-recognition',
-        modelUsed.startsWith('onnx')
-          ? 'onnx-community/whisper-large-v3-turbo'
-          : `Xenova/${modelUsed}`
-      )
+      await PipelineManager.disposePipeline('automatic-speech-recognition', modelPath)
     } else if (type === 'summarize') {
       // -------------------------
       // 3. SUMMARIZATION (onnx-community/tiny-aya-global-ONNX)
@@ -547,16 +546,15 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
           payload: `Text too long, splitting into ${chunks.length} chunks`,
         })
 
-        for (const chunk of chunks) {
+        for (const [i, chunk] of chunks.entries()) {
           messages = [
             {
               role: 'system',
-              content:
-                'You are an expert summarization AI. Summarize the following text. Use the language of the input text. Be concise and focus on the main points. Use bullet points (2 bullets max per section) for clarity. Use up to 2 section max. Include all person names and details in the summary. If the text is very short, provide a single-sentence summary. If the text is a list of items, summarize each item concisely. If the text is a conversation, summarize the key topics and outcomes. USE THE SAME LANGUAGE AS THE INPUT TEXT. Do not output anything else other than the summary, If the text is in a language other than English, summarize in that language.',
+              content: SUMMARIZE_SYSTEM_PROMPT,
             },
             {
               role: 'user',
-              content: chunk || '',
+              content: chunk,
             },
           ]
 
@@ -572,7 +570,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 
           self.postMessage({
             type: 'debug',
-            payload: `Generating summary for chunk ${chunks.indexOf(chunk) + 1} of ${chunks.length}`,
+            payload: `Generating summary for chunk ${i + 1} of ${chunks.length}`,
           } as WorkerResponse)
 
           const output = await pipe(prompt, {
@@ -594,15 +592,8 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
         } as WorkerResponse)
 
         messages = [
-          {
-            role: 'system',
-            content:
-              'You are an expert summarization AI. Summarize the following text. Use the language of the input text. Be concise and focus on the main points. Use bullet points (2 bullets max per section) for clarity. Use up to 2 section max. Include all person names and details in the summary. If the text is very short, provide a single-sentence summary. If the text is a list of items, summarize each item concisely. If the text is a conversation, summarize the key topics and outcomes. USE THE SAME LANGUAGE AS THE INPUT TEXT. Do not output anything else other than the summary, If the text is in a language other than English, summarize in that language.',
-          },
-          {
-            role: 'user',
-            content: summarizedChunks.join(' '),
-          },
+          { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT },
+          { role: 'user',   content: summarizedChunks.join(' ') },
         ]
 
         const finalPrompt = pipe.tokenizer.apply_chat_template(messages, {
@@ -624,6 +615,11 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
           payload: 'Final summary generated',
         } as WorkerResponse)
       } else {
+        messages = [
+          { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT },
+          { role: 'user',   content: payload.text },
+        ]
+
         self.postMessage({
           type: 'debug',
           payload: 'Applying chat template...',
@@ -726,8 +722,11 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
         const finalKeywords = Array.from(new Set(processedKeywords))
         console.log('Final Keywords:', finalKeywords)
 
-        // 1. Load Model & Tokenizer
-        // Model: protectai/bert-large-NER-onnx
+        self.postMessage({
+          type: 'result',
+          task: 'extract-keywords',
+          payload: { keywords: finalKeywords },
+        } as WorkerResponse)
       } catch (err: any) {
         self.postMessage({ type: 'error', payload: err.message })
       }
