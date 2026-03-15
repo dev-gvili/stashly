@@ -7,6 +7,38 @@ import {
 
 
 // -------------------------
+// Constants
+// -------------------------
+
+/** Languages supported by Whisper for transcription */
+const SUPPORTED_LANGUAGES = new Set([
+  'en', 'zh', 'de', 'es', 'ru', 'ko', 'fr', 'ja', 'pt', 'tr', 'pl', 'ca',
+  'nl', 'ar', 'sv', 'it', 'id', 'hi', 'fi', 'vi', 'he', 'uk', 'el', 'ms',
+  'cs', 'ro', 'da', 'hu', 'ta', 'no', 'th', 'ur', 'hr', 'bg', 'lt', 'la',
+  'mi', 'ml', 'cy', 'sk', 'te', 'fa', 'lv', 'bn', 'sr', 'az', 'sl', 'kn',
+  'et', 'mk', 'br', 'eu', 'is', 'hy', 'ne', 'mn', 'bs', 'kk', 'sq', 'sw',
+  'gl', 'mr', 'pa', 'si', 'km', 'sn', 'yo', 'so', 'af', 'oc', 'ka', 'be',
+  'tg', 'sd', 'gu', 'am', 'yi', 'lo', 'uz', 'fo', 'ht', 'ps', 'tk', 'nn',
+  'mt', 'sa', 'lb', 'my', 'bo', 'tl', 'mg', 'as', 'tt', 'haw', 'ln', 'ha',
+  'ba', 'jw', 'su',
+])
+
+/** Accept LID result above this confidence without retry */
+const LID_HIGH_CONFIDENCE = 0.7
+/** Minimum confidence to trust a detected language; fall back to 'en' below this */
+const LID_MIN_CONFIDENCE = 0.6
+/** Initial audio chunk duration (seconds) used for language detection */
+const LID_SHORT_CHUNK_SEC = 8
+/** Retry audio chunk duration (seconds) when initial confidence is low */
+const LID_LONG_CHUNK_SEC = 15
+
+/** Per-model dtype overrides; all other models default to 'fp16' */
+const MODEL_DTYPE: Record<string, string | Record<string, string>> = {
+  'onnx-community/tiny-aya-global-ONNX': 'q4',
+  'LiquidAI/LFM2.5-VL-1.6B-ONNX': { decoder: 'q4', embedImages: 'q4' },
+}
+
+// -------------------------
 // Type Definitions
 // -------------------------
 
@@ -188,15 +220,7 @@ class PipelineManager {
       try {
         this.instances[key] = await pipeline(task, model, {
           device: 'webgpu',
-          dtype:
-            model === 'onnx-community/tiny-aya-global-ONNX'
-              ? 'q4'
-              : model === 'LiquidAI/LFM2.5-VL-1.6B-ONNX'
-                ? {
-                    decoder: 'q4',
-                    embedImages: 'q4',
-                  }
-                : 'fp16',
+          dtype: (MODEL_DTYPE[model] ?? 'fp16') as any,
           progress_callback: progressCallback,
           session_options: {
             extra: {
@@ -258,7 +282,6 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       } as WorkerResponse)
 
       const LID_SAMPLE_RATE = 16000
-      const LID_DURATION_SEC = 8
 
       let languageDetectionPipe = await PipelineManager.getPipeline(
         'audio-classification',
@@ -274,7 +297,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       let audioChunk = extractAudioChunk({
         audio: audioInput,
         startSeconds: 0,
-        durationSeconds: LID_DURATION_SEC,
+        durationSeconds: LID_SHORT_CHUNK_SEC,
         sampleRate: LID_SAMPLE_RATE,
       })
 
@@ -283,113 +306,12 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 
       let detectedLanguage = 'en'
       let confidence = 0
-      let supportedLanguages = [
-        'en',
-        'zh',
-        'de',
-        'es',
-        'ru',
-        'ko',
-        'fr',
-        'ja',
-        'pt',
-        'tr',
-        'pl',
-        'ca',
-        'nl',
-        'ar',
-        'sv',
-        'it',
-        'id',
-        'hi',
-        'fi',
-        'vi',
-        'he',
-        'uk',
-        'el',
-        'ms',
-        'cs',
-        'ro',
-        'da',
-        'hu',
-        'ta',
-        'no',
-        'th',
-        'ur',
-        'hr',
-        'bg',
-        'lt',
-        'la',
-        'mi',
-        'ml',
-        'cy',
-        'sk',
-        'te',
-        'fa',
-        'lv',
-        'bn',
-        'sr',
-        'az',
-        'sl',
-        'kn',
-        'et',
-        'mk',
-        'br',
-        'eu',
-        'is',
-        'hy',
-        'ne',
-        'mn',
-        'bs',
-        'kk',
-        'sq',
-        'sw',
-        'gl',
-        'mr',
-        'pa',
-        'si',
-        'km',
-        'sn',
-        'yo',
-        'so',
-        'af',
-        'oc',
-        'ka',
-        'be',
-        'tg',
-        'sd',
-        'gu',
-        'am',
-        'yi',
-        'lo',
-        'uz',
-        'fo',
-        'ht',
-        'ps',
-        'tk',
-        'nn',
-        'mt',
-        'sa',
-        'lb',
-        'my',
-        'bo',
-        'tl',
-        'mg',
-        'as',
-        'tt',
-        'haw',
-        'ln',
-        'ha',
-        'ba',
-        'jw',
-        'su',
-      ]
 
       if (languageDetectionResult && languageDetectionResult.length > 0) {
         let { label, score } = languageDetectionResult[0]
         confidence = score ?? 0
 
-        if (confidence < 0.7) {
+        if (confidence < LID_HIGH_CONFIDENCE) {
           self.postMessage({
             type: 'debug',
             payload:
@@ -401,7 +323,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
           audioChunk = extractAudioChunk({
             audio: audioInput,
             startSeconds: 0,
-            durationSeconds: 15,
+            durationSeconds: LID_LONG_CHUNK_SEC,
             sampleRate: LID_SAMPLE_RATE,
           })
 
@@ -416,10 +338,10 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 
         if (languageDetectionResult && languageDetectionResult.length > 0) {
           const rawLabel = languageDetectionResult[0].label || ''
-          if (rawLabel.length >= 2 && confidence >= 0.6) {
+          if (rawLabel.length >= 2 && confidence >= LID_MIN_CONFIDENCE) {
             const potentialLanguage = rawLabel.slice(0, 2).toLowerCase()
             // Only use the detected language if it's in our supported list
-            if (supportedLanguages.includes(potentialLanguage)) {
+            if (SUPPORTED_LANGUAGES.has(potentialLanguage)) {
               detectedLanguage = potentialLanguage
             } else {
               self.postMessage({
