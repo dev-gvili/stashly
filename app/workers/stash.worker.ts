@@ -66,6 +66,7 @@ type WorkerMessageType =
 /** Message sent from main thread to worker */
 type WorkerMessage =
   | { type: 'transcribe'; payload: { audio: Float32Array; sampleRate: number; duration: number } }
+  | { type: 'detect-language'; payload: { audio: Float32Array; sampleRate: number } }
   | { type: 'summarize'; payload: { text: string } }
   | { type: 'classify'; payload: { text: string } }
   | { type: 'extract-keywords'; payload: { text: string } }
@@ -251,6 +252,74 @@ class PipelineManager {
 }
 
 // -------------------------
+// Language detection
+// -------------------------
+
+/**
+ * Detects the spoken language in an audio buffer using the MMS-LID model.
+ * Retries with a longer audio chunk when initial confidence is low.
+ *
+ * @param audio - Full audio buffer sampled at 16 kHz
+ * @returns ISO-639-1 language code and detection confidence (0–1)
+ */
+async function detectLanguage(
+  audio: Float32Array
+): Promise<{ language: string; confidence: number }> {
+  const LID_SAMPLE_RATE = 16000
+
+  const pipe = await PipelineManager.getPipeline(
+    'audio-classification',
+    'Xenova/mms-lid-256',
+    (data) => self.postMessage({ type: 'progress', payload: data } as WorkerResponse)
+  )
+
+  let audioChunk = extractAudioChunk({
+    audio,
+    startSeconds: 0,
+    durationSeconds: LID_SHORT_CHUNK_SEC,
+    sampleRate: LID_SAMPLE_RATE,
+  })
+
+  let result: LanguageDetectionResult[] = await pipe(audioChunk, { top_k: 1 })
+  let confidence = result[0]?.score ?? 0
+
+  if (confidence < LID_HIGH_CONFIDENCE) {
+    self.postMessage({
+      type: 'debug',
+      payload: `Low confidence language detected: ${(confidence * 100).toFixed(2)}%, retrying with longer chunk`,
+    } as WorkerResponse)
+
+    audioChunk = extractAudioChunk({
+      audio,
+      startSeconds: 0,
+      durationSeconds: LID_LONG_CHUNK_SEC,
+      sampleRate: LID_SAMPLE_RATE,
+    })
+
+    result = await pipe(audioChunk, { top_k: 1 })
+    confidence = result[0]?.score ?? 0
+  }
+
+  let language = 'en'
+  const rawLabel = result[0]?.label ?? ''
+  if (rawLabel.length >= 2 && confidence >= LID_MIN_CONFIDENCE) {
+    const candidate = rawLabel.slice(0, 2).toLowerCase()
+    if (SUPPORTED_LANGUAGES.has(candidate)) {
+      language = candidate
+    } else {
+      self.postMessage({
+        type: 'debug',
+        payload: `Unsupported language detected: ${candidate}`,
+      } as WorkerResponse)
+    }
+  }
+
+  await PipelineManager.disposePipeline('audio-classification', 'Xenova/mms-lid-256')
+
+  return { language, confidence }
+}
+
+// -------------------------
 // Worker message handler
 // -------------------------
 self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
@@ -266,99 +335,14 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       // -------------------------
       // 1. LANGUAGE DETECTION (LID)
       // -------------------------
-      self.postMessage({
-        type: 'status',
-        payload: 'detecting-language',
-      } as WorkerResponse)
+      self.postMessage({ type: 'status', payload: 'detecting-language' } as WorkerResponse)
 
-      const LID_SAMPLE_RATE = 16000
-
-      let languageDetectionPipe = await PipelineManager.getPipeline(
-        'audio-classification',
-        'Xenova/mms-lid-256',
-        (data) => {
-          self.postMessage({
-            type: 'progress',
-            payload: data,
-          } as WorkerResponse)
-        }
-      )
-
-      let audioChunk = extractAudioChunk({
-        audio: audioInput,
-        startSeconds: 0,
-        durationSeconds: LID_SHORT_CHUNK_SEC,
-        sampleRate: LID_SAMPLE_RATE,
-      })
-
-      let languageDetectionResult: LanguageDetectionResult[] =
-        await languageDetectionPipe(audioChunk, { top_k: 1 })
-
-      let detectedLanguage = 'en'
-      let confidence = 0
-
-      if (languageDetectionResult && languageDetectionResult.length > 0) {
-        let { label, score } = languageDetectionResult[0]
-        confidence = score ?? 0
-
-        if (confidence < LID_HIGH_CONFIDENCE) {
-          self.postMessage({
-            type: 'debug',
-            payload:
-              'Low confidence language detected: ' +
-              (confidence * 100).toFixed(2) +
-              '%, retrying with longer chunk',
-          } as WorkerResponse)
-
-          audioChunk = extractAudioChunk({
-            audio: audioInput,
-            startSeconds: 0,
-            durationSeconds: LID_LONG_CHUNK_SEC,
-            sampleRate: LID_SAMPLE_RATE,
-          })
-
-          languageDetectionResult = await languageDetectionPipe(audioChunk, {
-            top_k: 1,
-          })
-          if (languageDetectionResult && languageDetectionResult.length > 0) {
-            ;({ label, score } = languageDetectionResult[0])
-            confidence = score ?? 0
-          }
-        }
-
-        if (languageDetectionResult && languageDetectionResult.length > 0) {
-          const rawLabel = languageDetectionResult[0].label || ''
-          if (rawLabel.length >= 2 && confidence >= LID_MIN_CONFIDENCE) {
-            const potentialLanguage = rawLabel.slice(0, 2).toLowerCase()
-            // Only use the detected language if it's in our supported list
-            if (SUPPORTED_LANGUAGES.has(potentialLanguage)) {
-              detectedLanguage = potentialLanguage
-            } else {
-              self.postMessage({
-                type: 'debug',
-                payload: 'Unsupported language detected: ' + potentialLanguage,
-              } as WorkerResponse)
-              detectedLanguage = 'en' // Fallback to English if unsupported
-            }
-          } else {
-            detectedLanguage = 'en'
-          }
-        }
-      }
+      const { language: detectedLanguage, confidence } = await detectLanguage(audioInput)
 
       self.postMessage({
         type: 'language-detected',
-        payload: {
-          language: detectedLanguage,
-          confidence,
-        },
+        payload: { language: detectedLanguage, confidence },
       } as WorkerResponse)
-
-      // dispose LID pipeline to free resources for transcription
-      await PipelineManager.disposePipeline(
-        'audio-classification',
-        'Xenova/mms-lid-256'
-      )
 
       // -------------------------
       // 2. TRANSCRIPTION (WHISPER)
@@ -652,19 +636,14 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
         'text-generation',
         'onnx-community/tiny-aya-global-ONNX'
       )
-    } else if (type === 'caption') {
-      // -------------------------
-      // 5. IMAGE CAPTIONING (BLIP-2 or LFM2.5-VL-1.6B-ONNX)
-      // -------------------------
-      // self.postMessage({
-      //   type: 'status',
-      //   payload: 'captioning',
-      // } as WorkerResponse)
+    } else if (type === 'detect-language') {
+      self.postMessage({ type: 'status', payload: 'detecting-language' } as WorkerResponse)
 
-      // currently not supported
+      const { language, confidence } = await detectLanguage(payload.audio)
+
       self.postMessage({
-        type: 'debug',
-        payload: `Not supported yet: ${type}`,
+        type: 'language-detected',
+        payload: { language, confidence },
       } as WorkerResponse)
     } else if (type === 'extract-keywords') {
       try {
