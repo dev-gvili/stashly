@@ -1,4 +1,5 @@
-import fonts from '@fontsource/share-tech-mono/index.css?url'
+import shareTechMonoFonts from '@fontsource/share-tech-mono/index.css?url'
+import styles from '@/styles/globals.css?url'
 import {
   isRouteErrorResponse,
   Links,
@@ -12,14 +13,12 @@ import {
   type ShouldRevalidateFunction,
 } from 'react-router'
 import type { Route } from './+types/root'
-import styles from '@/styles/globals.css?url'
 import { getColorScheme } from './.server/theme'
 import React, { useEffect } from 'react'
-import { getQueryParamArray } from './utils/query-params'
 
 export const links: Route.LinksFunction = () => [
   { rel: 'stylesheet', href: styles },
-  { rel: 'stylesheet', href: fonts },
+  { rel: 'stylesheet', href: shareTechMonoFonts },
 ]
 
 export function meta({}: Route.MetaArgs) {

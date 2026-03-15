@@ -1,3 +1,4 @@
+import ibmPlexSansHebrewFonts from '@fontsource/ibm-plex-sans-hebrew/index.css?url'
 import React, { useState, useEffect, useRef } from 'react'
 import {
   MessageSquare,
@@ -26,6 +27,7 @@ import {
 } from '../../components/icons'
 import type { summarizeContextSchema } from '../../machines/ai/ai.machine'
 import { ScrollArea } from '../../components/ui/scroll-area'
+import { Badge } from '../../components/ui'
 // import {cleanText} from '@/.server/search/embeddings'
 // import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.0.0-next.4';
 // --- WORKER CODE (WebGPU device-loss safe + memory/GPU optimized) ---
@@ -63,6 +65,8 @@ interface ChunkProgress {
   chunkEnd?: number
 }
 
+export const links = () => [{ rel: 'stylesheet', href: ibmPlexSansHebrewFonts }]
+
 export default function App() {
   const [view, setView] = useState<ViewMode>('audio')
   const [status, setStatus] = useState<ModelStatus>('idle')
@@ -94,6 +98,7 @@ export default function App() {
   const [generatedText, setGeneratedText] = useState('')
   const [sentiment, setSentiment] = useState<any>(null)
   const [summary, setSummary] = useState<string>('')
+  const [keywords, setKeywords] = useState<string[]>([])
   const [captioningImage, setCaptioningImage] = useState<string | null>(null)
 
   const [caption, setCaption] = useState<string>('')
@@ -127,9 +132,12 @@ export default function App() {
 
     // const blob = new Blob([WORKER_CODE], { type: 'application/javascript' })
     // const url = URL.createObjectURL(blob)
-    worker.current = new Worker(new URL('../../workers/stash.worker.ts', import.meta.url), {
-      type: 'module',
-    })
+    worker.current = new Worker(
+      new URL('../../workers/stash.worker.ts', import.meta.url),
+      {
+        type: 'module',
+      }
+    )
     // worker.current = new Worker(url, { type: 'module' })
 
     worker.current.onmessage = (e) => {
@@ -275,14 +283,14 @@ export default function App() {
               text = payload.summary
             } else if (payload?.summary_text) {
               text = payload.summary_text
-            } else if (task === "extract-keywords") {
-              text = payload.keywords.join(', ')
             }
             if (text) {
               setSummary(text)
             }
           } else if (task === 'captioning' && payload?.caption) {
             setCaption(payload.caption)
+          } else if (task === 'extract-keywords') {
+            setKeywords(payload.keywords)
           }
           setTranscriptProgress(null)
           setStatus('ready')
@@ -398,10 +406,10 @@ export default function App() {
   }
 
   const runKeywords = () => {
-    const target = transcript || inputText
+    const target = summary || transcript || inputText
     if (!target) return
-    setModelName('bert-base-multilingual-cased-ner-hrl') // Assuming this model is used for keyword extraction
-    setSummary('') // Clear summary as we're doing keywords
+    setModelName('Xenova/paraphrase-multilingual-MiniLM-L12-v2')
+    setKeywords([]) // Clear summary as we're doing keywords
     setStatus('loading')
     worker.current?.postMessage({
       type: 'extract-keywords',
@@ -892,7 +900,10 @@ export default function App() {
                 {summary && (
                   <Card className="bg-muted p-4">
                     Summary
-                    <p dir={detectedLanguage?.language === 'he' ? 'rtl' : 'ltr'} className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
+                    <p
+                      dir={detectedLanguage?.language === 'he' ? 'rtl' : 'ltr'}
+                      className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap"
+                    >
                       {summary}
                     </p>
                   </Card>
@@ -909,7 +920,24 @@ export default function App() {
                     </p>
                   </div>
                 )}
+                {keywords && keywords.length > 0 && (
+                  <Card className="bg-muted p-4">
+                    <div className="flex flex-wrap gap-2">
+                      Keywords
+                      {keywords.map((keyword, index) => (
+                        <Badge
+                          key={index}
+                          className="bg-primary/10 text-muted-foreground text-xs font-stashly rounded-md"
+                          variant="outline"
+                        >
+                          {keyword}
+                        </Badge>
+                      ))}
+                    </div>
+                  </Card>
+                )}
               </div>
+
               <div className="flex flex-col gap-y-4">
                 <FileInfoCard />
                 <ModelInfoCard />
@@ -917,37 +945,36 @@ export default function App() {
                 <DebugPanel />
               </div>
 
-              <div className="space-y-6">
-                {sentiment && (
-                  <div className="bg-linear-to-br from-secondary/10 to-secondary/5 rounded-lg p-4 border border-secondary/30 shadow-md flex items-start justify-between animate-in zoom-in-95 mt-6">
-                    <div>
-                      <p className="text-xs text-secondary uppercase font-bold tracking-tight mb-2 flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
-                        Tone Detection
-                      </p>
-                      <h4 className="text-sm font-semibold text-foreground mb-1">
-                        Sentiment
-                      </h4>
-                    </div>
-                    <div className="text-right">
-                      <span
-                        className={`text-lg font-bold px-3 py-1.5 rounded-md ${
-                          sentiment.label === 'POSITIVE'
-                            ? 'bg-primary/20 text-primary'
-                            : 'bg-destructive/20 text-destructive'
-                        }`}
-                      >
-                        {sentiment.label}
-                      </span>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-tight mt-1.5 font-medium">
-                        Conf: {(sentiment.score * 100).toFixed(1)}%
-                      </p>
-                    </div>
+              {sentiment && (
+                <div className="bg-linear-to-br from-secondary/10 to-secondary/5 rounded-lg p-4 border border-secondary/30 shadow-md flex items-start justify-between animate-in zoom-in-95 mt-6">
+                  <div>
+                    <p className="text-xs text-secondary uppercase font-bold tracking-tight mb-2 flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
+                      Tone Detection
+                    </p>
+                    <h4 className="text-sm font-semibold text-foreground mb-1">
+                      Sentiment
+                    </h4>
                   </div>
-                )}
-              </div>
+                  <div className="text-right">
+                    <span
+                      className={`text-lg font-bold px-3 py-1.5 rounded-md ${
+                        sentiment.label === 'POSITIVE'
+                          ? 'bg-primary/20 text-primary'
+                          : 'bg-destructive/20 text-destructive'
+                      }`}
+                    >
+                      {sentiment.label}
+                    </span>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-tight mt-1.5 font-medium">
+                      Conf: {(sentiment.score * 100).toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
+
           {view === 'text' && (
             <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
               <div className="bg-linear-to-br from-foreground/5 to-transparent rounded-lg border border-foreground/10 overflow-hidden">
@@ -1074,7 +1101,7 @@ export default function App() {
               </div>
             </div>
           )}
-        </div>{' '}
+        </div>
       </main>
     </div>
   )

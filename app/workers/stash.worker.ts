@@ -1,11 +1,6 @@
 /// <reference types="@webgpu/types" />
-import {
-  pipeline,
-  env,
-  type SupportedTasks,
-} from '@huggingface/transformers'
+import { pipeline, env, type SupportedTasks } from '@huggingface/transformers'
 import { extractAudioChunk, makeChunks, toChunk } from './stash.worker.helpers'
-
 
 // -------------------------
 // Constants
@@ -13,15 +8,105 @@ import { extractAudioChunk, makeChunks, toChunk } from './stash.worker.helpers'
 
 /** Languages supported by Whisper for transcription */
 const SUPPORTED_LANGUAGES = new Set([
-  'en', 'zh', 'de', 'es', 'ru', 'ko', 'fr', 'ja', 'pt', 'tr', 'pl', 'ca',
-  'nl', 'ar', 'sv', 'it', 'id', 'hi', 'fi', 'vi', 'he', 'uk', 'el', 'ms',
-  'cs', 'ro', 'da', 'hu', 'ta', 'no', 'th', 'ur', 'hr', 'bg', 'lt', 'la',
-  'mi', 'ml', 'cy', 'sk', 'te', 'fa', 'lv', 'bn', 'sr', 'az', 'sl', 'kn',
-  'et', 'mk', 'br', 'eu', 'is', 'hy', 'ne', 'mn', 'bs', 'kk', 'sq', 'sw',
-  'gl', 'mr', 'pa', 'si', 'km', 'sn', 'yo', 'so', 'af', 'oc', 'ka', 'be',
-  'tg', 'sd', 'gu', 'am', 'yi', 'lo', 'uz', 'fo', 'ht', 'ps', 'tk', 'nn',
-  'mt', 'sa', 'lb', 'my', 'bo', 'tl', 'mg', 'as', 'tt', 'haw', 'ln', 'ha',
-  'ba', 'jw', 'su',
+  'en',
+  'zh',
+  'de',
+  'es',
+  'ru',
+  'ko',
+  'fr',
+  'ja',
+  'pt',
+  'tr',
+  'pl',
+  'ca',
+  'nl',
+  'ar',
+  'sv',
+  'it',
+  'id',
+  'hi',
+  'fi',
+  'vi',
+  'he',
+  'uk',
+  'el',
+  'ms',
+  'cs',
+  'ro',
+  'da',
+  'hu',
+  'ta',
+  'no',
+  'th',
+  'ur',
+  'hr',
+  'bg',
+  'lt',
+  'la',
+  'mi',
+  'ml',
+  'cy',
+  'sk',
+  'te',
+  'fa',
+  'lv',
+  'bn',
+  'sr',
+  'az',
+  'sl',
+  'kn',
+  'et',
+  'mk',
+  'br',
+  'eu',
+  'is',
+  'hy',
+  'ne',
+  'mn',
+  'bs',
+  'kk',
+  'sq',
+  'sw',
+  'gl',
+  'mr',
+  'pa',
+  'si',
+  'km',
+  'sn',
+  'yo',
+  'so',
+  'af',
+  'oc',
+  'ka',
+  'be',
+  'tg',
+  'sd',
+  'gu',
+  'am',
+  'yi',
+  'lo',
+  'uz',
+  'fo',
+  'ht',
+  'ps',
+  'tk',
+  'nn',
+  'mt',
+  'sa',
+  'lb',
+  'my',
+  'bo',
+  'tl',
+  'mg',
+  'as',
+  'tt',
+  'haw',
+  'ln',
+  'ha',
+  'ba',
+  'jw',
+  'su',
 ])
 
 /** Accept LID result above this confidence without retry */
@@ -65,8 +150,14 @@ type WorkerMessageType =
 
 /** Message sent from main thread to worker */
 type WorkerMessage =
-  | { type: 'transcribe'; payload: { audio: Float32Array; sampleRate: number; duration: number } }
-  | { type: 'detect-language'; payload: { audio: Float32Array; sampleRate: number } }
+  | {
+      type: 'transcribe'
+      payload: { audio: Float32Array; sampleRate: number; duration: number }
+    }
+  | {
+      type: 'detect-language'
+      payload: { audio: Float32Array; sampleRate: number }
+    }
   | { type: 'summarize'; payload: { text: string } }
   | { type: 'classify'; payload: { text: string } }
   | { type: 'extract-keywords'; payload: { text: string } }
@@ -118,7 +209,6 @@ interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
 }
-
 
 // -------------------------
 // Environment configuration
@@ -270,7 +360,8 @@ async function detectLanguage(
   const pipe = await PipelineManager.getPipeline(
     'audio-classification',
     'Xenova/mms-lid-256',
-    (data) => self.postMessage({ type: 'progress', payload: data } as WorkerResponse)
+    (data) =>
+      self.postMessage({ type: 'progress', payload: data } as WorkerResponse)
   )
 
   let audioChunk = extractAudioChunk({
@@ -314,7 +405,10 @@ async function detectLanguage(
     }
   }
 
-  await PipelineManager.disposePipeline('audio-classification', 'Xenova/mms-lid-256')
+  await PipelineManager.disposePipeline(
+    'audio-classification',
+    'Xenova/mms-lid-256'
+  )
 
   return { language, confidence }
 }
@@ -335,9 +429,13 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       // -------------------------
       // 1. LANGUAGE DETECTION (LID)
       // -------------------------
-      self.postMessage({ type: 'status', payload: 'detecting-language' } as WorkerResponse)
+      self.postMessage({
+        type: 'status',
+        payload: 'detecting-language',
+      } as WorkerResponse)
 
-      const { language: detectedLanguage, confidence } = await detectLanguage(audioInput)
+      const { language: detectedLanguage, confidence } =
+        await detectLanguage(audioInput)
 
       self.postMessage({
         type: 'language-detected',
@@ -463,7 +561,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       }
 
       // join partial results with proper spacing and punctuation
-      const transcriptionResult = partialTexts.join('. ').trim()
+      const transcriptionResult = partialTexts.join(', ').trim()
 
       self.postMessage({
         type: 'debug',
@@ -478,7 +576,10 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       } as WorkerResponse)
 
       // dispose ASR pipeline to free resources for summarization
-      await PipelineManager.disposePipeline('automatic-speech-recognition', modelPath)
+      await PipelineManager.disposePipeline(
+        'automatic-speech-recognition',
+        modelPath
+      )
     } else if (type === 'summarize') {
       // -------------------------
       // 3. SUMMARIZATION (onnx-community/tiny-aya-global-ONNX)
@@ -563,38 +664,38 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
         }
         // generate final summarization from all the summarized chunks
 
-        self.postMessage({
-          type: 'debug',
-          payload: 'Generating final summary...',
-        } as WorkerResponse)
+        // self.postMessage({
+        //   type: 'debug',
+        //   payload: 'Generating final summary...',
+        // } as WorkerResponse)
 
-        messages = [
-          { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT },
-          { role: 'user',   content: summarizedChunks.join(' ') },
-        ]
+        // messages = [
+        //   { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT },
+        //   { role: 'user',   content: summarizedChunks.join(' ') },
+        // ]
 
-        const finalPrompt = pipe.tokenizer.apply_chat_template(messages, {
-          tokenize: false,
-          add_generation_prompt: true,
-        }) as string
+        // const finalPrompt = pipe.tokenizer.apply_chat_template(messages, {
+        //   tokenize: false,
+        //   add_generation_prompt: true,
+        // }) as string
 
-        const finalOutput = await pipe(finalPrompt, {
-          max_new_tokens: 256,
-          temperature: 0.7,
-          top_p: 0.95,
-          do_sample: true,
-          repetition_penalty: 1.1,
-          return_full_text: false, // Only return the newly generated tokens
-        })
-        summarizedChunks = [finalOutput[0].generated_text]
-        self.postMessage({
-          type: 'debug',
-          payload: 'Final summary generated',
-        } as WorkerResponse)
+        // const finalOutput = await pipe(finalPrompt, {
+        //   max_new_tokens: 256,
+        //   temperature: 0.7,
+        //   top_p: 0.95,
+        //   do_sample: true,
+        //   repetition_penalty: 1.1,
+        //   return_full_text: false, // Only return the newly generated tokens
+        // })
+        // summarizedChunks = [finalOutput[0].generated_text]
+        // self.postMessage({
+        //   type: 'debug',
+        //   payload: 'Final summary generated',
+        // } as WorkerResponse)
       } else {
         messages = [
           { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT },
-          { role: 'user',   content: payload.text },
+          { role: 'user', content: payload.text },
         ]
 
         self.postMessage({
@@ -614,9 +715,8 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 
         const output = await pipe(prompt, {
           max_new_tokens: 256,
-          temperature: 0.7,
-          top_p: 0.95,
-          do_sample: true,
+          temperature: 0.3,
+          do_sample: false,
           repetition_penalty: 1.1,
           return_full_text: false, // Only return the newly generated tokens
         })
@@ -637,7 +737,10 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
         'onnx-community/tiny-aya-global-ONNX'
       )
     } else if (type === 'detect-language') {
-      self.postMessage({ type: 'status', payload: 'detecting-language' } as WorkerResponse)
+      self.postMessage({
+        type: 'status',
+        payload: 'detecting-language',
+      } as WorkerResponse)
 
       const { language, confidence } = await detectLanguage(payload.audio)
 
@@ -648,10 +751,10 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
     } else if (type === 'extract-keywords') {
       try {
         self.postMessage({ type: 'status', payload: 'extract-keywords' })
+
         const model = await PipelineManager.getPipeline(
-          'text-classification',
-          'Xenova/xlm-roberta-base',
-          // 'Xenova/bert-base-multilingual-cased',
+          'feature-extraction',
+          'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
           (data) =>
             self.postMessage({
               type: 'progress',
@@ -659,45 +762,49 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
             } as WorkerResponse)
         )
 
-        // Run Entity Recognition
-        const results = await model(payload.text!)
-        console.log('Entity Recognition Results:', results)
-        // Post-process: Reassemble sub-tokens into full words
-        // BERT uses '##' to indicate a sub-token that belongs to the previous token.
-        const processedKeywords: string[] = []
-        let currentWord = ''
-
-        results.forEach((r: any) => {
-          if (r.score > 0.4) {
-            // Slightly lower threshold to capture Hebrew parts accurately
-            const wordPart = r.word
-
-            if (wordPart.startsWith('##')) {
-              // Append sub-token to the current word
-              currentWord += wordPart.replace('##', '')
-            } else {
-              // New word started; save the previous one if it exists
-              if (currentWord.length > 2) {
-                processedKeywords.push(currentWord)
-              }
-              currentWord = wordPart
-            }
-          }
+        // 1. Embed the whole document
+        const docVec = await model(payload.text, {
+          pooling: 'mean',
+          normalize: true,
         })
 
-        // Push the final word
-        if (currentWord.length > 2) {
-          processedKeywords.push(currentWord)
+        // 2. Candidate words — frequency-ranked and capped before the batch call
+        const freq = new Map<string, number>()
+        for (const w of payload.text.match(
+          /[\u0590-\u05FFa-zA-Z\u00C0-\u024F]{4,}/g
+        ) ?? []) {
+          freq.set(w, (freq.get(w) ?? 0) + 1)
         }
+        const candidates = [...freq.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 256)
+          .map(([w]) => w)
 
-        // Return unique keywords
-        const finalKeywords = Array.from(new Set(processedKeywords))
-        console.log('Final Keywords:', finalKeywords)
+        // 3. Batch-embed all candidates
+        const wordVecs = await model(candidates, {
+          pooling: 'mean',
+          normalize: true,
+        })
+
+        // 4. Cosine similarity (both normalised, dot product = cosine)
+        const docData = docVec.data as Float32Array
+        const wordData = wordVecs.data as Float32Array
+        const dim = docData.length
+
+        const keywords = candidates
+          .map((word, i) => {
+            const start = i * dim
+            let score = 0
+            for (let j = 0; j < dim; j++) score += wordData[start + j] * docData[j]
+            return { word, score }
+          })
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 10)
 
         self.postMessage({
           type: 'result',
           task: 'extract-keywords',
-          payload: { keywords: finalKeywords },
+          payload: { keywords: keywords.map((kw) => kw.word) },
         } as WorkerResponse)
       } catch (err: any) {
         self.postMessage({ type: 'error', payload: err.message })
@@ -722,4 +829,3 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
     }
   }
 })
-
