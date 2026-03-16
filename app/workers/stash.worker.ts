@@ -124,20 +124,43 @@ const LID_SHORT_CHUNK_SEC = 8
 const LID_LONG_CHUNK_SEC = 15
 
 /** System prompt for tag generation */
-const GENERATE_TAGS_SYSTEM_PROMPT =
-  'You are a tagging assistant. Generate 7 to 10 short topic tags (1 to 3 words each) ' +
-  'in the same language as the input text. ' +
-  'Include tags for the main topics AND any person names, locations, brand names, products, artists, or organizations mentioned. ' +
-  'Output ONLY a comma-separated list of tags. No explanations, no numbering, no bullets. ' +
-  'Example output: machine learning, neural networks, image recognition'
+const GENERATE_TAGS_SYSTEM_PROMPT = [
+  'You are a precise tagging assistant. Analyze the provided text and generate 7–10 short tags (1–3 words each) in the same language as the input.',
+  '',
+  'Cover all of the following categories that appear in the text:',
+  '- TOPICS: the main subjects, themes, and concepts discussed.',
+  '- ENTITIES: every named person (use their full name or role), location, organization, brand, product, artwork, or event explicitly mentioned.',
+  '- HOLIDAYS & CELEBRATIONS: if the content relates to any holiday, festival, or cultural celebration from any country or religion, include the holiday name and 1–2 associated thematic tags (e.g., "Christmas", "gift giving", "Eid al-Fitr", "family gathering").',
+  '- SPEAKER / SUBJECT GENDER: if the text clearly indicates the speaker or primary subject is male or female.',
+  '- CONTENT FORMAT: add one tag for the type of content — choose from: conversation, interview, lecture, monologue, story, news, review, speech, tutorial, lyric, podcast, movie, documentary, vlog or similar.',
+  '- TONE & EMOTION: if a strong tone or emotion is evident (e.g., humorous, emotional, motivational, critical), include one tone tag.',
+  '',
+  'STRICT RULES:',
+  '1. Extract ONLY what is explicitly present or unambiguously implied by the text. Do not invent or assume entities.',
+  '2. Output ONLY a comma-separated list of tags — no numbering, no bullets, no preamble, no explanation.',
+  '3. Example output: machine learning, neural networks, Yann LeCun, Montreal, conference talk, technical',
+].join('\n')
 
 /** System prompt used for all summarization requests */
-const SUMMARIZE_SYSTEM_PROMPT =
-  'You are an expert summarization AI. Summarize the following text. Use the language of the input text. Be concise and focus on the main points. Use bullet points (2 bullets max per section) for clarity. Use up to 2 section max. Include all person names and details in the summary. If the text is very short, provide a single-sentence summary. If the text is a list of items, summarize each item concisely. If the text is a conversation, summarize the key topics and outcomes. USE THE SAME LANGUAGE AS THE INPUT TEXT. Do not output anything else other than the summary, If the text is in a language other than English, summarize in that language.'
+const SUMMARIZE_SYSTEM_PROMPT = (payload: { language: string }): string =>
+  [
+    'You are a professional summarization assistant.',
+    'Your sole task is to produce a faithful, grounded summary of the text provided by the user.',
+    ' ',
+    'STRICT RULES — follow exactly:',
+    '1. Use ONLY information explicitly present in the source text. Never infer, extrapolate, or add details not stated.',
+    '2. If a fact is ambiguous or unclear, omit it. Do not guess.',
+    '3. Preserve all proper nouns (names, places, organizations, products, etc...) exactly as they appear in the source.',
+    '4. Write in the same language as the input text.',
+    '5. Format: at most 2 sections, each with at most 2 bullet points. For very short input (under 3 sentences), write a single sentence instead.',
+    '6. Output ONLY the summary — no preamble, no commentary, no meta-text such as "Here is a summary:".',
+    `Input text language: ${payload.language}`,
+  ].join('\n')
 
 /** Per-model dtype overrides; all other models default to 'fp16' */
 const MODEL_DTYPE: Record<string, string | Record<string, string>> = {
   'onnx-community/tiny-aya-global-ONNX': 'q4',
+  // 'onnx-community/whisper-large-v3-turbo': 'q4',
   'LiquidAI/LFM2.5-VL-1.6B-ONNX': { decoder: 'q4', embedImages: 'q4' },
 }
 
@@ -149,7 +172,6 @@ const MODEL_DTYPE: Record<string, string | Record<string, string>> = {
 type WorkerMessageType =
   | 'transcribe'
   | 'summarize'
-  | 'classify'
   | 'caption'
   | 'extract-keywords'
   | 'status'
@@ -165,14 +187,18 @@ type WorkerMessageType =
 type WorkerMessage =
   | {
       type: 'transcribe'
-      payload: { audio: Float32Array; sampleRate: number; duration: number; language: string }
+      payload: {
+        audio: Float32Array
+        sampleRate: number
+        duration: number
+        language: string
+      }
     }
   | {
       type: 'detect-language'
       payload: { audio: Float32Array; sampleRate: number }
     }
-  | { type: 'summarize'; payload: { text: string } }
-  | { type: 'classify'; payload: { text: string } }
+  | { type: 'summarize'; payload: { text: string; language: string } }
   | { type: 'extract-keywords'; payload: { text: string } }
   | { type: 'generate-tags'; payload: { text: string } }
 
@@ -210,6 +236,7 @@ interface CaptionResult {
 /** ASR result from Whisper */
 interface ASRResult {
   text: string
+  chunks?: { text: string; timestamp: [number, number] }[]
 }
 
 /** Text classification result */
@@ -232,10 +259,7 @@ if (DEBUG) {
   env.backends.onnx!.webgpu!.profiling = {
     mode: 'default',
     ondata: (data) =>
-      self.postMessage({
-        type: 'debug',
-        payload: `WebGPU profiling: ${JSON.stringify(data, null, 2)}`,
-      }),
+      debug(`WebGPU profiling: ${JSON.stringify(data, null, 2)}`),
   }
 }
 env.allowLocalModels = false
@@ -244,20 +268,22 @@ env.allowRemoteModels = true
 
 // ~~~~~~~~~~~~~~~~ Utils ~~~~~~~~~~~~~~~~ //
 
-const progress = (data: ProgressData) =>
-  self.postMessage({ type: 'progress', payload: data } as WorkerResponse)
-
 const report = ({ type, payload, task }: WorkerResponse) =>
   self.postMessage({ type, payload, task } as WorkerResponse)
 
+const progress = (data: ProgressData) =>
+  report({ type: 'progress', payload: data })
 const error = (payload: string) => report({ type: 'error', payload })
 const debug = (payload: string) => report({ type: 'debug', payload })
 const status = (payload: string) => report({ type: 'status', payload })
-const result = (
-  payload: any,
-  task: string,
-  type: WorkerMessageType = 'result'
-) => report({ type, payload, task })
+const result = (payload: any, task: string) =>
+  report({ type: 'result', payload, task })
+const audioDuration = (seconds: number) =>
+  report({ type: 'audio-duration', payload: seconds })
+const languageDetected = (language: string, confidence: number) =>
+  report({ type: 'language-detected', payload: { language, confidence } })
+const partialResult = (task: string, payload: unknown) =>
+  report({ type: 'partial-result', task, payload })
 
 // -------------------------
 // WebGPU Device Manager
@@ -341,12 +367,11 @@ class PipelineManager {
           dtype: (MODEL_DTYPE[model] ?? 'fp16') as any,
           progress_callback: progressCallback,
         })
-      } catch (error) {
-        self.postMessage({
-          type: 'debug',
-          payload: `Pipeline loading error for ${model}: ${error instanceof Error ? error.message : String(error)}`,
-        } as WorkerResponse)
-        throw error
+      } catch (e) {
+        debug(
+          `Pipeline loading error for ${model}: ${e instanceof Error ? e.message : String(e)}`
+        )
+        throw e
       }
     }
 
@@ -394,14 +419,15 @@ async function detectLanguage(
     sampleRate: LID_SAMPLE_RATE,
   })
 
-  let result: LanguageDetectionResult[] = await pipe(audioChunk, { top_k: 1 })
-  let confidence = result[0]?.score ?? 0
+  let lidResult: LanguageDetectionResult[] = await pipe(audioChunk, {
+    top_k: 1,
+  })
+  let confidence = lidResult[0]?.score ?? 0
 
   if (confidence < LID_HIGH_CONFIDENCE) {
-    self.postMessage({
-      type: 'debug',
-      payload: `Low confidence language detected: ${(confidence * 100).toFixed(2)}%, retrying with longer chunk`,
-    } as WorkerResponse)
+    debug(
+      `Low confidence language detected: ${(confidence * 100).toFixed(2)}%, retrying with longer chunk`
+    )
 
     audioChunk = extractAudioChunk({
       audio,
@@ -410,21 +436,18 @@ async function detectLanguage(
       sampleRate: LID_SAMPLE_RATE,
     })
 
-    result = await pipe(audioChunk, { top_k: 1 })
-    confidence = result[0]?.score ?? 0
+    lidResult = await pipe(audioChunk, { top_k: 1 })
+    confidence = lidResult[0]?.score ?? 0
   }
 
   let language = 'en'
-  const rawLabel = result[0]?.label ?? ''
+  const rawLabel = lidResult[0]?.label ?? ''
   if (rawLabel.length >= 2 && confidence >= LID_MIN_CONFIDENCE) {
     const candidate = rawLabel.slice(0, 2).toLowerCase()
     if (SUPPORTED_LANGUAGES.has(candidate)) {
       language = candidate
     } else {
-      self.postMessage({
-        type: 'debug',
-        payload: `Unsupported language detected: ${candidate}`,
-      } as WorkerResponse)
+      debug(`Unsupported language detected: ${candidate}`)
     }
   }
 
@@ -442,184 +465,101 @@ async function detectLanguage(
 self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
   const { type, payload } = event.data
   try {
-    if (type === 'transcribe') {
-      const { audio: audioInput, sampleRate, duration, language: detectedLanguage } = payload
+    if (type === 'detect-language') {
+      status('detecting-language')
 
-      self.postMessage({
-        type: 'audio-duration',
-        payload: Math.round(duration),
-      } as WorkerResponse)
+      const { language, confidence } = await detectLanguage(payload.audio)
 
-      // -------------------------
-      // TRANSCRIPTION (WHISPER)
-      // -------------------------
-      self.postMessage({
-        type: 'status',
-        payload: 'transcribing',
-      } as WorkerResponse)
+      languageDetected(language, confidence)
+    } else if (type === 'transcribe') {
+      const {
+        audio: audioInput,
+        sampleRate,
+        duration,
+        language: detectedLanguage,
+      } = payload
 
-      let asrPipe
-      let modelPath = ''
+      audioDuration(Math.round(duration))
+      status('transcribing')
 
-      // Try primary model first
       try {
-        self.postMessage({
-          type: 'debug',
-          payload:
-            'Attempting to load whisper-large-v3-turbo from Hugging Face...',
-        } as WorkerResponse)
+        debug('Attempting to load whisper-large-v3-turbo from Hugging Face...')
 
-        asrPipe = await PipelineManager.getPipeline(
+        const asrPipe = await PipelineManager.getPipeline(
           'automatic-speech-recognition',
           'onnx-community/whisper-large-v3-turbo',
-          (data) =>
-            self.postMessage({
-              type: 'progress',
-              payload: data,
-            } as WorkerResponse)
+          progress
         )
-        modelPath = 'onnx-community/whisper-large-v3-turbo'
 
-        self.postMessage({
-          type: 'debug',
-          payload: '✓ Successfully loaded whisper-large-v3-turbo',
-        } as WorkerResponse)
-      } catch (error) {
-        self.postMessage({
-          type: 'debug',
-          payload: `✗ Failed to load whisper-large-v3-turbo. Error: ${error instanceof Error ? error.message : String(error)}. Trying Xenova/whisper-small...`,
-        } as WorkerResponse)
+        debug('✓ Successfully loaded whisper-large-v3-turbo')
+        const partialTexts: string[] = []
 
-        try {
-          asrPipe = await PipelineManager.getPipeline(
-            'automatic-speech-recognition',
-            'Xenova/whisper-small',
-            (data) =>
-              self.postMessage({
-                type: 'progress',
-                payload: data,
-              } as WorkerResponse)
-          )
-          modelPath = 'Xenova/whisper-small'
+        if (duration > 30) {
+          const chunks = makeChunks(audioInput, sampleRate, 30, 0)
 
-          self.postMessage({
-            type: 'debug',
-            payload: '✓ Successfully loaded Xenova/whisper-small',
-          } as WorkerResponse)
-        } catch (secondError) {
-          self.postMessage({
-            type: 'debug',
-            payload: `✗ Failed to load Xenova/whisper-small. Error: ${secondError instanceof Error ? secondError.message : String(secondError)}. Trying Xenova/whisper-tiny...`,
-          } as WorkerResponse)
+          let index = 0
 
-          asrPipe = await PipelineManager.getPipeline(
-            'automatic-speech-recognition',
-            'Xenova/whisper-tiny',
-            (data) =>
-              self.postMessage({
-                type: 'progress',
-                payload: data,
-              } as WorkerResponse)
-          )
-          modelPath = 'Xenova/whisper-tiny'
+          for (const chunk of chunks) {
+            const res: ASRResult = await asrPipe(chunk, {
+              language: detectedLanguage,
+              chunk_length_s: 30,
+              stride_length_s: 3,
+              task: 'transcribe',
+              return_whole_text: false,
+            })
 
-          self.postMessage({
-            type: 'debug',
-            payload: '✓ Successfully loaded Xenova/whisper-tiny',
-          } as WorkerResponse)
+            const text = res.text || ''
+            partialTexts.push(text)
+
+            partialResult('transcription', { index, text })
+
+            index++
+            debug(`Processing chunk ${index} of ${chunks.length}`)
+          }
+        } else {
+          // If duration is not > 30, process the whole audio as a single chunk
+          const res: ASRResult = await asrPipe(audioInput, {
+            language: detectedLanguage,
+            chunk_length_s: 30,
+            stride_length_s: 0,
+            task: 'transcribe',
+            return_timestamps: true,
+            return_whole_text: false,
+          })
+          if (!res.chunks) partialTexts.push(res.text)
+          if (res.chunks) {
+            for (const { text, timestamp } of res.chunks) {
+              partialTexts.push(text)
+              console.log(`[${timestamp[0]} - ${timestamp[1]}]:${text}`)
+              partialResult('transcription', { text, timestamp })
+            }
+          }
         }
+        const transcriptionResult = partialTexts.join(', ').trim()
+        debug('Transcription completed')
+        result(transcriptionResult, 'transcription')
+        // dispose ASR pipeline to free resources for summarization
+        await PipelineManager.disposePipeline(
+          'automatic-speech-recognition',
+          'onnx-community/whisper-large-v3-turbo'
+        )
+      } catch (e) {
+        debug(
+          `✗ Failed to load whisper-large-v3-turbo. Error: ${e instanceof Error ? e.message : String(e)}.`
+        )
       }
-
-      self.postMessage({
-        type: 'debug',
-        payload: `Starting transcription with ${modelPath}...`,
-      } as WorkerResponse)
-
-      const chunks = makeChunks(audioInput, sampleRate, 30, 0)
-
-      let index = 0
-      const partialTexts: string[] = []
-
-      for (const chunk of chunks) {
-        const res: ASRResult = await asrPipe(chunk, {
-          language: detectedLanguage,
-          // force_full_sequences: true,
-          remove_invalid_values: true,
-          chunk_length_s: 30, // slightly shorter than chunk size to account for stride and avoid cutting off words
-          stride_length_s: 3, // overlap to help with continuity and avoid cutting off words
-          task: 'transcribe',
-          return_timestamps: true,
-          return_whole_text: false,
-        })
-
-        const text = res.text || ''
-        partialTexts.push(text)
-
-        self.postMessage({
-          type: 'partial-result',
-          task: 'transcription',
-          payload: { index, text },
-        } as WorkerResponse)
-
-        index++
-        self.postMessage({
-          type: 'debug',
-          payload: `Processing chunk ${index} of ${chunks.length}`,
-        } as WorkerResponse)
-      }
-
-      // join partial results with proper spacing and punctuation
-      const transcriptionResult = partialTexts.join(', ').trim()
-
-      self.postMessage({
-        type: 'debug',
-        payload: 'Transcription completed',
-      } as WorkerResponse)
-
-      // send final transcription result to main thread
-      self.postMessage({
-        type: 'result',
-        task: 'transcription',
-        payload: transcriptionResult,
-      } as WorkerResponse)
-
-      // dispose ASR pipeline to free resources for summarization
-      await PipelineManager.disposePipeline(
-        'automatic-speech-recognition',
-        modelPath
-      )
     } else if (type === 'summarize') {
-      // -------------------------
-      // 3. SUMMARIZATION (onnx-community/tiny-aya-global-ONNX)
-      // -------------------------
-      self.postMessage({
-        type: 'status',
-        payload: 'summarizing',
-      } as WorkerResponse)
-      self.postMessage({
-        type: 'debug',
-        payload: 'Loading summarization model...',
-      } as WorkerResponse)
-      PipelineManager.resetAllPipelines()
+      status('summarizing')
+      debug('Loading summarization model...')
 
       const pipe = await PipelineManager.getPipeline(
         'text-generation',
         'onnx-community/tiny-aya-global-ONNX',
-        (data) =>
-          self.postMessage({
-            type: 'progress',
-            payload: data,
-          } as WorkerResponse)
+        progress
       )
 
-      self.postMessage({
-        type: 'debug',
-        payload: 'Loaded summarization model',
-      } as WorkerResponse)
-      self.postMessage({
-        type: 'debug',
-        payload: 'Preparing prompt for summarization...',
-      } as WorkerResponse)
+      debug('Loaded summarization model')
+      debug('Preparing prompt for summarization...')
 
       let messages: ChatMessage[] = []
       let chunks: string[] = []
@@ -627,147 +567,71 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 
       if (payload.text && payload.text.length > 512) {
         chunks = toChunk(payload.text, 512)
-        self.postMessage({
-          type: 'debug',
-          payload: `Text too long, splitting into ${chunks.length} chunks`,
-        })
+        debug(`Text too long, splitting into ${chunks.length} chunks`)
 
         for (const [i, chunk] of chunks.entries()) {
           messages = [
-            {
-              role: 'system',
-              content: SUMMARIZE_SYSTEM_PROMPT,
-            },
-            {
-              role: 'user',
-              content: chunk,
-            },
+            { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT(payload) },
+            { role: 'user', content: chunk },
           ]
 
-          self.postMessage({
-            type: 'debug',
-            payload: 'Applying chat template...',
-          } as WorkerResponse)
+          debug('Applying chat template...')
 
           const prompt = pipe.tokenizer.apply_chat_template(messages, {
             tokenize: false,
             add_generation_prompt: true,
           }) as string
 
-          self.postMessage({
-            type: 'debug',
-            payload: `Generating summary for chunk ${i + 1} of ${chunks.length}`,
-          } as WorkerResponse)
+          debug(`Generating summary for chunk ${i + 1} of ${chunks.length}`)
 
           const output = await pipe(prompt, {
             max_new_tokens: 128,
             temperature: 0.7,
-            top_p: 0.95,
-            do_sample: true,
-            repetition_penalty: 1.1,
-            return_full_text: false, // Only return the newly generated tokens
+            return_full_text: false,
           })
           summarizedChunks.push(output[0].generated_text)
-          console.log('Summarization output', output[0].generated_text)
         }
-        // generate final summarization from all the summarized chunks
-
-        // self.postMessage({
-        //   type: 'debug',
-        //   payload: 'Generating final summary...',
-        // } as WorkerResponse)
-
-        // messages = [
-        //   { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT },
-        //   { role: 'user',   content: summarizedChunks.join(' ') },
-        // ]
-
-        // const finalPrompt = pipe.tokenizer.apply_chat_template(messages, {
-        //   tokenize: false,
-        //   add_generation_prompt: true,
-        // }) as string
-
-        // const finalOutput = await pipe(finalPrompt, {
-        //   max_new_tokens: 256,
-        //   temperature: 0.7,
-        //   top_p: 0.95,
-        //   do_sample: true,
-        //   repetition_penalty: 1.1,
-        //   return_full_text: false, // Only return the newly generated tokens
-        // })
-        // summarizedChunks = [finalOutput[0].generated_text]
-        // self.postMessage({
-        //   type: 'debug',
-        //   payload: 'Final summary generated',
-        // } as WorkerResponse)
       } else {
         messages = [
-          { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT },
+          { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT(payload) },
           { role: 'user', content: payload.text },
         ]
 
-        self.postMessage({
-          type: 'debug',
-          payload: 'Applying chat template...',
-        } as WorkerResponse)
+        debug('Applying chat template...')
 
         const prompt = pipe.tokenizer.apply_chat_template(messages, {
           tokenize: false,
           add_generation_prompt: true,
         }) as string
 
-        self.postMessage({
-          type: 'debug',
-          payload: 'Generating summary...',
-        } as WorkerResponse)
+        debug('Generating summary...')
+        debug(`Prompt length: ${prompt.length}`)
+        debug(`Payload: ${payload}`)
+        debug(`prompt: ${prompt}`)
 
         const output = await pipe(prompt, {
-          max_new_tokens: 256,
-          temperature: 0.3,
-          do_sample: false,
-          repetition_penalty: 1.1,
-          return_full_text: false, // Only return the newly generated tokens
+          return_full_text: false,
+          max_new_tokens: 128,
+          renormalize_logits: true,
         })
 
-        console.log('Summarization output', output)
         summarizedChunks.push(output[0].generated_text)
-        // send final summarization result to main thread
       }
-      // send final summarization result to main thread
-      self.postMessage({
-        type: 'result',
-        task: 'summarization',
-        payload: { generated_text: summarizedChunks.join(' ') },
-      } as WorkerResponse)
-      // dispose summarization pipeline to free resources
+
+      result({ generated_text: summarizedChunks.join(' ') }, 'summarization')
+
       await PipelineManager.disposePipeline(
         'text-generation',
         'onnx-community/tiny-aya-global-ONNX'
       )
-    } else if (type === 'detect-language') {
-      self.postMessage({
-        type: 'status',
-        payload: 'detecting-language',
-      } as WorkerResponse)
-
-      const { language, confidence } = await detectLanguage(payload.audio)
-
-      self.postMessage({
-        type: 'language-detected',
-        payload: { language, confidence },
-      } as WorkerResponse)
     } else if (type === 'extract-keywords') {
       try {
-        self.postMessage({ type: 'status', payload: 'extract-keywords' })
+        status('extract-keywords')
 
         const model = await PipelineManager.getPipeline(
           'feature-extraction',
           'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
-          (data) =>
-            self.postMessage({
-              type: 'progress',
-              payload: data,
-            } as WorkerResponse)
+          progress
         )
 
         // 1. Embed the whole document
@@ -810,42 +674,22 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
           .sort((a, b) => b.score - a.score)
           .slice(0, 10)
 
-        self.postMessage({
-          type: 'result',
-          task: 'extract-keywords',
-          payload: { keywords: keywords.map((kw) => kw.word) },
-        } as WorkerResponse)
+        result({ keywords: keywords.map((kw) => kw.word) }, 'extract-keywords')
       } catch (err: any) {
-        self.postMessage({ type: 'error', payload: err.message })
+        error(err.message)
       }
     } else if (type === 'generate-tags') {
-      // -------------------------
-      // GENERATE TAGS (onnx-community/tiny-aya-global-ONNX)
-      // -------------------------
-      self.postMessage({
-        type: 'status',
-        payload: 'generating-tags',
-      } as WorkerResponse)
-      self.postMessage({
-        type: 'debug',
-        payload: 'Loading tag generation model...',
-      } as WorkerResponse)
+      status('generating-tags')
+      debug('Loading tag generation model...')
       await PipelineManager.resetAllPipelines()
 
       const pipe = await PipelineManager.getPipeline(
         'text-generation',
         'onnx-community/tiny-aya-global-ONNX',
-        (data) =>
-          self.postMessage({
-            type: 'progress',
-            payload: data,
-          } as WorkerResponse)
+        progress
       )
 
-      self.postMessage({
-        type: 'debug',
-        payload: 'Generating tags...',
-      } as WorkerResponse)
+      debug('Generating tags...')
 
       // Sample beginning + end of the document so long texts don't lose tail content.
       // For short texts, the whole thing fits; for long texts, take first 600 + last 400 chars.
@@ -870,37 +714,39 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
         do_sample: false,
         repetition_penalty: 1.1,
         return_full_text: false,
+        renormalize_logits: true,
+        eta_cutoff: 0.001,
+        top_k: 10,
+        top_p: 0.95,
+        typical_p: 1,
+        epsilon_cutoff: 0.001,
+        temperature: 0.3,
+        num_beams: 1,
+        num_return_sequences: 1,
+        length_penalty: 1,
+        no_repeat_ngram_size: 3,
+        encoder_repetition_penalty: 1,
+        max_length: 100,
+        min_length: 10,
+        early_stopping: true,
       })
 
       const tags = parseTags(output[0].generated_text)
 
-      self.postMessage({
-        type: 'result',
-        task: 'generate-tags',
-        payload: { tags },
-      } as WorkerResponse)
+      result({ tags }, 'generate-tags')
 
       await PipelineManager.disposePipeline(
         'text-generation',
         'onnx-community/tiny-aya-global-ONNX'
       )
     } else {
-      self.postMessage({
-        type: 'debug',
-        payload: `Unknown task type: ${type}`,
-      } as WorkerResponse)
+      debug(`Unknown task type: ${type}`)
     }
-  } catch (error) {
-    console.error('Worker error:', error)
-    self.postMessage({
-      type: 'debug',
-      payload: `Error: ${error instanceof Error ? error.message : String(error)}`,
-    } as WorkerResponse)
-    if (error instanceof Error) {
-      self.postMessage({
-        type: 'error',
-        payload: error.message,
-      } as WorkerResponse)
+  } catch (e) {
+    console.error('Worker error:', e)
+    debug(`Error: ${e instanceof Error ? e.message : String(e)}`)
+    if (e instanceof Error) {
+      error(e.message)
     }
   }
 })
