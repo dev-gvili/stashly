@@ -1,59 +1,30 @@
 import ibmPlexSansHebrewFonts from '@fontsource/ibm-plex-sans-hebrew/index.css?url'
 import React, { useState, useEffect, useRef } from 'react'
-import {
-  MessageSquare,
-  Loader2,
-  Play,
-  FileAudio,
-  CheckCircle2,
-  Cpu,
-  BarChart3,
-  FileText,
-  Sparkles,
-  GithubIcon,
-  BarChart2,
-  Tag,
-} from 'lucide-react'
-import { Card, CardContent, CardHeader } from '@/ui/card'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/ui/button'
-import { Textarea } from '@/ui/textarea'
+import { Badge } from '@/ui/badge'
+import { Progress } from '@/ui/progress'
+import { ScrollArea } from '@/ui/scroll-area'
+import { Separator } from '@/ui/separator'
 import { formatSize } from '@/utils/formaters'
 import {
-  Audio2Icon,
-  AudioIcon,
   LanguageIcon,
   MediaIcon,
   MicIcon,
   SummarizeIcon,
+  AiKeywordsIcon,
+  AiTagsIcon,
+  CopyIcon,
 } from '../../components/icons'
-import type { summarizeContextSchema } from '../../machines/ai/ai.machine'
-import { ScrollArea } from '../../components/ui/scroll-area'
-import { Badge } from '../../components/ui'
-// import {cleanText} from '@/.server/search/embeddings'
-// import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.0.0-next.4';
-// --- WORKER CODE (WebGPU device-loss safe + memory/GPU optimized) ---
 
-// Note: GPU adapter detection uses runtime `any` to avoid missing DOM lib types.
-
-type ViewMode =
-  | 'audio'
-  | 'text'
-  | 'image'
-  | 'video'
-  | 'caption'
-  | 'summary'
-  | 'sentiment'
 type ModelStatus =
   | 'idle'
   | 'loading'
   | 'ready'
   | 'audio-duration'
   | 'detecting-language'
-  | 'captioning'
   | 'transcribing'
-  | 'generating'
   | 'summarizing'
-  | 'classifying'
   | 'extract-keywords'
   | 'generating-tags'
   | 'error'
@@ -69,8 +40,34 @@ interface ChunkProgress {
 
 export const links = () => [{ rel: 'stylesheet', href: ibmPlexSansHebrewFonts }]
 
+const BAR_HEIGHTS = [
+  0.35, 0.7, 1.0, 0.55, 0.85, 0.45, 0.75, 0.3, 0.9, 0.6, 0.95, 0.4, 0.65, 0.8,
+  0.5, 0.7,
+]
+
+const STATUS_LABELS: Record<ModelStatus, string> = {
+  idle: 'STANDBY',
+  loading: 'LOADING',
+  ready: 'DONE',
+  'audio-duration': 'LOADED',
+  'detecting-language': 'DETECTING',
+  transcribing: 'TRANSCRIBING',
+  summarizing: 'SUMMARIZING',
+  'extract-keywords': 'KEYWORDS',
+  'generating-tags': 'TAGGING',
+  error: 'ERROR',
+}
+
+const PROCESSING_STATUSES: ModelStatus[] = [
+  'loading',
+  'detecting-language',
+  'transcribing',
+  'summarizing',
+  'extract-keywords',
+  'generating-tags',
+]
+
 export default function App() {
-  const [view, setView] = useState<ViewMode>('audio')
   const [status, setStatus] = useState<ModelStatus>('idle')
   const [progress, setProgress] = useState<Record<string, number> | null>(null)
   const [detectedLanguage, setDetectedLanguage] = useState<{
@@ -81,9 +78,6 @@ export default function App() {
     useState<ChunkProgress | null>(null)
   const [loadingPhases, setLoadingPhases] = useState<string[]>([])
   const [audioDuration, setAudioDuration] = useState<number>(0)
-  const [debugLogs, setDebugLogs] = useState<string[]>([])
-
-  // additional metadata states
   const [fileInfo, setFileInfo] = useState<{
     name: string
     type: string
@@ -92,29 +86,22 @@ export default function App() {
   } | null>(null)
   const [modelName, setModelName] = useState<string | null>(null)
   const [executionProvider, setExecutionProvider] = useState<string>('unknown')
-  const [gpuAdapter, setGpuAdapter] = useState<any | null>(null)
   const [gpuInfo, setGpuInfo] = useState<string | null>(null)
-
   const [transcript, setTranscript] = useState('')
-  const [inputText, setInputText] = useState('')
-  const [generatedText, setGeneratedText] = useState('')
-  const [sentiment, setSentiment] = useState<any>(null)
   const [summary, setSummary] = useState<string>('')
   const [keywords, setKeywords] = useState<string[]>([])
   const [generatedTags, setGeneratedTags] = useState<string[]>([])
-  const [captioningImage, setCaptioningImage] = useState<string | null>(null)
 
-  const [caption, setCaption] = useState<string>('')
   const worker = useRef<Worker | null>(null)
-  // Holds audio data while waiting for detect-language to complete before sending transcribe
   const pendingAudioRef = useRef<{
     audio: Float32Array
     sampleRate: number
     duration: number
   } | null>(null)
 
+  const isProcessing = PROCESSING_STATUSES.includes(status)
+
   useEffect(() => {
-    // detect GPU/provider for display
     ;(async () => {
       try {
         const nav: any = navigator
@@ -122,10 +109,9 @@ export default function App() {
           const adapter: any = await nav.gpu.requestAdapter()
           if (adapter) {
             setExecutionProvider('webgpu')
-            setGpuAdapter(adapter)
             try {
               const info = adapter?.info as any
-              setGpuInfo(info?.description || info?.vendor || 'GPU adapter')
+              setGpuInfo(info?.description || info?.vendor || null)
             } catch {}
           } else {
             setExecutionProvider('wasm')
@@ -133,21 +119,15 @@ export default function App() {
         } else {
           setExecutionProvider('wasm')
         }
-      } catch (e) {
-        console.warn('GPU detection failed', e)
+      } catch {
         setExecutionProvider('wasm')
       }
     })()
 
-    // const blob = new Blob([WORKER_CODE], { type: 'application/javascript' })
-    // const url = URL.createObjectURL(blob)
     worker.current = new Worker(
       new URL('../../workers/stash.worker.ts', import.meta.url),
-      {
-        type: 'module',
-      }
+      { type: 'module' }
     )
-    // worker.current = new Worker(url, { type: 'module' })
 
     worker.current.onmessage = (e) => {
       const { type, payload, task } = e.data
@@ -163,9 +143,7 @@ export default function App() {
               ...(prev || {}),
               [payload.file]: payload.progress,
             }))
-
             const fileName = payload.file.split('/').pop() || ''
-            // capture model name once when first seen
             if (!modelName) {
               if (fileName.includes('mms-lid')) setModelName('mms-lid-256')
               else if (fileName.includes('whisper-large'))
@@ -174,12 +152,8 @@ export default function App() {
                 setModelName('whisper-small')
               else if (fileName.includes('LaMini'))
                 setModelName('LaMini-Flan-T5-77M')
-              else if (fileName.includes('distilbert'))
-                setModelName('distilbert-sst-2')
               else if (fileName.includes('tiny-aya-global-ONNX'))
                 setModelName('tiny-aya-global-ONNX')
-              else if (fileName.includes('Florence-2-base-ft'))
-                setModelName('Florence-2-base-ft')
             }
             if (
               fileName.includes('mms-lid') &&
@@ -197,31 +171,15 @@ export default function App() {
             ) {
               setLoadingPhases((prev) => [...prev, 'Text Generation'])
             } else if (
-              fileName.includes('distilbert') &&
-              !loadingPhases.includes('Sentiment Analysis')
-            ) {
-              setLoadingPhases((prev) => [...prev, 'Sentiment Analysis'])
-            } else if (
               fileName.includes('tiny-aya-global-ONNX') &&
               !loadingPhases.includes('Summarization')
             ) {
               setLoadingPhases((prev) => [...prev, 'Summarization'])
-            } else if (
-              fileName.includes('Florence-2-base-ft') &&
-              !loadingPhases.includes('Captioning')
-            ) {
-              setLoadingPhases((prev) => [...prev, 'Captioning'])
             }
           } else {
-            // If no specific model is loading, clear progress and phases
             setProgress(null)
             setLoadingPhases([])
           }
-          break
-
-        case 'debug':
-          setDebugLogs((prev) => [...prev, payload].slice(-10))
-          console.log('Worker Debug:', payload)
           break
 
         case 'audio-duration':
@@ -230,31 +188,20 @@ export default function App() {
           break
 
         case 'partial-result':
-          if (task === 'transcription') {
-            setTranscriptProgress(payload)
-          }
+          if (task === 'transcription') setTranscriptProgress(payload)
           break
 
         case 'status':
-          setStatus(payload)
-          // map status to model when known
-          if (payload === 'detecting-language') {
-            setModelName('mms-lid-256')
-          } else if (payload === 'transcribing') {
+          setStatus(payload as ModelStatus)
+          if (payload === 'detecting-language') setModelName('mms-lid-256')
+          else if (payload === 'transcribing')
             setModelName('whisper-large-v3-turbo')
-          } else if (payload === 'generating') {
-            setModelName('LaMini-Flan-T5-77M')
-          } else if (payload === 'classifying') {
-            setModelName('distilbert-sst-2')
-          } else if (payload === 'summarizing') {
+          else if (payload === 'summarizing')
             setModelName('tiny-aya-global-ONNX')
-          } else if (payload === 'captioning') {
-            setModelName('Florence-2-base-ft')
-          } else if (payload === 'extract-keywords') {
+          else if (payload === 'extract-keywords')
             setModelName('bert-base-multilingual-cased-ner-hrl')
-          } else if (payload === 'generating-tags') {
+          else if (payload === 'generating-tags')
             setModelName('tiny-aya-global-ONNX')
-          }
           if (payload === 'ready') {
             setProgress(null)
             setLoadingPhases([])
@@ -266,49 +213,32 @@ export default function App() {
 
         case 'language-detected':
           setDetectedLanguage(payload)
-          // If we're waiting to transcribe, now we have the language — fire transcribe
           if (pendingAudioRef.current) {
             const { audio, sampleRate, duration } = pendingAudioRef.current
             pendingAudioRef.current = null
             worker.current?.postMessage({
               type: 'transcribe',
-              payload: { audio, sampleRate, duration, language: payload.language },
+              payload: {
+                audio,
+                sampleRate,
+                duration,
+                language: payload.language,
+              },
             })
           }
           break
 
         case 'result':
-          console.log('result payload', task, payload)
           if (task === 'transcription') {
             setTranscript(payload || '')
-          } else if (task === 'generation') {
-            setGeneratedText(
-              Array.isArray(payload)
-                ? payload[0]?.generated_text || ''
-                : typeof payload === 'string'
-                  ? payload
-                  : ''
-            )
-          } else if (task === 'classification') {
-            setSentiment(payload[0])
           } else if (task === 'summarization') {
             let text = ''
-            if (Array.isArray(payload)) {
-              text = payload[0]?.generated_text || ''
-            } else if (typeof payload === 'string') {
-              text = payload
-            } else if (payload?.generated_text) {
-              text = payload.generated_text
-            } else if (payload?.summary) {
-              text = payload.summary
-            } else if (payload?.summary_text) {
-              text = payload.summary_text
-            }
-            if (text) {
-              setSummary(text)
-            }
-          } else if (task === 'captioning' && payload?.caption) {
-            setCaption(payload.caption)
+            if (Array.isArray(payload)) text = payload[0]?.generated_text || ''
+            else if (typeof payload === 'string') text = payload
+            else if (payload?.generated_text) text = payload.generated_text
+            else if (payload?.summary) text = payload.summary
+            else if (payload?.summary_text) text = payload.summary_text
+            if (text) setSummary(text)
           } else if (task === 'extract-keywords') {
             setKeywords(payload.keywords)
           } else if (task === 'generate-tags') {
@@ -321,29 +251,25 @@ export default function App() {
         case 'error':
           console.error('Worker Error:', payload)
           setStatus('error')
-          setDebugLogs((prev) => [...prev, `ERROR: ${payload}`].slice(-10))
           break
       }
     }
 
-    return () => {
-      worker.current?.terminate()
-    }
+    return () => worker.current?.terminate()
   }, [])
 
   const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    console.log('Audio file selected:', file.name, file.size, file.type)
-
     setTranscript('')
     setSummary('')
+    setKeywords([])
+    setGeneratedTags([])
     setDetectedLanguage(null)
     setLoadingPhases([])
     setTranscriptProgress(null)
     setAudioDuration(0)
-    setDebugLogs([])
     setStatus('loading')
     setModelName('whisper-large-v3-turbo')
     setFileInfo(null)
@@ -356,7 +282,6 @@ export default function App() {
       const sampleRate = audioBuffer.sampleRate
       const duration = audioBuffer.duration
 
-      // record uploaded file metadata
       setFileInfo({
         name: file.name,
         type: file.type,
@@ -364,73 +289,40 @@ export default function App() {
         duration,
       })
 
-      // Store audio so we can send `transcribe` once language detection completes
       pendingAudioRef.current = { audio: audioData, sampleRate, duration }
-
       worker.current?.postMessage({
         type: 'detect-language',
         payload: { audio: audioData, sampleRate },
       })
-      // await ctx.close()
-    } catch (error) {
-      console.error('Audio processing error:', error)
+    } catch (err) {
+      console.error('Audio processing error:', err)
       setStatus('error')
-      if (error instanceof Error) {
-        setDebugLogs((prev) =>
-          [...prev, `Audio processing error: ${error.message}`].slice(-10)
-        )
-      }
     }
   }
 
   const handleCopy = (text: string) => {
     if (!text) return
-    navigator.clipboard.writeText(text).catch((err) => {
-      console.error('Unable to copy', err)
-    })
-  }
-
-  const runTextGen = () => {
-    if (!inputText) return
-    setModelName('LaMini-Flan-T5-77M')
-    setGeneratedText('')
-    setSummary('')
-    setStatus('loading')
-    worker.current?.postMessage({
-      type: 'generate',
-      payload: { text: inputText },
-    })
-  }
-
-  const runSentiment = () => {
-    const target = transcript || inputText
-    if (!target) return
-    setModelName('distilbert-sst-2')
-    setSentiment(null)
-    setStatus('loading')
-    worker.current?.postMessage({
-      type: 'classify',
-      payload: { text: target },
-    })
+    navigator.clipboard
+      .writeText(text)
+      .catch((err) => console.error('Unable to copy', err))
   }
 
   const runSummary = () => {
-    const target = transcript || inputText
-    if (!target) return
+    if (!transcript) return
     setModelName('Qwen3-1.7B-ONNX')
     setSummary('')
     setStatus('loading')
     worker.current?.postMessage({
       type: 'summarize',
-      payload: { text: target, lang: detectedLanguage?.language || 'en' },
+      payload: { text: transcript, language: detectedLanguage?.language || 'en' },
     })
   }
 
   const runKeywords = () => {
-    const target = summary || transcript || inputText
+    const target = summary || transcript
     if (!target) return
     setModelName('Xenova/paraphrase-multilingual-MiniLM-L12-v2')
-    setKeywords([]) // Clear summary as we're doing keywords
+    setKeywords([])
     setStatus('loading')
     worker.current?.postMessage({
       type: 'extract-keywords',
@@ -439,7 +331,7 @@ export default function App() {
   }
 
   const runGenerateTags = () => {
-    const target = summary || transcript || inputText
+    const target = summary || transcript
     if (!target) return
     setGeneratedTags([])
     setStatus('loading')
@@ -450,722 +342,401 @@ export default function App() {
     })
   }
 
-  const runCaptioning = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setCaption('')
-    setCaptioningImage(URL.createObjectURL(file))
-    setStatus('loading')
-    setModelName('Florence-2-base-ft')
-
-    worker.current?.postMessage({
-      type: 'caption',
-      payload: { url: captioningImage },
-    })
-  }
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const StatusIndicator = () => {
-    const statusConfigs = {
-      idle: {
-        color: 'bg-muted',
-        text: 'Ready',
-        description: 'System ready for processing',
-      },
-      loading: {
-        color: 'bg-secondary',
-        text: `Loading Models${loadingPhases.length > 0 ? ` (${loadingPhases.join(', ')})` : ''}`,
-        description: 'Downloading and initializing AI models',
-      },
-      'audio-duration': {
-        color: 'bg-primary',
-        text: 'Audio Loaded',
-        description: `Audio duration: ${formatTime(audioDuration)}`,
-      },
-      'detecting-language': {
-        color: 'bg-primary',
-        text: 'Detecting Language',
-        description: 'Analyzing audio to identify language',
-      },
-      transcribing: {
-        color: 'bg-primary',
-        text: 'Transcribing Audio',
-        description: 'Converting speech to text',
-      },
-      summarizing: {
-        color: 'bg-primary',
-        text: 'Summarizing Text',
-        description: 'Generating concise summary of the text',
-      },
-      generating: {
-        color: 'bg-secondary',
-        text: 'Generating Text',
-        description: 'Creating content with local T5 model',
-      },
-      classifying: {
-        color: 'bg-secondary',
-        text: 'Analyzing Sentiment',
-        description: 'Assessing text sentiment and tone',
-      },
-      captioning: {
-        color: 'bg-secondary',
-        text: 'Generating Caption',
-        description: 'Creating image caption with Florence-2-base-ft',
-      },
-      'extract-keywords': {
-        color: 'bg-secondary',
-        text: 'Extracting Keywords',
-        description: 'Extracting keywords from text',
-      },
-      'generating-tags': {
-        color: 'bg-primary',
-        text: 'Generating Tags',
-        description: 'Generating tags from content',
-      },
-      ready: {
-        color: 'bg-primary',
-        text: 'Done',
-        description: 'Processing complete',
-      },
-      error: {
-        color: 'bg-destructive',
-        text: 'Error',
-        description: 'An error occurred',
-      },
-    }
-
-    const current = statusConfigs[status]
-
-    return (
-      <div className="flex flex-col items-end gap-2">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-card rounded-full border border-border shadow-sm">
-          <span className="relative flex h-2.5 w-2.5">
-            {(status === 'loading' ||
-              status === 'detecting-language' ||
-              status === 'transcribing' ||
-              status === 'generating' ||
-              status === 'summarizing' ||
-              status === 'captioning' ||
-              status === 'extract-keywords' ||
-              status === 'generating-tags' ||
-              status === 'classifying') && (
-              <span
-                className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${current.color}`}
-              ></span>
-            )}
-            <span
-              className={`relative inline-flex rounded-full h-2 w-2 ${current.color}`}
-            ></span>
-          </span>
-          <span className="text-xs font-medium text-foreground">
-            {current.text}
-          </span>
-          <span className="h-3 w-px bg-border mx-1" />
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-            Local AI
-          </span>
-        </div>
-        {current.description && (
-          <span className="text-xs text-muted-foreground max-w-xs text-right">
-            {current.description}
-          </span>
-        )}
-      </div>
-    )
-  }
-
-  const DebugPanel = () => {
-    if (debugLogs.length === 0) return null
-
-    return (
-      <Card className="bg-muted p-4">
-        Debug Logs
-        <ScrollArea className="h-32">
-          {debugLogs.map((log, index) => (
-            <div
-              key={index}
-              className="text-muted-foreground text-xs py-1.5 leading-relaxed hover:text-foreground transition-colors"
-            >
-              {log}
-            </div>
-          ))}
-        </ScrollArea>
-      </Card>
-    )
-  }
-
-  const LanguageDetectionIndicator = () => {
-    if (!detectedLanguage) return null
-
-    return (
-      <Card className="bg-muted p-4">
-        <CardContent className="p-0">
-          Language Detected
-          <div className="flex items-center gap-2 justify-between">
-            <div className="flex items-center gap-2">
-              <LanguageIcon className="size-6 text-primary" />
-              <span className="mt-1 text-muted-foreground capitalize text-lg">
-                {detectedLanguage.language || 'Unknown'}
-              </span>
-            </div>
-            <span className="text-xs font-medium bg-card/20 text-muted-foreground px-2 py-1 rounded">
-              {(detectedLanguage.confidence * 100).toFixed(0)}%
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const FileInfoCard = () => {
-    if (!fileInfo) return null
-
-    return (
-      <Card className="bg-muted p-4">
-        <CardHeader className="p-0">File Info</CardHeader>
-        <CardContent className="space-y-3 text-xs p-0">
-          <div className="flex justify-between items-center text-muted-foreground hover:text-foreground transition-colors">
-            <span className="font-medium">Name</span>
-            <span className="font-medium text-foreground truncate ml-2 max-w-xs">
-              {fileInfo.name}
-            </span>
-          </div>
-          <div className="flex justify-between items-center text-muted-foreground hover:text-foreground transition-colors">
-            <span className="font-medium">Type</span>
-            <span className="font-medium text-foreground bg-muted/40 px-2 py-0.5 rounded">
-              {fileInfo.type || 'unknown'}
-            </span>
-          </div>
-          <div className="flex justify-between items-center text-muted-foreground hover:text-foreground transition-colors">
-            <span className="font-medium">Size</span>
-            <span className="font-medium text-foreground">{fileInfo.size}</span>
-          </div>
-          <div className="flex justify-between items-center text-muted-foreground hover:text-foreground transition-colors">
-            <span className="font-medium">Duration</span>
-            <span className="font-medium text-foreground">
-              {formatTime(fileInfo.duration)}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const ModelInfoCard = () => {
-    if (!modelName) return null
-
-    return (
-      <Card className="bg-muted p-4">
-        <CardContent className="p-0">
-          Model In Use
-          <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-            {modelName}
-          </p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const GPUDeviceCard = () => {
-    return (
-      <Card className="bg-muted p-4">
-        <CardContent className="flex flex-col gap-y-2 text-xs p-0">
-          Execution
-          <div className="flex justify-between">
-            <span className="font-medium text-muted-foreground">Provider</span>
-            <span className="font-semibold">{executionProvider}</span>
-          </div>
-          {gpuInfo && (
-            <div className="flex justify-between">
-              <span className="font-medium text-muted-foreground">GPU</span>
-              <span className="font-semibold truncate ml-2 max-w-xs">
-                {gpuInfo}
-              </span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    )
-  }
+  const gpuShort = gpuInfo ? gpuInfo.split(/[\s,]/)[0] : null
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-stashly flex overflow-hidden">
-      <aside className="w-20 md:w-64 bg-sidebar border-r border-border flex flex-col z-20 shadow-lg">
-        <nav className="flex-1 px-2 space-y-0.5 mt-6">
-          <button
-            onClick={() => setView('audio')}
-            className={`w-full flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg ${
-              view === 'audio'
-                ? 'text-primary bg-primary/10'
-                : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
-            }`}
-          >
-            <MicIcon className="w-5 h-5 shrink-0" />
-            <span className="hidden md:block text-sm">Transcription</span>
-          </button>
-          <button
-            onClick={() => setView('text')}
-            className={`w-full flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg ${
-              view === 'text'
-                ? 'text-primary bg-primary/10'
-                : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5 shrink-0" />
-            <span className="hidden md:block text-sm">Generation</span>
-          </button>
-          <button
-            onClick={() => setView('image')}
-            className={`w-full flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg ${
-              view === 'image'
-                ? 'text-primary bg-primary/10'
-                : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
-            }`}
-          >
-            <Sparkles className="w-5 h-5 shrink-0" />
-            <span className="hidden md:block text-sm">Image Captioning</span>
-          </button>
-        </nav>
+    <div className="min-h-screen bg-background text-foreground font-stashly">
+      <style>{`
+        @keyframes audioBar {
+          0%   { transform: scaleY(0.25); }
+          100% { transform: scaleY(1.1);  }
+        }
+      `}</style>
 
-        <div className="p-4 border-t border-border flex flex-col gap-4">
-          <div className="bg-linear-to-br from-secondary/10 to-transparent rounded-lg p-3 border border-secondary/20">
-            <h3 className="text-xs font-semibold text-secondary mb-3 uppercase tracking-tight flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
-              System Status
-            </h3>
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="max-w-3xl mx-auto px-6 h-10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-bold tracking-[0.35em] uppercase text-muted-foreground">
+              Stashly
+            </span>
+            <span className="text-border/60 text-xs leading-none">/</span>
+            <span className="text-[9px] font-bold tracking-[0.35em] uppercase text-primary">
+              Local AI
+            </span>
+          </div>
 
-            {loadingPhases.length > 0 && (
-              <div className="mb-4 p-2.5 bg-secondary/10 rounded border border-secondary/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Loader2 className="w-3 h-3 text-secondary animate-spin" />
-                  <span className="text-xs font-semibold text-secondary">
-                    Loading Models
+          <div className="flex items-center gap-3 text-[9px] font-bold tracking-[0.18em] uppercase">
+            {modelName && (
+              <span className="hidden sm:block text-muted-foreground/50 truncate max-w-36">
+                {modelName}
+              </span>
+            )}
+            <span className="hidden sm:block text-muted-foreground/50">
+              {executionProvider}
+              {gpuShort ? ` · ${gpuShort}` : ''}
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              <span className="relative flex h-1.5 w-1.5">
+                {isProcessing && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                )}
+                <span
+                  className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+                    status === 'error'
+                      ? 'bg-destructive-foreground'
+                      : isProcessing
+                        ? 'bg-primary'
+                        : 'bg-muted-foreground/40'
+                  }`}
+                />
+              </span>
+              <span
+                className={
+                  status === 'error'
+                    ? 'text-destructive-foreground'
+                    : isProcessing
+                      ? 'text-primary'
+                      : 'text-muted-foreground/60'
+                }
+              >
+                {STATUS_LABELS[status]}
+              </span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Main ───────────────────────────────────────────────── */}
+      <main className="max-w-3xl mx-auto px-6 py-12 space-y-8">
+        {/* Upload zone */}
+        <div className="relative group">
+          {/* Viewfinder corners */}
+          <div className="absolute -top-px -left-px w-4 h-4 border-t border-l border-primary z-10 pointer-events-none rounded-tl" />
+          <div className="absolute -top-px -right-px w-4 h-4 border-t border-r border-primary z-10 pointer-events-none rounded-tr" />
+          <div className="absolute -bottom-px -left-px w-4 h-4 border-b border-l border-primary z-10 pointer-events-none rounded-bl" />
+          <div className="absolute -bottom-px -right-px w-4 h-4 border-b border-r border-primary z-10 pointer-events-none rounded-br" />
+
+          <div
+            className={`relative h-56 border border-dashed flex items-center justify-center transition-all duration-300 overflow-hidden ${
+              isProcessing
+                ? 'cursor-default border-primary/25 bg-primary/2'
+                : status === 'error'
+                  ? 'border-destructive/40 bg-destructive/5'
+                  : 'border-border/40 hover:border-primary/40 bg-transparent hover:bg-muted/5'
+            }`}
+          >
+            {/* Idle / ready / error */}
+            {!isProcessing && (
+              <div className="flex flex-col items-center gap-4 animate-in fade-in duration-200 pointer-events-none">
+                <MediaIcon
+                  className={`w-8 h-8 ${
+                    status === 'error'
+                      ? 'text-destructive-foreground/50'
+                      : 'text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors duration-200'
+                  }`}
+                />
+                <div className="text-center space-y-1.5">
+                  <p
+                    className={`text-[10px] font-bold tracking-[0.28em] uppercase ${
+                      status === 'error'
+                        ? 'text-destructive-foreground'
+                        : 'text-foreground/60'
+                    }`}
+                  >
+                    {status === 'error'
+                      ? 'Upload failed — try again'
+                      : 'Drop audio or video'}
+                  </p>
+                  <p className="text-[9px] tracking-[0.18em] uppercase text-muted-foreground/40">
+                    Runs entirely on your device
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Loading models */}
+            {status === 'loading' && (
+              <div className="flex flex-col items-center gap-5 animate-in fade-in duration-200 w-full max-w-xs">
+                <div className="flex items-center gap-2.5">
+                  <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+                  <span className="text-[9px] font-bold tracking-[0.25em] uppercase text-primary">
+                    {loadingPhases.length > 0
+                      ? loadingPhases[loadingPhases.length - 1]
+                      : 'Loading Models'}
                   </span>
                 </div>
-                <div className="space-y-1.5">
-                  {loadingPhases.map((phase) => (
-                    <div
-                      key={phase}
-                      className="text-[10px] text-muted-foreground flex items-center gap-2"
-                    >
-                      <div className="w-1 h-1 rounded-full bg-secondary/50" />
-                      {phase}
+                {progress &&
+                  Object.entries(progress).map(([file, p]) => (
+                    <div key={file} className="w-full space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] tracking-wider text-muted-foreground/60 truncate max-w-44">
+                          {file.split('/').pop()}
+                        </span>
+                        <span className="text-[9px] font-bold text-primary tabular-nums">
+                          {Math.round(p)}%
+                        </span>
+                      </div>
+                      <Progress value={p} className="h-px" />
                     </div>
+                  ))}
+              </div>
+            )}
+
+            {/* Detecting language */}
+            {status === 'detecting-language' && (
+              <div className="flex flex-col items-center gap-4 animate-in fade-in duration-200">
+                <LanguageIcon className="w-8 h-8 text-primary animate-pulse" />
+                <div className="text-center space-y-1">
+                  <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-primary">
+                    Detecting Language
+                  </p>
+                  <p className="text-[9px] tracking-wider text-muted-foreground/50">
+                    Analyzing audio fingerprint
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Transcribing */}
+            {status === 'transcribing' && (
+              <div className="flex flex-col items-center gap-5 animate-in fade-in duration-200">
+                <div className="flex items-end gap-[2px] h-10 w-32">
+                  {BAR_HEIGHTS.map((h, i) => (
+                    <div
+                      key={i}
+                      className="flex-1 rounded-sm bg-primary/70 origin-bottom"
+                      style={{
+                        height: `${Math.max(12, h * 100)}%`,
+                        animation: `audioBar ${0.65 + (i % 4) * 0.15}s ease-in-out ${i * 55}ms infinite alternate`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-primary">
+                    Transcribing
+                  </p>
+                  {transcriptProgress ? (
+                    <p className="text-[9px] tracking-wider text-muted-foreground/50">
+                      {transcriptProgress.currentChunk} /{' '}
+                      {transcriptProgress.totalChunks} chunks
+                      {transcriptProgress.timeProcessed > 0 &&
+                        ` · ${formatTime(transcriptProgress.timeProcessed)} processed`}
+                    </p>
+                  ) : audioDuration > 0 ? (
+                    <p className="text-[9px] tracking-wider text-muted-foreground/50">
+                      {formatTime(audioDuration)} audio file
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            {/* Post-processing states */}
+            {(status === 'summarizing' ||
+              status === 'extract-keywords' ||
+              status === 'generating-tags') && (
+              <div className="flex flex-col items-center gap-4 animate-in fade-in duration-200">
+                {status === 'summarizing' && (
+                  <SummarizeIcon className="w-8 h-8 text-primary animate-pulse" />
+                )}
+                {status === 'extract-keywords' && (
+                  <AiKeywordsIcon className="w-8 h-8 text-primary animate-pulse" />
+                )}
+                {status === 'generating-tags' && (
+                  <AiTagsIcon className="w-8 h-8 text-primary animate-pulse" />
+                )}
+                <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-primary">
+                  {status === 'summarizing'
+                    ? 'Summarizing'
+                    : status === 'extract-keywords'
+                      ? 'Extracting Keywords'
+                      : 'Generating Tags'}
+                </p>
+              </div>
+            )}
+
+            {/* File input */}
+            <input
+              type="file"
+              accept="audio/*, video/*"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+              onChange={handleAudioUpload}
+              disabled={isProcessing}
+            />
+          </div>
+        </div>
+
+        {/* Metadata strip */}
+        {fileInfo && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] tracking-[0.15em] text-muted-foreground/50 uppercase animate-in fade-in duration-300 pb-4 border-b border-border/20">
+            <span className="normal-case text-muted-foreground/70 truncate max-w-56">
+              {fileInfo.name}
+            </span>
+            <span className="text-border/40">·</span>
+            <span>{fileInfo.size}</span>
+            <span className="text-border/40">·</span>
+            <span>{formatTime(fileInfo.duration)}</span>
+            {detectedLanguage && (
+              <>
+                <span className="text-border/40">·</span>
+                <span className="flex items-center gap-1">
+                  <LanguageIcon className="w-3 h-3" />
+                  <span className="capitalize">
+                    {detectedLanguage.language}
+                  </span>
+                  <span className="opacity-50">
+                    ({(detectedLanguage.confidence * 100).toFixed(0)}%)
+                  </span>
+                </span>
+              </>
+            )}
+            <span className="ml-auto">
+              {executionProvider}
+              {gpuShort ? ` · ${gpuShort}` : ''}
+            </span>
+          </div>
+        )}
+
+        {/* Transcript */}
+        {transcript && (
+          <div className="border border-border animate-in slide-in-from-bottom-3 fade-in duration-400 rounded bg-sidebar">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+              <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground">
+                Transcript
+              </span>
+              <div className="flex items-center gap-0.5">
+                <Button
+                  onClick={runSummary}
+                  title="Summarize"
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={isProcessing}
+                >
+                  <SummarizeIcon className="size-5!" />
+                </Button>
+                <Button
+                  onClick={runKeywords}
+                  title="Extract Keywords"
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={isProcessing}
+                >
+                  <AiKeywordsIcon className="size-5!" />
+                </Button>
+                <Button
+                  onClick={runGenerateTags}
+                  title="Generate Tags"
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={isProcessing}
+                >
+                  <AiTagsIcon className="size-5!" />
+                </Button>
+                <Separator
+                  orientation="vertical"
+                  className="h-3 mx-1 opacity-30"
+                />
+                <Button
+                  onClick={() => handleCopy(transcript)}
+                  title="Copy Transcript"
+                  variant="ghost"
+                  size="icon-sm"
+                >
+                  <CopyIcon className="size-5!" />
+                </Button>
+              </div>
+            </div>
+            <ScrollArea className="max-h-72">
+              <div className="px-4 py-4">
+                <p
+                  dir={detectedLanguage?.language === 'he' ? 'rtl' : 'ltr'}
+                  className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap"
+                >
+                  {transcript}
+                </p>
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+
+        {/* Summary */}
+        {summary && (
+          <div className="border border-border/50 animate-in slide-in-from-bottom-3 fade-in duration-400">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border/50">
+              <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
+                Summary
+              </span>
+              <Button
+                onClick={() => handleCopy(summary)}
+                title="Copy Summary"
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground/50 hover:text-foreground"
+              >
+                <CopyIcon className="size-3.5!" />
+              </Button>
+            </div>
+            <div className="px-4 py-4">
+              <p
+                dir={detectedLanguage?.language === 'he' ? 'rtl' : 'ltr'}
+                className="text-sm text-muted-foreground/80 leading-relaxed whitespace-pre-wrap"
+              >
+                {summary}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Keywords + Tags */}
+        {(keywords.length > 0 || generatedTags.length > 0) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-in slide-in-from-bottom-3 fade-in duration-400">
+            {keywords.length > 0 && (
+              <div className="space-y-2.5">
+                <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
+                  Keywords
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {keywords.map((keyword, i) => (
+                    <Badge
+                      key={i}
+                      variant="outline"
+                      className="text-[9px] tracking-wide rounded-none border-border/40 text-muted-foreground/60 font-stashly py-0.5"
+                    >
+                      {keyword}
+                    </Badge>
                   ))}
                 </div>
               </div>
             )}
-
-            {progress &&
-              Object.entries(progress).map(([file, p]) => (
-                <div key={file} className="space-y-1 mb-2 last:mb-0">
-                  <div className="flex justify-between text-[10px] font-medium text-muted-foreground">
-                    <span className="truncate max-w-30">
-                      {file.split('/').pop()}
-                    </span>
-                    <span>{Math.round(p)}%</span>
-                  </div>
-                  <div className="h-1 w-full bg-border rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{ width: `${p}%` }}
-                    />
-                  </div>
+            {generatedTags.length > 0 && (
+              <div className="space-y-2.5">
+                <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
+                  Tags
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {generatedTags.map((tag, i) => (
+                    <Badge
+                      key={i}
+                      variant="outline"
+                      className="text-[9px] tracking-wide rounded-none border-primary/20 text-primary/60 font-stashly py-0.5"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
                 </div>
-              ))}
-
-            {!progress && loadingPhases.length === 0 && (
-              <div className="text-[11px] text-muted-foreground font-medium">
-                All Models Buffered
               </div>
             )}
           </div>
-        </div>
-      </aside>
-
-      <main className="p-0 overflow-y-auto relative w-full">
-        <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-8 py-4 flex justify-between items-center shadow-sm">
-          <StatusIndicator />
-        </header>
-        <div className="py-4 max-w-6xl mx-auto space-y-10">
-          {view === 'audio' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="flex flex-col gap-y-4">
-                <div className="space-y-6">
-                  <Card
-                    className={`relative h-48 border-border border-2 border-dashed flex flex-col items-center ${
-                      status === 'transcribing' ||
-                      status === 'detecting-language'
-                        ? 'bg-primary/5'
-                        : 'bg-muted/5 hover:bg-muted/10'
-                    }`}
-                  >
-                    <CardContent className="flex flex-col items-center justify-center h-full w-full">
-                      {status === 'detecting-language' ? (
-                        <div className="flex flex-col items-center gap-4">
-                          <div className="flex items-center gap-3">
-                            <LanguageIcon className="w-8 h-8 text-current animate-pulse" />
-                            <div className="flex flex-col items-start">
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Detecting Language...
-                              </p>
-                              <p className="text-xs text-secondary-foreground">
-                                Analyzing audio sample
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : status === 'transcribing' ? (
-                        <div className="flex flex-col items-center gap-4">
-                          <div className="flex items-center gap-3">
-                            <MicIcon className="w-8 h-8 text-primary animate-pulse" />
-                            <div className="flex flex-col items-start">
-                              <p className="text-sm font-medium text-primary">
-                                Transcribing Audio
-                              </p>
-                              <p className="text-muted-foreground font-stashly text-sm">
-                                {audioDuration > 0
-                                  ? `Processing ${formatTime(audioDuration)} audio`
-                                  : 'Processing...'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2 items-center">
-                            <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                            <span className="text-xs text-primary">
-                              This may take a while for longer audio files
-                            </span>
-                          </div>
-                        </div>
-                      ) : status === 'summarizing' ? (
-                        <div className="flex flex-col items-center gap-4">
-                          <div className="flex items-center gap-3">
-                            <SummarizeIcon className="w-8 h-8 text-primary animate-pulse" />
-                            <div className="flex flex-col items-start">
-                              <p className="text-sm font-medium text-primary">
-                                Summarizing Content
-                              </p>
-                              <p className="text-muted-foreground font-stashly text-sm">
-                                Generating summary of transcript
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="w-12 h-12 bg-card rounded-full flex items-center justify-center mb-3">
-                            <MediaIcon className="size-8 text-muted-foreground" />
-                          </div>
-                          <p className="text-sm font-medium text-foreground">
-                            Upload Media
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Runs locally on your device
-                          </p>
-                        </>
-                      )}
-                    </CardContent>
-                    <input
-                      type="file"
-                      accept="audio/*, video/*"
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                      onChange={handleAudioUpload}
-                      disabled={
-                        status === 'transcribing' ||
-                        status === 'detecting-language' ||
-                        status === 'loading' ||
-                        status === 'generating' ||
-                        status === 'summarizing' ||
-                        status === 'classifying'
-                      }
-                    />
-                  </Card>
-
-                  {detectedLanguage && <LanguageDetectionIndicator />}
-                </div>
-
-                {transcript && (
-                  <div className="bg-linear-to-br from-foreground/5 to-transparent rounded-lg border border-foreground/10 shadow-md overflow-hidden animate-in fade-in duration-300">
-                    <div className="flex justify-between items-center mb-4 p-4 pb-3 border-b border-foreground/5">
-                      <h3 className="text-sm font-semibold text-foreground uppercase tracking-tight flex items-center gap-2">
-                        <div className="w-2 h-2 bg-primary rounded-full" />
-                        Transcript
-                      </h3>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={runSummary}
-                          className="p-2 hover:bg-primary/10 hover:text-primary rounded text-muted-foreground transition-all"
-                          title="Summarize"
-                        >
-                          <FileText className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={runSentiment}
-                          className="p-2 hover:bg-primary/10 hover:text-primary rounded text-muted-foreground transition-all"
-                          title="Sentiment"
-                        >
-                          <BarChart3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={runKeywords}
-                          className="p-2 hover:bg-primary/10 hover:text-primary rounded text-muted-foreground transition-all"
-                          title="Keywords"
-                        >
-                          <BarChart2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={runGenerateTags}
-                          className="p-2 hover:bg-primary/10 hover:text-primary rounded text-muted-foreground transition-all"
-                          title="Generate Tags"
-                        >
-                          <Tag className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleCopy(transcript)}
-                          className="p-2 hover:bg-primary/10 hover:text-primary rounded text-muted-foreground transition-all"
-                          title="Copy"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="max-h-96 overflow-y-auto px-4 pb-4">
-                      <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap text-sm">
-                        {transcript}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {summary && (
-                  <Card className="bg-muted p-4">
-                    Summary
-                    <p
-                      dir={detectedLanguage?.language === 'he' ? 'rtl' : 'ltr'}
-                      className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap"
-                    >
-                      {summary}
-                    </p>
-                  </Card>
-                )}
-
-                {caption && (
-                  <div className="bg-linear-to-br from-primary/5 to-transparent rounded-lg p-4 border border-primary/20 shadow-md mt-6 animate-in fade-in duration-300 delay-100">
-                    <h4 className="text-sm font-semibold text-primary mb-3 uppercase tracking-tight flex items-center gap-2">
-                      <div className="w-2 h-2 bg-primary rounded-full" />
-                      Image Caption
-                    </h4>
-                    <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
-                      {caption}
-                    </p>
-                  </div>
-                )}
-                {keywords && keywords.length > 0 && (
-                  <Card className="bg-muted p-4">
-                    <div className="flex flex-wrap gap-2">
-                      Keywords
-                      {keywords.map((keyword, index) => (
-                        <Badge
-                          key={index}
-                          className="bg-primary/10 text-muted-foreground text-xs font-stashly rounded-md"
-                          variant="outline"
-                        >
-                          {keyword}
-                        </Badge>
-                      ))}
-                    </div>
-                  </Card>
-                )}
-                {generatedTags && generatedTags.length > 0 && (
-                  <Card className="bg-muted p-4">
-                    <div className="flex flex-wrap gap-2">
-                      <span className="text-xs text-muted-foreground font-medium w-full mb-1">
-                        Generated Tags
-                      </span>
-                      {generatedTags.map((tag, index) => (
-                        <Badge
-                          key={index}
-                          className="bg-primary/10 text-primary text-xs font-stashly rounded-md"
-                          variant="outline"
-                        >
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </Card>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-y-4">
-                <FileInfoCard />
-                <ModelInfoCard />
-                <GPUDeviceCard />
-                <DebugPanel />
-              </div>
-
-              {sentiment && (
-                <div className="bg-linear-to-br from-secondary/10 to-secondary/5 rounded-lg p-4 border border-secondary/30 shadow-md flex items-start justify-between animate-in zoom-in-95 mt-6">
-                  <div>
-                    <p className="text-xs text-secondary uppercase font-bold tracking-tight mb-2 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
-                      Tone Detection
-                    </p>
-                    <h4 className="text-sm font-semibold text-foreground mb-1">
-                      Sentiment
-                    </h4>
-                  </div>
-                  <div className="text-right">
-                    <span
-                      className={`text-lg font-bold px-3 py-1.5 rounded-md ${
-                        sentiment.label === 'POSITIVE'
-                          ? 'bg-primary/20 text-primary'
-                          : 'bg-destructive/20 text-destructive'
-                      }`}
-                    >
-                      {sentiment.label}
-                    </span>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-tight mt-1.5 font-medium">
-                      Conf: {(sentiment.score * 100).toFixed(1)}%
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {view === 'text' && (
-            <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
-              <div className="bg-linear-to-br from-foreground/5 to-transparent rounded-lg border border-foreground/10 overflow-hidden">
-                <div className="flex justify-between items-center gap-4 p-4 pb-3 border-b border-foreground/5">
-                  <h2 className="text-sm font-semibold text-foreground uppercase tracking-tight flex items-center gap-2">
-                    <div className="w-2 h-2 bg-primary rounded-full" />
-                    Text Generation
-                  </h2>
-                  <button
-                    onClick={runTextGen}
-                    disabled={
-                      status === 'generating' ||
-                      status === 'loading' ||
-                      !inputText
-                    }
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-semibold transition-all disabled:opacity-50 flex items-center gap-2 shadow-sm hover:shadow-md"
-                  >
-                    {status === 'generating' ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Play className="w-4 h-4" />
-                    )}
-                    Generate
-                  </button>
-                </div>
-                <textarea
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder="Type your prompt for the local T5 model..."
-                  className="w-full h-32 p-4 bg-muted/20 border-none resize-none focus:ring-1 focus:ring-primary text-foreground text-sm leading-relaxed"
-                />
-              </div>
-
-              {summary && (
-                <div className="bg-linear-to-br from-secondary/5 to-transparent rounded-lg p-4 border border-secondary/20 animate-in fade-in duration-300">
-                  <h4 className="text-sm font-semibold text-secondary mb-3 uppercase tracking-tight flex items-center gap-2">
-                    <div className="w-2 h-2 bg-secondary rounded-full" />
-                    Summary
-                  </h4>
-                  <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
-                    {summary}
-                  </p>
-                </div>
-              )}
-
-              {generatedText && (
-                <div className="grid md:grid-cols-2 gap-8 animate-in slide-in-from-bottom-4 duration-500 mt-6">
-                  <div className="bg-linear-to-br from-primary/5 to-transparent rounded-lg p-4 border border-primary/20">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Cpu className="w-4 h-4 text-primary" />
-                      <span className="text-xs font-bold text-primary uppercase tracking-widest">
-                        Local T5 Output
-                      </span>
-                    </div>
-                    <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
-                      {generatedText}
-                    </p>
-                  </div>
-
-                  <div className="bg-linear-to-br from-secondary/10 to-secondary/5 rounded-lg p-4 border border-secondary/30 flex flex-col justify-between space-y-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="w-5 h-5 text-secondary" />
-                        <h3 className="text-sm font-semibold text-secondary">
-                          Hybrid Upgrade
-                        </h3>
-                      </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        Refine this local draft with Gemini's high-parameter
-                        reasoning.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setTranscript(generatedText)
-                        setView('audio')
-                      }}
-                      className="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-4 py-2.5 rounded-md text-sm font-semibold transition-all w-fit"
-                    >
-                      Upgrade Content
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          {view === 'image' && (
-            <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
-              <div className="space-y-6">
-                <div
-                  className={`relative h-96 rounded-lg flex flex-col items-center justify-center transition-all border-2 border-dashed ${status === 'captioning' ? 'border-primary/50 bg-primary/5' : 'border-border hover:border-primary/40 bg-muted/5'}`}
-                >
-                  {captioningImage ? (
-                    <img
-                      src={captioningImage}
-                      alt="Captioning Image"
-                      className="w-full h-full object-contain rounded-lg"
-                    />
-                  ) : (
-                    <>
-                      <div className="flex flex-col items-center gap-3 text-center">
-                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                          <MediaIcon className="w-6 h-6 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            Upload Image
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Runs locally on your device
-                          </p>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    onChange={runCaptioning}
-                    disabled={status === 'captioning' || status === 'loading'}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </main>
     </div>
   )
