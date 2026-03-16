@@ -62,7 +62,7 @@
   --sidebar-ring: oklch(0.708 0 0);
   --font-sans: 'Geist Dark', 'Geist Fallback';
   --font-mono: 'Geist Mono Dark', 'Geist Mono Fallback';
-  --font-stashly: 'Share Tech Mono', 'Share Tech Mono Fallback';
+  --font-stashly: 'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
 }
 
 [data-theme='system'] {
@@ -102,7 +102,7 @@
     --sidebar-ring: oklch(0.708 0 0);
     --font-sans: 'Geist Dark', 'Geist Fallback';
     --font-mono: 'Geist Mono Dark', 'Geist Mono Fallback';
-    --font-stashly: 'Share Tech Mono', 'Share Tech Mono Fallback';
+    --font-stashly: 'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
   }
 }
 
@@ -142,7 +142,7 @@
   --sidebar-ring: oklch(0.439 0 0);
   --font-sans: 'Geist Dark', 'Geist Fallback';
   --font-mono: 'Geist Mono Dark', 'Geist Mono Fallback';
-  --font-stashly: 'Share Tech Mono', 'Share Tech Mono Fallback';
+  --font-stashly: 'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
 }
 
 [data-theme='system'] {
@@ -182,7 +182,7 @@
     --sidebar-ring: oklch(0.439 0 0);
     --font-sans: 'Geist Dark', 'Geist Fallback';
     --font-mono: 'Geist Mono Dark', 'Geist Mono Fallback';
-    --font-stashly: 'Share Tech Mono', 'Share Tech Mono Fallback';
+    --font-stashly: 'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
   }
 }
 

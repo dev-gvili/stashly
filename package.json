@@ -21,6 +21,7 @@
     "@dotenvx/dotenvx": "^1.52.0",
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource-variable/geist-mono": "^5.2.7",
+    "@fontsource/ibm-plex-sans-hebrew": "^5.2.8",
     "@fontsource/share-tech-mono": "^5.2.7",
     "@formkit/auto-animate": "^0.9.0",
     "@hookform/resolvers": "^5.2.2",

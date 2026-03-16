@@ -1,4 +1,3 @@
-
 import { cn } from '@/utils/styles'
 import type { SVGProps } from 'react'
 
@@ -861,7 +860,7 @@ const RiverIcon = ({ className, ...props }: SVGProps<SVGSVGElement>) => (
 export { RiverIcon }
 
 const WaterfallIcon = (props: SVGProps<SVGSVGElement>) => (
-    <svg
+  <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
     height="1em"
@@ -985,7 +984,7 @@ const MoonIcon = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       d="m21.067 11.857-.642-.388zm-8.924-8.924-.388-.642zM21.25 12A9.25 9.25 0 0 1 12 21.25v1.5c5.937 0 10.75-4.813 10.75-10.75zM12 21.25A9.25 9.25 0 0 1 2.75 12h-1.5c0 5.937 4.813 10.75 10.75 10.75zM2.75 12A9.25 9.25 0 0 1 12 2.75v-1.5C6.063 1.25 1.25 6.063 1.25 12zm12.75 2.25A5.75 5.75 0 0 1 9.75 8.5h-1.5a7.25 7.25 0 0 0 7.25 7.25zm4.925-2.781A5.75 5.75 0 0 1 15.5 14.25v1.5a7.25 7.25 0 0 0 6.21-3.505zM9.75 8.5a5.75 5.75 0 0 1 2.781-4.925l-.776-1.284A7.25 7.25 0 0 0 8.25 8.5zM12 2.75a.38.38 0 0 1-.268-.118.3.3 0 0 1-.082-.155c-.004-.031-.002-.121.105-.186l.776 1.284c.503-.304.665-.861.606-1.299-.062-.455-.42-1.026-1.137-1.026zm9.71 9.495c-.066.107-.156.109-.187.105a.3.3 0 0 1-.155-.082.38.38 0 0 1-.118-.268h1.5c0-.717-.571-1.075-1.026-1.137-.438-.059-.995.103-1.299.606z"
-      />
+    />
     <path
       opacity={0.5}
       stroke="currentColor"
@@ -1907,8 +1906,8 @@ const ImagesIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export  {ImagesIcon};
+)
+export { ImagesIcon }
 
 const Video2Icon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -1938,8 +1937,8 @@ const Video2Icon = (props: SVGProps<SVGSVGElement>) => (
       d="M14 12c0-.528-.53-.884-1.589-1.596-1.073-.721-1.61-1.082-2.01-.817C10 9.852 10 10.567 10 12s0 2.148.4 2.413.938-.096 2.011-.817C13.471 12.884 14 12.528 14 12Z"
     />
   </svg>
-);
-export {Video2Icon};
+)
+export { Video2Icon }
 
 const CircleIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -1952,8 +1951,8 @@ const CircleIcon = (props: SVGProps<SVGSVGElement>) => (
   >
     <circle cx={12} cy={12} r={10} stroke="currentColor" strokeWidth={1.5} />
   </svg>
-);
-export  {CircleIcon};
+)
+export { CircleIcon }
 
 const ChevronRightIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -1980,8 +1979,8 @@ const ChevronRightIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {ChevronRightIcon};
+)
+export { ChevronRightIcon }
 
 const SuccessIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2008,8 +2007,8 @@ const SuccessIcon = (props: SVGProps<SVGSVGElement>) => (
       d="m8.5 12.5 2 2 5-5"
     />
   </svg>
-);
-export {SuccessIcon};
+)
+export { SuccessIcon }
 
 const RemoveIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2035,8 +2034,8 @@ const RemoveIcon = (props: SVGProps<SVGSVGElement>) => (
       d="m14.5 9.5-5 5m0-5 5 5"
     />
   </svg>
-);
-export  {RemoveIcon};
+)
+export { RemoveIcon }
 
 const RenameIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2065,8 +2064,8 @@ const RenameIcon = (props: SVGProps<SVGSVGElement>) => (
       d="M15 2v20"
     />
   </svg>
-);
-export {RenameIcon};
+)
+export { RenameIcon }
 
 const HomeIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2081,7 +2080,7 @@ const HomeIcon = (props: SVGProps<SVGSVGElement>) => (
       stroke="currentColor"
       strokeWidth={1.5}
       d="M2 12.204c0-2.289 0-3.433.52-4.381.518-.949 1.467-1.537 3.364-2.715l2-1.241C9.889 2.622 10.892 2 12 2s2.11.622 4.116 1.867l2 1.241c1.897 1.178 2.846 1.766 3.365 2.715S22 9.915 22 12.203v1.522c0 3.9 0 5.851-1.172 7.063S17.771 22 14 22h-4c-3.771 0-5.657 0-6.828-1.212S2 17.626 2 13.725z"
-      />
+    />
     <path
       opacity={0.5}
       stroke="currentColor"
@@ -2090,8 +2089,8 @@ const HomeIcon = (props: SVGProps<SVGSVGElement>) => (
       d="M15 18H9"
     />
   </svg>
-);
-export {HomeIcon};
+)
+export { HomeIcon }
 
 const RefreshIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2112,8 +2111,8 @@ const RefreshIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {RefreshIcon};
+)
+export { RefreshIcon }
 
 const ExpandCollapsedIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2140,8 +2139,8 @@ const ExpandCollapsedIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {ExpandCollapsedIcon};
+)
+export { ExpandCollapsedIcon }
 
 const LoadMoreIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2169,8 +2168,8 @@ const LoadMoreIcon = (props: SVGProps<SVGSVGElement>) => (
       d="M12 6c0-1.886 0-2.828.586-3.414S14.114 2 16 2h2c1.886 0 2.828 0 3.414.586S22 4.114 22 6v2c0 1.886 0 2.828-.586 3.414S19.886 12 18 12h-2c-1.886 0-2.828 0-3.414-.586S12 9.886 12 8z"
     />
   </svg>
-);
-export  {LoadMoreIcon};
+)
+export { LoadMoreIcon }
 
 const AIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2193,8 +2192,8 @@ const AIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {AIcon};
+)
+export { AIcon }
 
 const LanguageIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2216,8 +2215,8 @@ const LanguageIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {LanguageIcon};
+)
+export { LanguageIcon }
 
 const MicIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2241,8 +2240,8 @@ const MicIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {MicIcon};
+)
+export { MicIcon }
 
 const MediaIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2273,8 +2272,8 @@ const MediaIcon = (props: SVGProps<SVGSVGElement>) => (
       d="M13.888 9.935C14.963 10.812 15.5 11.25 15.5 12s-.537 1.188-1.612 2.065c-.297.242-.591.47-.862.66-.237.167-.506.339-.784.508-1.073.652-1.609.978-2.09.617-.48-.36-.524-1.116-.612-2.628-.024-.427-.04-.846-.04-1.222s.016-.795.04-1.222c.088-1.512.132-2.267.612-2.628.481-.361 1.018-.035 2.09.617.278.169.547.341.784.508.27.19.565.418.862.66Z"
     />
   </svg>
-);
-export {MediaIcon};
+)
+export { MediaIcon }
 
 const SummarizeIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2303,5 +2302,146 @@ const SummarizeIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {SummarizeIcon};
+)
+export { SummarizeIcon }
+
+// ─── AI Pipeline Icons (Line Duotone) ────────────────────────────────────────
+
+// Keywords — targeting reticle scanning text lines
+const AiKeywordsIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M8.25 15.5a.75.75 0 0 0 1.5 0zm3.414-6.748.498-.56zm-.414 1.673a.75.75 0 0 0 1.5 0zm.498-1.59.56-.497zm-5.412-.083-.498-.56zM5.25 10.425a.75.75 0 0 0 1.5 0zm1.002-1.59-.56-.497zM7 14.75a.75.75 0 0 0 0 1.5zm4 1.5a.75.75 0 0 0 0-1.5zm-3.075-7H9v-1.5H7.925zM9 9.25h1.075v-1.5H9zm.75 6.25v-7h-1.5v7zm.325-6.25c.455 0 .726.001.922.026.177.022.186.052.17.037l.995-1.121c-.3-.268-.651-.364-.98-.405-.31-.038-.691-.037-1.107-.037zm2.675 1.175c0-.416.001-.797-.037-1.107-.041-.329-.137-.68-.405-.98l-1.121.996c-.015-.017.015-.008.037.17.025.195.026.466.026.921zm-1.584-1.112.02.02 1.122-.995a2 2 0 0 0-.146-.146zM7.925 7.75c-.416 0-.797-.001-1.107.037-.329.041-.68.137-.98.405l.996 1.121c-.017.015-.008-.015.17-.037.195-.025.466-.026.921-.026zM6.75 10.425c0-.455.001-.726.026-.922.022-.177.052-.186.037-.17l-1.121-.995c-.268.3-.364.651-.405.98-.038.31-.037.691-.037 1.107zm-.912-2.233q-.077.069-.146.146l1.121.996.02-.02zM7 16.25h4v-1.5H7z"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M12 4h-2C6.229 4 4.343 4 3.172 5.172S2 8.229 2 12s0 5.657 1.172 6.828S6.229 20 10 20h2m3-16c3.114.01 4.765.108 5.828 1.172C22 6.343 22 8.229 22 12s0 5.657-1.172 6.828C19.765 19.892 18.114 19.99 15 20"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M15 2v20"
+    />
+  </svg>
+)
+export { AiKeywordsIcon }
+
+// Tags — content hub radiating out to satellite label nodes
+const AiTagsIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="m20.312 12.647.517-1.932c.604-2.255.907-3.382.68-4.358a4 4 0 0 0-1.162-2.011c-.731-.685-1.859-.987-4.114-1.591-2.255-.605-3.383-.907-4.358-.68a4 4 0 0 0-2.011 1.162c-.587.626-.893 1.543-1.348 3.209l-.244.905-.517 1.932c-.605 2.255-.907 3.382-.68 4.358a4 4 0 0 0 1.162 2.011c.731.685 1.859.987 4.114 1.592 2.032.544 3.149.843 4.064.73q.15-.019.294-.052a4 4 0 0 0 2.011-1.16c.685-.732.987-1.86 1.592-4.115Z"
+    />
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M16.415 17.974a4 4 0 0 1-1.068 1.678c-.731.685-1.859.987-4.114 1.591s-3.383.907-4.358.679a4 4 0 0 1-2.011-1.161c-.685-.731-.988-1.859-1.592-4.114l-.517-1.932c-.605-2.255-.907-3.383-.68-4.358a4 4 0 0 1 1.162-2.011c.731-.685 1.859-.987 4.114-1.592q.638-.172 1.165-.309"
+      opacity={0.5}
+    />
+  </svg>
+)
+export { AiTagsIcon }
+
+// Sentiment — emotional spectrum: smile arc / frown arc / needle reading
+const AiSentimentIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    {/* horizontal axis — secondary */}
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M4 13h16"
+      opacity={0.5}
+    />
+    {/* positive arc above axis — secondary */}
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M5 13A7 7 0 0 1 19 13"
+      opacity={0.5}
+    />
+    {/* negative arc below axis — secondary */}
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M8 13A4 4 0 0 0 16 13"
+      opacity={0.5}
+    />
+    {/* needle pointing into positive zone — primary */}
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M12 13 9 7.5"
+    />
+    {/* pivot — primary */}
+    <circle cx={12} cy={13} r={1} fill="currentColor" />
+  </svg>
+)
+export { AiSentimentIcon }
+
+// Generate — branching tree: single root expanding into many outputs
+const AiGenerateIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    {/* leaf nodes — secondary */}
+    <circle cx={5} cy={7} r={1} fill="currentColor" opacity={0.5} />
+    <circle cx={10} cy={5} r={1} fill="currentColor" opacity={0.5} />
+    <circle cx={14} cy={5} r={1} fill="currentColor" opacity={0.5} />
+    <circle cx={19} cy={7} r={1} fill="currentColor" opacity={0.5} />
+    {/* upper branches — secondary */}
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M8 11 5 7M8 11 10 5M16 11 14 5M16 11 19 7"
+      opacity={0.5}
+    />
+    {/* trunk + main branches — primary */}
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M12 19V14M12 14 8 11M12 14 16 11"
+    />
+    {/* root — primary */}
+    <circle cx={12} cy={19} r={1.5} fill="currentColor" />
+  </svg>
+)
+export { AiGenerateIcon }

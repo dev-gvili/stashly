@@ -35,6 +35,9 @@ importers:
       '@fontsource-variable/geist-mono':
         specifier: ^5.2.7
         version: 5.2.7
+      '@fontsource/ibm-plex-sans-hebrew':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@fontsource/share-tech-mono':
         specifier: ^5.2.7
         version: 5.2.7
@@ -1025,6 +1028,9 @@ packages:
 
   '@fontsource-variable/geist@5.2.8':
     resolution: {integrity: sha512-cJ6m9e+8MQ5dCYJsLylfZrgBh6KkG4bOLckB35Tr9J/EqdkEM6QllH5PxqP1dhTvFup+HtMRPuz9xOjxXJggxw==}
+
+  '@fontsource/ibm-plex-sans-hebrew@5.2.8':
+    resolution: {integrity: sha512-s2RwlDY+lulacr21rb2yxuz3OfmhPX7kX6HwN9UA3/c9XCmjGW4jom0wagR0+c5nH4uS1nL8bAtgPv8p77122w==}
 
   '@fontsource/share-tech-mono@5.2.7':
     resolution: {integrity: sha512-1JBJ6CU9u5av8aFEUOGOJkq60/IEVVOZDCmiU8X3i0skk0Pp69GngDwlBUHaTZa4G6pbF1UDrC+Fm7XSckW6TQ==}
@@ -7765,6 +7771,8 @@ snapshots:
   '@fontsource-variable/geist-mono@5.2.7': {}
 
   '@fontsource-variable/geist@5.2.8': {}
+
+  '@fontsource/ibm-plex-sans-hebrew@5.2.8': {}
 
   '@fontsource/share-tech-mono@5.2.7': {}
 
