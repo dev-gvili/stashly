@@ -95,7 +95,7 @@ const speed = z.object({
 /**
  * Zod schema to validate S3 presigned URLs.
  * Ensures the URL uses HTTPS and contains required AWS SigV4 query parameters.
- * 
+ *
  * Parameters validated include:
  * - X-Amz-Algorithm
  * - X-Amz-Credential
@@ -103,7 +103,7 @@ const speed = z.object({
  * - X-Amz-Expires
  * - X-Amz-SignedHeaders
  * - X-Amz-Signature
- * 
+ *
  * These parameters are essential for AWS to authenticate and authorize access to the S3 resource.
  * @example
  * ```ts
@@ -734,3 +734,119 @@ export let paginationData = z.discriminatedUnion('strategy', [
   paginationCursorData,
   paginationOffsetData,
 ])
+
+// ====================================================== //
+// ============= Stash Pipeline Machine ================= //
+// ====================================================== //
+
+// Worker-originated events (bridge retypes 'result' by task)
+const workerProgress = z.object({
+  type: z.literal('WORKER.PROGRESS'),
+  data: z.unknown().nullable(),
+})
+const workerStatus = z.object({
+  type: z.literal('WORKER.STATUS'),
+  status: z.string(),
+})
+const workerLanguageDetected = z.object({
+  type: z.literal('WORKER.LANGUAGE_DETECTED'),
+  language: z.string(),
+  confidence: z.number(),
+})
+const workerAudioDuration = z.object({
+  type: z.literal('WORKER.AUDIO_DURATION'),
+  seconds: z.number(),
+})
+const workerPartialResult = z.object({
+  type: z.literal('WORKER.PARTIAL_RESULT'),
+  task: z.string(),
+  payload: z.unknown(),
+})
+const workerResultTranscription = z.object({
+  type: z.literal('WORKER.RESULT.TRANSCRIPTION'),
+  text: z.string(),
+})
+const workerResultSummarization = z.object({
+  type: z.literal('WORKER.RESULT.SUMMARIZATION'),
+  text: z.string(),
+})
+const workerResultExtractKeywords = z.object({
+  type: z.literal('WORKER.RESULT.EXTRACT_KEYWORDS'),
+  keywords: z.array(z.string()),
+})
+const workerResultGenerateTags = z.object({
+  type: z.literal('WORKER.RESULT.GENERATE_TAGS'),
+  tags: z.array(z.string()),
+})
+const workerErrorEvent = z.object({
+  type: z.literal('WORKER.ERROR'),
+  message: z.string(),
+})
+
+// Component-sent events
+const pipelineAudioUpload = z.object({
+  type: z.literal('AUDIO_UPLOAD'),
+  audio: z.instanceof(Float32Array),
+  sampleRate: z.number(),
+  duration: z.number(),
+  file: z.instanceof(File),
+})
+const pipelineSummarize = z.object({
+  type: z.literal('SUMMARIZE'),
+  text: z.string(),
+})
+const pipelineGenerateTags = z.object({ type: z.literal('GENERATE_TAGS') })
+const pipelineCancel = z.object({ type: z.literal('CANCEL') })
+const pipelineReset = z.object({ type: z.literal('RESET') })
+
+export const pipelineEvents = z.discriminatedUnion('type', [
+  workerProgress,
+  workerStatus,
+  workerLanguageDetected,
+  workerAudioDuration,
+  workerPartialResult,
+  workerResultTranscription,
+  workerResultSummarization,
+  workerResultExtractKeywords,
+  workerResultGenerateTags,
+  workerErrorEvent,
+  pipelineAudioUpload,
+  pipelineSummarize,
+  pipelineGenerateTags,
+  pipelineCancel,
+  pipelineReset,
+])
+
+export const pipelineContextSchema = z.object({
+  workerRef: z.custom<AnyActorRef>().optional(),
+  executionProvider: z.enum(['webgpu', 'wasm', 'unknown']),
+  gpuInfo: z.string().nullable(),
+  fileInfo: z
+    .object({
+      name: z.string(),
+      type: z.string(),
+      size: z.string(),
+      duration: z.number(),
+    })
+    .nullable(),
+  pendingAudio: z
+    .object({
+      audio: z.instanceof(Float32Array),
+      sampleRate: z.number(),
+      duration: z.number(),
+    })
+    .nullable(),
+  modelName: z.string().nullable(),
+  loadingPhases: z.array(z.string()),
+  progress: z.record(z.string(), z.number()).nullable(),
+  detectedLanguage: z
+    .object({ language: z.string(), confidence: z.number() })
+    .nullable(),
+  audioDuration: z.number(),
+  transcriptProgress: z.unknown().nullable(),
+  transcript: z.string(),
+  summary: z.string(),
+  keywords: z.array(z.string()),
+  generatedTags: z.array(z.string()),
+  error: z.string().nullable(),
+})

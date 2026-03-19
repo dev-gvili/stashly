@@ -22,6 +22,8 @@ import {
   quotaOutput,
   subscriptionEvents,
   subscriptionOutput,
+  pipelineEvents,
+  pipelineContextSchema,
   type subscriptionInput,
   type subscriptionContext,
   type uploadFile,
@@ -103,3 +105,19 @@ export type SubscriptionEvents = z.infer<typeof subscriptionEvents>
 export type SubscriptionContext = z.infer<typeof subscriptionContext>
 export type SubscriptionOutput = z.infer<typeof subscriptionOutput>
 export type SubscriptionInput = z.infer<typeof subscriptionInput>
+
+// ====================================================== //
+// ============= Stash Pipeline Machine Types =========== //
+// ====================================================== //
+
+export type PipelineEvents = z.infer<typeof pipelineEvents>
+export type PipelineContext = z.infer<typeof pipelineContextSchema>
+export type PipelineState =
+  | 'checking_hardware'
+  | 'idle'
+  | 'detecting_language'
+  | 'transcribing'
+  | 'ready'
+  | 'summarizing'
+  | 'generating_tags'
+  | 'error'

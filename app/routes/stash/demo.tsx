@@ -1,33 +1,20 @@
-import ibmPlexSansHebrewFonts from '@fontsource/ibm-plex-sans-hebrew/index.css?url'
-import React, { useState, useEffect, useRef } from 'react'
-import { Loader2 } from 'lucide-react'
-import { Button } from '@/ui/button'
+import {
+  AiTagsIcon,
+  CopyIcon,
+  LanguageIcon,
+  MediaIcon,
+  SummarizeIcon,
+  LoaderIcon
+} from '@/components/icons'
 import { Badge } from '@/ui/badge'
+import { Button } from '@/ui/button'
 import { Progress } from '@/ui/progress'
 import { ScrollArea } from '@/ui/scroll-area'
 import { Separator } from '@/ui/separator'
-import { formatSize } from '@/utils/formaters'
-import {
-  LanguageIcon,
-  MediaIcon,
-  MicIcon,
-  SummarizeIcon,
-  AiKeywordsIcon,
-  AiTagsIcon,
-  CopyIcon,
-} from '../../components/icons'
-
-type ModelStatus =
-  | 'idle'
-  | 'loading'
-  | 'ready'
-  | 'audio-duration'
-  | 'detecting-language'
-  | 'transcribing'
-  | 'summarizing'
-  | 'extract-keywords'
-  | 'generating-tags'
-  | 'error'
+import ibmPlexSansHebrewFonts from '@fontsource/ibm-plex-sans-hebrew/index.css?url'
+import { useMachine } from '@xstate/react'
+import { pipelineMachine } from '@/machines/stash/pipeline.machine'
+import type { PipelineState } from '@/types/machine.types'
 
 interface ChunkProgress {
   currentChunk: number
@@ -45,258 +32,69 @@ const BAR_HEIGHTS = [
   0.5, 0.7,
 ]
 
-const STATUS_LABELS: Record<ModelStatus, string> = {
+// Maps machine state to a display label
+type DisplayStatus = 'idle' | 'loading' | 'detecting-language' | 'transcribing' | 'summarizing' | 'generating-tags' | 'ready' | 'error'
+
+const STATUS_LABELS: Record<DisplayStatus, string> = {
   idle: 'STANDBY',
   loading: 'LOADING',
   ready: 'DONE',
-  'audio-duration': 'LOADED',
   'detecting-language': 'DETECTING',
   transcribing: 'TRANSCRIBING',
   summarizing: 'SUMMARIZING',
-  'extract-keywords': 'KEYWORDS',
   'generating-tags': 'TAGGING',
   error: 'ERROR',
 }
 
-const PROCESSING_STATUSES: ModelStatus[] = [
-  'loading',
-  'detecting-language',
-  'transcribing',
-  'summarizing',
-  'extract-keywords',
-  'generating-tags',
-]
+function getDisplayStatus(stateValue: string, hasProgress: boolean): DisplayStatus {
+  if (hasProgress && stateValue !== 'idle' && stateValue !== 'ready' && stateValue !== 'error') {
+    return 'loading'
+  }
+  const map: Partial<Record<PipelineState, DisplayStatus>> = {
+    detecting_language: 'detecting-language',
+    transcribing: 'transcribing',
+    ready: 'ready',
+    summarizing: 'summarizing',
+    generating_tags: 'generating-tags',
+    error: 'error',
+  }
+  return map[stateValue as PipelineState] ?? 'idle'
+}
 
 export default function App() {
-  const [status, setStatus] = useState<ModelStatus>('idle')
-  const [progress, setProgress] = useState<Record<string, number> | null>(null)
-  const [detectedLanguage, setDetectedLanguage] = useState<{
-    language: string
-    confidence: number
-  } | null>(null)
-  const [transcriptProgress, setTranscriptProgress] =
-    useState<ChunkProgress | null>(null)
-  const [loadingPhases, setLoadingPhases] = useState<string[]>([])
-  const [audioDuration, setAudioDuration] = useState<number>(0)
-  const [fileInfo, setFileInfo] = useState<{
-    name: string
-    type: string
-    size: string
-    duration: number
-  } | null>(null)
-  const [modelName, setModelName] = useState<string | null>(null)
-  const [executionProvider, setExecutionProvider] = useState<string>('unknown')
-  const [gpuInfo, setGpuInfo] = useState<string | null>(null)
-  const [transcript, setTranscript] = useState('')
-  const [summary, setSummary] = useState<string>('')
-  const [keywords, setKeywords] = useState<string[]>([])
-  const [generatedTags, setGeneratedTags] = useState<string[]>([])
+  const [state, send] = useMachine(pipelineMachine)
+  const { context } = state
+  const stateValue = state.value as string
 
-  const worker = useRef<Worker | null>(null)
-  const pendingAudioRef = useRef<{
-    audio: Float32Array
-    sampleRate: number
-    duration: number
-  } | null>(null)
+  const isProcessing =
+    stateValue === 'detecting_language' ||
+    stateValue === 'transcribing' ||
+    stateValue === 'summarizing' ||
+    stateValue === 'generating_tags' ||
+    context.progress !== null
 
-  const isProcessing = PROCESSING_STATUSES.includes(status)
-
-  useEffect(() => {
-    ;(async () => {
-      try {
-        const nav: any = navigator
-        if (nav.gpu) {
-          const adapter: any = await nav.gpu.requestAdapter()
-          if (adapter) {
-            setExecutionProvider('webgpu')
-            try {
-              const info = adapter?.info as any
-              setGpuInfo(info?.description || info?.vendor || null)
-            } catch {}
-          } else {
-            setExecutionProvider('wasm')
-          }
-        } else {
-          setExecutionProvider('wasm')
-        }
-      } catch {
-        setExecutionProvider('wasm')
-      }
-    })()
-
-    worker.current = new Worker(
-      new URL('../../workers/stash.worker.ts', import.meta.url),
-      { type: 'module' }
-    )
-
-    worker.current.onmessage = (e) => {
-      const { type, payload, task } = e.data
-
-      if (type !== 'progress') {
-        console.log('Worker message:', type, payload)
-      }
-
-      switch (type) {
-        case 'progress':
-          if (payload.status === 'progress') {
-            setProgress((prev) => ({
-              ...(prev || {}),
-              [payload.file]: payload.progress,
-            }))
-            const fileName = payload.file.split('/').pop() || ''
-            if (!modelName) {
-              if (fileName.includes('mms-lid')) setModelName('mms-lid-256')
-              else if (fileName.includes('whisper-large'))
-                setModelName('whisper-large-v3-turbo')
-              else if (fileName.includes('whisper-small'))
-                setModelName('whisper-small')
-              else if (fileName.includes('LaMini'))
-                setModelName('LaMini-Flan-T5-77M')
-              else if (fileName.includes('tiny-aya-global-ONNX'))
-                setModelName('tiny-aya-global-ONNX')
-            }
-            if (
-              fileName.includes('mms-lid') &&
-              !loadingPhases.includes('Language Model')
-            ) {
-              setLoadingPhases((prev) => [...prev, 'Language Model'])
-            } else if (
-              fileName.includes('whisper') &&
-              !loadingPhases.includes('Speech Recognition')
-            ) {
-              setLoadingPhases((prev) => [...prev, 'Speech Recognition'])
-            } else if (
-              fileName.includes('LaMini') &&
-              !loadingPhases.includes('Text Generation')
-            ) {
-              setLoadingPhases((prev) => [...prev, 'Text Generation'])
-            } else if (
-              fileName.includes('tiny-aya-global-ONNX') &&
-              !loadingPhases.includes('Summarization')
-            ) {
-              setLoadingPhases((prev) => [...prev, 'Summarization'])
-            }
-          } else {
-            setProgress(null)
-            setLoadingPhases([])
-          }
-          break
-
-        case 'audio-duration':
-          setAudioDuration(payload)
-          setStatus('audio-duration')
-          break
-
-        case 'partial-result':
-          if (task === 'transcription') setTranscriptProgress(payload)
-          break
-
-        case 'status':
-          setStatus(payload as ModelStatus)
-          if (payload === 'detecting-language') setModelName('mms-lid-256')
-          else if (payload === 'transcribing')
-            setModelName('whisper-large-v3-turbo')
-          else if (payload === 'summarizing')
-            setModelName('tiny-aya-global-ONNX')
-          else if (payload === 'extract-keywords')
-            setModelName('bert-base-multilingual-cased-ner-hrl')
-          else if (payload === 'generating-tags')
-            setModelName('tiny-aya-global-ONNX')
-          if (payload === 'ready') {
-            setProgress(null)
-            setLoadingPhases([])
-            setDetectedLanguage(null)
-            setTranscriptProgress(null)
-            setAudioDuration(0)
-          }
-          break
-
-        case 'language-detected':
-          setDetectedLanguage(payload)
-          if (pendingAudioRef.current) {
-            const { audio, sampleRate, duration } = pendingAudioRef.current
-            pendingAudioRef.current = null
-            worker.current?.postMessage({
-              type: 'transcribe',
-              payload: {
-                audio,
-                sampleRate,
-                duration,
-                language: payload.language,
-              },
-            })
-          }
-          break
-
-        case 'result':
-          if (task === 'transcription') {
-            setTranscript(payload || '')
-          } else if (task === 'summarization') {
-            let text = ''
-            if (Array.isArray(payload)) text = payload[0]?.generated_text || ''
-            else if (typeof payload === 'string') text = payload
-            else if (payload?.generated_text) text = payload.generated_text
-            else if (payload?.summary) text = payload.summary
-            else if (payload?.summary_text) text = payload.summary_text
-            if (text) setSummary(text)
-          } else if (task === 'extract-keywords') {
-            setKeywords(payload.keywords)
-          } else if (task === 'generate-tags') {
-            setGeneratedTags(payload.tags)
-          }
-          setTranscriptProgress(null)
-          setStatus('ready')
-          break
-
-        case 'error':
-          console.error('Worker Error:', payload)
-          setStatus('error')
-          break
-      }
-    }
-
-    return () => worker.current?.terminate()
-  }, [])
+  const displayStatus = getDisplayStatus(stateValue, context.progress !== null)
+  const transcript = context.transcript
+  const summary = context.summary
+  const transcriptProgress = context.transcriptProgress as ChunkProgress | null
+  const gpuShort = context.gpuInfo ? context.gpuInfo.split(/[\s,]/)[0] : null
 
   const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    setTranscript('')
-    setSummary('')
-    setKeywords([])
-    setGeneratedTags([])
-    setDetectedLanguage(null)
-    setLoadingPhases([])
-    setTranscriptProgress(null)
-    setAudioDuration(0)
-    setStatus('loading')
-    setModelName('whisper-large-v3-turbo')
-    setFileInfo(null)
-
     try {
       const ctx = new window.AudioContext({ sampleRate: 16000 })
       const arrayBuffer = await file.arrayBuffer()
       const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
-      const audioData = audioBuffer.getChannelData(0)
-      const sampleRate = audioBuffer.sampleRate
-      const duration = audioBuffer.duration
-
-      setFileInfo({
-        name: file.name,
-        type: file.type,
-        size: formatSize('byte', 'unit', file.size),
-        duration,
-      })
-
-      pendingAudioRef.current = { audio: audioData, sampleRate, duration }
-      worker.current?.postMessage({
-        type: 'detect-language',
-        payload: { audio: audioData, sampleRate },
+      send({
+        type: 'AUDIO_UPLOAD',
+        audio: audioBuffer.getChannelData(0),
+        sampleRate: audioBuffer.sampleRate,
+        duration: audioBuffer.duration,
+        file,
       })
     } catch (err) {
       console.error('Audio processing error:', err)
-      setStatus('error')
     }
   }
 
@@ -307,54 +105,11 @@ export default function App() {
       .catch((err) => console.error('Unable to copy', err))
   }
 
-  const runSummary = () => {
-    if (!transcript) return
-    setModelName('Qwen3-1.7B-ONNX')
-    setSummary('')
-    setStatus('loading')
-    worker.current?.postMessage({
-      type: 'summarize',
-      payload: {
-        text: transcript,
-        language: detectedLanguage?.language || 'en',
-      },
-    })
-  }
-
-  const runKeywords = () => {
-    const target = summary || transcript
-    if (!target) return
-    setModelName('Xenova/paraphrase-multilingual-MiniLM-L12-v2')
-    setKeywords([])
-    setStatus('loading')
-    worker.current?.postMessage({
-      type: 'extract-keywords',
-      payload: { text: target, lang: detectedLanguage?.language || 'en' },
-    })
-  }
-
-  const runGenerateTags = () => {
-    const target = summary || transcript
-    if (!target) return
-    setGeneratedTags([])
-    setStatus('loading')
-    setModelName('tiny-aya-global-ONNX')
-    worker.current?.postMessage({
-      type: 'generate-tags',
-      payload: {
-        text: target,
-        language: detectedLanguage?.language || 'en',
-      },
-    })
-  }
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
-
-  const gpuShort = gpuInfo ? gpuInfo.split(/[\s,]/)[0] : null
 
   return (
     <div className="min-h-screen bg-background text-foreground font-stashly">
@@ -379,13 +134,13 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3 text-[9px] font-bold tracking-[0.18em] uppercase">
-            {modelName && (
+            {context.modelName && (
               <span className="hidden sm:block text-muted-foreground/50 truncate max-w-36">
-                {modelName}
+                {context.modelName}
               </span>
             )}
             <span className="hidden sm:block text-muted-foreground/50">
-              {executionProvider}
+              {context.executionProvider}
               {gpuShort ? ` · ${gpuShort}` : ''}
             </span>
 
@@ -396,7 +151,7 @@ export default function App() {
                 )}
                 <span
                   className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
-                    status === 'error'
+                    displayStatus === 'error'
                       ? 'bg-destructive-foreground'
                       : isProcessing
                         ? 'bg-primary'
@@ -406,14 +161,14 @@ export default function App() {
               </span>
               <span
                 className={
-                  status === 'error'
+                  displayStatus === 'error'
                     ? 'text-destructive-foreground'
                     : isProcessing
                       ? 'text-primary'
                       : 'text-muted-foreground/60'
                 }
               >
-                {STATUS_LABELS[status]}
+                {STATUS_LABELS[displayStatus]}
               </span>
             </div>
           </div>
@@ -434,7 +189,7 @@ export default function App() {
             className={`relative h-56 border border-dashed flex items-center justify-center transition-all duration-300 overflow-hidden ${
               isProcessing
                 ? 'cursor-default border-primary/25 bg-primary/2'
-                : status === 'error'
+                : displayStatus === 'error'
                   ? 'border-destructive/40 bg-destructive/5'
                   : 'border-border/40 hover:border-primary/40 bg-transparent hover:bg-muted/5'
             }`}
@@ -444,7 +199,7 @@ export default function App() {
               <div className="flex flex-col items-center gap-4 animate-in fade-in duration-200 pointer-events-none">
                 <MediaIcon
                   className={`w-8 h-8 ${
-                    status === 'error'
+                    displayStatus === 'error'
                       ? 'text-destructive-foreground/50'
                       : 'text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors duration-200'
                   }`}
@@ -452,12 +207,12 @@ export default function App() {
                 <div className="text-center space-y-1.5">
                   <p
                     className={`text-[10px] font-bold tracking-[0.28em] uppercase ${
-                      status === 'error'
+                      displayStatus === 'error'
                         ? 'text-destructive-foreground'
                         : 'text-foreground/60'
                     }`}
                   >
-                    {status === 'error'
+                    {displayStatus === 'error'
                       ? 'Upload failed — try again'
                       : 'Drop audio or video'}
                   </p>
@@ -469,18 +224,18 @@ export default function App() {
             )}
 
             {/* Loading models */}
-            {status === 'loading' && (
+            {displayStatus === 'loading' && (
               <div className="flex flex-col items-center gap-5 animate-in fade-in duration-200 w-full max-w-xs">
                 <div className="flex items-center gap-2.5">
-                  <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+                  <LoaderIcon className="w-3.5 h-3.5 text-primary animate-spin" />
                   <span className="text-[9px] font-bold tracking-[0.25em] uppercase text-primary">
-                    {loadingPhases.length > 0
-                      ? loadingPhases[loadingPhases.length - 1]
+                    {context.loadingPhases.length > 0
+                      ? context.loadingPhases[context.loadingPhases.length - 1]
                       : 'Loading Models'}
                   </span>
                 </div>
-                {progress &&
-                  Object.entries(progress).map(([file, p]) => (
+                {context.progress &&
+                  Object.entries(context.progress).map(([file, p]) => (
                     <div key={file} className="w-full space-y-1.5">
                       <div className="flex justify-between items-center">
                         <span className="text-[9px] tracking-wider text-muted-foreground/60 truncate max-w-44">
@@ -497,7 +252,7 @@ export default function App() {
             )}
 
             {/* Detecting language */}
-            {status === 'detecting-language' && (
+            {displayStatus === 'detecting-language' && (
               <div className="flex flex-col items-center gap-4 animate-in fade-in duration-200">
                 <LanguageIcon className="w-8 h-8 text-primary animate-pulse" />
                 <div className="text-center space-y-1">
@@ -512,7 +267,7 @@ export default function App() {
             )}
 
             {/* Transcribing */}
-            {status === 'transcribing' && (
+            {displayStatus === 'transcribing' && (
               <div className="flex flex-col items-center gap-5 animate-in fade-in duration-200">
                 <div className="flex items-end gap-[2px] h-10 w-32">
                   {BAR_HEIGHTS.map((h, i) => (
@@ -537,9 +292,9 @@ export default function App() {
                       {transcriptProgress.timeProcessed > 0 &&
                         ` · ${formatTime(transcriptProgress.timeProcessed)} processed`}
                     </p>
-                  ) : audioDuration > 0 ? (
+                  ) : context.audioDuration > 0 ? (
                     <p className="text-[9px] tracking-wider text-muted-foreground/50">
-                      {formatTime(audioDuration)} audio file
+                      {formatTime(context.audioDuration)} audio file
                     </p>
                   ) : null}
                 </div>
@@ -547,25 +302,17 @@ export default function App() {
             )}
 
             {/* Post-processing states */}
-            {(status === 'summarizing' ||
-              status === 'extract-keywords' ||
-              status === 'generating-tags') && (
+            {(displayStatus === 'summarizing' ||
+              displayStatus === 'generating-tags') && (
               <div className="flex flex-col items-center gap-4 animate-in fade-in duration-200">
-                {status === 'summarizing' && (
+                {displayStatus === 'summarizing' && (
                   <SummarizeIcon className="w-8 h-8 text-primary animate-pulse" />
                 )}
-                {status === 'extract-keywords' && (
-                  <AiKeywordsIcon className="w-8 h-8 text-primary animate-pulse" />
-                )}
-                {status === 'generating-tags' && (
+                {displayStatus === 'generating-tags' && (
                   <AiTagsIcon className="w-8 h-8 text-primary animate-pulse" />
                 )}
                 <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-primary">
-                  {status === 'summarizing'
-                    ? 'Summarizing'
-                    : status === 'extract-keywords'
-                      ? 'Extracting Keywords'
-                      : 'Generating Tags'}
+                  {displayStatus === 'summarizing' ? 'Summarizing' : 'Generating Tags'}
                 </p>
               </div>
             )}
@@ -582,38 +329,38 @@ export default function App() {
         </div>
 
         {/* Metadata strip */}
-        {fileInfo && (
+        {context.fileInfo && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] tracking-[0.15em] text-muted-foreground/50 uppercase animate-in fade-in duration-300 pb-4 border-b border-border/20">
             <span className="normal-case text-muted-foreground/70 truncate max-w-56">
-              {fileInfo.name}
+              {context.fileInfo.name}
             </span>
             <span className="text-border/40">·</span>
-            <span>{fileInfo.size}</span>
+            <span>{context.fileInfo.size}</span>
             <span className="text-border/40">·</span>
-            <span>{formatTime(fileInfo.duration)}</span>
-            {detectedLanguage && (
+            <span>{formatTime(context.fileInfo.duration)}</span>
+            {context.detectedLanguage && (
               <>
                 <span className="text-border/40">·</span>
                 <span className="flex items-center gap-1">
                   <LanguageIcon className="w-3 h-3" />
                   <span className="capitalize">
-                    {detectedLanguage.language}
+                    {context.detectedLanguage.language}
                   </span>
                   <span className="opacity-50">
-                    ({(detectedLanguage.confidence * 100).toFixed(0)}%)
+                    ({(context.detectedLanguage.confidence * 100).toFixed(0)}%)
                   </span>
                 </span>
               </>
             )}
             <span className="ml-auto">
-              {executionProvider}
+              {context.executionProvider}
               {gpuShort ? ` · ${gpuShort}` : ''}
             </span>
           </div>
         )}
 
         {/* Transcript */}
-        {transcript && (
+        {context.transcript && (
           <div className="border border-border animate-in slide-in-from-bottom-3 fade-in duration-400 rounded bg-sidebar">
             <div className="flex items-center justify-between px-4 py-2 border-b border-border">
               <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground">
@@ -621,7 +368,7 @@ export default function App() {
               </span>
               <div className="flex items-center gap-0.5">
                 <Button
-                  onClick={runSummary}
+                  onClick={() => send({ type: 'SUMMARIZE', text: transcript })}
                   title="Summarize"
                   variant="ghost"
                   size="icon-sm"
@@ -630,16 +377,7 @@ export default function App() {
                   <SummarizeIcon className="size-5!" />
                 </Button>
                 <Button
-                  onClick={runKeywords}
-                  title="Extract Keywords"
-                  variant="ghost"
-                  size="icon-sm"
-                  disabled={isProcessing}
-                >
-                  <AiKeywordsIcon className="size-5!" />
-                </Button>
-                <Button
-                  onClick={runGenerateTags}
+                  onClick={() => send({ type: 'GENERATE_TAGS' })}
                   title="Generate Tags"
                   variant="ghost"
                   size="icon-sm"
@@ -652,7 +390,7 @@ export default function App() {
                   className="h-3 mx-1 opacity-30"
                 />
                 <Button
-                  onClick={() => handleCopy(transcript)}
+                  onClick={() => handleCopy(context.transcript)}
                   title="Copy Transcript"
                   variant="ghost"
                   size="icon-sm"
@@ -664,10 +402,10 @@ export default function App() {
             <ScrollArea className="max-h-72">
               <div className="px-4 py-4">
                 <p
-                  dir={detectedLanguage?.language === 'he' ? 'rtl' : 'ltr'}
+                  dir={context.detectedLanguage?.language === 'he' ? 'rtl' : 'ltr'}
                   className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap"
                 >
-                  {transcript}
+                  {context.transcript}
                 </p>
               </div>
             </ScrollArea>
@@ -675,14 +413,14 @@ export default function App() {
         )}
 
         {/* Summary */}
-        {summary && (
+        {context.summary && (
           <div className="border border-border/50 animate-in slide-in-from-bottom-3 fade-in duration-400">
             <div className="flex items-center justify-between px-4 py-2 border-b border-border/50">
               <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
                 Summary
               </span>
               <Button
-                onClick={() => handleCopy(summary)}
+                onClick={() => handleCopy(context.summary)}
                 title="Copy Summary"
                 variant="ghost"
                 size="icon-sm"
@@ -693,25 +431,25 @@ export default function App() {
             </div>
             <div className="px-4 py-4">
               <p
-                dir={detectedLanguage?.language === 'he' ? 'rtl' : 'ltr'}
+                dir={context.detectedLanguage?.language === 'he' ? 'rtl' : 'ltr'}
                 className="text-sm text-muted-foreground/80 leading-relaxed whitespace-pre-wrap"
               >
-                {summary}
+                {context.summary}
               </p>
             </div>
           </div>
         )}
 
         {/* Keywords + Tags */}
-        {(keywords.length > 0 || generatedTags.length > 0) && (
+        {(context.keywords.length > 0 || context.generatedTags.length > 0) && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-in slide-in-from-bottom-3 fade-in duration-400">
-            {keywords.length > 0 && (
+            {context.keywords.length > 0 && (
               <div className="space-y-2.5">
                 <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
                   Keywords
                 </span>
                 <div className="flex flex-wrap gap-1.5">
-                  {keywords.map((keyword, i) => (
+                  {context.keywords.map((keyword, i) => (
                     <Badge
                       key={i}
                       variant="outline"
@@ -723,13 +461,13 @@ export default function App() {
                 </div>
               </div>
             )}
-            {generatedTags.length > 0 && (
+            {context.generatedTags.length > 0 && (
               <div className="space-y-2.5">
                 <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
                   Tags
                 </span>
                 <div className="flex flex-wrap gap-1.5">
-                  {generatedTags.map((tag, i) => (
+                  {context.generatedTags.map((tag, i) => (
                     <Badge
                       key={i}
                       variant="outline"
