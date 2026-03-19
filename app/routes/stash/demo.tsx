@@ -314,7 +314,10 @@ export default function App() {
     setStatus('loading')
     worker.current?.postMessage({
       type: 'summarize',
-      payload: { text: transcript, language: detectedLanguage?.language || 'en' },
+      payload: {
+        text: transcript,
+        language: detectedLanguage?.language || 'en',
+      },
     })
   }
 
@@ -338,7 +341,10 @@ export default function App() {
     setModelName('tiny-aya-global-ONNX')
     worker.current?.postMessage({
       type: 'generate-tags',
-      payload: { text: target },
+      payload: {
+        text: target,
+        language: detectedLanguage?.language || 'en',
+      },
     })
   }
 

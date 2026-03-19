@@ -1057,6 +1057,10 @@ packages:
     resolution: {integrity: sha512-xRlzazC+QZwr6z4ixEqYHo9fgwhTZ3xNSdljlKfUFGZSdlvt166DljRELFUfFytlYOYvo3vTisA/AFOuOAzFQQ==}
     engines: {node: '>=18'}
 
+  '@huggingface/jinja@0.5.6':
+    resolution: {integrity: sha512-MyMWyLnjqo+KRJYSH7oWNbsOn5onuIvfXYPcc0WOGxU0eHUV7oAYUoQTl2BMdu7ml+ea/bu11UM+EshbeHwtIA==}
+    engines: {node: '>=18'}
+
   '@huggingface/tasks@0.19.83':
     resolution: {integrity: sha512-nBt3S6x+MWUTmfey1drQZRMuEopEbz2aEMUsoddfpCuzIYAMCsJDX7xeNuJnzvbVGis3gXXCRcLHVhFtHaaiyA==}
 
@@ -7798,13 +7802,15 @@ snapshots:
 
   '@huggingface/jinja@0.5.5': {}
 
+  '@huggingface/jinja@0.5.6': {}
+
   '@huggingface/tasks@0.19.83': {}
 
   '@huggingface/tokenizers@0.1.2': {}
 
   '@huggingface/transformers@4.0.0-next.4':
     dependencies:
-      '@huggingface/jinja': 0.5.5
+      '@huggingface/jinja': 0.5.6
       '@huggingface/tokenizers': 0.1.2
       onnxruntime-node: 1.24.1
       onnxruntime-web: 1.25.0-dev.20260212-1a71a5f46e

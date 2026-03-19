@@ -124,22 +124,24 @@ const LID_SHORT_CHUNK_SEC = 8
 const LID_LONG_CHUNK_SEC = 15
 
 /** System prompt for tag generation */
-const GENERATE_TAGS_SYSTEM_PROMPT = [
-  'You are a precise tagging assistant. Analyze the provided text and generate 7–10 short tags (1–3 words each) in the same language as the input.',
-  '',
-  'Cover all of the following categories that appear in the text:',
-  '- TOPICS: the main subjects, themes, and concepts discussed.',
-  '- ENTITIES: every named person (use their full name or role), location, organization, brand, product, artwork, or event explicitly mentioned.',
-  '- HOLIDAYS & CELEBRATIONS: if the content relates to any holiday, festival, or cultural celebration from any country or religion, include the holiday name and 1–2 associated thematic tags (e.g., "Christmas", "gift giving", "Eid al-Fitr", "family gathering").',
-  '- SPEAKER / SUBJECT GENDER: if the text clearly indicates the speaker or primary subject is male or female.',
-  '- CONTENT FORMAT: add one tag for the type of content — choose from: conversation, interview, lecture, monologue, story, news, review, speech, tutorial, lyric, podcast, movie, documentary, vlog or similar.',
-  '- TONE & EMOTION: if a strong tone or emotion is evident (e.g., humorous, emotional, motivational, critical), include one tone tag.',
-  '',
-  'STRICT RULES:',
-  '1. Extract ONLY what is explicitly present or unambiguously implied by the text. Do not invent or assume entities.',
-  '2. Output ONLY a comma-separated list of tags — no numbering, no bullets, no preamble, no explanation.',
-  '3. Example output: machine learning, neural networks, Yann LeCun, Montreal, conference talk, technical',
-].join('\n')
+const GENERATE_TAGS_SYSTEM_PROMPT = (payload: { language: string }): string =>
+  [
+    'You are a precise tagging assistant. Analyze the provided text and generate 7–10 short tags (1–3 words each) in the same language as the input.',
+    '',
+    'Cover all of the following categories that appear in the text:',
+    '- TOPICS: the main subjects, themes, and concepts discussed.',
+    '- ENTITIES: every named person (use their full name or role), location, organization, brand, product, artwork, or event explicitly mentioned.',
+    '- HOLIDAYS & CELEBRATIONS: if the content relates to any holiday, festival, or cultural celebration from any country or religion, include the holiday name and 1–2 associated thematic tags (e.g., "Christmas", "gift giving", "Eid al-Fitr", "family gathering").',
+    '- SPEAKER / SUBJECT GENDER: if the text clearly indicates the speaker or primary subject is male or female.',
+    '- CONTENT FORMAT: add one tag for the type of content — choose from: conversation, interview, lecture, monologue, story, news, review, speech, tutorial, lyric, podcast, movie, documentary, vlog or similar.',
+    '- TONE & EMOTION: if a strong tone or emotion is evident (e.g., humorous, emotional, motivational, critical), include one tone tag.',
+    '',
+    'STRICT RULES:',
+    '1. Extract ONLY what is explicitly present or unambiguously implied by the text. Do not invent or assume entities.',
+    '2. Output ONLY a comma-separated list of tags — no numbering, no bullets, no preamble, no explanation.',
+    '3. Example output: machine learning, neural networks, Yann LeCun, Montreal, conference talk, technical',
+    `4. Write in the same language as the input text. The input text language is ${payload.language}.`,
+  ].join('\n')
 
 /** System prompt used for all summarization requests */
 const SUMMARIZE_SYSTEM_PROMPT = (payload: { language: string }): string =>
@@ -151,16 +153,15 @@ const SUMMARIZE_SYSTEM_PROMPT = (payload: { language: string }): string =>
     '1. Use ONLY information explicitly present in the source text. Never infer, extrapolate, or add details not stated.',
     '2. If a fact is ambiguous or unclear, omit it. Do not guess.',
     '3. Preserve all proper nouns (names, places, organizations, products, etc...) exactly as they appear in the source.',
-    '4. Write in the same language as the input text.',
+    `4. Write in the same language as the input text. The input text language is ${payload.language}.`,
     '5. Format: at most 2 sections, each with at most 2 bullet points. For very short input (under 3 sentences), write a single sentence instead.',
     '6. Output ONLY the summary — no preamble, no commentary, no meta-text such as "Here is a summary:".',
-    `Input text language: ${payload.language}`,
   ].join('\n')
 
 /** Per-model dtype overrides; all other models default to 'fp16' */
 const MODEL_DTYPE: Record<string, string | Record<string, string>> = {
   'onnx-community/tiny-aya-global-ONNX': 'q4',
-  // 'onnx-community/whisper-large-v3-turbo': 'q4',
+  'onnx-community/whisper-large-v3-turbo': 'fp16',
   'LiquidAI/LFM2.5-VL-1.6B-ONNX': { decoder: 'q4', embedImages: 'q4' },
 }
 
@@ -200,7 +201,7 @@ type WorkerMessage =
     }
   | { type: 'summarize'; payload: { text: string; language: string } }
   | { type: 'extract-keywords'; payload: { text: string } }
-  | { type: 'generate-tags'; payload: { text: string } }
+  | { type: 'generate-tags'; payload: { text: string; language: string } }
 
 /** Message sent from worker to main thread */
 interface WorkerResponse {
@@ -212,7 +213,7 @@ interface WorkerResponse {
 /** Pipeline options for model loading */
 interface PipelineOptions {
   device: string | GPUDevice
-  dtype: 'q4' | 'q4f16' | 'q8' | 'fp16' | 'fp32' | 'auto'
+  dtype: 'q4' | 'q4f16' | 'q8' | 'fp16' | 'fp32' | 'quantized' | 'auto'
   progress_callback?: (progress: ProgressData) => void
 }
 
@@ -262,7 +263,6 @@ if (DEBUG) {
       debug(`WebGPU profiling: ${JSON.stringify(data, null, 2)}`),
   }
 }
-env.allowLocalModels = false
 env.useBrowserCache = true // Enable browser cache for faster model re-loads
 env.allowRemoteModels = true
 
@@ -273,6 +273,7 @@ const report = ({ type, payload, task }: WorkerResponse) =>
 
 const progress = (data: ProgressData) =>
   report({ type: 'progress', payload: data })
+
 const error = (payload: string) => report({ type: 'error', payload })
 const debug = (payload: string) => report({ type: 'debug', payload })
 const status = (payload: string) => report({ type: 'status', payload })
@@ -371,6 +372,7 @@ class PipelineManager {
         debug(
           `Pipeline loading error for ${model}: ${e instanceof Error ? e.message : String(e)}`
         )
+        console.error(`Pipeline loading error for ${model}:`, e)
         throw e
       }
     }
@@ -481,7 +483,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 
       audioDuration(Math.round(duration))
       status('transcribing')
-
+      console.log("duration: ",duration)
       try {
         debug('Attempting to load whisper-large-v3-turbo from Hugging Face...')
 
@@ -491,41 +493,41 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
           progress
         )
 
-        debug('✓ Successfully loaded whisper-large-v3-turbo')
+        debug('✓ onnx-community/whisper-large-v3-turbo')
         const partialTexts: string[] = []
 
         if (duration > 30) {
-          const chunks = makeChunks(audioInput, sampleRate, 30, 0)
+          const chunks = makeChunks(audioInput, sampleRate, 60, 0)
 
-          let index = 0
-
-          for (const chunk of chunks) {
+          for (const [index, chunk] of chunks.entries()) {
             const res: ASRResult = await asrPipe(chunk, {
               language: detectedLanguage,
-              chunk_length_s: 30,
-              stride_length_s: 3,
+              chunk_length_s: chunk.length / sampleRate,
               task: 'transcribe',
               return_whole_text: false,
+              return_timestamps: true,
+              return_language: true,
+              batch_size: 16,
             })
-
             const text = res.text || ''
             partialTexts.push(text)
-
             partialResult('transcription', { index, text })
-
-            index++
-            debug(`Processing chunk ${index} of ${chunks.length}`)
+            debug(`Processed chunk ${index + 1} of ${chunks.length}`)
           }
         } else {
-          // If duration is not > 30, process the whole audio as a single chunk
+          // If the audio is short (<= 30s), we process it in one go.
+          // We divide the audio duration by 3 to get a reasonable chunk length for the timestamps,
+          // which helps the model segment the audio more effectively.
+          const chunkLength = duration / 6
           const res: ASRResult = await asrPipe(audioInput, {
             language: detectedLanguage,
-            chunk_length_s: 30,
-            stride_length_s: 0,
             task: 'transcribe',
-            return_timestamps: true,
             return_whole_text: false,
+            return_timestamps: true,
+            return_language: true,
+            batch_size: 16,
           })
+          console.log(res)
           if (!res.chunks) partialTexts.push(res.text)
           if (res.chunks) {
             for (const { text, timestamp } of res.chunks) {
@@ -535,17 +537,17 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
             }
           }
         }
+
         const transcriptionResult = partialTexts.join(', ').trim()
         debug('Transcription completed')
         result(transcriptionResult, 'transcription')
-        // dispose ASR pipeline to free resources for summarization
         await PipelineManager.disposePipeline(
           'automatic-speech-recognition',
           'onnx-community/whisper-large-v3-turbo'
         )
       } catch (e) {
         debug(
-          `✗ Failed to load whisper-large-v3-turbo. Error: ${e instanceof Error ? e.message : String(e)}.`
+          `✗ Failed to load whisper-large-v3. Error: ${e instanceof Error ? e.message : String(e)}.`
         )
       }
     } else if (type === 'summarize') {
@@ -700,7 +702,10 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
           : text.slice(0, 600) + ' [...] ' + text.slice(-400)
 
       const messages: ChatMessage[] = [
-        { role: 'system', content: GENERATE_TAGS_SYSTEM_PROMPT },
+        {
+          role: 'system',
+          content: GENERATE_TAGS_SYSTEM_PROMPT({ language: payload.language }),
+        },
         { role: 'user', content: inputText },
       ]
 
@@ -714,21 +719,6 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
         do_sample: false,
         repetition_penalty: 1.1,
         return_full_text: false,
-        renormalize_logits: true,
-        eta_cutoff: 0.001,
-        top_k: 10,
-        top_p: 0.95,
-        typical_p: 1,
-        epsilon_cutoff: 0.001,
-        temperature: 0.3,
-        num_beams: 1,
-        num_return_sequences: 1,
-        length_penalty: 1,
-        no_repeat_ngram_size: 3,
-        encoder_repetition_penalty: 1,
-        max_length: 100,
-        min_length: 10,
-        early_stopping: true,
       })
 
       const tags = parseTags(output[0].generated_text)
