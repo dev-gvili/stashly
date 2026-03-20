@@ -361,3 +361,181 @@ Item table:
 Folder table:
   "folder-123" | childCount: 2  ← automatically maintained by trigger
 ```
+
+---
+
+## 7. `searchFactory` — One-Liner Repository Search Binding
+
+> ⚠️ **Note:** This content was captured from an earlier AI conversation and may not reflect the current codebase. Review and verify against actual code before using.
+
+A `searchFactory` helper that binds a Prisma delegate, a filter builder, default include, and default orderBy into a single reusable search function — reducing each repository's `search*` method to a one-liner.
+
+### utils/searchFactory.ts
+
+```ts
+import { runSearch } from './queryHelpers'
+
+export function searchFactory<
+  TModel,
+  TWhereInput,
+  TOrderBy,
+  TInclude,
+  TParams
+>(
+  dbDelegate: { findMany: Function; count: Function },
+  buildFilters: (params: TParams) => TWhereInput,
+  defaultInclude: TInclude,
+  defaultOrderBy: (params: TParams) => TOrderBy
+) {
+  return (
+    options: TParams & {
+      page?: number
+      pageSize?: number
+      cursor?: string
+      limit?: number
+      batchSize?: number
+      orderBy?: TOrderBy
+      maxNoPaginationLimit?: number
+      stream?: boolean
+    }
+  ) => {
+    const where = buildFilters(options)
+    const orderBy = options.orderBy ?? defaultOrderBy(options)
+    return runSearch<TModel, TWhereInput, TOrderBy, TInclude>(
+      dbDelegate,
+      { where, orderBy, include: defaultInclude, ...options }
+    )
+  }
+}
+```
+
+### workspaceMemberRepository usage
+
+```ts
+const defaultInclude = { member: true, workspace: true }
+const defaultOrderBy = (params: z.infer<typeof workspaceMemberFilterSchema>) =>
+  params.workspaceId ? { member: { name: 'asc' } } : { workspace: { name: 'asc' } }
+
+export const searchMembers = searchFactory<
+  Prisma.WorkspaceMemberGetPayload<{ include: typeof defaultInclude }>,
+  Prisma.WorkspaceMemberWhereInput,
+  Prisma.WorkspaceMemberOrderByWithRelationInput,
+  typeof defaultInclude,
+  z.infer<typeof workspaceMemberFilterSchema>
+>(prisma.workspaceMember, buildWorkspaceMemberFilters, defaultInclude, defaultOrderBy)
+
+// Repository method becomes:
+async searchMembers(options) {
+  return searchMembers(options)
+}
+```
+
+### itemRepository usage
+
+```ts
+const defaultInclude = { workspace: true, owner: true }
+const defaultOrderBy = (params: z.infer<typeof itemFilterSchema>) =>
+  params.workspaceId ? { createdAt: 'desc' } : { name: 'asc' }
+
+export const searchItems = searchFactory<
+  Prisma.ItemGetPayload<{ include: typeof defaultInclude }>,
+  Prisma.ItemWhereInput,
+  Prisma.ItemOrderByWithRelationInput,
+  typeof defaultInclude,
+  z.infer<typeof itemFilterSchema>
+>(prisma.item, buildItemFilters, defaultInclude, defaultOrderBy)
+```
+
+---
+
+## 8. Repository Starter Template
+
+> ⚠️ **Note:** This content was captured from an earlier AI conversation and may not reflect the current codebase. Review and verify against actual code before using.
+
+Template for scaffolding a new repository with the full type-safe filter + search stack.
+
+### model.filters.ts
+
+```ts
+import { z } from 'zod'
+import { Prisma } from '@/prisma/client'
+import { createFilterFactory, buildFiltersFactory } from '@/utils/filters'
+
+export const modelFilterSchema = z.object({
+  workspaceId: z.string().uuid().optional(),
+  ownerId: z.string().uuid().optional(),
+  search: z.string().optional()
+})
+
+const createModelFilter = createFilterFactory<
+  Prisma.ModelWhereInput,
+  z.infer<typeof modelFilterSchema>
+>()
+
+export const modelFilters = {
+  workspaceId: createModelFilter(z.string().uuid(), (workspaceId) => ({ workspaceId })),
+  ownerId: createModelFilter(z.string().uuid(), (ownerId) => ({ ownerId })),
+  search: createModelFilter(z.string().min(1), (search, params) => {
+    if (params.workspaceId) {
+      return {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } }
+        ]
+      }
+    }
+    return {
+      OR: [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { workspace: { name: { contains: search, mode: 'insensitive' } } }
+      ]
+    }
+  })
+}
+
+export const buildModelFilters = buildFiltersFactory({
+  filters: modelFilters,
+  schema: modelFilterSchema
+})
+```
+
+### modelRepository.ts
+
+```ts
+import { Prisma } from '@/prisma/client'
+import { buildModelFilters, modelFilterSchema } from './model.filters'
+import { searchFactory } from '@/utils/searchFactory'
+import { z } from 'zod'
+
+const defaultInclude = { workspace: true, owner: true }
+const defaultOrderBy = (params: z.infer<typeof modelFilterSchema>) =>
+  params.workspaceId ? { createdAt: 'desc' } : { name: 'asc' }
+
+const searchModels = searchFactory<
+  Prisma.ModelGetPayload<{ include: typeof defaultInclude }>,
+  Prisma.ModelWhereInput,
+  Prisma.ModelOrderByWithRelationInput,
+  typeof defaultInclude,
+  z.infer<typeof modelFilterSchema>
+>(prisma.model, buildModelFilters, defaultInclude, defaultOrderBy)
+
+export class ModelRepository {
+  async search(options: z.infer<typeof modelFilterSchema> & {
+    page?: number; pageSize?: number; cursor?: string; limit?: number
+    batchSize?: number; orderBy?: Prisma.ModelOrderByWithRelationInput
+    maxNoPaginationLimit?: number; stream?: boolean
+  }) {
+    return searchModels(options)
+  }
+}
+```
+
+### Pattern summary
+
+| Layer | File | Responsibility |
+|---|---|---|
+| Schema | `model.filters.ts` | Zod schema + typed filter definitions |
+| Builder | `model.filters.ts` | `buildModelFilters` — composes `where` clause |
+| Helper | `utils/searchFactory.ts` | Binds delegate + filters + defaults |
+| Repository | `modelRepository.ts` | One-liner `search` method |

@@ -503,3 +503,336 @@ Run: `pnpm exec tsx ./scripts/reindex-search.ts`
 - All extractors use local model inference — no external paid services or cloud ML APIs
 - Enforce least-privileged S3 credentials for the reindexing service
 - Ensure access controls to S3 objects are enforced upstream
+
+---
+
+## 11. Type-Safe Filter Definitions
+
+> ⚠️ **Note:** This content was captured from an earlier AI conversation and may not reflect the current codebase. Review and verify against actual code before using.
+
+Refactoring `workspaceMember.filters.ts` and `item.filters.ts` to use the type-safe `buildFiltersFactory` so every filter's `apply` gets strongly typed `params` from its schema.
+
+### workspaceMember.filters.ts
+
+```ts
+import { z } from 'zod'
+import { Prisma, WorkspaceMemberRole } from '@/prisma/client'
+import { createFilterFactory, buildFiltersFactory } from '@/utils/filters'
+
+export const workspaceMemberFilterSchema = z.object({
+  workspaceId: z.string().uuid().optional(),
+  memberId: z.string().uuid().optional(),
+  roles: z.array(z.nativeEnum(WorkspaceMemberRole)).optional(),
+  search: z.string().optional()
+})
+
+const createWorkspaceMemberFilter = createFilterFactory<
+  Prisma.WorkspaceMemberWhereInput,
+  z.infer<typeof workspaceMemberFilterSchema>
+>()
+
+export const workspaceMemberFilters = {
+  workspaceId: createWorkspaceMemberFilter(
+    z.string().uuid(),
+    (workspaceId) => ({ workspaceId })
+  ),
+  memberId: createWorkspaceMemberFilter(
+    z.string().uuid(),
+    (memberId) => ({ memberId })
+  ),
+  roles: createWorkspaceMemberFilter(
+    z.array(z.nativeEnum(WorkspaceMemberRole)),
+    (roles) => ({ role: { in: roles } })
+  ),
+  search: createWorkspaceMemberFilter(
+    z.string().min(1),
+    (search, params) => {
+      if (params.workspaceId) {
+        return {
+          member: {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } }
+            ]
+          }
+        }
+      }
+      return {
+        OR: [
+          {
+            workspace: {
+              OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } }
+              ]
+            }
+          },
+          {
+            member: {
+              OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  )
+}
+
+export const buildWorkspaceMemberFilters = buildFiltersFactory({
+  filters: workspaceMemberFilters,
+  schema: workspaceMemberFilterSchema
+})
+```
+
+### item.filters.ts
+
+```ts
+import { z } from 'zod'
+import { Prisma, ItemCategory, ItemType, ItemStatus } from '@/prisma/client'
+import { createFilterFactory, buildFiltersFactory } from '@/utils/filters'
+
+export const itemFilterSchema = z.object({
+  workspaceId: z.string().uuid().optional(),
+  ownerId: z.string().uuid().optional(),
+  categories: z.array(z.nativeEnum(ItemCategory)).optional(),
+  types: z.array(z.nativeEnum(ItemType)).optional(),
+  statuses: z.array(z.nativeEnum(ItemStatus)).optional(),
+  search: z.string().optional()
+})
+
+const createItemFilter = createFilterFactory<
+  Prisma.ItemWhereInput,
+  z.infer<typeof itemFilterSchema>
+>()
+
+export const itemFilters = {
+  workspaceId: createItemFilter(z.string().uuid(), (workspaceId) => ({ workspaceId })),
+  ownerId: createItemFilter(z.string().uuid(), (ownerId) => ({ ownerId })),
+  categories: createItemFilter(
+    z.array(z.nativeEnum(ItemCategory)),
+    (categories) => ({ category: { in: categories } })
+  ),
+  types: createItemFilter(
+    z.array(z.nativeEnum(ItemType)),
+    (types) => ({ type: { in: types } })
+  ),
+  statuses: createItemFilter(
+    z.array(z.nativeEnum(ItemStatus)),
+    (statuses) => ({ status: { in: statuses } })
+  ),
+  search: createItemFilter(
+    z.string().min(1),
+    (search, params) => {
+      if (params.workspaceId) {
+        return {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } }
+          ]
+        }
+      }
+      return {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { workspace: { name: { contains: search, mode: 'insensitive' } } },
+          { workspace: { description: { contains: search, mode: 'insensitive' } } }
+        ]
+      }
+    }
+  )
+}
+
+export const buildItemFilters = buildFiltersFactory({
+  filters: itemFilters,
+  schema: itemFilterSchema
+})
+```
+
+### Benefits
+
+- **Full IntelliSense**: Inside every `apply`, `params` is strongly typed from the schema.
+- **No overrides**: Conditional logic like `if (params.workspaceId)` is clean and safe.
+- **Consistency**: Both repositories use the same pattern.
+- **Easy extension**: Adding a new filter is one line in the filters object.
+
+---
+
+## 12. Repository Search Methods with Filter Builders
+
+> ⚠️ **Note:** This content was captured from an earlier AI conversation and may not reflect the current codebase. Review and verify against actual code before using.
+
+Refactoring `searchMembers` and `searchItems` to call the type-safe filter builders directly.
+
+### workspaceMemberRepository.searchMembers
+
+```ts
+import { buildWorkspaceMemberFilters, workspaceMemberFilterSchema } from './workspaceMember.filters'
+import { z } from 'zod'
+
+async searchMembers(
+  options: z.infer<typeof workspaceMemberFilterSchema> & {
+    page?: number
+    pageSize?: number
+    cursor?: string
+    limit?: number
+    batchSize?: number
+    orderBy?: Prisma.WorkspaceMemberOrderByWithRelationInput
+    maxNoPaginationLimit?: number
+    stream?: boolean
+  }
+) {
+  const where = buildWorkspaceMemberFilters(options)
+  // ... pagination logic using where
+}
+```
+
+### itemRepository.searchItems
+
+```ts
+import { buildItemFilters, itemFilterSchema } from './item.filters'
+import { z } from 'zod'
+
+async searchItems(
+  options: z.infer<typeof itemFilterSchema> & {
+    page?: number
+    pageSize?: number
+    cursor?: string
+    limit?: number
+    batchSize?: number
+    orderBy?: Prisma.ItemOrderByWithRelationInput
+    maxNoPaginationLimit?: number
+    stream?: boolean
+  }
+) {
+  const where = buildItemFilters(options)
+  // ... pagination logic using where
+}
+```
+
+---
+
+## 13. Generic Pagination Helper (`runSearch`)
+
+> ⚠️ **Note:** This content was captured from an earlier AI conversation and may not reflect the current codebase. Review and verify against actual code before using.
+
+A generic, reusable `runSearch` helper that handles page-based, cursor-based, streaming, and no-pagination modes — with full TypeScript overloads so the return type is inferred automatically.
+
+### utils/queryHelpers.ts
+
+```ts
+import { Prisma } from '@/prisma/client'
+
+export type PageBasedResult<TModel> = { data: TModel[]; total: number; page: number; pageSize: number }
+export type CursorBasedResult<TModel> = { data: TModel[]; nextCursor?: string }
+export type AllResults<TModel> = { data: TModel[]; warning?: string }
+export type StreamResult<TModel> = AsyncGenerator<TModel[], void, unknown>
+
+export interface BasePaginationOptions<TWhereInput, TOrderBy, TInclude> {
+  where: TWhereInput
+  orderBy: TOrderBy
+  include?: TInclude
+  maxNoPaginationLimit?: number
+}
+
+// Overloads
+export function runSearch<TModel, TWhereInput, TOrderBy, TInclude>(
+  dbDelegate: { findMany: Function; count: Function },
+  options: BasePaginationOptions<TWhereInput, TOrderBy, TInclude> & { page: number; pageSize: number; stream?: false }
+): Promise<PageBasedResult<TModel>>
+
+export function runSearch<TModel, TWhereInput, TOrderBy, TInclude>(
+  dbDelegate: { findMany: Function; count: Function },
+  options: BasePaginationOptions<TWhereInput, TOrderBy, TInclude> & { cursor: string; limit: number; stream?: false }
+): Promise<CursorBasedResult<TModel>>
+
+export function runSearch<TModel, TWhereInput, TOrderBy, TInclude>(
+  dbDelegate: { findMany: Function; count: Function },
+  options: BasePaginationOptions<TWhereInput, TOrderBy, TInclude> & { batchSize?: number; stream: true }
+): Promise<StreamResult<TModel>>
+
+export function runSearch<TModel, TWhereInput, TOrderBy, TInclude>(
+  dbDelegate: { findMany: Function; count: Function },
+  options: BasePaginationOptions<TWhereInput, TOrderBy, TInclude> & { stream?: false }
+): Promise<AllResults<TModel>>
+
+// Implementation
+export async function runSearch<TModel, TWhereInput, TOrderBy, TInclude>(
+  dbDelegate: {
+    findMany: (args: {
+      where: TWhereInput; orderBy: TOrderBy; include?: TInclude
+      skip?: number; take?: number; cursor?: { id: string }
+    }) => Promise<TModel[]>
+    count: (args: { where: TWhereInput }) => Promise<number>
+  },
+  { where, orderBy, include, page, pageSize, cursor, limit, batchSize = 100, maxNoPaginationLimit = 1000, stream = false }: any
+): Promise<any> {
+  if (stream) {
+    async function* generator(): StreamResult<TModel> {
+      let lastId: string | undefined
+      while (true) {
+        const batch = await dbDelegate.findMany({
+          where, take: batchSize + 1,
+          ...(lastId ? { skip: 1, cursor: { id: lastId } } : {}),
+          orderBy, include
+        })
+        if (batch.length === 0) break
+        if (batch.length > batchSize) { lastId = (batch.pop() as any)?.id } else { lastId = undefined }
+        yield batch
+        if (!lastId) break
+      }
+    }
+    return generator()
+  }
+
+  if (cursor && limit) {
+    const data = await dbDelegate.findMany({ where, take: limit + 1, skip: 1, cursor: { id: cursor }, orderBy, include })
+    let nextCursor: string | undefined
+    if (data.length > limit) { nextCursor = (data.pop() as any)?.id }
+    return { data, nextCursor }
+  }
+
+  if (page && pageSize) {
+    const [total, data] = await Promise.all([
+      dbDelegate.count({ where }),
+      dbDelegate.findMany({ where, skip: (page - 1) * pageSize, take: pageSize, orderBy, include })
+    ])
+    return { data, total, page, pageSize }
+  }
+
+  const totalCount = await dbDelegate.count({ where })
+  if (totalCount > maxNoPaginationLimit) {
+    throw new Error(`Too many results (${totalCount}). Please use pagination, streaming, or refine your filters.`)
+  }
+  const data = await dbDelegate.findMany({ where, orderBy, include })
+  return {
+    data,
+    warning: totalCount > maxNoPaginationLimit / 2
+      ? `Warning: returning ${totalCount} records without pagination may impact performance.`
+      : undefined
+  }
+}
+```
+
+### Usage with full type inference
+
+```ts
+// workspaceMemberRepository
+return runSearch<
+  Prisma.WorkspaceMemberGetPayload<{ include: { member: true; workspace: true } }>,
+  Prisma.WorkspaceMemberWhereInput,
+  Prisma.WorkspaceMemberOrderByWithRelationInput,
+  { member: true; workspace: true }
+>(this.db.workspaceMember, { where, orderBy, include: { member: true, workspace: true }, ...options })
+
+// itemRepository
+return runSearch<
+  Prisma.ItemGetPayload<{ include: { workspace: true; owner: true } }>,
+  Prisma.ItemWhereInput,
+  Prisma.ItemOrderByWithRelationInput,
+  { workspace: true; owner: true }
+>(this.db.item, { where, orderBy, include: { workspace: true, owner: true }, ...options })
+```
