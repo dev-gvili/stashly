@@ -789,12 +789,12 @@ const pipelineAudioUpload = z.object({
   audio: z.instanceof(Float32Array),
   sampleRate: z.number(),
   duration: z.number(),
-  file: z.instanceof(File),
+  fileName: z.string(),
+  fileType: z.string(),
+  fileSize: z.number(),
 })
-const pipelineSummarize = z.object({
-  type: z.literal('SUMMARIZE'),
-  text: z.string(),
-})
+const pipelineSummarize = z.object({ type: z.literal('SUMMARIZE') })
+const pipelineExtractKeywords = z.object({ type: z.literal('EXTRACT_KEYWORDS') })
 const pipelineGenerateTags = z.object({ type: z.literal('GENERATE_TAGS') })
 const pipelineCancel = z.object({ type: z.literal('CANCEL') })
 const pipelineReset = z.object({ type: z.literal('RESET') })
@@ -803,7 +803,6 @@ export const pipelineEvents = z.discriminatedUnion('type', [
   workerProgress,
   workerStatus,
   workerLanguageDetected,
-  workerAudioDuration,
   workerPartialResult,
   workerResultTranscription,
   workerResultSummarization,
@@ -812,13 +811,13 @@ export const pipelineEvents = z.discriminatedUnion('type', [
   workerErrorEvent,
   pipelineAudioUpload,
   pipelineSummarize,
+  pipelineExtractKeywords,
   pipelineGenerateTags,
   pipelineCancel,
   pipelineReset,
 ])
 
 export const pipelineContextSchema = z.object({
-  workerRef: z.custom<AnyActorRef>().optional(),
   executionProvider: z.enum(['webgpu', 'wasm', 'unknown']),
   gpuInfo: z.string().nullable(),
   fileInfo: z

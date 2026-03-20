@@ -1,8 +1,8 @@
 import ibmPlexSansHebrewFonts from '@fontsource/ibm-plex-sans-hebrew/index.css?url'
-import React from 'react'
-import { useMachine } from '@xstate/react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { pipelineMachine } from '@/machines/stash/pipeline.machine'
+import type { WorkerSnapshot } from '@/types/machine.types'
+import { initialWorkerSnapshot } from '@/types/machine.types'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/ui/button'
 import { Badge } from '@/ui/badge'
@@ -579,9 +579,25 @@ function KeywordsTagsGrid({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function App() {
-  const [state, send] = useMachine(pipelineMachine)
-  const { context } = state
-  const stateValue = state.value as string
+  const workerRef = useRef<Worker | null>(null)
+  const [snapshot, setSnapshot] = useState<WorkerSnapshot>(initialWorkerSnapshot)
+
+  useEffect(() => {
+    const worker = new Worker(
+      new URL('../../workers/stash.worker.ts', import.meta.url),
+      { type: 'module' }
+    )
+    worker.onmessage = (e: MessageEvent<WorkerSnapshot>) => setSnapshot(e.data)
+    worker.onerror = (e) => console.error('Worker error:', e)
+    workerRef.current = worker
+    return () => worker.terminate()
+  }, [])
+
+  const send = useCallback((event: object, transferables?: Transferable[]) => {
+    workerRef.current?.postMessage(event, transferables ?? [])
+  }, [])
+
+  const { value: stateValue, context } = snapshot
   const isProcessing = !IDLE_STATES.includes(stateValue)
 
   const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -591,13 +607,20 @@ export default function App() {
       const ctx = new window.AudioContext({ sampleRate: 16000 })
       const arrayBuffer = await file.arrayBuffer()
       const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
-      send({
-        type: 'AUDIO_UPLOAD',
-        audio: audioBuffer.getChannelData(0),
-        sampleRate: audioBuffer.sampleRate,
-        duration: audioBuffer.duration,
-        file,
-      })
+      const audio = audioBuffer.getChannelData(0)
+      // File objects are NOT cloneable across worker boundaries — send flat metadata instead
+      send(
+        {
+          type: 'AUDIO_UPLOAD',
+          audio,
+          sampleRate: audioBuffer.sampleRate,
+          duration: audioBuffer.duration,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+        },
+        [audio.buffer] // transfer the ArrayBuffer zero-copy
+      )
     } catch (err) {
       console.error('Audio processing error:', err)
     }
@@ -608,15 +631,15 @@ export default function App() {
     navigator.clipboard.writeText(text).catch((err) => console.error('Unable to copy', err))
   }
 
+  // Machine derives text from its own context — no payload needed
   const runSummary = () => {
     if (!context.transcript) return
-    send({ type: 'SUMMARIZE', text: context.transcript })
+    send({ type: 'SUMMARIZE' })
   }
 
   const runKeywords = () => {
-    const target = context.summary || context.transcript
-    if (!target) return
-    send({ type: 'EXTRACT_KEYWORDS', text: target })
+    if (!context.summary && !context.transcript) return
+    send({ type: 'EXTRACT_KEYWORDS' })
   }
 
   const runGenerateTags = () => {

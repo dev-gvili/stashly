@@ -1,7 +1,14 @@
-import { setup, assign, enqueueActions, sendTo, assertEvent } from 'xstate'
+import { setup, assign, assertEvent } from 'xstate'
 import type { ActorRefFrom } from 'xstate'
 import type { PipelineContext, PipelineEvents } from '@/types/machine.types'
-import { workerBridgeActor, detectHardwareActor } from './pipeline.actors'
+import {
+  detectHardwareActor,
+  detectLanguageActor,
+  transcribeActor,
+  summarizeActor,
+  extractKeywordsActor,
+  generateTagsActor,
+} from './pipeline.actors'
 
 // Helper: derive model name from a progress file path
 function modelNameFromFile(file: string): string | null {
@@ -46,29 +53,26 @@ export const pipelineMachine = setup({
     events: {} as PipelineEvents,
   },
   actors: {
-    workerBridge: workerBridgeActor,
     detectHardware: detectHardwareActor,
+    detectLanguage: detectLanguageActor,
+    transcribe: transcribeActor,
+    summarize: summarizeActor,
+    extractKeywords: extractKeywordsActor,
+    generateTags: generateTagsActor,
   },
   actions: {
-    // Spawn the persistent worker bridge — stored in context.workerRef
-    spawnWorkerBridge: enqueueActions(({ enqueue }) => {
-      enqueue.assign(({ spawn }) => ({
-        workerRef: spawn('workerBridge', { id: 'stash-worker-bridge' }),
-      }))
-    }),
-
     assignHardwareInfo: assign(({ event }) => {
       const output = (event as any).output as { executionProvider: 'webgpu' | 'wasm'; gpuInfo: string | null }
       return { executionProvider: output.executionProvider, gpuInfo: output.gpuInfo }
     }),
 
-    assignFileAndSendDetectLanguage: enqueueActions(({ context, event, enqueue }) => {
+    assignFileAndAudio: assign(({ event }) => {
       assertEvent(event, 'AUDIO_UPLOAD')
-      enqueue.assign({
+      return {
         fileInfo: {
-          name: event.file.name,
-          type: event.file.type,
-          size: formatFileSize(event.file.size),
+          name: event.fileName,
+          type: event.fileType,
+          size: formatFileSize(event.fileSize),
           duration: event.duration,
         },
         pendingAudio: {
@@ -76,7 +80,7 @@ export const pipelineMachine = setup({
           sampleRate: event.sampleRate,
           duration: event.duration,
         },
-        // Reset prior outputs
+        audioDuration: event.duration,
         transcript: '',
         summary: '',
         keywords: [],
@@ -87,37 +91,12 @@ export const pipelineMachine = setup({
         loadingPhases: [],
         modelName: null,
         error: null,
-      })
-      enqueue.sendTo(({ context: ctx }) => ctx.workerRef!, {
-        type: 'SEND_TO_WORKER',
-        message: {
-          type: 'detect-language',
-          payload: {
-            audio: event.audio,
-            sampleRate: event.sampleRate,
-          },
-        },
-      })
+      }
     }),
 
-    assignLanguageAndSendTranscribe: enqueueActions(({ context, event, enqueue }) => {
+    assignLanguage: assign(({ event }) => {
       assertEvent(event, 'WORKER.LANGUAGE_DETECTED')
-      enqueue.assign({
-        detectedLanguage: { language: event.language, confidence: event.confidence },
-      })
-      const pending = context.pendingAudio!
-      enqueue.sendTo(({ context: ctx }) => ctx.workerRef!, {
-        type: 'SEND_TO_WORKER',
-        message: {
-          type: 'transcribe',
-          payload: {
-            audio: pending.audio,
-            sampleRate: pending.sampleRate,
-            duration: pending.duration,
-            language: event.language,
-          },
-        },
-      })
+      return { detectedLanguage: { language: event.language, confidence: event.confidence } }
     }),
 
     assignTranscript: assign(({ event }) => {
@@ -181,53 +160,17 @@ export const pipelineMachine = setup({
       return { error: event.message }
     }),
 
-    assignAudioDuration: assign(({ event }) => {
-      assertEvent(event, 'WORKER.AUDIO_DURATION')
-      return { audioDuration: event.seconds }
-    }),
-
     assignTranscriptProgress: assign(({ event }) => {
       assertEvent(event, 'WORKER.PARTIAL_RESULT')
       return { transcriptProgress: event.payload }
     }),
 
-    sendSummarize: sendTo(
-      ({ context }) => context.workerRef!,
-      ({ context, event }) => ({
-        type: 'SEND_TO_WORKER' as const,
-        message: {
-          type: 'summarize' as const,
-          payload: {
-            text: (event as { type: 'SUMMARIZE'; text: string }).text,
-            language: context.detectedLanguage?.language ?? 'en',
-          },
-        },
-      })
-    ),
-
-    sendGenerateTags: sendTo(
-      ({ context }) => context.workerRef!,
-      ({ context }) => ({
-        type: 'SEND_TO_WORKER' as const,
-        message: {
-          type: 'generate-tags' as const,
-          payload: {
-            text: context.summary || context.transcript,
-            language: context.detectedLanguage?.language ?? 'en',
-          },
-        },
-      })
-    ),
-
     clearPendingAudio: assign({ pendingAudio: null }),
-
     clearError: assign({ error: null }),
   },
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5SwC4ENYAsC0AHAlrmADb4B2YAxAMICCActQKIAyA2gAwC6iouA9rHwp8-MrxAAPRADYA7ABoQAT0QBGAMwc5AOgCcMgKx7DavWoBMcjgA4bAX3tLUGHASKkKlAOoB5AEoA0kz+OiH+AZw8SCACQiJiEtII8kqqCHoALBY6MmocMjYcmWqZHBpyjs7oWHiEJORUfkEhOgAKEQDi-kwAyr1REnHCouIxyTIGOoZyBmV6WRqGpmnqmRU6szYyFXIyMpl6Gg5OIC617g1ezcGhvQAqtPcAqgPcQ4IjieOI1hqbexsZhsRzkhlSKnUFiqZxqbnqniaAVuOlozwAIgBJXwAfXRz38T2x9EGMWGCTGoAmkx0BS0hg4xgZNj2qwQakMGkyOkyBw4HCycjKBxh53hHkaOgAxpgwFKANbkKA4zBoABOEAA7uqqBAxGAdOQAG78eUG1Ua7VqsDYGVy+WkvifClJRAzDg6NRyMGZTJ7Qw2CyBtn5TKGXIg+RGTKBtQ7UVwuoSijS2UKpUq9VanWUMBqtX8NU6XDENAoABmhYAtjoLdnrba0w73mTnaNXQh3Z7vYZff7A8HIey47pNMcORZ5BY9DZMgnXEmrgb8BBiFQ0Vjcc82ixfLR0Y7Ym3vlT1Bxp-oNKUCrzlgcbCG42odEHOft+XJSst5xcEZKIGAKByiIZDKqWoEAK5oDAPjIq0LAMJ0zy0J0TB4kw9xMNQmEHi2TrxO2PzssUz68lyegcGYQoLJkbLWDY0yThYfpWHo04Cj+4pLjoKBqmgZCwFKar4AARkqsEtKEPS9M8LD3Do9yEvQvTUP4mJtPcxKHuShGnp21jdj6fpGAOFhsuC3KTEseTZMsBScYuiI8XxAlCaJ4k3K0bS0P4mm0CwOLSbJ9zacelJSIgGhcrSVj5LYLJZL2bIyMxOgshYGh6NYhjMeUagOZcTnWmgEDKJQG7Yji267vuoUESeEXEReRzXgcRgWQ+Q7HDkGUaBYvZGOesxzqcYqOZKxWlZQMkALIzT5mIAFpMHVXzhckch9Z6+QpWUxjTkGbK8gx55AiCn6zEsegFX+KaTWVTAABqKbQ2E4sEACazTom80T4WtHaFCdpRZEG+xzLRQ5eidfXaGGJgWP1Mg3cmBr3ZQqH0CETxoY8nS-R89XrWezVXsKt4dWyr7TPIdjTtk1hHCj3GwBBVZVuq+AAF4eXBUl9MFOizfNamLUSvgknhR5Ex2XZekZ-ZBmZXWfjoGgpWdlHlCZzNOWAki8WgUogcqZrKJqhYQLAEkokFclhM9hJvZ930E62MtEXLPZ9iZStU0KuRZb6OxDSYlSjYmhWSjAFB8SbOLoFA1uefzMn25j2OYTieNu-9LpEfkpOtRT94hnY+jnqYlhLJo5jh9UC5RymeYFmqlDSRhq353pXsK77g7pFkegxesxSzjeeS65KLeFuVGKVdVe64X90sA57Bny72xkBn7Q42DlasBkcV5RdoyMwmQ-AAfAMRjU3YCE2velmGyFG5EYFReto7qMlPKZ2umUCmZLQ6kft3RqzFwy9k5DA-eSwgSPlMNMIocZsh+hyvvP+y5VwP3dk-RqFEGIzn5PvAUcgmKdXSGoNQs40remhgGah2ssE6AAkBY2GZwJQCgjAMBulGpjm5AKFKfVjjRmYmyFk-wZCV0-IyHamCI6N1ugaQ2rlhJiVAnwhqyRjjcmMocAMZRvRWEUEOchMhpi7EKGCBYm1oRKN-KjHQ91tHEwyLYfQRRbAMiyhQtkmVuQmDIoyWcoj66wmUc41m7NOY8y0Xg8BujvT6HMNkI4aCKKMiOtsWkmVPzUJnHkIELD9aGw4UAs2FsNQ3zzvw3Rk5A5xndGYcESxIbpHYi+WwBhvQ2C5HIEpjiuJORjnmMsGZE61NXkk9QUUhEGAyhlbYvYJFdXKNMYaxRshRTrqU-MhY3EdgqNyUweQa62SsDIV++xunMTYjOWYJh8qOHsEAA */
   id: 'stash-pipeline',
   context: {
-    workerRef: undefined,
     executionProvider: 'unknown',
     gpuInfo: null,
     fileInfo: null,
@@ -262,9 +205,6 @@ export const pipelineMachine = setup({
     'WORKER.STATUS': {
       actions: 'updateModelName',
     },
-    'WORKER.AUDIO_DURATION': {
-      actions: 'assignAudioDuration',
-    },
   },
 
   states: {
@@ -274,11 +214,10 @@ export const pipelineMachine = setup({
         src: 'detectHardware',
         onDone: {
           target: 'idle',
-          actions: ['assignHardwareInfo', 'spawnWorkerBridge'],
+          actions: 'assignHardwareInfo',
         },
         onError: {
           target: 'idle',
-          actions: 'spawnWorkerBridge',
         },
       },
     },
@@ -287,21 +226,44 @@ export const pipelineMachine = setup({
       on: {
         AUDIO_UPLOAD: {
           target: 'detecting_language',
-          actions: 'assignFileAndSendDetectLanguage',
+          actions: 'assignFileAndAudio',
         },
       },
     },
 
     detecting_language: {
+      invoke: {
+        id: 'detect-language',
+        src: 'detectLanguage',
+        input: ({ context }) => ({
+          audio: context.pendingAudio!.audio,
+          sampleRate: context.pendingAudio!.sampleRate,
+          duration: context.pendingAudio!.duration,
+        }),
+      },
       on: {
         'WORKER.LANGUAGE_DETECTED': {
           target: 'transcribing',
-          actions: 'assignLanguageAndSendTranscribe',
+          actions: 'assignLanguage',
+        },
+        'WORKER.ERROR': {
+          target: 'error',
+          actions: 'assignError',
         },
       },
     },
 
     transcribing: {
+      invoke: {
+        id: 'transcribe',
+        src: 'transcribe',
+        input: ({ context }) => ({
+          audio: context.pendingAudio!.audio,
+          sampleRate: context.pendingAudio!.sampleRate,
+          duration: context.pendingAudio!.duration,
+          language: context.detectedLanguage?.language ?? 'en',
+        }),
+      },
       on: {
         'WORKER.RESULT.TRANSCRIPTION': {
           target: 'ready',
@@ -310,41 +272,87 @@ export const pipelineMachine = setup({
         'WORKER.PARTIAL_RESULT': {
           actions: 'assignTranscriptProgress',
         },
+        'WORKER.ERROR': {
+          target: 'error',
+          actions: 'assignError',
+        },
       },
     },
 
     ready: {
       on: {
-        // Re-upload starts a fresh pipeline run
         AUDIO_UPLOAD: {
           target: 'detecting_language',
-          actions: 'assignFileAndSendDetectLanguage',
+          actions: 'assignFileAndAudio',
         },
         SUMMARIZE: {
           target: 'summarizing',
-          actions: 'sendSummarize',
+        },
+        EXTRACT_KEYWORDS: {
+          target: 'extracting_keywords',
         },
         GENERATE_TAGS: {
           target: 'generating_tags',
-          actions: 'sendGenerateTags',
         },
       },
     },
 
     summarizing: {
+      invoke: {
+        id: 'summarize',
+        src: 'summarize',
+        input: ({ context }) => ({
+          text: context.transcript,
+          language: context.detectedLanguage?.language ?? 'en',
+        }),
+      },
       on: {
         'WORKER.RESULT.SUMMARIZATION': {
           target: 'ready',
           actions: 'assignSummary',
         },
+        'WORKER.ERROR': {
+          target: 'error',
+          actions: 'assignError',
+        },
+      },
+    },
+
+    extracting_keywords: {
+      invoke: {
+        id: 'extract-keywords',
+        src: 'extractKeywords',
+        input: ({ context }) => ({ text: context.summary || context.transcript }),
+      },
+      on: {
+        'WORKER.RESULT.EXTRACT_KEYWORDS': {
+          target: 'ready',
+          actions: 'assignKeywords',
+        },
+        'WORKER.ERROR': {
+          target: 'error',
+          actions: 'assignError',
+        },
       },
     },
 
     generating_tags: {
+      invoke: {
+        id: 'generate-tags',
+        src: 'generateTags',
+        input: ({ context }) => ({
+          text: context.summary || context.transcript,
+          language: context.detectedLanguage?.language ?? 'en',
+        }),
+      },
       on: {
         'WORKER.RESULT.GENERATE_TAGS': {
           target: 'ready',
           actions: 'assignTags',
+        },
+        'WORKER.ERROR': {
+          target: 'error',
+          actions: 'assignError',
         },
       },
     },
@@ -357,7 +365,7 @@ export const pipelineMachine = setup({
         },
         AUDIO_UPLOAD: {
           target: 'detecting_language',
-          actions: 'assignFileAndSendDetectLanguage',
+          actions: 'assignFileAndAudio',
         },
       },
     },

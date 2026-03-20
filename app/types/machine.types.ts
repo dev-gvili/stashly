@@ -119,5 +119,32 @@ export type PipelineState =
   | 'transcribing'
   | 'ready'
   | 'summarizing'
+  | 'extracting_keywords'
   | 'generating_tags'
   | 'error'
+
+/** Serializable state snapshot posted from the worker to the main thread on every transition. */
+export type WorkerSnapshot = {
+  value: string
+  context: Omit<PipelineContext, 'pendingAudio'>
+}
+
+export const initialWorkerSnapshot: WorkerSnapshot = {
+  value: 'checking_hardware',
+  context: {
+    executionProvider: 'unknown',
+    gpuInfo: null,
+    fileInfo: null,
+    modelName: null,
+    loadingPhases: [],
+    progress: null,
+    detectedLanguage: null,
+    audioDuration: 0,
+    transcriptProgress: null,
+    transcript: '',
+    summary: '',
+    keywords: [],
+    generatedTags: [],
+    error: null,
+  },
+}
