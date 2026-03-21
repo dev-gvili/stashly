@@ -499,12 +499,12 @@ export const pipelineMachine = setup({
   },
   actors: {
     detectHardware: detectHardwareActor,
-    detectLanguage: detectLanguageActor,
-    transcribe: transcribeActor,
-    summarize: summarizeActor,
-    correctTranscript: correctTranscriptActor,
-    extractKeywords: extractKeywordsActor,
-    generateTags: generateTagsActor,
+    detectLanguage: languageDetectionMachine,
+    transcribe: transcriptionMachine,
+    correctTranscript: textCorrectionMachine,
+    summarize: summarizationMachine,
+    extractKeywords: keywordExtractionMachine,
+    generateTags: tagGenerationMachine,
   },
   actions: {
     assignHardwareInfo: assign(({ event }) => {
@@ -540,47 +540,6 @@ export const pipelineMachine = setup({
         modelName: null,
         error: null,
       }
-    }),
-
-    assignLanguage: assign(({ event }) => {
-      assertEvent(event, 'WORKER.LANGUAGE_DETECTED')
-      return { detectedLanguage: { language: event.language, confidence: event.confidence } }
-    }),
-
-    assignTranscript: assign(({ event }) => {
-      assertEvent(event, 'WORKER.RESULT.TRANSCRIPTION')
-      return {
-        pendingTranscript: event.text,
-        transcriptProgress: null,
-        progress: null,
-        loadingPhases: [],
-      }
-    }),
-
-    assignSummary: assign(({ event }) => {
-      assertEvent(event, 'WORKER.RESULT.SUMMARIZATION')
-      return { summary: event.text, progress: null, loadingPhases: [] }
-    }),
-
-    assignCorrectedTranscript: assign(({ context, event }) => {
-      assertEvent(event, 'WORKER.RESULT.CORRECTION')
-      return {
-        transcript: context.pendingTranscript ?? '',
-        correctedTranscript: event.correctedTranscript,
-        pendingTranscript: null,
-        progress: null,
-        loadingPhases: [],
-      }
-    }),
-
-    assignKeywords: assign(({ event }) => {
-      assertEvent(event, 'WORKER.RESULT.EXTRACT_KEYWORDS')
-      return { keywords: event.keywords, progress: null, loadingPhases: [] }
-    }),
-
-    assignTags: assign(({ event }) => {
-      assertEvent(event, 'WORKER.RESULT.GENERATE_TAGS')
-      return { generatedTags: event.tags, progress: null, loadingPhases: [] }
     }),
 
     updateProgress: assign(({ context, event }) => {
@@ -702,15 +661,11 @@ export const pipelineMachine = setup({
           sampleRate: context.pendingAudio!.sampleRate,
           duration: context.pendingAudio!.duration,
         }),
-      },
-      on: {
-        'WORKER.LANGUAGE_DETECTED': {
+        onDone: {
           target: 'transcribing',
-          actions: 'assignLanguage',
-        },
-        'WORKER.ERROR': {
-          target: 'error',
-          actions: 'assignError',
+          actions: assign(({ event }) => ({
+            detectedLanguage: { language: event.output.language, confidence: event.output.confidence },
+          })),
         },
       },
     },
@@ -725,19 +680,18 @@ export const pipelineMachine = setup({
           duration: context.pendingAudio!.duration,
           language: context.detectedLanguage?.language ?? 'en',
         }),
+        onDone: {
+          target: 'correcting_text',
+          actions: assign(({ event }) => ({
+            pendingTranscript: event.output.text,
+            transcriptProgress: null,
+            progress: null,
+            loadingPhases: [],
+          })),
+        },
       },
       on: {
-        'WORKER.RESULT.TRANSCRIPTION': {
-          target: 'correcting_text',
-          actions: 'assignTranscript',
-        },
-        'WORKER.PARTIAL_RESULT': {
-          actions: 'assignTranscriptProgress',
-        },
-        'WORKER.ERROR': {
-          target: 'error',
-          actions: 'assignError',
-        },
+        'WORKER.PARTIAL_RESULT': { actions: 'assignTranscriptProgress' },
       },
     },
 
@@ -767,15 +721,13 @@ export const pipelineMachine = setup({
           text: context.transcript,
           language: context.detectedLanguage?.language ?? 'en',
         }),
-      },
-      on: {
-        'WORKER.RESULT.SUMMARIZATION': {
+        onDone: {
           target: 'ready',
-          actions: 'assignSummary',
-        },
-        'WORKER.ERROR': {
-          target: 'error',
-          actions: 'assignError',
+          actions: assign(({ event }) => ({
+            summary: event.output.summary,
+            progress: null,
+            loadingPhases: [],
+          })),
         },
       },
     },
@@ -788,11 +740,15 @@ export const pipelineMachine = setup({
           text: context.pendingTranscript ?? '',
           language: context.detectedLanguage?.language ?? 'en',
         }),
-      },
-      on: {
-        'WORKER.RESULT.CORRECTION': {
+        onDone: {
           target: 'ready',
-          actions: 'assignCorrectedTranscript',
+          actions: assign(({ context, event }) => ({
+            transcript: context.pendingTranscript ?? '',
+            correctedTranscript: event.output.correctedTranscript,
+            pendingTranscript: null,
+            progress: null,
+            loadingPhases: [],
+          })),
         },
       },
     },
@@ -802,15 +758,13 @@ export const pipelineMachine = setup({
         id: 'extract-keywords',
         src: 'extractKeywords',
         input: ({ context }) => ({ text: context.summary || context.transcript }),
-      },
-      on: {
-        'WORKER.RESULT.EXTRACT_KEYWORDS': {
+        onDone: {
           target: 'ready',
-          actions: 'assignKeywords',
-        },
-        'WORKER.ERROR': {
-          target: 'error',
-          actions: 'assignError',
+          actions: assign(({ event }) => ({
+            keywords: event.output.keywords,
+            progress: null,
+            loadingPhases: [],
+          })),
         },
       },
     },
@@ -823,15 +777,13 @@ export const pipelineMachine = setup({
           text: context.summary || context.transcript,
           language: context.detectedLanguage?.language ?? 'en',
         }),
-      },
-      on: {
-        'WORKER.RESULT.GENERATE_TAGS': {
+        onDone: {
           target: 'ready',
-          actions: 'assignTags',
-        },
-        'WORKER.ERROR': {
-          target: 'error',
-          actions: 'assignError',
+          actions: assign(({ event }) => ({
+            generatedTags: event.output.tags,
+            progress: null,
+            loadingPhases: [],
+          })),
         },
       },
     },
