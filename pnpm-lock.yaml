@@ -56,6 +56,9 @@ importers:
       '@huggingface/transformers':
         specifier: 4.0.0-next.4
         version: 4.0.0-next.4
+      '@huggingface/transformers-next0.0.8':
+        specifier: npm:@huggingface/transformers@4.0.0-next.8
+        version: '@huggingface/transformers@4.0.0-next.8'
       '@prisma/adapter-pg':
         specifier: ^7.4.0
         version: 7.4.0
@@ -273,6 +276,9 @@ importers:
       '@webgpu/types':
         specifier: ^0.1.69
         version: 0.1.69
+      baseline-browser-mapping:
+        specifier: ^2.10.10
+        version: 2.10.10
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -1067,8 +1073,14 @@ packages:
   '@huggingface/tokenizers@0.1.2':
     resolution: {integrity: sha512-6sPNgS2pHowVBXFBuaKKUP0e9+5K2vPyAlmi2bc5PofMkMyi6gttJsq5FKcIDpAjJIONV6Pom9DTjqKazsrdAw==}
 
+  '@huggingface/tokenizers@0.1.3':
+    resolution: {integrity: sha512-8rF/RRT10u+kn7YuUbUg0OF30K8rjTc78aHpxT+qJ1uWSqxT1MHi8+9ltwYfkFYJzT/oS+qw3JVfHtNMGAdqyA==}
+
   '@huggingface/transformers@4.0.0-next.4':
     resolution: {integrity: sha512-PyGin2zI38iAHNWpjWmm58zryGrd35pqnyc2hlifXTj08yB6kh4W/XKh2Sb6eSdCkXZXZYrAe5b2z527E/ocgg==}
+
+  '@huggingface/transformers@4.0.0-next.8':
+    resolution: {integrity: sha512-rONVQYVtv36hmwKJrjfDjJHYcyBI4h/VtbumVk0vxli6svnN04ZyFJimP5iu3wG1UJHu8qsnPICmlxhhv25XNg==}
 
   '@img/colour@1.0.0':
     resolution: {integrity: sha512-A5P/LfWGFSl6nsckYtjw9da+19jB8hkJ6ACTGcDfEJ0aE+l2n2El7dsVM7UVHZQ9s2lmYMWlrS21YLy2IR1LUw==}
@@ -3565,8 +3577,9 @@ packages:
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
 
-  baseline-browser-mapping@2.8.17:
-    resolution: {integrity: sha512-j5zJcx6golJYTG6c05LUZ3Z8Gi+M62zRT/ycz4Xq4iCOdpcxwg7ngEYD4KA0eWZC7U17qh/Smq8bYbACJ0ipBA==}
+  baseline-browser-mapping@2.10.10:
+    resolution: {integrity: sha512-sUoJ3IMxx4AyRqO4MLeHlnGDkyXRoUG0/AI9fjK+vS72ekpV0yWVY7O0BVjmBcRtkNcsAO2QDZ4tdKKGoI6YaQ==}
+    engines: {node: '>=6.0.0'}
     hasBin: true
 
   basic-auth@2.0.1:
@@ -5273,8 +5286,15 @@ packages:
   onnxruntime-common@1.24.1:
     resolution: {integrity: sha512-UnV15u4p4XxoIV+jFP4hXPsW93s3QrwLSpi20HUDYHoTfI4z4sjzex3L4XDOxGGZJ/M/catrwAG2go958UQq0w==}
 
+  onnxruntime-common@1.24.3:
+    resolution: {integrity: sha512-GeuPZO6U/LBJXvwdaqHbuUmoXiEdeCjWi/EG7Y1HNnDwJYuk6WUbNXpF6luSUY8yASul3cmUlLGrCCL1ZgVXqA==}
+
   onnxruntime-node@1.24.1:
     resolution: {integrity: sha512-Ex/oUXKdhDoxvlNxBT3oYtW0MH88yYpPlXQeVQUXpcJQmN24usd/8RCoPLN5kCHwDsiZ+nqsnjciyFRl423dQw==}
+    os: [win32, darwin, linux]
+
+  onnxruntime-node@1.24.3:
+    resolution: {integrity: sha512-JH7+czbc8ALA819vlTgcV+Q214/+VjGeBHDjX81+ZCD0PCVCIFGFNtT0V4sXG/1JXypKPgScQcB3ij/hk3YnTg==}
     os: [win32, darwin, linux]
 
   onnxruntime-web@1.24.1:
@@ -5282,6 +5302,9 @@ packages:
 
   onnxruntime-web@1.25.0-dev.20260212-1a71a5f46e:
     resolution: {integrity: sha512-ZsQZ+6Suesn98Afjvn/i7ttKEA98DrDQ98tqGjyAIGsmmf6iXg7SzvR1HTGnI14TPG/fzwW5x6r/VPa1YJqclw==}
+
+  onnxruntime-web@1.25.0-dev.20260307-d626b568e0:
+    resolution: {integrity: sha512-qUcS5zvNMnmGwGtQ0OBefwF4j52uI1k/VII/o5jjeV7He+St3dVThjSjYbkIEcqy3FnRxFMsXnd7Z6gmsLHchg==}
 
   open@11.0.0:
     resolution: {integrity: sha512-smsWv2LzFjP03xmvFoJ331ss6h+jixfA4UUV/Bsiyuu4YJPfN+FIQGOIiv4w9/+MoHkfkJ22UIaQWRVFRfH6Vw==}
@@ -7808,12 +7831,22 @@ snapshots:
 
   '@huggingface/tokenizers@0.1.2': {}
 
+  '@huggingface/tokenizers@0.1.3': {}
+
   '@huggingface/transformers@4.0.0-next.4':
     dependencies:
       '@huggingface/jinja': 0.5.6
-      '@huggingface/tokenizers': 0.1.2
+      '@huggingface/tokenizers': 0.1.3
       onnxruntime-node: 1.24.1
       onnxruntime-web: 1.25.0-dev.20260212-1a71a5f46e
+      sharp: 0.34.5
+
+  '@huggingface/transformers@4.0.0-next.8':
+    dependencies:
+      '@huggingface/jinja': 0.5.6
+      '@huggingface/tokenizers': 0.1.3
+      onnxruntime-node: 1.24.3
+      onnxruntime-web: 1.25.0-dev.20260307-d626b568e0
       sharp: 0.34.5
 
   '@img/colour@1.0.0': {}
@@ -10482,7 +10515,7 @@ snapshots:
 
   base64-js@1.5.1: {}
 
-  baseline-browser-mapping@2.8.17: {}
+  baseline-browser-mapping@2.10.10: {}
 
   basic-auth@2.0.1:
     dependencies:
@@ -10556,7 +10589,7 @@ snapshots:
 
   browserslist@4.26.3:
     dependencies:
-      baseline-browser-mapping: 2.8.17
+      baseline-browser-mapping: 2.10.10
       caniuse-lite: 1.0.30001751
       electron-to-chromium: 1.5.237
       node-releases: 2.0.25
@@ -12095,11 +12128,19 @@ snapshots:
 
   onnxruntime-common@1.24.1: {}
 
+  onnxruntime-common@1.24.3: {}
+
   onnxruntime-node@1.24.1:
     dependencies:
       adm-zip: 0.5.16
       global-agent: 3.0.0
       onnxruntime-common: 1.24.1
+
+  onnxruntime-node@1.24.3:
+    dependencies:
+      adm-zip: 0.5.16
+      global-agent: 3.0.0
+      onnxruntime-common: 1.24.3
 
   onnxruntime-web@1.24.1:
     dependencies:
@@ -12111,6 +12152,15 @@ snapshots:
       protobufjs: 7.5.4
 
   onnxruntime-web@1.25.0-dev.20260212-1a71a5f46e:
+    dependencies:
+      flatbuffers: 25.9.23
+      guid-typescript: 1.0.9
+      long: 5.3.2
+      onnxruntime-common: 1.24.0-dev.20251116-b39e144322
+      platform: 1.3.6
+      protobufjs: 7.5.4
+
+  onnxruntime-web@1.25.0-dev.20260307-d626b568e0:
     dependencies:
       flatbuffers: 25.9.23
       guid-typescript: 1.0.9

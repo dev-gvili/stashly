@@ -1,6 +1,10 @@
 /// <reference types="@webgpu/types" />
 import { pipeline, env, type SupportedTasks } from '@huggingface/transformers'
 import {
+  pipeline as pipelineNext8,
+  env as envNext8,
+} from '@huggingface/transformers-next0.0.8'
+import {
   extractAudioChunk,
   makeChunks,
   toChunk,
@@ -13,16 +17,208 @@ import {
 
 /** Languages supported by Whisper for transcription */
 const SUPPORTED_LANGUAGES = new Set([
-  'en', 'zh', 'de', 'es', 'ru', 'ko', 'fr', 'ja', 'pt', 'tr', 'pl', 'ca',
-  'nl', 'ar', 'sv', 'it', 'id', 'hi', 'fi', 'vi', 'he', 'uk', 'el', 'ms',
-  'cs', 'ro', 'da', 'hu', 'ta', 'no', 'th', 'ur', 'hr', 'bg', 'lt', 'la',
-  'mi', 'ml', 'cy', 'sk', 'te', 'fa', 'lv', 'bn', 'sr', 'az', 'sl', 'kn',
-  'et', 'mk', 'br', 'eu', 'is', 'hy', 'ne', 'mn', 'bs', 'kk', 'sq', 'sw',
-  'gl', 'mr', 'pa', 'si', 'km', 'sn', 'yo', 'so', 'af', 'oc', 'ka', 'be',
-  'tg', 'sd', 'gu', 'am', 'yi', 'lo', 'uz', 'fo', 'ht', 'ps', 'tk', 'nn',
-  'mt', 'sa', 'lb', 'my', 'bo', 'tl', 'mg', 'as', 'tt', 'haw', 'ln', 'ha',
-  'ba', 'jw', 'su',
+  'en',
+  'zh',
+  'de',
+  'es',
+  'ru',
+  'ko',
+  'fr',
+  'ja',
+  'pt',
+  'tr',
+  'pl',
+  'ca',
+  'nl',
+  'ar',
+  'sv',
+  'it',
+  'id',
+  'hi',
+  'fi',
+  'vi',
+  'he',
+  'uk',
+  'el',
+  'ms',
+  'cs',
+  'ro',
+  'da',
+  'hu',
+  'ta',
+  'no',
+  'th',
+  'ur',
+  'hr',
+  'bg',
+  'lt',
+  'la',
+  'mi',
+  'ml',
+  'cy',
+  'sk',
+  'te',
+  'fa',
+  'lv',
+  'bn',
+  'sr',
+  'az',
+  'sl',
+  'kn',
+  'et',
+  'mk',
+  'br',
+  'eu',
+  'is',
+  'hy',
+  'ne',
+  'mn',
+  'bs',
+  'kk',
+  'sq',
+  'sw',
+  'gl',
+  'mr',
+  'pa',
+  'si',
+  'km',
+  'sn',
+  'yo',
+  'so',
+  'af',
+  'oc',
+  'ka',
+  'be',
+  'tg',
+  'sd',
+  'gu',
+  'am',
+  'yi',
+  'lo',
+  'uz',
+  'fo',
+  'ht',
+  'ps',
+  'tk',
+  'nn',
+  'mt',
+  'sa',
+  'lb',
+  'my',
+  'bo',
+  'tl',
+  'mg',
+  'as',
+  'tt',
+  'haw',
+  'ln',
+  'ha',
+  'ba',
+  'jw',
+  'su',
 ])
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: 'English',
+  zh: 'Chinese',
+  de: 'German',
+  es: 'Spanish',
+  ru: 'Russian',
+  ko: 'Korean',
+  fr: 'French',
+  ja: 'Japanese',
+  pt: 'Portuguese',
+  tr: 'Turkish',
+  pl: 'Polish',
+  ca: 'Catalan',
+  nl: 'Dutch',
+  ar: 'Arabic',
+  sv: 'Swedish',
+  it: 'Italian',
+  id: 'Indonesian',
+  hi: 'Hindi',
+  fi: 'Finnish',
+  vi: 'Vietnamese',
+  he: 'Hebrew',
+  uk: 'Ukrainian',
+  el: 'Greek',
+  ms: 'Malay',
+  cs: 'Czech',
+  ro: 'Romanian',
+  da: 'Danish',
+  hu: 'Hungarian',
+  ta: 'Tamil',
+  no: 'Norwegian',
+  th: 'Thai',
+  ur: 'Urdu',
+  hr: 'Croatian',
+  bg: 'Bulgarian',
+  lt: 'Lithuanian',
+  la: 'Latin',
+  mi: 'Maori',
+  ml: 'Malayalam',
+  cy: 'Welsh',
+  sk: 'Slovak',
+  te: 'Telugu',
+  fa: 'Persian',
+  lv: 'Latvian',
+  bn: 'Bengali',
+  sr: 'Serbian',
+  az: 'Azerbaijani',
+  sl: 'Slovenian',
+  kn: 'Kannada',
+  et: 'Estonian',
+  mk: 'Macedonian',
+  br: 'Breton',
+  eu: 'Basque',
+  is: 'Icelandic',
+  hy: 'Armenian',
+  ne: 'Nepali',
+  mn: 'Mongolian',
+  bs: 'Bosnian',
+  kk: 'Kazakh',
+  sq: 'Albanian',
+  sw: 'Swahili',
+  gl: 'Galician',
+  mr: 'Marathi',
+  pa: 'Punjabi',
+  si: 'Sinhala',
+  km: 'Khmer',
+  sn: 'Shona',
+  yo: 'Yoruba',
+  so: 'Somali',
+  af: 'Afrikaans',
+  oc: 'Occitan',
+  ka: 'Georgian',
+  be: 'Belarusian',
+  tg: 'Tajik',
+  sd: 'Sindhi',
+  gu: 'Gujarati',
+  am: 'Amharic',
+  yi: 'Yiddish',
+  lo: 'Lao',
+  uz: 'Uzbek',
+  fo: 'Faroese',
+  ht: 'Haitian Creole',
+  ps: 'Pashto',
+  tk: 'Turkmen',
+  nn: 'Norwegian Nynorsk',
+  mt: 'Maltese',
+  sa: 'Sanskrit',
+  lb: 'Luxembourgish',
+  my: 'Myanmar',
+  bo: 'Tibetan',
+  tl: 'Tagalog',
+  mg: 'Malagasy',
+  as: 'Assamese',
+  tt: 'Tatar',
+  haw: 'Hawaiian',
+  ln: 'Lingala',
+  ha: 'Hausa',
+  ba: 'Bashkir',
+  jw: 'Javanese',
+  su: 'Sundanese',
+}
 
 /** Accept LID result above this confidence without retry */
 const LID_HIGH_CONFIDENCE = 0.7
@@ -33,45 +229,69 @@ const LID_SHORT_CHUNK_SEC = 8
 /** Retry audio chunk duration (seconds) when initial confidence is low */
 const LID_LONG_CHUNK_SEC = 15
 
+// ============================================================
+// Optimized prompts for tiny-aya-global (3.35B)
+// ============================================================
+
+/** System prompt for transcript correction */
+const CORRECT_TRANSCRIPT_SYSTEM_PROMPT = (payload: {
+  language: string
+}): string =>
+  [
+    `Fix transcription errors in the text. The language is ${payload.language}.`,
+    'Fix misheard words, spelling, punctuation, and grammar. Keep the same meaning. Keep all names exactly. Output only the corrected text.',
+    '',
+    'Example:',
+    'Input: שעה טובה ומתוקה לכל המשפחה',
+    'Output: שנה טובה ומתוקה לכל המשפחה',
+    '',
+    'Example:',
+    'Input: אני גר בתל אביב כבר חמש שמונים',
+    'Output: אני גר בתל אביב כבר חמש שנים',
+  ].join('\n')
+
+const SUMMARIZE_SYSTEM_PROMPT = (payload: { language: string }): string =>
+  [
+    'Describe what the text is about in 1-2 short sentences.',
+    'Do NOT repeat or rephrase the text. Describe it from the outside.',
+    `Write in ${payload.language}.`,
+    '',
+    'Example:',
+    "Text: Welcome everyone to today's lecture on machine learning. We will cover neural networks and backpropagation.",
+    'Output: An opening of a lecture introducing the topics of neural networks and backpropagation.',
+    '',
+    'Example:',
+    'Text: דני, אני רוצה להגיד לך שאתה חבר מדהים. תודה שאתה תמיד שם בשבילי.',
+    'Output: הבעת הערכה ותודה לדני על היותו חבר טוב ותומך.',
+  ].join('\n')
+
 /** System prompt for tag generation */
 const GENERATE_TAGS_SYSTEM_PROMPT = (payload: { language: string }): string =>
   [
-    'You are a precise tagging assistant. Analyze the provided text and generate 7–10 short tags (1–3 words each) in the same language as the input.',
+    `Generate 7-10 short tags (1-3 words each) from the text. Write tags in ${payload.language}.`,
+    'Include: topics, names, places, holidays, content type (lecture/conversation/speech/story/etc), tone.',
+    'Output ONLY a comma-separated list of tags.',
     '',
-    'Cover all of the following categories that appear in the text:',
-    '- TOPICS: the main subjects, themes, and concepts discussed.',
-    '- ENTITIES: every named person (use their full name or role), location, organization, brand, product, artwork, or event explicitly mentioned.',
-    '- HOLIDAYS & CELEBRATIONS: if the content relates to any holiday, festival, or cultural celebration from any country or religion, include the holiday name and 1–2 associated thematic tags (e.g., "Christmas", "gift giving", "Eid al-Fitr", "family gathering").',
-    '- SPEAKER / SUBJECT GENDER: if the text clearly indicates the speaker or primary subject is male or female.',
-    '- CONTENT FORMAT: add one tag for the type of content — choose from: conversation, interview, lecture, monologue, story, news, review, speech, tutorial, lyric, podcast, movie, documentary, vlog or similar.',
-    '- TONE & EMOTION: if a strong tone or emotion is evident (e.g., humorous, emotional, motivational, critical), include one tone tag.',
+    'Example:',
+    'Text: Hey Omar, happy new year! I love you so much. Keep being great at football and a good kid with great friends.',
+    'Tags: new year greeting, Omar, football, love, encouragement, family, monologue, warm',
     '',
-    'STRICT RULES:',
-    '1. Extract ONLY what is explicitly present or unambiguously implied by the text. Do not invent or assume entities.',
-    '2. Output ONLY a comma-separated list of tags — no numbering, no bullets, no preamble, no explanation.',
-    '3. Example output: machine learning, neural networks, Yann LeCun, Montreal, conference talk, technical',
-    `4. Write in the same language as the input text. The input text language is ${payload.language}.`,
-  ].join('\n')
-
-/** System prompt used for all summarization requests */
-const SUMMARIZE_SYSTEM_PROMPT = (payload: { language: string }): string =>
-  [
-    'You are a professional summarization assistant.',
-    'Your sole task is to produce a faithful, grounded summary of the text provided by the user.',
-    ' ',
-    'STRICT RULES — follow exactly:',
-    '1. Use ONLY information explicitly present in the source text. Never infer, extrapolate, or add details not stated.',
-    '2. If a fact is ambiguous or unclear, omit it. Do not guess.',
-    '3. Preserve all proper nouns (names, places, organizations, products, etc...) exactly as they appear in the source.',
-    `4. Write in the same language as the input text. The input text language is ${payload.language}.`,
-    '5. Format: at most 2 sections, each with at most 2 bullet points. For very short input (under 3 sentences), write a single sentence instead.',
-    '6. Output ONLY the summary — no preamble, no commentary, no meta-text such as "Here is a summary:".',
+    'Example:',
+    'Text: Today we will discuss how neural networks learn. Professor Smith from MIT will walk us through backpropagation and gradient descent.',
+    'Tags: neural networks, backpropagation, gradient descent, Professor Smith, MIT, lecture, technical',
   ].join('\n')
 
 /** Per-model dtype overrides; all other models default to 'fp16' */
 const MODEL_DTYPE: Record<string, string | Record<string, string>> = {
+  'Xenova/mms-lid-126': 'q4',
   'onnx-community/tiny-aya-global-ONNX': 'q4',
   'onnx-community/whisper-large-v3-turbo': 'fp16',
+  'onnx-community/Qwen3.5-2B-ONNX': {
+    embed_tokens: 'q4f16',
+    vision_encoder: 'q4f16',
+    decoder_model_merged: 'q4f16',
+  },
+  'onnx-community/Phi-4-mini-instruct-ONNX': 'q4f16',
   'LiquidAI/LFM2.5-VL-1.6B-ONNX': { decoder: 'q4', embedImages: 'q4' },
 }
 
@@ -115,6 +335,8 @@ if (DEBUG) {
 }
 env.useBrowserCache = true
 env.allowRemoteModels = true
+envNext8.useBrowserCache = true
+envNext8.allowRemoteModels = true
 
 // -------------------------
 // WebGPU Device Manager
@@ -133,7 +355,11 @@ const WebGPUDeviceManager = {
     }
 
     this.device = await this.adapter.requestDevice()
-    console.log('WebGPU adapter and device initialized', this.adapter, this.device)
+    console.log(
+      'WebGPU adapter and device initialized',
+      this.adapter,
+      this.device
+    )
 
     if (!this.listenersAttached) {
       this.listenersAttached = true
@@ -186,15 +412,20 @@ export class PipelineManager {
 
     if (!this.instances[key]) {
       await WebGPUDeviceManager.init()
+      const opts = {
+        device: 'webgpu' as const,
+        dtype: (MODEL_DTYPE[model] ?? 'fp16') as any,
+        progress_callback: progressCallback,
+      }
       try {
-        this.instances[key] = await pipeline(task, model, {
-          device: 'webgpu',
-          dtype: (MODEL_DTYPE[model] ?? 'fp16') as any,
-          progress_callback: progressCallback,
-        })
+        this.instances[key] = await pipeline(task, model, opts)
       } catch (e) {
-        console.error(`Pipeline loading error for ${model}:`, e)
-        throw e
+        console.warn(
+          `Pipeline load failed for ${model}, resetting and retrying:`,
+          e
+        )
+        await this.resetAllPipelines()
+        this.instances[key] = await pipeline(task, model, opts)
       }
     }
 
@@ -234,7 +465,7 @@ export function serializeSummaryPayload(payload: unknown): string {
   if (typeof payload === 'string') return payload
   if (payload && typeof payload === 'object') {
     const p = payload as any
-    return p.generated_text ?? p.summary ?? p.summary_text ?? ''
+    return p.generated_text ?? p.summary ?? ''
   }
   return ''
 }
@@ -257,7 +488,7 @@ export async function detectLanguage(
 
   const pipe = await PipelineManager.getPipeline(
     'audio-classification',
-    'Xenova/mms-lid-256'
+    'Xenova/mms-lid-126'
   )
 
   let audioChunk = extractAudioChunk({
@@ -299,7 +530,10 @@ export async function detectLanguage(
     }
   }
 
-  await PipelineManager.disposePipeline('audio-classification', 'Xenova/mms-lid-256')
+  await PipelineManager.disposePipeline(
+    'audio-classification',
+    'Xenova/mms-lid-126'
+  )
 
   return { language, confidence }
 }
@@ -338,22 +572,30 @@ export async function transcribeAudio(
   const partialTexts: string[] = []
 
   if (duration > 30) {
-    const chunks = makeChunks(audio, sampleRate, 60, 0)
+    const chunks = makeChunks(audio, sampleRate, 30.5, 0)
 
     for (const [index, chunk] of chunks.entries()) {
       const res: ASRResult = await asrPipe(chunk, {
         language,
-        chunk_length_s: chunk.length / sampleRate,
-        task: 'transcribe',
+        chunk_length_s: chunk.length / sampleRate, // This is the duration of the chunk in seconds
+        stride_length_s: 5, // This is the duration of the overlap between chunks in seconds (e.g., 0.5 seconds)
+        remove_invalid_values: true,
         return_whole_text: false,
         return_timestamps: true,
         return_language: true,
         batch_size: 16,
+        prompt:
+          'Yo, check it. The lyrics here include ad-libs, slang, and repetitive phrases. No periods at the end of every line, just raw flow and rhythm.',
       })
       const text = res.text || ''
       partialTexts.push(text)
       onPartialResult('transcription', { index, text })
       console.log(`Processed chunk ${index + 1} of ${chunks.length}`)
+      console.log(
+        res.chunks
+          ?.map((c) => `[${c.timestamp[0]} - ${c.timestamp[1]}]:${c.text}`)
+          .join('\n') ?? text
+      )
     }
   } else {
     const res: ASRResult = await asrPipe(audio, {
@@ -383,22 +625,21 @@ export async function transcribeAudio(
   )
   return transcriptionResult
 }
+// ============================================================
+// Optimized inference settings + prompts for tiny-aya-global
+// ============================================================
 
 // -------------------------
-// Summarization
+// Summarization (Phi-4-mini-instruct)
 // -------------------------
 
-/**
- * Summarizes text using the tiny-aya LLM.
- *
- * @returns The summary string
- */
 export async function summarizeText(
   params: { text: string; language: string },
   onProgress: ProgressCallback
 ): Promise<string> {
   console.log('Loading summarization model...')
 
+  // Replace in summarizeText:
   const pipe = await PipelineManager.getPipeline(
     'text-generation',
     'onnx-community/tiny-aya-global-ONNX',
@@ -410,58 +651,185 @@ export async function summarizeText(
   let messages: ChatMessage[] = []
   const summarizedChunks: string[] = []
 
-  if (params.text && params.text.length > 512) {
-    const chunks = toChunk(params.text, 512)
-    console.log(`Text too long, splitting into ${chunks.length} chunks`)
+  try {
+    if (params.text && params.text.length > 1500) {
+      // ^^^ Changed from 512 to 1500 — 512 chars splits mid-sentence in Hebrew.
+      //     Phi-4-mini has 16k context, we can afford larger chunks.
+      const chunks = toChunk(params.text, 1500)
+      console.log(`Text too long, splitting into ${chunks.length} chunks`)
 
-    for (const [i, chunk] of chunks.entries()) {
+      for (const [i, chunk] of chunks.entries()) {
+        messages = [
+          { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT(params) },
+          // FIX: don't add "summarize this text in X:" — system prompt already says this
+          { role: 'user', content: chunk },
+        ]
+
+        const prompt = pipe.tokenizer.apply_chat_template(messages, {
+          tokenize: false,
+          add_generation_prompt: true,
+        }) as string
+
+        console.log(`Generating summary for chunk ${i + 1} of ${chunks.length}`)
+
+        const output = await pipe(prompt, {
+          max_new_tokens: 256,
+          do_sample: false, // greedy — most reliable for this model
+          repetition_penalty: 1.1,
+          return_full_text: false,
+        })
+        summarizedChunks.push(serializeSummaryPayload(output[0]))
+      }
+    } else {
       messages = [
         { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT(params) },
-        { role: 'user', content: chunk },
+        // FIX: removed "summarize this text in X:" — redundant with system prompt
+        //      and confuses the model by giving conflicting framing
+        { role: 'user', content: params.text },
       ]
-
+      const tokens = pipe.tokenizer.tokenize(params.text)
       const prompt = pipe.tokenizer.apply_chat_template(messages, {
         tokenize: false,
         add_generation_prompt: true,
       }) as string
 
-      console.log(`Generating summary for chunk ${i + 1} of ${chunks.length}`)
-
       const output = await pipe(prompt, {
-        max_new_tokens: 128,
-        temperature: 0.7,
+        max_new_tokens: 256,
+        do_sample: false, // greedy — most reliable for this model
+        repetition_penalty: 1.1,
         return_full_text: false,
       })
+      console.log('Summarization output:', output)
       summarizedChunks.push(serializeSummaryPayload(output[0]))
     }
-  } else {
-    messages = [
-      { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT(params) },
-      { role: 'user', content: params.text },
-    ]
-
-    const prompt = pipe.tokenizer.apply_chat_template(messages, {
-      tokenize: false,
-      add_generation_prompt: true,
-    }) as string
-
-    const output = await pipe(prompt, {
-      return_full_text: false,
-      max_new_tokens: 128,
-      renormalize_logits: true,
-    })
-
-    summarizedChunks.push(serializeSummaryPayload(output[0]))
+    return summarizedChunks.join(' ')
+  } finally {
+    await (pipe as any).dispose?.()
   }
+}
+
+// -------------------------
+// Grammar / typo correction (tiny-aya-global)
+// -------------------------
+
+export async function correctTranscript(
+  params: { text: string; language: string },
+  onProgress: ProgressCallback
+): Promise<string> {
+  await PipelineManager.resetAllPipelines()
+  const pipe = await PipelineManager.getPipeline(
+    'text-generation',
+    'onnx-community/tiny-aya-global-ONNX',
+    onProgress
+  )
+
+  const systemPrompt = CORRECT_TRANSCRIPT_SYSTEM_PROMPT(params)
+  // FIX: increased chunk size from 512 to 1000 chars
+  //      512 chars splits Hebrew sentences mid-word, losing context
+  //      tiny-aya has 8k context, 1000 chars is safe
+  const chunks =
+    params.text.length > 1000 ? toChunk(params.text, 1000) : [params.text]
+  const correctedChunks: string[] = []
+
+  try {
+    for (const [i, chunk] of chunks.entries()) {
+      const messages: ChatMessage[] = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: chunk },
+      ]
+      const prompt = pipe.tokenizer.apply_chat_template(messages, {
+        tokenize: false,
+        add_generation_prompt: true,
+      }) as string
+      const tokens = pipe.tokenizer.tokenize(chunk)
+      const inferenceOpts = {
+        max_new_tokens: tokens.length + 50,
+        do_sample: false,
+        return_full_text: false,
+        repetition_penalty: 1.05, // NEW: light penalty, correction should stay close to input
+      }
+      console.log(`Correcting chunk ${i + 1} of ${chunks.length}`)
+      try {
+        const output = await pipe(prompt, inferenceOpts)
+        correctedChunks.push(serializeSummaryPayload(output))
+      } catch (e) {
+        console.warn(
+          `Correction inference failed for chunk ${i + 1}, resetting and retrying:`,
+          e
+        )
+        await PipelineManager.resetAllPipelines()
+        const freshPipe = await PipelineManager.getPipeline(
+          'text-generation',
+          'onnx-community/tiny-aya-global-ONNX',
+          onProgress
+        )
+        const retryOutput = await freshPipe(prompt, inferenceOpts)
+        correctedChunks.push(serializeSummaryPayload(retryOutput))
+      }
+    }
+    return correctedChunks.join(' ')
+  } finally {
+    await PipelineManager.disposePipeline(
+      'text-generation',
+      'onnx-community/tiny-aya-global-ONNX'
+    )
+  }
+}
+
+// -------------------------
+// Tag generation (tiny-aya-global)
+// -------------------------
+
+export async function generateTagsFromText(
+  params: { text: string; language: string },
+  onProgress: ProgressCallback
+): Promise<string[]> {
+  console.log('Loading tag generation model...')
+  await PipelineManager.resetAllPipelines()
+
+  const pipe = await PipelineManager.getPipeline(
+    'text-generation',
+    'onnx-community/tiny-aya-global-ONNX',
+    onProgress
+  )
+
+  console.log('Generating tags...')
+
+  const { text } = params
+  const inputText =
+    text.length <= 1500 // FIX: was 1000, give model more context
+      ? text
+      : text.slice(0, 800) + ' [...] ' + text.slice(-400) // FIX: was 600+400
+
+  const messages: ChatMessage[] = [
+    {
+      role: 'system',
+      content: GENERATE_TAGS_SYSTEM_PROMPT({ language: params.language }),
+    },
+    { role: 'user', content: inputText },
+  ]
+
+  const prompt = pipe.tokenizer.apply_chat_template(messages, {
+    tokenize: false,
+    add_generation_prompt: true,
+  }) as string
+
+  const output = await pipe(prompt, {
+    max_new_tokens: 100,
+    do_sample: false,
+    repetition_penalty: 1.1,
+    return_full_text: false,
+  })
+
+  const tags = parseTags(output[0].generated_text)
 
   await PipelineManager.disposePipeline(
     'text-generation',
     'onnx-community/tiny-aya-global-ONNX'
   )
 
-  return summarizedChunks.join(' ')
+  return tags
 }
-
 // -------------------------
 // Keyword extraction
 // -------------------------
@@ -509,64 +877,4 @@ export async function extractKeywordsFromText(
     .slice(0, 10)
 
   return keywords.map((kw) => kw.word)
-}
-
-// -------------------------
-// Tag generation
-// -------------------------
-
-/**
- * Generates 7–10 descriptive tags for the given text using the tiny-aya LLM.
- *
- * @returns Array of tag strings
- */
-export async function generateTagsFromText(
-  params: { text: string; language: string },
-  onProgress: ProgressCallback
-): Promise<string[]> {
-  console.log('Loading tag generation model...')
-  await PipelineManager.resetAllPipelines()
-
-  const pipe = await PipelineManager.getPipeline(
-    'text-generation',
-    'onnx-community/tiny-aya-global-ONNX',
-    onProgress
-  )
-
-  console.log('Generating tags...')
-
-  const { text } = params
-  const inputText =
-    text.length <= 1024
-      ? text
-      : text.slice(0, 600) + ' [...] ' + text.slice(-400)
-
-  const messages: ChatMessage[] = [
-    {
-      role: 'system',
-      content: GENERATE_TAGS_SYSTEM_PROMPT({ language: params.language }),
-    },
-    { role: 'user', content: inputText },
-  ]
-
-  const prompt = pipe.tokenizer.apply_chat_template(messages, {
-    tokenize: false,
-    add_generation_prompt: true,
-  }) as string
-
-  const output = await pipe(prompt, {
-    max_new_tokens: 100,
-    do_sample: false,
-    repetition_penalty: 1.1,
-    return_full_text: false,
-  })
-
-  const tags = parseTags(output[0].generated_text)
-
-  await PipelineManager.disposePipeline(
-    'text-generation',
-    'onnx-community/tiny-aya-global-ONNX'
-  )
-
-  return tags
 }
