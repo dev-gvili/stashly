@@ -846,7 +846,7 @@ export const pipelineMachine = setup({
           contentHint: context.pendingAudio?.contentHint,
         }),
         onDone: {
-          target: 'gpu_cooldown',
+          target: 'correcting_text',
           actions: assign(({ event }) => ({
             pendingTranscript: event.output.text,
             transcriptProgress: null,
@@ -857,15 +857,6 @@ export const pipelineMachine = setup({
       },
       on: {
         'WORKER.PARTIAL_RESULT': { actions: 'assignTranscriptProgress' },
-      },
-    },
-
-    // Brief pause after Whisper disposes to let the GPU release VRAM
-    // before loading tiny-aya for correction. Prevents DXGI_ERROR_DEVICE_HUNG
-    // on consumer GPUs (e.g. GTX 1650 with 4GB VRAM).
-    gpu_cooldown: {
-      after: {
-        750: 'correcting_text',
       },
     },
 

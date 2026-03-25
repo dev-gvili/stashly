@@ -86,7 +86,7 @@ beforeEach(() => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('Pipeline: full flow (upload → ready)', () => {
-  it('completes the entire pipeline: idle → detect → transcribe → cooldown → correct → ready', async () => {
+  it('completes the entire pipeline: idle → detect → transcribe → correct → ready', async () => {
     const actor = createPipeline()
     await waitForState(actor, 'idle')
 
@@ -115,7 +115,7 @@ describe('Pipeline: full flow (upload → ready)', () => {
     actor.stop()
   })
 
-  it('passes through gpu_cooldown state between transcription and correction', async () => {
+  it('transitions directly from transcribing to correcting_text', async () => {
     const statesVisited: string[] = []
     const actor = createPipeline()
 
@@ -128,13 +128,13 @@ describe('Pipeline: full flow (upload → ready)', () => {
     actor.send(AUDIO_UPLOAD_EVENT)
     await waitForState(actor, 'ready', 10000)
 
-    expect(statesVisited).toContain('gpu_cooldown')
-    // Verify order: gpu_cooldown comes after transcribing, before correcting_text
-    const cooldownIdx = statesVisited.indexOf('gpu_cooldown')
+    // Load balancer handles GPU cooldown internally — no separate state needed
+    expect(statesVisited).toContain('transcribing')
+    expect(statesVisited).toContain('correcting_text')
+    expect(statesVisited).not.toContain('gpu_cooldown')
     const transcribeIdx = statesVisited.indexOf('transcribing')
     const correctIdx = statesVisited.indexOf('correcting_text')
-    expect(cooldownIdx).toBeGreaterThan(transcribeIdx)
-    expect(correctIdx).toBeGreaterThan(cooldownIdx)
+    expect(correctIdx).toBeGreaterThan(transcribeIdx)
     actor.stop()
   })
 })
