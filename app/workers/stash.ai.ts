@@ -816,155 +816,118 @@ export async function correctTranscript(
 
   const systemPrompt = CORRECT_TRANSCRIPT_SYSTEM_PROMPT(params)
   const chunks =
-    params.text.length > 400 ? toChunk(params.text, 400) : [params.text]
+    params.text.length > 600 ? toChunk(params.text, 600) : [params.text]
   const correctedChunks: string[] = []
-  const hasMultipleAdapters = WebGPUDeviceManager.adapters.length > 1
+  const hasSecondaryGPU = WebGPUDeviceManager.adapters.length > 1
 
-  // ── Load balancer strategy ──────────────────────────────────────────────
-  // After Whisper runs for minutes on the primary GPU, the GPU is thermally
-  // stressed and VRAM may not be fully released. Instead of an arbitrary delay,
-  // we use a "load balancer" approach:
+  // ── GPU load balancer ───────────────────────────────────────────────────
+  // After Whisper, the primary GPU needs recovery time.
   //
-  // Chunk 1 → secondary GPU (or WASM if single GPU)
-  //           While this runs (~30-45s), primary GPU cools down naturally.
-  // Chunk 2+ → back to primary GPU (now recovered)
+  // 2 GPUs:  chunk 1 on secondary GPU → chunks 2+ on primary (recovered)
+  // 1 GPU:   3s delay → all chunks on primary GPU
   //
-  // If primary crashes on any later chunk → fall back to secondary again.
+  // If any chunk crashes → WASM for THAT chunk only, then retry GPU next.
+  // NEVER preemptively load model to WASM — a 3.35B model takes 10+ min
+  // to load on CPU, which is worse than a 3s delay.
 
-  if (chunks.length > 0) {
-    // ── Chunk 1: run on secondary device ────────────────────────────────
-    const firstChunk = chunks[0]
-    let cooldownPipe: any = null
-    let cooldownDevice = 'unknown'
+  const inferenceOpts = (tokenCount: number) => ({
+    max_new_tokens: Math.min(tokenCount + 20, 300),
+    do_sample: false,
+    return_full_text: false,
+    repetition_penalty: 1.05,
+  })
 
-    if (hasMultipleAdapters) {
-      // Use secondary GPU (e.g., Intel integrated)
+  const buildPrompt = (pipe: any, chunk: string) => {
+    const msg: ChatMessage[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: chunk },
+    ]
+    return pipe.tokenizer.apply_chat_template(msg, {
+      tokenize: false, add_generation_prompt: true,
+    }) as string
+  }
+
+  // ── Route chunk 1 ─────────────────────────────────────────────────────
+  let startIndex = 0
+
+  if (hasSecondaryGPU && chunks.length > 0) {
+    // Use secondary GPU for chunk 1 while primary cools
+    try {
+      await WebGPUDeviceManager.switchToNextAdapter()
+      const secondaryPipe = await pipeline(
+        'text-generation', 'onnx-community/tiny-aya-global-ONNX',
+        { device: 'webgpu' as const, dtype: (MODEL_DTYPE['onnx-community/tiny-aya-global-ONNX'] ?? 'fp16') as any, progress_callback: onProgress }
+      )
       try {
-        await WebGPUDeviceManager.switchToNextAdapter()
-        cooldownPipe = await pipeline('text-generation', 'onnx-community/tiny-aya-global-ONNX', {
-          device: 'webgpu' as const,
-          dtype: (MODEL_DTYPE['onnx-community/tiny-aya-global-ONNX'] ?? 'fp16') as any,
-          progress_callback: onProgress,
-        })
-        cooldownDevice = 'secondary GPU'
-      } catch (e) {
-        console.warn('Secondary GPU failed, using WASM for cooldown chunk:', e)
+        const prompt = buildPrompt(secondaryPipe, chunks[0])
+        const tokens = secondaryPipe.tokenizer.tokenize(chunks[0])
+        console.log(`Correcting chunk 1/${chunks.length} (secondary GPU — primary cooling)`)
+        const output = await secondaryPipe(prompt, inferenceOpts(tokens.length))
+        correctedChunks.push(serializeSummaryPayload(output))
+        startIndex = 1
+      } finally {
+        await secondaryPipe?.dispose?.()
       }
+    } catch (e) {
+      console.warn('Secondary GPU failed, will use primary with delay:', e)
     }
+  }
 
-    // Fall back to WASM if no secondary GPU or it failed
-    if (!cooldownPipe) {
-      cooldownPipe = await pipeline('text-generation', 'onnx-community/tiny-aya-global-ONNX', {
-        device: 'wasm' as const, dtype: 'q4' as any, progress_callback: onProgress,
-      })
-      cooldownDevice = 'WASM (CPU)'
-    }
+  // If no secondary GPU handled chunk 1, brief delay then use primary
+  if (startIndex === 0 && chunks.length > 0) {
+    console.log('GPU cooldown: 3s before correction on primary GPU')
+    await new Promise((r) => setTimeout(r, 3000))
+  }
+
+  // ── All remaining chunks on primary GPU ───────────────────────────────
+  if (startIndex < chunks.length) {
+    WebGPUDeviceManager.currentAdapterIndex = 0
+    WebGPUDeviceManager.device = null
+
+    const primaryPipe = await PipelineManager.getPipeline(
+      'text-generation', 'onnx-community/tiny-aya-global-ONNX', onProgress
+    )
 
     try {
-      const msg: ChatMessage[] = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: firstChunk },
-      ]
-      const prompt = cooldownPipe.tokenizer.apply_chat_template(msg, {
-        tokenize: false, add_generation_prompt: true,
-      }) as string
-      const tokens = cooldownPipe.tokenizer.tokenize(firstChunk)
-
-      console.log(`Correcting chunk 1 of ${chunks.length} (${cooldownDevice} — primary GPU cooling)`)
-      const output = await cooldownPipe(prompt, {
-        max_new_tokens: Math.min(tokens.length + 20, 300),
-        do_sample: false, return_full_text: false, repetition_penalty: 1.05,
-      })
-      correctedChunks.push(serializeSummaryPayload(output))
-    } finally {
-      await cooldownPipe?.dispose?.()
-    }
-
-    // ── Chunks 2+: back to primary GPU ──────────────────────────────────
-    if (chunks.length > 1) {
-      // Reset adapter index to primary GPU
-      WebGPUDeviceManager.currentAdapterIndex = 0
-      WebGPUDeviceManager.device = null
-
-      const primaryPipe = await PipelineManager.getPipeline(
-        'text-generation',
-        'onnx-community/tiny-aya-global-ONNX',
-        onProgress
-      )
-
-      try {
-        for (let i = 1; i < chunks.length; i++) {
-          const msg: ChatMessage[] = [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: chunks[i] },
-          ]
-          const prompt = primaryPipe.tokenizer.apply_chat_template(msg, {
-            tokenize: false, add_generation_prompt: true,
-          }) as string
+      for (let i = startIndex; i < chunks.length; i++) {
+        try {
+          const prompt = buildPrompt(primaryPipe, chunks[i])
           const tokens = primaryPipe.tokenizer.tokenize(chunks[i])
+          console.log(`Correcting chunk ${i + 1}/${chunks.length}`)
+          const output = await primaryPipe(prompt, inferenceOpts(tokens.length))
+          correctedChunks.push(serializeSummaryPayload(output))
+        } catch (e) {
+          const errMsg = e instanceof Error ? e.message : String(e)
+          if (!errMsg.includes('Device') || !errMsg.includes('lost')) throw e
 
-          console.log(`Correcting chunk ${i + 1} of ${chunks.length} (primary GPU)`)
+          // GPU crashed on this chunk — WASM for THIS chunk only
+          console.warn(`GPU crashed on chunk ${i + 1}, WASM for this chunk only`)
+          await PipelineManager.resetAllPipelines()
 
+          const wasmPipe = await pipeline(
+            'text-generation', 'onnx-community/tiny-aya-global-ONNX',
+            { device: 'wasm' as const, dtype: 'q4' as any, progress_callback: onProgress }
+          )
           try {
-            const output = await primaryPipe(prompt, {
-              max_new_tokens: Math.min(tokens.length + 20, 300),
-              do_sample: false, return_full_text: false, repetition_penalty: 1.05,
-            })
+            const prompt = buildPrompt(wasmPipe, chunks[i])
+            const tokens = wasmPipe.tokenizer.tokenize(chunks[i])
+            console.log(`Correcting chunk ${i + 1}/${chunks.length} (WASM fallback)`)
+            const output = await wasmPipe(prompt, inferenceOpts(tokens.length))
             correctedChunks.push(serializeSummaryPayload(output))
-          } catch (e) {
-            const errMsg = e instanceof Error ? e.message : String(e)
-            if (!errMsg.includes('Device') || !errMsg.includes('lost')) throw e
-
-            // Primary GPU crashed mid-correction — fall back for remaining chunks
-            console.warn(`Primary GPU crashed on chunk ${i + 1}, falling back...`)
-            await PipelineManager.resetAllPipelines()
-
-            let fallbackPipe: any = null
-            if (hasMultipleAdapters) {
-              try {
-                await WebGPUDeviceManager.switchToNextAdapter()
-                fallbackPipe = await pipeline('text-generation', 'onnx-community/tiny-aya-global-ONNX', {
-                  device: 'webgpu' as const,
-                  dtype: (MODEL_DTYPE['onnx-community/tiny-aya-global-ONNX'] ?? 'fp16') as any,
-                  progress_callback: onProgress,
-                })
-              } catch { fallbackPipe = null }
-            }
-            if (!fallbackPipe) {
-              fallbackPipe = await pipeline('text-generation', 'onnx-community/tiny-aya-global-ONNX', {
-                device: 'wasm' as const, dtype: 'q4' as any, progress_callback: onProgress,
-              })
-            }
-
-            try {
-              for (let j = i; j < chunks.length; j++) {
-                const fbMsg: ChatMessage[] = [
-                  { role: 'system', content: systemPrompt },
-                  { role: 'user', content: chunks[j] },
-                ]
-                const fbPrompt = fallbackPipe.tokenizer.apply_chat_template(fbMsg, {
-                  tokenize: false, add_generation_prompt: true,
-                }) as string
-                const fbTokens = fallbackPipe.tokenizer.tokenize(chunks[j])
-                console.log(`Correcting chunk ${j + 1} of ${chunks.length} (fallback)`)
-                const fbOut = await fallbackPipe(fbPrompt, {
-                  max_new_tokens: Math.min(fbTokens.length + 20, 300),
-                  do_sample: false, return_full_text: false, repetition_penalty: 1.05,
-                })
-                correctedChunks.push(serializeSummaryPayload(fbOut))
-              }
-            } finally {
-              await fallbackPipe?.dispose?.()
-            }
-            break
+          } finally {
+            await wasmPipe?.dispose?.()
           }
+
+          // Try to recover GPU for next chunk
+          WebGPUDeviceManager.currentAdapterIndex = 0
+          WebGPUDeviceManager.device = null
+          try { await WebGPUDeviceManager.init() } catch { /* GPU may stay dead */ }
         }
-      } finally {
-        await PipelineManager.disposePipeline(
-          'text-generation',
-          'onnx-community/tiny-aya-global-ONNX'
-        )
       }
+    } finally {
+      await PipelineManager.disposePipeline(
+        'text-generation', 'onnx-community/tiny-aya-global-ONNX'
+      )
     }
   }
 

@@ -1,0 +1,12 @@
+fix: never preemptively load model to WASM — use GPU delay instead
+
+Loading tiny-aya (3.35B) to WASM takes 10+ minutes, worse than the
+GPU crash it was trying to prevent.
+
+New strategy:
+- 2 GPUs: chunk 1 on secondary GPU, chunks 2+ on primary (unchanged)
+- 1 GPU: 3s delay → all chunks on primary GPU
+- If GPU crashes: WASM for THAT chunk only, then retry GPU for next
+
+Also restored chunk size from 400→600 chars (400 created 15 chunks
+for a 5-min video which is excessive).
