@@ -49,3 +49,5 @@ storybook-static
 
 # Test files excluded from runs
 app/utils/aimodel.test.ts
+
+models/*
