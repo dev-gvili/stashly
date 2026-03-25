@@ -119,6 +119,7 @@ export type PipelineState =
   | 'transcribing'
   | 'ready'
   | 'summarizing'
+  | 'correcting_text'
   | 'extracting_keywords'
   | 'generating_tags'
   | 'error'
@@ -126,7 +127,7 @@ export type PipelineState =
 /** Serializable state snapshot posted from the worker to the main thread on every transition. */
 export type WorkerSnapshot = {
   value: string
-  context: Omit<PipelineContext, 'pendingAudio'>
+  context: Omit<PipelineContext, 'pendingAudio' | 'pendingTranscript'>
 }
 
 export const initialWorkerSnapshot: WorkerSnapshot = {
@@ -142,6 +143,7 @@ export const initialWorkerSnapshot: WorkerSnapshot = {
     audioDuration: 0,
     transcriptProgress: null,
     transcript: '',
+    correctedTranscript: '',
     summary: '',
     keywords: [],
     generatedTags: [],

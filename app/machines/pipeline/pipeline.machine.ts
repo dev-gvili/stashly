@@ -17,7 +17,8 @@ function modelNameFromFile(file: string): string | null {
   if (name.includes('mms-lid')) return 'mms-lid-256'
   if (name.includes('whisper-large')) return 'whisper-large-v3-turbo'
   if (name.includes('tiny-aya')) return 'tiny-aya-global-ONNX'
-  if (name.includes('paraphrase-multilingual')) return 'paraphrase-multilingual-MiniLM-L12-v2'
+  if (name.includes('paraphrase-multilingual'))
+    return 'paraphrase-multilingual-MiniLM-L12-v2'
   return null
 }
 
@@ -37,7 +38,8 @@ function modelNameFromStatus(status: string): string | null {
   if (status === 'transcribing') return 'whisper-large-v3-turbo'
   if (status === 'summarizing') return 'tiny-aya-global-ONNX'
   if (status === 'correcting-text') return 'tiny-aya-global-ONNX'
-  if (status === 'extract-keywords') return 'paraphrase-multilingual-MiniLM-L12-v2'
+  if (status === 'extract-keywords')
+    return 'paraphrase-multilingual-MiniLM-L12-v2'
   if (status === 'generating-tags') return 'tiny-aya-global-ONNX'
   return null
 }
@@ -72,14 +74,20 @@ export const languageDetectionMachine = setup({
   types: {
     context: {} as LanguageDetectionContext,
     events: {} as LanguageDetectionEvent,
-    input: {} as { audio: Float32Array; sampleRate: number; duration: number } | undefined,
+    input: {} as
+      | { audio: Float32Array; sampleRate: number; duration: number }
+      | undefined,
     output: {} as { language: string; confidence: number },
   },
   actors: { detectLanguage: detectLanguageActor },
   actions: {
     setInput: assign(({ event }) => {
       assertEvent(event, 'START')
-      return { audio: event.audio, sampleRate: event.sampleRate, duration: event.duration }
+      return {
+        audio: event.audio,
+        sampleRate: event.sampleRate,
+        duration: event.duration,
+      }
     }),
     assignResult: assign(({ event }) => {
       assertEvent(event, 'WORKER.LANGUAGE_DETECTED')
@@ -92,6 +100,7 @@ export const languageDetectionMachine = setup({
     hasInput: ({ context }) => context.audio !== null,
   },
 }).createMachine({
+  /** @xstate-layout N4IgpgJg5mDOIC5QBsCGA7KBXVMC0EYALmAMZECWA9ugHQUTJgDEAygCoCCASuwNoAGALqJQAByqwKlGqJAAPRAEYAbCtoAmDQFYV2pQBYBAdgMqDATgA0IAJ6INx47WNqAzBoG7PADgE+VAF9AmzRMHHxCEnJqOgYmZkERJBAJKRl0OUUEVXUtXX0jU3NrOwcPTQMAt0sfHyV6gODQjGxcMAJiMgzaKO6KTGYAdQB5bgBpAFFuWgAZTgA5AHEAVU4lyYB9ABFJ9kmAYX3tpLk06VisxG0KgQslHTqBNxULNyUbexyfN1olC20xh8QK0GgMBWaIDCbUiXRiNF6cMog1GE2mtAACtwRktuJNWKxTilzhkrgh3hpNIClMYAa5tPcPmUcq5aD5dE5VDo9No6pDoREOn14XRhcioMMxlMZhxOOwVoThGdJBdZClsh5fi9jNowW4fAYzAY3G5Poh6rQXipjFoDDpPOY3PzWoLOtEemKBhLUdLaNNsdwieIVaT1ddbvdHn4Xm8mV9HD5aCp2T9jAItK99M7wu03f0EQAzVAUJgQRJK4khy5hhCmASWgQGHUCAS5FQCFRmhCG7RU-xuJxeCy07TBEIgdBUQjwFIC3OetXB9LV0DZPCd5nr2gtne7vfGbMwoVI2L0RhgZXLxcKRB2rtuZ6aNOWExKbQmV5Bcdz2Hu0+ezBL1VTIaw0CwLFoCwNHeO5rS5YFjC7RxnBqZNfA0FQlC8AxD1dBdRRoC9KyvEDV3NGpIIeRtDR8MDoyQxtIO0bQzGMQwDQsdNcPnE9C2LUsgNDMiEB+AxKM8Q0qjo54u2NXs3n0XVwQeSSx0CIA */
   id: 'language-detection',
   context: ({ input }) => ({
     audio: input?.audio ?? null,
@@ -101,7 +110,10 @@ export const languageDetectionMachine = setup({
     confidence: null,
   }),
   initial: 'idle',
-  output: ({ context }) => ({ language: context.language!, confidence: context.confidence! }),
+  output: ({ context }) => ({
+    language: context.language!,
+    confidence: context.confidence!,
+  }),
   states: {
     idle: {
       always: { guard: 'hasInput', target: 'detecting' },
@@ -120,7 +132,10 @@ export const languageDetectionMachine = setup({
         'WORKER.LANGUAGE_DETECTED': { target: 'done', actions: 'assignResult' },
         'WORKER.PROGRESS': { actions: 'forwardToParent' },
         'WORKER.STATUS': { actions: 'forwardToParent' },
-        'WORKER.ERROR': { target: 'failed', actions: ['forwardToParent', 'clearInput'] },
+        'WORKER.ERROR': {
+          target: 'failed',
+          actions: ['forwardToParent', 'clearInput'],
+        },
       },
     },
     done: { type: 'final' },
@@ -141,7 +156,13 @@ interface TranscriptionContext {
 }
 
 type TranscriptionEvent =
-  | { type: 'START'; audio: Float32Array; sampleRate: number; duration: number; language: string }
+  | {
+      type: 'START'
+      audio: Float32Array
+      sampleRate: number
+      duration: number
+      language: string
+    }
   | { type: 'WORKER.RESULT.TRANSCRIPTION'; text: string }
   | { type: 'WORKER.PARTIAL_RESULT'; task: string; payload: unknown }
   | { type: 'WORKER.PROGRESS'; data: unknown }
@@ -152,14 +173,26 @@ export const transcriptionMachine = setup({
   types: {
     context: {} as TranscriptionContext,
     events: {} as TranscriptionEvent,
-    input: {} as { audio: Float32Array; sampleRate: number; duration: number; language: string } | undefined,
+    input: {} as
+      | {
+          audio: Float32Array
+          sampleRate: number
+          duration: number
+          language: string
+        }
+      | undefined,
     output: {} as { text: string },
   },
   actors: { transcribe: transcribeActor },
   actions: {
     setInput: assign(({ event }) => {
       assertEvent(event, 'START')
-      return { audio: event.audio, sampleRate: event.sampleRate, duration: event.duration, language: event.language }
+      return {
+        audio: event.audio,
+        sampleRate: event.sampleRate,
+        duration: event.duration,
+        language: event.language,
+      }
     }),
     assignResult: assign(({ event }) => {
       assertEvent(event, 'WORKER.RESULT.TRANSCRIPTION')
@@ -198,11 +231,17 @@ export const transcriptionMachine = setup({
         }),
       },
       on: {
-        'WORKER.RESULT.TRANSCRIPTION': { target: 'done', actions: 'assignResult' },
+        'WORKER.RESULT.TRANSCRIPTION': {
+          target: 'done',
+          actions: 'assignResult',
+        },
         'WORKER.PARTIAL_RESULT': { actions: 'forwardToParent' },
         'WORKER.PROGRESS': { actions: 'forwardToParent' },
         'WORKER.STATUS': { actions: 'forwardToParent' },
-        'WORKER.ERROR': { target: 'failed', actions: ['forwardToParent', 'clearInput'] },
+        'WORKER.ERROR': {
+          target: 'failed',
+          actions: ['forwardToParent', 'clearInput'],
+        },
       },
     },
     done: { type: 'final' },
@@ -218,6 +257,8 @@ interface TextCorrectionContext {
   text: string | null
   language: string
   correctedTranscript: string | null
+  retries: number
+  useWasm: boolean
 }
 
 type TextCorrectionEvent =
@@ -225,7 +266,9 @@ type TextCorrectionEvent =
   | { type: 'WORKER.RESULT.CORRECTION'; correctedTranscript: string }
   | { type: 'WORKER.PROGRESS'; data: unknown }
   | { type: 'WORKER.STATUS'; status: string }
-  | { type: 'WORKER.ERROR'; message: string }
+  | { type: 'WORKER.ERROR'; message: string; deviceLost?: boolean }
+
+const MAX_CORRECTION_RETRIES = 2
 
 export const textCorrectionMachine = setup({
   types: {
@@ -244,11 +287,21 @@ export const textCorrectionMachine = setup({
       assertEvent(event, 'WORKER.RESULT.CORRECTION')
       return { correctedTranscript: event.correctedTranscript }
     }),
+    incrementRetries: assign(({ context }) => ({
+      retries: context.retries + 1,
+    })),
+    enableWasmFallback: assign({ useWasm: true }),
+    fallbackToOriginal: assign(({ context }) => ({
+      correctedTranscript: context.text ?? '',
+    })),
     clearInput: assign({ text: null }),
     forwardToParent: sendParent(({ event }) => event as any),
   },
   guards: {
     hasInput: ({ context }) => context.text !== null && context.text.length > 0,
+    canRetry: ({ context }) => context.retries < MAX_CORRECTION_RETRIES,
+    isDeviceLost: ({ event }) =>
+      (event as TextCorrectionEvent & { deviceLost?: boolean }).deviceLost === true,
   },
 }).createMachine({
   id: 'text-correction',
@@ -256,28 +309,62 @@ export const textCorrectionMachine = setup({
     text: input?.text ?? null,
     language: input?.language ?? 'en',
     correctedTranscript: null,
+    retries: 0,
+    useWasm: false,
   }),
   initial: 'idle',
-  output: ({ context }) => ({ correctedTranscript: context.correctedTranscript! }),
+  output: ({ context }) => ({
+    correctedTranscript: context.correctedTranscript!,
+  }),
   states: {
     idle: {
       always: { guard: 'hasInput', target: 'correcting' },
       on: { START: { target: 'correcting', actions: 'setInput' } },
     },
+
     correcting: {
       invoke: {
         src: 'correctTranscript',
-        input: ({ context }) => ({ text: context.text!, language: context.language }),
+        input: ({ context }) => ({
+          text: context.text!,
+          language: context.language,
+          useWasm: context.useWasm,
+        }),
       },
       on: {
         'WORKER.RESULT.CORRECTION': { target: 'done', actions: 'assignResult' },
         'WORKER.PROGRESS': { actions: 'forwardToParent' },
         'WORKER.STATUS': { actions: 'forwardToParent' },
-        'WORKER.ERROR': { target: 'failed', actions: ['forwardToParent', 'clearInput'] },
+        'WORKER.ERROR': [
+          // GPU device lost → switch to WASM and retry
+          {
+            guard: 'isDeviceLost',
+            target: 'waiting_to_retry',
+            actions: ['incrementRetries', 'enableWasmFallback', 'forwardToParent'],
+          },
+          // Other error, retries remaining → retry on same device
+          {
+            guard: 'canRetry',
+            target: 'waiting_to_retry',
+            actions: ['incrementRetries', 'forwardToParent'],
+          },
+          // Out of retries → use original text
+          {
+            target: 'done',
+            actions: ['fallbackToOriginal', 'forwardToParent'],
+          },
+        ],
       },
     },
+
+    // Brief delay before retrying — gives GPU time to recover
+    waiting_to_retry: {
+      after: {
+        500: 'correcting',
+      },
+    },
+
     done: { type: 'final' },
-    failed: { always: { target: 'idle' } },
   },
 })
 
@@ -338,13 +425,22 @@ export const summarizationMachine = setup({
     summarizing: {
       invoke: {
         src: 'summarize',
-        input: ({ context }) => ({ text: context.text!, language: context.language }),
+        input: ({ context }) => ({
+          text: context.text!,
+          language: context.language,
+        }),
       },
       on: {
-        'WORKER.RESULT.SUMMARIZATION': { target: 'done', actions: 'assignResult' },
+        'WORKER.RESULT.SUMMARIZATION': {
+          target: 'done',
+          actions: 'assignResult',
+        },
         'WORKER.PROGRESS': { actions: 'forwardToParent' },
         'WORKER.STATUS': { actions: 'forwardToParent' },
-        'WORKER.ERROR': { target: 'failed', actions: ['forwardToParent', 'clearInput'] },
+        'WORKER.ERROR': {
+          target: 'failed',
+          actions: ['forwardToParent', 'clearInput'],
+        },
       },
     },
     done: { type: 'final' },
@@ -410,10 +506,16 @@ export const keywordExtractionMachine = setup({
         input: ({ context }) => ({ text: context.text! }),
       },
       on: {
-        'WORKER.RESULT.EXTRACT_KEYWORDS': { target: 'done', actions: 'assignResult' },
+        'WORKER.RESULT.EXTRACT_KEYWORDS': {
+          target: 'done',
+          actions: 'assignResult',
+        },
         'WORKER.PROGRESS': { actions: 'forwardToParent' },
         'WORKER.STATUS': { actions: 'forwardToParent' },
-        'WORKER.ERROR': { target: 'failed', actions: ['forwardToParent', 'clearInput'] },
+        'WORKER.ERROR': {
+          target: 'failed',
+          actions: ['forwardToParent', 'clearInput'],
+        },
       },
     },
     done: { type: 'final' },
@@ -421,6 +523,39 @@ export const keywordExtractionMachine = setup({
   },
 })
 
+function getWebGLGpuName(): string | null {
+  try {
+    const canvas = document.createElement('canvas')
+    const gl =
+      canvas.getContext('webgl') ?? canvas.getContext('experimental-webgl2')
+    if (!gl) return null
+    const ext = (gl as WebGLRenderingContext).getExtension(
+      'WEBGL_debug_renderer_info'
+    )
+    if (!ext) return null // If the extension is not available, return null
+    const renderer = (gl as WebGLRenderingContext).getParameter(
+      ext.UNMASKED_RENDERER_WEBGL
+    ) as string
+
+    if (renderer.startsWith('ANGLE (')) {
+      const inner = renderer.slice(7, -1)
+      const parts = inner.split(', ')
+      if (parts.length >= 2) {
+        return parts[1]
+          .replace(/\s+Direct3D\S*.*$/, '')
+          .replace(/^ANGLE Metal Renderer:\s*/, '')
+          .trim()
+      }
+    }
+
+    return renderer
+      .replace(/\/PCIe.*$/, '')
+      .replace(/\/SSE.*$/, '')
+      .trim()
+  } catch {
+    return null
+  }
+}
 // ============================================================================
 // TAG GENERATION MACHINE
 // ============================================================================
@@ -478,13 +613,22 @@ export const tagGenerationMachine = setup({
     generating: {
       invoke: {
         src: 'generateTags',
-        input: ({ context }) => ({ text: context.text!, language: context.language }),
+        input: ({ context }) => ({
+          text: context.text!,
+          language: context.language,
+        }),
       },
       on: {
-        'WORKER.RESULT.GENERATE_TAGS': { target: 'done', actions: 'assignResult' },
+        'WORKER.RESULT.GENERATE_TAGS': {
+          target: 'done',
+          actions: 'assignResult',
+        },
         'WORKER.PROGRESS': { actions: 'forwardToParent' },
         'WORKER.STATUS': { actions: 'forwardToParent' },
-        'WORKER.ERROR': { target: 'failed', actions: ['forwardToParent', 'clearInput'] },
+        'WORKER.ERROR': {
+          target: 'failed',
+          actions: ['forwardToParent', 'clearInput'],
+        },
       },
     },
     done: { type: 'final' },
@@ -508,8 +652,16 @@ export const pipelineMachine = setup({
   },
   actions: {
     assignHardwareInfo: assign(({ event }) => {
-      const output = (event as any).output as { executionProvider: 'webgpu' | 'wasm'; gpuInfo: string | null }
-      return { executionProvider: output.executionProvider, gpuInfo: output.gpuInfo }
+      const output = (event as any).output as {
+        executionProvider: 'webgpu' | 'wasm'
+        gpuInfo: string | null
+      }
+      let gpuInfo = output.gpuInfo ?? getWebGLGpuName()
+      console.debug('Detected hardware info:', {
+        executionProvider: output.executionProvider,
+        gpuInfo,
+      })
+      return { executionProvider: output.executionProvider, gpuInfo }
     }),
 
     assignFileAndAudio: assign(({ event }) => {
@@ -544,7 +696,11 @@ export const pipelineMachine = setup({
 
     updateProgress: assign(({ context, event }) => {
       assertEvent(event, 'WORKER.PROGRESS')
-      const data = event.data as { status?: string; progress?: number; file?: string } | null
+      const data = event.data as {
+        status?: string
+        progress?: number
+        file?: string
+      } | null
       if (!data || data.status !== 'progress' || data.file === undefined) {
         return { progress: null, loadingPhases: [] }
       }
@@ -568,7 +724,11 @@ export const pipelineMachine = setup({
       assertEvent(event, 'WORKER.STATUS')
       const name = modelNameFromStatus(event.status)
       if (event.status === 'ready') {
-        return { progress: null, loadingPhases: [], ...(name ? { modelName: name } : {}) }
+        return {
+          progress: null,
+          loadingPhases: [],
+          ...(name ? { modelName: name } : {}),
+        }
       }
       return name ? { modelName: name } : {}
     }),
@@ -587,6 +747,7 @@ export const pipelineMachine = setup({
     clearError: assign({ error: null }),
   },
 }).createMachine({
+  /** @xstate-layout N4IgpgJg5mDOIC5SwC4ENYAsC0AHAlrmADb4B2YAxAMICCActQKIAyA2gAwC6iouA9rHwp8-MrxAAPRAFYA7ABoQAT0QA2OQBYAdACYAjPoDMc4wA5dR+XIC+Npagw4CRUhUoB1APIAlANJMPtqBPr6cPEggAkIiYhLSCPJKqgj6HGZG2hwAnJoyRrocpjJq2UZ2DuhYeIQk5FTe-oHaAAqhAOI+TADK3eES0cKi4pEJ2Rz62kaaBboyuppmMunJiPq6FSCO1S517o0BQd0AKrTHAKp93AOCQ3GjiONm2jKaHEbZWnK6Ztn6aqtUgZnvo5FYODIzDNNHJPptts5am4wNoAMaYMCogDW5CgAH1MGgAE4QADuxKoEDEKPIADd+FiUYSSeSiWBsOjMVj+pFBrERqAEvI1NpspDFmp9BYPh9AWYpVlNG88kqIYY1PCqojXPU0RjsbiCcSyRTKGAiUT+ETtLhiGgUAAzK0AW20zJNbI5+u5115t358VkchFYqhZkl0rK2UBf0mcnSfzUpWy2STG3sWy1NR1FG0+AgxCotHOABEAJJePHnFosLy0Es8vj+4aBhBlXRZJZaGTrfKmGN5bQaV4ZJPjKWaTVObN7FEQMAoTEiMj4u0rgCuaBglCpubpDLnC6X2DXUE3MEbUWb90Fa0WciyRg4eV0ci0HEKihUaw4ameml0SVf3lZYZGyKcdiRXUUCJNAyFgVEiXwAAjXEd2pPMyHpRltBguCEKQ5CwEvPkWweVJ5h0T5dFjdZ0g+TRAVBZ53kKeVxzMUcIO1WdcNg+DEJQtCDmaFpaB8Y4y1oFg8S6bpzhYY4SOvAUpDWUoZG0MwwTSDRQ1TGMNFFH5JRKGEPjFbiZ2RbQ2TQCBlEoYty0rata3rZSYjI282wKTt5DyXsTH0OVNGyLI0mMGRotfNJbAzBFrN1OyHMoeSAFl0vEssAC0mE8u5VLGPz0gCns5mCwFNH0HQPzKTjYV0-IrN2GyUscpgAA1jh8WhqGOPEAgATUaEsrgiJsvJvNTfI7UruyC-tv0SeRtHjSFAOisE1B+FqoNzdrKHaJh6ECM4mDxU52nGm4pqKx4Sq7QKKqWlJYWeFMllKZ9IQ0Mw9pzFFYHXZ1nWJfAAC80N3GksIPbRgdB8GIeI31JsK1tPk0qExSMX5XkWHtAQKDgpjUQK5Hyf40gyAHeNRK02VRZd8UXSQUHQvc4ZwhmLWPPCBKQ3AUAKgNyOFUVxXDKVLCjQF8kyEw-i0KU0nkOmbLAdnYOZw1GWUUkrQgWBOdh7CUS1vDmewfXDZJWBRe8mao1FOijDUZ9OJhKrycVHIYs+J5QQ13UYAoWCWbxdAoBNmHMPN7Qw-Ne12Wjh20avO7MdWrRchmZZk2yXRAXWqYjHdz45HDarphD3NzUtIlKDkpglIz0jpqFYNJbDCNZdlZbQzWwoOByHG0nLuuLYtK0nNLCsqxrOsG3blTWwl0MJRlmVo2WmnwuWEC31i759DsDMyH4ed4EiRLWvqW6MfI3eUnGIc1HyRZ1SfSmp71LlDTulZGAR+YsfILAfAUHaeRyY1STNVOU3wtI-CsKOcmNE-75kLKAp2CQzATG0MYGYnwTCQjAsXQepQ9AaB+EUD27tJwJSzPfXM85Fy6xXHiU854QF+izuRQw+RCF4z-GFMCSxphMV-A+HIHw1AmHkfGeKlRpwsJRALAiQkVw4M7upcM2hNDyPyCUWECxchSKoWBORCiTBFD-u1HR90ED4MmEQj4YJKZLCLvLaKBilEFChO4naf9EZgyQlDbRfCn4+UEZkCE6RkzzFhDMYmb4DEWGMW+UeVdGEqMgoDNEjMlyGjZigRxrZLCaVeJ-GYHtLBVyMPLf4hDIQZGlB7Qw4EmGqP2hbbWaAOH4ltkbG+6MwEzViVkQ+iTXy5EacteYrjWl40sB09MeSeI2SThHEpW5RmZ2iRM-QQj4nhhTEkuZJcdoGJ7JCIoCweylD-g3K05TyIfFJhIz8RQFYIL3rpIc4YCiJhosc8+NggA */
   id: 'stash-pipeline',
   context: {
     executionProvider: 'unknown',
@@ -663,7 +824,10 @@ export const pipelineMachine = setup({
         onDone: {
           target: 'transcribing',
           actions: assign(({ event }) => ({
-            detectedLanguage: { language: event.output.language, confidence: event.output.confidence },
+            detectedLanguage: {
+              language: event.output.language,
+              confidence: event.output.confidence,
+            },
           })),
         },
       },
@@ -680,7 +844,7 @@ export const pipelineMachine = setup({
           language: context.detectedLanguage?.language ?? 'en',
         }),
         onDone: {
-          target: 'correcting_text',
+          target: 'gpu_cooldown',
           actions: assign(({ event }) => ({
             pendingTranscript: event.output.text,
             transcriptProgress: null,
@@ -691,6 +855,15 @@ export const pipelineMachine = setup({
       },
       on: {
         'WORKER.PARTIAL_RESULT': { actions: 'assignTranscriptProgress' },
+      },
+    },
+
+    // Brief pause after Whisper disposes to let the GPU release VRAM
+    // before loading tiny-aya for correction. Prevents DXGI_ERROR_DEVICE_HUNG
+    // on consumer GPUs (e.g. GTX 1650 with 4GB VRAM).
+    gpu_cooldown: {
+      after: {
+        750: 'correcting_text',
       },
     },
 
@@ -756,7 +929,9 @@ export const pipelineMachine = setup({
       invoke: {
         id: 'extract-keywords',
         src: 'extractKeywords',
-        input: ({ context }) => ({ text: context.summary || context.transcript }),
+        input: ({ context }) => ({
+          text: context.summary || context.transcript,
+        }),
         onDone: {
           target: 'ready',
           actions: assign(({ event }) => ({

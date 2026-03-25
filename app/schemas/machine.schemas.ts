@@ -770,6 +770,10 @@ const workerResultSummarization = z.object({
   type: z.literal('WORKER.RESULT.SUMMARIZATION'),
   text: z.string(),
 })
+const workerResultCorrection = z.object({
+  type: z.literal('WORKER.RESULT.CORRECTION'),
+  correctedTranscript: z.string(),
+})
 const workerResultExtractKeywords = z.object({
   type: z.literal('WORKER.RESULT.EXTRACT_KEYWORDS'),
   keywords: z.array(z.string()),
@@ -806,6 +810,7 @@ export const pipelineEvents = z.discriminatedUnion('type', [
   workerPartialResult,
   workerResultTranscription,
   workerResultSummarization,
+  workerResultCorrection,
   workerResultExtractKeywords,
   workerResultGenerateTags,
   workerErrorEvent,
@@ -843,7 +848,9 @@ export const pipelineContextSchema = z.object({
     .nullable(),
   audioDuration: z.number(),
   transcriptProgress: z.unknown().nullable(),
+  pendingTranscript: z.string().nullable(),
   transcript: z.string(),
+  correctedTranscript: z.string(),
   summary: z.string(),
   keywords: z.array(z.string()),
   generatedTags: z.array(z.string()),

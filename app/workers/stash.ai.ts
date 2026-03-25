@@ -339,47 +339,108 @@ envNext8.useBrowserCache = true
 envNext8.allowRemoteModels = true
 
 // -------------------------
-// WebGPU Device Manager
+// WebGPU Device Manager (generic fallback chain)
 // -------------------------
+// Works on any device: phones (no GPU), laptops (1 GPU),
+// desktops (discrete + integrated), etc.
+// Fallback order: high-performance GPU → low-power GPU → WASM
 const WebGPUDeviceManager = {
-  adapter: null as GPUAdapter | null,
   device: null as GPUDevice | null,
-  listenersAttached: false,
+  adapters: [] as { adapter: GPUAdapter; name: string; preference: string }[],
+  currentAdapterIndex: 0,
+
+  async getAdapterName(adapter: GPUAdapter): Promise<string> {
+    try {
+      const info = (adapter as any).info as { description?: string; vendor?: string } | undefined
+      return info?.description || info?.vendor || 'unknown'
+    } catch {
+      return 'unknown'
+    }
+  },
+
+  /** Discover all available GPU adapters on this device */
+  async discoverAdapters(): Promise<void> {
+    if (this.adapters.length > 0) return // already discovered
+
+    const preferences = ['high-performance', 'low-power'] as const
+    const seen = new Set<string>()
+
+    for (const pref of preferences) {
+      try {
+        const adapter = await navigator.gpu?.requestAdapter({ powerPreference: pref })
+        if (!adapter) continue
+        const name = await this.getAdapterName(adapter)
+        // Deduplicate — same GPU may appear for both preferences
+        const key = name.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        this.adapters.push({ adapter, name, preference: pref })
+        console.log(`Discovered GPU: ${name} (${pref})`)
+      } catch { /* GPU not available */ }
+    }
+
+    if (this.adapters.length === 0) {
+      console.warn('No WebGPU adapters found — will use WASM')
+    }
+  },
 
   async init(): Promise<GPUDevice> {
     if (this.device) return this.device
+    await this.discoverAdapters()
 
-    this.adapter = await navigator.gpu.requestAdapter()
-    if (!this.adapter) {
-      throw new Error('WebGPU adapter not available')
+    if (this.adapters.length === 0) {
+      throw new Error('No WebGPU adapters available')
     }
 
-    this.device = await this.adapter.requestDevice()
-    console.log(
-      'WebGPU adapter and device initialized',
-      this.adapter,
-      this.device
-    )
+    const { adapter, name } = this.adapters[this.currentAdapterIndex]
+    this.device = await adapter.requestDevice()
+    console.log(`WebGPU initialized on: ${name}`)
 
-    if (!this.listenersAttached) {
-      this.listenersAttached = true
-
-      this.device.lost.then(async (info) => {
-        console.warn('WebGPU device lost:', info.message)
-
-        this.adapter = await navigator.gpu.requestAdapter()
-        if (!this.adapter) {
-          throw new Error('WebGPU adapter not available after device loss')
-        }
-        this.device = await this.adapter.requestDevice()
-
-        console.warn('WebGPU device restored')
-
-        await PipelineManager.resetAllPipelines()
-      })
-    }
+    this.device.lost.then(async (info) => {
+      console.warn(`GPU device lost (${name}):`, info.message)
+      this.device = null
+      await PipelineManager.resetAllPipelines()
+    })
 
     return this.device
+  },
+
+  /** Try the next available GPU adapter. Returns null if none left. */
+  async switchToNextAdapter(): Promise<GPUDevice | null> {
+    this.device = null
+    this.currentAdapterIndex++
+
+    if (this.currentAdapterIndex >= this.adapters.length) {
+      console.warn('No more GPU adapters to try')
+      return null
+    }
+
+    const { adapter, name } = this.adapters[this.currentAdapterIndex]
+    console.warn(`Switching to next GPU: ${name}`)
+
+    try {
+      this.device = await adapter.requestDevice()
+      this.device.lost.then(async (info) => {
+        console.warn(`GPU device lost (${name}):`, info.message)
+        this.device = null
+        await PipelineManager.resetAllPipelines()
+      })
+      console.warn(`Successfully switched to: ${name}`)
+      return this.device
+    } catch (e) {
+      console.error(`Failed to init ${name}:`, e)
+      return this.switchToNextAdapter() // try the next one
+    }
+  },
+
+  /** Check if there are more adapters to try */
+  hasMoreAdapters(): boolean {
+    return this.currentAdapterIndex < this.adapters.length - 1
+  },
+
+  /** Check if WebGPU is available at all on this device */
+  isAvailable(): boolean {
+    return this.adapters.length > 0
   },
 }
 
@@ -411,10 +472,18 @@ export class PipelineManager {
     const key = `${task}-${model}`
 
     if (!this.instances[key]) {
-      await WebGPUDeviceManager.init()
+      // Try WebGPU first, fall back to WASM if unavailable
+      let device: 'webgpu' | 'wasm' = 'webgpu'
+      try {
+        await WebGPUDeviceManager.init()
+      } catch {
+        console.warn('WebGPU not available, using WASM')
+        device = 'wasm'
+      }
+      const dtype = device === 'wasm' ? 'q4' : (MODEL_DTYPE[model] ?? 'fp16')
       const opts = {
-        device: 'webgpu' as const,
-        dtype: (MODEL_DTYPE[model] ?? 'fp16') as any,
+        device: device as const,
+        dtype: dtype as any,
         progress_callback: progressCallback,
       }
       try {
@@ -717,6 +786,7 @@ export async function correctTranscript(
   onProgress: ProgressCallback
 ): Promise<string> {
   await PipelineManager.resetAllPipelines()
+
   const pipe = await PipelineManager.getPipeline(
     'text-generation',
     'onnx-community/tiny-aya-global-ONNX',
@@ -724,11 +794,8 @@ export async function correctTranscript(
   )
 
   const systemPrompt = CORRECT_TRANSCRIPT_SYSTEM_PROMPT(params)
-  // FIX: increased chunk size from 512 to 1000 chars
-  //      512 chars splits Hebrew sentences mid-word, losing context
-  //      tiny-aya has 8k context, 1000 chars is safe
   const chunks =
-    params.text.length > 1000 ? toChunk(params.text, 1000) : [params.text]
+    params.text.length > 600 ? toChunk(params.text, 600) : [params.text]
   const correctedChunks: string[] = []
 
   try {
@@ -743,28 +810,74 @@ export async function correctTranscript(
       }) as string
       const tokens = pipe.tokenizer.tokenize(chunk)
       const inferenceOpts = {
-        max_new_tokens: tokens.length + 50,
+        max_new_tokens: Math.min(tokens.length + 30, 400),
         do_sample: false,
         return_full_text: false,
-        repetition_penalty: 1.05, // NEW: light penalty, correction should stay close to input
+        repetition_penalty: 1.05,
       }
+
       console.log(`Correcting chunk ${i + 1} of ${chunks.length}`)
+
       try {
         const output = await pipe(prompt, inferenceOpts)
         correctedChunks.push(serializeSummaryPayload(output))
       } catch (e) {
-        console.warn(
-          `Correction inference failed for chunk ${i + 1}, resetting and retrying:`,
-          e
-        )
+        const errMsg = e instanceof Error ? e.message : String(e)
+        const isDeviceLost = errMsg.includes('Device') && errMsg.includes('lost')
+
+        if (!isDeviceLost) throw e // non-GPU errors bubble up
+
+        console.warn(`GPU device lost on chunk ${i + 1}, attempting fallback chain...`)
         await PipelineManager.resetAllPipelines()
-        const freshPipe = await PipelineManager.getPipeline(
-          'text-generation',
-          'onnx-community/tiny-aya-global-ONNX',
-          onProgress
-        )
-        const retryOutput = await freshPipe(prompt, inferenceOpts)
-        correctedChunks.push(serializeSummaryPayload(retryOutput))
+
+        // Fallback chain: try remaining GPUs → WASM
+        let fallbackPipe: any = null
+        while (WebGPUDeviceManager.hasMoreAdapters()) {
+          try {
+            const nextDevice = await WebGPUDeviceManager.switchToNextAdapter()
+            if (!nextDevice) break
+            fallbackPipe = await pipeline('text-generation', 'onnx-community/tiny-aya-global-ONNX', {
+              device: 'webgpu' as const,
+              dtype: (MODEL_DTYPE['onnx-community/tiny-aya-global-ONNX'] ?? 'fp16') as any,
+              progress_callback: onProgress,
+            })
+            break // success — use this adapter
+          } catch (adapterErr) {
+            console.warn('Next GPU adapter also failed:', adapterErr)
+            fallbackPipe = null
+          }
+        }
+
+        // Last resort: WASM (works everywhere — phones, old laptops, etc.)
+        if (!fallbackPipe) {
+          console.warn('All GPUs exhausted, falling back to WASM (CPU)')
+          fallbackPipe = await pipeline('text-generation', 'onnx-community/tiny-aya-global-ONNX', {
+            device: 'wasm' as const, dtype: 'q4' as any, progress_callback: onProgress,
+          })
+        }
+
+        try {
+          // Process current + remaining chunks on fallback
+          for (let j = i; j < chunks.length; j++) {
+            const msg: ChatMessage[] = [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: chunks[j] },
+            ]
+            const p = fallbackPipe.tokenizer.apply_chat_template(msg, {
+              tokenize: false, add_generation_prompt: true,
+            }) as string
+            const t = fallbackPipe.tokenizer.tokenize(chunks[j])
+            console.log(`Correcting chunk ${j + 1} of ${chunks.length} (fallback)`)
+            const out = await fallbackPipe(p, {
+              max_new_tokens: Math.min(t.length + 30, 400),
+              do_sample: false, return_full_text: false, repetition_penalty: 1.05,
+            })
+            correctedChunks.push(serializeSummaryPayload(out))
+          }
+        } finally {
+          await fallbackPipe?.dispose?.()
+        }
+        break // exit outer loop, remaining chunks done via fallback
       }
     }
     return correctedChunks.join(' ')

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createActor, createMachine, waitFor } from 'xstate'
-import { detectLanguageActor } from '../../machines/stash/pipeline.actors'
-import { pipelineMachine } from '../../machines/stash/pipeline.machine'
+import { detectLanguageActor } from '../../machines/pipeline/pipeline.actors'
+import { pipelineMachine } from '../../machines/pipeline/pipeline.machine'
 
 // Mock stash.ai so no real models load
 vi.mock('@/workers/stash.ai', () => ({

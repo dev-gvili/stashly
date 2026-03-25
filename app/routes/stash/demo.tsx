@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import type { WorkerSnapshot } from '@/types/machine.types'
 import { initialWorkerSnapshot } from '@/types/machine.types'
-import { Loader2 } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import { Button } from '@/ui/button'
 import { Badge } from '@/ui/badge'
 import { Progress } from '@/ui/progress'
@@ -16,7 +16,8 @@ import {
   AiKeywordsIcon,
   AiTagsIcon,
   CopyIcon,
-} from '../../components/icons'
+  VerifyTranscriptIcon
+} from '@/components/icons'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ const STATE_LABELS: Record<string, string> = {
   idle: 'STANDBY',
   detecting_language: 'DETECTING',
   transcribing: 'TRANSCRIBING',
+  correcting_text: 'CORRECTING',
   ready: 'DONE',
   summarizing: 'SUMMARIZING',
   extracting_keywords: 'KEYWORDS',
@@ -91,7 +93,7 @@ function AppHeader({
 }) {
   const isError = stateValue === 'error'
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm">
       <div className="max-w-4xl mx-auto px-6 h-10 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-[9px] font-bold tracking-[0.35em] uppercase text-muted-foreground">
@@ -281,14 +283,19 @@ function UploadTranscribingState({
 
 function UploadPostProcessingState({ stateValue }: { stateValue: string }) {
   const label =
-    stateValue === 'summarizing'
-      ? 'Summarizing'
-      : stateValue === 'extracting_keywords'
-        ? 'Extracting Keywords'
-        : 'Generating Tags'
+    stateValue === 'correcting_text'
+      ? 'Verifying Transcript'
+      : stateValue === 'summarizing'
+        ? 'Summarizing'
+        : stateValue === 'extracting_keywords'
+          ? 'Extracting Keywords'
+          : 'Generating Tags'
 
   return (
     <div className="flex flex-col items-center gap-4 animate-in fade-in duration-200">
+      {stateValue === 'correcting_text' && (
+        <VerifyTranscriptIcon className="w-8 h-8 text-primary animate-pulse" />
+      )}
       {stateValue === 'summarizing' && (
         <SummarizeIcon className="w-8 h-8 text-primary animate-pulse" />
       )}
@@ -327,7 +334,8 @@ function UploadZone({
   const showDetecting = stateValue === 'detecting_language' && !showLoading
   const showTranscribing = stateValue === 'transcribing' && !showLoading
   const showPostProcessing =
-    (stateValue === 'summarizing' ||
+    (stateValue === 'correcting_text' ||
+      stateValue === 'summarizing' ||
       stateValue === 'extracting_keywords' ||
       stateValue === 'generating_tags') &&
     !showLoading
@@ -335,13 +343,13 @@ function UploadZone({
   return (
     <div className="relative group">
       {/* Viewfinder corners */}
-      <div className="absolute -top-px -left-px w-4 h-4 border-t border-l border-primary z-10 pointer-events-none rounded-tl" />
-      <div className="absolute -top-px -right-px w-4 h-4 border-t border-r border-primary z-10 pointer-events-none rounded-tr" />
-      <div className="absolute -bottom-px -left-px w-4 h-4 border-b border-l border-primary z-10 pointer-events-none rounded-bl" />
-      <div className="absolute -bottom-px -right-px w-4 h-4 border-b border-r border-primary z-10 pointer-events-none rounded-br" />
+      <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-primary z-10 pointer-events-none rounded-tl" />
+      <div className="absolute -top-px right-0 w-4 h-4 border-t-2 border-r-2 border-primary z-10 pointer-events-none rounded-tr" />
+      <div className="absolute -bottom-px left-0 w-4 h-4 border-b-2 border-l-2 border-primary z-10 pointer-events-none rounded-bl" />
+      <div className="absolute -bottom-px right-0 w-4 h-4 border-b-2 border-r-2 border-primary z-10 pointer-events-none rounded-br" />
 
       <div
-        className={`relative h-56 border border-dashed flex items-center justify-center transition-all duration-300 overflow-hidden ${
+        className={`relative h-56 border-2 border-border flex items-center justify-center transition-all duration-300 overflow-hidden ${
           isProcessing
             ? 'cursor-default border-primary/25 bg-primary/2'
             : isError
@@ -406,7 +414,7 @@ function MetadataStrip({
           </span>
         </>
       )}
-      <span className="ml-auto truncate max-w-48 text-right">
+      <span className="ml-auto truncate max-w-60 text-right" title={gpuShort || undefined}>
         {executionProvider}
         {gpuShort ? ` · ${gpuShort}` : ''}
       </span>
@@ -416,6 +424,7 @@ function MetadataStrip({
 
 function TranscriptCard({
   transcript,
+  rawTranscript,
   detectedLanguage,
   isProcessing,
   onRunSummary,
@@ -424,6 +433,7 @@ function TranscriptCard({
   onCopy,
 }: {
   transcript: string
+  rawTranscript: string
   detectedLanguage: DetectedLanguage | null
   isProcessing: boolean
   onRunSummary: () => void
@@ -431,6 +441,9 @@ function TranscriptCard({
   onRunGenerateTags: () => void
   onCopy: (text: string) => void
 }) {
+  const wordCount = transcript.trim() ? transcript.trim().split(/\s+/).length : 0
+  const approxTokens = Math.ceil(rawTranscript.length / 4)
+
   return (
     <div className="border border-border animate-in slide-in-from-bottom-3 fade-in duration-400 rounded bg-sidebar">
       <div className="flex items-center justify-between px-4 py-2 border-b border-border">
@@ -476,7 +489,7 @@ function TranscriptCard({
           </Button>
         </div>
       </div>
-      <ScrollArea className="max-h-60 min-h-0">
+      <ScrollArea className="h-64 min-h-0">
         <div className="px-4 py-4">
           <p
             dir={detectedLanguage?.language === 'he' ? 'rtl' : 'ltr'}
@@ -486,6 +499,15 @@ function TranscriptCard({
           </p>
         </div>
       </ScrollArea>
+      <div className="flex items-center gap-3 px-4 py-2 border-t border-border/30">
+        <span className="text-[9px] tracking-[0.18em] uppercase text-muted-foreground/35">
+          {wordCount.toLocaleString()} words
+        </span>
+        <span className="text-border/30">·</span>
+        <span className="text-[9px] tracking-[0.18em] uppercase text-muted-foreground/35">
+          ~{approxTokens.toLocaleString()} tokens
+        </span>
+      </div>
     </div>
   )
 }
@@ -546,7 +568,6 @@ function KeywordsTagsGrid({
               <Badge
                 key={i}
                 variant="outline"
-                className="text-[9px] tracking-wide rounded-none border-border/40 text-muted-foreground/60 font-stashly py-0.5"
               >
                 {keyword}
               </Badge>
@@ -560,11 +581,11 @@ function KeywordsTagsGrid({
             Tags
           </span>
           <div className="flex flex-wrap gap-1.5">
-            {generatedTags.map((tag, i) => (
+            {generatedTags.sort((a, b) => a.localeCompare(b)).map((tag, i) => (
               <Badge
                 key={i}
-                variant="outline"
-                className="text-[9px] tracking-wide rounded-none border-primary/20 text-primary/60 font-stashly py-0.5"
+                variant="secondary"
+                className="font-stashly rounded! text-muted-foreground"
               >
                 {tag}
               </Badge>
@@ -581,6 +602,13 @@ function KeywordsTagsGrid({
 export default function App() {
   const workerRef = useRef<Worker | null>(null)
   const [snapshot, setSnapshot] = useState<WorkerSnapshot>(initialWorkerSnapshot)
+  const [fileObjectUrl, setFileObjectUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (fileObjectUrl) URL.revokeObjectURL(fileObjectUrl)
+    }
+  }, [fileObjectUrl])
 
   useEffect(() => {
     const worker = new Worker(
@@ -603,6 +631,10 @@ export default function App() {
   const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setFileObjectUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return URL.createObjectURL(file)
+    })
     try {
       const ctx = new window.AudioContext({ sampleRate: 16000 })
       const arrayBuffer = await file.arrayBuffer()
@@ -646,20 +678,49 @@ export default function App() {
     send({ type: 'GENERATE_TAGS' })
   }
 
+  const handleCancel = () => {
+    send({ type: 'CANCEL' })
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground font-stashly">
       <AppHeader modelName={context.modelName} stateValue={stateValue} isProcessing={isProcessing} />
 
       <main className="max-w-4xl mx-auto px-6 py-12 space-y-8">
-        <UploadZone
-          stateValue={stateValue}
-          isProcessing={isProcessing}
-          loadingPhases={context.loadingPhases}
-          progress={context.progress}
-          transcriptProgress={context.transcriptProgress as ChunkProgress | null}
-          audioDuration={context.audioDuration}
-          onUpload={handleAudioUpload}
-        />
+        <div className="space-y-3">
+          <UploadZone
+            stateValue={stateValue}
+            isProcessing={isProcessing}
+            loadingPhases={context.loadingPhases}
+            progress={context.progress}
+            transcriptProgress={context.transcriptProgress as ChunkProgress | null}
+            audioDuration={context.audioDuration}
+            onUpload={handleAudioUpload}
+          />
+          {isProcessing && (
+            <div className="flex justify-end">
+              <Button
+                onClick={handleCancel}
+                variant="ghost"
+                size="sm"
+                className="text-[9px] font-bold tracking-[0.25em] uppercase text-muted-foreground/50 hover:text-destructive-foreground gap-1.5 h-7"
+              >
+                <X className="w-3 h-3" />
+                Cancel
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {fileObjectUrl && context.fileInfo && (
+          <div className="w-full rounded-lg overflow-hidden bg-black/5 border border-white/10">
+            {context.fileInfo.type.startsWith('video/') ? (
+              <video src={fileObjectUrl} controls className="w-full max-h-72 rounded-lg" />
+            ) : (
+              <audio src={fileObjectUrl} controls className="w-full" />
+            )}
+          </div>
+        )}
 
         {context.fileInfo && (
           <MetadataStrip
@@ -672,7 +733,8 @@ export default function App() {
 
         {context.transcript && (
           <TranscriptCard
-            transcript={context.transcript}
+            transcript={context.correctedTranscript}
+            rawTranscript={context.transcript}
             detectedLanguage={context.detectedLanguage}
             isProcessing={isProcessing}
             onRunSummary={runSummary}

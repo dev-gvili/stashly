@@ -2445,3 +2445,35 @@ const AiGenerateIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 export { AiGenerateIcon }
+
+const VerifyTranscriptIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M12 4v16"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M16 7v10M8 7v10"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M20 11v2M4 11v2"
+    />
+  </svg>
+);
+export {VerifyTranscriptIcon};
