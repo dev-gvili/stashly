@@ -482,7 +482,7 @@ export class PipelineManager {
       }
       const dtype = device === 'wasm' ? 'q4' : (MODEL_DTYPE[model] ?? 'fp16')
       const opts = {
-        device: device as const,
+        device,
         dtype: dtype as any,
         progress_callback: progressCallback,
       }
