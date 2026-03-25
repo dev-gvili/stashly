@@ -19,6 +19,7 @@ type TranscribeInput = {
   sampleRate: number
   duration: number
   language: string
+  contentHint?: 'music' | 'speech' | 'auto'
 }
 type SummarizeInput = { text: string; language: string }
 type CorrectTranscriptInput = {

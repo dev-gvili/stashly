@@ -677,6 +677,7 @@ export const pipelineMachine = setup({
           audio: event.audio,
           sampleRate: event.sampleRate,
           duration: event.duration,
+          contentHint: event.contentHint,
         },
         audioDuration: event.duration,
         pendingTranscript: null,
@@ -842,6 +843,7 @@ export const pipelineMachine = setup({
           sampleRate: context.pendingAudio!.sampleRate,
           duration: context.pendingAudio!.duration,
           language: context.detectedLanguage?.language ?? 'en',
+          contentHint: context.pendingAudio?.contentHint,
         }),
         onDone: {
           target: 'gpu_cooldown',

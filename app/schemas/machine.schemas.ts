@@ -796,6 +796,7 @@ const pipelineAudioUpload = z.object({
   fileName: z.string(),
   fileType: z.string(),
   fileSize: z.number(),
+  contentHint: z.enum(['music', 'speech', 'auto']).optional(),
 })
 const pipelineSummarize = z.object({ type: z.literal('SUMMARIZE') })
 const pipelineExtractKeywords = z.object({ type: z.literal('EXTRACT_KEYWORDS') })
@@ -838,6 +839,7 @@ export const pipelineContextSchema = z.object({
       audio: z.instanceof(Float32Array),
       sampleRate: z.number(),
       duration: z.number(),
+      contentHint: z.enum(['music', 'speech', 'auto']).optional(),
     })
     .nullable(),
   modelName: z.string().nullable(),

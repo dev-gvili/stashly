@@ -623,11 +623,25 @@ export async function transcribeAudio(
     sampleRate: number
     duration: number
     language: string
+    contentHint?: 'music' | 'speech' | 'auto'
   },
   onProgress: ProgressCallback,
   onPartialResult: PartialResultCallback
 ): Promise<string> {
   const { audio, sampleRate, duration, language } = params
+  const contentHint = params.contentHint ?? 'auto'
+
+  // Whisper prompt guides transcription style.
+  // - 'music': optimized for lyrics, ad-libs, slang
+  // - 'speech': no prompt, cleanest for lectures/greetings/conversations
+  // - 'auto': neutral prompt that doesn't bias either direction
+  const WHISPER_PROMPTS: Record<string, string | undefined> = {
+    music:
+      'The audio contains music with lyrics. Transcribe all sung words, ad-libs, slang, and repetitive phrases exactly as heard.',
+    speech: undefined, // no prompt — Whisper is cleanest for speech without one
+    auto: undefined,   // no prompt by default — less hallucination risk
+  }
+  const whisperPrompt = WHISPER_PROMPTS[contentHint]
 
   console.log('Attempting to load whisper-large-v3-turbo from Hugging Face...')
 
@@ -641,30 +655,42 @@ export async function transcribeAudio(
   const partialTexts: string[] = []
 
   if (duration > 30) {
-    const chunks = makeChunks(audio, sampleRate, 30.5, 0)
+    // Use 60s audio chunks — Whisper internally splits each into 30s pieces
+    // with 5s overlap (stride_length_s), handling word boundaries correctly.
+    // This halves the number of GPU round-trips vs 30.5s chunks:
+    // 19 min → ~19 chunks (vs ~38 with 30.5s chunks)
+    const chunks = makeChunks(audio, sampleRate, 60, 0)
+    console.log(`Audio duration: ${duration.toFixed(1)}s → ${chunks.length} chunks (60s)`)
 
     for (const [index, chunk] of chunks.entries()) {
+      const chunkDuration = chunk.length / sampleRate
       const res: ASRResult = await asrPipe(chunk, {
         language,
-        chunk_length_s: chunk.length / sampleRate, // This is the duration of the chunk in seconds
-        stride_length_s: 5, // This is the duration of the overlap between chunks in seconds (e.g., 0.5 seconds)
+        chunk_length_s: 30,
+        stride_length_s: 5,
         remove_invalid_values: true,
         return_whole_text: false,
         return_timestamps: true,
         return_language: true,
         batch_size: 16,
-        prompt:
-          'Yo, check it. The lyrics here include ad-libs, slang, and repetitive phrases. No periods at the end of every line, just raw flow and rhythm.',
+        ...(whisperPrompt ? { prompt: whisperPrompt } : {}),
       })
       const text = res.text || ''
       partialTexts.push(text)
-      onPartialResult('transcription', { index, text })
-      console.log(`Processed chunk ${index + 1} of ${chunks.length}`)
-      console.log(
-        res.chunks
-          ?.map((c) => `[${c.timestamp[0]} - ${c.timestamp[1]}]:${c.text}`)
-          .join('\n') ?? text
-      )
+      onPartialResult('transcription', {
+        index,
+        text,
+        total: chunks.length,
+        progress: Math.round(((index + 1) / chunks.length) * 100),
+      })
+      console.log(`Transcribed chunk ${index + 1}/${chunks.length} (${Math.round(((index + 1) / chunks.length) * 100)}%) — ${chunkDuration.toFixed(1)}s of audio`)
+      if (DEBUG && res.chunks) {
+        console.log(
+          res.chunks
+            .map((c) => `[${c.timestamp[0]} - ${c.timestamp[1]}]:${c.text}`)
+            .join('\n')
+        )
+      }
     }
   } else {
     const res: ASRResult = await asrPipe(audio, {
@@ -674,6 +700,7 @@ export async function transcribeAudio(
       return_timestamps: true,
       return_language: true,
       batch_size: 16,
+      ...(whisperPrompt ? { prompt: whisperPrompt } : {}),
     })
     console.log(res)
     if (!res.chunks) partialTexts.push(res.text)
