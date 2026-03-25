@@ -7,7 +7,7 @@ type DateStyle = Intl.DateTimeFormatOptions['dateStyle']
  */
 export function datetime(
   locale = 'he-IL',
-  style: DateStyle = 'short',
+  style: DateStyle = 'short', 
   date: Date
 ) {
   return new Intl.DateTimeFormat(locale, {

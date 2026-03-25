@@ -1,34 +1,105 @@
 # Stashly Project Roadmap
 
-## Phase 1: Foundation & Core Architecture (Months 1-2)
+## Overview
 
-### Goal
+Stashly is a secure, intuitive, and powerful file storage and collaboration platform. This document outlines the full development roadmap, combining product goals, technical architecture, and a learner-friendly rationale for each phase.
 
-Establish a robust foundation for the file management system with a focus on core architecture, state management, and basic UI components.
+---
 
-### Description
+## Project Structure
 
-This phase focuses on setting up the project with a solid architectural foundation. We'll implement the core state management using XState for complex workflows, establish a scalable folder structure, and create essential UI components. The goal is to have a stable base that can support future features.
+```
+.
+├── app/                     # Main application folder
+│   ├── .client/             # Client-side specific logic
+│   ├── .server/             # Server-side logic (API, auth, etc.)
+│   ├── assets/              # Static assets
+│   ├── auth/                # Authentication components and logic
+│   ├── components/          # UI components
+│   ├── hooks/               # Custom React hooks
+│   ├── machines/            # XState state machines
+│   ├── prisma/              # Prisma client generation for browser
+│   ├── routes/              # Application routes/pages
+│   ├── styles/              # Global and shared styles
+│   ├── types/               # TypeScript type definitions
+│   └── utils/               # Utility functions
+├── components/              # Shared, reusable UI components
+│   ├── comments-panel.tsx
+│   ├── file-card.tsx
+│   ├── file-grid.tsx
+│   ├── file-list-item.tsx
+│   ├── file-manager.tsx
+│   ├── file-preview.tsx
+│   ├── folder-card.tsx
+│   ├── settings-page.tsx
+│   ├── share-folder-modal.tsx
+│   ├── sidebar.tsx
+│   └── storage-panel.tsx
+├── docs/                    # Project documentation
+├── hooks/                   # Global custom React hooks
+│   └── use-mobile.ts
+├── prisma/                  # Database configuration
+│   ├── migrations/
+│   ├── models/
+│   ├── seedData/
+│   └── schema.prisma
+├── public/                  # Publicly accessible files
+├── scripts/                 # Automation and utility scripts
+│   ├── apply-index-settings.ts
+│   ├── gen.ts
+│   ├── generate.ts
+│   └── push-to-algolia.ts
+├── server/                  # Backend server
+│   ├── adapters/
+│   ├── middleware/
+│   └── plugins/
+├── tests/
+│   ├── e2e/
+│   ├── integration/
+│   └── unit/
+├── .github/
+│   ├── instructions/
+│   └── prompts/
+├── package.json
+├── vite.config.ts
+└── server.js
+```
+
+---
+
+## Phase 1: Foundation & Core Functionality (MVP)
+
+**Why:** Build the Minimum Viable Product to launch, gather feedback, and validate the core idea without getting bogged down in complex features. A roadmap ensures focus, clarity, and motivation by breaking a large project into smaller milestones.
+
+**Status:** Most features complete.
+
+- [x] **User Authentication:** Secure user sign-up, login, and password management.
+- [x] **File Uploads:** Ability to upload files, including large files using multipart uploads.
+- [x] **File Storage:** Securely store files using AWS S3.
+- [x] **File Management:** View, organize, rename, and delete files.
+- [x] **Dashboard UI:** A central dashboard to display user's files and storage usage.
+- [x] **Basic Subscription:** Integration with Stripe for basic subscription plans.
+- [x] **Storage Quotas:** Enforce storage limits based on user subscription plans.
 
 ### Folder Structure
 
 ```
 app/
 ├── components/
-│   ├── ui/                 # Reusable UI components (buttons, inputs, etc.)
-│   ├── layouts/            # Page layouts and structural components
-│   └── upload/             # File upload related components
-├── machines/               # XState machines for complex workflows
-│   ├── actors/             # Individual actor machines
-│   └── types/              # Shared types for state machines
-├── routes/                 # React Router route components
-│   ├── api/                # API route handlers
-│   └── auth/               # Authentication routes
-├── .server/                # Server-side code (services, repositories)
-│   ├── services/           # Business logic layer
-│   ├── repositories/       # Data access layer
-│   └── filters/            # Query filter builders
-└── hooks/                  # Custom React hooks
+│   ├── ui/                 # Reusable UI components
+│   ├── layouts/            # Page layouts
+│   └── upload/             # File upload components
+├── machines/               # XState machines
+│   ├── actors/
+│   └── types/
+├── routes/
+│   ├── api/
+│   └── auth/
+├── .server/
+│   ├── services/
+│   ├── repositories/
+│   └── filters/
+└── hooks/
 ```
 
 ### Tasks
@@ -44,39 +115,40 @@ app/
 - [ ] Implement basic error handling and logging
 - [ ] Create project documentation and contribution guidelines
 
-## Phase 2: File Management & Upload System (Months 3-4)
+---
 
-### Goal
+## Phase 2: File Management & Upload System
 
-Implement a comprehensive file upload and management system with support for large files, progress tracking, and storage quotas.
+**Why:** Transform Stashly into a fully functional file management platform with robust upload capabilities, quota enforcement, and an intuitive UI.
 
-### Description
-
-This phase will focus on building the core file management capabilities. We'll implement a robust upload system that supports large files through multipart uploads, progress tracking, and pause/resume functionality. Storage quotas will be enforced, and users will be able to manage their files through a intuitive interface.
+- [x] **File Uploads** (multipart, large files)
+- [x] **File Storage** (AWS S3)
+- [x] **File Management** (view, organize, rename, delete)
+- [x] **Storage Quotas** (XState-managed)
 
 ### Folder Structure
 
 ```
 app/
 ├── components/
-│   ├── file-manager/       # File browsing and management UI
+│   ├── file-manager/
 │   ├── upload/
-│   │   ├── uploader.tsx    # Main file uploader component
-│   │   ├── progress.tsx    # Upload progress indicators
-│   │   └── queue.tsx       # Upload queue management
+│   │   ├── uploader.tsx
+│   │   ├── progress.tsx
+│   │   └── queue.tsx
 │   └── workspace/
-│       ├── sidebar.tsx     # Workspace navigation
-│       └── file-list.tsx   # File listing component
+│       ├── sidebar.tsx
+│       └── file-list.tsx
 ├── machines/
-│   ├── upload.machine.ts   # Main upload orchestration machine
-│   ├── file.machine.ts     # Individual file state management
-│   ├── queue.machine.ts    # Upload queue management
-│   └── quota.machine.ts    # Storage quota tracking
+│   ├── upload.machine.ts
+│   ├── file.machine.ts
+│   ├── queue.machine.ts
+│   └── quota.machine.ts
 └── .server/
     ├── services/
-    │   └── file.service.ts # File management business logic
+    │   └── file.service.ts
     └── adapters/
-        └── s3.adapter.ts   # S3 storage integration
+        └── s3.adapter.ts
 ```
 
 ### Tasks
@@ -92,37 +164,40 @@ app/
 - [ ] Implement file metadata extraction and storage
 - [ ] Create responsive and accessible UI components
 
-## Phase 3: Collaboration & Sharing (Months 5-6)
+---
 
-### Goal
+## Phase 3: Collaboration & Sharing
 
-Enable file sharing and collaboration features, allowing users to share files and folders with others and manage permissions.
+**Why:** Transform Stashly from a personal storage tool into a collaborative platform. The first step is sharing; the second is creating shared environments for teams.
 
-### Description
-
-In this phase, we'll implement sharing capabilities that allow users to share files and folders with others. We'll create a permissions system to control access levels (view, edit, comment) and implement real-time collaboration features for shared workspaces.
+- [ ] **File & Folder Sharing:** Generate shareable links for files and folders.
+- [ ] **Link Permissions:** Set permissions for shared links (view-only, password, expiration dates).
+- [ ] **Team Workspaces:** Create shared workspaces for teams.
+- [ ] **User Invitations:** Invite users to collaborate via email.
+- [ ] **Commenting:** Add comments to files for feedback and discussion.
+- [ ] **Version History:** Keep track of file versions and allow restoring previous versions.
 
 ### Folder Structure
 
 ```
 app/
 ├── components/
-│   ├── sharing/            # Sharing UI components
-│   │   ├── share-modal.tsx # Share file/folder modal
-│   │   └── permissions.tsx # Permissions management
+│   ├── sharing/
+│   │   ├── share-modal.tsx
+│   │   └── permissions.tsx
 │   └── workspace/
-│       ├── shared-items.tsx # Shared files view
-│       └── activity-feed.tsx # Collaboration activity
+│       ├── shared-items.tsx
+│       └── activity-feed.tsx
 ├── routes/
-│   └── shared/             # Routes for shared content
+│   └── shared/
 ├── .server/
 │   ├── services/
-│   │   ├── share.service.ts # Sharing business logic
-│   │   └── permission.service.ts # Permissions management
+│   │   ├── share.service.ts
+│   │   └── permission.service.ts
 │   └── repositories/
-│       └── share.repository.ts # Share data access
+│       └── share.repository.ts
 └── machines/
-    └── share.machine.ts    # Sharing workflow management
+    └── share.machine.ts
 ```
 
 ### Tasks
@@ -138,35 +213,38 @@ app/
 - [ ] Create audit logs for file access and changes
 - [ ] Implement secure link sharing with expiration
 
-## Phase 4: Advanced Features & Optimization (Months 7-8)
+---
 
-### Goal
+## Phase 4: Advanced Features, Intelligence & Optimization
 
-Implement advanced features like file versioning, search functionality, and performance optimizations.
+**Why:** Differentiate Stashly from basic storage providers by adding smart features that enhance user experience — advanced search, AI-powered organization, cross-platform access, and performance improvements.
 
-### Description
-
-This phase focuses on enhancing the platform with advanced features that improve user experience and system performance. We'll implement file versioning to track changes, add powerful search capabilities, and optimize the system for better performance and scalability.
+- [ ] **Advanced Search:** Implement semantic search using Algolia to search within file content (.txt, .md, .pdf).
+- [ ] **AI-powered Organization:** Automatically categorize and tag files based on their content.
+- [ ] **Desktop Sync Client:** Develop a desktop application to sync files.
+- [ ] **Mobile App (iOS & Android):** Native mobile applications.
+- [ ] **Third-party Integrations:** Google Drive, Dropbox, Slack, Zapier.
+- [ ] **Public API:** Expose a public API for developers.
 
 ### Folder Structure
 
 ```
 app/
 ├── components/
-│   ├── search/             # Search UI components
-│   │   ├── search-bar.tsx  # Search input component
-│   │   └── results.tsx     # Search results display
-│   └── versioning/         # File versioning UI
-│       ├── history.tsx     # Version history view
-│       └── compare.tsx     # Version comparison
+│   ├── search/
+│   │   ├── search-bar.tsx
+│   │   └── results.tsx
+│   └── versioning/
+│       ├── history.tsx
+│       └── compare.tsx
 ├── .server/
 │   ├── services/
-│   │   ├── search.service.ts # Search business logic
-│   │   └── version.service.ts # File versioning logic
+│   │   ├── search.service.ts
+│   │   └── version.service.ts
 │   └── repositories/
-│       └── version.repository.ts # Version data access
+│       └── version.repository.ts
 └── machines/
-    └── search.machine.ts   # Search workflow management
+    └── search.machine.ts
 ```
 
 ### Tasks
@@ -182,34 +260,36 @@ app/
 - [ ] Optimize database queries and indexing
 - [ ] Implement caching strategies for improved performance
 
-## Phase 5: Analytics & Reporting (Months 9-10)
+---
 
-### Goal
+## Phase 5: Analytics, Monetization & Growth
 
-Implement analytics and reporting features to provide insights into file usage, storage consumption, and user activity.
+**Why:** Build a sustainable business by expanding revenue streams and driving user growth, while giving users visibility into their own usage patterns.
 
-### Description
-
-The final phase focuses on providing valuable insights through analytics and reporting. We'll implement usage tracking, storage analytics, and user activity reports to help users and administrators understand how the system is being used and identify optimization opportunities.
+- [ ] **Tiered Subscription Plans:** Free, Pro, Business tiers with different features and storage limits.
+- [ ] **Pay-as-you-go:** Purchase additional storage or features on a one-time basis.
+- [ ] **Referral Program:** Incentivize user growth.
+- [ ] **Affiliate Program:** Partners to promote Stashly.
+- [ ] **Analytics Dashboard:** Detailed analytics on file usage and sharing.
 
 ### Folder Structure
 
 ```
 app/
 ├── components/
-│   └── analytics/          # Analytics dashboard components
-│       ├── charts/         # Chart components for data visualization
-│       ├── reports/        # Report generation UI
-│       └── metrics/        # Key metrics display
+│   └── analytics/
+│       ├── charts/
+│       ├── reports/
+│       └── metrics/
 ├── routes/
-│   └── analytics/          # Analytics dashboard routes
+│   └── analytics/
 ├── .server/
 │   ├── services/
-│   │   └── analytics.service.ts # Analytics business logic
+│   │   └── analytics.service.ts
 │   └── repositories/
-│       └── analytics.repository.ts # Analytics data access
+│       └── analytics.repository.ts
 └── machines/
-    └── analytics.machine.ts # Analytics workflow management
+    └── analytics.machine.ts
 ```
 
 ### Tasks
@@ -224,3 +304,24 @@ app/
 - [ ] Add real-time analytics updates
 - [ ] Create admin-level system analytics
 - [ ] Implement alerting for storage quotas and anomalies
+
+---
+
+## Phase 6: Enterprise & Teams
+
+**Why:** Address the specific security, compliance, and administrative needs of large organizations, making Stashly a viable enterprise solution.
+
+- [ ] **Single Sign-On (SSO):** Support for Okta, Auth0, and SAML.
+- [ ] **Advanced Admin Controls:** Granular control over team members, permissions, and security.
+- [ ] **Audit Logs:** Detailed logs of all activities for security and compliance.
+- [ ] **Data Residency Options:** Let enterprise customers choose where their data is stored.
+- [ ] **Service Level Agreements (SLAs):** Offer SLAs for uptime and support.
+
+---
+
+## Future Ideas
+
+- [ ] **Real-time Document Editing:** Integrate a collaborative editor like Etherpad.
+- [ ] **Encrypted Vaults:** Client-side encrypted folders for maximum security.
+- [ ] **Blockchain Integration:** File verification and decentralized storage options.
+- [ ] **NFT Support:** Store and manage NFTs.

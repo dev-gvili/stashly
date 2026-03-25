@@ -1,6 +1,6 @@
 import { assertEvent, assign, fromPromise, setup } from 'xstate'
 import { parsePresignedUrl } from '../../utils/parsers'
-import { StashlyAI } from '../../utils/stashly-ai'
+import { StashlyAI } from '../../.client/stashly-ai'
 
 interface ImageCaptionContext {
   url: string

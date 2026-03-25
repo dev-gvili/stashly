@@ -1,56 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react'
-import {
-  MessageSquare,
-  Loader2,
-  Play,
-  FileAudio,
-  CheckCircle2,
-  Cpu,
-  BarChart3,
-  FileText,
-  Sparkles,
-  GithubIcon,
-} from 'lucide-react'
-import { Card, CardContent, CardHeader } from '@/ui/card'
+import ibmPlexSansHebrewFonts from '@fontsource/ibm-plex-sans-hebrew/index.css?url'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
+import { motion } from 'framer-motion'
+import type { WorkerSnapshot } from '@/types/machine.types'
+import { initialWorkerSnapshot } from '@/types/machine.types'
+import { Loader2, X } from 'lucide-react'
 import { Button } from '@/ui/button'
-import { Textarea } from '@/ui/textarea'
-import { formatSize } from '@/utils/formaters'
+import { Badge } from '@/ui/badge'
+import { Progress } from '@/ui/progress'
+import { ScrollArea } from '@/ui/scroll-area'
+import { Separator } from '@/ui/separator'
 import {
-  Audio2Icon,
-  AudioIcon,
   LanguageIcon,
   MediaIcon,
-  MicIcon,
   SummarizeIcon,
-} from '../../components/icons'
-import type { summarizeContextSchema } from '../../machines/ai/ai.machine'
-import { ScrollArea } from '../../components/ui/scroll-area'
-// import {cleanText} from '@/.server/search/embeddings'
-// import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.0.0-next.4';
-// --- WORKER CODE (WebGPU device-loss safe + memory/GPU optimized) ---
+  AiKeywordsIcon,
+  AiTagsIcon,
+  CopyIcon,
+  VerifyTranscriptIcon
+} from '@/components/icons'
 
-// Note: GPU adapter detection uses runtime `any` to avoid missing DOM lib types.
-
-type ViewMode =
-  | 'audio'
-  | 'text'
-  | 'image'
-  | 'video'
-  | 'caption'
-  | 'summary'
-  | 'sentiment'
-type ModelStatus =
-  | 'idle'
-  | 'loading'
-  | 'ready'
-  | 'audio-duration'
-  | 'detecting-language'
-  | 'captioning'
-  | 'transcribing'
-  | 'generating'
-  | 'summarizing'
-  | 'classifying'
-  | 'error'
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface ChunkProgress {
   currentChunk: number
@@ -61,1001 +30,731 @@ interface ChunkProgress {
   chunkEnd?: number
 }
 
+interface FileInfo {
+  name: string
+  type: string
+  size: string
+  duration: number
+}
+
+interface DetectedLanguage {
+  language: string
+  confidence: number
+}
+
+// ─── Constants & helpers ──────────────────────────────────────────────────────
+
+export const links = () => [{ rel: 'stylesheet', href: ibmPlexSansHebrewFonts }]
+
+const STATE_LABELS: Record<string, string> = {
+  checking_hardware: 'STANDBY',
+  idle: 'STANDBY',
+  detecting_language: 'DETECTING',
+  transcribing: 'TRANSCRIBING',
+  correcting_text: 'CORRECTING',
+  ready: 'DONE',
+  summarizing: 'SUMMARIZING',
+  extracting_keywords: 'KEYWORDS',
+  generating_tags: 'TAGGING',
+  error: 'ERROR',
+}
+
+const IDLE_STATES = ['idle', 'ready', 'error', 'checking_hardware']
+
+// Sine wave path for the transcribing animation — sampled every 2px for a smooth curve
+const WAVE_PERIOD = 32
+const transcribeWavePath = (() => {
+  const amp = 9
+  const cy = 24
+  let d = ''
+  for (let x = 0; x <= 352; x += 2) {
+    const y = cy + amp * Math.sin((x / WAVE_PERIOD) * Math.PI * 2)
+    d += x === 0 ? `M ${x},${y.toFixed(2)}` : ` L ${x},${y.toFixed(2)}`
+  }
+  return d
+})()
+
+function formatTime(seconds: number) {
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function AppHeader({
+  modelName,
+  stateValue,
+  isProcessing,
+}: {
+  modelName: string | null
+  stateValue: string
+  isProcessing: boolean
+}) {
+  const isError = stateValue === 'error'
+  return (
+    <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm">
+      <div className="max-w-4xl mx-auto px-6 h-10 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] font-bold tracking-[0.35em] uppercase text-muted-foreground">
+            Stashly
+          </span>
+          <span className="text-border/60 text-xs leading-none">/</span>
+          <span className="text-[9px] font-bold tracking-[0.35em] uppercase text-primary">
+            Local AI
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 text-[9px] font-bold tracking-[0.18em] uppercase">
+          {modelName && (
+            <span className="hidden sm:block text-muted-foreground/50 truncate max-w-36">
+              {modelName}
+            </span>
+          )}
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex h-1.5 w-1.5">
+              {isProcessing && (
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              )}
+              <span
+                className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+                  isError
+                    ? 'bg-destructive-foreground'
+                    : isProcessing
+                      ? 'bg-primary'
+                      : 'bg-muted-foreground/40'
+                }`}
+              />
+            </span>
+            <span
+              className={
+                isError
+                  ? 'text-destructive-foreground'
+                  : isProcessing
+                    ? 'text-primary'
+                    : 'text-muted-foreground/60'
+              }
+            >
+              {STATE_LABELS[stateValue] ?? 'STANDBY'}
+            </span>
+          </div>
+        </div>
+      </div>
+    </header>
+  )
+}
+
+function UploadIdleState({ isError }: { isError: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-4 animate-in fade-in duration-200 pointer-events-none">
+      <MediaIcon
+        className={`w-8 h-8 ${
+          isError
+            ? 'text-destructive-foreground/50'
+            : 'text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors duration-200'
+        }`}
+      />
+      <div className="text-center space-y-1.5">
+        <p
+          className={`text-[10px] font-bold tracking-[0.28em] uppercase ${
+            isError ? 'text-destructive-foreground' : 'text-foreground/60'
+          }`}
+        >
+          {isError ? 'Upload failed — try again' : 'Drop audio or video'}
+        </p>
+        <p className="text-[9px] tracking-[0.18em] uppercase text-muted-foreground/40">
+          Runs entirely on your device
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function UploadLoadingState({
+  loadingPhases,
+  progress,
+}: {
+  loadingPhases: string[]
+  progress: Record<string, number> | null
+}) {
+  return (
+    <div className="flex flex-col items-center gap-5 animate-in fade-in duration-200 w-full max-w-xs">
+      <div className="flex items-center gap-2.5">
+        <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+        <span className="text-[9px] font-bold tracking-[0.25em] uppercase text-primary">
+          {loadingPhases.length > 0
+            ? loadingPhases[loadingPhases.length - 1]
+            : 'Loading Models'}
+        </span>
+      </div>
+      {progress &&
+        Object.entries(progress).map(([file, p]) => (
+          <div key={file} className="w-full space-y-1.5">
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] tracking-wider text-muted-foreground/60 truncate max-w-44">
+                {file.split('/').pop()}
+              </span>
+              <span className="text-[9px] font-bold text-primary tabular-nums">
+                {Math.round(p)}%
+              </span>
+            </div>
+            <Progress value={p} className="h-px" />
+          </div>
+        ))}
+    </div>
+  )
+}
+
+function UploadDetectingState() {
+  return (
+    <div className="flex flex-col items-center gap-4 animate-in fade-in duration-200">
+      <LanguageIcon className="w-8 h-8 text-primary animate-pulse" />
+      <div className="text-center space-y-1">
+        <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-primary">
+          Detecting Language
+        </p>
+        <p className="text-[9px] tracking-wider text-muted-foreground/50">
+          Analyzing audio fingerprint
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function UploadTranscribingState({
+  transcriptProgress,
+  audioDuration,
+}: {
+  transcriptProgress: ChunkProgress | null
+  audioDuration: number
+}) {
+  return (
+    <div className="flex flex-col items-center gap-5 animate-in fade-in duration-200">
+      <div className="relative w-56 h-12 overflow-hidden">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            maskImage:
+              'linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%)',
+            WebkitMaskImage:
+              'linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%)',
+          }}
+        >
+          <motion.svg
+            width={370}
+            height={48}
+            className="absolute top-0 left-0"
+            initial={{ x: -WAVE_PERIOD }}
+            animate={{ x: [-WAVE_PERIOD, 0] }}
+            transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }}
+          >
+            <path
+              d={transcribeWavePath}
+              className="stroke-primary"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeOpacity={0.55}
+              fill="none"
+            />
+          </motion.svg>
+        </div>
+      </div>
+
+      <div className="text-center space-y-1">
+        <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-primary">
+          Transcribing
+        </p>
+        {transcriptProgress ? (
+          <p className="text-[9px] tracking-wider text-muted-foreground/50">
+            {transcriptProgress.currentChunk} / {transcriptProgress.totalChunks} chunks
+            {transcriptProgress.timeProcessed > 0 &&
+              ` · ${formatTime(transcriptProgress.timeProcessed)} processed`}
+          </p>
+        ) : audioDuration > 0 ? (
+          <p className="text-[9px] tracking-wider text-muted-foreground/50">
+            {formatTime(audioDuration)} audio file
+          </p>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function UploadPostProcessingState({ stateValue }: { stateValue: string }) {
+  const label =
+    stateValue === 'correcting_text'
+      ? 'Verifying Transcript'
+      : stateValue === 'summarizing'
+        ? 'Summarizing'
+        : stateValue === 'extracting_keywords'
+          ? 'Extracting Keywords'
+          : 'Generating Tags'
+
+  return (
+    <div className="flex flex-col items-center gap-4 animate-in fade-in duration-200">
+      {stateValue === 'correcting_text' && (
+        <VerifyTranscriptIcon className="w-8 h-8 text-primary animate-pulse" />
+      )}
+      {stateValue === 'summarizing' && (
+        <SummarizeIcon className="w-8 h-8 text-primary animate-pulse" />
+      )}
+      {stateValue === 'extracting_keywords' && (
+        <AiKeywordsIcon className="w-8 h-8 text-primary animate-pulse" />
+      )}
+      {stateValue === 'generating_tags' && (
+        <AiTagsIcon className="w-8 h-8 text-primary animate-pulse" />
+      )}
+      <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-primary">
+        {label}
+      </p>
+    </div>
+  )
+}
+
+function UploadZone({
+  stateValue,
+  isProcessing,
+  loadingPhases,
+  progress,
+  transcriptProgress,
+  audioDuration,
+  onUpload,
+}: {
+  stateValue: string
+  isProcessing: boolean
+  loadingPhases: string[]
+  progress: Record<string, number> | null
+  transcriptProgress: ChunkProgress | null
+  audioDuration: number
+  onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void
+}) {
+  const isError = stateValue === 'error'
+  const showLoading = isProcessing && progress !== null && Object.keys(progress).length > 0
+  const showDetecting = stateValue === 'detecting_language' && !showLoading
+  const showTranscribing = stateValue === 'transcribing' && !showLoading
+  const showPostProcessing =
+    (stateValue === 'correcting_text' ||
+      stateValue === 'summarizing' ||
+      stateValue === 'extracting_keywords' ||
+      stateValue === 'generating_tags') &&
+    !showLoading
+
+  return (
+    <div className="relative group">
+      {/* Viewfinder corners */}
+      <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-primary z-10 pointer-events-none rounded-tl" />
+      <div className="absolute -top-px right-0 w-4 h-4 border-t-2 border-r-2 border-primary z-10 pointer-events-none rounded-tr" />
+      <div className="absolute -bottom-px left-0 w-4 h-4 border-b-2 border-l-2 border-primary z-10 pointer-events-none rounded-bl" />
+      <div className="absolute -bottom-px right-0 w-4 h-4 border-b-2 border-r-2 border-primary z-10 pointer-events-none rounded-br" />
+
+      <div
+        className={`relative h-56 border-2 border-border flex items-center justify-center transition-all duration-300 overflow-hidden ${
+          isProcessing
+            ? 'cursor-default border-primary/25 bg-primary/2'
+            : isError
+              ? 'border-destructive/40 bg-destructive/5'
+              : 'border-border/40 hover:border-primary/40 bg-transparent hover:bg-muted/5'
+        }`}
+      >
+        {!isProcessing && <UploadIdleState isError={isError} />}
+        {showLoading && (
+          <UploadLoadingState loadingPhases={loadingPhases} progress={progress} />
+        )}
+        {showDetecting && <UploadDetectingState />}
+        {showTranscribing && (
+          <UploadTranscribingState
+            transcriptProgress={transcriptProgress}
+            audioDuration={audioDuration}
+          />
+        )}
+        {showPostProcessing && <UploadPostProcessingState stateValue={stateValue} />}
+
+        <input
+          type="file"
+          accept="audio/*, video/*"
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+          onChange={onUpload}
+          disabled={isProcessing}
+        />
+      </div>
+    </div>
+  )
+}
+
+function MetadataStrip({
+  fileInfo,
+  detectedLanguage,
+  executionProvider,
+  gpuShort,
+}: {
+  fileInfo: FileInfo
+  detectedLanguage: DetectedLanguage | null
+  executionProvider: string
+  gpuShort: string | null
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] tracking-[0.15em] text-muted-foreground/50 uppercase animate-in fade-in duration-300 pb-4 border-b border-border/20">
+      <span className="normal-case text-muted-foreground/70 truncate max-w-56">
+        {fileInfo.name}
+      </span>
+      <span className="text-border/40">·</span>
+      <span>{fileInfo.size}</span>
+      <span className="text-border/40">·</span>
+      <span>{formatTime(fileInfo.duration)}</span>
+      {detectedLanguage && (
+        <>
+          <span className="text-border/40">·</span>
+          <span className="flex items-center gap-1">
+            <LanguageIcon className="w-3 h-3" />
+            <span className="capitalize">{detectedLanguage.language}</span>
+            <span className="opacity-50">
+              ({(detectedLanguage.confidence * 100).toFixed(0)}%)
+            </span>
+          </span>
+        </>
+      )}
+      <span className="ml-auto truncate max-w-60 text-right" title={gpuShort || undefined}>
+        {executionProvider}
+        {gpuShort ? ` · ${gpuShort}` : ''}
+      </span>
+    </div>
+  )
+}
+
+function TranscriptCard({
+  transcript,
+  rawTranscript,
+  detectedLanguage,
+  isProcessing,
+  onRunSummary,
+  onRunKeywords,
+  onRunGenerateTags,
+  onCopy,
+}: {
+  transcript: string
+  rawTranscript: string
+  detectedLanguage: DetectedLanguage | null
+  isProcessing: boolean
+  onRunSummary: () => void
+  onRunKeywords: () => void
+  onRunGenerateTags: () => void
+  onCopy: (text: string) => void
+}) {
+  const wordCount = transcript.trim() ? transcript.trim().split(/\s+/).length : 0
+  const approxTokens = Math.ceil(rawTranscript.length / 4)
+
+  return (
+    <div className="border border-border animate-in slide-in-from-bottom-3 fade-in duration-400 rounded bg-sidebar">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+        <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground">
+          Transcript
+        </span>
+        <div className="flex items-center gap-0.5">
+          <Button
+            onClick={onRunSummary}
+            title="Summarize"
+            variant="ghost"
+            size="icon-sm"
+            disabled={isProcessing}
+          >
+            <SummarizeIcon className="size-5!" />
+          </Button>
+          <Button
+            onClick={onRunKeywords}
+            title="Extract Keywords"
+            variant="ghost"
+            size="icon-sm"
+            disabled={isProcessing}
+          >
+            <AiKeywordsIcon className="size-5!" />
+          </Button>
+          <Button
+            onClick={onRunGenerateTags}
+            title="Generate Tags"
+            variant="ghost"
+            size="icon-sm"
+            disabled={isProcessing}
+          >
+            <AiTagsIcon className="size-5!" />
+          </Button>
+          <Separator orientation="vertical" className="h-3 mx-1 opacity-30" />
+          <Button
+            onClick={() => onCopy(transcript)}
+            title="Copy Transcript"
+            variant="ghost"
+            size="icon-sm"
+          >
+            <CopyIcon className="size-5!" />
+          </Button>
+        </div>
+      </div>
+      <ScrollArea className="h-64 min-h-0">
+        <div className="px-4 py-4">
+          <p
+            dir={detectedLanguage?.language === 'he' ? 'rtl' : 'ltr'}
+            className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap"
+          >
+            {transcript}
+          </p>
+        </div>
+      </ScrollArea>
+      <div className="flex items-center gap-3 px-4 py-2 border-t border-border/30">
+        <span className="text-[9px] tracking-[0.18em] uppercase text-muted-foreground/35">
+          {wordCount.toLocaleString()} words
+        </span>
+        <span className="text-border/30">·</span>
+        <span className="text-[9px] tracking-[0.18em] uppercase text-muted-foreground/35">
+          ~{approxTokens.toLocaleString()} tokens
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function SummaryCard({
+  summary,
+  detectedLanguage,
+  onCopy,
+}: {
+  summary: string
+  detectedLanguage: DetectedLanguage | null
+  onCopy: (text: string) => void
+}) {
+  return (
+    <div className="border border-border/50 animate-in slide-in-from-bottom-3 fade-in duration-400">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border/50">
+        <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
+          Summary
+        </span>
+        <Button
+          onClick={() => onCopy(summary)}
+          title="Copy Summary"
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground/50 hover:text-foreground"
+        >
+          <CopyIcon className="size-3.5!" />
+        </Button>
+      </div>
+      <div className="px-4 py-4">
+        <p
+          dir={detectedLanguage?.language === 'he' ? 'rtl' : 'ltr'}
+          className="text-sm text-muted-foreground/80 leading-relaxed whitespace-pre-wrap"
+        >
+          {summary}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function KeywordsTagsGrid({
+  keywords,
+  generatedTags,
+}: {
+  keywords: string[]
+  generatedTags: string[]
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-in slide-in-from-bottom-3 fade-in duration-400">
+      {keywords.length > 0 && (
+        <div className="space-y-2.5">
+          <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
+            Keywords
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {keywords.map((keyword, i) => (
+              <Badge
+                key={i}
+                variant="outline"
+              >
+                {keyword}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+      {generatedTags.length > 0 && (
+        <div className="space-y-2.5">
+          <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
+            Tags
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {generatedTags.sort((a, b) => a.localeCompare(b)).map((tag, i) => (
+              <Badge
+                key={i}
+                variant="secondary"
+                className="font-stashly rounded! text-muted-foreground"
+              >
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function App() {
-  const [view, setView] = useState<ViewMode>('audio')
-  const [status, setStatus] = useState<ModelStatus>('idle')
-  const [progress, setProgress] = useState<Record<string, number> | null>(null)
-  const [detectedLanguage, setDetectedLanguage] = useState<{
-    language: string
-    confidence: number
-  } | null>(null)
-  const [transcriptProgress, setTranscriptProgress] =
-    useState<ChunkProgress | null>(null)
-  const [loadingPhases, setLoadingPhases] = useState<string[]>([])
-  const [audioDuration, setAudioDuration] = useState<number>(0)
-  const [debugLogs, setDebugLogs] = useState<string[]>([])
-
-  // additional metadata states
-  const [fileInfo, setFileInfo] = useState<{
-    name: string
-    type: string
-    size: string
-    duration: number
-  } | null>(null)
-  const [modelName, setModelName] = useState<string | null>(null)
-  const [executionProvider, setExecutionProvider] = useState<string>('unknown')
-  const [gpuAdapter, setGpuAdapter] = useState<any | null>(null)
-  const [gpuInfo, setGpuInfo] = useState<string | null>(null)
-
-  const [transcript, setTranscript] = useState('')
-  const [inputText, setInputText] = useState('')
-  const [generatedText, setGeneratedText] = useState('')
-  const [sentiment, setSentiment] = useState<any>(null)
-  const [summary, setSummary] = useState<string>('')
-  const [captioningImage, setCaptioningImage] = useState<string | null>(null)
-
-  const [caption, setCaption] = useState<string>('')
-  const worker = useRef<Worker | null>(null)
+  const workerRef = useRef<Worker | null>(null)
+  const [snapshot, setSnapshot] = useState<WorkerSnapshot>(initialWorkerSnapshot)
+  const [fileObjectUrl, setFileObjectUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    // detect GPU/provider for display
-    ;(async () => {
-      try {
-        const nav: any = navigator
-        if (nav.gpu) {
-          const adapter: any = await nav.gpu.requestAdapter()
-          if (adapter) {
-            setExecutionProvider('webgpu')
-            setGpuAdapter(adapter)
-            try {
-              const info = adapter?.info as any
-              setGpuInfo(info?.description || info?.vendor || 'GPU adapter')
-            } catch {}
-          } else {
-            setExecutionProvider('wasm')
-          }
-        } else {
-          setExecutionProvider('wasm')
-        }
-      } catch (e) {
-        console.warn('GPU detection failed', e)
-        setExecutionProvider('wasm')
-      }
-    })()
-
-    // const blob = new Blob([WORKER_CODE], { type: 'application/javascript' })
-    // const url = URL.createObjectURL(blob)
-    worker.current = new Worker(new URL('./worker.ts', import.meta.url), {
-      type: 'module',
-    })
-    // worker.current = new Worker(url, { type: 'module' })
-
-    worker.current.onmessage = (e) => {
-      const { type, payload, task } = e.data
-
-      if (type !== 'progress') {
-        console.log('Worker message:', type, payload)
-      }
-
-      switch (type) {
-        case 'progress':
-          if (payload.status === 'progress') {
-            setProgress((prev) => ({
-              ...(prev || {}),
-              [payload.file]: payload.progress,
-            }))
-
-            const fileName = payload.file.split('/').pop() || ''
-            // capture model name once when first seen
-            if (!modelName) {
-              if (fileName.includes('mms-lid')) setModelName('mms-lid-256')
-              else if (fileName.includes('whisper-large'))
-                setModelName('whisper-large-v3-turbo')
-              else if (fileName.includes('whisper-small'))
-                setModelName('whisper-small')
-              else if (fileName.includes('LaMini'))
-                setModelName('LaMini-Flan-T5-77M')
-              else if (fileName.includes('distilbert'))
-                setModelName('distilbert-sst-2')
-              else if (fileName.includes('tiny-aya-global-ONNX'))
-                setModelName('tiny-aya-global-ONNX')
-              else if (fileName.includes('Florence-2-base-ft'))
-                setModelName('Florence-2-base-ft')
-            }
-            if (
-              fileName.includes('mms-lid') &&
-              !loadingPhases.includes('Language Model')
-            ) {
-              setLoadingPhases((prev) => [...prev, 'Language Model'])
-            } else if (
-              fileName.includes('whisper') &&
-              !loadingPhases.includes('Speech Recognition')
-            ) {
-              setLoadingPhases((prev) => [...prev, 'Speech Recognition'])
-            } else if (
-              fileName.includes('LaMini') &&
-              !loadingPhases.includes('Text Generation')
-            ) {
-              setLoadingPhases((prev) => [...prev, 'Text Generation'])
-            } else if (
-              fileName.includes('distilbert') &&
-              !loadingPhases.includes('Sentiment Analysis')
-            ) {
-              setLoadingPhases((prev) => [...prev, 'Sentiment Analysis'])
-            } else if (
-              fileName.includes('tiny-aya-global-ONNX') &&
-              !loadingPhases.includes('Summarization')
-            ) {
-              setLoadingPhases((prev) => [...prev, 'Summarization'])
-            } else if (
-              fileName.includes('Florence-2-base-ft') &&
-              !loadingPhases.includes('Captioning')
-            ) {
-              setLoadingPhases((prev) => [...prev, 'Captioning'])
-            }
-          } else {
-            // If no specific model is loading, clear progress and phases
-            setProgress(null)
-            setLoadingPhases([])
-          }
-          break
-
-        case 'debug':
-          setDebugLogs((prev) => [...prev, payload].slice(-10))
-          console.log('Worker Debug:', payload)
-          break
-
-        case 'audio-duration':
-          setAudioDuration(payload)
-          setStatus('audio-duration')
-          break
-
-        case 'partial-result':
-          if (task === 'transcription') {
-            setTranscriptProgress(payload)
-          }
-          break
-
-        case 'status':
-          setStatus(payload)
-          // map status to model when known
-          if (payload === 'detecting-language') {
-            setModelName('mms-lid-256')
-          } else if (payload === 'transcribing') {
-            setModelName('whisper-large-v3-turbo')
-          } else if (payload === 'generating') {
-            setModelName('LaMini-Flan-T5-77M')
-          } else if (payload === 'classifying') {
-            setModelName('distilbert-sst-2')
-          } else if (payload === 'summarizing') {
-            setModelName('tiny-aya-global-ONNX')
-          } else if (payload === 'captioning') {
-            setModelName('Florence-2-base-ft')
-          }
-          if (payload === 'ready') {
-            setProgress(null)
-            setLoadingPhases([])
-            setDetectedLanguage(null)
-            setTranscriptProgress(null)
-            setAudioDuration(0)
-          }
-          break
-
-        case 'language-detected':
-          setDetectedLanguage(payload)
-          break
-
-        case 'result':
-          console.log('result payload', task, payload)
-          if (task === 'transcription') {
-            setTranscript(payload || '')
-          } else if (task === 'generation') {
-            setGeneratedText(
-              Array.isArray(payload)
-                ? payload[0]?.generated_text || ''
-                : typeof payload === 'string'
-                  ? payload
-                  : ''
-            )
-          } else if (task === 'classification') {
-            setSentiment(payload[0])
-          } else if (task === 'summarization') {
-            let text = ''
-            if (Array.isArray(payload)) {
-              text = payload[0]?.generated_text || ''
-            } else if (typeof payload === 'string') {
-              text = payload
-            } else if (payload?.generated_text) {
-              text = payload.generated_text
-            } else if (payload?.summary) {
-              text = payload.summary
-            } else if (payload?.summary_text) {
-              text = payload.summary_text
-            }
-            if (text) {
-              setSummary(text)
-            }
-          } else if (task === 'captioning' && payload?.caption) {
-            setCaption(payload.caption)
-          }
-          setTranscriptProgress(null)
-          setStatus('ready')
-          break
-
-        case 'error':
-          console.error('Worker Error:', payload)
-          setStatus('error')
-          setDebugLogs((prev) => [...prev, `ERROR: ${payload}`].slice(-10))
-          break
-      }
-    }
-
     return () => {
-      worker.current?.terminate()
+      if (fileObjectUrl) URL.revokeObjectURL(fileObjectUrl)
     }
+  }, [fileObjectUrl])
+
+  useEffect(() => {
+    const worker = new Worker(
+      new URL('../../workers/stash.worker.ts', import.meta.url),
+      { type: 'module' }
+    )
+    worker.onmessage = (e: MessageEvent<WorkerSnapshot>) => setSnapshot(e.data)
+    worker.onerror = (e) => console.error('Worker error:', e)
+    workerRef.current = worker
+    return () => worker.terminate()
   }, [])
+
+  const send = useCallback((event: object, transferables?: Transferable[]) => {
+    workerRef.current?.postMessage(event, transferables ?? [])
+  }, [])
+
+  const { value: stateValue, context } = snapshot
+  const isProcessing = !IDLE_STATES.includes(stateValue)
 
   const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    console.log('Audio file selected:', file.name, file.size, file.type)
-
-    setTranscript('')
-    setSummary('')
-    setDetectedLanguage(null)
-    setLoadingPhases([])
-    setTranscriptProgress(null)
-    setAudioDuration(0)
-    setDebugLogs([])
-    setCaptioningImage(null)
-    setStatus('loading')
-    setModelName('whisper-large-v3-turbo')
-    setFileInfo(null)
-
+    setFileObjectUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return URL.createObjectURL(file)
+    })
     try {
       const ctx = new window.AudioContext({ sampleRate: 16000 })
       const arrayBuffer = await file.arrayBuffer()
       const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
-      const audioData = audioBuffer.getChannelData(0)
-      const sampleRate = audioBuffer.sampleRate
-      const duration = audioBuffer.duration
-
-      // record uploaded file metadata
-      setFileInfo({
-        name: file.name,
-        type: file.type,
-        size: formatSize('byte', 'unit', file.size),
-        duration,
-      })
-
-      worker.current?.postMessage({
-        type: 'transcribe',
-        payload: {
-          audio: audioData,
-          sampleRate: sampleRate,
-          duration: duration,
+      const audio = audioBuffer.getChannelData(0)
+      // File objects are NOT cloneable across worker boundaries — send flat metadata instead
+      send(
+        {
+          type: 'AUDIO_UPLOAD',
+          audio,
+          sampleRate: audioBuffer.sampleRate,
+          duration: audioBuffer.duration,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
         },
-      })
-      // await ctx.close()
-    } catch (error) {
-      console.error('Audio processing error:', error)
-      setStatus('error')
-      if (error instanceof Error) {
-        setDebugLogs((prev) =>
-          [...prev, `Audio processing error: ${error.message}`].slice(-10)
-        )
-      }
+        [audio.buffer] // transfer the ArrayBuffer zero-copy
+      )
+    } catch (err) {
+      console.error('Audio processing error:', err)
     }
   }
 
   const handleCopy = (text: string) => {
     if (!text) return
-    navigator.clipboard.writeText(text).catch((err) => {
-      console.error('Unable to copy', err)
-    })
+    navigator.clipboard.writeText(text).catch((err) => console.error('Unable to copy', err))
   }
 
-  const runTextGen = () => {
-    if (!inputText) return
-    setModelName('LaMini-Flan-T5-77M')
-    setGeneratedText('')
-    setSummary('')
-    setStatus('loading')
-    worker.current?.postMessage({
-      type: 'generate',
-      payload: { text: inputText },
-    })
-  }
-
-  const runSentiment = () => {
-    const target = transcript || inputText
-    if (!target) return
-    setModelName('distilbert-sst-2')
-    setSentiment(null)
-    setStatus('loading')
-    worker.current?.postMessage({
-      type: 'classify',
-      payload: { text: target },
-    })
-  }
-
+  // Machine derives text from its own context — no payload needed
   const runSummary = () => {
-    const target = transcript || inputText
-    if (!target) return
-    setModelName('Qwen3-1.7B-ONNX')
-    setSummary('')
-    setStatus('loading')
-    worker.current?.postMessage({
-      type: 'summarize',
-      payload: { text: target, lang: detectedLanguage?.language || 'en' },
-    })
+    if (!context.transcript) return
+    send({ type: 'SUMMARIZE' })
   }
 
-  const runCaptioning = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setCaption('')
-    setCaptioningImage(URL.createObjectURL(file))
-    setStatus('loading')
-    setModelName('Florence-2-base-ft')
-
-    worker.current?.postMessage({
-      type: 'onnx-caption',
-      payload: { url: captioningImage },
-    })
+  const runKeywords = () => {
+    if (!context.summary && !context.transcript) return
+    send({ type: 'EXTRACT_KEYWORDS' })
   }
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${secs.toString().padStart(2, '0')}`
+  const runGenerateTags = () => {
+    send({ type: 'GENERATE_TAGS' })
   }
 
-  const StatusIndicator = () => {
-    const statusConfigs = {
-      idle: {
-        color: 'bg-muted',
-        text: 'Ready',
-        description: 'System ready for processing',
-      },
-      loading: {
-        color: 'bg-secondary',
-        text: `Loading Models${loadingPhases.length > 0 ? ` (${loadingPhases.join(', ')})` : ''}`,
-        description: 'Downloading and initializing AI models',
-      },
-      'audio-duration': {
-        color: 'bg-primary',
-        text: 'Audio Loaded',
-        description: `Audio duration: ${formatTime(audioDuration)}`,
-      },
-      'detecting-language': {
-        color: 'bg-primary',
-        text: 'Detecting Language',
-        description: 'Analyzing audio to identify language',
-      },
-      transcribing: {
-        color: 'bg-primary',
-        text: 'Transcribing Audio',
-        description: 'Converting speech to text',
-      },
-      summarizing: {
-        color: 'bg-primary',
-        text: 'Summarizing Text',
-        description: 'Generating concise summary of the text',
-      },
-      generating: {
-        color: 'bg-secondary',
-        text: 'Generating Text',
-        description: 'Creating content with local T5 model',
-      },
-      classifying: {
-        color: 'bg-secondary',
-        text: 'Analyzing Sentiment',
-        description: 'Assessing text sentiment and tone',
-      },
-      captioning: {
-        color: 'bg-secondary',
-        text: 'Generating Caption',
-        description: 'Creating image caption with Florence-2-base-ft',
-      },
-      ready: {
-        color: 'bg-primary',
-        text: 'Done',
-        description: 'Processing complete',
-      },
-      error: {
-        color: 'bg-destructive',
-        text: 'Error',
-        description: 'An error occurred',
-      },
-    }
-
-    const current = statusConfigs[status]
-
-    return (
-      <div className="flex flex-col items-end gap-2">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-card rounded-full border border-border shadow-sm">
-          <span className="relative flex h-2.5 w-2.5">
-            {(status === 'loading' ||
-              status === 'detecting-language' ||
-              status === 'transcribing' ||
-              status === 'generating' ||
-              status === 'summarizing' ||
-              status === 'classifying') && (
-              <span
-                className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${current.color}`}
-              ></span>
-            )}
-            <span
-              className={`relative inline-flex rounded-full h-2 w-2 ${current.color}`}
-            ></span>
-          </span>
-          <span className="text-xs font-medium text-foreground">
-            {current.text}
-          </span>
-          <span className="h-3 w-px bg-border mx-1" />
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-            Local AI
-          </span>
-        </div>
-        {current.description && (
-          <span className="text-xs text-muted-foreground max-w-xs text-right">
-            {current.description}
-          </span>
-        )}
-      </div>
-    )
-  }
-
-  const DebugPanel = () => {
-    if (debugLogs.length === 0) return null
-
-    return (
-      <div className="bg-linear-to-br from-secondary/5 to-primary/5 rounded-lg p-3.5 mt-4 border border-border/50 shadow-md">
-        <h4 className="text-xs font-semibold text-foreground mb-3 uppercase tracking-tight flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-          Debug Logs
-        </h4>
-        <ScrollArea className="h-32">
-          {debugLogs.map((log, index) => (
-            <div key={index} className="text-muted-foreground text-xs py-1.5 leading-relaxed hover:text-foreground transition-colors">
-              {log}
-            </div>
-          ))}
-        </ScrollArea>
-      </div>
-    )
-  }
-
-  const LanguageDetectionIndicator = () => {
-    if (!detectedLanguage) return null
-
-    return (
-      <div className="bg-linear-to-br from-primary/10 to-primary/5 rounded-lg p-3.5 border border-primary/20 shadow-md animate-in fade-in duration-300">
-        <p className="text-xs font-semibold text-primary mb-3 uppercase tracking-tight flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-          Language Detected
-        </p>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <LanguageIcon className="w-5 h-5 text-primary" />
-            <span className="text-sm font-semibold text-foreground capitalize">
-              {detectedLanguage.language || 'Unknown'}
-            </span>
-          </div>
-          <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded">
-            {(detectedLanguage.confidence * 100).toFixed(0)}%
-          </span>
-        </div>
-      </div>
-    )
-  }
-
-  const FileInfoCard = () => {
-    if (!fileInfo) return null
-
-    return (
-      <div className="bg-linear-to-br from-muted/30 to-muted/10 rounded-lg p-3.5 border border-border/50 shadow-md">
-        <h4 className="text-xs font-semibold text-foreground mb-4 uppercase tracking-tight flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
-          File Info
-        </h4>
-        <div className="space-y-3 text-xs">
-          <div className="flex justify-between items-center text-muted-foreground hover:text-foreground transition-colors">
-            <span className="font-medium">Name</span>
-            <span className="font-medium text-foreground truncate ml-2 max-w-xs">
-              {fileInfo.name}
-            </span>
-          </div>
-          <div className="flex justify-between items-center text-muted-foreground hover:text-foreground transition-colors">
-            <span className="font-medium">Type</span>
-            <span className="font-medium text-foreground bg-muted/40 px-2 py-0.5 rounded">
-              {fileInfo.type || 'unknown'}
-            </span>
-          </div>
-          <div className="flex justify-between items-center text-muted-foreground hover:text-foreground transition-colors">
-            <span className="font-medium">Size</span>
-            <span className="font-medium text-foreground">{fileInfo.size}</span>
-          </div>
-          <div className="flex justify-between items-center text-muted-foreground hover:text-foreground transition-colors">
-            <span className="font-medium">Duration</span>
-            <span className="font-medium text-foreground">{formatTime(fileInfo.duration)}</span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const ModelInfoCard = () => {
-    if (!modelName) return null
-
-    return (
-      <div className="bg-linear-to-br from-secondary/5 to-transparent rounded-lg p-3.5 border border-secondary/20 shadow-md">
-        <h4 className="text-xs font-semibold text-secondary mb-3 uppercase tracking-tight flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
-          Model In Use
-        </h4>
-        <p className="text-sm font-medium text-foreground leading-relaxed bg-secondary/10 px-2.5 py-2 rounded">
-          {modelName}
-        </p>
-      </div>
-    )
-  }
-
-  const GPUDeviceCard = () => {
-    return (
-      <div className="bg-linear-to-br from-primary/5 to-transparent rounded-lg p-3.5 border border-primary/20 shadow-md">
-        <h4 className="text-xs font-semibold text-primary mb-3 uppercase tracking-tight flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-          Execution
-        </h4>
-        <div className="space-y-2.5 text-xs">
-          <div className="flex items-center justify-between bg-primary/10 px-2 py-2 rounded text-foreground">
-            <span className="font-medium text-muted-foreground">Provider</span>
-            <span className="font-semibold">
-              {executionProvider}
-            </span>
-          </div>
-          {gpuInfo && (
-            <div className="flex items-center justify-between bg-primary/10 px-2 py-2 rounded text-foreground">
-              <span className="font-medium text-muted-foreground">GPU</span>
-              <span className="font-semibold truncate ml-2 max-w-xs">
-                {gpuInfo}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-    )
+  const handleCancel = () => {
+    send({ type: 'CANCEL' })
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-stashly flex overflow-hidden">
-      <aside className="w-20 md:w-64 bg-sidebar border-r border-border flex flex-col z-20 shadow-lg">
-        <nav className="flex-1 px-2 space-y-0.5 mt-6">
-          <button
-            onClick={() => setView('audio')}
-            className={`w-full flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg ${
-              view === 'audio'
-                ? 'text-primary bg-primary/10'
-                : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
-            }`}
-          >
-            <MicIcon className="w-5 h-5 shrink-0" />
-            <span className="hidden md:block text-sm">Transcription</span>
-          </button>
-          <button
-            onClick={() => setView('text')}
-            className={`w-full flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg ${
-              view === 'text'
-                ? 'text-primary bg-primary/10'
-                : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5 shrink-0" />
-            <span className="hidden md:block text-sm">Generation</span>
-          </button>
-          <button
-            onClick={() => setView('image')}
-            className={`w-full flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-lg ${
-              view === 'image'
-                ? 'text-primary bg-primary/10'
-                : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
-            }`}
-          >
-            <Sparkles className="w-5 h-5 shrink-0" />
-            <span className="hidden md:block text-sm">Image Captioning</span>
-          </button>
+    <div className="min-h-screen bg-background text-foreground font-stashly">
+      <AppHeader modelName={context.modelName} stateValue={stateValue} isProcessing={isProcessing} />
 
-        </nav>
+      <main className="max-w-4xl mx-auto px-6 py-12 space-y-8">
+        <div className="space-y-3">
+          <UploadZone
+            stateValue={stateValue}
+            isProcessing={isProcessing}
+            loadingPhases={context.loadingPhases}
+            progress={context.progress}
+            transcriptProgress={context.transcriptProgress as ChunkProgress | null}
+            audioDuration={context.audioDuration}
+            onUpload={handleAudioUpload}
+          />
+          {isProcessing && (
+            <div className="flex justify-end">
+              <Button
+                onClick={handleCancel}
+                variant="ghost"
+                size="sm"
+                className="text-[9px] font-bold tracking-[0.25em] uppercase text-muted-foreground/50 hover:text-destructive-foreground gap-1.5 h-7"
+              >
+                <X className="w-3 h-3" />
+                Cancel
+              </Button>
+            </div>
+          )}
+        </div>
 
-        <div className="p-4 border-t border-border flex flex-col gap-4">
-          <div className="bg-linear-to-br from-secondary/10 to-transparent rounded-lg p-3 border border-secondary/20">
-            <h3 className="text-xs font-semibold text-secondary mb-3 uppercase tracking-tight flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
-              System Status
-            </h3>
-
-            {loadingPhases.length > 0 && (
-              <div className="mb-4 p-2.5 bg-secondary/10 rounded border border-secondary/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Loader2 className="w-3 h-3 text-secondary animate-spin" />
-                  <span className="text-xs font-semibold text-secondary">
-                    Loading Models
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  {loadingPhases.map((phase) => (
-                    <div key={phase} className="text-[10px] text-muted-foreground flex items-center gap-2">
-                      <div className="w-1 h-1 rounded-full bg-secondary/50" />
-                      {phase}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {progress &&
-              Object.entries(progress).map(([file, p]) => (
-                <div key={file} className="space-y-1 mb-2 last:mb-0">
-                  <div className="flex justify-between text-[10px] font-medium text-muted-foreground">
-                    <span className="truncate max-w-30">
-                      {file.split('/').pop()}
-                    </span>
-                    <span>{Math.round(p)}%</span>
-                  </div>
-                  <div className="h-1 w-full bg-border rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{ width: `${p}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-
-            {!progress && loadingPhases.length === 0 && (
-              <div className="text-[11px] text-muted-foreground font-medium">
-                All Models Buffered
-              </div>
+        {fileObjectUrl && context.fileInfo && (
+          <div className="w-full rounded-lg overflow-hidden bg-black/5 border border-white/10">
+            {context.fileInfo.type.startsWith('video/') ? (
+              <video src={fileObjectUrl} controls className="w-full max-h-72 rounded-lg" />
+            ) : (
+              <audio src={fileObjectUrl} controls className="w-full" />
             )}
           </div>
-        </div>
-      </aside>
+        )}
 
-      <main className="flex-1 overflow-y-auto relative">
-        <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-8 py-4 flex justify-between items-center shadow-sm">
-          <StatusIndicator />
-        </header>
+        {context.fileInfo && (
+          <MetadataStrip
+            fileInfo={context.fileInfo}
+            detectedLanguage={context.detectedLanguage}
+            executionProvider={context.executionProvider}
+            gpuShort={context.gpuInfo}
+          />
+        )}
 
-        <div className="p-8 max-w-6xl mx-auto space-y-10">
-          {view === 'audio' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-6">
-                <div className="space-y-6">
-                  <div
-                    className={`relative h-48 rounded-lg flex flex-col items-center justify-center transition-colors shadow-md ${
-                      status === 'transcribing' ||
-                      status === 'detecting-language'
-                        ? 'bg-primary/5'
-                        : 'bg-muted/5 hover:bg-muted/10'
-                    }`}
-                  >
-                    {status === 'detecting-language' ? (
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="flex items-center gap-3">
-                          <LanguageIcon className="w-8 h-8 text-current animate-pulse" />
-                          <div className="flex flex-col items-start">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Detecting Language...
-                            </p>
-                            <p className="text-xs text-secondary-foreground">
-                              Analyzing audio sample
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ) : status === 'transcribing' ? (
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="flex items-center gap-3">
-                          <MicIcon className="w-8 h-8 text-primary animate-pulse" />
-                          <div className="flex flex-col items-start">
-                            <p className="text-sm font-medium text-primary">
-                              Transcribing Audio
-                            </p>
-                            <p className="text-muted-foreground font-stashly text-sm">
-                              {audioDuration > 0
-                                ? `Processing ${formatTime(audioDuration)} audio`
-                                : 'Processing...'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                          <span className="text-xs text-primary">
-                            This may take a while for longer audio files
-                          </span>
-                        </div>
-                      </div>
-                    ) : status === 'summarizing' ? (
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="flex items-center gap-3">
-                          <SummarizeIcon className="w-8 h-8 text-primary animate-pulse" />
-                          <div className="flex flex-col items-start">
-                            <p className="text-sm font-medium text-primary">
-                              Summarizing Content
-                            </p>
-                            <p className="text-muted-foreground font-stashly text-sm">
-                              Generating summary of transcript
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="w-12 h-12 bg-card rounded-full flex items-center justify-center mb-3">
-                          <MediaIcon className="size-8 text-muted-foreground" />
-                        </div>
-                        <p className="text-sm font-medium text-foreground">
-                          Upload Media
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Runs locally on your device
-                        </p>
-                      </>
-                    )}
-                    <input
-                      type="file"
-                      accept="audio/*, video/*"
-                      className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                      onChange={handleAudioUpload}
-                      disabled={
-                        status === 'transcribing' ||
-                        status === 'detecting-language' ||
-                        status === 'loading' ||
-                        status === 'generating' ||
-                        status === 'summarizing' ||
-                        status === 'classifying'
-                      }
-                    />
-                  </div>
+        {context.transcript && (
+          <TranscriptCard
+            transcript={context.correctedTranscript}
+            rawTranscript={context.transcript}
+            detectedLanguage={context.detectedLanguage}
+            isProcessing={isProcessing}
+            onRunSummary={runSummary}
+            onRunKeywords={runKeywords}
+            onRunGenerateTags={runGenerateTags}
+            onCopy={handleCopy}
+          />
+        )}
 
-                  {detectedLanguage && <LanguageDetectionIndicator />}
-                </div>
+        {context.summary && (
+          <SummaryCard
+            summary={context.summary}
+            detectedLanguage={context.detectedLanguage}
+            onCopy={handleCopy}
+          />
+        )}
 
-                {transcript && (
-                  <div className="bg-linear-to-br from-foreground/5 to-transparent rounded-lg border border-foreground/10 shadow-md overflow-hidden animate-in fade-in duration-300">
-                    <div className="flex justify-between items-center mb-4 p-4 pb-3 border-b border-foreground/5">
-                      <h3 className="text-sm font-semibold text-foreground uppercase tracking-tight flex items-center gap-2">
-                        <div className="w-2 h-2 bg-primary rounded-full" />
-                        Transcript
-                      </h3>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={runSummary}
-                          className="p-2 hover:bg-primary/10 hover:text-primary rounded text-muted-foreground transition-all"
-                          title="Summarize"
-                        >
-                          <FileText className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={runSentiment}
-                          className="p-2 hover:bg-primary/10 hover:text-primary rounded text-muted-foreground transition-all"
-                          title="Sentiment"
-                        >
-                          <BarChart3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleCopy(transcript)}
-                          className="p-2 hover:bg-primary/10 hover:text-primary rounded text-muted-foreground transition-all"
-                          title="Copy"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="max-h-96 overflow-y-auto px-4 pb-4">
-                      <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap text-sm">
-                        {transcript}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {summary && (
-                  <div className="bg-linear-to-br from-secondary/5 to-transparent rounded-lg p-4 border border-secondary/20 shadow-md mt-6 animate-in fade-in duration-300 delay-100">
-                    <h4 className="text-sm font-semibold text-secondary mb-3 uppercase tracking-tight flex items-center gap-2">
-                      <div className="w-2 h-2 bg-secondary rounded-full" />
-                      Summary
-                    </h4>
-                    <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
-                      {summary}
-                    </p>
-                  </div>
-                )}
-
-                {caption && (
-                  <div className="bg-linear-to-br from-primary/5 to-transparent rounded-lg p-4 border border-primary/20 shadow-md mt-6 animate-in fade-in duration-300 delay-100">
-                    <h4 className="text-sm font-semibold text-primary mb-3 uppercase tracking-tight flex items-center gap-2">
-                      <div className="w-2 h-2 bg-primary rounded-full" />
-                      Image Caption
-                    </h4>
-                    <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
-                      {caption}
-                    </p>
-                  </div>
-                )}
-              </div>
-              <div className="space-y-1">
-                <FileInfoCard />
-                <ModelInfoCard />
-                <GPUDeviceCard />
-                <DebugPanel />
-              </div>
-
-              <div className="space-y-6">
-                {sentiment && (
-                  <div className="bg-linear-to-br from-secondary/10 to-secondary/5 rounded-lg p-4 border border-secondary/30 shadow-md flex items-start justify-between animate-in zoom-in-95 mt-6">
-                    <div>
-                      <p className="text-xs text-secondary uppercase font-bold tracking-tight mb-2 flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
-                        Tone Detection
-                      </p>
-                      <h4 className="text-sm font-semibold text-foreground mb-1">Sentiment</h4>
-                    </div>
-                    <div className="text-right">
-                      <span
-                        className={`text-lg font-bold px-3 py-1.5 rounded-md ${
-                          sentiment.label === 'POSITIVE'
-                            ? 'bg-primary/20 text-primary'
-                            : 'bg-destructive/20 text-destructive'
-                        }`}
-                      >
-                        {sentiment.label}
-                      </span>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-tight mt-1.5 font-medium">
-                        Conf: {(sentiment.score * 100).toFixed(1)}%
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          {view === 'text' && (
-            <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
-              <div className="bg-linear-to-br from-foreground/5 to-transparent rounded-lg border border-foreground/10 overflow-hidden">
-                <div className="flex justify-between items-center gap-4 p-4 pb-3 border-b border-foreground/5">
-                  <h2 className="text-sm font-semibold text-foreground uppercase tracking-tight flex items-center gap-2">
-                    <div className="w-2 h-2 bg-primary rounded-full" />
-                    Text Generation
-                  </h2>
-                  <button
-                    onClick={runTextGen}
-                    disabled={
-                      status === 'generating' ||
-                      status === 'loading' ||
-                      !inputText
-                    }
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-semibold transition-all disabled:opacity-50 flex items-center gap-2 shadow-sm hover:shadow-md"
-                  >
-                    {status === 'generating' ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Play className="w-4 h-4" />
-                    )}
-                    Generate
-                  </button>
-                </div>
-                <textarea
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder="Type your prompt for the local T5 model..."
-                  className="w-full h-32 p-4 bg-muted/20 border-none resize-none focus:ring-1 focus:ring-primary text-foreground text-sm leading-relaxed"
-                />
-              </div>
-
-              {summary && (
-                <div className="bg-linear-to-br from-secondary/5 to-transparent rounded-lg p-4 border border-secondary/20 animate-in fade-in duration-300">
-                  <h4 className="text-sm font-semibold text-secondary mb-3 uppercase tracking-tight flex items-center gap-2">
-                    <div className="w-2 h-2 bg-secondary rounded-full" />
-                    Summary
-                  </h4>
-                  <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
-                    {summary}
-                  </p>
-                </div>
-              )}
-
-              {generatedText && (
-                <div className="grid md:grid-cols-2 gap-8 animate-in slide-in-from-bottom-4 duration-500 mt-6">
-                  <div className="bg-linear-to-br from-primary/5 to-transparent rounded-lg p-4 border border-primary/20">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Cpu className="w-4 h-4 text-primary" />
-                      <span className="text-xs font-bold text-primary uppercase tracking-widest">
-                        Local T5 Output
-                      </span>
-                    </div>
-                    <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
-                      {generatedText}
-                    </p>
-                  </div>
-
-                  <div className="bg-linear-to-br from-secondary/10 to-secondary/5 rounded-lg p-4 border border-secondary/30 flex flex-col justify-between space-y-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="w-5 h-5 text-secondary" />
-                        <h3 className="text-sm font-semibold text-secondary">
-                          Hybrid Upgrade
-                        </h3>
-                      </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        Refine this local draft with Gemini's high-parameter
-                        reasoning.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setTranscript(generatedText)
-                        setView('audio')
-                      }}
-                      className="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-4 py-2.5 rounded-md text-sm font-semibold transition-all w-fit"
-                    >
-                      Upgrade Content
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          {view === 'image' && (
-            <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
-              <div className="space-y-6">
-                <div  className={`relative h-96 rounded-lg flex flex-col items-center justify-center transition-all border-2 border-dashed ${ status === 'captioning' ? 'border-primary/50 bg-primary/5' : 'border-border hover:border-primary/40 bg-muted/5'}`}>
-                  {captioningImage ? (
-                    <img
-                      src={captioningImage}
-                      alt="Captioning Image"
-                      className="w-full h-full object-contain rounded-lg"
-                    />
-                  ) : (
-                    <>
-                      <div className="flex flex-col items-center gap-3 text-center">
-                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                          <MediaIcon className="w-6 h-6 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            Upload Image
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Runs locally on your device
-                          </p>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    onChange={runCaptioning}  
-                    disabled={status === 'captioning' || status === 'loading'}
-                  />  
-                </div>
-              </div>
-            </div>
-          )}
-        </div>{' '}
-        <div className="absolute bottom-4 right-4 flex flex-col items-end gap-2">
-          <a href="https://github.com/Stashly/stashly" target="_blank">
-            <Button variant="outline" className="gap-2">
-              <GithubIcon className="w-4 h-4" />
-              Github
-            </Button>
-          </a>
-        </div>
+        {(context.keywords.length > 0 || context.generatedTags.length > 0) && (
+          <KeywordsTagsGrid keywords={context.keywords} generatedTags={context.generatedTags} />
+        )}
       </main>
     </div>
   )

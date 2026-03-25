@@ -1,14 +1,14 @@
 import { CircleProgressBar } from '@/components/circle-progress-bar'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { uploadProgress } from '@/machines/schema.zod'
+import { uploadProgress } from '@/schemas/machine.schemas'
 import type {
   Config,
   MediaFile,
   MediaFileStatus,
   Status,
   User,
-} from '@/machines/machine.types'
+} from '@/types/machine.types'
 import { uploadMachine } from '@/machines/upload/upload.machine'
 import { Button } from '@/components/ui/button'
 import {

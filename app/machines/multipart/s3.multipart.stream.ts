@@ -1,5 +1,5 @@
 import type { CompletedPart } from '@aws-sdk/client-s3'
-import type { UploadProgress } from '@/machines/machine.types' // Assuming UploadProgress interface is defined
+import type { UploadProgress } from '@/types/machine.types' // Assuming UploadProgress interface is defined
 
 async function retryFetch(
   url: RequestInfo,

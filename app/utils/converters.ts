@@ -21,7 +21,7 @@ import type {
   MediaFile,
   Status,
   UploadProgress,
-} from '@/machines/machine.types'
+} from '@/types/machine.types'
 import { ItemCategory, type ItemType } from '@/prisma/browser'
 import crypto from 'crypto-js'
 import { href } from 'react-router'

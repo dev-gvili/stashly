@@ -5,7 +5,7 @@ import {
   buildItemFilters,
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
-import { getFolderContent } from '@/utils/item-actions.server'
+import { getFolderContent } from '@/services/item-actions'
 import { parseSearchParams } from '@/utils/parsers'
 import type { Route } from './+types/shares'
 import { redirect } from 'react-router'

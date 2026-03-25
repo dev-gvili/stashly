@@ -2,7 +2,7 @@ import { uploadManagerMachineV2 } from './upload-manager.machine'
 import { uploadWorkerMachine } from './upload-worker.machine'
 import { uploadQueueMachineV2 } from './upload-queue.machine'
 import type { User } from '@/.server/auth.types';
-import type { Config } from '../machine.types';
+import type { Config } from '@/types/machine.types';
 
 /**
  * Integration example showing how to use the V2 upload flow

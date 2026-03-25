@@ -26,7 +26,7 @@ export default defineConfig(({ isSsrBuild, mode }) => ({
       : undefined,
   },
   optimizeDeps:{
-    exclude: ['@huggingface/transformers'],
+    exclude: ['@huggingface/transformers', 'onnxruntime-web'],
   },
   plugins: [
     svgr(),

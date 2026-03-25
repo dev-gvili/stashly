@@ -12,7 +12,7 @@ import {
   onItemsUploaded,
   updateTotalQuota,
 } from '@/services/quota'
-import { quotaApiRouteInput, quotaApiRouteOutput } from './schema.zod'
+import { quotaApiRouteInput, quotaApiRouteOutput } from '@/schemas/api.schemas'
 
 export async function action({ request }: Route.ActionArgs) {
   let session = await auth.api.getSession(request)

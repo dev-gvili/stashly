@@ -49,7 +49,7 @@ export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
       <AppSidebar user={user} />
       <AppContent>
         <Outlet />
-        <UploadPanel user={user} />
+        {/* <UploadPanel user={user} /> */}
         <Confirm />
       </AppContent>
     </SidebarProvider>

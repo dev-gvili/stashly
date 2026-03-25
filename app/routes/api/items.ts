@@ -7,12 +7,12 @@ import {
   restoreItems,
   trashItem,
   trashItems,
-} from '@/utils/item-actions.server'
+} from '@/services/item-actions'
 import { parseFormData } from '@/utils/parsers'
 import { removeQueryParam, removeQueryParamValue } from '@/utils/query-params'
 import { redirect } from 'react-router'
 import type { Route } from './+types/items'
-import { itemsApiRouteInput } from './schema.zod'
+import { itemsApiRouteInput } from '@/schemas/api.schemas'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   // TODO: implement loader logic

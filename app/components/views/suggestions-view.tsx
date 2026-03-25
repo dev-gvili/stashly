@@ -6,7 +6,7 @@ import { GridLayout } from '@/components/views/grid-view'
 import { itemVariants } from '@/components/views/variants'
 import type { Prisma } from '@/prisma/client'
 import { FilesEmptyState } from '../states/files-empty-state'
-import type { SuggestedItemsResult } from '../../utils/item-actions.server'
+import type { SuggestedItemsResult } from '../../.server/item-actions'
 import { ListLayout } from './list-view'
 
 export interface SuggestionsViewProps {

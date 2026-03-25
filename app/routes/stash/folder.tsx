@@ -8,7 +8,7 @@ import {
   buildItemFilters,
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
-import { getFolderContent } from '@/utils/item-actions.server'
+import { getFolderContent } from '@/services/item-actions'
 import { parseSearchParams } from '@/utils/parsers'
 import { getQueryParamArray } from '@/utils/query-params'
 import { motion } from 'framer-motion'

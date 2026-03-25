@@ -1,5 +1,5 @@
-import type { QuotaApiRouteOutput } from '@/routes/api/api.types'
-import { quota } from '@/machines/schema.zod'
+import type { QuotaApiRouteOutput } from '@/types/api.types'
+import { quota } from '@/schemas/machine.schemas'
 
 /**
  * Default fetch initialization for API requests.

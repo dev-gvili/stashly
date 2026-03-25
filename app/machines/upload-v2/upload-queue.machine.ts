@@ -9,7 +9,7 @@ import {
   log,
 } from 'xstate'
 import { toMediaFile } from '../../utils/converters'
-import { mediafile, user } from '../schema.zod'
+import { mediafile, user } from '@/schemas/machine.schemas'
 
 /**
  * Generic Queue Machine (v2) - Refined for upload flow

@@ -14,7 +14,7 @@ import type {
   MediaFileEvents,
   MediaFileInput,
   MediaFile,
-} from '../machine.types'
+} from '@/types/machine.types'
 import { toCategory } from '@/utils/converters'
 import {
   abortUpload,
