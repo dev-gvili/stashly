@@ -413,7 +413,6 @@ export const ModelName = {
   Invitation: 'Invitation',
   Item: 'Item',
   LockedItem: 'LockedItem',
-  Metadata: 'Metadata',
   Notification: 'Notification',
   Permission: 'Permission',
   Quota: 'Quota',
@@ -422,7 +421,6 @@ export const ModelName = {
   ShareLink: 'ShareLink',
   StoragePlan: 'StoragePlan',
   Subscription: 'Subscription',
-  Tag: 'Tag',
   Thumbnail: 'Thumbnail',
   Trash: 'Trash',
   TrashItem: 'TrashItem',
@@ -447,7 +445,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "account" | "itemAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "activity" | "activityTime" | "auditLog" | "collection" | "collectionItem" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "item" | "lockedItem" | "metadata" | "notification" | "permission" | "quota" | "search" | "session" | "shareLink" | "storagePlan" | "subscription" | "tag" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
+    modelProps: "account" | "itemAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "activity" | "activityTime" | "auditLog" | "collection" | "collectionItem" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "item" | "lockedItem" | "notification" | "permission" | "quota" | "search" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2597,80 +2595,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-    Metadata: {
-      payload: Prisma.$MetadataPayload<ExtArgs>
-      fields: Prisma.MetadataFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.MetadataFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$MetadataPayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.MetadataFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$MetadataPayload>
-        }
-        findFirst: {
-          args: Prisma.MetadataFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$MetadataPayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.MetadataFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$MetadataPayload>
-        }
-        findMany: {
-          args: Prisma.MetadataFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$MetadataPayload>[]
-        }
-        create: {
-          args: Prisma.MetadataCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$MetadataPayload>
-        }
-        createMany: {
-          args: Prisma.MetadataCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.MetadataCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$MetadataPayload>[]
-        }
-        delete: {
-          args: Prisma.MetadataDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$MetadataPayload>
-        }
-        update: {
-          args: Prisma.MetadataUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$MetadataPayload>
-        }
-        deleteMany: {
-          args: Prisma.MetadataDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.MetadataUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.MetadataUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$MetadataPayload>[]
-        }
-        upsert: {
-          args: Prisma.MetadataUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$MetadataPayload>
-        }
-        aggregate: {
-          args: Prisma.MetadataAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateMetadata>
-        }
-        groupBy: {
-          args: Prisma.MetadataGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.MetadataGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.MetadataCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.MetadataCountAggregateOutputType> | number
-        }
-      }
-    }
     Notification: {
       payload: Prisma.$NotificationPayload<ExtArgs>
       fields: Prisma.NotificationFieldRefs
@@ -3244,80 +3168,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.SubscriptionCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.SubscriptionCountAggregateOutputType> | number
-        }
-      }
-    }
-    Tag: {
-      payload: Prisma.$TagPayload<ExtArgs>
-      fields: Prisma.TagFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.TagFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$TagPayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.TagFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$TagPayload>
-        }
-        findFirst: {
-          args: Prisma.TagFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$TagPayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.TagFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$TagPayload>
-        }
-        findMany: {
-          args: Prisma.TagFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$TagPayload>[]
-        }
-        create: {
-          args: Prisma.TagCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$TagPayload>
-        }
-        createMany: {
-          args: Prisma.TagCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.TagCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$TagPayload>[]
-        }
-        delete: {
-          args: Prisma.TagDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$TagPayload>
-        }
-        update: {
-          args: Prisma.TagUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$TagPayload>
-        }
-        deleteMany: {
-          args: Prisma.TagDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.TagUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.TagUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$TagPayload>[]
-        }
-        upsert: {
-          args: Prisma.TagUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$TagPayload>
-        }
-        aggregate: {
-          args: Prisma.TagAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateTag>
-        }
-        groupBy: {
-          args: Prisma.TagGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.TagGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.TagCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.TagCountAggregateOutputType> | number
         }
       }
     }
@@ -4386,17 +4236,6 @@ export const LockedItemScalarFieldEnum = {
 export type LockedItemScalarFieldEnum = (typeof LockedItemScalarFieldEnum)[keyof typeof LockedItemScalarFieldEnum]
 
 
-export const MetadataScalarFieldEnum = {
-  id: 'id',
-  key: 'key',
-  value: 'value',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type MetadataScalarFieldEnum = (typeof MetadataScalarFieldEnum)[keyof typeof MetadataScalarFieldEnum]
-
-
 export const NotificationScalarFieldEnum = {
   id: 'id',
   message: 'message',
@@ -4514,16 +4353,6 @@ export const SubscriptionScalarFieldEnum = {
 } as const
 
 export type SubscriptionScalarFieldEnum = (typeof SubscriptionScalarFieldEnum)[keyof typeof SubscriptionScalarFieldEnum]
-
-
-export const TagScalarFieldEnum = {
-  id: 'id',
-  name: 'name',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type TagScalarFieldEnum = (typeof TagScalarFieldEnum)[keyof typeof TagScalarFieldEnum]
 
 
 export const ThumbnailScalarFieldEnum = {
@@ -5186,7 +5015,6 @@ export type GlobalOmitConfig = {
   invitation?: Prisma.InvitationOmit
   item?: Prisma.ItemOmit
   lockedItem?: Prisma.LockedItemOmit
-  metadata?: Prisma.MetadataOmit
   notification?: Prisma.NotificationOmit
   permission?: Prisma.PermissionOmit
   quota?: Prisma.QuotaOmit
@@ -5195,7 +5023,6 @@ export type GlobalOmitConfig = {
   shareLink?: Prisma.ShareLinkOmit
   storagePlan?: Prisma.StoragePlanOmit
   subscription?: Prisma.SubscriptionOmit
-  tag?: Prisma.TagOmit
   thumbnail?: Prisma.ThumbnailOmit
   trash?: Prisma.TrashOmit
   trashItem?: Prisma.TrashItemOmit

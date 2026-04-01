@@ -80,7 +80,6 @@ export const ModelName = {
   Invitation: 'Invitation',
   Item: 'Item',
   LockedItem: 'LockedItem',
-  Metadata: 'Metadata',
   Notification: 'Notification',
   Permission: 'Permission',
   Quota: 'Quota',
@@ -89,7 +88,6 @@ export const ModelName = {
   ShareLink: 'ShareLink',
   StoragePlan: 'StoragePlan',
   Subscription: 'Subscription',
-  Tag: 'Tag',
   Thumbnail: 'Thumbnail',
   Trash: 'Trash',
   TrashItem: 'TrashItem',
@@ -477,17 +475,6 @@ export const LockedItemScalarFieldEnum = {
 export type LockedItemScalarFieldEnum = (typeof LockedItemScalarFieldEnum)[keyof typeof LockedItemScalarFieldEnum]
 
 
-export const MetadataScalarFieldEnum = {
-  id: 'id',
-  key: 'key',
-  value: 'value',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type MetadataScalarFieldEnum = (typeof MetadataScalarFieldEnum)[keyof typeof MetadataScalarFieldEnum]
-
-
 export const NotificationScalarFieldEnum = {
   id: 'id',
   message: 'message',
@@ -605,16 +592,6 @@ export const SubscriptionScalarFieldEnum = {
 } as const
 
 export type SubscriptionScalarFieldEnum = (typeof SubscriptionScalarFieldEnum)[keyof typeof SubscriptionScalarFieldEnum]
-
-
-export const TagScalarFieldEnum = {
-  id: 'id',
-  name: 'name',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type TagScalarFieldEnum = (typeof TagScalarFieldEnum)[keyof typeof TagScalarFieldEnum]
 
 
 export const ThumbnailScalarFieldEnum = {

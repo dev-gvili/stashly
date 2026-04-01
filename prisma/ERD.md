@@ -35,7 +35,7 @@ erDiagram
   String shareActionId FK,UK "nullable"
   String versionActionId FK,UK "nullable"
   String activityId FK,UK "nullable"
-  String copyActionIdId FK,UK "nullable"
+  String copyActionId FK,UK "nullable"
 }
 "AccessAction" {
   String id PK
@@ -242,13 +242,6 @@ erDiagram
   DateTime lockedAt
   DateTime expiresAt "nullable"
 }
-"Metadata" {
-  String id PK
-  String key
-  String value
-  DateTime createdAt
-  DateTime updatedAt
-}
 "Notification" {
   String id PK
   String message
@@ -332,12 +325,6 @@ erDiagram
   String storagePlanId FK
   String stripeSubscriptionId UK "nullable"
   String ownerId FK,UK
-}
-"Tag" {
-  String id PK
-  String name
-  DateTime createdAt
-  DateTime updatedAt
 }
 "Thumbnail" {
   String id PK
@@ -515,7 +502,7 @@ Properties as follows:
 - `shareActionId`:
 - `versionActionId`:
 - `activityId`:
-- `copyActionIdId`:
+- `copyActionId`:
 
 ### `AccessAction`
 
@@ -814,16 +801,6 @@ Properties as follows:
 - `lockedAt`:
 - `expiresAt`:
 
-### `Metadata`
-
-Properties as follows:
-
-- `id`:
-- `key`:
-- `value`:
-- `createdAt`:
-- `updatedAt`:
-
 ### `Notification`
 
 Properties as follows:
@@ -931,15 +908,6 @@ Properties as follows:
 - `storagePlanId`:
 - `stripeSubscriptionId`:
 - `ownerId`:
-
-### `Tag`
-
-Properties as follows:
-
-- `id`:
-- `name`:
-- `createdAt`:
-- `updatedAt`:
 
 ### `Thumbnail`
 

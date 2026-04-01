@@ -172,11 +172,6 @@ export type Item = Prisma.ItemModel
  */
 export type LockedItem = Prisma.LockedItemModel
 /**
- * Model Metadata
- * 
- */
-export type Metadata = Prisma.MetadataModel
-/**
  * Model Notification
  * 
  */
@@ -216,11 +211,6 @@ export type StoragePlan = Prisma.StoragePlanModel
  * 
  */
 export type Subscription = Prisma.SubscriptionModel
-/**
- * Model Tag
- * 
- */
-export type Tag = Prisma.TagModel
 /**
  * Model Thumbnail
  * 
