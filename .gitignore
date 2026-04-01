@@ -58,3 +58,4 @@ models/*
 # Playwright auth state
 tests/e2e/.auth/
 playwright-report/
+test-results/
