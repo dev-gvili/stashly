@@ -1,3 +1,16 @@
+import '@dotenvx/dotenvx/config'
+import { PrismaClient } from '../../app/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { TEST_USER_EMAIL } from './constants'
+
 export default async function globalTeardown() {
-  // Implemented in Task 3
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+  const prisma = new PrismaClient({ adapter })
+
+  try {
+    await prisma.user.deleteMany({ where: { email: TEST_USER_EMAIL } })
+    console.log('[E2E] Global teardown complete — test user deleted')
+  } finally {
+    await prisma.$disconnect()
+  }
 }
