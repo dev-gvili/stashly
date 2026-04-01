@@ -1,5 +1,6 @@
-# Claude Code local config
-.claude/
+# Claude Code local config — ignore personal config, keep project settings
+.claude/*
+!.claude/settings.json
 
 # Dependencies
 node_modules

@@ -165,6 +165,31 @@ Tests live in `tests/e2e/`. Run against `http://localhost:3000` (the dev server 
 
 The `.auth/` directory and Playwright output dirs (`playwright-report/`, `test-results/`) are git-ignored.
 
+## Development Workflow
+
+**This workflow is mandatory for every code change (create, add, update, remove):**
+
+1. **Tests** — Add or update tests alongside every code change:
+   - Unit tests (Vitest, in `app/utils/__tests__/`) for pure logic, utilities, and service functions
+   - E2E tests (Playwright, in `tests/e2e/`) for any change that affects user-facing flows or routes
+   - If a change is purely cosmetic (e.g. a CSS tweak) or documentation-only, tests can be skipped — use judgment
+
+2. **Docs** — Update `CLAUDE.md` and/or `README.md` when the change affects:
+   - Architecture or layer responsibilities
+   - Commands, scripts, or tooling
+   - New integrations, patterns, or conventions
+   - The E2E testing setup or auth approach
+
+3. **Commit** — Create a detailed commit message that explains the *why*, not just the *what*:
+   - Use conventional commit prefixes (`feat:`, `fix:`, `chore:`, `test:`, `docs:`, `refactor:`)
+   - Include context on motivation, trade-offs, or non-obvious decisions in the body
+
+4. **PR** — Open a pull request with a descriptive title and body (summary + test plan)
+
+5. **Merge** — Merge to `main` once the PR looks good (no CI failures, no review blockers)
+
+Do not skip any step. If tests are genuinely not applicable for a specific change, call it out explicitly.
+
 ## Workflows
 
 ### Agent/Subagent Creation
