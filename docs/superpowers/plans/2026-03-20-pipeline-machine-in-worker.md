@@ -1,5 +1,7 @@
 # Pipeline Machine in Worker Implementation Plan
 
+> **Status: IMPLEMENTED** — `stash.worker.ts` now boots the pipeline machine with `createActor(pipelineMachine)`. AI functions extracted to `stash.ai.ts`. Tests in `app/workers/__tests__/` (stash-ai-callbacks, pipeline-actors, pipeline-flow). Completed ~2026-03-20.
+
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Move the XState pipeline machine from the main thread into `stash.worker.ts` so all AI orchestration and inference runs off-thread, keeping the UI unconditionally responsive.

@@ -1,0 +1,370 @@
+Stashly project file structure — generated 2026-04-01
+
+.
+├── app/
+│   ├── .client/
+│   │   ├── auth.ts
+│   │   └── stashly-ai.ts
+│   ├── .server/
+│   │   ├── api.errors.ts
+│   │   ├── api.utils.ts
+│   │   ├── auth.ts
+│   │   ├── auth.types.ts
+│   │   ├── breadcrumbs.ts
+│   │   ├── db.ts
+│   │   ├── email.ts
+│   │   ├── env.ts
+│   │   ├── item-actions.ts
+│   │   ├── onboard.ts
+│   │   ├── quota.ts
+│   │   ├── quota.utils.ts
+│   │   ├── s3.ts
+│   │   ├── s3-extractors.ts
+│   │   ├── sidebar.ts
+│   │   ├── stripe.ts
+│   │   ├── theme.ts
+│   │   ├── upload.ts
+│   │   ├── workspace.ts
+│   │   ├── repositories/
+│   │   │   ├── ActivityRepository.ts
+│   │   │   ├── CollectionRepository.ts
+│   │   │   ├── ItemRepository.ts
+│   │   │   ├── NotificationRepository.ts
+│   │   │   ├── PermissionRepository.ts
+│   │   │   ├── QuotaRepository.ts
+│   │   │   ├── shareLink.repository.ts
+│   │   │   ├── StoragePlanRepository.ts
+│   │   │   ├── SubscriptionRepository.ts
+│   │   │   ├── userRepository.ts
+│   │   │   ├── workspaceMember.repository.ts
+│   │   │   └── WorkspaceRepository.ts
+│   │   ├── search/
+│   │   │   ├── embeddings.ts
+│   │   │   ├── filters.ts
+│   │   │   ├── item.filters.ts
+│   │   │   ├── schema.zod.ts
+│   │   │   ├── search.repository.ts
+│   │   │   ├── search.service.ts
+│   │   │   └── search.ts
+│   │   └── services/
+│   │       ├── ItemService.ts
+│   │       ├── search.service.ts
+│   │       ├── search.types.ts
+│   │       ├── shareLink.service.ts
+│   │       ├── workspaceItem.service.ts
+│   │       ├── WorkspaceItemService.ts
+│   │       └── workspaceMember.service.ts
+│   ├── auth/
+│   │   └── permissions.ts
+│   ├── components/
+│   │   ├── app-content.tsx
+│   │   ├── app-header.tsx
+│   │   ├── app-sidebar.tsx
+│   │   ├── app-toolbar.tsx
+│   │   ├── color-mode.tsx
+│   │   ├── CommentsThreadPanel.tsx
+│   │   ├── confirm-dialog.tsx
+│   │   ├── confirm-renderer.tsx
+│   │   ├── DocumentViewer.tsx
+│   │   ├── error-boundary.tsx
+│   │   ├── favorite.tsx
+│   │   ├── FileIcon.tsx
+│   │   ├── file-uploader.tsx
+│   │   ├── icons.tsx
+│   │   ├── layout-toggle.tsx
+│   │   ├── logo.tsx
+│   │   ├── theme-toggle.tsx
+│   │   ├── user-menu.tsx
+│   │   ├── auth/
+│   │   │   └── button.tsx
+│   │   ├── circle-progress-bar/
+│   │   │   └── index.tsx
+│   │   ├── filters/
+│   │   │   ├── Filter.tsx
+│   │   │   ├── FilterList.tsx
+│   │   │   └── FilterListItem.tsx
+│   │   ├── navigation/
+│   │   │   ├── nav-media.tsx
+│   │   │   └── nav-workspaces.tsx
+│   │   ├── stash/
+│   │   │   ├── item-card.tsx
+│   │   │   ├── item-card-actions.tsx
+│   │   │   ├── item-card-checkbox.tsx
+│   │   │   ├── item-info-card.tsx
+│   │   │   └── selection.tsx
+│   │   ├── states/
+│   │   │   ├── files-empty-state.tsx
+│   │   │   ├── generic-empty-state.tsx
+│   │   │   └── trash-empty-state.tsx
+│   │   ├── ui/                          # shadcn/ui components (source-owned)
+│   │   │   └── [accordion, alert, avatar, badge, button, card, dialog, ...]
+│   │   ├── upload/
+│   │   │   └── index.tsx
+│   │   └── views/
+│   │       ├── buildRows.ts
+│   │       ├── grid-view.tsx
+│   │       ├── list-view.tsx
+│   │       ├── river-view.tsx
+│   │       ├── suggestions-view.tsx
+│   │       ├── variants.ts
+│   │       └── waterfall-view.tsx
+│   ├── hooks/
+│   │   ├── index.ts
+│   │   ├── useConfirm.ts
+│   │   ├── useItemCard.ts
+│   │   ├── use-mobile.ts
+│   │   ├── usePagination.ts
+│   │   ├── use-slots.ts
+│   │   └── useSort.ts
+│   ├── machines/
+│   │   ├── confirm.machine.ts
+│   │   ├── infiniteScroll.machine.ts
+│   │   ├── ai/
+│   │   │   ├── ai.machine.ts
+│   │   │   └── caption.machine.ts
+│   │   ├── onboard/
+│   │   │   └── onboard.machine.ts
+│   │   ├── pagination/
+│   │   │   └── infinite-scroll.machine.ts
+│   │   ├── pipeline/
+│   │   │   ├── pipeline.actors.ts
+│   │   │   └── pipeline.machine.ts
+│   │   ├── quota/
+│   │   │   ├── quota.actors.ts
+│   │   │   ├── quota.machine.ts
+│   │   │   └── quota.utils.ts
+│   │   ├── selection/
+│   │   │   └── selection.machine.ts
+│   │   ├── session/
+│   │   │   └── sessionStorage.machine.ts
+│   │   ├── sidebar/
+│   │   │   └── sidebar.machine.ts
+│   │   ├── subscription/
+│   │   │   ├── subscription.actors.ts
+│   │   │   └── subscription.machine.ts
+│   │   └── upload/
+│   │       ├── file.machine.ts
+│   │       ├── file.v2.machine.ts
+│   │       ├── root.machine.ts
+│   │       └── upload.machine.ts
+│   ├── prisma/                          # Generated Prisma client output
+│   │   ├── browser.ts
+│   │   ├── client.ts
+│   │   ├── enums.ts
+│   │   ├── models.ts
+│   │   └── models/                      # Per-model TS types (generated)
+│   ├── routes/
+│   │   ├── routes.ts                    # Central route registry
+│   │   ├── layout.tsx                   # Authenticated app layout
+│   │   ├── root.tsx
+│   │   ├── not-found.tsx
+│   │   ├── index.tsx
+│   │   ├── api/
+│   │   │   ├── ai.ts
+│   │   │   ├── auth.ts
+│   │   │   ├── collections.ts
+│   │   │   ├── comments.ts
+│   │   │   ├── favorites.ts
+│   │   │   ├── health.ts
+│   │   │   ├── images.ts
+│   │   │   ├── invitations.ts
+│   │   │   ├── items.ts
+│   │   │   ├── members.ts
+│   │   │   ├── notifications.ts
+│   │   │   ├── permissions.ts
+│   │   │   ├── quota.ts
+│   │   │   ├── s3.ts
+│   │   │   ├── s3/
+│   │   │   │   ├── presigned.ts
+│   │   │   │   └── sts-token.ts
+│   │   │   ├── search.ts
+│   │   │   ├── settings.ts
+│   │   │   ├── shares.ts
+│   │   │   ├── sidebar.ts
+│   │   │   ├── stripe.ts
+│   │   │   ├── subscription.ts
+│   │   │   ├── theme.ts
+│   │   │   ├── upload.ts
+│   │   │   ├── users.ts
+│   │   │   ├── versions.ts
+│   │   │   ├── view.ts
+│   │   │   └── workspaces.ts
+│   │   ├── auth/
+│   │   │   ├── layout.tsx
+│   │   │   ├── sign-in.tsx
+│   │   │   └── sign-out.tsx
+│   │   ├── settings/
+│   │   │   ├── account.tsx
+│   │   │   ├── appearance.tsx
+│   │   │   ├── billing.tsx
+│   │   │   ├── notifications.tsx
+│   │   │   ├── profile.tsx
+│   │   │   └── security.tsx
+│   │   ├── stash/
+│   │   │   ├── all.tsx
+│   │   │   ├── collection.tsx
+│   │   │   ├── collections.tsx
+│   │   │   ├── demo.tsx
+│   │   │   ├── favorites.tsx
+│   │   │   ├── file.tsx
+│   │   │   ├── folder.tsx
+│   │   │   ├── gallery.tsx
+│   │   │   ├── home.tsx
+│   │   │   ├── recent.tsx
+│   │   │   ├── search.tsx
+│   │   │   ├── shares.tsx
+│   │   │   └── trash.tsx
+│   │   └── workspaces/
+│   │       ├── collection.tsx
+│   │       ├── collections.tsx
+│   │       ├── create.tsx
+│   │       ├── favorites.tsx
+│   │       ├── file.tsx
+│   │       ├── folder.tsx
+│   │       ├── gallery.tsx
+│   │       ├── index.tsx
+│   │       ├── members.tsx
+│   │       ├── recent.tsx
+│   │       ├── search.tsx
+│   │       ├── settings.tsx
+│   │       ├── shares.tsx
+│   │       ├── trash.tsx
+│   │       └── workspace.tsx
+│   ├── schemas/
+│   │   ├── api.schemas.ts
+│   │   ├── index.ts
+│   │   └── machine.schemas.ts
+│   ├── styles/
+│   │   ├── global.css
+│   │   ├── globals.css
+│   │   └── theme.css
+│   ├── types/
+│   │   ├── api.types.ts
+│   │   ├── index.ts
+│   │   ├── machine.types.ts
+│   │   ├── react.d.ts
+│   │   ├── tokenizers-augment.d.ts
+│   │   └── upload-actors.types.ts
+│   ├── utils/
+│   │   ├── __tests__/
+│   │   │   ├── algolia-filters.test.ts
+│   │   │   ├── converters.test.ts
+│   │   │   ├── filters.test.ts
+│   │   │   ├── formaters.test.ts
+│   │   │   ├── misc.test.ts
+│   │   │   ├── parsers.test.ts
+│   │   │   └── styles.test.ts
+│   │   ├── algolia-filters.ts
+│   │   ├── breadcrmb.ts
+│   │   ├── collection-actions.ts
+│   │   ├── confirm.ts
+│   │   ├── converters.ts
+│   │   ├── filters.ts
+│   │   ├── filters/
+│   │   │   ├── activity.filters.ts
+│   │   │   ├── collection.filters.ts
+│   │   │   ├── drive.filters.ts
+│   │   │   ├── item.algolia.filters.ts
+│   │   │   ├── item.filters.ts
+│   │   │   ├── notification.filters.ts
+│   │   │   ├── quota.filters.ts
+│   │   │   ├── schema.zod.ts
+│   │   │   ├── shareLink.filters.ts
+│   │   │   ├── user.filters.ts
+│   │   │   ├── workspace.filters.ts
+│   │   │   └── workspaceMember.filters.ts
+│   │   ├── formaters.ts
+│   │   ├── index.ts
+│   │   ├── item-actions.server.ts
+│   │   ├── metadataExtractor.ts
+│   │   ├── misc.ts
+│   │   ├── pagination.ts
+│   │   ├── parsers.ts
+│   │   ├── query-params.ts
+│   │   ├── search.ts
+│   │   ├── searchItems.ts
+│   │   ├── stashly-ai.ts
+│   │   ├── styles.ts
+│   │   └── tesseractService.ts
+│   └── workers/
+│       ├── __tests__/
+│       │   ├── helpers.test.ts
+│       │   ├── pipeline-actors.test.ts
+│       │   ├── pipeline-flow.test.ts
+│       │   └── stash-ai-callbacks.test.ts
+│       ├── stash.ai.ts                  # AI functions (Whisper, summarization, keywords)
+│       ├── stash.worker.helpers.ts
+│       └── stash.worker.ts              # Web Worker — boots pipeline XState machine
+├── docs/
+│   ├── README.md
+│   ├── ai-pipeline.md
+│   ├── data_profile_stashly _prisma_schema.md
+│   ├── dev-notes.md
+│   ├── project-overview.md
+│   ├── quota-and-machines.md
+│   ├── roadmap.md
+│   ├── routing-and-ui.md
+│   ├── search.md
+│   ├── stashly_structure_2026-04-01.txt
+│   ├── suggestions-view.md
+│   ├── upload-multipart.md
+│   └── superpowers/
+│       ├── plans/
+│       │   ├── 2026-03-20-pipeline-machine-in-worker.md
+│       │   ├── 2026-03-21-pipeline-machine-extraction.md
+│       │   └── 2026-04-01-e2e-playwright.md
+│       └── specs/
+│           ├── 2026-03-21-pipeline-machine-extraction-design.md
+│           └── 2026-04-01-e2e-playwright-design.md
+├── prisma/
+│   ├── prisma.config.ts
+│   ├── ERD.md
+│   ├── migrations/                      # 20+ migration SQL files
+│   ├── models/                          # Split .prisma schema files
+│   │   ├── schema.prisma                # Base config (datasource, generator)
+│   │   ├── item.prisma
+│   │   ├── user.prisma
+│   │   ├── workspace.prisma
+│   │   ├── collection.prisma
+│   │   ├── facet.prisma                 # File, Folder, Image, Video, Audio
+│   │   ├── quota.prisma
+│   │   ├── search.prisma
+│   │   ├── storage.prisma
+│   │   ├── subscription.prisma
+│   │   └── [activity, action, audit, comment, favorite, invitation, ...]
+│   └── seedData/
+│       ├── data.ts
+│       ├── seed.ts
+│       └── stress-test.ts
+├── server/
+│   ├── app.ts                           # Express 5 app entry
+│   ├── server.js
+│   └── adapters/
+│       ├── files.ts
+│       └── workspace.ts
+├── tests/
+│   └── e2e/
+│       ├── auth.spec.ts
+│       ├── constants.ts
+│       ├── fixtures.ts
+│       ├── global-setup.ts
+│       ├── global-teardown.ts
+│       ├── navigation.spec.ts
+│       └── pages/
+│           ├── auth.page.ts
+│           ├── layout.page.ts
+│           └── stash.page.ts
+├── scripts/
+│   ├── dev.ts
+│   ├── mistral-summarize.ts
+│   └── test.ts
+├── CLAUDE.md
+├── README.md
+├── Dockerfile
+├── package.json
+├── pnpm-workspace.yaml
+├── playwright.config.ts
+├── react-router.config.ts
+├── tsconfig.json
+├── vite.config.ts
+└── vitest.config.ts
