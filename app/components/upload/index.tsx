@@ -341,7 +341,6 @@ export const Trigger = React.forwardRef<
       return { config: state.context.config }
     })
     const _onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      console.log(event.target.files)
       if (!event.target.files) return
       for (const file of event.target.files) {
         addFile(file, config.user?.rootId)

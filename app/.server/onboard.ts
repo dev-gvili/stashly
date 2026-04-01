@@ -11,7 +11,6 @@ export async function onboardNewUser(user: User) {
   return new Promise<void>((resolve, reject) => {
     onboardingActor.subscribe({
       next: (state) => {
-        console.log('Onboarding state:', onboardingActor.getSnapshot().value)
       },
       complete: () => {
         const snapshot = onboardingActor.getSnapshot()

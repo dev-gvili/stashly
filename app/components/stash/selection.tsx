@@ -94,10 +94,10 @@ export const SelectionProvider = ({
     if (!eq) {
       send({ type: 'SET_SELECTED', selected, paramName: param })
     }
-  }, [searchParams, send, state.context.paramName, state.context.selectedIds])
+  }, [searchParams])
 
   const isChecked = useCallback(
-    (id: string, paramName = 'ids') => {
+    (id: string, paramName = 'selectedItems') => {
       // prefer machine state, fall back to URL params
       const inMachine = state.context.selectedIds?.includes(id)
       if (inMachine) return true
@@ -109,13 +109,13 @@ export const SelectionProvider = ({
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     shiftKeyRef.current = e.shiftKey
-  }, [])
+  }, [shiftKeyRef])
 
   const onCheckedChange = useCallback(
     (
       id: string,
       checked: boolean | 'indeterminate',
-      paramName = 'ids'
+      paramName = 'selectedItems'
     ) => {
       const checkedBool = checked === 'indeterminate' ? true : (checked as boolean)
       send({ type: 'TOGGLE', id, checked: checkedBool, shiftKey: shiftKeyRef.current, paramName })

@@ -14,6 +14,7 @@ import { getQueryParamArray } from '@/utils/query-params'
 import { motion } from 'framer-motion'
 import { redirect, type ShouldRevalidateFunction } from 'react-router'
 import type { Route } from './+types/folder'
+import { SelectionProvider } from '../../components/stash/selection'
 export async function loader({ request, params }: Route.LoaderArgs) {
   let session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/signin')
@@ -30,7 +31,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   let filters = buildItemFilters(parsedParams)
 
-  return await getFolderContent(parsedParams.take, parsedParams.cursor, filters)
+  return await getFolderContent({
+    cursor: parsedParams.cursor,
+    where: { ...filters, parentId: params.folderId },
+  })
 }
 
 export const shouldRevalidate: ShouldRevalidateFunction = ({
@@ -42,7 +46,6 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
 }) => {
   let current = currentUrl.searchParams
   let next = nextUrl.searchParams
-  console.log(nextUrl.pathname)
   ;['sidebar'].forEach((action) => {
     if (formAction?.includes(action)) {
       return false
@@ -62,29 +65,32 @@ export default () => {
   >(100, '')
   return (
     <div className="w-full relative">
-      <GridLayout>
-        {items.map((item) => (
-          <motion.div
-            key={item.id}
-            variants={itemVariants}
-            transition={{ duration: 0.2 }}
-          >
-            <ItemCard key={item.id} {...item}>
-              <ItemCard.Header>
-                <ItemCard.Checkbox name="selectedItems" value={item.id} />
-              </ItemCard.Header>
-              <ItemCard.Content>
-                <ItemCard.Thumbnail />
-                <ItemCard.Name />
-              </ItemCard.Content>
-              <ItemCard.Footer>
-                <ItemCard.Size />
-                <ItemCard.Count />
-              </ItemCard.Footer>
-            </ItemCard>
-          </motion.div>
-        ))}
-      </GridLayout>
+      <SelectionProvider items={items.map((i) => i.id)}>
+        <GridLayout>
+          {items.map((item) => (
+            <motion.div
+              key={item.id}
+              variants={itemVariants}
+              transition={{ duration: 0.2 }}
+            >
+              <ItemCard key={item.id} {...item}>
+                <ItemCard.Header>
+                  <ItemCard.Checkbox name="selectedItems" value={item.id} />
+                  <ItemCard.Actions className="place-self-end" />
+                </ItemCard.Header>
+                <ItemCard.Content>
+                  <ItemCard.Thumbnail />
+                  <ItemCard.Name />
+                </ItemCard.Content>
+                <ItemCard.Footer>
+                  <ItemCard.Size />
+                  <ItemCard.Count />
+                </ItemCard.Footer>
+              </ItemCard>
+            </motion.div>
+          ))}
+        </GridLayout>
+      </SelectionProvider>
       <div className="col-span-full flex justify-center mt-2">
         <LoadMoreItems
           loadMore={loadMore}

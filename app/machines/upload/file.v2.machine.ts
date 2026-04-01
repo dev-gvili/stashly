@@ -75,7 +75,6 @@ const fileMachine = setup({
         // })
         // // Parse the response, expecting a JSON with { description: string }
         // let data = (await response.json()) as { caption: string }
-        console.log('caption: ', caption)
         return { caption }
       }
     ),
@@ -279,7 +278,6 @@ const fileMachine = setup({
     // Save embedding results, embedding generation is for semantic search later.
     SAVE_EMBEDDING: assign({
       mediaFile: ({ context, event }) => {
-        console.log({ event, context })
         let { embedding } = (
           event as unknown as DoneActorEvent<{
             embedding: number[]
@@ -408,7 +406,6 @@ const fileMachine = setup({
       },
     }),
 
-    CONSOLE_LOG: log(({ context, event }) => console.log({ context, event })),
   },
   guards: {
     isImageFile: ({ context }) => {
@@ -699,10 +696,7 @@ const fileMachine = setup({
     actions: [
       'SEND_PARENT_UPLOAD_DONE',
       ({ context }) => {
-        console.log('File processing completed:', {
-          uploadStatus: context.mediaFile.status,
-          processingStatus: context.mediaFile.processingStatus,
-        })
+        // File processing completed
       },
     ],
   },

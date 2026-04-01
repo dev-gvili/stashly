@@ -68,8 +68,6 @@ self.addEventListener('message', async (event) => {
       if (rawLabel && rawLabel.length >= 2) {
         detectedLanguage = rawLabel.slice(0, 2).toLowerCase()
       }
-      console.log('Detected Language:', detectedLanguage)
-
       self.postMessage({ type: 'status', payload: 'inferencing' })
 
       const audioInput =

@@ -1,4 +1,5 @@
 import type { Prisma } from '@/prisma/browser'
+import type { PrismaClient } from '../prisma/client'
 
 /**
  * Represents the Prisma delegate methods required for pagination.

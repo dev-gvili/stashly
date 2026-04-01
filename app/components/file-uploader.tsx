@@ -186,8 +186,6 @@ export function FileUploader({
       encType: 'multipart/form-data',
       action: uploadAction,
     })
-    console.log('Submitting files:', fetcher.formData)
-    console.log('Submitting files:', fetcher.data)
   }
   const handleRetry = (id: string) => {
     const fileToRetry = uploadableFiles.find((f) => f.id === id)

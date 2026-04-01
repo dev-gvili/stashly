@@ -59,7 +59,6 @@ async function main() {
     faker.helpers
       .arrayElements(items.map((i) => ({ id: i.id, ownerId: i.ownerId })))
       .forEach(async (i) => {
-        console.log(i)
         await itemRepository.favorite(i.id, i.ownerId)
       })
   }
@@ -75,14 +74,14 @@ async function main() {
   //   // 	searchParams,
   //   // })
 
-  //   // console.log('Params: ', params)
+  //   // void 0
 
   //   // const indexes = await searchItems({
   //   // 	...params,
   //   // 	mode: 'algolia',
   //   // 	buildFilters: buildItemAlgoliaFilters,
   //   // })
-  //   // console.log(inspect({ indexes }, { colors: true, depth: null }))
+  //   // void 0
 
   //   const searchParams = new URLSearchParams(`${urlSearchParams}`);
 
@@ -99,9 +98,9 @@ async function main() {
   //   let cursorId: string | undefined = undefined;
   //   // For Postgres Search:
   //   // Paginate through all results
-  //   // console.log('Searching...')
+  //   // void 0
   //   // while (true) {
-  //   // console.log('Postgres Search with params:', { ...params, cursorId })
+  //   // void 0
   //   const items = await searchItems({
   //     ...params,
   //     mode: "postgres",
@@ -109,18 +108,18 @@ async function main() {
   //     buildFilters: buildItemFilters,
   //   });
   //   let c = items.data.map((i) => i.id);
-  //   console.log(JSON.stringify(c));
+  //   void 0;
   //   // return items
   //   // For Algolia Search:
-  //   // console.log('Algolia Search with params:', { ...algparams })
+  //   // void 0
   //   // const hits = await searchItems({
   //   // 	...algparams,
   //   // 	mode: 'algolia',
   //   // 	buildFilters: buildItemAlgoliaFilters,
   //   // })
 
-  //   // console.log('inspect', { items: items.data?.length, hits: hits?.length })
-  //   // console.log(inspect(items, { colors: true, depth: null }))
+  //   // void 0
+  //   // void 0
   //   // if (items.metadata.nextCursor) {
   //   // 	console.log(
   //   // 		inspect(
@@ -128,10 +127,10 @@ async function main() {
   //   // 			{ colors: true, depth: null }
   //   // 		)
   //   // 	)
-  //   // 	console.log('Search From Cursor', items.metadata.previousCursor)
+  //   // 	void 0
   //   // 	cursorId = items.metadata.nextCursor
   //   // }
-  //   // console.log('Search Until Cursor', items.metadata.nextCursor)
+  //   // void 0
   //   // if (items.metadata.isComplete) {
   //   // 	console.log(
   //   // 		inspect(
@@ -139,7 +138,7 @@ async function main() {
   //   // 			{ colors: true, depth: null }
   //   // 		)
   //   // 	)
-  //   // 	console.log('Search Completed')
+  //   // 	void 0
   //   // 	break
   //   // }
   //   // }
@@ -175,7 +174,7 @@ async function main() {
   // 				params.cursor = res.metadata.nextCursor
   // 			}
   // 			if (res.metadata.isComplete) {
-  // 				console.log('Pagination Complete')
+  // 				void 0
   // 				break
   // 			}
   // 		}
@@ -187,7 +186,7 @@ async function main() {
   // 			take: 10,
   // 			strategy: 'offset',
   // 		})
-  // 		console.log(res)
+  // 		void 0
   // 	}
   // }
   if (action === 'stripeCustomerId') {
@@ -217,11 +216,9 @@ async function main() {
       },
     })
     // itemRepository.favorite(`${itemId!}`, member.id);
-    console.log(member)
   }
   if (action === 'change-owner') {
     const user = await userRepository.findById(`${ownerId}`)
-    console.log(user)
     const root = await prisma.item.findFirstOrThrow({
       where: {
         AND: [{ name: 'root' }],
@@ -230,11 +227,7 @@ async function main() {
         },
       },
     })
-    console.log(root)
     let res = await changeItemsOwner(root.id!, ownerId, true)
-    console.log(
-      `changing owner of ${root.ownerId} to ${user?.id} done: ${res?.count}`
-    )
   }
   if (action === 'add-items') {
     const user = await prisma.user.findFirstOrThrow({
@@ -326,9 +319,8 @@ async function main() {
         parentId: 'item_btktlpCgx_I5PFKiPm8HJg',
       },
     })
-    console.log(JSON.stringify(item, null, 2))
   } else {
-    // console.log(inspect(item, { colors: true, depth: null }))
+    // void 0
   }
   if (action === 'embeddings') {
     let items = await prisma.item.findMany()
@@ -351,12 +343,7 @@ async function main() {
     const modelInstance = await AutoModel.from_pretrained(`${model}`, {
       config: cfg,
     });
-    console.log(inspect(cfg, { colors: true, depth: null }))
-    // console.log(inspect(processor, { colors: true, depth: null }));
-    console.log(inspect(modelInstance, { colors: true, depth: null }));
-    console.log(modelInstance.base_model_prefix);
-    console.log(modelInstance.config);
-    console.log(modelInstance.configs);
+    // void 0;
   } 
 }
 

@@ -139,12 +139,6 @@ const WebGPUDeviceManager = {
     }
 
     this.device = await this.adapter.requestDevice()
-    console.log(
-      'WebGPU adapter and device initialized',
-      this.adapter,
-      this.device
-    )
-
     if (!this.listenersAttached) {
       this.listenersAttached = true
 
@@ -659,7 +653,6 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
         return_full_text: false, // Only return the newly generated tokens
       })
 
-      console.log('Summarization output', output)
       // send final summarization result to main thread
       self.postMessage({
         type: 'result',
@@ -716,7 +709,6 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
         return_full_text: false,
       })
 
-      console.log('Classification output', output)
       // send final sentiment classification result to main thread
       self.postMessage({
         type: 'result',
@@ -801,7 +793,6 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
         repetition_penalty: 1.1,
         return_full_text: false, // Only return the newly generated tokens
       })
-      console.log('Captioning output', output)
       // send final captioning result to main thread
       const caption = output
       self.postMessage({

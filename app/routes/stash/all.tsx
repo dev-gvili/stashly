@@ -70,7 +70,6 @@ export async function loader({ request, params }: Route.ActionArgs) {
   let searchParams = new URL(request.url).searchParams
   searchParams.set('currentUserId', session.user.id)
   searchParams.set('parentId', session.user.rootId)
-
   let parsedParams = parseSearchParams({
     schema: itemFilterSchema,
     searchParams,

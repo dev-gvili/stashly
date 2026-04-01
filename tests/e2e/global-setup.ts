@@ -100,8 +100,6 @@ export default async function globalSetup() {
         2,
       ),
     )
-
-    console.log('[E2E] Global setup complete — test user seeded, session written')
   } finally {
     await prisma.$disconnect()
   }

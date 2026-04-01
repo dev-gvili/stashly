@@ -115,7 +115,7 @@ export const multipart = setup({
           actions: { type: 'updateProgress' },
         },
         '@multipart.upload.abort': {
-          actions: log(({ event, self }) => console.log({ event, self })),
+          actions: { type: 'setError' },
         },
         '@multipart.upload.aborted': {
           target: 'abort',

@@ -10,7 +10,7 @@ import { itemRepository } from './repositories/ItemRepository'
  * @example
  * ```ts
  * const items = await getWorkspaceItems("workspace123");
- * console.log(items);
+ * void 0;
  * ```
  * @throws Will throw an error if the workspaceId is invalid or if there is a database issue.
  * @see itemRepository.findWorkspaceItems for the underlying data access method.

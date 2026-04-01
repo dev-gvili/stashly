@@ -87,7 +87,6 @@ export class S3Service {
    * @private
    */
   private toTimeLeft(secondsRemaining: number) {
-    console.log('secondsRemaining', secondsRemaining)
     if (isNaN(secondsRemaining)) {
       return { hours: 0, minutes: 0, seconds: 0 }
     }
@@ -282,7 +281,6 @@ export class S3Service {
     if (abortController) {
       abortController.signal.addEventListener('abort', () => {
         upload.abort()
-        console.log(`Upload for ${key} has been cancelled.`)
       })
     }
     // Track upload progress
@@ -328,12 +326,7 @@ export class S3Service {
       })
 
       // // Log progress
-      // console.log(
-      // 	`Upload Progress for ${key}:`,
-      // 	`${percentage}% |`,
-      // 	`Speed: ${speed.value.toFixed(2)} ${speed.unit} |`,
-      // 	`Time left: ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s`
-      // )
+      // void 0
     })
 
     try {

@@ -729,7 +729,7 @@ Text: ${cleaned}
       * @example
       * ```
       * for await (const segment of StashlyAI.transcribe({ url, stream: true })) {  
-      *  console.log('New segment:', segment);
+      *  void 0;
       * }
       * ```
       * For now, we will just call transcribeMedia with streaming disabled and return the full text.  
@@ -756,13 +756,11 @@ Text: ${cleaned}
         target: 'eng_Latn',
       })
       summarization = await this.summarize(translation)
-      console.log('Summarization:', summarization)
       summary = await this.translate({
         text: summarization,
         source: 'eng_Latn',
         target: 'heb_Hebr',
       })
-      console.log('Summary:', summary)
     } else {
       summarization = await this.summarize(transcription)
       summary = summarization

@@ -70,8 +70,6 @@ export async function searchItems<
     const { page, buildFilters, query, take = 10, ...rest } = opts
     const filters = buildFilters(opts as TParams)
 
-    console.log('Filters:', filters)
-
     const { results } = await getAlgoliaClient().searchForHits<ItemHit>({
       requests: [
         {
@@ -85,10 +83,6 @@ export async function searchItems<
       ],
     })
 
-    console.log(
-      'Algolia Results:',
-      inspect(results, { colors: true, depth: null })
-    )
     return results[0].hits
   }
 

@@ -89,7 +89,7 @@ export function toUserInitial(input: string): string {
  * const file = new File([""], "resume.pdf", { type: "application/pdf" });
  * const category = toCategory(file); // returns ItemCategory.pdf
  * @example
- * const codeFile = new File(["console.log('hi')"], "app.js", { type: "text/javascript" });
+ * const codeFile = new File(["void 0"], "app.js", { type: "text/javascript" });
  * const category = toCategory(codeFile); // returns ItemCategory.code
  */
 export function toCategory(file: File): ItemCategory {

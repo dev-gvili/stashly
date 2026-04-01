@@ -67,7 +67,7 @@ function createChunkedFileStream(
       }
     },
     cancel(reason) {
-      console.log('Chunked file stream cancelled:', reason)
+      // Chunked file stream cancelled
     },
   })
 }
@@ -145,7 +145,7 @@ class ProgressReportingTransformStream extends TransformStream<Blob, Blob> {
           timeLeft: { hours: 0, minutes: 0, seconds: 0 },
           speed: { value: 0, unit: 'KB/s' }, // Or a final average speed if desired
         })
-        console.log('ProgressReportingTransformStream flushed.')
+        // ProgressReportingTransformStream flushed
       },
     })
     this.totalFileSize = totalFileSize
@@ -249,15 +249,13 @@ export async function streamParts({
     },
     close() {
       // This method is called when the ReadableStream feeding into this WritableStream closes.
-      console.log(
-        'Upload WritableStream closed: All chunks processed and sent.'
-      )
+      // Upload WritableStream closed: All chunks processed and sent.
       // Report all collected parts to the parent
       onDone(uploadedParts)
     },
     abort(reason) {
       // This method is called if the WritableStream itself is aborted.
-      console.log('Upload WritableStream aborted:', reason)
+      // Upload WritableStream aborted
       abortController.abort(reason) // Ensure the main abort controller is also signaled
     },
   })
@@ -271,10 +269,10 @@ export async function streamParts({
         { signal: abortController.signal }
       )
       .pipeTo(uploadWritableStream, { signal: abortController.signal })
-    console.log('File stream piping completed successfully.')
+    // File stream piping completed successfully
   } catch (error: any) {
     if (error.name === 'AbortError') {
-      console.log('File stream piping aborted by AbortController.')
+      // File stream piping aborted by AbortController
       // Do not re-throw, as this is an intentional abort.
     } else {
       console.error('Error during file stream piping:', error)

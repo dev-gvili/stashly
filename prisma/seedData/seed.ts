@@ -93,8 +93,6 @@ async function main(): Promise<void> {
 
     // Create multiple folders and files
     const top_folders = generateMockTopLevelFolders({ user, drive, parent: root})
-    console.log({ top_folders })
-
     let createdTopFolders = top_folders.map((folder) => {
       return createFolder(folder.name, folder.parentId as string, user.id, drive.id)
     })
@@ -156,15 +154,6 @@ async function main(): Promise<void> {
         })
       ),
     ])
-
-    console.log(
-      inspect(
-        `Seeded database with ${createdStoragePlans.length} storage plans, 1 user, 1 drive, ${createdTopFolders.length} top-level folders, ${createdFolders.length} subfolders, and ${createdFiles.length} files.`,
-        { depth: null, colors: true }
-      )
-    )
-
-    console.log(inspect(`userId: ${user.id}, driveId: ${drive.id}, subscriptionId: ${subscription.id}, user email: ${user.email}`, { colors: true }))
   } catch (error) {
     console.error('Error seeding database:', error)
   }

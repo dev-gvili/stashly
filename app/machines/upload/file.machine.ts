@@ -182,7 +182,6 @@ const fileMachine = setup({
         return { uploadRef: actor }
       })
     }),
-    CONSOLE_LOG: log(({ context, event }) => console.log({ context, event })),
   },
   actors: {
     create: createUpload,

@@ -17,8 +17,6 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   useEffect(() => {
     titleRef.current?.focus()
   }, [])
-
-  console.log({ error })
   let message = 'Error!'
   let details = 'An unexpected error occurred.'
   let stack: string | undefined

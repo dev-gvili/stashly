@@ -1,7 +1,7 @@
 ## Data Profile: Stashly Prisma Schema
 
 ### Overview
-- **Models:** 44
+- **Models:** 42
 - **Enums:** 17
 - **Indexes:** 60+ (including Gin, SpGist, composite)
 - **PostgreSQL Extensions:** `vector` (pgvector), `pg_trgm` (trigram search)
@@ -75,8 +75,8 @@ ShareLink ──── Permission[] (link-based access)
 | ~~Warn~~ | ~~Typo in field name~~ | ~~`copyActionIdId` in ItemAction (double "Id")~~ | **Fixed** — renamed to `copyActionId` |
 | ~~Info~~ | ~~Duplicate unique on Item.id~~ | ~~Item has both `@id` and `@unique` on `id` — redundant~~ | **Fixed** — removed redundant `@unique` |
 | **Info** | Comment unique constraint | `@@unique([itemId, ownerId])` limits one comment per user per item — intentional design choice | By design |
-| **Warn** | Metadata model is orphaned | No relations to any other model — standalone key/value store, not referenced in app code | Open |
-| **Info** | Tag model is orphaned | No relations; items use `tags String[]` array directly on Item, not referenced in app code | Open |
+| ~~Warn~~ | ~~Metadata model is orphaned~~ | ~~No relations to any other model — standalone key/value store, not referenced in app code~~ | **Fixed** — model and table removed |
+| ~~Info~~ | ~~Tag model is orphaned~~ | ~~No relations; items use `tags String[]` array directly on Item, not referenced in app code~~ | **Fixed** — model and table removed |
 
 ### Index Analysis
 

@@ -15,7 +15,7 @@ import { Image as Img } from './ui/image'
 //   return new Promise((resolve, reject) => {
 //     const img = new Image()
 //     img.onload = () => {
-//       console.log(img.naturalWidth, img.naturalHeight)
+//       void 0
 //       resolve({
 //         width: img.naturalWidth > 1024 ? 1024 : img.naturalWidth,
 //         height: img.naturalHeight > 1024 ? 1024 : img.naturalHeight,

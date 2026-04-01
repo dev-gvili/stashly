@@ -22,7 +22,6 @@ const restoreFromCache = fromPromise<{ output: any[] }, { storageKey: string }>(
 // Helper to fetch data (simulates a network request)
 const fetchData = fromPromise(async ({ input }) => {
   const { take, items } = input
-  console.log(`Fetching ${take} items after ${items.length} items...`)
   await new Promise((resolve) => setTimeout(resolve, 1000))
 
   const newItems = Array.from({ length: take }, (_, i) => ({

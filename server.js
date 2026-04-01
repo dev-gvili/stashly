@@ -13,8 +13,6 @@ app.use(compression())
 app.disable('x-powered-by')
 
 if (DEVELOPMENT) {
-  console.log('Starting development server')
-
   const HMR_PORT = Number(
     process.env.VITE_HMR_PORT || process.env.HMR_PORT || 24678
   )
@@ -36,7 +34,6 @@ if (DEVELOPMENT) {
     }
   })
 } else {
-  console.log('Starting production server')
   app.use(
     '/assets',
     express.static('build/client/assets', { immutable: true, maxAge: '1y' })
@@ -47,5 +44,4 @@ if (DEVELOPMENT) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`)
 })

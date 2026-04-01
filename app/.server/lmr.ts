@@ -37,8 +37,6 @@ export class LiquidModelRunner {
   ): Promise<LiquidModelRunner> {
     const fullPath = path.join(modelDir, modelFileName)
     try {
-      console.log(`Loading model from: ${fullPath}`)
-
       const llama = await getLlama()
       const model = await llama.loadModel({
         modelPath: fullPath,
@@ -143,15 +141,12 @@ export class LiquidModelRunner {
         },
       })
       let metadata = model.fileInfo.metadata
-      console.log('Model metadata:', inspect(model.fileInfo.metadata))
-
       const context = await model.createContext()
 
       const session = new LlamaChatSession({
         contextSequence: context.getSequence(),
       })
 
-      console.log('Liquid Model initialized successfully.')
       const liq = new LiquidModelRunner(model, context, session)
       liq.insights(fullPath, llama)
       return liq
@@ -166,12 +161,9 @@ export class LiquidModelRunner {
    * @param input - The text (or description request) to send to the AI
    */
   public async generateResponse(input: string): Promise<string> {
-    console.log('User: ' + input)
-
     // Pass the input to the session
     const response = await this.session.prompt(input)
 
-    console.log('AI: ' + response)
     return response
   }
 
@@ -186,12 +178,6 @@ export class LiquidModelRunner {
         flashAttention: true,
       })
 
-    console.log(`Compatibility: ${inspect(resolvedConfig)}`)
-    console.log(`Compatibility: ${resolvedConfig.compatibilityScore * 100}%`)
-    console.log(`With flash attention: ${inspect(flashAttentionconfig)}`)
-    console.log(
-      `With flash attention: ${flashAttentionconfig.compatibilityScore * 100}%`
-    )
   }
 }
 

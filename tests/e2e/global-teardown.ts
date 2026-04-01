@@ -9,7 +9,6 @@ export default async function globalTeardown() {
 
   try {
     await prisma.user.deleteMany({ where: { email: TEST_USER_EMAIL } })
-    console.log('[E2E] Global teardown complete — test user deleted')
   } finally {
     await prisma.$disconnect()
   }

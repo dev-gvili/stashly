@@ -145,7 +145,6 @@ export async function* getAudioPCMStream(url: string) {
   let segments: string[] = []
   for await (const segment of whisper.transcribe(framesGenerator)) {
     segments.push(segment.text)
-    console.log('---Segment End---', segment)
     yield segment.text
   }
   decoder.close()

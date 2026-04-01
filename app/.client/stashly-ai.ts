@@ -693,7 +693,7 @@ export class StashlyAI {
       // const caption = processor.batch_decode(outputIds, {
       //   skip_special_tokens: true,
       // })[0]
-      // console.log('StashlyAI caption: ', caption)
+      // void 0
 
       // return caption?.trim() || ''
       // Load model, processor, and tokenizer
@@ -705,21 +705,14 @@ export class StashlyAI {
           dtype: 'fp32',
           progress_callback: (props) => {
             if (props.status === 'initiate') {
-              console.log(`Initiating download for ${props.file}`)
             }
             if (props.status === 'download') {
-              console.log(`Downloading ${props.file}`)
             }
             if (props.status === 'progress') {
-              console.log(
-                `Download ${props.progress.toFixed(0)}% for ${props.file}: ${formatSize('byte', 'unit', props.loaded)}/${formatSize('byte', 'unit', props.total)}`
-              )
             }
             if (props.status === 'done') {
-              console.log(`Download complete for ${props.file}`)
             }
             if (props.status === 'ready') {
-              console.log(`${props.model} is ready with task ${props.task}`)
             }
           },
         }
@@ -757,10 +750,7 @@ export class StashlyAI {
         task,
         image.size
       )
-      console.log("result", result)
-      console.log("model.sessions before dispose",model.sessions)
       await model.dispose() // Dispose of the model to free up memory
-      console.log("model.sessions after dispose",model.sessions)
       return result['<MORE_DETAILED_CAPTION>']
     } catch (err) {
       console.error('Image captioning failed:', err)
@@ -828,7 +818,7 @@ export class StashlyAI {
   //    * @example
   //    * ```
   //    * for await (const segment of StashlyAI.transcribe({ url, stream: true })) {
-  //    *  console.log('New segment:', segment);
+  //    *  void 0;
   //    * }
   //    * ```
   //    * For now, we will just call transcribeMedia with streaming disabled and return the full text.
@@ -855,13 +845,13 @@ export class StashlyAI {
   //       target: 'eng_Latn',
   //     })
   //     summarization = await this.summarize(translation)
-  //     console.log('Summarization:', summarization)
+  //     void 0
   //     summary = await this.translate({
   //       text: summarization,
   //       source: 'eng_Latn',
   //       target: 'heb_Hebr',
   //     })
-  //     console.log('Summary:', summary)
+  //     void 0
   //   } else {
   //     summarization = await this.summarize(transcription)
   //     summary = summarization

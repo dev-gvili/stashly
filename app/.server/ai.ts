@@ -80,7 +80,7 @@ export interface TranscribeProps extends TranscribeOptions {
  *   url: 'https://example.com/my-video.mp4',
  *   stream: true,
  *   onTextTranscribed: (text) => {
- *     console.log('New streamed segment:', text);
+ *     void 0;
  *   }
  * });
  *
@@ -91,7 +91,7 @@ export interface TranscribeProps extends TranscribeOptions {
  *   stream: false,
  *   language: 'en',
  *   onTextTranscribed: (fullText) => {
- *     console.log('Full transcription:', fullText);
+ *     void 0;
  *   }
  * });
  *

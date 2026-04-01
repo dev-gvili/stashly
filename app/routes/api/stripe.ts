@@ -1,7 +1,6 @@
 import { data } from 'react-router'
 import Stripe from 'stripe'
 import type { Route } from './+types/stripe'
-import { inspect } from 'util'
 import { stripe } from '../../.server/stripe'
 
 // This is a Remix action that acts as an API endpoint for Stripe webhooks.
@@ -30,10 +29,6 @@ export const action = async ({ request }: Route.ActionArgs) => {
     switch (event.type) {
       case 'checkout.session.completed':
         const checkoutSession = event.data.object as Stripe.Checkout.Session
-        console.log(
-          `Checkout session completed for session ID: ${checkoutSession.id}`
-        )
-
         // Extract necessary data, like the user ID from metadata
         const userId = checkoutSession.metadata?.userId
         const subscriptionId = checkoutSession.subscription as string
@@ -50,16 +45,11 @@ export const action = async ({ request }: Route.ActionArgs) => {
           //     // Other subscription details
           //   },
           // });
-          console.log(`New subscription started for user: ${userId}`)
         }
         break
 
       case 'customer.subscription.updated':
         const subscription = event.data.object as Stripe.Subscription
-        console.log(
-          `Subscription updated for subscription ID: ${subscription.id}`,
-          inspect(subscription, { colors: true, depth: null })
-        )
         // TODO: Update the subscription status in your database. This event handles renewals,
         // cancellations, and plan changes.
         // Example:
@@ -75,10 +65,6 @@ export const action = async ({ request }: Route.ActionArgs) => {
 
       case 'customer.subscription.deleted':
         const deletedSubscription = event.data.object as Stripe.Subscription
-        console.log(
-          `Subscription deleted for subscription ID: ${deletedSubscription.id}`,
-          inspect(deletedSubscription, { colors: true, depth: null })
-        )
         // TODO: Mark the subscription as inactive or deleted in your database.
         // Example:
         // await prisma.subscription.update({
@@ -89,19 +75,16 @@ export const action = async ({ request }: Route.ActionArgs) => {
 
       case 'invoice.paid':
         const invoice = event.data.object as Stripe.Invoice
-        console.log(`Invoice paid for customer: ${invoice.customer}`)
         // This is a good place to log a successful recurring payment.
         // The customer.subscription.updated event is more robust for status changes.
         break
 
       default:
-        console.log(`Unhandled event type ${event.type}`)
     }
 
     // Return a 200 to Stripe to acknowledge receipt of the event
     return data({ received: true }, { status: 200 })
   } catch (err: any) {
-    console.log(`Stripe webhook signature error: ${err.message}`)
     return data({ message: `Webhook Error: ${err.message}` }, { status: 400 })
   }
 }

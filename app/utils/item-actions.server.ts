@@ -1334,7 +1334,7 @@ export interface SuggestedItemsResult {
  *   maxFolders: 4,
  *   maxFiles: 20
  * });
- * console.log(suggestions.suggestedFiles.length);
+ * void 0;
  *
  */
 export async function getSuggestedItems(

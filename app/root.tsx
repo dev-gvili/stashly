@@ -66,7 +66,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   let loaderData = fetcher.data ?? useRouteLoaderData<typeof loader>('root')
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      console.log(event)
       if (event.key === 't' && event.altKey) {
         // event.stopPropagation()
         if (loaderData?.colorScheme === 'dark') {

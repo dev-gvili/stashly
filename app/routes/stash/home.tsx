@@ -35,8 +35,6 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   let current = currentUrl.searchParams
   let next = nextUrl.searchParams
 
-  console.log({ nextUrl })
-  console.log({ currentUrl })
   ;['sidebar', 'theme'].forEach((action) => {
     if (formAction?.includes(action)) {
       return false

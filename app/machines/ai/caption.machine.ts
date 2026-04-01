@@ -22,7 +22,6 @@ const caption = fromPromise<{ caption: string }, { url: string }>(
     // })
     // // Parse the response, expecting a JSON with { description: string }
     // let data = (await response.json()) as { caption: string }
-    console.log('caption: ', caption)
     return { caption }
   }
 )

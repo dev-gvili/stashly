@@ -198,7 +198,6 @@ export async function runPipeline({
     if (!segment) continue
 
     // Example: segment may include text and timing
-    console.log('Transcription segment:', segment.text)
     segments.push(segment.text)
 
     onPartial?.(segment.text)

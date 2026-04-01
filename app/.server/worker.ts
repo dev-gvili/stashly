@@ -39,12 +39,6 @@ const WebGPUDeviceManager: WebGPUDeviceManagerType = {
 
     // adapter is non-null here
     this.device = await this.adapter!.requestDevice()
-    console.log(
-      'WebGPU adapter and device initialized',
-      this.adapter,
-      this.device
-    )
-
     if (!this.listenersAttached) {
       this.listenersAttached = true
 
@@ -178,8 +172,6 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
         // Extract the first two characters as the language code (e.g., "en" for English, "fr" for French)
         detectedLanguage = rawLabel.slice(0, 2).toLowerCase()
       }
-      console.log('Detected Language:', detectedLanguage)
-
       // Inform the main thread that we're starting the inferencing step, which can take some time, especially on CPU.
       self.postMessage({ type: 'status', payload: 'inferencing' })
 

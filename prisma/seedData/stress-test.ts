@@ -148,15 +148,12 @@ async function generatePackage(
 
 async function main(): Promise<void> {
   try {
-    console.log('Starting Node_Modules Stress Test Seeding...')
-
     // Optional: Clean up only if you want a fresh start, commented out for safety
     // await prisma.item.deleteMany()
     // await prisma.drive.deleteMany()
     // await prisma.user.deleteMany()
 
     // 1. Setup User and Drive
-    console.log('Creating User and Storage Plans...')
     const createdStoragePlans = await prisma.storagePlan.createManyAndReturn({
       data: generateMockStoragePlans(),
       skipDuplicates: true, // In case plans already exist
@@ -177,10 +174,6 @@ async function main(): Promise<void> {
       data: generateMockDrive(user, plan),
       include: { quota: true },
     })
-
-    console.log(`User created: ${user.id}`)
-    console.log(`Drive created: ${drive.id}`)
-
     // 2. Create Root "Project" Folder
     const rootFolderData = generateMockItemWithFolder({
       user,
@@ -209,7 +202,6 @@ async function main(): Promise<void> {
     })
 
     // 3. Create top-level node_modules
-    console.log('Generating recursive node_modules structure...')
     const rootNodeModulesData = generateMockItemWithFolder({
       user,
       drive,
@@ -231,11 +223,8 @@ async function main(): Promise<void> {
     ]
 
     for (const pkg of topLevelPackages) {
-      console.log(`Generating package tree for: ${pkg}`)
       await generatePackage(pkg, rootNodeModules.id, user, drive, 1)
     }
-
-    console.log('Seeding Complete!')
     console.log(
       inspect(
         `Root folder: (${rootFolder.id}) project folder: stress-test-project (${rootProject.id})`,

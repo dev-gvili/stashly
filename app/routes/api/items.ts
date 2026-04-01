@@ -76,7 +76,6 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
     case 'restore_items':
       try {
-        console.log(parsedData.selectedItems)
         await restoreItems(parsedData.selectedItems)
         searchParams = removeQueryParam(searchParams, 'selectedItems')
         return redirect(`${url.pathname}?${searchParams.toString()}`)

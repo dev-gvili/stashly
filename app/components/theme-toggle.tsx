@@ -14,8 +14,6 @@ export function ThemeToggle() {
   const currentTheme = optimisticTheme ?? rootData?.theme ?? 'light'
 
   const nextTheme = currentTheme === 'light' ? 'dark' : 'light'
-
-  console.log(nextTheme, currentTheme)
   return (
     <fetcher.Form method="post" action="/api/theme">
       <input type="hidden" name="theme" value={nextTheme} />

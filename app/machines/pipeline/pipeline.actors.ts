@@ -106,7 +106,7 @@ export const correctTranscriptActor = fromCallback<
     }
   )
     .then((correctedTranscript) => {
-      console.log('Corrected transcript:', correctedTranscript)
+      // Corrected transcript
       if (!cancelled)
         sendBack({ type: 'WORKER.RESULT.CORRECTION', correctedTranscript })
     })

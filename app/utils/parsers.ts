@@ -38,7 +38,6 @@ export function parseSearchParams<T extends z.ZodTypeAny>(
   const result = config.schema.safeParse(parsedParams)
 
   if (!result.success) {
-    console.log('Parsed Params: ', parsedParams)
     throw new Error(`Invalid search params: ${result.error.message}`)
   }
 
@@ -154,8 +153,8 @@ export function parseEtag(etag: string) {
  * @example
  * ```ts
  * const parsedUrl = parsePresignedUrl('https://example-bucket.s3.amazonaws.com/my-object.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIOSFODNN7EXAMPLE%2F20231101%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20231101T000000Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=EXAMPLESIGNATURE1234567890abcdef');
- * console.log(parsedUrl.success); // true
- * console.log(parsedUrl.data); // Validated URL string
+ * void 0; // true
+ * void 0; // Validated URL string
  * ```
  */
 export function parsePresignedUrl(url: string) {

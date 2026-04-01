@@ -221,7 +221,7 @@ declare global {
  * ```typescript
  * // Load and cache the vision model
  * const { model, processor } = await getVision();
- * console.log('Florence-2 Vision Model and Processor loaded.');
+ * void 0;
  * ```
  * @example
  * ```typescript
@@ -232,7 +232,7 @@ declare global {
  * const inputs = await processor({ images: image, task: 'image_captioning' });
  * const outputs = await model.generate(inputs);
  * const caption = await processor.decode(outputs[0]);
- * console.log('Image Caption:', caption);
+ * void 0;
  * ```
  */
 export async function getVision() {
@@ -259,8 +259,6 @@ env.allowLocalModels = true
 env.localModelPath = './models'
 
 export async function loadMistral() {
-  console.log('Loading Mistral 7B (Local GGUF)...')
-
   const generate = await pipeline(
     'text-generation',
     'onnx-community/Llama-3.2-3B-Instruct-ONNX',
@@ -309,7 +307,6 @@ export async function summarizeWithMistralv6(text: string) {
 
 export async function getMistral() {
   if (!global.stashly_ai_mistral) {
-    console.log('Initializing Mistral 7B (Local ONNX)...')
     const modelPath = './models/mistral-7b-instruct'
     // const modelPath = './models/mistral-7b-instruct-v0.2-ONNX'
 
@@ -336,7 +333,6 @@ export async function getMistral() {
       local_files_only: true,
     })
 
-    console.log('Mistral 7B initialized successfully.')
     global.stashly_ai_mistral = { model, tokenizer }
   }
   return global.stashly_ai_mistral
@@ -354,14 +350,14 @@ export async function getMistral() {
  * // Get a text-generation pipeline with a specific model
  * const textGenerator = await getPipeline('text-generation', 'Xenova/gpt2');
  * const generatedText = await textGenerator('Hello, my name is');
- * console.log('Generated text:', generatedText);
+ * void 0;
  *
  * @example
  * // Get an image-to-text pipeline
  * const imageToText = await getPipeline('image-to-text', 'Xenova/vit-gpt2-image-captioning');
  * // Assuming 'imageUrl' is a valid URL to an image
  * const imageCaption = await imageToText(imageUrl);
- * console.log('Image caption:', imageCaption);
+ * void 0;
  */
 export async function getPipeline<Task extends TaskType>(
   task: Task,
@@ -426,9 +422,6 @@ export async function getPipeline<Task extends TaskType>(
   if (!global.stashly_ai_pipelines) global.stashly_ai_pipelines = {}
 
   if (!global.stashly_ai_pipelines[key]) {
-    console.log(
-      `Initializing Transformers.js pipeline for task "${task}" with model "${model}"...`
-    )
     // Configure environment for server-side execution
     // Force download from Hub (useful for serverless/containers)
     env.allowLocalModels = true
@@ -449,27 +442,10 @@ export async function getPipeline<Task extends TaskType>(
         graphOptimizationLevel: 'all', // Apply all graph optimizations
       },
       // use_external_data_format: true, // Enable external data format for large models
-      progress_callback: (progress) => {
-        if (progress.status === 'progress') {
-          console.log(
-            `Pipeline loading progress for model "${progress.name}": loaded: ${formatSize('byte', 'unit', progress.loaded)}, total: ${formatSize(
-              'byte',
-              'unit',
-              progress.total
-            )}, progress: ${progress.progress.toFixed(0)}%`
-          )
-        }
-        if (progress.status === 'download') {
-          console.log(
-            `Downloading model "${progress.name}" (${progress.file})...`
-          )
-        }
-      },
       dtype: dtype ?? 'fp32', // Use fp32 for better accuracy; fp16 can be used for lower memory usage
       device: device ?? 'auto',
     })
 
-    console.log(`Pipeline for task "${task}" initialized successfully.`)
     global.stashly_ai_pipelines[key] = pipe
   }
 
@@ -555,9 +531,9 @@ export async function getWhisper({
  * // Download the 'base' model if not already present
  * const modelPath = await downloadWhisper('base');
  * if (modelPath) {
- *   console.log(`Model downloaded to: ${modelPath}`);
+ *   void 0;
  * } else {
- *   console.log('Model already exists locally.');
+ *   void 0;
  * }
  * ```
  */
@@ -634,7 +610,7 @@ function toFrame(
  * ```typescript
  * for await (const pcmChunk of getAudioPCMStream('https://example.com/audio.mp3')) {
  *   // Process the pcmChunk (e.g., feed to a transcriber)
- *   console.log(`Received PCM chunk of length: ${pcmChunk.length}`);
+ *   void 0;
  * }
  * ```
  */
@@ -904,7 +880,7 @@ function toPacketStartTime(packet: Packet, timeBase: Rational) {
  *   model: 'large-v3-turbo',
  *   language: 'en'
  * });
- * console.log('Full Transcription:', fullTranscription);
+ * void 0;
  * ```
  * @example
  * ```typescript
@@ -913,7 +889,7 @@ function toPacketStartTime(packet: Packet, timeBase: Rational) {
  *   url: 'https://example.com/my-video.mp4',
  *   language: 'auto'
  * });
- * console.log('Video Transcription:', videoTranscription);
+ * void 0;
  * ```
  */
 
@@ -946,7 +922,7 @@ function toPacketStartTime(packet: Packet, timeBase: Rational) {
 //   const queue = new AsyncQueue<PCMChunk | null>(20)
 //   let segments: string[] = []
 //   try {
-//     console.log('Starting transcription...')
+//     void 0
 //     await producer(url, queue)
 //     // await startDecoder(decoder, demuxer, audioStream, queue)
 //     // await startDecoder1(decoder, demuxer, audioStream, queue)
@@ -996,7 +972,7 @@ function toPacketStartTime(packet: Packet, timeBase: Rational) {
  * @example
  * // Transcribe a video URL in streaming mode and log each segment
  * for await (const textSegment of transcribeUrlStreaming({ url: 'https://example.com/my-video.mp4' })) {
- *   console.log('New segment:', textSegment);
+ *   void 0;
  * }
  */
 export async function* transcribeAudioStream(

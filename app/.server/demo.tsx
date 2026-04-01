@@ -289,8 +289,6 @@ export default function App() {
     worker.current.onmessage = (e) => {
       const { type, payload, task } = e.data
 
-      console.log('Worker message:', type, payload)
-
       switch (type) {
         case 'progress':
           if (payload.status === 'progress') {
@@ -326,7 +324,6 @@ export default function App() {
 
         case 'debug':
           setDebugLogs((prev) => [...prev, payload].slice(-10))
-          console.log('Worker Debug:', payload)
           break
 
         case 'audio-duration':

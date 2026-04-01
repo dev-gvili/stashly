@@ -328,12 +328,12 @@ const uploadMachine = setup({
     },
     success: {
       entry: ({ context, event }) => {
-        console.log({ context, event })
+        // Success entry
       },
     },
     error: {
       entry: ({ context, event }) => {
-        console.log({ context, event })
+        // Error entry
       },
     },
   },
