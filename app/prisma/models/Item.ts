@@ -411,7 +411,7 @@ export type ItemWhereUniqueInput = Prisma.AtLeast<{
   logs?: Prisma.AuditLogListRelationFilter
   favorites?: Prisma.FavoriteListRelationFilter
   search?: Prisma.XOR<Prisma.SearchNullableScalarRelationFilter, Prisma.SearchWhereInput> | null
-}, "id" | "id">
+}, "id">
 
 export type ItemOrderByWithAggregationInput = {
   id?: Prisma.SortOrder

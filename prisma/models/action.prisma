@@ -20,8 +20,8 @@ model ItemAction {
     versionActionId String?        @unique
     activity        Activity?      @relation(fields: [activityId], references: [id])
     activityId      String?        @unique
-    copy            CopyAction?    @relation(fields: [copyActionIdId], references: [id])
-    copyActionIdId  String?        @unique
+    copy            CopyAction?    @relation(fields: [copyActionId], references: [id])
+    copyActionId    String?        @unique
 }
 
 // Track when an item is accessed, such as when a user views or opens a file or folder.

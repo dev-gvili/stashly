@@ -68,15 +68,15 @@ ShareLink ──── Permission[] (link-based access)
 
 ### Data Quality Observations
 
-| Severity | Issue | Detail |
-|----------|-------|--------|
-| **Info** | Heavy optionality on facets | Image has 14/16 optional fields — most metadata is sparse by nature (EXIF data) |
-| **Info** | BigInt for sizes | `size`, `used`, `total`, `deleted` use BigInt — supports files >2GB correctly |
-| **Warn** | Typo in field name | `copyActionIdId` in ItemAction (double "Id") |
-| **Info** | Duplicate unique on Item.id | Item has both `@id` and `@unique` on `id` — redundant but harmless |
-| **Info** | Comment unique constraint | `@@unique([itemId, ownerId])` limits one comment per user per item — may be intentional |
-| **Warn** | Metadata model is orphaned | No relations to any other model — standalone key/value store |
-| **Info** | Tag model is orphaned | No relations; items use `tags String[]` array directly on Item |
+| Severity | Issue | Detail | Status |
+|----------|-------|--------|--------|
+| **Info** | Heavy optionality on facets | Image has 14/16 optional fields — most metadata is sparse by nature (EXIF data) | By design |
+| **Info** | BigInt for sizes | `size`, `used`, `total`, `deleted` use BigInt — supports files >2GB correctly | By design |
+| ~~Warn~~ | ~~Typo in field name~~ | ~~`copyActionIdId` in ItemAction (double "Id")~~ | **Fixed** — renamed to `copyActionId` |
+| ~~Info~~ | ~~Duplicate unique on Item.id~~ | ~~Item has both `@id` and `@unique` on `id` — redundant~~ | **Fixed** — removed redundant `@unique` |
+| **Info** | Comment unique constraint | `@@unique([itemId, ownerId])` limits one comment per user per item — intentional design choice | By design |
+| **Warn** | Metadata model is orphaned | No relations to any other model — standalone key/value store, not referenced in app code | Open |
+| **Info** | Tag model is orphaned | No relations; items use `tags String[]` array directly on Item, not referenced in app code | Open |
 
 ### Index Analysis
 
@@ -113,6 +113,51 @@ ShareLink ──── Permission[] (link-based access)
 | `NotificationStatus` | read, unread | Notification.status |
 | `SortBy` | id, name, date, size, type | View.sortBy |
 | `ObjectType` | file, folder | DeleteAction.itemType |
+
+### Custom PostgreSQL Functions & Triggers
+
+Two custom PL/pgSQL functions maintain denormalized counters on parent items. Both are `CREATE OR REPLACE` (latest versions from migration `20251214024737_update_triggers_for_inclusive_counts`).
+
+#### `update_child_count()` — Folder child count maintenance
+
+Keeps `Folder.childCount` (active items only) and `Folder.inclusiveChildCount` (all items including trashed) in sync.
+
+| Operation | Behaviour |
+|-----------|-----------|
+| **INSERT** | +1 `inclusiveChildCount`; +1 `childCount` if status ≠ `trashed` |
+| **DELETE** | −1 `inclusiveChildCount`; −1 `childCount` if status ≠ `trashed` |
+| **UPDATE (move)** | Decrements old parent, increments new parent (both counters) |
+| **UPDATE (trash/restore)** | `inclusiveChildCount` unchanged; `childCount` ±1 based on status transition |
+
+**Triggers** (on `"Item"` table, all `AFTER … FOR EACH ROW`):
+- `item_child_count_insert` — after INSERT
+- `item_child_count_update` — after UPDATE
+- `item_child_count_delete` — after DELETE
+
+#### `update_size()` — Parent item size maintenance
+
+Keeps `Item.size` (active items only) and `Item.inclusiveSize` (all items including trashed) in sync on the parent item.
+
+| Operation | Behaviour |
+|-----------|-----------|
+| **INSERT** | +size to parent `inclusiveSize`; +size to parent `size` if status ≠ `trashed` |
+| **DELETE** | −size from parent `inclusiveSize`; −size from parent `size` if status ≠ `trashed` |
+| **UPDATE (move)** | Decrements old parent, increments new parent (both size columns) |
+| **UPDATE (size/status change)** | Computes delta for both `inclusiveSize` and `size` based on old/new status and size values |
+
+**Triggers** (on `"Item"` table, all `AFTER … FOR EACH ROW`):
+- `item_size_update` — after INSERT
+- `item_size_update_on_update` — after UPDATE
+- `item_size_decrement` — after DELETE
+
+#### Version History
+
+| Migration | Changes |
+|-----------|---------|
+| `20250714054805_test` | Initial `update_parent_folder_size_on_update()` + `update_size()` with size triggers |
+| `20250714225523_add_update_size_function_and_drop_the_old_one` | Replaced `update_parent_folder_size()` with cleaner `update_size()`; recreated size triggers |
+| `20250919131158_add_child_count_function` | Added `update_child_count()` + child count triggers |
+| `20251214024737_update_triggers_for_inclusive_counts` | **Current** — rewrote both functions to maintain `inclusiveSize` and `inclusiveChildCount` alongside the active-only columns |
 
 ### Recommended Explorations
 

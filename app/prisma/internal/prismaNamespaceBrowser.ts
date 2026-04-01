@@ -156,7 +156,7 @@ export const ItemActionScalarFieldEnum = {
   shareActionId: 'shareActionId',
   versionActionId: 'versionActionId',
   activityId: 'activityId',
-  copyActionIdId: 'copyActionIdId'
+  copyActionId: 'copyActionId'
 } as const
 
 export type ItemActionScalarFieldEnum = (typeof ItemActionScalarFieldEnum)[keyof typeof ItemActionScalarFieldEnum]

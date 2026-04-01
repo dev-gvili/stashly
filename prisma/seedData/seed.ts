@@ -12,7 +12,7 @@ import {
   generateMockItemsWithFile,
   generateMockFavoriteItem,
 } from './data'
-import { createFolder } from '../../app/utils/item-actions'
+import { createFolder } from '../../app/utils/item-actions.server'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '../../app/prisma/client'
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
@@ -164,7 +164,7 @@ async function main(): Promise<void> {
       )
     )
 
-    console.log(inspect(`userId: ${user.id}`))
+    console.log(inspect(`userId: ${user.id}, driveId: ${drive.id}, subscriptionId: ${subscription.id}, user email: ${user.email}`, { colors: true }))
   } catch (error) {
     console.error('Error seeding database:', error)
   }

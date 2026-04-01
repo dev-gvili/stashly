@@ -1,5 +1,5 @@
 model Item {
-    id            String       @id @unique
+    id            String       @id
     name          String       @db.VarChar(50)
     size          BigInt       @default(0)
     inclusiveSize BigInt       @default(0)
