@@ -167,28 +167,23 @@ The `.auth/` directory and Playwright output dirs (`playwright-report/`, `test-r
 
 ## Development Workflow
 
-**This workflow is mandatory for every code change (create, add, update, remove):**
+Apply this workflow for **significant changes** — new features, new routes/services/repositories, behaviour changes, schema migrations, or anything that meaningfully affects how the app works.
 
-1. **Tests** — Add or update tests alongside every code change:
-   - Unit tests (Vitest, in `app/utils/__tests__/`) for pure logic, utilities, and service functions
-   - E2E tests (Playwright, in `tests/e2e/`) for any change that affects user-facing flows or routes
-   - If a change is purely cosmetic (e.g. a CSS tweak) or documentation-only, tests can be skipped — use judgment
+**Skip it for small changes** like renaming a CSS class, tweaking a layout, fixing a TypeScript type, adjusting a label, or other minor cosmetic/trivial fixes. Those can go straight to a single commit on main.
 
-2. **Docs** — Update `CLAUDE.md` and/or `README.md` when the change affects:
-   - Architecture or layer responsibilities
-   - Commands, scripts, or tooling
-   - New integrations, patterns, or conventions
-   - The E2E testing setup or auth approach
+For significant changes, follow these steps:
 
-3. **Commit** — Create a detailed commit message that explains the *why*, not just the *what*:
-   - Use conventional commit prefixes (`feat:`, `fix:`, `chore:`, `test:`, `docs:`, `refactor:`)
-   - Include context on motivation, trade-offs, or non-obvious decisions in the body
+1. **Tests** — Add or update tests:
+   - Unit tests (Vitest, in `app/utils/__tests__/`) for logic, utilities, and service functions
+   - E2E tests (Playwright, in `tests/e2e/`) if the change affects user-facing flows or routes
 
-4. **PR** — Open a pull request with a descriptive title and body (summary + test plan)
+2. **Docs** — Update `CLAUDE.md` and/or `README.md` if the change affects architecture, commands, conventions, or the E2E setup
 
-5. **Merge** — Merge to `main` once the PR looks good (no CI failures, no review blockers)
+3. **Commit** — Detailed message with a conventional prefix (`feat:`, `fix:`, `refactor:`, etc.) and a body explaining the *why*
 
-Do not skip any step. If tests are genuinely not applicable for a specific change, call it out explicitly.
+4. **PR** — Descriptive title and body (summary + test plan)
+
+5. **Merge** — Merge to `main` once the PR is clean
 
 ## Workflows
 
