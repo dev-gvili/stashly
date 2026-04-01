@@ -10,7 +10,7 @@ export class AuthPage {
 
   async expectVisible() {
     await expect(
-      this.page.getByRole('heading', { name: 'Welcome back' })
+      this.page.getByText('Welcome back', { exact: true })
     ).toBeVisible()
     await expect(
       this.page.getByRole('button', { name: 'Login with Github' })
