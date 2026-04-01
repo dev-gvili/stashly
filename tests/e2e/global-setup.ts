@@ -6,6 +6,23 @@ import path from 'path'
 import crypto from 'crypto'
 import { TEST_USER_ID, TEST_USER_EMAIL } from './constants'
 
+/**
+ * Signs a cookie value the same way better-auth / better-call does:
+ *   signedValue = encodeURIComponent(value + "." + base64(HMAC-SHA256(value, secret)))
+ */
+async function signCookieValue(value: string, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(value))
+  const base64Sig = Buffer.from(signature).toString('base64')
+  return encodeURIComponent(`${value}.${base64Sig}`)
+}
+
 export default async function globalSetup() {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
   const prisma = new PrismaClient({ adapter })
@@ -49,7 +66,11 @@ export default async function globalSetup() {
     })
 
     // Write Playwright storageState — better-auth reads `better-auth.session_token` cookie
-    // and looks up the session by token field in the DB (no hashing)
+    // and validates it as a signed cookie (HMAC-SHA256 with BETTER_AUTH_SECRET).
+    // The cookie value must be encodeURIComponent(token + "." + base64(HMAC-SHA256(token, secret)))
+    const secret = process.env.BETTER_AUTH_SECRET!
+    const signedToken = await signCookieValue(token, secret)
+
     const authDir = path.join(process.cwd(), 'tests/e2e/.auth')
     await mkdir(authDir, { recursive: true })
     await writeFile(
@@ -59,7 +80,7 @@ export default async function globalSetup() {
           cookies: [
             {
               name: 'better-auth.session_token',
-              value: token,
+              value: signedToken,
               domain: 'localhost',
               path: '/',
               httpOnly: true,
