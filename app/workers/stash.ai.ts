@@ -335,9 +335,23 @@ if (DEBUG) {
 }
 env.useBrowserCache = true
 env.allowRemoteModels = true
+env.useWasmCache = true
+env.backends.onnx!.webgpu!.profiling = {
+  mode: 'default',
+  ondata: (data) =>
+    console.log(`WebGPU profiling [4.0.0.4]: ${JSON.stringify(data, null, 2)}`),
+}
+env.backends.onnx.wasm!.numThreads = 1
+
+
 envNext8.useBrowserCache = true
 envNext8.allowRemoteModels = true
-
+envNext8.useWasmCache = true
+envNext8.backends.onnx!.webgpu!.profiling = {
+  mode: 'default',
+  ondata: (data) =>
+    console.log(`WebGPU profiling [Next4.0.0.8]: ${JSON.stringify(data, null, 2)}`),
+}
 // -------------------------
 // WebGPU Device Manager (generic fallback chain)
 // -------------------------
@@ -349,38 +363,87 @@ const WebGPUDeviceManager = {
   adapters: [] as { adapter: GPUAdapter; name: string; preference: string }[],
   currentAdapterIndex: 0,
 
-  async getAdapterName(adapter: GPUAdapter): Promise<string> {
-    try {
-      const info = (adapter as any).info as { description?: string; vendor?: string } | undefined
-      return info?.description || info?.vendor || 'unknown'
-    } catch {
-      return 'unknown'
-    }
+  /** Build a dedup key from adapter info */
+  adapterKey(adapter: GPUAdapter): string {
+    const info = (adapter as any).info as Record<string, unknown> | undefined
+    return [
+      info?.vendor ?? '',
+      info?.architecture ?? '',
+      info?.device ?? '',
+      info?.description ?? '',
+      String(!!info?.isFallbackAdapter),
+      adapter.limits.maxBufferSize,
+    ].join('|')
   },
 
-  /** Discover all available GPU adapters on this device */
+  /** Build a display name from adapter info */
+  adapterName(adapter: GPUAdapter): string {
+    const info = (adapter as any).info as
+      | { description?: string; vendor?: string; architecture?: string }
+      | undefined
+    // Prefer description, fall back to vendor+arch, then 'unknown'
+    return (
+      info?.description ||
+      [info?.vendor, info?.architecture].filter(Boolean).join(' ') ||
+      'unknown'
+    )
+  },
+
+  /**
+   * Discover all available GPU adapters.
+   * Uses the same multi-option strategy as webgpureport.org:
+   * try several requestAdapter option sets and deduplicate by adapter info.
+   * This actually finds discrete GPUs on Windows where a single
+   * requestAdapter() call may only return the integrated one.
+   */
   async discoverAdapters(): Promise<void> {
     if (this.adapters.length > 0) return // already discovered
 
-    const preferences = ['high-performance', 'low-power'] as const
+    const optionSets: { options: GPURequestAdapterOptions; label: string }[] = [
+      { options: { powerPreference: 'high-performance' }, label: 'high-performance' },
+      { options: { powerPreference: 'low-power' }, label: 'low-power' },
+      { options: { featureLevel: 'compatibility' } as GPURequestAdapterOptions, label: 'compatibility' },
+      { options: {}, label: 'default' },
+    ]
+
     const seen = new Set<string>()
 
-    for (const pref of preferences) {
+    for (const { options, label } of optionSets) {
       try {
-        const adapter = await navigator.gpu?.requestAdapter({ powerPreference: pref })
+        const adapter = await navigator.gpu?.requestAdapter(options)
         if (!adapter) continue
-        const name = await this.getAdapterName(adapter)
-        // Deduplicate — same GPU may appear for both preferences
-        const key = name.toLowerCase()
+
+        const key = this.adapterKey(adapter)
         if (seen.has(key)) continue
         seen.add(key)
-        this.adapters.push({ adapter, name, preference: pref })
-        console.log(`Discovered GPU: ${name} (${pref})`)
-      } catch { /* GPU not available */ }
+
+        // Skip software fallback adapters — too slow for AI inference
+        if ((adapter as any).info?.isFallbackAdapter) {
+          console.log(`Skipping fallback adapter (${label})`)
+          continue
+        }
+
+        const name = this.adapterName(adapter)
+        this.adapters.push({ adapter, name, preference: label })
+        console.log(
+          `Discovered GPU [${label}]: ${name} (maxBuffer=${adapter.limits.maxBufferSize})`,
+        )
+      } catch {
+        /* adapter not available for this option set */
+      }
     }
+
+    // Sort: largest maxBufferSize first (discrete GPUs >> integrated)
+    this.adapters.sort(
+      (a, b) => b.adapter.limits.maxBufferSize - a.adapter.limits.maxBufferSize,
+    )
 
     if (this.adapters.length === 0) {
       console.warn('No WebGPU adapters found — will use WASM')
+    } else if (this.adapters.length > 1) {
+      console.log(
+        `Found ${this.adapters.length} GPUs, using: ${this.adapters[0].name}`,
+      )
     }
   },
 
@@ -482,7 +545,7 @@ export class PipelineManager {
       }
       const dtype = device === 'wasm' ? 'q4' : (MODEL_DTYPE[model] ?? 'fp16')
       const opts = {
-        device: device as const,
+        device,
         dtype: dtype as any,
         progress_callback: progressCallback,
       }
@@ -608,6 +671,31 @@ export async function detectLanguage(
 }
 
 // -------------------------
+// Audio resampling
+// -------------------------
+
+const TARGET_SAMPLE_RATE = 16_000
+
+function resampleAudio(
+  audio: Float32Array,
+  fromRate: number,
+  toRate: number
+): Float32Array {
+  if (fromRate === toRate) return audio
+  const ratio = fromRate / toRate
+  const newLength = Math.round(audio.length / ratio)
+  const result = new Float32Array(newLength)
+  for (let i = 0; i < newLength; i++) {
+    const srcIdx = i * ratio
+    const lo = Math.floor(srcIdx)
+    const hi = Math.min(lo + 1, audio.length - 1)
+    const frac = srcIdx - lo
+    result[i] = audio[lo] * (1 - frac) + audio[hi] * frac
+  }
+  return result
+}
+
+// -------------------------
 // Transcription
 // -------------------------
 
@@ -628,7 +716,10 @@ export async function transcribeAudio(
   onProgress: ProgressCallback,
   onPartialResult: PartialResultCallback
 ): Promise<string> {
-  const { audio, sampleRate, duration, language } = params
+  const resampled = resampleAudio(params.audio, params.sampleRate, TARGET_SAMPLE_RATE)
+  const audio = resampled
+  const sampleRate = TARGET_SAMPLE_RATE
+  const { duration, language } = params
   const contentHint = params.contentHint ?? 'auto'
 
   // Whisper prompt guides transcription style.
@@ -639,7 +730,7 @@ export async function transcribeAudio(
     music:
       'The audio contains music with lyrics. Transcribe all sung words, ad-libs, slang, and repetitive phrases exactly as heard.',
     speech: undefined, // no prompt — Whisper is cleanest for speech without one
-    auto: undefined,   // no prompt by default — less hallucination risk
+    auto: undefined, // no prompt by default — less hallucination risk
   }
   const whisperPrompt = WHISPER_PROMPTS[contentHint]
 
@@ -660,7 +751,9 @@ export async function transcribeAudio(
     // This halves the number of GPU round-trips vs 30.5s chunks:
     // 19 min → ~19 chunks (vs ~38 with 30.5s chunks)
     const chunks = makeChunks(audio, sampleRate, 60, 0)
-    console.log(`Audio duration: ${duration.toFixed(1)}s → ${chunks.length} chunks (60s)`)
+    console.log(
+      `Audio duration: ${duration.toFixed(1)}s → ${chunks.length} chunks (60s)`
+    )
 
     for (const [index, chunk] of chunks.entries()) {
       const chunkDuration = chunk.length / sampleRate
@@ -668,10 +761,8 @@ export async function transcribeAudio(
         language,
         chunk_length_s: 30,
         stride_length_s: 5,
-        remove_invalid_values: true,
         return_whole_text: false,
         return_timestamps: true,
-        return_language: true,
         batch_size: 16,
         ...(whisperPrompt ? { prompt: whisperPrompt } : {}),
       })
@@ -683,7 +774,9 @@ export async function transcribeAudio(
         total: chunks.length,
         progress: Math.round(((index + 1) / chunks.length) * 100),
       })
-      console.log(`Transcribed chunk ${index + 1}/${chunks.length} (${Math.round(((index + 1) / chunks.length) * 100)}%) — ${chunkDuration.toFixed(1)}s of audio`)
+      console.log(
+        `Transcribed chunk ${index + 1}/${chunks.length} (${Math.round(((index + 1) / chunks.length) * 100)}%) — ${chunkDuration.toFixed(1)}s of audio`
+      )
       if (DEBUG && res.chunks) {
         console.log(
           res.chunks
@@ -818,18 +911,6 @@ export async function correctTranscript(
   const chunks =
     params.text.length > 600 ? toChunk(params.text, 600) : [params.text]
   const correctedChunks: string[] = []
-  const hasSecondaryGPU = WebGPUDeviceManager.adapters.length > 1
-
-  // ── GPU load balancer ───────────────────────────────────────────────────
-  // After Whisper, the primary GPU needs recovery time.
-  //
-  // 2 GPUs:  chunk 1 on secondary GPU → chunks 2+ on primary (recovered)
-  // 1 GPU:   3s delay → all chunks on primary GPU
-  //
-  // If any chunk crashes → WASM for THAT chunk only, then retry GPU next.
-  // NEVER preemptively load model to WASM — a 3.35B model takes 10+ min
-  // to load on CPU, which is worse than a 3s delay.
-
   const inferenceOpts = (tokenCount: number) => ({
     max_new_tokens: Math.min(tokenCount + 20, 300),
     do_sample: false,
@@ -843,25 +924,33 @@ export async function correctTranscript(
       { role: 'user', content: chunk },
     ]
     return pipe.tokenizer.apply_chat_template(msg, {
-      tokenize: false, add_generation_prompt: true,
+      tokenize: false,
+      add_generation_prompt: true,
     }) as string
   }
 
   // ── Route chunk 1 ─────────────────────────────────────────────────────
   let startIndex = 0
 
-  if (hasSecondaryGPU && chunks.length > 0) {
+  if (chunks.length > 0) {
     // Use secondary GPU for chunk 1 while primary cools
     try {
-      await WebGPUDeviceManager.switchToNextAdapter()
       const secondaryPipe = await pipeline(
-        'text-generation', 'onnx-community/tiny-aya-global-ONNX',
-        { device: 'webgpu' as const, dtype: (MODEL_DTYPE['onnx-community/tiny-aya-global-ONNX'] ?? 'fp16') as any, progress_callback: onProgress }
+        'text-generation',
+        'onnx-community/tiny-aya-global-ONNX',
+        {
+          device: 'webgpu' as const,
+          dtype: (MODEL_DTYPE['onnx-community/tiny-aya-global-ONNX'] ??
+            'fp16') as any,
+          progress_callback: onProgress,
+        }
       )
       try {
         const prompt = buildPrompt(secondaryPipe, chunks[0])
         const tokens = secondaryPipe.tokenizer.tokenize(chunks[0])
-        console.log(`Correcting chunk 1/${chunks.length} (secondary GPU — primary cooling)`)
+        console.log(
+          `Correcting chunk 1/${chunks.length} (secondary GPU — primary cooling)`
+        )
         const output = await secondaryPipe(prompt, inferenceOpts(tokens.length))
         correctedChunks.push(serializeSummaryPayload(output))
         startIndex = 1
@@ -885,7 +974,9 @@ export async function correctTranscript(
     WebGPUDeviceManager.device = null
 
     const primaryPipe = await PipelineManager.getPipeline(
-      'text-generation', 'onnx-community/tiny-aya-global-ONNX', onProgress
+      'text-generation',
+      'onnx-community/tiny-aya-global-ONNX',
+      onProgress
     )
 
     try {
@@ -901,17 +992,26 @@ export async function correctTranscript(
           if (!errMsg.includes('Device') || !errMsg.includes('lost')) throw e
 
           // GPU crashed on this chunk — WASM for THIS chunk only
-          console.warn(`GPU crashed on chunk ${i + 1}, WASM for this chunk only`)
+          console.warn(
+            `GPU crashed on chunk ${i + 1}, WASM for this chunk only`
+          )
           await PipelineManager.resetAllPipelines()
 
           const wasmPipe = await pipeline(
-            'text-generation', 'onnx-community/tiny-aya-global-ONNX',
-            { device: 'wasm' as const, dtype: 'q4' as any, progress_callback: onProgress }
+            'text-generation',
+            'onnx-community/tiny-aya-global-ONNX',
+            {
+              device: 'wasm' as const,
+              dtype: 'q4' as any,
+              progress_callback: onProgress,
+            }
           )
           try {
             const prompt = buildPrompt(wasmPipe, chunks[i])
             const tokens = wasmPipe.tokenizer.tokenize(chunks[i])
-            console.log(`Correcting chunk ${i + 1}/${chunks.length} (WASM fallback)`)
+            console.log(
+              `Correcting chunk ${i + 1}/${chunks.length} (WASM fallback)`
+            )
             const output = await wasmPipe(prompt, inferenceOpts(tokens.length))
             correctedChunks.push(serializeSummaryPayload(output))
           } finally {
@@ -921,12 +1021,17 @@ export async function correctTranscript(
           // Try to recover GPU for next chunk
           WebGPUDeviceManager.currentAdapterIndex = 0
           WebGPUDeviceManager.device = null
-          try { await WebGPUDeviceManager.init() } catch { /* GPU may stay dead */ }
+          try {
+            await WebGPUDeviceManager.init()
+          } catch {
+            /* GPU may stay dead */
+          }
         }
       }
     } finally {
       await PipelineManager.disposePipeline(
-        'text-generation', 'onnx-community/tiny-aya-global-ONNX'
+        'text-generation',
+        'onnx-community/tiny-aya-global-ONNX'
       )
     }
   }

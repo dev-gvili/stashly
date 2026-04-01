@@ -5,8 +5,6 @@ import { parseFormData } from '@/utils/parsers'
 import { data } from 'react-router'
 import { presignedUrl } from '@/schemas/machine.schemas'
 import { StashlyAI } from '../../.server/stashly-ai'
-import { cleanText } from '../../.server/search/embeddings'
-// import { cleanTranscript } from '../../.server/search/embeddings'
 
 /**
  * input validation schema for AI image caption generation.
