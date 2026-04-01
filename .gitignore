@@ -54,3 +54,7 @@ storybook-static
 app/utils/aimodel.test.ts
 
 models/*
+
+# Playwright auth state
+tests/e2e/.auth/
+playwright-report/

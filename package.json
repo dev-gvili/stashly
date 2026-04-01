@@ -9,7 +9,9 @@
     "typecheck": "react-router typegen && tsc -b",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@alexanderolsen/libsamplerate-js": "^2.1.2",
