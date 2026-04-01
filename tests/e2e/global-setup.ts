@@ -8,7 +8,10 @@ import { TEST_USER_ID, TEST_USER_EMAIL } from './constants'
 
 /**
  * Signs a cookie value the same way better-auth / better-call does:
- *   signedValue = encodeURIComponent(value + "." + base64(HMAC-SHA256(value, secret)))
+ *   signedValue = value + "." + base64(HMAC-SHA256(value, secret))
+ *
+ * NOTE: Do NOT encodeURIComponent — Playwright sends the value verbatim in
+ * the Cookie header, so percent-encoding would break signature verification.
  */
 async function signCookieValue(value: string, secret: string): Promise<string> {
   const key = await crypto.subtle.importKey(
@@ -20,7 +23,7 @@ async function signCookieValue(value: string, secret: string): Promise<string> {
   )
   const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(value))
   const base64Sig = Buffer.from(signature).toString('base64')
-  return encodeURIComponent(`${value}.${base64Sig}`)
+  return `${value}.${base64Sig}`
 }
 
 export default async function globalSetup() {
@@ -67,7 +70,7 @@ export default async function globalSetup() {
 
     // Write Playwright storageState — better-auth reads `better-auth.session_token` cookie
     // and validates it as a signed cookie (HMAC-SHA256 with BETTER_AUTH_SECRET).
-    // The cookie value must be encodeURIComponent(token + "." + base64(HMAC-SHA256(token, secret)))
+    // The cookie value must be token + "." + base64(HMAC-SHA256(token, secret)) — raw, not percent-encoded.
     const secret = process.env.BETTER_AUTH_SECRET!
     const signedToken = await signCookieValue(token, secret)
 
