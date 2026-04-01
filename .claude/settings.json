@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\": \"Workflow checklist — before closing this session, verify: (1) tests added/updated for any code changes, (2) docs updated if architecture/commands/conventions changed, (3) commit created with a detailed message, (4) PR opened and merged to main.\"}'",
+            "shell": "bash"
+          }
+        ]
+      }
+    ]
+  }
+}
