@@ -8,6 +8,9 @@ node_modules
 
 # Testing
 coverage
+playwright-report/
+test-results/
+tests/e2e/.auth/
 
 # Production
 build
