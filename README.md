@@ -126,4 +126,20 @@ pnpm typecheck                                    # Type-check the project
 pnpm format                                       # Format with Prettier
 pnpm prisma migrate dev                           # Run database migrations
 pnpm tsx ./scripts/generateRepository.v2.ts <M>  # Scaffold repository + filters for a Prisma model
+pnpm exec playwright test                         # Run E2E tests
+pnpm exec playwright test --ui                    # Run E2E tests with Playwright UI
 ```
+
+## Testing
+
+### E2E Tests
+
+End-to-end tests use [Playwright](https://playwright.dev/) and live in `tests/e2e/`.
+
+The test suite requires a running dev server (auto-started by Playwright) and a real PostgreSQL database with `DATABASE_URL` and `BETTER_AUTH_SECRET` set in `.env`.
+
+**Global setup** (`tests/e2e/global-setup.ts`) seeds a test user and writes a signed session cookie to `tests/e2e/.auth/session.json` so authenticated specs don't go through the UI login flow.
+
+**Page Object Models** in `tests/e2e/pages/` encapsulate page interactions (`AuthPage`, `LayoutPage`, `StashPage`).
+
+Use the `test` fixture from `tests/e2e/fixtures.ts` for authenticated specs; import from `@playwright/test` directly for unauthenticated specs.

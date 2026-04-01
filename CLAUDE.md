@@ -15,6 +15,8 @@ pnpm start        # Run production server
 pnpm typecheck    # Generate React Router types + run tsc
 pnpm format       # Format with Prettier
 pnpm prisma migrate dev   # Run database migrations
+pnpm exec playwright test            # Run E2E tests (requires dev server)
+pnpm exec playwright test --ui       # Run E2E tests with Playwright UI
 ```
 
 ### Code Generation
@@ -137,6 +139,31 @@ Models are split across `prisma/models/*.prisma` files and merged. Generated cli
 - Schema and type definitions go in `app/schemas/` and `app/types/` respectively — do not scatter them across feature files
 - Avoid raw `prisma` calls in route loaders — always go through a service and repository
 - Client-only code (browser APIs, client-side state) goes in `app/.client/`; server-only code goes in `app/.server/`
+
+## Testing
+
+### E2E Tests (Playwright)
+
+Tests live in `tests/e2e/`. Run against `http://localhost:3000` (the dev server is auto-started via `webServer` in `playwright.config.ts`).
+
+**Structure:**
+
+| File | Purpose |
+|------|---------|
+| `global-setup.ts` | Seeds test user + session into DB, writes `tests/e2e/.auth/session.json` |
+| `global-teardown.ts` | Cleanup after all tests |
+| `fixtures.ts` | Exports an authenticated `test` fixture (loads session cookie from `.auth/`) |
+| `pages/*.page.ts` | Page Object Models: `AuthPage`, `LayoutPage`, `StashPage` |
+| `auth.spec.ts` | Unauthenticated flows (sign-in, redirects) |
+| `navigation.spec.ts` | Authenticated navigation flows |
+
+**Prerequisites:**
+- `.env` must have `DATABASE_URL` and `BETTER_AUTH_SECRET`
+- A `free` storage plan must exist in the DB (run `pnpm prisma migrate dev` + seed)
+
+**Auth approach:** `global-setup.ts` creates a real DB session and writes a signed `better-auth.session_token` cookie to `tests/e2e/.auth/session.json`. Authenticated specs import `test` from `fixtures.ts`; unauthenticated specs import directly from `@playwright/test`.
+
+The `.auth/` directory and Playwright output dirs (`playwright-report/`, `test-results/`) are git-ignored.
 
 ## Workflows
 
