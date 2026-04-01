@@ -27,7 +27,10 @@ async function signCookieValue(value: string, secret: string): Promise<string> {
 }
 
 export default async function globalSetup() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+  if (!process.env.DATABASE_URL) throw new Error('[E2E] DATABASE_URL is not set — check your .env file')
+  if (!process.env.BETTER_AUTH_SECRET) throw new Error('[E2E] BETTER_AUTH_SECRET is not set — check your .env file')
+
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
   const prisma = new PrismaClient({ adapter })
 
   try {
@@ -71,7 +74,7 @@ export default async function globalSetup() {
     // Write Playwright storageState — better-auth reads `better-auth.session_token` cookie
     // and validates it as a signed cookie (HMAC-SHA256 with BETTER_AUTH_SECRET).
     // The cookie value must be token + "." + base64(HMAC-SHA256(token, secret)) — raw, not percent-encoded.
-    const secret = process.env.BETTER_AUTH_SECRET!
+    const secret = process.env.BETTER_AUTH_SECRET
     const signedToken = await signCookieValue(token, secret)
 
     const authDir = path.join(process.cwd(), 'tests/e2e/.auth')
