@@ -247,14 +247,12 @@ Stashly project file structure — generated 2026-04-01
 │   │   └── upload-actors.types.ts
 │   ├── utils/
 │   │   ├── __tests__/
-│   │   │   ├── algolia-filters.test.ts
 │   │   │   ├── converters.test.ts
 │   │   │   ├── filters.test.ts
 │   │   │   ├── formaters.test.ts
 │   │   │   ├── misc.test.ts
 │   │   │   ├── parsers.test.ts
 │   │   │   └── styles.test.ts
-│   │   ├── algolia-filters.ts
 │   │   ├── breadcrmb.ts
 │   │   ├── collection-actions.ts
 │   │   ├── confirm.ts
@@ -264,7 +262,6 @@ Stashly project file structure — generated 2026-04-01
 │   │   │   ├── activity.filters.ts
 │   │   │   ├── collection.filters.ts
 │   │   │   ├── drive.filters.ts
-│   │   │   ├── item.algolia.filters.ts
 │   │   │   ├── item.filters.ts
 │   │   │   ├── notification.filters.ts
 │   │   │   ├── quota.filters.ts

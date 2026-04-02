@@ -13,7 +13,6 @@
 | Vite           | 7.2.0    |
 | Express        | 5.1.0    |
 | Prisma         | 7.0.1    |
-| Algolia Search | 5.45.0   |
 | Stripe         | 19.2.1   |
 | better-auth    | 1.4.3    |
 | XState         | 5.24.0   |
@@ -56,7 +55,6 @@ stashly/
 │   ├── 🖿 .client/         # Client-side specific logic and utilities
 │   │   └── 📄 auth.ts      # Client-side authentication utilities
 │   ├── 🖿 .server/         # Server-side specific logic (API, auth, S3, Stripe)
-│   │   ├── 📄 algolia.ts     # Algolia search integration
 │   │   ├── 📄 api.errors.ts  # Custom API error definitions
 │   │   ├── 📄 api.utils.ts   # Server-side API utilities
 │   │   ├── 📄 auth.ts        # Server-side authentication logic (better-auth setup)
@@ -209,7 +207,6 @@ stashly/
 │       ├── 🖿 filters/       # Filtering utilities
 │       │   ├── 📄 activity.filters.ts
 │       │   └── (many other filter files)
-│       ├── 📄 algolia-filters.ts # Algolia specific filters
 │       ├── 📄 breadcrmb.ts   # Breadcrumb generation utilities
 │       ├── 📄 collection-actions.ts # Collection-related actions
 │       ├── 📄 converters.ts  # Data conversion utilities
@@ -245,7 +242,6 @@ stashly/
 ├── 🖿 public/              # Static assets served directly by the web server
 │   └── 📄 favicon.ico
 ├── 🖿 scripts/             # Utility scripts for development and automation
-│   ├── 📄 algolia-settings.json
 │   ├── 📄 apply-index-settings.ts
 │   └── (many other scripts)
 └── 🖿 tests/               # Unit, integration, and end-to-end tests

@@ -10,7 +10,7 @@ Architecture and design documentation for the Stashly codebase.
 | [ai-pipeline.md](ai-pipeline.md) | AI inference pipeline — Transformers.js, WebGPU, Whisper transcription, language detection, Web Worker architecture |
 | [upload-multipart.md](upload-multipart.md) | S3 multipart upload system — XState machine states, presigned URLs, Web Streams chunking, progress tracking |
 | [quota-and-machines.md](quota-and-machines.md) | Storage quota — QuotaService singleton, `toUpdatedQuota` transformer, quota state machine, backend endpoint |
-| [search.md](search.md) | Search architecture — Algolia full-text, pgvector semantic search, SearchFactory pattern, filter system |
+| [search.md](search.md) | Search architecture — pgvector semantic search, SearchFactory pattern, filter system |
 | [routing-and-ui.md](routing-and-ui.md) | Route handles, dual-sidebar layout, pagination helpers, `runSearch` overloads |
 | [suggestions-view.md](suggestions-view.md) | Suggestions view component — data flow, SQL aggregation patterns, route integration |
 | [dev-notes.md](dev-notes.md) | TypeScript patterns, Prisma conventions, repository generation, archived filter/search patterns |

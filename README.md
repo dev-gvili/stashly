@@ -6,7 +6,7 @@ A full-stack file management platform for personal stashes and collaborative wor
 
 - Personal stash and team workspaces with role-based permissions
 - Multipart file uploads direct to S3-compatible storage (Tigris)
-- Full-text search (Algolia) and semantic/vector search (pgvector)
+- Full-text and semantic/vector search (pgvector + embeddings)
 - AI features: image captioning, transcription (Whisper), translation, embeddings, chat
 - Collections, favorites, shares, versioning, and trash
 - Stripe subscription billing with quota enforcement
@@ -22,7 +22,7 @@ A full-stack file management platform for personal stashes and collaborative wor
 | Database   | PostgreSQL, Prisma ORM, pgvector |
 | Storage    | AWS S3-compatible (Tigris on Fly.io), multipart upload |
 | AI         | HuggingFace Transformers.js, ONNX Runtime WebGPU, Whisper, Tesseract OCR |
-| Search     | Algolia (full-text), pgvector (semantic embeddings) |
+| Search     | pgvector + embeddings (full-text and semantic search) |
 | Payments   | Stripe |
 
 ## Getting Started
@@ -41,7 +41,7 @@ Copy the example env file and fill in required values:
 cp .env.example .env
 ```
 
-Key variables: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `S3_*` (bucket/endpoint/keys), `ALGOLIA_*`, `STRIPE_*`.
+Key variables: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `S3_*` (bucket/endpoint/keys), `STRIPE_*`.
 
 ### Development
 
@@ -69,7 +69,7 @@ app/
 │   ├── api.errors.ts     # ApiError / ApiErrorCode helpers
 │   ├── repositories/     # Data access via Prisma (auto-generated — don't hand-edit)
 │   ├── services/         # Business logic + permission enforcement
-│   ├── search/           # Algolia full-text + pgvector semantic search
+│   ├── search/           # pgvector semantic search and embeddings
 │   └── s3.ts             # S3-compatible storage client (Tigris)
 ├── .client/              # Client-only — browser APIs, client AI helpers
 ├── routes/               # React Router 7 pages + loaders/actions

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Stashly is a full-stack React/Node.js application template using React Router, TypeScript, Prisma, XState, and TailwindCSS. It supports SSR, HMR, asset optimization, and integrates with S3 for storage and Algolia for search.
+Stashly is a full-stack React/Node.js application template using React Router, TypeScript, Prisma, XState, and TailwindCSS. It supports SSR, HMR, asset optimization, and integrates with S3 for storage and pgvector for search.
 
 ## Architecture & Key Patterns
 
@@ -32,7 +32,6 @@ Stashly is a full-stack React/Node.js application template using React Router, T
 ## Integration Points
 
 - **S3:** Storage integration via `app/services/s3.server.ts`
-- **Algolia:** Search via `app/services/algolia.server.ts`
 - **Email:** Email logic in `app/services/email.server.ts`
 - **Db:** prisma client via `app/services/db.server.ts`
 - **Auth:** Authentication integration via `app/services/auth.server.ts`

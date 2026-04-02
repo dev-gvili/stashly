@@ -56,9 +56,9 @@ Built with React Router 7 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatib
          │
          ▼
 ┌───────────────────┐    ┌──────────┐    ┌─────────┐
-│   PostgreSQL      │    │  Algolia │    │ Stripe  │
-│   + pgvector      │    │ (search) │    │(billing)│
-└───────────────────┘    └──────────┘    └─────────┘
+│   PostgreSQL      │                   │ Stripe  │
+│   + pgvector      │                   │(billing)│
+└───────────────────┘                   └─────────┘
 ```
 
 **Request flow:** Browser → React Router SSR loader/action → Service (permission check) → Repository (Prisma) → PostgreSQL.
@@ -78,7 +78,7 @@ Built with React Router 7 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatib
 | **Database** | PostgreSQL, Prisma ORM 7, pgvector extension (semantic search), pg_trgm (full-text) |
 | **Storage** | AWS S3-compatible (Tigris on Fly.io), multipart upload via presigned URLs |
 | **AI/ML** | HuggingFace Transformers.js, ONNX Runtime (WebGPU/WASM), Whisper, Tesseract OCR |
-| **Search** | Algolia (full-text search), pgvector (semantic/vector search) |
+| **Search** | pgvector + embeddings (full-text and semantic search) |
 | **Auth** | better-auth (OAuth: GitHub, Google, Microsoft) |
 | **Payments** | Stripe (subscriptions, webhooks) |
 | **Testing** | Vitest, Playwright |
@@ -102,9 +102,8 @@ Built with React Router 7 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatib
 - XState state machines orchestrate the full lifecycle
 
 ### Search
-- **Full-text search** via Algolia with filters (type, date, size, workspace)
 - **Semantic search** via pgvector embeddings (cosine similarity on 384-dim vectors)
-- Dual-mode: routes to Algolia or Postgres depending on configuration
+- **Full-text search** via PostgreSQL `search` field with filters (type, date, workspace)
 
 ### AI Features (Browser-Side)
 - **Transcription** — Whisper speech-to-text with automatic language detection (120+ languages)
@@ -226,7 +225,7 @@ await permissionRepository.create({ ... })
 | `WorkspaceItemService` | Sync item permissions with workspace roles |
 | `workspaceMember.service` | Membership management, role changes |
 | `shareLink.service` | Share link creation, permission grants |
-| `search.service` | Search orchestration (Algolia / Postgres routing) |
+| `search.service` | Search orchestration (pgvector + embeddings) |
 
 ### Repositories (`app/.server/repositories/`)
 
@@ -293,11 +292,11 @@ See: [`docs/ai-pipeline.md`](ai-pipeline.md)
 
 ### Search System
 
-Dual-mode search with automatic routing:
+Search is powered entirely by PostgreSQL + pgvector:
 
 | Mode | Backend | Use Case |
 |------|---------|----------|
-| Full-text | Algolia | Keyword search, faceted filtering |
+| Full-text | PostgreSQL | Keyword search, faceted filtering |
 | Semantic | pgvector (PostgreSQL) | "Find similar" queries, meaning-based search |
 
 Embeddings are generated with `sentence-transformers/all-MiniLM-L6-v2` (384-dim vectors, cosine distance).
@@ -463,7 +462,6 @@ Stage 4: Runtime (node:20-alpine) — copy prod deps + build output, run npm sta
 | **Database** | `DATABASE_URL` |
 | **Auth** | `SESSION_SECRET`, `BETTER_AUTH_SECRET`, `BASE_URL`, OAuth client IDs/secrets |
 | **Storage** | `AWS_ACCESS_KEY`, `AWS_SECRET_KEY`, `AWS_ENDPOINT_URL`, `AWS_REGION` |
-| **Search** | `VITE_ALGOLIA_APP_ID`, `VITE_ALGOLIA_SEARCH_KEY`, `VITE_ALGOLIA_INDEX` |
 | **Payments** | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
 
 ### Commands
@@ -485,7 +483,7 @@ pnpm test                 # Run tests (Vitest)
 | Document | Topic |
 |----------|-------|
 | [`docs/ai-pipeline.md`](ai-pipeline.md) | AI pipeline architecture (Transformers.js, Whisper, summarization) |
-| [`docs/search.md`](search.md) | Semantic search, pgvector, Algolia integration |
+| [`docs/search.md`](search.md) | Semantic search, pgvector + embeddings |
 | [`docs/upload-multipart.md`](upload-multipart.md) | S3 multipart upload state machine and streaming |
 | [`docs/quota-and-machines.md`](quota-and-machines.md) | Quota system, XState integration |
 | [`docs/routing-and-ui.md`](routing-and-ui.md) | Route handles, sidebars, pagination patterns |

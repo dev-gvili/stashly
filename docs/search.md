@@ -13,7 +13,7 @@ This document covers the full search system: semantic vector search with pgvecto
 5. [Upsert File + Embedding](#5-upsert-file--embedding)
 6. [Semantic Search Function](#6-semantic-search-function)
 7. [Integrating Semantic Search with Existing Pagination](#7-integrating-semantic-search-with-existing-pagination)
-8. [searchItems Service (Postgres + Algolia)](#8-searchitems-service-postgres--algolia)
+8. [searchItems Service (Postgres)](#8-searchitems-service-postgres)
 9. [Item Filters](#9-item-filters)
 10. [S3 Extraction & Embedding — Operational Notes](#10-s3-extraction--embedding--operational-notes)
 
@@ -287,69 +287,9 @@ const fn = async (options: any = {}) => {
 
 ---
 
-## 8. searchItems Service (Postgres + Algolia)
+## 8. searchItems Service (Postgres)
 
-`src/services/searchService.ts` supports two search modes: `'postgres'` and `'algolia'`.
-
-```typescript
-type SearchMode = 'postgres' | 'algolia'
-
-export async function searchItems<TParams>(opts: SearchOptions<TParams>) {
-  const { mode, limit = 20, page } = opts
-
-  if (mode === 'postgres') {
-    const where = buildFilters(rest as TParams)
-
-    if (page !== undefined) {
-      // Offset pagination with _relevance ordering
-      return prisma.item.findMany({
-        where,
-        orderBy: { _relevance: { fields: ['name'], search: opts.query!, sort: 'desc' } },
-        skip: (page - 1) * limit,
-        take: limit,
-        include,
-      })
-    }
-
-    // Cursor pagination
-    let items = await prisma.item.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: limit + 1,
-      ...(cursorId ? { cursor: { id: cursorId } } : {}),
-      include,
-    })
-    const hasMore = items.length > limit
-    const data = hasMore ? items.slice(0, limit) : items
-    const nextCursor = hasMore ? items[limit]?.id : undefined
-    return { data, metadata: { take: limit, count: data.length, previousCursor: cursorId, nextCursor, isComplete: !nextCursor } }
-  }
-
-  if (mode === 'algolia') {
-    // Build Algolia filter string from category/type/tags
-    const { results } = await client.searchForHits({
-      requests: [{ indexName: ALGOLIA_INDEX, query, filters, hitsPerPage: limit, page }],
-    })
-    return results[0].hits
-  }
-}
-```
-
-### Algolia Client Setup
-
-```typescript
-const client = algoliasearch(
-  process.env.ALGOLIA_APP_ID!,
-  process.env.VITE_ALGOLIA_SEARCH_KEY!
-)
-```
-
-**Note:** Use `algoliasearch` as a **default import**, not named import:
-
-```typescript
-import algoliasearch from 'algoliasearch'  // correct
-// import { algoliasearch } from 'algoliasearch'  // wrong — no initIndex method
-```
+`app/.server/search/searchItems.ts` is the unified search function. It builds a `where` clause from filters and delegates to the `paginate` utility with support for cursor, offset, and stream strategies.
 
 ---
 

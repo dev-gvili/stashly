@@ -127,7 +127,7 @@ Models are split across `prisma/models/*.prisma` files and merged. Generated cli
 ### Integrations
 
 - **Auth**: `better-auth` configured in `app/.server/auth.ts`, OAuth via GitHub/Google/Microsoft
-- **Search**: Algolia for full-text search; embeddings for semantic search (`app/.server/search/`)
+- **Search**: pgvector + embeddings for full-text and semantic search (`app/.server/search/`)
 - **AI features**: Hugging Face transformers, ONNX Runtime, Whisper (speech-to-text), Tesseract (OCR)
 - **Payments**: Stripe, webhooks handled at `/api/stripe`
 - **Storage**: AWS S3-compatible (Tigris on Fly.io), configured in `app/.server/s3.ts`

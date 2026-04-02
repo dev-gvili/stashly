@@ -44,10 +44,8 @@
 │   ├── .well-known/         # Standard well-known URIs
 │   └── favicon.ico          # Application favicon
 ├── scripts/                 # Automation and utility scripts
-│   ├── apply-index-settings.ts # Script to configure Algolia index
 │   ├── gen.ts               # General purpose generation script
-│   ├── generate.ts          # Data generation script
-│   └── push-to-algolia.ts   # Script to push data to Algolia
+│   └── generate.ts          # Data generation script
 ├── server/                  # Backend server (likely Express.js)
 │   ├── adapters/            # Adapters for external services
 │   ├── middleware/          # Server middleware
@@ -93,7 +91,7 @@ This phase introduces features that allow users to collaborate and share their f
 
 This phase aims to enhance the user experience with intelligent features and better integrations.
 
-- [ ] **Advanced Search:** Implement semantic search using Algolia to search within file content (for supported formats like .txt, .md, .pdf).
+- [ ] **Advanced Search:** Implement semantic search using pgvector to search within file content (for supported formats like .txt, .md, .pdf).
 - [ ] **AI-powered Organization:** Automatically categorize and tag files based on their content.
 - [ ] **Desktop Sync Client:** Develop a desktop application to sync files between the user's computer and Stashly.
 - [ ] **Mobile App (iOS & Android):** Native mobile applications for accessing files on the go.

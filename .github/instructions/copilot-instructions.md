@@ -45,7 +45,6 @@ Stashly is a full-stack React application template using React Router, TypeScrip
 ## Integration Points
 
 - **S3:** Storage integration via `app/services/s3.server.ts`
-- **Algolia:** Search via `app/services/algolia.server.ts`
 - **Email:** Email logic in `app/services/email.server.ts`
 - **Db:** prisma client via `app/services/db.server.ts`
 - **Auth:** Authentication integration via `app/services/auth.server.ts`

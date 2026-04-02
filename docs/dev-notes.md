@@ -9,7 +9,6 @@ Miscellaneous developer notes covering TypeScript patterns, tooling, database co
 1. [Combining TypeScript Files](#1-combining-typescript-files)
 2. [TypeScript Function Overloads — Refactor Pattern](#2-typescript-function-overloads--refactor-pattern)
 3. [GitHub Copilot Instructions (Codebase Guide)](#3-github-copilot-instructions-codebase-guide)
-4. [Algolia: `initIndex` / Import Fix](#4-algolia-initindex--import-fix)
 5. [Faker-JS Mock Generation](#5-faker-js-mock-generation)
 6. [Prisma Schema & SQL Triggers](#6-prisma-schema--sql-triggers)
 
@@ -166,27 +165,7 @@ The pattern for extending Prisma delegates (using `Object.assign`) can be used t
 
 ---
 
-## 4. Algolia: `initIndex` / Import Fix
-
-**Error:** `Property 'initIndex' does not exist on type 'Algoliasearch'`
-
-**Cause:** Using named import instead of default import:
-
-```typescript
-// WRONG — named import does not expose initIndex
-import { algoliasearch } from 'algoliasearch'
-
-// CORRECT — default import
-import algoliasearch from 'algoliasearch'
-```
-
-This affects both `scripts/push-to-algolia.ts` and `src/services/searchService.ts`.
-
-After fixing the import, the client exposes the full API surface including `initIndex` and `searchForHits`.
-
----
-
-## 5. Faker-JS Mock Generation
+## 4. Faker-JS Mock Generation
 
 ### Mock GitHub Tags
 

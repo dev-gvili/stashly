@@ -48,7 +48,6 @@ Stashly is a secure, intuitive, and powerful file storage and collaboration plat
 │   ├── apply-index-settings.ts
 │   ├── gen.ts
 │   ├── generate.ts
-│   └── push-to-algolia.ts
 ├── server/                  # Backend server
 │   ├── adapters/
 │   ├── middleware/
@@ -219,7 +218,7 @@ app/
 
 **Why:** Differentiate Stashly from basic storage providers by adding smart features that enhance user experience — advanced search, AI-powered organization, cross-platform access, and performance improvements.
 
-- [ ] **Advanced Search:** Implement semantic search using Algolia to search within file content (.txt, .md, .pdf).
+- [ ] **Advanced Search:** Implement semantic search using pgvector to search within file content (.txt, .md, .pdf).
 - [ ] **AI-powered Organization:** Automatically categorize and tag files based on their content.
 - [ ] **Desktop Sync Client:** Develop a desktop application to sync files.
 - [ ] **Mobile App (iOS & Android):** Native mobile applications.
