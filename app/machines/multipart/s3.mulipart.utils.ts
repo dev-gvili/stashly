@@ -10,7 +10,7 @@ import type {
   GetPresignedUrlForPartOutput,
 } from '@/.server/upload'
 import type { MultipartEvents } from '@/types/machine.types'
-import { streamParts } from './s3.multipart.stream'
+import { streamParts } from './s3.multipart.concurrent'
 
 const FetchInit: RequestInit = {
   method: 'POST',
@@ -116,6 +116,7 @@ export const uploadParts = fromCallback<
     ...input,
     abortController,
     onDone: (parts) => {
+      console.log('Multipart upload completed successfully', {parts})
       sendBack({ type: '@multipart.upload.done', parts })
     },
     onProgress: (progress) => {
