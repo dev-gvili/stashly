@@ -175,8 +175,7 @@ async function main() {
     skipSpecialTokens: true,
   })
 }
-const result = await main().catch((err) => {
+await main().catch((err) => {
   console.error('Error in generation:', err)
   return 'Generation failed.'
 })
-console.log(result)

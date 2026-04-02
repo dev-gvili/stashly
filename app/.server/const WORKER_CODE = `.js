@@ -73,7 +73,6 @@ self.addEventListener('message', async (event) => {
 
             const lid = await LangId.getInstance();
             const lidRes = await lid(audio);
-            console.log("lidRes", lidRes)
             let rawLabel = null;
             if (Array.isArray(lidRes) && lidRes.length > 0) rawLabel = lidRes[0].label || null;
             else if (lidRes && lidRes.label) rawLabel = lidRes.label;
@@ -109,8 +108,6 @@ self.addEventListener('message', async (event) => {
       });
 
       self.postMessage({ type: 'start' });
-      console.log("detected language: ", detected)
-
       const output = await transcriber(audio, {
         chunk_length_s: 20,
         language: detected || null,

@@ -115,18 +115,12 @@ export const uploadQueueMachineV2 = setup({
     }),
     moveFromValidatingToActive: assign({
       validating: ({ context, event }) => {
-        console.log('Moving from validating')
-        console.log('Context:', context)
-        console.log('Event:', event)
         assertEvent(event, 'validation.result')
         const newValidating = new Set(context.validating)
         newValidating.delete(event.itemId)
         return newValidating
       },
       active: ({ context, event }) => {
-        console.log('Moving to active')
-        console.log('Context:', context)
-        console.log('Event:', event)
         assertEvent(event, 'validation.result')
         return new Set(context.active).add(event.itemId)
       },

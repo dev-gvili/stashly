@@ -54,12 +54,10 @@ export function ShareFolderModal({ onClose }: { onClose: () => void }) {
   }
 
   const handleShare = () => {
-    console.log('[v0] Sharing folder:', { email, message })
     onClose()
   }
 
   const handleCreate = () => {
-    console.log('[v0] Creating folder:', selectedFolder)
     onClose()
   }
 

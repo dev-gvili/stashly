@@ -169,9 +169,6 @@ const uploadWorkerMachine = setup({
         id: '@s3.multipart.create',
         src: 'createUpload',
         input: ({ context, event }) => {
-          console.log('Creating upload')
-          console.log('Context:', context)
-          console.log('Event:', event)
           assertEvent(event, 'process')
           return {
             bucket: context.user.bucket,

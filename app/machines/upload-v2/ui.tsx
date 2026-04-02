@@ -112,7 +112,7 @@ const fileReferences = new Map<string, File>()
 const addFile = (file: File, rootId: string) => {
   const mediaFile = toMediaFile(file, rootId)
   fileReferences.set(mediaFile.id, file)
-  console.log(Array.from(fileReferences.entries()))
+  // File references updated
   queue.send({
     type: '@queue.add',
     item: mediaFile

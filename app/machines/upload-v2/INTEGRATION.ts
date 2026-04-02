@@ -167,6 +167,6 @@ queueRef.send({
 
 // Monitor
 queueRef.subscribe(state => {
-  console.log('Queue stats:', state.context.stats)
+  // Queue stats
 })
 `

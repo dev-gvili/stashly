@@ -89,8 +89,6 @@ self.addEventListener('message', async (event) => {
       if (rawLabel && rawLabel.length >= 2) {
         detectedLanguage = rawLabel.slice(0, 2).toLowerCase()
       }
-      console.log('Detected Language:', detectedLanguage)
-
       self.postMessage({ type: 'status', payload: 'inferencing' })
 
       const audioInput =
@@ -268,9 +266,6 @@ export default function App() {
 
     worker.current.onmessage = (e) => {
       const { type, payload, task } = e.data
-
-      console.log('Worker message:', type, payload)
-
       switch (type) {
         case 'progress':
           if (payload.status === 'progress') {
@@ -306,7 +301,6 @@ export default function App() {
 
         case 'debug':
           setDebugLogs((prev) => [...prev, payload].slice(-10))
-          console.log('Worker Debug:', payload)
           break
 
         case 'audio-duration':

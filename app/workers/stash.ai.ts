@@ -338,8 +338,6 @@ env.allowRemoteModels = true
 env.useWasmCache = true
 env.backends.onnx!.webgpu!.profiling = {
   mode: 'default',
-  ondata: (data) =>
-    console.log(`WebGPU profiling [4.0.0.4]: ${JSON.stringify(data, null, 2)}`),
 }
 env.backends.onnx.wasm!.numThreads = 1
 
@@ -349,8 +347,6 @@ envNext8.allowRemoteModels = true
 envNext8.useWasmCache = true
 envNext8.backends.onnx!.webgpu!.profiling = {
   mode: 'default',
-  ondata: (data) =>
-    console.log(`WebGPU profiling [Next4.0.0.8]: ${JSON.stringify(data, null, 2)}`),
 }
 // -------------------------
 // WebGPU Device Manager (generic fallback chain)
@@ -419,15 +415,11 @@ const WebGPUDeviceManager = {
 
         // Skip software fallback adapters — too slow for AI inference
         if ((adapter as any).info?.isFallbackAdapter) {
-          console.log(`Skipping fallback adapter (${label})`)
           continue
         }
 
         const name = this.adapterName(adapter)
         this.adapters.push({ adapter, name, preference: label })
-        console.log(
-          `Discovered GPU [${label}]: ${name} (maxBuffer=${adapter.limits.maxBufferSize})`,
-        )
       } catch {
         /* adapter not available for this option set */
       }
@@ -440,10 +432,6 @@ const WebGPUDeviceManager = {
 
     if (this.adapters.length === 0) {
       console.warn('No WebGPU adapters found — will use WASM')
-    } else if (this.adapters.length > 1) {
-      console.log(
-        `Found ${this.adapters.length} GPUs, using: ${this.adapters[0].name}`,
-      )
     }
   },
 
@@ -457,7 +445,6 @@ const WebGPUDeviceManager = {
 
     const { adapter, name } = this.adapters[this.currentAdapterIndex]
     this.device = await adapter.requestDevice()
-    console.log(`WebGPU initialized on: ${name}`)
 
     this.device.lost.then(async (info) => {
       console.warn(`GPU device lost (${name}):`, info.message)
@@ -734,15 +721,12 @@ export async function transcribeAudio(
   }
   const whisperPrompt = WHISPER_PROMPTS[contentHint]
 
-  console.log('Attempting to load whisper-large-v3-turbo from Hugging Face...')
-
   const asrPipe = await PipelineManager.getPipeline(
     'automatic-speech-recognition',
     'onnx-community/whisper-large-v3-turbo',
     onProgress
   )
 
-  console.log('✓ onnx-community/whisper-large-v3-turbo')
   const partialTexts: string[] = []
 
   if (duration > 30) {
@@ -751,9 +735,6 @@ export async function transcribeAudio(
     // This halves the number of GPU round-trips vs 30.5s chunks:
     // 19 min → ~19 chunks (vs ~38 with 30.5s chunks)
     const chunks = makeChunks(audio, sampleRate, 60, 0)
-    console.log(
-      `Audio duration: ${duration.toFixed(1)}s → ${chunks.length} chunks (60s)`
-    )
 
     for (const [index, chunk] of chunks.entries()) {
       const chunkDuration = chunk.length / sampleRate
@@ -774,9 +755,6 @@ export async function transcribeAudio(
         total: chunks.length,
         progress: Math.round(((index + 1) / chunks.length) * 100),
       })
-      console.log(
-        `Transcribed chunk ${index + 1}/${chunks.length} (${Math.round(((index + 1) / chunks.length) * 100)}%) — ${chunkDuration.toFixed(1)}s of audio`
-      )
       if (DEBUG && res.chunks) {
         console.log(
           res.chunks
@@ -795,19 +773,16 @@ export async function transcribeAudio(
       batch_size: 16,
       ...(whisperPrompt ? { prompt: whisperPrompt } : {}),
     })
-    console.log(res)
     if (!res.chunks) partialTexts.push(res.text)
     if (res.chunks) {
       for (const { text, timestamp } of res.chunks) {
         partialTexts.push(text)
-        console.log(`[${timestamp[0]} - ${timestamp[1]}]:${text}`)
         onPartialResult('transcription', { text, timestamp })
       }
     }
   }
 
   const transcriptionResult = normalizeTranscript(partialTexts)
-  console.log('Transcription completed')
   await PipelineManager.disposePipeline(
     'automatic-speech-recognition',
     'onnx-community/whisper-large-v3-turbo'
@@ -826,16 +801,12 @@ export async function summarizeText(
   params: { text: string; language: string },
   onProgress: ProgressCallback
 ): Promise<string> {
-  console.log('Loading summarization model...')
-
   // Replace in summarizeText:
   const pipe = await PipelineManager.getPipeline(
     'text-generation',
     'onnx-community/tiny-aya-global-ONNX',
     onProgress
   )
-
-  console.log('Loaded summarization model')
 
   let messages: ChatMessage[] = []
   const summarizedChunks: string[] = []
@@ -845,8 +816,6 @@ export async function summarizeText(
       // ^^^ Changed from 512 to 1500 — 512 chars splits mid-sentence in Hebrew.
       //     Phi-4-mini has 16k context, we can afford larger chunks.
       const chunks = toChunk(params.text, 1500)
-      console.log(`Text too long, splitting into ${chunks.length} chunks`)
-
       for (const [i, chunk] of chunks.entries()) {
         messages = [
           { role: 'system', content: SUMMARIZE_SYSTEM_PROMPT(params) },
@@ -858,8 +827,6 @@ export async function summarizeText(
           tokenize: false,
           add_generation_prompt: true,
         }) as string
-
-        console.log(`Generating summary for chunk ${i + 1} of ${chunks.length}`)
 
         const output = await pipe(prompt, {
           max_new_tokens: 256,
@@ -888,7 +855,6 @@ export async function summarizeText(
         repetition_penalty: 1.1,
         return_full_text: false,
       })
-      console.log('Summarization output:', output)
       summarizedChunks.push(serializeSummaryPayload(output[0]))
     }
     return summarizedChunks.join(' ')
@@ -948,9 +914,6 @@ export async function correctTranscript(
       try {
         const prompt = buildPrompt(secondaryPipe, chunks[0])
         const tokens = secondaryPipe.tokenizer.tokenize(chunks[0])
-        console.log(
-          `Correcting chunk 1/${chunks.length} (secondary GPU — primary cooling)`
-        )
         const output = await secondaryPipe(prompt, inferenceOpts(tokens.length))
         correctedChunks.push(serializeSummaryPayload(output))
         startIndex = 1
@@ -964,7 +927,6 @@ export async function correctTranscript(
 
   // If no secondary GPU handled chunk 1, brief delay then use primary
   if (startIndex === 0 && chunks.length > 0) {
-    console.log('GPU cooldown: 3s before correction on primary GPU')
     await new Promise((r) => setTimeout(r, 3000))
   }
 
@@ -984,7 +946,6 @@ export async function correctTranscript(
         try {
           const prompt = buildPrompt(primaryPipe, chunks[i])
           const tokens = primaryPipe.tokenizer.tokenize(chunks[i])
-          console.log(`Correcting chunk ${i + 1}/${chunks.length}`)
           const output = await primaryPipe(prompt, inferenceOpts(tokens.length))
           correctedChunks.push(serializeSummaryPayload(output))
         } catch (e) {
@@ -1009,9 +970,6 @@ export async function correctTranscript(
           try {
             const prompt = buildPrompt(wasmPipe, chunks[i])
             const tokens = wasmPipe.tokenizer.tokenize(chunks[i])
-            console.log(
-              `Correcting chunk ${i + 1}/${chunks.length} (WASM fallback)`
-            )
             const output = await wasmPipe(prompt, inferenceOpts(tokens.length))
             correctedChunks.push(serializeSummaryPayload(output))
           } finally {
@@ -1047,7 +1005,6 @@ export async function generateTagsFromText(
   params: { text: string; language: string },
   onProgress: ProgressCallback
 ): Promise<string[]> {
-  console.log('Loading tag generation model...')
   await PipelineManager.resetAllPipelines()
 
   const pipe = await PipelineManager.getPipeline(
@@ -1055,8 +1012,6 @@ export async function generateTagsFromText(
     'onnx-community/tiny-aya-global-ONNX',
     onProgress
   )
-
-  console.log('Generating tags...')
 
   const { text } = params
   const inputText =
