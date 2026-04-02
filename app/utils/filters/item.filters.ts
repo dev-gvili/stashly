@@ -3,7 +3,7 @@ import { Prisma, ItemCategory, ItemType, ItemStatus } from '@/prisma/browser'
 import { createFilter, buildFiltersFactory } from '@/utils/filters'
 import { toZodArraySchema } from '@/utils/converters'
 import { PermissionRole, WorkspaceMemberRole } from '@/prisma/browser'
-import { date } from './schema.zod'
+import { date } from '@/schemas/filters.schemas'
 
 export const itemFilterSchema = z.object({
   category: toZodArraySchema(z.enum(ItemCategory)).optional(),

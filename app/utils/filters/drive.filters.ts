@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { Prisma, type Drive } from '@/prisma/client'
 import { createFilter, buildFiltersFactory } from '@/utils/filters'
 import { DriveType } from '@/prisma/enums'
-import { date } from './schema.zod'
+import { date } from '@/schemas/filters.schemas'
 
 export const driveFilterSchema = z
   .object({

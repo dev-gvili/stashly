@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { Prisma } from '@/prisma/client'
 import { createFilter, buildFiltersFactory } from '@/utils/filters'
-import { date } from './schema.zod'
+import { date } from '@/schemas/filters.schemas'
 export const collectionFilterSchema = z
   .object({
     id: z.string(),

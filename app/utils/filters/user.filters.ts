@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { buildFiltersFactory, createFilter } from '@/utils/filters'
 import { PermissionRole, Prisma } from '@/prisma/client'
 import { toZodArraySchema } from '../converters'
-import { date } from './schema.zod'
+import { date } from '@/schemas/filters.schemas'
 
 // Define the Zod schema for base query parameters.
 export const userFilterSchema = z

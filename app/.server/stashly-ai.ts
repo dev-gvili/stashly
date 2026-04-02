@@ -691,10 +691,7 @@ Text: ${cleaned}
     options?: { boostName?: number; includeDates?: boolean }
   ): Promise<number[]> {
     // 1. If it's a full Prisma item, map it to our searchable interface
-    const searchData =
-      (item as any).name && (item as any).status
-        ? mapItemToSearch(item as ExtendedItem)
-        : (item as ItemForSearchEmbedding)
+    const searchData = mapItemToSearch(item as ExtendedItem)
 
     // 2. Build the structured natural language string (e.g. "Name. Name. Category. Tags. Summary.")
     const searchString = buildSearchTextFromItem(searchData, options)

@@ -1,6 +1,5 @@
 // This updated file incorporates all the improvements: natural language construction for better semantic matching, robust batch/single vector handling, and a clear mapping layer between your Prisma database and the embedding logic.
 
-
 import { getPipeline } from '../ai.utils'
 import type { Prisma } from '@/prisma/browser'
 
@@ -12,11 +11,16 @@ import type { Prisma } from '@/prisma/browser'
  * Converts text into a numeric vector using the Xenova/all-mpnet-base-v2 model.
  * Handles both single strings and arrays of strings (batch processing).
  */
-export async function toVector(text: string | string[]): Promise<number[] | number[][]> {
-  const extractor = await getPipeline('feature-extraction', 'Xenova/all-mpnet-base-v2', {
-    
-  })
-  
+export async function toVector(
+  text: string | string[]
+): Promise<number[] | number[][]> {
+  const extractor = await getPipeline(
+    'feature-extraction',
+    'Xenova/all-mpnet-base-v2',
+    "q4",
+    "webgpu"
+  )
+
   // pooling: 'mean' and normalize: true are recommended for all-mpnet-base-v2
   const output = await extractor(text, { pooling: 'mean', normalize: true })
 
@@ -129,7 +133,7 @@ export function cleanText(text: string): string {
   return text
     .replace(/Subtitle by [a-zA-Z0-9\s\.]+/gi, '')
     .replace(/Amara\.org/gi, '')
-    .replace(/\[Music\]|\[Applause\]|\[Laughter\]/gi, '') 
+    .replace(/\[Music\]|\[Applause\]|\[Laughter\]/gi, '')
     .replace(/([A-Z][^.!?]*[.!?])\s*\1\s*\1+/g, '$1') // Collapse 3+ sentence repetitions
     .replace(/\s+/g, ' ')
     .trim()
@@ -145,7 +149,11 @@ export function cleanText(text: string): string {
  */
 export function buildSearchTextFromItem(
   item: ItemForSearchEmbedding,
-  options: { maxLength?: number; boostName?: number; includeDates?: boolean } = {}
+  options: {
+    maxLength?: number
+    boostName?: number
+    includeDates?: boolean
+  } = {}
 ): string {
   const { maxLength = 4000, boostName = 2, includeDates = false } = options
   const parts: string[] = []
@@ -165,19 +173,19 @@ export function buildSearchTextFromItem(
   if (item.description) parts.push(item.description)
   if (item.summary) parts.push(`Summary: ${item.summary}`)
   if (item.caption) parts.push(`Caption: ${item.caption}`)
-  
+
   if (item.tags && item.tags.length) {
     parts.push(`Tags: ${item.tags.join(', ')}`)
   }
 
   const technical = [
-    item.mimeType, 
-    item.extension?.replace(/^\./, ''), 
-    item.status, 
+    item.mimeType,
+    item.extension?.replace(/^\./, ''),
+    item.status,
     item.ownerName,
-    item.collectionName
+    item.collectionName,
   ].filter(Boolean)
-  
+
   if (technical.length) parts.push(technical.join(' '))
 
   if (includeDates && item.createdAt) {
@@ -206,7 +214,7 @@ export async function embedItemForSearch(
   options?: { maxLength?: number; boostName?: number; includeDates?: boolean }
 ): Promise<number[]> {
   const text = buildSearchTextFromItem(item, options)
-  
+
   if (!text.trim()) {
     // Return a zero-vector if there is absolutely no text to encode
     return new Array(768).fill(0)

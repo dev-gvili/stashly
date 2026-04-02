@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { createFilter, buildFiltersFactory } from '@/utils/filters'
 import { Prisma } from '@/prisma/client'
 import { NotificationStatus, NotificationType } from '@/prisma/enums'
-import { date } from './schema.zod'
+import { date } from '@/schemas/filters.schemas'
 import { toZodArraySchema } from '../converters'
 
 // Define the Zod schema for base query parameters.
