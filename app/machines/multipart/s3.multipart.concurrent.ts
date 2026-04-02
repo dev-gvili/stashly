@@ -64,6 +64,10 @@ export async function streamParts({
   abortController,
   concurrency = DEFAULT_CONCURRENCY,
 }: StreamPartsInput): Promise<void> {
+  if (file.size === 0) {
+    throw new Error('Cannot upload an empty file')
+  }
+
   // Slice file into Blob references — File.slice() is zero-copy
   const chunks: Array<{ blob: Blob; partNumber: number }> = []
   let offset = 0
@@ -131,6 +135,10 @@ export async function streamParts({
 
     const { url: presignedUrl } = (await presignResponse.json()) as { url: string }
 
+    if (abortController.signal.aborted) {
+      throw new DOMException('Upload aborted', 'AbortError')
+    }
+
     // 2. Upload chunk directly to S3
     const uploadResponse = await retryFetch(
       presignedUrl,
@@ -146,11 +154,13 @@ export async function streamParts({
     )
 
     const etag = uploadResponse.headers.get('ETag')
-    if (etag) {
-      results[index] = {
-        ETag: parseEtag(etag),
-        PartNumber: chunk.partNumber,
-      }
+    if (!etag) {
+      throw new Error(`Missing ETag for part ${chunk.partNumber} — S3 did not confirm the upload`)
+    }
+
+    results[index] = {
+      ETag: parseEtag(etag),
+      PartNumber: chunk.partNumber,
     }
 
     bytesUploaded += chunk.blob.size
