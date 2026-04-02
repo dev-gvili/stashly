@@ -58,3 +58,5 @@ storybook-static
 app/utils/aimodel.test.ts
 
 models/*
+prisma/erDiagram.md
+orphaned.md
