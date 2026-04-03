@@ -34,7 +34,7 @@ export async function updateQuota({
 }: {
   userId: string
   action: string
-  dataSize: bigint
+  dataSize: number | bigint
 }) {
   const res = await fetch('/api/quota', {
     ...FetchInit,

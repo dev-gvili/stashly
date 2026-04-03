@@ -12,7 +12,9 @@ import { updateQuota as update, parseQuota, FetchInit } from './quota.utils'
  */
 export const updateQuota = fromPromise<
   QuotaOutput,
-  QuotaInput & {
+   {
+    userId: string
+    dataSize: number | bigint
     action: string
   }
 >(async ({ input }) => await update(input))

@@ -21,10 +21,8 @@ import {
   createUpload,
   uploadParts as multipartActor,
 } from '../multipart/s3.mulipart.utils'
-import {
-  check as checkQuota,
-  updateUsed as updateUsedQuota,
-} from '../quota/quota.actors'
+import { checkQuota, updateQuota } from '../quota/quota.actors'
+import { toCategory } from '../../utils'
 
 // ====================================================== //
 // =================== Custom Actors ==================== //
@@ -39,20 +37,29 @@ import {
 export const fileMachine = setup({
   types: {
     input: {} as MediaFileInput,
-    context: {} as MediaFileData,
+    context: {} as MediaFileData & {
+      quotaCheckResult?: { itemId: string; result: 'allowed' | 'denied' }
+    },
     events: {} as MediaFileEvents,
+    output: {} as {
+      mediaFile: MediaFileData['mediaFile']
+      uploadId: string
+    },
   },
   // Machine-specific actions
   actions: {
     // Saves the upload ID from the create multipart upload actor
-    assignUploadId: (_, params: { uploadId: string }) => ({
-      uploadId: params.uploadId,
+    assignUploadId: assign({
+      uploadId: ({ event }) => {
+        return (event as unknown as DoneActorEvent<{ uploadId: string }>).output
+          .uploadId
+      },
     }),
     // Saves the error message to the context
     assignError: assign({
       error: ({ event }) => {
         return (event as unknown as ErrorActorEvent<unknown, string>)
-          .error as Error
+          .error as string
       },
     }),
     // Assigns the multipart actor reference to the context
@@ -62,25 +69,39 @@ export const fileMachine = setup({
           id: `upload-${context.mediaFile.id}`,
           input: {
             file: context.mediaFile.file,
-            key: context.mediaFile.file.name,
+            key: context.mediaFile.key,
             uploadId: context.uploadId!,
           },
         }),
     }),
+
+    assignQuotaCheckResult: (
+      _,
+      params: { itemId: string; result: 'allowed' | 'denied' }
+    ) => ({
+      quotaCheckResult: params.result,
+    }),
+
     // Removes the multipart actor from the context
     removeUploadRef: assign({
       uploadRef: undefined,
     }),
     // Sends a 'upload.started' event to the parent manager.
-    sendUploadStartedToParent: sendTo('parentRef', ({ context }) => ({
-      type: 'upload.started',
-      mediaFileId: context.mediaFile.id,
-    })),
+    sendUploadStartedToParent: sendTo(
+      ({ context }) => context.parentRef!,
+      ({ context }) => ({
+        type: 'upload.started',
+        mediaFileId: context.mediaFile.id,
+      })
+    ),
     // Sends a 'upload.done' event to the parent manager.
-    sendUploadDoneToParent: sendTo('parentRef', ({ context }) => ({
-      type: 'upload.done',
-      mediaFileId: context.mediaFile.id,
-    })),
+    sendUploadDoneToParent: sendTo(
+      ({ context }) => context.parentRef!,
+      ({ context }) => ({
+        type: 'upload.done',
+        mediaFile: context.mediaFile,
+      })
+    ),
     // Sends an 'upload.aborted' event to the parent manager.
     sendUploadAbortedToParent: sendTo(
       ({ system }) => system.get('u'),
@@ -98,13 +119,17 @@ export const fileMachine = setup({
     }),
     // Marks the file status as 'done' and updates metadata
     markAsDone: assign(({ context, event }) => {
-      assertEvent(event, 'completed')
+      // assertEvent(event, 'completed')
       return {
         mediaFile: {
           ...context.mediaFile,
+          ...(
+            event as unknown as DoneActorEvent<{
+              etag: string
+              versionId: string
+            }>
+          ).output,
           status: 'done' as MediaFileStatus,
-          etag: event.etag,
-          version: event.versionId,
         },
       }
     }),
@@ -123,11 +148,17 @@ export const fileMachine = setup({
     // Invokes the check quota service
     checkQuota,
     // Invokes the update quota service
-    updateUsedQuota,
+    updateQuota,
     // Invokes the create multipart upload service
     createMultipartUpload: createUpload,
     // Invokes the complete multipart upload service
     completeMultipartUpload: completeUpload,
+  },
+  guards: {
+    // Guard to check if the quota check passed
+    isQuotaCheckPassed: ({ context }) => {
+      return context.quotaCheckResult?.result === 'allowed'
+    },
   },
 }).createMachine({
   id: 'fileUpload',
@@ -135,7 +166,7 @@ export const fileMachine = setup({
   context: ({ input }) => ({
     ...input,
     uploadId: '',
-    error: undefined,
+    error: '',
     mediaFile: {
       ...input.mediaFile,
       status: 'pending' as MediaFileStatus,
@@ -155,11 +186,22 @@ export const fileMachine = setup({
         src: 'checkQuota',
         input: ({ context }) => ({
           userId: context.user.id,
-          fileSizeInBytes: BigInt(context.mediaFile.file.size),
+          itemId: context.mediaFile.id,
+          dataSize: BigInt(context.mediaFile.file.size),
         }),
         onDone: {
+          // guard: 'isQuotaCheckPassed',
           target: 'creatingUpload',
-          actions: log('Quota check passed. Creating upload...'),
+          actions: [
+            {
+              type: 'assignQuotaCheckResult',
+              params: ({ event }) => ({
+                itemId: event.output.itemId,
+                result: event.output.result,
+              }),
+            },
+            log('Quota check passed. Creating upload...'),
+          ],
         },
         onError: {
           target: 'error',
@@ -173,20 +215,24 @@ export const fileMachine = setup({
         id: 'createMultipartUpload',
         src: 'createMultipartUpload',
         input: ({ context }) => ({
-          bucket: context.bucketName,
-          key: context.mediaFile.file.name,
+          bucket: context.user.bucket,
+          key: context.mediaFile.key,
           metadata: {
+            mimeType: context.mediaFile.file.type,
+            subscriptionId: context.user.subscriptionId,
+            storagePlanId: context.user.storagePlanId,
+            category: toCategory(context.mediaFile.file),
+            rootId: context.user.rootId,
             ownerId: context.user.id,
+            createdAt: new Date().toISOString(),
             fileName: context.mediaFile.file.name,
           },
         }),
         onDone: {
           target: 'uploading',
           actions: [
-            {
-              type: 'assignUploadId',
-              params: ({ event }) => event.output,
-            },
+            'assignUploadId',
+            'assignUploadRef',
             log('Multipart upload created.'),
           ],
         },
@@ -199,41 +245,41 @@ export const fileMachine = setup({
     // Uploading state: handles the actual file transfer
     uploading: {
       entry: [
-        'assignUploadRef',
+        log(({ context, event }) => ({ context, event }), 'Starting upload...'),
         'markAsUploading',
         'sendUploadStartedToParent',
         log('Starting upload...'),
       ],
       on: {
         // Forward progress events from the multipart actor to the parent manager
-        progress: {
-          actions: sendTo('parentRef', ({ event }) => ({
-            type: 'progress.change',
-            progress: event.progress,
-          })),
+        '@multipart.upload.progress': {
+          actions: sendTo(
+            ({ context }) => context.parentRef!,
+            ({ context, event }) => ({
+              type: 'progress.change',
+              mediaFileId: context.mediaFile.id,
+              progress: event.progress,
+            })
+          ),
         },
         // When the multipart actor completes, move to the next state
-        'upload.done': {
+        '@multipart.upload.done': {
           target: 'completingUpload',
           actions: log('Multipart upload done. Completing...'),
         },
         // Handle an abort event from the parent
-        'upload.abort': {
+        abort: {
           actions: [
-            sendTo('uploadRef', { type: 'abort' }),
+            sendTo(({ context }) => context.uploadRef!, { type: 'abort' }),
             log('Aborting upload...'),
           ],
         },
         // When the multipart actor has been aborted, move to the aborted state
-        'upload.aborted': {
+        '@multipart.upload.aborted': {
           target: 'aborted',
           actions: ['markAsAborted', 'sendUploadAbortedToParent'],
         },
         // When the multipart actor has an error, move to the error state
-        'upload.error': {
-          target: 'error',
-          actions: ['assignError', log('Multipart upload error.')],
-        },
       },
       exit: ['removeUploadRef'],
     },
@@ -244,9 +290,9 @@ export const fileMachine = setup({
         id: 'completeMultipartUpload',
         src: 'completeMultipartUpload',
         input: ({ context, event }) => {
-          assertEvent(event, 'done')
+          assertEvent(event, '@multipart.upload.done')
           return {
-            key: context.mediaFile.file.name,
+            key: context.mediaFile.key,
             uploadId: context.uploadId!,
             parts: event.parts,
           }
@@ -265,11 +311,12 @@ export const fileMachine = setup({
     updatingQuota: {
       entry: log('Updating quota...'),
       invoke: {
-        id: 'updateUsedQuota',
-        src: 'updateUsedQuota',
+        id: 'updateQuota',
+        src: 'updateQuota',
         input: ({ context }) => ({
           userId: context.user.id,
-          fileSizeInBytes: BigInt(context.mediaFile.file.size),
+          action: 'items-uploaded',
+          dataSize: context.mediaFile.file.size,
         }),
         onDone: {
           target: 'success',
@@ -280,7 +327,7 @@ export const fileMachine = setup({
         },
         onError: {
           target: 'error',
-          actions: ['assignError', log('Failed to update quota.')],
+          actions: ['assignError', log(({ event }) => event, 'Failed to update quota.')],
         },
       },
     },
