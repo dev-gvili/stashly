@@ -7,10 +7,14 @@ import {
   not,
   sendTo,
 } from 'xstate'
-import { fileMachine } from './file.v2.machine'
+import { fileMachine } from '../reviset/file.machine'
+// import { fileMachine } from './file.v2.machine'
 // import { fileMachine } from './file.machine'
 import { quotaMachine } from '@/machines/quota/quota.machine'
-import type { UploadManagerData, UploadManagerEvents } from '@/types/machine.types'
+import type {
+  UploadManagerData,
+  UploadManagerEvents,
+} from '@/types/machine.types'
 import { config, mediafile, uploadProgress } from '@/schemas/machine.schemas'
 import type { User } from '@/services/auth.types'
 
@@ -90,10 +94,12 @@ const uploadMachine = setup({
             systemId: mediaFile.data.id,
             input: {
               user: context.config.user,
-              parentRef: self,
+              manager: self,
               mediaFile: mediaFile.data,
+              skipQuotaCheck: event.skipQuotaCheck,
             },
           })
+          //@ts-ignore - TypeScript is having trouble inferring the type of the actor here, so we use a type assertion to bypass it. We know that the actor will be of the correct type based on how we spawn it.
           let actors = context.fileActors.set(mediaFile.data.id, actor)
           return { fileActors: actors }
         })
@@ -110,7 +116,7 @@ const uploadMachine = setup({
     spawnQuotaActor: enqueueActions(({ context, event, enqueue, self }) => {
       enqueue.assign(({ spawn }) => {
         let actor = spawn('quotaMachine', {
-          systemId: 'quotaService',
+          systemId: 'quota',
         })
         return { quotaActor: actor }
       })
@@ -126,6 +132,7 @@ const uploadMachine = setup({
       enqueue.raise({
         type: 'upload.spawn',
         mediaFile: event.mediaFile,
+        skipQuotaCheck: event.skipQuotaCheck,
       })
     }),
     updateProgress: assign(({ context, event }) => {
@@ -212,8 +219,32 @@ const uploadMachine = setup({
         type: 'abort',
       })
     }),
+    sendPauseUpload: enqueueActions(({ event, enqueue }) => {
+      assertEvent(event, 'upload.pause')
+      enqueue.sendTo(event.mediaFileId, { type: 'pause' })
+    }),
+    sendResumeUpload: enqueueActions(({ event, enqueue }) => {
+      assertEvent(event, 'upload.resume')
+      enqueue.sendTo(event.mediaFileId, { type: 'resume' })
+    }),
     markAsDone: assign(({ context, event }) => {
       assertEvent(event, 'upload.done')
+      let mediaFile = mediafile.parse(event.mediaFile)
+      let mediaFiles = context.mediaFiles.set(mediaFile.id, mediaFile)
+      return {
+        mediaFiles,
+      }
+    }),
+    markAsPaused: assign(({ context, event }) => {
+      assertEvent(event, 'upload.paused')
+      let mediaFile = mediafile.parse(event.mediaFile)
+      let mediaFiles = context.mediaFiles.set(mediaFile.id, mediaFile)
+      return {
+        mediaFiles,
+      }
+    }),
+    markAsResumed: assign(({ context, event }) => {
+      assertEvent(event, 'upload.resumed')
       let mediaFile = mediafile.parse(event.mediaFile)
       let mediaFiles = context.mediaFiles.set(mediaFile.id, mediaFile)
       return {
@@ -234,7 +265,7 @@ const uploadMachine = setup({
       }
     }),
     sendEventToQueue: sendTo(
-      'queueService',
+      'queue',
       ({ event }) => event // Cast to any because the event type might be broad
     ),
   },
@@ -278,6 +309,18 @@ const uploadMachine = setup({
         },
         'upload.abort': {
           actions: 'sendAbortUpload',
+        },
+        'upload.pause': {
+          actions: 'sendPauseUpload',
+        },
+        'upload.resume': {
+          actions: 'sendResumeUpload',
+        },
+        'upload.resumed': {
+          actions: 'markAsResumed',
+        },
+        'upload.paused': {
+          actions: 'markAsPaused',
         },
         'upload.remove': {
           actions: 'removeFromUploads',
