@@ -1,11 +1,17 @@
+// app/machines/multipart/s3.multipart.stream.ts
 import type { CompletedPart } from '@aws-sdk/client-s3'
-import type { UploadProgress } from '@/types/machine.types' // Assuming UploadProgress interface is defined
+import type { UploadProgress } from '@/types/machine.types'
+import { parseEtag } from '@/utils/parsers'
+import { PauseController } from './s3.multipart.concurrent'
+
+const CHUNK_SIZE = 5 * 1024 * 1024 // 5 MB — S3 minimum part size
+const DEFAULT_CONCURRENCY = 10
 
 async function retryFetch(
   url: RequestInfo,
   init: RequestInit,
   maxRetries: number = 5,
-  delay: number = 1000, // 1 second
+  delay: number = 1000,
   backoffFactor: number = 2,
   abortSignal: AbortSignal
 ): Promise<Response> {
@@ -31,7 +37,7 @@ async function retryFetch(
       return response
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        throw error // Re-throw AbortError immediately
+        throw error
       }
       console.error(`Fetch attempt failed: ${error}. Retrying...`)
       await new Promise((resolve) => setTimeout(resolve, delay))
@@ -42,16 +48,11 @@ async function retryFetch(
   throw new Error(`Failed to fetch ${url} after ${maxRetries} retries.`)
 }
 
-const CHUNK_SIZE = 5 * 1024 * 1024 // 5MB, consistent with previous examples
-
 /**
- * Creates a ReadableStream from a File object, ensuring data is yielded in fixed-size chunks.
- * This is crucial for S3 multipart uploads which require specific chunk sizes.
- * @param file The File object to stream.
- * @param chunkSize The desired size of each chunk in bytes.
- * @returns A ReadableStream that yields Blob chunks.
+ * Creates a ReadableStream from a File object, yielding fixed-size Blob chunks.
+ * Kept as a utility — no longer used in the main upload path.
  */
-function createChunkedFileStream(
+export function createChunkedFileStream(
   file: File,
   chunkSize: number
 ): ReadableStream<Blob> {
@@ -66,91 +67,45 @@ function createChunkedFileStream(
         controller.close()
       }
     },
-    cancel(reason) {
-      // Chunked file stream cancelled
-    },
+    cancel() {},
   })
 }
 
 /**
- * A TransformStream that reports progress as data chunks pass through it.
- * This allows for progress tracking when piping streams, especially useful
- * before sending data via `fetch` which doesn't expose upload progress directly.
+ * Progress state shared across all concurrent workers.
+ * Since JS is single-threaded, mutations to `bytesUploaded` are safe without locks.
  */
-class ProgressReportingTransformStream extends TransformStream<Blob, Blob> {
-  private totalBytesProcessed: number = 0
-  private totalFileSize: number
-  private startTime: number
-  private onProgress: (progress: UploadProgress) => void
+interface SharedProgressState {
+  bytesUploaded: number
+  totalFileSize: number
+  startTime: number
+  onProgress: (p: UploadProgress) => void
+}
 
-  constructor(
-    totalFileSize: number,
-    startTime: number,
-    onProgress: (progress: UploadProgress) => void
-  ) {
-    super({
-      transform: (chunk, controller) => {
-        this.totalBytesProcessed += chunk.size
+function buildProgress(state: SharedProgressState): UploadProgress {
+  const percentage = Math.round(
+    (state.bytesUploaded * 100) / state.totalFileSize
+  )
+  const elapsed = (Date.now() - state.startTime) / 1000
+  const speed = elapsed > 0 ? state.bytesUploaded / elapsed : 0
+  const timeLeftSeconds =
+    speed > 0 ? (state.totalFileSize - state.bytesUploaded) / speed : 0
 
-        // Calculate total progress across all parts
-        const totalPercentage = Math.round(
-          (this.totalBytesProcessed * 100) / this.totalFileSize
-        )
+  const hours = Math.floor(timeLeftSeconds / 3600)
+  const minutes = Math.floor((timeLeftSeconds % 3600) / 60)
+  const seconds = Math.floor(timeLeftSeconds % 60)
 
-        // Calculate speed and time left
-        const currentTime = Date.now()
-        const elapsedTimeInSeconds = (currentTime - this.startTime) / 1000
+  let speedUnit: 'KB/s' | 'MB/s' = 'KB/s'
+  let formattedSpeed = speed / 1024
+  if (formattedSpeed > 1024) {
+    formattedSpeed /= 1024
+    speedUnit = 'MB/s'
+  }
 
-        let speedValue = 0 // Bytes per second
-        if (elapsedTimeInSeconds > 0) {
-          speedValue = this.totalBytesProcessed / elapsedTimeInSeconds
-        }
-
-        let timeLeftSeconds = 0
-        if (this.totalBytesProcessed > 0 && speedValue > 0) {
-          const remainingBytes = this.totalFileSize - this.totalBytesProcessed
-          timeLeftSeconds = remainingBytes / speedValue
-        }
-
-        // Format speed (KB/s or MB/s)
-        let speedUnit: 'KB/s' | 'MB/s' = 'KB/s'
-        let formattedSpeed = speedValue / 1024 // Convert to KB/s
-        if (formattedSpeed > 1024) {
-          formattedSpeed /= 1024 // Convert to MB/s
-          speedUnit = 'MB/s'
-        }
-
-        // Format time left (hours, minutes, seconds)
-        const hours = Math.floor(timeLeftSeconds / 3600)
-        const minutes = Math.floor((timeLeftSeconds % 3600) / 60)
-        const seconds = Math.floor(timeLeftSeconds % 60)
-
-        // Report the detailed progress to the callback
-        this.onProgress({
-          percentage: totalPercentage,
-          timeLeft: { hours, minutes, seconds },
-          speed: {
-            value: parseFloat(formattedSpeed.toFixed(2)),
-            unit: speedUnit,
-          },
-        })
-
-        controller.enqueue(chunk) // Pass the chunk along to the next stage
-      },
-      flush: (controller) => {
-        // // This method is called when the writable side is closed.
-        // // Ensure final 100% progress is reported
-        this.onProgress({
-          percentage: 100,
-          timeLeft: { hours: 0, minutes: 0, seconds: 0 },
-          speed: { value: 0, unit: 'KB/s' }, // Or a final average speed if desired
-        })
-        // ProgressReportingTransformStream flushed
-      },
-    })
-    this.totalFileSize = totalFileSize
-    this.startTime = startTime
-    this.onProgress = onProgress
+  return {
+    percentage,
+    timeLeft: { hours, minutes, seconds },
+    speed: { value: parseFloat(formattedSpeed.toFixed(2)), unit: speedUnit },
   }
 }
 
@@ -161,19 +116,18 @@ export interface StreamPartsInput {
   onProgress: (progress: UploadProgress) => void
   onDone: (parts: CompletedPart[]) => void
   abortController: AbortController
+  pauseController?: PauseController
+  concurrency?: number
 }
 
 /**
- * Orchestrates a multipart file upload to S3 using Web Streams API for flow control,
- * and fetch for sending chunks, with a TransformStream for progress reporting.
+ * Orchestrates a concurrent multipart file upload to S3 using the Web Streams API.
  *
- * @param file The File object to upload.
- * @param uploadId The multipart upload ID obtained from the backend.
- * @param key The S3 object key for the file.
- * @param onProgress Callback to report overall upload progress (percentage, speed, time left).
- * @param onDone Callback to report the list of uploaded parts (ETags and PartNumbers).
- * @param abortController An AbortController to signal and handle upload cancellation.
- * @returns A Promise that resolves when the entire file has been uploaded (all parts).
+ * Each chunk gets its own ReadableStream pipeline:
+ *   blob.stream() → ProgressReportingTransformStream → fetch PUT body
+ *
+ * Up to `concurrency` chunk-streams run simultaneously via a worker pool.
+ * Chunk bytes flow directly from memory to S3 without intermediate buffering.
  */
 export async function streamParts({
   file,
@@ -182,101 +136,108 @@ export async function streamParts({
   onProgress,
   onDone,
   abortController,
+  pauseController,
+  concurrency = DEFAULT_CONCURRENCY,
 }: StreamPartsInput): Promise<void> {
-  let partNumber = 0 // Tracks the current part number being uploaded
-  const uploadedParts: CompletedPart[] = [] // Stores ETags and PartNumbers
-  const startTime = Date.now() // Records the start time of the entire upload process
+  if (file.size === 0) {
+    throw new Error('Cannot upload an empty file')
+  }
 
-  // Create a custom WritableStream that will consume the chunks from the TransformStream
-  // and handle their individual upload via fetch.
-  const uploadWritableStream = new WritableStream({
-    async write(chunk: Blob) {
-      // This method is called for each chunk received from the ProgressReportingTransformStream.
-      partNumber++
-      const currentPartNumber = partNumber // Capture the current part number for this chunk
+  const totalParts = Math.ceil(file.size / CHUNK_SIZE)
+  const results: CompletedPart[] = new Array(totalParts)
 
-      // Check if the upload has been aborted before processing this chunk
+  // Shared across all concurrent chunk-streams so progress reflects the whole file
+  const sharedState: SharedProgressState = {
+    bytesUploaded: 0,
+    totalFileSize: file.size,
+    startTime: Date.now(),
+    onProgress,
+  }
+
+  // taskIndex++ is synchronous — no race condition in single-threaded JS
+  let taskIndex = 0
+
+  async function worker(): Promise<void> {
+    while (taskIndex < totalParts) {
+      if (pauseController) await pauseController.waitIfPaused()
       if (abortController.signal.aborted) {
         throw new DOMException('Upload aborted', 'AbortError')
       }
 
-      // 1. Get pre-signed URL
-      const presignedUrlResponse = await retryFetch(
+      const i = taskIndex++
+      const offset = i * CHUNK_SIZE
+      const blob = file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size))
+      const partNumber = i + 1
+
+      // 1. Get presigned URL for this part
+      const presignResponse = await retryFetch(
         '/api/s3/upload',
         {
           method: 'POST',
           body: JSON.stringify({
             key,
             uploadId,
-            partNumber: currentPartNumber,
+            partNumber,
             action: 'get-presigned-url',
           }),
           headers: { 'Content-Type': 'application/json' },
           signal: abortController.signal,
         },
-        5, // maxRetries
-        1000, // initial delay
-        2, // backoffFactor
+        5,
+        2500,
+        3,
         abortController.signal
       )
 
-      const { url: presignedUrl } = (await presignedUrlResponse.json()) as {
+      const { url: presignedUrl } = (await presignResponse.json()) as {
         url: string
       }
 
-      // 2. Upload chunk data
-      const response = await retryFetch(
+      if (abortController.signal.aborted) {
+        throw new DOMException('Upload aborted', 'AbortError')
+      }
+
+      // 2. Upload the chunk to S3.
+      // NOTE: S3 requires a Content-Length header on every PUT. Browsers treat
+      // Content-Length as a forbidden header and will not set it for a streaming
+      // body (ReadableStream), causing a 411 response. Passing a Blob lets the
+      // browser set Content-Length automatically from blob.size.
+      // ProgressReportingTransformStream is therefore used outside the fetch body
+      // (see the class definition above) and progress is reported post-upload below.
+      const uploadResponse = await retryFetch(
         presignedUrl,
         {
           method: 'PUT',
-          body: chunk,
+          body: blob,
           signal: abortController.signal,
         },
-        5, // maxRetries
-        1000, // initial delay
-        2, // backoffFactor
+        5,
+        2500,
+        2,
         abortController.signal
       )
 
-      const etag = response.headers.get('ETag')
-      if (etag) {
-        // Collect ETag and PartNumber for the final completeMultipartUpload call
-        uploadedParts.push({
-          ETag: etag.replace(/"/g, ''),
-          PartNumber: currentPartNumber,
-        })
+      const etag = uploadResponse.headers.get('ETag')
+      if (!etag) {
+        throw new Error(
+          `Missing ETag for part ${partNumber} — S3 did not confirm the upload`
+        )
       }
-    },
-    close() {
-      // This method is called when the ReadableStream feeding into this WritableStream closes.
-      // Upload WritableStream closed: All chunks processed and sent.
-      // Report all collected parts to the parent
-      onDone(uploadedParts)
-    },
-    abort(reason) {
-      // This method is called if the WritableStream itself is aborted.
-      // Upload WritableStream aborted
-      abortController.abort(reason) // Ensure the main abort controller is also signaled
-    },
-  })
 
-  // Pipe the chunked file stream through the progress reporting TransformStream,
-  // and then to our custom uploadWritableStream.
-  try {
-    await createChunkedFileStream(file, CHUNK_SIZE)
-      .pipeThrough(
-        new ProgressReportingTransformStream(file.size, startTime, onProgress),
-        { signal: abortController.signal }
-      )
-      .pipeTo(uploadWritableStream, { signal: abortController.signal })
-    // File stream piping completed successfully
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
-      // File stream piping aborted by AbortController
-      // Do not re-throw, as this is an intentional abort.
-    } else {
-      console.error('Error during file stream piping:', error)
-      throw error // Re-throw other unexpected errors.
+      results[i] = {
+        ETag: parseEtag(etag),
+        PartNumber: partNumber,
+      }
+
+      // Report progress after this chunk completes
+      sharedState.bytesUploaded += blob.size
+      sharedState.onProgress(buildProgress(sharedState))
     }
   }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, totalParts) }, worker)
+  )
+
+  onDone(results)
 }

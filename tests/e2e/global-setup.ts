@@ -42,7 +42,16 @@ export default async function globalSetup() {
       )
     }
 
-    // Upsert test user — idempotent, safe to re-run
+    const E2E_DRIVE_ID = 'drv_e2e_test_000000'
+    const E2E__ID = 'quo_e2e_test_000000'
+    const E2E_ROOT_ID = 'root_e2e_test_000000'
+    const E2E_SUB_ID = 'sub_e2e_test_000000'
+    // 10 GB in bytes — plenty of  for E2E uploads
+    const E2E_STORAGE_LIMIT = BigInt(10 * 1024 * 1024 * 1024)
+
+    // Upsert test user — idempotent, safe to re-run.
+    // subscriptionId, driveId, and rootId are required by the upload machine's
+    // Zod config schema (z.string()), so we seed them with stable stub values.
     await prisma.user.upsert({
       where: { email: TEST_USER_EMAIL },
       create: {
@@ -50,10 +59,39 @@ export default async function globalSetup() {
         name: 'E2E Test User',
         email: TEST_USER_EMAIL,
         emailVerified: true,
-        bucket: 'e2e-bucket',
+        bucket: 'stashly-devgvili-sbp7fs6d',
         storagePlanId: freePlan.id,
+        subscriptionId: E2E_SUB_ID,
+        driveId: E2E_DRIVE_ID,
+        rootId: E2E_ROOT_ID,
       },
+      update: {
+        subscriptionId: E2E_SUB_ID,
+        driveId: E2E_DRIVE_ID,
+        rootId: E2E_ROOT_ID,
+      },
+    })
+
+    // Upsert the test user's Drive — required so the  service can find
+    // the user's  via `drive.ownerId`.
+    await prisma.drive.upsert({
+      where: { id: E2E_DRIVE_ID },
+      create: { id: E2E_DRIVE_ID, ownerId: TEST_USER_ID },
       update: {},
+    })
+
+    // Upsert the test user's  — required by `find` which the upload
+    // machine calls before starting each upload.
+    await prisma.quota.upsert({
+      where: { id: E2E__ID },
+      create: {
+        id: E2E__ID,
+        driveId: E2E_DRIVE_ID,
+        total: E2E_STORAGE_LIMIT,
+        used: BigInt(0),
+        deleted: BigInt(0),
+      },
+      update: { used: BigInt(0) },
     })
 
     // Fresh session every run

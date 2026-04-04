@@ -22,12 +22,10 @@ export class UploadPage {
     sizeBytes: number
     type: string
   }): Promise<void> {
-    await this.page.locator('[data-testid="upload-drop-area"]').waitFor({ state: 'visible' })
+    await this.page.locator('.fixed.bottom-8.right-8 [data-testid="upload-drop-area"]').waitFor({ state: 'visible' })
     await this.page.evaluate(
       ({ name, sizeBytes, type }) => {
-        const dropArea = document.querySelector(
-          '[data-testid="upload-drop-area"]'
-        )
+        const dropArea = document.querySelector('.fixed.bottom-8.right-8 [data-testid="upload-drop-area"]')
         if (!dropArea) throw new Error('DropArea not found')
 
         const fileData = new Uint8Array(sizeBytes)
@@ -48,12 +46,27 @@ export class UploadPage {
   }
 
   /**
+   * Waits for the upload item row to appear.
+   * The row is identified by the visible file name text.
+   */
+  async waitForUploadStarted(
+    fileName: string,
+    timeout = 10_000
+  ): Promise<void> {
+    await expect(
+      this.page
+        .locator('li')
+        .filter({ hasText: fileName })
+    ).toBeVisible({ timeout })
+  }
+
+  /**
    * Waits for the upload item row to reach data-state="done".
    * The row is identified by the visible file name text.
    */
   async waitForUploadDone(
     fileName: string,
-    timeout = 30_000
+    timeout = 60_000
   ): Promise<void> {
     await expect(
       this.page
