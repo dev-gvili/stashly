@@ -197,4 +197,86 @@ describe.each([
     // fetch should not have been called since abort is detected first
     expect(mockFetch).not.toHaveBeenCalled()
   })
+
+  // ── Pause + resume ──────────────────────────────────────────────────────────
+
+  it('halts new chunks while paused and completes after resume', async () => {
+    const CHUNK = 5 * 1024 * 1024
+    const file = makeFile(CHUNK + 100) // 2 chunks, concurrency=1 ensures serial order
+    const pauseController = new PauseController()
+    const onDone = vi.fn()
+
+    // Track fetch calls. With concurrency=1:
+    // call 1 = presign POST for part 1 (url !== PRESIGN_URL)
+    // call 2 = PUT to PRESIGN_URL for part 1
+    // call 3 = presign POST for part 2
+    // call 4 = PUT to PRESIGN_URL for part 2
+    let fetchCallCount = 0
+    mockFetch.mockImplementation((url: string) => {
+      fetchCallCount++
+      if (url === PRESIGN_URL) {
+        // This is an S3 PUT. After the first PUT (call 2), pause synchronously
+        // so the worker's next waitIfPaused() call blocks before chunk 2 starts.
+        if (fetchCallCount === 2) {
+          pauseController.pause()
+        }
+        return putResponse(`"etag-${fetchCallCount}"`)
+      }
+      return presignResponse()
+    })
+
+    const uploadPromise = streamParts(
+      makeInput({ file, onDone, pauseController, concurrency: 1 })
+    )
+
+    // Give the first chunk time to complete and the pause to take effect
+    await new Promise<void>((resolve) => setTimeout(resolve, 50))
+
+    // Upload should not have finished yet (paused after chunk 1)
+    expect(onDone).not.toHaveBeenCalled()
+
+    // Resume — the second chunk should now complete
+    pauseController.resume()
+    await uploadPromise
+
+    expect(onDone).toHaveBeenCalledOnce()
+    const [parts] = onDone.mock.calls[0] as [CompletedPart[]]
+    expect(parts).toHaveLength(2)
+  })
+
+  // ── Retry on 429 ───────────────────────────────────────────────────────────
+
+  it('retries after a 429 response and still calls onDone', async () => {
+    vi.useFakeTimers()
+
+    let putAttempts = 0
+    mockFetch.mockImplementation((url: string) => {
+      if (url === PRESIGN_URL) {
+        putAttempts++
+        if (putAttempts === 1) {
+          return Promise.resolve({
+            ok: false,
+            status: 429,
+            json: () => Promise.resolve({}),
+            headers: { get: () => null },
+          })
+        }
+        return putResponse()
+      }
+      return presignResponse()
+    })
+
+    const onDone = vi.fn()
+    const file = makeFile(1024)
+    const uploadPromise = streamParts(makeInput({ file, onDone }))
+
+    // Advance all pending timers (the retry delay setTimeout in retryFetch)
+    await vi.runAllTimersAsync()
+    await uploadPromise
+
+    expect(onDone).toHaveBeenCalledOnce()
+    expect(putAttempts).toBe(2) // first attempt 429, second attempt 200
+
+    vi.useRealTimers()
+  })
 })
