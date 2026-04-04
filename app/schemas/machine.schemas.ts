@@ -315,10 +315,12 @@ let uploadQueuesPendingAdd = z.object({
 let uploadAdd = z.object({
   type: z.literal(`${UPLOAD}.add`),
   mediaFile: mediafile,
+  skipQuotaCheck: z.boolean().optional(),
 })
 let uploadSpawn = z.object({
   type: z.literal(`${UPLOAD}.spawn`),
   mediaFile: mediafile,
+  skipQuotaCheck: z.boolean().optional(),
 })
 let uploadDone = z.object({
   type: z.literal(`${UPLOAD}.done`),
@@ -371,6 +373,28 @@ let requestAbortFromParent = z.object({
   mediaFile: mediafile,
 })
 
+let uploadPause = z.object({
+  type: z.literal(`${UPLOAD}.pause`),
+  mediaFileId: z.string(),
+})
+
+let uploadResume = z.object({
+  type: z.literal(`${UPLOAD}.resume`),
+  mediaFileId: z.string(),
+})
+
+let uploadPaused = z.object({
+  type: z.literal(`${UPLOAD}.paused`),
+  mediaFile: mediafile,
+})
+
+let uploadResumed = z.object({
+  type: z.literal(`${UPLOAD}.resumed`),
+  mediaFile: mediafile,
+})
+
+
+
 export let uploadManagerEvents = z.discriminatedUnion('type', [
   uploadConfig,
   uploadRemove,
@@ -388,6 +412,10 @@ export let uploadManagerEvents = z.discriminatedUnion('type', [
   uploadAbort,
   uploadStarted,
   requestAbortFromParent,
+  uploadPause,
+  uploadResume,
+  uploadPaused,
+  uploadResumed,
 ])
 
 export let fileMachineContext = z.object({
@@ -396,15 +424,17 @@ export let fileMachineContext = z.object({
   presignedUrl: z.url().optional(),
   uploadId: z.string(),
   error: z.string(),
-  parentRef: z.custom<AnyActorRef>().optional(),
-  processingRef: z.custom<AnyActorRef>().optional(),
-  uploadRef: z.custom<AnyActorRef>().optional(),
+  manager: z.custom<AnyActorRef>().optional(), // actor reference to the upload manager (parent) (e.g., uploadManagerMachine)
+  quota: z.custom<AnyActorRef>().optional(), // actor to handle quota related operations (e.g., quotaMachine)
+  worker: z.custom<AnyActorRef>().optional(), // actor representing the processing worker (e.g., Web Worker)
+  skipQuotaCheck: z.boolean().optional(), // when true, skip per-file quota check (used for batch/folder uploads)
 })
 
 export let mediafileMachineInput = z.object({
+  user,
   mediaFile: mediafile,
-  user: user,
-  parentRef: z.custom<AnyActorRef>(),
+  manager: z.custom<AnyActorRef>(),
+  skipQuotaCheck: z.boolean().optional(),
 })
 
 let mediafileRemove = z.object({
@@ -453,6 +483,22 @@ let imageProcessingAbort = z.object({
   type: z.literal('PROCESSING.ABORT'),
 })
 
+let mediafilePause = z.object({
+  type: z.literal('pause'),
+})
+
+let mediafileResume = z.object({
+  type: z.literal('resume'),
+})
+
+let mediafilePaused = z.object({
+  type: z.literal('@multipart.upload.paused'),
+})
+
+let mediafileResumed = z.object({
+  type: z.literal('@multipart.upload.resumed'),
+})
+
 export let mediafileEvents = z.discriminatedUnion('type', [
   mediafileRemove,
   mediafileAbort,
@@ -466,6 +512,10 @@ export let mediafileEvents = z.discriminatedUnion('type', [
   imageProcessingCompleted,
   imageProcessingFailed,
   imageProcessingAbort,
+  mediafilePause,
+  mediafileResume,
+  mediafilePaused,  
+  mediafileResumed,
 ])
 
 // ====================================================== //
@@ -526,6 +576,14 @@ let multipartUploadCreate = z.object({
   uploadId: z.string(),
 })
 
+let multipartUploadPause = z.object({
+  type: z.literal(`@multipart.upload.pause`),
+})
+
+let multipartUploadResume = z.object({
+  type: z.literal(`@multipart.upload.resume`),
+})
+
 export let multipartContext = z
   .object({
     error: z.string(),
@@ -543,6 +601,8 @@ export let multipartEvents = z.discriminatedUnion('type', [
   multipartUploadDone,
   multipartUploadError,
   multipartUploadCreate,
+  multipartUploadPause,
+  multipartUploadResume,
 ])
 
 // ====================================================== //
@@ -799,7 +859,9 @@ const pipelineAudioUpload = z.object({
   contentHint: z.enum(['music', 'speech', 'auto']).optional(),
 })
 const pipelineSummarize = z.object({ type: z.literal('SUMMARIZE') })
-const pipelineExtractKeywords = z.object({ type: z.literal('EXTRACT_KEYWORDS') })
+const pipelineExtractKeywords = z.object({
+  type: z.literal('EXTRACT_KEYWORDS'),
+})
 const pipelineGenerateTags = z.object({ type: z.literal('GENERATE_TAGS') })
 const pipelineCancel = z.object({ type: z.literal('CANCEL') })
 const pipelineReset = z.object({ type: z.literal('RESET') })
