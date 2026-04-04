@@ -80,6 +80,7 @@ describe.each([
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+    vi.useRealTimers() // safe no-op when real timers are already active
   })
 
   // ── Happy path: single chunk ────────────────────────────────────────────────
@@ -206,19 +207,25 @@ describe.each([
     const pauseController = new PauseController()
     const onDone = vi.fn()
 
+    // Resolve this promise when chunk 1 is provably done and the pause is set —
+    // eliminates the timing-dependent setTimeout(resolve, 50) approach.
+    let signalChunk1Done!: () => void
+    const chunk1Done = new Promise<void>((res) => { signalChunk1Done = res })
+
     // Track fetch calls. With concurrency=1:
     // call 1 = presign POST for part 1 (url !== PRESIGN_URL)
-    // call 2 = PUT to PRESIGN_URL for part 1
+    // call 2 = PUT to PRESIGN_URL for part 1  ← pause here
     // call 3 = presign POST for part 2
     // call 4 = PUT to PRESIGN_URL for part 2
     let fetchCallCount = 0
     mockFetch.mockImplementation((url: string) => {
       fetchCallCount++
       if (url === PRESIGN_URL) {
-        // This is an S3 PUT. After the first PUT (call 2), pause synchronously
-        // so the worker's next waitIfPaused() call blocks before chunk 2 starts.
         if (fetchCallCount === 2) {
+          // Pause synchronously so the next worker iteration blocks,
+          // then signal that chunk 1 is done and paused.
           pauseController.pause()
+          signalChunk1Done()
         }
         return putResponse(`"etag-${fetchCallCount}"`)
       }
@@ -229,10 +236,10 @@ describe.each([
       makeInput({ file, onDone, pauseController, concurrency: 1 })
     )
 
-    // Give the first chunk time to complete and the pause to take effect
-    await new Promise<void>((resolve) => setTimeout(resolve, 50))
+    // Wait until chunk 1 is provably complete and the pause is set
+    await chunk1Done
 
-    // Upload should not have finished yet (paused after chunk 1)
+    // Upload should not have finished yet — worker is blocked on waitIfPaused()
     expect(onDone).not.toHaveBeenCalled()
 
     // Resume — the second chunk should now complete
@@ -242,6 +249,7 @@ describe.each([
     expect(onDone).toHaveBeenCalledOnce()
     const [parts] = onDone.mock.calls[0] as [CompletedPart[]]
     expect(parts).toHaveLength(2)
+    expect(mockFetch).toHaveBeenCalledTimes(4) // presign POST + PUT × 2 chunks
   })
 
   // ── Retry on 429 ───────────────────────────────────────────────────────────
@@ -276,7 +284,5 @@ describe.each([
 
     expect(onDone).toHaveBeenCalledOnce()
     expect(putAttempts).toBe(2) // first attempt 429, second attempt 200
-
-    vi.useRealTimers()
   })
 })
