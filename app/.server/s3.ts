@@ -350,33 +350,27 @@ export class S3Service {
   }
 
   // get bucket cors
-  async getBucketCors() {
+  async getBucketCors(bucket?: string) {
     const command = new GetBucketCorsCommand({
-      Bucket: this.bucket,
+      Bucket: bucket || this.bucket,
     })
     return await this.s3Client.send(command)
-  } 
+  }
 
   /**
    * Sets a default CORS configuration on the bucket.
    */
-  async setCorsOnBucket() {
+  async setCorsOnBucket(bucket?: string) {
     const command = new PutBucketCorsCommand({
-      Bucket: this.bucket,
+      Bucket: bucket || this.bucket,
       CORSConfiguration: {
         CORSRules: [
           {
-            AllowedOrigins: ['http://localhost:3000'],
-            AllowedMethods: ['GET', 'PUT', 'POST', 'DELETE'],
+            AllowedOrigins: ['*'],
+            AllowedMethods: ['*'],
             AllowedHeaders: ['*'],
-            ExposeHeaders: [
-              'ETag',
-              'Content-Length',
-              'Content-Type',
-              'Content-Disposition',
-              'Version',
-            ],
-            MaxAgeSeconds: 3000,
+            ExposeHeaders: ['*'],
+            MaxAgeSeconds: 800000,
           },
         ],
       },

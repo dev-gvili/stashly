@@ -33,10 +33,13 @@ export class PauseController {
 
 async function retryFetch(
   url: RequestInfo,
-  init: RequestInit,
+  init: RequestInit = {
+    mode: 'cors',
+    credentials: 'same-origin',
+  },
   maxRetries: number = 5,
-  delay: number = 1000,
-  backoffFactor: number = 2,
+  delay: number = 2500,
+  backoffFactor: number = 3,
   abortSignal: AbortSignal
 ): Promise<Response> {
   let retries = 0
@@ -47,13 +50,18 @@ async function retryFetch(
       }
       const response = await fetch(url, init)
       if (response.status === 429) {
-        console.warn(`Received 429 Too Many Requests. Retrying in ${delay / 1000}s...`)
+        console.warn(
+          `Received 429 Too Many Requests. Retrying in ${delay / 1000}s...`
+        )
         await new Promise((resolve) => setTimeout(resolve, delay))
         delay *= backoffFactor
         retries++
         continue
       }
       if (!response.ok) {
+        console.error(
+          `Fetch error: ${response.status} ${response.statusText}...`
+        )
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       return response
@@ -135,7 +143,10 @@ export async function streamParts({
     })
   }
 
-  async function uploadPart(chunk: { blob: Blob; partNumber: number }, index: number): Promise<void> {
+  async function uploadPart(
+    chunk: { blob: Blob; partNumber: number },
+    index: number
+  ): Promise<void> {
     if (abortController.signal.aborted) {
       throw new DOMException('Upload aborted', 'AbortError')
     }
@@ -155,43 +166,52 @@ export async function streamParts({
         signal: abortController.signal,
       },
       5,
-      1000,
-      2,
+      2500,
+      3,
       abortController.signal
     )
 
-    const { url: presignedUrl } = (await presignResponse.json()) as { url: string }
+    try {
+      const { url: presignedUrl } = (await presignResponse.json()) as {
+        url: string
+      }
 
-    if (abortController.signal.aborted) {
-      throw new DOMException('Upload aborted', 'AbortError')
+      if (abortController.signal.aborted) {
+        throw new DOMException('Upload aborted', 'AbortError')
+      }
+
+      // 2. Upload chunk directly to S3
+      const uploadResponse = await retryFetch(
+        presignedUrl,
+        {
+          method: 'PUT',
+          body: chunk.blob,
+          signal: abortController.signal,
+        },
+        5,
+        2500,
+        2,
+        abortController.signal
+      )
+
+      const etag = uploadResponse.headers.get('ETag')
+      if (!etag) {
+        throw new Error(
+          `Missing ETag for part ${chunk.partNumber} — S3 did not confirm the upload`
+        )
+      }
+
+      results[index] = {
+        ETag: parseEtag(etag),
+        PartNumber: chunk.partNumber,
+      }
+
+      bytesUploaded += chunk.blob.size
+      reportProgress()
+    } catch (error) {
+      console.error(`Error uploading part ${chunk.partNumber}:`, error)
+      throw error
     }
-
-    // 2. Upload chunk directly to S3
-    const uploadResponse = await retryFetch(
-      presignedUrl,
-      {
-        method: 'PUT',
-        body: chunk.blob,
-        signal: abortController.signal,
-      },
-      5,
-      1000,
-      2,
-      abortController.signal
-    )
-
-    const etag = uploadResponse.headers.get('ETag')
-    if (!etag) {
-      throw new Error(`Missing ETag for part ${chunk.partNumber} — S3 did not confirm the upload`)
-    }
-
-    results[index] = {
-      ETag: parseEtag(etag),
-      PartNumber: chunk.partNumber,
-    }
-
-    bytesUploaded += chunk.blob.size
-    reportProgress()
   }
 
   // Worker pool — taskIndex++ is synchronous so no race condition in single-threaded JS
@@ -200,7 +220,8 @@ export async function streamParts({
   async function worker(): Promise<void> {
     while (taskIndex < chunks.length) {
       if (pauseController) await pauseController.waitIfPaused()
-      if (abortController.signal.aborted) throw new DOMException('Upload aborted', 'AbortError')
+      if (abortController.signal.aborted)
+        throw new DOMException('Upload aborted', 'AbortError')
       const i = taskIndex++
       await uploadPart(chunks[i], i)
     }

@@ -52,12 +52,14 @@ export class UploadService {
     this.user = user
   }
 
-  async fixCors() {
+  async fixCors(bucket?: string) {
     let cors = await this.s3.getBucketCors()
-    if (!cors){
-      return await this.s3.setCorsOnBucket()
+    console.log('Current CORS configuration:', cors)
+    if (!cors || !cors.CORSRules || cors.CORSRules.length === 0) {
+      cors = await this.s3.setCorsOnBucket()
+      console.log('CORS configuration set:', cors)
     }
-    return cors 
+    return cors // Return the (potentially updated) CORS configuration
   }
   /**
    * Initiates a multipart upload for a large file.

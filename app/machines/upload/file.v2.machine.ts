@@ -336,8 +336,10 @@ const fileMachine = setup({
     // Shared actions
     NOTIFY_QUOTA: sendTo(
       ({ system }) => system.get('quota'),
-      ({ context, event }) => ({
-        ...event,
+      ({ context }) => ({
+        type: '@quota.update' as const,
+        action: 'items-uploaded',
+        dataSize: context.mediaFile.file.size,
       })
     ),
 
@@ -365,12 +367,6 @@ const fileMachine = setup({
     ABORT_UPLOAD: enqueueActions(({ context, enqueue }) => {
       enqueue.sendTo(context.worker!, {
         type: '@multipart.upload.abort',
-      })
-    }),
-
-    ABORT_PROCESSING: enqueueActions(({ context, enqueue }) => {
-      enqueue.sendTo(context.quota!, {
-        type: 'PROCESSING.ABORT',
       })
     }),
 

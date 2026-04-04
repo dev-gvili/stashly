@@ -38,14 +38,10 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 import { RiExpandUpDownLine } from '@remixicon/react'
 import {
-  CheckSqureIcon,
   DoubleCheckIcon,
-  PauseIcon,
   PauseV2Icon,
-  RemoveIcon,
   RemoveSquareIcon,
   ResumeIcon,
-  SuccessIcon,
 } from '../icons'
 // ====================================================== //
 // Actor                                                  //
@@ -350,22 +346,27 @@ export const DropArea = React.forwardRef<
         child.classList.remove('pointer-events-none')
       }
 
+      // Snapshot DataTransferItemList synchronously — the browser clears it
+      // after the first await, so entries must be captured before any async work.
+      type SnapshotItem = { entry: FileSystemEntry | null; file: File | null }
+      const snapshot: SnapshotItem[] = []
+      for (const item of event.dataTransfer.items) {
+        snapshot.push({ entry: item.webkitGetAsEntry(), file: item.getAsFile() })
+      }
+
       // Collect all dropped files — folders are resolved recursively before
       // adding anything so we can do a single quota check for the whole batch.
-      const allFiles: File[] = []
       let hasFolderDrop = false
-
-      for (const item of event.dataTransfer.items) {
-        const entry = item.webkitGetAsEntry()
-        if (entry) {
-          if (entry.isDirectory) hasFolderDrop = true
-          const files = await collectFiles(entry)
-          allFiles.push(...files)
-        } else {
-          const file = item.getAsFile()
-          if (file) allFiles.push(file)
-        }
-      }
+      const resolved = await Promise.all(
+        snapshot.map(({ entry, file }) => {
+          if (entry) {
+            if (entry.isDirectory) hasFolderDrop = true
+            return collectFiles(entry)
+          }
+          return Promise.resolve(file ? [file] : [])
+        })
+      )
+      const allFiles = resolved.flat()
 
       if (allFiles.length === 0) return
 
@@ -744,9 +745,7 @@ const PauseResume = React.forwardRef<
   React.ComponentRef<'button'>,
   React.ComponentPropsWithoutRef<'button'> & { mediaFileId: string }
 >(({ className, mediaFileId, onClick, ...props }, forwardRef) => {
-  let status = useSelector(upload, (state) => {
-    return state.context.mediaFiles.get(mediaFileId)?.status
-  })
+  let status = useUploadStatus(mediaFileId)
   const isPaused = status === 'paused'
   const isUploading = status === 'uploading'
 

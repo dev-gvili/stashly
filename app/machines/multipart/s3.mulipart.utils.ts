@@ -128,6 +128,7 @@ export const uploadParts = fromCallback<
   })
     // Catch any errors from the streaming upload process
     .catch((error) => {
+      console.error('Error during multipart upload', { error })
       // An abort is not a true error, so don't forward it as one.
       if (error.name !== 'AbortError') {
         sendBack({ type: '@multipart.upload.error', error })

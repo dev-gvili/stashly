@@ -2545,7 +2545,7 @@ const RemoveSquareIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 export { RemoveSquareIcon }
 
-const CheckSqureIcon = (props: SVGProps<SVGSVGElement>) => (
+const CheckSquareIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -2569,7 +2569,7 @@ const CheckSqureIcon = (props: SVGProps<SVGSVGElement>) => (
     />
   </svg>
 )
-export { CheckSqureIcon }
+export { CheckSquareIcon }
 
 const PauseV2Icon = (props: SVGProps<SVGSVGElement>) => (
   <svg
