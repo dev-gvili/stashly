@@ -4,7 +4,32 @@ import type { UploadProgress } from '@/types/machine.types'
 import { parseEtag } from '@/utils/parsers'
 
 const CHUNK_SIZE = 5 * 1024 * 1024 // 5 MB — S3 minimum part size
-const DEFAULT_CONCURRENCY = 5
+const DEFAULT_CONCURRENCY = 10
+
+/**
+ * Controls pause/resume for an in-flight multipart upload.
+ * Workers check `waitIfPaused()` before starting each new chunk, so already
+ * in-flight chunk transfers complete naturally — only the next chunk waits.
+ */
+export class PauseController {
+  private _paused = false
+  private _waiters: Array<() => void> = []
+
+  pause() {
+    this._paused = true
+  }
+
+  resume() {
+    this._paused = false
+    for (const resolve of this._waiters) resolve()
+    this._waiters = []
+  }
+
+  waitIfPaused(): Promise<void> {
+    if (!this._paused) return Promise.resolve()
+    return new Promise<void>((resolve) => this._waiters.push(resolve))
+  }
+}
 
 async function retryFetch(
   url: RequestInfo,
@@ -52,6 +77,7 @@ export interface StreamPartsInput {
   onProgress: (progress: UploadProgress) => void
   onDone: (parts: CompletedPart[]) => void
   abortController: AbortController
+  pauseController?: PauseController
   concurrency?: number
 }
 
@@ -62,6 +88,7 @@ export async function streamParts({
   onProgress,
   onDone,
   abortController,
+  pauseController,
   concurrency = DEFAULT_CONCURRENCY,
 }: StreamPartsInput): Promise<void> {
   if (file.size === 0) {
@@ -172,6 +199,8 @@ export async function streamParts({
 
   async function worker(): Promise<void> {
     while (taskIndex < chunks.length) {
+      if (pauseController) await pauseController.waitIfPaused()
+      if (abortController.signal.aborted) throw new DOMException('Upload aborted', 'AbortError')
       const i = taskIndex++
       await uploadPart(chunks[i], i)
     }

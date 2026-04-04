@@ -1,4 +1,5 @@
 import { fromCallback, fromPromise, type ExtractEvent } from 'xstate'
+import { PauseController } from './s3.multipart.concurrent'
 import type {
   AbortMultipartUploadInput,
   AbortMultipartUploadOutput,
@@ -106,17 +107,19 @@ export interface UploadPartsInput {
  * and reports progress and completion back to the parent machine.
  */
 export const uploadParts = fromCallback<
-  ExtractEvent<MultipartEvents, '@multipart.upload.abort'>,
+  ExtractEvent<MultipartEvents, '@multipart.upload.abort' | '@multipart.upload.pause' | '@multipart.upload.resume'>,
   UploadPartsInput
 >(({ sendBack, receive, input }) => {
   const abortController = new AbortController()
+  const pauseController = new PauseController()
 
   // Stream the parts to s3 storage, every part is presigned and uploaded.
   streamParts({
     ...input,
     abortController,
+    pauseController,
     onDone: (parts) => {
-      console.log('Multipart upload completed successfully', {parts})
+      console.log('Multipart upload completed successfully', { parts })
       sendBack({ type: '@multipart.upload.done', parts })
     },
     onProgress: (progress) => {
@@ -133,10 +136,17 @@ export const uploadParts = fromCallback<
 
   receive(({ type }) => {
     if (type === '@multipart.upload.abort') {
-      // TODO: replace with proper logging
-      console.error('Multipart upload aborted')
-      abortController.abort() // Trigger abort on the controller
-      sendBack({ type: '@multipart.upload.aborted' }) // Notify fileMachine that actor is aborted
+      pauseController.resume() // unblock any waiting worker before aborting
+      abortController.abort()
+      sendBack({ type: '@multipart.upload.aborted' })
+    } else if (type === '@multipart.upload.pause') {
+      console.log('Pausing multipart upload...')
+      pauseController.pause()
+      sendBack({ type: '@multipart.upload.paused' })
+    } else if (type === '@multipart.upload.resume') {
+      console.log('Resuming multipart upload...')
+      pauseController.resume()
+      sendBack({ type: '@multipart.upload.resumed' })
     }
   })
 })
