@@ -2475,5 +2475,148 @@ const VerifyTranscriptIcon = (props: SVGProps<SVGSVGElement>) => (
       d="M20 11v2M4 11v2"
     />
   </svg>
-);
-export {VerifyTranscriptIcon};
+)
+export { VerifyTranscriptIcon }
+
+const PauseIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M2 6c0-1.886 0-2.828.586-3.414S4.114 2 6 2s2.828 0 3.414.586S10 4.114 10 6v12c0 1.886 0 2.828-.586 3.414S7.886 22 6 22s-2.828 0-3.414-.586S2 19.886 2 18z"
+    />
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M14 6c0-1.886 0-2.828.586-3.414S16.114 2 18 2s2.828 0 3.414.586S22 4.114 22 6v12c0 1.886 0 2.828-.586 3.414S19.886 22 18 22s-2.828 0-3.414-.586S14 19.886 14 18z"
+      opacity={0.5}
+    />
+  </svg>
+)
+export { PauseIcon }
+
+const ResumeIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeWidth={2}
+      d="M16.163 6.837C19.388 9.03 21 10.125 21 12s-1.612 2.97-4.837 5.163a46 46 0 0 1-2.585 1.65c-.711.416-1.518.847-2.352 1.27-3.217 1.63-4.826 2.446-6.269 1.543-1.442-.902-1.574-2.792-1.836-6.57A45 45 0 0 1 3 12c0-.94.047-1.987.121-3.055.262-3.779.393-5.668 1.836-6.57s3.052-.088 6.269 1.542c.834.423 1.64.854 2.352 1.27a46 46 0 0 1 2.585 1.65Z"
+    />
+  </svg>
+)
+export { ResumeIcon }
+
+const RemoveSquareIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M2 12c0-4.714 0-7.071 1.464-8.536C4.93 2 7.286 2 12 2s7.071 0 8.535 1.464C22 4.93 22 7.286 22 12s0 7.071-1.465 8.535C19.072 22 16.714 22 12 22s-7.071 0-8.536-1.465C2 19.072 2 16.714 2 12Z"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="m14.5 9.5-5 5m0-5 5 5"
+    />
+  </svg>
+)
+export { RemoveSquareIcon }
+
+const CheckSqureIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeWidth={2}
+      d="M2 12c0-4.714 0-7.071 1.464-8.536C4.93 2 7.286 2 12 2s7.071 0 8.535 1.464C22 4.93 22 7.286 22 12s0 7.071-1.465 8.535C19.072 22 16.714 22 12 22s-7.071 0-8.536-1.465C2 19.072 2 16.714 2 12Z"
+    />
+    <path
+      opacity={0.5}
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="m8.5 12.5 2 2 5-5"
+    />
+  </svg>
+)
+export { CheckSqureIcon }
+
+const PauseV2Icon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M2 6c0-1.886 0-2.828.586-3.414S4.114 2 6 2s2.828 0 3.414.586S10 4.114 10 6v12c0 1.886 0 2.828-.586 3.414S7.886 22 6 22s-2.828 0-3.414-.586S2 19.886 2 18z"
+    />
+    <path
+      fill="currentColor"
+      d="M14 6c0-1.886 0-2.828.586-3.414S16.114 2 18 2s2.828 0 3.414.586S22 4.114 22 6v12c0 1.886 0 2.828-.586 3.414S19.886 22 18 22s-2.828 0-3.414-.586S14 19.886 14 18z"
+      opacity={0.5}
+    />
+  </svg>
+)
+export { PauseV2Icon }
+
+const DoubleCheckIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="m4 12.9 3.143 3.6L15 7.5"
+    />
+    <path
+      opacity={0.5}
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="m20 7.563-8.571 9L11 16"
+    />
+  </svg>
+)
+export { DoubleCheckIcon }

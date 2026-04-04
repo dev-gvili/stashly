@@ -37,7 +37,16 @@ import {
 } from '../ui/tooltip'
 import { AnimatePresence, motion } from 'framer-motion'
 import { RiExpandUpDownLine } from '@remixicon/react'
-import { RemoveIcon, SuccessIcon } from '../icons'
+import {
+  CheckSqureIcon,
+  DoubleCheckIcon,
+  PauseIcon,
+  PauseV2Icon,
+  RemoveIcon,
+  RemoveSquareIcon,
+  ResumeIcon,
+  SuccessIcon,
+} from '../icons'
 // ====================================================== //
 // Actor                                                  //
 // ====================================================== //
@@ -53,11 +62,53 @@ const updateConfig = (config: Config) => {
   })
 }
 
-const addFile = (file: File, rootId: string) => {
+const addFile = (file: File, rootId: string, skipQuotaCheck?: boolean) => {
   upload.send({
     type: 'upload.add',
     mediaFile: toMediaFile(file, rootId),
+    skipQuotaCheck,
   })
+}
+
+// Reads all entries from a directory (readEntries returns ≤100 at a time).
+async function readAllEntries(
+  reader: FileSystemDirectoryReader
+): Promise<FileSystemEntry[]> {
+  const entries: FileSystemEntry[] = []
+  let batch: FileSystemEntry[]
+  do {
+    batch = await new Promise<FileSystemEntry[]>((resolve, reject) =>
+      reader.readEntries(resolve, reject)
+    )
+    entries.push(...batch)
+  } while (batch.length > 0)
+  return entries
+}
+
+// Recursively collects all File objects under a FileSystemEntry.
+async function collectFiles(entry: FileSystemEntry): Promise<File[]> {
+  if (entry.isFile) {
+    return new Promise<File[]>((resolve, reject) =>
+      (entry as FileSystemFileEntry).file((f) => resolve([f]), reject)
+    )
+  }
+  if (entry.isDirectory) {
+    const reader = (entry as FileSystemDirectoryEntry).createReader()
+    const children = await readAllEntries(reader)
+    const nested = await Promise.all(children.map(collectFiles))
+    return nested.flat()
+  }
+  return []
+}
+
+// Checks whether the server quota allows uploading totalSize bytes.
+async function verifyBatchQuota(totalSize: number): Promise<boolean> {
+  const res = await fetch('/api/quota', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'verify-free-quota', dataSize: totalSize }),
+  })
+  return res.json() as Promise<boolean>
 }
 
 const cancelUpload = (mediaFileId: string) => {
@@ -65,6 +116,14 @@ const cancelUpload = (mediaFileId: string) => {
     type: 'upload.abort',
     mediaFileId,
   })
+}
+
+const pauseUpload = (mediaFileId: string) => {
+  upload.send({ type: 'upload.pause', mediaFileId })
+}
+
+const resumeUpload = (mediaFileId: string) => {
+  upload.send({ type: 'upload.resume', mediaFileId })
 }
 
 //)
@@ -150,11 +209,11 @@ const Styles = {
   FileExtention:
     'font-bold text-[0.55rem] dark:text-black dark:bg-white/40 bg-black text-white w-full max-w-max  flex items-center justify-center uppercase h-4 py-1 px-2 rounded-md group-data-[state=aborted]:dark:opacity-20',
   DropArea:
-    'group z-50 w-full aspect-video  border border-border bg-inherit shadow-none rounded-lg p-4 grid place-items-center',
+    'group z-50 w-full aspect-video  border border-border/20 bg-inherit shadow-none rounded-lg p-4 grid place-items-center',
   Trigger:
     'rounded-md bg-inherit p-1.5 font-stashly text-xs focus:outline-background hover:cursor-pointer border border-border hover:bg-muted flex items-center justify-center',
   FileList: 'w-full space-y-4',
-  Item: 'relative overflow-hidden grid grid-cols-8 w-full rounded-lg bg-sidebar p-1 list-none  border border-border h-auto place-content-between place-items-center gap-2 group',
+  Item: 'relative overflow-hidden grid grid-cols-8 w-full rounded-lg bg-muted p-1 list-none  border border-cursor h-auto place-content-between place-items-center gap-2 group',
   ItemBody: 'col-span-6 w-full',
   ItemContent: 'flex w-full justify-between',
   Progress:
@@ -186,7 +245,7 @@ const formatCountdown = (value: any) => {
   if (parsedtimeLeft.minutes > 0)
     countdownString += `${parsedtimeLeft.minutes} min`
   if (parsedtimeLeft.seconds > 0 && parsedtimeLeft.minutes === 0)
-    countdownString += `last then a min`
+    countdownString += `${parsedtimeLeft.seconds} sec`
   if (countdownString) countdownString += ' left...'
   return `${countdownString}`
 }
@@ -282,17 +341,50 @@ export const DropArea = React.forwardRef<
       }
     }
 
-    const _onDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    const _onDrop = async (event: React.DragEvent<HTMLDivElement>) => {
       event.preventDefault()
       event.currentTarget.classList.remove('bg-sidebar')
       event.currentTarget.classList.add('bg-inherit')
+
       for (const child of event.currentTarget.children) {
         child.classList.remove('pointer-events-none')
       }
+
+      // Collect all dropped files — folders are resolved recursively before
+      // adding anything so we can do a single quota check for the whole batch.
+      const allFiles: File[] = []
+      let hasFolderDrop = false
+
       for (const item of event.dataTransfer.items) {
-        const file = item.getAsFile()
-        if (!file) return
-        addFile(file, config.user?.rootId)
+        const entry = item.webkitGetAsEntry()
+        if (entry) {
+          if (entry.isDirectory) hasFolderDrop = true
+          const files = await collectFiles(entry)
+          allFiles.push(...files)
+        } else {
+          const file = item.getAsFile()
+          if (file) allFiles.push(file)
+        }
+      }
+
+      if (allFiles.length === 0) return
+
+      // For folder drops (or batches larger than 1 file) do ONE quota check
+      // for the total batch size instead of N per-file requests.
+      if (hasFolderDrop && allFiles.length > 1) {
+        const totalSize = allFiles.reduce((sum, f) => sum + f.size, 0)
+        const allowed = await verifyBatchQuota(totalSize)
+        if (!allowed) {
+          // TODO: surface a quota-exceeded toast/notification
+          return
+        }
+        for (const file of allFiles) {
+          addFile(file, config.user?.rootId, true)
+        }
+      } else {
+        for (const file of allFiles) {
+          addFile(file, config.user?.rootId)
+        }
       }
     }
 
@@ -382,8 +474,7 @@ export const FileList = React.forwardRef<
   let refs = useComposedRefs(forwardRef, parent)
   const files = useFiles()
   return (
-    //@ts-ignore
-    <ScrollArea type="undefined" className={cn('h-44')}>
+    <ScrollArea className={cn('h-40 w-full rounded-lg')}>
       <div className="p-2 space-y-3">
         <AnimatePresence mode="popLayout">
           <ul
@@ -441,8 +532,9 @@ const Item = React.forwardRef<
         </div>
       </div>
       <Progress mediafileId={mediaFileId}>
-        <SuccessIcon className="hidden group-data-[state=done]:block! h-8 w-8 fill-foreground" />
+        <DoubleCheckIcon className="hidden group-data-[state=done]:block! size-12" />
         <Cancel mediaFileId={mediaFileId!} />
+        <PauseResume mediaFileId={mediaFileId!} />
       </Progress>
     </li>
   )
@@ -466,11 +558,17 @@ const Progress = React.forwardRef<
       <CircleProgressBar.Circle />
       <CircleProgressBar.Indicator
         progress={progress?.percentage}
-        className="group-data-[state=aborted]:stroke-destructive"
+        strokeLinejoin="round"
       />
-      <CircleProgressBar.Value width={34} height={34} x="30%" y="30%">
+      <CircleProgressBar.Value
+        width={60}
+        height={60}
+        x="22.5"
+        y="22.5"
+        className="flex-col content-center justify-items-center w-14 h-14"
+      >
         {children}
-        <p className="mt-1 w-full text-base text-center font-stashly hidden group-data-[state=uploading]:block! group-hover/progress:hidden!">
+        <p className="text-xl text-center font-stashly hidden group-data-[state=uploading]:block! group-data-[state=paused]:block!">
           {`${progress?.percentage}%`}
         </p>
       </CircleProgressBar.Value>
@@ -632,7 +730,7 @@ const Cancel = React.forwardRef<
             )}
             {...props}
           >
-            <RemoveIcon className="size-8" />
+            <RemoveSquareIcon className="size-8" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>Cancel</TooltipContent>
@@ -642,18 +740,59 @@ const Cancel = React.forwardRef<
 })
 Cancel.displayName = 'CancelButton'
 
+const PauseResume = React.forwardRef<
+  React.ComponentRef<'button'>,
+  React.ComponentPropsWithoutRef<'button'> & { mediaFileId: string }
+>(({ className, mediaFileId, onClick, ...props }, forwardRef) => {
+  let status = useSelector(upload, (state) => {
+    return state.context.mediaFiles.get(mediaFileId)?.status
+  })
+  const isPaused = status === 'paused'
+  const isUploading = status === 'uploading'
+
+  if (!isPaused && !isUploading) return null
+
+  const _onClick = () =>
+    isPaused ? resumeUpload(mediaFileId) : pauseUpload(mediaFileId)
+
+  return (
+    <TooltipProvider>
+      <TooltipRoot>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-lg"
+            ref={forwardRef}
+            onClick={callAll(_onClick, onClick)}
+            className={cn(
+              'hover:cursor-pointer hidden group-hover/progress:block',
+              className
+            )}
+            {...props}
+          >
+            {isPaused ? (
+              <ResumeIcon className="size-6" />
+            ) : (
+              <PauseV2Icon className="size-6" />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{isPaused ? 'Resume' : 'Pause'}</TooltipContent>
+      </TooltipRoot>
+    </TooltipProvider>
+  )
+})
+PauseResume.displayName = 'PauseResumeButton'
+
 export function EmptyOutline() {
   return (
     <Empty className="p-3 -mt-12!">
       <EmptyHeader className="font-stashly">
-        <EmptyMedia variant="default">
-          <Logo className="size-15" />
+        <EmptyMedia variant="icon">
+          <Logo className="size-16" />
         </EmptyMedia>
         <EmptyTitle>Stashly Storage</EmptyTitle>
-        <EmptyDescription>
-          Upload files to your stash using Drag and Drop or click the button
-          below to select.
-        </EmptyDescription>
+        <EmptyDescription>Drag and Drop files here to upload.</EmptyDescription>
         {/* <Button size="sm" asChild>
           <Trigger className="font-stashly capitalize">Select Files</Trigger>
         </Button> */}
@@ -679,10 +818,10 @@ export const UploadPanel = ({ user }: { user: User }) => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       hidden={closed}
-      className="fixed bottom-2 right-8 w-md bg-background border border-border rounded shadow-lg z-50 flex flex-col max-h-2/3 overflow-hidden p-0"
+      className="fixed bottom-8 right-8 w-md bg-sidebar border border-card rounded shadow-lg z-50 flex flex-col max-h-2/3 overflow-hidden p-0"
     >
       <Upload user={user}>
-        <div className="flex justify-between items-center h-12 *:px-4 bg-background">
+        <div className="flex justify-between items-center h-12 *:px-4 bg-muted rounded-tl rounded-tr border-b border-card">
           <Label className="font-stashly text-sm">
             Uploading Files ({uploadingFiles.length})
           </Label>
@@ -705,9 +844,9 @@ export const UploadPanel = ({ user }: { user: User }) => {
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <DropArea className="border-none">
-                <EmptyOutline />
-                <FileList />
+              <DropArea className="border-none h-auto p-0">
+                {uploadingFiles.length === 0 && <EmptyOutline />}
+                <FileList className="px-2 pt-2 h-full" />
               </DropArea>
             </motion.div>
           )}
