@@ -843,7 +843,7 @@ export const UploadPanel = ({ user }: { user: User }) => {
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <DropArea className="border-none h-auto p-0">
+              <DropArea className="border-none h-auto p-0" data-testid="upload-drop-area">
                 {uploadingFiles.length === 0 && <EmptyOutline />}
                 <FileList className="px-2 pt-2 h-full" />
               </DropArea>
