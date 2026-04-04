@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { CompletedPart } from '@aws-sdk/client-s3'
 import {
   streamParts as concurrentStreamParts,
-  PauseController,
+  PauseController, // used in pause/resume tests below
 } from '../s3.multipart.concurrent'
 import { streamParts as streamStreamParts } from '../s3.multipart.stream'
 import type { StreamPartsInput } from '../s3.multipart.concurrent'
@@ -138,6 +138,7 @@ describe.each([
 
     expect(onProgress).toHaveBeenCalled()
     const calls = onProgress.mock.calls.map((c) => c[0].percentage as number)
+    expect(calls.length).toBeGreaterThanOrEqual(2)
     // Progress should be monotonically non-decreasing
     for (let i = 1; i < calls.length; i++) {
       expect(calls[i]).toBeGreaterThanOrEqual(calls[i - 1])
