@@ -101,12 +101,12 @@ const fileMachine = setup({
       })
     }),
     ABORT_UPLOAD: enqueueActions(({ context, enqueue }) => {
-      enqueue.sendTo(context.uploadRef!, {
+      enqueue.sendTo(context.worker!, {
         type: '@multipart.upload.abort',
       })
     }),
     stopActor: enqueueActions(({ context, enqueue }) => {
-      enqueue.stopChild(context.uploadRef!)
+      enqueue.stopChild(context.worker!)
     }),
     CHANGE_STATUS_TO_UPLOADING: assign(({ context }) => ({
       mediaFile: {
@@ -179,7 +179,7 @@ const fileMachine = setup({
             uploadId: context.uploadId,
           },
         })
-        return { uploadRef: actor }
+        return { worker: actor }
       })
     }),
   },
