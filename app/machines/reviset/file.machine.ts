@@ -63,10 +63,10 @@ export const fileMachine = setup({
       },
     }),
     // Assigns the multipart actor reference to the context
-    assignUploadRef: assign({
-      uploadRef: ({ spawn, context, self }) =>
+    setWorker: assign({
+      worker: ({ spawn, context }) =>
         spawn('multipart', {
-          id: `upload-${context.mediaFile.id}`,
+          id: `${context.mediaFile.id}`,
           input: {
             file: context.mediaFile.file,
             key: context.mediaFile.key,
@@ -83,12 +83,12 @@ export const fileMachine = setup({
     }),
 
     // Removes the multipart actor from the context
-    removeUploadRef: assign({
-      uploadRef: undefined,
+    removeWorker: assign({
+      worker: undefined,
     }),
     // Sends a 'upload.started' event to the parent manager.
     sendUploadStartedToParent: sendTo(
-      ({ context }) => context.parentRef!,
+      ({ context }) => context.manager!,
       ({ context }) => ({
         type: 'upload.started',
         mediaFileId: context.mediaFile.id,
@@ -96,7 +96,7 @@ export const fileMachine = setup({
     ),
     // Sends a 'upload.done' event to the parent manager.
     sendUploadDoneToParent: sendTo(
-      ({ context }) => context.parentRef!,
+      ({ context }) => context.manager!,
       ({ context }) => ({
         type: 'upload.done',
         mediaFile: context.mediaFile,
@@ -104,10 +104,10 @@ export const fileMachine = setup({
     ),
     // Sends an 'upload.aborted' event to the parent manager.
     sendUploadAbortedToParent: sendTo(
-      ({ system }) => system.get('u'),
+      ({ context }) => context.manager!,
       ({ context }) => ({
         type: 'upload.aborted',
-        mediaFileId: context.mediaFile.id,
+        mediaFile: context.mediaFile,
       })
     ),
     // Marks the file status as 'uploading'
@@ -129,6 +129,10 @@ export const fileMachine = setup({
               versionId: string
             }>
           ).output,
+          progress: {
+            ...context.mediaFile.progress,
+            percentage: 100,
+          },
           status: 'done' as MediaFileStatus,
         },
       }
@@ -140,7 +144,30 @@ export const fileMachine = setup({
         status: 'aborted' as MediaFileStatus,
       }),
     }),
+    // Marks the file status as 'paused'
+    markAsPaused: assign({
+      mediaFile: ({ context }) => ({
+        ...context.mediaFile,
+        status: 'paused' as MediaFileStatus,
+      }),
+    }),
+    // Sends an 'upload.paused' event to the parent manager.
+    sendUploadPausedToParent: sendTo(
+      ({ context }) => context.manager!,
+      ({ context }) => ({
+        type: 'upload.paused',
+        mediaFile: context.mediaFile,
+      })
+    ),
+    sendUploadResumedToParent: sendTo(
+      ({ context }) => context.manager!,
+      ({ context }) => ({
+        type: 'upload.resumed',
+        mediaFile: context.mediaFile,
+      })
+    ),
   },
+
   // Machine-specific actors
   actors: {
     // Invokes the multipart actor to handle the actual upload
@@ -161,12 +188,14 @@ export const fileMachine = setup({
     },
   },
 }).createMachine({
+  /** @xstate-layout N4IgpgJg5mDOIC5QDMCWAbMBVADug9gIYQB0qAdqgC6qHqoBeFUAxANoAMAuoqDvrGqp85XiAAeiAIwA2AJwkAHABYOUtQGYpAdgBMAVjnbFAGhABPRNu0KVU5TMUdFuja8UBfD2bSZcBYhIAYwALMCCAa2YARQBXfCpCFggRMDJyADd8CLTQ8Ii4hMJOHiQQfkEaETFJBH19bRJdDm1VOWUNGXr9XTNLBG0ZXRINHpaZNUUpUbkvHwxsPCJSPMiY+MSWMAAnbfxtkjxCKmR9gFtgsMjCxJKxCqFqstr6xubWjnbO7t6LRCmRjIgUZRlNrIY5iBfIsAittmBjsx-Mtkql0lkcsF4ccwABZWLoGg4QjbKjI4h3MoPKqiZ7SHSKEjqIYaOSdXRSXSKbR9RD6VkkDqsibgxTc7SQ6HkuEImjkKDSra7faHdDHU7bC5BbFUPEEokkslLCnce4CR600C1KQMpkcFlsoac7m8gY2Egfe2OHo2XSzbxQhbSkixY0QZgsAACZ31qGJpJDYcOeyg8NgsEpfHNNJq0mUyn0I3s+ntilGMik+ld+eUJA4qn04u0Je0HF0kqDSdDsIj0dj8aoidhJBS5DAmfK2eElok0j0Mg9rf5qkr9o5rpLHBIMg0rcGKjc7Q7fi7YYjhAARvsqBPqdPcwhK7phnIy812upX4oZK63FISO0XT6BMWiNrIx4wssQ7LL2MaEnGhrQYEl7XpAt5Tk8VpzroC7WBwy5qCWTquhWhaVh0cgTCo-KKP68wnsOQT4GceBgHKCphqiY7otkuTMaxur4vBA7SuhlT3nSCDuMMOH1G4JbqMoUi-p0AH1M42jfDIBYaMoEHBkxLGYOxio7HsBxHCc5zBPxxl6sJhqiaaVIYTOtTSU0QHyWo9bKX8dTqCQck7juYraDoEoBlKp4QIi8o3Eko5pBQGJpKGsW6glYkWg+fo9ABr4dPWjYGN+rquAuSm6X+lZTDh+kxXFUAJUq5mquq1npTiWXOVm4mYbOUlyPlciFRoxUuI2P7+aMhZEXIag7uoLhAl4AbkPgEBwGI0Wwma-VuYgAC0039EdhajZdV1XQ0DXDhQQh0IwzD7TlknKL8-TWIyEwVroejAfoUjDXdUGrFE8UbIQr05pJOG1vmrQ7oDoJdK6rTDMDlb8uFqgcp4UWdoxOpImGMMSVhAwuEyPTFkR6jAej2lNLpZYuOFThqKDgTdjB8rkwN1ofYWfpyH6mldIojamP5+j5kF407vDNhsgT9GQYEhkCaTe0uQdD7A9+Rb2Bo34FpMfn9Mo1gev9XKdCrXSjNzpBdexCUC4dUnaY0DQGB0VVi6diAaKMIwOLubI4ZRUsaC7JAoaSkCewbr4LloJtmwpUwkVydadHI9jcsNEfx7AsRBEEcDwHrb2U1obJBR0hsGLpQzldbHrDcCNgyOFLR6YTDFQWZ+wp5JDcaE3DeTW3n18pyAFtkYDhyzhUtrR4QA */
   id: 'fileUpload',
-  initial: 'initializing',
+  initial: 'pending',
   context: ({ input }) => ({
     ...input,
     uploadId: '',
     error: '',
+    skipQuotaCheck: input.skipQuotaCheck ?? false,
     mediaFile: {
       ...input.mediaFile,
       status: 'pending' as MediaFileStatus,
@@ -174,9 +203,23 @@ export const fileMachine = setup({
     uploadRef: undefined,
   }),
   states: {
-    // Initializing state: a transient state to perform initial setup
-    initializing: {
-      always: 'checkingQuota',
+    // Pending state: waits for the upload manager to send 'start' before proceeding.
+    // This ensures the concurrency limit in the upload manager is respected — files
+    // do not begin quota checking or uploading until a slot is available.
+    pending: {
+      on: {
+        start: [
+          {
+            // Batch/folder uploads pre-check quota for the whole batch upfront,
+            // so individual files skip the per-file quota check.
+            guard: ({ context }) => context.skipQuotaCheck === true,
+            target: 'creatingUpload',
+          },
+          {
+            target: 'checkingQuota',
+          },
+        ],
+      },
     },
     // CheckingQuota state: checks if the user has enough storage space
     checkingQuota: {
@@ -224,15 +267,16 @@ export const fileMachine = setup({
             category: toCategory(context.mediaFile.file),
             rootId: context.user.rootId,
             ownerId: context.user.id,
-            createdAt: new Date().toISOString(),
-            fileName: context.mediaFile.file.name,
+            ownerEmail: context.user.email,
+            uploadedAt: new Date().toISOString(), // This is the date the file was uploaded to S3.
+            itemKey: context.mediaFile.key,
           },
         }),
         onDone: {
           target: 'uploading',
           actions: [
             'assignUploadId',
-            'assignUploadRef',
+            'setWorker',
             log('Multipart upload created.'),
           ],
         },
@@ -242,46 +286,128 @@ export const fileMachine = setup({
         },
       },
     },
-    // Uploading state: handles the actual file transfer
+    // Uploading state: compound state — handles the active upload and a paused sub-state.
+    // entry/exit fire only when truly entering/leaving uploading (not on pause↔active transitions).
     uploading: {
+      initial: 'active',
       entry: [
         log(({ context, event }) => ({ context, event }), 'Starting upload...'),
         'markAsUploading',
         'sendUploadStartedToParent',
-        log('Starting upload...'),
       ],
-      on: {
-        // Forward progress events from the multipart actor to the parent manager
-        '@multipart.upload.progress': {
-          actions: sendTo(
-            ({ context }) => context.parentRef!,
-            ({ context, event }) => ({
-              type: 'progress.change',
-              mediaFileId: context.mediaFile.id,
-              progress: event.progress,
-            })
-          ),
+      exit: ['removeWorker'],
+      states: {
+        active: {
+          on: {
+            // Forward progress events from the multipart actor to the parent manager
+            '@multipart.upload.progress': {
+              actions: sendTo(
+                ({ context }) => context.manager!,
+                ({ context, event }) => ({
+                  type: 'progress.change',
+                  mediaFileId: context.mediaFile.id,
+                  progress: event.progress,
+                })
+              ),
+            },
+            // When the multipart actor completes, move to the next state
+            '@multipart.upload.done': {
+              target: '#fileUpload.completingUpload',
+              actions: log('Multipart upload done. Completing...'),
+            },
+            // Handle an abort event from the parent
+            abort: {
+              actions: [
+                sendTo(({ context }) => context.worker!, {
+                  type: '@multipart.upload.abort',
+                }),
+                log('Aborting upload...'),
+              ],
+            },
+            // When the multipart actor has been aborted, move to the aborted state
+            '@multipart.upload.aborted': {
+              target: '#fileUpload.aborted',
+              actions: ['markAsAborted', log('Upload aborted by user.')],
+            },
+            // After all retries are exhausted the multipart actor sends this event.
+            // Treat it as an abort so the parent can free the concurrency slot and
+            // start the next pending file.
+            '@multipart.upload.error': {
+              target: '#fileUpload.aborted',
+              actions: [
+                'markAsAborted',
+                log(
+                  ({ event }) => event,
+                  'Upload failed after max retries — treating as aborted.'
+                ),
+              ],
+            },
+            // Pause the upload — no new chunks will start until resumed
+            pause: {
+              actions: [
+                sendTo(({ context }) => context.worker!, {
+                  type: '@multipart.upload.pause',
+                }),
+                log('Upload paused.'),
+              ],
+            },
+
+            resume: {
+              actions: [
+                sendTo(({ context }) => context.worker!, {
+                  type: '@multipart.upload.resume',
+                }),
+                log('Upload resumed.'),
+              ],
+            },
+            // Resume the paused upload
+            '@multipart.upload.paused': {
+              actions: [
+                'markAsPaused',
+                'sendUploadPausedToParent',
+                log('Upload is paused. Waiting for resume...'),
+              ],
+            },
+            // The multipart actor sends this event when it has successfully resumed.
+            '@multipart.upload.resumed': {
+              actions: [
+                'markAsUploading',
+                'sendUploadResumedToParent',
+                log('Multipart upload resumed.'),
+              ],
+            },
+          },
         },
-        // When the multipart actor completes, move to the next state
-        '@multipart.upload.done': {
-          target: 'completingUpload',
-          actions: log('Multipart upload done. Completing...'),
+        paused: {
+          // entry: ['sendUploadPausedToParent'],
+          on: {
+            // Resume — unblocks the worker pool so chunks continue
+            resume: {
+              target: 'active',
+              actions: [
+                'markAsUploading',
+                sendTo(({ context }) => context.worker!, {
+                  type: '@multipart.upload.resume',
+                }),
+                log('Upload resumed.'),
+              ],
+            },
+            // Allow aborting while paused
+            abort: {
+              actions: [
+                sendTo(({ context }) => context.worker!, {
+                  type: '@multipart.upload.abort',
+                }),
+                log('Aborting paused upload...'),
+              ],
+            },
+            '@multipart.upload.aborted': {
+              target: '#fileUpload.aborted',
+              actions: ['markAsAborted', log('Paused upload aborted.')],
+            },
+          },
         },
-        // Handle an abort event from the parent
-        abort: {
-          actions: [
-            sendTo(({ context }) => context.uploadRef!, { type: 'abort' }),
-            log('Aborting upload...'),
-          ],
-        },
-        // When the multipart actor has been aborted, move to the aborted state
-        '@multipart.upload.aborted': {
-          target: 'aborted',
-          actions: ['markAsAborted', 'sendUploadAbortedToParent'],
-        },
-        // When the multipart actor has an error, move to the error state
       },
-      exit: ['removeUploadRef'],
     },
     // CompletingUpload state: finalizes the multipart upload on S3
     completingUpload: {
@@ -327,13 +453,20 @@ export const fileMachine = setup({
         },
         onError: {
           target: 'error',
-          actions: ['assignError', log(({ event }) => event, 'Failed to update quota.')],
+          actions: [
+            'assignError',
+            log(({ event }) => event, 'Failed to update quota.'),
+          ],
         },
       },
     },
     // Aborted state: when the upload is intentionally cancelled
     aborted: {
       type: 'final',
+      entry: [
+        'sendUploadAbortedToParent',
+        log(({ context, event }) => ({ context, event }), 'Upload aborted.'),
+      ],
       description: 'The upload has been aborted.',
     },
     // Success state: final state after a successful upload
