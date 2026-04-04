@@ -6,6 +6,8 @@ export interface CircularProgressbarProps extends React.SVGAttributes<SVGSVGElem
   className?: string
 }
 
+const PERIMETER = 2 * (60 - 2 * 20) + 2 * (60 - 2 * 20) + 2 * Math.PI * 20 // Perimeter of a rounded rectangle with width=60, height=60, rx=20, ry=20. This simplifies to 2*(20) + 2*(20) + 2*PI*20 = 40 + 40 + 125.66 = 205.66. This is the correct perimeter for the rect element with x="20", y="20", width="60", height="60", rx="20", ry="20". was verified with an online SVG path length calculator.
+
 const Root = React.forwardRef<
   React.ComponentRef<'svg'>,
   CircularProgressbarProps
@@ -19,82 +21,80 @@ const Root = React.forwardRef<
     <svg
       ref={ref}
       xmlns="http://www.w3.org/2000/svg"
-      width="100%"
-      height="100%"
-      viewBox="0 0 80 80"
+      width="2.5rem"
+      height="2.5rem"
+      viewBox="0 0 100 100"
       {...props}
     >
-      {circule}
       {indicator}
+      {circule}
       {value}
     </svg>
   )
 })
 
 export const ProgressBarCircle = React.forwardRef<
-  React.ComponentRef<'circle'>,
-  React.ComponentPropsWithoutRef<'circle'>
->(({ children, className, radius = 24, ...props }, forwardRef) => {
-  let styles =
-    'dark:stroke-white/20 fill-transparent stroke-black/20 group-data-[state=aborted]:dark:stroke-white/40'
+  SVGRectElement,
+  React.ComponentPropsWithoutRef<'rect'>
+>(({ className, ...props }, forwardRef) => {
   return (
-    <circle
+    <rect
       ref={forwardRef}
-      strokeWidth="6"
-      cx="50%"
-      cy="50%"
-      r={radius}
+      x="20"
+      y="20"
+      width="60"
+      height="60"
+      rx="20"
+      ry="20"
+      strokeWidth="4"
       fill="transparent"
-      className={cn(styles, className)}
+      className={cn(
+        'stroke-muted-foreground/20 group-data-[state=aborted]:stroke-foreground/40',
+        className
+      )}
       {...props}
-    ></circle>
+    />
   )
 })
 
 export const Indicator = React.forwardRef<
-  React.ComponentRef<'circle'>,
-  React.ComponentPropsWithoutRef<'circle'> & { progress?: number }
->(
-  (
-    { children, className, radius = 24, progress = 0, ...props },
-    forwardRef
-  ) => {
-    if (!radius) return
-    const circumference = 2 * Math.PI * Number(radius)
-    let offsets = circumference - (progress / 100) * circumference
-    let styles =
-      'transition-all duration-[350ms] -rotate-90 origin-center stroke-foreground'
-    return (
-      <circle
-        ref={forwardRef}
-        strokeWidth="6"
-        strokeLinecap="round"
-        cx="50%"
-        cy="50%"
-        fill="transparent"
-        r={radius}
-        strokeDasharray={circumference}
-        strokeDashoffset={offsets}
-        className={cn(styles, className)}
-        {...props}
-      ></circle>
-    )
-  }
-)
+  SVGRectElement,
+  React.ComponentPropsWithoutRef<'rect'> & { progress?: number }
+>(({ className, progress = 0, ...props }, forwardRef) => {
+  const clampedProgress = Math.min(Math.max(progress, 0), 100)
+  const offset = PERIMETER - (clampedProgress / 100) * PERIMETER
+  return (
+    <rect
+      ref={forwardRef}
+      x="20"
+      y="20"
+      width="60"
+      height="60"
+      rx="20"
+      ry="20"
+      strokeWidth="4"
+      strokeLinecap="round"
+      fill="transparent"
+      strokeDasharray={PERIMETER}
+      strokeDashoffset={offset}
+      className={cn('transition-all duration-500 stroke-current', className)}
+      {...props}
+    />
+  )
+})
 
 export const ProgressBarText = React.forwardRef<
-  React.ComponentRef<'text'>,
+  SVGTextElement,
   React.ComponentPropsWithoutRef<'text'>
 >(({ children, className, ...props }, forwardRef) => {
-  let styles = 'dark:text-white/20 text-xs font-stashly'
   return (
     <text
       ref={forwardRef}
-      x="30%"
-      y="30%"
+      x="50%"
+      y="50%"
       textAnchor="middle"
       alignmentBaseline="middle"
-      className={cn(styles, className)}
+      className={cn('text-foreground text-xs font-stashly', className)}
       {...props}
     >
       {children}
@@ -103,16 +103,21 @@ export const ProgressBarText = React.forwardRef<
 })
 
 export const Value = React.forwardRef<
-  React.ComponentRef<'foreignObject'>,
+  SVGForeignObjectElement,
   React.ComponentPropsWithoutRef<'foreignObject'>
 >(({ children, className, ...props }, forwardRef) => {
-  let styles = ''
   return (
     <foreignObject
       ref={forwardRef}
       x="50%"
       y="50%"
-      className={cn(styles, className)}
+      width="100%"
+      height="100%"
+      transform="translate( 2.5, 2.5)"
+      className={cn(
+        'text-foreground text-xs font-stashly text-center',
+        className
+      )}
       {...props}
     >
       {children}
