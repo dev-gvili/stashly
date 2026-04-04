@@ -177,6 +177,7 @@ describe.each([
     await expect(
       streamParts(makeInput({ file }))
     ).rejects.toThrow('Missing ETag for part 1')
+    expect(mockFetch).toHaveBeenCalledTimes(2) // presign POST + S3 PUT both ran
   })
 
   // ── Abort before upload starts ──────────────────────────────────────────────
