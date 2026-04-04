@@ -5,6 +5,11 @@ import { expect } from '@playwright/test'
 export class UploadPage {
   constructor(private readonly page: Page) {}
 
+  async goto(userId: string): Promise<void> {
+    await this.page.goto(`/${userId}/stash`)
+    await this.page.locator('[data-sidebar="sidebar"]').first().waitFor({ state: 'visible' })
+  }
+
   /**
    * Dispatches a synthetic drop event on the DropArea with a programmatically
    * created File. Uses page.evaluate because Playwright cannot natively inject
@@ -17,6 +22,7 @@ export class UploadPage {
     sizeBytes: number
     type: string
   }): Promise<void> {
+    await this.page.locator('[data-testid="upload-drop-area"]').waitFor({ state: 'visible' })
     await this.page.evaluate(
       ({ name, sizeBytes, type }) => {
         const dropArea = document.querySelector(
