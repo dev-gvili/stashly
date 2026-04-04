@@ -146,4 +146,54 @@ describe.each([
     // Final call should report 100%
     expect(calls[calls.length - 1]).toBe(100)
   })
+
+  // ── Empty file ──────────────────────────────────────────────────────────────
+
+  it('throws immediately for an empty file', async () => {
+    const file = makeFile(0)
+    await expect(
+      streamParts(makeInput({ file }))
+    ).rejects.toThrow('Cannot upload an empty file')
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  // ── Missing ETag ────────────────────────────────────────────────────────────
+
+  it('throws when S3 returns no ETag header', async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url === PRESIGN_URL) {
+        // PUT response with no ETag header
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({}),
+          headers: { get: () => null }, // ETag missing
+        })
+      }
+      return presignResponse()
+    })
+
+    const file = makeFile(1024)
+    await expect(
+      streamParts(makeInput({ file }))
+    ).rejects.toThrow('Missing ETag for part 1')
+  })
+
+  // ── Abort before upload starts ──────────────────────────────────────────────
+
+  it('propagates AbortError and never calls onDone when aborted before start', async () => {
+    const abortController = new AbortController()
+    abortController.abort() // abort before streamParts is called
+
+    const onDone = vi.fn()
+    const file = makeFile(1024)
+
+    await expect(
+      streamParts(makeInput({ file, abortController, onDone }))
+    ).rejects.toMatchObject({ name: 'AbortError' })
+
+    expect(onDone).not.toHaveBeenCalled()
+    // fetch should not have been called since abort is detected first
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
 })
