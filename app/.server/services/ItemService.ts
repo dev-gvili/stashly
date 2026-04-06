@@ -1,5 +1,5 @@
 import { itemRepository } from '@/services/repositories/ItemRepository'
-import { permissionRepository } from '@/services/repositories/PermissionRepository'
+import { hasItemPermission, getItemPermissions, assertCanUpdateItem } from '@/services/permission-actions'
 import { workspaceMemberRepository } from '@/services/repositories/workspaceMember.repository'
 import { quotaRepository } from '@/services/repositories/QuotaRepository'
 import { StashlyError, StashlyErrorCode } from '../api.errors'
@@ -18,11 +18,7 @@ export const itemService = {
       throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
     }
 
-    const canRead = await permissionRepository.hasItemPermission(
-      userId,
-      itemId,
-      'read'
-    )
+    const canRead = await hasItemPermission(userId, itemId, 'read')
     if (!canRead && item.workspaceId) {
       await workspaceMemberRepository.requireMembership(
         userId,
@@ -33,7 +29,7 @@ export const itemService = {
       )
     }
 
-    const permissions = await permissionRepository.findByItemId(itemId)
+    const permissions = await getItemPermissions(itemId)
 
     return { ...item, permissions }
   },
@@ -62,11 +58,7 @@ export const itemService = {
     }
 
     // 2. Check for read permission on the original item
-    const canRead = await permissionRepository.hasItemPermission(
-      userId,
-      itemId,
-      'read'
-    )
+    const canRead = await hasItemPermission(userId, itemId, 'read')
     if (!canRead && originalItem.workspaceId) {
       await workspaceMemberRepository.requireMembership(
         userId,
@@ -249,7 +241,7 @@ export const itemService = {
     }
 
     // 2. Permission checks - make sure user can update the item
-    await permissionRepository.assertCanUpdateItem(userId, itemId)
+    await assertCanUpdateItem(userId, itemId)
 
     // 3. If moving to a workspace folder, ensure membership
     if (newParentId) {

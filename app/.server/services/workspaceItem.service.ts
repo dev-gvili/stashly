@@ -1,5 +1,12 @@
 import { workspaceMemberRepository } from '@/services/repositories/workspaceMember.repository'
-import { permissionRepository } from '@/services/repositories/PermissionRepository'
+import {
+  grantItemPermission,
+  hasItemPermission,
+  getItemPermissions,
+  deletePermission,
+  syncWorkspaceItemPermissions,
+  removeAllWorkspaceItemPermissions,
+} from '@/services/permission-actions'
 import { itemRepository } from '@/services/repositories/ItemRepository'
 import { StashlyError, StashlyErrorCode } from '@/.server/api.errors'
 import type { Prisma, Item, Permission } from '@/prisma/client'
@@ -50,12 +57,7 @@ export const workspaceItemService = {
     })
 
     // Give creator full write permission
-    await permissionRepository.create({
-      id: toObjectId(getPrefixForModel('Permission')),
-      item: { connect: { id: item.id } },
-      users: { connect: { id: userId } },
-      roles: 'write',
-    })
+    await grantItemPermission(userId, item.id, 'write')
 
     return item
   },
@@ -72,11 +74,7 @@ export const workspaceItemService = {
     const item = await itemRepository.findById({ where: { id: itemId } })
     if (!item) throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
 
-    const canEdit = await permissionRepository.hasItemPermission(
-      userId,
-      itemId,
-      'write'
-    )
+    const canEdit = await hasItemPermission(userId, itemId, 'write')
 
     if (!canEdit && item.workspaceId) {
       await workspaceMemberRepository.requireAtLeastRole(
@@ -104,11 +102,7 @@ export const workspaceItemService = {
     const item = await itemRepository.findById({ where: { id: itemId } })
     if (!item) throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
 
-    const canDelete = await permissionRepository.hasItemPermission(
-      userId,
-      itemId,
-      'write'
-    )
+    const canDelete = await hasItemPermission(userId, itemId, 'write')
     if (!canDelete && item.workspaceId) {
       await workspaceMemberRepository.requireAtLeastRole(
         userId,
@@ -145,11 +139,7 @@ export const workspaceItemService = {
     const item = await itemRepository.findById({ where: { id: itemId } })
     if (!item) throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
 
-    const canRead = await permissionRepository.hasItemPermission(
-      userId,
-      itemId,
-      'read'
-    )
+    const canRead = await hasItemPermission(userId, itemId, 'read')
     if (!canRead && item.workspaceId) {
       await workspaceMemberRepository.requireMembership(
         userId,
@@ -203,12 +193,7 @@ export const workspaceItemService = {
     }
 
     // Create or update the permission
-    return permissionRepository.create({
-      id: toObjectId(getPrefixForModel('Permission')),
-      item: { connect: { id: itemId } },
-      users: { connect: { id: targetUserId } },
-      roles: role,
-    })
+    return grantItemPermission(targetUserId, itemId, role)
   },
 
   /**
@@ -238,7 +223,7 @@ export const workspaceItemService = {
     }
 
     // Find the permission record
-    const perms = await permissionRepository.findByItemId(itemId)
+    const perms = await getItemPermissions(itemId)
     const perm = perms.find((p) => p.users.some((u) => u.id === targetUserId))
 
     if (!perm) {
@@ -248,7 +233,7 @@ export const workspaceItemService = {
       )
     }
 
-    return permissionRepository.delete({ where: { id: perm.id } })
+    return deletePermission(perm.id)
   },
 
   /**
@@ -276,7 +261,7 @@ export const workspaceItemService = {
       )
     }
 
-    return permissionRepository.findByItemId(itemId)
+    return getItemPermissions(itemId)
   },
 
   async syncItemPermissionsWithWorkspaceRole(
@@ -294,59 +279,7 @@ export const workspaceItemService = {
         'User is not a member of this workspace'
       )
     }
-
-    let desiredItemRole: PermissionRole | null = null
-    switch (member.role) {
-      case 'owner':
-      case 'admin':
-        desiredItemRole = 'write'
-        break
-      case 'member':
-        desiredItemRole = 'read'
-        break
-      case 'viewer':
-      default:
-        desiredItemRole = null
-        break
-    }
-
-    const allItems = await client.item.findMany({
-      where: { workspaceId },
-      select: { id: true },
-    })
-
-    for (const { id: itemId } of allItems) {
-      const perms = await client.permission.findMany({
-        where: { itemId, users: { some: { id: userId } } },
-        select: { id: true, roles: true },
-      })
-
-      const existing = perms[0]
-
-      if (desiredItemRole) {
-        if (!existing) {
-          await client.permission.create({
-            data: {
-              id: toObjectId(getPrefixForModel('Permission')),
-              item: { connect: { id: itemId } },
-              users: { connect: { id: userId } },
-              roles: desiredItemRole,
-            },
-          })
-        } else if (existing.roles !== desiredItemRole) {
-          await client.permission.update({
-            where: { id: existing.id },
-            data: { roles: desiredItemRole },
-          })
-        }
-      } else {
-        if (existing) {
-          await client.permission.delete({
-            where: { id: existing.id },
-          })
-        }
-      }
-    }
+    await syncWorkspaceItemPermissions(userId, workspaceId, member.role, client)
   },
 
   async removeAllItemPermissionsForUser(
@@ -354,19 +287,6 @@ export const workspaceItemService = {
     workspaceId: string,
     client: Prisma.TransactionClient
   ): Promise<void> {
-    // This single, declarative query is the most efficient approach.
-    // It tells the database to delete all permissions that match two conditions:
-    // 1. The permission is granted to the specified user.
-    // 2. The permission is for an item that belongs to the specified workspace.
-    await client.permission.deleteMany({
-      where: {
-        users: {
-          some: { id: userId },
-        },
-        item: {
-          workspaceId: workspaceId,
-        },
-      },
-    })
+    await removeAllWorkspaceItemPermissions(userId, workspaceId, client)
   },
 }

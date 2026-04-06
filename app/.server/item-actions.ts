@@ -1,11 +1,9 @@
 import type { TransactionClient } from '@/prisma/internal/prismaNamespace'
-// --- 1. RENAME ---
-
 import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { Prisma, type Item, type PrismaClient } from '@/prisma/client'
 import { StashlyError, StashlyErrorCode } from '../.server/api.errors'
-import { permissionRepository } from '../.server/repositories/PermissionRepository'
+import { hasItemPermission, getItemPermissions } from '@/services/permission-actions'
 import { workspaceMemberRepository } from '../.server/repositories/workspaceMember.repository'
 import { quotaRepository } from '../.server/repositories/QuotaRepository'
 import { formatSize } from '@/utils/formaters'
@@ -22,7 +20,7 @@ async function getItemWithPermissions(userId: string, itemId: string) {
     throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
   }
 
-  const canRead = await permissionRepository.hasItemPermission(
+  const canRead = await hasItemPermission(
     userId,
     itemId,
     'read'
@@ -37,7 +35,7 @@ async function getItemWithPermissions(userId: string, itemId: string) {
     )
   }
 
-  const permissions = await permissionRepository.findByItemId(itemId)
+  const permissions = await getItemPermissions(itemId)
 
   return { ...item, permissions }
 }
@@ -508,7 +506,7 @@ export async function copyItem(
     }
 
     // 2. Check for read permission on the source item
-    const canRead = await permissionRepository.hasItemPermission(
+    const canRead = await hasItemPermission(
       userId,
       itemId,
       'read',

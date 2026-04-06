@@ -2,7 +2,8 @@
 
 ## Active
 
-- [ ] Orphaned file cleanup — 15 files deleted (uncommitted); next: commit deletions, then tackle `app/components/` (34 orphans remaining). See `orphaned.md` for full list.
+- [ ] Orphaned file cleanup — tackle `app/components/` (34 orphans remaining). See `orphaned.md` for full list.
+- [ ] Finish package update type errors — `workspaceItem.service.ts` (6 schema mismatches), `stripe.ts` (undefined check), `subscription.ts` (create signature mismatch)
 - [ ] Decide search infra: integrate the built-but-unwired `search.repository.ts`, `search.ts`, `filters.ts` — or delete them to reduce dead code.
 - [ ] Review `stashly-dashboard.html` — untracked file, decide: commit, move to docs, or delete
 
@@ -13,6 +14,7 @@
 
 ## Done
 
+- [x] Permission layer consolidated — `permission-actions.ts` is single source of truth; `PermissionRepository.ts` deleted; workspace permission functions moved in
 - [x] Concurrent multipart upload shipped (PRs #7, #8) — 5-parallel-part worker-pool with hardening
 - [x] Algolia removed — search migrated to pgvector + embeddings
 - [x] E2E test foundation — Playwright, auth + navigation tests, fixtures, POMs

@@ -1,7 +1,13 @@
-import { permissionRepository } from '@/services/repositories/PermissionRepository'
+import {
+  createPermission,
+  getLinkPermissions,
+  hasLinkPermission,
+  updatePermission,
+} from '@/services/permission-actions'
 import { shareLinkRepository } from '@/services/repositories/shareLink.repository'
 import type { Prisma, ShareLink } from '@/prisma/client'
 import { prisma } from '@/services/db'
+import { getPrefixForModel, toObjectId } from '@/utils/converters'
 
 export const shareLinkService = {
   /**
@@ -20,10 +26,11 @@ export const shareLinkService = {
   ): Promise<ShareLink> {
     return prisma.$transaction(async (tx) => {
       const newLink = await shareLinkRepository.create(linkData, tx)
-
-      await permissionRepository.create(
+      
+      await createPermission(
         {
           ...permissionData,
+          id: toObjectId(getPrefixForModel('Permission')),
           item: { connect: { id: itemId } },
           link: { connect: { id: newLink.id } },
         },
@@ -41,11 +48,11 @@ export const shareLinkService = {
    * @returns The updated Permission record.
    */
   async addUserToPermission(linkId: string, userId: string) {
-    const permission = await permissionRepository.findByLinkId(linkId)
+    const permission = await getLinkPermissions(linkId)
     if (!permission.length) {
       throw new Error('Permission for the given share link not found.')
     }
-    return permissionRepository.update({
+    return updatePermission({
       where: { id: permission[0].id },
       data: {
         users: {
@@ -63,13 +70,13 @@ export const shareLinkService = {
    */
   async removeUserFromPermission(linkId: string, userId: string) {
     // check if the current user have permissions to perform this action
-    await permissionRepository.hasLinkPermission(userId, linkId, 'write')
+    await hasLinkPermission(userId, linkId, 'write')
 
-    const permission = await permissionRepository.findByLinkId(linkId)
+    const permission = await getLinkPermissions(linkId)
     if (!permission.length) {
       throw new Error('Permission for the given share link not found.')
     }
-    return permissionRepository.update({
+    return updatePermission({
       where: { id: permission[0].id },
       data: {
         users: {
