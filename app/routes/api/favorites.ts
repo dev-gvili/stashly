@@ -3,7 +3,7 @@ import { auth } from '@/services/auth'
 import { redirect } from 'react-router'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import z from 'zod'
-import { itemRepository } from '@/services/repositories/ItemRepository'
+import { findFavoriteItem, addFavorite, removeFavorite } from '@/services/item-actions'
 
 const ApiFavoriteSchema = z.object({
   itemId: z.string(),
@@ -38,17 +38,14 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
   let url = new URL(referer || request.url)
 
   const data = parseSearchParams({ request, schema: ApiFavoriteSchema })
-  const favorited = await itemRepository.findFavoriteItem(
-    data.itemId,
-    session.user.id
-  )
+  const favorited = await findFavoriteItem(data.itemId, session.user.id)
   try {
     switch (data.intent) {
       case 'favorite':
-        await itemRepository.favorite(data.itemId, session.user.id)
+        await addFavorite(data.itemId, session.user.id)
         return { favorited: true }
       case 'unfavorite':
-        await itemRepository.unfavorite(data.itemId, session.user.id)
+        await removeFavorite(data.itemId, session.user.id)
         return redirect(`${url.pathname}${url.search}`)
       default:
         return { favorited: false }

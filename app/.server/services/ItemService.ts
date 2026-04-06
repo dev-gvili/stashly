@@ -1,6 +1,6 @@
 import { itemRepository } from '@/services/repositories/ItemRepository'
 import { hasItemPermission, getItemPermissions, assertCanUpdateItem } from '@/services/permission-actions'
-import { workspaceMemberRepository } from '@/services/repositories/workspaceMember.repository'
+import { requireMembership, requireAtLeastRole } from '@/services/workspace-actions'
 import { quotaRepository } from '@/services/repositories/QuotaRepository'
 import { StashlyError, StashlyErrorCode } from '../api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
@@ -20,7 +20,7 @@ export const itemService = {
 
     const canRead = await hasItemPermission(userId, itemId, 'read')
     if (!canRead && item.workspaceId) {
-      await workspaceMemberRepository.requireMembership(
+      await requireMembership(
         userId,
         item.workspaceId,
         {
@@ -60,7 +60,7 @@ export const itemService = {
     // 2. Check for read permission on the original item
     const canRead = await hasItemPermission(userId, itemId, 'read')
     if (!canRead && originalItem.workspaceId) {
-      await workspaceMemberRepository.requireMembership(
+      await requireMembership(
         userId,
         originalItem.workspaceId,
         {
@@ -80,7 +80,7 @@ export const itemService = {
       )
     }
 
-    await workspaceMemberRepository.requireAtLeastRole(
+    await requireAtLeastRole(
       userId,
       destinationWorkspaceId,
       'member',
@@ -255,7 +255,7 @@ export const itemService = {
         )
       }
       if (destParent.workspaceId) {
-        await workspaceMemberRepository.requireAtLeastRole(
+        await requireAtLeastRole(
           userId,
           destParent.workspaceId,
           'member'

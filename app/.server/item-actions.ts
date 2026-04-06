@@ -4,18 +4,19 @@ import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { Prisma, type Item, type PrismaClient } from '@/prisma/client'
 import { StashlyError, StashlyErrorCode } from '../.server/api.errors'
 import { hasItemPermission, getItemPermissions } from '@/services/permission-actions'
-import { workspaceMemberRepository } from '../.server/repositories/workspaceMember.repository'
+import { requireMembership, requireAtLeastRole } from '@/services/workspace-actions'
 import { quotaRepository } from '../.server/repositories/QuotaRepository'
 import { formatSize } from '@/utils/formaters'
-import { itemRepository } from '../.server/repositories/ItemRepository'
+import { searchFactory } from './search/search'
+import { buildItemFilters } from './search/item.filters'
 
 /**
  * Get an item with its permissions, checking if the user has access.
  * @param userId The ID of the user requesting the item.
  * @param itemId The ID of the item to retrieve.
  */
-async function getItemWithPermissions(userId: string, itemId: string) {
-  const item = await itemRepository.findById({ where: { id: itemId } })
+export async function getItemWithPermissions(userId: string, itemId: string) {
+  const item = await prisma.item.findUniqueOrThrow({ where: { id: itemId } })
   if (!item) {
     throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
   }
@@ -26,7 +27,7 @@ async function getItemWithPermissions(userId: string, itemId: string) {
     'read'
   )
   if (!canRead && item.workspaceId) {
-    await workspaceMemberRepository.requireMembership(
+    await requireMembership(
       userId,
       item.workspaceId,
       {
@@ -183,6 +184,13 @@ export async function moveItem(
   })
 }
 
+/**
+ * Moves multiple items to the same target folder in a single transaction.
+ *
+ * @param itemIds - IDs of the items to move.
+ * @param targetFolderId - The ID of the destination folder.
+ * @param client - Optional Prisma client (defaults to the global instance).
+ */
 export async function moveItems(
   itemIds: string[],
   targetFolderId: string,
@@ -553,7 +561,7 @@ export async function copyItem(
 
     // 3. check if user is a member in the source item workspace
     if (!targetWorkspaceId && source.workspaceId) {
-      await workspaceMemberRepository.requireMembership(
+      await requireMembership(
         userId,
         source.workspaceId,
         {
@@ -597,7 +605,7 @@ export async function copyItem(
     // ~~~~~~~~~~ Same Workspace with Explicit ID ~~~~~~~~~ //
 
     if (targetWorkspaceId && source.workspaceId === targetWorkspaceId) {
-      await workspaceMemberRepository.requireMembership(
+      await requireMembership(
         userId,
         source.workspaceId,
         {
@@ -641,7 +649,7 @@ export async function copyItem(
       source.workspaceId &&
       source.workspaceId !== targetWorkspaceId
     ) {
-      await workspaceMemberRepository.requireMembership(
+      await requireMembership(
         userId,
         source.workspaceId,
         {
@@ -649,7 +657,7 @@ export async function copyItem(
         }
       )
 
-      await workspaceMemberRepository.requireAtLeastRole(
+      await requireAtLeastRole(
         userId,
         targetWorkspaceId,
         'member',
@@ -1516,7 +1524,7 @@ export async function getSuggestedItems(
  * // Lock an item for 30 seconds
  * await lockItem('item_123', 'usr_456', 30_000);
  */
-async function lockItem(itemId: string, userId: string, ttlMs = 60_000) {
+export async function lockItem(itemId: string, userId: string, ttlMs = 60_000) {
   const expiresAt = new Date(Date.now() + ttlMs)
   try {
     return await prisma.lockedItem.create({
@@ -1572,7 +1580,7 @@ async function lockItem(itemId: string, userId: string, ttlMs = 60_000) {
  * // Unlock an item after an operation is complete
  * await unlockItem('item_123', 'usr_456');
  */
-async function unlockItem(itemId: string, userId: string) {
+export async function unlockItem(itemId: string, userId: string) {
   try {
     const lock = await prisma.lockedItem.findUnique({ where: { itemId } })
     if (!lock) return
@@ -1587,4 +1595,252 @@ async function unlockItem(itemId: string, userId: string) {
       'Failed to release lock'
     )
   }
+}
+
+// --- REPOSITORY-LEVEL FUNCTIONS ---
+
+const defaultItemSelect = {
+  id: true,
+  name: true,
+  type: true,
+  size: true,
+  category: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+  driveId: true,
+  parentId: true,
+  ownerId: true,
+  workspaceId: true,
+  folder: {
+    select: {
+      id: true,
+      childCount: true,
+      inclusiveChildCount: true,
+      itemId: true,
+    },
+  },
+  file: {
+    select: {
+      id: true,
+      etag: true,
+      extension: true,
+      mimeType: true,
+      key: true,
+    },
+  },
+  permissions: {
+    select: {
+      id: true,
+      roles: true,
+      linkId: true,
+      invitationId: true,
+      users: {
+        select: {
+          displayName: true,
+          email: true,
+          id: true,
+          image: true,
+          name: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.ItemSelect
+
+/**
+ * Full-text / filter-based search over items.
+ * Built with `searchFactory` using `buildItemFilters` for filter composition.
+ * Supports cursor pagination and custom ordering.
+ */
+export const searchItems = searchFactory({
+  dbDelegate: prisma.item,
+  buildFilters: buildItemFilters,
+  defaultOrderBy: () => ({ id: 'asc' }) satisfies Prisma.ItemOrderByWithRelationInput,
+})
+
+/**
+ * Finds a single item by its unique identifier. Throws if not found.
+ * Falls back to `defaultItemSelect` when no `select` is provided.
+ *
+ * @param args - Prisma `findUnique` arguments (`where` is required).
+ * @throws {PrismaClientKnownRequestError} When no record matches.
+ */
+export async function findItem(args: Prisma.ItemFindUniqueArgs) {
+  return prisma.item.findUniqueOrThrow({
+    ...args,
+    select: args.select || defaultItemSelect,
+  })
+}
+
+/**
+ * Creates a new item record.
+ * Falls back to `defaultItemSelect` when no `select` is provided.
+ *
+ * @param args - Prisma `create` arguments (`data` is required).
+ */
+export async function createItem(args: Prisma.ItemCreateArgs) {
+  return prisma.item.create({
+    ...args,
+    select: args.select || defaultItemSelect,
+  })
+}
+
+/**
+ * Updates an existing item record.
+ * Falls back to `defaultItemSelect` when no `select` is provided.
+ *
+ * @param args - Prisma `update` arguments (`where` and `data` are required).
+ */
+export async function updateItem(args: Prisma.ItemUpdateArgs) {
+  return prisma.item.update({
+    ...args,
+    select: args.select || defaultItemSelect,
+  })
+}
+
+/**
+ * Returns the 20 most recently created items in a workspace.
+ * No permission check — intended for internal/server use.
+ *
+ * @param workspaceId - The workspace to query.
+ */
+export async function findWorkspaceItems(workspaceId: string) {
+  return prisma.item.findMany({
+    where: { workspaceId },
+    select: defaultItemSelect,
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+  })
+}
+
+/**
+ * Returns all items owned by the user that they have also favorited.
+ *
+ * @param userId - The ID of the user.
+ */
+export async function findFavoritesForUser(userId: string) {
+  return prisma.item.findMany({
+    where: {
+      ownerId: userId,
+      favorites: { some: { favoritedById: userId } },
+    },
+  })
+}
+
+/**
+ * Returns the item if it has been favorited by the given user, otherwise `null`.
+ *
+ * @param itemId - The ID of the item.
+ * @param favoritedById - The ID of the user who may have favorited the item.
+ */
+export async function findFavoriteItem(itemId: string, favoritedById: string) {
+  return prisma.item.findFirst({
+    where: {
+      favorites: { some: { favoritedById, itemId } },
+    },
+    select: defaultItemSelect,
+  })
+}
+
+/**
+ * Marks an item as favorited by a user.
+ *
+ * @param itemId - The ID of the item to favorite.
+ * @param favoritedById - The ID of the user favoriting the item.
+ * @param client - Optional transaction client (defaults to the global instance).
+ */
+export async function addFavorite(
+  itemId: string,
+  favoritedById: string,
+  client: Prisma.TransactionClient = prisma
+) {
+  return client.item.update({
+    where: { id: itemId },
+    data: {
+      favorites: {
+        create: {
+          favoritedById,
+          id: toObjectId(getPrefixForModel('Favorite')),
+        },
+      },
+    },
+  })
+}
+
+/**
+ * Removes a favorite record for the given user and item.
+ * No-ops if the item has not been favorited.
+ *
+ * @param itemId - The ID of the item to unfavorite.
+ * @param favoritedById - The ID of the user removing the favorite.
+ * @param client - Optional transaction client (defaults to the global instance).
+ */
+export async function removeFavorite(
+  itemId: string,
+  favoritedById: string,
+  client: Prisma.TransactionClient = prisma
+) {
+  const item = await client.favorite.findFirst({
+    where: { itemId, favoritedById },
+  })
+  if (!item) return
+  return client.item.update({
+    where: { id: itemId },
+    data: { favorites: { delete: { id: item.id } } },
+  })
+}
+
+/**
+ * Returns all items matching the given Prisma `findMany` arguments.
+ * No default select is applied — the caller controls the shape.
+ *
+ * @param args - Prisma `findMany` arguments.
+ */
+export async function findAllItems(args: Prisma.ItemFindManyArgs) {
+  return prisma.item.findMany(args)
+}
+
+/**
+ * Returns the first item matching the given Prisma `findFirst` arguments, or `null`.
+ *
+ * @param args - Prisma `findFirst` arguments.
+ */
+export async function findFirstItem(args: Prisma.ItemFindFirstArgs) {
+  return prisma.item.findFirst(args)
+}
+
+/**
+ * Returns the count of items matching the given Prisma `count` arguments.
+ *
+ * @param args - Prisma `count` arguments.
+ */
+export async function countItems(args: Prisma.ItemCountArgs): Promise<number> {
+  return prisma.item.count(args)
+}
+
+/**
+ * Creates the root folder item for a drive.
+ * Used during user/workspace provisioning to establish the top-level folder anchor.
+ *
+ * @param userId - The ID of the user who will own the root folder.
+ * @param driveId - The drive the root folder belongs to.
+ * @param workspaceId - Optional workspace to associate the root folder with.
+ */
+export async function createRootFolder(
+  userId: string,
+  driveId: string,
+  workspaceId?: string
+) {
+  const id = toObjectId(getPrefixForModel('Item'))
+  return createItem({
+    data: {
+      id,
+      name: 'root',
+      type: 'folder',
+      drive: { connect: { id: driveId } },
+      workspace: { connect: { id: workspaceId } },
+      owner: { connect: { id: userId } },
+    },
+  })
 }
