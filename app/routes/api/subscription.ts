@@ -1,9 +1,9 @@
 import type { Route } from '../+types'
 import { auth } from '@/services/auth'
-import { userRepository } from '../../.server/repositories/userrepository'
-import { storagePlanRepository } from '../../.server/repositories/storageplanrepository'
-import { subscriptionRepository } from '../../.server/repositories/subscriptionrepository'
-import { quotaRepository } from '../../.server/repositories/quotarepository'
+import { userRepository } from '../../.server/repositories/UserRepository'
+import { storagePlanRepository } from '../../.server/repositories/StoragePlanRepository'
+import { subscriptionRepository } from '../../.server/repositories/SubscriptionRepository'
+import { quotaRepository } from '../../.server/repositories/QuotaRepository'
 import { redirect } from 'react-router'
 
 // GET: Get current user's subscription (if any)

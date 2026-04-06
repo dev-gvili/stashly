@@ -5,7 +5,7 @@ import {
   activityFilterSchema,
 } from '@/utils/filters/activity.filters'
 import { searchFactory } from '@/utils/search'
-import { getPrefixForModel, toObjectId } from '@/utils/misc'
+import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { z } from 'zod'
 
 const defaultInclude = {
@@ -13,7 +13,7 @@ const defaultInclude = {
   item: true,
   action: true,
   access: true,
-}
+} satisfies Prisma.ActivityInclude
 
 const defaultOrderBy = (
   params: z.infer<typeof activityFilterSchema>
@@ -43,11 +43,10 @@ export const activityRepository = {
   },
 
   async findAll(
-    args?: Prisma.ActivityFindManyArgs
-  ): Promise<ModelWithRelations[]> {
-    return prisma.activity.findMany({
+    args?: z.infer<typeof activityFilterSchema>
+  ) {
+    return await this.search({
       ...args,
-      include: defaultInclude,
     })
   },
 
@@ -78,17 +77,38 @@ export const activityRepository = {
   async findMany(
     args: Prisma.ActivityFindManyArgs
   ): Promise<ModelWithRelations[]> {
-    return prisma.activity.findMany({ ...args, include: defaultInclude })
+    const { filters, orderBy, pagination } = this.search.buildFilters(args)
+    return prisma.activity.findMany({
+      where: filters,
+      orderBy,
+      skip: pagination.skip,
+      take: pagination.take,
+      include: defaultInclude,
+    })
   },
 
   async findFirst(
     args: Prisma.ActivityFindFirstArgs
   ): Promise<ModelWithRelations | null> {
-    return prisma.activity.findFirst({ ...args, include: defaultInclude })
+    const { filters, orderBy, pagination } = this.search.buildFilters(args)
+    return prisma.activity.findFirst({
+      where: filters,
+      orderBy,
+      skip: pagination.skip,
+      take: pagination.take,
+      include: defaultInclude,
+    })
   },
 
   async count(args: Prisma.ActivityCountArgs): Promise<number> {
     return prisma.activity.count(args)
+  },
+  async countAll(args?: Prisma.ActivityCountArgs): Promise<number> {
+    const { filters } = this.search.buildFilters(args)
+    return prisma.activity.count({
+      where: filters,
+      ...args,
+    })
   },
 
   // --- Custom Methods ---

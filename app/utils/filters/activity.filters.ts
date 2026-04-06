@@ -7,6 +7,12 @@ export const activityFilterSchema = z
     id: z.object({ equals: z.string().optional() }).optional(),
     timeId: z.object({ equals: z.string().optional() }).optional(),
     itemId: z.object({ equals: z.string().optional() }).optional(),
+
+    // Pagination Params
+    cursor: z.string().optional(),
+    take: z.coerce.number().default(50),
+    orderBy: z.custom<Prisma.ActivityOrderByWithRelationInput>(),
+    include: z.custom<Prisma.ActivityInclude>(),
   })
   .partial()
 

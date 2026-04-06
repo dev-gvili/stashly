@@ -11,6 +11,12 @@ export const shareLinkFilterSchema = z
     expiresAt: z.date(),
     createdAt: z.date(),
     updatedAt: z.date(),
+
+    // Pagination Params
+    cursor: z.string().optional(),
+    take: z.coerce.number().default(50),
+    orderBy: z.custom<Prisma.ShareLinkOrderByWithRelationInput>(),
+    include: z.custom<Prisma.ShareLinkInclude>(),
   })
   .partial()
 

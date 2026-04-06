@@ -15,7 +15,7 @@ export interface Breadcrumb {
  * @returns Array of items starting from Root -> Target Item
  * @example
  * ```ts
- * const trail = await getBreadcrumbs("folder_123");
+ * const trail = await breadcrumbs("folder_123");
  * // Result:
  * // [
  * //   { id: "root_id", name: "Home", ... },
@@ -24,7 +24,7 @@ export interface Breadcrumb {
  * // ]
  * ```
  */
-export async function getBreadcrumbs(itemId: string): Promise<Breadcrumb[]> {
+export async function breadcrumbs(itemId: string): Promise<Breadcrumb[]> {
   // NOTES:
   // 1. "bfs_path" is our temporary recursive table.
   // 2. The first SELECT finds the starting item (Anchor).

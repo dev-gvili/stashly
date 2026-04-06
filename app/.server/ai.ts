@@ -6,7 +6,6 @@ import {
   getPipeline,
   getWhisper,
 } from './ai.utils'
-import { getAudioPCMStream } from './ai-whisper'
 import { Decoder, Demuxer, EOF } from 'node-av'
 
 /**

@@ -12,6 +12,12 @@ export const workspaceFilterSchema = z
     default: z.coerce.boolean(),
     date,
     storagePlanId: z.string(),
+
+    // Pagination Params
+    cursor: z.string().optional(),
+    take: z.coerce.number().default(50),
+    orderBy: z.custom<Prisma.WorkspaceOrderByWithRelationInput>(),
+    include: z.custom<Prisma.WorkspaceInclude>(),
   })
   .partial()
 
@@ -20,10 +26,7 @@ const createWorkspaceFilter = createFilter<
   z.infer<typeof workspaceFilterSchema>
 >()
 
-export const workspaceFilters: Record<
-  keyof z.infer<typeof workspaceFilterSchema>,
-  ReturnType<typeof createWorkspaceFilter>
-> = {
+export const workspaceFilters = {
   id: createWorkspaceFilter(z.string().nonempty(), (id) => ({ id })),
   name: createWorkspaceFilter(z.string().nonempty(), (name) => ({ name })),
   slug: createWorkspaceFilter(z.string().nonempty(), (slug) => ({ slug })),

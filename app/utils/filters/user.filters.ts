@@ -26,6 +26,12 @@ export const userFilterSchema = z
     workspaces: toZodArraySchema(z.string().nonempty()),
     subscriptions: toZodArraySchema(z.string().nonempty()),
     invitations: toZodArraySchema(z.string().nonempty()),
+
+    // Pagination Params
+    cursor: z.string().optional(),
+    take: z.coerce.number().default(50),
+    orderBy: z.custom<Prisma.UserOrderByWithRelationInput>(),
+    include: z.custom<Prisma.UserInclude>(),
   })
   .partial()
 

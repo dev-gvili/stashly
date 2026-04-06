@@ -27,8 +27,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   })
 
   let filters = buildItemFilters(parsedParams)
-  return await getFolderContent(parsedParams.take, parsedParams.cursor, {
-    ...filters,
+  return await getFolderContent({
+    limit: parsedParams.take,
+    cursor: parsedParams.cursor,
+    where: filters,
   })
 }
 

@@ -1,10 +1,10 @@
 import type { Route } from './+types/billing'
 import { auth } from '@/services/auth'
 import { Form, Link, redirect } from 'react-router'
-import { userRepository } from '../../.server/repositories/userrepository'
-import { storagePlanRepository } from '../../.server/repositories/storageplanrepository'
-import { quotaRepository } from '../../.server/repositories/quotarepository'
-import { subscriptionRepository } from '../../.server/repositories/subscriptionrepository'
+import { userRepository } from '../../.server/repositories/UserRepository'
+import { storagePlanRepository } from '../../.server/repositories/StoragePlanRepository'
+import { quotaRepository } from '../../.server/repositories/QuotaRepository'
+import { subscriptionRepository } from '../../.server/repositories/SubscriptionRepository'
 import { prisma } from '@/.server/db'
 import {
   Card,
@@ -16,8 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/styles'
 import {
-  Tooltip,
-  TooltipContent,
+  TooltipRoot,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
@@ -83,7 +82,6 @@ export async function action({ request }: Route.ActionArgs) {
     try {
       await quotaRepository.create({
         driveId: session.user.driveId!,
-        userId,
         storagePlanId: plan.id,
       })
     } catch (e) {}
@@ -180,13 +178,13 @@ export default function BillingRoute({ loaderData }: Route.ComponentProps) {
                 <div className="flex items-center gap-2" key={index}>
                   <RiCheckboxCircleFill className="h-4 w-4 text-foreground" />
                   <TooltipProvider>
-                    <Tooltip delayDuration={0}>
+                    <TooltipRoot>
                       <TooltipTrigger asChild>
                         <p className={cn(feature && 'cursor-pointer border-b')}>
                           {feature}
                         </p>
                       </TooltipTrigger>
-                    </Tooltip>
+                    </TooltipRoot>
                   </TooltipProvider>
                 </div>
               ))}

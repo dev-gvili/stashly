@@ -10,6 +10,12 @@ export const collectionFilterSchema = z
     date,
     sizeMin: z.number(),
     sizeMax: z.number(),
+
+    // Pagination Params
+    cursor: z.string().optional(),
+    take: z.coerce.number().default(50),
+    orderBy: z.custom<Prisma.CollectionOrderByWithRelationInput>(),
+    include: z.custom<Prisma.CollectionInclude>(),
   })
   .partial()
 

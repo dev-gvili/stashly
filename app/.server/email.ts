@@ -96,6 +96,6 @@ export function parseContent(content: SendFunctionArgs['content']) {
 }
 
 export const email = createEmailClient({
-  url: process.env.EMAIL_SERVICE_URL,
-  token: process.env.EMAIL_SERVICE_TOKEN,
+  url: process.env.EMAIL_SERVICE_URL!,
+  token: process.env.EMAIL_SERVICE_TOKEN!,
 })

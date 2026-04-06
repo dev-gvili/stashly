@@ -14,6 +14,12 @@ export const notificationFilterSchema = z
     userId: z.string(),
     status: z.nativeEnum(NotificationStatus),
     type: toZodArraySchema(z.nativeEnum(NotificationType)),
+
+    // Pagination Params
+    cursor: z.string().optional(),
+    take: z.coerce.number().default(50),
+    orderBy: z.custom<Prisma.NotificationOrderByWithRelationInput>(),
+    include: z.custom<Prisma.NotificationInclude>(),
   })
   .partial()
 
