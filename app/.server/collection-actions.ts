@@ -1,5 +1,5 @@
 import { ItemType, ItemStatus } from '@/prisma/browser'
-import { getPrefixForModel, toObjectId } from './converters'
+import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { prisma } from '@/services/db'
 
 // --- 1. CREATE COLLECTION ---

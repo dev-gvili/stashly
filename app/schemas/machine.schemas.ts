@@ -1,7 +1,6 @@
 import type { ActorRefFrom, AnyActorRef } from 'xstate'
 import { z } from 'zod'
-import { multipart } from '../machines/multipart/s3.multipart'
-import { fileMachine } from '../machines/upload/file.v2.machine'
+import { fileMachine } from '../machines/reviset/file.machine'
 import { itemFilterSchema } from '@/utils/filters/item.filters'
 import type { quotaMachine } from '../machines/quota/quota.machine'
 

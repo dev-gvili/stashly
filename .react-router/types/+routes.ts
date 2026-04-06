@@ -126,12 +126,6 @@ type Pages = {
   "/api/ai/chat": {
     params: {};
   };
-  "/api/s3/sts-token": {
-    params: {};
-  };
-  "/api/s3/presigned": {
-    params: {};
-  };
   "/api/s3/upload": {
     params: {};
   };
@@ -333,7 +327,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/auth/sign-in" | "/auth/sign-out" | "/api/auth/*" | "/api/items/*" | "/api/workspaces/*" | "/api/members/*" | "/api/collections/*" | "/api/permissions/*" | "/api/comments/*" | "/api/health" | "/api/invitations" | "/api/notifications" | "/api/stripe" | "/api/favorites" | "/api/users" | "/api/subscription" | "/api/shares" | "/api/quota" | "/api/versions" | "/api/theme" | "/api/images" | "/api/settings" | "/api/view" | "/api/sidebar" | "/api/search/:type" | "/api/ai/embed" | "/api/ai/caption" | "/api/ai/translate" | "/api/ai/transcribe" | "/api/ai/suggestion" | "/api/ai/summarize" | "/api/ai/chat" | "/api/s3/sts-token" | "/api/s3/presigned" | "/api/s3/upload" | "/:me/stash" | "/:me/stash/all" | "/:me/stash/collections" | "/:me/stash/collections/:collectionId" | "/:me/stash/favorites" | "/:me/stash/folders/:folderId" | "/:me/stash/folders/:folderId/files/:fileId" | "/:me/stash/gallery" | "/:me/stash/recent" | "/:me/stash/search" | "/:me/stash/shares" | "/:me/stash/trash" | "/:me/stash/demo" | "/:me/workspaces" | "/:me/workspaces/create" | "/:me/workspaces/:workspaceId" | "/:me/workspaces/:workspaceId/settings" | "/:me/workspaces/:workspaceId/members" | "/:me/workspaces/:workspaceId/folders/:folderId" | "/:me/workspaces/:workspaceId/folders/:folderId/files/:fileId" | "/:me/workspaces/:workspaceId/shares" | "/:me/workspaces/:workspaceId/favorites" | "/:me/workspaces/:workspaceId/collections" | "/:me/workspaces/:workspaceId/collections/:collectionId" | "/:me/workspaces/:workspaceId/trash" | "/:me/workspaces/:workspaceId/recent" | "/:me/workspaces/:workspaceId/gallery" | "/:me/settings/profile" | "/:me/settings/account" | "/:me/settings/security" | "/:me/settings/billing" | "/:me/settings/notifications" | "/:me/settings/appearance" | "/*" | "/test";
+    page: "/" | "/auth/sign-in" | "/auth/sign-out" | "/api/auth/*" | "/api/items/*" | "/api/workspaces/*" | "/api/members/*" | "/api/collections/*" | "/api/permissions/*" | "/api/comments/*" | "/api/health" | "/api/invitations" | "/api/notifications" | "/api/stripe" | "/api/favorites" | "/api/users" | "/api/subscription" | "/api/shares" | "/api/quota" | "/api/versions" | "/api/theme" | "/api/images" | "/api/settings" | "/api/view" | "/api/sidebar" | "/api/search/:type" | "/api/ai/embed" | "/api/ai/caption" | "/api/ai/translate" | "/api/ai/transcribe" | "/api/ai/suggestion" | "/api/ai/summarize" | "/api/ai/chat" | "/api/s3/upload" | "/:me/stash" | "/:me/stash/all" | "/:me/stash/collections" | "/:me/stash/collections/:collectionId" | "/:me/stash/favorites" | "/:me/stash/folders/:folderId" | "/:me/stash/folders/:folderId/files/:fileId" | "/:me/stash/gallery" | "/:me/stash/recent" | "/:me/stash/search" | "/:me/stash/shares" | "/:me/stash/trash" | "/:me/stash/demo" | "/:me/workspaces" | "/:me/workspaces/create" | "/:me/workspaces/:workspaceId" | "/:me/workspaces/:workspaceId/settings" | "/:me/workspaces/:workspaceId/members" | "/:me/workspaces/:workspaceId/folders/:folderId" | "/:me/workspaces/:workspaceId/folders/:folderId/files/:fileId" | "/:me/workspaces/:workspaceId/shares" | "/:me/workspaces/:workspaceId/favorites" | "/:me/workspaces/:workspaceId/collections" | "/:me/workspaces/:workspaceId/collections/:collectionId" | "/:me/workspaces/:workspaceId/trash" | "/:me/workspaces/:workspaceId/recent" | "/:me/workspaces/:workspaceId/gallery" | "/:me/settings/profile" | "/:me/settings/account" | "/:me/settings/security" | "/:me/settings/billing" | "/:me/settings/notifications" | "/:me/settings/appearance" | "/*" | "/test";
   };
   "routes/auth/layout.tsx": {
     id: "routes/auth/layout";
@@ -460,14 +454,6 @@ type RouteFiles = {
   } | {
     id: "ai-chat";
     page: "/api/ai/chat";
-  };
-  "routes/api/s3/sts-token.ts": {
-    id: "s3-sts-token";
-    page: "/api/s3/sts-token";
-  };
-  "routes/api/s3.ts": {
-    id: "s3-presigned";
-    page: "/api/s3/presigned";
   };
   "routes/api/upload.ts": {
     id: "s3-upload";
@@ -656,8 +642,6 @@ type RouteModules = {
   "ai-suggestion": typeof import("./app/routes/api/ai.ts");
   "ai-summarize": typeof import("./app/routes/api/ai.ts");
   "ai-chat": typeof import("./app/routes/api/ai.ts");
-  "s3-sts-token": typeof import("./app/routes/api/s3/sts-token.ts");
-  "s3-presigned": typeof import("./app/routes/api/s3.ts");
   "s3-upload": typeof import("./app/routes/api/upload.ts");
   "layout": typeof import("./app/routes/layout.tsx");
   "routes/index": typeof import("./app/routes/index.tsx");

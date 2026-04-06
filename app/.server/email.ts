@@ -67,29 +67,6 @@ export interface EmailClient {
   }
 }
 
-/**
- * @description create a client for sending emails to customers
- * @example  Sending reset password email to customer
-```ts
-            // 01. get configuration from environment variables 
-            let {EMAIL_SERVICE_TOKEN, EMAIL_SERVICE_URL} = process.env
-            // 02. create the client for sending data
-            let client = createEmailClient({
-                url: EMAIL_SERVICE_URL!,
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: EMAIL_SERVICE_TOKEN!,
-                },
-            })
-            // 03. send the data
-            client.send<{ id: string }>({
-                to: <customer email address>,
-                from: <your company email address>,
-                subject: <email subject>,
-                content: <ResetPasswordEmail({ userFirstname: "alon" })>,
-            });
-```
- */
 export const createEmailClient: EmailClient = (config) => ({
   async send<TData>(args: SendFunctionArgs) {
     const response = await fetch(config.url, {

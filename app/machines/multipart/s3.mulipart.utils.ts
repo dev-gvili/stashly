@@ -1,17 +1,40 @@
 import { fromCallback, fromPromise, type ExtractEvent } from 'xstate'
 import { PauseController } from './s3.multipart.concurrent'
-import type {
-  AbortMultipartUploadInput,
-  AbortMultipartUploadOutput,
-  CompleteMultipartUploadInput,
-  CompleteMultipartUploadOutput,
-  CreateMultipartUploadInput,
-  CreateMultipartUploadOutput,
-  GetPresignedUrlForPartInput,
-  GetPresignedUrlForPartOutput,
-} from '@/.server/upload'
+import type { CompletedPart } from '@aws-sdk/client-s3'
 import type { MultipartEvents } from '@/types/machine.types'
-import { streamParts } from './s3.multipart.concurrent'
+import { streamParts } from './s3.multipart.stream'
+
+interface BaseUploadArgs {
+  key: string
+  uploadId: string
+}
+
+export interface CreateMultipartUploadInput {
+  key: string
+  metadata?: Record<string, string>
+}
+export interface GetPresignedUrlForPartInput extends BaseUploadArgs {
+  partNumber: number
+}
+export interface CompleteMultipartUploadInput extends BaseUploadArgs {
+  parts: CompletedPart[]
+}
+export interface AbortMultipartUploadInput extends BaseUploadArgs {}
+
+export interface CreateMultipartUploadOutput {
+  uploadId: string
+}
+export interface GetPresignedUrlForPartOutput {
+  url: string
+}
+export interface CompleteMultipartUploadOutput {
+  etag: string
+  version?: string
+}
+export interface AbortMultipartUploadOutput {
+  success: boolean
+}
+
 
 const FetchInit: RequestInit = {
   method: 'POST',

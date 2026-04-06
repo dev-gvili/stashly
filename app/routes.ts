@@ -52,14 +52,7 @@ export default [
     ]),
     // S3 (object storage) API routes
     ...prefix('s3', [
-      route('sts-token', 'routes/api/s3/sts-token.ts', { id: 's3-sts-token' }),
-      route('presigned', 'routes/api/s3.ts', { id: 's3-presigned' }),
       route('upload', 'routes/api/upload.ts', { id: 's3-upload' }),
-      // route("list", "routes/api/list.ts"),
-      // route("list/", "routes/api/list.ts"),
-      // route("copy", "routes/api/copy.ts"),
-      // route("move", "routes/api/move.ts"),
-      // route("restore", "routes/api/restore.ts"),
     ]),
   ]),
 

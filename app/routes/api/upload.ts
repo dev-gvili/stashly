@@ -1,19 +1,17 @@
 import { redirect } from 'react-router'
-import { S3Service } from '@/services/s3'
 import type { Route } from './+types/upload'
 import { auth } from '@/services/auth'
 import { z } from 'zod'
-import { UploadService } from '@/services/upload'
+import {
+  createMultipartUpload,
+  getPresignedUrlForPart,
+  completeMultipartUpload,
+  abortMultipartUpload,
+} from '@/services/s3'
 
 const defaults = z.object({
   key: z.string(),
   uploadId: z.string(),
-})
-
-const uploadFileSchema = z.object({
-  action: z.literal('upload-file'),
-  file: z.instanceof(File),
-  workspaceId: z.string().optional(),
 })
 
 const create_multipart_upload = z.object({
@@ -39,78 +37,48 @@ const abort_multipart_upload = z.object({
   action: z.literal('abort-multipart-upload'),
 })
 
-const uploadFormData = z.discriminatedUnion('action', [
+const uploadSchema = z.discriminatedUnion('action', [
   create_multipart_upload,
   complete_multipart_upload,
   get_presigned_url,
   abort_multipart_upload,
-  uploadFileSchema,
 ])
 
 export async function action({ request }: Route.ActionArgs) {
-  let session = await auth.api.getSession(request)
+  const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/sign-in')
-  let { user } = session
+  const { user } = session
+  const { bucket } = user
 
-  // const values = await parseFormData({
-  // 	request,
-  // 	schema: uploadFormData,
-  // })
-  let data = await request.json()
-  let values = uploadFormData.parse(data)
+  const values = uploadSchema.parse(await request.json())
 
-  const s3 = new UploadService({
-    s3Service: new S3Service(user.bucket),
-    user,
-  })
-
-  // console.log(
-  //   'Processing image from URL:',
-  //   'https://fastly.picsum.photos/id/342/256/323.jpg?hmac=lOm6dWgoikDgAecMhofyRqepC88fic4JAe5e71jCLmw'
-  // )
-  // const caption = await encodeImage(
-  //   'https://fastly.picsum.photos/id/76/256/354.jpg?hmac=Fq7bmR9Adkmsqz-prbk3pEEph0c6xcqppeTHeopitWI'
-  // )
-  // // URL.revokeObjectURL(url)
-  // console.log('Generated caption:', caption)
-  // // const embedder = await pipeline(
-  // //   'feature-extraction',
-  // //   'Xenova/all-mpnet-base-v2'
-  // // )
-  // const embedding = await encodeText(caption)
-  // // const embedding = await embedder(caption, {
-  // //   pooling: 'mean',
-  // //   normalize: true,
-  // // })
-  let cors = await s3.loadBucketCorsSettings(user.bucket)
-  console.log('CORS configuration after fix:', cors)
   switch (values.action) {
     case 'create-multipart-upload': {
-      const { key, metadata } = values
-      const UploadId = await s3.createMultipartUpload({ key, metadata })
-      return { uploadId: UploadId }
+      const { UploadId: uploadId } = await createMultipartUpload(
+        bucket,
+        values.key,
+        values.metadata
+      )
+      if (!uploadId) throw new Error('Failed to create multipart upload')
+      return { uploadId }
     }
     case 'get-presigned-url': {
-      const { key, uploadId, partNumber } = values
-      const url = await s3.getPresignedUrlForPart({
-        key,
-        uploadId,
-        partNumber,
-      })
+      const url = await getPresignedUrlForPart(
+        bucket,
+        values.key,
+        values.uploadId,
+        values.partNumber
+      )
       return { url }
     }
     case 'complete-multipart-upload': {
-      const { key, uploadId, parts } = values
-      return await s3.completeMultipartUpload({ key, uploadId, parts })
+      const { Key, Bucket, ETag, VersionId, Location, $metadata } =
+        await completeMultipartUpload(bucket, values.key, values.uploadId, values.parts)
+      return { key: Key, bucket: Bucket, etag: ETag, version: VersionId, location: Location, metadata: $metadata }
     }
     case 'abort-multipart-upload': {
-      const { key, uploadId } = values
-      await s3.abortMultipartUpload({ key, uploadId })
+      await abortMultipartUpload(bucket, values.key, values.uploadId)
       return { success: true }
-    }
-    default: {
-      return data({ error: 'Invalid action' }, { status: 400 })
     }
   }
 }
-

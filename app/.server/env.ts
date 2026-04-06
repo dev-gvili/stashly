@@ -10,9 +10,9 @@ const envSchema = z.object({
   AWS_BUCKET_NAME: z.string().optional(),
   AWS_ACCESS_KEY: z.string(),
   AWS_SECRET_KEY: z.string(),
-  AWS_ENDPOINT_URL: z.string(),
+  AWS_ENDPOINT_URL: z.url(),
   AWS_REGION: z.string(),
-  DATABASE_URL: z.string(),
+  DATABASE_URL: z.url(),
   SESSION_SECRET: z.string(),
   BETTER_AUTH_SECRET: z.string(),
   BASE_URL: z.string().url(),
@@ -59,5 +59,3 @@ export function toRequiredEnv<T extends EnvVarsKeys>({ env }: { env: T[] }) {
 
   return parsedEnv.data as Record<T, string>
 }
-
-toRequiredEnv({ env: ['DATABASE_URL', 'STRIPE_SECRET_KEY'] })

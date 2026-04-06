@@ -269,7 +269,6 @@ export const fileMachine = setup({
             ownerId: context.user.id,
             ownerEmail: context.user.email,
             uploadedAt: new Date().toISOString(), // This is the date the file was uploaded to S3.
-            itemKey: context.mediaFile.key,
           },
         }),
         onDone: {

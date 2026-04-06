@@ -14,7 +14,7 @@ export interface Breadcrumb {
  * @param itemId - The ID of the item to get breadcrumbs for.
  * @returns Array of items starting from Root -> Target Item
  * @example
- * Example usage:
+ * ```ts
  * const trail = await getBreadcrumbs("folder_123");
  * // Result:
  * // [
@@ -22,6 +22,7 @@ export interface Breadcrumb {
  * //   { id: "abc_id", name: "Photos", ... },
  * //   { id: "folder_123", name: "Summer 2024", ... }
  * // ]
+ * ```
  */
 export async function getBreadcrumbs(itemId: string): Promise<Breadcrumb[]> {
   // NOTES:
@@ -30,7 +31,6 @@ export async function getBreadcrumbs(itemId: string): Promise<Breadcrumb[]> {
   // 3. The UNION ALL SELECT finds the parent of the previous result (Recursion).
   // 4. We order by depth DESC because the recursion walks UP the tree (Item -> Root),
   //    but we want to display it DOWN (Root -> Item).
-
   const result = await prisma.$queryRaw<Breadcrumb[]>`
     WITH RECURSIVE bfs_path AS (
       -- ANCHOR: Select the target item first
@@ -38,7 +38,6 @@ export async function getBreadcrumbs(itemId: string): Promise<Breadcrumb[]> {
       FROM "Item"
       WHERE id = ${itemId}
       UNION ALL
-
       -- RECURSION: Join with the parent
       SELECT p.id, p.name, p."parentId", c.depth + 1
       FROM "Item" p
@@ -51,5 +50,3 @@ export async function getBreadcrumbs(itemId: string): Promise<Breadcrumb[]> {
 
   return result
 }
-
-

@@ -3,7 +3,7 @@ import { assign, fromPromise, setup } from 'xstate'
 import type { User as FullUser } from '@/services/auth.types'
 import type { User } from 'better-auth'
 import { prisma } from '@/services/db'
-import { S3Service } from '@/services/s3'
+import { createUserBucket } from '@/services/s3'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { subscriptionRepository } from '@/services/repositories/SubscriptionRepository'
 import { storagePlanRepository } from '@/services/repositories/StoragePlanRepository'
@@ -139,8 +139,7 @@ export const onboardingMachine = setup({
       return updatedUser as FullUser
     }),
     createBucket: fromPromise<string, { user: User }>(async ({ input }) => {
-      const s3Service = new S3Service()
-      return await s3Service.createUserBucket(input.user)
+      return await createUserBucket(input.user)
     }),
   },
   types: {
