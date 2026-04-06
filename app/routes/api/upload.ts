@@ -82,7 +82,7 @@ export async function action({ request }: Route.ActionArgs) {
   // //   pooling: 'mean',
   // //   normalize: true,
   // // })
-  let cors = await s3.fixCors(user.bucket)
+  let cors = await s3.loadBucketCorsSettings(user.bucket)
   console.log('CORS configuration after fix:', cors)
   switch (values.action) {
     case 'create-multipart-upload': {

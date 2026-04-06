@@ -2,6 +2,28 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Core Rules
+
+When I ask you to do something, DO IT immediately. Don't over-explain, don't read extra files, don't write specs or plans unless I ask. Act first, explain only if needed.
+
+If I interrupt you, stop immediately and wait for my next instruction. Don't restart from scratch — continue from where you left off unless told otherwise.
+
+## Git Workflow
+
+When committing, actually run `git add` and `git commit` — don't just generate commit messages or describe what you would commit.
+
+Set GITHUB_TOKEN properly before using `gh` CLI. If gh auth fails, ask the user to run `gh auth login` interactively rather than retrying with env vars.
+
+## Development
+
+This is a TypeScript project. Always use TypeScript for new files. Run `pnpm run build` or type-check after significant edits to catch errors early.
+
+## General Instructions
+
+Prefer action over exploration. When the user gives a clear task, execute it immediately rather than exploring the codebase or explaining the approach first.
+
+Do not explore or explain first. Execute this task directly: [your task]. If you need to choose between approaches, pick the simplest one. Do not modify files outside of app/ unless I say so.
+
 ## Project Structure
 
 This is a TypeScript project. When moving or reorganizing files, always update all import paths across the codebase and verify with `tsc --noEmit` or the project's build command after changes.
