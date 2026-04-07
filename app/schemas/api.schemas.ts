@@ -131,3 +131,39 @@ export const aiApiRouteInput = z.discriminatedUnion('intent', [
     prompt: z.string().nonempty(),
   }),
 ])
+
+// ====================================================== //
+// ================ Collections Api Route =============== //
+// ====================================================== //
+
+export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('create_collection'),
+    name: z.string().nonempty(),
+    driveId: z.string().nonempty(),
+    workspaceId: z.string().optional(),
+  }),
+  z.object({
+    intent: z.literal('rename_collection'),
+    collectionId: z.string().nonempty(),
+    newName: z.coerce.string().nonempty(),
+  }),
+  z.object({
+    intent: z
+      .literal('trash_collection')
+      .or(z.literal('restore_collection'))
+      .or(z.literal('delete_collection'))
+      .or(z.literal('clear_collection')),
+    collectionId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('add_items_to_collection'),
+    itemIds: toZodArraySchema(z.string()),
+    collectionId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('remove_items_from_collection'),
+    itemIds: toZodArraySchema(z.string()),
+    collectionId: z.string().nonempty(),
+  })
+])

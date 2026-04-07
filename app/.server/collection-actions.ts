@@ -76,7 +76,10 @@ export const searchCollections = searchFactory({
 export function findCollectionById(
   id: string
 ): Promise<CollectionWithRelations | null> {
-  return prisma.collection.findUnique({ where: { id }, include: defaultInclude })
+  return prisma.collection.findUnique({
+    where: { id },
+    include: defaultInclude,
+  })
 }
 
 /**
@@ -127,7 +130,9 @@ export function findFirstCollection(
  * const total = await countCollections({})
  * const userCollections = await countCollections({ where: { item: { ownerId: userId } } })
  */
-export function countCollections(args: Prisma.CollectionCountArgs): Promise<number> {
+export function countCollections(
+  args: Prisma.CollectionCountArgs
+): Promise<number> {
   return prisma.collection.count(args)
 }
 
@@ -184,48 +189,44 @@ export function deleteCollectionRecord(
  * @param name     - Display name of the collection.
  * @param ownerId  - ID of the user who will own the collection.
  * @param driveId  - The drive (root folder) to attach the collection to.
- * @param parentId - Optional parent Item ID; `null` places it at drive root.
  * @returns The created Item with its `collection` relation.
  *
  * @example
  * const col = await createCollection('Favorites', userId, user.driveId)
- *
- * @example
- * // Nested inside a folder:
- * const col = await createCollection('Q1 Assets', userId, user.driveId, folderId)
  */
-export async function createCollection(
-  name: string,
-  ownerId: string,
-  driveId: string,
-  parentId: string | null = null
-) {
+export async function createCollection({
+  name,
+  ownerId,
+  driveId,
+}: {
+  name: string
+  ownerId: string
+  driveId: string
+}) {
   return prisma.$transaction(async (tx) => {
+    let id = toObjectId(getPrefixForModel('Item'))
     const newItem = await tx.item.create({
       data: {
-        id: toObjectId(getPrefixForModel('Item')),
+        id,
         name,
         type: ItemType.collection,
         category: 'unknown',
         status: ItemStatus.normal,
         ownerId,
         driveId,
-        parentId,
         size: 0,
         collection: {
           create: { name, size: 0 },
         },
+        permissions: {
+          create: {
+            id: toObjectId(getPrefixForModel('Permission')),
+            users: { connect: { id: ownerId } },
+            roles: 'write',
+          },
+        },
       },
       include: { collection: true },
-    })
-
-    await tx.permission.create({
-      data: {
-        id: toObjectId(getPrefixForModel('Permission')),
-        item: { connect: { id: newItem.id } },
-        users: { connect: { id: ownerId } },
-        roles: 'write',
-      },
     })
 
     return newItem
@@ -242,24 +243,23 @@ export async function createCollection(
  * @param ownerId     - ID of the user creating the collection (must be a workspace member).
  * @param driveId     - The drive to attach the collection to.
  * @param workspaceId - The workspace the collection belongs to.
- * @param parentId    - Optional parent Item ID; `null` places it at workspace root.
  * @returns The created Item with its `collection` relation.
  * @throws {Error} When `ownerId` is not at least a `member` of the workspace.
  *
  * @example
  * const col = await createWorkspaceCollection('Campaign Assets', userId, user.driveId, workspaceId)
- *
- * @example
- * // Nested under an existing workspace folder:
- * const col = await createWorkspaceCollection('Drafts', userId, user.driveId, workspaceId, folderId)
  */
-export async function createWorkspaceCollection(
-  name: string,
-  ownerId: string,
-  driveId: string,
-  workspaceId: string,
-  parentId: string | null = null
-) {
+export async function createWorkspaceCollection({
+  name,
+  ownerId,
+  driveId,
+  workspaceId,
+}: {
+  name: string
+  ownerId: string
+  driveId: string
+  workspaceId: string
+}) {
   await requireAtLeastRole(ownerId, workspaceId, 'member', {
     statusCode: 403,
     message: 'You must be a workspace member to create collections',
@@ -276,7 +276,6 @@ export async function createWorkspaceCollection(
         ownerId,
         driveId,
         workspaceId,
-        parentId,
         size: 0,
         collection: {
           create: { name, size: 0 },
@@ -317,15 +316,19 @@ export async function createWorkspaceCollection(
  * @example
  * const updated = await renameCollection(userId, collectionId, 'Q2 Campaign')
  */
-export async function renameCollection(
-  userId: string,
-  collectionId: string,
+export async function renameCollection({
+  userId,
+  collectionId,
+  newName,
+}: {
+  userId: string
+  collectionId: string
   newName: string
-) {
+}) {
   await assertItemPermission(userId, collectionId, 'write')
 
-  return prisma.$transaction(async (tx) => {
-    return tx.item.update({
+  return await prisma.$transaction(async (tx) => {
+    return await tx.item.update({
       where: { id: collectionId },
       data: {
         name: newName,
@@ -354,7 +357,13 @@ export async function renameCollection(
  * @example
  * await trashCollection(userId, collectionId)
  */
-export async function trashCollection(userId: string, collectionId: string) {
+export async function trashCollection({
+  userId,
+  collectionId,
+}: {
+  userId: string
+  collectionId: string
+}) {
   await assertItemPermission(userId, collectionId, 'write')
 
   return prisma.item.update({
@@ -376,7 +385,13 @@ export async function trashCollection(userId: string, collectionId: string) {
  * @example
  * await restoreCollection(userId, collectionId)
  */
-export async function restoreCollection(userId: string, collectionId: string) {
+export async function restoreCollection({
+  userId,
+  collectionId,
+}: {
+  userId: string
+  collectionId: string
+}) {
   await assertItemPermission(userId, collectionId, 'write')
 
   return prisma.item.update({
@@ -402,7 +417,13 @@ export async function restoreCollection(userId: string, collectionId: string) {
  * @example
  * await deleteCollection(userId, collectionId)
  */
-export async function deleteCollection(userId: string, collectionId: string) {
+export async function deleteCollection({
+  userId,
+  collectionId,
+}: {
+  userId: string
+  collectionId: string
+}) {
   await assertItemPermission(userId, collectionId, 'write')
 
   return prisma.item.delete({ where: { id: collectionId } })
@@ -558,11 +579,15 @@ export async function removeItemFromCollection(
  * const added = await addItemsToCollection(userId, collectionId, [id1, id2, id3])
  * console.log(`${added.length} items added`)
  */
-export async function addItemsToCollection(
-  userId: string,
-  collectionId: string,
+export async function addItemsToCollection({
+  userId,
+  collectionId,
+  itemIds,
+}: {
+  userId: string
+  collectionId: string
   itemIds: string[]
-) {
+}) {
   await assertItemPermission(userId, collectionId, 'write')
   if (!itemIds.length) return []
 
@@ -628,7 +653,13 @@ export async function addItemsToCollection(
  * @example
  * await clearCollection(userId, collectionId)
  */
-export async function clearCollection(userId: string, collectionId: string) {
+export async function clearCollection({
+  userId,
+  collectionId,
+}: {
+  userId: string
+  collectionId: string
+}) {
   await assertItemPermission(userId, collectionId, 'write')
 
   return prisma.$transaction(async (tx) => {
@@ -804,7 +835,8 @@ export async function listCollectionPermissions(
   }
 
   const isOwner = item.ownerId === userId
-  const canWrite = isOwner || (await hasItemPermission(userId, collectionId, 'write'))
+  const canWrite =
+    isOwner || (await hasItemPermission(userId, collectionId, 'write'))
   if (!canWrite) {
     throw new StashlyError(
       StashlyErrorCode.FORBIDDEN,
@@ -849,7 +881,8 @@ export async function grantCollectionPermission(
   }
 
   const isOwner = item.ownerId === actingUserId
-  const canWrite = isOwner || (await hasItemPermission(actingUserId, collectionId, 'write'))
+  const canWrite =
+    isOwner || (await hasItemPermission(actingUserId, collectionId, 'write'))
   if (!canWrite) {
     throw new StashlyError(
       StashlyErrorCode.FORBIDDEN,

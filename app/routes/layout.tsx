@@ -40,7 +40,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 }
 
-// export const shouldRevalidate: ShouldRevalidateFunction = () => false
+export const shouldRevalidate: ShouldRevalidateFunction = () => false
 
 export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
   const { user, sidebarState } = loaderData

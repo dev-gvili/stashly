@@ -28,7 +28,7 @@ export function River() {
   let location = useLocation()
   if (!location.pathname.includes('/gallery')) return null
   return (
-    <LayoutMenuItem tooltip="River view" value="river" >
+    <LayoutMenuItem tooltip="River view" value="river">
       <RiverIcon className="size-5!" />
     </LayoutMenuItem>
   )
