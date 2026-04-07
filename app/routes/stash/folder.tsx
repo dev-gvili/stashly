@@ -10,7 +10,7 @@ import {
 } from '@/utils/filters/item.filters'
 import { getFolderContent } from '@/services/item-actions'
 import { parseSearchParams } from '@/utils/parsers'
-import { getQueryParamArray } from '@/utils/query-params'
+import { getQueryParam, getQueryParamArray } from '@/utils/query-params'
 import { motion } from 'framer-motion'
 import { redirect, type ShouldRevalidateFunction } from 'react-router'
 import type { Route } from './+types/folder'
@@ -40,7 +40,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 export const shouldRevalidate: ShouldRevalidateFunction = ({
   nextUrl,
   currentUrl,
-  defaultShouldRevalidate,
   formAction,
   formData,
 }) => {
@@ -53,6 +52,11 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   })
   let currentSelectedItems = getQueryParamArray(current, 'selectedItems')
   let nextSelectedItems = getQueryParamArray(next, 'selectedItems')
+
+  if (formData?.get('intent') === 'move_items') {
+    return true
+  }
+
   if (currentSelectedItems.length !== nextSelectedItems.length) {
     return false
   }

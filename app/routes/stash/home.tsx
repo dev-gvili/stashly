@@ -3,7 +3,7 @@ import { auth } from '@/services/auth'
 import { redirect } from 'react-router'
 import { useId } from 'react'
 import type { ShouldRevalidateFunction } from 'react-router'
-import { getQueryParamArray } from '@/utils/query-params'
+import { getQueryParam, getQueryParamArray } from '@/utils/query-params'
 import { FilesEmptyState } from '@/components/states/files-empty-state'
 import { SuggestionsView } from '@/components/views/suggestions-view'
 import { getSuggestedItems } from '@/services/item-actions'
@@ -42,6 +42,7 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   })
   let currentSelectedItems = getQueryParamArray(current, 'selectedItems')
   let nextSelectedItems = getQueryParamArray(next, 'selectedItems')
+
   if (currentSelectedItems.length !== nextSelectedItems.length) {
     return false
   }
@@ -53,15 +54,6 @@ export async function loader({ request, params }: Route.ActionArgs) {
   if (!session) {
     throw redirect('/auth/signin')
   }
-
-  // let searchParams = new URL(request.url).searchParams
-  // searchParams.set('currentUserId', session.user.id)
-  // searchParams.set('parentId', session.user.rootId)
-
-  // let parsedParams = parseSearchParams({
-  //   schema: itemFilterSchema,
-  //   searchParams,
-  // })
 
   // let filters = buildItemFilters(parsedParams)
   const { suggestedFolders, suggestedFiles } = await getSuggestedItems({

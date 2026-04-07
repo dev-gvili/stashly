@@ -133,7 +133,7 @@ export const SuggestionsView = React.forwardRef<
 
       {/* Suggested Files Section */}
       {hasFiles && (
-        <section>
+        <>
           <h2 className="text-lg">Suggested Files</h2>
           <ListLayout items={suggestedFiles} />
 
@@ -167,7 +167,7 @@ export const SuggestionsView = React.forwardRef<
               </motion.div>
             ))}
           </GridLayout>
-        </section>
+        </>
       )}
 
       {/* Empty State */}

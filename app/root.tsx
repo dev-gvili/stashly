@@ -32,29 +32,6 @@ export function meta({}: Route.MetaArgs) {
 }
 export const shouldRevalidate: ShouldRevalidateFunction = () => false
 
-// export const shouldRevalidate: ShouldRevalidateFunction = ({
-//   currentUrl,
-//   nextUrl,
-//   formAction,
-//   defaultShouldRevalidate,
-// }) => {
-//   let current = currentUrl.searchParams
-//   let next = nextUrl.searchParams
-//   let currentSelectedItems = getQueryParamArray(current, 'selectedItems')
-//   let nextSelectedItems = getQueryParamArray(next, 'selectedItems')
-//   if (currentSelectedItems.length !== nextSelectedItems.length) {
-//     return false
-//   }
-//   // if (formAction !== '/api/theme') {
-//   //   return false
-//   // }
-
-//   if (current.get('cursor') !== next.get('cursor')) {
-//     return true
-//   }
-//   return false
-// }
-
 // Return the theme from the session storage using the loader
 export async function loader({ request }: Route.LoaderArgs) {
   let colorScheme = await getColorScheme(request)
