@@ -13,7 +13,7 @@ import {
   getItemPermissions,
   assertItemPermission,
 } from '@/services/permission-actions'
-import { findItem } from '@/services/item-actions'
+import { findFirstItem } from '@/services/item-actions'
 import { requireAtLeastRole } from '@/services/workspace-actions'
 import { StashlyError, StashlyErrorCode } from '@/services/api.errors'
 
@@ -742,8 +742,8 @@ export async function getCollectionItems(
 
   let nextCursor: string | undefined
   if (rows.length > limit) {
-    const nextRow = rows.pop()
-    nextCursor = nextRow?.linkId
+    rows.pop() // discard the peek row
+    nextCursor = rows[rows.length - 1]?.linkId // cursor = last returned row
   }
 
   return {
@@ -798,7 +798,7 @@ export async function listCollectionPermissions(
   userId: string,
   collectionId: string
 ) {
-  const item = await findItem({ where: { id: collectionId } })
+  const item = await findFirstItem({ where: { id: collectionId } })
   if (!item) {
     throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Collection not found')
   }
@@ -843,7 +843,7 @@ export async function grantCollectionPermission(
   collectionId: string,
   role: 'read' | 'write' = 'read'
 ) {
-  const item = await findItem({ where: { id: collectionId } })
+  const item = await findFirstItem({ where: { id: collectionId } })
   if (!item) {
     throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Collection not found')
   }

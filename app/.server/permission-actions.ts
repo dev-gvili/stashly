@@ -260,8 +260,16 @@ export async function hasItemPermission(
   tx?: PrismaTx
 ): Promise<boolean> {
   const db = tx ?? prisma
+  // Role hierarchy: owner ≥ write ≥ read.
+  // A user with a higher role satisfies checks for lower roles.
+  const satisfyingRoles: PermissionRole[] =
+    role === 'read'
+      ? ['read', 'write', 'owner']
+      : role === 'write'
+        ? ['write', 'owner']
+        : ['owner']
   const perm = await db.permission.findFirst({
-    where: { itemId, users: { some: { id: userId } }, roles: role },
+    where: { itemId, users: { some: { id: userId } }, roles: { in: satisfyingRoles } },
   })
   return !!perm
 }
