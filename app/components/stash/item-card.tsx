@@ -36,6 +36,7 @@ import { Checkbox } from '@/ui/checkbox'
 import { useSelection } from './selection'
 import type { Route } from '../../routes/+types/layout'
 import { ItemCardContext, useItemCard } from '@/hooks/useItemCard'
+import { useItemDragDrop, DRAG_ITEM_KEY } from '@/hooks/useItemDragDrop'
 import {
   FolderIcon,
   ActivityIcon,
@@ -62,7 +63,7 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu'
 import useConfirm from '@/hooks/useConfirm'
-import { Button } from '../ui/button';
+import { Button } from '../ui/button'
 
 type FavoriteItem = {
   id: string
@@ -123,7 +124,9 @@ const ItemHeader = React.forwardRef<
 })
 ItemHeader.displayName = 'ItemHeader'
 
-const ItemCardActions = (props: React.ComponentPropsWithoutRef<typeof Button>) => {
+const ItemCardActions = (
+  props: React.ComponentPropsWithoutRef<typeof Button>
+) => {
   let fetcher = useFetcher()
   let { id, name, status, favorites, user } = useItemCard()
   let favorited = toFavorite({ favorites, userId: user?.id })
@@ -547,6 +550,7 @@ const ItemLink = React.forwardRef<
 })
 ItemLink.displayName = 'ItemLink'
 
+
 const ItemCardRoot = ({
   children,
   className,
@@ -581,14 +585,29 @@ const ItemCardRoot = ({
 
   const Comp = asChild ? Slot : 'div'
 
+  const {
+    isDragOver,
+    isFolder,
+    handleDragStart,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+  } = useItemDragDrop({ id: props.id, type: props.type })
+
   return (
     <ItemCardContext.Provider value={value}>
       <Comp
         data-slot="item-card"
         data-item-status={props.status}
         data-item-type={props.type}
+        draggable
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         className={cn(
-          'p-2 grid gap-0 rounded border-none font-stashly bg-sidebar h-64 overflow-hidden group/card card select-none relative z-0',
+          'p-2 grid gap-0 rounded border-none font-stashly bg-sidebar h-64 overflow-hidden group/card card select-none relative z-0 transition-colors',
+          isFolder && isDragOver && 'ring-2 ring-muted bg-muted',
           className
         )}
         onClick={(e) => {
@@ -658,7 +677,6 @@ const ItemContent = React.forwardRef<
 })
 ItemContent.displayName = 'ItemContent'
 
-
 export const ItemCard = Object.assign(ItemCardRoot, {
   Header: ItemHeader,
   Content: ItemContent,
@@ -671,4 +689,4 @@ export const ItemCard = Object.assign(ItemCardRoot, {
   Favorite: ItemFavorite,
   Checkbox: ItemCardCheckBox,
   Actions: ItemCardActions,
-}) 
+})

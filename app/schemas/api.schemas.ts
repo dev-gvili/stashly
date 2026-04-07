@@ -54,7 +54,6 @@ let itemSchema = z.object({
     .or(z.literal('delete_item')),
   selectedItem: z.string().nonempty(),
 })
-
 /**
  * Schema for actions involving multiple items.
  */
@@ -66,6 +65,11 @@ let itemsSchema = z.object({
   selectedItems: toZodArraySchema(z.string()),
 })
 
+let moveItemSchema = z.object({
+  intent: z.literal('move_item'),
+  selectedItem: z.string(),
+  targetFolderId: z.string(),
+})
 /**
  * This schema is for validating and parsing the input from the client for item-related actions.
  * It uses a discriminated union based on the 'intent' field to handle single item or multiple items actions.
@@ -73,6 +77,12 @@ let itemsSchema = z.object({
 export const itemsApiRouteInput = z.discriminatedUnion('intent', [
   itemSchema,
   itemsSchema,
+  moveItemSchema,
+  z.object({
+    intent: z.literal('move_items'),
+    selectedItems: toZodArraySchema(z.string()),
+    targetFolderId: z.string(),
+  }),
 ])
 
 // ====================================================== //

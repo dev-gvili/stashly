@@ -3,6 +3,8 @@ import { toZodArraySchema } from '@/utils/converters'
 import {
   deleteItem,
   deleteItems,
+  moveItem,
+  moveItems,
   restoreItem,
   restoreItems,
   trashItem,
@@ -74,6 +76,15 @@ export async function action({ request, params }: Route.ActionArgs) {
         console.error(e)
         return { success: false, error: e }
       }
+    case 'move_items':
+      try {
+        await moveItems(parsedData.selectedItems, parsedData.targetFolderId)
+        searchParams = removeQueryParam(searchParams, 'selectedItems')
+        return redirect(`${url.pathname}?${searchParams.toString()}`)
+      } catch (e) {
+        console.error(e)
+        return { success: false, error: e }
+      }
     case 'restore_items':
       try {
         await restoreItems(parsedData.selectedItems)
@@ -88,6 +99,15 @@ export async function action({ request, params }: Route.ActionArgs) {
         await deleteItems(parsedData.selectedItems)
         searchParams = removeQueryParam(searchParams, 'selectedItems')
         return redirect(`${url.pathname}${url.search}`)
+      } catch (e) {
+        console.error(e)
+        return { success: false, error: e }
+      }
+    case 'move_item':
+      try {
+        await moveItem(parsedData.selectedItem, parsedData.targetFolderId)
+        searchParams = removeQueryParam(searchParams, 'selectedItem')
+        return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
         console.error(e)
         return { success: false, error: e }
