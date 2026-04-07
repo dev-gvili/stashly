@@ -1,24 +1,25 @@
 import { auth } from '@/.server/auth'
+import { findAllCollections } from '@/services/collection-actions'
+import { CollectionsView } from '@/components/views/collections-view'
+import { redirect, data } from 'react-router'
 import type { Route } from './+types/collections'
-import RecentFilesPage from '@/components/Gemini3DashboardFiles'
 
 export { ErrorBoundary } from '@/components/error-boundary'
-export async function loader({ request, params }: Route.LoaderArgs) {
-  // TODO: implement loader logic
+
+export async function loader({ request }: Route.LoaderArgs) {
   const session = await auth.api.getSession(request)
-  // if (!session) throw new Error('Unauthorized')
-  return { session }
+  if (!session) throw redirect('/auth/signin')
+
+  const collections = await findAllCollections({
+    where: {
+      item: { ownerId: session.user.id, status: 'normal' },
+    },
+    orderBy: { item: { createdAt: 'desc' } },
+  })
+
+  return { collections }
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
-  // TODO: implement action logic
-  return null
-}
-
-export default ({ loaderData }: Route.ComponentProps) => {
-  // This is a placeholder component for the collections route.
-  // You can implement your collections UI here.
-  return (
-    <span>Collections Path</span>
-  )
+export default function Collections({ loaderData }: Route.ComponentProps) {
+  return <CollectionsView collections={loaderData.collections} />
 }

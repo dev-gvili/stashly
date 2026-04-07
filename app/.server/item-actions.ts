@@ -1116,7 +1116,6 @@ export async function paginateItems<
 
   // --- 3. Execute Query ---
 
-  try {
     const items = await prisma.item.findMany({
       where,
       take: limit + 1,
@@ -1142,20 +1141,6 @@ export async function paginateItems<
       nextCursor: string | null
       hasMore?: boolean
     }
-  } catch (error) {
-    if (error instanceof StashlyError) {
-      console.error('[paginateItems] Database query failed:', {
-        message: error.message,
-        stack: error.stack,
-        where,
-        orderBy,
-        cursor,
-      })
-      throw new Error(
-        'Failed to fetch paginated items due to internal database error.'
-      )
-    }
-  }
 }
 
 // --- HELPER: Recursive Copy Logic ---
@@ -1355,152 +1340,149 @@ export async function getSuggestedItems(
     maxFiles = 50,
   } = params
 
-  try {
-    // Single optimized SQL query to fetch both folders and files with all relations
-    const items = await prisma.$queryRaw<
-      Array<{
+  type ItemRow = {
+    id: string
+    name: string
+    type: 'file' | 'folder'
+    category: string
+    status: string
+    size: bigint
+    inclusiveSize: bigint
+    createdAt: Date
+    updatedAt: Date
+    openedAt: Date | null
+    ownerId: string
+    workspaceId: string | null
+    driveId: string
+    parentId: string | null
+    uploadId: string | null
+    tags: string[]
+    file: {
+      id: string
+      mimeType: string | null
+      hash: string | null
+      extension: string | null
+      bucket: string
+      key: string
+      etag: string | null
+    } | null
+    folder: {
+      id: string
+      childCount: number | null
+      inclusiveChildCount: number
+    } | null
+    favorites: Array<{
+      id: string
+      favoritedBy: {
         id: string
         name: string
-        type: 'file' | 'folder'
-        category: string
-        status: string
-        size: bigint
-        inclusiveSize: bigint
-        createdAt: Date
-        updatedAt: Date
-        openedAt: Date | null
-        ownerId: string
-        workspaceId: string | null
-        driveId: string
-        parentId: string | null
-        uploadId: string | null
-        tags: string[]
-        file: {
-          id: string
-          mimeType: string | null
-          hash: string | null
-          extension: string | null
-          bucket: string
-          key: string
-          etag: string | null
-        } | null
-        folder: {
-          id: string
-          childCount: number | null
-          inclusiveChildCount: number
-        } | null
-        favorites: Array<{
-          id: string
-          favoritedBy: {
-            id: string
-            name: string
-            displayName: string | null
-            image: string | null
-          }
-        }>
-        thumbnails: Array<{
-          id: string
-          height: number | null
-          width: number | null
-          url: string
-          view: string
-          size: number
-        }>
-      }>
-    >(Prisma.sql`
-      SELECT 
-        i.id,
-        i.name,
-        i.type,
-        i.category,
-        i.status,
-        i.size,
-        i."inclusiveSize",
-        i."createdAt",
+        displayName: string | null
+        image: string | null
+      }
+    }>
+    thumbnails: Array<{
+      id: string
+      height: number | null
+      width: number | null
+      url: string
+      view: string
+      size: number
+    }>
+  }
+
+  const buildQuery = (type: 'file' | 'folder', limit: number) => Prisma.sql`
+    SELECT
+      i.id,
+      i.name,
+      i.type,
+      i.category,
+      i.status,
+      i.size,
+      i."inclusiveSize",
+      i."createdAt",
+      i."updatedAt",
+      i."openedAt",
+      i."ownerId",
+      i."workspaceId",
+      i."driveId",
+      i."parentId",
+      i."uploadId",
+      i.tags,
+      (CASE WHEN f.id IS NOT NULL THEN jsonb_build_object(
+        'id', f.id,
+        'mimeType', f."mimeType",
+        'hash', f.hash,
+        'extension', f.extension,
+        'bucket', f.bucket,
+        'key', f.key,
+        'etag', f.etag
+      ) ELSE NULL END) as "file",
+      (CASE WHEN fo.id IS NOT NULL THEN jsonb_build_object(
+        'id', fo.id,
+        'childCount', fo."childCount",
+        'inclusiveChildCount', fo."inclusiveChildCount"
+      ) ELSE NULL END) as "folder",
+      COALESCE(
+        json_agg(
+          jsonb_build_object(
+            'id', fav.id,
+            'favoritedBy', jsonb_build_object(
+              'id', u.id,
+              'name', u.name,
+              'displayName', u."displayName",
+              'image', u.image
+            )
+          )
+        ) FILTER (WHERE fav.id IS NOT NULL),
+        '[]'::json
+      ) as "favorites",
+      COALESCE(
+        json_agg(
+          jsonb_build_object(
+            'id', t.id,
+            'height', t.height,
+            'width', t.width,
+            'url', t.url,
+            'view', t.view,
+            'size', t.size
+          )
+        ) FILTER (WHERE t.id IS NOT NULL),
+        '[]'::json
+      ) as "thumbnails"
+    FROM "Item" i
+    LEFT JOIN "File" f ON i.id = f."itemId"
+    LEFT JOIN "Folder" fo ON i.id = fo."itemId"
+    LEFT JOIN "Favorite" fav ON i.id = fav."itemId"
+    LEFT JOIN "user" u ON fav."favoritedById" = u.id
+    LEFT JOIN "Thumbnail" t ON i.id = t."itemId"
+    LEFT JOIN "Permission" p ON i.id = p."itemId"
+    WHERE
+      i."ownerId" = ${userId}
+      AND i."driveId" = ${driveId}
+      AND i."parentId" = ${rootId}
+      AND i.type::text = ${type}
+      AND i.status = 'normal'
+      ${workspaceId ? Prisma.sql`AND i."workspaceId" = ${workspaceId}` : Prisma.empty}
+    GROUP BY i.id, f.id, fo.id
+    ORDER BY
+      GREATEST(
         i."updatedAt",
         i."openedAt",
-        i."ownerId",
-        i."workspaceId",
-        i."driveId",
-        i."parentId",
-        i."uploadId",
-        i.tags,
-        (CASE WHEN f.id IS NOT NULL THEN jsonb_build_object(
-          'id', f.id,
-          'mimeType', f."mimeType",
-          'hash', f.hash,
-          'extension', f.extension,
-          'bucket', f.bucket,
-          'key', f.key,
-          'etag', f.etag
-        ) ELSE NULL END) as "file",
-        (CASE WHEN fo.id IS NOT NULL THEN jsonb_build_object(
-          'id', fo.id,
-          'childCount', fo."childCount",
-          'inclusiveChildCount', fo."inclusiveChildCount"
-        ) ELSE NULL END) as "folder",
-        COALESCE(
-          json_agg(
-            jsonb_build_object(
-              'id', fav.id,
-              'favoritedBy', jsonb_build_object(
-                'id', u.id,
-                'name', u.name,
-                'displayName', u."displayName",
-                'image', u.image
-              )
-            )
-          ) FILTER (WHERE fav.id IS NOT NULL),
-          '[]'::json
-        ) as "favorites",
-        COALESCE(
-          json_agg(
-            jsonb_build_object(
-              'id', t.id,
-              'height', t.height,
-              'width', t.width,
-              'url', t.url,
-              'view', t.view,
-              'size', t.size
-            )
-          ) FILTER (WHERE t.id IS NOT NULL),
-          '[]'::json
-        ) as "thumbnails"
-      FROM "Item" i
-      LEFT JOIN "File" f ON i.id = f."itemId"
-      LEFT JOIN "Folder" fo ON i.id = fo."itemId"
-      LEFT JOIN "Favorite" fav ON i.id = fav."itemId"
-      LEFT JOIN "user" u ON fav."favoritedById" = u.id
-      LEFT JOIN "Thumbnail" t ON i.id = t."itemId"
-      WHERE 
-        i."ownerId" = ${userId}
-        AND i."driveId" = ${driveId}
-        AND i."parentId" = ${rootId}
-        AND i.status = 'normal'
-        ${workspaceId ? Prisma.sql`AND i."workspaceId" = ${workspaceId}` : Prisma.empty}
-      GROUP BY i.id, f.id, fo.id
-      ORDER BY i."updatedAt" DESC NULLS LAST, i."openedAt" DESC NULLS LAST, i."createdAt" DESC
-      LIMIT ${maxFolders + maxFiles}
-    `)
+        i."createdAt",
+        MAX(p."createdAt")
+      ) DESC NULLS LAST
+    LIMIT ${limit}
+  `
 
-    if (items.length === 0) {
-      return {
-        suggestedFolders: [],
-        suggestedFiles: [],
-      }
-    }
-
-    // Separate into folders and files, maintaining sort order
-    const folders = items
-      .filter((item) => item.type === 'folder')
-      .slice(0, maxFolders)
-    const files = items
-      .filter((item) => item.type === 'file')
-      .slice(0, maxFiles)
+  try {
+    const [folders, files] = await Promise.all([
+      prisma.$queryRaw<ItemRow[]>(buildQuery('folder', maxFolders)),
+      prisma.$queryRaw<ItemRow[]>(buildQuery('file', maxFiles)),
+    ])
 
     return {
-      suggestedFolders: folders as any,
       suggestedFiles: files as any,
+      suggestedFolders: folders as any,
     }
   } catch (error) {
     console.error('Error fetching suggested items:', error)
