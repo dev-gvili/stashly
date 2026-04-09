@@ -60,3 +60,6 @@ app/utils/aimodel.test.ts
 models/*
 prisma/erDiagram.md
 # orphaned.md
+
+# Copilot chatmode configs (personal tooling)
+.github/*.chatmode.md

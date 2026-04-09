@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useFetcher } from 'react-router'
+import { Link, useFetcher, useSearchParams } from 'react-router'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/ui/button'
 import { Badge } from '@/ui/badge'
@@ -253,6 +253,71 @@ function CollectionPageHeader({
 }
 
 // ---------------------------------------------------------------------------
+// Grid card
+// ---------------------------------------------------------------------------
+
+function CollectionItemCard({ item }: { item: Item }) {
+  const fetcher = useFetcher()
+  const { open } = useConfirm()
+  const isRemoving = fetcher.state !== 'idle'
+
+  function handleRemove() {
+    fetcher.submit(
+      { intent: 'remove_item', itemId: item.id },
+      { method: 'post', action: '/api/collections' }
+    )
+  }
+
+  return (
+    <motion.div
+      layout
+      variants={rowVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      transition={{ duration: 0.15 }}
+      className={cn(
+        'group relative flex flex-col rounded-lg border bg-card overflow-hidden select-none transition-colors hover:bg-accent/50',
+        isRemoving && 'opacity-50 pointer-events-none'
+      )}
+    >
+      {/* Thumbnail / icon area */}
+      <div className="flex items-center justify-center bg-muted/40 h-32">
+        <ItemTypeIcon type={item.type} className="size-10!" />
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center gap-2 px-3 py-2">
+        <ItemTypeIcon type={item.type} className="shrink-0" />
+        <span className="flex-1 truncate text-sm font-medium">{item.name}</span>
+        <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+          {formatSize('byte', 'unit', Number(item.size))}
+        </span>
+      </div>
+
+      {/* Remove button — top-right on hover */}
+      <Button
+        variant="secondary"
+        size="icon"
+        className="absolute top-2 right-2 size-7 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={() =>
+          open({
+            variant: 'destructive',
+            title: `Remove "${item.name}"?`,
+            description: 'This will remove the item from this collection.',
+            confirmText: 'Remove',
+            onConfirm: handleRemove,
+          })
+        }
+        aria-label={`Remove ${item.name} from collection`}
+      >
+        <RemoveIcon className="size-4!" />
+      </Button>
+    </motion.div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Item row
 // ---------------------------------------------------------------------------
 
@@ -332,6 +397,9 @@ export function CollectionView({
   loadMore,
   collectionsHref,
 }: CollectionViewProps) {
+  const [searchParams] = useSearchParams()
+  const isGrid = searchParams.get('layout') === 'grid'
+
   return (
     <div className="flex flex-col gap-4 pb-8">
       <CollectionPageHeader
@@ -343,10 +411,12 @@ export function CollectionView({
 
       <Separator />
 
-      <div className="flex flex-col gap-1.5 px-4">
+      <div className={cn('px-4', isGrid ? 'grid 2xl:grid-cols-6 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-2' : 'flex flex-col gap-1.5')}>
         <AnimatePresence mode="popLayout">
           {items.length === 0 ? (
             <CollectionEmptyState key="empty" />
+          ) : isGrid ? (
+            items.map((item) => <CollectionItemCard key={item.id} item={item} />)
           ) : (
             items.map((item) => <CollectionItemRow key={item.id} item={item} />)
           )}

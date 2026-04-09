@@ -2,10 +2,10 @@
 
 ## Active
 
-- [ ] Orphaned file cleanup — tackle `app/components/` (34 orphans remaining). See `orphaned.md` for full list.
+- [ ] Orphaned file cleanup — tackle `app/components/` (32 orphans remaining). See `orphaned.md` for full list.
 - [ ] Finish package update type errors — `workspaceItem.service.ts` (6 schema mismatches), `stripe.ts` (undefined check), `subscription.ts` (create signature mismatch)
-- [ ] Decide search infra: integrate the built-but-unwired `search.repository.ts`, `search.ts`, `filters.ts` — or delete them to reduce dead code.
-- [ ] Review `stashly-dashboard.html` — untracked file, decide: commit, move to docs, or delete
+- [ ] Decide search infra: integrate the built-but-unwired `search.repository.ts`, `search.ts`, `filters.ts` — or delete them to reduce dead code. *(deferred — revisit after collections stabilises)*
+- [ ] Collection grid view — `CollectionItemCard` in `collection-view.tsx`, updated picker in `add-to-collection-dialog.tsx`; uncommitted WIP
 
 ## Someday / Low Priority
 
@@ -14,6 +14,8 @@
 
 ## Done
 
+- [x] Collections UI — `CollectionsView`, `CollectionView`, `CollectionCard`, `RenameDialog`, `AddToCollectionDialog` (full-screen picker with date groups, filter pills, year scrubber); routes wired with loaders/actions
+- [x] CLAUDE.md audit — fixed stale architecture sections (layer table, repository/service pattern); added UI conventions (icons, useConfirm, dialog composition, usePagination, SelectionProvider)
 - [x] Collection layer refactored — `CollectionRepository` consolidated into `collection-actions.ts`; permission guards, `$queryRaw` optimisations, full JSDoc
 - [x] collection-actions.ts integration tests — 54 tests against real DB; caught and fixed 3 bugs (permission hierarchy, dead NOT_FOUND guard, pagination cursor off-by-one)
 - [x] Orphaned `.server/repositories` + `.server/services` cleanup — `ItemRepository.ts`, `ItemService.ts`, `CollectionRepository.ts`, `workspace.ts` deleted

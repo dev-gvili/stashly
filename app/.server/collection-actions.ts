@@ -749,8 +749,9 @@ export async function getCollectionItems(
       )`
     : Prisma.sql``
 
-  const rows = await prisma.$queryRaw<(Item & { linkId: string })[]>`
-    SELECT i.*, ci.id AS "linkId"
+  const rows = await prisma.$queryRaw<(Item & { linkId: string; thumbnailUrl: string | null })[]>`
+    SELECT i.*, ci.id AS "linkId",
+           (SELECT t.url FROM "Thumbnail" t WHERE t."itemId" = i.id AND t.view = 'grid' LIMIT 1) AS "thumbnailUrl"
     FROM "CollectionItem" ci
     JOIN "Item" i ON i.id = ci."itemId"
     WHERE ci."collectionId" = ${collectionId}
@@ -778,7 +779,10 @@ export async function getCollectionItems(
   }
 
   return {
-    items: rows.map(({ linkId: _linkId, ...item }) => item as Item),
+    items: rows.map(({ linkId: _linkId, thumbnailUrl, ...item }) => ({
+      ...(item as Item),
+      thumbnailUrl: thumbnailUrl,
+    })),
     nextCursor,
   }
 }

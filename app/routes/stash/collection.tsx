@@ -44,7 +44,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     size: item.size,
     createdAt: item.createdAt,
     thumbnailUrl:
-      (item as any).thumbnails?.find((t: any) => t.view === 'card')?.url ?? null,
+      (item as any).thumbnails?.find((t: any) => t.view === 'grid')?.url ?? null,
   }))
 
   // IDs already in this collection

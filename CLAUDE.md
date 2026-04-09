@@ -60,8 +60,7 @@ Stashly is a **full-stack file management platform** using React Router 7 in fra
 |-------|----------|---------|
 | Routes | `app/routes/` | UI components + loaders/actions (data fetching and mutations) |
 | API Routes | `app/routes/api/` | Resource routes acting as REST endpoints |
-| Services | `app/.server/services/` | Business logic, permission enforcement, orchestration |
-| Repositories | `app/.server/repositories/` | Database access via Prisma (auto-generated, don't hand-edit) |
+| Actions | `app/.server/*-actions.ts` | Business logic + direct Prisma access, permission enforcement (e.g. `item-actions.ts`, `collection-actions.ts`) |
 | Machines | `app/machines/` | XState state machines for complex async workflows |
 | Workers | `app/workers/` | Web Workers for CPU-intensive tasks (AI inference, tokenization) |
 | Schemas | `app/schemas/` | Zod validation schemas shared across client and server |
@@ -80,13 +79,12 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 ```
 
-**Repository pattern**: Repositories wrap Prisma and provide typed CRUD + filtering. Always go through repositories in services, not raw `prisma` calls in route loaders.
+**Actions pattern**: Business logic lives in `app/.server/*-actions.ts` files (e.g. `item-actions.ts`, `collection-actions.ts`). These export plain functions that call Prisma directly and enforce permissions inline. Route loaders/actions call these functions — never call `prisma` directly from routes.
 
-**Service pattern**: Services enforce permissions before calling repositories:
 ```typescript
-await workspaceMemberRepository.requireAtLeastRole(userId, workspaceId, 'member')
-const item = await itemRepository.create({ ... })
-await permissionRepository.create({ ... })
+// In a route loader/action:
+import { getCollectionForUser } from '@/services/collection-actions'
+const collection = await getCollectionForUser(session.user.id, collectionId)
 ```
 
 **API errors**: Use `ApiError` and `ApiErrorCode` from `app/.server/api.errors.ts` for consistent error responses.
@@ -142,6 +140,28 @@ URL pattern: `/:me/stash/*` for personal stash, `/:me/workspaces/:workspaceId/*`
 
 Components use shadcn/ui (source-owned, in `app/components/ui/`) built on Radix UI primitives, styled with TailwindCSS 4. Use `cn()` from `@/utils/styles` for conditional classNames.
 
+### UI Conventions
+
+**Icons**: All icons live in `app/components/icons.tsx`. Always grep it before reaching for lucide-react. `lucide-react` is a valid fallback for icons not yet in that file (it's already a dep via `dialog.tsx`).
+
+**Custom components**: Reusable UI components go in `app/components/core-components/`. Route-level views go in `app/components/views/`.
+
+**Destructive actions**: Use the `useConfirm` hook from `@/hooks/useConfirm` — never inline alert dialogs or `window.confirm`.
+
+**Dialog + Dropdown composition**: To open a dialog from a dropdown item, wrap the item with `DialogTrigger asChild` and call `onSelect={(e) => e.preventDefault()}` to prevent the menu closing before the dialog opens. Don't lift open/close state into the parent as props.
+
+**Dropdowns inside clickable cards**: Always use `modal={false}` on `DropdownMenu` and `e.stopPropagation()` on the trigger to prevent card navigation firing.
+
+**`formatSize` signature**: Three args — `formatSize('byte', 'unit', Number(value))`.
+
+**Type-safe navigation**: Use `href()` from `react-router` for route links: `href('/:me/stash/collections/:collectionId', { me, collectionId })`.
+
+**`paginateItems`**: Use this from `@/services/item-actions` in loaders when fetching paginated item lists; supports `include`, `where`, `cursor`, `limit`.
+
+**Pagination**: All paginated routes use `usePagination<T>(limit)` from `@/hooks/usePagination`. The loader returns `{ items, nextCursor, hasMore }`. The hook reads initial data from `useLoaderData` and appends pages via URL search params.
+
+**Multi-select grids**: Wrap item grids with `<SelectionProvider items={items.map(i => i.id)}>` from `@/components/stash/selection` to enable shift-click range selection and `useSelection()` in child checkboxes.
+
 ### Prisma Schema
 
 Models are split across `prisma/models/*.prisma` files and merged. Generated client outputs to `app/prisma/`. Core models: `User`, `Workspace`, `Item`, `Collection`, `Permission`, `Comment`.
@@ -153,6 +173,10 @@ Models are split across `prisma/models/*.prisma` files and merged. Generated cli
 - **AI features**: Hugging Face transformers, ONNX Runtime, Whisper (speech-to-text), Tesseract (OCR)
 - **Payments**: Stripe, webhooks handled at `/api/stripe`
 - **Storage**: AWS S3-compatible (Tigris on Fly.io), configured in `app/.server/s3.ts`
+
+## Database / SQL
+
+Start with the simplest query that works. Do not use recursive CTEs or over-engineered approaches. Optimize only if there's a demonstrated performance need.
 
 ## Conventions
 

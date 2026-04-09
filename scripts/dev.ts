@@ -1,10 +1,6 @@
+import { PrismaClient } from '../app/prisma/client'
 import '@dotenvx/dotenvx/config'
-import { inspect,
-parseArgs, type ParseArgsConfig } from 'node:util'
-import { itemRepository } from '../.server/repositories/ItemRepository'
-import { subscriptionRepository } from '../.server/repositories/SubscriptionRepository'
-import { getPrefixForModel, toObjectId } from '../utils/converters'
-import { userRepository } from '@/.server/repositories/userRepository'
+import { inspect, parseArgs, type ParseArgsConfig } from 'node:util'
 import { faker } from '@faker-js/faker'
 import {
   generateMockItemsWithFile,
@@ -12,20 +8,14 @@ import {
   generateMockItemWithFile,
   generateMockItemWithFolder,
   //@ts-ignore
-} from '../../prisma/seedData/data'
+} from '../prisma/seedData/data'
 import { PrismaPg } from '@prisma/adapter-pg'
-import { PrismaClient } from '../../app/prisma/client'
-import { changeItemsOwner } from './item-actions.server'
-import { searchRepository } from '../.server/search/search.repository'
-import {
-  buildSearchTextFromItem,
-  embedItemForSearch,
-} from '../.server/search/embeddings'
+
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({
   adapter,
 })
-import { AutoConfig, AutoModel, AutoProcessor } from '@huggingface/transformers';
+import { AutoConfig, AutoModel, AutoProcessor } from '@huggingface/transformers'
 
 const options: ParseArgsConfig = {
   options: {
@@ -48,69 +38,69 @@ async function main() {
   } = parseArgs(options)
 
   let item: any | null = null
-  if (action === 'favorite') {
-    let items = await prisma.item.findMany({
-      distinct: ['id'],
-      take: 4,
-      include: {
-        owner: true,
-      },
-    })
-    faker.helpers
-      .arrayElements(items.map((i) => ({ id: i.id, ownerId: i.ownerId })))
-      .forEach(async (i) => {
-        await itemRepository.favorite(i.id, i.ownerId)
-      })
-  }
-  if (action === 'unfavorite') {
-    item = await itemRepository.unfavorite(`${itemId!}`, `${ownerId}`)
-  }
+  // if (action === 'favorite') {
+  //   let items = await prisma.item.findMany({
+  //     distinct: ['id'],
+  //     take: 4,
+  //     include: {
+  //       owner: true,
+  //     },
+  //   })
+  //   faker.helpers
+  //     .arrayElements(items.map((i) => ({ id: i.id, ownerId: i.ownerId })))
+  //     .forEach(async (i) => {
+  //       await itemRepository.favorite(i.id, i.ownerId)
+  //     })
+  // }
+  // if (action === 'unfavorite') {
+  //   item = await itemRepository.unfavorite(`${itemId!}`, `${ownerId}`)
+  // }
 
-  if (action === 'stripeCustomerId') {
-    item = await subscriptionRepository.findStripeCustomerId(`${ownerId}`)
-  }
-  if (action === 'prices') {
-    item = await subscriptionRepository.listPrices()
-  }
-  if (action === 'add-members') {
-    let member = await userRepository.create({
-      id: toObjectId(getPrefixForModel('User')),
-      email: faker.internet.email(),
-      name: faker.person.firstName(),
-      displayName: faker.person.fullName(),
-      image: faker.image.avatarGitHub(),
-      emailVerified: true,
-      accounts: {
-        create: [
-          {
-            id: toObjectId(getPrefixForModel('Account')),
-            providerId: 'github',
-            accountId: faker.string.numeric(8),
-            accessToken: faker.string.alphanumeric(32),
-            refreshToken: faker.string.alphanumeric(32),
-          },
-        ],
-      },
-    })
-    // itemRepository.favorite(`${itemId!}`, member.id);
-  }
-  if (action === 'change-owner') {
-    const user = await userRepository.findById(`${ownerId}`)
-    const root = await prisma.item.findFirstOrThrow({
-      where: {
-        AND: [{ name: 'root' }],
-        NOT: {
-          ownerId,
-        },
-      },
-    })
-    let res = await changeItemsOwner(root.id!, ownerId, true)
-  }
+  // if (action === 'stripeCustomerId') {
+  //   item = await subscriptionRepository.findStripeCustomerId(`${ownerId}`)
+  // }
+  // if (action === 'prices') {
+  //   item = await subscriptionRepository.listPrices()
+  // }
+  // if (action === 'add-members') {
+  //   let member = await userRepository.create({
+  //     id: toObjectId(getPrefixForModel('User')),
+  //     email: faker.internet.email(),
+  //     name: faker.person.firstName(),
+  //     displayName: faker.person.fullName(),
+  //     image: faker.image.avatarGitHub(),
+  //     emailVerified: true,
+  //     accounts: {
+  //       create: [
+  //         {
+  //           id: toObjectId(getPrefixForModel('Account')),
+  //           providerId: 'github',
+  //           accountId: faker.string.numeric(8),
+  //           accessToken: faker.string.alphanumeric(32),
+  //           refreshToken: faker.string.alphanumeric(32),
+  //         },
+  //       ],
+  //     },
+  //   })
+  //   // itemRepository.favorite(`${itemId!}`, member.id);
+  // }
+  // if (action === 'change-owner') {
+  //   const user = await userRepository.findById(`${ownerId}`)
+  //   const root = await prisma.item.findFirstOrThrow({
+  //     where: {
+  //       AND: [{ name: 'root' }],
+  //       NOT: {
+  //         ownerId,
+  //       },
+  //     },
+  //   })
+  //   let res = await changeItemsOwner(root.id!, ownerId, true)
+  // }
   if (action === 'add-items') {
     const user = await prisma.user.findFirstOrThrow({
       where: {
         name: {
-          startsWith: 'alon',
+          startsWith: 'dev',
         },
       },
       include: {
@@ -126,6 +116,7 @@ async function main() {
         name: 'asc',
       },
     })
+    
     if (folders.length === 0) {
       folders = generateMockItemsWithFolder({
         count: faker.number.int({ min: 15, max: 20 }),
@@ -133,11 +124,14 @@ async function main() {
         drive: user?.drive!,
         name: faker.system.directoryPath().split('/').pop()!,
         parent: { id: user.rootId } as any,
-      })
+      }) as any
     }
-    const files = folders.map((folder) =>
-      generateMockItemWithFile(user, user.drive, folder)
-    )
+    const files = folders.map((folder) => {
+      let drive = user.drive
+      return {
+        ...generateMockItemWithFile(user, drive!, folder),
+      }
+    })
 
     const createdFiles = await prisma.$transaction([
       ...files.map((file) =>
@@ -199,29 +193,29 @@ async function main() {
   } else {
     // void 0
   }
-  if (action === 'embeddings') {
-    let items = await prisma.item.findMany()
+  // if (action === 'embeddings') {
+  //   let items = await prisma.item.findMany()
 
-    for (const item of items) {
-      const vector = await embedItemForSearch(item) // number[]
-      await searchRepository.upsertSearchEmbedding(
-        item.id,
-        vector,
-        buildSearchTextFromItem(item)
-      )
+  //   for (const item of items) {
+  //     const vector = await embedItemForSearch(item) // number[]
+  //     await searchRepository.upsertSearchEmbedding(
+  //       item.id,
+  //       vector,
+  //       buildSearchTextFromItem(item)
+  //     )
+  //   }
+  // }
+  if (action === 'model_config') {
+    if (!model) {
+      throw new Error('Model name is required for model_config action')
     }
-  }
-  if( action === 'model_config') {
-    if(!model) {
-      throw new Error("Model name is required for model_config action")
-    }
-    const cfg = await AutoConfig.from_pretrained(`${model}`,);
+    const cfg = await AutoConfig.from_pretrained(`${model}`)
     // const processor = await AutoProcessor.from_pretrained(`${model}`);
     const modelInstance = await AutoModel.from_pretrained(`${model}`, {
       config: cfg,
-    });
+    })
     // void 0;
-  } 
+  }
 }
 
 main()

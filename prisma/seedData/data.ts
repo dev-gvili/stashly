@@ -280,7 +280,7 @@ export const generateMockItemWithFolder = ({
   drive: Pick<Drive, 'name' | 'id'>
   name: string
   parent?: Item
-}): Prisma.ItemUncheckedCreateInput => {
+}): Omit<Prisma.ItemUncheckedCreateInput, "createdAt"> => {
   const id = toObjectId(getPrefixForModel('Item'))
   return {
     id,

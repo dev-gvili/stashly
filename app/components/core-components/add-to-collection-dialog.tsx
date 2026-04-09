@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFetcher } from 'react-router'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Dialog, DialogPortal } from '@/ui/dialog'
@@ -13,6 +7,7 @@ import { Input } from '@/ui/input'
 import { Badge } from '@/ui/badge'
 import { ScrollArea } from '@/ui/scroll-area'
 import { Checkbox } from '@/ui/checkbox'
+import { ToggleGroup, ToggleGroupItem } from '@/ui/toggle-group'
 import { SearchIcon, XIcon } from 'lucide-react'
 import {
   CheckIcon,
@@ -53,7 +48,9 @@ interface AddToCollectionDialogProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function groupByDate(items: AddToCollectionItem[]): [string, AddToCollectionItem[]][] {
+function groupByDate(
+  items: AddToCollectionItem[]
+): [string, AddToCollectionItem[]][] {
   const map = new Map<string, AddToCollectionItem[]>()
   for (const item of items) {
     const key = item.createdAt
@@ -70,7 +67,9 @@ function groupByDate(items: AddToCollectionItem[]): [string, AddToCollectionItem
   return Array.from(map.entries())
 }
 
-function getYearsFromGroups(groups: [string, AddToCollectionItem[]][]): string[] {
+function getYearsFromGroups(
+  groups: [string, AddToCollectionItem[]][]
+): string[] {
   const years = new Set<string>()
   for (const [label] of groups) {
     const match = label.match(/\d{4}/)
@@ -156,9 +155,11 @@ function GridItem({
       </div>
 
       {/* item name tooltip on hover */}
-      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent px-2 pb-1.5 pt-4 translate-y-full group-hover:translate-y-0 transition-transform duration-150 pointer-events-none">
-        <p className="text-white text-xs truncate font-medium">{item.name}</p>
-        <p className="text-white/70 text-[10px]">
+      <div className="absolute bottom-0 inset-x-0 bg-linear-to-t from-black/60 to-transparent px-2 pb-1.5 pt-4 translate-y-full group-hover:translate-y-0 transition-transform duration-150 pointer-events-none">
+        <p className="text-foreground text-xs truncate font-medium">
+          {item.name}
+        </p>
+        <p className="text-muted-foreground text-[10px]">
           {formatSize('byte', 'unit', Number(item.size))}
         </p>
       </div>
@@ -166,7 +167,7 @@ function GridItem({
       {/* "already added" badge */}
       {existing && (
         <div className="absolute top-2 right-2">
-          <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
+          <Badge className=" px-1 py-0 rounded bg-muted text-muted-foreground">
             Added
           </Badge>
         </div>
@@ -176,7 +177,7 @@ function GridItem({
 }
 
 // ---------------------------------------------------------------------------
-// Filter pill
+// Filters
 // ---------------------------------------------------------------------------
 
 const FILTERS = [
@@ -187,31 +188,6 @@ const FILTERS = [
 ] as const
 
 type FilterValue = (typeof FILTERS)[number]['value']
-
-function FilterPill({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'px-3 py-1 rounded-full text-sm font-medium transition-colors shrink-0',
-        active
-          ? 'bg-foreground text-background'
-          : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-      )}
-    >
-      {children}
-    </button>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // Year scrubber (right rail)
@@ -291,8 +267,10 @@ export function AddToCollectionDialog({
       const q = query.toLowerCase()
       result = result.filter((i) => i.name.toLowerCase().includes(q))
     }
-    if (filter === 'image') result = result.filter((i) => i.category === 'image')
-    else if (filter === 'folder') result = result.filter((i) => i.type === 'folder')
+    if (filter === 'image')
+      result = result.filter((i) => i.category === 'image')
+    else if (filter === 'folder')
+      result = result.filter((i) => i.type === 'folder')
     else if (filter === 'file')
       result = result.filter((i) => i.type === 'file' && i.category !== 'image')
     return result
@@ -412,26 +390,41 @@ export function AddToCollectionDialog({
                 size="sm"
                 className="font-stashly rounded-full px-5"
               >
-                {isSubmitting ? 'Adding…' : selectedCount > 0 ? `Add ${selectedCount}` : 'Done'}
+                {isSubmitting
+                  ? 'Adding…'
+                  : selectedCount > 0
+                    ? `Add ${selectedCount}`
+                    : 'Done'}
               </Button>
             </div>
           </div>
 
-          {/* ── Filter pills ── */}
+          {/* ── Filters ── */}
           <div className="flex items-center gap-2 px-4 py-2 border-b shrink-0 overflow-x-auto scrollbar-none">
-            {FILTERS.map((f) => (
-              <FilterPill
-                key={f.value}
-                active={filter === f.value}
-                onClick={() => setFilter(f.value)}
-              >
-                {f.label}
-              </FilterPill>
-            ))}
+            <ToggleGroup
+              type="single"
+              value={filter}
+              onValueChange={(v) => {
+                if (v) setFilter(v as FilterValue)
+              }}
+              loop
+              variant="outline"
+            >
+              {FILTERS.map((f) => (
+                <ToggleGroupItem
+                  key={f.value}
+                  value={f.value}
+                  className="p-4 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                >
+                  {f.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
 
             {query && (
               <span className="ml-auto text-xs text-muted-foreground shrink-0">
-                {filteredItems.length} result{filteredItems.length !== 1 ? 's' : ''}
+                {filteredItems.length} result
+                {filteredItems.length !== 1 ? 's' : ''}
               </span>
             )}
           </div>
@@ -513,7 +506,8 @@ export function AddToCollectionDialog({
                     {collectionName}
                   </span>
                   <Badge variant="secondary" className="font-normal">
-                    {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
+                    {selectedCount} item{selectedCount !== 1 ? 's' : ''}{' '}
+                    selected
                   </Badge>
                 </div>
 
@@ -532,7 +526,9 @@ export function AddToCollectionDialog({
                     disabled={isSubmitting}
                     className="font-stashly rounded-full px-6"
                   >
-                    {isSubmitting ? 'Adding…' : `Add ${selectedCount} item${selectedCount !== 1 ? 's' : ''}`}
+                    {isSubmitting
+                      ? 'Adding…'
+                      : `Add ${selectedCount} item${selectedCount !== 1 ? 's' : ''}`}
                   </Button>
                 </div>
               </motion.div>
@@ -561,7 +557,9 @@ function DateGroupHeader({
   existingSet: Set<string>
   onToggleAll: (ids: string[]) => void
 }) {
-  const selectableIds = items.map((i) => i.id).filter((id) => !existingSet.has(id))
+  const selectableIds = items
+    .map((i) => i.id)
+    .filter((id) => !existingSet.has(id))
   const allSelected =
     selectableIds.length > 0 && selectableIds.every((id) => selected.has(id))
   const someSelected = selectableIds.some((id) => selected.has(id))
@@ -575,7 +573,10 @@ function DateGroupHeader({
   }
 
   return (
-    <div className="flex items-center gap-2 group/header cursor-pointer" onClick={() => onToggleAll(selectableIds)}>
+    <div
+      className="flex items-center gap-2 group/header cursor-pointer"
+      onClick={() => onToggleAll(selectableIds)}
+    >
       <Checkbox
         checked={allSelected ? true : someSelected ? 'indeterminate' : false}
         onCheckedChange={() => onToggleAll(selectableIds)}
