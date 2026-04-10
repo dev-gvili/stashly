@@ -314,7 +314,7 @@ export type AudioGroupByOutputType = {
   _max: AudioMaxAggregateOutputType | null
 }
 
-type GetAudioGroupByPayload<T extends AudioGroupByArgs> = Prisma.PrismaPromise<
+export type GetAudioGroupByPayload<T extends AudioGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<AudioGroupByOutputType, T['by']> &
       {
@@ -1608,6 +1608,11 @@ export type AudioFindManyArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * Skip the first `n` Audio.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Audio.
+   */
   distinct?: Prisma.AudioScalarFieldEnum | Prisma.AudioScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

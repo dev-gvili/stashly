@@ -165,7 +165,7 @@ export type TrashItemGroupByOutputType = {
   _max: TrashItemMaxAggregateOutputType | null
 }
 
-type GetTrashItemGroupByPayload<T extends TrashItemGroupByArgs> = Prisma.PrismaPromise<
+export type GetTrashItemGroupByPayload<T extends TrashItemGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<TrashItemGroupByOutputType, T['by']> &
       {
@@ -1262,6 +1262,11 @@ export type TrashItemFindManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * Skip the first `n` TrashItems.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of TrashItems.
+   */
   distinct?: Prisma.TrashItemScalarFieldEnum | Prisma.TrashItemScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

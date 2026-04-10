@@ -144,7 +144,7 @@ export type CopyActionGroupByOutputType = {
   _max: CopyActionMaxAggregateOutputType | null
 }
 
-type GetCopyActionGroupByPayload<T extends CopyActionGroupByArgs> = Prisma.PrismaPromise<
+export type GetCopyActionGroupByPayload<T extends CopyActionGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<CopyActionGroupByOutputType, T['by']> &
       {
@@ -999,6 +999,11 @@ export type CopyActionFindManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * Skip the first `n` CopyActions.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of CopyActions.
+   */
   distinct?: Prisma.CopyActionScalarFieldEnum | Prisma.CopyActionScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

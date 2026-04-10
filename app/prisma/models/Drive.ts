@@ -228,7 +228,7 @@ export type DriveGroupByOutputType = {
   _max: DriveMaxAggregateOutputType | null
 }
 
-type GetDriveGroupByPayload<T extends DriveGroupByArgs> = Prisma.PrismaPromise<
+export type GetDriveGroupByPayload<T extends DriveGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<DriveGroupByOutputType, T['by']> &
       {
@@ -1663,6 +1663,11 @@ export type DriveFindManyArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * Skip the first `n` Drives.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Drives.
+   */
   distinct?: Prisma.DriveScalarFieldEnum | Prisma.DriveScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

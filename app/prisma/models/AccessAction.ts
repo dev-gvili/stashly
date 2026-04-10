@@ -137,7 +137,7 @@ export type AccessActionGroupByOutputType = {
   _max: AccessActionMaxAggregateOutputType | null
 }
 
-type GetAccessActionGroupByPayload<T extends AccessActionGroupByArgs> = Prisma.PrismaPromise<
+export type GetAccessActionGroupByPayload<T extends AccessActionGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<AccessActionGroupByOutputType, T['by']> &
       {
@@ -980,6 +980,11 @@ export type AccessActionFindManyArgs<ExtArgs extends runtime.Types.Extensions.In
    * Skip the first `n` AccessActions.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of AccessActions.
+   */
   distinct?: Prisma.AccessActionScalarFieldEnum | Prisma.AccessActionScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

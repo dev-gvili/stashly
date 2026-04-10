@@ -67,8 +67,7 @@ export const ModelName = {
   Activity: 'Activity',
   ActivityTime: 'ActivityTime',
   AuditLog: 'AuditLog',
-  Collection: 'Collection',
-  CollectionItem: 'CollectionItem',
+  CollectionMember: 'CollectionMember',
   Comment: 'Comment',
   Drive: 'Drive',
   File: 'File',
@@ -280,16 +279,7 @@ export const AuditLogScalarFieldEnum = {
 export type AuditLogScalarFieldEnum = (typeof AuditLogScalarFieldEnum)[keyof typeof AuditLogScalarFieldEnum]
 
 
-export const CollectionScalarFieldEnum = {
-  id: 'id',
-  name: 'name',
-  size: 'size'
-} as const
-
-export type CollectionScalarFieldEnum = (typeof CollectionScalarFieldEnum)[keyof typeof CollectionScalarFieldEnum]
-
-
-export const CollectionItemScalarFieldEnum = {
+export const CollectionMemberScalarFieldEnum = {
   id: 'id',
   collectionId: 'collectionId',
   itemId: 'itemId',
@@ -297,7 +287,7 @@ export const CollectionItemScalarFieldEnum = {
   updatedAt: 'updatedAt'
 } as const
 
-export type CollectionItemScalarFieldEnum = (typeof CollectionItemScalarFieldEnum)[keyof typeof CollectionItemScalarFieldEnum]
+export type CollectionMemberScalarFieldEnum = (typeof CollectionMemberScalarFieldEnum)[keyof typeof CollectionMemberScalarFieldEnum]
 
 
 export const CommentScalarFieldEnum = {

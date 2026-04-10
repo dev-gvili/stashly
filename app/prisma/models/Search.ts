@@ -158,7 +158,7 @@ export type SearchGroupByOutputType = {
   _max: SearchMaxAggregateOutputType | null
 }
 
-type GetSearchGroupByPayload<T extends SearchGroupByArgs> = Prisma.PrismaPromise<
+export type GetSearchGroupByPayload<T extends SearchGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<SearchGroupByOutputType, T['by']> &
       {
@@ -935,6 +935,11 @@ export type SearchFindManyArgs<ExtArgs extends runtime.Types.Extensions.Internal
    * Skip the first `n` Searches.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Searches.
+   */
   distinct?: Prisma.SearchScalarFieldEnum | Prisma.SearchScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

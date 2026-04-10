@@ -137,7 +137,7 @@ export type VersionActionGroupByOutputType = {
   _max: VersionActionMaxAggregateOutputType | null
 }
 
-type GetVersionActionGroupByPayload<T extends VersionActionGroupByArgs> = Prisma.PrismaPromise<
+export type GetVersionActionGroupByPayload<T extends VersionActionGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<VersionActionGroupByOutputType, T['by']> &
       {
@@ -967,6 +967,11 @@ export type VersionActionFindManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Skip the first `n` VersionActions.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of VersionActions.
+   */
   distinct?: Prisma.VersionActionScalarFieldEnum | Prisma.VersionActionScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

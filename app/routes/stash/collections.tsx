@@ -10,12 +10,17 @@ export async function loader({ request }: Route.LoaderArgs) {
   const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/signin')
 
-  const collections = await findAllCollections({
-    where: {
-      item: { ownerId: session.user.id, status: 'normal' },
-    },
-    orderBy: { item: { createdAt: 'desc' } },
+  const raw = await findAllCollections({
+    where: { ownerId: session.user.id, status: 'normal' },
+    orderBy: { createdAt: 'desc' },
   })
+
+  const collections = raw.map((col) => ({
+    id: col.id,
+    name: col.name,
+    size: col.size,
+    itemCount: col.collectionItems.length,
+  }))
 
   return { collections }
 }

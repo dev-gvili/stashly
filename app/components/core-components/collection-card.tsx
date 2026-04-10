@@ -19,11 +19,13 @@ import { CollectionIcon, MenuDotsIcon, RenameIcon, TrashIcon } from '@/component
 import { RenameDialog } from '@/components/core-components/rename-dialog'
 import { formatSize } from '@/utils/formaters'
 import useConfirm from '@/hooks/useConfirm'
-import type { Prisma } from '@/prisma/client'
 
-export type CollectionWithRelations = Prisma.CollectionGetPayload<{
-  include: { item: true; items: true }
-}>
+export interface CollectionCardItem {
+  id: string
+  name: string
+  size: bigint
+  itemCount: number
+}
 
 export const cardVariants = {
   hidden: { opacity: 0, scale: 0.96 },
@@ -34,7 +36,7 @@ export const cardVariants = {
 export function CollectionCard({
   collection,
 }: {
-  collection: CollectionWithRelations
+  collection: CollectionCardItem
 }) {
   const navigate = useNavigate()
   const { me } = useParams()
@@ -109,8 +111,8 @@ export function CollectionCard({
       <CardContent className="px-4">
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span>
-            {collection.items.length}{' '}
-            {collection.items.length === 1 ? 'item' : 'items'}
+            {collection.itemCount}{' '}
+            {collection.itemCount === 1 ? 'item' : 'items'}
           </span>
           <span className="text-border">·</span>
           <span>{formatSize('byte', 'unit', Number(collection.size))}</span>

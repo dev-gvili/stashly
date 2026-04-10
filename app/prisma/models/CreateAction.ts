@@ -130,7 +130,7 @@ export type CreateActionGroupByOutputType = {
   _max: CreateActionMaxAggregateOutputType | null
 }
 
-type GetCreateActionGroupByPayload<T extends CreateActionGroupByArgs> = Prisma.PrismaPromise<
+export type GetCreateActionGroupByPayload<T extends CreateActionGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<CreateActionGroupByOutputType, T['by']> &
       {
@@ -935,6 +935,11 @@ export type CreateActionFindManyArgs<ExtArgs extends runtime.Types.Extensions.In
    * Skip the first `n` CreateActions.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of CreateActions.
+   */
   distinct?: Prisma.CreateActionScalarFieldEnum | Prisma.CreateActionScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

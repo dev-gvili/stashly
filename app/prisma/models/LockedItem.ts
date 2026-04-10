@@ -158,7 +158,7 @@ export type LockedItemGroupByOutputType = {
   _max: LockedItemMaxAggregateOutputType | null
 }
 
-type GetLockedItemGroupByPayload<T extends LockedItemGroupByArgs> = Prisma.PrismaPromise<
+export type GetLockedItemGroupByPayload<T extends LockedItemGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<LockedItemGroupByOutputType, T['by']> &
       {
@@ -1223,6 +1223,11 @@ export type LockedItemFindManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * Skip the first `n` LockedItems.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of LockedItems.
+   */
   distinct?: Prisma.LockedItemScalarFieldEnum | Prisma.LockedItemScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

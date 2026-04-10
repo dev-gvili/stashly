@@ -189,7 +189,7 @@ export type FolderGroupByOutputType = {
   _max: FolderMaxAggregateOutputType | null
 }
 
-type GetFolderGroupByPayload<T extends FolderGroupByArgs> = Prisma.PrismaPromise<
+export type GetFolderGroupByPayload<T extends FolderGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<FolderGroupByOutputType, T['by']> &
       {
@@ -1177,6 +1177,11 @@ export type FolderFindManyArgs<ExtArgs extends runtime.Types.Extensions.Internal
    * Skip the first `n` Folders.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Folders.
+   */
   distinct?: Prisma.FolderScalarFieldEnum | Prisma.FolderScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

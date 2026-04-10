@@ -14,12 +14,12 @@ import {
 import {
   CollectionCard,
   cardVariants,
-  type CollectionWithRelations,
+  type CollectionCardItem,
 } from '@/components/core-components/collection-card'
 import { CollectionEmptyState } from '@/components/states/collection-empty-state'
 
 interface CollectionsViewProps {
-  collections: CollectionWithRelations[]
+  collections: CollectionCardItem[]
 }
 
 function NewCollectionDialog({
