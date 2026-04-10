@@ -4,7 +4,17 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { mkdir, writeFile } from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
-import { TEST_USER_ID, TEST_USER_EMAIL } from './constants'
+import {
+  TEST_USER_ID,
+  TEST_USER_EMAIL,
+  E2E_ITEM_A_ID,
+  E2E_ITEM_B_ID,
+  E2E_ITEM_C_ID,
+  E2E_ITEM_A_NAME,
+  E2E_ITEM_B_NAME,
+  E2E_ITEM_C_NAME,
+  E2E_ROOT_FOLDER_ID,
+} from './constants'
 
 /**
  * Signs a cookie value the same way better-auth / better-call does:
@@ -107,6 +117,55 @@ export default async function globalSetup() {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
+    })
+
+    // Seed test items for favorites E2E tests — upserted so re-runs are idempotent.
+    // Root folder must exist as an Item record because children reference it via FK.
+    await prisma.item.upsert({
+      where: { id: E2E_ROOT_FOLDER_ID },
+      create: {
+        id: E2E_ROOT_FOLDER_ID,
+        name: 'E2E Root',
+        type: 'folder',
+        ownerId: TEST_USER_ID,
+        driveId: E2E_DRIVE_ID,
+      },
+      update: {},
+    })
+
+    // Item A: unfavorited (toggle-on test)
+    // Item B: pre-favorited (toggle-off test)
+    // Item C: pre-favorited (listing test)
+    const itemBase = {
+      ownerId: TEST_USER_ID,
+      driveId: E2E_DRIVE_ID,
+      parentId: E2E_ROOT_FOLDER_ID,
+    }
+    await prisma.item.upsert({
+      where: { id: E2E_ITEM_A_ID },
+      create: { id: E2E_ITEM_A_ID, name: E2E_ITEM_A_NAME, ...itemBase },
+      update: { name: E2E_ITEM_A_NAME },
+    })
+    await prisma.item.upsert({
+      where: { id: E2E_ITEM_B_ID },
+      create: { id: E2E_ITEM_B_ID, name: E2E_ITEM_B_NAME, ...itemBase },
+      update: { name: E2E_ITEM_B_NAME },
+    })
+    await prisma.item.upsert({
+      where: { id: E2E_ITEM_C_ID },
+      create: { id: E2E_ITEM_C_ID, name: E2E_ITEM_C_NAME, ...itemBase },
+      update: { name: E2E_ITEM_C_NAME },
+    })
+
+    // Reset favorites for A (ensure unfavorited), then upsert favorites for B and C.
+    await prisma.favorite.deleteMany({
+      where: { favoritedById: TEST_USER_ID, itemId: { in: [E2E_ITEM_A_ID, E2E_ITEM_B_ID, E2E_ITEM_C_ID] } },
+    })
+    await prisma.favorite.createMany({
+      data: [
+        { id: 'fav_e2e_test_000_bbb', favoritedById: TEST_USER_ID, itemId: E2E_ITEM_B_ID },
+        { id: 'fav_e2e_test_000_ccc', favoritedById: TEST_USER_ID, itemId: E2E_ITEM_C_ID },
+      ],
     })
 
     // Write Playwright storageState — better-auth reads `better-auth.session_token` cookie

@@ -1711,6 +1711,68 @@ export async function findFavoritesForUser(userId: string) {
 }
 
 /**
+ * Returns a paginated list of items favorited by the given user,
+ * with all relations required by ItemCard.
+ */
+export async function getFavoritedItems({
+  userId,
+  cursor,
+  limit = 50,
+}: {
+  userId: string
+  cursor?: string
+  limit?: number
+}) {
+  const items = await prisma.item.findMany({
+    where: { favorites: { some: { favoritedById: userId } } },
+    take: limit + 1,
+    orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+    cursor: cursor ? { id: cursor } : undefined,
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      size: true,
+      inclusiveSize: true,
+      category: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      ownerId: true,
+      parentId: true,
+      workspaceId: true,
+      driveId: true,
+      file: true,
+      folder: true,
+      favorites: {
+        select: {
+          id: true,
+          favoritedBy: {
+            select: { id: true, name: true, displayName: true, image: true },
+          },
+        },
+      },
+      thumbnails: {
+        select: {
+          height: true,
+          width: true,
+          url: true,
+          view: true,
+          size: true,
+          id: true,
+        },
+      },
+      tags: true,
+    },
+  })
+
+  const hasMore = items.length > limit
+  const data = items.slice(0, limit)
+  const nextCursor = hasMore ? (data[data.length - 1]?.id ?? null) : null
+  return { items: data, nextCursor, hasMore }
+}
+
+/**
  * Returns the item if it has been favorited by the given user, otherwise `null`.
  *
  * @param itemId - The ID of the item.

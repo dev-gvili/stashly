@@ -14,6 +14,7 @@ import {
   AIcon,
   CollectionIcon,
   CollectionLineIcon,
+  FavoriteIcon,
   FolderIcon,
   HomeIcon,
   ImagesIcon,
@@ -84,6 +85,14 @@ const sidebarItems: SidebarItemProps[] = [
     label: 'Collections',
     to: 'collections?layout=grid',
     tooltip: 'Collections',
+  },
+  {
+    icon: (isActive) => (
+      <FavoriteIcon className="size-5! group-data-[state=collapsed]:ml-2" />
+    ),
+    label: 'Favorites', 
+    to: 'favorites?layout=grid', 
+    tooltip: 'Favorites', 
   },
   {
     icon: (isActive) => (
