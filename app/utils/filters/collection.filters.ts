@@ -2,6 +2,8 @@ import { z } from 'zod'
 import { Prisma } from '@/prisma/client'
 import { createFilter, buildFiltersFactory } from '@/utils/filters'
 import { date } from '@/schemas/filters.schemas'
+
+// Collections are Items with type='collection', so filters target ItemWhereInput.
 export const collectionFilterSchema = z
   .object({
     id: z.string(),
@@ -14,13 +16,13 @@ export const collectionFilterSchema = z
     // Pagination Params
     cursor: z.string().optional(),
     take: z.coerce.number().default(50),
-    orderBy: z.custom<Prisma.CollectionOrderByWithRelationInput>(),
-    include: z.custom<Prisma.CollectionInclude>(),
+    orderBy: z.custom<Prisma.ItemOrderByWithRelationInput>(),
+    include: z.custom<Prisma.ItemInclude>(),
   })
   .partial()
 
 export const createCollectionFilter = createFilter<
-  Prisma.CollectionWhereInput,
+  Prisma.ItemWhereInput,
   z.infer<typeof collectionFilterSchema>
 >()
 
@@ -33,11 +35,9 @@ export const collectionFilters = {
       message: 'At least one of before or after must be provided.',
     }),
     ({ before, after }) => ({
-      item: {
-        createdAt: {
-          lte: before,
-          gte: after,
-        },
+      createdAt: {
+        lte: before,
+        gte: after,
       },
     })
   ),

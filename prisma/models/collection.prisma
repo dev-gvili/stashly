@@ -1,36 +1,19 @@
 /**
- * Represents a collection of items, linked to a specific item by its ID.
- * Each collection has a unique name and tracks the total size of its items.
- * The relationship with items is managed through the CollectionItem junction table.
- * Index on name for efficient querying.
-*/
-model Collection {
-    id    String           @id
-    name  String
-    size  BigInt           @default(0)
-    item  Item             @relation(fields: [id], references: [id], onDelete: Cascade)
-    items CollectionItem[]
-
-    @@index([name])
-    @@index([size])
-}
-
-
-/**
-    * Junction table for many-to-many relationship between Collection and Item
-    * Each entry represents an association of an Item with a Collection
-    * Includes timestamps for tracking when the association was created and last updated
-    * Enforces uniqueness on the combination of collectionId and itemId to prevent duplicate associations
-    * Indexes on collectionId, itemId, and createdAt for efficient querying and sorting.
-*/
-model CollectionItem {
-    id           String     @id
+ * Junction table for the many-to-many self-relation on Item that represents
+ * collection membership. A Collection is simply an Item with type='collection'.
+ *
+ * Replaces the old `Collection` facet model and `CollectionItem` junction table.
+ * `collectionId` points to an Item whose type='collection'.
+ * `itemId` points to any Item that is a member of that collection.
+ */
+model CollectionMember {
+    id           String   @id
     collectionId String
-    collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+    collection   Item     @relation("CollectionHost", fields: [collectionId], references: [id], onDelete: Cascade)
     itemId       String
-    item         Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
-    createdAt    DateTime   @default(now())
-    updatedAt    DateTime   @updatedAt
+    item         Item     @relation("ItemMember", fields: [itemId], references: [id], onDelete: Cascade)
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @updatedAt
 
     @@unique([collectionId, itemId])
     @@index([collectionId])

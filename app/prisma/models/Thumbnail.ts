@@ -231,7 +231,7 @@ export type ThumbnailGroupByOutputType = {
   _max: ThumbnailMaxAggregateOutputType | null
 }
 
-type GetThumbnailGroupByPayload<T extends ThumbnailGroupByArgs> = Prisma.PrismaPromise<
+export type GetThumbnailGroupByPayload<T extends ThumbnailGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<ThumbnailGroupByOutputType, T['by']> &
       {
@@ -1363,6 +1363,11 @@ export type ThumbnailFindManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * Skip the first `n` Thumbnails.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Thumbnails.
+   */
   distinct?: Prisma.ThumbnailScalarFieldEnum | Prisma.ThumbnailScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

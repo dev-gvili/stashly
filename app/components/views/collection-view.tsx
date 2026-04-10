@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useFetcher, useSearchParams } from 'react-router'
+import { Link, useFetcher, useParams, useSearchParams } from 'react-router'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/ui/button'
 import { Badge } from '@/ui/badge'
@@ -259,11 +259,12 @@ function CollectionPageHeader({
 function CollectionItemCard({ item }: { item: Item }) {
   const fetcher = useFetcher()
   const { open } = useConfirm()
+  const { collectionId } = useParams()
   const isRemoving = fetcher.state !== 'idle'
 
   function handleRemove() {
     fetcher.submit(
-      { intent: 'remove_item', itemId: item.id },
+      { intent: 'remove_item', itemId: item.id, collectionId: collectionId! },
       { method: 'post', action: '/api/collections' }
     )
   }
@@ -330,11 +331,12 @@ const rowVariants = {
 function CollectionItemRow({ item }: { item: Item }) {
   const fetcher = useFetcher()
   const { open } = useConfirm()
+  const { collectionId } = useParams()
   const isRemoving = fetcher.state !== 'idle'
 
   function handleRemove() {
     fetcher.submit(
-      { intent: 'remove_item', itemId: item.id },
+      { intent: 'remove_item', itemId: item.id, collectionId: collectionId! },
       { method: 'post', action: '/api/collections' }
     )
   }

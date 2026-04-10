@@ -269,7 +269,7 @@ export type ItemGroupByOutputType = {
   _max: ItemMaxAggregateOutputType | null
 }
 
-type GetItemGroupByPayload<T extends ItemGroupByArgs> = Prisma.PrismaPromise<
+export type GetItemGroupByPayload<T extends ItemGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<ItemGroupByOutputType, T['by']> &
       {
@@ -309,14 +309,14 @@ export type ItemWhereInput = {
   image?: Prisma.XOR<Prisma.ImageNullableScalarRelationFilter, Prisma.ImageWhereInput> | null
   video?: Prisma.XOR<Prisma.VideoNullableScalarRelationFilter, Prisma.VideoWhereInput> | null
   audio?: Prisma.XOR<Prisma.AudioNullableScalarRelationFilter, Prisma.AudioWhereInput> | null
-  collection?: Prisma.XOR<Prisma.CollectionNullableScalarRelationFilter, Prisma.CollectionWhereInput> | null
   owner?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   workspace?: Prisma.XOR<Prisma.WorkspaceNullableScalarRelationFilter, Prisma.WorkspaceWhereInput> | null
   drive?: Prisma.XOR<Prisma.DriveScalarRelationFilter, Prisma.DriveWhereInput>
   children?: Prisma.ItemListRelationFilter
   parent?: Prisma.XOR<Prisma.ItemNullableScalarRelationFilter, Prisma.ItemWhereInput> | null
   trash?: Prisma.XOR<Prisma.TrashItemNullableScalarRelationFilter, Prisma.TrashItemWhereInput> | null
-  collectionItems?: Prisma.CollectionItemListRelationFilter
+  collectionItems?: Prisma.CollectionMemberListRelationFilter
+  memberOfCollections?: Prisma.CollectionMemberListRelationFilter
   locked?: Prisma.XOR<Prisma.LockedItemNullableScalarRelationFilter, Prisma.LockedItemWhereInput> | null
   permissions?: Prisma.PermissionListRelationFilter
   thumbnails?: Prisma.ThumbnailListRelationFilter
@@ -350,14 +350,14 @@ export type ItemOrderByWithRelationInput = {
   image?: Prisma.ImageOrderByWithRelationInput
   video?: Prisma.VideoOrderByWithRelationInput
   audio?: Prisma.AudioOrderByWithRelationInput
-  collection?: Prisma.CollectionOrderByWithRelationInput
   owner?: Prisma.UserOrderByWithRelationInput
   workspace?: Prisma.WorkspaceOrderByWithRelationInput
   drive?: Prisma.DriveOrderByWithRelationInput
   children?: Prisma.ItemOrderByRelationAggregateInput
   parent?: Prisma.ItemOrderByWithRelationInput
   trash?: Prisma.TrashItemOrderByWithRelationInput
-  collectionItems?: Prisma.CollectionItemOrderByRelationAggregateInput
+  collectionItems?: Prisma.CollectionMemberOrderByRelationAggregateInput
+  memberOfCollections?: Prisma.CollectionMemberOrderByRelationAggregateInput
   locked?: Prisma.LockedItemOrderByWithRelationInput
   permissions?: Prisma.PermissionOrderByRelationAggregateInput
   thumbnails?: Prisma.ThumbnailOrderByRelationAggregateInput
@@ -394,14 +394,14 @@ export type ItemWhereUniqueInput = Prisma.AtLeast<{
   image?: Prisma.XOR<Prisma.ImageNullableScalarRelationFilter, Prisma.ImageWhereInput> | null
   video?: Prisma.XOR<Prisma.VideoNullableScalarRelationFilter, Prisma.VideoWhereInput> | null
   audio?: Prisma.XOR<Prisma.AudioNullableScalarRelationFilter, Prisma.AudioWhereInput> | null
-  collection?: Prisma.XOR<Prisma.CollectionNullableScalarRelationFilter, Prisma.CollectionWhereInput> | null
   owner?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   workspace?: Prisma.XOR<Prisma.WorkspaceNullableScalarRelationFilter, Prisma.WorkspaceWhereInput> | null
   drive?: Prisma.XOR<Prisma.DriveScalarRelationFilter, Prisma.DriveWhereInput>
   children?: Prisma.ItemListRelationFilter
   parent?: Prisma.XOR<Prisma.ItemNullableScalarRelationFilter, Prisma.ItemWhereInput> | null
   trash?: Prisma.XOR<Prisma.TrashItemNullableScalarRelationFilter, Prisma.TrashItemWhereInput> | null
-  collectionItems?: Prisma.CollectionItemListRelationFilter
+  collectionItems?: Prisma.CollectionMemberListRelationFilter
+  memberOfCollections?: Prisma.CollectionMemberListRelationFilter
   locked?: Prisma.XOR<Prisma.LockedItemNullableScalarRelationFilter, Prisma.LockedItemWhereInput> | null
   permissions?: Prisma.PermissionListRelationFilter
   thumbnails?: Prisma.ThumbnailListRelationFilter
@@ -477,14 +477,14 @@ export type ItemCreateInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -518,10 +518,10 @@ export type ItemUncheckedCreateInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -551,14 +551,14 @@ export type ItemUpdateInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -592,10 +592,10 @@ export type ItemUncheckedUpdateInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -777,23 +777,15 @@ export type ItemUpdateOneWithoutLogsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutLogsInput, Prisma.ItemUpdateWithoutLogsInput>, Prisma.ItemUncheckedUpdateWithoutLogsInput>
 }
 
-export type ItemCreateNestedOneWithoutCollectionInput = {
-  create?: Prisma.XOR<Prisma.ItemCreateWithoutCollectionInput, Prisma.ItemUncheckedCreateWithoutCollectionInput>
-  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutCollectionInput
-  connect?: Prisma.ItemWhereUniqueInput
-}
-
-export type ItemUpdateOneRequiredWithoutCollectionNestedInput = {
-  create?: Prisma.XOR<Prisma.ItemCreateWithoutCollectionInput, Prisma.ItemUncheckedCreateWithoutCollectionInput>
-  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutCollectionInput
-  upsert?: Prisma.ItemUpsertWithoutCollectionInput
-  connect?: Prisma.ItemWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutCollectionInput, Prisma.ItemUpdateWithoutCollectionInput>, Prisma.ItemUncheckedUpdateWithoutCollectionInput>
-}
-
 export type ItemCreateNestedOneWithoutCollectionItemsInput = {
   create?: Prisma.XOR<Prisma.ItemCreateWithoutCollectionItemsInput, Prisma.ItemUncheckedCreateWithoutCollectionItemsInput>
   connectOrCreate?: Prisma.ItemCreateOrConnectWithoutCollectionItemsInput
+  connect?: Prisma.ItemWhereUniqueInput
+}
+
+export type ItemCreateNestedOneWithoutMemberOfCollectionsInput = {
+  create?: Prisma.XOR<Prisma.ItemCreateWithoutMemberOfCollectionsInput, Prisma.ItemUncheckedCreateWithoutMemberOfCollectionsInput>
+  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutMemberOfCollectionsInput
   connect?: Prisma.ItemWhereUniqueInput
 }
 
@@ -803,6 +795,14 @@ export type ItemUpdateOneRequiredWithoutCollectionItemsNestedInput = {
   upsert?: Prisma.ItemUpsertWithoutCollectionItemsInput
   connect?: Prisma.ItemWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutCollectionItemsInput, Prisma.ItemUpdateWithoutCollectionItemsInput>, Prisma.ItemUncheckedUpdateWithoutCollectionItemsInput>
+}
+
+export type ItemUpdateOneRequiredWithoutMemberOfCollectionsNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemCreateWithoutMemberOfCollectionsInput, Prisma.ItemUncheckedCreateWithoutMemberOfCollectionsInput>
+  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutMemberOfCollectionsInput
+  upsert?: Prisma.ItemUpsertWithoutMemberOfCollectionsInput
+  connect?: Prisma.ItemWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutMemberOfCollectionsInput, Prisma.ItemUpdateWithoutMemberOfCollectionsInput>, Prisma.ItemUncheckedUpdateWithoutMemberOfCollectionsInput>
 }
 
 export type ItemCreateNestedOneWithoutCommentsInput = {
@@ -967,6 +967,14 @@ export type ItemUncheckedCreateNestedManyWithoutParentInput = {
   connectOrCreate?: Prisma.ItemCreateOrConnectWithoutParentInput | Prisma.ItemCreateOrConnectWithoutParentInput[]
   createMany?: Prisma.ItemCreateManyParentInputEnvelope
   connect?: Prisma.ItemWhereUniqueInput | Prisma.ItemWhereUniqueInput[]
+}
+
+export type BigIntFieldUpdateOperationsInput = {
+  set?: bigint | number
+  increment?: bigint | number
+  decrement?: bigint | number
+  multiply?: bigint | number
+  divide?: bigint | number
 }
 
 export type EnumItemTypeFieldUpdateOperationsInput = {
@@ -1210,14 +1218,14 @@ export type ItemCreateWithoutActivitiesInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -1250,10 +1258,10 @@ export type ItemUncheckedCreateWithoutActivitiesInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -1298,14 +1306,14 @@ export type ItemUpdateWithoutActivitiesInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -1338,10 +1346,10 @@ export type ItemUncheckedUpdateWithoutActivitiesInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -1370,14 +1378,14 @@ export type ItemCreateWithoutLogsInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -1410,10 +1418,10 @@ export type ItemUncheckedCreateWithoutLogsInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -1458,14 +1466,14 @@ export type ItemUpdateWithoutLogsInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -1498,176 +1506,16 @@ export type ItemUncheckedUpdateWithoutLogsInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
-  favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
-  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
-}
-
-export type ItemCreateWithoutCollectionInput = {
-  id: string
-  name: string
-  size?: bigint | number
-  inclusiveSize?: bigint | number
-  type?: $Enums.ItemType
-  category?: $Enums.ItemCategory
-  status?: $Enums.ItemStatus
-  uploadId?: string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  openedAt?: Date | string | null
-  tags?: Prisma.ItemCreatetagsInput | string[]
-  file?: Prisma.FileCreateNestedOneWithoutItemInput
-  folder?: Prisma.FolderCreateNestedOneWithoutItemInput
-  image?: Prisma.ImageCreateNestedOneWithoutItemInput
-  video?: Prisma.VideoCreateNestedOneWithoutItemInput
-  audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  owner: Prisma.UserCreateNestedOneWithoutItemsInput
-  workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
-  drive: Prisma.DriveCreateNestedOneWithoutItemsInput
-  children?: Prisma.ItemCreateNestedManyWithoutParentInput
-  parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
-  trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
-  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
-  permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
-  thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
-  activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
-  comments?: Prisma.CommentCreateNestedManyWithoutItemInput
-  logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
-  favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
-  search?: Prisma.SearchCreateNestedOneWithoutItemInput
-}
-
-export type ItemUncheckedCreateWithoutCollectionInput = {
-  id: string
-  name: string
-  size?: bigint | number
-  inclusiveSize?: bigint | number
-  type?: $Enums.ItemType
-  category?: $Enums.ItemCategory
-  status?: $Enums.ItemStatus
-  uploadId?: string | null
-  createdAt?: Date | string
-  updatedAt?: Date | string
-  openedAt?: Date | string | null
-  ownerId: string
-  workspaceId?: string | null
-  driveId: string
-  parentId?: string | null
-  tags?: Prisma.ItemCreatetagsInput | string[]
-  file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
-  folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
-  image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
-  video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
-  audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
-  trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
-  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
-  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
-  thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
-  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
-  activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
-  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
-  logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
-  favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
-  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
-}
-
-export type ItemCreateOrConnectWithoutCollectionInput = {
-  where: Prisma.ItemWhereUniqueInput
-  create: Prisma.XOR<Prisma.ItemCreateWithoutCollectionInput, Prisma.ItemUncheckedCreateWithoutCollectionInput>
-}
-
-export type ItemUpsertWithoutCollectionInput = {
-  update: Prisma.XOR<Prisma.ItemUpdateWithoutCollectionInput, Prisma.ItemUncheckedUpdateWithoutCollectionInput>
-  create: Prisma.XOR<Prisma.ItemCreateWithoutCollectionInput, Prisma.ItemUncheckedCreateWithoutCollectionInput>
-  where?: Prisma.ItemWhereInput
-}
-
-export type ItemUpdateToOneWithWhereWithoutCollectionInput = {
-  where?: Prisma.ItemWhereInput
-  data: Prisma.XOR<Prisma.ItemUpdateWithoutCollectionInput, Prisma.ItemUncheckedUpdateWithoutCollectionInput>
-}
-
-export type ItemUpdateWithoutCollectionInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
-  inclusiveSize?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
-  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
-  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
-  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
-  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  openedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  tags?: Prisma.ItemUpdatetagsInput | string[]
-  file?: Prisma.FileUpdateOneWithoutItemNestedInput
-  folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
-  image?: Prisma.ImageUpdateOneWithoutItemNestedInput
-  video?: Prisma.VideoUpdateOneWithoutItemNestedInput
-  audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
-  workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
-  drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
-  children?: Prisma.ItemUpdateManyWithoutParentNestedInput
-  parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
-  trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
-  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
-  permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
-  thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
-  activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
-  comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
-  logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
-  favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
-  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
-}
-
-export type ItemUncheckedUpdateWithoutCollectionInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  name?: Prisma.StringFieldUpdateOperationsInput | string
-  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
-  inclusiveSize?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
-  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
-  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
-  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
-  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  openedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  ownerId?: Prisma.StringFieldUpdateOperationsInput | string
-  workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  driveId?: Prisma.StringFieldUpdateOperationsInput | string
-  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  tags?: Prisma.ItemUpdatetagsInput | string[]
-  file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
-  folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
-  image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
-  video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
-  audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
-  trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
-  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
-  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
-  thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
-  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
-  activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
-  comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
-  logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
@@ -1690,13 +1538,13 @@ export type ItemCreateWithoutCollectionItemsInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -1730,9 +1578,9 @@ export type ItemUncheckedCreateWithoutCollectionItemsInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -1747,6 +1595,83 @@ export type ItemUncheckedCreateWithoutCollectionItemsInput = {
 export type ItemCreateOrConnectWithoutCollectionItemsInput = {
   where: Prisma.ItemWhereUniqueInput
   create: Prisma.XOR<Prisma.ItemCreateWithoutCollectionItemsInput, Prisma.ItemUncheckedCreateWithoutCollectionItemsInput>
+}
+
+export type ItemCreateWithoutMemberOfCollectionsInput = {
+  id: string
+  name: string
+  size?: bigint | number
+  inclusiveSize?: bigint | number
+  type?: $Enums.ItemType
+  category?: $Enums.ItemCategory
+  status?: $Enums.ItemStatus
+  uploadId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  openedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
+  file?: Prisma.FileCreateNestedOneWithoutItemInput
+  folder?: Prisma.FolderCreateNestedOneWithoutItemInput
+  image?: Prisma.ImageCreateNestedOneWithoutItemInput
+  video?: Prisma.VideoCreateNestedOneWithoutItemInput
+  audio?: Prisma.AudioCreateNestedOneWithoutItemInput
+  owner: Prisma.UserCreateNestedOneWithoutItemsInput
+  workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
+  drive: Prisma.DriveCreateNestedOneWithoutItemsInput
+  children?: Prisma.ItemCreateNestedManyWithoutParentInput
+  parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
+  trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
+  activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
+  comments?: Prisma.CommentCreateNestedManyWithoutItemInput
+  logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
+  favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
+}
+
+export type ItemUncheckedCreateWithoutMemberOfCollectionsInput = {
+  id: string
+  name: string
+  size?: bigint | number
+  inclusiveSize?: bigint | number
+  type?: $Enums.ItemType
+  category?: $Enums.ItemCategory
+  status?: $Enums.ItemStatus
+  uploadId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  openedAt?: Date | string | null
+  ownerId: string
+  workspaceId?: string | null
+  driveId: string
+  parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
+  file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
+  folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
+  image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
+  video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
+  audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
+  children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
+  trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
+  activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
+  logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
+  favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+}
+
+export type ItemCreateOrConnectWithoutMemberOfCollectionsInput = {
+  where: Prisma.ItemWhereUniqueInput
+  create: Prisma.XOR<Prisma.ItemCreateWithoutMemberOfCollectionsInput, Prisma.ItemUncheckedCreateWithoutMemberOfCollectionsInput>
 }
 
 export type ItemUpsertWithoutCollectionItemsInput = {
@@ -1778,13 +1703,13 @@ export type ItemUpdateWithoutCollectionItemsInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -1818,9 +1743,92 @@ export type ItemUncheckedUpdateWithoutCollectionItemsInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
+  activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
+  logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
+  favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+}
+
+export type ItemUpsertWithoutMemberOfCollectionsInput = {
+  update: Prisma.XOR<Prisma.ItemUpdateWithoutMemberOfCollectionsInput, Prisma.ItemUncheckedUpdateWithoutMemberOfCollectionsInput>
+  create: Prisma.XOR<Prisma.ItemCreateWithoutMemberOfCollectionsInput, Prisma.ItemUncheckedCreateWithoutMemberOfCollectionsInput>
+  where?: Prisma.ItemWhereInput
+}
+
+export type ItemUpdateToOneWithWhereWithoutMemberOfCollectionsInput = {
+  where?: Prisma.ItemWhereInput
+  data: Prisma.XOR<Prisma.ItemUpdateWithoutMemberOfCollectionsInput, Prisma.ItemUncheckedUpdateWithoutMemberOfCollectionsInput>
+}
+
+export type ItemUpdateWithoutMemberOfCollectionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  inclusiveSize?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
+  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
+  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
+  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
+  file?: Prisma.FileUpdateOneWithoutItemNestedInput
+  folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
+  image?: Prisma.ImageUpdateOneWithoutItemNestedInput
+  video?: Prisma.VideoUpdateOneWithoutItemNestedInput
+  audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
+  owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
+  workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
+  drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
+  children?: Prisma.ItemUpdateManyWithoutParentNestedInput
+  parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
+  trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
+  activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
+  logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
+  favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+}
+
+export type ItemUncheckedUpdateWithoutMemberOfCollectionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  inclusiveSize?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
+  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
+  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
+  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerId?: Prisma.StringFieldUpdateOperationsInput | string
+  workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  driveId?: Prisma.StringFieldUpdateOperationsInput | string
+  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
+  file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
+  folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
+  image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
+  video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
+  audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
+  children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
+  trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -1850,14 +1858,14 @@ export type ItemCreateWithoutCommentsInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -1890,10 +1898,10 @@ export type ItemUncheckedCreateWithoutCommentsInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -1938,14 +1946,14 @@ export type ItemUpdateWithoutCommentsInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -1978,10 +1986,10 @@ export type ItemUncheckedUpdateWithoutCommentsInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -2010,13 +2018,13 @@ export type ItemCreateWithoutDriveInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -2049,10 +2057,10 @@ export type ItemUncheckedCreateWithoutDriveInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -2129,14 +2137,14 @@ export type ItemCreateWithoutFileInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -2169,10 +2177,10 @@ export type ItemUncheckedCreateWithoutFileInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -2217,14 +2225,14 @@ export type ItemUpdateWithoutFileInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -2257,10 +2265,10 @@ export type ItemUncheckedUpdateWithoutFileInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -2289,14 +2297,14 @@ export type ItemCreateWithoutFolderInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -2329,10 +2337,10 @@ export type ItemUncheckedCreateWithoutFolderInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -2377,14 +2385,14 @@ export type ItemUpdateWithoutFolderInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -2417,10 +2425,10 @@ export type ItemUncheckedUpdateWithoutFolderInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -2449,14 +2457,14 @@ export type ItemCreateWithoutImageInput = {
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -2489,10 +2497,10 @@ export type ItemUncheckedCreateWithoutImageInput = {
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -2537,14 +2545,14 @@ export type ItemUpdateWithoutImageInput = {
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -2577,10 +2585,10 @@ export type ItemUncheckedUpdateWithoutImageInput = {
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -2609,14 +2617,14 @@ export type ItemCreateWithoutVideoInput = {
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -2649,10 +2657,10 @@ export type ItemUncheckedCreateWithoutVideoInput = {
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -2697,14 +2705,14 @@ export type ItemUpdateWithoutVideoInput = {
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -2737,10 +2745,10 @@ export type ItemUncheckedUpdateWithoutVideoInput = {
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -2769,14 +2777,14 @@ export type ItemCreateWithoutAudioInput = {
   folder?: Prisma.FolderCreateNestedOneWithoutItemInput
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -2809,10 +2817,10 @@ export type ItemUncheckedCreateWithoutAudioInput = {
   folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -2857,14 +2865,14 @@ export type ItemUpdateWithoutAudioInput = {
   folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -2897,10 +2905,10 @@ export type ItemUncheckedUpdateWithoutAudioInput = {
   folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -2930,14 +2938,14 @@ export type ItemCreateWithoutFavoritesInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -2970,10 +2978,10 @@ export type ItemUncheckedCreateWithoutFavoritesInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -3018,14 +3026,14 @@ export type ItemUpdateWithoutFavoritesInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -3058,10 +3066,10 @@ export type ItemUncheckedUpdateWithoutFavoritesInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -3090,13 +3098,13 @@ export type ItemCreateWithoutParentInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -3129,10 +3137,10 @@ export type ItemUncheckedCreateWithoutParentInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -3172,13 +3180,13 @@ export type ItemCreateWithoutChildrenInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -3212,9 +3220,9 @@ export type ItemUncheckedCreateWithoutChildrenInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -3276,13 +3284,13 @@ export type ItemUpdateWithoutChildrenInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -3316,9 +3324,9 @@ export type ItemUncheckedUpdateWithoutChildrenInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -3348,14 +3356,14 @@ export type ItemCreateWithoutLockedInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
@@ -3388,10 +3396,10 @@ export type ItemUncheckedCreateWithoutLockedInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
@@ -3436,14 +3444,14 @@ export type ItemUpdateWithoutLockedInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
@@ -3476,10 +3484,10 @@ export type ItemUncheckedUpdateWithoutLockedInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
@@ -3508,14 +3516,14 @@ export type ItemCreateWithoutPermissionsInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
@@ -3548,10 +3556,10 @@ export type ItemUncheckedCreateWithoutPermissionsInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
@@ -3596,14 +3604,14 @@ export type ItemUpdateWithoutPermissionsInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
@@ -3636,10 +3644,10 @@ export type ItemUncheckedUpdateWithoutPermissionsInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
@@ -3668,14 +3676,14 @@ export type ItemCreateWithoutSearchInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -3708,10 +3716,10 @@ export type ItemUncheckedCreateWithoutSearchInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -3756,14 +3764,14 @@ export type ItemUpdateWithoutSearchInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -3796,10 +3804,10 @@ export type ItemUncheckedUpdateWithoutSearchInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -3828,14 +3836,14 @@ export type ItemCreateWithoutThumbnailsInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
@@ -3868,10 +3876,10 @@ export type ItemUncheckedCreateWithoutThumbnailsInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
@@ -3916,14 +3924,14 @@ export type ItemUpdateWithoutThumbnailsInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
@@ -3956,10 +3964,10 @@ export type ItemUncheckedUpdateWithoutThumbnailsInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
@@ -3988,13 +3996,13 @@ export type ItemCreateWithoutTrashInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -4028,9 +4036,9 @@ export type ItemUncheckedCreateWithoutTrashInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -4076,13 +4084,13 @@ export type ItemUpdateWithoutTrashInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -4116,9 +4124,9 @@ export type ItemUncheckedUpdateWithoutTrashInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -4148,13 +4156,13 @@ export type ItemCreateWithoutOwnerInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -4187,10 +4195,10 @@ export type ItemUncheckedCreateWithoutOwnerInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -4246,14 +4254,14 @@ export type ItemCreateWithoutVersionsInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -4286,10 +4294,10 @@ export type ItemUncheckedCreateWithoutVersionsInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -4334,14 +4342,14 @@ export type ItemUpdateWithoutVersionsInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -4374,10 +4382,10 @@ export type ItemUncheckedUpdateWithoutVersionsInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -4406,13 +4414,13 @@ export type ItemCreateWithoutWorkspaceInput = {
   image?: Prisma.ImageCreateNestedOneWithoutItemInput
   video?: Prisma.VideoCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionCreateNestedOneWithoutItemInput
   owner: Prisma.UserCreateNestedOneWithoutItemsInput
   drive: Prisma.DriveCreateNestedOneWithoutItemsInput
   children?: Prisma.ItemCreateNestedManyWithoutParentInput
   parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
   trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
@@ -4445,10 +4453,10 @@ export type ItemUncheckedCreateWithoutWorkspaceInput = {
   image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
   video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
   audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
-  collection?: Prisma.CollectionUncheckedCreateNestedOneWithoutItemInput
   children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
   trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
-  collectionItems?: Prisma.CollectionItemUncheckedCreateNestedManyWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
@@ -4522,13 +4530,13 @@ export type ItemUpdateWithoutDriveInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -4561,10 +4569,10 @@ export type ItemUncheckedUpdateWithoutDriveInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -4630,13 +4638,13 @@ export type ItemUpdateWithoutParentInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -4669,10 +4677,10 @@ export type ItemUncheckedUpdateWithoutParentInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -4738,13 +4746,13 @@ export type ItemUpdateWithoutOwnerInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -4777,10 +4785,10 @@ export type ItemUncheckedUpdateWithoutOwnerInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -4846,13 +4854,13 @@ export type ItemUpdateWithoutWorkspaceInput = {
   image?: Prisma.ImageUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUpdateOneWithoutItemNestedInput
   owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
   drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
   children?: Prisma.ItemUpdateManyWithoutParentNestedInput
   parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
   trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
@@ -4885,10 +4893,10 @@ export type ItemUncheckedUpdateWithoutWorkspaceInput = {
   image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
   video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
   audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
-  collection?: Prisma.CollectionUncheckedUpdateOneWithoutItemNestedInput
   children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
   trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
-  collectionItems?: Prisma.CollectionItemUncheckedUpdateManyWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
@@ -4926,6 +4934,7 @@ export type ItemUncheckedUpdateManyWithoutWorkspaceInput = {
 export type ItemCountOutputType = {
   children: number
   collectionItems: number
+  memberOfCollections: number
   permissions: number
   thumbnails: number
   versions: number
@@ -4938,6 +4947,7 @@ export type ItemCountOutputType = {
 export type ItemCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   children?: boolean | ItemCountOutputTypeCountChildrenArgs
   collectionItems?: boolean | ItemCountOutputTypeCountCollectionItemsArgs
+  memberOfCollections?: boolean | ItemCountOutputTypeCountMemberOfCollectionsArgs
   permissions?: boolean | ItemCountOutputTypeCountPermissionsArgs
   thumbnails?: boolean | ItemCountOutputTypeCountThumbnailsArgs
   versions?: boolean | ItemCountOutputTypeCountVersionsArgs
@@ -4968,7 +4978,14 @@ export type ItemCountOutputTypeCountChildrenArgs<ExtArgs extends runtime.Types.E
  * ItemCountOutputType without action
  */
 export type ItemCountOutputTypeCountCollectionItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  where?: Prisma.CollectionItemWhereInput
+  where?: Prisma.CollectionMemberWhereInput
+}
+
+/**
+ * ItemCountOutputType without action
+ */
+export type ItemCountOutputTypeCountMemberOfCollectionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CollectionMemberWhereInput
 }
 
 /**
@@ -5043,7 +5060,6 @@ export type ItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   image?: boolean | Prisma.Item$imageArgs<ExtArgs>
   video?: boolean | Prisma.Item$videoArgs<ExtArgs>
   audio?: boolean | Prisma.Item$audioArgs<ExtArgs>
-  collection?: boolean | Prisma.Item$collectionArgs<ExtArgs>
   owner?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   workspace?: boolean | Prisma.Item$workspaceArgs<ExtArgs>
   drive?: boolean | Prisma.DriveDefaultArgs<ExtArgs>
@@ -5051,6 +5067,7 @@ export type ItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   parent?: boolean | Prisma.Item$parentArgs<ExtArgs>
   trash?: boolean | Prisma.Item$trashArgs<ExtArgs>
   collectionItems?: boolean | Prisma.Item$collectionItemsArgs<ExtArgs>
+  memberOfCollections?: boolean | Prisma.Item$memberOfCollectionsArgs<ExtArgs>
   locked?: boolean | Prisma.Item$lockedArgs<ExtArgs>
   permissions?: boolean | Prisma.Item$permissionsArgs<ExtArgs>
   thumbnails?: boolean | Prisma.Item$thumbnailsArgs<ExtArgs>
@@ -5135,7 +5152,6 @@ export type ItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   image?: boolean | Prisma.Item$imageArgs<ExtArgs>
   video?: boolean | Prisma.Item$videoArgs<ExtArgs>
   audio?: boolean | Prisma.Item$audioArgs<ExtArgs>
-  collection?: boolean | Prisma.Item$collectionArgs<ExtArgs>
   owner?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   workspace?: boolean | Prisma.Item$workspaceArgs<ExtArgs>
   drive?: boolean | Prisma.DriveDefaultArgs<ExtArgs>
@@ -5143,6 +5159,7 @@ export type ItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   parent?: boolean | Prisma.Item$parentArgs<ExtArgs>
   trash?: boolean | Prisma.Item$trashArgs<ExtArgs>
   collectionItems?: boolean | Prisma.Item$collectionItemsArgs<ExtArgs>
+  memberOfCollections?: boolean | Prisma.Item$memberOfCollectionsArgs<ExtArgs>
   locked?: boolean | Prisma.Item$lockedArgs<ExtArgs>
   permissions?: boolean | Prisma.Item$permissionsArgs<ExtArgs>
   thumbnails?: boolean | Prisma.Item$thumbnailsArgs<ExtArgs>
@@ -5175,12 +5192,6 @@ export type $ItemPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     image: Prisma.$ImagePayload<ExtArgs> | null
     video: Prisma.$VideoPayload<ExtArgs> | null
     audio: Prisma.$AudioPayload<ExtArgs> | null
-    /**
-     * *
-     *      * One-to-one relationship between Item and Collection
-     *      * An Item can be a Collection itself
-     */
-    collection: Prisma.$CollectionPayload<ExtArgs> | null
     owner: Prisma.$UserPayload<ExtArgs>
     workspace: Prisma.$WorkspacePayload<ExtArgs> | null
     drive: Prisma.$DrivePayload<ExtArgs>
@@ -5201,11 +5212,15 @@ export type $ItemPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     trash: Prisma.$TrashItemPayload<ExtArgs> | null
     /**
      * *
-     *      * Many-to-Many relationship between Item and Collection through CollectionItem junction table
-     *      * An Item can belong to multiple Collections and a Collection can contain multiple Items
-     *      * The relationship is managed through the CollectionItem junction table
+     *      * Items that belong to this collection (only meaningful when type='collection').
+     *      * An Item with type='collection' is the host; its members are linked via CollectionMember.
      */
-    collectionItems: Prisma.$CollectionItemPayload<ExtArgs>[]
+    collectionItems: Prisma.$CollectionMemberPayload<ExtArgs>[]
+    /**
+     * *
+     *      * Collections this item belongs to (many-to-many self-relation via CollectionMember).
+     */
+    memberOfCollections: Prisma.$CollectionMemberPayload<ExtArgs>[]
     locked: Prisma.$LockedItemPayload<ExtArgs> | null
     permissions: Prisma.$PermissionPayload<ExtArgs>[]
     thumbnails: Prisma.$ThumbnailPayload<ExtArgs>[]
@@ -5632,14 +5647,14 @@ export interface Prisma__ItemClient<T, Null = never, ExtArgs extends runtime.Typ
   image<T extends Prisma.Item$imageArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$imageArgs<ExtArgs>>): Prisma.Prisma__ImageClient<runtime.Types.Result.GetResult<Prisma.$ImagePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   video<T extends Prisma.Item$videoArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$videoArgs<ExtArgs>>): Prisma.Prisma__VideoClient<runtime.Types.Result.GetResult<Prisma.$VideoPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   audio<T extends Prisma.Item$audioArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$audioArgs<ExtArgs>>): Prisma.Prisma__AudioClient<runtime.Types.Result.GetResult<Prisma.$AudioPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-  collection<T extends Prisma.Item$collectionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$collectionArgs<ExtArgs>>): Prisma.Prisma__CollectionClient<runtime.Types.Result.GetResult<Prisma.$CollectionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   owner<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   workspace<T extends Prisma.Item$workspaceArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$workspaceArgs<ExtArgs>>): Prisma.Prisma__WorkspaceClient<runtime.Types.Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   drive<T extends Prisma.DriveDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.DriveDefaultArgs<ExtArgs>>): Prisma.Prisma__DriveClient<runtime.Types.Result.GetResult<Prisma.$DrivePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   children<T extends Prisma.Item$childrenArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$childrenArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   parent<T extends Prisma.Item$parentArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$parentArgs<ExtArgs>>): Prisma.Prisma__ItemClient<runtime.Types.Result.GetResult<Prisma.$ItemPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   trash<T extends Prisma.Item$trashArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$trashArgs<ExtArgs>>): Prisma.Prisma__TrashItemClient<runtime.Types.Result.GetResult<Prisma.$TrashItemPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-  collectionItems<T extends Prisma.Item$collectionItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$collectionItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CollectionItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  collectionItems<T extends Prisma.Item$collectionItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$collectionItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CollectionMemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  memberOfCollections<T extends Prisma.Item$memberOfCollectionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$memberOfCollectionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CollectionMemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   locked<T extends Prisma.Item$lockedArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$lockedArgs<ExtArgs>>): Prisma.Prisma__LockedItemClient<runtime.Types.Result.GetResult<Prisma.$LockedItemPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   permissions<T extends Prisma.Item$permissionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$permissionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   thumbnails<T extends Prisma.Item$thumbnailsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$thumbnailsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ThumbnailPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -5894,6 +5909,11 @@ export type ItemFindManyArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
    * Skip the first `n` Items.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Items.
+   */
   distinct?: Prisma.ItemScalarFieldEnum | Prisma.ItemScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }
@@ -6194,25 +6214,6 @@ export type Item$audioArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
 }
 
 /**
- * Item.collection
- */
-export type Item$collectionArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the Collection
-   */
-  select?: Prisma.CollectionSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the Collection
-   */
-  omit?: Prisma.CollectionOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.CollectionInclude<ExtArgs> | null
-  where?: Prisma.CollectionWhereInput
-}
-
-/**
  * Item.workspace
  */
 export type Item$workspaceArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -6298,23 +6299,47 @@ export type Item$trashArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
  */
 export type Item$collectionItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
-   * Select specific fields to fetch from the CollectionItem
+   * Select specific fields to fetch from the CollectionMember
    */
-  select?: Prisma.CollectionItemSelect<ExtArgs> | null
+  select?: Prisma.CollectionMemberSelect<ExtArgs> | null
   /**
-   * Omit specific fields from the CollectionItem
+   * Omit specific fields from the CollectionMember
    */
-  omit?: Prisma.CollectionItemOmit<ExtArgs> | null
+  omit?: Prisma.CollectionMemberOmit<ExtArgs> | null
   /**
    * Choose, which related nodes to fetch as well
    */
-  include?: Prisma.CollectionItemInclude<ExtArgs> | null
-  where?: Prisma.CollectionItemWhereInput
-  orderBy?: Prisma.CollectionItemOrderByWithRelationInput | Prisma.CollectionItemOrderByWithRelationInput[]
-  cursor?: Prisma.CollectionItemWhereUniqueInput
+  include?: Prisma.CollectionMemberInclude<ExtArgs> | null
+  where?: Prisma.CollectionMemberWhereInput
+  orderBy?: Prisma.CollectionMemberOrderByWithRelationInput | Prisma.CollectionMemberOrderByWithRelationInput[]
+  cursor?: Prisma.CollectionMemberWhereUniqueInput
   take?: number
   skip?: number
-  distinct?: Prisma.CollectionItemScalarFieldEnum | Prisma.CollectionItemScalarFieldEnum[]
+  distinct?: Prisma.CollectionMemberScalarFieldEnum | Prisma.CollectionMemberScalarFieldEnum[]
+}
+
+/**
+ * Item.memberOfCollections
+ */
+export type Item$memberOfCollectionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CollectionMember
+   */
+  select?: Prisma.CollectionMemberSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CollectionMember
+   */
+  omit?: Prisma.CollectionMemberOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CollectionMemberInclude<ExtArgs> | null
+  where?: Prisma.CollectionMemberWhereInput
+  orderBy?: Prisma.CollectionMemberOrderByWithRelationInput | Prisma.CollectionMemberOrderByWithRelationInput[]
+  cursor?: Prisma.CollectionMemberWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CollectionMemberScalarFieldEnum | Prisma.CollectionMemberScalarFieldEnum[]
 }
 
 /**

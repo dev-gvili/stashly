@@ -48,14 +48,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }))
 
   // IDs already in this collection
-  const existingItemIds = collection.items.map((ci) => ci.itemId)
+  const existingItemIds = collection.collectionItems.map((cm) => cm.itemId)
 
   return {
     collection: {
       id: collection.id,
       name: collection.name,
       size: collection.size,
-      itemCount: collection.items.length,
+      itemCount: collection.collectionItems.length,
     },
     items,
     nextCursor: nextCursor ?? null,

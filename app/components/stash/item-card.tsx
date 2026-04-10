@@ -566,6 +566,15 @@ const ItemCardRoot = ({
 
   const { size, ...rest } = props
 
+  const {
+    isDragOver,
+    isFolder,
+    handleDragStart,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+  } = useItemDragDrop({ id: rest.id, type: rest.type })
+
   const value = React.useMemo(
     () => ({
       ...props,
@@ -573,7 +582,7 @@ const ItemCardRoot = ({
       searchParams,
       setSearchParams,
     }),
-    [searchParams]
+    [props, user, searchParams]
   )
 
   const to = toItemUrl({
@@ -585,14 +594,7 @@ const ItemCardRoot = ({
 
   const Comp = asChild ? Slot : 'div'
 
-  const {
-    isDragOver,
-    isFolder,
-    handleDragStart,
-    handleDragOver,
-    handleDragLeave,
-    handleDrop,
-  } = useItemDragDrop({ id: props.id, type: props.type })
+  
 
   return (
     <ItemCardContext.Provider value={value}>

@@ -213,7 +213,7 @@ export type ItemVersionGroupByOutputType = {
   _max: ItemVersionMaxAggregateOutputType | null
 }
 
-type GetItemVersionGroupByPayload<T extends ItemVersionGroupByArgs> = Prisma.PrismaPromise<
+export type GetItemVersionGroupByPayload<T extends ItemVersionGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<ItemVersionGroupByOutputType, T['by']> &
       {
@@ -1275,6 +1275,11 @@ export type ItemVersionFindManyArgs<ExtArgs extends runtime.Types.Extensions.Int
    * Skip the first `n` ItemVersions.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of ItemVersions.
+   */
   distinct?: Prisma.ItemVersionScalarFieldEnum | Prisma.ItemVersionScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

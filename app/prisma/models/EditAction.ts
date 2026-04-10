@@ -130,7 +130,7 @@ export type EditActionGroupByOutputType = {
   _max: EditActionMaxAggregateOutputType | null
 }
 
-type GetEditActionGroupByPayload<T extends EditActionGroupByArgs> = Prisma.PrismaPromise<
+export type GetEditActionGroupByPayload<T extends EditActionGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<EditActionGroupByOutputType, T['by']> &
       {
@@ -935,6 +935,11 @@ export type EditActionFindManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * Skip the first `n` EditActions.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of EditActions.
+   */
   distinct?: Prisma.EditActionScalarFieldEnum | Prisma.EditActionScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

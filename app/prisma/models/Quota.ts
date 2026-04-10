@@ -221,7 +221,7 @@ export type QuotaGroupByOutputType = {
   _max: QuotaMaxAggregateOutputType | null
 }
 
-type GetQuotaGroupByPayload<T extends QuotaGroupByArgs> = Prisma.PrismaPromise<
+export type GetQuotaGroupByPayload<T extends QuotaGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<QuotaGroupByOutputType, T['by']> &
       {
@@ -1232,6 +1232,11 @@ export type QuotaFindManyArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * Skip the first `n` Quotas.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Quotas.
+   */
   distinct?: Prisma.QuotaScalarFieldEnum | Prisma.QuotaScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

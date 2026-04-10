@@ -249,7 +249,7 @@ export type StoragePlanGroupByOutputType = {
   _max: StoragePlanMaxAggregateOutputType | null
 }
 
-type GetStoragePlanGroupByPayload<T extends StoragePlanGroupByArgs> = Prisma.PrismaPromise<
+export type GetStoragePlanGroupByPayload<T extends StoragePlanGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<StoragePlanGroupByOutputType, T['by']> &
       {
@@ -1645,6 +1645,11 @@ export type StoragePlanFindManyArgs<ExtArgs extends runtime.Types.Extensions.Int
    * Skip the first `n` StoragePlans.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of StoragePlans.
+   */
   distinct?: Prisma.StoragePlanScalarFieldEnum | Prisma.StoragePlanScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

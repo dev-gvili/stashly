@@ -1,4 +1,4 @@
-import { CircleProgressBar } from '@/components/circle-progress-bar'
+import { CircleProgressBar } from '@/components/squer-progress-bar'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { uploadProgress } from '@/schemas/machine.schemas'
@@ -39,10 +39,12 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { RiExpandUpDownLine } from '@remixicon/react'
 import {
   DoubleCheckIcon,
+  ExpandCollapsedIcon,
   PauseV2Icon,
   RemoveSquareIcon,
   ResumeIcon,
 } from '../icons'
+import { ButtonGroup } from '../ui'
 // ====================================================== //
 // Actor                                                  //
 // ====================================================== //
@@ -209,7 +211,7 @@ const Styles = {
   Trigger:
     'rounded-md bg-inherit p-1.5 font-stashly text-xs focus:outline-background hover:cursor-pointer border border-border hover:bg-muted flex items-center justify-center',
   FileList: 'w-full space-y-4',
-  Item: 'relative overflow-hidden grid grid-cols-8 w-full rounded-lg bg-muted p-1 list-none  border border-cursor h-auto place-content-between place-items-center gap-2 group',
+  Item: 'relative overflow-hidden grid grid-cols-8 w-full rounded-lg bg-sidebar p-1 list-none  border-2 border-ring/80 h-auto place-content-between place-items-center gap-2 group',
   ItemBody: 'col-span-6 w-full',
   ItemContent: 'flex w-full justify-between',
   Progress:
@@ -351,7 +353,10 @@ export const DropArea = React.forwardRef<
       type SnapshotItem = { entry: FileSystemEntry | null; file: File | null }
       const snapshot: SnapshotItem[] = []
       for (const item of event.dataTransfer.items) {
-        snapshot.push({ entry: item.webkitGetAsEntry(), file: item.getAsFile() })
+        snapshot.push({
+          entry: item.webkitGetAsEntry(),
+          file: item.getAsFile(),
+        })
       }
 
       // Collect all dropped files — folders are resolved recursively before
@@ -785,9 +790,9 @@ PauseResume.displayName = 'PauseResumeButton'
 
 export function EmptyOutline() {
   return (
-    <Empty className="p-3 -mt-12!">
+    <Empty className="p-3">
       <EmptyHeader className="font-stashly">
-        <EmptyMedia variant="icon">
+        <EmptyMedia variant="default">
           <Logo className="size-16" />
         </EmptyMedia>
         <EmptyTitle>Stashly Storage</EmptyTitle>
@@ -817,20 +822,24 @@ export const UploadPanel = ({ user }: { user: User }) => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       hidden={closed}
-      className="fixed bottom-8 right-8 w-md bg-sidebar border border-card rounded shadow-lg z-50 flex flex-col max-h-2/3 overflow-hidden p-0"
+      className="fixed bottom-8 right-8 w-md bg-muted border border-card rounded shadow-lg flex flex-col max-h-2/3 overflow-hidden"
     >
       <Upload user={user}>
-        <div className="flex justify-between items-center h-12 *:px-4 bg-muted rounded-tl rounded-tr border-b border-card">
+        <div className="flex justify-between items-center h-12 px-4 bg-sidebar-accent rounded-tl rounded-tr border-b border-card">
           <Label className="font-stashly text-sm">
             Uploading Files ({uploadingFiles.length})
           </Label>
-          <div className="flex gap-2 items-center">
+          <div className='inline-flex gap-1'>
             <Button
               variant="ghost"
-              size="sm"
+              size="icon-sm"
               onClick={() => setIsCollapsed(!isCollapsed)}
+              className="hover:cursor-pointer"
             >
-              <RiExpandUpDownLine className="size-4" />
+              <ExpandCollapsedIcon className='size-6'/>
+            </Button>
+            <Button variant="ghost" size="icon-sm" onClick={onClose} className="hover:cursor-pointer">
+              <RemoveSquareIcon className='size-6'/>
             </Button>
           </div>
         </div>
@@ -843,7 +852,10 @@ export const UploadPanel = ({ user }: { user: User }) => {
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <DropArea className="border-none h-auto p-0" data-testid="upload-drop-area">
+              <DropArea
+                className="border-none h-auto p-0"
+                data-testid="upload-drop-area"
+              >
                 {uploadingFiles.length === 0 && <EmptyOutline />}
                 <FileList className="px-2 pt-2 h-full" />
               </DropArea>

@@ -20,11 +20,6 @@ model Item {
     image      Image?
     video      Video?
     audio      Audio?
-    /**
-     * One-to-one relationship between Item and Collection
-     * An Item can be a Collection itself
-     */
-    collection Collection?
 
     ownerId String
     owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
@@ -53,11 +48,14 @@ model Item {
     // Location and Storage
     trash           TrashItem?
     /**
-     * Many-to-Many relationship between Item and Collection through CollectionItem junction table
-     * An Item can belong to multiple Collections and a Collection can contain multiple Items
-     * The relationship is managed through the CollectionItem junction table
+     * Items that belong to this collection (only meaningful when type='collection').
+     * An Item with type='collection' is the host; its members are linked via CollectionMember.
      */
-    collectionItems CollectionItem[]
+    collectionItems     CollectionMember[] @relation("CollectionHost")
+    /**
+     * Collections this item belongs to (many-to-many self-relation via CollectionMember).
+     */
+    memberOfCollections CollectionMember[] @relation("ItemMember")
 
     // Access Control
     locked      LockedItem?

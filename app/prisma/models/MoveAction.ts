@@ -144,7 +144,7 @@ export type MoveActionGroupByOutputType = {
   _max: MoveActionMaxAggregateOutputType | null
 }
 
-type GetMoveActionGroupByPayload<T extends MoveActionGroupByArgs> = Prisma.PrismaPromise<
+export type GetMoveActionGroupByPayload<T extends MoveActionGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<MoveActionGroupByOutputType, T['by']> &
       {
@@ -999,6 +999,11 @@ export type MoveActionFindManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * Skip the first `n` MoveActions.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of MoveActions.
+   */
   distinct?: Prisma.MoveActionScalarFieldEnum | Prisma.MoveActionScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

@@ -1,4 +1,5 @@
 import { LoadMoreItems } from '@/components/core-components/buttons'
+import { Breadcrumbs } from '@/components/core-components/folder-breadcrumbs'
 import { ItemCard } from '@/components/stash/item-card'
 import { GridLayout } from '@/components/views/grid-view'
 import { itemVariants } from '@/components/views/variants'
@@ -9,10 +10,11 @@ import {
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
 import { getFolderContent } from '@/services/item-actions'
+import { breadcrumbs } from '@/services/breadcrumbs'
 import { parseSearchParams } from '@/utils/parsers'
 import { getQueryParam, getQueryParamArray } from '@/utils/query-params'
 import { motion } from 'framer-motion'
-import { redirect, type ShouldRevalidateFunction } from 'react-router'
+import { redirect, type ShouldRevalidateFunction, useLoaderData } from 'react-router'
 import type { Route } from './+types/folder'
 import { SelectionProvider } from '../../components/stash/selection'
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -31,10 +33,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   let filters = buildItemFilters(parsedParams)
 
-  return await getFolderContent({
-    cursor: parsedParams.cursor,
-    where: { ...filters, parentId: params.folderId },
-  })
+  const [folderContent, crumbs] = await Promise.all([
+    getFolderContent({
+      cursor: parsedParams.cursor,
+      where: { ...filters, parentId: params.folderId },
+    }),
+    breadcrumbs(params.folderId),
+  ])
+
+  return { ...folderContent, crumbs, me: params.me }
 }
 
 export const shouldRevalidate: ShouldRevalidateFunction = ({
@@ -64,11 +71,13 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
 }
 
 export default () => {
+  const { crumbs, me } = useLoaderData() as Route.ComponentProps['loaderData']
   let { items, loadMore, isLoading, hasMore } = usePagination<
     Route.ComponentProps['loaderData']['items'][number]
   >(100, '')
   return (
-    <div className="w-full relative">
+    <div className="w-full relative space-y-4">
+      <Breadcrumbs crumbs={crumbs} me={me} />
       <SelectionProvider items={items.map((i) => i.id)}>
         <GridLayout>
           {items.map((item) => (

@@ -133,7 +133,7 @@ export type ShareActionGroupByOutputType = {
   _max: ShareActionMaxAggregateOutputType | null
 }
 
-type GetShareActionGroupByPayload<T extends ShareActionGroupByArgs> = Prisma.PrismaPromise<
+export type GetShareActionGroupByPayload<T extends ShareActionGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<ShareActionGroupByOutputType, T['by']> &
       {
@@ -970,6 +970,11 @@ export type ShareActionFindManyArgs<ExtArgs extends runtime.Types.Extensions.Int
    * Skip the first `n` ShareActions.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of ShareActions.
+   */
   distinct?: Prisma.ShareActionScalarFieldEnum | Prisma.ShareActionScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

@@ -13,6 +13,7 @@ import {
 import {
   AIcon,
   CollectionIcon,
+  CollectionLineIcon,
   FolderIcon,
   HomeIcon,
   ImagesIcon,
@@ -78,10 +79,10 @@ const sidebarItems: SidebarItemProps[] = [
   },
   {
     icon: (isActive) => (
-      <CollectionIcon className="size-5! group-data-[state=collapsed]:ml-2" />
+      <CollectionLineIcon className="size-5! group-data-[state=collapsed]:ml-2" />
     ),
     label: 'Collections',
-    to: 'collections',
+    to: 'collections?layout=grid',
     tooltip: 'Collections',
   },
   {

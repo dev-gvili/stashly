@@ -130,7 +130,7 @@ export type RestoreActionGroupByOutputType = {
   _max: RestoreActionMaxAggregateOutputType | null
 }
 
-type GetRestoreActionGroupByPayload<T extends RestoreActionGroupByArgs> = Prisma.PrismaPromise<
+export type GetRestoreActionGroupByPayload<T extends RestoreActionGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<RestoreActionGroupByOutputType, T['by']> &
       {
@@ -935,6 +935,11 @@ export type RestoreActionFindManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Skip the first `n` RestoreActions.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of RestoreActions.
+   */
   distinct?: Prisma.RestoreActionScalarFieldEnum | Prisma.RestoreActionScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

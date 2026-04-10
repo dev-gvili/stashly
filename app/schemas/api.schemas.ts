@@ -140,7 +140,7 @@ export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
   z.object({
     intent: z.literal('create_collection'),
     name: z.string().nonempty(),
-    driveId: z.string().nonempty(),
+    driveId: z.string().optional(),
     workspaceId: z.string().optional(),
   }),
   z.object({
@@ -148,17 +148,18 @@ export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
     collectionId: z.string().nonempty(),
     newName: z.coerce.string().nonempty(),
   }),
-  z.object({
-    intent: z
-      .literal('trash_collection')
-      .or(z.literal('restore_collection'))
-      .or(z.literal('delete_collection'))
-      .or(z.literal('clear_collection')),
-    collectionId: z.string().nonempty(),
-  }),
+  z.object({ intent: z.literal('trash_collection'), collectionId: z.string().nonempty() }),
+  z.object({ intent: z.literal('restore_collection'), collectionId: z.string().nonempty() }),
+  z.object({ intent: z.literal('delete_collection'), collectionId: z.string().nonempty() }),
+  z.object({ intent: z.literal('clear_collection'), collectionId: z.string().nonempty() }),
   z.object({
     intent: z.literal('add_items_to_collection'),
     itemIds: toZodArraySchema(z.string()),
+    collectionId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('remove_item'),
+    itemId: z.string().nonempty(),
     collectionId: z.string().nonempty(),
   }),
   z.object({

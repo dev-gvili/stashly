@@ -144,7 +144,7 @@ export type RenameActionGroupByOutputType = {
   _max: RenameActionMaxAggregateOutputType | null
 }
 
-type GetRenameActionGroupByPayload<T extends RenameActionGroupByArgs> = Prisma.PrismaPromise<
+export type GetRenameActionGroupByPayload<T extends RenameActionGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<RenameActionGroupByOutputType, T['by']> &
       {
@@ -999,6 +999,11 @@ export type RenameActionFindManyArgs<ExtArgs extends runtime.Types.Extensions.In
    * Skip the first `n` RenameActions.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of RenameActions.
+   */
   distinct?: Prisma.RenameActionScalarFieldEnum | Prisma.RenameActionScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }

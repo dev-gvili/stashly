@@ -10,8 +10,6 @@ import {
   findAllCollections,
   findFirstCollection,
   countCollections,
-  updateCollection,
-  deleteCollectionRecord,
   renameCollection,
   trashCollection,
   restoreCollection,
@@ -57,10 +55,9 @@ async function seedUser(suffix: string) {
   return id
 }
 
-/** Create a collection using the public action and return its Item ID. */
+/** Create a collection using the public action and return its Item. */
 async function makeCollection(name = faker.word.noun()) {
-  const item = await createCollection(name, ownerId, driveId)
-  return item
+  return createCollection({ name, ownerId, driveId })
 }
 
 /** Create a bare file Item owned by the given user, with a write Permission for the owner. */
@@ -126,7 +123,7 @@ afterAll(async () => {
   await prisma.workspaceMember.deleteMany({
     where: { memberId: { in: [ownerId, otherId] } },
   })
-  // Items cascade → Collection, CollectionItem
+  // Items cascade → CollectionMember links
   await prisma.item.deleteMany({ where: { ownerId: { in: [ownerId, otherId] } } })
   await prisma.item.deleteMany({ where: { workspaceId } })
   await prisma.drive.deleteMany({ where: { ownerId: { in: [ownerId, otherId] } } })
@@ -141,14 +138,13 @@ afterAll(async () => {
 // ---------------------------------------------------------------------------
 
 describe('findCollectionById', () => {
-  it('returns the collection with item and items relations', async () => {
+  it('returns the collection Item with collectionItems relation', async () => {
     const col = await makeCollection('find-by-id')
     const found = await findCollectionById(col.id)
     expect(found).not.toBeNull()
-    expect(found!.id).toBe(col.collection!.id)
+    expect(found!.id).toBe(col.id)
     expect(found!.name).toBe('find-by-id')
-    expect(found!.item).toBeDefined()
-    expect(Array.isArray(found!.items)).toBe(true)
+    expect(Array.isArray(found!.collectionItems)).toBe(true)
   })
 
   it('returns null for a non-existent ID', async () => {
@@ -159,7 +155,7 @@ describe('findCollectionById', () => {
 
 describe('findAllCollections', () => {
   it('returns collections matching a where clause', async () => {
-    const name = `findall-${uid('Collection')}`
+    const name = `findall-${uid('Item')}`
     await makeCollection(name)
     const results = await findAllCollections({ where: { name } })
     expect(results.length).toBeGreaterThanOrEqual(1)
@@ -169,7 +165,7 @@ describe('findAllCollections', () => {
 
 describe('findFirstCollection', () => {
   it('returns the first matching collection', async () => {
-    const name = `findfirst-${uid('Collection')}`
+    const name = `findfirst-${uid('Item')}`
     await makeCollection(name)
     const result = await findFirstCollection({ where: { name } })
     expect(result).not.toBeNull()
@@ -184,36 +180,11 @@ describe('findFirstCollection', () => {
 
 describe('countCollections', () => {
   it('returns the correct count for a filtered query', async () => {
-    const name = `count-${uid('Collection')}`
+    const name = `count-${uid('Item')}`
     await makeCollection(name)
     await makeCollection(name)
     const count = await countCollections({ where: { name } })
     expect(count).toBe(2)
-  })
-})
-
-describe('updateCollection', () => {
-  it('updates the collection size field', async () => {
-    const col = await makeCollection()
-    const updated = await updateCollection({
-      where: { id: col.collection!.id },
-      data: { size: 99n },
-    })
-    expect(updated.size).toBe(99n)
-  })
-})
-
-describe('deleteCollectionRecord', () => {
-  it('hard-deletes the collection facet record', async () => {
-    // Create an item and attach a collection facet to it directly.
-    // Prisma v7 derives the collection id from the item relation — do not set id explicitly.
-    const item = await makeItem(ownerId)
-    await prisma.collection.create({
-      data: { name: 'to-delete', item: { connect: { id: item.id } } },
-    })
-    await deleteCollectionRecord({ where: { id: item.id } })
-    const found = await prisma.collection.findUnique({ where: { id: item.id } })
-    expect(found).toBeNull()
   })
 })
 
@@ -222,18 +193,17 @@ describe('deleteCollectionRecord', () => {
 // ---------------------------------------------------------------------------
 
 describe('createCollection', () => {
-  it('creates an Item of type collection with a linked Collection facet', async () => {
-    const item = await createCollection('My Docs', ownerId, driveId)
+  it('creates an Item of type collection', async () => {
+    const item = await createCollection({ name: 'My Docs', ownerId, driveId })
     expect(item.type).toBe(ItemType.collection)
     expect(item.name).toBe('My Docs')
     expect(item.ownerId).toBe(ownerId)
-    expect(item.collection).not.toBeNull()
-    expect(item.collection!.name).toBe('My Docs')
-    expect(item.collection!.size).toBe(0n)
+    expect(item.size).toBe(0n)
+    expect(Array.isArray(item.collectionItems)).toBe(true)
   })
 
   it('automatically grants the creator write permission', async () => {
-    const item = await createCollection('Perm Test', ownerId, driveId)
+    const item = await createCollection({ name: 'Perm Test', ownerId, driveId })
     const perms = await prisma.permission.findMany({
       where: { itemId: item.id },
       include: { users: true },
@@ -243,12 +213,6 @@ describe('createCollection', () => {
     )
     expect(writePerm).toBeDefined()
   })
-
-  it('places the collection under a parent when parentId is provided', async () => {
-    const parent = await makeItem(ownerId)
-    const item = await createCollection('Child', ownerId, driveId, parent.id)
-    expect(item.parentId).toBe(parent.id)
-  })
 })
 
 // ---------------------------------------------------------------------------
@@ -257,23 +221,23 @@ describe('createCollection', () => {
 
 describe('createWorkspaceCollection', () => {
   it('creates a collection scoped to the workspace', async () => {
-    const item = await createWorkspaceCollection(
-      'WS Col',
+    const item = await createWorkspaceCollection({
+      name: 'WS Col',
       ownerId,
       driveId,
-      workspaceId
-    )
+      workspaceId,
+    })
     expect(item.workspaceId).toBe(workspaceId)
     expect(item.type).toBe(ItemType.collection)
   })
 
   it('grants the creator write permission', async () => {
-    const item = await createWorkspaceCollection(
-      'WS Perm',
+    const item = await createWorkspaceCollection({
+      name: 'WS Perm',
       ownerId,
       driveId,
-      workspaceId
-    )
+      workspaceId,
+    })
     const perm = await prisma.permission.findFirst({
       where: { itemId: item.id, roles: 'write' },
       include: { users: true },
@@ -283,7 +247,7 @@ describe('createWorkspaceCollection', () => {
 
   it('throws when the caller is not a workspace member', async () => {
     await expect(
-      createWorkspaceCollection('Blocked', otherId, driveId, workspaceId)
+      createWorkspaceCollection({ name: 'Blocked', ownerId: otherId, driveId, workspaceId })
     ).rejects.toThrow('You must be a workspace member to create collections')
   })
 })
@@ -293,19 +257,17 @@ describe('createWorkspaceCollection', () => {
 // ---------------------------------------------------------------------------
 
 describe('renameCollection', () => {
-  it('updates both the Item name and the Collection facet name', async () => {
+  it('updates the Item name', async () => {
     const col = await makeCollection('original-name')
-    const updated = await renameCollection(ownerId, col.id, 'renamed')
+    const updated = await renameCollection({ userId: ownerId, collectionId: col.id, newName: 'renamed' })
     expect(updated.name).toBe('renamed')
-    const facet = await prisma.collection.findUnique({ where: { id: col.id } })
-    expect(facet!.name).toBe('renamed')
   })
 
   it('throws FORBIDDEN when the caller has no write access', async () => {
     const col = await makeCollection()
-    await expect(renameCollection(otherId, col.id, 'hacked')).rejects.toMatchObject({
-      errorCode: StashlyErrorCode.FORBIDDEN,
-    })
+    await expect(
+      renameCollection({ userId: otherId, collectionId: col.id, newName: 'hacked' })
+    ).rejects.toMatchObject({ errorCode: StashlyErrorCode.FORBIDDEN })
   })
 })
 
@@ -316,33 +278,33 @@ describe('renameCollection', () => {
 describe('trashCollection', () => {
   it('sets the Item status to trashed', async () => {
     const col = await makeCollection()
-    await trashCollection(ownerId, col.id)
+    await trashCollection({ userId: ownerId, collectionId: col.id })
     const item = await prisma.item.findUnique({ where: { id: col.id } })
     expect(item!.status).toBe(ItemStatus.trashed)
   })
 
   it('throws FORBIDDEN when the caller has no write access', async () => {
     const col = await makeCollection()
-    await expect(trashCollection(otherId, col.id)).rejects.toMatchObject({
-      errorCode: StashlyErrorCode.FORBIDDEN,
-    })
+    await expect(
+      trashCollection({ userId: otherId, collectionId: col.id })
+    ).rejects.toMatchObject({ errorCode: StashlyErrorCode.FORBIDDEN })
   })
 })
 
 describe('restoreCollection', () => {
   it('restores a trashed collection back to normal', async () => {
     const col = await makeCollection()
-    await trashCollection(ownerId, col.id)
-    await restoreCollection(ownerId, col.id)
+    await trashCollection({ userId: ownerId, collectionId: col.id })
+    await restoreCollection({ userId: ownerId, collectionId: col.id })
     const item = await prisma.item.findUnique({ where: { id: col.id } })
     expect(item!.status).toBe(ItemStatus.normal)
   })
 
   it('throws FORBIDDEN when the caller has no write access', async () => {
     const col = await makeCollection()
-    await expect(restoreCollection(otherId, col.id)).rejects.toMatchObject({
-      errorCode: StashlyErrorCode.FORBIDDEN,
-    })
+    await expect(
+      restoreCollection({ userId: otherId, collectionId: col.id })
+    ).rejects.toMatchObject({ errorCode: StashlyErrorCode.FORBIDDEN })
   })
 })
 
@@ -351,25 +313,24 @@ describe('restoreCollection', () => {
 // ---------------------------------------------------------------------------
 
 describe('deleteCollection', () => {
-  it('hard-deletes the Item and cascades to Collection and CollectionItem', async () => {
+  it('hard-deletes the Item and cascades to CollectionMember links', async () => {
     const col = await makeCollection()
     const file = await makeItem(ownerId)
     await addItemToCollection(ownerId, col.id, file.id)
 
-    await deleteCollection(ownerId, col.id)
+    await deleteCollection({ userId: ownerId, collectionId: col.id })
 
     expect(await prisma.item.findUnique({ where: { id: col.id } })).toBeNull()
-    expect(await prisma.collection.findUnique({ where: { id: col.id } })).toBeNull()
     expect(
-      await prisma.collectionItem.findFirst({ where: { collectionId: col.id } })
+      await prisma.collectionMember.findFirst({ where: { collectionId: col.id } })
     ).toBeNull()
   })
 
   it('throws FORBIDDEN when the caller has no write access', async () => {
     const col = await makeCollection()
-    await expect(deleteCollection(otherId, col.id)).rejects.toMatchObject({
-      errorCode: StashlyErrorCode.FORBIDDEN,
-    })
+    await expect(
+      deleteCollection({ userId: otherId, collectionId: col.id })
+    ).rejects.toMatchObject({ errorCode: StashlyErrorCode.FORBIDDEN })
   })
 })
 
@@ -405,15 +366,15 @@ describe('isItemInCollection', () => {
 // ---------------------------------------------------------------------------
 
 describe('addItemToCollection', () => {
-  it('creates a CollectionItem link and increments the collection size', async () => {
+  it('creates a CollectionMember link and increments the collection size', async () => {
     const col = await makeCollection()
     const file = await makeItem(ownerId, 2500)
     await addItemToCollection(ownerId, col.id, file.id)
 
-    const facet = await prisma.collection.findUnique({ where: { id: col.id } })
-    expect(facet!.size).toBe(2500n)
+    const updatedCol = await prisma.item.findUnique({ where: { id: col.id } })
+    expect(updatedCol!.size).toBe(2500n)
 
-    const link = await prisma.collectionItem.findUnique({
+    const link = await prisma.collectionMember.findUnique({
       where: { collectionId_itemId: { collectionId: col.id, itemId: file.id } },
     })
     expect(link).not.toBeNull()
@@ -437,14 +398,14 @@ describe('addItemToCollection', () => {
 })
 
 describe('removeItemFromCollection', () => {
-  it('removes the CollectionItem link and decrements the collection size', async () => {
+  it('removes the CollectionMember link and decrements the collection size', async () => {
     const col = await makeCollection()
     const file = await makeItem(ownerId, 1000)
     await addItemToCollection(ownerId, col.id, file.id)
     await removeItemFromCollection(ownerId, col.id, file.id)
 
-    const facet = await prisma.collection.findUnique({ where: { id: col.id } })
-    expect(facet!.size).toBe(0n)
+    const updatedCol = await prisma.item.findUnique({ where: { id: col.id } })
+    expect(updatedCol!.size).toBe(0n)
     expect(await isItemInCollection(ownerId, col.id, file.id)).toBe(false)
   })
 
@@ -467,11 +428,11 @@ describe('addItemsToCollection', () => {
     const col = await makeCollection()
     const a = await makeItem(ownerId, 100)
     const b = await makeItem(ownerId, 200)
-    const added = await addItemsToCollection(ownerId, col.id, [a.id, b.id])
+    const added = await addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [a.id, b.id] })
 
     expect(added.sort()).toEqual([a.id, b.id].sort())
-    const facet = await prisma.collection.findUnique({ where: { id: col.id } })
-    expect(facet!.size).toBe(300n)
+    const updatedCol = await prisma.item.findUnique({ where: { id: col.id } })
+    expect(updatedCol!.size).toBe(300n)
   })
 
   it('skips items that are already in the collection', async () => {
@@ -479,7 +440,7 @@ describe('addItemsToCollection', () => {
     const file = await makeItem(ownerId)
     await addItemToCollection(ownerId, col.id, file.id)
 
-    const added = await addItemsToCollection(ownerId, col.id, [file.id])
+    const added = await addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [file.id] })
     expect(added).toHaveLength(0)
   })
 
@@ -488,16 +449,13 @@ describe('addItemsToCollection', () => {
     const accessible = await makeItem(ownerId)
     const inaccessible = await makeItem(otherId) // ownerId has no permission
 
-    const added = await addItemsToCollection(ownerId, col.id, [
-      accessible.id,
-      inaccessible.id,
-    ])
+    const added = await addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [accessible.id, inaccessible.id] })
     expect(added).toEqual([accessible.id])
   })
 
   it('returns an empty array when itemIds is empty', async () => {
     const col = await makeCollection()
-    const added = await addItemsToCollection(ownerId, col.id, [])
+    const added = await addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [] })
     expect(added).toEqual([])
   })
 
@@ -505,7 +463,7 @@ describe('addItemsToCollection', () => {
     const col = await makeCollection()
     const file = await makeItem(ownerId)
     await expect(
-      addItemsToCollection(otherId, col.id, [file.id])
+      addItemsToCollection({ userId: otherId, collectionId: col.id, itemIds: [file.id] })
     ).rejects.toMatchObject({ errorCode: StashlyErrorCode.FORBIDDEN })
   })
 })
@@ -519,13 +477,13 @@ describe('clearCollection', () => {
     const col = await makeCollection()
     const a = await makeItem(ownerId, 500)
     const b = await makeItem(ownerId, 300)
-    await addItemsToCollection(ownerId, col.id, [a.id, b.id])
+    await addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [a.id, b.id] })
 
-    await clearCollection(ownerId, col.id)
+    await clearCollection({ userId: ownerId, collectionId: col.id })
 
-    const facet = await prisma.collection.findUnique({ where: { id: col.id } })
-    expect(facet!.size).toBe(0n)
-    const links = await prisma.collectionItem.findMany({
+    const updatedCol = await prisma.item.findUnique({ where: { id: col.id } })
+    expect(updatedCol!.size).toBe(0n)
+    const links = await prisma.collectionMember.findMany({
       where: { collectionId: col.id },
     })
     expect(links).toHaveLength(0)
@@ -533,9 +491,9 @@ describe('clearCollection', () => {
 
   it('throws FORBIDDEN when the caller has no write access', async () => {
     const col = await makeCollection()
-    await expect(clearCollection(otherId, col.id)).rejects.toMatchObject({
-      errorCode: StashlyErrorCode.FORBIDDEN,
-    })
+    await expect(
+      clearCollection({ userId: otherId, collectionId: col.id })
+    ).rejects.toMatchObject({ errorCode: StashlyErrorCode.FORBIDDEN })
   })
 })
 
@@ -564,15 +522,15 @@ describe('getCollectionItems', () => {
     const hidden = await makeItem(otherId) // ownerId has no permission on this
 
     // Bypass addItemToCollection permission check to simulate a revoked-access scenario
-    await prisma.collectionItem.createMany({
+    await prisma.collectionMember.createMany({
       data: [
         {
-          id: uid('CollectionItem'),
+          id: uid('CollectionMember'),
           collectionId: col.id,
           itemId: visible.id,
         },
         {
-          id: uid('CollectionItem'),
+          id: uid('CollectionMember'),
           collectionId: col.id,
           itemId: hidden.id,
         },
@@ -623,7 +581,7 @@ describe('countCollectionItems', () => {
     const col = await makeCollection()
     const a = await makeItem(ownerId)
     const b = await makeItem(ownerId)
-    await addItemsToCollection(ownerId, col.id, [a.id, b.id])
+    await addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [a.id, b.id] })
 
     expect(await countCollectionItems(ownerId, col.id)).toBe(2)
   })
@@ -641,14 +599,14 @@ describe('countCollectionItems', () => {
 // ---------------------------------------------------------------------------
 
 describe('getCollectionForUser', () => {
-  it('returns the collection with relations for an authorised user', async () => {
+  it('returns the collection Item for an authorised user', async () => {
     const col = await makeCollection('get-for-user')
     const result = await getCollectionForUser(ownerId, col.id)
     expect(result.name).toBe('get-for-user')
-    expect(result.item).toBeDefined()
+    expect(result.type).toBe(ItemType.collection)
   })
 
-  it('throws NOT_FOUND for a non-existent collection ID', async () => {
+  it('throws FORBIDDEN for a non-existent collection ID', async () => {
     await expect(getCollectionForUser(ownerId, 'nonexistent')).rejects.toMatchObject({
       errorCode: StashlyErrorCode.FORBIDDEN, // assertItemPermission fires first
     })
@@ -708,8 +666,6 @@ describe('grantCollectionPermission', () => {
     const col = await makeCollection()
     await grantCollectionPermission(ownerId, otherId, col.id, 'write')
 
-    // grantItemPermission creates a new permission record; use findMany to
-    // check across all write permissions (owner already has one from createCollection).
     const perms = await prisma.permission.findMany({
       where: { itemId: col.id, roles: 'write' },
       include: { users: true },
@@ -722,9 +678,8 @@ describe('grantCollectionPermission', () => {
     const col = await makeCollection()
     await grantCollectionPermission(ownerId, otherId, col.id, 'read')
 
-    // otherUser can now read the collection
     const result = await getCollectionForUser(otherId, col.id)
-    expect(result.id).toBe(col.collection!.id)
+    expect(result.id).toBe(col.id)
   })
 
   it('throws FORBIDDEN when the caller has no authority to grant', async () => {

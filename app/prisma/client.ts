@@ -28,7 +28,9 @@ export * from "./enums.js"
  * Type-safe database client for TypeScript
  * @example
  * ```
- * const prisma = new PrismaClient()
+ * const prisma = new PrismaClient({
+ *   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL })
+ * })
  * // Fetch zero or more Accounts
  * const accounts = await prisma.account.findMany()
  * ```
@@ -120,24 +122,16 @@ export type ActivityTime = Prisma.ActivityTimeModel
  */
 export type AuditLog = Prisma.AuditLogModel
 /**
- * Model Collection
+ * Model CollectionMember
  * *
- *  * Represents a collection of items, linked to a specific item by its ID.
- *  * Each collection has a unique name and tracks the total size of its items.
- *  * The relationship with items is managed through the CollectionItem junction table.
- *  * Index on name for efficient querying.
+ *  * Junction table for the many-to-many self-relation on Item that represents
+ *  * collection membership. A Collection is simply an Item with type='collection'.
+ *  *
+ *  * Replaces the old `Collection` facet model and `CollectionItem` junction table.
+ *  * `collectionId` points to an Item whose type='collection'.
+ *  * `itemId` points to any Item that is a member of that collection.
  */
-export type Collection = Prisma.CollectionModel
-/**
- * Model CollectionItem
- * *
- *     * Junction table for many-to-many relationship between Collection and Item
- *     * Each entry represents an association of an Item with a Collection
- *     * Includes timestamps for tracking when the association was created and last updated
- *     * Enforces uniqueness on the combination of collectionId and itemId to prevent duplicate associations
- *     * Indexes on collectionId, itemId, and createdAt for efficient querying and sorting.
- */
-export type CollectionItem = Prisma.CollectionItemModel
+export type CollectionMember = Prisma.CollectionMemberModel
 /**
  * Model Comment
  * 

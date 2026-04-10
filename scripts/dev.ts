@@ -116,7 +116,7 @@ async function main() {
         name: 'asc',
       },
     })
-    
+
     if (folders.length === 0) {
       folders = generateMockItemsWithFolder({
         count: faker.number.int({ min: 15, max: 20 }),
@@ -144,6 +144,11 @@ async function main() {
 
   if (action === 'add-folders') {
     const user = await prisma.user.findFirstOrThrow({
+      where: {
+        name: {
+          startsWith: 'dev',
+        },
+      },
       include: {
         drive: true,
       },

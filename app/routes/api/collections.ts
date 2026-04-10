@@ -7,7 +7,8 @@ import {
   clearCollection,
   deleteCollection,
   restoreCollection,
-  addItemsToCollection
+  addItemsToCollection,
+  removeItemFromCollection,
 } from '../../.server/collection-actions'
 import { auth } from '@/services/auth'
 import type { Route } from './+types/collections'
@@ -31,16 +32,14 @@ export async function action({ request }: Route.ActionArgs) {
   let referer = request.headers.get('referer')
   let url = new URL(referer || request.url)
   if (formData.intent === 'create_collection') {
-    let { workspaceId, ...rest } = formData
+    const driveId = formData.driveId ?? (session.user as any).driveId
+    const { workspaceId, ...rest } = formData
     if (workspaceId) {
-      await createWorkspaceCollection({
-        ...rest,
-        workspaceId,
-        ownerId: session.user.id,
-      })
+      await createWorkspaceCollection({ ...rest, driveId, workspaceId, ownerId: session.user.id })
+    } else {
+      await createCollection({ ...rest, driveId, ownerId: session.user.id })
     }
-    await createCollection({ ...rest, ownerId: session.user.id })
-    return redirect('/app/collections')
+    return redirect(`${url.pathname}${url.search}`)
   }
 
   if (formData.intent === 'rename_collection') {
@@ -78,6 +77,11 @@ export async function action({ request }: Route.ActionArgs) {
   if (formData.intent === 'add_items_to_collection') {
     let { intent, ...rest } = formData
     await addItemsToCollection({ ...rest, userId: session.user.id })
+    return redirect(`${url.pathname}${url.search}`)
+  }
+
+  if (formData.intent === 'remove_item') {
+    await removeItemFromCollection(session.user.id, formData.collectionId, formData.itemId)
     return redirect(`${url.pathname}${url.search}`)
   }
 

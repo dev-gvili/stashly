@@ -144,7 +144,7 @@ export type DeleteActionGroupByOutputType = {
   _max: DeleteActionMaxAggregateOutputType | null
 }
 
-type GetDeleteActionGroupByPayload<T extends DeleteActionGroupByArgs> = Prisma.PrismaPromise<
+export type GetDeleteActionGroupByPayload<T extends DeleteActionGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<DeleteActionGroupByOutputType, T['by']> &
       {
@@ -1003,6 +1003,11 @@ export type DeleteActionFindManyArgs<ExtArgs extends runtime.Types.Extensions.In
    * Skip the first `n` DeleteActions.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of DeleteActions.
+   */
   distinct?: Prisma.DeleteActionScalarFieldEnum | Prisma.DeleteActionScalarFieldEnum[]
   relationLoadStrategy?: Prisma.RelationLoadStrategy
 }
