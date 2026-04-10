@@ -17,6 +17,7 @@ import {
   type CollectionCardItem,
 } from '@/components/core-components/collection-card'
 import { CollectionEmptyState } from '@/components/states/collection-empty-state'
+import { GridLayout } from './grid-view'
 
 interface CollectionsViewProps {
   collections: CollectionCardItem[]
@@ -36,7 +37,7 @@ function NewCollectionDialog({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
-    fetcher.submit({ intent: 'create_collection', name }, { method: 'post' })
+    fetcher.submit({ intent: 'create_collection', name }, { method: 'post', action: '/api/collections' })
     setName('')
     onOpenChange(false)
   }
@@ -92,7 +93,7 @@ export function CollectionsView({ collections }: CollectionsViewProps) {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold font-stashly">Collections</h1>
         <Button
@@ -104,7 +105,7 @@ export function CollectionsView({ collections }: CollectionsViewProps) {
           New collection
         </Button>
       </div>
-      <div className="grid 2xl:grid-cols-6 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-3">
+      <GridLayout>
         <AnimatePresence mode="popLayout">
           {collections.map((col) => (
             <motion.div
@@ -119,7 +120,7 @@ export function CollectionsView({ collections }: CollectionsViewProps) {
             </motion.div>
           ))}
         </AnimatePresence>
-      </div>
+      </GridLayout>
       <NewCollectionDialog open={newOpen} onOpenChange={setNewOpen} />
     </div>
   )

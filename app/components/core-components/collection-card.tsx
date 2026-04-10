@@ -5,20 +5,29 @@ import {
   Card,
   CardAction,
   CardContent,
+  CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuSeparator,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu'
-import { CollectionIcon, MenuDotsIcon, RenameIcon, TrashIcon } from '@/components/icons'
+import {
+  CollectionsFillIcon,
+  MenuDotsIcon,
+  RenameIcon,
+  TrashIcon,
+} from '@/components/icons'
 import { RenameDialog } from '@/components/core-components/rename-dialog'
 import { formatSize } from '@/utils/formaters'
 import useConfirm from '@/hooks/useConfirm'
+import { cn } from '@/utils'
 
 export interface CollectionCardItem {
   id: string
@@ -46,27 +55,23 @@ export function CollectionCard({
   function handleDelete() {
     fetcher.submit(
       { intent: 'delete_collection', collectionId: collection.id },
-      { method: 'post' }
+      { method: 'post', action: '/api/collections', preventScrollReset: true }
     )
   }
 
   return (
     <Card
-      className="group relative bg-sidebar rounded py-4 gap-3 transition-colors cursor-pointer border-none hover:bg-sidebar-accent"
+      className="group relative bg-sidebar rounded p-4 gap-3 justify-evenly transition-colors cursor-pointer border-none hover:bg-sidebar-accent aspect-video w-full min-w-xs"
       onClick={() =>
         navigate(
-          href('/:me/stash/collections/:collectionId', {
+          `${href('/:me/stash/collections/:collectionId', {
             me: me!,
             collectionId: collection.id,
-          })
+          })}?layout=grid`
         )
       }
     >
-      <CardHeader>
-        <CollectionIcon className="size-8" />
-        <CardTitle className="font-stashly text-sm font-medium truncate">
-          {collection.name}
-        </CardTitle>
+      <CardHeader className="p-0">
         <CardAction>
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
@@ -75,49 +80,168 @@ export function CollectionCard({
             >
               <MenuDotsIcon className="size-6!" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <RenameDialog
-                defaultName={collection.name}
-                intent="rename_collection"
-                extraData={{ collectionId: collection.id }}
-                title="Rename collection"
-              >
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                  <RenameIcon />
-                  Rename
+            <DropdownMenuContent align="end" className="space-y-4 w-48">
+              <DropdownMenuGroup className="mt-2">
+                <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
+                  Quick actions
+                </DropdownMenuLabel>
+                <RenameDialog
+                  defaultName={collection.name}
+                  intent="rename_collection"
+                  action="/api/collections"
+                  extraData={{ collectionId: collection.id }}
+                  title="Rename collection"
+                >
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    className="items-start"
+                  >
+                    <RenameIcon className="text-foreground" />
+                    Rename
+                  </DropdownMenuItem>
+                </RenameDialog>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    open({
+                      variant: 'destructive',
+                      title: `Delete "${collection.name}"?`,
+                      description: 'This will move the collection to trash.',
+                      confirmText: 'Delete',
+                      onConfirm: handleDelete,
+                    })
+                  }}
+                >
+                  <TrashIcon />
+                  Delete
                 </DropdownMenuItem>
-              </RenameDialog>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  open({
-                    variant: 'destructive',
-                    title: `Delete "${collection.name}"?`,
-                    description: 'This will move the collection to trash.',
-                    confirmText: 'Delete',
-                    onConfirm: handleDelete,
-                  })
-                }}
-              >
-                <TrashIcon />
-                Delete
-              </DropdownMenuItem>
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </CardAction>
+        <CollectionsFillIcon className="size-14" />
       </CardHeader>
-      <CardContent className="px-4">
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span>
-            {collection.itemCount}{' '}
-            {collection.itemCount === 1 ? 'item' : 'items'}
-          </span>
-          <span className="text-border">·</span>
-          <span>{formatSize('byte', 'unit', Number(collection.size))}</span>
-        </div>
-      </CardContent>
+      <CollectionContent className="p-0 items-start">
+        <CollectionName name={collection.name} className="mt-2" />
+      </CollectionContent>
+      <CollectionFooter className="p-0 mt-2">
+        <CollectionSize size={collection.size} />
+        <CollectionCount count={collection.itemCount} />
+      </CollectionFooter>
     </Card>
   )
 }
+
+const CollectionContent = React.forwardRef<
+  React.ComponentRef<typeof CardContent>,
+  React.ComponentPropsWithoutRef<typeof CardContent>
+>((props, ref) => {
+  return (
+    <CardContent
+      ref={ref}
+      data-slot="collection-content"
+      className={cn(
+        'overflow-hidden p-0 flex flex-col items-center relative gap-y-2',
+        props.className
+      )}
+    >
+      {props.children}
+    </CardContent>
+  )
+})
+CollectionContent.displayName = 'CollectionContent'
+
+const CollectionName = React.forwardRef<
+  React.ComponentRef<typeof CardTitle>,
+  React.ComponentPropsWithoutRef<typeof CardTitle> & {
+    name: string
+  }
+>((props, ref) => {
+  const { className, name, ...rest } = props
+
+  return (
+    <CardTitle
+      ref={ref}
+      data-slot="collection-name"
+      title={name}
+      className={cn(
+        'in-data-[slot=item-content]:text-md text-sidebar-foreground truncate w-[90%] text-center z-10 max-w-max',
+        className
+      )}
+      {...rest}
+    >
+      {name}
+    </CardTitle>
+  )
+})
+CollectionName.displayName = 'CollectionName'
+
+const CollectionFooter = React.forwardRef<
+  React.ComponentRef<typeof CardFooter>,
+  React.ComponentPropsWithoutRef<typeof CardFooter>
+>((props, ref) => {
+  const { children, className, ...rest } = props
+
+  return (
+    <CardFooter
+      data-slot="collection-footer"
+      ref={ref}
+      className={cn(
+        'grid grid-cols-2 m-0 p-2 place-content-end font-stashly *:text-muted-foreground *:text-xs w-full h-auto',
+        className
+      )}
+      {...rest}
+    >
+      {children}
+    </CardFooter>
+  )
+})
+CollectionFooter.displayName = 'CollectionFooter'
+
+const CollectionCount = React.forwardRef<
+  React.ComponentRef<typeof CardDescription>,
+  React.ComponentPropsWithoutRef<typeof CardDescription> & {
+    count: number
+  }
+>((props, ref) => {
+  const { className, count, ...rest } = props
+
+  return (
+    <CardDescription
+      ref={ref}
+      data-slot="collection-count"
+      className={cn(
+        'text-card-foreground text-sm font-stashly place-self-end col-span-1 h-full flex items-end',
+        className
+      )}
+      {...rest}
+    >
+      {count} {count === 1 ? 'item' : 'items'}
+    </CardDescription>
+  )
+})
+CollectionCount.displayName = 'CollectionCount'
+
+const CollectionSize = React.forwardRef<
+  React.ComponentRef<typeof CardDescription>,
+  React.ComponentPropsWithoutRef<typeof CardDescription> & {
+    size: bigint
+  }
+>((props, ref) => {
+  const { className, size, ...rest } = props
+  return (
+    <CardDescription
+      ref={ref}
+      data-slot="collection-size"
+      className={cn(
+        'text-card-foreground text-sm font-stashly place-self-end w-full col-span-1 h-full',
+        className
+      )}
+      {...rest}
+    >
+      {formatSize('byte', 'unit', Number(size))}
+    </CardDescription>
+  )
+})
+CollectionSize.displayName = 'CollectionSize'

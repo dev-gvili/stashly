@@ -25,7 +25,7 @@ import { ButtonGroup } from './ui/button-group'
 
 export function AppHeader() {
   return (
-    <header className="z-40 flex items-center h-14 justify-between bg-background px-4 py-2 sticky top-0 shrink-0">
+    <header className="z-40 flex items-center h-14 justify-between bg-background pr-2 pl-1 py-2 sticky top-0 shrink-0">
       <SidebarTrigger className="hover:cursor-pointer rounded-md " />
       <div className="flex items-center space-x-2">
         <DropdownMenu>

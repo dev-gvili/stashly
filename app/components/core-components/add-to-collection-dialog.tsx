@@ -12,8 +12,10 @@ import { SearchIcon, XIcon } from 'lucide-react'
 import {
   CheckIcon,
   CollectionIcon,
+  CollectionsFillIcon,
   FileIcon,
   FolderIcon,
+  RemoveSquareIcon,
 } from '@/components/icons'
 import { toIcon } from '@/utils/converters'
 import { cn } from '@/utils/styles'
@@ -93,6 +95,7 @@ function GridItem({
   existing: boolean
   onToggle: (id: string) => void
 }) {
+  if(item.type === "folder" || item.type === "collection") return null
   const Icon = toIcon(item.category as ItemCategory) ?? FileIcon
 
   return (
@@ -100,11 +103,8 @@ function GridItem({
       type="button"
       onClick={() => !existing && onToggle(item.id)}
       className={cn(
-        'relative group aspect-square rounded-lg overflow-hidden border-2 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        selected || existing
-          ? 'border-primary'
-          : 'border-transparent hover:border-muted-foreground/40',
-        existing && 'opacity-60 cursor-default'
+        'relative group aspect-square rounded-md overflow-hidden border-2 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+        existing && 'cursor-default'
       )}
       aria-pressed={selected || existing}
       aria-label={`${selected ? 'Deselect' : 'Select'} ${item.name}`}
@@ -120,13 +120,13 @@ function GridItem({
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-sidebar">
-          {item.type === 'folder' ? (
-            <FolderIcon className="size-10 text-amber-500" />
+          {/* {item.type === 'folder' ? (
+            <FolderIcon className="size-10 fill-current" />
           ) : item.type === 'collection' ? (
-            <CollectionIcon className="size-10 text-violet-500" />
+            <CollectionsFillIcon className="size-10" />
           ) : (
             <Icon className="size-10 text-muted-foreground" />
-          )}
+          )} */}
         </div>
       )}
 
@@ -136,27 +136,22 @@ function GridItem({
       )}
 
       {/* selected overlay */}
-      {(selected || existing) && (
-        <div className="absolute inset-0 bg-primary/20 pointer-events-none" />
-      )}
+      {/* {(selected || existing) && ( */}
+      {/* // <div className="absolute inset-0 bg-primary/20 pointer-events-none" /> */}
+      {/* )} */}
 
       {/* selection circle / checkmark */}
-      <div
+      <Checkbox
         className={cn(
-          'absolute top-2 left-2 size-6 rounded-full border-2 flex items-center justify-center transition-all',
-          selected || existing
-            ? 'bg-primary border-primary'
-            : 'bg-black/30 border-white/70 group-hover:border-white opacity-0 group-hover:opacity-100'
+          'absolute top-2 left-2 size-6 rounded-sm  flex items-center justify-center transition-all'
         )}
-      >
-        {(selected || existing) && (
-          <CheckIcon className="size-3.5 text-primary-foreground" />
-        )}
-      </div>
+        checked={selected || existing}
+        hidden={existing}
+      />
 
       {/* item name tooltip on hover */}
-      <div className="absolute bottom-0 inset-x-0 bg-linear-to-t from-black/60 to-transparent px-2 pb-1.5 pt-4 translate-y-full group-hover:translate-y-0 transition-transform duration-150 pointer-events-none">
-        <p className="text-foreground text-xs truncate font-medium">
+      <div className={cn("absolute bottom-0 inset-x-0 bg-linear-to-t from-black/90 to-transparent px-2 pb-1.5 pt-4 translate-y-full group-hover:translate-y-0 transition-transform duration-150 pointer-events-none")}>
+        <p className="text-foreground text-sm truncate font-medium">
           {item.name}
         </p>
         <p className="text-muted-foreground text-[10px]">
@@ -167,7 +162,7 @@ function GridItem({
       {/* "already added" badge */}
       {existing && (
         <div className="absolute top-2 right-2">
-          <Badge className=" px-1 py-0 rounded bg-muted text-muted-foreground">
+          <Badge className="  rounded bg-muted text-muted-foreground">
             Added
           </Badge>
         </div>
@@ -248,7 +243,7 @@ export function AddToCollectionDialog({
   // Close on successful submit
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data != null) {
-      onOpenChange(false)
+      onOpenChange(!open)
     }
   }, [fetcher.state, fetcher.data])
 
@@ -299,8 +294,10 @@ export function AddToCollectionDialog({
         collectionId,
         itemIds: Array.from(selected).join(','),
       },
-      { method: 'post', action: '/api/collections' }
+      { method: 'post', action: '/api/collections', }
     )
+    onOpenChange(!open)
+
   }
 
   const selectedCount = selected.size
@@ -332,14 +329,16 @@ export function AddToCollectionDialog({
           {/* ── Header ── */}
           <div className="flex items-center gap-3 px-4 py-3 border-b shrink-0">
             {/* Close */}
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="icon-sm"
               onClick={() => onOpenChange(false)}
-              className="size-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors shrink-0"
               aria-label="Close"
+              className='border-border'
             >
-              <XIcon className="size-5" />
-            </button>
+              <RemoveSquareIcon className="size-5" />
+            </Button>
 
             {/* Title */}
             <span className="font-semibold text-base font-stashly truncate shrink-0 hidden sm:block">

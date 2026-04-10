@@ -4,6 +4,7 @@ import {
   BinaryIcon,
   CodeIcon,
   CollectionIcon,
+  CollectionLineIcon,
   DocumentIcon,
   FileIcon,
   FolderIcon,
@@ -301,7 +302,7 @@ export function toIcon(value: IconKey) {
     case 'folder':
       return FolderIcon
     case 'collection':
-      return CollectionIcon
+      return CollectionLineIcon
     case 'archived':
       return ArchiveIcon
     case 'trashed':
