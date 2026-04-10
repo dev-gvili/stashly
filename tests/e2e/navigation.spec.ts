@@ -4,9 +4,9 @@ import { StashPage } from './pages/stash.page'
 import { TEST_USER_ID } from './constants'
 
 test.describe('Authenticated navigation', () => {
-  test('visiting / redirects to stash home', async ({ page }) => {
+  test('visiting / redirects to stash home', async ({ page,baseURL }) => {
     await page.goto('/')
-    await expect(page).toHaveURL(new RegExp(`/${TEST_USER_ID}/stash`))
+    await expect(page).toHaveURL(`${baseURL}/${TEST_USER_ID}/stash?layout=grid&take=100`)
   })
 
   test('stash home loads without redirect', async ({ page }) => {

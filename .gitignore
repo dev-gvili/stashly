@@ -43,7 +43,7 @@ copilot_exports
 
 # IDE
 .idea
-.vscode/
+# .vscode/
 !.vscode/extensions.json
 
 # Build artifacts

@@ -5,7 +5,7 @@ export class StashPage {
   constructor(private readonly page: Page) {}
 
   async goto(userId: string) {
-    await this.page.goto(`/${userId}/stash`)
+    await this.page.goto(`/${userId}/stash?layout=grid&take=100`)
   }
 
   async expectLoaded() {

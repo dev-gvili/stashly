@@ -6,7 +6,7 @@ export class UploadPage {
   constructor(private readonly page: Page) {}
 
   async goto(userId: string): Promise<void> {
-    await this.page.goto(`/${userId}/stash`)
+    await this.page.goto(`/${userId}/stash?layout=grid&take=100`)
     await this.page.locator('[data-sidebar="sidebar"]').first().waitFor({ state: 'visible' })
   }
 

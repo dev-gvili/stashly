@@ -7,8 +7,8 @@ import {
   E2E_ROOT_FOLDER_ID,
 } from './constants'
 
-const favoritesUrl = `/${TEST_USER_ID}/stash/favorites`
-const folderUrl = `/${TEST_USER_ID}/stash/folders/${E2E_ROOT_FOLDER_ID}`
+const favoritesUrl = `/${TEST_USER_ID}/stash/favorites?layout=grid`
+const folderUrl = `/${TEST_USER_ID}/stash/folders/${E2E_ROOT_FOLDER_ID}?layout=grid`
 
 /** Wait for the main content area to finish loading (avoids networkidle hang). */
 async function waitForContent(page: import('@playwright/test').Page) {

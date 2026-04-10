@@ -76,7 +76,10 @@ function useSidebar(id?: string): SidebarView {
     resolvedId in provider.openMap
       ? provider.openMap[resolvedId]
       : provider.defaultOpen
-  const openMobile = !!provider.openMobileMap[resolvedId]
+  const openMobile =
+    resolvedId in provider.openMobileMap
+      ? provider.openMobileMap[resolvedId]
+      : provider.defaultOpen
 
   const setOpen = React.useCallback(
     (value: boolean | ((v: boolean) => boolean)) => {
@@ -136,7 +139,9 @@ function SidebarProvider({
   })
   const [openMobileMap, setOpenMobileMap] = React.useState<
     Record<string, boolean>
-  >({})
+  >({
+    default: initialOpen,
+  })
 
   const setOpenForId = React.useCallback((id: string, value: boolean) => {
     try {
@@ -158,21 +163,24 @@ function SidebarProvider({
     })
   })
 
-  const setOpenMobileForId = React.useCallback((id: string, value: boolean) => {
-    if (id === 'default' && setOpenProp) setOpenProp(value)
-    setOpenMobileMap((prev) => ({ ...prev, [id]: value }))
-  }, [])
+  const setOpenMobileForId = React.useCallback(
+    (id: string, value: boolean) => {
+      try {
+        if (id === 'default' && setOpenProp) setOpenProp(value)
+        setOpenMobileMap((prev) => ({ ...prev, [id]: value })) // Ensure prev is not undefined
+      } catch (e) {}
+    },
+    [isMobile]
+  )
 
   const toggleForId = React.useCallback(
     (id: string) => {
       if (isMobile) {
         setOpenMobileMap((prev) => ({ ...prev, [id]: !prev[id] }))
       }
-      try {
-        setOpenMap((prev) => ({ ...prev, [id]: !prev[id] }))
-      } catch (e) {}
+      setOpenMap((prev) => ({ ...prev, [id]: !prev[id] })) // Ensure prev is not undefined
     },
-    [isMobile, openMap, defaultOpen]
+    [isMobile, openMap, openMobileMap, defaultOpen]
   )
 
   // Add keyboard shortcut toggling the default sidebar
@@ -240,7 +248,7 @@ function Sidebar({
   id = 'default',
   // optional per-sidebar widths. Strings should include units, e.g. "20rem" or "256px".
   width,
-  widthMobile,
+  widthMobile = SIDEBAR_WIDTH_MOBILE,
   widthIcon,
   side = 'left',
   variant = 'sidebar',
@@ -262,7 +270,7 @@ function Sidebar({
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar(resolvedId)
 
   // separate style from other props so we can merge per-sidebar CSS vars
-  const { style: providedStyle, ...restProps } = props as any
+  const { style: providedStyle, ...restProps } = props
 
   // Build style that includes per-sidebar overrides for CSS variables.
   const mergedStyle = {
@@ -298,7 +306,7 @@ function Sidebar({
     } as React.CSSProperties
     return (
       <SidebarScopeContext.Provider value={resolvedId}>
-        <Sheet open={openMobile} onOpenChange={setOpenMobile} {...restProps}>
+        <Sheet open={openMobile} onOpenChange={setOpenMobile}  {...restProps}>
           <SheetContent
             data-sidebar="sidebar"
             data-slot="sidebar"
@@ -306,6 +314,10 @@ function Sidebar({
             className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
             style={mobileStyle}
             side={side}
+            data-state={state}
+            data-collapsible={state === 'collapsed' ? collapsible : ''}
+            data-variant={variant}
+            data-side={side}
           >
             <SheetHeader className="sr-only">
               <SheetTitle>Sidebar</SheetTitle>
@@ -376,7 +388,8 @@ function SidebarTrigger({
   children,
   ...props
 }: React.ComponentProps<typeof Button> & { sidebarId?: string }) {
-  const { toggleSidebar, state } = useSidebar(sidebarId)
+  const { isMobile, setOpenMobile, open, toggleSidebar, state } =
+    useSidebar(sidebarId)
 
   let tooltipContent = state === 'collapsed' ? 'Open Sidebar' : 'Close Sidebar'
 
@@ -390,7 +403,7 @@ function SidebarTrigger({
         className={cn('', className)}
         onClick={(event) => {
           onClick?.(event)
-          toggleSidebar()
+          isMobile ? setOpenMobile(!open) : toggleSidebar()
         }}
         {...props}
       >
