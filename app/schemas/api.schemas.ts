@@ -136,6 +136,87 @@ export const aiApiRouteInput = z.discriminatedUnion('intent', [
 // ================ Collections Api Route =============== //
 // ====================================================== //
 
+// ====================================================== //
+// ================== Shares Api Route ================== //
+// ====================================================== //
+
+const shareScopeSchema = z.enum(['anonymous', 'organization', 'users'])
+const shareLinkTypeSchema = z.enum(['view', 'edit', 'embed', 'upload'])
+
+export const sharesApiRouteInput = z.discriminatedUnion('intent', [
+  // Create a view-only share link
+  z.object({
+    intent: z.literal('create_view_link'),
+    itemId: z.string().nonempty(),
+    scope: shareScopeSchema,
+    downloadable: z.coerce.boolean().optional(),
+    password: z.string().optional(),
+    expiresAt: z.coerce.date().optional(),
+  }),
+  // Create an edit share link
+  z.object({
+    intent: z.literal('create_edit_link'),
+    itemId: z.string().nonempty(),
+    scope: shareScopeSchema,
+    password: z.string().optional(),
+    expiresAt: z.coerce.date().optional(),
+  }),
+  // Create an embed share link (always anonymous)
+  z.object({
+    intent: z.literal('create_embed_link'),
+    itemId: z.string().nonempty(),
+    password: z.string().optional(),
+    expiresAt: z.coerce.date().optional(),
+  }),
+  // Create an upload share link (folder-only)
+  z.object({
+    intent: z.literal('create_upload_link'),
+    itemId: z.string().nonempty(),
+    scope: shareScopeSchema,
+    password: z.string().optional(),
+    expiresAt: z.coerce.date().optional(),
+  }),
+  // Change the scope of an existing link
+  z.object({
+    intent: z.literal('update_link_scope'),
+    linkId: z.string().nonempty(),
+    scope: shareScopeSchema,
+  }),
+  // Change the type of an existing link
+  z.object({
+    intent: z.literal('update_link_type'),
+    linkId: z.string().nonempty(),
+    type: shareLinkTypeSchema,
+  }),
+  // Set or update the expiry on a link
+  z.object({
+    intent: z.literal('expire_link'),
+    linkId: z.string().nonempty(),
+    expiresAt: z.coerce.date(),
+  }),
+  // Remove expiry from a link
+  z.object({
+    intent: z.literal('remove_link_expiry'),
+    linkId: z.string().nonempty(),
+  }),
+  // Toggle downloadable flag on a link
+  z.object({
+    intent: z.literal('update_link_downloadable'),
+    linkId: z.string().nonempty(),
+    downloadable: z.coerce.boolean(),
+  }),
+  // Revoke (delete) a specific share link
+  z.object({
+    intent: z.literal('revoke_link'),
+    linkId: z.string().nonempty(),
+  }),
+  // Revoke all share links for an item
+  z.object({
+    intent: z.literal('revoke_all_links'),
+    itemId: z.string().nonempty(),
+  }),
+])
+
 export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
   z.object({
     intent: z.literal('create_collection'),
