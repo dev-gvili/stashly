@@ -75,6 +75,7 @@ export default [
         route('recent', 'routes/stash/recent.tsx'),
         route('search', 'routes/stash/search.tsx'),
         route('shares', 'routes/stash/shares.tsx'),
+        route('invitations', 'routes/stash/invitations.tsx'),
         route('trash', 'routes/stash/trash.tsx'),
         route('demo', 'routes/stash/demo.tsx'),
       ]),

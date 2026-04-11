@@ -182,6 +182,53 @@ export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
 ])
 
 // ====================================================== //
+// =============== Invitations Api Route ================ //
+// ====================================================== //
+
+const permissionRoleSchema = z.enum(['read', 'write', 'owner'])
+const workspaceMemberRoleSchema = z.enum(['viewer', 'member', 'admin', 'owner'])
+
+/** Schema for GET /api/invitations?type=sent|received */
+export const invitationsLoaderInput = z.object({
+  type: z.enum(['sent', 'received']).default('received'),
+  itemId: z.string().optional(),
+})
+
+export const invitationsApiRouteInput = z.discriminatedUnion('intent', [
+  // Invite a specific user (by email) to access an item
+  z.object({
+    intent: z.literal('send_item_invitation'),
+    itemId: z.string().nonempty(),
+    email: z.string().email(),
+    role: permissionRoleSchema,
+    expiresAt: z.coerce.date().optional(),
+  }),
+  // Invite a user to a workspace
+  z.object({
+    intent: z.literal('send_workspace_invitation'),
+    workspaceId: z.string().nonempty(),
+    email: z.string().email(),
+    role: workspaceMemberRoleSchema,
+    expiresAt: z.coerce.date().optional(),
+  }),
+  // Accept a pending invitation (recipient)
+  z.object({
+    intent: z.literal('accept_invitation'),
+    invitationId: z.string().nonempty(),
+  }),
+  // Reject a pending invitation (recipient)
+  z.object({
+    intent: z.literal('reject_invitation'),
+    invitationId: z.string().nonempty(),
+  }),
+  // Cancel a pending invitation (sender)
+  z.object({
+    intent: z.literal('cancel_invitation'),
+    invitationId: z.string().nonempty(),
+  }),
+])
+
+// ====================================================== //
 // ================== Shares Api Route ================== //
 // ====================================================== //
 

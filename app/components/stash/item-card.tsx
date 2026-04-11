@@ -46,8 +46,10 @@ import {
   RestoreIcon,
   ShareItemIcon,
   TrashIcon,
+  GroupIcon,
 } from '@/components/icons'
 import { ShareDialog } from '@/components/core-components/share-dialog'
+import { InviteDialog } from '@/components/core-components/invite-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -94,6 +96,7 @@ const ItemCardActions = (
   let { id, name, type, status, favorites, user } = useItemCard()
   let favorited = toFavorite({ favorites, userId: user?.id })
   let [shareOpen, setShareOpen] = React.useState(false)
+  let [inviteOpen, setInviteOpen] = React.useState(false)
   if (fetcher.data) {
     favorited = fetcher.data?.favorited ?? favorited
   }
@@ -132,6 +135,12 @@ const ItemCardActions = (
         itemId={id}
         itemName={name}
         itemType={itemType}
+      />
+      <InviteDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        itemId={id}
+        itemName={name}
       />
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger onClick={(e) => e.stopPropagation()} {...props}>
@@ -192,6 +201,17 @@ const ItemCardActions = (
               >
                 <ShareItemIcon className="text-foreground" />
                 Share
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="items-start"
+                onSelect={(e) => {
+                  e.preventDefault()
+                  setInviteOpen(true)
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <GroupIcon className="text-foreground" />
+                Invite
               </DropdownMenuItem>
               <DropdownMenuItem className="items-start">
                 <LockIcon className="text-foreground" />

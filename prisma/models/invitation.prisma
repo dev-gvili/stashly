@@ -2,6 +2,7 @@ enum InvitationStatus {
     pending
     accepted
     rejected
+    canceled
     expired
 }
 
