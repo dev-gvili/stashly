@@ -136,12 +136,62 @@ export const aiApiRouteInput = z.discriminatedUnion('intent', [
 // ================ Collections Api Route =============== //
 // ====================================================== //
 
+export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('create_collection'),
+    name: z.string().nonempty(),
+    driveId: z.string().optional(),
+    workspaceId: z.string().optional(),
+  }),
+  z.object({
+    intent: z.literal('rename_collection'),
+    collectionId: z.string().nonempty(),
+    newName: z.coerce.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('trash_collection'),
+    collectionId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('restore_collection'),
+    collectionId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('delete_collection'),
+    collectionId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('clear_collection'),
+    collectionId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('add_items_to_collection'),
+    itemIds: toZodArraySchema(z.string()),
+    collectionId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('remove_item'),
+    itemId: z.string().nonempty(),
+    collectionId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('remove_items_from_collection'),
+    itemIds: toZodArraySchema(z.string()),
+    collectionId: z.string().nonempty(),
+  }),
+])
+
 // ====================================================== //
 // ================== Shares Api Route ================== //
 // ====================================================== //
 
 const shareScopeSchema = z.enum(['anonymous', 'organization', 'users'])
 const shareLinkTypeSchema = z.enum(['view', 'edit', 'embed', 'upload'])
+
+/** Schema for GET /api/shares?itemId=xxx */
+export const sharesLoaderInput = z.object({
+  itemId: z.string().nonempty(),
+})
 
 export const sharesApiRouteInput = z.discriminatedUnion('intent', [
   // Create a view-only share link
@@ -215,37 +265,4 @@ export const sharesApiRouteInput = z.discriminatedUnion('intent', [
     intent: z.literal('revoke_all_links'),
     itemId: z.string().nonempty(),
   }),
-])
-
-export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
-  z.object({
-    intent: z.literal('create_collection'),
-    name: z.string().nonempty(),
-    driveId: z.string().optional(),
-    workspaceId: z.string().optional(),
-  }),
-  z.object({
-    intent: z.literal('rename_collection'),
-    collectionId: z.string().nonempty(),
-    newName: z.coerce.string().nonempty(),
-  }),
-  z.object({ intent: z.literal('trash_collection'), collectionId: z.string().nonempty() }),
-  z.object({ intent: z.literal('restore_collection'), collectionId: z.string().nonempty() }),
-  z.object({ intent: z.literal('delete_collection'), collectionId: z.string().nonempty() }),
-  z.object({ intent: z.literal('clear_collection'), collectionId: z.string().nonempty() }),
-  z.object({
-    intent: z.literal('add_items_to_collection'),
-    itemIds: toZodArraySchema(z.string()),
-    collectionId: z.string().nonempty(),
-  }),
-  z.object({
-    intent: z.literal('remove_item'),
-    itemId: z.string().nonempty(),
-    collectionId: z.string().nonempty(),
-  }),
-  z.object({
-    intent: z.literal('remove_items_from_collection'),
-    itemIds: toZodArraySchema(z.string()),
-    collectionId: z.string().nonempty(),
-  })
 ])
