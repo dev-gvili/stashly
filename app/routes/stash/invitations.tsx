@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/ui/avatar'
 import { cn } from '@/utils/styles'
 import { toUserInitial } from '@/utils/converters'
 import { ShareIcon, CheckIcon, RemoveIcon, DeleteIcon, UserIcon } from '@/components/icons'
-import type { StashInvitation } from '@/types/stash.types'
+import type { StashInvitation, StashInvitationRecipient } from '@/types/stash.types'
 
 // ---------------------------------------------------------------------------
 // Loader
@@ -24,7 +24,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     listSentInvitations(session.user.id),
   ])
 
-  return { received, sent }
+  return { received, sent, userEmail: session.user.email }
 }
 
 // ---------------------------------------------------------------------------
@@ -39,67 +39,58 @@ const statusColors: Record<string, string> = {
   expired: 'bg-muted text-muted-foreground',
 }
 
-function InvitationCard({
+// ---------------------------------------------------------------------------
+// Received invitation card — shows the recipient entry matching the user
+// ---------------------------------------------------------------------------
+
+function ReceivedInvitationCard({
   invitation,
-  mode,
+  recipient,
 }: {
   invitation: StashInvitation
-  mode: 'received' | 'sent'
+  recipient: StashInvitationRecipient
 }) {
   const fetcher = useFetcher()
   const isPending = fetcher.state !== 'idle'
 
-  const itemName = invitation.permission?.item?.name
+  const itemName = invitation.item?.name
   const workspaceName = invitation.workspace?.name
   const context = itemName ? `Item: ${itemName}` : workspaceName ? `Workspace: ${workspaceName}` : null
-  const roleLabel = invitation.permission?.roles ?? invitation.role ?? null
 
   return (
     <div className="flex items-center gap-4 rounded-lg border border-border bg-card px-4 py-3">
       <Avatar className="size-8 shrink-0">
-        {mode === 'received' ? (
-          <>
-            <AvatarImage src={invitation.sender.image ?? undefined} />
-            <AvatarFallback className="text-xs">
-              {toUserInitial(invitation.sender.name)}
-            </AvatarFallback>
-          </>
-        ) : (
-          <AvatarFallback className="text-xs bg-muted">
-            <UserIcon className="size-4 text-muted-foreground" />
-          </AvatarFallback>
-        )}
+        <AvatarImage src={invitation.sender.image ?? undefined} />
+        <AvatarFallback className="text-xs">
+          {toUserInitial(invitation.sender.name)}
+        </AvatarFallback>
       </Avatar>
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">
-          {mode === 'received'
-            ? `From ${invitation.sender.name}`
-            : `To ${invitation.email}`}
+          From {invitation.sender.name}
         </p>
         {context && (
           <p className="text-xs text-muted-foreground truncate">{context}</p>
         )}
-        {roleLabel && (
-          <p className="text-xs text-muted-foreground capitalize">{roleLabel} access</p>
-        )}
+        <p className="text-xs text-muted-foreground capitalize">{recipient.role} access</p>
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
         <span
           className={cn(
             'text-xs px-2 py-0.5 rounded-full font-medium capitalize',
-            statusColors[invitation.status] ?? statusColors.pending
+            statusColors[recipient.status] ?? statusColors.pending
           )}
         >
-          {invitation.status}
+          {recipient.status}
         </span>
 
-        {mode === 'received' && invitation.status === 'pending' && (
+        {recipient.status === 'pending' && (
           <>
             <fetcher.Form method="post" action="/api/invitations">
               <input type="hidden" name="intent" value="accept_invitation" />
-              <input type="hidden" name="invitationId" value={invitation.id} />
+              <input type="hidden" name="recipientId" value={recipient.id} />
               <Button size="sm" variant="default" disabled={isPending} type="submit">
                 <CheckIcon className="size-3.5 mr-1" />
                 Accept
@@ -107,7 +98,7 @@ function InvitationCard({
             </fetcher.Form>
             <fetcher.Form method="post" action="/api/invitations">
               <input type="hidden" name="intent" value="reject_invitation" />
-              <input type="hidden" name="invitationId" value={invitation.id} />
+              <input type="hidden" name="recipientId" value={recipient.id} />
               <Button size="sm" variant="outline" disabled={isPending} type="submit">
                 <RemoveIcon className="size-3.5 mr-1" />
                 Decline
@@ -115,18 +106,71 @@ function InvitationCard({
             </fetcher.Form>
           </>
         )}
+      </div>
+    </div>
+  )
+}
 
-        {mode === 'sent' && invitation.status === 'pending' && (
+// ---------------------------------------------------------------------------
+// Sent invitation card — shows all recipients in the batch
+// ---------------------------------------------------------------------------
+
+function SentInvitationCard({ invitation }: { invitation: StashInvitation }) {
+  const fetcher = useFetcher()
+  const isPending = fetcher.state !== 'idle'
+
+  const itemName = invitation.item?.name
+  const workspaceName = invitation.workspace?.name
+  const context = itemName ? `Item: ${itemName}` : workspaceName ? `Workspace: ${workspaceName}` : null
+  const hasPending = invitation.recipients.some((r) => r.status === 'pending')
+
+  return (
+    <div className="rounded-lg border border-border bg-card px-4 py-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div>
+          {context && (
+            <p className="text-sm font-medium truncate">{context}</p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            {new Date(invitation.createdAt).toLocaleDateString()}
+            {' · '}
+            {invitation.recipients.length} recipient{invitation.recipients.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        {hasPending && (
           <fetcher.Form method="post" action="/api/invitations">
             <input type="hidden" name="intent" value="cancel_invitation" />
             <input type="hidden" name="invitationId" value={invitation.id} />
             <Button size="sm" variant="ghost" disabled={isPending} type="submit">
               <DeleteIcon className="size-3.5 mr-1" />
-              Cancel
+              Cancel all
             </Button>
           </fetcher.Form>
         )}
       </div>
+
+      {invitation.recipients.map((recipient) => (
+        <div
+          key={recipient.id}
+          className="flex items-center gap-3 rounded-md bg-muted/50 px-3 py-2"
+        >
+          <div className="size-7 shrink-0 rounded-full bg-muted flex items-center justify-center">
+            <UserIcon className="size-3.5 text-muted-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium truncate">{recipient.email}</p>
+            <p className="text-xs text-muted-foreground capitalize">{recipient.role} access</p>
+          </div>
+          <span
+            className={cn(
+              'text-xs px-2 py-0.5 rounded-full font-medium capitalize shrink-0',
+              statusColors[recipient.status] ?? statusColors.pending
+            )}
+          >
+            {recipient.status}
+          </span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -145,9 +189,17 @@ function EmptyState({ label }: { label: string }) {
 // ---------------------------------------------------------------------------
 
 export default function InvitationsPage({ loaderData }: Route.ComponentProps) {
-  const { received, sent } = loaderData
+  const { received, sent, userEmail } = loaderData
 
-  const pendingCount = received.filter((i) => i.status === 'pending').length
+  // Count pending recipients for the current user across all received invitations
+  const pendingCount = received.reduce(
+    (count, inv) =>
+      count +
+      inv.recipients.filter(
+        (r) => r.email === userEmail && r.status === 'pending'
+      ).length,
+    0
+  )
 
   return (
     <div className="flex flex-col gap-4 p-4 max-w-2xl mx-auto w-full">
@@ -177,9 +229,19 @@ export default function InvitationsPage({ loaderData }: Route.ComponentProps) {
           {received.length === 0 ? (
             <EmptyState label="No invitations received yet" />
           ) : (
-            received.map((invitation) => (
-              <InvitationCard key={invitation.id} invitation={invitation as StashInvitation} mode="received" />
-            ))
+            received.map((invitation) => {
+              const myRecipient = invitation.recipients.find(
+                (r) => r.email === userEmail
+              )
+              if (!myRecipient) return null
+              return (
+                <ReceivedInvitationCard
+                  key={`${invitation.id}-${myRecipient.id}`}
+                  invitation={invitation as StashInvitation}
+                  recipient={myRecipient}
+                />
+              )
+            })
           )}
         </TabsContent>
 
@@ -188,7 +250,10 @@ export default function InvitationsPage({ loaderData }: Route.ComponentProps) {
             <EmptyState label="No invitations sent yet" />
           ) : (
             sent.map((invitation) => (
-              <InvitationCard key={invitation.id} invitation={invitation as StashInvitation} mode="sent" />
+              <SentInvitationCard
+                key={invitation.id}
+                invitation={invitation as StashInvitation}
+              />
             ))
           )}
         </TabsContent>

@@ -2,7 +2,10 @@ import { auth } from '@/services/auth'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { redirect, data } from 'react-router'
 import type { Route } from './+types/invitations'
-import { invitationsApiRouteInput, invitationsLoaderInput } from '@/schemas/api.schemas'
+import {
+  invitationsApiRouteInput,
+  invitationsLoaderInput,
+} from '@/schemas/api.schemas'
 import {
   listSentInvitations,
   listReceivedInvitations,
@@ -22,7 +25,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/sign-in')
 
-  const { type, itemId } = parseSearchParams({ request, schema: invitationsLoaderInput })
+  const { type, itemId } = parseSearchParams({
+    request,
+    schema: invitationsLoaderInput,
+  })
 
   try {
     if (itemId) {
@@ -50,7 +56,10 @@ export async function action({ request }: Route.ActionArgs) {
   const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/sign-in')
 
-  const parsedData = await parseFormData({ request, schema: invitationsApiRouteInput })
+  const parsedData = await parseFormData({
+    request,
+    schema: invitationsApiRouteInput,
+  })
 
   try {
     switch (parsedData.intent) {
@@ -58,8 +67,7 @@ export async function action({ request }: Route.ActionArgs) {
         const invitation = await sendItemInvitation(
           session.user.id,
           parsedData.itemId,
-          parsedData.email,
-          parsedData.role,
+          parsedData.recipients,
           { expiresAt: parsedData.expiresAt }
         )
         return data({ success: true, invitation })
@@ -69,8 +77,7 @@ export async function action({ request }: Route.ActionArgs) {
         const invitation = await sendWorkspaceInvitation(
           session.user.id,
           parsedData.workspaceId,
-          parsedData.email,
-          parsedData.role,
+          parsedData.recipients,
           { expiresAt: parsedData.expiresAt }
         )
         return data({ success: true, invitation })
@@ -78,7 +85,7 @@ export async function action({ request }: Route.ActionArgs) {
 
       case 'accept_invitation': {
         const invitation = await acceptInvitation(
-          parsedData.invitationId,
+          parsedData.recipientId,
           session.user.id,
           session.user.email
         )
@@ -87,7 +94,7 @@ export async function action({ request }: Route.ActionArgs) {
 
       case 'reject_invitation': {
         const invitation = await rejectInvitation(
-          parsedData.invitationId,
+          parsedData.recipientId,
           session.user.id,
           session.user.email
         )
@@ -95,20 +102,32 @@ export async function action({ request }: Route.ActionArgs) {
       }
 
       case 'cancel_invitation': {
-        const invitation = await cancelInvitation(parsedData.invitationId, session.user.id)
+        const invitation = await cancelInvitation(
+          parsedData.invitationId,
+          session.user.id
+        )
         return data({ success: true, invitation })
       }
 
       default: {
-        return data({ success: false, error: 'Unknown intent' }, { status: 400 })
+        return data(
+          { success: false, error: 'Unknown intent' },
+          { status: 400 }
+        )
       }
     }
   } catch (e) {
     const err = e as { statusCode?: number; message?: string }
     if (err?.statusCode) {
-      return data({ success: false, error: err.message ?? 'Error' }, { status: err.statusCode })
+      return data(
+        { success: false, error: err.message ?? 'Error' },
+        { status: err.statusCode }
+      )
     }
     console.error('[invitations action]', e)
-    return data({ success: false, error: 'An unexpected error occurred' }, { status: 500 })
+    return data(
+      { success: false, error: `An unexpected error occurred: ${e}` },
+      { status: 500 }
+    )
   }
 }

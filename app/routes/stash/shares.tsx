@@ -47,7 +47,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   })
 
   const sharedItemIds = permissions
-    .map((p) => p.itemId)
+    ?.map((p) => p.itemId)
     .filter((id): id is string => id !== null)
 
   if (sharedItemIds.length === 0) {
@@ -119,7 +119,7 @@ export default ({ loaderData }: Route.ComponentProps) => {
 
   return (
     <Fragment key={id}>
-      <SelectionProvider items={items.map((i) => i.id)}>
+      <SelectionProvider items={items?.map((i) => i.id)}>
         <GridLayout>
           {items.map((item) => (
             <motion.div

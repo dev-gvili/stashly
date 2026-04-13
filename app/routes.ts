@@ -78,6 +78,7 @@ export default [
         route('invitations', 'routes/stash/invitations.tsx'),
         route('trash', 'routes/stash/trash.tsx'),
         route('demo', 'routes/stash/demo.tsx'),
+        route('examples', 'routes/stash/examples.tsx'),
       ]),
       // workspaces routes
       ...prefix('workspaces', [
