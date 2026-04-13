@@ -28,13 +28,9 @@ import { RenameDialog } from '@/components/core-components/rename-dialog'
 import { formatSize } from '@/utils/formaters'
 import useConfirm from '@/hooks/useConfirm'
 import { cn } from '@/utils'
+import type { StashCollection } from '@/types/stash.types'
 
-export interface CollectionCardItem {
-  id: string
-  name: string
-  size: bigint
-  itemCount: number
-}
+export type CollectionCardItem = StashCollection
 
 export const cardVariants = {
   hidden: { opacity: 0, scale: 0.96 },
@@ -61,7 +57,7 @@ export function CollectionCard({
 
   return (
     <Card
-      className="group relative bg-sidebar rounded p-4 gap-3 justify-evenly transition-colors cursor-pointer border-none hover:bg-sidebar-accent aspect-video w-full min-w-xs"
+      className="group relative bg-sidebar rounded p-4 gap-3 justify-evenly transition-colors cursor-pointer border-none hover:bg-sidebar-accent aspect-video w-full max-w-xs"
       onClick={() =>
         navigate(
           `${href('/:me/stash/collections/:collectionId', {

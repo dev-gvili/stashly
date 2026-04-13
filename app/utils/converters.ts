@@ -760,6 +760,7 @@ export const StashlyPrefixMap = {
   Photo: 'pht',
   Favorite: 'fav',
   Invitation: 'inv',
+  InvitationRecipient: 'invr',
   Item: 'item',
   LockedItem: 'li',
   Metadata: 'meta',

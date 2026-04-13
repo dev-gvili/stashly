@@ -407,6 +407,7 @@ export async function addItemsToCollection({
 
   return prisma.$transaction(async (tx) => {
     await tx.collectionMember.createMany({
+      skipDuplicates: true,
       data: toAdd.map((i) => ({
         id: toObjectId(getPrefixForModel('CollectionMember')),
         collectionId,
@@ -439,10 +440,17 @@ export async function clearCollection({
   await assertItemPermission(userId, collectionId, 'write')
 
   return prisma.$transaction(async (tx) => {
-    await tx.collectionMember.deleteMany({ where: { collectionId } })
+    // await tx.collectionMember.deleteMany({ where: { collectionId } })
     await tx.item.update({
       where: { id: collectionId },
-      data: { size: 0 },
+      data: {
+        size: 0,
+        collectionItems: {
+          deleteMany: {
+            collectionId: collectionId,
+          },
+        },
+      },
     })
   })
 }
@@ -493,7 +501,9 @@ export async function getCollectionItems(
       )`
     : Prisma.sql``
 
-  const rows = await prisma.$queryRaw<(Item & { linkId: string; thumbnailUrl: string | null })[]>`
+  const rows = await prisma.$queryRaw<
+    (Item & { linkId: string; thumbnailUrl: string | null })[]
+  >`
     SELECT i.*, cm.id AS "linkId",
            (SELECT t.url FROM "Thumbnail" t WHERE t."itemId" = i.id AND t.view = 'grid' LIMIT 1) AS "thumbnailUrl"
     FROM "CollectionMember" cm

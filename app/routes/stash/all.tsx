@@ -97,7 +97,7 @@ export default function Index() {
       <ListLayout items={items} />
       <SelectionProvider items={items.map((i) => i.id)}>
         <GridLayout>
-          {items.map((item) => (
+          {items?.map((item) => (
             <motion.div
               key={item.id}
               variants={itemVariants}

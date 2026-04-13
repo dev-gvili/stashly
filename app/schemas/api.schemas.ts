@@ -182,6 +182,53 @@ export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
 ])
 
 // ====================================================== //
+// =============== Invitations Api Route ================ //
+// ====================================================== //
+
+const recipientInputSchema = z.object({
+  email: z.string().email(),
+  role: z.string().nonempty(),
+})
+
+/** Schema for GET /api/invitations?type=sent|received */
+export const invitationsLoaderInput = z.object({
+  type: z.enum(['sent', 'received']).default('received'),
+  itemId: z.string().optional(),
+})
+
+export const invitationsApiRouteInput = z.discriminatedUnion('intent', [
+  // Invite multiple recipients to access an item
+  z.object({
+    intent: z.literal('send_item_invitation'),
+    itemId: z.string().nonempty(),
+    recipients: z.array(recipientInputSchema).min(1),
+    expiresAt: z.coerce.date().optional(),
+  }),
+  // Invite multiple recipients to a workspace
+  z.object({
+    intent: z.literal('send_workspace_invitation'),
+    workspaceId: z.string().nonempty(),
+    recipients: z.array(recipientInputSchema).min(1),
+    expiresAt: z.coerce.date().optional(),
+  }),
+  // Accept a pending invitation (per recipient)
+  z.object({
+    intent: z.literal('accept_invitation'),
+    recipientId: z.string().nonempty(),
+  }),
+  // Reject a pending invitation (per recipient)
+  z.object({
+    intent: z.literal('reject_invitation'),
+    recipientId: z.string().nonempty(),
+  }),
+  // Cancel an entire invitation (sender)
+  z.object({
+    intent: z.literal('cancel_invitation'),
+    invitationId: z.string().nonempty(),
+  }),
+])
+
+// ====================================================== //
 // ================== Shares Api Route ================== //
 // ====================================================== //
 

@@ -1,13 +1,14 @@
 import { motion } from 'framer-motion'
 import { useSearchParams } from 'react-router'
 import type { LoaderData } from '@/hooks/usePagination'
-import { ItemCard, type ItemCardProps } from '@/components/stash/item-card'
+import { ItemCard } from '@/components/stash/item-card'
+import type { StashItem } from '@/types/stash.types'
 
 type ListViewProps<T> = {
   items: LoaderData<T>['items']
 }
 
-export const ListLayout = <T extends ItemCardProps>({
+export const ListLayout = <T extends StashItem>({
   items,
 }: ListViewProps<T>) => {
   const [searchParams] = useSearchParams()

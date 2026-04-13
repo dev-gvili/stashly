@@ -5,8 +5,8 @@ model Permission {
     expiresAt    DateTime?      @db.Timestamp()
     deletedAt    DateTime?      @db.Timestamp()
     roles        PermissionRole @default(read)
-    invitationId String?        @unique
-    invitation   Invitation?    @relation(fields: [invitationId], references: [id])
+    recipientId  String?        @unique
+    recipient    InvitationRecipient? @relation(fields: [recipientId], references: [id])
     linkId       String?
     link         ShareLink?     @relation(fields: [linkId], references: [id])
     itemId       String?
@@ -16,7 +16,7 @@ model Permission {
     @@index([createdAt(sort: Desc)])
     @@index([updatedAt(sort: Desc)])
     @@index([roles])
-    @@index([invitationId])
+    @@index([recipientId])
     @@index([linkId])
     @@index([itemId])
 }

@@ -94,6 +94,8 @@ export enum StashlyErrorCode {
   UNAUTHORIZED = 'UNAUTHORIZED',
   FORBIDDEN = 'FORBIDDEN',
   NOT_FOUND = 'NOT_FOUND',
+  CONFLICT = 'CONFLICT',
+  GONE = 'GONE',
   INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR',
   BAD_GATEWAY = 'BAD_GATEWAY',
   SERVICE_UNAVAILABLE = 'SERVICE_UNAVAILABLE',
@@ -126,6 +128,14 @@ const ERROR_DETAILS: Record<
   [StashlyErrorCode.NOT_FOUND]: {
     message: 'The requested resource could not be found.',
     statusCode: 404,
+  },
+  [StashlyErrorCode.CONFLICT]: {
+    message: 'The request conflicts with the current state of the resource.',
+    statusCode: 409,
+  },
+  [StashlyErrorCode.GONE]: {
+    message: 'The requested resource is no longer available.',
+    statusCode: 410,
   },
   [StashlyErrorCode.SERVICE_UNAVAILABLE]: {
     message: 'The service is temporarily unavailable.',

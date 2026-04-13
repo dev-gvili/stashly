@@ -5,6 +5,7 @@
 - [ ] Orphaned file cleanup — tackle `app/components/` (32 orphans remaining). See `orphaned.md` for full list.
 - [ ] Finish package update type errors — `workspaceItem.service.ts` (6 schema mismatches), `stripe.ts` (undefined check), `subscription.ts` (create signature mismatch)
 - [ ] Decide search infra: integrate the built-but-unwired `search.repository.ts`, `search.ts`, `filters.ts` — or delete them to reduce dead code. *(deferred — revisit after collections stabilises)*
+- [ ] Fix `app/routes/api/shares.ts` — replace `@/services/share-actions` import with relative `../../.server/share-actions` to resolve dot-server plugin build failure (deferred per "skip production build")
 
 ## Someday / Low Priority
 
@@ -13,6 +14,8 @@
 
 ## Done
 
+- [x] Sharing items feature — `share-actions.ts`, `/api/shares` route, `ShareDialog`, `ItemCard` wiring, `shares.tsx` shared-with-me view; PR #11 (2026-04-11)
+- [x] CLAUDE.md improvements — dot-server plugin gotcha, nullable relation `is` operator, dialog data loading pattern, New Feature Checklist, icon rule hardened (2026-04-11)
 - [x] Collection schema refactored — `Collection` model dropped, replaced with `CollectionMember` self-relation on `Item`; `collection-actions.ts` rewritten to use `prisma.item` + `prisma.collectionMember`; all collection intents routed through `/api/collections` (PR #10, 2026-04-10)
 - [x] Collection grid view — `CollectionItemCard` + `CollectionItemRow` in `collection-view.tsx`; `CollectionsFillIcon`/`CollectionLineIcon` icons; `GridLayout` on collections list; `CollectionCardItem` slim interface replacing raw Prisma payloads; `remove_item` intent wired end-to-end (2026-04-10)
 - [x] Collections UI — `CollectionsView`, `CollectionView`, `CollectionCard`, `RenameDialog`, `AddToCollectionDialog` (full-screen picker with date groups, filter pills, year scrubber); routes wired with loaders/actions

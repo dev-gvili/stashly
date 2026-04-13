@@ -22,7 +22,7 @@ This is a TypeScript project. Always use TypeScript for new files. Run `pnpm run
 
 Prefer action over exploration. When the user gives a clear task, execute it immediately rather than exploring the codebase or explaining the approach first.
 
-Do not explore or explain first. Execute this task directly: [your task]. If you need to choose between approaches, pick the simplest one. Do not modify files outside of app/ unless I say so.
+If you need to choose between approaches, pick the simplest one. Do not modify files outside of app/ unless I say so.
 
 ## Project Structure
 
@@ -36,6 +36,7 @@ pnpm build        # Build for production
 pnpm start        # Run production server
 pnpm typecheck    # Generate React Router types + run tsc
 pnpm format       # Format with Prettier
+pnpm vitest       # Run unit tests (app/utils/__tests__/)
 pnpm prisma migrate dev   # Run database migrations
 pnpm exec playwright test            # Run E2E tests (requires dev server)
 pnpm exec playwright test --ui       # Run E2E tests with Playwright UI
@@ -87,7 +88,9 @@ import { getCollectionForUser } from '@/services/collection-actions'
 const collection = await getCollectionForUser(session.user.id, collectionId)
 ```
 
-**API errors**: Use `ApiError` and `ApiErrorCode` from `app/.server/api.errors.ts` for consistent error responses.
+**API errors**: Use `ApiError` and `ApiErrorCode` from `app/.server/api.errors.ts` for consistent error responses in action files. **Do not import this in route files** — the dot-server plugin rejects `@/services/*` imports in `app/routes/`. In route action handlers, duck-type the error: `const err = e as { statusCode?: number; message?: string }`.
+
+**Dot-server plugin**: React Router's dot-server plugin blocks `@/services/*` path-alias imports inside `app/routes/` files (it rejects them as server-only leaks). Keep server-only logic entirely in action/loader functions that import from `.server/` via relative paths. **Never use the `@/services/` alias in a route file.**
 
 ### Upload Architecture (XState)
 
@@ -142,7 +145,7 @@ Components use shadcn/ui (source-owned, in `app/components/ui/`) built on Radix 
 
 ### UI Conventions
 
-**Icons**: All icons live in `app/components/icons.tsx`. Always grep it before reaching for lucide-react. `lucide-react` is a valid fallback for icons not yet in that file (it's already a dep via `dialog.tsx`).
+**Icons**: All icons live in `app/components/icons.tsx`. Always grep it before using any icon. **Do NOT use `lucide-react` directly** — if a needed icon is missing from `icons.tsx`, stop and notify the user so they can add it first.
 
 **Custom components**: Reusable UI components go in `app/components/core-components/`. Route-level views go in `app/components/views/`.
 
@@ -160,11 +163,15 @@ Components use shadcn/ui (source-owned, in `app/components/ui/`) built on Radix 
 
 **Pagination**: All paginated routes use `usePagination<T>(limit)` from `@/hooks/usePagination`. The loader returns `{ items, nextCursor, hasMore }`. The hook reads initial data from `useLoaderData` and appends pages via URL search params.
 
+**Dialog data loading**: For dialogs that load data on-demand (not at route load time), use `fetcher.load('/api/route?param=x')` inside a `useEffect` triggered by the dialog's `open` state. Use **two separate fetchers** when a component both reads and mutates — one for `fetcher.load()`, one for `fetcher.submit()`.
+
 **Multi-select grids**: Wrap item grids with `<SelectionProvider items={items.map(i => i.id)}>` from `@/components/stash/selection` to enable shift-click range selection and `useSelection()` in child checkboxes.
 
 ### Prisma Schema
 
 Models are split across `prisma/models/*.prisma` files and merged. Generated client outputs to `app/prisma/`. Core models: `User`, `Workspace`, `Item`, `Collection`, `Permission`, `Comment`.
+
+**Nullable relation filtering**: To filter on fields inside a nullable relation, use `relation: { is: { field: value } }` — **not** `relation: { isNot: null, field: value }`. Prisma's TS types reject field filters alongside `isNot`.
 
 ### Integrations
 
@@ -230,6 +237,24 @@ For significant changes, follow these steps:
 4. **PR** — Descriptive title and body (summary + test plan)
 
 5. **Merge** — Merge to `main` once the PR is clean
+
+## New Feature Checklist
+
+When adding a new feature, these steps are **mandatory** in order:
+
+1. **Actions file** — Create `app/.server/[feature]-actions.ts` with all business logic. Plain exported functions, no classes, pass context as params.
+2. **API route** — Create `app/routes/api/[feature].ts` using `parseFormData` / `parseSearchParams` for all request parsing. Never access `request` fields manually.
+3. **Zod schemas** — Add request/response schemas to `app/schemas/api.schemas.ts`. Use discriminated unions on `intent` for action routes.
+4. **UI placement** — Reusable components go in `app/components/core-components/`. Route-level views go in `app/components/views/`. Never scatter feature UI into ad-hoc locations.
+5. **Types** — Add shared TypeScript types to `app/types/stash.types.ts`. Infer from Zod schemas where possible.
+6. **Custom hooks** — Name hooks `use[Feature][Noun]` (e.g. `useShareLinks`, `useShareDialog`). Place in `app/hooks/`.
+7. **Tests** — Add E2E tests in `tests/e2e/` for user-facing flows. Add unit tests in `app/utils/__tests__/` for service logic.
+
+**Notes:**
+- Use `usePagination<T>(limit)` for any route that returns a list of items — never build ad-hoc pagination.
+- No arbitrary Tailwind sizes: use scale values (`text-sm`, `p-4`) not raw values (`text-[10px]`, `p-[13px]`).
+- Check `app/utils/` before creating new utility functions — reuse what exists.
+- Use the `shadcn-ui-component-builder` skill when building new shadcn/ui components or custom hooks.
 
 ## Workflows
 

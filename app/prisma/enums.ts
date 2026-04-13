@@ -29,6 +29,7 @@ export const InvitationStatus = {
   pending: 'pending',
   accepted: 'accepted',
   rejected: 'rejected',
+  canceled: 'canceled',
   expired: 'expired'
 } as const
 

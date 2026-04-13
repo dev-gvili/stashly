@@ -7,21 +7,24 @@ import {
   generateMockItemsWithFolder,
   generateMockItemWithFile,
   generateMockItemWithFolder,
+  generateMockSubFolders,
+  generateMockTopLevelFolders,
   //@ts-ignore
 } from '../prisma/seedData/data'
+import { createFolder, createItem, createManyItemsBatched } from '../app/.server/item-actions'
 import { PrismaPg } from '@prisma/adapter-pg'
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({
   adapter,
 })
-import { AutoConfig, AutoModel, AutoProcessor } from '@huggingface/transformers'
 
 const options: ParseArgsConfig = {
   options: {
     json: { type: 'boolean' },
     itemId: { type: 'string' },
     ownerId: { type: 'string' },
+    email: { type: 'string' },
     action: { type: 'string' },
     urlSearchParams: { type: 'string' },
     model: { type: 'string' },
@@ -32,7 +35,7 @@ const options: ParseArgsConfig = {
 
 async function main() {
   const {
-    values: { itemId, ownerId, action, json, urlSearchParams, model },
+    values: { itemId, ownerId, action, email, json, urlSearchParams, model },
     positionals,
     tokens,
   } = parseArgs(options)
@@ -99,8 +102,8 @@ async function main() {
   if (action === 'add-items') {
     const user = await prisma.user.findFirstOrThrow({
       where: {
-        name: {
-          startsWith: 'dev',
+        email: {
+          equals: 'bwvq073@outlook.com',
         },
       },
       include: {
@@ -110,6 +113,7 @@ async function main() {
 
     let folders = await prisma.item.findMany({
       where: {
+        ownerId: user.id,
         type: 'folder',
       },
       orderBy: {
@@ -126,7 +130,18 @@ async function main() {
         parent: { id: user.rootId } as any,
       }) as any
     }
-    const files = folders.map((folder) => {
+
+    let toplevel = generateMockTopLevelFolders({ user, drive: user.drive! })
+
+    const createdFolders = await prisma.$transaction([
+      ...toplevel.map((file) =>
+        prisma.item.create({
+          data: file,
+        })
+      ),
+    ])
+
+    const files = createdFolders.map((folder) => {
       let drive = user.drive
       return {
         ...generateMockItemWithFile(user, drive!, folder),
@@ -198,6 +213,82 @@ async function main() {
   } else {
     // void 0
   }
+  if (action === 'reset-db') {
+    try {
+      await prisma.$transaction([
+        prisma.folder.deleteMany(),
+        prisma.lockedItem.deleteMany(),
+        prisma.drive.deleteMany(),
+        prisma.subscription.deleteMany(),
+        prisma.storagePlan.deleteMany(),
+        prisma.favorite.deleteMany(),
+        prisma.file.deleteMany(),
+        prisma.thumbnail.deleteMany(),
+        prisma.item.deleteMany(),
+        prisma.account.deleteMany(),
+        prisma.user.deleteMany(),
+      ])
+    } catch (error) {
+      console.error('Error resetting database:', error)
+    }
+  }
+  if (action === 'stash-items') {
+    let user = await prisma.user.findFirstOrThrow({
+      where: { email: `${email}` },
+      include: { drive: true },
+    })
+
+    let rootFolder = await prisma.item.findUniqueOrThrow({
+      where: { id: user.rootId! },
+      include: { folder: true },
+    })
+
+    // Create multiple folders and files
+    const top_folders = generateMockTopLevelFolders({
+      user,
+      drive: user.drive!,
+      parent: rootFolder,
+    })
+
+    let createdTopFolders = top_folders.map((folder) => {
+      return createFolder(
+        folder.name,
+        folder.parentId as string,
+        user.id,
+        user.driveId!
+      )
+    })
+
+    const awaitedTopFolders = await Promise.all(createdTopFolders)
+
+    const folders = generateMockSubFolders({
+      user,
+      drive: user.drive!,
+      folders: awaitedTopFolders,
+    })
+
+    const createdFolders = await prisma.$transaction([
+      ...folders.map((folder) =>
+        prisma.item.create({
+          data: folder,
+        })
+      ),
+    ])
+
+    const files = generateMockItemsWithFile({
+      count: faker.number.int({ min: 30, max: 70 }),
+      user,
+      drive: user.drive!,
+      parent: faker.helpers.arrayElement(createdFolders),
+    })
+
+    const createdFiles = await createManyItemsBatched(files, 15)
+
+    console.log(
+      `Stashed: top_level_folders: ${createdTopFolders.length} | folders: ${inspect(createdFolders.length)} | files: ${inspect(createdFiles.length)} | total: ${createdTopFolders.length + createdFolders.length + createdFiles.length}`,
+      { compact: false, depth: null, colors: true }
+    )
+  }
   // if (action === 'embeddings') {
   //   let items = await prisma.item.findMany()
 
@@ -210,17 +301,6 @@ async function main() {
   //     )
   //   }
   // }
-  if (action === 'model_config') {
-    if (!model) {
-      throw new Error('Model name is required for model_config action')
-    }
-    const cfg = await AutoConfig.from_pretrained(`${model}`)
-    // const processor = await AutoProcessor.from_pretrained(`${model}`);
-    const modelInstance = await AutoModel.from_pretrained(`${model}`, {
-      config: cfg,
-    })
-    // void 0;
-  }
 }
 
 main()

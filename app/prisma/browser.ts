@@ -154,6 +154,11 @@ export type Favorite = Prisma.FavoriteModel
  */
 export type Invitation = Prisma.InvitationModel
 /**
+ * Model InvitationRecipient
+ * 
+ */
+export type InvitationRecipient = Prisma.InvitationRecipientModel
+/**
  * Model Item
  * 
  */

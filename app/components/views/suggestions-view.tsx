@@ -1,75 +1,14 @@
-import React, { Fragment, useId } from 'react'
+import React, { useId } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/utils/styles'
 import { ItemCard } from '@/components/stash/item-card'
 import { GridLayout } from '@/components/views/grid-view'
 import { itemVariants } from '@/components/views/variants'
-import type { Prisma } from '@/prisma/client'
 import { FilesEmptyState } from '../states/files-empty-state'
 import type { SuggestedItemsResult } from '../../.server/item-actions'
 import { ListLayout } from './list-view'
 
-export interface SuggestionsViewProps {
-  suggestedFolders: Prisma.ItemGetPayload<{
-    include: {
-      favorites: {
-        select: {
-          id: true
-          favoritedBy: {
-            select: {
-              id: true
-              name: true
-              displayName: true
-              image: true
-            }
-          }
-        }
-      }
-      file: true
-      folder: true
-      thumbnails: {
-        select: {
-          height: true
-          width: true
-          url: true
-          view: true
-          size: true
-          id: true
-        }
-      }
-    }
-  }>[]
-  suggestedFiles: Prisma.ItemGetPayload<{
-    include: {
-      favorites: {
-        select: {
-          id: true
-          favoritedBy: {
-            select: {
-              id: true
-              name: true
-              displayName: true
-              image: true
-            }
-          }
-        }
-      }
-      file: true
-      folder: true
-      thumbnails: {
-        select: {
-          height: true
-          width: true
-          url: true
-          view: true
-          size: true
-          id: true
-        }
-      }
-    }
-  }>[]
-  className?: string
-}
+export type SuggestionsViewProps = SuggestedItemsResult & { className?: string }
 
 /**
  * SuggestionsView Component
@@ -82,7 +21,7 @@ export interface SuggestionsViewProps {
  */
 export const SuggestionsView = React.forwardRef<
   HTMLDivElement,
-  SuggestedItemsResult & { className?: string; key: string }
+  SuggestionsViewProps & { key: string }
 >(({ suggestedFolders, suggestedFiles, className }, ref) => {
   const id = useId()
 

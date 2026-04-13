@@ -1450,12 +1450,12 @@ const InfoFillIcon = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M12 22c-4.714 0-7.071 0-8.536-1.465C2 19.072 2 16.714 2 12s0-7.071 1.464-8.536C4.93 2 7.286 2 12 2c4.714 0 7.071 0 8.535 1.464C22 4.93 22 7.286 22 12c0 4.714 0 7.071-1.465 8.535C19.072 22 16.714 22 12 22Z"
-      opacity={0.5}
+      d="M12 17.75a.75.75 0 0 0 .75-.75v-6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75ZM12 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z"
     />
     <path
       fill="currentColor"
-      d="M12 17.75a.75.75 0 0 0 .75-.75v-6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75ZM12 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z"
+      d="M12 22c-4.714 0-7.071 0-8.536-1.465C2 19.072 2 16.714 2 12s0-7.071 1.464-8.536C4.93 2 7.286 2 12 2c4.714 0 7.071 0 8.535 1.464C22 4.93 22 7.286 22 12c0 4.714 0 7.071-1.465 8.535C19.072 22 16.714 22 12 22Z"
+      opacity={0.5}
     />
   </svg>
 )
@@ -2684,3 +2684,194 @@ const CollectionLineIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 export {CollectionLineIcon};
+
+const ViewIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox='0 0 24 24'
+    {...props}
+  >
+     <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+    />
+
+  </svg>
+);
+export  {ViewIcon};
+
+const AnonymouseIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox='0 0 24 24'
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M21 17.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M2 11h20"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="m4 11 .614-2.455c.545-2.183.818-3.274 1.632-3.91C7.06 4 8.185 4 10.435 4h3.13c2.25 0 3.375 0 4.189.635.814.636 1.086 1.727 1.632 3.91L20 11"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M10 17.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="m10 17.5.658-.33a3 3 0 0 1 2.684 0l.658.33"
+      opacity={0.5}
+    />
+  </svg>
+);
+export {AnonymouseIcon};
+
+const GroupIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox='0 0 24 24'
+    {...props}
+  >
+    <circle cx={12} cy={6} r={4} stroke="currentColor" strokeWidth={1.5} />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M18 9c1.657 0 3-1.12 3-2.5S19.657 4 18 4M6 9C4.343 9 3 7.88 3 6.5S4.343 4 6 4"
+      opacity={0.5}
+    />
+    <ellipse cx={12} cy={17} stroke="currentColor" strokeWidth={1.5} rx={6} ry={4} />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M20 19c1.754-.385 3-1.359 3-2.5s-1.246-2.115-3-2.5M4 19c-1.754-.385-3-1.359-3-2.5s1.246-2.115 3-2.5"
+      opacity={0.5}
+    />
+  </svg>
+);
+export {GroupIcon};
+
+const LinkIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox='0 0 24 24'
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M8 18c-2.828 0-4.243 0-5.121-.879C2 16.243 2 14.828 2 12s0-4.243.879-5.121C3.757 6 5.172 6 8 6s4.243 0 5.121.879C14 7.757 14 9.172 14 12"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M10 12c0 2.828 0 4.243.879 5.121C11.757 18 13.172 18 16 18s4.243 0 5.121-.879C22 16.243 22 14.828 22 12s0-4.243-.879-5.121C20.243 6 18.828 6 16 6"
+      opacity={0.5}
+    />
+  </svg>
+);
+export {LinkIcon};
+
+const Embedicon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox='0 0 24 24'
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="m17 7.83 1.697 1.526c1.542 1.389 2.313 2.083 2.313 2.974 0 .89-.771 1.585-2.314 2.973L17 16.83"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="m13.987 5-3.974 14.83"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M7 7.83 5.304 9.356C3.76 10.745 2.99 11.44 2.99 12.33c0 .89.771 1.585 2.314 2.973L7 16.83"
+    />
+  </svg>
+);
+export {Embedicon};
+
+const SendInvitationIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox='0 0 24 24'
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M17 2.127c1.625.16 2.72.521 3.535 1.337C22 4.93 22 7.286 22 12s0 7.071-1.465 8.535C19.072 22 16.714 22 12 22s-7.071 0-8.536-1.465C2 19.072 2 16.714 2 12s0-7.071 1.464-8.536C4.281 2.648 5.374 2.287 7 2.127"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M12 10V2m0 0 3 3m-3-3L9 5"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M2 13h3.16c.905 0 1.358 0 1.756.183s.692.527 1.281 1.214l.606.706c.589.687.883 1.031 1.281 1.214s.85.183 1.756.183h.32c.905 0 1.358 0 1.756-.183s.692-.527 1.281-1.214l.606-.706c.589-.687.883-1.031 1.281-1.214S17.934 13 18.84 13H22"
+      opacity={0.5}
+    />
+  </svg>
+);
+export {SendInvitationIcon};

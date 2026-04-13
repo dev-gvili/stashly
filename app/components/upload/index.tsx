@@ -808,7 +808,7 @@ EmptyOutline.displayName = 'EmptyOutline'
 
 export const UploadPanel = ({ user }: { user: User }) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [closed, setIsClosed] = useState(false)
+  const [closed, setIsClosed] = useState(true)
   const uploadingFiles = useSelector(upload, (state) => {
     return Array.from(state.context.mediaFiles.values()).filter(
       (f) => f.status === 'uploading'
