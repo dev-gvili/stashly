@@ -185,8 +185,10 @@ export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
 // =============== Invitations Api Route ================ //
 // ====================================================== //
 
-const permissionRoleSchema = z.enum(['read', 'write', 'owner'])
-const workspaceMemberRoleSchema = z.enum(['viewer', 'member', 'admin', 'owner'])
+const recipientInputSchema = z.object({
+  email: z.string().email(),
+  role: z.string().nonempty(),
+})
 
 /** Schema for GET /api/invitations?type=sent|received */
 export const invitationsLoaderInput = z.object({
@@ -195,33 +197,31 @@ export const invitationsLoaderInput = z.object({
 })
 
 export const invitationsApiRouteInput = z.discriminatedUnion('intent', [
-  // Invite a specific user (by email) to access an item
+  // Invite multiple recipients to access an item
   z.object({
     intent: z.literal('send_item_invitation'),
     itemId: z.string().nonempty(),
-    email: z.string().email(),
-    role: permissionRoleSchema,
+    recipients: z.array(recipientInputSchema).min(1),
     expiresAt: z.coerce.date().optional(),
   }),
-  // Invite a user to a workspace
+  // Invite multiple recipients to a workspace
   z.object({
     intent: z.literal('send_workspace_invitation'),
     workspaceId: z.string().nonempty(),
-    email: z.string().email(),
-    role: workspaceMemberRoleSchema,
+    recipients: z.array(recipientInputSchema).min(1),
     expiresAt: z.coerce.date().optional(),
   }),
-  // Accept a pending invitation (recipient)
+  // Accept a pending invitation (per recipient)
   z.object({
     intent: z.literal('accept_invitation'),
-    invitationId: z.string().nonempty(),
+    recipientId: z.string().nonempty(),
   }),
-  // Reject a pending invitation (recipient)
+  // Reject a pending invitation (per recipient)
   z.object({
     intent: z.literal('reject_invitation'),
-    invitationId: z.string().nonempty(),
+    recipientId: z.string().nonempty(),
   }),
-  // Cancel a pending invitation (sender)
+  // Cancel an entire invitation (sender)
   z.object({
     intent: z.literal('cancel_invitation'),
     invitationId: z.string().nonempty(),

@@ -1,5 +1,5 @@
-import type { File, Folder, ItemCategory, ItemStatus, ItemType, Thumbnail, InvitationStatus } from '@/prisma/browser'
-import type { PermissionRole, WorkspaceMemberRole } from '@/prisma/enums'
+import type { File, Folder, ItemCategory, ItemStatus, ItemType, Thumbnail } from '@/prisma/browser'
+import type { InvitationStatus, PermissionRole, WorkspaceMemberRole } from '@/prisma/enums'
 
 // ---------------------------------------------------------------------------
 // Sub-types
@@ -58,12 +58,22 @@ export interface StashCollection {
 // InviteDialog, invitations view, and item card actions.
 // ---------------------------------------------------------------------------
 
+export interface StashInvitationRecipient {
+  id: string
+  email: string
+  status: InvitationStatus
+  role: string
+  permission: {
+    id: string
+    roles: PermissionRole
+    item: { id: string; name: string } | null
+  } | null
+}
+
 export interface StashInvitation {
   id: string
   createdAt: Date | string
   expiresAt: Date | string | null
-  email: string
-  status: InvitationStatus
   senderId: string
   sender: {
     id: string
@@ -71,14 +81,10 @@ export interface StashInvitation {
     email: string
     image: string | null
   }
-  permission: {
-    id: string
-    roles: PermissionRole
-    item: { id: string; name: string } | null
-  } | null
+  recipients: StashInvitationRecipient[]
+  item: { id: string; name: string } | null
   workspace: { id: string; name: string } | null
   workspaceId: string | null
-  role: WorkspaceMemberRole | null
 }
 
 // ---------------------------------------------------------------------------
