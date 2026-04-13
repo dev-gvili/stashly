@@ -20,18 +20,14 @@ import {
 import { toIcon } from '@/utils/converters'
 import { cn } from '@/utils/styles'
 import { formatSize } from '@/utils/formaters'
-import type { Item, ItemCategory, ItemType } from '@/prisma/client'
+import type { ItemCategory, ItemType } from '@/prisma/client'
+import type { StashPickerItem } from '@/types/stash.types'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type AddToCollectionItem = Pick<
-  Item,
-  'id' | 'name' | 'type' | 'category' | 'size' | 'createdAt'
-> & {
-  thumbnailUrl?: string | null
-}
+export type AddToCollectionItem = StashPickerItem
 
 interface AddToCollectionDialogProps {
   /** Whether the dialog is open */

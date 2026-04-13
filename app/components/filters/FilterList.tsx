@@ -21,6 +21,7 @@ import { useLocation, useSearchParams } from 'react-router'
 import { FilterListItem } from './FilterListItem'
 import { Tooltip } from '../ui/tooltip'
 
+
 const FilterList = <TData extends Record<string, string> = {}>({
   filterKey,
   label,
@@ -35,7 +36,7 @@ const FilterList = <TData extends Record<string, string> = {}>({
     location.pathname.includes('/videos') ||
     location.pathname.includes('/gallery')
   ) {
-    return null
+    return null 
   }
   let [searchParams, setSearchParams] = useSearchParams()
   let canReset = hasQueryParam(searchParams, filterKey)

@@ -1,20 +1,18 @@
 import shareTechMonoFonts from '@fontsource/share-tech-mono/index.css?url'
 import styles from '@/styles/globals.css?url'
 import {
-  isRouteErrorResponse,
   Links,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
   useFetcher,
-  useRouteError,
   useRouteLoaderData,
   type ShouldRevalidateFunction,
 } from 'react-router'
 import type { Route } from './+types/root'
 import { getColorScheme } from './.server/theme'
-import React, { useEffect } from 'react'
+import React from 'react'
 
 export const links: Route.LinksFunction = () => [
   { rel: 'stylesheet', href: styles },

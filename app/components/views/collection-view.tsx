@@ -39,7 +39,11 @@ import {
 import { formatSize } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
 import useConfirm from '@/hooks/useConfirm'
-import type { Item, ItemType } from '@/prisma/client'
+import type { ItemType } from '@/prisma/client'
+import type { StashItem, StashPickerItem } from '@/types/stash.types'
+import { toIcon } from '@/utils'
+import { GridLayout } from './grid-view'
+import { ListLayout } from './list-view'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,7 +58,7 @@ interface CollectionHeader {
 
 interface CollectionViewProps {
   collection: CollectionHeader
-  items: Item[]
+  items: StashPickerItem[]
   availableItems: AddToCollectionItem[]
   existingItemIds: string[]
   hasMore: boolean
@@ -67,11 +71,19 @@ interface CollectionViewProps {
 // Item type icon
 // ---------------------------------------------------------------------------
 
-function ItemTypeIcon({ type, className }: { type: ItemType; className?: string }) {
+function ItemTypeIcon({
+  type,
+  className,
+}: {
+  type: ItemType
+  className?: string
+}) {
   if (type === 'folder')
     return <FolderIcon className={cn('size-4 text-amber-500', className)} />
   if (type === 'collection')
-    return <CollectionIcon className={cn('size-4 text-violet-500', className)} />
+    return (
+      <CollectionIcon className={cn('size-4 text-violet-500', className)} />
+    )
   return <FileIcon className={cn('size-4 text-muted-foreground', className)} />
 }
 
@@ -101,6 +113,13 @@ function CollectionPageHeader({
     )
   }
 
+  function handleEmpty() {
+    fetcher.submit(
+      { intent: 'clear_collection', collectionId: collection.id },
+      { method: 'POST', action: '/api/collections' }
+    )
+  }
+
   return (
     <>
       <div className="flex items-start justify-between gap-4 px-4 pt-4">
@@ -126,7 +145,8 @@ function CollectionPageHeader({
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
             <Badge variant="secondary" className="font-normal">
-              {collection.itemCount} {collection.itemCount === 1 ? 'item' : 'items'}
+              {collection.itemCount}{' '}
+              {collection.itemCount === 1 ? 'item' : 'items'}
             </Badge>
             <span>{formatSize('byte', 'unit', Number(collection.size))}</span>
           </div>
@@ -152,7 +172,10 @@ function CollectionPageHeader({
 
             <DropdownMenuContent align="end" className="space-y-4 w-48">
               <DropdownMenuGroup className="mt-2">
-                <DropdownMenuItem className="items-start" onSelect={() => setAddOpen(true)}>
+                <DropdownMenuItem
+                  className="items-start"
+                  onSelect={() => setAddOpen(true)}
+                >
                   <AddIcon className="text-foreground" />
                   Add items
                 </DropdownMenuItem>
@@ -234,6 +257,25 @@ function CollectionPageHeader({
                 <TrashIcon className="text-foreground" />
                 <span className="text-nowrap shrink-0">Move to trash</span>
               </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                className="mt-2 items-start"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  open({
+                    variant: 'destructive',
+                    title: `Empty "${collection.name}"?`,
+                    description:
+                      'This will remove all items from this collection.',
+                    confirmText: 'Empty collection',
+                    onConfirm: handleEmpty,
+                  })
+                }}
+              >
+                <TrashIcon className="text-foreground" />
+                <span className="text-nowrap shrink-0">Empty collection</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -256,7 +298,7 @@ function CollectionPageHeader({
 // Grid card
 // ---------------------------------------------------------------------------
 
-function CollectionItemCard({ item }: { item: Item }) {
+function CollectionItemCard({ item }: { item: StashPickerItem }) {
   const fetcher = useFetcher()
   const { open } = useConfirm()
   const { collectionId } = useParams()
@@ -269,6 +311,7 @@ function CollectionItemCard({ item }: { item: Item }) {
     )
   }
 
+  let Icon = toIcon(item.category)
   return (
     <motion.div
       layout
@@ -284,7 +327,8 @@ function CollectionItemCard({ item }: { item: Item }) {
     >
       {/* Thumbnail / icon area */}
       <div className="flex items-center justify-center bg-muted/40 h-32">
-        <ItemTypeIcon type={item.type} className="size-10!" />
+        {/* <ItemTypeIcon type={item.type} className="size-10!" /> */}
+        <Icon className="size-10!" />
       </div>
 
       {/* Footer */}
@@ -328,7 +372,7 @@ const rowVariants = {
   exit: { opacity: 0, y: -4 },
 }
 
-function CollectionItemRow({ item }: { item: Item }) {
+function CollectionItemRow({ item }: { item: StashPickerItem }) {
   const fetcher = useFetcher()
   const { open } = useConfirm()
   const { collectionId } = useParams()
@@ -413,21 +457,29 @@ export function CollectionView({
 
       <Separator />
 
-      <div className={cn('px-4', isGrid ? 'grid 2xl:grid-cols-6 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-2' : 'flex flex-col gap-1.5')}>
-        <AnimatePresence mode="popLayout">
-          {items.length === 0 ? (
-            <CollectionEmptyState key="empty" />
-          ) : isGrid ? (
-            items.map((item) => <CollectionItemCard key={item.id} item={item} />)
-          ) : (
-            items.map((item) => <CollectionItemRow key={item.id} item={item} />)
-          )}
-        </AnimatePresence>
-      </div>
+      {/* <div className={cn('px-4', isGrid ? 'grid 2xl:grid-cols-6 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-2' : 'flex flex-col gap-1.5')}>
+        <AnimatePresence mode="popLayout"> */}
+      {items.length === 0 ? (
+        <CollectionEmptyState key="empty" />
+      ) : isGrid ? (
+        <GridLayout>
+          {items.map((item) => (
+            <CollectionItemCard key={item.id} item={item} />
+          ))}
+        </GridLayout>
+      ) : (
+        <ListLayout items={items as StashItem[]} />
+      )}
+      {/* </AnimatePresence> */}
+      {/* </div> */}
 
       {hasMore && (
         <div className="flex justify-center pt-2">
-          <LoadMoreItems loadMore={loadMore} isLoading={isLoading} hasMore={hasMore} />
+          <LoadMoreItems
+            loadMore={loadMore}
+            isLoading={isLoading}
+            hasMore={hasMore}
+          />
         </div>
       )}
     </div>

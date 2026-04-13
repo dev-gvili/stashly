@@ -19,6 +19,7 @@ import {
   HomeIcon,
   ImagesIcon,
   RecentIcon,
+  SendInvitationIcon,
   ShareIcon,
   TrashIcon,
   VideosIcon,
@@ -101,6 +102,14 @@ const sidebarItems: SidebarItemProps[] = [
     label: 'Shares',
     to: 'shares',
     tooltip: 'Shares',
+  },
+  {
+    icon: (isActive) => (
+      <SendInvitationIcon className="size-5! group-data-[state=collapsed]:ml-2" />
+    ),
+    label: 'Invitations',
+    to: 'invitations',
+    tooltip: 'Invitations',
   },
   {
     icon: (isActive) => (
@@ -238,7 +247,7 @@ export const AppSidebar = ({ user }: { user: User }) => {
           <SidebarGroup className="mt-2">
             <SidebarGroupContent>
               <SidebarMenu>
-                {sidebarItems.map((item, index) => (
+                {sidebarItems?.map((item, index) => (
                   <SidebarItem
                     {...item}
                     key={item.tooltip}

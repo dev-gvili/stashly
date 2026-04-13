@@ -96,7 +96,8 @@ const ItemCardActions = (
   let { id, name, type, status, favorites, user } = useItemCard()
   let favorited = toFavorite({ favorites, userId: user?.id })
   let [shareOpen, setShareOpen] = React.useState(false)
-  let [inviteOpen, setInviteOpen] = React.useState(false)
+  let [dmo, setDMOpen] = React.useState(false)
+  // let [inviteOpen, setInviteOpen] = React.useState(false)
   if (fetcher.data) {
     favorited = fetcher.data?.favorited ?? favorited
   }
@@ -136,19 +137,19 @@ const ItemCardActions = (
         itemName={name}
         itemType={itemType}
       />
-      <InviteDialog
+      {/* <InviteDialog
         open={inviteOpen}
         onOpenChange={setInviteOpen}
         itemId={id}
         itemName={name}
-      />
+      /> */}
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger onClick={(e) => e.stopPropagation()} {...props}>
           <MenuDotsIcon className="size-6!" />
         </DropdownMenuTrigger>
 
         {status !== 'trashed' && (
-          <DropdownMenuContent align="end" className="space-y-4 w-48">
+          <DropdownMenuContent align="end" className="space-y-4 w-48" onCloseAutoFocus={e => e.preventDefault()}>
             <DropdownMenuGroup className="mt-2">
               <DropdownMenuItem className="items-start">
                 <PreviewIcon className="text-foreground" />
@@ -193,24 +194,23 @@ const ItemCardActions = (
               </DropdownMenuLabel>
               <DropdownMenuItem
                 className="items-start"
-                onSelect={(e) => {
+                onClick={(e) => {
                   e.preventDefault()
+                  e.stopPropagation()
                   setShareOpen(true)
                 }}
-                onClick={(e) => e.stopPropagation()}
               >
                 <ShareItemIcon className="text-foreground" />
                 Share
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="items-start"
-                onSelect={(e) => {
-                  e.preventDefault()
-                  setInviteOpen(true)
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  setDMOpen(true)
                 }}
-                onClick={(e) => e.stopPropagation()}
               >
-                <GroupIcon className="text-foreground" />
+                <GroupIcon />
                 Invite
               </DropdownMenuItem>
               <DropdownMenuItem className="items-start">
@@ -302,6 +302,12 @@ const ItemCardActions = (
           </DropdownMenuContent>
         )}
       </DropdownMenu>
+        <InviteDialog
+        itemId={id}
+        itemName={name}
+        open={dmo}
+        onOpenChange={setDMOpen}
+      />
     </>
   )
 }
@@ -612,6 +618,8 @@ const ItemCardRoot = ({
           className
         )}
         onClick={(e) => {
+          // Ignore clicks from portaled elements (dialogs, dropdowns)
+          if (!e.currentTarget.contains(e.target as Node)) return false
           e.stopPropagation()
           navigate(layout ? `${to}?layout=${layout}` : to)
         }}
