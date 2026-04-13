@@ -410,6 +410,7 @@ export const ModelName = {
   Audio: 'Audio',
   Favorite: 'Favorite',
   Invitation: 'Invitation',
+  InvitationRecipient: 'InvitationRecipient',
   Item: 'Item',
   LockedItem: 'LockedItem',
   Notification: 'Notification',
@@ -444,7 +445,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "account" | "itemAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "item" | "lockedItem" | "notification" | "permission" | "quota" | "search" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
+    modelProps: "account" | "itemAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "quota" | "search" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2372,6 +2373,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    InvitationRecipient: {
+      payload: Prisma.$InvitationRecipientPayload<ExtArgs>
+      fields: Prisma.InvitationRecipientFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.InvitationRecipientFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvitationRecipientPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.InvitationRecipientFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvitationRecipientPayload>
+        }
+        findFirst: {
+          args: Prisma.InvitationRecipientFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvitationRecipientPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.InvitationRecipientFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvitationRecipientPayload>
+        }
+        findMany: {
+          args: Prisma.InvitationRecipientFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvitationRecipientPayload>[]
+        }
+        create: {
+          args: Prisma.InvitationRecipientCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvitationRecipientPayload>
+        }
+        createMany: {
+          args: Prisma.InvitationRecipientCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.InvitationRecipientCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvitationRecipientPayload>[]
+        }
+        delete: {
+          args: Prisma.InvitationRecipientDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvitationRecipientPayload>
+        }
+        update: {
+          args: Prisma.InvitationRecipientUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvitationRecipientPayload>
+        }
+        deleteMany: {
+          args: Prisma.InvitationRecipientDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.InvitationRecipientUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.InvitationRecipientUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvitationRecipientPayload>[]
+        }
+        upsert: {
+          args: Prisma.InvitationRecipientUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$InvitationRecipientPayload>
+        }
+        aggregate: {
+          args: Prisma.InvitationRecipientAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateInvitationRecipient>
+        }
+        groupBy: {
+          args: Prisma.InvitationRecipientGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.InvitationRecipientGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.InvitationRecipientCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.InvitationRecipientCountAggregateOutputType> | number
+        }
+      }
+    }
     Item: {
       payload: Prisma.$ItemPayload<ExtArgs>
       fields: Prisma.ItemFieldRefs
@@ -4109,14 +4184,24 @@ export const InvitationScalarFieldEnum = {
   id: 'id',
   createdAt: 'createdAt',
   expiresAt: 'expiresAt',
-  email: 'email',
-  status: 'status',
   senderId: 'senderId',
-  workspaceId: 'workspaceId',
-  role: 'role'
+  itemId: 'itemId',
+  workspaceId: 'workspaceId'
 } as const
 
 export type InvitationScalarFieldEnum = (typeof InvitationScalarFieldEnum)[keyof typeof InvitationScalarFieldEnum]
+
+
+export const InvitationRecipientScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  email: 'email',
+  status: 'status',
+  role: 'role',
+  invitationId: 'invitationId'
+} as const
+
+export type InvitationRecipientScalarFieldEnum = (typeof InvitationRecipientScalarFieldEnum)[keyof typeof InvitationRecipientScalarFieldEnum]
 
 
 export const ItemScalarFieldEnum = {
@@ -4172,7 +4257,7 @@ export const PermissionScalarFieldEnum = {
   expiresAt: 'expiresAt',
   deletedAt: 'deletedAt',
   roles: 'roles',
-  invitationId: 'invitationId',
+  recipientId: 'recipientId',
   linkId: 'linkId',
   itemId: 'itemId'
 } as const
@@ -4571,20 +4656,6 @@ export type ListEnumInvitationStatusFieldRefInput<$PrismaModel> = FieldRefInputT
 
 
 /**
- * Reference to a field of type 'WorkspaceMemberRole'
- */
-export type EnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WorkspaceMemberRole'>
-    
-
-
-/**
- * Reference to a field of type 'WorkspaceMemberRole[]'
- */
-export type ListEnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WorkspaceMemberRole[]'>
-    
-
-
-/**
  * Reference to a field of type 'ItemType'
  */
 export type EnumItemTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ItemType'>
@@ -4807,6 +4878,20 @@ export type EnumSortOrderFieldRefInput<$PrismaModel> = FieldRefInputType<$Prisma
 export type ListEnumSortOrderFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SortOrder[]'>
     
 
+
+/**
+ * Reference to a field of type 'WorkspaceMemberRole'
+ */
+export type EnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WorkspaceMemberRole'>
+    
+
+
+/**
+ * Reference to a field of type 'WorkspaceMemberRole[]'
+ */
+export type ListEnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WorkspaceMemberRole[]'>
+    
+
 /**
  * Batch Payload for updateMany & deleteMany & createMany
  */
@@ -4928,6 +5013,7 @@ export type GlobalOmitConfig = {
   audio?: Prisma.AudioOmit
   favorite?: Prisma.FavoriteOmit
   invitation?: Prisma.InvitationOmit
+  invitationRecipient?: Prisma.InvitationRecipientOmit
   item?: Prisma.ItemOmit
   lockedItem?: Prisma.LockedItemOmit
   notification?: Prisma.NotificationOmit

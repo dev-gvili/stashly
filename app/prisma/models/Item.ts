@@ -319,6 +319,7 @@ export type ItemWhereInput = {
   memberOfCollections?: Prisma.CollectionMemberListRelationFilter
   locked?: Prisma.XOR<Prisma.LockedItemNullableScalarRelationFilter, Prisma.LockedItemWhereInput> | null
   permissions?: Prisma.PermissionListRelationFilter
+  invitations?: Prisma.InvitationListRelationFilter
   thumbnails?: Prisma.ThumbnailListRelationFilter
   versions?: Prisma.ItemVersionListRelationFilter
   activities?: Prisma.ActivityListRelationFilter
@@ -360,6 +361,7 @@ export type ItemOrderByWithRelationInput = {
   memberOfCollections?: Prisma.CollectionMemberOrderByRelationAggregateInput
   locked?: Prisma.LockedItemOrderByWithRelationInput
   permissions?: Prisma.PermissionOrderByRelationAggregateInput
+  invitations?: Prisma.InvitationOrderByRelationAggregateInput
   thumbnails?: Prisma.ThumbnailOrderByRelationAggregateInput
   versions?: Prisma.ItemVersionOrderByRelationAggregateInput
   activities?: Prisma.ActivityOrderByRelationAggregateInput
@@ -404,6 +406,7 @@ export type ItemWhereUniqueInput = Prisma.AtLeast<{
   memberOfCollections?: Prisma.CollectionMemberListRelationFilter
   locked?: Prisma.XOR<Prisma.LockedItemNullableScalarRelationFilter, Prisma.LockedItemWhereInput> | null
   permissions?: Prisma.PermissionListRelationFilter
+  invitations?: Prisma.InvitationListRelationFilter
   thumbnails?: Prisma.ThumbnailListRelationFilter
   versions?: Prisma.ItemVersionListRelationFilter
   activities?: Prisma.ActivityListRelationFilter
@@ -487,6 +490,7 @@ export type ItemCreateInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -524,6 +528,7 @@ export type ItemUncheckedCreateInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -561,6 +566,7 @@ export type ItemUpdateInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -598,6 +604,7 @@ export type ItemUncheckedUpdateInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -945,6 +952,22 @@ export type ItemUpdateOneRequiredWithoutFavoritesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutFavoritesInput, Prisma.ItemUpdateWithoutFavoritesInput>, Prisma.ItemUncheckedUpdateWithoutFavoritesInput>
 }
 
+export type ItemCreateNestedOneWithoutInvitationsInput = {
+  create?: Prisma.XOR<Prisma.ItemCreateWithoutInvitationsInput, Prisma.ItemUncheckedCreateWithoutInvitationsInput>
+  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutInvitationsInput
+  connect?: Prisma.ItemWhereUniqueInput
+}
+
+export type ItemUpdateOneWithoutInvitationsNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemCreateWithoutInvitationsInput, Prisma.ItemUncheckedCreateWithoutInvitationsInput>
+  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutInvitationsInput
+  upsert?: Prisma.ItemUpsertWithoutInvitationsInput
+  disconnect?: Prisma.ItemWhereInput | boolean
+  delete?: Prisma.ItemWhereInput | boolean
+  connect?: Prisma.ItemWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutInvitationsInput, Prisma.ItemUpdateWithoutInvitationsInput>, Prisma.ItemUncheckedUpdateWithoutInvitationsInput>
+}
+
 export type ItemCreatetagsInput = {
   set: string[]
 }
@@ -1228,6 +1251,7 @@ export type ItemCreateWithoutActivitiesInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
@@ -1264,6 +1288,7 @@ export type ItemUncheckedCreateWithoutActivitiesInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
@@ -1316,6 +1341,7 @@ export type ItemUpdateWithoutActivitiesInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
@@ -1352,6 +1378,7 @@ export type ItemUncheckedUpdateWithoutActivitiesInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
@@ -1388,6 +1415,7 @@ export type ItemCreateWithoutLogsInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -1424,6 +1452,7 @@ export type ItemUncheckedCreateWithoutLogsInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -1476,6 +1505,7 @@ export type ItemUpdateWithoutLogsInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -1512,6 +1542,7 @@ export type ItemUncheckedUpdateWithoutLogsInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -1547,6 +1578,7 @@ export type ItemCreateWithoutCollectionItemsInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -1583,6 +1615,7 @@ export type ItemUncheckedCreateWithoutCollectionItemsInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -1624,6 +1657,7 @@ export type ItemCreateWithoutMemberOfCollectionsInput = {
   collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -1660,6 +1694,7 @@ export type ItemUncheckedCreateWithoutMemberOfCollectionsInput = {
   collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -1712,6 +1747,7 @@ export type ItemUpdateWithoutCollectionItemsInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -1748,6 +1784,7 @@ export type ItemUncheckedUpdateWithoutCollectionItemsInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -1795,6 +1832,7 @@ export type ItemUpdateWithoutMemberOfCollectionsInput = {
   collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -1831,6 +1869,7 @@ export type ItemUncheckedUpdateWithoutMemberOfCollectionsInput = {
   collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -1868,6 +1907,7 @@ export type ItemCreateWithoutCommentsInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -1904,6 +1944,7 @@ export type ItemUncheckedCreateWithoutCommentsInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -1956,6 +1997,7 @@ export type ItemUpdateWithoutCommentsInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -1992,6 +2034,7 @@ export type ItemUncheckedUpdateWithoutCommentsInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -2027,6 +2070,7 @@ export type ItemCreateWithoutDriveInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -2063,6 +2107,7 @@ export type ItemUncheckedCreateWithoutDriveInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -2147,6 +2192,7 @@ export type ItemCreateWithoutFileInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -2183,6 +2229,7 @@ export type ItemUncheckedCreateWithoutFileInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -2235,6 +2282,7 @@ export type ItemUpdateWithoutFileInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -2271,6 +2319,7 @@ export type ItemUncheckedUpdateWithoutFileInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -2307,6 +2356,7 @@ export type ItemCreateWithoutFolderInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -2343,6 +2393,7 @@ export type ItemUncheckedCreateWithoutFolderInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -2395,6 +2446,7 @@ export type ItemUpdateWithoutFolderInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -2431,6 +2483,7 @@ export type ItemUncheckedUpdateWithoutFolderInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -2467,6 +2520,7 @@ export type ItemCreateWithoutImageInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -2503,6 +2557,7 @@ export type ItemUncheckedCreateWithoutImageInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -2555,6 +2610,7 @@ export type ItemUpdateWithoutImageInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -2591,6 +2647,7 @@ export type ItemUncheckedUpdateWithoutImageInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -2627,6 +2684,7 @@ export type ItemCreateWithoutVideoInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -2663,6 +2721,7 @@ export type ItemUncheckedCreateWithoutVideoInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -2715,6 +2774,7 @@ export type ItemUpdateWithoutVideoInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -2751,6 +2811,7 @@ export type ItemUncheckedUpdateWithoutVideoInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -2787,6 +2848,7 @@ export type ItemCreateWithoutAudioInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -2823,6 +2885,7 @@ export type ItemUncheckedCreateWithoutAudioInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -2875,6 +2938,7 @@ export type ItemUpdateWithoutAudioInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -2911,6 +2975,7 @@ export type ItemUncheckedUpdateWithoutAudioInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -2948,6 +3013,7 @@ export type ItemCreateWithoutFavoritesInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -2984,6 +3050,7 @@ export type ItemUncheckedCreateWithoutFavoritesInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -3036,6 +3103,7 @@ export type ItemUpdateWithoutFavoritesInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -3072,11 +3140,176 @@ export type ItemUncheckedUpdateWithoutFavoritesInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+}
+
+export type ItemCreateWithoutInvitationsInput = {
+  id: string
+  name: string
+  size?: bigint | number
+  inclusiveSize?: bigint | number
+  type?: $Enums.ItemType
+  category?: $Enums.ItemCategory
+  status?: $Enums.ItemStatus
+  uploadId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  openedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
+  file?: Prisma.FileCreateNestedOneWithoutItemInput
+  folder?: Prisma.FolderCreateNestedOneWithoutItemInput
+  image?: Prisma.ImageCreateNestedOneWithoutItemInput
+  video?: Prisma.VideoCreateNestedOneWithoutItemInput
+  audio?: Prisma.AudioCreateNestedOneWithoutItemInput
+  owner: Prisma.UserCreateNestedOneWithoutItemsInput
+  workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
+  drive: Prisma.DriveCreateNestedOneWithoutItemsInput
+  children?: Prisma.ItemCreateNestedManyWithoutParentInput
+  parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
+  trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
+  activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
+  comments?: Prisma.CommentCreateNestedManyWithoutItemInput
+  logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
+  favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
+}
+
+export type ItemUncheckedCreateWithoutInvitationsInput = {
+  id: string
+  name: string
+  size?: bigint | number
+  inclusiveSize?: bigint | number
+  type?: $Enums.ItemType
+  category?: $Enums.ItemCategory
+  status?: $Enums.ItemStatus
+  uploadId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  openedAt?: Date | string | null
+  ownerId: string
+  workspaceId?: string | null
+  driveId: string
+  parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
+  file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
+  folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
+  image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
+  video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
+  audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
+  children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
+  trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
+  activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
+  logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
+  favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+}
+
+export type ItemCreateOrConnectWithoutInvitationsInput = {
+  where: Prisma.ItemWhereUniqueInput
+  create: Prisma.XOR<Prisma.ItemCreateWithoutInvitationsInput, Prisma.ItemUncheckedCreateWithoutInvitationsInput>
+}
+
+export type ItemUpsertWithoutInvitationsInput = {
+  update: Prisma.XOR<Prisma.ItemUpdateWithoutInvitationsInput, Prisma.ItemUncheckedUpdateWithoutInvitationsInput>
+  create: Prisma.XOR<Prisma.ItemCreateWithoutInvitationsInput, Prisma.ItemUncheckedCreateWithoutInvitationsInput>
+  where?: Prisma.ItemWhereInput
+}
+
+export type ItemUpdateToOneWithWhereWithoutInvitationsInput = {
+  where?: Prisma.ItemWhereInput
+  data: Prisma.XOR<Prisma.ItemUpdateWithoutInvitationsInput, Prisma.ItemUncheckedUpdateWithoutInvitationsInput>
+}
+
+export type ItemUpdateWithoutInvitationsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  inclusiveSize?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
+  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
+  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
+  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
+  file?: Prisma.FileUpdateOneWithoutItemNestedInput
+  folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
+  image?: Prisma.ImageUpdateOneWithoutItemNestedInput
+  video?: Prisma.VideoUpdateOneWithoutItemNestedInput
+  audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
+  owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
+  workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
+  drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
+  children?: Prisma.ItemUpdateManyWithoutParentNestedInput
+  parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
+  trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
+  activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
+  logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
+  favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+}
+
+export type ItemUncheckedUpdateWithoutInvitationsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  inclusiveSize?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
+  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
+  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
+  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerId?: Prisma.StringFieldUpdateOperationsInput | string
+  workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  driveId?: Prisma.StringFieldUpdateOperationsInput | string
+  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
+  file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
+  folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
+  image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
+  video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
+  audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
+  children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
+  trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
+  activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
+  logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
+  favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
@@ -3107,6 +3340,7 @@ export type ItemCreateWithoutParentInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -3143,6 +3377,7 @@ export type ItemUncheckedCreateWithoutParentInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -3189,6 +3424,7 @@ export type ItemCreateWithoutChildrenInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -3225,6 +3461,7 @@ export type ItemUncheckedCreateWithoutChildrenInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -3293,6 +3530,7 @@ export type ItemUpdateWithoutChildrenInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -3329,6 +3567,7 @@ export type ItemUncheckedUpdateWithoutChildrenInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -3365,6 +3604,7 @@ export type ItemCreateWithoutLockedInput = {
   collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -3401,6 +3641,7 @@ export type ItemUncheckedCreateWithoutLockedInput = {
   collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -3453,6 +3694,7 @@ export type ItemUpdateWithoutLockedInput = {
   collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -3489,6 +3731,7 @@ export type ItemUncheckedUpdateWithoutLockedInput = {
   collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -3525,6 +3768,7 @@ export type ItemCreateWithoutPermissionsInput = {
   collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -3561,6 +3805,7 @@ export type ItemUncheckedCreateWithoutPermissionsInput = {
   collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -3613,6 +3858,7 @@ export type ItemUpdateWithoutPermissionsInput = {
   collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -3649,6 +3895,7 @@ export type ItemUncheckedUpdateWithoutPermissionsInput = {
   collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -3686,6 +3933,7 @@ export type ItemCreateWithoutSearchInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -3722,6 +3970,7 @@ export type ItemUncheckedCreateWithoutSearchInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -3774,6 +4023,7 @@ export type ItemUpdateWithoutSearchInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -3810,6 +4060,7 @@ export type ItemUncheckedUpdateWithoutSearchInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -3846,6 +4097,7 @@ export type ItemCreateWithoutThumbnailsInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
@@ -3882,6 +4134,7 @@ export type ItemUncheckedCreateWithoutThumbnailsInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
@@ -3934,6 +4187,7 @@ export type ItemUpdateWithoutThumbnailsInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
@@ -3970,6 +4224,7 @@ export type ItemUncheckedUpdateWithoutThumbnailsInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
@@ -4005,6 +4260,7 @@ export type ItemCreateWithoutTrashInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -4041,6 +4297,7 @@ export type ItemUncheckedCreateWithoutTrashInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -4093,6 +4350,7 @@ export type ItemUpdateWithoutTrashInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -4129,6 +4387,7 @@ export type ItemUncheckedUpdateWithoutTrashInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -4165,6 +4424,7 @@ export type ItemCreateWithoutOwnerInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -4201,6 +4461,7 @@ export type ItemUncheckedCreateWithoutOwnerInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -4264,6 +4525,7 @@ export type ItemCreateWithoutVersionsInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
@@ -4300,6 +4562,7 @@ export type ItemUncheckedCreateWithoutVersionsInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
@@ -4352,6 +4615,7 @@ export type ItemUpdateWithoutVersionsInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
@@ -4388,6 +4652,7 @@ export type ItemUncheckedUpdateWithoutVersionsInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
@@ -4423,6 +4688,7 @@ export type ItemCreateWithoutWorkspaceInput = {
   memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
@@ -4459,6 +4725,7 @@ export type ItemUncheckedCreateWithoutWorkspaceInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
   locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
   permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
   thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
   versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
   activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
@@ -4539,6 +4806,7 @@ export type ItemUpdateWithoutDriveInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -4575,6 +4843,7 @@ export type ItemUncheckedUpdateWithoutDriveInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -4647,6 +4916,7 @@ export type ItemUpdateWithoutParentInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -4683,6 +4953,7 @@ export type ItemUncheckedUpdateWithoutParentInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -4755,6 +5026,7 @@ export type ItemUpdateWithoutOwnerInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -4791,6 +5063,7 @@ export type ItemUncheckedUpdateWithoutOwnerInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -4863,6 +5136,7 @@ export type ItemUpdateWithoutWorkspaceInput = {
   memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
@@ -4899,6 +5173,7 @@ export type ItemUncheckedUpdateWithoutWorkspaceInput = {
   memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
   locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
   permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
   thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
   versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
   activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
@@ -4936,6 +5211,7 @@ export type ItemCountOutputType = {
   collectionItems: number
   memberOfCollections: number
   permissions: number
+  invitations: number
   thumbnails: number
   versions: number
   activities: number
@@ -4949,6 +5225,7 @@ export type ItemCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   collectionItems?: boolean | ItemCountOutputTypeCountCollectionItemsArgs
   memberOfCollections?: boolean | ItemCountOutputTypeCountMemberOfCollectionsArgs
   permissions?: boolean | ItemCountOutputTypeCountPermissionsArgs
+  invitations?: boolean | ItemCountOutputTypeCountInvitationsArgs
   thumbnails?: boolean | ItemCountOutputTypeCountThumbnailsArgs
   versions?: boolean | ItemCountOutputTypeCountVersionsArgs
   activities?: boolean | ItemCountOutputTypeCountActivitiesArgs
@@ -4993,6 +5270,13 @@ export type ItemCountOutputTypeCountMemberOfCollectionsArgs<ExtArgs extends runt
  */
 export type ItemCountOutputTypeCountPermissionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.PermissionWhereInput
+}
+
+/**
+ * ItemCountOutputType without action
+ */
+export type ItemCountOutputTypeCountInvitationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.InvitationWhereInput
 }
 
 /**
@@ -5070,6 +5354,7 @@ export type ItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   memberOfCollections?: boolean | Prisma.Item$memberOfCollectionsArgs<ExtArgs>
   locked?: boolean | Prisma.Item$lockedArgs<ExtArgs>
   permissions?: boolean | Prisma.Item$permissionsArgs<ExtArgs>
+  invitations?: boolean | Prisma.Item$invitationsArgs<ExtArgs>
   thumbnails?: boolean | Prisma.Item$thumbnailsArgs<ExtArgs>
   versions?: boolean | Prisma.Item$versionsArgs<ExtArgs>
   activities?: boolean | Prisma.Item$activitiesArgs<ExtArgs>
@@ -5162,6 +5447,7 @@ export type ItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   memberOfCollections?: boolean | Prisma.Item$memberOfCollectionsArgs<ExtArgs>
   locked?: boolean | Prisma.Item$lockedArgs<ExtArgs>
   permissions?: boolean | Prisma.Item$permissionsArgs<ExtArgs>
+  invitations?: boolean | Prisma.Item$invitationsArgs<ExtArgs>
   thumbnails?: boolean | Prisma.Item$thumbnailsArgs<ExtArgs>
   versions?: boolean | Prisma.Item$versionsArgs<ExtArgs>
   activities?: boolean | Prisma.Item$activitiesArgs<ExtArgs>
@@ -5223,6 +5509,7 @@ export type $ItemPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     memberOfCollections: Prisma.$CollectionMemberPayload<ExtArgs>[]
     locked: Prisma.$LockedItemPayload<ExtArgs> | null
     permissions: Prisma.$PermissionPayload<ExtArgs>[]
+    invitations: Prisma.$InvitationPayload<ExtArgs>[]
     thumbnails: Prisma.$ThumbnailPayload<ExtArgs>[]
     versions: Prisma.$ItemVersionPayload<ExtArgs>[]
     activities: Prisma.$ActivityPayload<ExtArgs>[]
@@ -5657,6 +5944,7 @@ export interface Prisma__ItemClient<T, Null = never, ExtArgs extends runtime.Typ
   memberOfCollections<T extends Prisma.Item$memberOfCollectionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$memberOfCollectionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CollectionMemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   locked<T extends Prisma.Item$lockedArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$lockedArgs<ExtArgs>>): Prisma.Prisma__LockedItemClient<runtime.Types.Result.GetResult<Prisma.$LockedItemPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   permissions<T extends Prisma.Item$permissionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$permissionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  invitations<T extends Prisma.Item$invitationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$invitationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvitationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   thumbnails<T extends Prisma.Item$thumbnailsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$thumbnailsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ThumbnailPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   versions<T extends Prisma.Item$versionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$versionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ItemVersionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   activities<T extends Prisma.Item$activitiesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$activitiesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -6383,6 +6671,30 @@ export type Item$permissionsArgs<ExtArgs extends runtime.Types.Extensions.Intern
   take?: number
   skip?: number
   distinct?: Prisma.PermissionScalarFieldEnum | Prisma.PermissionScalarFieldEnum[]
+}
+
+/**
+ * Item.invitations
+ */
+export type Item$invitationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Invitation
+   */
+  select?: Prisma.InvitationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Invitation
+   */
+  omit?: Prisma.InvitationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.InvitationInclude<ExtArgs> | null
+  where?: Prisma.InvitationWhereInput
+  orderBy?: Prisma.InvitationOrderByWithRelationInput | Prisma.InvitationOrderByWithRelationInput[]
+  cursor?: Prisma.InvitationWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.InvitationScalarFieldEnum | Prisma.InvitationScalarFieldEnum[]
 }
 
 /**

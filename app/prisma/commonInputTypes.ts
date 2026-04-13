@@ -361,13 +361,6 @@ export type EnumInvitationStatusFilter<$PrismaModel = never> = {
   not?: Prisma.NestedEnumInvitationStatusFilter<$PrismaModel> | $Enums.InvitationStatus
 }
 
-export type EnumWorkspaceMemberRoleNullableFilter<$PrismaModel = never> = {
-  equals?: $Enums.WorkspaceMemberRole | Prisma.EnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> | null
-  in?: $Enums.WorkspaceMemberRole[] | Prisma.ListEnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> | null
-  notIn?: $Enums.WorkspaceMemberRole[] | Prisma.ListEnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> | null
-  not?: Prisma.NestedEnumWorkspaceMemberRoleNullableFilter<$PrismaModel> | $Enums.WorkspaceMemberRole | null
-}
-
 export type EnumInvitationStatusWithAggregatesFilter<$PrismaModel = never> = {
   equals?: $Enums.InvitationStatus | Prisma.EnumInvitationStatusFieldRefInput<$PrismaModel>
   in?: $Enums.InvitationStatus[] | Prisma.ListEnumInvitationStatusFieldRefInput<$PrismaModel>
@@ -376,16 +369,6 @@ export type EnumInvitationStatusWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumInvitationStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumInvitationStatusFilter<$PrismaModel>
-}
-
-export type EnumWorkspaceMemberRoleNullableWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: $Enums.WorkspaceMemberRole | Prisma.EnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> | null
-  in?: $Enums.WorkspaceMemberRole[] | Prisma.ListEnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> | null
-  notIn?: $Enums.WorkspaceMemberRole[] | Prisma.ListEnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> | null
-  not?: Prisma.NestedEnumWorkspaceMemberRoleNullableWithAggregatesFilter<$PrismaModel> | $Enums.WorkspaceMemberRole | null
-  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumWorkspaceMemberRoleNullableFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumWorkspaceMemberRoleNullableFilter<$PrismaModel>
 }
 
 export type BigIntFilter<$PrismaModel = never> = {
@@ -1026,13 +1009,6 @@ export type NestedEnumInvitationStatusFilter<$PrismaModel = never> = {
   not?: Prisma.NestedEnumInvitationStatusFilter<$PrismaModel> | $Enums.InvitationStatus
 }
 
-export type NestedEnumWorkspaceMemberRoleNullableFilter<$PrismaModel = never> = {
-  equals?: $Enums.WorkspaceMemberRole | Prisma.EnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> | null
-  in?: $Enums.WorkspaceMemberRole[] | Prisma.ListEnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> | null
-  notIn?: $Enums.WorkspaceMemberRole[] | Prisma.ListEnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> | null
-  not?: Prisma.NestedEnumWorkspaceMemberRoleNullableFilter<$PrismaModel> | $Enums.WorkspaceMemberRole | null
-}
-
 export type NestedEnumInvitationStatusWithAggregatesFilter<$PrismaModel = never> = {
   equals?: $Enums.InvitationStatus | Prisma.EnumInvitationStatusFieldRefInput<$PrismaModel>
   in?: $Enums.InvitationStatus[] | Prisma.ListEnumInvitationStatusFieldRefInput<$PrismaModel>
@@ -1041,16 +1017,6 @@ export type NestedEnumInvitationStatusWithAggregatesFilter<$PrismaModel = never>
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumInvitationStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumInvitationStatusFilter<$PrismaModel>
-}
-
-export type NestedEnumWorkspaceMemberRoleNullableWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: $Enums.WorkspaceMemberRole | Prisma.EnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> | null
-  in?: $Enums.WorkspaceMemberRole[] | Prisma.ListEnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> | null
-  notIn?: $Enums.WorkspaceMemberRole[] | Prisma.ListEnumWorkspaceMemberRoleFieldRefInput<$PrismaModel> | null
-  not?: Prisma.NestedEnumWorkspaceMemberRoleNullableWithAggregatesFilter<$PrismaModel> | $Enums.WorkspaceMemberRole | null
-  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumWorkspaceMemberRoleNullableFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumWorkspaceMemberRoleNullableFilter<$PrismaModel>
 }
 
 export type NestedBigIntFilter<$PrismaModel = never> = {

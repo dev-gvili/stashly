@@ -77,6 +77,7 @@ export const ModelName = {
   Audio: 'Audio',
   Favorite: 'Favorite',
   Invitation: 'Invitation',
+  InvitationRecipient: 'InvitationRecipient',
   Item: 'Item',
   LockedItem: 'LockedItem',
   Notification: 'Notification',
@@ -422,14 +423,24 @@ export const InvitationScalarFieldEnum = {
   id: 'id',
   createdAt: 'createdAt',
   expiresAt: 'expiresAt',
-  email: 'email',
-  status: 'status',
   senderId: 'senderId',
-  workspaceId: 'workspaceId',
-  role: 'role'
+  itemId: 'itemId',
+  workspaceId: 'workspaceId'
 } as const
 
 export type InvitationScalarFieldEnum = (typeof InvitationScalarFieldEnum)[keyof typeof InvitationScalarFieldEnum]
+
+
+export const InvitationRecipientScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  email: 'email',
+  status: 'status',
+  role: 'role',
+  invitationId: 'invitationId'
+} as const
+
+export type InvitationRecipientScalarFieldEnum = (typeof InvitationRecipientScalarFieldEnum)[keyof typeof InvitationRecipientScalarFieldEnum]
 
 
 export const ItemScalarFieldEnum = {
@@ -485,7 +496,7 @@ export const PermissionScalarFieldEnum = {
   expiresAt: 'expiresAt',
   deletedAt: 'deletedAt',
   roles: 'roles',
-  invitationId: 'invitationId',
+  recipientId: 'recipientId',
   linkId: 'linkId',
   itemId: 'itemId'
 } as const
