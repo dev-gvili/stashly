@@ -1,7 +1,7 @@
+import { Prisma } from '@/prisma/client';
 // This updated file incorporates all the improvements: natural language construction for better semantic matching, robust batch/single vector handling, and a clear mapping layer between your Prisma database and the embedding logic.
 
-import { getPipeline } from '../ai.utils'
-import type { Prisma } from '@/prisma/browser'
+import { pipeline } from '@huggingface/transformers'
 
 /**
  * 1. VECTOR UTILITIES
@@ -14,11 +14,13 @@ import type { Prisma } from '@/prisma/browser'
 export async function toVector(
   text: string | string[]
 ): Promise<number[] | number[][]> {
-  const extractor = await getPipeline(
+  const extractor = await pipeline(
     'feature-extraction',
     'Xenova/all-mpnet-base-v2',
-    "q4",
-    "webgpu"
+    {
+      device: 'webgpu',
+      dtype: 'q4',
+    }
   )
 
   // pooling: 'mean' and normalize: true are recommended for all-mpnet-base-v2
@@ -67,9 +69,6 @@ export type ExtendedItem = Prisma.ItemGetPayload<{
     file: {
       select: { extension: true; mimeType: true }
     }
-    collection: {
-      select: { name: true }
-    }
     workspace: {
       select: { name: true; description: true }
     }
@@ -116,7 +115,6 @@ export function mapItemToSearch(item: ExtendedItem): ItemForSearchEmbedding {
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
     ownerName: item.owner?.name,
-    collectionName: item.collection?.name,
     extension: item.file?.extension,
     mimeType: item.file?.mimeType,
     extraText: item.extraText,

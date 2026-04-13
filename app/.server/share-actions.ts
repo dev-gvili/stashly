@@ -657,21 +657,26 @@ export function updateShareLinkScope(
  * For example, downgrade an `edit` link to `view` to revoke write access
  * without invalidating the URL.
  *
- * Note: this changes the link type but does NOT automatically update the
- * associated Permission role. Update the permission separately if needed.
+ * Atomically updates the ShareLink type and syncs the associated Permission
+ * role so the two are never out of step:
+ *   view | embed  →  roles: 'read'
+ *   edit | upload →  roles: 'write'
  *
  * @param id   - The ID of the share link to update.
  * @param type - The new link type.
- * @param tx   - Optional transaction client.
  *
  * @example
- * // Downgrade to read-only:
+ * // Downgrade to read-only — type AND permission role are updated together:
  * await updateShareLinkType(linkId, 'view')
  */
-export function updateShareLinkType(
+export async function updateShareLinkType(
   id: string,
-  type: ShareLinkType,
-  tx?: PrismaTx
+  type: ShareLinkType
 ): Promise<ShareLink> {
-  return updateShareLink({ where: { id }, data: { type } }, tx)
+  const role = type === 'edit' || type === 'upload' ? 'write' : 'read'
+  const [link] = await prisma.$transaction([
+    prisma.shareLink.update({ where: { id }, data: { type } }),
+    prisma.permission.updateMany({ where: { linkId: id }, data: { roles: role } }),
+  ])
+  return link
 }

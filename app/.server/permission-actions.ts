@@ -210,22 +210,22 @@ export function getLinkPermissions(linkId: string): Promise<Permission[]> {
 }
 
 /**
- * Return all Permission records tied to an invitation.
+ * Return all Permission records tied to an invitation recipient.
  *
- * Invitations have a unique constraint on `invitationId`, so this will
+ * Recipients have a unique constraint on `recipientId`, so this will
  * return at most one record in practice.
  *
- * @param invitationId - The ID of the invitation.
+ * @param recipientId - The ID of the invitation recipient.
  * @returns An array of Permission records (empty if none exist).
  *
  * @example
- * const [perm] = await findInvitationPermission(invitationId)
- * if (perm) console.log('Invitation has role:', perm.roles)
+ * const [perm] = await findRecipientPermission(recipientId)
+ * if (perm) console.log('Recipient has role:', perm.roles)
  */
-export function findInvitationPermission(
-  invitationId: string
+export function findRecipientPermission(
+  recipientId: string
 ): Promise<Permission[]> {
-  return prisma.permission.findMany({ where: { invitationId } })
+  return prisma.permission.findMany({ where: { recipientId } })
 }
 
 // ---------------------------------------------------------------------------
@@ -308,27 +308,27 @@ export async function hasLinkPermission(
 }
 
 /**
- * Return `true` if `userId` has at least the given `role` on an invitation.
+ * Return `true` if `userId` has at least the given `role` on an invitation recipient.
  *
- * @param userId       - The user to check.
- * @param invitationId - The invitation to check against.
- * @param role         - The minimum required role (default: `'read'`).
- * @param tx           - Optional transaction client.
+ * @param userId      - The user to check.
+ * @param recipientId - The invitation recipient to check against.
+ * @param role        - The minimum required role (default: `'read'`).
+ * @param tx          - Optional transaction client.
  * @returns `true` if the user has the role, `false` otherwise.
  *
  * @example
- * const canAccept = await hasInvitationPermission(userId, invitationId)
+ * const canAccept = await hasRecipientPermission(userId, recipientId)
  * if (!canAccept) throw new StashlyError(StashlyErrorCode.FORBIDDEN)
  */
-export async function hasInvitationPermission(
+export async function hasRecipientPermission(
   userId: string,
-  invitationId: string,
+  recipientId: string,
   role: PermissionRole = 'read',
   tx?: PrismaTx
 ): Promise<boolean> {
   const db = tx ?? prisma
   const perm = await db.permission.findFirst({
-    where: { invitationId, users: { some: { id: userId } }, roles: role },
+    where: { recipientId, users: { some: { id: userId } }, roles: role },
   })
   return !!perm
 }

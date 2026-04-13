@@ -2,7 +2,7 @@ import { prisma } from '@/services/db'
 import { StashlyError, StashlyErrorCode } from '@/services/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { hasItemPermission } from '@/services/permission-actions'
-import type { Invitation, Prisma, InvitationStatus } from '@/prisma/client'
+import type { Invitation, Prisma } from '@/prisma/client'
 import type { WorkspaceMemberRole, PermissionRole } from '@/prisma/enums'
 
 type PrismaTx = Omit<
@@ -14,23 +14,58 @@ type PrismaTx = Omit<
 // Types
 // ---------------------------------------------------------------------------
 
-export type InvitationWithDetails = Invitation & {
-  sender: { id: string; name: string; email: string; image: string | null }
+export type RecipientWithPermission = {
+  id: string
+  email: string
+  status: 'pending' | 'accepted' | 'rejected' | 'canceled' | 'expired'
+  role: string
   permission: {
     id: string
     roles: PermissionRole
     item: { id: string; name: string } | null
   } | null
+}
+
+export type InvitationWithDetails = Invitation & {
+  sender: { id: string; name: string; email: string; image: string | null }
+  recipients: RecipientWithPermission[]
+  item: { id: string; name: string } | null
   workspace: { id: string; name: string } | null
 }
 
-type SendItemInvitationOptions = {
+type RecipientInput = {
+  email: string
+  role: string
+}
+
+type SendInvitationOptions = {
   expiresAt?: Date
 }
 
-type SendWorkspaceInvitationOptions = {
-  expiresAt?: Date
-}
+// ---------------------------------------------------------------------------
+// Shared include for consistent query shape
+// ---------------------------------------------------------------------------
+
+const invitationInclude = {
+  sender: { select: { id: true, name: true, email: true, image: true } },
+  recipients: {
+    select: {
+      id: true,
+      email: true,
+      status: true,
+      role: true,
+      permission: {
+        select: {
+          id: true,
+          roles: true,
+          item: { select: { id: true, name: true } },
+        },
+      },
+    },
+  },
+  item: { select: { id: true, name: true } },
+  workspace: { select: { id: true, name: true } },
+} satisfies Prisma.InvitationInclude
 
 // ---------------------------------------------------------------------------
 // Finders
@@ -43,52 +78,24 @@ export function findInvitationById(
   const db = tx ?? prisma
   return db.invitation.findUnique({
     where: { id },
-    include: {
-      sender: { select: { id: true, name: true, email: true, image: true } },
-      permission: {
-        select: {
-          id: true,
-          roles: true,
-          item: { select: { id: true, name: true } },
-        },
-      },
-      workspace: { select: { id: true, name: true } },
-    },
+    include: invitationInclude,
   }) as Promise<InvitationWithDetails | null>
 }
 
 export function listSentInvitations(senderId: string): Promise<InvitationWithDetails[]> {
   return prisma.invitation.findMany({
     where: { senderId },
-    include: {
-      sender: { select: { id: true, name: true, email: true, image: true } },
-      permission: {
-        select: {
-          id: true,
-          roles: true,
-          item: { select: { id: true, name: true } },
-        },
-      },
-      workspace: { select: { id: true, name: true } },
-    },
+    include: invitationInclude,
     orderBy: { createdAt: 'desc' },
   }) as Promise<InvitationWithDetails[]>
 }
 
 export function listReceivedInvitations(email: string): Promise<InvitationWithDetails[]> {
   return prisma.invitation.findMany({
-    where: { email, status: 'pending' },
-    include: {
-      sender: { select: { id: true, name: true, email: true, image: true } },
-      permission: {
-        select: {
-          id: true,
-          roles: true,
-          item: { select: { id: true, name: true } },
-        },
-      },
-      workspace: { select: { id: true, name: true } },
+    where: {
+      recipients: { some: { email, status: 'pending' } },
     },
+    include: invitationInclude,
     orderBy: { createdAt: 'desc' },
   }) as Promise<InvitationWithDetails[]>
 }
@@ -97,20 +104,8 @@ export function listItemInvitations(
   itemId: string
 ): Promise<InvitationWithDetails[]> {
   return prisma.invitation.findMany({
-    where: {
-      permission: { is: { itemId } },
-    },
-    include: {
-      sender: { select: { id: true, name: true, email: true, image: true } },
-      permission: {
-        select: {
-          id: true,
-          roles: true,
-          item: { select: { id: true, name: true } },
-        },
-      },
-      workspace: { select: { id: true, name: true } },
-    },
+    where: { itemId },
+    include: invitationInclude,
     orderBy: { createdAt: 'desc' },
   }) as Promise<InvitationWithDetails[]>
 }
@@ -120,22 +115,21 @@ export function listItemInvitations(
 // ---------------------------------------------------------------------------
 
 /**
- * Send a direct invitation to access an item.
+ * Send invitations to multiple recipients to access an item.
  *
- * Creates an Invitation + Permission atomically. The Permission is linked to
- * the invitation via `invitationId`. Access is only granted once the recipient
- * calls `acceptInvitation`.
+ * Creates one Invitation with N InvitationRecipient records + N Permission
+ * records atomically. Access is only granted once a recipient calls
+ * `acceptInvitation`.
  *
  * @throws {StashlyError} NOT_FOUND if the item doesn't exist.
  * @throws {StashlyError} FORBIDDEN if the sender lacks write access on the item.
- * @throws {StashlyError} CONFLICT if a pending invitation for this email+item already exists.
+ * @throws {StashlyError} CONFLICT if a pending invitation for any email+item already exists.
  */
 export async function sendItemInvitation(
   senderId: string,
   itemId: string,
-  email: string,
-  role: PermissionRole,
-  options: SendItemInvitationOptions = {}
+  recipients: RecipientInput[],
+  options: SendInvitationOptions = {}
 ): Promise<InvitationWithDetails> {
   const item = await prisma.item.findUnique({ where: { id: itemId }, select: { id: true, ownerId: true } })
   if (!item) {
@@ -150,59 +144,75 @@ export async function sendItemInvitation(
     }
   }
 
-  // Check for existing pending invitation for this email+item
-  const existing = await prisma.invitation.findFirst({
+  // Check for existing pending invitations for any of these emails+item
+  const emails = recipients.map((r) => r.email)
+  const existing = await prisma.invitationRecipient.findFirst({
     where: {
-      email,
+      email: { in: emails },
       status: 'pending',
-      permission: { is: { itemId } },
+      invitation: { itemId },
     },
   })
   if (existing) {
-    throw new StashlyError(StashlyErrorCode.CONFLICT, 'A pending invitation for this email already exists')
+    throw new StashlyError(
+      StashlyErrorCode.CONFLICT,
+      `A pending invitation for ${existing.email} already exists`
+    )
   }
 
   return prisma.$transaction(async (tx) => {
     const invitationId = toObjectId(getPrefixForModel('Invitation'))
-    const permissionId = toObjectId(getPrefixForModel('Permission'))
 
     await tx.invitation.create({
       data: {
         id: invitationId,
-        email,
         senderId,
-        status: 'pending',
-        expiresAt: options.expiresAt ?? null,
-      },
-    })
-
-    await tx.permission.create({
-      data: {
-        id: permissionId,
-        roles: role,
-        invitationId,
         itemId,
         expiresAt: options.expiresAt ?? null,
       },
     })
+
+    for (const recipient of recipients) {
+      const recipientId = toObjectId(getPrefixForModel('InvitationRecipient'))
+      const permissionId = toObjectId(getPrefixForModel('Permission'))
+
+      await tx.invitationRecipient.create({
+        data: {
+          id: recipientId,
+          email: recipient.email,
+          role: recipient.role,
+          invitationId,
+          status: 'pending',
+        },
+      })
+
+      await tx.permission.create({
+        data: {
+          id: permissionId,
+          roles: recipient.role as PermissionRole,
+          recipientId,
+          itemId,
+          expiresAt: options.expiresAt ?? null,
+        },
+      })
+    }
 
     return findInvitationById(invitationId, tx) as Promise<InvitationWithDetails>
   })
 }
 
 /**
- * Send a workspace membership invitation by email.
+ * Send workspace membership invitations to multiple recipients by email.
  *
  * @throws {StashlyError} NOT_FOUND if the workspace doesn't exist.
  * @throws {StashlyError} FORBIDDEN if the sender is not a workspace admin/owner.
- * @throws {StashlyError} CONFLICT if the email is already a member or has a pending invite.
+ * @throws {StashlyError} CONFLICT if any email is already a member or has a pending invite.
  */
 export async function sendWorkspaceInvitation(
   senderId: string,
   workspaceId: string,
-  email: string,
-  role: WorkspaceMemberRole,
-  options: SendWorkspaceInvitationOptions = {}
+  recipients: RecipientInput[],
+  options: SendInvitationOptions = {}
 ): Promise<InvitationWithDetails> {
   const workspace = await prisma.workspace.findUnique({
     where: { id: workspaceId },
@@ -220,139 +230,192 @@ export async function sendWorkspaceInvitation(
     throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'Only workspace admins can send invitations')
   }
 
-  // Check if email user is already a member
-  const existingUser = await prisma.user.findUnique({ where: { email }, select: { id: true } })
-  if (existingUser) {
-    const alreadyMember = await prisma.workspaceMember.findUnique({
-      where: { memberId_workspaceId: { memberId: existingUser.id, workspaceId } },
+  const emails = recipients.map((r) => r.email)
+
+  // Check if any email user is already a member
+  const existingUsers = await prisma.user.findMany({
+    where: { email: { in: emails } },
+    select: { id: true, email: true },
+  })
+  if (existingUsers.length > 0) {
+    const existingMembers = await prisma.workspaceMember.findMany({
+      where: {
+        workspaceId,
+        memberId: { in: existingUsers.map((u) => u.id) },
+      },
+      select: { memberId: true },
     })
-    if (alreadyMember) {
-      throw new StashlyError(StashlyErrorCode.CONFLICT, 'This user is already a workspace member')
+    if (existingMembers.length > 0) {
+      const memberEmails = existingUsers
+        .filter((u) => existingMembers.some((m) => m.memberId === u.id))
+        .map((u) => u.email)
+      throw new StashlyError(
+        StashlyErrorCode.CONFLICT,
+        `Already workspace members: ${memberEmails.join(', ')}`
+      )
     }
   }
 
-  // Check for existing pending invitation
-  const existing = await prisma.invitation.findFirst({
-    where: { email, workspaceId, status: 'pending' },
-  })
-  if (existing) {
-    throw new StashlyError(StashlyErrorCode.CONFLICT, 'A pending invitation for this email already exists')
-  }
-
-  const invitationId = toObjectId(getPrefixForModel('Invitation'))
-  await prisma.invitation.create({
-    data: {
-      id: invitationId,
-      email,
-      senderId,
+  // Check for existing pending invitations
+  const existingInvite = await prisma.invitationRecipient.findFirst({
+    where: {
+      email: { in: emails },
       status: 'pending',
-      workspaceId,
-      role,
-      expiresAt: options.expiresAt ?? null,
+      invitation: { workspaceId },
     },
   })
-
-  return findInvitationById(invitationId) as Promise<InvitationWithDetails>
-}
-
-// ---------------------------------------------------------------------------
-// Lifecycle mutations
-// ---------------------------------------------------------------------------
-
-/**
- * Accept an invitation.
- *
- * For item invitations: connects the accepting user to the Permission record,
- * making the item accessible.
- * For workspace invitations: creates a WorkspaceMember record.
- *
- * @throws {StashlyError} NOT_FOUND if the invitation doesn't exist.
- * @throws {StashlyError} FORBIDDEN if the user's email doesn't match the invitation.
- * @throws {StashlyError} GONE if the invitation is not in pending state.
- */
-export async function acceptInvitation(
-  invitationId: string,
-  userId: string,
-  userEmail: string
-): Promise<InvitationWithDetails> {
-  const invitation = await findInvitationById(invitationId)
-  if (!invitation) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Invitation not found')
-  }
-  if (invitation.email !== userEmail) {
-    throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'This invitation was not sent to you')
-  }
-  if (invitation.status !== 'pending') {
-    throw new StashlyError(StashlyErrorCode.GONE, `Invitation is already ${invitation.status}`)
-  }
-  if (invitation.expiresAt && invitation.expiresAt < new Date()) {
-    await prisma.invitation.update({ where: { id: invitationId }, data: { status: 'expired' } })
-    throw new StashlyError(StashlyErrorCode.GONE, 'Invitation has expired')
+  if (existingInvite) {
+    throw new StashlyError(
+      StashlyErrorCode.CONFLICT,
+      `A pending invitation for ${existingInvite.email} already exists`
+    )
   }
 
   return prisma.$transaction(async (tx) => {
-    // Item invitation: connect user to the permission
-    if (invitation.permission) {
-      await tx.permission.update({
-        where: { id: invitation.permission.id },
-        data: { users: { connect: { id: userId } } },
-      })
-    }
+    const invitationId = toObjectId(getPrefixForModel('Invitation'))
 
-    // Workspace invitation: add as member
-    if (invitation.workspaceId && invitation.role) {
-      await tx.workspaceMember.create({
+    await tx.invitation.create({
+      data: {
+        id: invitationId,
+        senderId,
+        workspaceId,
+        expiresAt: options.expiresAt ?? null,
+      },
+    })
+
+    for (const recipient of recipients) {
+      const recipientId = toObjectId(getPrefixForModel('InvitationRecipient'))
+
+      await tx.invitationRecipient.create({
         data: {
-          id: toObjectId(getPrefixForModel('WorkspaceMember')),
-          memberId: userId,
-          workspaceId: invitation.workspaceId,
-          role: invitation.role,
+          id: recipientId,
+          email: recipient.email,
+          role: recipient.role,
+          invitationId,
+          status: 'pending',
         },
       })
     }
-
-    await tx.invitation.update({ where: { id: invitationId }, data: { status: 'accepted' } })
 
     return findInvitationById(invitationId, tx) as Promise<InvitationWithDetails>
   })
 }
 
+// ---------------------------------------------------------------------------
+// Lifecycle mutations (per-recipient)
+// ---------------------------------------------------------------------------
+
 /**
- * Reject a pending invitation.
+ * Accept an invitation for a specific recipient.
  *
- * @throws {StashlyError} NOT_FOUND if the invitation doesn't exist.
+ * For item invitations: connects the accepting user to the Permission record.
+ * For workspace invitations: creates a WorkspaceMember record.
+ *
+ * @throws {StashlyError} NOT_FOUND if the recipient doesn't exist.
+ * @throws {StashlyError} FORBIDDEN if the user's email doesn't match the recipient.
+ * @throws {StashlyError} GONE if the recipient is not in pending state or invitation expired.
+ */
+export async function acceptInvitation(
+  recipientId: string,
+  userId: string,
+  userEmail: string
+): Promise<InvitationWithDetails> {
+  const recipient = await prisma.invitationRecipient.findUnique({
+    where: { id: recipientId },
+    include: {
+      invitation: { include: invitationInclude },
+      permission: true,
+    },
+  })
+  if (!recipient) {
+    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Invitation recipient not found')
+  }
+  if (recipient.email !== userEmail) {
+    throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'This invitation was not sent to you')
+  }
+  if (recipient.status !== 'pending') {
+    throw new StashlyError(StashlyErrorCode.GONE, `Invitation is already ${recipient.status}`)
+  }
+
+  const invitation = recipient.invitation
+  if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+    await prisma.invitationRecipient.update({
+      where: { id: recipientId },
+      data: { status: 'expired' },
+    })
+    throw new StashlyError(StashlyErrorCode.GONE, 'Invitation has expired')
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // Item invitation: connect user to the permission
+    if (recipient.permission) {
+      await tx.permission.update({
+        where: { id: recipient.permission.id },
+        data: { users: { connect: { id: userId } } },
+      })
+    }
+
+    // Workspace invitation: add as member
+    if (invitation.workspaceId) {
+      await tx.workspaceMember.create({
+        data: {
+          id: toObjectId(getPrefixForModel('WorkspaceMember')),
+          memberId: userId,
+          workspaceId: invitation.workspaceId,
+          role: recipient.role as WorkspaceMemberRole,
+        },
+      })
+    }
+
+    await tx.invitationRecipient.update({
+      where: { id: recipientId },
+      data: { status: 'accepted' },
+    })
+
+    return findInvitationById(invitation.id, tx) as Promise<InvitationWithDetails>
+  })
+}
+
+/**
+ * Reject a pending invitation for a specific recipient.
+ *
+ * @throws {StashlyError} NOT_FOUND if the recipient doesn't exist.
  * @throws {StashlyError} FORBIDDEN if the user's email doesn't match.
  * @throws {StashlyError} GONE if already resolved.
  */
 export async function rejectInvitation(
-  invitationId: string,
+  recipientId: string,
   userId: string,
   userEmail: string
 ): Promise<InvitationWithDetails> {
-  const invitation = await findInvitationById(invitationId)
-  if (!invitation) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Invitation not found')
+  const recipient = await prisma.invitationRecipient.findUnique({
+    where: { id: recipientId },
+    include: { invitation: true },
+  })
+  if (!recipient) {
+    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Invitation recipient not found')
   }
-  if (invitation.email !== userEmail) {
+  if (recipient.email !== userEmail) {
     throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'This invitation was not sent to you')
   }
-  if (invitation.status !== 'pending') {
-    throw new StashlyError(StashlyErrorCode.GONE, `Invitation is already ${invitation.status}`)
+  if (recipient.status !== 'pending') {
+    throw new StashlyError(StashlyErrorCode.GONE, `Invitation is already ${recipient.status}`)
   }
 
-  await prisma.invitation.update({ where: { id: invitationId }, data: { status: 'rejected' } })
-  return findInvitationById(invitationId) as Promise<InvitationWithDetails>
+  await prisma.invitationRecipient.update({
+    where: { id: recipientId },
+    data: { status: 'rejected' },
+  })
+  return findInvitationById(recipient.invitationId) as Promise<InvitationWithDetails>
 }
 
 /**
- * Cancel an invitation (sender only).
+ * Cancel an entire invitation (sender only).
  *
- * Also soft-deletes the associated Permission record so the item is not
- * accidentally accessible if the invitation is re-activated somehow.
+ * Cancels all pending recipients and soft-deletes their Permission records.
  *
  * @throws {StashlyError} NOT_FOUND if the invitation doesn't exist.
  * @throws {StashlyError} FORBIDDEN if the caller is not the sender.
- * @throws {StashlyError} GONE if already resolved.
  */
 export async function cancelInvitation(
   invitationId: string,
@@ -365,20 +428,27 @@ export async function cancelInvitation(
   if (invitation.senderId !== senderId) {
     throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'Only the sender can cancel an invitation')
   }
-  if (invitation.status !== 'pending') {
-    throw new StashlyError(StashlyErrorCode.GONE, `Invitation is already ${invitation.status}`)
+
+  const pendingRecipients = invitation.recipients.filter((r) => r.status === 'pending')
+  if (pendingRecipients.length === 0) {
+    throw new StashlyError(StashlyErrorCode.GONE, 'No pending recipients to cancel')
   }
 
   return prisma.$transaction(async (tx) => {
-    // Mark associated permission as deleted so it no longer grants access
-    if (invitation.permission) {
-      await tx.permission.update({
-        where: { id: invitation.permission.id },
-        data: { deletedAt: new Date() },
+    for (const recipient of pendingRecipients) {
+      // Soft-delete associated permission
+      if (recipient.permission) {
+        await tx.permission.update({
+          where: { id: recipient.permission.id },
+          data: { deletedAt: new Date() },
+        })
+      }
+
+      await tx.invitationRecipient.update({
+        where: { id: recipient.id },
+        data: { status: 'canceled' },
       })
     }
-
-    await tx.invitation.update({ where: { id: invitationId }, data: { status: 'canceled' } })
 
     return findInvitationById(invitationId, tx) as Promise<InvitationWithDetails>
   })

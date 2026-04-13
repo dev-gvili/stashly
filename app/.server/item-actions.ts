@@ -1,10 +1,17 @@
 import type { TransactionClient } from '@/prisma/internal/prismaNamespace'
 import { prisma } from '@/services/db'
-import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import { getPrefixForModel, toChunkArray, toObjectId } from '@/utils/converters'
 import { Prisma, type Item, type PrismaClient } from '@/prisma/client'
 import { StashlyError, StashlyErrorCode } from '../.server/api.errors'
-import { hasItemPermission, getItemPermissions } from '@/services/permission-actions'
-import { requireMembership, requireAtLeastRole } from '@/services/workspace-actions'
+import type { StashItem } from '@/types/stash.types'
+import {
+  hasItemPermission,
+  getItemPermissions,
+} from '@/services/permission-actions'
+import {
+  requireMembership,
+  requireAtLeastRole,
+} from '@/services/workspace-actions'
 import { quotaRepository } from '../.server/repositories/QuotaRepository'
 import { formatSize } from '@/utils/formaters'
 import { searchFactory } from './search/search'
@@ -21,19 +28,11 @@ export async function getItemWithPermissions(userId: string, itemId: string) {
     throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
   }
 
-  const canRead = await hasItemPermission(
-    userId,
-    itemId,
-    'read'
-  )
+  const canRead = await hasItemPermission(userId, itemId, 'read')
   if (!canRead && item.workspaceId) {
-    await requireMembership(
-      userId,
-      item.workspaceId,
-      {
-        message: 'You do not have access to this item',
-      }
-    )
+    await requireMembership(userId, item.workspaceId, {
+      message: 'You do not have access to this item',
+    })
   }
 
   const permissions = await getItemPermissions(itemId)
@@ -479,7 +478,7 @@ export async function copyItem(
   targetParentId: string | undefined | null,
   targetWorkspaceId?: string
 ) {
-  // 1. Validate inputs: 
+  // 1. Validate inputs:
   // Verify that we have the itemId and traget parent id, if not throw, we want to stop as soon as we can any code execution,itemId and targetParentId are required for the operation to succeeded.
   if (!itemId) {
     throw new StashlyError(
@@ -514,12 +513,7 @@ export async function copyItem(
     }
 
     // 2. Check for read permission on the source item
-    const canRead = await hasItemPermission(
-      userId,
-      itemId,
-      'read',
-      tx
-    )
+    const canRead = await hasItemPermission(userId, itemId, 'read', tx)
 
     if (!canRead) {
       throw new StashlyError(
@@ -561,13 +555,9 @@ export async function copyItem(
 
     // 3. check if user is a member in the source item workspace
     if (!targetWorkspaceId && source.workspaceId) {
-      await requireMembership(
-        userId,
-        source.workspaceId,
-        {
-          message: 'You do not have access to this item',
-        }
-      )
+      await requireMembership(userId, source.workspaceId, {
+        message: 'You do not have access to this item',
+      })
 
       // 4. Check user's quota
       const userQuota = await quotaRepository.ensureUserQuota(userId, tx)
@@ -605,13 +595,9 @@ export async function copyItem(
     // ~~~~~~~~~~ Same Workspace with Explicit ID ~~~~~~~~~ //
 
     if (targetWorkspaceId && source.workspaceId === targetWorkspaceId) {
-      await requireMembership(
-        userId,
-        source.workspaceId,
-        {
-          message: 'You do not have access to this item',
-        }
-      )
+      await requireMembership(userId, source.workspaceId, {
+        message: 'You do not have access to this item',
+      })
 
       const userQuota = await quotaRepository.ensureUserQuota(userId, tx)
 
@@ -649,23 +635,13 @@ export async function copyItem(
       source.workspaceId &&
       source.workspaceId !== targetWorkspaceId
     ) {
-      await requireMembership(
-        userId,
-        source.workspaceId,
-        {
-          message: 'You do not have access to this item',
-        }
-      )
+      await requireMembership(userId, source.workspaceId, {
+        message: 'You do not have access to this item',
+      })
 
-      await requireAtLeastRole(
-        userId,
-        targetWorkspaceId,
-        'member',
-        {
-          message:
-            'You must be a member of the target workspace to copy items.',
-        }
-      )
+      await requireAtLeastRole(userId, targetWorkspaceId, 'member', {
+        message: 'You must be a member of the target workspace to copy items.',
+      })
 
       const userQuota = await quotaRepository.ensureUserQuota(userId, tx)
 
@@ -1116,31 +1092,31 @@ export async function paginateItems<
 
   // --- 3. Execute Query ---
 
-    const items = await prisma.item.findMany({
-      where,
-      take: limit + 1,
-      orderBy,
-      cursor: cursor ? { id: cursor } : undefined,
-      include,
-    })
+  const items = await prisma.item.findMany({
+    where,
+    take: limit + 1,
+    orderBy,
+    cursor: cursor ? { id: cursor } : undefined,
+    include,
+  })
 
-    // --- 4. Return Paginated Results ---
+  // --- 4. Return Paginated Results ---
 
-    const hasMore = items.length > limit
-    const data = items.slice(0, limit)
-    const nextCursor = hasMore ? (items[items.length - 1]?.id ?? null) : null
+  const hasMore = items.length > limit
+  const data = items.slice(0, limit)
+  const nextCursor = hasMore ? (items[items.length - 1]?.id ?? null) : null
 
-    return {
-      items: data,
-      nextCursor,
-      hasMore,
-    } as {
-      items: TInclude extends undefined
-        ? Prisma.ItemGetPayload<Prisma.ItemDefaultArgs>[]
-        : Prisma.ItemGetPayload<{ include: TInclude }>[]
-      nextCursor: string | null
-      hasMore?: boolean
-    }
+  return {
+    items: data,
+    nextCursor,
+    hasMore,
+  } as {
+    items: TInclude extends undefined
+      ? Prisma.ItemGetPayload<Prisma.ItemDefaultArgs>[]
+      : Prisma.ItemGetPayload<{ include: TInclude }>[]
+    nextCursor: string | null
+    hasMore?: boolean
+  }
 }
 
 // --- HELPER: Recursive Copy Logic ---
@@ -1239,64 +1215,8 @@ export interface SuggestedItemsParams {
  * Contains categorized lists of folders and files with their associated metadata.
  */
 export interface SuggestedItemsResult {
-  suggestedFolders: Prisma.ItemGetPayload<{
-    include: {
-      favorites: {
-        select: {
-          id: true
-          favoritedBy: {
-            select: {
-              id: true
-              name: true
-              displayName: true
-              image: true
-            }
-          }
-        }
-      }
-      file: true
-      folder: true
-      thumbnails: {
-        select: {
-          height: true
-          width: true
-          url: true
-          view: true
-          size: true
-          id: true
-        }
-      }
-    }
-  }>[]
-  suggestedFiles: Prisma.ItemGetPayload<{
-    include: {
-      favorites: {
-        select: {
-          id: true
-          favoritedBy: {
-            select: {
-              id: true
-              name: true
-              displayName: true
-              image: true
-            }
-          }
-        }
-      }
-      file: true
-      folder: true
-      thumbnails: {
-        select: {
-          height: true
-          width: true
-          url: true
-          view: true
-          size: true
-          id: true
-        }
-      }
-    }
-  }>[]
+  suggestedFolders: StashItem[]
+  suggestedFiles: StashItem[]
 }
 
 // --- 8. GET SUGGESTED ITEMS (RECENT ACTIVITY) - OPTIMIZED VERSION ---
@@ -1616,7 +1536,7 @@ const defaultItemSelect = {
       id: true,
       roles: true,
       linkId: true,
-      invitationId: true,
+      recipientId: true,
       users: {
         select: {
           displayName: true,
@@ -1638,7 +1558,8 @@ const defaultItemSelect = {
 export const searchItems = searchFactory({
   dbDelegate: prisma.item,
   buildFilters: buildItemFilters,
-  defaultOrderBy: () => ({ id: 'asc' }) satisfies Prisma.ItemOrderByWithRelationInput,
+  defaultOrderBy: () =>
+    ({ id: 'asc' }) satisfies Prisma.ItemOrderByWithRelationInput,
 })
 
 /**
@@ -1666,6 +1587,34 @@ export async function createItem(args: Prisma.ItemCreateArgs) {
     ...args,
     select: args.select || defaultItemSelect,
   })
+}
+
+// create many items at once (e.g. for bulk upload)
+export async function createManyItems(args: Prisma.ItemCreateManyArgs) {
+  return prisma.item.createMany(args)
+}
+
+// create many items in barchsequentially including their relations (e.g. for copying large folders)
+export async function createManyItemsBatched(
+  items: Prisma.ItemUncheckedCreateInput[],
+  batchSize = 100
+) {
+  const createdItems: Prisma.ItemGetPayload<Prisma.ItemDefaultArgs>[] = []
+  let chunks = toChunkArray(items, batchSize)
+
+  for (let i = 0; i < chunks.length; i++) {
+    const batch = chunks[i]
+    const createdBatch = await prisma.$transaction(
+      batch.map((item) =>
+        prisma.item.create({
+          data: item,
+        })
+      )
+    )
+
+    createdItems.push(...createdBatch)
+  }
+  return createdItems
 }
 
 /**
