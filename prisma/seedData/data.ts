@@ -5,7 +5,7 @@ import {
   type Item,
   type StoragePlan,
 } from '../../app/prisma/client'
-import type { User } from 'better-auth'
+import type { User as AuthUser } from '@/services/auth.types'
 import { customAlphabet } from 'nanoid'
 import {
   ItemCategory,
@@ -30,6 +30,16 @@ const DEFAULTS = {
   } as StoragePlan,
   QUOTA_SIZE: 10 * 1024 * 1024 * 1024, // 10GB
 } as const
+
+type User = Omit<
+  AuthUser,
+  'subscriptionId' | 'storagePlanId' | 'driveId' | 'rootId'
+> & {
+  subscriptionId: string | null
+  storagePlanId: string | null
+  rootId: string | null
+  driveId: string | null
+}
 
 export function generateThumbnailUrl(size: ThumbnailSize, view: ViewType) {
   switch (size) {
@@ -280,7 +290,7 @@ export const generateMockItemWithFolder = ({
   drive: Pick<Drive, 'name' | 'id'>
   name: string
   parent?: Item
-}): Omit<Prisma.ItemUncheckedCreateInput, "createdAt"> => {
+}): Omit<Prisma.ItemUncheckedCreateInput, 'createdAt'> => {
   const id = toObjectId(getPrefixForModel('Item'))
   return {
     id,
@@ -364,10 +374,22 @@ export const generateThumbnail = (
             (height = faker.number.int({ min: 2048, max: 3290 })))
   }
 
+  /**
+   * {
+   * id: string;
+   * createdAt?: string | Date | undefined;
+   * updatedAt?: string | Date | undefined;
+   * width?: number | null | undefined;
+   * height?: number | null | undefined;
+   * url?: string | null | undefined;
+   * content?: Uint8Array<ArrayBuffer> | null | undefined;
+   * view?: ("list" | "grid" | "river" | "waterfall") | undefined;
+   * size?: ("custom" | "small" | "medium" | "large" | "original") | undefined;
+  }
+*/
   return {
     size: size,
     id: toObjectId(getPrefixForModel('Thumbnail')),
-    // url: generateThumbnailUrl(size, view),
     width,
     height,
     view,
@@ -401,25 +423,28 @@ export const generateMockItemWithFile = (
       })
     ),
     thumbnails: {
-      create: [
-        generateThumbnail('small', 'waterfall', url),
-        generateThumbnail('medium', 'waterfall', url),
-        generateThumbnail('large', 'waterfall', url),
-        generateThumbnail('custom', 'waterfall', url),
-        generateThumbnail('small', 'river', url),
-        generateThumbnail('medium', 'river', url),
-        generateThumbnail('large', 'river', url),
-        generateThumbnail('custom', 'river', url),
-        generateThumbnail('small', 'grid', url),
-        generateThumbnail('medium', 'grid', url),
-        generateThumbnail('large', 'grid', url),
-        generateThumbnail('custom', 'grid', url),
-      ],
+      createMany: {
+        data: [
+          generateThumbnail('small', 'waterfall', url),
+          generateThumbnail('medium', 'waterfall', url),
+          generateThumbnail('large', 'waterfall', url),
+          generateThumbnail('custom', 'waterfall', url),
+          generateThumbnail('small', 'river', url),
+          generateThumbnail('medium', 'river', url),
+          generateThumbnail('large', 'river', url),
+          generateThumbnail('custom', 'river', url),
+          generateThumbnail('small', 'grid', url),
+          generateThumbnail('medium', 'grid', url),
+          generateThumbnail('large', 'grid', url),
+          generateThumbnail('custom', 'grid', url),
+        ],
+        skipDuplicates: true,
+      },
     },
     file: {
       create: file,
     },
-    parentId: parent ? parent.id : drive.id,
+    parentId: parent ? parent.id : user.rootId,
   }
 }
 

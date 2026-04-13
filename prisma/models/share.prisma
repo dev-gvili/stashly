@@ -17,15 +17,16 @@ model ShareLink {
     @@index([scope])
 }
 
+// Some how need to represent s3 presign urls permissions ( get-view / downloadable, put - upload,  ?? - edit  ) 
 enum ShareLinkType {
-    view
-    edit
-    embed
-    upload
+    view // can't modify - read only
+    edit // can modify content - write ( limited ), e.g ( if associated with folder - can add files / remove only files that was uploaded by him ( owner ), if associated with a file - can update it's content ), can't modify permissions / itm settings, more limits can be applied by ShareLink configuration ( e.g if downloadable = false, can't download the item )  
+    embed // currently i don't know what to do with that type...
+    upload // folder specific type - files can only be added
 }
 
 enum ShareScope {
-    anonymous
-    organization
-    users
+    anonymous // public
+    organization // workspace, will be rename in the future to workspace, only members in that workspace
+    users // specific users
 }

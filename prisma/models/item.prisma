@@ -60,6 +60,7 @@ model Item {
     // Access Control
     locked      LockedItem?
     permissions Permission[]
+    invitations Invitation[]
 
     // previews
     thumbnails Thumbnail[]

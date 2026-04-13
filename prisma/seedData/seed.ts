@@ -12,15 +12,19 @@ import {
   generateMockItemsWithFile,
   generateMockFavoriteItem,
 } from './data'
-import { createFolder } from '../../app/utils/item-actions.server'
+import {
+  createFolder,
+  createItem,
+  createManyItemsBatched,
+} from '../../app/.server/item-actions'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '../../app/prisma/client'
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({
   adapter,
-  transactionOptions:{
+  transactionOptions: {
     timeout: 15000,
-  }
+  },
 })
 
 async function main(): Promise<void> {
@@ -55,6 +59,11 @@ async function main(): Promise<void> {
         emailVerified: true,
         createdAt: true,
         updatedAt: true,
+        bucket: true,
+        rootId: true,
+        driveId: true,
+        storagePlanId: true,
+        subscriptionId: true,
       },
     })
 
@@ -92,9 +101,19 @@ async function main(): Promise<void> {
     let root = await createFolder('root', null, user.id, drive.id)
 
     // Create multiple folders and files
-    const top_folders = generateMockTopLevelFolders({ user, drive, parent: root})
+    const top_folders = generateMockTopLevelFolders({
+      user,
+      drive,
+      parent: root,
+    })
+
     let createdTopFolders = top_folders.map((folder) => {
-      return createFolder(folder.name, folder.parentId as string, user.id, drive.id)
+      return createFolder(
+        folder.name,
+        folder.parentId as string,
+        user.id,
+        drive.id
+      )
     })
 
     const awaitedTopFolders = await Promise.all(createdTopFolders)
@@ -120,14 +139,12 @@ async function main(): Promise<void> {
       parent: faker.helpers.arrayElement(createdFolders),
     })
 
-    const createdFiles = await prisma.$transaction([
-      ...files.map((file) =>
-        prisma.item.create({
-          data: file,
-        })
-      ),
-    ])
+    const createdFiles = await createManyItemsBatched(files, 15)
 
+    console.log(
+      `Stashed: top_level_folders: ${createdTopFolders.length} | folders: ${inspect(createdFolders.length)} | files: ${inspect(createdFiles.length)} | total: ${createdTopFolders.length + createdFolders.length + createdFiles.length}`,
+      { compact: false, depth: null, colors: true }
+    )
     // // const favoritedItems = generateMockFavoriteItems({ user, createdFiles })
     // let item = faker.helpers.arrayElement(createdFiles).id;
     // const favoritedItems = faker.helpers.multiple(
@@ -146,14 +163,14 @@ async function main(): Promise<void> {
     //   ),
     // ]);
 
-    const lockedItems = generateMockLockedItems({ user, createdFiles })
-    await prisma.$transaction([
-      ...lockedItems.map((item) =>
-        prisma.lockedItem.create({
-          data: item,
-        })
-      ),
-    ])
+    // const lockedItems = generateMockLockedItems({ user, createdFiles })
+    // await prisma.$transaction([
+    //   ...lockedItems.map((item) =>
+    //     prisma.lockedItem.create({
+    //       data: item,
+    //     })
+    //   ),
+    // ])
   } catch (error) {
     console.error('Error seeding database:', error)
   }

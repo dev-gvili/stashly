@@ -11,21 +11,49 @@ model Invitation {
     createdAt DateTime  @default(now()) @db.Timestamp()
     expiresAt DateTime? @db.Timestamp()
 
-    // Recipient email
-    email String
-
-    // Track the status
-    status InvitationStatus @default(pending)
-
-    // Who send the invitation 
+    // Who sent the invitation
     senderId String
     sender   User   @relation(fields: [senderId], references: [id])
 
     // For item sharing
-    permission Permission?
+    itemId String?
+    item   Item?   @relation(fields: [itemId], references: [id])
 
     // For workspace invitation
     workspaceId String?
-    workspace   Workspace?           @relation(fields: [workspaceId], references: [id])
-    role        WorkspaceMemberRole?
+    workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+
+    // Recipients
+    recipients InvitationRecipient[]
+
+    @@index([senderId])
+    @@index([itemId])
+    @@index([workspaceId])
+}
+
+model InvitationRecipient {
+    id        String   @id
+    createdAt DateTime @default(now()) @db.Timestamp()
+
+    // Recipient email
+    email String
+
+    // Per-recipient status
+    status InvitationStatus @default(pending)
+
+    // Role granted to this recipient
+    // For item invitations: PermissionRole (read/write/owner)
+    // For workspace invitations: stored as string, maps to WorkspaceMemberRole
+    role String @default("read")
+
+    // Parent invitation
+    invitationId String
+    invitation   Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+
+    // Permission created for item invitations
+    permission Permission?
+
+    @@index([invitationId])
+    @@index([email])
+    @@index([status])
 }
