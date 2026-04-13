@@ -1,12 +1,5 @@
 // ItemCard.tsx
-import type {
-  File,
-  Folder,
-  ItemCategory,
-  ItemStatus,
-  ItemType,
-  Thumbnail,
-} from '@/prisma/browser'
+import type { StashItem } from '@/types/stash.types'
 import {
   CardContent,
   CardDescription,
@@ -54,6 +47,7 @@ import {
   ShareItemIcon,
   TrashIcon,
 } from '@/components/icons'
+import { ShareDialog } from '@/components/core-components/share-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,39 +59,8 @@ import {
 import useConfirm from '@/hooks/useConfirm'
 import { Button } from '../ui/button'
 
-type FavoriteItem = {
-  id: string
-  favoritedBy: {
-    name: string
-    displayName: string | null
-    image: string | null
-    id: string
-  }
-}
-
-export interface ItemCardProps {
-  id: string
-  name: string
-  size: bigint
-  inclusiveSize: bigint
-  type: ItemType
-  category: ItemCategory
-  status: ItemStatus
-  createdAt: Date | string | null
-  updatedAt: Date | string | null
-  ownerId: string
-  workspaceId: string | null
-  driveId: string
-  parentId: string | null
-  tags: string[]
-  thumbnails: Pick<
-    Thumbnail,
-    'height' | 'url' | 'width' | 'size' | 'id' | 'view'
-  >[]
-  favorites: FavoriteItem[]
-  file: File | null
+export interface ItemCardProps extends StashItem {
   asChild?: boolean
-  folder: Folder | null
   children?: React.ReactNode
   className?: string
 }
@@ -128,8 +91,9 @@ const ItemCardActions = (
   props: React.ComponentPropsWithoutRef<typeof Button>
 ) => {
   let fetcher = useFetcher()
-  let { id, name, status, favorites, user } = useItemCard()
+  let { id, name, type, status, favorites, user } = useItemCard()
   let favorited = toFavorite({ favorites, userId: user?.id })
+  let [shareOpen, setShareOpen] = React.useState(false)
   if (fetcher.data) {
     favorited = fetcher.data?.favorited ?? favorited
   }
@@ -158,149 +122,167 @@ const ItemCardActions = (
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger onClick={(e) => e.stopPropagation()} {...props}>
-        <MenuDotsIcon className="size-6!" />
-      </DropdownMenuTrigger>
+  const itemType = type === 'folder' ? 'folder' : 'file'
 
-      {status !== 'trashed' && (
-        <DropdownMenuContent align="end" className="space-y-4 w-48">
-          <DropdownMenuGroup className="mt-2">
-            <DropdownMenuItem className="items-start">
-              <PreviewIcon className="text-foreground" />
-              Preview
+  return (
+    <>
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        itemId={id}
+        itemName={name}
+        itemType={itemType}
+      />
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger onClick={(e) => e.stopPropagation()} {...props}>
+          <MenuDotsIcon className="size-6!" />
+        </DropdownMenuTrigger>
+
+        {status !== 'trashed' && (
+          <DropdownMenuContent align="end" className="space-y-4 w-48">
+            <DropdownMenuGroup className="mt-2">
+              <DropdownMenuItem className="items-start">
+                <PreviewIcon className="text-foreground" />
+                Preview
+              </DropdownMenuItem>
+              <DropdownMenuItem className="items-start">
+                <DownloadIcon className="text-foreground" />
+                Download
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
+                Quick actions
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                className="items-start"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  fetcher.submit(
+                    {
+                      intent: favorited ? 'unfavorite' : 'favorite',
+                      itemId: id,
+                    },
+                    {
+                      method: 'GET',
+                      action: '/api/favorites',
+                    }
+                  )
+                }}
+              >
+                <HeartIcon
+                  fill={favorited ? 'currentColor' : 'none'}
+                  className="text-foreground"
+                />
+                {favorited ? 'Unfavorite' : 'Favorite'}
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
+                Access
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                className="items-start"
+                onSelect={(e) => {
+                  e.preventDefault()
+                  setShareOpen(true)
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ShareItemIcon className="text-foreground" />
+                Share
+              </DropdownMenuItem>
+              <DropdownMenuItem className="items-start">
+                <LockIcon className="text-foreground" />
+                Lock
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
+                Organize
+              </DropdownMenuLabel>
+              <DropdownMenuItem className="items-start">
+                <CopyIcon className="text-foreground" />
+                Copy
+              </DropdownMenuItem>
+              <DropdownMenuItem className="items-start">
+                <MoveToFolder className="text-foreground" />
+                Move
+              </DropdownMenuItem>
+              <DropdownMenuItem className="items-start">
+                <RenameIcon className="text-foreground" />
+                Rename
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
+                Information
+              </DropdownMenuLabel>
+              <DropdownMenuItem className="items-start">
+                <ActivityIcon className="text-foreground" />
+                Activity
+              </DropdownMenuItem>
+              <DropdownMenuItem className="items-start">
+                <FileDetailsIcon className="text-foreground" />
+                Details
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuItem
+              variant="destructive"
+              className="mt-2 items-start"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                fetcher.submit(
+                  { intent: 'trash_item', selectedItem: id },
+                  { method: 'POST', action: '/api/items' }
+                )
+              }}
+            >
+              <TrashIcon className="text-foreground" />
+              <span className="text-nowrap shrink-0">Trash</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="items-start">
-              <DownloadIcon className="text-foreground" />
-              Download
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuGroup>
-            <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-              Quick actions
-            </DropdownMenuLabel>
+          </DropdownMenuContent>
+        )}
+        {status === 'trashed' && (
+          <DropdownMenuContent align="end">
             <DropdownMenuItem
               className="items-start"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
                 fetcher.submit(
-                  {
-                    intent: favorited ? 'unfavorite' : 'favorite',
-                    itemId: id,
-                  },
-                  {
-                    method: 'GET',
-                    action: '/api/favorites',
-                  }
+                  { intent: 'restore_item', selectedItem: id },
+                  { method: 'POST', action: '/api/items' }
                 )
               }}
             >
-              <HeartIcon
-                fill={favorited ? 'currentColor' : 'none'}
-                className="text-foreground"
-              />
-              {favorited ? 'Unfavorite' : 'Favorite'}
+              <RestoreIcon className="text-foreground" />
+              Restore
             </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuGroup>
-            <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-              Access
-            </DropdownMenuLabel>
-            <DropdownMenuItem className="items-start">
-              <ShareItemIcon className="text-foreground" />
-              Share
+            <DropdownMenuItem
+              className="items-start"
+              variant="destructive"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                open({
+                  variant: 'destructive',
+                  title: `Are you sure you want to delete ${name}?`,
+                  description:
+                    'This action cannot be undone, deleted items cannot be restored.',
+                  confirmText: 'Delete',
+                })
+              }}
+            >
+              <DeleteIcon className="text-foreground" />
+              <span>Delete</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="items-start">
-              <LockIcon className="text-foreground" />
-              Lock
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuGroup>
-            <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-              Organize
-            </DropdownMenuLabel>
-            <DropdownMenuItem className="items-start">
-              <CopyIcon className="text-foreground" />
-              Copy
-            </DropdownMenuItem>
-            <DropdownMenuItem className="items-start">
-              <MoveToFolder className="text-foreground" />
-              Move
-            </DropdownMenuItem>
-            <DropdownMenuItem className="items-start">
-              <RenameIcon className="text-foreground" />
-              Rename
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuGroup>
-            <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-              Information
-            </DropdownMenuLabel>
-            <DropdownMenuItem className="items-start">
-              <ActivityIcon className="text-foreground" />
-              Activity
-            </DropdownMenuItem>
-            <DropdownMenuItem className="items-start">
-              <FileDetailsIcon className="text-foreground" />
-              Details
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuItem
-            variant="destructive"
-            className="mt-2 items-start"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              fetcher.submit(
-                { intent: 'trash_item', selectedItem: id },
-                { method: 'POST', action: '/api/items' }
-              )
-            }}
-          >
-            <TrashIcon className="text-foreground" />
-            <span className="text-nowrap shrink-0">Trash</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      )}
-      {status === 'trashed' && (
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            className="items-start"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              fetcher.submit(
-                { intent: 'restore_item', selectedItem: id },
-                { method: 'POST', action: '/api/items' }
-              )
-            }}
-          >
-            <RestoreIcon className="text-foreground" />
-            Restore
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="items-start"
-            variant="destructive"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              open({
-                variant: 'destructive',
-                title: `Are you sure you want to delete ${name}?`,
-                description:
-                  'This action cannot be undone, deleted items cannot be restored.',
-                confirmText: 'Delete',
-              })
-            }}
-          >
-            <DeleteIcon className="text-foreground" />
-            <span>Delete</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      )}
-    </DropdownMenu>
+          </DropdownMenuContent>
+        )}
+      </DropdownMenu>
+    </>
   )
 }
 ItemCardActions.displayName = 'ItemCardActions'
@@ -550,7 +532,6 @@ const ItemLink = React.forwardRef<
 })
 ItemLink.displayName = 'ItemLink'
 
-
 const ItemCardRoot = ({
   children,
   className,
@@ -593,8 +574,6 @@ const ItemCardRoot = ({
   })
 
   const Comp = asChild ? Slot : 'div'
-
-  
 
   return (
     <ItemCardContext.Provider value={value}>

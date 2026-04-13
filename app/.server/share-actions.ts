@@ -283,6 +283,24 @@ export function createShareLinkForItem(
 }
 
 /**
+ * Revoke a single ShareLink by bulk-deleting its Permission records and the
+ * link itself in a single atomic transaction.
+ *
+ * Prefer this over manually deleting permissions then the link in route code.
+ *
+ * @param linkId - The ID of the share link to revoke.
+ *
+ * @example
+ * await revokeShareLink(linkId)
+ */
+export async function revokeShareLink(linkId: string): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await tx.permission.deleteMany({ where: { linkId } })
+    await tx.shareLink.delete({ where: { id: linkId } })
+  })
+}
+
+/**
  * Revoke all ShareLinks for an item by deleting them and their associated
  * permissions in a single transaction.
  *
