@@ -1,0 +1,112 @@
+{
+  "chat.checkpoints.showFileChanges": true,
+  "chat.edits2.enabled": true,
+  "chat.mcp.discovery.enabled": {
+    "claude-desktop": true,
+    "cursor-global": true,
+    "cursor-workspace": true
+  },
+  "chat.tools.edits.autoApprove": {
+    "**/*.{prisma,sql,db}": false
+  },
+  "comments.openView": "firstFileUnresolved",
+  "problems.showCurrentInStatus": true,
+  "terminal.explorerKind": "both",
+  "extensions.closeExtensionDetailsOnViewChange": true,
+  "extensions.webWorker": true,
+  "extensions.ignoreRecommendations": true,
+  "scm.providerCountBadge": "auto",
+  "explorer.compactFolders": false,
+  "explorer.excludeGitIgnore": true,
+  "window.autoDetectColorScheme": true,
+  "window.border": "off",
+  "chat.mcp.serverSampling": {
+    "stashly/.vscode/mcp.json: shadcn": {
+      "allowedModels": [
+        "copilot/gpt-5-mini",
+        "copilot/auto",
+        "copilot/claude-3.5-sonnet",
+        "copilot/gemini-2.5-pro",
+        "openrouter/google/gemini-2.5-flash",
+        "copilot/gpt-4.1",
+        "copilot/gpt-4o"
+      ]
+    },
+    "stashly/.vscode/mcp.json: mermaider": {
+      "allowedModels": [
+        "copilot/auto",
+        "copilotcli/claude-haiku-4.5",
+        "claude-code/claude-haiku-4.5",
+        "copilot/claude-haiku-4.5",
+        "gemini/Gemini/models/gemini-3-flash-preview",
+        "gemini/Gemini/models/gemini-3-pro-preview",
+        "copilot/gpt-4.1",
+        "copilotcli/gpt-4.1",
+        "copilot/gpt-4o",
+        "copilot/gpt-5-mini",
+        "copilotcli/gpt-5-mini",
+        "copilot/oswe-vscode-prime"
+      ]
+    },
+    "stashly/.vscode/mcp.json: mcp-mermaid": {
+      "allowedModels": [
+        "copilot/auto",
+        "copilotcli/claude-haiku-4.5",
+        "claude-code/claude-haiku-4.5",
+        "copilot/claude-haiku-4.5",
+        "gemini/Gemini/models/gemini-3-flash-preview",
+        "gemini/Gemini/models/gemini-3-pro-preview",
+        "copilot/gpt-4.1",
+        "copilotcli/gpt-4.1",
+        "copilot/gpt-4o",
+        "copilot/gpt-5-mini",
+        "copilotcli/gpt-5-mini",
+        "copilot/oswe-vscode-prime"
+      ]
+    }
+  },
+  "zenMode.hideLineNumbers": true,
+  "editor.allowVariableFonts": false,
+  // "editor.fontFamily": "Dank Mono, MonoLisa, MonoLisa Medium",
+  "editor.fontLigatures": true,
+  "editor.fontSize": 16,
+  "editor.fontVariations": true,
+  "editor.minimap.renderCharacters": false,
+  "editor.minimap.size": "fill",
+  "editor.suggest.preview": true,
+  "editor.wordWrap": "wordWrapColumn",
+  "editor.wordWrapColumn": 96,
+  "editor.wrappingIndent": "indent",
+  "editor.semanticTokenColorCustomizations": {
+    "rules": {
+      "function": {
+        "foreground": "#d4a05a",
+        "fontStyle": "bold"
+      },
+      "jsdoc": "#808080", // makes all jsdoc text gray
+      "jsdoc.tag": "#808080", // specifically targets tags like @example
+      "jsdoc.comment": "#808080" // ensures comment body matches
+    }
+  },
+  "editor.tokenColorCustomizations": {
+    "comments": {
+      "fontStyle": "italic",
+      "foreground": "#656166d7"
+    },
+    "functions": {
+      "foreground": "#d4a05a",
+      "fontStyle": "italic bold strikethrough"
+    },
+  },
+  "editor.guides.indentation": false,
+  "editor.aiStats.enabled": true,
+  "git.branchRandomName.enable": true,
+  "git.enableSmartCommit": true,
+  "git.followTagsWhenSync": true,
+  "chat.allowAnonymousAccess": true,
+  "chat.customAgentInSubagent.enabled": true,
+  "chat.mcp.assisted.nuget.enabled": true,
+  "chat.restoreLastPanelSession": false,
+  "python-envs.defaultEnvManager": "ms-python.python:venv",
+  "files.autoSave": "onFocusChange"
+}

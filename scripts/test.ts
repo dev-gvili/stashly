@@ -2,12 +2,16 @@ import { inspect } from 'node:util'
 import {
   buildItemFilters,
   itemFilterSchema,
-} from '@/utils/filters/item.filters'
-import { parseSearchParams } from './parsers'
-import { prisma } from '../.server/db'
-import { config } from '@dotenvx/dotenvx'
+} from '../app/utils/filters/item.filters'
+import { parseSearchParams } from '../app/utils/parsers'
 import { parseArgs, type ParseArgsConfig } from 'node:util'
-import { addQueryParamValue } from './query-params'
+import { addQueryParamValue } from '../app/utils/query-params'
+import '@dotenvx/dotenvx/config'
+import { PrismaClient } from '../app/prisma/client.ts'
+import { PrismaPg } from '@prisma/adapter-pg'
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+const prisma = new PrismaClient({ adapter })
 
 const options: ParseArgsConfig = {
   options: {
@@ -18,8 +22,6 @@ const options: ParseArgsConfig = {
   allowPositionals: true,
   tokens: true,
 } as const
-
-config()
 
 async function main() {
   const {
