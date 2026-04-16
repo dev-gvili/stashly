@@ -4,35 +4,47 @@ import {
   FavoriteItems,
   MoveToTrash,
   Restore,
-  UnfavoriteItems,
 } from './core-components/buttons'
 
-import { useNavigate, useSearchParams } from 'react-router'
+import {
+  useLoaderData,
+  useMatches,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router'
 import { getQueryParam } from '../utils/query-params'
 import { cn } from '../utils/styles'
 import { Button } from './ui/button'
 import { BackIcon } from './icons'
 import { ButtonGroup } from './ui/button-group'
+import {
+  Breadcrumbs,
+  type StashBreadcrumbsProps,
+} from './core-components/breadcrumb-navigation'
+import { useBreadcrumbs } from '@/hooks'
 
 export const AppToolbar = ({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) => {
-  let navigate = useNavigate()
+  let { me } = useParams()
   let [searchParams] = useSearchParams()
   let selectedItems = getQueryParam(searchParams, 'selectedItems')
   return (
     <div
-      className={cn('w-full flex gap-2 py-2 px-4 mb-2  rounded-sm', className)}
+      className={cn(
+        'sticky bottom-0 w-full inline-flex gap-2 p-2 items-center bg-background',
+        className
+      )}
       {...props}
     >
+      <Breadcrumbs />
       <ButtonGroup>
-        <Button variant="ghost" size="icon-sm" onClick={() => navigate(-1)}>
-          <BackIcon className="size-6!" />
-        </Button>
-        <MoveToTrash />
+        <MoveToTrash variant="ghost" size="icon-sm" />
         <Restore variant="ghost" size="sm" />
-        <Delete size="sm" />
+        <Delete variant="ghost" size="icon-sm" />
+        <FavoriteItems variant="ghost" size="icon-sm" />
       </ButtonGroup>
     </div>
   )

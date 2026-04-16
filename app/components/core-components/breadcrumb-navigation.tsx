@@ -19,13 +19,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui'
+import { useBreadcrumbs } from '@/hooks'
+import { useParams } from 'react-router'
 
-interface FolderBreadcrumbsProps {
+export interface StashBreadcrumbsProps {
   crumbs: BreadcrumbData[]
   me: string
 }
 
-const BreadcrumbDropdown = ({ crumbs, me }: FolderBreadcrumbsProps) => {
+const BreadcrumbDropdown = ({ crumbs, me }: StashBreadcrumbsProps) => {
   let [searchParams] = useSearchParams()
   return (
     <BreadcrumbItem>
@@ -85,15 +87,17 @@ function CrumbLink({
         </Link>
       </BreadcrumbLink>
       <BreadcrumbSeparator>
-        <BreadcrumbSeparatorIcon  />
+        <BreadcrumbSeparatorIcon />
       </BreadcrumbSeparator>
     </>
   )
 }
 
-export function Breadcrumbs({ crumbs, me }: FolderBreadcrumbsProps) {
+export function Breadcrumbs() {
+  let { me } = useParams()
+  let crumbs = useBreadcrumbs() // ensure breadcrumbs are loaded
   let [searchParams] = useSearchParams()
-  if (crumbs.length === 0) return null
+  if (!crumbs || !me) return null
 
   const root = crumbs[0]
   const last = crumbs[crumbs.length - 1]
@@ -103,7 +107,7 @@ export function Breadcrumbs({ crumbs, me }: FolderBreadcrumbsProps) {
   const showAll = crumbs.length <= 3
 
   return (
-    <Breadcrumb className='sticky top-0 z-10 py-2 px-0.5 bg-background'>
+    <Breadcrumb className="w-full text-foreground">
       <BreadcrumbList>
         {/* Root — always first */}
         {crumbs.length > 1 ? (
@@ -139,9 +143,13 @@ export function Breadcrumbs({ crumbs, me }: FolderBreadcrumbsProps) {
         )}
 
         {/* Last item — always current page */}
-        <BreadcrumbItem key={last.id}>
+        <BreadcrumbItem key={last?.id}>
           <BreadcrumbPage className="font-stashly">
-            {last.name === 'root' ? <HomeIcon className='size-5!' /> : last.name}
+            {last?.name === 'root' ? (
+              <HomeIcon className="size-5!" />
+            ) : (
+              last?.name
+            )}
           </BreadcrumbPage>
         </BreadcrumbItem>
       </BreadcrumbList>

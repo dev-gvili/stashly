@@ -97,7 +97,6 @@ const ItemCardActions = (
   let favorited = toFavorite({ favorites, userId: user?.id })
   let [shareOpen, setShareOpen] = React.useState(false)
   let [dmo, setDMOpen] = React.useState(false)
-  // let [inviteOpen, setInviteOpen] = React.useState(false)
   if (fetcher.data) {
     favorited = fetcher.data?.favorited ?? favorited
   }
@@ -137,19 +136,17 @@ const ItemCardActions = (
         itemName={name}
         itemType={itemType}
       />
-      {/* <InviteDialog
-        open={inviteOpen}
-        onOpenChange={setInviteOpen}
-        itemId={id}
-        itemName={name}
-      /> */}
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger onClick={(e) => e.stopPropagation()} {...props}>
           <MenuDotsIcon className="size-6!" />
         </DropdownMenuTrigger>
 
         {status !== 'trashed' && (
-          <DropdownMenuContent align="end" className="space-y-4 w-48" onCloseAutoFocus={e => e.preventDefault()}>
+          <DropdownMenuContent
+            align="end"
+            className="space-y-4 w-48"
+            onCloseAutoFocus={(e) => e.preventDefault()}
+          >
             <DropdownMenuGroup className="mt-2">
               <DropdownMenuItem className="items-start">
                 <PreviewIcon className="text-foreground" />
@@ -302,7 +299,7 @@ const ItemCardActions = (
           </DropdownMenuContent>
         )}
       </DropdownMenu>
-        <InviteDialog
+      <InviteDialog
         itemId={id}
         itemName={name}
         open={dmo}
@@ -570,6 +567,7 @@ const ItemCardRoot = ({
 
   let [searchParams, setSearchParams] = useSearchParams()
   const layout = searchParams.get('layout')
+  const take = searchParams.get('take')
 
   const { size, ...rest } = props
 
@@ -613,15 +611,17 @@ const ItemCardRoot = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          'p-2 grid gap-0 rounded border-none font-stashly bg-sidebar h-64 overflow-hidden group/card card select-none relative z-0 transition-colors',
-          isFolder && isDragOver && 'ring-2 ring-muted bg-muted',
+          'p-2 grid gap-0 rounded border-none font-stashly surface-glass  h-64 overflow-hidden group/card card select-none relative z-0 transition-colors',
+          isFolder &&
+            isDragOver &&
+            'ring-2 ring-muted bg-grid surface-elevated',
           className
         )}
         onClick={(e) => {
           // Ignore clicks from portaled elements (dialogs, dropdowns)
           if (!e.currentTarget.contains(e.target as Node)) return false
           e.stopPropagation()
-          navigate(layout ? `${to}?layout=${layout}` : to)
+          navigate(layout ? `${to}?layout=${layout}&take=${take}` : to)
         }}
       >
         {children}

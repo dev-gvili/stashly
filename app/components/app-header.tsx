@@ -40,7 +40,12 @@ export function AppHeader() {
               </Button>
             </DropdownMenuTrigger>
           </Tooltip>
-          <DropdownMenuContent forceMount align="start" alignOffset={-6} className='shadow-none'>
+          <DropdownMenuContent
+            forceMount
+            align="start"
+            alignOffset={-6}
+            className="shadow-none"
+          >
             <ButtonGroup></ButtonGroup>
             <DropdownMenuItem
               onSelect={(e) => e.preventDefault()}

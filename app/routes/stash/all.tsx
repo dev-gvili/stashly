@@ -79,9 +79,8 @@ export async function loader({ request, params }: Route.ActionArgs) {
 
   return await getFolderContent({
     cursor: parsedParams.cursor,
-    where: {...filters,
-      parentId: session.user.rootId,
-    },
+    limit: parsedParams.take,
+    where: { ...filters, parentId: session.user.rootId },
   })
 }
 
@@ -89,34 +88,28 @@ export default function Index() {
   let id = useId()
   let { items, loadMore, isLoading, hasMore } = usePagination<
     Route.ComponentProps['loaderData']['items'][number]
-  >(100, '?index')
+  >(25, '?index')
   if (items.length === 0) return <FilesEmptyState />
 
   return (
     <Fragment key={id}>
-      <ListLayout items={items} />
       <SelectionProvider items={items.map((i) => i.id)}>
+        <ListLayout items={items} />
         <GridLayout>
           {items?.map((item) => (
-            <motion.div
-              key={item.id}
-              variants={itemVariants}
-              transition={{ duration: 0.2 }}
-            >
-              <ItemCard key={item.id} {...item}>
-                <ItemCard.Header>
-                  <ItemCard.Checkbox name="selectedItems" value={item.id} />
-                </ItemCard.Header>
-                <ItemCard.Content>
-                  <ItemCard.Thumbnail />
-                  <ItemCard.Name />
-                </ItemCard.Content>
-                <ItemCard.Footer>
-                  <ItemCard.Size />
-                  <ItemCard.Count />
-                </ItemCard.Footer>
-              </ItemCard>
-            </motion.div>
+            <ItemCard key={item.id} {...item}>
+              <ItemCard.Header>
+                <ItemCard.Checkbox name="selectedItems" value={item.id} />
+              </ItemCard.Header>
+              <ItemCard.Content>
+                <ItemCard.Thumbnail />
+                <ItemCard.Name />
+              </ItemCard.Content>
+              <ItemCard.Footer>
+                <ItemCard.Size />
+                <ItemCard.Count />
+              </ItemCard.Footer>
+            </ItemCard>
           ))}
         </GridLayout>
       </SelectionProvider>

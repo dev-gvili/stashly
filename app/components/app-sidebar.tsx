@@ -135,7 +135,7 @@ const mediaItems: SidebarItemProps[] = [
       <FolderIcon className="size-5! group-data-[state=collapsed]:ml-2" />
     ),
     label: 'All Files',
-    to: 'all?layout=grid&take=100',
+    to: 'all?layout=grid&take=25',
     tooltip: 'All Files',
     prefetch: 'intent',
     state: {
@@ -215,7 +215,7 @@ export const AppSidebar = ({ user }: { user: User }) => {
       side="left"
       collapsible="icon"
       variant="sidebar"
-      className="border-none z-50"
+      className="ring-r-2 shadow-stashly/30 z-50"
     >
       <SidebarHeader>
         <SidebarMenu>

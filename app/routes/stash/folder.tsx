@@ -1,8 +1,7 @@
 import { LoadMoreItems } from '@/components/core-components/buttons'
-import { Breadcrumbs } from '@/components/core-components/folder-breadcrumbs'
+import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
 import { ItemCard } from '@/components/stash/item-card'
 import { GridLayout } from '@/components/views/grid-view'
-import { itemVariants } from '@/components/views/variants'
 import { usePagination } from '@/hooks/usePagination'
 import { auth } from '@/services/auth'
 import {
@@ -14,7 +13,11 @@ import { breadcrumbs } from '@/services/breadcrumbs'
 import { parseSearchParams } from '@/utils/parsers'
 import { getQueryParam, getQueryParamArray } from '@/utils/query-params'
 import { motion } from 'framer-motion'
-import { redirect, type ShouldRevalidateFunction, useLoaderData } from 'react-router'
+import {
+  redirect,
+  type ShouldRevalidateFunction,
+  useLoaderData,
+} from 'react-router'
 import type { Route } from './+types/folder'
 import { SelectionProvider } from '../../components/stash/selection'
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -36,6 +39,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const [folderContent, crumbs] = await Promise.all([
     getFolderContent({
       cursor: parsedParams.cursor,
+      limit: parsedParams.take,
       where: { ...filters, parentId: params.folderId },
     }),
     breadcrumbs(params.folderId),
@@ -74,33 +78,26 @@ export default () => {
   const { crumbs, me } = useLoaderData() as Route.ComponentProps['loaderData']
   let { items, loadMore, isLoading, hasMore } = usePagination<
     Route.ComponentProps['loaderData']['items'][number]
-  >(100, '')
+  >(25, '')
   return (
-    <div className="w-full relative space-y-4">
-      <Breadcrumbs crumbs={crumbs} me={me} />
+    <div className="w-full h-full relative space-y-4">
       <SelectionProvider items={items.map((i) => i.id)}>
         <GridLayout>
           {items.map((item) => (
-            <motion.div
-              key={item.id}
-              variants={itemVariants}
-              transition={{ duration: 0.2 }}
-            >
-              <ItemCard key={item.id} {...item}>
-                <ItemCard.Header>
-                  <ItemCard.Checkbox name="selectedItems" value={item.id} />
-                  <ItemCard.Actions className="place-self-end" />
-                </ItemCard.Header>
-                <ItemCard.Content>
-                  <ItemCard.Thumbnail />
-                  <ItemCard.Name />
-                </ItemCard.Content>
-                <ItemCard.Footer>
-                  <ItemCard.Size />
-                  <ItemCard.Count />
-                </ItemCard.Footer>
-              </ItemCard>
-            </motion.div>
+            <ItemCard key={item.id} {...item}>
+              <ItemCard.Header>
+                <ItemCard.Checkbox name="selectedItems" value={item.id} />
+                <ItemCard.Actions className="place-self-end" />
+              </ItemCard.Header>
+              <ItemCard.Content>
+                <ItemCard.Thumbnail />
+                <ItemCard.Name />
+              </ItemCard.Content>
+              <ItemCard.Footer>
+                <ItemCard.Size />
+                <ItemCard.Count />
+              </ItemCard.Footer>
+            </ItemCard>
           ))}
         </GridLayout>
       </SelectionProvider>

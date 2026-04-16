@@ -65,7 +65,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       include: {
         permission: {
           include: {
-            users: { select: { id: true, email: true, name: true, image: true } },
+            users: {
+              select: { id: true, email: true, name: true, image: true },
+            },
           },
         },
       },
@@ -87,7 +89,10 @@ export async function action({ request }: Route.ActionArgs) {
   const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/sign-in')
 
-  const parsedData = await parseFormData({ request, schema: sharesApiRouteInput })
+  const parsedData = await parseFormData({
+    request,
+    schema: sharesApiRouteInput,
+  })
 
   try {
     switch (parsedData.intent) {
@@ -117,25 +122,38 @@ export async function action({ request }: Route.ActionArgs) {
       }
 
       case 'create_upload_link': {
-        const link = await createUploadLink(parsedData.itemId, parsedData.scope, {
-          password: parsedData.password,
-          expiresAt: parsedData.expiresAt,
-        })
+        const link = await createUploadLink(
+          parsedData.itemId,
+          parsedData.scope,
+          {
+            password: parsedData.password,
+            expiresAt: parsedData.expiresAt,
+          }
+        )
         return data({ success: true, link })
       }
 
       case 'update_link_scope': {
-        const link = await updateShareLinkScope(parsedData.linkId, parsedData.scope)
+        const link = await updateShareLinkScope(
+          parsedData.linkId,
+          parsedData.scope
+        )
         return data({ success: true, link })
       }
 
       case 'update_link_type': {
-        const link = await updateShareLinkType(parsedData.linkId, parsedData.type)
+        const link = await updateShareLinkType(
+          parsedData.linkId,
+          parsedData.type
+        )
         return data({ success: true, link })
       }
 
       case 'expire_link': {
-        const link = await expireShareLink(parsedData.linkId, parsedData.expiresAt)
+        const link = await expireShareLink(
+          parsedData.linkId,
+          parsedData.expiresAt
+        )
         return data({ success: true, link })
       }
 
@@ -166,15 +184,24 @@ export async function action({ request }: Route.ActionArgs) {
       }
 
       default: {
-        return data({ success: false, error: 'Unknown intent' }, { status: 400 })
+        return data(
+          { success: false, error: 'Unknown intent' },
+          { status: 400 }
+        )
       }
     }
   } catch (e) {
     const err = e as { statusCode?: number; message?: string }
     if (err?.statusCode) {
-      return data({ success: false, error: err.message ?? 'Error' }, { status: err.statusCode })
+      return data(
+        { success: false, error: err.message ?? 'Error' },
+        { status: err.statusCode }
+      )
     }
     console.error('[shares action]', e)
-    return data({ success: false, error: 'An unexpected error occurred' }, { status: 500 })
+    return data(
+      { success: false, error: 'An unexpected error occurred' },
+      { status: 500 }
+    )
   }
 }

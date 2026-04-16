@@ -1,11 +1,19 @@
-import { DeleteIcon, LoadMoreIcon, RestoreIcon, TrashIcon } from '@/components/icons'
+import {
+  DeleteIcon,
+  FavoriteIcon,
+  LoaderIcon,
+  LoadMoreIcon,
+  RestoreIcon,
+  TrashIcon,
+} from '@/components/icons'
 import useConfirm from '@/hooks/useConfirm'
 import { Button } from '@/ui/button'
 import { getQueryParam } from '@/utils/query-params'
-import { LoaderIcon } from 'lucide-react'
+// import { LoaderIcon } from 'lucide-react'
 import { useCallback } from 'react'
 import { useFetcher, useLocation, useSearchParams } from 'react-router'
 import { cn } from '../../utils/styles'
+import { Tooltip } from '@/ui/tooltip'
 
 const Delete = (props: React.ComponentProps<typeof Button>) => {
   let location = useLocation()
@@ -23,23 +31,25 @@ const Delete = (props: React.ComponentProps<typeof Button>) => {
 
   let { open } = useConfirm(onDelete)
   return (
-    <Button
-      variant="destructive"
-      disabled={!selectedItems}
-      onClick={() =>
-        open({
-          variant: 'destructive',
-          title: 'Are you sure you want to delete these items?',
-          description:
-            'This action cannot be undone, deleted items cannot be restored.',
-          confirmText: 'Delete',
-        })
-      }
-      {...props}
-    >
-      <DeleteIcon className="size-5!" />
-      Delete
-    </Button>
+    <Tooltip content="Permanently delete items">
+      <Button
+        variant="destructive"
+        size="icon-sm"
+        disabled={!selectedItems}
+        onClick={() =>
+          open({
+            variant: 'destructive',
+            title: 'Are you sure you want to delete these items?',
+            description:
+              'This action cannot be undone, deleted items cannot be restored.',
+            confirmText: 'Delete',
+          })
+        }
+        {...props}
+      >
+        <DeleteIcon className="size-5!" />
+      </Button>
+    </Tooltip>
   )
 }
 
@@ -51,20 +61,21 @@ const MoveToTrash = (props: React.ComponentProps<typeof Button>) => {
 
   let selectedItems = getQueryParam(searchParams, 'selectedItems')
   return (
-    <Button
-      variant="destructive"
-      onClick={() => {
-        fetcher.submit(
-          { intent: 'trash_items', selectedItems },
-          { method: 'POST', action: '/api/items' }
-        )
-      }}
-      disabled={!selectedItems}
-      {...props}
-    >
-      <TrashIcon className="size-5!" />
-      Trash
-    </Button>
+    <Tooltip content="Move to Trash">
+      <Button
+        variant="destructive"
+        onClick={() => {
+          fetcher.submit(
+            { intent: 'trash_items', selectedItems },
+            { method: 'POST', action: '/api/items' }
+          )
+        }}
+        disabled={!selectedItems}
+        {...props}
+      >
+        <TrashIcon className="size-5!" />
+      </Button>
+    </Tooltip>
   )
 }
 
@@ -77,7 +88,7 @@ const Restore = (props: React.ComponentProps<typeof Button>) => {
   let selectedItems = getQueryParam(searchParams, 'selectedItems')
   return (
     <Button
-      size="sm"
+      size="icon-sm"
       variant="outline"
       disabled={!selectedItems}
       onClick={() => {
@@ -89,51 +100,65 @@ const Restore = (props: React.ComponentProps<typeof Button>) => {
       {...props}
     >
       <RestoreIcon className="size-5!" />
-      Restore
     </Button>
   )
 }
 
-const FavoriteItems = () => {
+const FavoriteItems = (props: React.ComponentProps<typeof Button>) => {
   let fetcher = useFetcher()
   let [searchParams] = useSearchParams()
   let selectedItems = getQueryParam(searchParams, 'selectedItems')
   return (
-    <Button
-      disabled={!selectedItems}
-      onClick={() => {
-        fetcher.submit(
-          { intent: 'favorite_items', selectedItems },
-          { method: 'POST', action: '/api/favorites' }
-        )
-      }}
-    >
-      Favorite Items
-    </Button>
+    <Tooltip content="Favorite items" asChild>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        disabled={!selectedItems}
+        onClick={() => {
+          fetcher.submit(
+            { intent: 'favorite_items', selectedItems },
+            { method: 'POST', action: '/api/favorites' }
+          )
+        }}
+        {...props}
+      >
+        <FavoriteIcon className="size-5!" />
+      </Button>
+    </Tooltip>
   )
 }
 
-const UnfavoriteItems = () => {
-  let fetcher = useFetcher()
-  let location = useLocation()
-  let [searchParams] = useSearchParams()
-  let selectedItems = getQueryParam(searchParams, 'selectedItems')
-  return (
-    <Button
-      disabled={!selectedItems}
-      onClick={() => {
-        fetcher.submit(
-          { intent: 'unfavorite_items', selectedItems },
-          { method: 'POST', action: '/api/favorites' }
-        )
-      }}
-    >
-      Unfavorite Items
-    </Button>
-  )
-}
+// const UnfavoriteItems = (props: React.ComponentProps<typeof Button>) => {
+//   let fetcher = useFetcher()
+//   let location = useLocation()
+//   let [searchParams] = useSearchParams()
+//   let selectedItems = getQueryParam(searchParams, 'selectedItems')
+//   return (
+//     <Button
+//       disabled={!selectedItems}
+//       onClick={() => {
+//         fetcher.submit(
+//           { intent: 'unfavorite_items', selectedItems },
+//           { method: 'POST', action: '/api/favorites' }
+//         )
+//       }}
+//       variant="ghost"
+//       size="icon-sm"
+//       {...props}
+//     >
+//       <UnfavoriteIcon className="size-5!" />
+//     </Button>
+//   )
+// }
 
-const LoadMoreItems = ({ loadMore, isLoading, hasMore }: {
+const LoadMoreItems = ({
+  loadMore,
+  isLoading,
+  hasMore,
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof Button> & {
   loadMore: () => void
   isLoading: boolean
   hasMore: boolean
@@ -144,15 +169,21 @@ const LoadMoreItems = ({ loadMore, isLoading, hasMore }: {
       disabled={isLoading}
       hidden={!hasMore}
       variant="default"
+      className={cn('mx-auto', className)}
+      {...props}
     >
-      <LoadMoreIcon
-        className={cn('size-5 rotate-45 mr-1', isLoading && 'hidden')}
-      />
-      <LoaderIcon
-        className={cn('size-5 animate-spin', !isLoading && 'hidden')}
-      />
-      Load More
+      {children || (
+        <>
+          <LoadMoreIcon
+            className={cn('size-5 rotate-45 mr-1', isLoading && 'hidden')}
+          />
+          <LoaderIcon
+            className={cn('size-5 animate-spin', !isLoading && 'hidden')}
+          />
+        </>
+      )}
+      Load More 
     </Button>
   )
 }
-export { Delete, FavoriteItems, MoveToTrash, Restore, UnfavoriteItems, LoadMoreItems }
+export { Delete, FavoriteItems, MoveToTrash, Restore, LoadMoreItems }

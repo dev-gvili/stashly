@@ -1,4 +1,5 @@
 export { default as useConfirm } from './useConfirm'
+export * from './useBreadcrumbs'
 export * from './useItemCard'
 export * from './usePagination'
 export * from './useSort'
