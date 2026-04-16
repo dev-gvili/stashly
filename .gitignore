@@ -63,3 +63,5 @@ prisma/erDiagram.md
 
 # Copilot chatmode configs (personal tooling)
 .github/*.chatmode.md
+.env
+tsconfig.vite.tsbuildinfo
