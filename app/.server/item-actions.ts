@@ -1604,15 +1604,43 @@ export async function createManyItemsBatched(
 
   for (let i = 0; i < chunks.length; i++) {
     const batch = chunks[i]
-    const createdBatch = await prisma.$transaction(
-      batch.map((item) =>
-        prisma.item.create({
-          data: item,
-        })
+    try {
+      console.log(
+        `Creating batch ${i + 1} of ${chunks.length} (${batch.length} items)...`
       )
-    )
-
-    createdItems.push(...createdBatch)
+      const createdBatch = await prisma.$transaction(
+        batch.map((item) =>
+          prisma.item.create({
+            data: item,
+          })
+        )
+      )
+      createdItems.push(...createdBatch)
+    } catch (e) {
+      console.error(`Error creating batch ${i + 1}:`, e)
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        // If batch creation fails (e.g. due to unique constraint, relation constraint, timeout constraint), try creating items individually to isolate the error
+        console.warn(
+          `Batch ${i + 1} failed, attempting to create items individually to identify issues...`
+        )
+        try {
+          let createdBatch = await Promise.all(
+            batch.map((item) =>
+              prisma.item.create({
+                data: item,
+              })
+            )
+          )
+          createdItems.push(...createdBatch)
+        } catch (err) {
+          console.error(
+            `Error creating items individually in batch ${i + 1}:`,
+            err
+          )
+          throw err
+        }
+      }
+    }
   }
   return createdItems
 }
@@ -1760,6 +1788,8 @@ export async function addFavorite(
     },
   })
 }
+
+
 
 /**
  * Removes a favorite record for the given user and item.

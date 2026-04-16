@@ -41,6 +41,33 @@ export default [
     route('sidebar', 'routes/api/sidebar.ts'),
     route('search/:type', 'routes/api/search.ts'),
 
+    ...prefix('collections', [
+      route(':collectionId', 'routes/api/collections.ts'),
+      route(':collectionId/items', 'routes/api/items.ts'),
+    ]),
+
+    ...prefix('users', [
+      route(':userId', 'routes/api/users.ts'),
+      route(':userId/items', 'routes/api/items.ts'),
+      route(':userId/workspaces', 'routes/api/workspaces.ts'),
+    ]),
+
+    ...prefix('items', [
+      route(':itemId/permissions', 'routes/api/items/permissions.ts'),
+      route(':itemId/thumbnail', 'routes/api/items/thumbnail.ts'),
+      route(':itemId/preview', 'routes/api/items/preview.ts'),
+      route(':itemId/versions', 'routes/api/items/versions.ts'),
+      route(':itemId/version/:versionId', 'routes/api/items/version.ts'),
+      route(':itemId/comments', 'routes/api/comments.ts'),
+      route(':itemId/shares/:shareId?', 'routes/api/items.ts', {
+        id: 'item-shares',
+      }), // Reuse items handler for shares, differentiate by method and presence of shareId param
+      route(':itemId/favorites', 'routes/api/favorites.ts'),
+      route(':itemId/invitations', 'routes/api/invitations.ts'),
+      route(':itemId/view', 'routes/api/view.ts'),
+    ]),
+
+    // AI API routes, grouped under /api/ai/*
     ...prefix('ai', [
       route('embed', 'routes/api/ai.ts', { id: 'ai-embed' }),
       route('caption', 'routes/api/ai.ts', { id: 'ai-caption' }),
@@ -123,4 +150,11 @@ export default [
   route('test', 'routes/stash/recent.tsx', {
     id: 'test-route',
   }), // Public share route
+
+  // Design option demos (standalone layouts, no auth required)
+  ...prefix('options', [
+    route('a', 'routes/options/option-a.tsx'),
+    route('b', 'routes/options/option-b.tsx'),
+    route('c', 'routes/options/option-c.tsx'),
+  ]),
 ] satisfies RouteConfig
