@@ -289,7 +289,8 @@ export async function isItemInCollection(
 }
 
 /**
- * Add a single Item to a Collection, atomically incrementing the collection's size.
+ * Add a single Item to a Collection.
+ * The DB trigger `collection_size_trigger` automatically updates the collection's size.
  *
  * Requires `write` access on the collection and at least `read` access on the item.
  */
@@ -301,31 +302,18 @@ export async function addItemToCollection(
   await assertItemPermission(userId, collectionId, 'write')
   await assertItemPermission(userId, itemId, 'read')
 
-  return prisma.$transaction(async (tx) => {
-    const itemToAdd = await tx.item.findUniqueOrThrow({
-      where: { id: itemId },
-      select: { size: true },
-    })
-
-    const association = await tx.collectionMember.create({
-      data: {
-        id: toObjectId(getPrefixForModel('CollectionMember')),
-        collectionId,
-        itemId,
-      },
-    })
-
-    await tx.item.update({
-      where: { id: collectionId },
-      data: { size: { increment: itemToAdd.size } },
-    })
-
-    return association
+  return prisma.collectionMember.create({
+    data: {
+      id: toObjectId(getPrefixForModel('CollectionMember')),
+      collectionId,
+      itemId,
+    },
   })
 }
 
 /**
- * Remove a single Item from a Collection, atomically decrementing the collection's size.
+ * Remove a single Item from a Collection.
+ * The DB trigger `collection_size_trigger` automatically updates the collection's size.
  *
  * Requires `write` access on the collection.
  */
@@ -336,25 +324,30 @@ export async function removeItemFromCollection(
 ) {
   await assertItemPermission(userId, collectionId, 'write')
 
-  return prisma.$transaction(async (tx) => {
-    const itemToRemove = await tx.item.findUniqueOrThrow({
-      where: { id: itemId },
-      select: { size: true },
-    })
-
-    const deletedAssociation = await tx.collectionMember.delete({
-      where: {
-        collectionId_itemId: { collectionId, itemId },
-      },
-    })
-
-    await tx.item.update({
-      where: { id: collectionId },
-      data: { size: { decrement: itemToRemove.size } },
-    })
-
-    return deletedAssociation
+  return prisma.collectionMember.delete({
+    where: { collectionId_itemId: { collectionId, itemId } },
   })
+}
+
+// Remove multiple items at once, with a single permission check for better performance when managing large collections.
+// The DB trigger `collection_size_trigger` fires per-row and keeps the collection's size in sync automatically.
+export async function removeItemsFromCollection({
+  userId,
+  collectionId,
+  itemIds,
+}: {
+  userId: string
+  collectionId: string
+  itemIds: string[]
+}) {
+  await assertItemPermission(userId, collectionId, 'write')
+  if (!itemIds.length) return []
+
+  await prisma.collectionMember.deleteMany({
+    where: { collectionId, itemId: { in: itemIds } },
+  })
+
+  return itemIds
 }
 
 /**
@@ -405,24 +398,16 @@ export async function addItemsToCollection({
 
   if (!toAdd.length) return []
 
-  return prisma.$transaction(async (tx) => {
-    await tx.collectionMember.createMany({
-      skipDuplicates: true,
-      data: toAdd.map((i) => ({
-        id: toObjectId(getPrefixForModel('CollectionMember')),
-        collectionId,
-        itemId: i.id,
-      })),
-    })
-
-    const totalSize = toAdd.reduce((acc, i) => acc + i.size, 0n)
-    await tx.item.update({
-      where: { id: collectionId },
-      data: { size: { increment: totalSize } },
-    })
-
-    return toAdd.map((i) => i.id)
+  await prisma.collectionMember.createMany({
+    skipDuplicates: true,
+    data: toAdd.map((i) => ({
+      id: toObjectId(getPrefixForModel('CollectionMember')),
+      collectionId,
+      itemId: i.id,
+    })),
   })
+
+  return toAdd.map((i) => i.id)
 }
 
 /**
@@ -439,20 +424,7 @@ export async function clearCollection({
 }) {
   await assertItemPermission(userId, collectionId, 'write')
 
-  return prisma.$transaction(async (tx) => {
-    // await tx.collectionMember.deleteMany({ where: { collectionId } })
-    await tx.item.update({
-      where: { id: collectionId },
-      data: {
-        size: 0,
-        collectionItems: {
-          deleteMany: {
-            collectionId: collectionId,
-          },
-        },
-      },
-    })
-  })
+  await prisma.collectionMember.deleteMany({ where: { collectionId } })
 }
 
 // ---------------------------------------------------------------------------
