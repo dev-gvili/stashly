@@ -5,6 +5,7 @@ import { findUserById, updateUser } from '../../.server/user-actions'
 import { findAllStoragePlans, findStoragePlanById } from '../../.server/storagePlan-actions'
 import { createQuota, updateTotalQuota } from '../../.server/quota-actions'
 import { findActiveSubscriptionByOwner, updateSubscriptionRecord } from '../../.server/subscription-actions'
+import { updateDrive } from '../../.server/drive-actions'
 import { prisma } from '@/.server/db'
 import { toObjectId, getPrefixForModel } from '@/utils/converters'
 import {
@@ -93,17 +94,9 @@ export async function action({ request }: Route.ActionArgs) {
     })
   }
 
-  await prisma.drive.update({
-    where: {
-      id: session.user.driveId!,
-    },
-    data: {
-      storage: {
-        connect: {
-          id: plan.id,
-        },
-      },
-    },
+  await updateDrive({
+    where: { id: session.user.driveId! },
+    data: { storage: { connect: { id: plan.id } } },
   })
 
   // Redirect back to the billing page after changing plan
