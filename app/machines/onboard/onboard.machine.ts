@@ -7,6 +7,7 @@ import { createUserBucket } from '@/services/s3'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { createSubscriptionRecord, findActiveSubscriptionByOwner, updateSubscriptionRecord } from '@/.server/subscription-actions'
 import { findDefaultStoragePlan } from '@/.server/storagePlan-actions'
+import { createDrive } from '@/.server/drive-actions'
 import { updateUser } from '@/.server/user-actions'
 import type {
   Drive,
@@ -40,9 +41,7 @@ export const onboardingMachine = setup({
   actors: {
     checkExistingDrive: fromPromise(
       async ({ input }: { input: { user: User } }) => {
-        return prisma.drive.findFirst({
-          where: { ownerId: input.user.id },
-        })
+        return prisma.drive.findFirst({ where: { ownerId: input.user.id } })
       }
     ),
     findDefaultStoragePlan: fromPromise(
@@ -73,21 +72,10 @@ export const onboardingMachine = setup({
       Drive,
       { user: User; bucketName: string; storagePlan: StoragePlan }
     >(async ({ input }) => {
-      return await prisma.drive.create({
-        data: {
-          id: toObjectId(getPrefixForModel('Drive')),
-          name: input.bucketName,
-          owner: {
-            connect: {
-              id: input.user.id,
-            },
-          },
-          storage: {
-            connect: {
-              id: input.storagePlan.id,
-            },
-          },
-        },
+      return await createDrive({
+        name: input.bucketName,
+        owner: { connect: { id: input.user.id } },
+        storage: { connect: { id: input.storagePlan.id } },
       })
     }),
     createQuota: fromPromise<void, { drive: Drive; storagePlan: StoragePlan }>(
