@@ -20,7 +20,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return null
 }
 
-export async function action({ request }: Route.ActionArgs) {
+export async function action({ request, params }: Route.ActionArgs) {
   const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/signin')
 

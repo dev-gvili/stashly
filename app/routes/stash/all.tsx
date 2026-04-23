@@ -100,6 +100,7 @@ export default function Index() {
             <ItemCard key={item.id} {...item}>
               <ItemCard.Header>
                 <ItemCard.Checkbox name="selectedItems" value={item.id} />
+                <ItemCard.Actions  className='place-self-end' />
               </ItemCard.Header>
               <ItemCard.Content>
                 <ItemCard.Thumbnail />
