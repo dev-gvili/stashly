@@ -84,8 +84,8 @@ const FilterList = <TData extends Record<string, string> = {}>({
       <DropdownMenuContent
         align="start"
         alignOffset={-6}
-        className="shadow-none"
-      >
+        className="shadow-stashly border border-border rounded-md bg-sidebar p-1 w-48"
+      > 
         <ButtonGroup className="w-full">
           <Button
             variant="ghost"

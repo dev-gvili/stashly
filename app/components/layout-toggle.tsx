@@ -26,7 +26,7 @@ const LayoutToggle = ({
 
 export function River() {
   let location = useLocation()
-  if (!location.pathname.includes('/gallery')) return null
+  if (!location.pathname.includes('/images') && !location.pathname.includes('/videos')) return null
   return (
     <LayoutMenuItem tooltip="River view" value="river">
       <RiverIcon className="size-5!" />
@@ -36,7 +36,7 @@ export function River() {
 
 export function Waterfall() {
   let location = useLocation()
-  if (!location.pathname.includes('/gallery')) return null
+  if (!location.pathname.includes('/images') && !location.pathname.includes('/videos')) return null
   return (
     <LayoutMenuItem tooltip="Waterfall view" value="waterfall">
       <WaterfallIcon className="size-5!" />
@@ -55,7 +55,7 @@ export function Grid() {
 export function List() {
   let location = useLocation()
   if (
-    location.pathname.includes('/gallery') ||
+    location.pathname.includes('/images') ||
     location.pathname.includes('/videos')
   )
     return null

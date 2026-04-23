@@ -109,7 +109,7 @@ const FavoriteItems = (props: React.ComponentProps<typeof Button>) => {
   let [searchParams] = useSearchParams()
   let selectedItems = getQueryParam(searchParams, 'selectedItems')
   return (
-    <Tooltip content="Favorite items" asChild>
+    <Tooltip content="Favorite items">
       <Button
         variant="ghost"
         size="icon-sm"

@@ -287,10 +287,10 @@ function ShareLinkRow({
   const expiryRef = useRef<HTMLInputElement>(null)
 
   return (
-    <div className="rounded-lg border bg-card p-3 space-y-3">
+    <div className="rounded-md  bg-card p-3 space-y-3 w-full">
       {/* Header row: type + scope badges + revoke */}
       <div className="flex items-center gap-2 justify-between">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="grid gap-2 grid-cols-3 ">
           {/* Type selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -299,9 +299,9 @@ function ShareLinkRow({
                 size="sm"
                 className="font-stashly"
               >
-                <TypeIcon className="size-3.5" />
+                <TypeIcon className="" />
                 {typeLabel(link.type)}
-                <ChevronDown className="size-3" />
+                <ChevronDown className="" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
@@ -311,7 +311,7 @@ function ShareLinkRow({
                   onSelect={() => onUpdateType(link.id, opt.value)}
                   className={cn(link.type === opt.value && 'bg-accent')}
                 >
-                  <opt.icon className="size-5 mr-2" />
+                  <opt.icon className="size-5! mr-2 text-current" />
                   <div>
                     <div className="text-xs font-medium">{opt.label}</div>
                     <div className="text-xs text-muted-foreground">
@@ -329,10 +329,10 @@ function ShareLinkRow({
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 h-7 text-xs font-stashly"
+                className="font-stashly"
                 disabled={link.type === 'embed'}
               >
-                <ScopeIcon className="size-5" />
+                <ScopeIcon className="" />
                 {scopeLabel(link.scope)}
                 <ChevronDown className="size-3" />
               </Button>
@@ -344,7 +344,7 @@ function ShareLinkRow({
                   onSelect={() => onUpdateScope(link.id, opt.value)}
                   className={cn(link.scope === opt.value && 'bg-accent')}
                 >
-                  <opt.icon className="size-5 mr-2" />
+                  <opt.icon className="size-5 mr-2 text-current" />
                   <div>
                     <div className="text-xs font-medium">{opt.label}</div>
                     <div className="text-xs text-muted-foreground">
@@ -371,9 +371,8 @@ function ShareLinkRow({
 
         {/* Revoke */}
         <Button
-          variant="ghost"
+          variant="destructive"
           size="icon-sm"
-          className="text-muted-foreground hover:text-destructive shrink-0"
           onClick={() => onRevoke(link.id)}
           aria-label="Revoke link"
         >
@@ -383,7 +382,7 @@ function ShareLinkRow({
 
       {/* URL row */}
       <div className="flex items-center gap-2">
-        <div className="flex-1 rounded-md bg-muted px-3 py-1.5 text-xs text-muted-foreground font-mono truncate select-all">
+        <div className="flex-1 rounded-md bg-muted px-3 py-1.5 text-xs text-muted-foreground font-stashly truncate select-all">
           {shareUrl}
         </div>
         <CopyButton value={shareUrl} />
@@ -831,7 +830,7 @@ export function ShareDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg w-full font-stashly bg-sidebar">
+      <DialogContent className="max-w-xl! w-full font-stashly bg-sidebar">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <ShareItemIcon className="size-5" />
@@ -873,7 +872,7 @@ export function ShareDialog({
                 </p>
               </div>
             ) : (
-              <ScrollArea className="max-h-[360px] pr-1">
+              <ScrollArea className="max-h-90 pr-1">
                 <div className="space-y-3">
                   {links.map((link) => (
                     <ShareLinkRow

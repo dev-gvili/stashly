@@ -32,25 +32,32 @@ export function FilterListItem({
   let _onSelect = (event: Event) => event.preventDefault()
   let Icon = toIcon(value as ItemCategory | ItemType)
   return (
-    <DropdownMenuItem key={value} onSelect={_onSelect} className="gap-4">
-      <span className="font-stashly text-sm grow flex gap-2 items-center">
-        <Icon className="size-5 text-foreground" />
-        <Label htmlFor={value} className="text-muted-foreground">{capitalize(value)}</Label>
-      </span>
-      <Checkbox
-        id={value}
-        key={location.key}
-        name={name}
-        value={value}
-        className="size-5! hover:cursor-pointer"
-        defaultChecked={hasQueryParamValue(searchParams, name, value)}
-        onCheckedChange={(checked) => {
-          checked
-            ? addQueryParamValue(searchParams, name, value)
-            : removeQueryParamValue(searchParams, name, value)
-        }}
-        {...props}
-      />
+    <DropdownMenuItem
+      key={value}
+      onSelect={_onSelect}
+      className="gap-4 hover:cursor-pointer"
+      asChild
+    >
+      <Label htmlFor={value} className="text-current hover:cursor-pointer">
+        <span className="font-stashly text-sm grow flex gap-2 items-center hover:cursor-pointer">
+          <Icon className="size-5 text-current" />
+          {capitalize(value)}
+        </span>
+        <Checkbox
+          id={value}
+          key={location.key}
+          name={name}
+          value={value}
+          className="size-5! hover:cursor-pointer"
+          defaultChecked={hasQueryParamValue(searchParams, name, value)}
+          onCheckedChange={(checked) => {
+            checked
+              ? addQueryParamValue(searchParams, name, value)
+              : removeQueryParamValue(searchParams, name, value)
+          }}
+          {...props}
+        />
+      </Label>
     </DropdownMenuItem>
   )
 }

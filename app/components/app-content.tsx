@@ -10,7 +10,7 @@ const AppContent = ({ children }: { children: React.ReactNode }) => {
     <SidebarInset id={id} surface-elevated>
       <AppHeader />
       <ScrollArea className="h-screen pr-2 pb-10">
-        <main className="mb-16 p-2 select-none bg-grid! grid-primary">{children}</main>
+        <main className="mb-16 p-2">{children}</main>
       </ScrollArea>
       <AppToolbar />
     </SidebarInset>
