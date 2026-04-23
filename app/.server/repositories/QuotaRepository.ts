@@ -8,7 +8,7 @@ import {
 } from '@/utils/filters/quota.filters'
 import { z } from 'zod'
 import { calculateQuota, toQuota } from '@/services/quota.utils'
-import { storagePlanRepository } from './StoragePlanRepository'
+import { findStoragePlanById, findDefaultStoragePlan } from '../storagePlan-actions'
 import { searchFactory } from '@/utils/search'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { StashlyError, StashlyErrorCode } from '../api.errors'
@@ -40,9 +40,6 @@ const defaultOrderBy = (
  * Provides CRUD operations plus a handful of convenience helpers.
  */
 export const quotaRepository = {
-  // Dependencies
-  storagePlan: storagePlanRepository,
-
   // Search functionality
   search: searchFactory({
     dbDelegate: prisma.quota,
@@ -85,13 +82,13 @@ export const quotaRepository = {
     // Determine the total storage limit based on the provided storage plan
     // If no storage plan ID is provided, use the default plan's storage limit
     if (!storagePlanId) {
-      const defaultPlan = await this.storagePlan.findDefault()
+      const defaultPlan = await findDefaultStoragePlan()
       args.total = defaultPlan.storageLimit
     }
 
     // If a storage plan ID is provided, fetch the plan and set the total accordingly
     if (storagePlanId) {
-      const storagePlan = await this.storagePlan.findById(storagePlanId)
+      const storagePlan = await findStoragePlanById(storagePlanId)
       if (!storagePlan)
         throw new Error(`Storage plan ${storagePlanId} not found`)
       args.total = storagePlan.storageLimit // Set total based on storage plan

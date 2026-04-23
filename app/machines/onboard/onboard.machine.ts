@@ -6,7 +6,7 @@ import { prisma } from '@/services/db'
 import { createUserBucket } from '@/services/s3'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { subscriptionRepository } from '@/services/repositories/SubscriptionRepository'
-import { storagePlanRepository } from '@/services/repositories/StoragePlanRepository'
+import { findDefaultStoragePlan } from '@/.server/storagePlan-actions'
 import { updateUser } from '@/.server/user-actions'
 import type {
   Drive,
@@ -47,7 +47,7 @@ export const onboardingMachine = setup({
     ),
     findDefaultStoragePlan: fromPromise(
       async ({ input }: { input: { user: User } }) => {
-        return storagePlanRepository.findDefault()
+        return findDefaultStoragePlan()
       }
     ),
     createSubscription: fromPromise<

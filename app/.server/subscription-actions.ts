@@ -3,7 +3,7 @@ import { StashlyError, StashlyErrorCode } from '@/services/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { StoragePlanType, SubscriptionStatus } from '@/prisma/enums'
 import { subscriptionRepository } from './repositories/SubscriptionRepository'
-import { storagePlanRepository } from './repositories/StoragePlanRepository'
+import { findStoragePlanById, findStoragePlanByType } from './storagePlan-actions'
 import { quotaRepository } from './repositories/QuotaRepository'
 
 // ---------------------------------------------------------------------------
@@ -29,8 +29,8 @@ export async function getActiveSubscription(userId: string) {
  * At least one of planId or planType must be provided.
  */
 export async function getStoragePlan(planId?: string | null, planType?: string | null) {
-  if (planId) return storagePlanRepository.findById(planId)
-  if (planType) return storagePlanRepository.findByType(planType as StoragePlanType)
+  if (planId) return findStoragePlanById(planId)
+  if (planType) return findStoragePlanByType(planType as StoragePlanType)
   throw new StashlyError(StashlyErrorCode.INVALID_INPUT, 'planId or planType is required')
 }
 

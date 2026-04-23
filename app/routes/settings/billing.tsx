@@ -2,7 +2,7 @@ import type { Route } from './+types/billing'
 import { auth } from '@/services/auth'
 import { Form, Link, redirect } from 'react-router'
 import { findUserById, updateUser } from '../../.server/user-actions'
-import { storagePlanRepository } from '../../.server/repositories/StoragePlanRepository'
+import { findAllStoragePlans, findStoragePlanById } from '../../.server/storagePlan-actions'
 import { quotaRepository } from '../../.server/repositories/QuotaRepository'
 import { subscriptionRepository } from '../../.server/repositories/SubscriptionRepository'
 import { prisma } from '@/.server/db'
@@ -42,7 +42,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) throw redirect('/auth/sign-in')
 
   const [plans, activeSubscription] = await Promise.all([
-    storagePlanRepository.findAll({}),
+    findAllStoragePlans({}),
     subscriptionRepository.findActiveByOwnerId(user.id),
   ])
 
@@ -61,7 +61,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (!planId) return new Response('Missing storagePlanId', { status: 400 })
 
   // validate plan exists
-  const plan = await storagePlanRepository.findById(planId)
+  const plan = await findStoragePlanById(planId)
   if (!plan) return new Response('Storage plan not found', { status: 404 })
 
   // update user record with the selected plan
