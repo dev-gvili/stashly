@@ -5,7 +5,7 @@ import type { User } from 'better-auth'
 import { prisma } from '@/services/db'
 import { createUserBucket } from '@/services/s3'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
-import { subscriptionRepository } from '@/services/repositories/SubscriptionRepository'
+import { createSubscriptionRecord, findActiveSubscriptionByOwner, updateSubscriptionRecord } from '@/.server/subscription-actions'
 import { findDefaultStoragePlan } from '@/.server/storagePlan-actions'
 import { updateUser } from '@/.server/user-actions'
 import type {
@@ -54,7 +54,7 @@ export const onboardingMachine = setup({
       Subscription,
       { user: User; storagePlan: StoragePlan }
     >(async ({ input }) => {
-      return await subscriptionRepository.create({
+      return await createSubscriptionRecord({
         id: toObjectId(getPrefixForModel('Subscription')),
         owner: {
           connect: {

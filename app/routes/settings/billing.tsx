@@ -4,7 +4,7 @@ import { Form, Link, redirect } from 'react-router'
 import { findUserById, updateUser } from '../../.server/user-actions'
 import { findAllStoragePlans, findStoragePlanById } from '../../.server/storagePlan-actions'
 import { createQuota, updateTotalQuota } from '../../.server/quota-actions'
-import { subscriptionRepository } from '../../.server/repositories/SubscriptionRepository'
+import { findActiveSubscriptionByOwner, updateSubscriptionRecord } from '../../.server/subscription-actions'
 import { prisma } from '@/.server/db'
 import { toObjectId, getPrefixForModel } from '@/utils/converters'
 import {
@@ -43,7 +43,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const [plans, activeSubscription] = await Promise.all([
     findAllStoragePlans({}),
-    subscriptionRepository.findActiveByOwnerId(user.id),
+    findActiveSubscriptionByOwner(user.id),
   ])
 
   const currentPlanId = activeSubscription?.storagePlanId ?? user.storagePlanId
@@ -85,9 +85,9 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   // If an active subscription exists we also update its storagePlanId to keep data-model consistent
-  const sub = await subscriptionRepository.findActiveByOwnerId(userId)
+  const sub = await findActiveSubscriptionByOwner(userId)
   if (sub) {
-    await subscriptionRepository.update({
+    await updateSubscriptionRecord({
       where: { id: sub.id },
       data: { storagePlanId: plan.id },
     })
