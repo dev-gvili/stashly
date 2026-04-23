@@ -1,11 +1,12 @@
 import type { Route } from './+types/billing'
 import { auth } from '@/services/auth'
 import { Form, Link, redirect } from 'react-router'
-import { userRepository } from '../../.server/repositories/UserRepository'
+import { userRepository } from '../../.server/repositories/userRepository'
 import { storagePlanRepository } from '../../.server/repositories/StoragePlanRepository'
 import { quotaRepository } from '../../.server/repositories/QuotaRepository'
 import { subscriptionRepository } from '../../.server/repositories/SubscriptionRepository'
 import { prisma } from '@/.server/db'
+import { toObjectId, getPrefixForModel } from '@/utils/converters'
 import {
   Card,
   CardContent,
@@ -81,6 +82,7 @@ export async function action({ request }: Route.ActionArgs) {
     // If user has no quota record yet, try creating one (quietly ignoring errors)
     try {
       await quotaRepository.create({
+        id: toObjectId(getPrefixForModel('Quota')),
         driveId: session.user.driveId!,
         storagePlanId: plan.id,
       })

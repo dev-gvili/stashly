@@ -22,7 +22,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
     const event = stripe.webhooks.constructEvent(
       rawBody,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET
+      process.env.STRIPE_WEBHOOK_SECRET!
     )
 
     // Handle different event types related to subscriptions.

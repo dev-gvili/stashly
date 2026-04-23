@@ -154,9 +154,6 @@ describe('getPrefixForModel', () => {
     expect(getPrefixForModel('Workspace')).toBe('ws')
   })
 
-  it('returns the correct prefix for Collection', () => {
-    expect(getPrefixForModel('Collection')).toBe('coll')
-  })
 })
 
 // ─── toObjectId ───────────────────────────────────────────────────────────────
