@@ -1,11 +1,90 @@
+import { data, redirect } from 'react-router'
+import { auth } from '@/services/auth'
 import type { Route } from './+types/users'
+import { parseFormData, parseSearchParams } from '@/utils/parsers'
+import { usersLoaderInput, usersApiRouteInput } from '@/schemas/api.schemas'
+import {
+  findUserById,
+  findUserByEmail,
+  updateUser,
+  searchUsers,
+  deleteUser,
+} from '@/services/user-actions'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  // TODO: implement loader logic
-  return null
+  const session = await auth.api.getSession(request)
+  if (!session) throw redirect('/auth/sign-in')
+
+  // Detail route: GET /api/users/:userId
+  if (params.userId) {
+    try {
+      const user = await findUserById(params.userId)
+      return data({ user })
+    } catch (e) {
+      const err = e as { statusCode?: number; message?: string }
+      return data(
+        { error: err.message ?? 'User not found' },
+        { status: err.statusCode ?? 404 }
+      )
+    }
+  }
+
+  // List / search route: GET /api/users?query=...
+  try {
+    const query = parseSearchParams({ request, schema: usersLoaderInput })
+    if (query.email) {
+      const user = await findUserByEmail(query.email)
+      return data({ user })
+    }
+    const result = await searchUsers({
+      query: query.query ?? '',
+      cursor: query.cursor,
+      limit: query.limit,
+    })
+    return data(result)
+  } catch (e) {
+    const err = e as { statusCode?: number; message?: string }
+    return data(
+      { error: err.message ?? 'Failed to list users' },
+      { status: err.statusCode ?? 500 }
+    )
+  }
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  // TODO: implement action logic
-  return null
+  const session = await auth.api.getSession(request)
+  if (!session) throw redirect('/auth/sign-in')
+
+  try {
+    const formData = await parseFormData({
+      request,
+      schema: usersApiRouteInput,
+    })
+
+    if (formData.intent === 'update_user') {
+      const userId = params.userId ?? session.user.id
+      const { intent, ...updateData } = formData
+      const user = await updateUser({ userId, data: updateData })
+      return data({ user })
+    }
+
+    if (formData.intent === 'delete_user') {
+      const userId = formData.userId ?? params.userId
+      if (!userId) return data({ error: 'userId is required' }, { status: 400 })
+      // Only allow users to delete their own account
+      if (userId !== session.user.id) {
+        return data({ error: 'Forbidden' }, { status: 403 })
+      }
+      await deleteUser(userId)
+      return data({ success: true })
+    }
+
+    return data({ error: 'Invalid intent' }, { status: 400 })
+  } catch (e) {
+    const err = e as { statusCode?: number; message?: string }
+    return data(
+      { error: err.message ?? 'An error occurred' },
+      { status: err.statusCode ?? 500 }
+    )
+  }
 }

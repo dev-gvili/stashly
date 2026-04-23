@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { toZodArraySchema } from '../utils/converters'
+import { toZodArraySchema } from '@/utils/converters'
 
 // ====================================================== //
 // =================== Quota Api Route ================== //
@@ -311,5 +311,228 @@ export const sharesApiRouteInput = z.discriminatedUnion('intent', [
   z.object({
     intent: z.literal('revoke_all_links'),
     itemId: z.string().nonempty(),
+  }),
+])
+
+// ====================================================== //
+// ================ Comments Api Route ================== //
+// ====================================================== //
+
+/** Schema for GET /api/items/:itemId/comments */
+export const commentsLoaderInput = z.object({
+  itemId: z.string().optional(),
+})
+
+export const commentsApiRouteInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('create_comment'),
+    content: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('update_comment'),
+    commentId: z.string().nonempty(),
+    content: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('delete_comment'),
+    commentId: z.string().nonempty(),
+  }),
+])
+
+// ====================================================== //
+// ================ Versions Api Route ================== //
+// ====================================================== //
+
+/** Schema for GET /api/items/:itemId/versions */
+export const versionsLoaderInput = z.object({
+  itemId: z.string().optional(),
+  versionId: z.string().optional(),
+})
+
+export const versionsApiRouteInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('create_version'),
+    label: z.string().optional(),
+    version: z.string().optional(),
+    size: z.coerce.bigint().optional(),
+  }),
+  z.object({
+    intent: z.literal('restore_version'),
+    versionId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('delete_version'),
+    versionId: z.string().nonempty(),
+  }),
+])
+
+// ====================================================== //
+// =================== Users Api Route ================== //
+// ====================================================== //
+
+/** Schema for GET /api/users */
+export const usersLoaderInput = z.object({
+  query: z.string().optional(),
+  email: z.string().email().optional(),
+  cursor: z.string().optional(),
+  limit: z.coerce.number().min(1).max(100).default(20),
+})
+
+export const usersApiRouteInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('update_user'),
+    name: z.string().min(1).optional(),
+    displayName: z.string().optional(),
+    image: z.url().optional(),
+  }),
+  z.object({
+    intent: z.literal('delete_user'),
+    userId: z.string().optional(),
+  }),
+])
+
+// ====================================================== //
+// =============== Notifications Api Route ============== //
+// ====================================================== //
+
+/** Schema for GET /api/notifications */
+export const notificationsLoaderInput = z.object({
+  status: z.enum(['read', 'unread']).optional(),
+  type: z.enum(['info', 'warning', 'error', 'success']).optional(),
+  cursor: z.string().optional(),
+  limit: z.coerce.number().min(1).max(100).default(20),
+})
+
+export const notificationsApiRouteInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('mark_read'),
+    notificationId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('mark_all_read'),
+  }),
+  z.object({
+    intent: z.literal('delete_notification'),
+    notificationId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('create_notification'),
+    message: z.string().nonempty(),
+    type: z.enum(['info', 'warning', 'error', 'success']),
+  }),
+])
+
+// ====================================================== //
+// ================= Settings Api Route ================= //
+// ====================================================== //
+
+export const settingsApiRouteInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('update_settings'),
+    name: z.string().min(1).optional(),
+    displayName: z.string().optional(),
+    image: z.url().optional(),
+  }),
+])
+
+// ====================================================== //
+// ================= Members Api Route ================== //
+// ====================================================== //
+
+/** Schema for GET /api/members?workspaceId=... */
+export const membersLoaderInput = z.object({
+  workspaceId: z.string().nonempty(),
+})
+
+const workspaceMemberRoleSchema = z.enum(['owner', 'admin', 'member', 'viewer'])
+
+export const membersApiRouteInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('add_member'),
+    workspaceId: z.string().nonempty(),
+    userId: z.string().nonempty(),
+    role: workspaceMemberRoleSchema.default('member'),
+  }),
+  z.object({
+    intent: z.literal('remove_member'),
+    workspaceId: z.string().nonempty(),
+    userId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('change_role'),
+    workspaceId: z.string().nonempty(),
+    userId: z.string().nonempty(),
+    role: workspaceMemberRoleSchema,
+  }),
+])
+
+// ====================================================== //
+// =============== Subscription Api Route =============== //
+// ====================================================== //
+
+export const subscriptionApiRouteInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('update_plan'),
+    storagePlanId: z.string().optional(),
+    storagePlanType: z.string().optional(),
+  }),
+  z.object({
+    intent: z.literal('cancel_subscription'),
+  }),
+])
+
+// ====================================================== //
+// ================ Workspaces Api Route ================ //
+// ====================================================== //
+
+export const workspacesLoaderInput = z.object({
+  workspaceId: z.string().optional(),
+  userId: z.string().optional(),
+})
+
+export const workspacesApiRouteInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('create_workspace'),
+    name: z.string().nonempty(),
+    slug: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('update_workspace'),
+    workspaceId: z.string().nonempty(),
+    name: z.string().optional(),
+    slug: z.string().optional(),
+  }),
+  z.object({
+    intent: z.literal('delete_workspace'),
+    workspaceId: z.string().nonempty(),
+  }),
+])
+
+// ====================================================== //
+// ================ Permissions Api Route =============== //
+// ====================================================== //
+
+export const permissionsLoaderInput = z.object({
+  itemId: z.string().nonempty(),
+})
+
+const permissionRoleSchema = z.enum(['read', 'write', 'owner'])
+
+export const permissionsApiRouteInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('grant_permission'),
+    itemId: z.string().nonempty(),
+    userId: z.string().nonempty(),
+    role: permissionRoleSchema,
+  }),
+  z.object({
+    intent: z.literal('revoke_permission'),
+    itemId: z.string().nonempty(),
+    userId: z.string().nonempty(),
+  }),
+  z.object({
+    intent: z.literal('expire_permission'),
+    permissionId: z.string().nonempty(),
+    expiresAt: z.coerce.date(),
   }),
 ])

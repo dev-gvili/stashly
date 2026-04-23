@@ -1,76 +1,60 @@
-import type { Route } from '../+types'
+import { data, redirect } from 'react-router'
 import { auth } from '@/services/auth'
-import { userRepository } from '../../.server/repositories/UserRepository'
-import { storagePlanRepository } from '../../.server/repositories/StoragePlanRepository'
-import { subscriptionRepository } from '../../.server/repositories/SubscriptionRepository'
-import { quotaRepository } from '../../.server/repositories/QuotaRepository'
-import { redirect } from 'react-router'
+import type { Route } from './+types/subscription'
+import { parseFormData } from '@/utils/parsers'
+import { subscriptionApiRouteInput } from '@/schemas/api.schemas'
+import {
+  getActiveSubscription,
+  updateSubscriptionPlan,
+  cancelSubscription,
+} from '@/services/subscription-actions'
 
-// GET: Get current user's subscription (if any)
 export async function loader({ request }: Route.LoaderArgs) {
   const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/sign-in')
 
-  const user = await userRepository.findById(session.user.id)
-  const active = user.subscriptions?.find((s) => s.status === 'active') ?? null
-  return { subscription: active }
+  const subscription = await getActiveSubscription(session.user.id)
+  return data({ subscription })
 }
 
-// POST: Update subscription / change local storage plan
 export async function action({ request }: Route.ActionArgs) {
   const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/sign-in')
 
-  const userId = session.user.id
-  const fd = await request.formData()
-  const storagePlanType = (fd.get('storagePlanType') as string) || null
-  const storagePlanId = (fd.get('storagePlanId') as string) || null
-
-  let plan = null
-  if (storagePlanId) plan = await storagePlanRepository.findById(storagePlanId)
-  else if (storagePlanType)
-    plan = await storagePlanRepository.findByType(storagePlanType as any)
-
-  if (!plan) return new Response('Storage plan not found', { status: 404 })
-
-  // Update user and quota locally. For Stripe-backed subscriptions, more complex flow needed.
-  await userRepository.update({
-    where: { id: userId },
-    data: { storagePlanId: plan.id },
-  })
+  let formData: ReturnType<typeof subscriptionApiRouteInput.parse>
   try {
-    await quotaRepository.updateTotalQuota({
-      userId,
-      dataSize: plan.storageLimit,
+    formData = await parseFormData({
+      request,
+      schema: subscriptionApiRouteInput,
     })
   } catch (e) {
-    // if no quota exists, create one
-    try {
-      await quotaRepository.create({
-        driveId: session.user.driveId!,
-        userId,
-        storagePlanId: plan.id,
+    const err = e as { message?: string }
+    return data({ error: err.message ?? 'Invalid input' }, { status: 400 })
+  }
+
+  try {
+    if (formData.intent === 'update_plan') {
+      const driveId = (session.user as any).driveId as string
+      const plan = await updateSubscriptionPlan({
+        userId: session.user.id,
+        storagePlanId: formData.storagePlanId,
+        storagePlanType: formData.storagePlanType,
+        driveId,
       })
-    } catch (err) {}
+      return data({ plan })
+    }
+
+    if (formData.intent === 'cancel_subscription') {
+      await cancelSubscription(session.user.id)
+      return data({ cancelled: true })
+    }
+  } catch (e) {
+    const err = e as { statusCode?: number; message?: string }
+    return data(
+      { error: err.message ?? 'Action failed' },
+      { status: err.statusCode ?? 500 }
+    )
   }
 
-  // Ensure there's a subscription record for bookkeeping
-  const active = await subscriptionRepository.findActiveByOwnerId(userId)
-  if (active) {
-    await subscriptionRepository.update({
-      where: { id: active.id },
-      data: { storagePlanId: plan.id },
-    })
-  } else {
-    // create a local subscription record (non-Stripe)
-    await subscriptionRepository.create({
-      data: {
-        ownerId: userId,
-        storagePlanId: plan.id,
-        id: 'sub_local_' + Date.now().toString(),
-      },
-    })
-  }
-
-  return new Response('OK')
+  return data({ error: 'Invalid intent' }, { status: 400 })
 }
