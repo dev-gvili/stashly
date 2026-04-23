@@ -1,7 +1,7 @@
 import type { Route } from './+types/billing'
 import { auth } from '@/services/auth'
 import { Form, Link, redirect } from 'react-router'
-import { userRepository } from '../../.server/repositories/userRepository'
+import { findUserById, updateUser } from '../../.server/user-actions'
 import { storagePlanRepository } from '../../.server/repositories/StoragePlanRepository'
 import { quotaRepository } from '../../.server/repositories/QuotaRepository'
 import { subscriptionRepository } from '../../.server/repositories/SubscriptionRepository'
@@ -38,16 +38,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/sign-in')
 
-  const user = await userRepository.findById(session.user.id)
+  const user = await findUserById(session.user.id)
   if (!user) throw redirect('/auth/sign-in')
 
-  // fetch available plans and the user's current plan (from subscription or user.storagePlanId)
-  const plans = await storagePlanRepository.findAll({})
+  const [plans, activeSubscription] = await Promise.all([
+    storagePlanRepository.findAll({}),
+    subscriptionRepository.findActiveByOwnerId(user.id),
+  ])
 
-  // prefer active subscription plan if present
-  const activeSubscription = user.subscriptions?.find(
-    (s) => s.status === 'active'
-  )
   const currentPlanId = activeSubscription?.storagePlanId ?? user.storagePlanId
 
   return { plans, currentPlanId }
@@ -67,10 +65,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (!plan) return new Response('Storage plan not found', { status: 404 })
 
   // update user record with the selected plan
-  await userRepository.update({
-    where: { id: userId },
-    data: { storagePlanId: plan.id },
-  })
+  await updateUser({ userId, data: { storagePlanId: plan.id } })
 
   // if user has a quota, update the total storage to match selected plan
   try {

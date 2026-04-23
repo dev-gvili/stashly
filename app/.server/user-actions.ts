@@ -36,7 +36,7 @@ export async function updateUser({
   data,
 }: {
   userId: string
-  data: Pick<Prisma.UserUpdateInput, 'name' | 'displayName' | 'image'>
+  data: Prisma.UserUpdateInput
 }) {
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) {

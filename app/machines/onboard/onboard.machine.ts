@@ -7,7 +7,7 @@ import { createUserBucket } from '@/services/s3'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { subscriptionRepository } from '@/services/repositories/SubscriptionRepository'
 import { storagePlanRepository } from '@/services/repositories/StoragePlanRepository'
-import { userRepository } from '@/.server/repositories/userRepository'
+import { updateUser } from '@/.server/user-actions'
 import type {
   Drive,
   Item,
@@ -126,8 +126,8 @@ export const onboardingMachine = setup({
         rootId: string
       }
     >(async ({ input }) => {
-      let updatedUser = await userRepository.update({
-        where: { id: input.user.id },
+      let updatedUser = await updateUser({
+        userId: input.user.id,
         data: {
           bucket: input.bucketName,
           subscriptionId: input.subscription.id,
