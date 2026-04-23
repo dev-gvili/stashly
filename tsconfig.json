@@ -15,15 +15,36 @@
     "skipLibCheck": true,
     "strict": true,
     "paths": {
-      "@/*": ["./app/*"],
-      "@/db/*": ["./app/.server/db"],
-      "@/prisma/*": ["./app/prisma/*"],
-      "@/utils/*": ["./app/utils/*"],
-      "@/components/*": ["./app/components/*"],
-      "@/ui/*": ["./app/components/ui/*"],
-      "@/hooks/*": ["./app/hooks/*"],
-      "@/services/*": ["./app/.server/*"],
-      "@/machines/*": ["./app/machines/*"]
+      "@/*": [
+        "./app/*"
+      ],
+      "@/db/*": [
+        "./app/.server/db"
+      ],
+      "@/prisma/*": [
+        "./app/prisma/*"
+      ],
+      "@/utils/*": [
+        "./app/utils/*"
+      ],
+      "@/components/*": [
+        "./app/components/*"
+      ],
+      "@/ui/*": [
+        "./app/components/ui/*"
+      ],
+      "@/hooks/*": [
+        "./app/hooks/*"
+      ],
+      "@/services/*": [
+        "./app/.server/*"
+      ],
+      "@/machines/*": [
+        "./app/machines/*"
+      ],
+      "@/schemas/*": [
+        "./app/schemas/*"
+      ]
     },
     "disableSizeLimit": true,
     "noEmit": true

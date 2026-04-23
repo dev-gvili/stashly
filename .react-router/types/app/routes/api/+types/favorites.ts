@@ -15,6 +15,12 @@ type Matches = [{
 }, {
   id: "routes/api/favorites";
   module: typeof import("../favorites.js");
+}] | [{
+  id: "root";
+  module: typeof import("../../../root.js");
+}, {
+  id: "api-favorites";
+  module: typeof import("../favorites.js");
 }];
 
 type Annotations = GetAnnotations<Info & { module: Module, matches: Matches }>;

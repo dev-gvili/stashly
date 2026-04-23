@@ -13,7 +13,31 @@ type Matches = [{
   id: "root";
   module: typeof import("../../../root.js");
 }, {
+  id: "user-items";
+  module: typeof import("../items.js");
+}] | [{
+  id: "root";
+  module: typeof import("../../../root.js");
+}, {
+  id: "collection-items";
+  module: typeof import("../items.js");
+}] | [{
+  id: "root";
+  module: typeof import("../../../root.js");
+}, {
   id: "routes/api/items";
+  module: typeof import("../items.js");
+}] | [{
+  id: "root";
+  module: typeof import("../../../root.js");
+}, {
+  id: "item-detail";
+  module: typeof import("../items.js");
+}] | [{
+  id: "root";
+  module: typeof import("../../../root.js");
+}, {
+  id: "api-download";
   module: typeof import("../items.js");
 }];
 

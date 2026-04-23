@@ -20,27 +20,47 @@ type Pages = {
   "/auth/sign-out": {
     params: {};
   };
+  "/api/health": {
+    params: {};
+  };
+  "/api/search/:type": {
+    params: {
+      "type": string;
+    };
+  };
   "/api/auth/*": {
     params: {
       "*": string;
     };
   };
-  "/api/items/*": {
-    params: {
-      "*": string;
-    };
+  "/api/stripe": {
+    params: {};
   };
-  "/api/workspaces/*": {
-    params: {
-      "*": string;
-    };
+  "/api/subscription": {
+    params: {};
+  };
+  "/api/theme": {
+    params: {};
+  };
+  "/api/settings": {
+    params: {};
+  };
+  "/api/sidebar": {
+    params: {};
+  };
+  "/api/images": {
+    params: {};
+  };
+  "/api/view": {
+    params: {};
+  };
+  "/api/notifications": {
+    params: {};
+  };
+  "/api/quota": {
+    params: {};
   };
   "/api/members/*": {
-    params: {
-      "*": string;
-    };
-  };
-  "/api/collections/*": {
     params: {
       "*": string;
     };
@@ -50,59 +70,118 @@ type Pages = {
       "*": string;
     };
   };
-  "/api/comments/*": {
-    params: {
-      "*": string;
-    };
-  };
-  "/api/health": {
-    params: {};
-  };
-  "/api/invitations": {
-    params: {};
-  };
-  "/api/notifications": {
-    params: {};
-  };
-  "/api/stripe": {
+  "/api/shares": {
     params: {};
   };
   "/api/favorites": {
     params: {};
   };
-  "/api/users": {
-    params: {};
-  };
-  "/api/subscription": {
-    params: {};
-  };
-  "/api/shares": {
-    params: {};
-  };
-  "/api/quota": {
-    params: {};
-  };
   "/api/versions": {
     params: {};
   };
-  "/api/theme": {
+  "/api/invitations": {
     params: {};
   };
-  "/api/images": {
-    params: {};
-  };
-  "/api/settings": {
-    params: {};
-  };
-  "/api/view": {
-    params: {};
-  };
-  "/api/sidebar": {
-    params: {};
-  };
-  "/api/search/:type": {
+  "/api/comments/*": {
     params: {
-      "type": string;
+      "*": string;
+    };
+  };
+  "/api/workspaces/*": {
+    params: {
+      "*": string;
+    };
+  };
+  "/api/workspaces/:workspaceId": {
+    params: {
+      "workspaceId": string;
+    };
+  };
+  "/api/workspaces/:workspaceId/members": {
+    params: {
+      "workspaceId": string;
+    };
+  };
+  "/api/workspaces/:workspaceId/permissions": {
+    params: {
+      "workspaceId": string;
+    };
+  };
+  "/api/users": {
+    params: {};
+  };
+  "/api/users/:userId": {
+    params: {
+      "userId": string;
+    };
+  };
+  "/api/users/:userId/items": {
+    params: {
+      "userId": string;
+    };
+  };
+  "/api/users/:userId/workspaces": {
+    params: {
+      "userId": string;
+    };
+  };
+  "/api/collections": {
+    params: {};
+  };
+  "/api/collections/:collectionId": {
+    params: {
+      "collectionId": string;
+    };
+  };
+  "/api/collections/:collectionId/items": {
+    params: {
+      "collectionId": string;
+    };
+  };
+  "/api/items": {
+    params: {};
+  };
+  "/api/items/:itemId": {
+    params: {
+      "itemId": string;
+    };
+  };
+  "/api/items/:itemId/permissions": {
+    params: {
+      "itemId": string;
+    };
+  };
+  "/api/items/:itemId/versions/:versionId?": {
+    params: {
+      "itemId": string;
+      "versionId"?: string;
+    };
+  };
+  "/api/items/:itemId/comments/:commentId?": {
+    params: {
+      "itemId": string;
+      "commentId"?: string;
+    };
+  };
+  "/api/items/:itemId/shares/:shareId?": {
+    params: {
+      "itemId": string;
+      "shareId"?: string;
+    };
+  };
+  "/api/items/:itemId/favorites": {
+    params: {
+      "itemId": string;
+    };
+  };
+  "/api/items/:itemId/invitations": {
+    params: {
+      "itemId": string;
+    };
+  };
+  "/api/items/:itemId/download": {
+    params: {
+      "itemId": string;
     };
   };
   "/api/ai/embed": {
@@ -127,6 +206,9 @@ type Pages = {
     params: {};
   };
   "/api/s3/upload": {
+    params: {};
+  };
+  "/api/s3/multipart": {
     params: {};
   };
   "/:me/stash": {
@@ -168,7 +250,17 @@ type Pages = {
       "fileId": string;
     };
   };
-  "/:me/stash/gallery": {
+  "/:me/stash/shares": {
+    params: {
+      "me": string;
+    };
+  };
+  "/:me/stash/images": {
+    params: {
+      "me": string;
+    };
+  };
+  "/:me/stash/videos": {
     params: {
       "me": string;
     };
@@ -179,11 +271,6 @@ type Pages = {
     };
   };
   "/:me/stash/search": {
-    params: {
-      "me": string;
-    };
-  };
-  "/:me/stash/shares": {
     params: {
       "me": string;
     };
@@ -332,12 +419,21 @@ type Pages = {
   "/test": {
     params: {};
   };
+  "/options/a": {
+    params: {};
+  };
+  "/options/b": {
+    params: {};
+  };
+  "/options/c": {
+    params: {};
+  };
 };
 
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/auth/sign-in" | "/auth/sign-out" | "/api/auth/*" | "/api/items/*" | "/api/workspaces/*" | "/api/members/*" | "/api/collections/*" | "/api/permissions/*" | "/api/comments/*" | "/api/health" | "/api/invitations" | "/api/notifications" | "/api/stripe" | "/api/favorites" | "/api/users" | "/api/subscription" | "/api/shares" | "/api/quota" | "/api/versions" | "/api/theme" | "/api/images" | "/api/settings" | "/api/view" | "/api/sidebar" | "/api/search/:type" | "/api/ai/embed" | "/api/ai/caption" | "/api/ai/translate" | "/api/ai/transcribe" | "/api/ai/suggestion" | "/api/ai/summarize" | "/api/ai/chat" | "/api/s3/upload" | "/:me/stash" | "/:me/stash/all" | "/:me/stash/collections" | "/:me/stash/collections/:collectionId" | "/:me/stash/favorites" | "/:me/stash/folders/:folderId" | "/:me/stash/folders/:folderId/files/:fileId" | "/:me/stash/gallery" | "/:me/stash/recent" | "/:me/stash/search" | "/:me/stash/shares" | "/:me/stash/invitations" | "/:me/stash/trash" | "/:me/stash/demo" | "/:me/stash/examples" | "/:me/workspaces" | "/:me/workspaces/create" | "/:me/workspaces/:workspaceId" | "/:me/workspaces/:workspaceId/settings" | "/:me/workspaces/:workspaceId/members" | "/:me/workspaces/:workspaceId/folders/:folderId" | "/:me/workspaces/:workspaceId/folders/:folderId/files/:fileId" | "/:me/workspaces/:workspaceId/shares" | "/:me/workspaces/:workspaceId/favorites" | "/:me/workspaces/:workspaceId/collections" | "/:me/workspaces/:workspaceId/collections/:collectionId" | "/:me/workspaces/:workspaceId/trash" | "/:me/workspaces/:workspaceId/recent" | "/:me/workspaces/:workspaceId/gallery" | "/:me/settings/profile" | "/:me/settings/account" | "/:me/settings/security" | "/:me/settings/billing" | "/:me/settings/notifications" | "/:me/settings/appearance" | "/*" | "/test";
+    page: "/" | "/auth/sign-in" | "/auth/sign-out" | "/api/health" | "/api/search/:type" | "/api/auth/*" | "/api/stripe" | "/api/subscription" | "/api/theme" | "/api/settings" | "/api/sidebar" | "/api/images" | "/api/view" | "/api/notifications" | "/api/quota" | "/api/members/*" | "/api/permissions/*" | "/api/shares" | "/api/favorites" | "/api/versions" | "/api/invitations" | "/api/comments/*" | "/api/workspaces/*" | "/api/workspaces/:workspaceId" | "/api/workspaces/:workspaceId/members" | "/api/workspaces/:workspaceId/permissions" | "/api/users" | "/api/users/:userId" | "/api/users/:userId/items" | "/api/users/:userId/workspaces" | "/api/collections" | "/api/collections/:collectionId" | "/api/collections/:collectionId/items" | "/api/items" | "/api/items/:itemId" | "/api/items/:itemId/permissions" | "/api/items/:itemId/versions/:versionId?" | "/api/items/:itemId/comments/:commentId?" | "/api/items/:itemId/shares/:shareId?" | "/api/items/:itemId/favorites" | "/api/items/:itemId/invitations" | "/api/items/:itemId/download" | "/api/ai/embed" | "/api/ai/caption" | "/api/ai/translate" | "/api/ai/transcribe" | "/api/ai/suggestion" | "/api/ai/summarize" | "/api/ai/chat" | "/api/s3/upload" | "/api/s3/multipart" | "/:me/stash" | "/:me/stash/all" | "/:me/stash/collections" | "/:me/stash/collections/:collectionId" | "/:me/stash/favorites" | "/:me/stash/folders/:folderId" | "/:me/stash/folders/:folderId/files/:fileId" | "/:me/stash/shares" | "/:me/stash/images" | "/:me/stash/videos" | "/:me/stash/recent" | "/:me/stash/search" | "/:me/stash/invitations" | "/:me/stash/trash" | "/:me/stash/demo" | "/:me/stash/examples" | "/:me/workspaces" | "/:me/workspaces/create" | "/:me/workspaces/:workspaceId" | "/:me/workspaces/:workspaceId/settings" | "/:me/workspaces/:workspaceId/members" | "/:me/workspaces/:workspaceId/folders/:folderId" | "/:me/workspaces/:workspaceId/folders/:folderId/files/:fileId" | "/:me/workspaces/:workspaceId/shares" | "/:me/workspaces/:workspaceId/favorites" | "/:me/workspaces/:workspaceId/collections" | "/:me/workspaces/:workspaceId/collections/:collectionId" | "/:me/workspaces/:workspaceId/trash" | "/:me/workspaces/:workspaceId/recent" | "/:me/workspaces/:workspaceId/gallery" | "/:me/settings/profile" | "/:me/settings/account" | "/:me/settings/security" | "/:me/settings/billing" | "/:me/settings/notifications" | "/:me/settings/appearance" | "/*" | "/test" | "/options/a" | "/options/b" | "/options/c";
   };
   "routes/auth/layout.tsx": {
     id: "routes/auth/layout";
@@ -351,97 +447,145 @@ type RouteFiles = {
     id: "routes/auth/sign-out";
     page: "/auth/sign-out";
   };
-  "routes/api/auth.ts": {
-    id: "routes/api/auth";
-    page: "/api/auth/*";
-  };
-  "routes/api/items.ts": {
-    id: "routes/api/items";
-    page: "/api/items/*";
-  };
-  "routes/api/workspaces.ts": {
-    id: "routes/api/workspaces";
-    page: "/api/workspaces/*";
-  };
-  "routes/api/members.ts": {
-    id: "routes/api/members";
-    page: "/api/members/*";
-  };
-  "routes/api/collections.ts": {
-    id: "routes/api/collections";
-    page: "/api/collections/*";
-  };
-  "routes/api/permissions.ts": {
-    id: "routes/api/permissions";
-    page: "/api/permissions/*";
-  };
-  "routes/api/comments.ts": {
-    id: "routes/api/comments";
-    page: "/api/comments/*";
-  };
   "routes/api/health.ts": {
     id: "routes/api/health";
     page: "/api/health";
   };
-  "routes/api/invitations.ts": {
-    id: "routes/api/invitations";
-    page: "/api/invitations";
+  "routes/api/search.ts": {
+    id: "routes/api/search";
+    page: "/api/search/:type";
   };
-  "routes/api/notifications.ts": {
-    id: "routes/api/notifications";
-    page: "/api/notifications";
+  "routes/api/auth.ts": {
+    id: "routes/api/auth";
+    page: "/api/auth/*";
   };
   "routes/api/stripe.ts": {
     id: "routes/api/stripe";
     page: "/api/stripe";
   };
-  "routes/api/favorites.ts": {
-    id: "routes/api/favorites";
-    page: "/api/favorites";
-  };
-  "routes/api/users.ts": {
-    id: "routes/api/users";
-    page: "/api/users";
-  };
   "routes/api/subscription.ts": {
     id: "routes/api/subscription";
     page: "/api/subscription";
-  };
-  "routes/api/shares.ts": {
-    id: "routes/api/shares";
-    page: "/api/shares";
-  };
-  "routes/api/quota.ts": {
-    id: "routes/api/quota";
-    page: "/api/quota";
-  };
-  "routes/api/versions.ts": {
-    id: "routes/api/versions";
-    page: "/api/versions";
   };
   "routes/api/theme.ts": {
     id: "routes/api/theme";
     page: "/api/theme";
   };
-  "routes/api/images.ts": {
-    id: "routes/api/images";
-    page: "/api/images";
-  };
   "routes/api/settings.ts": {
     id: "routes/api/settings";
     page: "/api/settings";
-  };
-  "routes/api/view.ts": {
-    id: "routes/api/view";
-    page: "/api/view";
   };
   "routes/api/sidebar.ts": {
     id: "routes/api/sidebar";
     page: "/api/sidebar";
   };
-  "routes/api/search.ts": {
-    id: "routes/api/search";
-    page: "/api/search/:type";
+  "routes/api/images.ts": {
+    id: "routes/api/images";
+    page: "/api/images";
+  };
+  "routes/api/view.ts": {
+    id: "routes/api/view";
+    page: "/api/view";
+  };
+  "routes/api/notifications.ts": {
+    id: "routes/api/notifications";
+    page: "/api/notifications";
+  };
+  "routes/api/quota.ts": {
+    id: "routes/api/quota";
+    page: "/api/quota";
+  };
+  "routes/api/members.ts": {
+    id: "routes/api/members";
+    page: "/api/members/*";
+  } | {
+    id: "workspace-members";
+    page: "/api/workspaces/:workspaceId/members";
+  };
+  "routes/api/permissions.ts": {
+    id: "routes/api/permissions";
+    page: "/api/permissions/*";
+  } | {
+    id: "workspace-permissions";
+    page: "/api/workspaces/:workspaceId/permissions";
+  } | {
+    id: "api-permissions";
+    page: "/api/items/:itemId/permissions";
+  };
+  "routes/api/shares.ts": {
+    id: "routes/api/shares";
+    page: "/api/shares";
+  } | {
+    id: "api-shares";
+    page: "/api/items/:itemId/shares/:shareId?";
+  };
+  "routes/api/favorites.ts": {
+    id: "routes/api/favorites";
+    page: "/api/favorites";
+  } | {
+    id: "api-favorites";
+    page: "/api/items/:itemId/favorites";
+  };
+  "routes/api/versions.ts": {
+    id: "routes/api/versions";
+    page: "/api/versions";
+  } | {
+    id: "api-versions";
+    page: "/api/items/:itemId/versions/:versionId?";
+  };
+  "routes/api/invitations.ts": {
+    id: "routes/api/invitations";
+    page: "/api/invitations";
+  } | {
+    id: "api-invitations";
+    page: "/api/items/:itemId/invitations";
+  };
+  "routes/api/comments.ts": {
+    id: "routes/api/comments";
+    page: "/api/comments/*";
+  } | {
+    id: "api-comments";
+    page: "/api/items/:itemId/comments/:commentId?";
+  };
+  "routes/api/workspaces.ts": {
+    id: "routes/api/workspaces";
+    page: "/api/workspaces/*";
+  } | {
+    id: "workspace-detail";
+    page: "/api/workspaces/:workspaceId";
+  } | {
+    id: "user-workspaces";
+    page: "/api/users/:userId/workspaces";
+  };
+  "routes/api/users.ts": {
+    id: "routes/api/users";
+    page: "/api/users";
+  } | {
+    id: "user-detail";
+    page: "/api/users/:userId";
+  };
+  "routes/api/items.ts": {
+    id: "user-items";
+    page: "/api/users/:userId/items";
+  } | {
+    id: "collection-items";
+    page: "/api/collections/:collectionId/items";
+  } | {
+    id: "routes/api/items";
+    page: "/api/items";
+  } | {
+    id: "item-detail";
+    page: "/api/items/:itemId";
+  } | {
+    id: "api-download";
+    page: "/api/items/:itemId/download";
+  };
+  "routes/api/collections.ts": {
+    id: "routes/api/collections";
+    page: "/api/collections";
+  } | {
+    id: "collection-detail";
+    page: "/api/collections/:collectionId";
   };
   "routes/api/ai.ts": {
     id: "ai-embed";
@@ -468,10 +612,13 @@ type RouteFiles = {
   "routes/api/upload.ts": {
     id: "s3-upload";
     page: "/api/s3/upload";
+  } | {
+    id: "s3-multipart";
+    page: "/api/s3/multipart";
   };
   "routes/layout.tsx": {
     id: "layout";
-    page: "/" | "/:me/stash" | "/:me/stash/all" | "/:me/stash/collections" | "/:me/stash/collections/:collectionId" | "/:me/stash/favorites" | "/:me/stash/folders/:folderId" | "/:me/stash/folders/:folderId/files/:fileId" | "/:me/stash/gallery" | "/:me/stash/recent" | "/:me/stash/search" | "/:me/stash/shares" | "/:me/stash/invitations" | "/:me/stash/trash" | "/:me/stash/demo" | "/:me/stash/examples" | "/:me/workspaces" | "/:me/workspaces/create" | "/:me/workspaces/:workspaceId" | "/:me/workspaces/:workspaceId/settings" | "/:me/workspaces/:workspaceId/members" | "/:me/workspaces/:workspaceId/folders/:folderId" | "/:me/workspaces/:workspaceId/folders/:folderId/files/:fileId" | "/:me/workspaces/:workspaceId/shares" | "/:me/workspaces/:workspaceId/favorites" | "/:me/workspaces/:workspaceId/collections" | "/:me/workspaces/:workspaceId/collections/:collectionId" | "/:me/workspaces/:workspaceId/trash" | "/:me/workspaces/:workspaceId/recent" | "/:me/workspaces/:workspaceId/gallery" | "/:me/settings/profile" | "/:me/settings/account" | "/:me/settings/security" | "/:me/settings/billing" | "/:me/settings/notifications" | "/:me/settings/appearance" | "/*";
+    page: "/" | "/:me/stash" | "/:me/stash/all" | "/:me/stash/collections" | "/:me/stash/collections/:collectionId" | "/:me/stash/favorites" | "/:me/stash/folders/:folderId" | "/:me/stash/folders/:folderId/files/:fileId" | "/:me/stash/shares" | "/:me/stash/images" | "/:me/stash/videos" | "/:me/stash/recent" | "/:me/stash/search" | "/:me/stash/invitations" | "/:me/stash/trash" | "/:me/stash/demo" | "/:me/stash/examples" | "/:me/workspaces" | "/:me/workspaces/create" | "/:me/workspaces/:workspaceId" | "/:me/workspaces/:workspaceId/settings" | "/:me/workspaces/:workspaceId/members" | "/:me/workspaces/:workspaceId/folders/:folderId" | "/:me/workspaces/:workspaceId/folders/:folderId/files/:fileId" | "/:me/workspaces/:workspaceId/shares" | "/:me/workspaces/:workspaceId/favorites" | "/:me/workspaces/:workspaceId/collections" | "/:me/workspaces/:workspaceId/collections/:collectionId" | "/:me/workspaces/:workspaceId/trash" | "/:me/workspaces/:workspaceId/recent" | "/:me/workspaces/:workspaceId/gallery" | "/:me/settings/profile" | "/:me/settings/account" | "/:me/settings/security" | "/:me/settings/billing" | "/:me/settings/notifications" | "/:me/settings/appearance" | "/*";
   };
   "routes/index.tsx": {
     id: "routes/index";
@@ -482,65 +629,68 @@ type RouteFiles = {
     page: "/:me/stash";
   };
   "routes/stash/all.tsx": {
-    id: "routes/stash/all";
+    id: "stash-all";
     page: "/:me/stash/all";
   };
   "routes/stash/collections.tsx": {
-    id: "routes/stash/collections";
+    id: "stash-collections";
     page: "/:me/stash/collections";
   };
   "routes/stash/collection.tsx": {
-    id: "routes/stash/collection";
+    id: "stash-collection";
     page: "/:me/stash/collections/:collectionId";
   };
   "routes/stash/favorites.tsx": {
-    id: "routes/stash/favorites";
+    id: "stash-favorites";
     page: "/:me/stash/favorites";
   };
   "routes/stash/folder.tsx": {
-    id: "routes/stash/folder";
+    id: "stash-folder";
     page: "/:me/stash/folders/:folderId";
   };
   "routes/stash/file.tsx": {
-    id: "routes/stash/file";
+    id: "stash-file";
     page: "/:me/stash/folders/:folderId/files/:fileId";
   };
+  "routes/stash/shares.tsx": {
+    id: "stash-shares";
+    page: "/:me/stash/shares";
+  };
   "routes/stash/gallery.tsx": {
-    id: "routes/stash/gallery";
-    page: "/:me/stash/gallery";
+    id: "stash-images";
+    page: "/:me/stash/images";
+  } | {
+    id: "stash-videos";
+    page: "/:me/stash/videos";
   } | {
     id: "workspace-gallery";
     page: "/:me/workspaces/:workspaceId/gallery";
   };
   "routes/stash/recent.tsx": {
-    id: "routes/stash/recent";
+    id: "stash-recent";
     page: "/:me/stash/recent";
   } | {
     id: "test-route";
     page: "/test";
   };
   "routes/stash/search.tsx": {
-    id: "routes/stash/search";
+    id: "stash-search";
     page: "/:me/stash/search";
   };
-  "routes/stash/shares.tsx": {
-    id: "routes/stash/shares";
-    page: "/:me/stash/shares";
-  };
   "routes/stash/invitations.tsx": {
-    id: "routes/stash/invitations";
+    id: "stash-invitations";
     page: "/:me/stash/invitations";
   };
   "routes/stash/trash.tsx": {
-    id: "routes/stash/trash";
+    id: "stash-trash";
     page: "/:me/stash/trash";
   };
   "routes/stash/demo.tsx": {
-    id: "routes/stash/demo";
+    id: "stash-demo";
     page: "/:me/stash/demo";
   };
   "routes/stash/examples.tsx": {
-    id: "routes/stash/examples";
+    id: "stash-examples";
     page: "/:me/stash/examples";
   };
   "routes/workspaces/index.tsx": {
@@ -623,6 +773,18 @@ type RouteFiles = {
     id: "not-found";
     page: "/*";
   };
+  "routes/options/option-a.tsx": {
+    id: "routes/options/option-a";
+    page: "/options/a";
+  };
+  "routes/options/option-b.tsx": {
+    id: "routes/options/option-b";
+    page: "/options/b";
+  };
+  "routes/options/option-c.tsx": {
+    id: "routes/options/option-c";
+    page: "/options/c";
+  };
 };
 
 type RouteModules = {
@@ -630,29 +792,45 @@ type RouteModules = {
   "routes/auth/layout": typeof import("./app/routes/auth/layout.tsx");
   "routes/auth/sign-in": typeof import("./app/routes/auth/sign-in.tsx");
   "routes/auth/sign-out": typeof import("./app/routes/auth/sign-out.tsx");
-  "routes/api/auth": typeof import("./app/routes/api/auth.ts");
-  "routes/api/items": typeof import("./app/routes/api/items.ts");
-  "routes/api/workspaces": typeof import("./app/routes/api/workspaces.ts");
-  "routes/api/members": typeof import("./app/routes/api/members.ts");
-  "routes/api/collections": typeof import("./app/routes/api/collections.ts");
-  "routes/api/permissions": typeof import("./app/routes/api/permissions.ts");
-  "routes/api/comments": typeof import("./app/routes/api/comments.ts");
   "routes/api/health": typeof import("./app/routes/api/health.ts");
-  "routes/api/invitations": typeof import("./app/routes/api/invitations.ts");
-  "routes/api/notifications": typeof import("./app/routes/api/notifications.ts");
-  "routes/api/stripe": typeof import("./app/routes/api/stripe.ts");
-  "routes/api/favorites": typeof import("./app/routes/api/favorites.ts");
-  "routes/api/users": typeof import("./app/routes/api/users.ts");
-  "routes/api/subscription": typeof import("./app/routes/api/subscription.ts");
-  "routes/api/shares": typeof import("./app/routes/api/shares.ts");
-  "routes/api/quota": typeof import("./app/routes/api/quota.ts");
-  "routes/api/versions": typeof import("./app/routes/api/versions.ts");
-  "routes/api/theme": typeof import("./app/routes/api/theme.ts");
-  "routes/api/images": typeof import("./app/routes/api/images.ts");
-  "routes/api/settings": typeof import("./app/routes/api/settings.ts");
-  "routes/api/view": typeof import("./app/routes/api/view.ts");
-  "routes/api/sidebar": typeof import("./app/routes/api/sidebar.ts");
   "routes/api/search": typeof import("./app/routes/api/search.ts");
+  "routes/api/auth": typeof import("./app/routes/api/auth.ts");
+  "routes/api/stripe": typeof import("./app/routes/api/stripe.ts");
+  "routes/api/subscription": typeof import("./app/routes/api/subscription.ts");
+  "routes/api/theme": typeof import("./app/routes/api/theme.ts");
+  "routes/api/settings": typeof import("./app/routes/api/settings.ts");
+  "routes/api/sidebar": typeof import("./app/routes/api/sidebar.ts");
+  "routes/api/images": typeof import("./app/routes/api/images.ts");
+  "routes/api/view": typeof import("./app/routes/api/view.ts");
+  "routes/api/notifications": typeof import("./app/routes/api/notifications.ts");
+  "routes/api/quota": typeof import("./app/routes/api/quota.ts");
+  "routes/api/members": typeof import("./app/routes/api/members.ts");
+  "routes/api/permissions": typeof import("./app/routes/api/permissions.ts");
+  "routes/api/shares": typeof import("./app/routes/api/shares.ts");
+  "routes/api/favorites": typeof import("./app/routes/api/favorites.ts");
+  "routes/api/versions": typeof import("./app/routes/api/versions.ts");
+  "routes/api/invitations": typeof import("./app/routes/api/invitations.ts");
+  "routes/api/comments": typeof import("./app/routes/api/comments.ts");
+  "routes/api/workspaces": typeof import("./app/routes/api/workspaces.ts");
+  "workspace-detail": typeof import("./app/routes/api/workspaces.ts");
+  "workspace-members": typeof import("./app/routes/api/members.ts");
+  "workspace-permissions": typeof import("./app/routes/api/permissions.ts");
+  "routes/api/users": typeof import("./app/routes/api/users.ts");
+  "user-detail": typeof import("./app/routes/api/users.ts");
+  "user-items": typeof import("./app/routes/api/items.ts");
+  "user-workspaces": typeof import("./app/routes/api/workspaces.ts");
+  "routes/api/collections": typeof import("./app/routes/api/collections.ts");
+  "collection-detail": typeof import("./app/routes/api/collections.ts");
+  "collection-items": typeof import("./app/routes/api/items.ts");
+  "routes/api/items": typeof import("./app/routes/api/items.ts");
+  "item-detail": typeof import("./app/routes/api/items.ts");
+  "api-permissions": typeof import("./app/routes/api/permissions.ts");
+  "api-versions": typeof import("./app/routes/api/versions.ts");
+  "api-comments": typeof import("./app/routes/api/comments.ts");
+  "api-shares": typeof import("./app/routes/api/shares.ts");
+  "api-favorites": typeof import("./app/routes/api/favorites.ts");
+  "api-invitations": typeof import("./app/routes/api/invitations.ts");
+  "api-download": typeof import("./app/routes/api/items.ts");
   "ai-embed": typeof import("./app/routes/api/ai.ts");
   "ai-caption": typeof import("./app/routes/api/ai.ts");
   "ai-translate": typeof import("./app/routes/api/ai.ts");
@@ -661,23 +839,25 @@ type RouteModules = {
   "ai-summarize": typeof import("./app/routes/api/ai.ts");
   "ai-chat": typeof import("./app/routes/api/ai.ts");
   "s3-upload": typeof import("./app/routes/api/upload.ts");
+  "s3-multipart": typeof import("./app/routes/api/upload.ts");
   "layout": typeof import("./app/routes/layout.tsx");
   "routes/index": typeof import("./app/routes/index.tsx");
   "routes/stash/home": typeof import("./app/routes/stash/home.tsx");
-  "routes/stash/all": typeof import("./app/routes/stash/all.tsx");
-  "routes/stash/collections": typeof import("./app/routes/stash/collections.tsx");
-  "routes/stash/collection": typeof import("./app/routes/stash/collection.tsx");
-  "routes/stash/favorites": typeof import("./app/routes/stash/favorites.tsx");
-  "routes/stash/folder": typeof import("./app/routes/stash/folder.tsx");
-  "routes/stash/file": typeof import("./app/routes/stash/file.tsx");
-  "routes/stash/gallery": typeof import("./app/routes/stash/gallery.tsx");
-  "routes/stash/recent": typeof import("./app/routes/stash/recent.tsx");
-  "routes/stash/search": typeof import("./app/routes/stash/search.tsx");
-  "routes/stash/shares": typeof import("./app/routes/stash/shares.tsx");
-  "routes/stash/invitations": typeof import("./app/routes/stash/invitations.tsx");
-  "routes/stash/trash": typeof import("./app/routes/stash/trash.tsx");
-  "routes/stash/demo": typeof import("./app/routes/stash/demo.tsx");
-  "routes/stash/examples": typeof import("./app/routes/stash/examples.tsx");
+  "stash-all": typeof import("./app/routes/stash/all.tsx");
+  "stash-collections": typeof import("./app/routes/stash/collections.tsx");
+  "stash-collection": typeof import("./app/routes/stash/collection.tsx");
+  "stash-favorites": typeof import("./app/routes/stash/favorites.tsx");
+  "stash-folder": typeof import("./app/routes/stash/folder.tsx");
+  "stash-file": typeof import("./app/routes/stash/file.tsx");
+  "stash-shares": typeof import("./app/routes/stash/shares.tsx");
+  "stash-images": typeof import("./app/routes/stash/gallery.tsx");
+  "stash-videos": typeof import("./app/routes/stash/gallery.tsx");
+  "stash-recent": typeof import("./app/routes/stash/recent.tsx");
+  "stash-search": typeof import("./app/routes/stash/search.tsx");
+  "stash-invitations": typeof import("./app/routes/stash/invitations.tsx");
+  "stash-trash": typeof import("./app/routes/stash/trash.tsx");
+  "stash-demo": typeof import("./app/routes/stash/demo.tsx");
+  "stash-examples": typeof import("./app/routes/stash/examples.tsx");
   "routes/workspaces/index": typeof import("./app/routes/workspaces/index.tsx");
   "routes/workspaces/create": typeof import("./app/routes/workspaces/create.tsx");
   "routes/workspaces/workspace": typeof import("./app/routes/workspaces/workspace.tsx");
@@ -700,4 +880,7 @@ type RouteModules = {
   "routes/settings/appearance": typeof import("./app/routes/settings/appearance.tsx");
   "not-found": typeof import("./app/routes/not-found.tsx");
   "test-route": typeof import("./app/routes/stash/recent.tsx");
+  "routes/options/option-a": typeof import("./app/routes/options/option-a.tsx");
+  "routes/options/option-b": typeof import("./app/routes/options/option-b.tsx");
+  "routes/options/option-c": typeof import("./app/routes/options/option-c.tsx");
 };

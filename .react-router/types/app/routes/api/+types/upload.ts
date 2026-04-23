@@ -15,6 +15,12 @@ type Matches = [{
 }, {
   id: "s3-upload";
   module: typeof import("../upload.js");
+}] | [{
+  id: "root";
+  module: typeof import("../../../root.js");
+}, {
+  id: "s3-multipart";
+  module: typeof import("../upload.js");
 }];
 
 type Annotations = GetAnnotations<Info & { module: Module, matches: Matches }>;

@@ -81,8 +81,9 @@
     "rules": {
       "function": {
         "foreground": "#d4a05a",
-        "fontStyle": "bold"
+        "fontStyle": "italic"
       },
+      "*.declaration": "#c2b3aa",
       "jsdoc": "#808080", // makes all jsdoc text gray
       "jsdoc.tag": "#808080", // specifically targets tags like @example
       "jsdoc.comment": "#808080" // ensures comment body matches
@@ -97,6 +98,25 @@
       "foreground": "#d4a05a",
       "fontStyle": "italic bold strikethrough"
     },
+    "[Claude Mode Dark]": {
+      "textMateRules": [
+        {
+          "name": "function.declaration",
+          "scope": "meta.function-call",
+          "settings": {
+            "foreground": "#FF0000",
+            "fontStyle": "bold"
+          }
+        },
+        {
+          "actionBar.toggledBackground": "#d9775733",
+          "activityBar.dropBorder": "#ffffff",
+          "activityBarTop.activeBorder": "#e7e7e7",
+          "activityBarTop.dropBorder": "#e7e7e7",
+          "activityBarTop.foreground": "#e7e7e7",
+        }
+      ]
+    }
   },
   "editor.guides.indentation": false,
   "editor.aiStats.enabled": true,

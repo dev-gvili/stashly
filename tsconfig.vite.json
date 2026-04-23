@@ -56,6 +56,9 @@
       ],
       "@/machines/*": [
         "./app/machines/*"
+      ],
+      "@/schemas/*": [
+        "./app/schemas/*"
       ]
     },
     "esModuleInterop": true,
