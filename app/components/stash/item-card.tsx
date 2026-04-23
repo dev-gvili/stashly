@@ -60,6 +60,7 @@ import {
 } from '@/ui/dropdown-menu'
 import useConfirm from '@/hooks/useConfirm'
 import { Button } from '../ui/button'
+import { ScrollArea } from '../ui/scroll-area'
 
 export interface ItemCardProps extends StashItem {
   asChild?: boolean
@@ -143,129 +144,136 @@ const ItemCardActions = (
 
         {status !== 'trashed' && (
           <DropdownMenuContent
+            hideWhenDetached={true}
             align="end"
-            className="space-y-4 w-48"
+            avoidCollisions={true}
+            className="space-y-4 w-48 bg-sidebar z-40"
             onCloseAutoFocus={(e) => e.preventDefault()}
           >
-            <DropdownMenuGroup className="mt-2">
-              <DropdownMenuItem className="items-start">
-                <PreviewIcon className="text-foreground" />
-                Preview
-              </DropdownMenuItem>
-              <DropdownMenuItem className="items-start">
-                <DownloadIcon className="text-foreground" />
-                Download
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-                Quick actions
-              </DropdownMenuLabel>
-              <DropdownMenuItem
-                className="items-start"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  fetcher.submit(
-                    {
-                      intent: favorited ? 'unfavorite' : 'favorite',
-                      itemId: id,
-                    },
-                    {
-                      method: 'GET',
-                      action: '/api/favorites',
-                    }
-                  )
-                }}
-              >
-                <HeartIcon
-                  fill={favorited ? 'currentColor' : 'none'}
-                  className="text-foreground"
-                />
-                {favorited ? 'Unfavorite' : 'Favorite'}
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-                Access
-              </DropdownMenuLabel>
-              <DropdownMenuItem
-                className="items-start"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setShareOpen(true)
-                }}
-              >
-                <ShareItemIcon className="text-foreground" />
-                Share
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  setDMOpen(true)
-                }}
-              >
-                <GroupIcon />
-                Invite
-              </DropdownMenuItem>
-              <DropdownMenuItem className="items-start">
-                <LockIcon className="text-foreground" />
-                Lock
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-                Organize
-              </DropdownMenuLabel>
-              <DropdownMenuItem className="items-start">
-                <CopyIcon className="text-foreground" />
-                Copy
-              </DropdownMenuItem>
-              <DropdownMenuItem className="items-start">
-                <MoveToFolder className="text-foreground" />
-                Move
-              </DropdownMenuItem>
-              <DropdownMenuItem className="items-start">
-                <RenameIcon className="text-foreground" />
-                Rename
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-                Information
-              </DropdownMenuLabel>
-              <DropdownMenuItem className="items-start">
-                <ActivityIcon className="text-foreground" />
-                Activity
-              </DropdownMenuItem>
-              <DropdownMenuItem className="items-start">
-                <FileDetailsIcon className="text-foreground" />
-                Details
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuItem
-              variant="destructive"
-              className="mt-2 items-start"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                fetcher.submit(
-                  { intent: 'trash_item', selectedItem: id },
-                  { method: 'POST', action: '/api/items' }
-                )
-              }}
-            >
-              <TrashIcon className="text-foreground" />
-              <span className="text-nowrap shrink-0">Trash</span>
-            </DropdownMenuItem>
+            <ScrollArea className="h-full pr-2" type="auto">
+              <section className="max-h-80 space-y-2">
+                <DropdownMenuGroup className="mt-2">
+                  <DropdownMenuItem className="items-start hover:cursor-pointer">
+                    <PreviewIcon className="text-current" />
+                    Preview
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="items-start hover:cursor-pointer">
+                    <DownloadIcon className="text-current" />
+                    Download
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
+                    Quick actions
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    className="items-start hover:cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      fetcher.submit(
+                        {
+                          intent: favorited ? 'unfavorite' : 'favorite',
+                          itemId: id,
+                        },
+                        {
+                          method: 'GET',
+                          action: '/api/favorites',
+                        }
+                      )
+                    }}
+                  >
+                    <HeartIcon
+                      fill={favorited ? 'currentColor' : 'none'}
+                      className="text-current"
+                    />
+                    {favorited ? 'Unfavorite' : 'Favorite'}
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
+                    Access
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    className="items-start hover:cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setShareOpen(true)
+                    }}
+                  >
+                    <ShareItemIcon className="text-current" />
+                    Share
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      setDMOpen(true)
+                    }}
+                    className="hover:cursor-pointer"
+                  >
+                    <GroupIcon className="text-current" />
+                    Invite
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="items-start hover:cursor-pointer">
+                    <LockIcon className="text-current" />
+                    Lock
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
+                    Organize
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem className="items-start hover:cursor-pointer">
+                    <CopyIcon className="text-current" />
+                    Copy
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="items-start hover:cursor-pointer">
+                    <MoveToFolder className="text-current" />
+                    Move
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="items-start hover:cursor-pointer">
+                    <RenameIcon className="text-current" />
+                    Rename
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
+                    Information
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem className="items-start hover:cursor-pointer">
+                    <ActivityIcon className="text-current" />
+                    Activity
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="items-start hover:cursor-pointer">
+                    <FileDetailsIcon className="text-current" />
+                    Details
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="mt-2 items-start hover:cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    fetcher.submit(
+                      { intent: 'trash_item', selectedItem: id },
+                      { method: 'POST', action: '/api/items' }
+                    )
+                  }}
+                >
+                  <TrashIcon className="text-current" />
+                  <span className="text-nowrap shrink-0">Trash</span>
+                </DropdownMenuItem>
+              </section>
+            </ScrollArea>
           </DropdownMenuContent>
         )}
         {status === 'trashed' && (
           <DropdownMenuContent align="end">
             <DropdownMenuItem
-              className="items-start"
+              className="items-start hover:cursor-pointer"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
@@ -275,11 +283,11 @@ const ItemCardActions = (
                 )
               }}
             >
-              <RestoreIcon className="text-foreground" />
+              <RestoreIcon className="text-current" />
               Restore
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="items-start"
+              className="items-start hover:cursor-pointer"
               variant="destructive"
               onClick={(e) => {
                 e.preventDefault()
@@ -293,7 +301,7 @@ const ItemCardActions = (
                 })
               }}
             >
-              <DeleteIcon className="text-foreground" />
+              <DeleteIcon className="text-current" />
               <span>Delete</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
