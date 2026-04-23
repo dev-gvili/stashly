@@ -11,7 +11,7 @@ import {
   onItemsTrashed,
   onItemsUploaded,
   updateTotalQuota,
-} from '@/services/quota'
+} from '@/services/quota-actions'
 import { quotaApiRouteInput, quotaApiRouteOutput } from '@/schemas/api.schemas'
 
 export async function action({ request }: Route.ActionArgs) {

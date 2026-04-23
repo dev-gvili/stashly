@@ -3,7 +3,7 @@ import { auth } from '@/services/auth'
 import { Form, Link, redirect } from 'react-router'
 import { findUserById, updateUser } from '../../.server/user-actions'
 import { findAllStoragePlans, findStoragePlanById } from '../../.server/storagePlan-actions'
-import { quotaRepository } from '../../.server/repositories/QuotaRepository'
+import { createQuota, updateTotalQuota } from '../../.server/quota-actions'
 import { subscriptionRepository } from '../../.server/repositories/SubscriptionRepository'
 import { prisma } from '@/.server/db'
 import { toObjectId, getPrefixForModel } from '@/utils/converters'
@@ -69,14 +69,14 @@ export async function action({ request }: Route.ActionArgs) {
 
   // if user has a quota, update the total storage to match selected plan
   try {
-    await quotaRepository.updateTotalQuota({
+    await updateTotalQuota({
       userId,
       dataSize: plan.storageLimit,
     })
   } catch (err) {
     // If user has no quota record yet, try creating one (quietly ignoring errors)
     try {
-      await quotaRepository.create({
+      await createQuota({
         id: toObjectId(getPrefixForModel('Quota')),
         driveId: session.user.driveId!,
         storagePlanId: plan.id,

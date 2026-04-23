@@ -12,7 +12,7 @@ import {
   requireMembership,
   requireAtLeastRole,
 } from '@/services/workspace-actions'
-import { quotaRepository } from '../.server/repositories/QuotaRepository'
+import { ensureUserQuota, onItemsCopied } from '../.server/quota-actions'
 import { formatSize } from '@/utils/formaters'
 import { searchFactory } from './search/search'
 import { buildItemFilters } from './search/item.filters'
@@ -526,7 +526,7 @@ export async function copyItem(
 
     if (!source.workspaceId) {
       // 3. Check user's quota
-      const userQuota = await quotaRepository.ensureUserQuota(userId, tx)
+      const userQuota = await ensureUserQuota(userId, tx)
 
       if (userQuota.remaining < source.size) {
         throw new StashlyError(
@@ -542,7 +542,7 @@ export async function copyItem(
       let newItem = await recursiveCopy(tx, source, targetParentId)
 
       // 5. Update quota
-      await quotaRepository.updateAfterItemsCopied({
+      await onItemsCopied({
         userId,
         dataSize: source.size,
         client: tx,
@@ -560,7 +560,7 @@ export async function copyItem(
       })
 
       // 4. Check user's quota
-      const userQuota = await quotaRepository.ensureUserQuota(userId, tx)
+      const userQuota = await ensureUserQuota(userId, tx)
 
       // quotaRepository.validateFreeSpace(userQuota, source.size)
 
@@ -584,7 +584,7 @@ export async function copyItem(
       )
 
       // 6. Update quota
-      await quotaRepository.updateAfterItemsCopied({
+      await onItemsCopied({
         userId,
         dataSize: source.size,
       })
@@ -599,7 +599,7 @@ export async function copyItem(
         message: 'You do not have access to this item',
       })
 
-      const userQuota = await quotaRepository.ensureUserQuota(userId, tx)
+      const userQuota = await ensureUserQuota(userId, tx)
 
       if (userQuota.remaining < source.size) {
         throw new StashlyError(
@@ -619,7 +619,7 @@ export async function copyItem(
         source.workspaceId
       )
 
-      await quotaRepository.updateAfterItemsCopied({
+      await onItemsCopied({
         userId,
         dataSize: source.size,
         client: tx,
@@ -643,7 +643,7 @@ export async function copyItem(
         message: 'You must be a member of the target workspace to copy items.',
       })
 
-      const userQuota = await quotaRepository.ensureUserQuota(userId, tx)
+      const userQuota = await ensureUserQuota(userId, tx)
 
       if (userQuota.remaining < source.size) {
         throw new StashlyError(
@@ -665,7 +665,7 @@ export async function copyItem(
       )
 
       // 6. Update quota
-      await quotaRepository.updateAfterItemsCopied({
+      await onItemsCopied({
         userId,
         dataSize: source.size,
         client: tx,

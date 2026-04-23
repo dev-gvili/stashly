@@ -1,4 +1,4 @@
-import { quotaRepository } from '@/services/repositories/QuotaRepository'
+import { createQuota } from '@/.server/quota-actions'
 import { assign, fromPromise, setup } from 'xstate'
 import type { User as FullUser } from '@/services/auth.types'
 import type { User } from 'better-auth'
@@ -92,7 +92,7 @@ export const onboardingMachine = setup({
     }),
     createQuota: fromPromise<void, { drive: Drive; storagePlan: StoragePlan }>(
       async ({ input }) => {
-        await quotaRepository.create({
+        await createQuota({
           id: toObjectId(getPrefixForModel('Quota')),
           total: input.storagePlan.storageLimit,
           driveId: input.drive.id,

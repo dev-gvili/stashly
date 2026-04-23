@@ -1,5 +1,5 @@
 import { fromPromise } from 'xstate'
-import type { QuotaInput, QuotaOutput } from '@/services/quota'
+import type { QuotaInput, QuotaOutput } from '@/services/quota-actions'
 import { updateQuota as update, parseQuota, FetchInit } from './quota.utils'
 
 /**

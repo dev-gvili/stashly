@@ -4,7 +4,7 @@ import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { StoragePlanType, SubscriptionStatus } from '@/prisma/enums'
 import { subscriptionRepository } from './repositories/SubscriptionRepository'
 import { findStoragePlanById, findStoragePlanByType } from './storagePlan-actions'
-import { quotaRepository } from './repositories/QuotaRepository'
+import { createQuota, updateTotalQuota } from './quota-actions'
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -66,7 +66,7 @@ export async function updateSubscriptionPlan({
 
   // Update or create quota
   try {
-    await quotaRepository.updateTotalQuota({
+    await updateTotalQuota({
       userId,
       dataSize: plan.storageLimit,
       client: prisma,
@@ -74,7 +74,7 @@ export async function updateSubscriptionPlan({
   } catch {
     // Quota doesn't exist yet — create it
     try {
-      await quotaRepository.create({
+      await createQuota({
         driveId,
         userId,
         storagePlanId: plan.id,
