@@ -4,6 +4,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -63,14 +64,14 @@ const home: SidebarItemProps = {
     <HomeIcon className="size-5! group-data-[state=collapsed]:ml-2" />
   ),
   label: 'My stash',
-  to: "/",
+  to: '/',
   state: {
     reset: true,
   },
   tooltip: 'Home',
 }
 
-const sidebarItems: SidebarItemProps[] = [
+const libraryItems: SidebarItemProps[] = [
   {
     icon: (isActive) => (
       <RecentIcon className="size-5! group-data-[state=collapsed]:ml-2" />
@@ -91,10 +92,13 @@ const sidebarItems: SidebarItemProps[] = [
     icon: (isActive) => (
       <FavoriteIcon className="size-5! group-data-[state=collapsed]:ml-2" />
     ),
-    label: 'Favorites', 
-    to: 'favorites?layout=grid', 
-    tooltip: 'Favorites', 
+    label: 'Favorites',
+    to: 'favorites?layout=grid',
+    tooltip: 'Favorites',
   },
+]
+
+const sharingItems: SidebarItemProps[] = [
   {
     icon: (isActive) => (
       <ShareIcon className="size-5! group-data-[state=collapsed]:ml-2" />
@@ -111,6 +115,9 @@ const sidebarItems: SidebarItemProps[] = [
     to: 'invitations',
     tooltip: 'Invitations',
   },
+]
+
+const manageItems: SidebarItemProps[] = [
   {
     icon: (isActive) => (
       <TrashIcon className="size-5! group-data-[state=collapsed]:ml-2" />
@@ -147,7 +154,7 @@ const mediaItems: SidebarItemProps[] = [
       <ImagesIcon className="size-5! group-data-[state=collapsed]:ml-2" />
     ),
     label: 'Images',
-    to: 'gallery?layout=waterfall',
+    to: 'images?layout=waterfall',
     tooltip: 'Images',
     prefetch: 'intent',
   },
@@ -158,6 +165,7 @@ const mediaItems: SidebarItemProps[] = [
     label: 'Videos',
     to: 'videos?layout=grid',
     tooltip: 'Videos',
+    prefetch: 'intent',
   },
 ]
 
@@ -215,7 +223,7 @@ export const AppSidebar = ({ user }: { user: User }) => {
       side="left"
       collapsible="icon"
       variant="sidebar"
-      className="ring-r-2 shadow-stashly/30 z-50"
+      className="border-none shadow-md shadow-primary py-2 z-50"
     >
       <SidebarHeader>
         <SidebarMenu>
@@ -226,7 +234,7 @@ export const AppSidebar = ({ user }: { user: User }) => {
               className="hover:cursor-pointer max-w-max"
             >
               <Link to={'/'}>
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8! items-center justify-center rounded ">
+                <div className="bg-primary text-sidebar-primary-foreground flex aspect-square size-8! items-center justify-center rounded-md ">
                   <Logo className="size-6" />
                 </div>
               </Link>
@@ -245,9 +253,38 @@ export const AppSidebar = ({ user }: { user: User }) => {
           </SidebarGroup>
           <NavMedia media={mediaItems} basePath={url} />
           <SidebarGroup className="mt-2">
+            <SidebarGroupLabel>Library</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {sidebarItems?.map((item, index) => (
+                {libraryItems.map((item) => (
+                  <SidebarItem
+                    {...item}
+                    key={item.tooltip}
+                    to={`${url}/${item.to}`}
+                  />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+          <SidebarGroup>
+            <SidebarGroupLabel>Sharing</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {sharingItems.map((item) => (
+                  <SidebarItem
+                    {...item}
+                    key={item.tooltip}
+                    to={`${url}/${item.to}`}
+                  />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+          <SidebarGroup>
+            <SidebarGroupLabel>Manage</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {manageItems.map((item) => (
                   <SidebarItem
                     {...item}
                     key={item.tooltip}
@@ -295,7 +332,10 @@ export function SidebarItem({
         isActive={isActive}
         asChild
         tooltip={tooltip}
-        className={cn(isActive && 'w-full border-2 border-current/30!')}
+        className={cn(
+          isActive && 'w-full border-2 border-primary!',
+          'group-data-[state=collapsed]:-ml-4!'
+        )}
       >
         <NavLink
           to={to}
