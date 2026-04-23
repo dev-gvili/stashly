@@ -137,8 +137,8 @@
   --secondary-foreground: oklch(0.92 0.01 265);
   --muted: oklch(0.24 0.02 270);
   --muted-foreground: oklch(0.62 0.02 265);
-  --accent: oklch(25.573% 0.035 88.062);
-  --accent-foreground: oklch(82.749% 0.09483 96.647);
+  --accent: oklch(40.499% 0.02209 53.435);
+  --accent-foreground: oklch(79.183% 0.11057 55.463);
   --destructive: oklch(55.428% 0.15891 14.469);
   --destructive-foreground: oklch(74.223% 0.12316 17.917);
   --border: oklch(0.27 0.02 270);
@@ -163,18 +163,16 @@
   --font-stashly:
     'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
 
-  /* surface patterns */
-  --dot-color: oklch(0.35 0.025 275 / 0.45);
-  --dot-size: 1px;
-  --dot-gap: 22px;
-  --grid-color: oklch(0.32 0.02 275 / 0.3);
-  --grid-size: 1px;
-  --grid-gap: 64px;
-  --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-
+  /* real shadows — primary-tinted light, soft glow dark */
   --shadow-stashly:
-    0 0 60px -12px oklch(0.7 0.2 300 / 0.2),
-    0 0 40px -8px oklch(0.75 0.15 190 / 0.1);
+    0 1px 2px 0 oklch(0.7 0.175 280 / 0.15),
+    0 2px 4px -1px oklch(0.7 0.175 280 / 0.1),
+    0 4px 6px -2px oklch(0.7 0.175 280 / 0.05);
+  --shadow-md:
+    0 4px 6px -1px oklch(0.7 0.175 280 / 0.1),
+    0 2px 4px -1px oklch(0.7 0.175 280 / 0.06);
+  --shadow-sm: 0 1px 2px 0 oklch(0.7 0.175 280 / 0.05);
+  --shadow-xs: 0 0px 1px 0 oklch(0.7 0.175 280 / 0.03);
 }
 
 [data-theme='system'] {
@@ -191,8 +189,8 @@
     --secondary-foreground: oklch(0.92 0.01 265);
     --muted: oklch(0.24 0.02 270);
     --muted-foreground: oklch(0.62 0.02 265);
-    --accent: oklch(25.573% 0.035 88.062);
-    --accent-foreground: oklch(82.749% 0.09483 96.647);
+    --accent: oklch(40.499% 0.02209 53.435);
+    --accent-foreground: oklch(82.525% 0.11452 55.913);
     --destructive: oklch(55.428% 0.15891 14.469);
     --destructive-foreground: oklch(74.223% 0.12316 17.917);
     --border: oklch(0.27 0.02 270);
@@ -216,12 +214,17 @@
     --font-mono: 'Geist Mono Dark', 'Geist Mono Fallback';
     --font-stashly:
       'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
-    /* add specific brand classes */
-    
-    --border-stashly: oklch(0.27 0.02 270);
+
+    /* real shadows — primary-tinted light, soft glow dark */
     --shadow-stashly:
-      0 0 60px -12px oklch(0.7 0.2 300 / 0.2),
-      0 0 40px -8px oklch(0.75 0.15 190 / 0.1);
+      0 1px 2px 0 oklch(0.7 0.175 280 / 0.15),
+      0 2px 4px -1px oklch(0.7 0.175 280 / 0.1),
+      0 4px 6px -2px oklch(0.7 0.175 280 / 0.05);
+    --shadow-md:
+      0 4px 6px -1px oklch(0.7 0.175 280 / 0.1),
+      0 2px 4px -1px oklch(0.7 0.175 280 / 0.06);
+    --shadow-sm: 0 1px 2px 0 oklch(0.7 0.175 280 / 0.05);
+    --shadow-xs: 0 0px 1px 0 oklch(0.7 0.175 280 / 0.03);
   }
 }
 
@@ -267,29 +270,11 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --letter-spacing: 0.01em;
   --spacing: 0.25rem;
-
-  /* real shadows — indigo-tinted light, soft glow dark */
-  --shadow-2xs: 0 1px 2px 0 oklch(0.25 0.04 270 / 0.04);
-  --shadow-xs: 0 1px 3px 0 oklch(0.25 0.04 270 / 0.06);
-  --shadow-sm:
-    0 1px 2px 0 oklch(0.25 0.04 270 / 0.05),
-    0 1px 3px -1px oklch(0.25 0.04 270 / 0.04);
-  --shadow:
-    0 1px 3px 0 oklch(0.25 0.04 270 / 0.07),
-    0 2px 6px -1px oklch(0.25 0.04 270 / 0.05);
-  --shadow-md:
-    0 4px 6px -1px oklch(0.25 0.04 270 / 0.08),
-    0 2px 4px -2px oklch(0.25 0.04 270 / 0.05);
-  --shadow-lg:
-    0 10px 15px -3px oklch(0.25 0.04 270 / 0.08),
-    0 4px 6px -4px oklch(0.25 0.04 270 / 0.04);
-  --shadow-xl:
-    0 20px 25px -5px oklch(0.25 0.04 270 / 0.08),
-    0 8px 10px -6px oklch(0.25 0.04 270 / 0.04);
-  --shadow-2xl: 0 25px 50px -12px oklch(0.2 0.06 275 / 0.2);
-  --shadow-stashly:
-    0 0 60px -12px oklch(0.7 0.2 300 / 0.2),
-    0 0 40px -8px oklch(0.75 0.15 190 / 0.1);
+  /* real shadows — primary-tinted light, soft glow dark */
+  --shadow-stashly: var(--shadow-stashly);
+  --shadow-md: var(--shadow-md);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-xs: var(--shadow-xs);
 }
 
 @layer base {
