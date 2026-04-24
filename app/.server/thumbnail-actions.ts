@@ -2,18 +2,31 @@ import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 
 export async function createThumbnail(itemId: string, hexColor: string) {
-  return prisma.thumbnail.upsert({
-    where: { itemId_view_size: { itemId, view: 'grid', size: 'medium' } },
-    create: {
-      id: toObjectId(getPrefixForModel('Thumbnail')),
-      itemId,
-      view: 'grid',
-      size: 'medium',
-      stage: 0,
-      url: hexColor,
-    },
-    update: {},
+  const existing = await prisma.thumbnail.findFirst({
+    where: { itemId, view: 'grid', size: 'medium' },
   })
+  if (existing) return existing
+
+  try {
+    return await prisma.thumbnail.create({
+      data: {
+        id: toObjectId(getPrefixForModel('Thumbnail')),
+        itemId,
+        view: 'grid',
+        size: 'medium',
+        stage: 0,
+        url: hexColor,
+      },
+    })
+  } catch (e: unknown) {
+    // P2002 = unique constraint violation (lost race) — return the winner's record
+    if ((e as { code?: string })?.code === 'P2002') {
+      return prisma.thumbnail.findFirstOrThrow({
+        where: { itemId, view: 'grid', size: 'medium' },
+      })
+    }
+    throw e
+  }
 }
 
 export async function updateThumbnail(
