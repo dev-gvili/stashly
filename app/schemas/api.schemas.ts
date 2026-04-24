@@ -83,6 +83,20 @@ export const itemsApiRouteInput = z.discriminatedUnion('intent', [
     selectedItems: toZodArraySchema(z.string()),
     targetFolderId: z.string(),
   }),
+  z.object({
+    intent: z.literal('create_upload_item'),
+    id: z.string(),
+    name: z.string(),
+    key: z.string(),
+    size: z.coerce.bigint(),
+    mimeType: z.string().optional(),
+    etag: z.string().optional(),
+    bucket: z.string(),
+    driveId: z.string(),
+    parentId: z.string(),
+    ownerId: z.string(),
+    category: z.string().optional(),
+  }),
 ])
 
 // ====================================================== //
@@ -536,3 +550,21 @@ export const permissionsApiRouteInput = z.discriminatedUnion('intent', [
     expiresAt: z.coerce.date(),
   }),
 ])
+
+// ====================================================== //
+// ================ Thumbnails Api Route ================ //
+// ====================================================== //
+
+export const thumbnailCreateSchema = z.object({
+  itemId: z.string().nonempty(),
+  url: z.string().nonempty(), // hex color e.g. '#3b82f6'
+})
+
+// PATCH sends multipart/form-data.
+// `content` arrives as a File/Blob field parsed by parseFormData.
+export const thumbnailUpdateSchema = z.object({
+  stage: z.coerce.number().int().min(1).max(4),
+  content: z.instanceof(File),
+  width: z.coerce.number().int().optional(),
+  height: z.coerce.number().int().optional(),
+})
