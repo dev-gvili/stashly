@@ -286,6 +286,7 @@ const MODEL_DTYPE: Record<string, string | Record<string, string>> = {
   'Xenova/mms-lid-126': 'q4',
   'onnx-community/tiny-aya-global-ONNX': 'q4',
   'onnx-community/whisper-large-v3-turbo': 'fp16',
+  'Xenova/vit-base-patch16-224': 'fp32',
   'onnx-community/Qwen3.5-2B-ONNX': {
     embed_tokens: 'q4f16',
     vision_encoder: 'q4f16',

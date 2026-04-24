@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import type { ThumbnailStage } from '@/types/machine.types'
 import { hashToColor, extractTinyThumbnail, canvasResize, dataUrlToBlob } from '@/utils/thumbnail'
 import { generateVideoThumbnail } from '@/utils/video'
+import { generateSalientCrop, generateCaption } from '@/workers/thumbnail.ai'
 
 interface ThumbnailState {
   stage: ThumbnailStage
@@ -67,6 +68,34 @@ export function useThumbnail() {
       bitmap.close()
       await fetch(`/api/thumbnails/${itemId}`, { method: 'PATCH', body: fd2 }).catch(() => {})
       setState({ stage: 2, src: `/api/thumbnails/${itemId}?v=2`, color })
+
+      // ── Stage 3: saliency crop (WebGPU only — skipped silently otherwise) ─
+      const croppedBlob = await generateSalientCrop(resizedBlob).catch(() => null)
+      if (croppedBlob) {
+        const bm3 = await createImageBitmap(croppedBlob)
+        const fd3 = new FormData()
+        fd3.append('stage', '3')
+        fd3.append('content', croppedBlob, 'thumb.jpg')
+        fd3.append('width', String(bm3.width))
+        fd3.append('height', String(bm3.height))
+        bm3.close()
+        await fetch(`/api/thumbnails/${itemId}`, { method: 'PATCH', body: fd3 }).catch(() => {})
+        setState({ stage: 3, src: `/api/thumbnails/${itemId}?v=3`, color })
+
+        // ── Stage 4: VLM caption overlay ────────────────────────────────────
+        const captionResult = await generateCaption(croppedBlob).catch(() => null)
+        if (captionResult) {
+          const bm4 = await createImageBitmap(captionResult.blob)
+          const fd4 = new FormData()
+          fd4.append('stage', '4')
+          fd4.append('content', captionResult.blob, 'thumb.jpg')
+          fd4.append('width', String(bm4.width))
+          fd4.append('height', String(bm4.height))
+          bm4.close()
+          await fetch(`/api/thumbnails/${itemId}`, { method: 'PATCH', body: fd4 }).catch(() => {})
+          setState({ stage: 4, src: `/api/thumbnails/${itemId}?v=4`, color })
+        }
+      }
     }
   }, [])
 
