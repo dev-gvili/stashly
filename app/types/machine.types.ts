@@ -150,3 +150,10 @@ export const initialWorkerSnapshot: WorkerSnapshot = {
     error: null,
   },
 }
+
+// ====================================================== //
+// ============= Thumbnail Pipeline Types =============== //
+// ====================================================== //
+
+/** 0=color placeholder, 1=tiny blurhash, 2=full resize, 3=smart crop, 4=VLM caption */
+export type ThumbnailStage = 0 | 1 | 2 | 3 | 4
