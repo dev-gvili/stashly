@@ -19,7 +19,7 @@ function hslToHex(h: number, s: number, l: number): string {
   const f = (n: number) => {
     const k = (n + h / 30) % 12
     const color = ln - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
-    return Math.round(255 * color).toString(16).padStart(2, '0')
+    return Math.round(255 * Math.min(1, Math.max(0, color))).toString(16).padStart(2, '0')
   }
   return `#${f(0)}${f(8)}${f(4)}`
 }
@@ -74,7 +74,10 @@ export async function canvasResize(
 
 /** Convert a data-URL to a Blob */
 export function dataUrlToBlob(dataUrl: string): Blob {
-  const [header, base64] = dataUrl.split(',')
+  const commaIdx = dataUrl.indexOf(',')
+  if (commaIdx === -1) return new Blob([], { type: 'image/jpeg' })
+  const header = dataUrl.slice(0, commaIdx)
+  const base64 = dataUrl.slice(commaIdx + 1)
   const mime = header.match(/:(.*?);/)?.[1] ?? 'image/jpeg'
   const bytes = atob(base64)
   const buf = new Uint8Array(bytes.length)
