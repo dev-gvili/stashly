@@ -8,6 +8,7 @@ model Thumbnail {
     content   Bytes?        @db.ByteA
     view      ViewType      @default(grid)
     size      ThumbnailSize @default(original)
+    stage     Int           @default(0)
     itemId    String?
     item      Item?         @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
