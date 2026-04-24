@@ -1,7 +1,53 @@
+import {
+  Florence2ForConditionalGeneration,
+  Florence2Processor,
+  AutoTokenizer,
+  RawImage,
+  type PreTrainedModel,
+  type PreTrainedTokenizer,
+  type Processor,
+} from '@huggingface/transformers'
 import { PipelineManager } from './stash.ai'
 
 const VIT_MODEL = 'Xenova/vit-base-patch16-224'
-const VLM_MODEL = 'LiquidAI/LFM2.5-VL-1.6B-ONNX'
+const FLORENCE_MODEL = 'onnx-community/Florence-2-base-ft'
+
+// Cached Florence-2 instances (loaded once, reused across stages)
+let florenceModel: PreTrainedModel | null = null
+let florenceProcessor: Processor | null = null
+let florenceTokenizer: PreTrainedTokenizer | null = null
+
+async function loadFlorence(onProgress?: (data: { progress?: number }) => void) {
+  if (florenceModel && florenceProcessor && florenceTokenizer) {
+    return { model: florenceModel, processor: florenceProcessor, tokenizer: florenceTokenizer }
+  }
+
+  const device = 'webgpu'
+  const dtype = {
+    embed_tokens: 'fp32' as const,
+    vision_encoder: 'fp32' as const,
+    encoder_model: 'fp32' as const,
+    decoder_model_merged: 'q4' as const,
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const progressCallback = onProgress ? (p: any) => onProgress({ progress: p?.progress }) : undefined
+
+  const [model, processor, tokenizer] = await Promise.all([
+    Florence2ForConditionalGeneration.from_pretrained(FLORENCE_MODEL, {
+      dtype,
+      device,
+      progress_callback: progressCallback,
+    }),
+    Florence2Processor.from_pretrained(FLORENCE_MODEL),
+    AutoTokenizer.from_pretrained(FLORENCE_MODEL),
+  ])
+
+  florenceModel = model
+  florenceProcessor = processor as Processor
+  florenceTokenizer = tokenizer as PreTrainedTokenizer
+  return { model, processor: florenceProcessor, tokenizer: florenceTokenizer }
+}
 
 /**
  * Use ViT to produce a saliency-aware center crop of the image.
@@ -47,22 +93,60 @@ export async function generateSalientCrop(
 }
 
 /**
- * Use LiquidAI VLM to generate a short caption and render it as an overlay.
+ * Use Florence-2 to generate a short caption and render it as an overlay.
  * Returns null when the model fails or WebGPU is unavailable.
  */
 export async function generateCaption(
-  _imageBlob: Blob,
-  _onProgress?: (data: { progress?: number }) => void,
+  imageBlob: Blob,
+  onProgress?: (data: { progress?: number }) => void,
 ): Promise<{ blob: Blob; caption: string } | null> {
-  // LiquidAI/LFM2.5-VL-1.6B-ONNX lacks preprocessor_config.json required by
-  // transformers.js vision pipelines. Disabled until a compatible model is available.
-  return null
-  // eslint-disable-next-line no-unreachable
   try {
-    return null
+    const { model, processor, tokenizer } = await loadFlorence(onProgress)
+
+    const image = await RawImage.fromBlob(imageBlob)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const inputs = await (processor as any)(image, '<CAPTION>')
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const generatedIds = await (model as any).generate({ ...inputs, max_new_tokens: 64 })
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const generatedText: string = (tokenizer as any).batch_decode(generatedIds, { skip_special_tokens: false })[0]
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parsed = (processor as any).post_process_generation(generatedText, '<CAPTION>', {
+      width: image.width,
+      height: image.height,
+    })
+    const caption: string = parsed['<CAPTION>'] ?? ''
+    if (!caption.trim()) return null
+
+    // Render caption overlay onto the input image
+    const bitmap = await createImageBitmap(imageBlob)
+    const canvas = document.createElement('canvas')
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(bitmap, 0, 0)
+    bitmap.close()
+
+    const barH = Math.round(canvas.height * 0.22)
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'
+    ctx.fillRect(0, canvas.height - barH, canvas.width, barH)
+
+    const fontSize = Math.max(12, Math.round(canvas.height * 0.075))
+    ctx.font = `600 ${fontSize}px Inter, sans-serif`
+    ctx.fillStyle = '#ffffff'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(caption, canvas.width / 2, canvas.height - barH / 2, canvas.width - 16)
+
+    const blob = await new Promise<Blob>((resolve) =>
+      canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85),
+    )
+
+    return { blob, caption }
   } catch {
     return null
-  } finally {
-    await PipelineManager.disposePipeline('image-text-to-text', VLM_MODEL)
   }
 }
