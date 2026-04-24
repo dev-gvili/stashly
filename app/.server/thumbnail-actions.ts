@@ -2,13 +2,9 @@ import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 
 export async function createThumbnail(itemId: string, hexColor: string) {
-  const existing = await prisma.thumbnail.findFirst({
-    where: { itemId, view: 'grid', size: 'medium' },
-  })
-  if (existing) return existing
-
-  return prisma.thumbnail.create({
-    data: {
+  return prisma.thumbnail.upsert({
+    where: { itemId_view_size: { itemId, view: 'grid', size: 'medium' } },
+    create: {
       id: toObjectId(getPrefixForModel('Thumbnail')),
       itemId,
       view: 'grid',
@@ -16,6 +12,7 @@ export async function createThumbnail(itemId: string, hexColor: string) {
       stage: 0,
       url: hexColor,
     },
+    update: {},
   })
 }
 

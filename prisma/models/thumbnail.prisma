@@ -11,6 +11,8 @@ model Thumbnail {
     stage     Int           @default(0)
     itemId    String?
     item      Item?         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+    @@unique([itemId, view, size])
 }
 
 enum ThumbnailSize {
