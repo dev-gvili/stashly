@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useThumbnail } from '@/hooks/useThumbnail'
 import { shallowEqual, useSelector } from '@xstate/react'
 import { createActor } from 'xstate'
@@ -76,6 +76,7 @@ export function useUpload() {
   const dragCounter = useRef(0)
 
   const { run: runThumbnail } = useThumbnail()
+  const thumbnailedRef = useRef<Set<string>>(new Set())
 
   const files = useSelector(
     upload,
@@ -101,15 +102,24 @@ export function useUpload() {
     upload.send({ type: 'upload.config', config })
   }, [])
 
+  // Trigger thumbnail pipeline after each file's DB item is created (upload.done)
+  useEffect(() => {
+    for (const mediaFile of files) {
+      if (mediaFile.status === 'done' && !thumbnailedRef.current.has(mediaFile.id)) {
+        thumbnailedRef.current.add(mediaFile.id)
+        runThumbnail(mediaFile.id, mediaFile.file).catch(() => {})
+      }
+    }
+  }, [files, runThumbnail])
+
   const add = useCallback(
     (file: File, overrideRootId?: string, skipQuotaCheck?: boolean) => {
       const id = overrideRootId ?? rootId
       if (!id) return
       const mediaFile = toMediaFile(file, id)
       upload.send({ type: 'upload.add', mediaFile, skipQuotaCheck })
-      runThumbnail(mediaFile.id, file).catch(() => {})
     },
-    [rootId, runThumbnail]
+    [rootId]
   )
 
   const addBatch = useCallback(
