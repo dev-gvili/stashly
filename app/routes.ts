@@ -45,6 +45,10 @@ export default [
     route('shares', 'routes/api/shares.ts'),
     route('favorites', 'routes/api/favorites.ts'),
     route('versions', 'routes/api/versions.ts'),
+    route('thumbnails', 'routes/api/thumbnails.ts'),
+    ...prefix('thumbnails', [
+      route(':itemId', 'routes/api/thumbnails.ts', { id: 'thumbnail-detail' }),
+    ]),
     route('invitations', 'routes/api/invitations.ts'),
     route('comments/*', 'routes/api/comments.ts'),
 
