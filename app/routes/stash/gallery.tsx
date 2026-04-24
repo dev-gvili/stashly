@@ -1,7 +1,7 @@
 import type { Route } from './+types/gallery'
 import { Gallery } from '@/components/Gallery'
 import { parseSearchParams } from '@/utils/parsers'
-import { ThumbnailSize, ViewType } from '@/prisma/enums'
+import { ItemType, ThumbnailSize, ViewType } from '@/prisma/enums'
 import { buildSrcSet } from '@/components/views/river-view'
 import { prisma } from '@/services/db'
 import {
@@ -27,74 +27,123 @@ export async function loader({ request }: Route.ActionArgs) {
     searchParams,
   })
   let filters = buildItemFilters(params)
-  let res = await prisma.item.findMany({
-    // cursor: params.cursor ? { id: params.cursor } : undefined,
-    where: {
-      thumbnails: {
-        some: {
-          url: {
-            not: null,
+  let res: {
+    type: ItemType
+    id: string
+    name: string
+    parentId: string | null
+    file: {
+      key: string
+    } | null
+    thumbnails: {
+      view: ViewType
+      size: ThumbnailSize
+      id: string
+      url: string | null
+      height: number | null
+      width: number | null
+    }[]
+  }[] = []
+
+  if (url.pathname.includes('videos')) {
+    res = await prisma.item.findMany({
+      // cursor: params.cursor ? { id: params.cursor } : undefined,
+      where: {
+        type: ItemType.file,
+        file: {
+          mimeType: {
+            startsWith: 'video/',
+          },
+        },
+        ...filters,
+      },
+      take: params.take,
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        parentId: true,
+        file: {
+          select: {
+            key: true,
+          }
+        },
+        thumbnails: {
+          where: {
+            AND: [
+              {
+                view: layout as ViewType,
+              },
+              { size: ThumbnailSize.medium },
+            ],
+          },
+          select: {
+            height: true,
+            width: true,
+            url: true,
+            size: true,
+            view: true,
+            id: true,
+            stage: true,
           },
         },
       },
-      ...filters,
-    },
-    take: params.take,
-    select: {
-      id: true,
-      name: true,
-      type: true,
-      parentId: true,
-      thumbnails: {
-        where: {
-          AND: [
-            {
-              view: layout as ViewType,
+    })
+  }
+
+  if (url.pathname.includes('images')) {
+    res = await prisma.item.findMany({
+      // cursor: params.cursor ? { id: params.cursor } : undefined,
+      where: {
+        thumbnails: {
+          some: {
+            url: {
+              not: null,
             },
-            { size: ThumbnailSize.small },
-          ],
+          },
         },
-        select: {
-          height: true,
-          width: true,
-          url: true,
-          size: true,
-          view: true,
-          id: true,
+        ...filters,
+      },
+      take: params.take,
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        parentId: true,
+        file: {
+          select: {
+            key: true,
+          }
+        },
+        thumbnails: {
+          where: {
+            AND: [
+              {
+                view: layout as ViewType,
+              },
+              { size: ThumbnailSize.medium },
+            ],
+          },
+          select: {
+            height: true,
+            width: true,
+            url: true,
+            size: true,
+            view: true,
+            id: true,
+            stage: true,
+          },
         },
       },
-    },
-  })
-  // const res = await itemRepository.search({
-  //   ...params,
-  //   take: params.take + 1,
-  //   strategy: 'cursor',
-  //   orderBy: {
-  //     id: 'asc',
-  //   },
-  //   include: {
-  //     thumbnails: {
-  //       where: {
-  //         size: {
-  //           equals: ThumbnailSize.large,
-  //         },
-  //       },
-  //       select: {
-  //         url: true,
-  //         width: true,
-  //         height: true,
-  //         size: true,
-  //         view: true,
-  //       },
-  //     },
-  //   },
-  // })
-
+    })
+  }
   let images = res.map((item) => {
     let thumb = item.thumbnails[0]
     return {
       id: item.id,
-      src: thumb?.url || '',
+      src: thumb && thumb.stage >= 1
+        ? `/api/thumbnails/${item.id}?v=${thumb.stage}`
+        : thumb?.url ?? `https://stashly-devgvili-sbp7fs6d.t3.tigrisfiles.io/${item.parentId}/${item.name}`,
       alt: item?.name,
       view: thumb?.view,
       width: thumb?.width!,
@@ -105,9 +154,12 @@ export async function loader({ request }: Route.ActionArgs) {
         Math.round(thumb?.width! * 2),
       ]),
       sizes: `${Math.round(thumb?.width!)}px`,
+      name: item.name,
+      type: item.type,
+      parentId: item.parentId,
+      fileKey: item.file?.key,
     }
   })
-  // console.log(images)
   return { data: images }
 }
 
