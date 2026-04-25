@@ -69,7 +69,7 @@ export function useThumbnail() {
 
   const fetcher = useFetcher()
 
-  const run = useCallback(async (itemId: string, file: File) => {
+  const run = useCallback(async (itemId: string, file: File, onReady?: () => void) => {
     // ── Stage 0: color hash ──────────────────────────────────────────────
     const color = hashToColor(file.name, file.type)
     
@@ -110,6 +110,7 @@ export function useThumbnail() {
           body: fd1,
         }).catch(() => {})
         setState({ stage: 1, src: presign.publicUrl, color })
+        onReady?.()
       }
     }
 
