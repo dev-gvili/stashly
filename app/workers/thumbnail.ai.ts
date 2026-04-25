@@ -12,6 +12,14 @@ import { PipelineManager } from './stash.ai'
 const VIT_MODEL = 'Xenova/vit-base-patch16-224'
 const FLORENCE_MODEL = 'onnx-community/Florence-2-base-ft'
 
+// Serialize all AI operations — WebGPU can't handle concurrent Florence-2 inference
+let aiQueue: Promise<unknown> = Promise.resolve()
+function enqueue<T>(fn: () => Promise<T>): Promise<T> {
+  const next = aiQueue.then(fn, fn)
+  aiQueue = next.catch(() => {})
+  return next
+}
+
 // Cached Florence-2 instances (loaded once, reused across stages)
 let florenceModel: PreTrainedModel | null = null
 let florenceProcessor: Processor | null = null
@@ -54,7 +62,14 @@ async function loadFlorence(onProgress?: (data: { progress?: number }) => void) 
  * Falls back to a geometric center crop if the model fails.
  * Returns null when WebGPU is unavailable (caller should skip silently).
  */
-export async function generateSalientCrop(
+export function generateSalientCrop(
+  imageBlob: Blob,
+  onProgress?: (data: { progress?: number }) => void,
+): Promise<Blob | null> {
+  return enqueue(() => _generateSalientCrop(imageBlob, onProgress))
+}
+
+async function _generateSalientCrop(
   imageBlob: Blob,
   onProgress?: (data: { progress?: number }) => void,
 ): Promise<Blob | null> {
@@ -85,7 +100,8 @@ export async function generateSalientCrop(
     return new Promise((resolve) =>
       cropCanvas.toBlob((b) => resolve(b), 'image/webp', 0.85),
     )
-  } catch {
+  } catch (e) {
+    console.error('[stage3] generateSalientCrop failed', e)
     return null
   } finally {
     await PipelineManager.disposePipeline('image-classification', VIT_MODEL)
@@ -96,7 +112,14 @@ export async function generateSalientCrop(
  * Use Florence-2 to generate a short caption and render it as an overlay.
  * Returns null when the model fails or WebGPU is unavailable.
  */
-export async function generateCaption(
+export function generateCaption(
+  imageBlob: Blob,
+  onProgress?: (data: { progress?: number }) => void,
+): Promise<{ blob: Blob; caption: string } | null> {
+  return enqueue(() => _generateCaption(imageBlob, onProgress))
+}
+
+async function _generateCaption(
   imageBlob: Blob,
   onProgress?: (data: { progress?: number }) => void,
 ): Promise<{ blob: Blob; caption: string } | null> {
@@ -152,7 +175,8 @@ export async function generateCaption(
     )
 
     return { blob, caption }
-  } catch {
+  } catch (e) {
+    console.error('[stage4] generateCaption failed', e)
     return null
   }
 }
