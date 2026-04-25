@@ -6,6 +6,8 @@
 - [ ] Finish package update type errors — `workspaceItem.service.ts` (6 schema mismatches), `stripe.ts` (undefined check), `subscription.ts` (create signature mismatch)
 - [ ] Decide search infra: integrate the built-but-unwired `search.repository.ts`, `search.ts`, `filters.ts` — or delete them to reduce dead code. *(deferred — revisit after collections stabilises)*
 - [ ] Fix `app/routes/api/shares.ts` — replace `@/services/share-actions` import with relative `../../.server/share-actions` to resolve dot-server plugin build failure (deferred per "skip production build")
+- [ ] Consolidate temp schemas — merge `_temp_a/b/c.schemas.ts` into `app/schemas/api.schemas.ts` then delete temps
+- [ ] Migrate flat item API routes — callers of `/api/items/comments` etc. should move to nested `/api/items/:itemId/comments`; remove flat registrations after
 
 ## Someday / Low Priority
 
@@ -14,6 +16,7 @@
 
 ## Done
 
+- [x] Item activities feature — fire-and-forget recording in 11 server functions (rename/move/copy/delete/restore/create/comment/version/permission grant+update+revoke), `ActivityFeed` + `ActivityEntry` + `ItemActivityDrawer` components, `/api/activities` route, gallery-image sidebar integration, item card dropdown wired (2026-04-25)
 - [x] Sharing items feature — `share-actions.ts`, `/api/shares` route, `ShareDialog`, `ItemCard` wiring, `shares.tsx` shared-with-me view; PR #11 (2026-04-11)
 - [x] CLAUDE.md improvements — dot-server plugin gotcha, nullable relation `is` operator, dialog data loading pattern, New Feature Checklist, icon rule hardened (2026-04-11)
 - [x] Collection schema refactored — `Collection` model dropped, replaced with `CollectionMember` self-relation on `Item`; `collection-actions.ts` rewritten to use `prisma.item` + `prisma.collectionMember`; all collection intents routed through `/api/collections` (PR #10, 2026-04-10)
