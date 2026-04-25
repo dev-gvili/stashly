@@ -155,7 +155,7 @@ export function useThumbnail() {
         // ── Stage 3: ViT saliency crop ──────────────────────────────────────
         if (file.type.startsWith('image/')) {
           const { generateSalientCrop, generateCaption } = await import('@/workers/thumbnail.ai')
-          const salientBlob = await generateSalientCrop(resizedBlob).catch(() => null)
+          const salientBlob = await generateSalientCrop(file).catch(() => null)
           if (salientBlob) {
             const presign3Res = await fetch(`/api/thumbnails/${itemId}/presign`).catch(() => null)
             const presign3 = presign3Res ? await presign3Res.json().catch(() => null) : null
