@@ -1,8 +1,15 @@
 import { useEffect } from 'react'
 import { useFetcher } from 'react-router'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import { ActivityFeed } from './activity-feed'
 import type { ActivityWithRelations } from '@/utils/activity'
+import { ScrollArea } from '../ui'
 
 interface ItemActivityDrawerProps {
   itemId: string
@@ -10,7 +17,11 @@ interface ItemActivityDrawerProps {
   onOpenChange: (open: boolean) => void
 }
 
-export function ItemActivityDrawer({ itemId, open, onOpenChange }: ItemActivityDrawerProps) {
+export function ItemActivityDrawer({
+  itemId,
+  open,
+  onOpenChange,
+}: ItemActivityDrawerProps) {
   const fetcher = useFetcher<{ data: ActivityWithRelations[] }>()
 
   useEffect(() => {
@@ -24,11 +35,19 @@ export function ItemActivityDrawer({ itemId, open, onOpenChange }: ItemActivityD
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-80 overflow-y-auto">
-        <SheetHeader className="mb-4">
-          <SheetTitle className="text-sm">Activity</SheetTitle>
+      <SheetContent
+        side="right"
+        className="w-80  bg-background rounded-md focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-none shadow-stashly flex-col justify-center"
+      >
+        <SheetHeader>
+          <SheetTitle className="text-sm font-stashly">Activity</SheetTitle>
+          <SheetDescription>
+            View the activity feed for this item.
+          </SheetDescription>
         </SheetHeader>
-        <ActivityFeed activities={activities} isLoading={isLoading} />
+        <ScrollArea className="h-[calc(100vh-8rem)] pr-4">
+          <ActivityFeed activities={activities} isLoading={isLoading} />
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   )

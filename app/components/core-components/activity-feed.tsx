@@ -9,14 +9,17 @@ interface ActivityFeedProps {
   streamUrl?: string
 }
 
-function ActivitySkeleton() {
+function ActivitySkeleton({ isLast }: { isLast?: boolean }) {
   return (
-    <div className="flex gap-3 py-3 animate-pulse">
-      <div className="mt-0.5 size-8 shrink-0 rounded-full bg-muted" />
-      <div className="flex-1 space-y-2 pt-1">
-        <div className="h-3 w-3/4 rounded bg-muted" />
+    <div className={cn('relative flex gap-3 animate-pulse', !isLast && 'pb-6')}>
+      {!isLast && (
+        <div className="absolute left-3 top-6 bottom-0 w-px bg-border" />
+      )}
+      <div className="relative z-10 mt-0.5 size-6 shrink-0 rounded-md bg-muted ring-1 ring-border" />
+      <div className="flex-1 space-y-2 pt-0.5">
         <div className="h-2.5 w-1/3 rounded bg-muted" />
-        <div className="h-6 w-1/2 rounded bg-muted" />
+        <div className="h-3 w-3/4 rounded bg-muted" />
+        <div className="h-5 w-2/5 rounded-full bg-muted" />
       </div>
     </div>
   )
@@ -25,10 +28,10 @@ function ActivitySkeleton() {
 export function ActivityFeed({ activities, isLoading, className }: ActivityFeedProps) {
   if (isLoading) {
     return (
-      <div className={cn('divide-y divide-border', className)}>
+      <div className={cn('px-4 py-3', className)}>
         <ActivitySkeleton />
         <ActivitySkeleton />
-        <ActivitySkeleton />
+        <ActivitySkeleton isLast />
       </div>
     )
   }
@@ -42,9 +45,13 @@ export function ActivityFeed({ activities, isLoading, className }: ActivityFeedP
   }
 
   return (
-    <div className={cn('divide-y divide-border', className)}>
-      {activities.map((activity) => (
-        <ActivityEntry key={activity.id} activity={activity} />
+    <div className={cn('flex-col px-4 space-y-3 justify-center w-full', className)}>
+      {activities.map((activity, i) => (
+        <ActivityEntry
+          key={activity.id}
+          activity={activity}
+          isLast={i === activities.length - 1}
+        />
       ))}
     </div>
   )
