@@ -595,7 +595,7 @@ export async function copyItem(
       createActivity({
         item: { connect: { id: newItem.id } },
         time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), move: { create: { id: toObjectId(getPrefixForModel('MoveAction')), from: itemId, to: targetParentId ?? '' } } } },
+        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), copy: { create: { id: toObjectId(getPrefixForModel('CopyAction')), from: itemId, to: targetParentId ?? '' } } } },
       }).catch(() => {})
 
       return newItem
@@ -642,7 +642,7 @@ export async function copyItem(
       createActivity({
         item: { connect: { id: newItem.id } },
         time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), move: { create: { id: toObjectId(getPrefixForModel('MoveAction')), from: itemId, to: targetParentId ?? '' } } } },
+        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), copy: { create: { id: toObjectId(getPrefixForModel('CopyAction')), from: itemId, to: targetParentId ?? '' } } } },
       }).catch(() => {})
 
       return newItem
@@ -684,7 +684,7 @@ export async function copyItem(
       createActivity({
         item: { connect: { id: newItem.id } },
         time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), move: { create: { id: toObjectId(getPrefixForModel('MoveAction')), from: itemId, to: targetParentId ?? '' } } } },
+        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), copy: { create: { id: toObjectId(getPrefixForModel('CopyAction')), from: itemId, to: targetParentId ?? '' } } } },
       }).catch(() => {})
 
       return newItem
@@ -736,7 +736,7 @@ export async function copyItem(
       createActivity({
         item: { connect: { id: newItem.id } },
         time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), move: { create: { id: toObjectId(getPrefixForModel('MoveAction')), from: itemId, to: targetParentId ?? '' } } } },
+        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), copy: { create: { id: toObjectId(getPrefixForModel('CopyAction')), from: itemId, to: targetParentId ?? '' } } } },
       }).catch(() => {})
 
       return newItem
