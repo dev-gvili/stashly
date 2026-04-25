@@ -2,6 +2,25 @@ import { prisma } from '@/services/db'
 import { StashlyError, StashlyErrorCode } from '@/services/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Permission, PermissionRole, Prisma } from '@/prisma/client'
+import { buildPermissionFilters } from '@/utils/filters/permission.filters'
+import { searchFactory } from '@/utils/search'
+import { createActivity } from './activity-actions'
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * Paginated, filterable search over Permission records.
+ *
+ * @example
+ * const page = await searchPermissions({ itemId: 'item_123', take: 20, strategy: 'cursor' })
+ */
+export const searchPermissions = searchFactory({
+  dbDelegate: prisma.permission,
+  buildFilters: buildPermissionFilters,
+  defaultOrderBy: (): Prisma.PermissionOrderByWithRelationInput => ({ createdAt: 'desc' }),
+})
 
 type PrismaTx = Omit<
   typeof prisma,
@@ -37,12 +56,25 @@ type PrismaTx = Omit<
  *   tx
  * )
  */
-export function createPermission(
+export async function createPermission(
   data: Prisma.PermissionCreateInput,
   tx?: PrismaTx
 ): Promise<Permission> {
   const db = tx ?? prisma
-  return db.permission.create({ data })
+  const perm = await db.permission.create({ data })
+  if (data.item?.connect?.id) {
+    createActivity({
+      item: { connect: { id: data.item.connect.id as string } },
+      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+      action: {
+        create: {
+          id: toObjectId(getPrefixForModel('ItemAction')),
+          permission: { create: { id: toObjectId(getPrefixForModel('PermissionAction')), type: 'grant', userId: String(data.users?.connect?.id ?? ''), role: String(data.roles ?? '') } },
+        },
+      },
+    }).catch(() => {})
+  }
+  return perm
 }
 
 /**
@@ -69,12 +101,25 @@ export function createPermission(
  *   data: { roles: 'write' },
  * })
  */
-export function updatePermission(
+export async function updatePermission(
   args: Prisma.PermissionUpdateArgs,
   tx?: PrismaTx
 ): Promise<Permission> {
   const db = tx ?? prisma
-  return db.permission.update(args)
+  const perm = await db.permission.update(args)
+  if (perm.itemId) {
+    createActivity({
+      item: { connect: { id: perm.itemId } },
+      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+      action: {
+        create: {
+          id: toObjectId(getPrefixForModel('ItemAction')),
+          permission: { create: { id: toObjectId(getPrefixForModel('PermissionAction')), type: 'update', userId: perm.userId ?? '', role: String(perm.roles ?? '') } },
+        },
+      },
+    }).catch(() => {})
+  }
+  return perm
 }
 
 /**
@@ -95,8 +140,25 @@ export function updatePermission(
  * await deletePermission(perm.id, tx)
  */
 export function deletePermission(id: string, tx?: PrismaTx): Promise<Permission> {
-  const db = tx ?? prisma
-  return db.permission.delete({ where: { id } })
+  const client = tx ?? prisma
+  return client.permission.findUniqueOrThrow({ where: { id }, select: { itemId: true, userId: true, roles: true } })
+    .then((found) =>
+      client.permission.delete({ where: { id } }).then((deleted) => {
+        if (found.itemId) {
+          createActivity({
+            item: { connect: { id: found.itemId! } },
+            time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+            action: {
+              create: {
+                id: toObjectId(getPrefixForModel('ItemAction')),
+                permission: { create: { id: toObjectId(getPrefixForModel('PermissionAction')), type: 'revoke', userId: found.userId ?? '', role: String(found.roles ?? '') } },
+              },
+            },
+          }).catch(() => {})
+        }
+        return deleted
+      })
+    )
 }
 
 /**

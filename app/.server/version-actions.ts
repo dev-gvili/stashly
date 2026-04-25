@@ -1,6 +1,26 @@
 import { prisma } from '@/services/db'
 import { StashlyError, StashlyErrorCode } from '@/services/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import type { Prisma } from '@/prisma/client'
+import { buildItemVersionFilters } from '@/utils/filters/itemVersion.filters'
+import { searchFactory } from '@/utils/search'
+import { createActivity } from './activity-actions'
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * Paginated, filterable search over ItemVersion records.
+ *
+ * @example
+ * const page = await searchVersions({ itemId: 'item_123', take: 20, strategy: 'cursor' })
+ */
+export const searchVersions = searchFactory({
+  dbDelegate: prisma.itemVersion,
+  buildFilters: buildItemVersionFilters,
+  defaultOrderBy: (): Prisma.ItemVersionOrderByWithRelationInput => ({ createdAt: 'desc' }),
+})
 
 /**
  * List all versions for a given item, ordered by creation time descending.
@@ -41,7 +61,7 @@ export async function createVersion({
   size?: bigint | number | null
   content?: Uint8Array<ArrayBuffer> | null
 }) {
-  return prisma.itemVersion.create({
+  const ver = await prisma.itemVersion.create({
     data: {
       id: toObjectId(getPrefixForModel('ItemVersion')),
       item: { connect: { id: itemId } },
@@ -51,6 +71,17 @@ export async function createVersion({
       content: content ?? null,
     },
   })
+  createActivity({
+    item: { connect: { id: itemId } },
+    time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+    action: {
+      create: {
+        id: toObjectId(getPrefixForModel('ItemAction')),
+        version: { create: { id: toObjectId(getPrefixForModel('VersionAction')), newVersion: ver.id } },
+      },
+    },
+  }).catch(() => {})
+  return ver
 }
 
 /**
