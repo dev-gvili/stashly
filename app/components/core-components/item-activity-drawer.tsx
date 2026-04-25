@@ -11,15 +11,15 @@ interface ItemActivityDrawerProps {
 }
 
 export function ItemActivityDrawer({ itemId, open, onOpenChange }: ItemActivityDrawerProps) {
-  const fetcher = useFetcher<{ items: ActivityWithRelations[] }>()
+  const fetcher = useFetcher<{ data: ActivityWithRelations[] }>()
 
   useEffect(() => {
     if (open && fetcher.state === 'idle' && !fetcher.data) {
       fetcher.load(`/api/activities?itemId=${itemId}`)
     }
-  }, [open])
+  }, [open, itemId])
 
-  const activities = fetcher.data?.items ?? []
+  const activities = fetcher.data?.data ?? []
   const isLoading = fetcher.state === 'loading'
 
   return (
