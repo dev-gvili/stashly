@@ -71,7 +71,7 @@ export async function generateSalientCrop(
     canvas.getContext('2d')!.drawImage(bitmap, 0, 0)
     bitmap.close()
 
-    await pipe(canvas.toDataURL('image/jpeg', 0.9), { top_k: 5 })
+    await pipe(canvas.toDataURL('image/webp', 0.9), { top_k: 5 })
 
     // Center-crop to square at 512px (ViT attention map as future enhancement)
     const size = Math.min(canvas.width, canvas.height)
@@ -83,7 +83,7 @@ export async function generateSalientCrop(
     cropCanvas.getContext('2d')!.drawImage(canvas, x, y, size, size, 0, 0, 512, 512)
 
     return new Promise((resolve) =>
-      cropCanvas.toBlob((b) => resolve(b), 'image/jpeg', 0.85),
+      cropCanvas.toBlob((b) => resolve(b), 'image/webp', 0.85),
     )
   } catch {
     return null
@@ -130,19 +130,24 @@ export async function generateCaption(
     ctx.drawImage(bitmap, 0, 0)
     bitmap.close()
 
-    const barH = Math.round(canvas.height * 0.22)
-    ctx.fillStyle = 'rgba(0,0,0,0.55)'
-    ctx.fillRect(0, canvas.height - barH, canvas.width, barH)
+    const barH = Math.round(canvas.height * 0.28)
+    const barY = canvas.height - barH
+    ctx.fillStyle = 'rgba(0,0,0,0.72)'
+    ctx.fillRect(0, barY, canvas.width, barH)
 
-    const fontSize = Math.max(12, Math.round(canvas.height * 0.075))
-    ctx.font = `600 ${fontSize}px Inter, sans-serif`
+    const fontSize = Math.max(12, Math.round(canvas.height * 0.072))
+    ctx.font = `bold ${fontSize}px sans-serif`
     ctx.fillStyle = '#ffffff'
     ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(caption, canvas.width / 2, canvas.height - barH / 2, canvas.width - 16)
+    ctx.textBaseline = 'alphabetic'
+    ctx.shadowColor = 'rgba(0,0,0,0.8)'
+    ctx.shadowBlur = 4
+    const textY = barY + barH * 0.62
+    ctx.fillText(caption, canvas.width / 2, textY, canvas.width - 24)
+    ctx.shadowBlur = 0
 
     const blob = await new Promise<Blob>((resolve) =>
-      canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85),
+      canvas.toBlob((b) => resolve(b!), 'image/webp', 0.85),
     )
 
     return { blob, caption }
