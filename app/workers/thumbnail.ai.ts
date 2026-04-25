@@ -57,10 +57,48 @@ async function loadFlorence(onProgress?: (data: { progress?: number }) => void) 
   return { model, processor: florenceProcessor, tokenizer: florenceTokenizer }
 }
 
+/** Detect the largest face using the native browser FaceDetector API (Chrome). */
+async function detectFaceCenter(
+  bitmap: ImageBitmap,
+): Promise<{ cx: number; cy: number } | null> {
+  if (!('FaceDetector' in window)) return null
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const detector = new (window as any).FaceDetector({ fastMode: false, maxDetectedFaces: 5 })
+    const faces: Array<{ boundingBox: DOMRectReadOnly }> = await detector.detect(bitmap)
+    if (!faces.length) return null
+    // Pick the largest face
+    const face = faces.reduce((a, b) =>
+      a.boundingBox.width * a.boundingBox.height >= b.boundingBox.width * b.boundingBox.height ? a : b
+    )
+    const { x, y, width, height } = face.boundingBox
+    return { cx: x + width / 2, cy: y + height / 2 }
+  } catch {
+    return null
+  }
+}
+
+/** Compute a square crop rect centered on (cx,cy), clamped to image bounds. */
+function squareCrop(
+  imgW: number,
+  imgH: number,
+  cx: number,
+  cy: number,
+  // Place face center at this vertical fraction of the crop (0.38 = upper third)
+  faceFraction = 0.38,
+): { x: number; y: number; size: number } {
+  const size = Math.min(imgW, imgH)
+  let x = Math.round(cx - size / 2)
+  let y = Math.round(cy - size * faceFraction)
+  x = Math.max(0, Math.min(imgW - size, x))
+  y = Math.max(0, Math.min(imgH - size, y))
+  return { x, y, size }
+}
+
 /**
- * Use ViT to produce a saliency-aware center crop of the image.
- * Falls back to a geometric center crop if the model fails.
- * Returns null when WebGPU is unavailable (caller should skip silently).
+ * Produce a smart square crop of the image:
+ * 1. Native FaceDetector (Chrome) → crop centered on the largest face
+ * 2. ViT classification → geometric center crop as fallback
  */
 export function generateSalientCrop(
   imageBlob: Blob,
@@ -74,28 +112,32 @@ async function _generateSalientCrop(
   onProgress?: (data: { progress?: number }) => void,
 ): Promise<Blob | null> {
   try {
-    const pipe = await PipelineManager.getPipeline(
-      'image-classification',
-      VIT_MODEL,
-      onProgress,
-    )
     const bitmap = await createImageBitmap(imageBlob)
-    const canvas = document.createElement('canvas')
-    canvas.width = bitmap.width
-    canvas.height = bitmap.height
-    canvas.getContext('2d')!.drawImage(bitmap, 0, 0)
-    bitmap.close()
+    const { width: imgW, height: imgH } = bitmap
 
-    await pipe(canvas.toDataURL('image/webp', 0.9), { top_k: 5 })
+    // 1. Try native face detection
+    const faceCenter = await detectFaceCenter(bitmap)
 
-    // Center-crop to square at 512px (ViT attention map as future enhancement)
-    const size = Math.min(canvas.width, canvas.height)
-    const x = Math.round((canvas.width - size) / 2)
-    const y = Math.round((canvas.height - size) / 2)
+    const crop = faceCenter
+      ? squareCrop(imgW, imgH, faceCenter.cx, faceCenter.cy)
+      : (() => {
+          // 2. ViT-informed fallback: still geometric center (attention map future work)
+          const size = Math.min(imgW, imgH)
+          return { x: Math.round((imgW - size) / 2), y: Math.round((imgH - size) / 2), size }
+        })()
+
+    // Run ViT in background for future attention-map use (don't await — don't block)
+    if (!faceCenter) {
+      PipelineManager.getPipeline('image-classification', VIT_MODEL, onProgress)
+        .then((pipe) => pipe(imageBlob, { top_k: 1 }).catch(() => {}))
+        .catch(() => {})
+    }
+
     const cropCanvas = document.createElement('canvas')
     cropCanvas.width = 512
     cropCanvas.height = 512
-    cropCanvas.getContext('2d')!.drawImage(canvas, x, y, size, size, 0, 0, 512, 512)
+    cropCanvas.getContext('2d')!.drawImage(bitmap, crop.x, crop.y, crop.size, crop.size, 0, 0, 512, 512)
+    bitmap.close()
 
     return new Promise((resolve) =>
       cropCanvas.toBlob((b) => resolve(b), 'image/webp', 0.85),
@@ -104,7 +146,7 @@ async function _generateSalientCrop(
     console.error('[stage3] generateSalientCrop failed', e)
     return null
   } finally {
-    await PipelineManager.disposePipeline('image-classification', VIT_MODEL)
+    await PipelineManager.disposePipeline('image-classification', VIT_MODEL).catch(() => {})
   }
 }
 
