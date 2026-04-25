@@ -162,6 +162,7 @@ export const status = z.enum([
   'pending',
   'validating',
   'queued',
+  'itemCreated',
 ])
 
 const storagePlanType = z.enum([
@@ -257,10 +258,12 @@ export let mediafile = z.object({
   file: z.file(),
   id: z.string(),
   key: z.string(),
+  uploadId: z.string().optional(),
   location: z.url().optional(),
   ownerId: z.string().optional(),
   progress: uploadProgress,
   status: status,
+  thumbnail: z.string().optional(),
   processingStatus: processingStatus.optional(),
   processingError: z.string().optional(),
   // AI model outputs
@@ -302,6 +305,8 @@ export let uploadManagerSchema = z.object({
   quotaActor: z.custom<ActorRefFrom<typeof quotaMachine>>().optional(),
   fileActors: z.map(z.string(), z.custom<ActorRefFrom<typeof fileMachine>>()),
   error: z.string().optional(),
+  isVisible: z.boolean().default(false),
+  dismissed: z.set(z.string()).default(new Set()),
 })
 
 // ====================================================== //
@@ -392,7 +397,31 @@ let uploadResumed = z.object({
   mediaFile: mediafile,
 })
 
+let uploadOpenView = z.object({
+  type: z.literal(`${UPLOAD}.view.toggle`),
+})
 
+let uploadDismiss = z.object({
+  type: z.literal(`${UPLOAD}.dismiss`),
+  mediaFileId: z.string(),
+})
+
+let uploadCreateItemSuccess = z.object({
+  type: z.literal(`${UPLOAD}.createItem.success`),
+  mediaFileId: z.string(),
+})
+
+let uploadCreateItemError = z.object({
+  type: z.literal(`${UPLOAD}.createItem.error`),
+  mediaFileId: z.string(),
+  error: z.string(),
+})
+
+let uploadThumbnail = z.object({
+  type: z.literal(`${UPLOAD}.thumbnail`),
+  mediaFileId: z.string(),
+  thumbnail: z.string(),
+})
 
 export let uploadManagerEvents = z.discriminatedUnion('type', [
   uploadConfig,
@@ -415,6 +444,11 @@ export let uploadManagerEvents = z.discriminatedUnion('type', [
   uploadResume,
   uploadPaused,
   uploadResumed,
+  uploadOpenView,
+  uploadDismiss,
+  uploadCreateItemError,
+  uploadThumbnail,
+  uploadCreateItemSuccess,
 ])
 
 export let fileMachineContext = z.object({

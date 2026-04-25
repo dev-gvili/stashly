@@ -10,6 +10,7 @@ import {
 } from '@/utils/filters/item.filters'
 import { getFolderContent } from '@/services/item-actions'
 import { breadcrumbs } from '@/services/breadcrumbs'
+import { prisma } from '@/services/db'
 import { parseSearchParams } from '@/utils/parsers'
 import { getQueryParam, getQueryParamArray } from '@/utils/query-params'
 import { motion } from 'framer-motion'
@@ -36,15 +37,21 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   let filters = buildItemFilters(parsedParams)
 
-  const [folderContent, crumbs] = await Promise.all([
+  const [folderContent, allCrumbs, folder] = await Promise.all([
     getFolderContent({
       cursor: parsedParams.cursor,
       limit: parsedParams.take,
       where: { ...filters, parentId: params.folderId },
     }),
     breadcrumbs(params.folderId),
+    prisma.item.findUnique({
+      where: { id: params.folderId },
+      select: { ownerId: true },
+    }),
   ])
 
+  const crumbs =
+    folder?.ownerId === session.user.id ? allCrumbs : allCrumbs.slice(-1)
   return { ...folderContent, crumbs, me: params.me }
 }
 
@@ -68,17 +75,19 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
     return true
   }
 
-  if (currentSelectedItems.length !== nextSelectedItems.length) {
+  if (
+    currentSelectedItems.some((item) => !nextSelectedItems.includes(item)) &&
+    currentUrl.pathname === nextUrl.pathname
+  ) {
     return false
   }
   return true
 }
 
 export default () => {
-  const { crumbs, me } = useLoaderData() as Route.ComponentProps['loaderData']
   let { items, loadMore, isLoading, hasMore } = usePagination<
     Route.ComponentProps['loaderData']['items'][number]
-  >(25, '')
+  >(50, '')
   return (
     <div className="w-full h-full relative space-y-4">
       <SelectionProvider items={items.map((i) => i.id)}>
