@@ -1,6 +1,6 @@
 export type ImageData = {
   id: string
-  src: string
+  src: string | null
   alt: string
   width: number
   height: number
@@ -40,8 +40,9 @@ export const calculateImageDimensions = (
 export function buildRows(
   images: ImageData[],
   containerWidth: number,
-  targetRowHeight: number = 150,
-  gap: number = 8
+  targetRowHeight: number = 170,
+  gap: number = 8,
+  maxPerRow: number = 8
 ) {
   // An array to store the rows of images.
   const rows: RowImageData[][] = []
@@ -75,8 +76,8 @@ export function buildRows(
     const totalGapsWidth = gap * (currentRow.length - 1)
     const rowWidthAtTargetHeight = aspectSum * targetRowHeight + totalGapsWidth
 
-    // If the current row exceeds the container width, justify the row.
-    if (rowWidthAtTargetHeight > containerWidth) {
+    // If the current row exceeds the container width or hits the item cap, justify the row.
+    if (rowWidthAtTargetHeight > containerWidth || currentRow.length >= maxPerRow) {
       // Calculate the final row height that makes the row fit the container width.
       const availableWidthForImages = containerWidth - totalGapsWidth
       const finalRowHeight = availableWidthForImages / aspectSum
@@ -107,6 +108,15 @@ export function buildRows(
     }
   }
 
-  // Return the completed rows.
+  // Flush last partial row — render at natural target height (don't stretch to fill)
+  if (currentRow.length > 0) {
+    rows.push(
+      currentRow.map((item) => {
+        const { width, height } = calculateImageDimensions(item.img.width, item.img.height, targetRowHeight)
+        return { img: item.img, width, height }
+      })
+    )
+  }
+
   return rows
 }
