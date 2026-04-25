@@ -40,7 +40,7 @@ export async function extractTinyThumbnail(file: File): Promise<string | null> {
     canvas.height = 8
     canvas.getContext('2d')!.drawImage(bitmap, 0, 0)
     bitmap.close()
-    return canvas.toDataURL('image/jpeg', 0.5)
+    return canvas.toDataURL('image/webp', 0.5)
   } catch {
     return null
   }
@@ -65,7 +65,7 @@ export async function canvasResize(
     canvas.getContext('2d')!.drawImage(bitmap, 0, 0, w, h)
     bitmap.close()
     return new Promise((resolve) =>
-      canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.82),
+      canvas.toBlob((b) => resolve(b), 'image/webp', 0.82),
     )
   } catch {
     return null
@@ -75,10 +75,10 @@ export async function canvasResize(
 /** Convert a data-URL to a Blob */
 export function dataUrlToBlob(dataUrl: string): Blob {
   const commaIdx = dataUrl.indexOf(',')
-  if (commaIdx === -1) return new Blob([], { type: 'image/jpeg' })
+  if (commaIdx === -1) return new Blob([], { type: 'image/webp' })
   const header = dataUrl.slice(0, commaIdx)
   const base64 = dataUrl.slice(commaIdx + 1)
-  const mime = header.match(/:(.*?);/)?.[1] ?? 'image/jpeg'
+  const mime = header.match(/:(.*?);/)?.[1] ?? 'image/webp'
   const bytes = atob(base64)
   const buf = new Uint8Array(bytes.length)
   for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i)

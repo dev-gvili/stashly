@@ -29,11 +29,13 @@ export type AggregateThumbnail = {
 export type ThumbnailAvgAggregateOutputType = {
   width: number | null
   height: number | null
+  stage: number | null
 }
 
 export type ThumbnailSumAggregateOutputType = {
   width: number | null
   height: number | null
+  stage: number | null
 }
 
 export type ThumbnailMinAggregateOutputType = {
@@ -46,6 +48,7 @@ export type ThumbnailMinAggregateOutputType = {
   content: runtime.Bytes | null
   view: $Enums.ViewType | null
   size: $Enums.ThumbnailSize | null
+  stage: number | null
   itemId: string | null
 }
 
@@ -59,6 +62,7 @@ export type ThumbnailMaxAggregateOutputType = {
   content: runtime.Bytes | null
   view: $Enums.ViewType | null
   size: $Enums.ThumbnailSize | null
+  stage: number | null
   itemId: string | null
 }
 
@@ -72,6 +76,7 @@ export type ThumbnailCountAggregateOutputType = {
   content: number
   view: number
   size: number
+  stage: number
   itemId: number
   _all: number
 }
@@ -80,11 +85,13 @@ export type ThumbnailCountAggregateOutputType = {
 export type ThumbnailAvgAggregateInputType = {
   width?: true
   height?: true
+  stage?: true
 }
 
 export type ThumbnailSumAggregateInputType = {
   width?: true
   height?: true
+  stage?: true
 }
 
 export type ThumbnailMinAggregateInputType = {
@@ -97,6 +104,7 @@ export type ThumbnailMinAggregateInputType = {
   content?: true
   view?: true
   size?: true
+  stage?: true
   itemId?: true
 }
 
@@ -110,6 +118,7 @@ export type ThumbnailMaxAggregateInputType = {
   content?: true
   view?: true
   size?: true
+  stage?: true
   itemId?: true
 }
 
@@ -123,6 +132,7 @@ export type ThumbnailCountAggregateInputType = {
   content?: true
   view?: true
   size?: true
+  stage?: true
   itemId?: true
   _all?: true
 }
@@ -223,6 +233,7 @@ export type ThumbnailGroupByOutputType = {
   content: runtime.Bytes | null
   view: $Enums.ViewType
   size: $Enums.ThumbnailSize
+  stage: number
   itemId: string | null
   _count: ThumbnailCountAggregateOutputType | null
   _avg: ThumbnailAvgAggregateOutputType | null
@@ -259,6 +270,7 @@ export type ThumbnailWhereInput = {
   content?: Prisma.BytesNullableFilter<"Thumbnail"> | runtime.Bytes | null
   view?: Prisma.EnumViewTypeFilter<"Thumbnail"> | $Enums.ViewType
   size?: Prisma.EnumThumbnailSizeFilter<"Thumbnail"> | $Enums.ThumbnailSize
+  stage?: Prisma.IntFilter<"Thumbnail"> | number
   itemId?: Prisma.StringNullableFilter<"Thumbnail"> | string | null
   item?: Prisma.XOR<Prisma.ItemNullableScalarRelationFilter, Prisma.ItemWhereInput> | null
 }
@@ -273,6 +285,7 @@ export type ThumbnailOrderByWithRelationInput = {
   content?: Prisma.SortOrderInput | Prisma.SortOrder
   view?: Prisma.SortOrder
   size?: Prisma.SortOrder
+  stage?: Prisma.SortOrder
   itemId?: Prisma.SortOrderInput | Prisma.SortOrder
   item?: Prisma.ItemOrderByWithRelationInput
 }
@@ -290,6 +303,7 @@ export type ThumbnailWhereUniqueInput = Prisma.AtLeast<{
   content?: Prisma.BytesNullableFilter<"Thumbnail"> | runtime.Bytes | null
   view?: Prisma.EnumViewTypeFilter<"Thumbnail"> | $Enums.ViewType
   size?: Prisma.EnumThumbnailSizeFilter<"Thumbnail"> | $Enums.ThumbnailSize
+  stage?: Prisma.IntFilter<"Thumbnail"> | number
   itemId?: Prisma.StringNullableFilter<"Thumbnail"> | string | null
   item?: Prisma.XOR<Prisma.ItemNullableScalarRelationFilter, Prisma.ItemWhereInput> | null
 }, "id">
@@ -304,6 +318,7 @@ export type ThumbnailOrderByWithAggregationInput = {
   content?: Prisma.SortOrderInput | Prisma.SortOrder
   view?: Prisma.SortOrder
   size?: Prisma.SortOrder
+  stage?: Prisma.SortOrder
   itemId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ThumbnailCountOrderByAggregateInput
   _avg?: Prisma.ThumbnailAvgOrderByAggregateInput
@@ -325,6 +340,7 @@ export type ThumbnailScalarWhereWithAggregatesInput = {
   content?: Prisma.BytesNullableWithAggregatesFilter<"Thumbnail"> | runtime.Bytes | null
   view?: Prisma.EnumViewTypeWithAggregatesFilter<"Thumbnail"> | $Enums.ViewType
   size?: Prisma.EnumThumbnailSizeWithAggregatesFilter<"Thumbnail"> | $Enums.ThumbnailSize
+  stage?: Prisma.IntWithAggregatesFilter<"Thumbnail"> | number
   itemId?: Prisma.StringNullableWithAggregatesFilter<"Thumbnail"> | string | null
 }
 
@@ -338,6 +354,7 @@ export type ThumbnailCreateInput = {
   content?: runtime.Bytes | null
   view?: $Enums.ViewType
   size?: $Enums.ThumbnailSize
+  stage?: number
   item?: Prisma.ItemCreateNestedOneWithoutThumbnailsInput
 }
 
@@ -351,6 +368,7 @@ export type ThumbnailUncheckedCreateInput = {
   content?: runtime.Bytes | null
   view?: $Enums.ViewType
   size?: $Enums.ThumbnailSize
+  stage?: number
   itemId?: string | null
 }
 
@@ -364,6 +382,7 @@ export type ThumbnailUpdateInput = {
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
   view?: Prisma.EnumViewTypeFieldUpdateOperationsInput | $Enums.ViewType
   size?: Prisma.EnumThumbnailSizeFieldUpdateOperationsInput | $Enums.ThumbnailSize
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
   item?: Prisma.ItemUpdateOneWithoutThumbnailsNestedInput
 }
 
@@ -377,6 +396,7 @@ export type ThumbnailUncheckedUpdateInput = {
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
   view?: Prisma.EnumViewTypeFieldUpdateOperationsInput | $Enums.ViewType
   size?: Prisma.EnumThumbnailSizeFieldUpdateOperationsInput | $Enums.ThumbnailSize
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
   itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
@@ -390,6 +410,7 @@ export type ThumbnailCreateManyInput = {
   content?: runtime.Bytes | null
   view?: $Enums.ViewType
   size?: $Enums.ThumbnailSize
+  stage?: number
   itemId?: string | null
 }
 
@@ -403,6 +424,7 @@ export type ThumbnailUpdateManyMutationInput = {
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
   view?: Prisma.EnumViewTypeFieldUpdateOperationsInput | $Enums.ViewType
   size?: Prisma.EnumThumbnailSizeFieldUpdateOperationsInput | $Enums.ThumbnailSize
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type ThumbnailUncheckedUpdateManyInput = {
@@ -415,6 +437,7 @@ export type ThumbnailUncheckedUpdateManyInput = {
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
   view?: Prisma.EnumViewTypeFieldUpdateOperationsInput | $Enums.ViewType
   size?: Prisma.EnumThumbnailSizeFieldUpdateOperationsInput | $Enums.ThumbnailSize
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
   itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
@@ -438,12 +461,14 @@ export type ThumbnailCountOrderByAggregateInput = {
   content?: Prisma.SortOrder
   view?: Prisma.SortOrder
   size?: Prisma.SortOrder
+  stage?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
 }
 
 export type ThumbnailAvgOrderByAggregateInput = {
   width?: Prisma.SortOrder
   height?: Prisma.SortOrder
+  stage?: Prisma.SortOrder
 }
 
 export type ThumbnailMaxOrderByAggregateInput = {
@@ -456,6 +481,7 @@ export type ThumbnailMaxOrderByAggregateInput = {
   content?: Prisma.SortOrder
   view?: Prisma.SortOrder
   size?: Prisma.SortOrder
+  stage?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
 }
 
@@ -469,12 +495,14 @@ export type ThumbnailMinOrderByAggregateInput = {
   content?: Prisma.SortOrder
   view?: Prisma.SortOrder
   size?: Prisma.SortOrder
+  stage?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
 }
 
 export type ThumbnailSumOrderByAggregateInput = {
   width?: Prisma.SortOrder
   height?: Prisma.SortOrder
+  stage?: Prisma.SortOrder
 }
 
 export type ThumbnailCreateNestedManyWithoutItemInput = {
@@ -541,6 +569,7 @@ export type ThumbnailCreateWithoutItemInput = {
   content?: runtime.Bytes | null
   view?: $Enums.ViewType
   size?: $Enums.ThumbnailSize
+  stage?: number
 }
 
 export type ThumbnailUncheckedCreateWithoutItemInput = {
@@ -553,6 +582,7 @@ export type ThumbnailUncheckedCreateWithoutItemInput = {
   content?: runtime.Bytes | null
   view?: $Enums.ViewType
   size?: $Enums.ThumbnailSize
+  stage?: number
 }
 
 export type ThumbnailCreateOrConnectWithoutItemInput = {
@@ -594,6 +624,7 @@ export type ThumbnailScalarWhereInput = {
   content?: Prisma.BytesNullableFilter<"Thumbnail"> | runtime.Bytes | null
   view?: Prisma.EnumViewTypeFilter<"Thumbnail"> | $Enums.ViewType
   size?: Prisma.EnumThumbnailSizeFilter<"Thumbnail"> | $Enums.ThumbnailSize
+  stage?: Prisma.IntFilter<"Thumbnail"> | number
   itemId?: Prisma.StringNullableFilter<"Thumbnail"> | string | null
 }
 
@@ -607,6 +638,7 @@ export type ThumbnailCreateManyItemInput = {
   content?: runtime.Bytes | null
   view?: $Enums.ViewType
   size?: $Enums.ThumbnailSize
+  stage?: number
 }
 
 export type ThumbnailUpdateWithoutItemInput = {
@@ -619,6 +651,7 @@ export type ThumbnailUpdateWithoutItemInput = {
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
   view?: Prisma.EnumViewTypeFieldUpdateOperationsInput | $Enums.ViewType
   size?: Prisma.EnumThumbnailSizeFieldUpdateOperationsInput | $Enums.ThumbnailSize
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type ThumbnailUncheckedUpdateWithoutItemInput = {
@@ -631,6 +664,7 @@ export type ThumbnailUncheckedUpdateWithoutItemInput = {
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
   view?: Prisma.EnumViewTypeFieldUpdateOperationsInput | $Enums.ViewType
   size?: Prisma.EnumThumbnailSizeFieldUpdateOperationsInput | $Enums.ThumbnailSize
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type ThumbnailUncheckedUpdateManyWithoutItemInput = {
@@ -643,6 +677,7 @@ export type ThumbnailUncheckedUpdateManyWithoutItemInput = {
   content?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
   view?: Prisma.EnumViewTypeFieldUpdateOperationsInput | $Enums.ViewType
   size?: Prisma.EnumThumbnailSizeFieldUpdateOperationsInput | $Enums.ThumbnailSize
+  stage?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 
@@ -657,6 +692,7 @@ export type ThumbnailSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   content?: boolean
   view?: boolean
   size?: boolean
+  stage?: boolean
   itemId?: boolean
   item?: boolean | Prisma.Thumbnail$itemArgs<ExtArgs>
 }, ExtArgs["result"]["thumbnail"]>
@@ -671,6 +707,7 @@ export type ThumbnailSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   content?: boolean
   view?: boolean
   size?: boolean
+  stage?: boolean
   itemId?: boolean
   item?: boolean | Prisma.Thumbnail$itemArgs<ExtArgs>
 }, ExtArgs["result"]["thumbnail"]>
@@ -685,6 +722,7 @@ export type ThumbnailSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   content?: boolean
   view?: boolean
   size?: boolean
+  stage?: boolean
   itemId?: boolean
   item?: boolean | Prisma.Thumbnail$itemArgs<ExtArgs>
 }, ExtArgs["result"]["thumbnail"]>
@@ -699,10 +737,11 @@ export type ThumbnailSelectScalar = {
   content?: boolean
   view?: boolean
   size?: boolean
+  stage?: boolean
   itemId?: boolean
 }
 
-export type ThumbnailOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "width" | "height" | "url" | "content" | "view" | "size" | "itemId", ExtArgs["result"]["thumbnail"]>
+export type ThumbnailOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "width" | "height" | "url" | "content" | "view" | "size" | "stage" | "itemId", ExtArgs["result"]["thumbnail"]>
 export type ThumbnailInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   item?: boolean | Prisma.Thumbnail$itemArgs<ExtArgs>
 }
@@ -728,6 +767,7 @@ export type $ThumbnailPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     content: runtime.Bytes | null
     view: $Enums.ViewType
     size: $Enums.ThumbnailSize
+    stage: number
     itemId: string | null
   }, ExtArgs["result"]["thumbnail"]>
   composites: {}
@@ -1162,6 +1202,7 @@ export interface ThumbnailFieldRefs {
   readonly content: Prisma.FieldRef<"Thumbnail", 'Bytes'>
   readonly view: Prisma.FieldRef<"Thumbnail", 'ViewType'>
   readonly size: Prisma.FieldRef<"Thumbnail", 'ThumbnailSize'>
+  readonly stage: Prisma.FieldRef<"Thumbnail", 'Int'>
   readonly itemId: Prisma.FieldRef<"Thumbnail", 'String'>
 }
     

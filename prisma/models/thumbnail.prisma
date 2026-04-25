@@ -7,12 +7,11 @@ model Thumbnail {
     url       String?
     content   Bytes?        @db.ByteA
     view      ViewType      @default(grid)
-    size      ThumbnailSize @default(original)
+    size      ThumbnailSize @default(small)
     stage     Int           @default(0)
     itemId    String?
     item      Item?         @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-    @@unique([itemId, view, size])
 }
 
 enum ThumbnailSize {
