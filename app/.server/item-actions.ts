@@ -349,6 +349,12 @@ export async function trashItems(ids: string[]) {
     return
   }
 
+  const itemMeta = await prisma.item.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, name: true, type: true },
+  })
+  const metaMap = Object.fromEntries(itemMeta.map((i) => [i.id, i]))
+
   // Update status for all items at once
   const result = await prisma.item.updateMany({
     where: {
@@ -360,10 +366,11 @@ export async function trashItems(ids: string[]) {
   })
 
   for (const id of ids) {
+    const meta = metaMap[id]
     createActivity({
       item: { connect: { id } },
       time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), delete: { create: { id: toObjectId(getPrefixForModel('DeleteAction')), name: id, itemType: 'file' } } } },
+      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), delete: { create: { id: toObjectId(getPrefixForModel('DeleteAction')), name: meta?.name ?? id, itemType: meta?.type === 'folder' ? 'folder' : 'file' } } } },
     }).catch(() => {})
   }
 
@@ -462,7 +469,7 @@ export async function deleteItem(id: string) {
   createActivity({
     item: { connect: { id } },
     time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-    action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), delete: { create: { id: toObjectId(getPrefixForModel('DeleteAction')), name: id, itemType: 'file' } } } },
+    action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), delete: { create: { id: toObjectId(getPrefixForModel('DeleteAction')), name: deleted.name, itemType: deleted.type === 'folder' ? 'folder' : 'file' } } } },
   }).catch(() => {})
 
   return deleted

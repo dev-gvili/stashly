@@ -725,7 +725,7 @@ export function ShareDialog({
 
   // Load links when dialog opens
   useEffect(() => {
-    if (open) {
+    if (open && itemId) {
       loaderFetcher.load(`/api/shares?itemId=${itemId}`)
     }
   }, [open, itemId])
@@ -838,7 +838,7 @@ export function ShareDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="links" className="w-full">
+        <Tabs defaultValue="create" className="w-full">
           <TabsList className="w-full grid grid-cols-2">
             <TabsTrigger value="links" className="text-xs font-stashly">
               Share links

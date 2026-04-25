@@ -22,6 +22,27 @@ export async function loader({ request }: Route.LoaderArgs) {
     cursor: params.cursor,
     take: params.take,
     strategy: 'cursor',
+    orderBy: { time: { observedAt: 'desc' } },
+    include: {
+      time: true,
+      item: true,
+      action: {
+        include: {
+          create: true,
+          rename: true,
+          move: true,
+          delete: true,
+          restore: true,
+          copy: true,
+          share: true,
+          version: true,
+          comment: true,
+          permission: true,
+          edit: true,
+        },
+      },
+      access: true,
+    },
   })
 
   return data(result)

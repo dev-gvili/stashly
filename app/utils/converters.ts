@@ -746,6 +746,7 @@ export const StashlyPrefixMap = {
   RestoreAction: 'rsa',
   ShareAction: 'sha',
   VersionAction: 'va',
+  PermissionAction: 'pa',
   Activity: 'act',
   ActivityTime: 'at',
   AuditLog: 'aud',

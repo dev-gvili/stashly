@@ -27,6 +27,7 @@ import React, { useCallback } from 'react'
 import useConfirm from '@/hooks/useConfirm'
 import { toFavorite } from '@/utils/converters'
 import { useItemCard } from '@/hooks/useItemCard'
+import { ItemActivityDrawer } from '@/components/core-components/item-activity-drawer'
 
 export const ItemActions = (
   props: React.ComponentPropsWithoutRef<typeof DropdownMenuTrigger>
@@ -34,6 +35,7 @@ export const ItemActions = (
   let fetcher = useFetcher()
   let { id, name, status, favorites, user } = useItemCard()
   let favorited = toFavorite({ favorites, userId: user?.id })
+  const [activityOpen, setActivityOpen] = React.useState(false)
   if (fetcher.data) {
     favorited = fetcher.data?.favorited ?? favorited
   }
@@ -63,6 +65,7 @@ export const ItemActions = (
   }, [])
 
   return (
+    <>
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger onClick={(e) => e.stopPropagation()} {...props}>
         <MenuDotsIcon className="size-6!" />
@@ -142,7 +145,7 @@ export const ItemActions = (
               <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
                 Information
               </DropdownMenuLabel>
-              <DropdownMenuItem className="items-start">
+              <DropdownMenuItem className="items-start" onClick={() => setActivityOpen(true)}>
                 <ActivityIcon className="text-foreground" />
                 Activity
               </DropdownMenuItem>
@@ -205,5 +208,8 @@ export const ItemActions = (
         </DropdownMenuContent>
       )}
     </DropdownMenu>
+
+    <ItemActivityDrawer itemId={id} open={activityOpen} onOpenChange={setActivityOpen} />
+    </>
   )
 }

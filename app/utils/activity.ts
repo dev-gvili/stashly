@@ -16,7 +16,6 @@ type ActivityWithRelations = Prisma.ActivityGetPayload<{
         version: true
         comment: true
         permission: true
-        access: true
         edit: true
       }
     }
@@ -29,13 +28,18 @@ export type { ActivityWithRelations }
 export function formatActivity(activity: ActivityWithRelations): string {
   const a = activity.action
   if (!a) return 'Activity recorded'
-  if (a.create) return 'You created an item'
+  if (a.create) return 'You uploaded a file'
   if (a.rename) return `You renamed ${a.rename.oldName} → ${a.rename.newName}`
   if (a.move) return `You moved this item to ${a.move.to}`
   if (a.delete) return `You deleted ${a.delete.name}`
   if (a.restore) return 'You restored this item'
   if (a.copy) return `You copied this item to ${a.copy.to}`
-  if (a.share) return `You shared this item with ${a.share.recipients.join(', ')}`
+  if (a.share) {
+    const r = a.share.recipients
+    if (r.length === 0) return 'You shared this item'
+    if (r.length === 1) return `You shared with ${r[0]}`
+    return `You shared with ${r[0]} and ${r.length - 1} more`
+  }
   if (a.version) return `You uploaded version ${a.version.newVersion}`
   if (a.comment) return a.comment.isReply ? 'You replied to a comment' : 'You commented on this item'
   if (a.permission) {

@@ -50,6 +50,7 @@ import {
 } from '@/components/icons'
 import { ShareDialog } from '@/components/core-components/share-dialog'
 import { InviteDialog } from '@/components/core-components/invite-dialog'
+import { ItemActivityDrawer } from '@/components/core-components/item-activity-drawer'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,6 +99,7 @@ const ItemCardActions = (
   let favorited = toFavorite({ favorites, userId: user?.id })
   let [shareOpen, setShareOpen] = React.useState(false)
   let [dmo, setDMOpen] = React.useState(false)
+  let [activityOpen, setActivityOpen] = React.useState(false)
   if (fetcher.data) {
     favorited = fetcher.data?.favorited ?? favorited
   }
@@ -242,7 +244,7 @@ const ItemCardActions = (
                   <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
                     Information
                   </DropdownMenuLabel>
-                  <DropdownMenuItem className="items-start hover:cursor-pointer">
+                  <DropdownMenuItem className="items-start hover:cursor-pointer" onClick={() => setActivityOpen(true)}>
                     <ActivityIcon className="text-current" />
                     Activity
                   </DropdownMenuItem>
@@ -313,6 +315,7 @@ const ItemCardActions = (
         open={dmo}
         onOpenChange={setDMOpen}
       />
+      <ItemActivityDrawer itemId={id} open={activityOpen} onOpenChange={setActivityOpen} />
     </>
   )
 }

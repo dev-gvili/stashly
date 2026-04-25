@@ -35,7 +35,6 @@ const defaultInclude = {
       version: true,
       comment: true,
       permission: true,
-      access: true,
       edit: true,
     },
   },

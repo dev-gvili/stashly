@@ -63,8 +63,8 @@ export async function createPermission(
   const db = tx ?? prisma
   const perm = await db.permission.create({ data })
   if (data.item?.connect?.id) {
-    createActivity({
-      item: { connect: { id: data.item.connect.id as string } },
+    Promise.resolve().then(() => createActivity({
+      item: { connect: { id: data.item!.connect!.id as string } },
       time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
       action: {
         create: {
@@ -72,7 +72,7 @@ export async function createPermission(
           permission: { create: { id: toObjectId(getPrefixForModel('PermissionAction')), type: 'grant', userId: String(data.users?.connect?.id ?? ''), role: String(data.roles ?? '') } },
         },
       },
-    }).catch(() => {})
+    })).catch(() => {})
   }
   return perm
 }
