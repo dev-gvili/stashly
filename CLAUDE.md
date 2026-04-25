@@ -37,24 +37,16 @@ This is a TypeScript project. When moving or reorganizing files, always update a
 ## Commands
 
 ```bash
-pnpm dev          # Start dev server (Vite HMR + Express), available at http://localhost:5173
+pnpm dev          # Start dev server (Express + Vite HMR), available at http://localhost:3000
 pnpm build        # Build for production
 pnpm start        # Run production server
 pnpm typecheck    # Generate React Router types + run tsc
 pnpm format       # Format with Prettier
-pnpm vitest       # Run unit tests (app/utils/__tests__/)
+pnpm test         # Run unit tests once (app/utils/__tests__/)
+pnpm test:watch   # Run unit tests in watch mode
 pnpm prisma migrate dev   # Run database migrations
-pnpm exec playwright test            # Run E2E tests (requires dev server)
-pnpm exec playwright test --ui       # Run E2E tests with Playwright UI
-```
-
-### Code Generation
-
-Generate a new repository + filters for a Prisma model:
-```bash
-pnpm tsx ./scripts/generateRepository.v2.ts <ModelName>
-# Creates: app/.server/repositories/<ModelName>.repository.ts
-#          app/.server/filters/<ModelName>.filters.ts
+pnpm test:e2e     # Run E2E tests (requires dev server)
+pnpm test:e2e:ui  # Run E2E tests with Playwright UI
 ```
 
 ## Architecture
@@ -102,7 +94,7 @@ const collection = await getCollectionForUser(session.user.id, collectionId)
 
 The upload system uses a parent-child actor pattern:
 - `upload.machine.ts` — parent, spawns one `file.machine` per file, manages the queue
-- `file.machine.ts` — individual file: creates multipart upload, uploads chunks in parallel, verifies ETags
+- `reviset/file.machine.ts` — individual file (active implementation in `app/machines/reviset/`): creates multipart upload, uploads chunks in parallel, verifies ETags
 - `queue.machine.ts` — controls concurrent upload slots
 - `quota.machine.ts` — tracks and enforces storage quota
 
@@ -113,12 +105,14 @@ Files upload via S3 presigned URLs: frontend → `/api/s3/presigned` → uploads
 CPU-intensive work runs off the main thread in `app/workers/`. Current workers:
 
 - `stash.worker.ts` — language detection and tokenization for stash items
+- `stash.ai.ts` — AI inference helpers for the stash worker
+- `thumbnail.ai.ts` — thumbnail generation AI worker
 
 Workers are loaded via `new Worker(new URL('./workers/...', import.meta.url))`. Type augmentations for third-party worker APIs live in `app/types/tokenizers-augment.d.ts`.
 
 ### Schemas and Types
 
-- `app/schemas/` — Zod schemas for validating API request/response payloads (`api.schemas.ts`) and XState machine events (`machine.schemas.ts`). Import with `@/schemas/*`.
+- `app/schemas/` — Zod schemas for validating API request/response payloads (`api.schemas.ts`), XState machine events (`machine.schemas.ts`), and repository filter shapes (`filters.schemas.ts`). Import with `@/schemas/*`.
 - `app/types/` — Shared TypeScript types for API contracts (`api.types.ts`), machine actor payloads (`machine.types.ts`, `upload-actors.types.ts`), and global augmentations (`react.d.ts`). Import with `@/types/*`.
 
 Keep Zod schemas and derived TypeScript types co-located: define the Zod schema in `app/schemas/`, then infer and export the TS type from the same file or a parallel file in `app/types/`.
@@ -172,6 +166,8 @@ Components use shadcn/ui (source-owned, in `app/components/ui/`) built on Radix 
 **Dialog data loading**: For dialogs that load data on-demand (not at route load time), use `fetcher.load('/api/route?param=x')` inside a `useEffect` triggered by the dialog's `open` state. Use **two separate fetchers** when a component both reads and mutates — one for `fetcher.load()`, one for `fetcher.submit()`.
 
 **Multi-select grids**: Wrap item grids with `<SelectionProvider items={items.map(i => i.id)}>` from `@/components/stash/selection` to enable shift-click range selection and `useSelection()` in child checkboxes.
+
+**Design exploration files**: `option-*.css` and `options/` directories in `app/styles/` are design experiments — never import them in production code and never commit them.
 
 ### Prisma Schema
 
@@ -270,6 +266,18 @@ When adding a new feature, these steps are **mandatory** in order:
 - No arbitrary Tailwind sizes: use scale values (`text-sm`, `p-4`) not raw values (`text-[10px]`, `p-[13px]`).
 - Check `app/utils/` before creating new utility functions — reuse what exists.
 - Use the `shadcn-ui-component-builder` skill when building new shadcn/ui components or custom hooks.
+
+## Activity Recording
+
+**Fire-and-forget pattern**: Use `Promise.resolve().then(() => createActivity({...})).catch(() => {})` — not just `createActivity({...}).catch(() => {})`. Arguments to `createActivity` may throw synchronously (e.g. `toObjectId` when a prefix is missing), which `.catch()` on the returned promise cannot intercept.
+
+**`searchFactory` does not auto-apply `defaultInclude`**: Pass `include` explicitly on every `searchActivities` / `searchItems` call or relations will be omitted from results.
+
+**`StashlyPrefixMap`**: Every new Prisma model that uses `toObjectId(getPrefixForModel('ModelName'))` must have an entry in `app/utils/converters.ts`. Missing entries throw synchronously: `Invalid prefix: must be a non-empty string without an underscore`.
+
+**`Activity.access` include level**: `access: true` belongs at the top-level `Activity` include, not inside `action: { include: { ... } }` (which maps to `ItemAction` — `ItemAction` has no `access` field).
+
+**Item card dropdown**: Actions live in the internal `ItemCardActions` component inside `app/components/stash/item-card.tsx`. The file `item-card-actions.tsx` is unused — don't edit it.
 
 ## Workflows
 
