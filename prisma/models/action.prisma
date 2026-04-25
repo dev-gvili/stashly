@@ -20,10 +20,10 @@ model ItemAction {
     versionActionId String?        @unique
     activity        Activity?      @relation(fields: [activityId], references: [id])
     activityId      String?        @unique
-    copy               CopyAction?       @relation(fields: [copyActionId], references: [id])
-    copyActionId       String?           @unique
-    permission         PermissionAction? @relation(fields: [permissionActionId], references: [id])
-    permissionActionId String?           @unique
+    copy            CopyAction?       @relation(fields: [copyActionId], references: [id])
+    copyActionId    String?           @unique
+    permission      PermissionAction? @relation(fields: [permissionActionId], references: [id])
+    permissionActionId String?        @unique
 }
 
 model PermissionAction {
