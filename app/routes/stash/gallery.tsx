@@ -72,11 +72,16 @@ export async function loader({ request }: Route.ActionArgs) {
           stage: true,
         },
       },
+      image: { select: { width: true, height: true } },
+      video: { select: { width: true, height: true } },
     },
   })
 
   let images = res.map((item) => {
     let thumb = item.thumbnails[0]
+    // Prefer thumbnail dims → image/video facet dims → 4:3 fallback
+    const w = thumb?.width ?? item.image?.width ?? item.video?.width ?? 4
+    const h = thumb?.height ?? item.image?.height ?? item.video?.height ?? 3
     return {
       id: item.id,
       src:
@@ -84,11 +89,11 @@ export async function loader({ request }: Route.ActionArgs) {
         `https://${session.user.bucket}.t3.tigrisfiles.io/${item.parentId}/${item.name}`,
       alt: item?.name,
       view: thumb?.view,
-      width: thumb?.width ?? 512,
-      height: thumb?.height ?? 512,
+      width: w,
+      height: h,
       size: thumb?.size!,
-      srcSet: buildSrcSet(thumb?.url!, [thumb?.width ?? 512, (thumb?.width ?? 512) * 2]),
-      sizes: `${thumb?.width ?? 512}px`,
+      srcSet: buildSrcSet(thumb?.url!, [w, w * 2]),
+      sizes: `${w}px`,
       name: item.name,
       type: item.type,
       parentId: item.parentId,
