@@ -7,12 +7,13 @@ import type { StashItem } from '@/types/stash.types'
 import {
   hasItemPermission,
   getItemPermissions,
+  grantItemPermission,
 } from '@/services/permission-actions'
 import {
   requireMembership,
   requireAtLeastRole,
 } from '@/services/workspace-actions'
-import { ensureUserQuota, onItemsCopied } from '../.server/quota-actions'
+import { ensureUserQuota, onItemsCopied, onItemsUploaded } from '../.server/quota-actions'
 import { formatSize } from '@/utils/formaters'
 import { searchFactory } from './search/search'
 import { buildItemFilters } from './search/item.filters'
@@ -718,6 +719,152 @@ export async function createFolder(
         },
       },
     },
+  })
+}
+
+async function findOrCreateFolderPath(
+  pathParts: string[],
+  rootId: string,
+  ownerId: string,
+  driveId: string,
+  tx: TransactionClient
+): Promise<string> {
+  let currentParentId = rootId
+  for (const folderName of pathParts) {
+    const existing = await tx.item.findFirst({
+      where: { name: folderName, parentId: currentParentId, type: 'folder', ownerId },
+      select: { id: true },
+    })
+    if (existing) {
+      currentParentId = existing.id
+    } else {
+      const folder = await tx.item.create({
+        data: {
+          id: toObjectId(getPrefixForModel('Item')),
+          name: folderName,
+          parentId: currentParentId,
+          driveId,
+          ownerId,
+          type: 'folder',
+          category: 'unknown',
+          status: 'normal',
+          folder: {
+            create: {
+              id: toObjectId(getPrefixForModel('Folder')),
+              view: {
+                create: { viewType: 'grid', sortBy: 'type', sortOrder: 'ascending' },
+              },
+            },
+          },
+        },
+        select: { id: true },
+      })
+      currentParentId = folder.id
+    }
+  }
+  return currentParentId
+}
+
+export async function upsertImageFacet(
+  itemId: string,
+  data: {
+    width?: number
+    height?: number
+    cameraMake?: string
+    cameraModel?: string
+    iso?: number
+    fNumber?: number
+    exposureTime?: number
+    focalLength?: number
+    takenDateTime?: Date
+    latitude?: number
+    longitude?: number
+  }
+) {
+  const existing = await prisma.image.findFirst({ where: { itemId } })
+  if (existing) {
+    return prisma.image.update({ where: { id: existing.id }, data })
+  }
+  return prisma.image.create({
+    data: { id: toObjectId(getPrefixForModel('Image')), itemId, ...data },
+  })
+}
+
+export async function upsertVideoFacet(
+  itemId: string,
+  data: {
+    width?: number
+    height?: number
+    duration?: number
+    frameRate?: number
+  }
+) {
+  const existing = await prisma.video.findFirst({ where: { itemId } })
+  if (existing) {
+    return prisma.video.update({ where: { id: existing.id }, data })
+  }
+  return prisma.video.create({
+    data: { id: toObjectId(getPrefixForModel('Video')), itemId, ...data },
+  })
+}
+
+export async function createUploadedItem(data: {
+  id: string
+  name: string
+  key: string
+  size: bigint
+  mimeType?: string
+  etag?: string
+  bucket: string
+  driveId: string
+  parentId: string
+  ownerId: string
+  category?: string
+}) {
+  return await prisma.$transaction(async (tx) => {
+    const segments = data.key.split('/')
+    const rootId = segments[0]
+    const pathParts = segments.slice(1, -1)
+    const resolvedParentId =
+      pathParts.length > 0
+        ? await findOrCreateFolderPath(pathParts, rootId, data.ownerId, data.driveId, tx)
+        : rootId
+
+    const item = await tx.item.create({
+      data: {
+        id: data.id,
+        name: data.name,
+        type: 'file',
+        category: (data.category ?? 'unknown') as any,
+        status: 'normal',
+        ownerId: data.ownerId,
+        driveId: data.driveId,
+        parentId: resolvedParentId,
+        size: data.size,
+        file: {
+          create: {
+            id: toObjectId(getPrefixForModel('File')),
+            bucket: data.bucket,
+            key: data.key,
+            mimeType: data.mimeType,
+            etag: data.etag,
+            extension: data.name.split('.').pop() ?? '',
+          },
+        },
+        permissions: {
+          create: {
+            id: toObjectId(getPrefixForModel('Permission')),
+            roles: 'owner',
+            users: { connect: { id: data.ownerId } },
+          },
+        },
+      },
+      select: defaultItemSelect,
+    })
+
+    await onItemsUploaded({ userId: data.ownerId, dataSize: data.size, client: tx })
+
+    return item
   })
 }
 

@@ -97,6 +97,27 @@ export const itemsApiRouteInput = z.discriminatedUnion('intent', [
     ownerId: z.string(),
     category: z.string().optional(),
   }),
+  z.object({
+    intent: z.literal('save_media_metadata'),
+    itemId: z.string().nonempty(),
+    // image fields
+    imageWidth: z.coerce.number().int().optional(),
+    imageHeight: z.coerce.number().int().optional(),
+    cameraMake: z.string().optional(),
+    cameraModel: z.string().optional(),
+    iso: z.coerce.number().int().optional(),
+    fNumber: z.coerce.number().optional(),
+    exposureTime: z.coerce.number().optional(),
+    focalLength: z.coerce.number().optional(),
+    takenDateTime: z.coerce.date().optional(),
+    latitude: z.coerce.number().optional(),
+    longitude: z.coerce.number().optional(),
+    // video fields
+    videoWidth: z.coerce.number().int().optional(),
+    videoHeight: z.coerce.number().int().optional(),
+    duration: z.coerce.number().optional(),
+    frameRate: z.coerce.number().optional(),
+  }),
 ])
 
 // ====================================================== //
@@ -558,13 +579,14 @@ export const permissionsApiRouteInput = z.discriminatedUnion('intent', [
 export const thumbnailCreateSchema = z.object({
   itemId: z.string().nonempty(),
   url: z.string().nonempty(), // hex color e.g. '#3b82f6'
+  view: z.enum(['list', 'grid', 'river', 'waterfall']).default('grid'),
+  size: z.enum(['small', 'medium', 'large', 'original', 'custom']).default('medium'),
 })
 
-// PATCH sends multipart/form-data.
-// `content` arrives as a File/Blob field parsed by parseFormData.
+// PATCH sends url-encoded or JSON — url is a data URL e.g. 'data:image/jpeg;base64,...'
 export const thumbnailUpdateSchema = z.object({
   stage: z.coerce.number().int().min(1).max(4),
-  content: z.instanceof(File),
+  url: z.string().min(1),
   width: z.coerce.number().int().optional(),
   height: z.coerce.number().int().optional(),
 })

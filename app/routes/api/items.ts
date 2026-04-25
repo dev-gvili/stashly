@@ -1,6 +1,9 @@
 import { auth } from '@/services/auth'
 import { toZodArraySchema } from '@/utils/converters'
 import {
+  createUploadedItem,
+  upsertImageFacet,
+  upsertVideoFacet,
   deleteItem,
   deleteItems,
   moveItem,
@@ -12,9 +15,10 @@ import {
 } from '@/services/item-actions'
 import { parseFormData } from '@/utils/parsers'
 import { removeQueryParam, removeQueryParamValue } from '@/utils/query-params'
-import { redirect } from 'react-router'
+import { data, redirect } from 'react-router'
 import type { Route } from './+types/items'
 import { itemsApiRouteInput } from '@/schemas/api.schemas'
+import { z } from 'zod'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   // TODO: implement loader logic
@@ -112,6 +116,46 @@ export async function action({ request, params }: Route.ActionArgs) {
         console.error(e)
         return { success: false, error: e }
       }
+    case 'create_upload_item': {
+      try {
+        const item = await createUploadedItem({
+          id: parsedData.id,
+          name: parsedData.name,
+          key: parsedData.key,
+          size: parsedData.size,
+          mimeType: parsedData.mimeType,
+          etag: parsedData.etag,
+          bucket: parsedData.bucket,
+          driveId: parsedData.driveId,
+          parentId: parsedData.parentId,
+          ownerId: parsedData.ownerId,
+          category: parsedData.category,
+        })
+        const serializable = z
+          .object({ size: z.coerce.string(), inclusiveSize: z.coerce.string() })
+          .loose()
+          .parse(item)
+          // return redirect(`${url.pathname}${url.search}`)
+        return data({ success: true, item: serializable })
+      } catch (e) {
+        const err = e as { message?: string }
+        return { success: false, error: err.message }
+      }
+    }
+    case 'save_media_metadata': {
+      try {
+        const { itemId, imageWidth, imageHeight, cameraMake, cameraModel, iso, fNumber, exposureTime, focalLength, takenDateTime, latitude, longitude, videoWidth, videoHeight, duration, frameRate } = parsedData
+        if (imageWidth != null || imageHeight != null) {
+          await upsertImageFacet(itemId, { width: imageWidth, height: imageHeight, cameraMake, cameraModel, iso, fNumber, exposureTime, focalLength, takenDateTime, latitude, longitude })
+        } else if (videoWidth != null || videoHeight != null || duration != null) {
+          await upsertVideoFacet(itemId, { width: videoWidth, height: videoHeight, duration, frameRate })
+        }
+        return data({ success: true })
+      } catch (e) {
+        const err = e as { message?: string }
+        return { success: false, error: err.message }
+      }
+    }
     default:
       break
   }
