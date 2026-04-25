@@ -8,6 +8,24 @@ import { findStoragePlanById, findStoragePlanByType } from './storagePlan-action
 import { createQuota, updateTotalQuota } from './quota-actions'
 import { stripe } from './stripe'
 import type Stripe from 'stripe'
+import { buildSubscriptionFilters } from '@/utils/filters/subscription.filters'
+import { searchFactory } from '@/utils/search'
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * Paginated, filterable search over Subscription records.
+ *
+ * @example
+ * const page = await searchSubscriptions({ ownerId: 'user_123', take: 20, strategy: 'cursor' })
+ */
+export const searchSubscriptions = searchFactory({
+  dbDelegate: prisma.subscription,
+  buildFilters: buildSubscriptionFilters,
+  defaultOrderBy: (): Prisma.SubscriptionOrderByWithRelationInput => ({ createdAt: 'desc' }),
+})
 
 // ---------------------------------------------------------------------------
 // Queries

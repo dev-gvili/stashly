@@ -386,6 +386,7 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 export const ModelName = {
   Account: 'Account',
   ItemAction: 'ItemAction',
+  PermissionAction: 'PermissionAction',
   AccessAction: 'AccessAction',
   CommentAction: 'CommentAction',
   CreateAction: 'CreateAction',
@@ -445,7 +446,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "account" | "itemAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "quota" | "search" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
+    modelProps: "account" | "itemAction" | "permissionAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "quota" | "search" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -594,6 +595,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ItemActionCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ItemActionCountAggregateOutputType> | number
+        }
+      }
+    }
+    PermissionAction: {
+      payload: Prisma.$PermissionActionPayload<ExtArgs>
+      fields: Prisma.PermissionActionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PermissionActionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PermissionActionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PermissionActionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PermissionActionPayload>
+        }
+        findFirst: {
+          args: Prisma.PermissionActionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PermissionActionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PermissionActionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PermissionActionPayload>
+        }
+        findMany: {
+          args: Prisma.PermissionActionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PermissionActionPayload>[]
+        }
+        create: {
+          args: Prisma.PermissionActionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PermissionActionPayload>
+        }
+        createMany: {
+          args: Prisma.PermissionActionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PermissionActionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PermissionActionPayload>[]
+        }
+        delete: {
+          args: Prisma.PermissionActionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PermissionActionPayload>
+        }
+        update: {
+          args: Prisma.PermissionActionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PermissionActionPayload>
+        }
+        deleteMany: {
+          args: Prisma.PermissionActionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PermissionActionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PermissionActionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PermissionActionPayload>[]
+        }
+        upsert: {
+          args: Prisma.PermissionActionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PermissionActionPayload>
+        }
+        aggregate: {
+          args: Prisma.PermissionActionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePermissionAction>
+        }
+        groupBy: {
+          args: Prisma.PermissionActionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PermissionActionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PermissionActionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PermissionActionCountAggregateOutputType> | number
         }
       }
     }
@@ -3915,10 +3990,21 @@ export const ItemActionScalarFieldEnum = {
   shareActionId: 'shareActionId',
   versionActionId: 'versionActionId',
   activityId: 'activityId',
-  copyActionId: 'copyActionId'
+  copyActionId: 'copyActionId',
+  permissionActionId: 'permissionActionId'
 } as const
 
 export type ItemActionScalarFieldEnum = (typeof ItemActionScalarFieldEnum)[keyof typeof ItemActionScalarFieldEnum]
+
+
+export const PermissionActionScalarFieldEnum = {
+  id: 'id',
+  type: 'type',
+  userId: 'userId',
+  role: 'role'
+} as const
+
+export type PermissionActionScalarFieldEnum = (typeof PermissionActionScalarFieldEnum)[keyof typeof PermissionActionScalarFieldEnum]
 
 
 export const AccessActionScalarFieldEnum = {
@@ -4366,6 +4452,7 @@ export const ThumbnailScalarFieldEnum = {
   content: 'content',
   view: 'view',
   size: 'size',
+  stage: 'stage',
   itemId: 'itemId'
 } as const
 
@@ -4989,6 +5076,7 @@ export type PrismaClientOptions = ({
 export type GlobalOmitConfig = {
   account?: Prisma.AccountOmit
   itemAction?: Prisma.ItemActionOmit
+  permissionAction?: Prisma.PermissionActionOmit
   accessAction?: Prisma.AccessActionOmit
   commentAction?: Prisma.CommentActionOmit
   createAction?: Prisma.CreateActionOmit

@@ -43,6 +43,8 @@ const Delete = (props: React.ComponentProps<typeof Button>) => {
             description:
               'This action cannot be undone, deleted items cannot be restored.',
             confirmText: 'Delete',
+            cancelProps: { variant: 'secondary', size: 'sm' },
+            confirmProps: { variant: 'destructive', size: 'sm' },
           })
         }
         {...props}
@@ -87,20 +89,21 @@ const Restore = (props: React.ComponentProps<typeof Button>) => {
 
   let selectedItems = getQueryParam(searchParams, 'selectedItems')
   return (
-    <Button
-      size="icon-sm"
-      variant="outline"
-      disabled={!selectedItems}
-      onClick={() => {
-        fetcher.submit(
-          { intent: 'restore_items', selectedItems },
-          { method: 'POST', action: '/api/items' }
-        )
-      }}
-      {...props}
-    >
-      <RestoreIcon className="size-5!" />
-    </Button>
+    <Tooltip content="Restore items">
+      <Button
+        size="icon-sm"
+        disabled={!selectedItems}
+        onClick={() => {
+          fetcher.submit(
+            { intent: 'restore_items', selectedItems },
+            { method: 'POST', action: '/api/items' }
+          )
+        }}
+        {...props}
+      >
+        <RestoreIcon className="size-5!" />
+      </Button>
+    </Tooltip>
   )
 }
 
@@ -182,7 +185,7 @@ const LoadMoreItems = ({
           />
         </>
       )}
-      Load More 
+      Load More
     </Button>
   )
 }

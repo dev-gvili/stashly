@@ -4,6 +4,24 @@ import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { hasItemPermission } from '@/services/permission-actions'
 import type { Invitation, Prisma } from '@/prisma/client'
 import type { WorkspaceMemberRole, PermissionRole } from '@/prisma/enums'
+import { buildInvitationFilters } from '@/utils/filters/invitation.filters'
+import { searchFactory } from '@/utils/search'
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * Paginated, filterable search over Invitation records.
+ *
+ * @example
+ * const page = await searchInvitations({ senderId: 'user_123', take: 20, strategy: 'cursor' })
+ */
+export const searchInvitations = searchFactory({
+  dbDelegate: prisma.invitation,
+  buildFilters: buildInvitationFilters,
+  defaultOrderBy: (): Prisma.InvitationOrderByWithRelationInput => ({ createdAt: 'desc' }),
+})
 
 type PrismaTx = Omit<
   typeof prisma,

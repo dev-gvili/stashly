@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Working Style
+
+- Act first, explain second. When the user asks for commits, edits, or a PR, DO the work — don't produce plans or commit messages without executing.
+- Avoid over-reading / over-exploring. Make the change, then verify.
+- If blocked by auth (e.g., `gh` GITHUB_TOKEN), surface it immediately rather than retrying silently.
+
 ## Core Rules
 
 When I ask you to do something, DO IT immediately. Don't over-explain, don't read extra files, don't write specs or plans unless I ask. Act first, explain only if needed.
@@ -184,6 +190,15 @@ Models are split across `prisma/models/*.prisma` files and merged. Generated cli
 ## Database / SQL
 
 Start with the simplest query that works. Do not use recursive CTEs or over-engineered approaches. Optimize only if there's a demonstrated performance need.
+
+## Prisma Client
+
+- Import Prisma client from `app/prisma/client` — do NOT use the generated client via tsx or any other path.
+
+## Zod Conventions
+
+- Use `z.url()`, `z.email()`, etc. (not deprecated `z.string().url()` syntax)
+- Follow project's existing zod schema patterns in `app/schemas/`
 
 ## Conventions
 

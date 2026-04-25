@@ -69,7 +69,7 @@ export const LayoutMenuItem = ({
         name="layout"
         variant="outline"
         className={cn(
-          'data-[state=on]:text-primary data-[state=on]:bg-foreground/20 aria-checked:bg-primary/20  first-of-type:ml-0.5! last-of-type:mr-0.5! first-of-type:rounded-l-md last-of-type:rounded-r-md hover:cursor-pointer',
+          'data-[state=on]:text-accent-foreground! hover:bg-inherit aria-checked:text-accent-foreground aria-checked:bg-accent/30  first-of-type:ml-0.5! last-of-type:mr-0.5! first-of-type:rounded-l-md last-of-type:rounded-r-md hover:cursor-pointer',
           className
         )}
         {...props}

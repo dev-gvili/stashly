@@ -312,3 +312,58 @@ body {
   --shadow-xl: 0px 0px 0px 0px hsl(0 0% 0% / 0.00), 0px 8px 10px -1px hsl(0 0% 0% / 0.00);
   --shadow-2xl: 0px 0px 0px 0px hsl(0 0% 0% / 0.00);
 } */
+
+/* ── Gallery View Transitions ────────────────────────────────────────────── */
+
+/* Kill the root cross-fade entirely. The root captures the page minus all named
+   elements (leaving holes), and cross-fading two holey screenshots is what
+   causes the water-ripple blur. Named elements do all the visible animation. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* Smooth morph for all shared-element groups (thumbnail → full image) */
+::view-transition-group(*) {
+  animation-duration: 0.45s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Overlay and sidebar are fixed-position — kill group-bounds animation so only
+   their content fades/slides (not their container rect interpolating) */
+::view-transition-group(gallery-overlay),
+::view-transition-group(gallery-sidebar) {
+  animation-duration: 0s;
+}
+
+/* Overlay backdrop */
+@keyframes gallery-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes gallery-overlay-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+::view-transition-new(gallery-overlay) {
+  animation: gallery-overlay-in 0.35s ease-out both;
+}
+::view-transition-old(gallery-overlay) {
+  animation: gallery-overlay-out 0.22s ease-in both;
+}
+
+/* Sidebar: expo-out spring on enter, quick ease-in on exit */
+@keyframes gallery-sidebar-in {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes gallery-sidebar-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(40px); }
+}
+::view-transition-new(gallery-sidebar) {
+  animation: gallery-sidebar-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+::view-transition-old(gallery-sidebar) {
+  animation: gallery-sidebar-out 0.2s ease-in both;
+}

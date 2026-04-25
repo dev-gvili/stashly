@@ -28,6 +28,11 @@ export type Account = Prisma.AccountModel
  */
 export type ItemAction = Prisma.ItemActionModel
 /**
+ * Model PermissionAction
+ * 
+ */
+export type PermissionAction = Prisma.PermissionActionModel
+/**
  * Model AccessAction
  * 
  */

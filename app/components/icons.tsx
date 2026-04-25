@@ -1706,17 +1706,27 @@ const RestoreIcon = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
       strokeWidth={1.5}
-      d="M7 4 4 7l3 3"
+      d="M2 17.5c0-.935 0-1.402.201-1.75a1.5 1.5 0 0 1 .549-.549C3.098 15 3.565 15 4.5 15s1.402 0 1.75.201a1.5 1.5 0 0 1 .549.549C7 16.098 7 16.565 7 17.5s0 1.402-.201 1.75a1.5 1.5 0 0 1-.549.549C5.902 20 5.435 20 4.5 20s-1.402 0-1.75-.201a1.5 1.5 0 0 1-.549-.549C2 18.902 2 18.435 2 17.5Z"
+    />
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M9.5 17.5c0-.935 0-1.402.201-1.75a1.5 1.5 0 0 1 .549-.549C10.598 15 11.065 15 12 15s1.402 0 1.75.201a1.5 1.5 0 0 1 .549.549c.201.348.201.815.201 1.75s0 1.402-.201 1.75a1.5 1.5 0 0 1-.549.549C13.402 20 12.935 20 12 20s-1.402 0-1.75-.201a1.5 1.5 0 0 1-.549-.549c-.201-.348-.201-.815-.201-1.75Z"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M17 17.5c0-.935 0-1.402.201-1.75a1.5 1.5 0 0 1 .549-.549C18.098 15 18.565 15 19.5 15s1.402 0 1.75.201a1.5 1.5 0 0 1 .549.549c.201.348.201.815.201 1.75s0 1.402-.201 1.75a1.5 1.5 0 0 1-.549.549c-.348.201-.815.201-1.75.201s-1.402 0-1.75-.201a1.5 1.5 0 0 1-.549-.549C17 18.902 17 18.435 17 17.5Z"
+      opacity={0.7}
     />
     <path
       stroke="currentColor"
       strokeLinecap="round"
+      strokeLinejoin="round"
       strokeWidth={1.5}
-      d="M4 7h11c1.87 0 2.804 0 3.5.402A3 3 0 0 1 19.598 8.5C20 9.196 20 10.13 20 12s0 2.804-.402 3.5a3 3 0 0 1-1.098 1.098C17.804 17 16.87 17 15 17H8"
-      opacity={0.5}
+      d="M4.5 15V9c0-2.357 0-3.536.732-4.268S7.143 4 9.5 4h5c2.357 0 3.535 0 4.268.732S19.5 6.643 19.5 9v3m0 0 2-2m-2 2-2-2"
     />
   </svg>
 )
@@ -2010,32 +2020,32 @@ const SuccessIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 export { SuccessIcon }
 
-const RemoveIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="1em"
-    height="1em"
-    fill="none"
-    viewBox="0 0 24 24"
-    {...props}
-  >
-    <circle
-      cx={12}
-      cy={12}
-      r={10}
-      stroke="currentColor"
-      strokeWidth={1.5}
-      opacity={0.5}
-    />
-    <path
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeWidth={1.5}
-      d="m14.5 9.5-5 5m0-5 5 5"
-    />
-  </svg>
-)
-export { RemoveIcon }
+// const RemoveIcon = (props: SVGProps<SVGSVGElement>) => (
+//   <svg
+//     xmlns="http://www.w3.org/2000/svg"
+//     width="1em"
+//     height="1em"
+//     fill="none"
+//     viewBox="0 0 24 24"
+//     {...props}
+//   >
+//     <circle
+//       cx={12}
+//       cy={12}
+//       r={10}
+//       stroke="currentColor"
+//       strokeWidth={1.5}
+//       opacity={0.5}
+//     />
+//     <path
+//       stroke="currentColor"
+//       strokeLinecap="round"
+//       strokeWidth={1.5}
+//       d="m14.5 9.5-5 5m0-5 5 5"
+//     />
+//   </svg>
+// )
+// export { RemoveIcon }
 
 const RenameIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2875,3 +2885,84 @@ const SendInvitationIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 export {SendInvitationIcon};
+
+const FolderOpenIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox='0 0 24 24'
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M4 11.5V5.712c0-.662 0-.993.055-1.268C4.3 3.23 5.312 2.28 6.607 2.052 6.9 2 7.254 2 7.96 2c.31 0 .464 0 .612.013.641.056 1.25.292 1.745.677a7 7 0 0 1 .443.397l.44.413c.653.612.979.918 1.37 1.122q.323.168.678.263c.43.115.892.115 1.815.115h.299c2.106 0 3.158 0 3.843.577q.095.08.18.168C20 6.387 20 7.375 20 9.348V11.5"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M10 17h4"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M3.477 17.484C3 14.768 2.76 13.41 3.339 12.433q.223-.376.54-.67C4.704 11 6.038 11 8.705 11h6.59c2.667 0 4 0 4.826.763q.316.294.54.67c.578.977.34 2.335-.138 5.05-.343 1.956-.515 2.934-1.11 3.582a3 3 0 0 1-.515.445c-.723.49-1.683.49-3.603.49h-6.59c-1.92 0-2.88 0-3.603-.49a3 3 0 0 1-.515-.445c-.595-.648-.767-1.626-1.11-3.581Z"
+    />
+  </svg>
+);
+export {FolderOpenIcon};
+
+const DropdownIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox='0 0 24 24'
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="m8.303 12.404 3.327 3.431c.213.22.527.22.74 0l6.43-6.63C19.201 8.79 18.958 8 18.43 8h-5.723z"
+    />
+    <path
+      fill="currentColor"
+      d="M11.293 8H5.57c-.528 0-.771.79-.37 1.205l2.406 2.481z"
+      opacity={0.5}
+    />
+  </svg>
+);
+export  {DropdownIcon};
+
+const RemoveIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox='0 0 24 24'
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="m7.757 7.757 8.486 8.486"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="m7.757 16.243 8.486-8.486"
+    />
+  </svg>
+) 
+export {RemoveIcon};

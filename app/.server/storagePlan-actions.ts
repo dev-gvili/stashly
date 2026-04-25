@@ -1,5 +1,23 @@
 import type { Prisma, StoragePlanType } from '@/prisma/client'
 import { prisma } from '@/services/db'
+import { buildStoragePlanFilters } from '@/utils/filters/storagePlan.filters'
+import { searchFactory } from '@/utils/search'
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * Paginated, filterable search over StoragePlan records.
+ *
+ * @example
+ * const page = await searchStoragePlans({ type: 'free', take: 20, strategy: 'cursor' })
+ */
+export const searchStoragePlans = searchFactory({
+  dbDelegate: prisma.storagePlan,
+  buildFilters: buildStoragePlanFilters,
+  defaultOrderBy: (): Prisma.StoragePlanOrderByWithRelationInput => ({ name: 'asc' }),
+})
 
 /**
  * Find a storage plan by ID. Throws if not found.

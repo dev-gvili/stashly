@@ -2,6 +2,24 @@ import { prisma } from '@/services/db'
 import { StashlyError, StashlyErrorCode } from './api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma } from '@/prisma/client'
+import { buildUserFilters } from '@/utils/filters/user.filters'
+import { searchFactory } from '@/utils/search'
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * Paginated, filterable search over User records.
+ *
+ * @example
+ * const page = await searchUsers({ query: 'alice', take: 20, strategy: 'cursor' })
+ */
+export const searchUsers = searchFactory({
+  dbDelegate: prisma.user,
+  buildFilters: buildUserFilters,
+  defaultOrderBy: (): Prisma.UserOrderByWithRelationInput => ({ createdAt: 'desc' }),
+})
 
 /**
  * Finds a user by their unique ID.
@@ -52,7 +70,7 @@ export async function updateUser({
  * Searches users by name or email using a query string.
  * Supports cursor-based pagination.
  */
-export async function searchUsers({
+export async function searchUsersByQuery({
   query,
   cursor,
   limit = 20,

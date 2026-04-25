@@ -3,6 +3,24 @@ import { QuotaStatus } from '@/prisma/enums'
 import { prisma } from '@/services/db'
 import { StashlyError, StashlyErrorCode } from './api.errors'
 import { findDefaultStoragePlan, findStoragePlanById } from './storagePlan-actions'
+import { buildQuotaFilters } from '@/utils/filters/quota.filters'
+import { searchFactory } from '@/utils/search'
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * Paginated, filterable search over Quota records.
+ *
+ * @example
+ * const page = await searchQuotas({ driveId: 'drive_123', take: 20, strategy: 'cursor' })
+ */
+export const searchQuotas = searchFactory({
+  dbDelegate: prisma.quota,
+  buildFilters: buildQuotaFilters,
+  defaultOrderBy: (): Prisma.QuotaOrderByWithRelationInput => ({ createdAt: 'desc' }),
+})
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

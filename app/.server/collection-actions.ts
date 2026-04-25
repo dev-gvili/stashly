@@ -11,6 +11,24 @@ import {
 import { findFirstItem } from '@/services/item-actions'
 import { requireAtLeastRole } from '@/services/workspace-actions'
 import { StashlyError, StashlyErrorCode } from '@/services/api.errors'
+import { buildCollectionFilters } from '@/utils/filters/collection.filters'
+import { searchFactory } from '@/utils/search'
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * Paginated, filterable search over Collection (Item) records.
+ *
+ * @example
+ * const page = await searchCollections({ name: 'photos', take: 20, strategy: 'cursor' })
+ */
+export const searchCollections = searchFactory({
+  dbDelegate: prisma.item,
+  buildFilters: buildCollectionFilters,
+  defaultOrderBy: (): Prisma.ItemOrderByWithRelationInput => ({ createdAt: 'desc' }),
+})
 
 // ---------------------------------------------------------------------------
 // Types

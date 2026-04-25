@@ -16,7 +16,7 @@ export function Filter({
   const location = useLocation()
   if (
     location.pathname.includes('/videos') ||
-    location.pathname.includes('/gallery')
+    location.pathname.includes('/images')
   ) {
     return null
   }
@@ -29,7 +29,7 @@ export function Filter({
         data-state={pressed ? 'on' : 'off'}
         aria-pressed={pressed}
         variant="outline"
-        className="h-8 w-8 rounded-sm font-stashly data-[state=on]:bg-foreground/20 data-[state=on]:text-accent-foreground hover:text-accent-foreground hover:cursor-pointer"
+        className="h-8 w-8 rounded-sm font-stashly  data-[state=on]:bg-accent/30 data-[state=on]:text-accent-foreground hover:text-accent-foreground hover:cursor-pointer [&_svg]:text-current"
         onClick={() => {
           setSearchParams(
             (params) => {

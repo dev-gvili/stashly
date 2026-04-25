@@ -3,6 +3,24 @@ import { StashlyError, StashlyErrorCode } from './api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { NotificationType, NotificationStatus } from '@/prisma/enums'
 import type { Prisma } from '@/prisma/client'
+import { buildNotificationFilters } from '@/utils/filters/notification.filters'
+import { searchFactory } from '@/utils/search'
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * Paginated, filterable search over Notification records.
+ *
+ * @example
+ * const page = await searchNotifications({ userId: 'user_123', take: 20, strategy: 'cursor' })
+ */
+export const searchNotifications = searchFactory({
+  dbDelegate: prisma.notification,
+  buildFilters: buildNotificationFilters,
+  defaultOrderBy: (): Prisma.NotificationOrderByWithRelationInput => ({ createdAt: 'desc' }),
+})
 
 /**
  * Returns a paginated list of notifications for a user.

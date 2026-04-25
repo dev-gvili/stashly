@@ -135,7 +135,6 @@ export async function action({ request, params }: Route.ActionArgs) {
           .object({ size: z.coerce.string(), inclusiveSize: z.coerce.string() })
           .loose()
           .parse(item)
-          // return redirect(`${url.pathname}${url.search}`)
         return data({ success: true, item: serializable })
       } catch (e) {
         const err = e as { message?: string }

@@ -1,6 +1,6 @@
 model Item {
     id            String       @id
-    name          String       @db.VarChar(50)
+    name          String       
     size          BigInt       @default(0)
     inclusiveSize BigInt       @default(0)
     type          ItemType     @default(file)

@@ -1,6 +1,24 @@
 import type { Prisma } from '@/prisma/client'
 import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import { buildDriveFilters } from '@/utils/filters/drive.filters'
+import { searchFactory } from '@/utils/search'
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * Paginated, filterable search over Drive records.
+ *
+ * @example
+ * const page = await searchDrives({ ownerId: 'user_123', take: 20, strategy: 'cursor' })
+ */
+export const searchDrives = searchFactory({
+  dbDelegate: prisma.drive,
+  buildFilters: buildDriveFilters,
+  defaultOrderBy: (): Prisma.DriveOrderByWithRelationInput => ({ createdAt: 'desc' }),
+})
 
 const defaultInclude = {
   quota: true,

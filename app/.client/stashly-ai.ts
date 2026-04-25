@@ -2,7 +2,12 @@ import {
   Florence2ForConditionalGeneration,
   AutoProcessor,
   load_image,
-} from '@huggingface/transformers'
+  Gemma4ForConditionalGeneration,
+  TextStreamer,
+  read_audio,
+  type ProgressCallback,
+  Tensor,
+} from '@huggingface/transformers-next4.0.1'
 import { formatSize } from '@/utils/formaters'
 // import { getVision, getPipeline, type TranscribeOptions } from './ai.utils'
 // import {
@@ -26,6 +31,134 @@ import { formatSize } from '@/utils/formaters'
 //   stream?: boolean
 //   /** Optional callback for streaming or logging progress */
 // }
+
+// ~~~~~~~~~~~~~~ Gemma 4.0 ~~~~~~~~~~~~~~ //
+
+export async function getMoE(progressCallback?: ProgressCallback) {
+  // Load processor and model
+  const model_id = 'onnx-community/gemma-4-E4B-it-ONNX'
+  const processor = await AutoProcessor.from_pretrained(model_id)
+  const model = await Gemma4ForConditionalGeneration.from_pretrained(model_id, {
+    dtype: 'q4',
+    device: 'webgpu',
+    progress_callback: progressCallback,
+  })
+
+  return { model, processor }
+}
+
+export async function transcribe({
+  audio,
+  language,
+  progressCallback,
+}: {
+  audio: Float32Array<ArrayBufferLike>
+  language: string
+  progressCallback?: ProgressCallback
+}) {
+  let { model, processor } = await getMoE(progressCallback)
+
+  // ~~~~~~~~~~~~ Prepare Prompt ~~~~~~~~~~~ //
+
+  const promptText = `
+  Transcribe the following audio in ${language} into the same language.
+
+Follow these specific instructions for formatting the answer:
+* Only output the transcription, with no newlines.
+* When transcribing numbers, write the digits, i.e. write 1.7 and not one point seven, and write 3 instead of three.
+  `
+
+  const messages = [
+    {
+      role: 'user',
+      content: [
+        { type: 'audio' },
+        {
+          type: 'text',
+          text: promptText,
+        },
+      ],
+    },
+  ]
+
+  const prompt = processor.apply_chat_template(messages, {
+    enable_thinking: true,
+    add_generation_prompt: true,
+  })
+
+  const inputs = await processor(prompt, null, audio, {
+    add_special_tokens: false,
+  })
+
+  // ~~~~~~~~~~~ Generate output ~~~~~~~~~~~ //
+
+  const generated_ids = (await model.generate({
+    ...inputs,
+    max_new_tokens: 512,
+    do_sample: false,
+    temperature: 1.0,
+    remove_invalid_values: true,
+  })) as Tensor | number[][]
+
+  // ~~~~~~~~~~~~ Decode output ~~~~~~~~~~~~ //
+
+  const decoded = processor.batch_decode(generated_ids, {
+    skip_special_tokens: true,
+    skip_prompt: true,
+  })[0]
+
+  console.log('Decoded: ', decoded)
+  return decoded
+}
+
+// Prepare prompt
+// const messages = [
+//   {
+//     role: 'user',
+//     content: [
+//       { type: 'image' },
+//       { type: 'audio' },
+//       {
+//         type: 'text',
+//         text: 'Describe this image in detail and transcribe this audio verbatim.',
+//       },
+//     ],
+//   },
+// ]
+// const prompt = processor.apply_chat_template(messages, {
+//   enable_thinking: false,
+//   add_generation_prompt: true,
+// })
+
+// // Prepare inputs
+// const image = await load_image(
+//   'https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/artemis.jpeg'
+// )
+// const audio = await read_audio(
+//   'https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/jfk.wav'
+// )
+// const inputs = await processor(prompt, image, audio, {
+//   add_special_tokens: false,
+// })
+
+// // Generate output
+// const outputs = await model.generate({
+//   ...inputs,
+//   max_new_tokens: 512,
+//   do_sample: false,
+//   streamer: new TextStreamer(processor.tokenizer, {
+//     skip_prompt: true,
+//     skip_special_tokens: false,
+//     // callback_function: (text) => { /* Do something with the streamed output */ },
+//   }),
+// })
+
+// // Decode output
+// const decoded = processor.batch_decode(
+//   outputs.slice(null, [inputs.input_ids.dims.at(-1), null]),
+//   { skip_special_tokens: true }
+// )
+// console.log(decoded[0])
 
 /**
  * Acehnese (Arabic script) | ace_Arab

@@ -3,13 +3,14 @@ import { pipeline, env, type SupportedTasks } from '@huggingface/transformers'
 import {
   pipeline as pipelineNext8,
   env as envNext8,
-} from '@huggingface/transformers-next0.0.8'
+} from '@huggingface/transformers-next4.0.1'
 import {
   extractAudioChunk,
   makeChunks,
   toChunk,
   parseTags,
 } from './stash.worker.helpers'
+import { transcribe } from '@/.client/stashly-ai'
 
 // -------------------------
 // Constants
@@ -342,7 +343,6 @@ env.backends.onnx!.webgpu!.profiling = {
 }
 env.backends.onnx.wasm!.numThreads = 1
 
-
 envNext8.useBrowserCache = true
 envNext8.allowRemoteModels = true
 envNext8.useWasmCache = true
@@ -397,9 +397,15 @@ const WebGPUDeviceManager = {
     if (this.adapters.length > 0) return // already discovered
 
     const optionSets: { options: GPURequestAdapterOptions; label: string }[] = [
-      { options: { powerPreference: 'high-performance' }, label: 'high-performance' },
+      {
+        options: { powerPreference: 'high-performance' },
+        label: 'high-performance',
+      },
       { options: { powerPreference: 'low-power' }, label: 'low-power' },
-      { options: { featureLevel: 'compatibility' } as GPURequestAdapterOptions, label: 'compatibility' },
+      {
+        options: { featureLevel: 'compatibility' } as GPURequestAdapterOptions,
+        label: 'compatibility',
+      },
       { options: {}, label: 'default' },
     ]
 
@@ -428,7 +434,7 @@ const WebGPUDeviceManager = {
 
     // Sort: largest maxBufferSize first (discrete GPUs >> integrated)
     this.adapters.sort(
-      (a, b) => b.adapter.limits.maxBufferSize - a.adapter.limits.maxBufferSize,
+      (a, b) => b.adapter.limits.maxBufferSize - a.adapter.limits.maxBufferSize
     )
 
     if (this.adapters.length === 0) {
@@ -704,92 +710,202 @@ export async function transcribeAudio(
   onProgress: ProgressCallback,
   onPartialResult: PartialResultCallback
 ): Promise<string> {
-  const resampled = resampleAudio(params.audio, params.sampleRate, TARGET_SAMPLE_RATE)
+  const resampled = resampleAudio(
+    params.audio,
+    params.sampleRate,
+    TARGET_SAMPLE_RATE
+  )
   const audio = resampled
   const sampleRate = TARGET_SAMPLE_RATE
   const { duration, language } = params
   const contentHint = params.contentHint ?? 'auto'
 
-  // Whisper prompt guides transcription style.
-  // - 'music': optimized for lyrics, ad-libs, slang
-  // - 'speech': no prompt, cleanest for lectures/greetings/conversations
-  // - 'auto': neutral prompt that doesn't bias either direction
-  const WHISPER_PROMPTS: Record<string, string | undefined> = {
-    music:
-      'The audio contains music with lyrics. Transcribe all sung words, ad-libs, slang, and repetitive phrases exactly as heard.',
-    speech: undefined, // no prompt — Whisper is cleanest for speech without one
-    auto: undefined, // no prompt by default — less hallucination risk
-  }
-  const whisperPrompt = WHISPER_PROMPTS[contentHint]
+  // // Whisper prompt guides transcription style.
+  // // - 'music': optimized for lyrics, ad-libs, slang
+  // // - 'speech': no prompt, cleanest for lectures/greetings/conversations
+  // // - 'auto': neutral prompt that doesn't bias either direction
+  // const WHISPER_PROMPTS: Record<string, string | undefined> = {
+  //   music:
+  //     'The audio contains music with lyrics. Transcribe all sung words, ad-libs, slang, and repetitive phrases exactly as heard.',
+  //   speech: undefined, // no prompt — Whisper is cleanest for speech without one
+  //   auto: undefined, // no prompt by default — less hallucination risk
+  // }
+  // const whisperPrompt = WHISPER_PROMPTS[contentHint]
 
-  const asrPipe = await PipelineManager.getPipeline(
-    'automatic-speech-recognition',
-    'onnx-community/whisper-large-v3-turbo',
-    onProgress
-  )
+  // const asrPipe = await PipelineManager.getPipeline(
+  //   'automatic-speech-recognition',
+  //   'onnx-community/whisper-large-v3-turbo',
+  //   onProgress
+  // )
 
   const partialTexts: string[] = []
+  const res = await transcribe({
+    language: LANGUAGE_NAMES[params.language],
+    audio: params.audio,
+    progressCallback: onProgress,
+  })
 
-  if (duration > 30) {
-    // Use 60s audio chunks — Whisper internally splits each into 30s pieces
-    // with 5s overlap (stride_length_s), handling word boundaries correctly.
-    // This halves the number of GPU round-trips vs 30.5s chunks:
-    // 19 min → ~19 chunks (vs ~38 with 30.5s chunks)
-    const chunks = makeChunks(audio, sampleRate, 60, 0)
-
-    for (const [index, chunk] of chunks.entries()) {
-      const chunkDuration = chunk.length / sampleRate
-      const res: ASRResult = await asrPipe(chunk, {
-        language,
-        chunk_length_s: 30,
-        stride_length_s: 5,
-        return_whole_text: false,
-        return_timestamps: true,
-        batch_size: 16,
-        ...(whisperPrompt ? { prompt: whisperPrompt } : {}),
-      })
-      const text = res.text || ''
-      partialTexts.push(text)
-      onPartialResult('transcription', {
-        index,
-        text,
-        total: chunks.length,
-        progress: Math.round(((index + 1) / chunks.length) * 100),
-      })
-      if (DEBUG && res.chunks) {
-        console.log(
-          res.chunks
-            .map((c) => `[${c.timestamp[0]} - ${c.timestamp[1]}]:${c.text}`)
-            .join('\n')
-        )
-      }
-    }
-  } else {
-    const res: ASRResult = await asrPipe(audio, {
-      language,
-      task: 'transcribe',
-      return_whole_text: false,
-      return_timestamps: true,
-      return_language: true,
-      batch_size: 16,
-      ...(whisperPrompt ? { prompt: whisperPrompt } : {}),
-    })
-    if (!res.chunks) partialTexts.push(res.text)
-    if (res.chunks) {
-      for (const { text, timestamp } of res.chunks) {
-        partialTexts.push(text)
-        onPartialResult('transcription', { text, timestamp })
-      }
-    }
-  }
-
+  console.log('Res: ', res)
+  partialTexts.push(res)
   const transcriptionResult = normalizeTranscript(partialTexts)
-  await PipelineManager.disposePipeline(
-    'automatic-speech-recognition',
-    'onnx-community/whisper-large-v3-turbo'
-  )
   return transcriptionResult
+
+  // const text = res
+  // if (duration > 30) {
+  //   // Use 60s audio chunks — Whisper internally splits each into 30s pieces
+  //   // with 5s overlap (stride_length_s), handling word boundaries correctly.
+  //   // This halves the number of GPU round-trips vs 30.5s chunks:
+  //   // 19 min → ~19 chunks (vs ~38 with 30.5s chunks)
+  //   const chunks = makeChunks(audio, sampleRate, 60, 0)
+
+  //   console.log('Before enter the chunks loop.')
+  //   for (const [index, chunk] of chunks.entries()) {
+  //     // const chunkDuration = chunk.length /
+  //     try {
+
+  //       // if (DEBUG && res.chunks) {
+  //       //   console.log(
+  //       //     res.chunks
+  //       //       .map((c) => `[${c.timestamp[0]} - ${c.timestamp[1]}]:${c.text}`)
+  //       //       .join('\n')
+  //       //   )
+  //       // }
+  //     } catch (err) {
+  //       console.error(err)
+  //     }
+  //   }
+  // } else {
+  //   const res = await transcribe({
+  //     language: LANGUAGE_NAMES[language],
+  //     audio,
+  //     progressCallback: onProgress,
+  //   })
+
+  //   partialTexts.push(res)
+
+  //   // const res: ASRResult = await asrPipe(audio, {
+  //   //   language,
+  //   //   task: 'transcribe',
+  //   //   return_whole_text: false,
+  //   //   return_timestamps: true,
+  //   //   return_language: true,
+  //   //   batch_size: 16,
+  //   //   ...(whisperPrompt ? { prompt: whisperPrompt } : {}),
+  //   // })
+  //   // if (!res.chunks)
+  //   // if (res.chunks) {
+  //   //   for (const { text, timestamp } of res.chunks) {
+  //   //     partialTexts.push(text)
+  //   //     onPartialResult('transcription', { text, timestamp })
+  //   //   }
+  //   // }
+  // }
+
+  // // await PipelineManager.disposePipeline(
+  // //   'automatic-speech-recognition',
+  // //   'onnx-community/whisper-large-v3-turbo'
+  // // )
+
+  // const transcriptionResult = normalizeTranscript(partialTexts)
+  // return transcriptionResult
 }
+// export async function transcribeAudio(
+//   params: {
+//     audio: Float32Array
+//     sampleRate: number
+//     duration: number
+//     language: string
+//     contentHint?: 'music' | 'speech' | 'auto'
+//   },
+//   onProgress: ProgressCallback,
+//   onPartialResult: PartialResultCallback
+// ): Promise<string> {
+//   const resampled = resampleAudio(params.audio, params.sampleRate, TARGET_SAMPLE_RATE)
+//   const audio = resampled
+//   const sampleRate = TARGET_SAMPLE_RATE
+//   const { duration, language } = params
+//   const contentHint = params.contentHint ?? 'auto'
+
+//   // Whisper prompt guides transcription style.
+//   // - 'music': optimized for lyrics, ad-libs, slang
+//   // - 'speech': no prompt, cleanest for lectures/greetings/conversations
+//   // - 'auto': neutral prompt that doesn't bias either direction
+//   const WHISPER_PROMPTS: Record<string, string | undefined> = {
+//     music:
+//       'The audio contains music with lyrics. Transcribe all sung words, ad-libs, slang, and repetitive phrases exactly as heard.',
+//     speech: undefined, // no prompt — Whisper is cleanest for speech without one
+//     auto: undefined, // no prompt by default — less hallucination risk
+//   }
+//   const whisperPrompt = WHISPER_PROMPTS[contentHint]
+
+//   const asrPipe = await PipelineManager.getPipeline(
+//     'automatic-speech-recognition',
+//     'onnx-community/whisper-large-v3-turbo',
+//     onProgress
+//   )
+
+//   const partialTexts: string[] = []
+
+//   if (duration > 30) {
+//     // Use 60s audio chunks — Whisper internally splits each into 30s pieces
+//     // with 5s overlap (stride_length_s), handling word boundaries correctly.
+//     // This halves the number of GPU round-trips vs 30.5s chunks:
+//     // 19 min → ~19 chunks (vs ~38 with 30.5s chunks)
+//     const chunks = makeChunks(audio, sampleRate, 60, 0)
+
+//     for (const [index, chunk] of chunks.entries()) {
+//       const chunkDuration = chunk.length / sampleRate
+//       const res: ASRResult = await asrPipe(chunk, {
+//         language,
+//         chunk_length_s: 30,
+//         stride_length_s: 5,
+//         return_whole_text: false,
+//         return_timestamps: true,
+//         batch_size: 16,
+//         ...(whisperPrompt ? { prompt: whisperPrompt } : {}),
+//       })
+//       const text = res.text || ''
+//       partialTexts.push(text)
+//       onPartialResult('transcription', {
+//         index,
+//         text,
+//         total: chunks.length,
+//         progress: Math.round(((index + 1) / chunks.length) * 100),
+//       })
+//       if (DEBUG && res.chunks) {
+//         console.log(
+//           res.chunks
+//             .map((c) => `[${c.timestamp[0]} - ${c.timestamp[1]}]:${c.text}`)
+//             .join('\n')
+//         )
+//       }
+//     }
+//   } else {
+//     const res: ASRResult = await asrPipe(audio, {
+//       language,
+//       task: 'transcribe',
+//       return_whole_text: false,
+//       return_timestamps: true,
+//       return_language: true,
+//       batch_size: 16,
+//       ...(whisperPrompt ? { prompt: whisperPrompt } : {}),
+//     })
+//     if (!res.chunks) partialTexts.push(res.text)
+//     if (res.chunks) {
+//       for (const { text, timestamp } of res.chunks) {
+//         partialTexts.push(text)
+//         onPartialResult('transcription', { text, timestamp })
+//       }
+//     }
+//   }
+
+//   const transcriptionResult = normalizeTranscript(partialTexts)
+//   await PipelineManager.disposePipeline(
+//     'automatic-speech-recognition',
+//     'onnx-community/whisper-large-v3-turbo'
+//   )
+//   return transcriptionResult
+// }
 // ============================================================
 // Optimized inference settings + prompts for tiny-aya-global
 // ============================================================

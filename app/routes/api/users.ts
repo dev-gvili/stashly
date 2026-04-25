@@ -7,7 +7,7 @@ import {
   findUserById,
   findUserByEmail,
   updateUser,
-  searchUsers,
+  searchUsersByQuery,
   deleteUser,
 } from '@/services/user-actions'
 
@@ -36,7 +36,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       const user = await findUserByEmail(query.email)
       return data({ user })
     }
-    const result = await searchUsers({
+    const result = await searchUsersByQuery({
       query: query.query ?? '',
       cursor: query.cursor,
       limit: query.limit,

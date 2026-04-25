@@ -6,7 +6,10 @@ export interface CircularProgressbarProps extends React.SVGAttributes<SVGSVGElem
   className?: string
 }
 
-const PERIMETER = 2 * (60 - 2 * 20) + 2 * (60 - 2 * 20) + 2 * Math.PI * 20 // Perimeter of a rounded rectangle with width=60, height=60, rx=20, ry=20. This simplifies to 2*(20) + 2*(20) + 2*PI*20 = 40 + 40 + 125.66 = 205.66. This is the correct perimeter for the rect element with x="20", y="20", width="60", height="60", rx="20", ry="20". was verified with an online SVG path length calculator.
+// formula to match the actual dimensions of the rect element in the SVG. The rect has x=15, y=15, width=70, height=70, rx=20, ry=20. The perimeter of a rounded rectangle can be calculated as:
+// P = 2 * (width - 2 * rx) + 2 * (height - 2 * ry) + 2 * π * r
+// where r is the radius of the rounded corners (which is the same as rx or ry in this case).
+const PERIMETER = 2 * (70 - 2 * 20) + 2 * (70 - 2 * 20) + 2 * Math.PI * 20 // Perimeter of a rounded rectangle with width=70, height=70, rx=20, ry=20. This simplifies to 2*(20) + 2*(20) + 2*PI*20 = 40 + 40 + 125.66 = 205.66. This is the correct perimeter for the rect element with x="15", y="15", width="70", height="70", rx="20", ry="20". was verified with an online SVG path length calculator.
 
 const Root = React.forwardRef<
   React.ComponentRef<'svg'>,
@@ -40,10 +43,10 @@ export const ProgressBarCircle = React.forwardRef<
   return (
     <rect
       ref={forwardRef}
-      x="20"
-      y="20"
-      width="60"
-      height="60"
+      x="15"
+      y="15"
+      width="70"
+      height="70"
       rx="20"
       ry="20"
       strokeWidth="4"
@@ -66,10 +69,10 @@ export const Indicator = React.forwardRef<
   return (
     <rect
       ref={forwardRef}
-      x="20"
-      y="20"
-      width="60"
-      height="60"
+      x="15"
+      y="15"
+      width="70"
+      height="70"
       rx="20"
       ry="20"
       strokeWidth="4"
@@ -115,7 +118,7 @@ export const Value = React.forwardRef<
       height="100%"
       transform="translate( 2.5, 2.5)"
       className={cn(
-        'text-foreground text-xs font-stashly text-center',
+        'text-foreground text-xs font-stashly text-center group/progress',
         className
       )}
       {...props}

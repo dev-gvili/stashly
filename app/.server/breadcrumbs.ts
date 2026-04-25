@@ -4,7 +4,7 @@ export interface Breadcrumb {
   id: string
   name: string
   parentId: string | null
-  // depth: number
+  type: 'file' | 'folder' | 'collection'
 }
 
 /**
@@ -34,16 +34,16 @@ export async function breadcrumbs(itemId: string): Promise<Breadcrumb[]> {
   const result = await prisma.$queryRaw<Breadcrumb[]>`
     WITH RECURSIVE bfs_path AS (
       -- ANCHOR: Select the target item first
-      SELECT id, name, "parentId", 0 as depth
+      SELECT id, name, "parentId", type, 0 as depth
       FROM "Item"
       WHERE id = ${itemId}
       UNION ALL
       -- RECURSION: Join with the parent
-      SELECT p.id, p.name, p."parentId", c.depth + 1
+      SELECT p.id, p.name, p."parentId", p.type, c.depth + 1
       FROM "Item" p
       INNER JOIN bfs_path c ON c."parentId" = p.id
     )
-    SELECT id, name, "parentId"
+    SELECT id, name, "parentId", type
     FROM bfs_path
     ORDER BY depth DESC;
   `

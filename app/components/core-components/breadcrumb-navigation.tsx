@@ -10,7 +10,7 @@ import {
 import type { Breadcrumb as BreadcrumbData } from '@/services/breadcrumbs'
 import { href, useSearchParams } from 'react-router'
 import { Link } from 'react-router'
-import { BreadcrumbSeparatorIcon, HomeIcon } from '../icons'
+import { BreadcrumbSeparatorIcon, FolderOpenIcon, HomeIcon } from '@/components/icons'
 import {
   Button,
   DropdownMenu,
@@ -18,9 +18,10 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '../ui'
+} from '@/components/ui'
 import { useBreadcrumbs } from '@/hooks'
 import { useParams } from 'react-router'
+import { removeQueryParam } from '@/utils'
 
 export interface StashBreadcrumbsProps {
   crumbs: BreadcrumbData[]
@@ -72,6 +73,9 @@ function CrumbLink({
   me: string
   searchParams: URLSearchParams
 }) {
+  removeQueryParam(searchParams, 'cursor') // Clear cursor when navigating via breadcrumbs, to prevent confusion when the selected item(s) disappear from the new page. Note: this mutates searchParams in-place, which is fine because we're only using it to build the href for the Link component below.
+  removeQueryParam(searchParams, 'selectedItems') // Clear selected items for same reason as cursor. If we kept selectedItems in the URL, then when the user clicks a breadcrumb to navigate to a parent folder, the selectedItems that were relevant in the child folder would still be in the URL, which could cause unexpected behavior (e.g. bulk actions appearing for items that aren't actually selected in the new folder).
+
   return (
     <>
       <BreadcrumbLink asChild>
@@ -81,6 +85,11 @@ function CrumbLink({
         >
           {crumb.name === 'root' ? (
             <HomeIcon className="size-5!" />
+          ) : crumb.type === 'folder' ? (
+            <span className="flex items-center gap-2">
+            <FolderOpenIcon className="size-5!" />
+            <span>{crumb.name}</span>
+            </span>
           ) : (
             crumb.name
           )}
@@ -147,6 +156,11 @@ export function Breadcrumbs() {
           <BreadcrumbPage className="font-stashly">
             {last?.name === 'root' ? (
               <HomeIcon className="size-5!" />
+            ) : last?.type === 'folder' ? (
+              <span className="flex items-center gap-2">
+              <FolderOpenIcon className="size-5!" />
+              <span>{last.name}</span>
+              </span>
             ) : (
               last?.name
             )}

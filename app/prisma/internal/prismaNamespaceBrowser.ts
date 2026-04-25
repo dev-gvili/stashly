@@ -53,6 +53,7 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   Account: 'Account',
   ItemAction: 'ItemAction',
+  PermissionAction: 'PermissionAction',
   AccessAction: 'AccessAction',
   CommentAction: 'CommentAction',
   CreateAction: 'CreateAction',
@@ -154,10 +155,21 @@ export const ItemActionScalarFieldEnum = {
   shareActionId: 'shareActionId',
   versionActionId: 'versionActionId',
   activityId: 'activityId',
-  copyActionId: 'copyActionId'
+  copyActionId: 'copyActionId',
+  permissionActionId: 'permissionActionId'
 } as const
 
 export type ItemActionScalarFieldEnum = (typeof ItemActionScalarFieldEnum)[keyof typeof ItemActionScalarFieldEnum]
+
+
+export const PermissionActionScalarFieldEnum = {
+  id: 'id',
+  type: 'type',
+  userId: 'userId',
+  role: 'role'
+} as const
+
+export type PermissionActionScalarFieldEnum = (typeof PermissionActionScalarFieldEnum)[keyof typeof PermissionActionScalarFieldEnum]
 
 
 export const AccessActionScalarFieldEnum = {
@@ -605,6 +617,7 @@ export const ThumbnailScalarFieldEnum = {
   content: 'content',
   view: 'view',
   size: 'size',
+  stage: 'stage',
   itemId: 'itemId'
 } as const
 

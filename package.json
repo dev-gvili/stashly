@@ -30,7 +30,7 @@
     "@huggingface/inference": "^4.13.15",
     "@huggingface/tokenizers": "^0.1.3",
     "@huggingface/transformers": "4.0.0-next.4",
-    "@huggingface/transformers-next0.0.8": "npm:@huggingface/transformers@4.0.1",
+    "@huggingface/transformers-next4.0.1": "npm:@huggingface/transformers@4.0.1",
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^7.6.0",
     "@prisma/extension-accelerate": "^3.0.1",

@@ -34,7 +34,7 @@ const FilterList = <TData extends Record<string, string> = {}>({
   const location = useLocation()
   if (
     location.pathname.includes('/videos') ||
-    location.pathname.includes('/gallery')
+    location.pathname.includes('/images')
   ) {
     return null 
   }
@@ -60,14 +60,14 @@ const FilterList = <TData extends Record<string, string> = {}>({
                   className="mx-2 h-4 border-dashed border border-muted"
                 />
                 {selectedItems.length > 2 ? (
-                  <Badge className="text-xs rounded font-stashly font-normal hover:bg-muted bg-muted text-accent-foreground">
+                  <Badge className="text-xs rounded font-stashly font-normal hover:bg-muted bg-accent/30 text-accent-foreground">
                     {`${selectedItems.length} Selected`}
                   </Badge>
                 ) : (
                   selectedItems.map((item) => {
                     let Icon = toIcon(item as ItemCategory | ItemType)
                     return (
-                      <Badge className="text-xs rounded font-stashly hover:bg-muted bg-muted text-accent-foreground text-center! items-center flex">
+                      <Badge className="text-xs rounded font-stashly hover:bg-muted bg-accent/30 text-accent-foreground text-center! items-center flex">
                         <Icon className="size-4" />
                         <span className="h-full mt-0.5">
                           {capitalize(item)}

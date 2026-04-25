@@ -56,7 +56,7 @@ importers:
       '@huggingface/transformers':
         specifier: 4.0.0-next.4
         version: 4.0.0-next.4
-      '@huggingface/transformers-next0.0.8':
+      '@huggingface/transformers-next4.0.1':
         specifier: npm:@huggingface/transformers@4.0.1
         version: '@huggingface/transformers@4.0.1'
       '@prisma/adapter-pg':

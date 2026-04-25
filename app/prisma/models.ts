@@ -10,6 +10,7 @@
  */
 export type * from './models/Account.js'
 export type * from './models/ItemAction.js'
+export type * from './models/PermissionAction.js'
 export type * from './models/AccessAction.js'
 export type * from './models/CommentAction.js'
 export type * from './models/CreateAction.js'
