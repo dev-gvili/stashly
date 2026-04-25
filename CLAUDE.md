@@ -62,6 +62,7 @@ Stashly is a **full-stack file management platform** using React Router 7 in fra
 | Actions | `app/.server/*-actions.ts` | Business logic + direct Prisma access, permission enforcement (e.g. `item-actions.ts`, `collection-actions.ts`) |
 | Machines | `app/machines/` | XState state machines for complex async workflows |
 | Workers | `app/workers/` | Web Workers for CPU-intensive tasks (AI inference, tokenization) |
+| Client-only | `app/.client/` | Browser-only code excluded from SSR (auth client, AI client) |
 | Schemas | `app/schemas/` | Zod validation schemas shared across client and server |
 | Types | `app/types/` | Shared TypeScript type definitions (API types, machine types) |
 
@@ -265,7 +266,7 @@ When adding a new feature, these steps are **mandatory** in order:
 - Use `usePagination<T>(limit)` for any route that returns a list of items — never build ad-hoc pagination.
 - No arbitrary Tailwind sizes: use scale values (`text-sm`, `p-4`) not raw values (`text-[10px]`, `p-[13px]`).
 - Check `app/utils/` before creating new utility functions — reuse what exists.
-- Use the `shadcn-ui-component-builder` skill when building new shadcn/ui components or custom hooks.
+- Use the `/shadcn` skill when building new shadcn/ui components.
 
 ## Activity Recording
 
