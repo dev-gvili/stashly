@@ -78,7 +78,7 @@ export async function loader({ request }: Route.ActionArgs) {
   })
 
   const RIVER_FALLBACKS: [number, number][] = [
-    [4, 3], [3, 2], [16, 9], [1, 1], [5, 4], [7, 5],
+    [4, 3], [16, 9], [1, 1], [5, 4], [7, 5],
   ]
 
   let images = res.map((item) => {
@@ -90,10 +90,9 @@ export async function loader({ request }: Route.ActionArgs) {
       w = storedW; h = storedH
     } else if (layout === 'river') {
       // No stored dims — pick a varied fallback from item id to avoid uniform rows
-      const seed = item.id.charCodeAt(item.id.length - 1) + item.id.charCodeAt(0)
-      ;[w, h] = RIVER_FALLBACKS[seed % RIVER_FALLBACKS.length]
+      ;[w, h] = RIVER_FALLBACKS[Math.floor(Math.random() * RIVER_FALLBACKS.length)]
     } else {
-      w = 4; h = 3
+      w = 16; h = 9
     }
     return {
       id: item.id,
