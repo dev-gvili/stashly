@@ -130,8 +130,10 @@ export async function generateCaption(
     ctx.drawImage(bitmap, 0, 0)
     bitmap.close()
 
-    const barH = Math.round(canvas.height * 0.28)
-    const barY = canvas.height - barH
+    // Anchor bar so it ends at 87% height — the bottom 13% is cropped in 4:3 grid cells
+    const safeBottom = Math.round(canvas.height * 0.87)
+    const barH = Math.round(canvas.height * 0.22)
+    const barY = safeBottom - barH
     ctx.fillStyle = 'rgba(0,0,0,0.72)'
     ctx.fillRect(0, barY, canvas.width, barH)
 
@@ -142,8 +144,7 @@ export async function generateCaption(
     ctx.textBaseline = 'alphabetic'
     ctx.shadowColor = 'rgba(0,0,0,0.8)'
     ctx.shadowBlur = 4
-    const textY = barY + barH * 0.62
-    ctx.fillText(caption, canvas.width / 2, textY, canvas.width - 24)
+    ctx.fillText(caption, canvas.width / 2, barY + barH * 0.7, canvas.width - 24)
     ctx.shadowBlur = 0
 
     const blob = await new Promise<Blob>((resolve) =>
