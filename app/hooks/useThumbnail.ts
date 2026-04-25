@@ -154,7 +154,7 @@ export function useThumbnail() {
 
         // ── Stage 3: ViT saliency crop ──────────────────────────────────────
         if (file.type.startsWith('image/')) {
-          const { generateSalientCrop } = await import('@/workers/thumbnail.ai')
+          const { generateSalientCrop, generateCaption } = await import('@/workers/thumbnail.ai')
           const salientBlob = await generateSalientCrop(resizedBlob).catch(() => null)
           if (salientBlob) {
             const presign3Res = await fetch(`/api/thumbnails/${itemId}/presign`).catch(() => null)
@@ -172,6 +172,27 @@ export function useThumbnail() {
               fd3.append('height', '512')
               await fetch(`/api/thumbnails/${itemId}`, { method: 'PATCH', body: fd3 }).catch(() => {})
               setState({ stage: 3, src: presign3.publicUrl, color })
+            }
+
+            // ── Stage 4: Florence-2 caption overlay ────────────────────────
+            const captionResult = await generateCaption(salientBlob).catch(() => null)
+            if (captionResult) {
+              const presign4Res = await fetch(`/api/thumbnails/${itemId}/presign`).catch(() => null)
+              const presign4 = presign4Res ? await presign4Res.json().catch(() => null) : null
+              if (presign4?.uploadUrl && presign4?.publicUrl) {
+                await fetch(presign4.uploadUrl, {
+                  method: 'PUT',
+                  body: captionResult.blob,
+                  headers: { 'Content-Type': 'image/webp' },
+                }).catch(() => {})
+                const fd4 = new FormData()
+                fd4.append('stage', '4')
+                fd4.append('url', presign4.publicUrl)
+                fd4.append('width', '512')
+                fd4.append('height', '512')
+                await fetch(`/api/thumbnails/${itemId}`, { method: 'PATCH', body: fd4 }).catch(() => {})
+                setState({ stage: 4, src: presign4.publicUrl, color })
+              }
             }
           }
         }
