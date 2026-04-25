@@ -78,7 +78,7 @@ export async function loader({ request }: Route.ActionArgs) {
   })
 
   const RIVER_FALLBACKS: [number, number][] = [
-    [4, 3], [3, 2], [16, 9], [3, 4], [2, 3], [1, 1], [5, 4], [7, 5],
+    [4, 3], [3, 2], [16, 9], [1, 1], [5, 4], [7, 5],
   ]
 
   let images = res.map((item) => {
