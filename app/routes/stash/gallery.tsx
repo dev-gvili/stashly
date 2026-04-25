@@ -10,6 +10,7 @@ import {
 } from '@/utils/filters/item.filters'
 import { redirect, Outlet } from 'react-router'
 import { auth } from '@/.server/auth'
+import type { View, ViewType } from '@/prisma/client'
 export function meta({ matches }: Route.MetaArgs) {
   return [
     { title: `Stashly - ${matches.at(-1)?.pathname}` },
@@ -59,15 +60,14 @@ export async function loader({ request }: Route.ActionArgs) {
         },
       },
       thumbnails: {
-        orderBy: { createdAt: 'desc' },
+        orderBy: { stage: 'desc' },
         take: 1,
-        where: { NOT: { url: { startsWith: '#' } } },
+        where: { stage: { lte: 3 }, NOT: { url: { startsWith: '#' } } },
         select: {
           height: true,
           width: true,
           url: true,
           size: true,
-          view: true,
           id: true,
           stage: true,
         },
@@ -78,34 +78,39 @@ export async function loader({ request }: Route.ActionArgs) {
   })
 
   const RIVER_FALLBACKS: [number, number][] = [
-    [4, 3], [16, 9], [1, 1], [5, 4], [7, 5],
+    [4, 3],
+    [16, 9],
+    [7, 4],
   ]
 
   let images = res.map((item) => {
     let thumb = item.thumbnails[0]
-    const storedW = thumb?.width ?? item.image?.width ?? item.video?.width ?? null
-    const storedH = thumb?.height ?? item.image?.height ?? item.video?.height ?? null
-    let w: number, h: number
-    if (storedW && storedH) {
-      w = storedW; h = storedH
-    } else if (layout === 'river') {
-      // No stored dims — pick a varied fallback from item id to avoid uniform rows
-      ;[w, h] = RIVER_FALLBACKS[Math.floor(Math.random() * RIVER_FALLBACKS.length)]
-    } else {
-      w = 16; h = 9
+    const storedW =
+      thumb?.width ?? item.image?.width ?? item.video?.width ??  undefined
+    const storedH =
+      thumb?.height ?? item.image?.height ?? item.video?.height ?? undefined
+
+    // For river layout, if we don't have dimensions, use a fallback aspect ratio to calculate them from the width. 
+    if (layout === 'river' && (!storedW || !storedH)) {
+      if (storedW && !storedH) {
+        thumb = { ...thumb, height: 256 }
+      } else if (!storedW && storedH) {
+        thumb = { ...thumb, width: 0 }
+      }
     }
+
     return {
       id: item.id,
       src:
         thumb?.url ??
         `https://${session.user.bucket}.t3.tigrisfiles.io/${item.parentId}/${item.name}`,
       alt: item?.name,
-      view: thumb?.view,
-      width: w,
-      height: h,
+      view: layout as ViewType,
+      width: thumb?.width!,
+      height: thumb?.height!,
       size: thumb?.size!,
-      srcSet: buildSrcSet(thumb?.url!, [w, w * 2]),
-      sizes: `${w}px`,
+      srcSet: buildSrcSet(thumb?.url!, [thumb?.width!, thumb?.width! * 2]),
+      sizes: `${thumb?.width!}px`,
       name: item.name,
       type: item.type,
       parentId: item.parentId,
