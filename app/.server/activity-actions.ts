@@ -1,11 +1,44 @@
 import type { Prisma } from '@/prisma/client'
 import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import { buildActivityFilters } from '@/utils/filters/activity.filters'
+import { searchFactory } from '@/utils/search'
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * Paginated, filterable search over Activity records.
+ *
+ * @example
+ * const page = await searchActivities({ itemId: 'item_123', take: 20, strategy: 'cursor' })
+ */
+export const searchActivities = searchFactory({
+  dbDelegate: prisma.activity,
+  buildFilters: buildActivityFilters,
+  defaultOrderBy: (): Prisma.ActivityOrderByWithRelationInput => ({ id: 'desc' }),
+})
 
 const defaultInclude = {
   time: true,
   item: true,
-  action: true,
+  action: {
+    include: {
+      create: true,
+      rename: true,
+      move: true,
+      delete: true,
+      restore: true,
+      copy: true,
+      share: true,
+      version: true,
+      comment: true,
+      permission: true,
+      access: true,
+      edit: true,
+    },
+  },
   access: true,
 } satisfies Prisma.ActivityInclude
 

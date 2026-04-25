@@ -5,6 +5,8 @@ import { auth } from '@/.server/auth'
 import { redirect } from 'react-router'
 import { BackIcon, InfoIcon } from '@/components/icons'
 import { formatSize } from '@/utils/formaters'
+import { findManyActivities } from '@/services/activity-actions'
+import { ActivityFeed } from '@/components/core-components/activity-feed'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const session = await auth.api.getSession(request)
@@ -42,13 +44,19 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const bucket = session.user.bucket
   const fullUrl = `https://${bucket}.t3.tigrisfiles.io/${item.file?.key ?? `${item.parentId}/${item.name}`}`
 
-  return { item, fullUrl }
+  const activities = await findManyActivities({
+    where: { itemId: item.id },
+    orderBy: { id: 'desc' },
+    take: 20,
+  })
+
+  return { item, fullUrl, activities }
 }
 
 export default function GalleryImageDetail({
   loaderData,
 }: Route.ComponentProps) {
-  const { item, fullUrl } = loaderData
+  const { item, fullUrl, activities } = loaderData
   const navigate = useNavigate()
 
   const img = item.image
@@ -92,7 +100,7 @@ export default function GalleryImageDetail({
       <div className="relative flex h-full">
         {/* Left: image — 75% */}
         <div
-          className="flex flex-[3] items-center justify-center p-8"
+          className="flex flex-3 items-center justify-center p-8"
           onClick={(e) => e.stopPropagation()}
         >
           <img
@@ -165,6 +173,13 @@ export default function GalleryImageDetail({
               </dl>
             </section>
             )}
+
+            <section>
+              <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Activity
+              </h3>
+              <ActivityFeed activities={activities} />
+            </section>
 
           </div>
         </div>
