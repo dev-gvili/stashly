@@ -14,6 +14,7 @@ import {
   requireAtLeastRole,
 } from '@/services/workspace-actions'
 import { ensureUserQuota, onItemsCopied, onItemsUploaded } from '../.server/quota-actions'
+import { createActivity } from './activity-actions'
 import { formatSize } from '@/utils/formaters'
 import { searchFactory } from './search/search'
 import { buildItemFilters } from './search/item.filters'
@@ -47,12 +48,20 @@ export async function getItemWithPermissions(userId: string, itemId: string) {
  */
 export async function renameItem(itemId: string, newName: string) {
   return await prisma.$transaction(async (tx) => {
+    const existing = await tx.item.findUniqueOrThrow({ where: { id: itemId }, select: { name: true } })
+
     // 1. Update the item's name
     const item = await tx.item.update({
       where: { id: itemId },
       data: { name: newName },
       include: { parent: true },
     })
+
+    createActivity({
+      item: { connect: { id: itemId } },
+      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), rename: { create: { id: toObjectId(getPrefixForModel('RenameAction')), oldName: existing.name, newName } } } },
+    }).catch(() => {})
 
     return item
   })
@@ -179,6 +188,12 @@ export async function moveItem(
       where: { id: itemId },
       data: { parentId: targetFolderId },
     })
+
+    createActivity({
+      item: { connect: { id: itemId } },
+      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), move: { create: { id: toObjectId(getPrefixForModel('MoveAction')), from: itemToMove.parentId ?? '', to: targetFolderId } } } },
+    }).catch(() => {})
 
     return item
   })
@@ -335,7 +350,7 @@ export async function trashItems(ids: string[]) {
   }
 
   // Update status for all items at once
-  return await prisma.item.updateMany({
+  const result = await prisma.item.updateMany({
     where: {
       id: { in: allIds },
     },
@@ -343,6 +358,16 @@ export async function trashItems(ids: string[]) {
       status: 'trashed',
     },
   })
+
+  for (const id of ids) {
+    createActivity({
+      item: { connect: { id } },
+      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), delete: { create: { id: toObjectId(getPrefixForModel('DeleteAction')), name: id, itemType: 'file' } } } },
+    }).catch(() => {})
+  }
+
+  return result
 }
 
 /**
@@ -402,7 +427,7 @@ export async function restoreItems(ids: string[]) {
   }
 
   // Update status for all related items at once
-  return await prisma.item.updateMany({
+  const result = await prisma.item.updateMany({
     where: {
       id: { in: allIds },
     },
@@ -410,6 +435,16 @@ export async function restoreItems(ids: string[]) {
       status: 'normal',
     },
   })
+
+  for (const id of ids) {
+    createActivity({
+      item: { connect: { id } },
+      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), restore: { create: { id: toObjectId(getPrefixForModel('RestoreAction')) } } } },
+    }).catch(() => {})
+  }
+
+  return result
 }
 
 /**
@@ -420,9 +455,17 @@ export async function restoreItems(ids: string[]) {
  * Prisma's `onDelete: Cascade` in the schema handles the children automatically.
  */
 export async function deleteItem(id: string) {
-  return await prisma.item.delete({
+  const deleted = await prisma.item.delete({
     where: { id },
   })
+
+  createActivity({
+    item: { connect: { id } },
+    time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+    action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), delete: { create: { id: toObjectId(getPrefixForModel('DeleteAction')), name: id, itemType: 'file' } } } },
+  }).catch(() => {})
+
+  return deleted
 }
 
 /**
@@ -549,6 +592,12 @@ export async function copyItem(
         client: tx,
       })
 
+      createActivity({
+        item: { connect: { id: newItem.id } },
+        time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), move: { create: { id: toObjectId(getPrefixForModel('MoveAction')), from: itemId, to: targetParentId ?? '' } } } },
+      }).catch(() => {})
+
       return newItem
     }
 
@@ -590,6 +639,12 @@ export async function copyItem(
         dataSize: source.size,
       })
 
+      createActivity({
+        item: { connect: { id: newItem.id } },
+        time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), move: { create: { id: toObjectId(getPrefixForModel('MoveAction')), from: itemId, to: targetParentId ?? '' } } } },
+      }).catch(() => {})
+
       return newItem
     }
 
@@ -625,6 +680,12 @@ export async function copyItem(
         dataSize: source.size,
         client: tx,
       })
+
+      createActivity({
+        item: { connect: { id: newItem.id } },
+        time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), move: { create: { id: toObjectId(getPrefixForModel('MoveAction')), from: itemId, to: targetParentId ?? '' } } } },
+      }).catch(() => {})
 
       return newItem
     }
@@ -672,6 +733,12 @@ export async function copyItem(
         client: tx,
       })
 
+      createActivity({
+        item: { connect: { id: newItem.id } },
+        time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), move: { create: { id: toObjectId(getPrefixForModel('MoveAction')), from: itemId, to: targetParentId ?? '' } } } },
+      }).catch(() => {})
+
       return newItem
     }
   })
@@ -695,7 +762,7 @@ export async function createFolder(
   ownerId: string,
   driveId: string // Tenant scope
 ) {
-  return await prisma.item.create({
+  const folder = await prisma.item.create({
     data: {
       id: toObjectId(getPrefixForModel('Item')),
       name: folderName,
@@ -720,6 +787,14 @@ export async function createFolder(
       },
     },
   })
+
+  createActivity({
+    item: { connect: { id: folder.id } },
+    time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+    action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), create: { create: { id: toObjectId(getPrefixForModel('CreateAction')) } } } },
+  }).catch(() => {})
+
+  return folder
 }
 
 async function findOrCreateFolderPath(
@@ -863,6 +938,12 @@ export async function createUploadedItem(data: {
     })
 
     await onItemsUploaded({ userId: data.ownerId, dataSize: data.size, client: tx })
+
+    createActivity({
+      item: { connect: { id: item.id } },
+      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), create: { create: { id: toObjectId(getPrefixForModel('CreateAction')) } } } },
+    }).catch(() => {})
 
     return item
   })
