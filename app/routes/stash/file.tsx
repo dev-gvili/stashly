@@ -15,89 +15,98 @@ import {
 import { Link } from 'react-router'
 import { href } from 'react-router'
 import { breadcrumbs } from '@/services/breadcrumbs'
+import { auth } from '@/services/auth'
+import { redirect } from 'react-router'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  let crumbs = await breadcrumbs(params.fileId)
-  const item = await prisma.item.findUniqueOrThrow({
-    where: {
-      id: params.fileId,
-      parentId: params.folderId,
-    },
-    include: {
-      parent: {
-        select: {
-          id: true,
-          name: true,
-          folder: {
-            select: {
-              id: true,
-              childCount: true,
-            },
-          },
-        },
-      },
-      favorites: {
-        select: {
-          favoritedBy: {
-            select: {
-              image: true,
-              name: true,
-              id: true,
-            },
-          },
-        },
-      },
-      permissions: {
-        select: {
-          _count: { select: { users: true } },
-          roles: true,
-          users: {
-            select: {
-              id: true,
-              image: true,
-              name: true,
-            },
-          },
-        },
-      },
-      locked: {
-        select: {
-          id: true,
-          expiresAt: true,
-          lockedAt: true,
-          lockedById: true,
-          lockedBy: {
-            select: {
-              image: true,
-              name: true,
-              id: true,
-            },
-          },
-        },
-      },
-      file: {
-        select: {
-          id: true,
-          mimeType: true,
-          extension: true,
-          key: true,
-        },
-      },
-      thumbnails: {
-        where: {
-          size: {
-            equals: 'custom',
-          },
-        },
-        select: {
-          url: true,
-          width: true,
-          height: true,
-        },
-      },
-    },
-  })
+  const session = await auth.api.getSession(request)
+  if (!session) throw redirect('/auth/sign-in')
 
+  const [allCrumbs, item] = await Promise.all([
+    breadcrumbs(params.fileId),
+    prisma.item.findUniqueOrThrow({
+      where: {
+        id: params.fileId,
+        parentId: params.folderId,
+      },
+      include: {
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            folder: {
+              select: {
+                id: true,
+                childCount: true,
+              },
+            },
+          },
+        },
+        favorites: {
+          select: {
+            favoritedBy: {
+              select: {
+                image: true,
+                name: true,
+                id: true,
+              },
+            },
+          },
+        },
+        permissions: {
+          select: {
+            _count: { select: { users: true } },
+            roles: true,
+            users: {
+              select: {
+                id: true,
+                image: true,
+                name: true,
+              },
+            },
+          },
+        },
+        locked: {
+          select: {
+            id: true,
+            expiresAt: true,
+            lockedAt: true,
+            lockedById: true,
+            lockedBy: {
+              select: {
+                image: true,
+                name: true,
+                id: true,
+              },
+            },
+          },
+        },
+        file: {
+          select: {
+            id: true,
+            mimeType: true,
+            extension: true,
+            key: true,
+          },
+        },
+        thumbnails: {
+          where: {
+            size: {
+              equals: 'custom',
+            },
+          },
+          select: {
+            url: true,
+            width: true,
+            height: true,
+          },
+        },
+      },
+    }),
+  ])
+
+  const crumbs =
+    item.ownerId === session.user.id ? allCrumbs : allCrumbs.slice(-1)
   return { item, crumbs }
 }
 
@@ -159,7 +168,9 @@ export default ({ loaderData }: Route.ComponentProps) => {
           {JSON.stringify(
             crumbs,
             (key, value) => {
-              return key === 'size' || key === "inclusiveSize" ? Number(value) : value
+              return key === 'size' || key === 'inclusiveSize'
+                ? Number(value)
+                : value
             },
             2
           )}
@@ -170,7 +181,9 @@ export default ({ loaderData }: Route.ComponentProps) => {
           {JSON.stringify(
             item,
             (key, value) => {
-              return key === 'size' || key === "inclusiveSize" ? Number(value) : value
+              return key === 'size' || key === 'inclusiveSize'
+                ? Number(value)
+                : value
             },
             2
           )}

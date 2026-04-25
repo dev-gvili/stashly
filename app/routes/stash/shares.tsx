@@ -12,6 +12,7 @@ import { SelectionProvider } from '../../components/stash/selection'
 import { LoadMoreItems } from '../../components/core-components/buttons'
 import { useId } from 'react'
 import { ShareIcon } from '@/components/icons'
+import { GenericEmptyState } from '@/components/states/generic-empty-state'
 
 // ---------------------------------------------------------------------------
 // Loader — fetch items accessible to the current user via share permissions
@@ -107,13 +108,11 @@ export default ({ loaderData }: Route.ComponentProps) => {
 
   if (items.length === 0 && !isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground py-20">
-        <ShareIcon className="size-12 opacity-30" />
-        <p className="text-sm font-stashly">Nothing shared with you yet</p>
-        <p className="text-xs text-center max-w-xs text-muted-foreground">
-          Items shared with you via links or direct invitations will appear here.
-        </p>
-      </div>
+      <GenericEmptyState
+        icon={<ShareIcon className="size-20" />}
+        title="Nothing shared with you yet"
+        description="Items shared with you via links or direct invitations will appear here."
+      />
     )
   }
 
@@ -145,7 +144,11 @@ export default ({ loaderData }: Route.ComponentProps) => {
         </GridLayout>
       </SelectionProvider>
       <div className="col-span-full flex justify-center items-center h-full py-4">
-        <LoadMoreItems loadMore={loadMore} isLoading={isLoading} hasMore={hasMore} />
+        <LoadMoreItems
+          loadMore={loadMore}
+          isLoading={isLoading}
+          hasMore={hasMore}
+        />
       </div>
     </Fragment>
   )

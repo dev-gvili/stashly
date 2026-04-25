@@ -2,7 +2,7 @@ import React, { useLayoutEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { containerVariants, itemVariants } from './variants'
 import { buildRows, type ImageData, type RowImageData } from './buildRows'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams, useViewTransitionState } from 'react-router'
 import { useSidebar } from '../ui/sidebar'
 
 /**
@@ -17,6 +17,37 @@ export function buildSrcSet(src: string, widths: number[]) {
     .join(', ')
 }
 
+function RiverItem({ item }: { item: RowImageData }) {
+  const isTransitioning = useViewTransitionState(item.img.id)
+  return (
+    <Link
+      to={item.img.id}
+      viewTransition
+      unstable_mask="."
+      prefetch="intent"
+      className="flex items-center hover:border-primary"
+    >
+      <img
+        style={
+          isTransitioning
+            ? { viewTransitionName: `img-${item.img.id}` }
+            : undefined
+        }
+        data-prefetch // use
+        src={item.img.src!}
+        srcSet={item.img.srcSet}
+        sizes={item.img.sizes}
+        alt={item.img.alt}
+        className="h-full min-w-28 flex-1 rounded-md object-cover grayscale hover:grayscale-0 cursor-pointer"
+        loading="lazy"
+        decoding="async"
+        width={item.width}
+        height={item.height}
+      />
+    </Link>
+  )
+}
+
 export const RiverView: React.FC<{
   images: ImageData[]
 }> = ({ images }) => {
@@ -29,6 +60,7 @@ export const RiverView: React.FC<{
   const [animationKey, setAnimationKey] = useState(0)
 
   useLayoutEffect(() => {
+    console.log('Calculating rows with state:', images)
     if (!containerRef.current) return
     let width = containerRef.current.clientWidth
     if (state === 'collapsed') {
@@ -36,7 +68,7 @@ export const RiverView: React.FC<{
     } else {
       width = containerRef.current.clientWidth
     }
-    setRows(buildRows(images, width, 150, 8))
+    setRows(buildRows(images, width, 150, 8, 8))
     setAnimationKey((prev) => prev + 1)
   }, [state])
 
@@ -45,39 +77,21 @@ export const RiverView: React.FC<{
     if (!containerRef.current) return
     const disconnect = imagePrefetchObserver(containerRef.current)
     return () => disconnect()
-  }, []) 
+  }, [])
 
   return (
     <AnimatePresence mode="popLayout" initial={false} key={animationKey}>
+      // The container for the river layout, with variants for animation
       <motion.div
         ref={containerRef}
         className="w-full flex-col space-y-2"
         key={animationKey}
       >
         {rows.map((row, i) => (
-          <motion.div key={i} layout className="flex gap-2 flex-nowrap">
+          // Each row is a flex container with gap between images
+          <motion.div key={i} layout className="flex gap-2 flex-nowrap max-h-36">
             {row.map((item) => (
-              <motion.div
-                layout
-                key={item.img.id}
-                variants={itemVariants}
-                initial="hidden"
-                animate="show"
-                exit={{ opacity: 0 }}
-              >
-                <img
-                  data-prefetch // use 
-                  src={item.img.src}
-                  srcSet={item.img.srcSet}
-                  sizes={item.img.sizes}
-                  alt={item.img.alt}
-                  className="rounded-md object-cover grayscale hover:grayscale-0"
-                  loading="lazy"
-                  decoding="async"
-                  width={item.width}
-                  height={item.height}
-                />
-              </motion.div>
+              <RiverItem key={item.img.id} item={item} />
             ))}
           </motion.div>
         ))}

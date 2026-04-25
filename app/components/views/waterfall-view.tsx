@@ -1,6 +1,34 @@
 import React from 'react'
 import type { ImageData } from './buildRows'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams, useViewTransitionState } from 'react-router'
+
+function WaterfallItem({ img }: { img: ImageData }) {
+  const isTransitioning = useViewTransitionState(img.id)
+  return (
+    <div
+      className="w-full break-inside-avoid"
+      style={{ breakInside: 'avoid' }}
+    >
+      <Link to={img.id} viewTransition unstable_mask=".">
+        <img
+          src={img.src!}
+          style={
+            isTransitioning
+              ? { viewTransitionName: `img-${img.id}` }
+              : undefined
+          }
+          className="w-full h-full mb-2 rounded-md object-cover grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer"
+          width={img.width}
+          height={img.height}
+          sizes={img.sizes}
+          srcSet={img.srcSet}
+          decoding="async"
+          loading="lazy"
+        />
+      </Link>
+    </div>
+  )
+}
 
 export const WaterfallLayout: React.FC<{
   images: ImageData[]
@@ -10,25 +38,10 @@ export const WaterfallLayout: React.FC<{
   if (!isWaterfallLayout) return null
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-xs xl:columns-5 2xl:columns-8 gap-2 *:mb-2">
+    <div className="min-h-screen max-w-screen flex-col">
+      <div className="columns-1 sm:columns-2 md:columns-3 xl:columns-10 gap-2 *:mb-2">
         {images.map((img) => (
-          <div
-            key={img.id}
-            style={{ breakInside: 'avoid' }} // important for CSS columns
-          >
-            <img
-              src={img.src}
-              alt={img.alt}
-              className="w-full h-full mb-2 rounded-md object-cover grayscale hover:grayscale-0 transition-all duration-300"
-              width={img.width}
-              height={img.height}
-              sizes={img.sizes}
-              srcSet={img.srcSet}
-              decoding="async"
-              loading="lazy"
-            />
-          </div>
+          <WaterfallItem key={img.id} img={img} />
         ))}
       </div>
     </div>

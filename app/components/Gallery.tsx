@@ -1,36 +1,112 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useSearchParams } from 'react-router'
+import { useSearchParams, Link, useViewTransitionState } from 'react-router'
 import { RiverView } from './views/river-view'
 import { WaterfallLayout } from './views/waterfall-view'
 import type { ImageData } from './views/buildRows'
 import { GridLayout } from './views/grid-view'
 import { itemVariants } from './views/variants'
-import { Image as Img } from './ui/image'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router'
+import { generateVideoThumbnail } from '@/utils/video'
+import { cn } from '@/utils'
+import { MediaIcon, PauseV2Icon } from './icons'
 
-// const sampleImages: ImageData[] = mockImages(85);
+function VideoItem({ src, className }: { src: string; className?: string }) {
+  const [poster, setPoster] = useState<string | undefined>(undefined)
+  const [hovered, setHovered] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const ref = useRef<HTMLVideoElement>(null)
 
-// function getImageSize(
-//   url: string
-// ): Promise<{ width: number; height: number; alt: string }> {
-//   return new Promise((resolve, reject) => {
-//     const img = new Image()
-//     img.onload = () => {
-//       void 0
-//       resolve({
-//         width: img.naturalWidth > 1024 ? 1024 : img.naturalWidth,
-//         height: img.naturalHeight > 1024 ? 1024 : img.naturalHeight,
-//         alt: img.alt,
-//       })
-//     }
-//     img.onerror = reject
-//     img.src = url
-//   })
-// }
+  useEffect(() => {
+    generateVideoThumbnail(src).then((thumb) => {
+      if (thumb) setPoster(thumb)
+    })
+  }, [src])
+
+  const toggle = () => {
+    const video = ref.current
+    if (!video) return
+    if (video.paused) {
+      video.play()
+      setIsPlaying(true)
+    } else {
+      video.pause()
+      setIsPlaying(false)
+    }
+  }
+
+  return (
+    <div
+      className="relative w-full h-full"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <video
+        ref={ref}
+        src={src}
+        poster={poster}
+        className={cn(className)}
+        preload="metadata"
+        disableRemotePlayback
+        playsInline
+      />
+      {hovered && (
+        <button
+          onClick={toggle}
+          className="absolute inset-0 flex items-center justify-center"
+        >
+          {isPlaying ? (
+            <PauseV2Icon className="size-12 drop-shadow-md" />
+          ) : (
+            <MediaIcon className="size-12 drop-shadow-md" />
+          )}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function GridItem({ item, showVideo }: { item: ImageData; showVideo: boolean }) {
+  const isTransitioning = useViewTransitionState(item.id)
+  return (
+    <motion.div
+      variants={itemVariants}
+      initial="hidden"
+      animate="show"
+      className="w-full h-full aspect-4/3 overflow-hidden"
+    >
+      {showVideo ? (
+        <VideoItem
+          src={item.src ?? ''}
+          className="rounded-md object-cover w-full h-full"
+        />
+      ) : (
+        <Link to={item.id} viewTransition unstable_mask=".">
+          <motion.img
+            data-prefetch="true"
+            layoutId={item.id}
+            src={item.src ?? undefined}
+            alt={item.alt}
+            width={item.width}
+            height={item.height}
+            sizes={item.sizes}
+            srcSet={item.srcSet}
+            style={isTransitioning ? { viewTransitionName: `img-${item.id}` } : undefined}
+            className="rounded-md object-cover w-full h-full grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer"
+            decoding="async"
+            loading="lazy"
+          />
+        </Link>
+      )}
+    </motion.div>
+  )
+}
 
 export const Gallery = ({ images }: { images: ImageData[] }) => {
   const [searchParams] = useSearchParams()
   const layoutType = searchParams.get('layout') ?? 'grid'
-
+  const location = useLocation()
+  const showVideo = location.pathname.includes('videos')
   return (
     <AnimatePresence mode="popLayout" initial={false}>
       {layoutType === 'waterfall' ? (
@@ -40,27 +116,7 @@ export const Gallery = ({ images }: { images: ImageData[] }) => {
       ) : (
         <GridLayout>
           {images.map((item) => (
-            <motion.div
-              key={item.id}
-              variants={itemVariants}
-              initial="hidden"
-              animate="show"
-              className="w-full h-full aspect-4/3 overflow-hidden"
-            >
-              <motion.img
-                data-prefetch="true"
-                layoutId={item.id}
-                src={item.src}
-                alt={item.alt}
-                width={item.width}
-                height={item.height}
-                sizes={item.sizes}
-                srcSet={item.srcSet}
-                className="rounded-md object-cover w-full h-full grayscale hover:grayscale-0 transition-all duration-300"
-                decoding="async"
-                loading="lazy"
-              />
-            </motion.div>
+            <GridItem key={item.id} item={item} showVideo={showVideo} />
           ))}
         </GridLayout>
       )}
