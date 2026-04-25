@@ -56,7 +56,8 @@ async function saveMediaMetadata(itemId: string, file: File) {
     }
   }
 
-  await fetch('/api/items', { method: 'POST', body: fd }).catch(() => {})
+  const res = await fetch('/api/items', { method: 'POST', body: fd }).catch((e) => { console.error('[saveMediaMetadata] fetch failed', e); return null })
+  if (res && !res.ok) console.error('[saveMediaMetadata] server error', res.status, await res.text().catch(() => ''))
 }
 
 export function useThumbnail() {
@@ -149,7 +150,31 @@ export function useThumbnail() {
         setState({ stage: 2, src: presign.publicUrl, color })
 
         // Fire-and-forget: save real media dimensions + EXIF to the Image/Video facet
-        saveMediaMetadata(itemId, file).catch(() => {})
+        saveMediaMetadata(itemId, file).catch((e) => console.error('[saveMediaMetadata]', e))
+
+        // ── Stage 3: ViT saliency crop ──────────────────────────────────────
+        if (file.type.startsWith('image/')) {
+          const { generateSalientCrop } = await import('@/workers/thumbnail.ai')
+          const salientBlob = await generateSalientCrop(resizedBlob).catch(() => null)
+          if (salientBlob) {
+            const presign3Res = await fetch(`/api/thumbnails/${itemId}/presign`).catch(() => null)
+            const presign3 = presign3Res ? await presign3Res.json().catch(() => null) : null
+            if (presign3?.uploadUrl && presign3?.publicUrl) {
+              await fetch(presign3.uploadUrl, {
+                method: 'PUT',
+                body: salientBlob,
+                headers: { 'Content-Type': 'image/webp' },
+              }).catch(() => {})
+              const fd3 = new FormData()
+              fd3.append('stage', '3')
+              fd3.append('url', presign3.publicUrl)
+              fd3.append('width', '512')
+              fd3.append('height', '512')
+              await fetch(`/api/thumbnails/${itemId}`, { method: 'PATCH', body: fd3 }).catch(() => {})
+              setState({ stage: 3, src: presign3.publicUrl, color })
+            }
+          }
+        }
       } else {
         bitmap.close()
       }
