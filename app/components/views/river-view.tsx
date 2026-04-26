@@ -1,15 +1,8 @@
-import React, { useLayoutEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { containerVariants, itemVariants } from './variants'
-import { buildRows, type ImageData, type RowImageData } from './buildRows'
+import React from 'react'
+import type { ImageData } from './buildRows'
 import { Link, useSearchParams, useViewTransitionState } from 'react-router'
-import { useSidebar } from '../ui/sidebar'
+import { cn, toChunkArray } from '@/utils'
 
-/**
- * Build a simple srcset string for an image URL by appending a width query parameter.
- * Many CDNs and image providers accept a `w` query param to request resized images.
- * If the source already contains query parameters we append using `&`.
- */
 export function buildSrcSet(src: string, widths: number[]) {
   const hasQuery = src?.indexOf('?') !== -1
   return widths
@@ -17,34 +10,56 @@ export function buildSrcSet(src: string, widths: number[]) {
     .join(', ')
 }
 
-function RiverItem({ item }: { item: RowImageData }) {
-  const isTransitioning = useViewTransitionState(item.img.id)
+const ASPECT_CYCLE = [
+  'aspect-square',
+  'aspect-[4/2]',
+  'aspect-[3/4]',
+  'aspect-[2/1]',
+  'aspect-[4/3]',
+  'aspect-[2/2]',
+  'aspect-square',
+] as const
+
+function aspectFromId(id: string): string {
+  const sum = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  return ASPECT_CYCLE[sum % ASPECT_CYCLE.length]
+}
+
+function RiverItem({ img }: { img: ImageData }) {
+  const isTransitioning = useViewTransitionState(img.id)
   return (
-    <Link
-      to={item.img.id}
-      viewTransition
-      unstable_mask="."
-      prefetch="intent"
-      className="flex items-center hover:border-primary"
+    <div
+      className={cn(
+        'h-32 grow overflow-hidden rounded-md ',
+        aspectFromId(img.id)
+      )}
     >
-      <img
-        style={
-          isTransitioning
-            ? { viewTransitionName: `img-${item.img.id}` }
-            : undefined
-        }
-        data-prefetch // use
-        src={item.img.src!}
-        srcSet={item.img.srcSet}
-        sizes={item.img.sizes}
-        alt={item.img.alt}
-        className="h-full min-w-28 flex-1 rounded-md object-cover grayscale hover:grayscale-0 cursor-pointer"
-        loading="lazy"
-        decoding="async"
-        width={item.width}
-        height={item.height}
-      />
-    </Link>
+      <Link
+        to={img.id}
+        viewTransition
+        unstable_mask="."
+        prefetch="intent"
+        className="block w-full h-full"
+      >
+        <img
+          style={
+            isTransitioning
+              ? { viewTransitionName: `img-${img.id}` }
+              : undefined
+          }
+          data-prefetch
+          src={img.src!}
+          srcSet={img.srcSet}
+          sizes={img.sizes}
+          alt={img.alt}
+          className="w-full h-full flex-auto object-cover grayscale hover:grayscale-0 cursor-pointer transition-all duration-300"
+          loading="lazy"
+          decoding="async"
+          width={img.width}
+          height={img.height}
+        />
+      </Link>
+    </div>
   )
 }
 
@@ -54,61 +69,23 @@ export const RiverView: React.FC<{
   const [searchParams] = useSearchParams()
   const isRiverLayout = searchParams.has('layout', 'river')
   if (!isRiverLayout) return null
-  const { state } = useSidebar()
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [rows, setRows] = useState<RowImageData[][]>([])
-  const [animationKey, setAnimationKey] = useState(0)
 
-  useLayoutEffect(() => {
-    console.log('Calculating rows with state:', images)
-    if (!containerRef.current) return
-    let width = containerRef.current.clientWidth
-    if (state === 'collapsed') {
-      width = containerRef.current.clientWidth + 256
-    } else {
-      width = containerRef.current.clientWidth
-    }
-    setRows(buildRows(images, width, 150, 8, 8))
-    setAnimationKey((prev) => prev + 1)
-  }, [state])
-
-  // set up intersection observer prefetch for this container
-  useLayoutEffect(() => {
-    if (!containerRef.current) return
-    const disconnect = imagePrefetchObserver(containerRef.current)
-    return () => disconnect()
-  }, [])
-
+  let chunks = toChunkArray(images, 7)
   return (
-    <AnimatePresence mode="popLayout" initial={false} key={animationKey}>
-      // The container for the river layout, with variants for animation
-      <motion.div
-        ref={containerRef}
-        className="w-full flex-col space-y-2"
-        key={animationKey}
-      >
-        {rows.map((row, i) => (
-          // Each row is a flex container with gap between images
-          <motion.div key={i} layout className="flex gap-2 flex-nowrap max-h-36">
-            {row.map((item) => (
-              <RiverItem key={item.img.id} item={item} />
-            ))}
-          </motion.div>
-        ))}
-      </motion.div>
-    </AnimatePresence>
+    <div className="flex flex-col ">
+      {chunks.map((chunk, i) => (
+        // react doesn't like it when the same image appears in multiple rows during a transition, so we use the chunk index as part of the key to force a full re-render of each row when the layout changes
+        <div key={i} className="flex gap-4 mb-4 overflow-hidden rounded-md shrink-0">
+          {chunk.map((img) => (
+            // RiverItem will use the image ID for its own view transition keys, so we can safely reuse the same images across rows without key conflicts
+            <RiverItem key={img.id} img={img} />
+          ))}
+        </div>
+      ))}
+    </div>
   )
 }
 
-/**
- *
- * Prefetch images near the viewport. We attach an observer to images inside the
- * RiverView container and when they enter the rootMargin we pre-load their
- * higher-resolution candidate (if available) using requestIdleCallback to avoid
- * blocking the main thread.
- * @param root - `HTMLElement`
- * @returns
- */
 export function imagePrefetchObserver(root: HTMLElement | null) {
   if (typeof window === 'undefined' || !root) return () => {}
 
@@ -121,7 +98,6 @@ export function imagePrefetchObserver(root: HTMLElement | null) {
         const src = img.getAttribute('src')
         const srcset = img.getAttribute('srcset')
 
-        // choose the largest candidate from srcset if it exists
         let best = null
         if (srcset) {
           const last = srcset.split(',').pop()

@@ -1,30 +1,53 @@
 import React from 'react'
 import type { ImageData } from './buildRows'
 import { Link, useSearchParams, useViewTransitionState } from 'react-router'
+import { cn } from '@/utils'
 
-function WaterfallItem({ img }: { img: ImageData }) {
+const ASPECT_CYCLE = [
+  'aspect-square',
+  'aspect-[1/2]',
+  // 'aspect-[1/3]',
+  'aspect-[3/4]',
+  'aspect-[2/1]',
+  'aspect-[4/3]',
+] as const
+
+function aspectFromId(id: string): string {
+  const sum = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  return ASPECT_CYCLE[sum % ASPECT_CYCLE.length]
+}
+
+function WaterfallItem({
+  img,
+  aspectClass,
+}: {
+  img: ImageData
+  aspectClass: string
+}) {
   const isTransitioning = useViewTransitionState(img.id)
   return (
-    <div
-      className="w-full break-inside-avoid"
-      style={{ breakInside: 'avoid' }}
-    >
+    <div className="break-inside-avoid mb-4">
       <Link to={img.id} viewTransition unstable_mask=".">
-        <img
-          src={img.src!}
-          style={
-            isTransitioning
-              ? { viewTransitionName: `img-${img.id}` }
-              : undefined
-          }
-          className="w-full h-full mb-2 rounded-md object-cover grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer"
-          width={img.width}
-          height={img.height}
-          sizes={img.sizes}
-          srcSet={img.srcSet}
-          decoding="async"
-          loading="lazy"
-        />
+        <div
+          style={{ breakInside: 'avoid' }}
+          className={cn('overflow-hidden rounded-md hover:ring-3 ring-primary', aspectClass)}
+        >
+          <img
+            src={img.src!}
+            style={
+              isTransitioning
+                ? { viewTransitionName: `img-${img.id}` }
+                : undefined
+            }
+            className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer"
+            width={img.width}
+            height={img.height}
+            sizes={img.sizes}
+            srcSet={img.srcSet}
+            decoding="async"
+            loading="lazy"
+          />
+        </div>
       </Link>
     </div>
   )
@@ -38,12 +61,14 @@ export const WaterfallLayout: React.FC<{
   if (!isWaterfallLayout) return null
 
   return (
-    <div className="min-h-screen max-w-screen flex-col">
-      <div className="columns-1 sm:columns-2 md:columns-3 xl:columns-10 gap-2 *:mb-2">
-        {images.map((img) => (
-          <WaterfallItem key={img.id} img={img} />
-        ))}
-      </div>
+    <div className="columns-2 sm:columns-3 md:columns-5 lg:columns-8 gap-4">
+      {images.map((img, i) => (
+        <WaterfallItem
+          key={img.id}
+          img={img}
+          aspectClass={aspectFromId(img.id)}
+        />
+      ))}
     </div>
   )
 }
