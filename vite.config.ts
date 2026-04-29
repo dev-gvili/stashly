@@ -8,11 +8,12 @@ export default defineConfig(({ isSsrBuild, mode }) => ({
     env: JSON.stringify(loadEnv(mode, process.cwd(), '')),
   },
   server: {
+    cors: true,
     allowedHosts: [
       '*',
       // '604feeed9b06.ngrok-free.app',
       // 'stashly.onrender.com',
-      'localhost',
+      'localhost:3000',
     ],
     hmr: {
       port: Number(process.env.VITE_HMR_PORT || process.env.HMR_PORT || 24678),

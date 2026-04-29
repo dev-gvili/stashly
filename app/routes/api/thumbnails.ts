@@ -6,7 +6,20 @@ import {
 } from '@/services/thumbnail-actions'
 import { parseFormData } from '@/utils/parsers'
 import { thumbnailCreateSchema, thumbnailUpdateSchema } from '@/schemas/api.schemas'
+import { getPresignedUrl } from '@/services/s3'
 import type { Route } from './+types/thumbnails'
+
+export async function loader({ request, params }: Route.LoaderArgs) {
+  const session = await auth.api.getSession(request)
+  if (!session) throw redirect('/auth/sign-in')
+
+  const itemId = params.itemId
+  if (!itemId) return new Response('Not found', { status: 404 })
+
+  const key = `thumbnails/${itemId}.webp`
+  const presignedUrl = await getPresignedUrl(session.user.bucket, 'get', key, 3600)
+  return redirect(presignedUrl, 302)
+}
 
 export async function action({ request, params }: Route.ActionArgs) {
   const session = await auth.api.getSession(request)
