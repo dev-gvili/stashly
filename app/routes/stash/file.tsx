@@ -1,5 +1,4 @@
 import type { Route } from './+types/file'
-import { prisma } from '@/services/db'
 import {
   useLocation,
   useNavigate,
@@ -17,92 +16,16 @@ import { href } from 'react-router'
 import { breadcrumbs } from '@/services/breadcrumbs'
 import { auth } from '@/services/auth'
 import { redirect } from 'react-router'
+import { getFileItem, touchOpenedAt } from '@/services/item-actions'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/sign-in')
 
-  const [allCrumbs, item] = await Promise.all([
+  const [, allCrumbs, item] = await Promise.all([
+    touchOpenedAt(params.fileId),
     breadcrumbs(params.fileId),
-    prisma.item.findUniqueOrThrow({
-      where: {
-        id: params.fileId,
-        parentId: params.folderId,
-      },
-      include: {
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            folder: {
-              select: {
-                id: true,
-                childCount: true,
-              },
-            },
-          },
-        },
-        favorites: {
-          select: {
-            favoritedBy: {
-              select: {
-                image: true,
-                name: true,
-                id: true,
-              },
-            },
-          },
-        },
-        permissions: {
-          select: {
-            _count: { select: { users: true } },
-            roles: true,
-            users: {
-              select: {
-                id: true,
-                image: true,
-                name: true,
-              },
-            },
-          },
-        },
-        locked: {
-          select: {
-            id: true,
-            expiresAt: true,
-            lockedAt: true,
-            lockedById: true,
-            lockedBy: {
-              select: {
-                image: true,
-                name: true,
-                id: true,
-              },
-            },
-          },
-        },
-        file: {
-          select: {
-            id: true,
-            mimeType: true,
-            extension: true,
-            key: true,
-          },
-        },
-        thumbnails: {
-          where: {
-            size: {
-              equals: 'custom',
-            },
-          },
-          select: {
-            url: true,
-            width: true,
-            height: true,
-          },
-        },
-      },
-    }),
+    getFileItem(params.fileId, params.folderId),
   ])
 
   const crumbs =

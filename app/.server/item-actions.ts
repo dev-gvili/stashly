@@ -13,7 +13,15 @@ import {
   requireMembership,
   requireAtLeastRole,
 } from '@/services/workspace-actions'
-import { ensureUserQuota, onItemsCopied, onItemsUploaded } from '../.server/quota-actions'
+import {
+  ensureUserQuota,
+  onActiveItemsDeleted,
+  onItemsCopied,
+  onItemsDeleted,
+  onItemsRestored,
+  onItemsTrashed,
+  onItemsUploaded,
+} from '../.server/quota-actions'
 import { createActivity } from './activity-actions'
 import { formatSize } from '@/utils/formaters'
 import { searchFactory } from './search/search'
@@ -310,8 +318,8 @@ export async function changeItemsOwner(
  * @example
  * await trashItem('item_123');
  */
-export async function trashItem(id: string) {
-  return await trashItems([id])
+export async function trashItem(id: string, userId: string) {
+  return await trashItems([id], userId)
 }
 
 /**
@@ -324,7 +332,7 @@ export async function trashItem(id: string) {
  * @example
  * await trashItems(['item_1', 'fld_2']);
  */
-export async function trashItems(ids: string[]) {
+export async function trashItems(ids: string[], userId: string) {
   if (ids.length === 0) {
     return
   }
@@ -349,10 +357,17 @@ export async function trashItems(ids: string[]) {
     return
   }
 
-  const itemMeta = await prisma.item.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, name: true, type: true },
-  })
+  const [itemMeta, { _sum }] = await Promise.all([
+    prisma.item.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true, type: true },
+    }),
+    prisma.item.aggregate({
+      where: { id: { in: allIds } },
+      _sum: { size: true },
+    }),
+  ])
+
   const metaMap = Object.fromEntries(itemMeta.map((i) => [i.id, i]))
 
   // Update status for all items at once
@@ -364,6 +379,13 @@ export async function trashItems(ids: string[]) {
       status: 'trashed',
     },
   })
+
+  const trashedSize = _sum.size ?? 0n
+  if (trashedSize > 0n) {
+    Promise.resolve()
+      .then(() => onItemsTrashed({ userId, dataSize: trashedSize }))
+      .catch(() => {})
+  }
 
   for (const id of ids) {
     const meta = metaMap[id]
@@ -388,8 +410,8 @@ export async function trashItems(ids: string[]) {
  * // Restore a specific file and its path
  * await restoreItem('item_123');
  */
-export async function restoreItem(itemId: string) {
-  return await restoreItems([itemId])
+export async function restoreItem(itemId: string, userId: string) {
+  return await restoreItems([itemId], userId)
 }
 
 /**
@@ -404,7 +426,7 @@ export async function restoreItem(itemId: string) {
  * // Restore multiple items and their entire hierarchy
  * await restoreItems(['item_1', 'item_2']);
  */
-export async function restoreItems(ids: string[]) {
+export async function restoreItems(ids: string[], userId: string) {
   if (!ids || ids.length === 0) {
     return
   }
@@ -433,6 +455,12 @@ export async function restoreItems(ids: string[]) {
     return
   }
 
+  // Sum only items that were actually trashed (those shifting from deleted→used)
+  const { _sum } = await prisma.item.aggregate({
+    where: { id: { in: allIds }, status: 'trashed' },
+    _sum: { size: true },
+  })
+
   // Update status for all related items at once
   const result = await prisma.item.updateMany({
     where: {
@@ -442,6 +470,13 @@ export async function restoreItems(ids: string[]) {
       status: 'normal',
     },
   })
+
+  const restoredSize = _sum.size ?? 0n
+  if (restoredSize > 0n) {
+    Promise.resolve()
+      .then(() => onItemsRestored({ userId, dataSize: restoredSize }))
+      .catch(() => {})
+  }
 
   for (const id of ids) {
     createActivity({
@@ -461,10 +496,20 @@ export async function restoreItems(ids: string[]) {
  * Hard deletes an item, if item is of type **folder** all its descendants ( childrens ) also be deleted.
  * Prisma's `onDelete: Cascade` in the schema handles the children automatically.
  */
-export async function deleteItem(id: string) {
+export async function deleteItem(id: string, userId: string) {
   const deleted = await prisma.item.delete({
     where: { id },
   })
+
+  const size = deleted.size ?? 0n
+  if (size > 0n) {
+    // Items deleted from trash: reduce deleted quota.
+    // Items force-deleted while active: reduce used quota.
+    const quotaFn = deleted.status === 'trashed' ? onItemsDeleted : onActiveItemsDeleted
+    Promise.resolve()
+      .then(() => quotaFn({ userId, dataSize: size }))
+      .catch(() => {})
+  }
 
   createActivity({
     item: { connect: { id } },
@@ -487,7 +532,7 @@ export async function deleteItem(id: string) {
  * await deleteItems(['item_abc', 'item_xyz']);
  * // This will delete 'item_abc', 'item_xyz', and any files/folders nested within them.
  */
-export async function deleteItems(ids: string[]) {
+export async function deleteItems(ids: string[], userId: string) {
   if (ids.length === 0) {
     return
   }
@@ -504,7 +549,35 @@ export async function deleteItems(ids: string[]) {
     SELECT "id" FROM "Descendants"
   `
   const allIds = descendantIds.map((item) => item.id)
-  return await prisma.item.deleteMany({ where: { id: { in: allIds } } })
+
+  // Aggregate sizes by status before deleting so we can adjust quota correctly
+  const [trashedAgg, activeAgg] = await Promise.all([
+    prisma.item.aggregate({
+      where: { id: { in: allIds }, status: 'trashed' },
+      _sum: { size: true },
+    }),
+    prisma.item.aggregate({
+      where: { id: { in: allIds }, status: { not: 'trashed' } },
+      _sum: { size: true },
+    }),
+  ])
+
+  const result = await prisma.item.deleteMany({ where: { id: { in: allIds } } })
+
+  const trashedSize = trashedAgg._sum.size ?? 0n
+  const activeSize = activeAgg._sum.size ?? 0n
+  if (trashedSize > 0n) {
+    Promise.resolve()
+      .then(() => onItemsDeleted({ userId, dataSize: trashedSize }))
+      .catch(() => {})
+  }
+  if (activeSize > 0n) {
+    Promise.resolve()
+      .then(() => onActiveItemsDeleted({ userId, dataSize: activeSize }))
+      .catch(() => {})
+  }
+
+  return result
 }
 
 // --- 4. COPY (Recursive) ---
@@ -810,8 +883,9 @@ async function findOrCreateFolderPath(
   ownerId: string,
   driveId: string,
   tx: TransactionClient
-): Promise<string> {
+): Promise<{ parentId: string; createdFolderIds: string[] }> {
   let currentParentId = rootId
+  const createdFolderIds: string[] = []
   for (const folderName of pathParts) {
     const existing = await tx.item.findFirst({
       where: { name: folderName, parentId: currentParentId, type: 'folder', ownerId },
@@ -842,9 +916,10 @@ async function findOrCreateFolderPath(
         select: { id: true },
       })
       currentParentId = folder.id
+      createdFolderIds.push(folder.id)
     }
   }
-  return currentParentId
+  return { parentId: currentParentId, createdFolderIds }
 }
 
 export async function upsertImageFacet(
@@ -903,14 +978,17 @@ export async function createUploadedItem(data: {
   ownerId: string
   category?: string
 }) {
-  return await prisma.$transaction(async (tx) => {
+  let createdFolderIds: string[] = []
+  const result = await prisma.$transaction(async (tx) => {
     const segments = data.key.split('/')
     const rootId = segments[0]
     const pathParts = segments.slice(1, -1)
-    const resolvedParentId =
-      pathParts.length > 0
-        ? await findOrCreateFolderPath(pathParts, rootId, data.ownerId, data.driveId, tx)
-        : rootId
+    let resolvedParentId = rootId
+    if (pathParts.length > 0) {
+      const folderResult = await findOrCreateFolderPath(pathParts, rootId, data.ownerId, data.driveId, tx)
+      resolvedParentId = folderResult.parentId
+      createdFolderIds = folderResult.createdFolderIds
+    }
 
     const item = await tx.item.create({
       data: {
@@ -954,6 +1032,17 @@ export async function createUploadedItem(data: {
 
     return item
   })
+
+  for (const folderId of createdFolderIds) {
+    const id = folderId
+    Promise.resolve().then(() => createActivity({
+      item: { connect: { id } },
+      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), create: { create: { id: toObjectId(getPrefixForModel('CreateAction')) } } } },
+    })).catch(() => {})
+  }
+
+  return result
 }
 
 // --- 6. GET FOLDER CONTENT (PAGINATED) ---
@@ -1789,6 +1878,25 @@ const defaultItemSelect = {
  * Full-text / filter-based search over items.
  * Built with `searchFactory` using `buildItemFilters` for filter composition.
  * Supports cursor pagination and custom ordering.
+ * 
+ * @example
+ * // Search for items with "report" in the name, sorted by creation date
+ * const results = await searchItems({
+ *   query: 'report',
+ *   filters: { name: { contains: 'report' } },
+ *   orderBy: { createdAt: 'desc' },
+ *   limit: 20,
+ * });
+ *
+ * @example
+ * // Search for items in a specific workspace with a certain tag
+ * const results = await searchItems({
+ *   filters: {
+ *     workspaceId: 'ws_123',
+ *     tags: { has: 'important' },
+ *   },
+ * });  
+ * 
  */
 export const searchItems = searchFactory({
   dbDelegate: prisma.item,
@@ -1825,11 +1933,24 @@ export async function createItem(args: Prisma.ItemCreateArgs) {
 }
 
 // create many items at once (e.g. for bulk upload)
+/**
+ * Creates multiple item records in a single operation. Note that this does not support creating related facets (e.g. File, Folder) or relations (e.g. Favorites) — use `createManyItemsBatched` for that.
+ *
+ * @param args - Prisma `createMany` arguments (`data` is required).
+ */ 
 export async function createManyItems(args: Prisma.ItemCreateManyArgs) {
   return prisma.item.createMany(args)
 }
 
 // create many items in barchsequentially including their relations (e.g. for copying large folders)
+/**
+ * Creates multiple items in batches, allowing for the creation of related facets and relations. This function processes items sequentially in batches to manage database load and handle potential constraints. If a batch fails (e.g., due to unique constraint violations), it falls back to creating items individually to isolate errors.
+ *
+ * @param items - An array of item creation data, including related facets and relations.
+ * @param batchSize - The number of items to process in each batch (default: 100).
+ * @returns An array of created item records with their selected fields.
+ * @throws {Error} If item creation fails after retrying individually.
+ */
 export async function createManyItemsBatched(
   items: Prisma.ItemUncheckedCreateInput[],
   batchSize = 100
@@ -2100,5 +2221,59 @@ export async function createRootFolder(
       workspace: { connect: { id: workspaceId } },
       owner: { connect: { id: userId } },
     },
+  })
+}
+
+/**
+ * Updates the `openedAt` timestamp of an item to the current time.
+ * This is used to track recent activity for features like "Suggested Items".
+ *
+ * @param itemId - The ID of the item to update.
+ * @returns A promise that resolves when the update is complete.
+ */
+export async function getFileItem(fileId: string, folderId: string) {
+  return prisma.item.findUniqueOrThrow({
+    where: { id: fileId, parentId: folderId },
+    include: {
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          folder: { select: { id: true, childCount: true } },
+        },
+      },
+      favorites: {
+        select: {
+          favoritedBy: { select: { image: true, name: true, id: true } },
+        },
+      },
+      permissions: {
+        select: {
+          _count: { select: { users: true } },
+          roles: true,
+          users: { select: { id: true, image: true, name: true } },
+        },
+      },
+      locked: {
+        select: {
+          id: true,
+          expiresAt: true,
+          lockedAt: true,
+          lockedById: true,
+          lockedBy: { select: { image: true, name: true, id: true } },
+        },
+      },
+      file: { select: { id: true, mimeType: true, extension: true, key: true } },
+      thumbnails: {
+        select: { url: true, size: true, stage: true, view: true, width: true, height: true },
+      },
+    },
+  })
+}
+
+export async function touchOpenedAt(itemId: string) {
+  await prisma.item.update({
+    where: { id: itemId },
+    data: { openedAt: new Date() },
   })
 }

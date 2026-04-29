@@ -3,7 +3,7 @@ import {
   getCollectionForUser,
   getCollectionItems,
 } from '@/services/collection-actions'
-import { paginateItems } from '@/services/item-actions'
+import { paginateItems, touchOpenedAt } from '@/services/item-actions'
 import { CollectionView } from '@/components/views/collection-view'
 import { redirect, useParams } from 'react-router'
 import type { Route } from './+types/collection'
@@ -46,6 +46,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     thumbnailUrl:
       (item as any).thumbnails?.find((t: any) => t.view === 'grid')?.url ?? null,
   }))
+
+  Promise.resolve().then(() => touchOpenedAt(collectionId)).catch(() => {})
 
   // IDs already in this collection
   const existingItemIds = collection.collectionItems.map((cm) => cm.itemId)

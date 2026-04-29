@@ -8,7 +8,7 @@ import {
   buildItemFilters,
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
-import { getFolderContent } from '@/services/item-actions'
+import { getFolderContent, touchOpenedAt } from '@/services/item-actions'
 import { breadcrumbs } from '@/services/breadcrumbs'
 import { prisma } from '@/services/db'
 import { parseSearchParams } from '@/utils/parsers'
@@ -49,6 +49,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       select: { ownerId: true },
     }),
   ])
+
+  Promise.resolve().then(() => touchOpenedAt(params.folderId)).catch(() => {})
 
   const crumbs =
     folder?.ownerId === session.user.id ? allCrumbs : allCrumbs.slice(-1)
