@@ -676,7 +676,7 @@ export async function deleteWorkspaceItem(userId: string, itemId: string) {
     })
   }
 
-  return deleteItem(itemId)
+  return deleteItem(itemId, userId)
 }
 
 /**

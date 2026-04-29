@@ -280,6 +280,17 @@ When adding a new feature, these steps are **mandatory** in order:
 
 **Item card dropdown**: Actions live in the internal `ItemCardActions` component inside `app/components/stash/item-card.tsx`. The file `item-card-actions.tsx` is unused — don't edit it.
 
+## Gallery Views
+
+**Waterfall layout**: CSS `columns-*` masonry in `app/components/views/waterfall-view.tsx`. Each item uses an id-derived aspect ratio (`aspectFromId`) to vary cell height. The `<img>` element **must keep both `width` and `height` HTML attributes** — removing `height` breaks lazy loading because CSS columns renders items as 0-height boxes that never enter the viewport.
+
+**Seed thumbnail dimensions**: `generateThumbnail` in `prisma/seedData/data.ts` stores dimensions differently per view:
+- `waterfall` → fixed `width`, variable `height`
+- `river` → variable `width`, fixed `height`
+- `grid` → square (equal width and height)
+
+**Theme structure**: `app/styles/globals.css` has **four** theme blocks that must all be updated together: `[data-theme='light']`, `[data-theme='dark']`, and two `[data-theme='system']` blocks (one per `prefers-color-scheme` media query).
+
 ## Workflows
 
 ### Agent/Subagent Creation

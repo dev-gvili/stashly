@@ -38,7 +38,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   switch (parsedData.intent) {
     case 'trash_item': {
       try {
-        await trashItem(parsedData.selectedItem)
+        await trashItem(parsedData.selectedItem, user.id)
         return redirect(`${url.pathname}${url.search}`)
       } catch (e) {
         console.error(e)
@@ -47,7 +47,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
     case 'restore_item': {
       try {
-        await restoreItem(parsedData.selectedItem)
+        await restoreItem(parsedData.selectedItem, user.id)
         searchParams = removeQueryParamValue(
           searchParams,
           'selectedItems',
@@ -61,7 +61,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
     case 'delete_item':
       try {
-        await deleteItem(parsedData.selectedItem)
+        await deleteItem(parsedData.selectedItem, user.id)
         searchParams = removeQueryParamValue(
           searchParams,
           'selectedItems',
@@ -74,7 +74,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
     case 'trash_items':
       try {
-        await trashItems(parsedData.selectedItems)
+        await trashItems(parsedData.selectedItems, user.id)
         return redirect(`${url.pathname}${url.search}`)
       } catch (e) {
         console.error(e)
@@ -91,7 +91,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
     case 'restore_items':
       try {
-        await restoreItems(parsedData.selectedItems)
+        await restoreItems(parsedData.selectedItems, user.id)
         searchParams = removeQueryParam(searchParams, 'selectedItems')
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
@@ -100,7 +100,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
     case 'delete_items':
       try {
-        await deleteItems(parsedData.selectedItems)
+        await deleteItems(parsedData.selectedItems, user.id)
         searchParams = removeQueryParam(searchParams, 'selectedItems')
         return redirect(`${url.pathname}${url.search}`)
       } catch (e) {

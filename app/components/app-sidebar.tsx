@@ -22,6 +22,8 @@ import {
   RecentIcon,
   SendInvitationIcon,
   ShareIcon,
+  StorageFullIcon,
+  StorageIcon,
   TrashIcon,
   VideosIcon,
 } from '@/components/icons'
@@ -118,6 +120,14 @@ const sharingItems: SidebarItemProps[] = [
 ]
 
 const manageItems: SidebarItemProps[] = [
+  {
+    icon: (isActive) => (
+      <StorageFullIcon className="size-5! group-data-[state=collapsed]:ml-2" />
+    ),
+    label: 'Storage',
+    to: 'storage',
+    tooltip: 'Storage',
+  },
   {
     icon: (isActive) => (
       <TrashIcon className="size-5! group-data-[state=collapsed]:ml-2" />

@@ -93,6 +93,8 @@ function GridItem({
 }) {
   if(item.type === "folder" || item.type === "collection") return null
   const Icon = toIcon(item.category as ItemCategory) ?? FileIcon
+  const [imgError, setImgError] = useState(false)
+  const showIcon = !item.thumbnailUrl || imgError
 
   return (
     <button
@@ -106,23 +108,18 @@ function GridItem({
       aria-label={`${selected ? 'Deselect' : 'Select'} ${item.name}`}
     >
       {/* thumbnail / icon */}
-      {item.thumbnailUrl ? (
+      {!showIcon ? (
         <img
-          src={item.thumbnailUrl}
-          alt={item.name}
+          src={item.thumbnailUrl!}
+          alt=""
           className="w-full h-full object-cover"
           loading="lazy"
           decoding="async"
+          onError={() => setImgError(true)}
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-sidebar">
-          {/* {item.type === 'folder' ? (
-            <FolderIcon className="size-10 fill-current" />
-          ) : item.type === 'collection' ? (
-            <CollectionsFillIcon className="size-10" />
-          ) : (
-            <Icon className="size-10 text-muted-foreground" />
-          )} */}
+          <Icon className="size-10 text-muted-foreground" />
         </div>
       )}
 

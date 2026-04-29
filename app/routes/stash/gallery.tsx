@@ -1,7 +1,7 @@
 import type { Route } from './+types/gallery'
 import { Gallery } from '@/components/Gallery'
 import { parseSearchParams } from '@/utils/parsers'
-import { ItemType } from '@/prisma/enums'
+import { ItemCategory, ItemType } from '@/prisma/enums'
 import { buildSrcSet } from '@/components/views/river-view'
 import { prisma } from '@/services/db'
 import {
@@ -37,6 +37,7 @@ export async function loader({ request }: Route.ActionArgs) {
     // cursor: params.cursor ? { id: params.cursor } : undefined,
     where: {
       type: ItemType.file,
+      category: ItemCategory.image,
       thumbnails: {
         some: {
           url: {
@@ -62,7 +63,7 @@ export async function loader({ request }: Route.ActionArgs) {
       thumbnails: {
         orderBy: { stage: 'desc' },
         take: 1,
-        where: { stage: { lte: 3 }, NOT: { url: { startsWith: '#' } } },
+        where: { NOT: { url: { startsWith: '#' } } },
         select: {
           height: true,
           width: true,
@@ -77,40 +78,36 @@ export async function loader({ request }: Route.ActionArgs) {
     },
   })
 
-  const RIVER_FALLBACKS: [number, number][] = [
-    [4, 3],
-    [16, 9],
-    [7, 4],
-  ]
-
   let images = res.map((item) => {
     let thumb = item.thumbnails[0]
     const storedW =
-      thumb?.width ?? item.image?.width ?? item.video?.width ??  undefined
+      thumb?.width ?? item.image?.width ?? item.video?.width ?? null
     const storedH =
-      thumb?.height ?? item.image?.height ?? item.video?.height ?? undefined
+      thumb?.height ?? item.image?.height ?? item.video?.height ?? null
 
-    // For river layout, if we don't have dimensions, use a fallback aspect ratio to calculate them from the width. 
-    if (layout === 'river' && (!storedW || !storedH)) {
-      if (storedW && !storedH) {
-        thumb = { ...thumb, height: 256 }
-      } else if (!storedW && storedH) {
-        thumb = { ...thumb, width: 0 }
-      }
+    // Resolve dimensions — always need valid width + height for buildRows aspect-ratio math.
+    let w: number
+    let h: number
+    if (storedW && storedH) {
+      w = storedW
+      h = storedH
+    } else {
+      // No dimension info at all — assume 16:9 at a reasonable display size
+      w = 320
+      h = 180
     }
 
+    const thumbSrc = `/api/thumbnails/${item.id}`
     return {
       id: item.id,
-      src:
-        thumb?.url ??
-        `https://${session.user.bucket}.t3.tigrisfiles.io/${item.parentId}/${item.name}`,
-      alt: item?.name,
+      src: thumbSrc,
+      alt: item.name,
       view: layout as ViewType,
-      width: thumb?.width!,
-      height: thumb?.height!,
-      size: thumb?.size!,
-      srcSet: buildSrcSet(thumb?.url!, [thumb?.width!, thumb?.width! * 2]),
-      sizes: `${thumb?.width!}px`,
+      width: w,
+      height: h,
+      size: thumb?.size ?? 'original',
+      srcSet: buildSrcSet(thumbSrc, [w, w * 2]),
+      sizes: `${w}px`,
       name: item.name,
       type: item.type,
       parentId: item.parentId,

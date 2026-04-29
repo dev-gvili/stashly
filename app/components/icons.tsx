@@ -2655,7 +2655,7 @@ const CollectionsFillIcon = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox='0 0 24 24'
+    viewBox="0 0 24 24"
     {...props}
   >
     <path
@@ -2668,8 +2668,8 @@ const CollectionsFillIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {CollectionsFillIcon};
+)
+export { CollectionsFillIcon }
 
 const CollectionLineIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2677,7 +2677,7 @@ const CollectionLineIcon = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox='0 0 24 24'
+    viewBox="0 0 24 24"
     {...props}
   >
     <path
@@ -2692,8 +2692,8 @@ const CollectionLineIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {CollectionLineIcon};
+)
+export { CollectionLineIcon }
 
 const ViewIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2701,10 +2701,10 @@ const ViewIcon = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox='0 0 24 24'
+    viewBox="0 0 24 24"
     {...props}
   >
-     <path
+    <path
       stroke="currentColor"
       strokeWidth={1.5}
       d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z"
@@ -2715,10 +2715,9 @@ const ViewIcon = (props: SVGProps<SVGSVGElement>) => (
       strokeWidth={1.5}
       d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
     />
-
   </svg>
-);
-export  {ViewIcon};
+)
+export { ViewIcon }
 
 const AnonymouseIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2726,7 +2725,7 @@ const AnonymouseIcon = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox='0 0 24 24'
+    viewBox="0 0 24 24"
     {...props}
   >
     <path
@@ -2760,8 +2759,8 @@ const AnonymouseIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {AnonymouseIcon};
+)
+export { AnonymouseIcon }
 
 const GroupIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2769,7 +2768,7 @@ const GroupIcon = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox='0 0 24 24'
+    viewBox="0 0 24 24"
     {...props}
   >
     <circle cx={12} cy={6} r={4} stroke="currentColor" strokeWidth={1.5} />
@@ -2780,7 +2779,14 @@ const GroupIcon = (props: SVGProps<SVGSVGElement>) => (
       d="M18 9c1.657 0 3-1.12 3-2.5S19.657 4 18 4M6 9C4.343 9 3 7.88 3 6.5S4.343 4 6 4"
       opacity={0.5}
     />
-    <ellipse cx={12} cy={17} stroke="currentColor" strokeWidth={1.5} rx={6} ry={4} />
+    <ellipse
+      cx={12}
+      cy={17}
+      stroke="currentColor"
+      strokeWidth={1.5}
+      rx={6}
+      ry={4}
+    />
     <path
       stroke="currentColor"
       strokeLinecap="round"
@@ -2789,8 +2795,8 @@ const GroupIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {GroupIcon};
+)
+export { GroupIcon }
 
 const LinkIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2798,7 +2804,7 @@ const LinkIcon = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox='0 0 24 24'
+    viewBox="0 0 24 24"
     {...props}
   >
     <path
@@ -2817,8 +2823,8 @@ const LinkIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {LinkIcon};
+)
+export { LinkIcon }
 
 const Embedicon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2826,7 +2832,7 @@ const Embedicon = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox='0 0 24 24'
+    viewBox="0 0 24 24"
     {...props}
   >
     <path
@@ -2849,8 +2855,8 @@ const Embedicon = (props: SVGProps<SVGSVGElement>) => (
       d="M7 7.83 5.304 9.356C3.76 10.745 2.99 11.44 2.99 12.33c0 .89.771 1.585 2.314 2.973L7 16.83"
     />
   </svg>
-);
-export {Embedicon};
+)
+export { Embedicon }
 
 const SendInvitationIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2858,7 +2864,7 @@ const SendInvitationIcon = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox='0 0 24 24'
+    viewBox="0 0 24 24"
     {...props}
   >
     <path
@@ -2883,8 +2889,8 @@ const SendInvitationIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {SendInvitationIcon};
+)
+export { SendInvitationIcon }
 
 const FolderOpenIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2892,7 +2898,7 @@ const FolderOpenIcon = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox='0 0 24 24'
+    viewBox="0 0 24 24"
     {...props}
   >
     <path
@@ -2914,8 +2920,8 @@ const FolderOpenIcon = (props: SVGProps<SVGSVGElement>) => (
       d="M3.477 17.484C3 14.768 2.76 13.41 3.339 12.433q.223-.376.54-.67C4.704 11 6.038 11 8.705 11h6.59c2.667 0 4 0 4.826.763q.316.294.54.67c.578.977.34 2.335-.138 5.05-.343 1.956-.515 2.934-1.11 3.582a3 3 0 0 1-.515.445c-.723.49-1.683.49-3.603.49h-6.59c-1.92 0-2.88 0-3.603-.49a3 3 0 0 1-.515-.445c-.595-.648-.767-1.626-1.11-3.581Z"
     />
   </svg>
-);
-export {FolderOpenIcon};
+)
+export { FolderOpenIcon }
 
 const DropdownIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2923,7 +2929,7 @@ const DropdownIcon = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox='0 0 24 24'
+    viewBox="0 0 24 24"
     {...props}
   >
     <path
@@ -2936,8 +2942,8 @@ const DropdownIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export  {DropdownIcon};
+)
+export { DropdownIcon }
 
 const RemoveIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2945,7 +2951,7 @@ const RemoveIcon = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox='0 0 24 24'
+    viewBox="0 0 24 24"
     {...props}
   >
     <path
@@ -2964,5 +2970,64 @@ const RemoveIcon = (props: SVGProps<SVGSVGElement>) => (
       d="m7.757 16.243 8.486-8.486"
     />
   </svg>
-) 
-export {RemoveIcon};
+)
+export { RemoveIcon }
+
+const StorageIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M13 21.75a.75.75 0 0 0 0-1.5zm-9.828-1.922.53-.53zM20.828 4.172l-.53.53zM21.25 13a.75.75 0 0 0 1.5 0zM10 3.75h4v-1.5h-4zM2.75 13v-1h-1.5v1zm0-1v-1h-1.5v1zM13 20.25h-3v1.5h3zM21.25 11v1h1.5v-1zm-20 2c0 1.864-.002 3.338.153 4.489.158 1.172.49 2.121 1.238 2.87l1.06-1.06c-.422-.424-.676-1.004-.811-2.01-.138-1.027-.14-2.382-.14-4.289zM10 20.25c-1.907 0-3.261-.002-4.29-.14-1.005-.135-1.585-.389-2.008-.812l-1.06 1.06c.748.75 1.697 1.081 2.869 1.239 1.15.155 2.625.153 4.489.153zm4-16.5c1.907 0 3.262.002 4.29.14 1.005.135 1.585.389 2.008.812l1.06-1.06c-.748-.75-1.697-1.081-2.869-1.239-1.15-.155-2.625-.153-4.489-.153zM22.75 11c0-1.864.002-3.338-.153-4.489-.158-1.172-.49-2.121-1.238-2.87l-1.06 1.06c.422.424.676 1.004.811 2.01.138 1.028.14 2.382.14 4.289zM10 2.25c-1.864 0-3.338-.002-4.489.153-1.172.158-2.121.49-2.87 1.238l1.06 1.06c.424-.422 1.004-.676 2.01-.811 1.028-.138 2.382-.14 4.289-.14zM2.75 11c0-1.907.002-3.261.14-4.29.135-1.005.389-1.585.812-2.008l-1.06-1.06c-.75.748-1.081 1.697-1.239 2.869C1.248 7.661 1.25 9.136 1.25 11zM2 12.75h20v-1.5H2zM21.25 12v1h1.5v-1z"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M13.5 7.5H18M6 17.5v-2M6 8.5v-2M9 17.5v-2M9 8.5v-2M19.333 16.885a1.9 1.9 0 0 1 1.321-.004m-3.863.972a1.4 1.4 0 0 0-.291-.03c-.828 0-1.5.712-1.5 1.589S15.672 21 16.5 21H20c1.105 0 2-.948 2-2.118 0-.927-.562-1.714-1.346-2.001m-3.863.972a2.2 2.2 0 0 1-.124-.735c0-1.17.895-2.118 2-2.118 1.029 0 1.876.823 1.987 1.88m-3.863.973c.197.041.38.123.542.238"
+    />
+  </svg>
+)
+export { StorageIcon }
+
+const StorageFullIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+   <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M22 19h-8M2 19h8M12 17v-3"
+      opacity={0.5}
+    />
+    <circle cx={12} cy={19} r={2} stroke="currentColor" strokeWidth={1.5} />
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M2 11a3 3 0 0 1 3-3h14a3 3 0 1 1 0 6H5a3 3 0 0 1-3-3ZM2 5a3 3 0 0 1 3-3h14a3 3 0 1 1 0 6H5a3 3 0 0 1-3-3Z"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M13 5h6M13 11h6"
+      opacity={0.5}
+    />
+    <circle cx={6} cy={5} r={1} fill="currentColor" opacity={0.5} />
+    <circle cx={6} cy={11} r={1} fill="currentColor" opacity={0.5} />
+  </svg>
+)
+export { StorageFullIcon }

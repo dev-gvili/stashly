@@ -17,7 +17,9 @@ import { searchFactory } from '@/utils/search'
 export const searchActivities = searchFactory({
   dbDelegate: prisma.activity,
   buildFilters: buildActivityFilters,
-  defaultOrderBy: (): Prisma.ActivityOrderByWithRelationInput => ({ id: 'desc' }),
+  defaultOrderBy: (): Prisma.ActivityOrderByWithRelationInput => ({
+    id: 'desc',
+  }),
 })
 
 const defaultInclude = {
@@ -41,7 +43,9 @@ const defaultInclude = {
   access: true,
 } satisfies Prisma.ActivityInclude
 
-type ActivityWithRelations = Prisma.ActivityGetPayload<{ include: typeof defaultInclude }>
+type ActivityWithRelations = Prisma.ActivityGetPayload<{
+  include: typeof defaultInclude
+}>
 
 /**
  * Find a single activity by ID.
@@ -53,7 +57,9 @@ type ActivityWithRelations = Prisma.ActivityGetPayload<{ include: typeof default
  * const activity = await findActivityById('act_abc123')
  * if (activity) console.log(activity.action)
  */
-export async function findActivityById(id: string): Promise<ActivityWithRelations | null> {
+export async function findActivityById(
+  id: string
+): Promise<ActivityWithRelations | null> {
   return prisma.activity.findUnique({ where: { id }, include: defaultInclude })
 }
 
@@ -67,7 +73,9 @@ export async function findActivityById(id: string): Promise<ActivityWithRelation
  * const all = await findAllActivities()
  * const recent = await findAllActivities({ orderBy: { time: { createdAt: 'desc' } }, take: 20 })
  */
-export async function findAllActivities(args?: Prisma.ActivityFindManyArgs): Promise<ActivityWithRelations[]> {
+export async function findAllActivities(
+  args?: Prisma.ActivityFindManyArgs
+): Promise<ActivityWithRelations[]> {
   return prisma.activity.findMany({ ...args, include: defaultInclude })
 }
 
@@ -83,7 +91,9 @@ export async function findAllActivities(args?: Prisma.ActivityFindManyArgs): Pro
  *   orderBy: { time: { createdAt: 'desc' } },
  * })
  */
-export async function findManyActivities(args: Prisma.ActivityFindManyArgs): Promise<ActivityWithRelations[]> {
+export async function findManyActivities(
+  args: Prisma.ActivityFindManyArgs
+): Promise<ActivityWithRelations[]> {
   return prisma.activity.findMany({ ...args, include: defaultInclude })
 }
 
@@ -99,7 +109,9 @@ export async function findManyActivities(args: Prisma.ActivityFindManyArgs): Pro
  *   orderBy: { time: { createdAt: 'desc' } },
  * })
  */
-export async function findFirstActivity(args: Prisma.ActivityFindFirstArgs): Promise<ActivityWithRelations | null> {
+export async function findFirstActivity(
+  args: Prisma.ActivityFindFirstArgs
+): Promise<ActivityWithRelations | null> {
   return prisma.activity.findFirst({ ...args, include: defaultInclude })
 }
 
@@ -115,7 +127,9 @@ export async function findFirstActivity(args: Prisma.ActivityFindFirstArgs): Pro
  *   action: { connect: { id: 'act_type_upload' } },
  * })
  */
-export async function createActivity(data: Prisma.ActivityCreateInput): Promise<ActivityWithRelations> {
+export async function createActivity(
+  data: Omit<Prisma.ActivityCreateInput, 'id'>
+): Promise<ActivityWithRelations> {
   return prisma.activity.create({
     data: { ...data, id: toObjectId(getPrefixForModel('Activity')) },
     include: defaultInclude,
@@ -134,7 +148,9 @@ export async function createActivity(data: Prisma.ActivityCreateInput): Promise<
  *   data: { access: { connect: { id: 'acc_new' } } },
  * })
  */
-export async function updateActivity(args: Prisma.ActivityUpdateArgs): Promise<ActivityWithRelations> {
+export async function updateActivity(
+  args: Prisma.ActivityUpdateArgs
+): Promise<ActivityWithRelations> {
   return prisma.activity.update({ ...args, include: defaultInclude })
 }
 
@@ -147,7 +163,9 @@ export async function updateActivity(args: Prisma.ActivityUpdateArgs): Promise<A
  * @example
  * const deleted = await deleteActivity('act_abc123')
  */
-export async function deleteActivity(id: string): Promise<ActivityWithRelations> {
+export async function deleteActivity(
+  id: string
+): Promise<ActivityWithRelations> {
   return prisma.activity.delete({ where: { id }, include: defaultInclude })
 }
 
@@ -161,6 +179,8 @@ export async function deleteActivity(id: string): Promise<ActivityWithRelations>
  * const total = await countActivities()
  * const itemCount = await countActivities({ where: { item: { id: 'itm_xyz' } } })
  */
-export async function countActivities(args?: Prisma.ActivityCountArgs): Promise<number> {
+export async function countActivities(
+  args?: Prisma.ActivityCountArgs
+): Promise<number> {
   return prisma.activity.count(args)
 }
