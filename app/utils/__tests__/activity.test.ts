@@ -28,7 +28,7 @@ describe('formatActivity', () => {
     expect(formatActivity(withAction('delete', { name: 'x.pdf', itemType: 'file' }))).toBe('You deleted x.pdf')
   })
   it('formats permission grant', () => {
-    expect(formatActivity(withAction('permission', { type: 'grant', userId: 'u1', role: 'editor' }))).toBe('You granted editor access')
+    expect(formatActivity(withAction('permission', { type: 'grant', userId: 'u1', role: 'editor' }))).toBe('You shared this item with editor access')
   })
   it('formats permission revoke', () => {
     expect(formatActivity(withAction('permission', { type: 'revoke', userId: 'u1', role: 'viewer' }))).toBe('You revoked access')

@@ -43,7 +43,7 @@ export function formatActivity(activity: ActivityWithRelations): string {
   if (a.version) return `You uploaded version ${a.version.newVersion}`
   if (a.comment) return a.comment.isReply ? 'You replied to a comment' : 'You commented on this item'
   if (a.permission) {
-    if (a.permission.type === 'grant') return `You granted ${a.permission.role} access`
+    if (a.permission.type === 'grant') return `You shared this item with ${a.permission.role} access`
     if (a.permission.type === 'revoke') return 'You revoked access'
     return `You updated access to ${a.permission.role}`
   }
