@@ -203,6 +203,7 @@ export default [
         }),
 
         // trash route shows all items that the user has deleted from their stash but have not yet been permanently removed. This page could provide options for users to restore deleted items back to their stash or permanently delete them. It serves as a safety net for users to recover accidentally deleted content and manage their deleted items before they are permanently removed.
+        route('storage', 'routes/stash/storage.tsx', { id: 'stash-storage' }),
         route('trash', 'routes/stash/trash.tsx', { id: 'stash-trash' }),
         route('demo', 'routes/stash/demo.tsx', { id: 'stash-demo' }),
         route('examples', 'routes/stash/examples.tsx', {
