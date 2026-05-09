@@ -46,6 +46,12 @@ export const s3 = new S3Client({
     accessKeyId: process.env.AWS_ACCESS_KEY!,
     secretAccessKey: process.env.AWS_SECRET_KEY!,
   },
+  // Don't auto-inject a CRC32 checksum on operations that don't require one.
+  // Without this, presigned PutObject URLs include `x-amz-checksum-crc32=AAAAAA==`
+  // (CRC32 of empty body) signed into the URL, so browser PUTs of any non-empty
+  // blob fail with a checksum mismatch on Tigris/S3.
+  requestChecksumCalculation: 'WHEN_REQUIRED',
+  responseChecksumValidation: 'WHEN_REQUIRED',
 })
 
 const BUCKET_PREFIX = 'stashly'
