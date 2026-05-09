@@ -19,11 +19,23 @@ import {
   TrashIcon,
   StorageIcon,
 } from '@/components/icons'
-import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
-import { Badge } from '@/ui/badge'
 import { Button } from '@/ui/button'
 import useConfirm from '@/hooks/useConfirm'
 import type { JSX, SVGProps } from 'react'
+import type { ItemCategory } from '@/prisma/enums'
+import { toIcon } from '@/utils'
+import {
+  DataTable,
+  type DataTableColumn,
+} from '@/components/core-components/data-table'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Progress,
+} from '@/components/ui'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
@@ -80,7 +92,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 }
 
-// ─── Category helpers ─────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 type IconComp = (props: SVGProps<SVGSVGElement>) => JSX.Element
 
@@ -101,21 +113,61 @@ const categoryIcon: Record<string, IconComp> = {
   unknown: FileIcon,
 }
 
-const categoryColor: Record<string, string> = {
-  image: '#3b82f6',
-  video: '#8b5cf6',
-  audio: '#ec4899',
-  document: '#f59e0b',
-  spreadsheet: '#10b981',
-  presentation: '#f97316',
-  text: '#6b7280',
-  pdf: '#ef4444',
-  archive: '#84cc16',
-  code: '#06b6d4',
-  script: '#64748b',
-  binaries: '#a855f7',
-  graphic: '#f43f5e',
-  unknown: '#d1d5db',
+const categoryColor: Record<ItemCategory, string> = {
+  image: '--chart-10',
+  video: '--chart-14',
+  audio: '--chart-9',
+  document: '--chart-11',
+  spreadsheet: '--chart-7',
+  presentation: '--chart-12',
+  text: '--chart-4',
+  pdf: '--chart-13',
+  archive: '--chart-8',
+  code: '--chart-5',
+  script: '--chart-1',
+  binaries: '--chart-2',
+  graphic: '--chart-6',
+  unknown: '--chart-3',
+}
+const progressBgColor: Record<ItemCategory, string> = {
+  image: '[&_div]:bg-chart-10',
+  video: '[&_div]:bg-chart-14',
+  audio: '[&_div]:bg-chart-9',
+  document: '[&_div]:bg-chart-11',
+  spreadsheet: '[&_div]:bg-chart-7',
+  presentation: '[&_div]:bg-chart-12',
+  text: '[&_div]:bg-chart-4',
+  pdf: '[&_div]:bg-chart-13',
+  archive: '[&_div]:bg-chart-8',
+  code: '[&_div]:bg-chart-5',
+  script: '[&_div]:bg-chart-1',
+  binaries: '[&_div]:bg-chart-2',
+  graphic: '[&_div]:bg-chart-6',
+  unknown: '[&_div]:bg-chart-3',
+}
+
+function colorVar(category: string): string {
+  return `var(${categoryColor[category as ItemCategory] ?? '--chart-3'})`
+}
+
+function toProgressColor(category: string): string {
+  return `bg-(var(${categoryColor[category as ItemCategory]})!)}`
+}
+const CAT_GLYPH: Record<string, string> = {
+  image: 'IMG',
+  video: 'VID',
+  audio: 'AUD',
+  document: 'DOC',
+  spreadsheet: 'XLS',
+  presentation: 'PPT',
+  text: 'TXT',
+  pdf: 'PDF',
+  archive: 'ARC',
+  code: 'COD',
+  script: 'SCR',
+  binaries: 'BIN',
+  graphic: 'GFX',
+  unknown: 'UNK',
 }
 
 const statusLabel: Record<string, string> = {
@@ -125,128 +177,277 @@ const statusLabel: Record<string, string> = {
   exceeded: 'Full',
 }
 
-const statusVariant: Record<
-  string,
-  'default' | 'secondary' | 'destructive' | 'outline'
-> = {
-  normal: 'secondary',
-  warning: 'outline',
-  critical: 'destructive',
-  exceeded: 'destructive',
-}
-
 function fmt(bytes: number) {
   return formatSize('byte', 'unit', bytes)
 }
 
-function CategoryIcon({
-  category,
-  ...props
-}: { category: string } & SVGProps<SVGSVGElement>) {
-  const Icon = categoryIcon[category] ?? FileIcon
-  return <Icon {...props} />
+// ─── Decorative bracket corners ──────────────────────────────────────────────
+
+function Corners() {
+  return (
+    <>
+      <i className="absolute top-0 left-0 size-3 border-t border-l border-foreground/60 pointer-events-none" />
+      <i className="absolute top-0 right-0 size-3 border-t border-r border-foreground/60 pointer-events-none" />
+      <i className="absolute bottom-0 left-0 size-3 border-b border-l border-foreground/60 pointer-events-none" />
+      <i className="absolute bottom-0 right-0 size-3 border-b border-r border-foreground/60 pointer-events-none" />
+    </>
+  )
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── 3-letter category chip ──────────────────────────────────────────────────
 
-function QuotaCard({
-  used,
-  total,
-  deleted,
-  remaining,
-  status,
-}: {
-  used: number
-  total: number
-  deleted: number
-  remaining: number
-  status: string
-}) {
-  const usedPct = total > 0 ? Math.min((used / total) * 100, 100) : 0
-  const deletedPct = total > 0 ? Math.min((deleted / total) * 100, 100) : 0
-
+function CatChip({ category }: { category: string }) {
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <StorageIcon className="size-4 text-muted-foreground" />
-            Storage
-          </CardTitle>
-          <Badge variant={statusVariant[status] ?? 'secondary'}>
-            {statusLabel[status] ?? status}
-          </Badge>
+    <span className="inline-flex items-center justify-center w-7 h-5 border border-input rounded-[3px] bg-muted text-xs tracking-tight text-muted-foreground font-stashly">
+      {CAT_GLYPH[category] ?? category.slice(0, 3).toUpperCase()}
+    </span>
+  )
+}
+
+// ─── KPI strip card ──────────────────────────────────────────────────────────
+
+function KpiCard({
+  label,
+  value,
+  sub,
+  tone = 'default',
+}: {
+  label: string
+  value: string
+  sub: string
+  tone?: 'default' | 'danger' | 'accent'
+}) {
+  return (
+    <Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden font-stashly">
+      <CardContent className="p-2.5">
+        <div className="text-sm uppercase tracking-[0.15em] text-muted-foreground">
+          {label}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-sm">
-            <span className="font-medium">{fmt(used)} used</span>
-            <span className="text-muted-foreground">of {fmt(total)}</span>
-          </div>
-          {/* Storage bar */}
-          <div className="h-3 w-full overflow-hidden rounded-md bg-muted">
-            <div className="flex h-full">
-              <div
-                className="h-full bg-primary transition-all"
-                style={{ width: `${usedPct}%` }}
-              />
-              <div
-                className="h-full bg-destructive/40 transition-all"
-                style={{ width: `${deletedPct}%` }}
-              />
-            </div>
-          </div>
+        <div
+          className={cn(
+            'text-base mt-0.5',
+            tone === 'danger' && 'text-destructive',
+            tone === 'accent' && 'text-primary'
+          )}
+        >
+          {value}
         </div>
-        <div className="flex flex-wrap gap-4 text-sm">
-          <LegendDot color="bg-primary" label="Used" value={fmt(used)} />
-          <LegendDot
-            color="bg-destructive/40"
-            label="Trash"
-            value={fmt(deleted)}
+        <div className="text-xs text-muted-foreground truncate">{sub}</div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── By-type breakdown table ─────────────────────────────────────────────────
+
+type Breakdown = Route.ComponentProps['loaderData']['breakdown'][number]
+
+function ByTypeTable({ breakdown }: { breakdown: Breakdown[] }) {
+  if (breakdown.length === 0) {
+    return (
+      <section className="border border-input rounded-md bg-card p-4">
+        <h3 className="text-xs uppercase tracking-[0.15em] font-stashly mb-2">
+          By Type
+        </h3>
+        <p className="text-sm text-muted-foreground">No files yet.</p>
+      </section>
+    )
+  }
+
+  const totalSize = breakdown.reduce((s, b) => s + b.size, 0)
+  const max = Math.max(...breakdown.map((b) => b.size))
+  let columns: DataTableColumn<Breakdown>[] = [
+    {
+      key: 'category',
+      header: 'Category',
+      width: '160px',
+      cell: (item: Breakdown) => {
+        const Icon = categoryIcon[item.category] || FileIcon
+        return (
+          <div className="inline-flex items-center gap-2">
+            <Icon className="size-5" />
+            <span className="capitalize">{item.category}</span>
+          </div>
+        )
+      },
+    },
+    {
+      key: null,
+      header: 'Usage',
+      cell: (item: Breakdown) => {
+        return (
+          <Progress
+            value={Math.round((item.size / totalSize) * 100)}
+            max={totalSize > 0 ? 100 : 0}
+            className={cn(`w-full rounded h-3`, '[&_div]:bg-current')}
           />
-          <LegendDot color="bg-muted" label="Free" value={fmt(remaining)} />
+        )
+      },
+    },
+    {
+      key: 'size',
+      header: 'Size',
+      width: '120px',
+      align: 'right',
+      cell: (row) => fmt(row.size),
+    },
+    {
+      key: 'count',
+      header: 'Count',
+      width: '80px',
+      align: 'right',
+      cell: (row) => row.count,
+    },
+    {
+      key: 'percentage',
+      header: '% of total',
+      width: '80px',
+      align: 'right',
+      cell: (row) =>
+        `${totalSize > 0 ? Math.round((row.size / totalSize) * 100) : 0}%`,
+    },
+  ]
+  return (
+    <Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden">
+      <CardHeader className="flex items-baseline px-4 py-4">
+        <CardTitle className="text-sm uppercase font-stashly">
+          By Type
+        </CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">
+          — {breakdown.length} types ·{' '}
+          {breakdown.reduce((s, b) => s + b.count, 0)} files
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-4">
+        <DataTable columns={columns} data={breakdown} className='[&_tr]:hover:bg-inherit'/>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Health actions ──────────────────────────────────────────────────────────
+
+interface ActionRowProps {
+  label: string
+  detail: string
+  cta: string
+  tone: 'default' | 'danger' | 'accent'
+  onClick?: () => void
+  disabled?: boolean
+}
+
+function ActionRow({
+  label,
+  detail,
+  cta,
+  tone,
+  onClick,
+  disabled,
+}: ActionRowProps) {
+  return (
+    <div className="grid grid-cols-[1fr_auto] items-center gap-3 px-2 py-1.5 border-b border-dashed border-input last:border-0 h-full">
+      <div>
+        <div className="text-sm font-stashly">{label}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{detail}</div>
+      </div>
+      <Button
+        size="sm"
+        variant={tone === 'accent' ? 'default' : 'outline'}
+        className={cn(
+          'font-stashly text-xs uppercase tracking-wider',
+          tone === 'danger' &&
+            'bg-transparent border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground',
+          tone === 'default' && 'bg-card! border-input'
+        )}
+        onClick={onClick}
+        disabled={disabled}
+      >
+        {cta}
+      </Button>
+    </div>
+  )
+}
+
+function HealthActions({
+  trashBytes,
+  reclaimBytes,
+  duplicateGroups,
+  videoBytes,
+  videoCount,
+  imageCount,
+  onEmptyBucket,
+  emptying,
+}: {
+  trashBytes: number
+  reclaimBytes: number
+  duplicateGroups: number
+  videoBytes: number
+  videoCount: number
+  imageCount: number
+  onEmptyBucket: () => void
+  emptying: boolean
+}) {
+  return (
+    <Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden h-full">
+      <CardHeader className="flex items-baseline px-4 py-4">
+        <CardTitle className="text-sm uppercase font-stashly">
+          Health
+        </CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">
+          — actions
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-4">
+        <div className="space-y-1">
+          <ActionRow
+            label="Empty bucket"
+            detail={`${fmt(trashBytes)} in trash · permanent`}
+            cta={emptying ? 'Emptying…' : 'Empty'}
+            tone="danger"
+            onClick={onEmptyBucket}
+            disabled={emptying}
+          />
+          <ActionRow
+            label="Resolve duplicates"
+            detail={`${duplicateGroups} groups · save ${fmt(reclaimBytes)}`}
+            cta="Resolve"
+            tone="accent"
+            disabled
+          />
+          <ActionRow
+            label="Archive large videos"
+            detail={`${videoCount} videos · ${fmt(videoBytes)}`}
+            cta="Archive"
+            tone="default"
+            disabled
+          />
+          <ActionRow
+            label="Compress images"
+            detail={`${imageCount} images · est. save 5%`}
+            cta="Compress"
+            tone="default"
+            disabled
+          />
         </div>
       </CardContent>
     </Card>
   )
 }
 
-function LegendDot({
-  color,
-  label,
-  value,
-}: {
-  color: string
-  label: string
-  value: string
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className={cn('size-2.5 rounded-sm shrink-0', color)} />
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
-    </div>
-  )
-}
+// ─── Largest files list ──────────────────────────────────────────────────────
 
-function BreakdownCard({
-  breakdown,
-}: {
-  breakdown: {
-    category: string
-    size: number
-    count: number
-    percentage: number
-  }[]
-}) {
-  if (breakdown.length === 0) {
+type LargestItem = Route.ComponentProps['loaderData']['largestItems'][number]
+
+function LargestFilesList({ items }: { items: LargestItem[] }) {
+  if (items.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Storage by Type</CardTitle>
+      <Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden">
+        <CardHeader className="flex items-baseline px-4 py-4">
+          <CardTitle className="text-sm uppercase font-stashly">
+            Largest Files
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4">
           <p className="text-sm text-muted-foreground">No files yet.</p>
         </CardContent>
       </Card>
@@ -254,166 +455,123 @@ function BreakdownCard({
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Storage by Type</CardTitle>
+    <Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden">
+      <CardHeader className="flex items-baseline px-4 py-4">
+        <CardTitle className="text-sm uppercase font-stashly">
+          Largest Files
+        </CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">
+          — top {items.length}
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Segmented bar */}
-        <div className="flex h-3 w-full overflow-hidden rounded-md">
-          {breakdown.map((b) => (
-            <div  
-              key={b.category}
-              className="h-full transition-all"
-              style={{
-                width: `${b.percentage}%`,
-                backgroundColor: categoryColor[b.category] ?? '#d1d5db',
-              }}
-              title={`${b.category}: ${fmt(b.size)}`}
-            />
-          ))}
-        </div>
-        {/* Legend */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-          {breakdown.map((b) => (
-            <div
-              key={b.category}
-              className="flex items-center justify-between gap-2"
+      <CardContent className="p-4">
+        <ul className="space-y-0.5 font-stashly">
+          {items.map((f, i) => {
+            const Icon = categoryIcon[f.category] ?? FileIcon
+            return (
+              <li
+                key={f.id}
+                className="grid grid-cols-[20px_20px_1fr_auto] items-center gap-3 py-1.5 px-1.5 rounded-sm hover:bg-muted/40"
+              >
+                <span className="text-xs text-muted-foreground text-right tabular-nums">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <Icon className="size-5" />
+                <span className="text-xs truncate min-w-0">{f.name}</span>
+                <span className="text-xs text-right tabular-nums">
+                  {fmt(f.size)}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Duplicates list ─────────────────────────────────────────────────────────
+
+type Duplicate = Route.ComponentProps['loaderData']['duplicates'][number]
+
+function DuplicatesList({ duplicates }: { duplicates: Duplicate[] }) {
+  const totalWaste = duplicates.reduce((s, d) => s + d.wastingBytes, 0)
+
+  if (duplicates.length === 0) {
+    return (
+      <Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden">
+        <CardHeader className="flex items-baseline px-4 py-4">
+          <CardTitle className="text-sm uppercase font-stashly">
+            Duplicates
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          <p className="text-sm text-muted-foreground">No duplicates detected.</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden">
+      <CardHeader className="flex items-baseline px-4 py-4">
+        <CardTitle className="text-sm uppercase font-stashly">
+          Duplicates
+        </CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">
+          — {duplicates.length} groups
+        </CardDescription>
+        {totalWaste > 0 && (
+          <span className="ml-auto inline-flex items-center h-6 px-2 text-xs uppercase tracking-wider rounded-sm border border-primary bg-primary/10 text-primary font-stashly">
+            Save {fmt(totalWaste)}
+          </span>
+        )}
+      </CardHeader>
+      <CardContent className="p-4">
+        <ul className="space-y-0.5 font-stashly">
+          {duplicates.map((d) => (
+            <li
+              key={`${d.name}-${d.size}`}
+              className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-1.5 px-1.5 rounded-sm hover:bg-muted/40"
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className="size-2.5 shrink-0 rounded-sm"
-                  style={{
-                    backgroundColor: categoryColor[b.category] ?? '#d1d5db',
-                  }}
-                />
-                <CategoryIcon
-                  category={b.category}
-                  className="size-3.5 shrink-0 text-muted-foreground"
-                />
-                <span className="text-sm capitalize truncate">
-                  {b.category}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0 text-sm text-muted-foreground">
-                <span>{fmt(b.size)}</span>
-                <span className="text-xs">({b.count})</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function LargestFilesCard({
-  items,
-  maxSize,
-}: {
-  items: { id: string; name: string; size: number; category: string }[]
-  maxSize: number
-}) {
-  return (
-    <Card className="flex flex-col">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Largest Files</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 space-y-1">
-        {items.length === 0 && (
-          <p className="text-sm text-muted-foreground">No files found.</p>
-        )}
-        {items.map((item) => {
-          const barPct =
-            maxSize > 0 ? Math.round((item.size / maxSize) * 100) : 0
-          return (
-            <div key={item.id} className="space-y-0.5 py-1.5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <CategoryIcon
-                    category={item.category}
-                    className="size-4 shrink-0 text-muted-foreground"
-                  />
-                  <span className="text-sm truncate">{item.name}</span>
+              <div className="min-w-0">
+                <div className="text-xs truncate">{d.name}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {d.count - 1} extra · wasting {fmt(d.wastingBytes)}
                 </div>
-                <span className="text-xs text-muted-foreground shrink-0">
-                  {fmt(item.size)}
-                </span>
               </div>
-              <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-accent"
-                  style={{ width: `${barPct}%` }}
-                />
-              </div>
-            </div>
-          )
-        })}
+              <span className="inline-flex items-center justify-center w-7 h-5 border border-input rounded-[3px] text-xs text-muted-foreground">
+                ×{d.count}
+              </span>
+              <span className="text-xs text-muted-foreground tabular-nums w-14 text-right">
+                {fmt(d.size)}
+              </span>
+            </li>
+          ))}
+        </ul>
       </CardContent>
     </Card>
   )
 }
 
-function DuplicatesCard({
-  duplicates,
-}: {
-  duplicates: {
-    name: string
-    size: number
-    count: number
-    wastingBytes: number
-    items: { id: string; parentId: string | null; createdAt: string }[]
-  }[]
-}) {
-  const totalWaste = duplicates.reduce((acc, d) => acc + d.wastingBytes, 0)
-
-  return (
-    <Card className="flex flex-col">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-base">Possible Duplicates</CardTitle>
-          {totalWaste > 0 && (
-            <Badge variant="outline" className="text-xs shrink-0">
-              Save {fmt(totalWaste)}
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 space-y-3">
-        {duplicates.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No duplicates detected.
-          </p>
-        )}
-        {duplicates.map((d) => (
-          <div key={`${d.name}-${d.size}`} className="space-y-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium truncate">{d.name}</span>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Badge className="text-xs px-1.5 py-0 h-5">×{d.count}</Badge>
-                <span className="text-xs text-muted-foreground">
-                  {fmt(d.size)} each
-                </span>
-              </div>
-            </div>
-            <p className="text-xs text-destructive">
-              {d.count - 1} extra {d.count - 1 === 1 ? 'copy' : 'copies'} —
-              wasting {fmt(d.wastingBytes)}
-            </p>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  )
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function StoragePage({ loaderData }: Route.ComponentProps) {
   const { quota, breakdown, largestItems, duplicates } = loaderData
-  const maxSize = largestItems[0]?.size ?? 0
   const fetcher = useFetcher()
   const { open: confirmEmpty } = useConfirm()
+  const emptying = fetcher.state !== 'idle'
+
+  // Derived KPIs
+  const fileCount = breakdown.reduce((s, b) => s + b.count, 0)
+  const typeCount = breakdown.length
+  const usedPct =
+    quota.total > 0 ? Math.round((quota.used / quota.total) * 100) : 0
+  const avgPerFile = fileCount > 0 ? quota.used / fileCount : 0
+  const largest = largestItems[0]
+  const reclaimBytes = duplicates.reduce((s, d) => s + d.wastingBytes, 0)
+  const videoBucket = breakdown.find((b) => b.category === 'video')
+  const imageBucket = breakdown.find((b) => b.category === 'image')
 
   function handleEmptyBucket() {
     confirmEmpty({
@@ -427,30 +585,110 @@ export default function StoragePage({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4 p-4">
-      <div className="flex items-center justify-between pb-1">
-        <div className="flex items-center gap-2">
-          <StorageIcon className="size-5 text-muted-foreground" />
-          <h1 className="text-lg font-semibold">Storage</h1>
+    <div className="space-y-4  mx-auto p-4">
+      {/* ── Page header — matches the app's flat in-route header pattern ── */}
+      <header className="flex items-center justify-between gap-4 pb-3 border-b border-input">
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h1 className="text-xl font-semibold font-stashly truncate">
+            Storage
+          </h1>
+          <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground font-stashly hidden md:inline">
+            / ops · dense kpis · health actions
+            {quota.status !== 'normal' && (
+              <>
+                {' '}
+                ·{' '}
+                <span className="text-destructive">
+                  {statusLabel[quota.status] ?? quota.status}
+                </span>
+              </>
+            )}
+          </span>
         </div>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={handleEmptyBucket}
-          disabled={fetcher.state !== 'idle'}
-        >
-          <TrashIcon className="size-4 mr-1.5" />
-          Empty Bucket
-        </Button>
-      </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-stashly bg-card! border-input"
+            disabled
+          >
+            Export
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleEmptyBucket}
+            disabled={emptying}
+            className="font-stashly uppercase tracking-wider bg-transparent border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          >
+            <TrashIcon className="size-4" />
+            Empty bucket
+          </Button>
+        </div>
+      </header>
 
-      <QuotaCard {...quota} />
+      {/* ── Main grid ── */}
+      <div className="grid grid-cols-12 gap-3">
+        {/* KPI strip */}
+        <div className="col-span-12 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+          <KpiCard
+            label="Bucket"
+            value={fmt(quota.used)}
+            sub={`of ${fmt(quota.total)} · ${usedPct}%`}
+          />
+          <KpiCard
+            label="Files"
+            value={String(fileCount)}
+            sub={`across ${typeCount} types`}
+          />
+          <KpiCard label="Avg" value={fmt(avgPerFile)} sub="per file" />
+          <KpiCard
+            label="Largest"
+            value={largest ? fmt(largest.size) : '—'}
+            sub={largest ? `${largest.category} · ${largest.name}` : 'no files'}
+          />
+          <KpiCard
+            label="Trash"
+            value={fmt(quota.deleted)}
+            sub="recently deleted"
+            tone="danger"
+          />
+          <KpiCard
+            label="Reclaim"
+            value={fmt(reclaimBytes)}
+            sub={`${duplicates.length} dupes`}
+            tone="accent"
+          />
+        </div>
 
-      <BreakdownCard breakdown={breakdown} />
+        {/* By Type */}
+        <div className="col-span-12 lg:col-span-7">
+          <ByTypeTable breakdown={breakdown} />
+        </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <LargestFilesCard items={largestItems} maxSize={maxSize} />
-        <DuplicatesCard duplicates={duplicates} />
+        {/* Health */}
+        <div className="col-span-12 lg:col-span-5">
+          <HealthActions
+            trashBytes={quota.deleted}
+            reclaimBytes={reclaimBytes}
+            duplicateGroups={duplicates.length}
+            videoBytes={videoBucket?.size ?? 0}
+            videoCount={videoBucket?.count ?? 0}
+            imageCount={imageBucket?.count ?? 0}
+            onEmptyBucket={handleEmptyBucket}
+            emptying={emptying}
+          />
+        </div>
+
+        {/* Largest Files */}
+        <div className="col-span-12 lg:col-span-7">
+          <LargestFilesList items={largestItems} />
+        </div>
+
+        {/* Duplicates */}
+        <div className="col-span-12 lg:col-span-5">
+          <DuplicatesList duplicates={duplicates} />
+        </div>
       </div>
     </div>
   )
