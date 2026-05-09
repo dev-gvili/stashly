@@ -1,27 +1,26 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useFetcher } from 'react-router'
+import { useFetcher, useRouteLoaderData, useSearchParams } from 'react-router'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Dialog, DialogPortal } from '@/ui/dialog'
 import { Button } from '@/ui/button'
-import { Input } from '@/ui/input'
 import { Badge } from '@/ui/badge'
 import { ScrollArea } from '@/ui/scroll-area'
 import { Checkbox } from '@/ui/checkbox'
-import { ToggleGroup, ToggleGroupItem } from '@/ui/toggle-group'
-import { SearchIcon, XIcon } from 'lucide-react'
 import {
-  CheckIcon,
   CollectionIcon,
-  CollectionsFillIcon,
-  FileIcon,
-  FolderIcon,
   RemoveSquareIcon,
+  SearchIcon,
 } from '@/components/icons'
-import { toIcon } from '@/utils/converters'
 import { cn } from '@/utils/styles'
 import { formatSize } from '@/utils/formaters'
-import type { ItemCategory, ItemType } from '@/prisma/client'
 import type { StashPickerItem } from '@/types/stash.types'
+import { CATEGORIES } from '@/components/filters/filter.data'
+import { ItemCard } from '@/components/stash/item-card'
+import { ItemCardContext } from '@/hooks/useItemCard'
+import type { Route } from '../../routes/+types/layout'
+import { SearchInput } from '@/components/core-components/search-input'
+import { Filters } from '../filters/filters'
+import { useFilters } from '@/hooks/useFilters'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,15 +29,11 @@ import type { StashPickerItem } from '@/types/stash.types'
 export type AddToCollectionItem = StashPickerItem
 
 interface AddToCollectionDialogProps {
-  /** Whether the dialog is open */
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** The collection to add items to */
   collectionId: string
   collectionName: string
-  /** All items available to add */
   items: AddToCollectionItem[]
-  /** IDs already in the collection (greyed out, pre-checked) */
   existingItemIds?: string[]
 }
 
@@ -46,21 +41,22 @@ interface AddToCollectionDialogProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
+const DATE_FMT: Intl.DateTimeFormatOptions = {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+}
+
+/** Bucket items by precomputed `_dateLabel`. O(n), no Date allocation. */
 function groupByDate(
-  items: AddToCollectionItem[]
+  items: Array<AddToCollectionItem & { _dateLabel: string }>
 ): [string, AddToCollectionItem[]][] {
   const map = new Map<string, AddToCollectionItem[]>()
   for (const item of items) {
-    const key = item.createdAt
-      ? new Date(item.createdAt).toLocaleDateString('en-US', {
-          weekday: 'short',
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-        })
-      : 'Unknown date'
-    if (!map.has(key)) map.set(key, [])
-    map.get(key)!.push(item)
+    const arr = map.get(item._dateLabel)
+    if (arr) arr.push(item)
+    else map.set(item._dateLabel, [item])
   }
   return Array.from(map.entries())
 }
@@ -80,102 +76,109 @@ function getYearsFromGroups(
 // Item thumbnail grid cell
 // ---------------------------------------------------------------------------
 
-function GridItem({
+type GridItemUser = NonNullable<Route.ComponentProps['loaderData']>['user']
+
+const GridItem = React.memo(function GridItem({
   item,
   selected,
   existing,
   onToggle,
+  user,
+  searchParams,
+  setSearchParams,
 }: {
   item: AddToCollectionItem
   selected: boolean
   existing: boolean
   onToggle: (id: string) => void
+  user: GridItemUser
+  searchParams: URLSearchParams
+  setSearchParams: ReturnType<typeof useSearchParams>[1]
 }) {
-  if(item.type === "folder" || item.type === "collection") return null
-  const Icon = toIcon(item.category as ItemCategory) ?? FileIcon
-  const [imgError, setImgError] = useState(false)
-  const showIcon = !item.thumbnailUrl || imgError
+  if (item.type === 'folder' || item.type === 'collection') return null
+
+  const contextValue = useMemo(
+    () => ({
+      ...item,
+      status: 'normal' as const,
+      inclusiveSize: item.size,
+      updatedAt: null,
+      parentId: null,
+      ownerId: '',
+      workspaceId: null,
+      driveId: '',
+      tags: [],
+      thumbnails: item.thumbnailUrl
+        ? [
+            {
+              id: item.id,
+              url: item.thumbnailUrl,
+              width: null,
+              height: null,
+              size: 'medium' as const,
+              view: 'grid' as const,
+            },
+          ]
+        : [],
+      favorites: [],
+      file: null,
+      folder: null,
+      user,
+      searchParams,
+      setSearchParams,
+    }),
+    [item, user, searchParams, setSearchParams]
+  )
 
   return (
-    <button
-      type="button"
-      onClick={() => !existing && onToggle(item.id)}
-      className={cn(
-        'relative group aspect-square rounded-md overflow-hidden border-2 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-        existing && 'cursor-default'
-      )}
-      aria-pressed={selected || existing}
-      aria-label={`${selected ? 'Deselect' : 'Select'} ${item.name}`}
-    >
-      {/* thumbnail / icon */}
-      {!showIcon ? (
-        <img
-          src={item.thumbnailUrl!}
-          alt=""
-          className="w-full h-full object-cover"
-          loading="lazy"
-          decoding="async"
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center bg-sidebar">
-          <Icon className="size-10 text-muted-foreground" />
-        </div>
-      )}
-
-      {/* dark overlay on hover when not selected */}
-      {!selected && !existing && (
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors pointer-events-none" />
-      )}
-
-      {/* selected overlay */}
-      {/* {(selected || existing) && ( */}
-      {/* // <div className="absolute inset-0 bg-primary/20 pointer-events-none" /> */}
-      {/* )} */}
-
-      {/* selection circle / checkmark */}
-      <Checkbox
+    <ItemCardContext.Provider value={contextValue}>
+      <button
+        type="button"
+        onClick={() => !existing && onToggle(item.id)}
         className={cn(
-          'absolute top-2 left-2 size-6 rounded-sm  flex items-center justify-center transition-all'
+          'relative group surface-glass aspect-square rounded-md overflow-hidden border border-input transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+          existing && 'cursor-default'
         )}
-        checked={selected || existing}
-        hidden={existing}
-      />
+        aria-pressed={selected || existing}
+        aria-label={`${selected ? 'Deselect' : 'Select'} ${item.name}`}
+      >
+        <ItemCard.Thumbnail className="rounded-none aspect-square">
+          <ItemCard.ThumbnailImage />
+          <ItemCard.ThumbnailFallback className="p-0 bg-sidebar" />
+        </ItemCard.Thumbnail>
 
-      {/* item name tooltip on hover */}
-      <div className={cn("absolute bottom-0 inset-x-0 bg-linear-to-t from-black/90 to-transparent px-2 pb-1.5 pt-4 translate-y-full group-hover:translate-y-0 transition-transform duration-150 pointer-events-none")}>
-        <p className="text-foreground text-sm truncate font-medium">
-          {item.name}
-        </p>
-        <p className="text-muted-foreground text-[10px]">
-          {formatSize('byte', 'unit', Number(item.size))}
-        </p>
-      </div>
+        {/* dark overlay on hover when not selected */}
+        {!selected && !existing && (
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors pointer-events-none" />
+        )}
 
-      {/* "already added" badge */}
-      {existing && (
-        <div className="absolute top-2 right-2">
-          <Badge className="  rounded bg-muted text-muted-foreground">
-            Added
-          </Badge>
+        {/* selection checkbox */}
+        <Checkbox
+          className="absolute top-2 left-2 size-6 rounded flex items-center justify-center transition-all"
+          checked={selected || existing}
+          hidden={existing}
+        />
+
+        {/* item name tooltip on hover */}
+        <div className="absolute bottom-0 inset-x-0 bg-linear-to-t from-black/90 to-transparent px-2 pb-1.5 pt-4 translate-y-full group-hover:translate-y-0 transition-transform duration-150 pointer-events-none">
+          <p className="text-white text-sm truncate font-medium">{item.name}</p>
+          <p className="text-white/80 text-xs">
+            {formatSize('byte', 'unit', Number(item.size))}
+          </p>
         </div>
-      )}
-    </button>
+
+        {/* "already added" badge */}
+        {existing && (
+          <div className="absolute top-2 right-2">
+            <Badge className="rounded bg-background text-foreground">
+              Added
+            </Badge>
+          </div>
+        )}
+      </button>
+    </ItemCardContext.Provider>
   )
-}
-
-// ---------------------------------------------------------------------------
-// Filters
-// ---------------------------------------------------------------------------
-
-const FILTERS = [
-  { label: 'All', value: 'all' as const },
-  { label: 'Images', value: 'image' as const },
-  { label: 'Folders', value: 'folder' as const },
-  { label: 'Files', value: 'file' as const },
-] as const
-
-type FilterValue = (typeof FILTERS)[number]['value']
+})
 
 // ---------------------------------------------------------------------------
 // Year scrubber (right rail)
@@ -195,7 +198,7 @@ function YearScrubber({
           key={y}
           type="button"
           onClick={() => onJump(y)}
-          className="text-[10px] text-muted-foreground hover:text-foreground font-stashly leading-none py-0.5 transition-colors"
+          className="text-xs text-muted-foreground hover:text-foreground font-stashly leading-none py-0.5 transition-colors"
         >
           {y}
         </button>
@@ -219,18 +222,22 @@ export function AddToCollectionDialog({
   const fetcher = useFetcher()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<FilterValue>('all')
   const scrollRef = useRef<HTMLDivElement>(null)
   const groupRefs = useRef<Map<string, HTMLElement>>(new Map())
   const existingSet = useMemo(() => new Set(existingItemIds), [existingItemIds])
-
-  // Reset state when dialog opens
+  const filters = useFilters()
+  // Hoisted hooks — avoid each GridItem subscribing to router context (was causing 20–30s lag on URL change)
+  const user =
+    useRouteLoaderData<Route.ComponentProps['loaderData']>('layout')!.user
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Reset state on open and on close — keeps category param from leaking either way
   useEffect(() => {
+    filters.clearAll()
     if (open) {
       setSelected(new Set())
       setQuery('')
-      setFilter('all')
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   // Close on successful submit
@@ -249,20 +256,31 @@ export function AddToCollectionDialog({
     })
   }, [])
 
+  // Pre-compute the formatted date label + lowercase name ONCE per items array.
+  // Without this, every keystroke re-runs `new Date(...).toLocaleDateString()` for every item.
+  const indexedItems = useMemo(
+    () =>
+      items.map((item) => ({
+        ...item,
+        _dateLabel: item.createdAt
+          ? new Date(item.createdAt).toLocaleDateString('en-US', DATE_FMT)
+          : 'Unknown date',
+        _nameLower: item.name.toLowerCase(),
+      })),
+    [items]
+  )
+
   const filteredItems = useMemo(() => {
-    let result = items
+    let result = indexedItems
     if (query) {
       const q = query.toLowerCase()
-      result = result.filter((i) => i.name.toLowerCase().includes(q))
+      result = result.filter((i) => i._nameLower.includes(q))
     }
-    if (filter === 'image')
-      result = result.filter((i) => i.category === 'image')
-    else if (filter === 'folder')
-      result = result.filter((i) => i.type === 'folder')
-    else if (filter === 'file')
-      result = result.filter((i) => i.type === 'file' && i.category !== 'image')
+    if (filters.state.category.length > 0) {
+      result = result.filter((i) => filters.state.category.includes(i.category))
+    }
     return result
-  }, [items, query, filter])
+  }, [indexedItems, query, filters.state.category])
 
   const groups = useMemo(() => groupByDate(filteredItems), [filteredItems])
   const years = useMemo(() => getYearsFromGroups(groups), [groups])
@@ -276,21 +294,16 @@ export function AddToCollectionDialog({
     }
   }
 
-  function handleDone() {
-    if (selected.size === 0) {
-      onOpenChange(false)
-      return
-    }
+  function handleAdd() {
     fetcher.submit(
       {
         intent: 'add_items_to_collection',
         collectionId,
         itemIds: Array.from(selected).join(','),
       },
-      { method: 'post', action: '/api/collections', }
+      { method: 'post', action: '/api/collections' }
     )
     onOpenChange(!open)
-
   }
 
   const selectedCount = selected.size
@@ -302,10 +315,9 @@ export function AddToCollectionDialog({
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: 0.8 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 bg-background"
         />
 
         {/* Full-screen panel */}
@@ -314,115 +326,86 @@ export function AddToCollectionDialog({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="fixed inset-0 z-50 flex flex-col bg-background overflow-hidden"
+          className="fixed inset-0 z-50 flex flex-col overflow-hidden"
           role="dialog"
           aria-modal
           aria-label={`Add items to ${collectionName}`}
         >
-          {/* ── Header ── */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b shrink-0">
+          {/* ── Header (close + title + filters + search + counts) ── */}
+          <header className="z-40 flex items-center h-14 bg-background backdrop-blur-xl px-4 py-2 shrink-0 gap-2 overflow-x-auto scrollbar-none justify-between">
+            <section className="flex items-center gap-2 flex-1">
+              {/* Title */}
+              <span className="font-stashly  text-lg truncate shrink-0 hidden sm:block">
+                Add to collection
+              </span>
+
+              {/* Selected count */}
+              <AnimatePresence>
+                {selectedCount > 0 && (
+                  <Badge variant="default" className="rounded" asChild>
+                    <motion.span
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="font-stashly  tabular-nums shrink-0"
+                    >
+                      {selectedCount} selected
+                    </motion.span>
+                  </Badge>
+                )}
+              </AnimatePresence>
+            </section>
+            <section className="flex items-center gap-2 flex-2">
+              {/* Filters */}
+
+              <Filters filters={filters}>
+                <Filters.Popover>
+                  <Filters.Trigger />
+                  <Filters.Panel>
+                    <Filters.Tabs defaultTab="category">
+                      <Filters.Tab
+                        id="category"
+                        label="Categories"
+                        items={CATEGORIES}
+                      />
+                    </Filters.Tabs>
+                    <Filters.Actions />
+                  </Filters.Panel>
+                </Filters.Popover>
+                <Filters.Sort />
+              </Filters>
+              {/* Search */}
+              <SearchInput
+                value={query}
+                onValueChange={setQuery}
+                placeholder="Search"
+                hideModeToggle
+                className="flex-1 max-w-max"
+              />
+
+              {/* Result count (when searching) */}
+              {query && (
+                <span className="font-stashly text-xs text-muted-foreground tabular-nums shrink-0">
+                  {filteredItems.length} result
+                  {filteredItems.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </section>
             {/* Close */}
             <Button
               type="button"
               variant="outline"
-              size="icon-sm"
+              size="icon"
               onClick={() => onOpenChange(false)}
               aria-label="Close"
-              className='border-border'
+              className="font-stashly bg-card! border-input rounded-md!"
             >
               <RemoveSquareIcon className="size-5" />
             </Button>
-
-            {/* Title */}
-            <span className="font-semibold text-base font-stashly truncate shrink-0 hidden sm:block">
-              Add to collection
-            </span>
-
-            {/* Search */}
-            <div className="relative flex-1 max-w-xl mx-auto">
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search your stash"
-                className="pl-9 bg-muted border-none h-9 rounded-full focus-visible:ring-1"
-                autoFocus={false}
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground hover:text-foreground"
-                  aria-label="Clear search"
-                >
-                  <XIcon className="size-4" />
-                </button>
-              )}
-            </div>
-
-            <div className="shrink-0 flex items-center gap-2">
-              {/* Selected count badge */}
-              <AnimatePresence>
-                {selectedCount > 0 && (
-                  <motion.span
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    className="text-sm text-muted-foreground tabular-nums"
-                  >
-                    {selectedCount} selected
-                  </motion.span>
-                )}
-              </AnimatePresence>
-
-              {/* Done */}
-              <Button
-                onClick={handleDone}
-                disabled={isSubmitting}
-                size="sm"
-                className="font-stashly rounded-full px-5"
-              >
-                {isSubmitting
-                  ? 'Adding…'
-                  : selectedCount > 0
-                    ? `Add ${selectedCount}`
-                    : 'Done'}
-              </Button>
-            </div>
-          </div>
-
-          {/* ── Filters ── */}
-          <div className="flex items-center gap-2 px-4 py-2 border-b shrink-0 overflow-x-auto scrollbar-none">
-            <ToggleGroup
-              type="single"
-              value={filter}
-              onValueChange={(v) => {
-                if (v) setFilter(v as FilterValue)
-              }}
-              loop
-              variant="outline"
-            >
-              {FILTERS.map((f) => (
-                <ToggleGroupItem
-                  key={f.value}
-                  value={f.value}
-                  className="p-4 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                >
-                  {f.label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-
-            {query && (
-              <span className="ml-auto text-xs text-muted-foreground shrink-0">
-                {filteredItems.length} result
-                {filteredItems.length !== 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
+          </header>
 
           {/* ── Content ── */}
-          <div className="flex-1 relative overflow-hidden">
+          <div className="flex-1 relative overflow-hidden backdrop-blur-2xl bg-background/80">
             <YearScrubber years={years} onJump={jumpToYear} />
 
             <ScrollArea className="h-full pr-8" ref={scrollRef}>
@@ -432,7 +415,7 @@ export function AddToCollectionDialog({
                   <p className="text-sm font-stashly">No items found</p>
                 </div>
               ) : (
-                <div className="px-4 py-4 space-y-8">
+                <div className="p-4 space-y-8">
                   {groups.map(([dateLabel, groupItems]) => (
                     <section
                       key={dateLabel}
@@ -441,7 +424,6 @@ export function AddToCollectionDialog({
                         else groupRefs.current.delete(dateLabel)
                       }}
                     >
-                      {/* Date header with select-all for this group */}
                       <DateGroupHeader
                         label={dateLabel}
                         items={groupItems}
@@ -463,7 +445,6 @@ export function AddToCollectionDialog({
                         }}
                       />
 
-                      {/* Grid */}
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-1 mt-2">
                         {groupItems.map((item) => (
                           <GridItem
@@ -472,6 +453,9 @@ export function AddToCollectionDialog({
                             selected={selected.has(item.id)}
                             existing={existingSet.has(item.id)}
                             onToggle={toggleItem}
+                            user={user}
+                            searchParams={searchParams}
+                            setSearchParams={setSearchParams}
                           />
                         ))}
                       </div>
@@ -486,24 +470,21 @@ export function AddToCollectionDialog({
           <AnimatePresence>
             {selectedCount > 0 && (
               <motion.div
-                initial={{ y: 64, opacity: 0 }}
+                initial={{ y: 48, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 64, opacity: 0 }}
+                exit={{ y: 48, opacity: 0 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="border-t bg-background px-6 py-3 flex items-center justify-between shrink-0"
+                className="sticky bottom-0 w-full inline-flex gap-2 p-2 items-center bg-sidebar z-40 h-12 border-t border-input shrink-0"
               >
-                <div className="flex items-center gap-3">
-                  <CollectionIcon className="size-5 text-muted-foreground" />
-                  <span className="text-sm font-medium truncate max-w-[200px]">
-                    {collectionName}
-                  </span>
-                  <Badge variant="secondary" className="font-normal">
-                    {selectedCount} item{selectedCount !== 1 ? 's' : ''}{' '}
-                    selected
-                  </Badge>
-                </div>
+                <CollectionIcon className="size-5 text-muted-foreground" />
+                <span className="font-stashly text-sm font-medium truncate max-w-50">
+                  {collectionName}
+                </span>
+                <Badge variant="default" className="rounded">
+                  {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
+                </Badge>
 
-                <div className="flex items-center gap-2">
+                <div className="ml-auto flex items-center gap-2">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -514,9 +495,9 @@ export function AddToCollectionDialog({
                   </Button>
                   <Button
                     size="sm"
-                    onClick={handleDone}
+                    onClick={handleAdd}
                     disabled={isSubmitting}
-                    className="font-stashly rounded-full px-6"
+                    className="font-stashly"
                   >
                     {isSubmitting
                       ? 'Adding…'
@@ -573,7 +554,7 @@ function DateGroupHeader({
         checked={allSelected ? true : someSelected ? 'indeterminate' : false}
         onCheckedChange={() => onToggleAll(selectableIds)}
         onClick={(e) => e.stopPropagation()}
-        className="size-4"
+        className="size-5 place-self-start hover:cursor-pointer"
         aria-label={`Select all items from ${label}`}
       />
       <h3 className="text-sm font-medium font-stashly group-hover/header:text-foreground transition-colors">
