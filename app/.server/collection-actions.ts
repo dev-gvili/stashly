@@ -27,7 +27,9 @@ import { searchFactory } from '@/utils/search'
 export const searchCollections = searchFactory({
   dbDelegate: prisma.item,
   buildFilters: buildCollectionFilters,
-  defaultOrderBy: (): Prisma.ItemOrderByWithRelationInput => ({ createdAt: 'desc' }),
+  defaultOrderBy: (): Prisma.ItemOrderByWithRelationInput => ({
+    createdAt: 'desc',
+  }),
 })
 
 // ---------------------------------------------------------------------------
@@ -39,11 +41,19 @@ export const searchCollections = searchFactory({
  * Replaces the old `CollectionWithRelations` (Prisma.CollectionGetPayload).
  */
 export type CollectionWithMembers = Prisma.ItemGetPayload<{
-  include: { collectionItems: true }
+  include: {
+    collectionItems: true
+    _count: { select: { collectionItems: true } }
+  }
 }>
 
-const defaultInclude = {
-  collectionItems: true,
+const defaultInclude: Prisma.ItemInclude = {
+  collectionItems: {
+    select: {
+      itemId: true,
+    },
+  },
+  _count: { select: { collectionItems: true } },
 } as const
 
 // ---------------------------------------------------------------------------
@@ -495,7 +505,7 @@ export async function getCollectionItems(
     (Item & { linkId: string; thumbnailUrl: string | null })[]
   >`
     SELECT i.*, cm.id AS "linkId",
-           (SELECT t.url FROM "Thumbnail" t WHERE t."itemId" = i.id AND t.view = 'grid' LIMIT 1) AS "thumbnailUrl"
+           (SELECT t.url FROM "Thumbnail" t WHERE t."itemId" = i.id AND t.url IS NOT NULL AND t.url NOT LIKE '#%' LIMIT 1) AS "thumbnailUrl"
     FROM "CollectionMember" cm
     JOIN "Item" i ON i.id = cm."itemId"
     WHERE cm."collectionId" = ${collectionId}

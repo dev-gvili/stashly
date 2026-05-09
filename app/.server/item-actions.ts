@@ -1073,6 +1073,10 @@ interface GetFolderContentParams {
   sortDirection?: SortDirection
   /** Whether folders should appear before files (default: false). */
   foldersFirst?: boolean
+  /** Custom order-by clause (overrides sortBy/sortDirection when provided). */
+  orderBy?:
+    | Prisma.ItemOrderByWithRelationInput
+    | Prisma.ItemOrderByWithRelationInput[]
 }
 
 /**
@@ -1102,6 +1106,7 @@ export async function getFolderContent(params: GetFolderContentParams) {
     sortBy = 'name',
     sortDirection = 'asc',
     foldersFirst = false,
+    orderBy: customOrderBy,
   } = params
 
   // --- 1. Input Validation ---
@@ -1124,8 +1129,21 @@ export async function getFolderContent(params: GetFolderContentParams) {
     orderBy.push({ type: 'desc' }) // 'folder' comes after 'file' alphabetically, so desc puts folders first
   }
 
-  // Apply main sort field
-  orderBy.push({ [sortBy]: sortDirection })
+  // Apply caller-provided sort if any, otherwise the sortBy/sortDirection default
+  if (customOrderBy) {
+    const arr = Array.isArray(customOrderBy) ? customOrderBy : [customOrderBy]
+    // Split any merged multi-key objects into separate entries (Prisma requires one field per object)
+    for (const entry of arr) {
+      const keys = Object.keys(entry)
+      if (keys.length > 1) {
+        for (const k of keys) orderBy.push({ [k]: (entry as Record<string, unknown>)[k] } as Prisma.ItemOrderByWithRelationInput)
+      } else {
+        orderBy.push(entry)
+      }
+    }
+  } else {
+    orderBy.push({ [sortBy]: sortDirection })
+  }
 
   // Add ID as tiebreaker for stable pagination
   const hasIdSort = orderBy.some((order) => 'id' in order)

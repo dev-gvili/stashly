@@ -12,7 +12,7 @@ export const itemFilterSchema = z.object({
   favorited: z.boolean().optional(),
   parentId: z.string().optional(),
   query: z.string().min(1).optional(),
-  status: z.enum(ItemStatus).optional().default('normal'),
+  status: toZodArraySchema(z.enum(ItemStatus)).optional().default(['normal']),
   tags: toZodArraySchema(z.string().trim().min(1)).optional(),
   type: toZodArraySchema(z.enum(ItemType)).default(['file', 'folder']),
   workspaceId: z.string().nonempty().optional(),
@@ -27,6 +27,7 @@ export const itemFilterSchema = z.object({
   hasChildren: z.boolean().optional(),
   extension: toZodArraySchema(z.string().nonempty()).optional(),
   currentUserId: z.string().nonempty().optional(),
+  _count: z.coerce.number().int().positive().optional(),
 
   // Pagination Params
   cursor: z.string().optional(),
@@ -98,8 +99,8 @@ export const itemFilters = {
   category: createItemFilter(z.array(z.enum(ItemCategory)), (categories) => ({
     category: { in: categories },
   })),
-  status: createItemFilter(z.enum(ItemStatus), (status) => ({
-    status,
+  status: createItemFilter(z.array(z.enum(ItemStatus)), (statuses) => ({
+    status: { in: statuses },
   })),
   parentId: createItemFilter(z.string().or(z.null()), (parentId) => ({
     parentId,
@@ -198,7 +199,7 @@ export const itemFilters = {
   ),
 
   // currentUserId: createItemFilter(z.string(), (currentUserId) => ({
-   
+
   // })),
 
   /**
@@ -234,6 +235,9 @@ export const itemFilters = {
   }),
   hasChildren: createItemFilter(z.boolean(), (hasChildren) => ({
     folder: hasChildren ? { childCount: { gt: 0 } } : null,
+  })),
+  _count: createItemFilter(z.number().int().positive(), (_count) => ({
+    folder: { childCount: { gte: _count } },
   })),
 }
 

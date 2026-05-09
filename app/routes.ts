@@ -206,6 +206,7 @@ export default [
         route('storage', 'routes/stash/storage.tsx', { id: 'stash-storage' }),
         route('trash', 'routes/stash/trash.tsx', { id: 'stash-trash' }),
         route('demo', 'routes/stash/demo.tsx', { id: 'stash-demo' }),
+        route('ai-studio', 'routes/stash/ai-studio.tsx', { id: 'stash-ai-studio' }),
         route('examples', 'routes/stash/examples.tsx', {
           id: 'stash-examples',
         }),

@@ -302,12 +302,22 @@ type Pages = {
       "me": string;
     };
   };
+  "/:me/stash/storage": {
+    params: {
+      "me": string;
+    };
+  };
   "/:me/stash/trash": {
     params: {
       "me": string;
     };
   };
   "/:me/stash/demo": {
+    params: {
+      "me": string;
+    };
+  };
+  "/:me/stash/ai-studio": {
     params: {
       "me": string;
     };
@@ -455,7 +465,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/auth/sign-in" | "/auth/sign-out" | "/api/health" | "/api/search/:type" | "/api/auth/*" | "/api/stripe" | "/api/subscription" | "/api/theme" | "/api/settings" | "/api/sidebar" | "/api/images" | "/api/view" | "/api/notifications" | "/api/quota" | "/api/members/*" | "/api/permissions/*" | "/api/shares" | "/api/favorites" | "/api/versions" | "/api/thumbnails" | "/api/thumbnails/:itemId/presign" | "/api/thumbnails/:itemId" | "/api/invitations" | "/api/comments/*" | "/api/activities" | "/api/workspaces/*" | "/api/workspaces/:workspaceId" | "/api/workspaces/:workspaceId/members" | "/api/workspaces/:workspaceId/permissions" | "/api/users" | "/api/users/:userId" | "/api/users/:userId/items" | "/api/users/:userId/workspaces" | "/api/collections" | "/api/collections/:collectionId" | "/api/collections/:collectionId/items" | "/api/items" | "/api/items/:itemId" | "/api/items/:itemId/permissions" | "/api/items/:itemId/versions/:versionId?" | "/api/items/:itemId/comments/:commentId?" | "/api/items/:itemId/shares/:shareId?" | "/api/items/:itemId/favorites" | "/api/items/:itemId/invitations" | "/api/items/:itemId/download" | "/api/ai/embed" | "/api/ai/caption" | "/api/ai/translate" | "/api/ai/transcribe" | "/api/ai/suggestion" | "/api/ai/summarize" | "/api/ai/chat" | "/api/s3/upload" | "/api/s3/multipart" | "/:me/stash" | "/:me/stash/all" | "/:me/stash/collections" | "/:me/stash/collections/:collectionId" | "/:me/stash/favorites" | "/:me/stash/folders/:folderId" | "/:me/stash/folders/:folderId/files/:fileId" | "/:me/stash/shares" | "/:me/stash/images" | "/:me/stash/images/:itemId" | "/:me/stash/videos" | "/:me/stash/recent" | "/:me/stash/search" | "/:me/stash/invitations" | "/:me/stash/trash" | "/:me/stash/demo" | "/:me/stash/examples" | "/:me/workspaces" | "/:me/workspaces/create" | "/:me/workspaces/:workspaceId" | "/:me/workspaces/:workspaceId/settings" | "/:me/workspaces/:workspaceId/members" | "/:me/workspaces/:workspaceId/folders/:folderId" | "/:me/workspaces/:workspaceId/folders/:folderId/files/:fileId" | "/:me/workspaces/:workspaceId/shares" | "/:me/workspaces/:workspaceId/favorites" | "/:me/workspaces/:workspaceId/collections" | "/:me/workspaces/:workspaceId/collections/:collectionId" | "/:me/workspaces/:workspaceId/trash" | "/:me/workspaces/:workspaceId/recent" | "/:me/workspaces/:workspaceId/gallery" | "/:me/settings/profile" | "/:me/settings/account" | "/:me/settings/security" | "/:me/settings/billing" | "/:me/settings/notifications" | "/:me/settings/appearance" | "/*" | "/test" | "/options/a" | "/options/b" | "/options/c";
+    page: "/" | "/auth/sign-in" | "/auth/sign-out" | "/api/health" | "/api/search/:type" | "/api/auth/*" | "/api/stripe" | "/api/subscription" | "/api/theme" | "/api/settings" | "/api/sidebar" | "/api/images" | "/api/view" | "/api/notifications" | "/api/quota" | "/api/members/*" | "/api/permissions/*" | "/api/shares" | "/api/favorites" | "/api/versions" | "/api/thumbnails" | "/api/thumbnails/:itemId/presign" | "/api/thumbnails/:itemId" | "/api/invitations" | "/api/comments/*" | "/api/activities" | "/api/workspaces/*" | "/api/workspaces/:workspaceId" | "/api/workspaces/:workspaceId/members" | "/api/workspaces/:workspaceId/permissions" | "/api/users" | "/api/users/:userId" | "/api/users/:userId/items" | "/api/users/:userId/workspaces" | "/api/collections" | "/api/collections/:collectionId" | "/api/collections/:collectionId/items" | "/api/items" | "/api/items/:itemId" | "/api/items/:itemId/permissions" | "/api/items/:itemId/versions/:versionId?" | "/api/items/:itemId/comments/:commentId?" | "/api/items/:itemId/shares/:shareId?" | "/api/items/:itemId/favorites" | "/api/items/:itemId/invitations" | "/api/items/:itemId/download" | "/api/ai/embed" | "/api/ai/caption" | "/api/ai/translate" | "/api/ai/transcribe" | "/api/ai/suggestion" | "/api/ai/summarize" | "/api/ai/chat" | "/api/s3/upload" | "/api/s3/multipart" | "/:me/stash" | "/:me/stash/all" | "/:me/stash/collections" | "/:me/stash/collections/:collectionId" | "/:me/stash/favorites" | "/:me/stash/folders/:folderId" | "/:me/stash/folders/:folderId/files/:fileId" | "/:me/stash/shares" | "/:me/stash/images" | "/:me/stash/images/:itemId" | "/:me/stash/videos" | "/:me/stash/recent" | "/:me/stash/search" | "/:me/stash/invitations" | "/:me/stash/storage" | "/:me/stash/trash" | "/:me/stash/demo" | "/:me/stash/ai-studio" | "/:me/stash/examples" | "/:me/workspaces" | "/:me/workspaces/create" | "/:me/workspaces/:workspaceId" | "/:me/workspaces/:workspaceId/settings" | "/:me/workspaces/:workspaceId/members" | "/:me/workspaces/:workspaceId/folders/:folderId" | "/:me/workspaces/:workspaceId/folders/:folderId/files/:fileId" | "/:me/workspaces/:workspaceId/shares" | "/:me/workspaces/:workspaceId/favorites" | "/:me/workspaces/:workspaceId/collections" | "/:me/workspaces/:workspaceId/collections/:collectionId" | "/:me/workspaces/:workspaceId/trash" | "/:me/workspaces/:workspaceId/recent" | "/:me/workspaces/:workspaceId/gallery" | "/:me/settings/profile" | "/:me/settings/account" | "/:me/settings/security" | "/:me/settings/billing" | "/:me/settings/notifications" | "/:me/settings/appearance" | "/*" | "/test" | "/options/a" | "/options/b" | "/options/c";
   };
   "routes/auth/layout.tsx": {
     id: "routes/auth/layout";
@@ -655,7 +665,7 @@ type RouteFiles = {
   };
   "routes/layout.tsx": {
     id: "layout";
-    page: "/" | "/:me/stash" | "/:me/stash/all" | "/:me/stash/collections" | "/:me/stash/collections/:collectionId" | "/:me/stash/favorites" | "/:me/stash/folders/:folderId" | "/:me/stash/folders/:folderId/files/:fileId" | "/:me/stash/shares" | "/:me/stash/images" | "/:me/stash/images/:itemId" | "/:me/stash/videos" | "/:me/stash/recent" | "/:me/stash/search" | "/:me/stash/invitations" | "/:me/stash/trash" | "/:me/stash/demo" | "/:me/stash/examples" | "/:me/workspaces" | "/:me/workspaces/create" | "/:me/workspaces/:workspaceId" | "/:me/workspaces/:workspaceId/settings" | "/:me/workspaces/:workspaceId/members" | "/:me/workspaces/:workspaceId/folders/:folderId" | "/:me/workspaces/:workspaceId/folders/:folderId/files/:fileId" | "/:me/workspaces/:workspaceId/shares" | "/:me/workspaces/:workspaceId/favorites" | "/:me/workspaces/:workspaceId/collections" | "/:me/workspaces/:workspaceId/collections/:collectionId" | "/:me/workspaces/:workspaceId/trash" | "/:me/workspaces/:workspaceId/recent" | "/:me/workspaces/:workspaceId/gallery" | "/:me/settings/profile" | "/:me/settings/account" | "/:me/settings/security" | "/:me/settings/billing" | "/:me/settings/notifications" | "/:me/settings/appearance" | "/*";
+    page: "/" | "/:me/stash" | "/:me/stash/all" | "/:me/stash/collections" | "/:me/stash/collections/:collectionId" | "/:me/stash/favorites" | "/:me/stash/folders/:folderId" | "/:me/stash/folders/:folderId/files/:fileId" | "/:me/stash/shares" | "/:me/stash/images" | "/:me/stash/images/:itemId" | "/:me/stash/videos" | "/:me/stash/recent" | "/:me/stash/search" | "/:me/stash/invitations" | "/:me/stash/storage" | "/:me/stash/trash" | "/:me/stash/demo" | "/:me/stash/ai-studio" | "/:me/stash/examples" | "/:me/workspaces" | "/:me/workspaces/create" | "/:me/workspaces/:workspaceId" | "/:me/workspaces/:workspaceId/settings" | "/:me/workspaces/:workspaceId/members" | "/:me/workspaces/:workspaceId/folders/:folderId" | "/:me/workspaces/:workspaceId/folders/:folderId/files/:fileId" | "/:me/workspaces/:workspaceId/shares" | "/:me/workspaces/:workspaceId/favorites" | "/:me/workspaces/:workspaceId/collections" | "/:me/workspaces/:workspaceId/collections/:collectionId" | "/:me/workspaces/:workspaceId/trash" | "/:me/workspaces/:workspaceId/recent" | "/:me/workspaces/:workspaceId/gallery" | "/:me/settings/profile" | "/:me/settings/account" | "/:me/settings/security" | "/:me/settings/billing" | "/:me/settings/notifications" | "/:me/settings/appearance" | "/*";
   };
   "routes/index.tsx": {
     id: "routes/index";
@@ -722,6 +732,10 @@ type RouteFiles = {
     id: "stash-invitations";
     page: "/:me/stash/invitations";
   };
+  "routes/stash/storage.tsx": {
+    id: "stash-storage";
+    page: "/:me/stash/storage";
+  };
   "routes/stash/trash.tsx": {
     id: "stash-trash";
     page: "/:me/stash/trash";
@@ -729,6 +743,10 @@ type RouteFiles = {
   "routes/stash/demo.tsx": {
     id: "stash-demo";
     page: "/:me/stash/demo";
+  };
+  "routes/stash/ai-studio.tsx": {
+    id: "stash-ai-studio";
+    page: "/:me/stash/ai-studio";
   };
   "routes/stash/examples.tsx": {
     id: "stash-examples";
@@ -901,8 +919,10 @@ type RouteModules = {
   "stash-recent": typeof import("./app/routes/stash/recent.tsx");
   "stash-search": typeof import("./app/routes/stash/search.tsx");
   "stash-invitations": typeof import("./app/routes/stash/invitations.tsx");
+  "stash-storage": typeof import("./app/routes/stash/storage.tsx");
   "stash-trash": typeof import("./app/routes/stash/trash.tsx");
   "stash-demo": typeof import("./app/routes/stash/demo.tsx");
+  "stash-ai-studio": typeof import("./app/routes/stash/ai-studio.tsx");
   "stash-examples": typeof import("./app/routes/stash/examples.tsx");
   "routes/workspaces/index": typeof import("./app/routes/workspaces/index.tsx");
   "routes/workspaces/create": typeof import("./app/routes/workspaces/create.tsx");

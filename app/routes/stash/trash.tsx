@@ -34,9 +34,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return await getPaginatedItems({
     where: filters,
     ...parsedParams,
-    orderBy: {
-      name: 'asc',
-    },
+    orderBy: parsedParams.orderBy ?? { name: 'asc' },
     include: {
       file: true,
       folder: {

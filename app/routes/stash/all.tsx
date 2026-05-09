@@ -81,6 +81,7 @@ export async function loader({ request, params }: Route.ActionArgs) {
     cursor: parsedParams.cursor,
     limit: parsedParams.take,
     where: { ...filters, parentId: session.user.rootId },
+    orderBy: parsedParams.orderBy,
   })
 }
 

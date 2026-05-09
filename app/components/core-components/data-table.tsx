@@ -14,7 +14,7 @@ import { Checkbox } from '@/ui/checkbox'
 
 export interface DataTableColumn<T> {
   key: string
-  header: string
+  header: string | React.ReactNode | (() => React.ReactNode) | null
   /**
    * CSS width string e.g. `'120px'`, `'8rem'`.
    * Omit on the primary content column — it will stretch to fill remaining space.
@@ -108,14 +108,14 @@ export function DataTable<T extends object>({
                 key={col.key}
                 style={col.width ? { width: col.width } : undefined}
                 className={cn(
-                  'h-10 px-3 text-xs font-medium text-muted-foreground',
+                  col.key && 'h-10 px-3 text-xs font-medium text-muted-foreground',
                   col.align === 'right' && 'text-right',
                   col.align === 'center' && 'text-center',
                   col.sortable && 'cursor-pointer select-none',
                   col.sortable && 'hover:text-foreground transition-colors',
                 )}
                 onClick={
-                  col.sortable && onSort ? () => onSort(col.key) : undefined
+                 col.key && col.sortable && onSort ? () => onSort(col.key) : undefined
                 }
               >
                 <span
@@ -124,7 +124,7 @@ export function DataTable<T extends object>({
                     col.align === 'right' && 'flex-row-reverse',
                   )}
                 >
-                  {col.header}
+                  {typeof col.header === 'function' ? col.header() : col.header}
                   {col.sortable && (
                     <SortIcon active={isActive} dir={sortDir} />
                   )}
@@ -155,11 +155,12 @@ export function DataTable<T extends object>({
             return (
               <TableRow
                 key={id}
+                data-slot="row"
                 data-state={isSelected ? 'selected' : undefined}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={cn(
-                  'group h-14 border-border/40 transition-colors',
-                  onRowClick && 'cursor-pointer',
+                  'group h-14 border-border/40 transition-colors rounded-md!',
+                  onRowClick && 'cursor-pointer rounded-md! overflow-hidden',
                 )}
               >
                 {/* Checkbox */}
@@ -171,7 +172,7 @@ export function DataTable<T extends object>({
                       onCheckedChange={(checked) =>
                         onSelectChange?.(id, !!checked)
                       }
-                      className="opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
+                      className="size-5! opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100 transition-opacity hover:cursor-pointer last-of-type:rounded-r-md!"
                     />
                   </TableCell>
                 )}

@@ -60,6 +60,30 @@ async function saveMediaMetadata(itemId: string, file: File) {
   if (res && !res.ok) console.error('[saveMediaMetadata] server error', res.status, await res.text().catch(() => ''))
 }
 
+/**
+ * Runs the 5-stage thumbnail pipeline for a newly uploaded file.
+ * Stages: 0 = color hash placeholder → 1 = tiny 8×8 WebP preview →
+ * 2 = 512px resize → 3 = ViT salient crop → 4 = Florence-2 caption overlay.
+ * Each stage persists to S3 via presigned URL and patches `/api/thumbnails/:id`.
+ *
+ * @returns `{ stage, src, color, run }` — current pipeline state + the `run` trigger.
+ *
+ * @example
+ * // Start the pipeline after a file is uploaded
+ * const { stage, src, color, run } = useThumbnail()
+ * useEffect(() => { run(itemId, file) }, [itemId])
+ * return src ? <img src={src} /> : <div style={{ background: color }} />
+ *
+ * @example
+ * // Use from useUpload which calls run automatically on itemCreated
+ * const { runThumbnail } = useUpload()
+ * runThumbnail(mediaFile.id, mediaFile.file, () => navigate(location.pathname))
+ *
+ * @example
+ * // Show a loading state while pipeline is in progress (stage < 2)
+ * const { stage } = useThumbnail()
+ * if (stage < 2) return <Skeleton />
+ */
 export function useThumbnail() {
   const [state, setState] = useState<ThumbnailState>({
     stage: 0,

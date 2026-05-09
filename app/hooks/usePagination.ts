@@ -29,10 +29,31 @@ export interface LoaderData<T> {
 }
 
 /**
- * Custom hook for managing cursor-based infinite scroll pagination.
- * It uses useLoaderData for the initial page and useSubmit to trigger subsequent pages
- * by updating the URL's search parameters. It handles URL parameter changes (filters/sort)
- * by resetting the accumulated item list.
+ * Cursor-based infinite scroll pagination for any route loader that returns
+ * `{ items, nextCursor, hasMore }`. Uses `useLoaderData` for the first page and
+ * `useSubmit` (GET) to append subsequent pages via URL cursor params.
+ * Resets the accumulated list automatically when filters/sort params change.
+ *
+ * @param limit - Items per page (default 100).
+ * @param action - Loader URL to submit to (default: current route).
+ * @returns `{ items, nextCursor, loadMore, isLoading, hasMore, error }`.
+ *
+ * @example
+ * // Basic usage in a route component
+ * const { items, loadMore, hasMore, isLoading } = usePagination<StashItem>(50)
+ * return <>
+ *   {items.map(item => <ItemCard key={item.id} {...item} />)}
+ *   {hasMore && <button onClick={loadMore} disabled={isLoading}>Load more</button>}
+ * </>
+ *
+ * @example
+ * // With LoadMoreItems button component
+ * const { items, loadMore, hasMore, isLoading } = usePagination<StashItem>()
+ * return <><GridLayout items={items} /><LoadMoreItems hasMore={hasMore} onLoad={loadMore} /></>
+ *
+ * @example
+ * // The loader must return the expected shape:
+ * // return { items, nextCursor: lastItem?.id ?? null, hasMore: items.length === limit }
  */
 export function usePagination<T extends Identifiable>(
   /** 

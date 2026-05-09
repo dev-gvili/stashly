@@ -272,7 +272,7 @@ function ByTypeTable({ breakdown }: { breakdown: Breakdown[] }) {
       },
     },
     {
-      key: null,
+      key: 'usage',
       header: 'Usage',
       cell: (item: Breakdown) => {
         return (

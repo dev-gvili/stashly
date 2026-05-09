@@ -244,7 +244,7 @@ export const AppSidebar = ({ user }: { user: User }) => {
               className="hover:cursor-pointer max-w-max"
             >
               <Link to={'/'}>
-                <div className="bg-primary text-sidebar-primary-foreground flex aspect-square size-8! items-center justify-center rounded-md ">
+                <div className="bg-primary text-primary-foreground flex aspect-square size-8! items-center justify-center rounded-md ">
                   <Logo className="size-6" />
                 </div>
               </Link>
@@ -343,8 +343,8 @@ export function SidebarItem({
         asChild
         tooltip={tooltip}
         className={cn(
-          isActive && 'w-full border-2 border-primary!',
-          'group-data-[state=collapsed]:-ml-4!'
+          'group-data-[state=collapsed]:-ml-4! hover:text-current! hover:bg-sidebar-primary/30 transition-colors duration-200',
+          isActive && 'w-full border-2 border-primary! bg-muted! text-accent-foreground! hover:text-accent-foreground!',
         )}
       >
         <NavLink

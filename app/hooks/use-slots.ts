@@ -11,9 +11,27 @@ type SlotElements<Type extends SlotConfig> = {
 }
 
 /**
- * Extract components from `children` so we can render them in different places,
- * allowing us to implement components with SSR-compatible slot APIs.
- * Note: We can only extract direct children, not nested ones.
+ * Extracts named slot components from `children`, enabling compound components
+ * to render sub-parts in different DOM positions. SSR-safe. Only inspects
+ * direct children — nested slots are not detected.
+ *
+ * @param children - The component's `children` prop.
+ * @param config - Map of slot name → component type (e.g. `{ header: Header, footer: Footer }`).
+ * @returns `[slots, rest]` — matched slot elements keyed by name, and unmatched children.
+ *
+ * @example
+ * // Define slot components and extract them
+ * const [{ header, footer }, body] = useSlots(children, { header: Header, footer: Footer })
+ * return <div>{header}<main>{body}</main>{footer}</div>
+ *
+ * @example
+ * // Slot is optional — check before rendering
+ * const [{ icon }, rest] = useSlots(children, { icon: Icon })
+ * return <button>{icon ?? <DefaultIcon />}{rest}</button>
+ *
+ * @example
+ * // Used inside LayoutToggle to split River/Grid/List/Waterfall children
+ * const [{ river, grid }, extra] = useSlots(children, { river: River, grid: Grid })
  */
 export function useSlots<T extends SlotConfig>(
   children: React.ReactNode,

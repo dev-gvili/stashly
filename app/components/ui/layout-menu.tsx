@@ -48,7 +48,7 @@ export const LayoutMenu = ({
       type="single"
       loop
       variant="outline"
-      size="sm"
+      size="default"
       className={cn('max-w-max rounded', className)}
       {...props}
     >
@@ -69,7 +69,7 @@ export const LayoutMenuItem = ({
         name="layout"
         variant="outline"
         className={cn(
-          'data-[state=on]:text-accent-foreground! hover:bg-inherit aria-checked:text-accent-foreground aria-checked:bg-accent/30  first-of-type:ml-0.5! last-of-type:mr-0.5! first-of-type:rounded-l-md last-of-type:rounded-r-md hover:cursor-pointer',
+          'font-stashly bg-card text-foreground hover:bg-muted aria-checked:text-accent-foreground aria-checked:bg-muted! first-of-type:ml-0.5! last-of-type:mr-0.5! first-of-type:rounded-l-md last-of-type:rounded-r-md hover:cursor-pointer',
           className
         )}
         {...props}

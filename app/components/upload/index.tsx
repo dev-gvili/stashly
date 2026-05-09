@@ -315,8 +315,15 @@ const Item = React.forwardRef<
           </StatusText>
         </div>
       </div>
-      <Progress mediafileId={mediaFileId} className="group/progress">
-        <DoubleCheckIcon className="group-hover/progress:hidden! group-data-[state=done]:block size-12" />
+      <Progress
+        mediafileId={mediaFileId}
+        // hide the double-check only when THIS progress element is hovered
+        className="relative hover:[&_[data-slot='double-check']]:hidden"
+      >
+        <DoubleCheckIcon
+          data-slot="double-check"
+          className="size-14 group-data-[state=done]:block group-data-[state=uploading]:hidden"
+        />
         <Cancel mediaFileId={mediaFileId} />
         <PauseResume mediaFileId={mediaFileId} />
         <Dismiss mediaFileId={mediaFileId} />

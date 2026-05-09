@@ -15,7 +15,7 @@ export const AppToolbar = ({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) => {
-  let { me } = useParams()
+  let { me, folderId } = useParams()
   let location = useLocation()
   if (
     location.pathname.includes('/videos') ||
@@ -25,6 +25,8 @@ export const AppToolbar = ({
   }
   let [searchParams] = useSearchParams()
   let hasSelectedItems = hasQueryParam(searchParams, 'selectedItems')
+  let selectedCount = searchParams.getAll('selectedItems').length
+  if (!folderId && selectedCount <= 1) return null
   return (
     <div
       className={cn(

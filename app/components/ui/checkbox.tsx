@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Checkbox as CheckboxPrimitive } from 'radix-ui'
-import { CheckIcon } from '@/components/icons'
+import { CheckIcon, DoubleCheckIcon } from '@/components/icons'
 import { cn } from '@/utils/styles'
 
 function Checkbox({
@@ -24,7 +24,7 @@ function Checkbox({
           data-slot="checkbox-indicator"
           className="flex items-center justify-center transition-none"
         >
-          <CheckIcon className="size-5" />
+          <DoubleCheckIcon className="size-5" />
         </CheckboxPrimitive.Indicator>
       )}
     </CheckboxPrimitive.Root>

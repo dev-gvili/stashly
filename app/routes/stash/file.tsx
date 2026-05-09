@@ -5,14 +5,7 @@ import {
   type LinkProps,
   type UIMatch,
 } from 'react-router'
-import {
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
-import { Link } from 'react-router'
-import { href } from 'react-router'
+
 import { breadcrumbs } from '@/services/breadcrumbs'
 import { auth } from '@/services/auth'
 import { redirect } from 'react-router'
@@ -38,48 +31,6 @@ export async function action({ request, params }: Route.ActionArgs) {
   return null
 }
 
-// export const handle = {
-//   breadcrumb: ({
-//     params,
-//     pathname,
-//     id,
-//     loaderData,
-//   }: UIMatch<Awaited<ReturnType<typeof loader>>>) => {
-//     console.log("Generating breadcrumb for folder route", {
-//       params,
-//       pathname,
-//       id,
-//       loaderData,
-//     });
-//     let to = href("/dashboard/folders/:folderId/files/:fileId", {
-//       folderId: params.folderId!,
-//       fileId: params.fileId!,
-//     });
-
-//     let links = fullPath.map((segment, index) => {
-//       return (
-//         <>
-//         <BreadcrumbItem key={index}>
-//         <BreadcrumbLink asChild>
-//           <Link
-//             to={href("/dashboard/folders/:folderId", {
-//               folderId: params.folderId!,
-//             })}
-//             >{segment}</Link>
-//         </BreadcrumbLink>
-//         </BreadcrumbItem>
-//         <BreadcrumbSeparator />
-//             </>
-//       );
-//     });
-//     links.push(
-//       <BreadcrumbItem key="current">
-//         <BreadcrumbPage>{loaderData?.item.name}</BreadcrumbPage>
-//       </BreadcrumbItem>
-//     );
-//     return links
-//   },
-// };
 
 export default ({ loaderData }: Route.ComponentProps) => {
   let { item, crumbs } = loaderData

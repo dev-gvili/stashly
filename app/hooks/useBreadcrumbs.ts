@@ -1,6 +1,29 @@
 import type { Breadcrumb } from '@/services/breadcrumbs'
 import { useMatches } from 'react-router'
 
+/**
+ * Reads breadcrumb data from the nearest route match that exposes a `crumbs` array.
+ * Searches matches from deepest to shallowest so nested routes take precedence.
+ * Returns `null` when no route in the current match stack has crumbs.
+ *
+ * @returns Array of `{ id, name }` breadcrumb entries, or `null` if none found.
+ *
+ * @example
+ * // Render a breadcrumb trail in a layout
+ * const crumbs = useBreadcrumbs()
+ * return crumbs ? <Breadcrumbs crumbs={crumbs} /> : null
+ *
+ * @example
+ * // Guard against missing crumbs
+ * const crumbs = useBreadcrumbs()
+ * if (!crumbs) return <span>Home</span>
+ * return crumbs.map(c => <span key={c.id}>{c.name}</span>)
+ *
+ * @example
+ * // Expose crumbs from a route loader so this hook can find them
+ * // In the loader: return { crumbs: [{ id: folderId, name: folder.name }], ...items }
+ */
+
 function isBreadcrumb(value: unknown): value is Breadcrumb {
   return (
     typeof value === 'object' &&

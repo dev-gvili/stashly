@@ -744,22 +744,24 @@ const FilterIcon = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      className="stroke-foreground"
       stroke="currentColor"
       strokeLinecap="round"
-      strokeLinejoin="round"
       strokeWidth={1.5}
-      d="M9 22h6c5 0 7-2 7-7V9c0-5-2-7-7-7H9C4 2 2 4 2 9v6c0 5 2 7 7 7Z"
-      opacity={0.5}
+      d="M20 7H4"
     />
     <path
-      className="stroke-foreground"
       stroke="currentColor"
       strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeMiterlimit={10}
       strokeWidth={1.5}
-      d="M8.16 6.65h7.67c.64 0 1.16.52 1.16 1.16v1.28c0 .47-.29 1.05-.58 1.34l-2.5 2.21c-.35.29-.58.87-.58 1.34v2.5c0 .35-.23.81-.52.99l-.81.51c-.76.47-1.8-.06-1.8-.99v-3.08c0-.41-.23-.93-.47-1.22l-2.21-2.33C7.23 10.08 7 9.55 7 9.2V7.87c0-.7.52-1.22 1.16-1.22Z"
+      d="M15 12H4"
+      opacity={0.7}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M9 17H4"
+      opacity={0.4}
     />
   </svg>
 )
@@ -3006,7 +3008,7 @@ const StorageFullIcon = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-   <path
+    <path
       stroke="currentColor"
       strokeLinecap="round"
       strokeWidth={1.5}
@@ -3031,3 +3033,554 @@ const StorageFullIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 export { StorageFullIcon }
+
+const SearchIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <circle
+      cx={11.5}
+      cy={11.5}
+      r={9.5}
+      stroke="currentColor"
+      strokeWidth={1.5}
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M18.5 18.5 22 22"
+    />
+  </svg>
+)
+export { SearchIcon }
+
+const FuzzySearchIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M4 9q2.5-3 5 0t5 0 5 0"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M4 15q2.5-3 5 0t5 0 5 0"
+      opacity={0.5}
+    />
+  </svg>
+)
+export { FuzzySearchIcon }
+
+const SemanticSearchIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M10.5 10.5 7.5 7.5M13.5 10.5 16.5 7.5M12 14v4"
+      opacity={0.5}
+    />
+    <circle cx={12} cy={12} r={2} fill="currentColor" />
+    <circle cx={6} cy={6} r={1.75} stroke="currentColor" strokeWidth={1.5} />
+    <circle cx={18} cy={6} r={1.75} stroke="currentColor" strokeWidth={1.5} />
+    <circle cx={12} cy={20} r={1.75} stroke="currentColor" strokeWidth={1.5} />
+  </svg>
+)
+export { SemanticSearchIcon }
+
+const CommandIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M13.294 7.17 12 12l-1.294 4.83"
+    />
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M2 12c0-4.714 0-7.071 1.464-8.536C4.93 2 7.286 2 12 2s7.071 0 8.535 1.464C22 4.93 22 7.286 22 12s0 7.071-1.465 8.535C19.072 22 16.714 22 12 22s-7.071 0-8.536-1.465C2 19.072 2 16.714 2 12Z"
+      opacity={0.5}
+    />
+  </svg>
+)
+export { CommandIcon }
+
+const ArrowRightIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M8 12h8m0 0-3-3m3 3-3 3"
+    />
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M2 12c0-4.714 0-7.071 1.464-8.536C4.93 2 7.286 2 12 2s7.071 0 8.535 1.464C22 4.93 22 7.286 22 12s0 7.071-1.465 8.535C19.072 22 16.714 22 12 22s-7.071 0-8.536-1.465C2 19.072 2 16.714 2 12Z"
+      opacity={0.5}
+    />
+  </svg>
+)
+export { ArrowRightIcon }
+
+const SearchSettingsIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M9.5 14a3 3 0 1 1 0 6 3 3 0 0 1 0-6ZM14.5 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M13 17h9M11 7l-9-.042M2 17h4M22 7h-4"
+      opacity={0.5}
+    />
+  </svg>
+)
+export { SearchSettingsIcon }
+
+const FuzzyIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <circle cx={12} cy={12} r={2} stroke="currentColor" strokeWidth={1.5} />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M12 10c5 0 4.6 12-3 12"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M12.312 14c-5 0-4.6-12 3-12"
+    />
+    <path
+      stroke="currentColor"
+      strokeDasharray="2 2"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M10.631 10.696c3.536-3.536 11.738 5.232 6.364 10.606"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeDasharray="2 2"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M13.68 13.304C10.145 16.84 1.942 8.072 7.316 2.698"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeDasharray="2 2"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M10.852 13.524C7.316 9.99 16.084 1.786 21.458 7.16"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeDasharray="2 2"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M13.46 10.476c3.535 3.535-5.233 11.738-10.607 6.364"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M10 12.312c0-5 12-4.6 12 3"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M14 12c0 5-12 4.6-12-3"
+    />
+  </svg>
+)
+export { FuzzyIcon }
+
+const SementicIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <circle cx={12} cy={12} r={2} stroke="currentColor" strokeWidth={1.5} />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M12 10c5 0 4.6 12-3 12"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M12.312 14c-5 0-4.6-12 3-12"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M10 12.312c0-5 12-4.6 12 3"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M14 12c0 5-12 4.6-12-3"
+      opacity={0.5}
+    />
+  </svg>
+)
+export { SementicIcon }
+
+const CreatedAtIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M2 12c0-3.771 0-5.657 1.172-6.828S6.229 4 10 4h4c3.771 0 5.657 0 6.828 1.172S22 8.229 22 12v2c0 3.771 0 5.657-1.172 6.828S17.771 22 14 22h-4c-3.771 0-5.657 0-6.828-1.172S2 17.771 2 14z"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M18 16h-2m0 0h-2m2 0v-2m0 2v2"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M7 4V2.5M17 4V2.5M2 9h20"
+      opacity={0.5}
+    />
+  </svg>
+)
+export { CreatedAtIcon }
+
+const CalendarIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M2 12c0-3.771 0-5.657 1.172-6.828S6.229 4 10 4h4c3.771 0 5.657 0 6.828 1.172S22 8.229 22 12v2c0 3.771 0 5.657-1.172 6.828S17.771 22 14 22h-4c-3.771 0-5.657 0-6.828-1.172S2 17.771 2 14z"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M7 4V2.5M17 4V2.5M2 9h20"
+      opacity={0.5}
+    />
+  </svg>
+)
+export { CalendarIcon }
+
+const SortByTextIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M13 7H3M10 12H3M8 17H3"
+      opacity={0.5}
+    />
+    <path
+      fill="currentColor"
+      d="M11.316 16.692a.75.75 0 1 0 1.368.616zM16.5 7l.684-.308a.75.75 0 0 0-1.368 0zm3.816 10.308a.75.75 0 1 0 1.368-.616zm-.952-3.944.684-.308zm-5.728-.75a.75.75 0 0 0 0 1.5zm-.952 4.694 4.5-10-1.368-.616-4.5 10zm9-.616-1.636-3.636-1.368.615 1.636 3.637zm-1.636-3.636-2.864-6.364-1.368.616 2.864 6.363zm-.684-.442h-5.728v1.5h5.728z"
+    />
+  </svg>
+)
+export { SortByTextIcon }
+
+const SortByNumberIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M13 7H3M10 12H3M8 17H3"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M16 7l-2.5 9M20.5 7L18 16"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M22 10h-9M21 13.5h-9"
+      opacity={0.5}
+    />
+  </svg>
+)
+export { SortByNumberIcon }
+
+const SortListIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M4 17h7M4 12h7M4 7h7"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M17 4v16m0-16-3 4m3-4 3 4m-3 12 3-4m-3 4-3-4"
+    />
+  </svg>
+)
+export { SortListIcon }
+
+const SortDescIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M4 8h9"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M6 13h7"
+      opacity={0.7}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M8 18h5"
+      opacity={0.4}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M17 20V4l3 4"
+    />
+  </svg>
+)
+export { SortDescIcon }
+
+const SortAscIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M4 16h9"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M6 11h7"
+      opacity={0.7}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M8 6h5"
+      opacity={0.3}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M17 4v16l3-4"
+    />
+  </svg>
+)
+export { SortAscIcon }
+
+const MagicIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M3.845 7.922a2.883 2.883 0 1 1 4.077-4.077l12.234 12.233a2.884 2.884 0 0 1-4.078 4.078z"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="m6 10 4-4"
+      opacity={0.5}
+    />
+    <path
+      stroke="currentColor"
+      d="M16.1 2.307a.483.483 0 0 1 .9 0l.43 1.095c.049.126.148.225.272.274l1.091.432a.486.486 0 0 1 0 .903l-1.09.432a.49.49 0 0 0-.273.273L17 6.81a.483.483 0 0 1-.9 0l-.43-1.095a.49.49 0 0 0-.273-.273l-1.09-.432a.486.486 0 0 1 0-.903l1.09-.432a.49.49 0 0 0 .273-.274z"
+    />
+    <path
+      stroke="currentColor"
+      d="M19.967 9.13c.161-.41.739-.41.9 0l.156.399c.05.125.148.224.273.273l.398.158a.486.486 0 0 1 0 .902l-.398.158a.49.49 0 0 0-.273.273l-.156.4a.483.483 0 0 1-.9 0l-.157-.4a.49.49 0 0 0-.272-.273l-.398-.158a.486.486 0 0 1 0-.902l.398-.158a.49.49 0 0 0 .272-.273zM5.133 15.307c.161-.41.739-.41.9 0l.157.4c.049.125.147.224.272.273l.398.157a.486.486 0 0 1 0 .903l-.398.158a.48.48 0 0 0-.272.273l-.157.4a.483.483 0 0 1-.9 0l-.157-.4a.48.48 0 0 0-.272-.273l-.398-.158a.486.486 0 0 1 0-.903l.398-.157a.48.48 0 0 0 .272-.274z"
+      opacity={0.5}
+    />
+  </svg>
+)
+export { MagicIcon }
+
+const SortByDateTimeIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M10 7H2M8 12H2M10 17H2"
+      opacity={0.5}
+    />
+    <circle cx={17} cy={12} r={5} stroke="currentColor" strokeWidth={1.5} />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M17 10v1.846L18 13"
+    />
+  </svg>
+);
+export {SortByDateTimeIcon};

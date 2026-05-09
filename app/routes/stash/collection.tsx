@@ -26,12 +26,25 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     // Fetch the user's items to populate the add-to-collection picker
     paginateItems({
       limit: 500,
+      cursor,
       where: {
         ownerId: session.user.id,
         status: 'normal',
         type: { not: 'collection' },
       },
-      include: { thumbnails: { select: { url: true, view: true } } },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        thumbnails: {
+          select: {
+            height: true,
+            width: true,
+            url: true,
+            size: true,
+            id: true,
+            stage: true,
+          },
+        },
+      },
     }),
   ])
 
@@ -43,11 +56,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     category: item.category,
     size: item.size,
     createdAt: item.createdAt,
-    thumbnailUrl:
-      (item as any).thumbnails?.find((t: any) => t.view === 'grid')?.url ?? null,
+    thumbnailUrl: item.thumbnails?.find((t) => t.url && !t.url.startsWith('#'))?.url ?? null,
   }))
 
-  Promise.resolve().then(() => touchOpenedAt(collectionId)).catch(() => {})
+  Promise.resolve()
+    .then(() => touchOpenedAt(collectionId))
+    .catch(() => {})
 
   // IDs already in this collection
   const existingItemIds = collection.collectionItems.map((cm) => cm.itemId)
@@ -71,9 +85,8 @@ export default function Collection({ loaderData }: Route.ComponentProps) {
   const params = useParams()
   const me = params.me as string
 
-  const { items, hasMore, isLoading, loadMore } = usePagination<
-    Route.ComponentProps['loaderData']['items'][number]
-  >(50)
+  const { items, hasMore, isLoading, loadMore } =
+    usePagination<Route.ComponentProps['loaderData']['items'][number]>(50)
 
   return (
     <CollectionView

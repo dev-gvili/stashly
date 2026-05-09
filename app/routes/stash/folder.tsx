@@ -42,6 +42,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       cursor: parsedParams.cursor,
       limit: parsedParams.take,
       where: { ...filters, parentId: params.folderId },
+      orderBy: parsedParams.orderBy,
     }),
     breadcrumbs(params.folderId),
     prisma.item.findUnique({

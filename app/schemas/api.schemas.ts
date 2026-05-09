@@ -221,7 +221,7 @@ export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
 // ====================================================== //
 
 const recipientInputSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   role: z.string().nonempty(),
 })
 

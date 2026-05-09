@@ -2,6 +2,7 @@ import React from 'react'
 import type { ImageData } from './buildRows'
 import { Link, useSearchParams, useViewTransitionState } from 'react-router'
 import { cn, toChunkArray } from '@/utils'
+import { useLocation } from 'react-router'
 
 export function buildSrcSet(src: string, widths: number[]) {
   const hasQuery = src?.indexOf('?') !== -1
@@ -27,6 +28,7 @@ function aspectFromId(id: string): string {
 
 function RiverItem({ img }: { img: ImageData }) {
   const isTransitioning = useViewTransitionState(img.id)
+  let location = useLocation()
   return (
     <div
       className={cn(
@@ -37,7 +39,7 @@ function RiverItem({ img }: { img: ImageData }) {
       <Link
         to={img.id}
         viewTransition
-        unstable_mask="."
+        unstable_mask={`${location.pathname}/${img.alt}`}
         prefetch="intent"
         className="block w-full h-full"
       >
@@ -75,7 +77,10 @@ export const RiverView: React.FC<{
     <div className="flex flex-col ">
       {chunks.map((chunk, i) => (
         // react doesn't like it when the same image appears in multiple rows during a transition, so we use the chunk index as part of the key to force a full re-render of each row when the layout changes
-        <div key={i} className="flex gap-4 mb-4 overflow-hidden rounded-md shrink-0">
+        <div
+          key={i}
+          className="flex gap-4 mb-4 overflow-hidden rounded-md shrink-0"
+        >
           {chunk.map((img) => (
             // RiverItem will use the image ID for its own view transition keys, so we can safely reuse the same images across rows without key conflicts
             <RiverItem key={img.id} img={img} />

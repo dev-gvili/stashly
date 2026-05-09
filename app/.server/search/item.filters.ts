@@ -14,7 +14,7 @@ export const itemFilterSchema = z.object({
   favorited: z.boolean().optional(),
   parent: z.string().nonempty().optional(),
   query: z.string().min(1).optional(),
-  status: z.enum(ItemStatus).optional().default("normal"),
+  status: toZodArraySchema(z.enum(ItemStatus)).optional().default(['normal']),
   tags: toZodArraySchema(z.string().trim().min(1)).optional(),
   type: toZodArraySchema(z.enum(ItemType)).default(['file']),
   workspace: z.string().nonempty().optional(),
@@ -75,8 +75,8 @@ export const itemFilters = {
   category: createItemFilter(z.array(z.enum(ItemCategory)), (categories) => ({
     category: { in: categories },
   })),
-  status: createItemFilter(z.enum(ItemStatus), (status) => ({
-    status,
+  status: createItemFilter(z.array(z.enum(ItemStatus)), (statuses) => ({
+    status: { in: statuses },
   })),
   parent: createItemFilter(z.string(), (parentId) => ({
     parentId,

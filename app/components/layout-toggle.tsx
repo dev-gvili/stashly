@@ -14,7 +14,7 @@ const LayoutToggle = ({
   value = value ?? searchParams.get('layout') ?? 'river'
   return (
     <LayoutMenu
-      className={cn('h-8 font-stashly', className)}
+      className={cn('font-stashly', className)}
       value={value}
       variant="outline"
       {...props}

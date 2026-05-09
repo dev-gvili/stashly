@@ -9,23 +9,32 @@ import { getQueryParamArray, hasQueryParamValue } from '@/utils/query-params'
 export const DRAG_ITEM_KEY = 'application/stashly-item-id'
 
 /**
- * A custom hook to manage drag-and-drop functionality for stash items.
- * It allows items to be dragged and folders to act as drop targets for moving items.
- * 
- * If the dragged item is part of a selection (via `selectedItems` query param), 
- * the entire selection is moved. Otherwise, only the individual dragged item is moved.
+ * Drag-and-drop handler for stash items. Files are draggable; folders are drop targets.
+ * When a dragged item belongs to the current `selectedItems` URL selection, the entire
+ * selection is moved to the target folder. Otherwise only the single item is moved.
+ * Submits `intent: 'move_items'` to `/api/items` on drop.
  *
- * @param {object} params - The parameters for the hook.
- * @param {string} params.id - The unique identifier of the item.
- * @param {ItemType} params.type - The type of the item (e.g., 'folder', 'file').
- * 
- * @returns {object} An object containing drag state and event handlers.
- * 
+ * @param params.id - The item's ID.
+ * @param params.type - Item type — only `'folder'` accepts drops.
+ * @returns Drag state + event handlers to spread onto the item element.
+ *
  * @example
- * const { handleDragStart, handleDrop, isDragOver } = useItemDragDrop({ 
- *   id: 'item_123', 
- *   type: 'folder' 
- * });
+ * // Spread onto an ItemCard to make it draggable + a folder drop target
+ * const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, isDragOver } =
+ *   useItemDragDrop({ id: item.id, type: item.type })
+ * <div draggable onDragStart={handleDragStart} onDragOver={handleDragOver}
+ *      onDragLeave={handleDragLeave} onDrop={handleDrop}
+ *      className={isDragOver ? 'ring-2 ring-primary' : ''} />
+ *
+ * @example
+ * // isDragOver highlights a folder when a file is dragged over it
+ * const { isDragOver } = useItemDragDrop({ id: folderId, type: 'folder' })
+ * <FolderCard className={cn(isDragOver && 'bg-muted ring-2')} />
+ *
+ * @example
+ * // Files are draggable but never accept drops — isFolder gates all drop logic
+ * const { handleDragStart } = useItemDragDrop({ id: fileId, type: 'file' })
+ * <div draggable onDragStart={handleDragStart} /> // no drop handlers needed
  */
 export function useItemDragDrop({ id, type }: { id: string; type: ItemType }) {
   const submit = useSubmit()

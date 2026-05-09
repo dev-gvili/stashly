@@ -75,6 +75,33 @@ export function useUploadStatus(mediaFileId: string) {
 
 // ── Main hook ─────────────────────────────────────────────────────────────────
 
+/**
+ * Primary interface to the global XState upload machine (`upload` actor).
+ * Manages file queue state, drag-and-drop, quota verification, thumbnail pipeline,
+ * and per-file lifecycle (add / pause / resume / cancel / dismiss).
+ *
+ * The `upload` actor is module-level and shared across all hook instances —
+ * state is consistent regardless of which component calls this hook.
+ *
+ * @returns Upload state, action functions, and drag event handlers.
+ *
+ * @example
+ * // Add a single file to the queue
+ * const { add } = useUpload()
+ * <input type="file" onChange={(e) => add(e.target.files![0])} />
+ *
+ * @example
+ * // Attach drag-and-drop to a container
+ * const { dragHandlers, isDragging } = useUpload()
+ * <div {...dragHandlers} className={isDragging ? 'ring-2 ring-primary' : ''}>
+ *   Drop files here
+ * </div>
+ *
+ * @example
+ * // Show upload progress panel conditionally
+ * const { files, toggleView, isVisible } = useUpload()
+ * {isVisible && <UploadPanel files={files} onClose={toggleView} />}
+ */
 export function useUpload() {
   const [isDragging, setIsDragging] = useState(false)
   const dragCounter = useRef(0)

@@ -306,7 +306,7 @@ function Sidebar({
     } as React.CSSProperties
     return (
       <SidebarScopeContext.Provider value={resolvedId}>
-        <Sheet open={openMobile} onOpenChange={setOpenMobile}  {...restProps}>
+        <Sheet open={openMobile} onOpenChange={setOpenMobile} {...restProps}>
           <SheetContent
             data-sidebar="sidebar"
             data-slot="sidebar"
@@ -409,7 +409,12 @@ function SidebarTrigger({
       >
         {children || (
           <>
-            <SidebarIcon className="size-5 rotate-180" />
+            <SidebarIcon
+              className={cn(
+                'size-5',
+                state === 'expanded' ? 'rotate-180 duration-200' : ''
+              )}
+            />
             <span className="sr-only">{tooltipContent}</span>
           </>
         )}

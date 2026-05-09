@@ -9,62 +9,74 @@ import { findManyActivities } from '@/services/activity-actions'
 import { ActivityFeed } from '@/components/core-components/activity-feed'
 import { getPresignedUrl } from '@/services/s3'
 import { touchOpenedAt } from '@/services/item-actions'
+import { Button } from '@/ui/button'
+import { Separator } from '@/ui/separator'
+import { ScrollArea } from '@/ui/scroll-area'
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from '@/ui/dialog'
+import { VisuallyHidden } from 'radix-ui'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/sign-in')
 
-  const item = await prisma.item.findUniqueOrThrow({
-    where: { id: params.itemId },
-    select: {
-      id: true,
-      name: true,
-      type: true,
-      category: true,
-      size: true,
-      parentId: true,
-      createdAt: true,
-      updatedAt: true,
-      file: {
-        select: { mimeType: true, extension: true, key: true },
-      },
-      thumbnails: {
-        where: { NOT: { url: { startsWith: '#' } } },
-        orderBy: { stage: 'desc' },
-        take: 1,
-        select: { url: true, width: true, height: true, stage: true, id: true },
-      },
-      image: {
-        select: {
-          width: true,
-          height: true,
-          cameraMake: true,
-          cameraModel: true,
-          iso: true,
-          fNumber: true,
-          exposureTime: true,
-          focalLength: true,
-          takenDateTime: true,
-          latitude: true,
-          longitude: true,
+  const [_,item] = await Promise.all([
+    touchOpenedAt(params.itemId),
+    prisma.item.findUniqueOrThrow({
+      where: { id: params.itemId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        category: true,
+        size: true,
+        parentId: true,
+        createdAt: true,
+        updatedAt: true,
+        file: {
+          select: { mimeType: true, extension: true, key: true },
+        },
+        thumbnails: {
+          where: { NOT: { url: { startsWith: '#' } } },
+          orderBy: { stage: 'desc' },
+          take: 1,
+          select: { url: true, width: true, height: true, stage: true, id: true },
+        },
+        image: {
+          select: {
+            width: true,
+            height: true,
+            cameraMake: true,
+            cameraModel: true,
+            iso: true,
+            fNumber: true,
+            exposureTime: true,
+            focalLength: true,
+            takenDateTime: true,
+            latitude: true,
+            longitude: true,
+          },
+        },
+        video: {
+          select: { width: true, height: true, duration: true, frameRate: true },
         },
       },
-      video: {
-        select: { width: true, height: true, duration: true, frameRate: true },
-      },
-    },
-  })
-
-  Promise.resolve().then(() => touchOpenedAt(params.itemId)).catch(() => {})
+    })
+  ])
 
   const fileKey = item.file?.key ?? `${item.parentId}/${item.name}`
-  const fullUrl = await getPresignedUrl(session.user.bucket, 'get', fileKey, 3600)
-
-  const activities = await findManyActivities({
-    where: { itemId: item.id },
-    orderBy: { id: 'desc' },
-    take: 20,
-  })
+  const [fullUrl, activities] = await Promise.all([
+    getPresignedUrl(session.user.bucket, 'get', fileKey, 3600),
+    findManyActivities({
+      where: { itemId: item.id },
+      orderBy: { id: 'desc' },
+      take: 20,
+    }),
+  ])
 
   return { item, fullUrl, activities }
 }
@@ -116,130 +128,140 @@ export default function GalleryImageDetail({
       : null
 
   return (
-    <div className="fixed inset-0 z-50">
-      <div
-        className="absolute inset-0 bg-black/75"
+    <Dialog open onOpenChange={(open) => !open && navigate(-1)} >
+      <DialogContent
+        showCloseButton={false}
+        className="grid grid-cols-[5fr_1fr] gap-0 p-0 w-screen h-screen max-w-none sm:max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none border-0 shadow-none bg-transparent backdrop-blur-sm"
         style={{ viewTransitionName: 'gallery-overlay' }}
-        onClick={() => navigate(-1)}
-      />
+      >
+        <VisuallyHidden.Root>
+          <DialogTitle>{item.name}</DialogTitle>
+          <DialogDescription>Image preview and details</DialogDescription>
+        </VisuallyHidden.Root>
 
-      <div className="relative flex h-full">
         {/* Left: image — 75% */}
-        <div
-          className="flex flex-3 items-center justify-center p-8"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="@container flex items-center justify-center p-4 overflow-hidden bg-transparent" >
           <img
             src={fullUrl}
             alt={item.name}
-            style={{ viewTransitionName: `img-${item.id}` }}
-            className="max-h-full max-w-full rounded-xl object-contain shadow-2xl"
+            style={{
+              viewTransitionName: `img-${item.id}`,
+            }}
+            className="@landscape:max-h-full @landscape:w-full @portrait:h-full @portrait:max-w-full rounded-xl shadow-stashly @min-lg:max-w-[90%] @min-lg:max-h-[90%] object-contain"
           />
         </div>
 
         {/* Right: sidebar — 25% */}
-        <div
-          className="flex flex-1 flex-col overflow-y-auto border-l bg-background"
+        <aside
+          className="flex flex-col max-w-80 place-self-stretch  bg-background"
           style={{ viewTransitionName: 'gallery-sidebar' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center gap-2 border-b px-4 py-3">
-            <button
+          <header className="flex items-center gap-2 px-4 py-3">
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => navigate(-1)}
-              className="rounded-md p-1 hover:bg-accent"
               aria-label="Close"
             >
-              <BackIcon className="size-4" />
-            </button>
+              <BackIcon className="size-5" />
+            </Button>
             <p className="flex-1 truncate text-sm font-medium">{item.name}</p>
-          </div>
+          </header>
+          <Separator />
 
-          <div className="flex-1 space-y-6 p-4">
-            {/* File info */}
-            <section>
-              <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <InfoIcon className="size-3.5" />
-                Details
-              </h3>
-              <dl className="space-y-2 text-sm">
-                <Row label="Type" value={item.file?.mimeType} mono />
-                <Row
-                  label="Extension"
-                  value={
-                    item.file?.extension ? `.${item.file.extension}` : null
-                  }
-                  mono
-                />
-                <Row
-                  label="Size"
-                  value={
-                    item.size
-                      ? formatSize('byte', 'unit', Number(item.size))
-                      : null
-                  }
-                />
-                <Row label="Dimensions" value={dims} mono />
-                {durationVal && (
-                  <Row label="Duration" value={durationVal} mono />
-                )}
-                <Row label="Taken" value={takenVal} />
-                <Row
-                  label="Added"
-                  value={new Date(item.createdAt).toLocaleDateString(
-                    undefined,
-                    {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    }
-                  )}
-                />
-                <Row
-                  label="Modified"
-                  value={new Date(item.updatedAt).toLocaleDateString(
-                    undefined,
-                    {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    }
-                  )}
-                />
-              </dl>
-            </section>
-
-            {(camera ||
-              exposure ||
-              isoVal ||
-              shutterVal ||
-              focalVal ||
-              gpsVal) && (
+          <ScrollArea className="flex-1">
+            <div className="space-y-6 p-4">
+              {/* File info */}
               <section>
                 <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Camera
+                  <InfoIcon className="size-3.5" />
+                  Details
                 </h3>
                 <dl className="space-y-2 text-sm">
-                  <Row label="Camera" value={camera} />
-                  <Row label="Aperture" value={exposure} mono />
-                  <Row label="ISO" value={isoVal} mono />
-                  <Row label="Shutter" value={shutterVal} mono />
-                  <Row label="Focal length" value={focalVal} mono />
-                  <Row label="GPS" value={gpsVal} mono />
+                  <Row label="Type" value={item.file?.mimeType} mono />
+                  <Row
+                    label="Extension"
+                    value={
+                      item.file?.extension ? `.${item.file.extension}` : null
+                    }
+                    mono
+                  />
+                  <Row
+                    label="Size"
+                    value={
+                      item.size
+                        ? formatSize('byte', 'unit', Number(item.size))
+                        : null
+                    }
+                  />
+                  <Row label="Dimensions" value={dims} mono />
+                  {durationVal && (
+                    <Row label="Duration" value={durationVal} mono />
+                  )}
+                  <Row label="Taken" value={takenVal} />
+                  <Row
+                    label="Added"
+                    value={new Date(item.createdAt).toLocaleDateString(
+                      undefined,
+                      {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      }
+                    )}
+                  />
+                  <Row
+                    label="Modified"
+                    value={new Date(item.updatedAt).toLocaleDateString(
+                      undefined,
+                      {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      }
+                    )}
+                  />
                 </dl>
               </section>
-            )}
 
-            <section>
-              <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Activity
-              </h3>
-              <ActivityFeed activities={activities} />
-            </section>
-          </div>
-        </div>
-      </div>
-    </div>
+              {(camera ||
+                exposure ||
+                isoVal ||
+                shutterVal ||
+                focalVal ||
+                gpsVal) && (
+                <>
+                  <Separator />
+                  <section>
+                    <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Camera
+                    </h3>
+                    <dl className="space-y-2 text-sm">
+                      <Row label="Camera" value={camera} />
+                      <Row label="Aperture" value={exposure} mono />
+                      <Row label="ISO" value={isoVal} mono />
+                      <Row label="Shutter" value={shutterVal} mono />
+                      <Row label="Focal length" value={focalVal} mono />
+                      <Row label="GPS" value={gpsVal} mono />
+                    </dl>
+                  </section>
+                </>
+              )}
+
+              <Separator />
+              <section>
+                <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Activity
+                </h3>
+                <ActivityFeed activities={activities} />
+              </section>
+            </div>
+          </ScrollArea>
+        </aside>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -258,7 +280,7 @@ function Row({
       <dt className="shrink-0 text-muted-foreground">{label}</dt>
       <dd
         className={
-          mono ? 'truncate font-mono text-xs' : 'truncate text-xs text-right'
+          mono ? 'truncate font-stashly text-xs' : 'truncate text-xs text-right'
         }
       >
         {value}
