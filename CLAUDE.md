@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Act first, explain second. When the user asks for commits, edits, or a PR, DO the work — don't produce plans or commit messages without executing.
 - Avoid over-reading / over-exploring. Make the change, then verify.
 - If blocked by auth (e.g., `gh` GITHUB_TOKEN), surface it immediately rather than retrying silently.
+- Avoid over-engineering. Start with the simplest query or approach that works; do not reach for recursive CTEs, abstractions, or sub-agents when a direct edit will do.
 
 ## Core Rules
 
@@ -37,7 +38,7 @@ This is a TypeScript project. When moving or reorganizing files, always update a
 ## Commands
 
 ```bash
-pnpm dev          # Start dev server (Express + Vite HMR), available at http://localhost:3000
+pnpm dev          # Start dev server (Express + Vite HMR), available at http://localhost:3000 — kill any existing process on :3000 first
 pnpm build        # Build for production
 pnpm start        # Run production server
 pnpm typecheck    # Generate React Router types + run tsc
@@ -170,11 +171,57 @@ Components use shadcn/ui (source-owned, in `app/components/ui/`) built on Radix 
 
 **Design exploration files**: `option-*.css` and `options/` directories in `app/styles/` are design experiments — never import them in production code and never commit them.
 
+**Header vs Toolbar**: `app-header.tsx` — sticky top bar with upload, filters, layout toggle. `app-toolbar.tsx` — sticky bottom bar with breadcrumbs and bulk-action buttons (restore/trash/delete/favorite). Both use `useParams()` and `useSearchParams()` for conditional rendering.
+
+**`DataTable` styling**: Accepts a `className` prop applied to the `<Table>` element — use it for background/border/rounding (e.g. `className="bg-card rounded-md"`).
+
+**`DataTable` with `ItemCard` actions**: To use `ItemCard.Actions` inside a `DataTable` row, create a wrapper component that provides `ItemCardContext.Provider` (with `useRouteLoaderData` + `useSearchParams`) and pass it to the `actions` prop: `actions={(item) => <ListRowActions item={item} />}`.
+
+**`ItemCard.Thumbnail` is Avatar-style**: Wraps Radix `AvatarPrimitive`. Self-closing `<ItemCard.Thumbnail />` defaults to `ThumbnailImage` + `ThumbnailFallback`. For explicit control compose them: `<ItemCard.Thumbnail><ItemCard.ThumbnailImage /><ItemCard.ThumbnailFallback className="…" /></ItemCard.Thumbnail>`. Real thumbnails have URLs **not** starting with `#` — stage-0 color hashes are placeholders.
+
+**`StashPickerItem` → `ItemCard` adapter**: To render a picker shape through `ItemCard`, fill defaults: `status: 'normal'`, `inclusiveSize: item.size`, `parentId: null`, `ownerId: ''`, `workspaceId: null`, `driveId: ''`, `updatedAt: null`, `tags: []`, `favorites: []`, `file: null`, `folder: null`. Map `thumbnailUrl` → `thumbnails: [{ id, url, width: null, height: null, size: 'medium', view: 'grid' }]`.
+
+**`ItemStatus` values**: `'normal' | 'archived' | 'trashed' | 'locked' | 'shared'` — there is no `'active'`.
+
+**Surface layering**: chrome (headers, toolbars, dialog top/bottom) uses `bg-sidebar`; canvas (content, item grids) uses `bg-background`. App-header pattern: `h-14`, outline buttons with `bg-card!`. App-toolbar pattern: `h-12 p-2` sticky bottom.
+
+**Border color**: structural separators (`border-b`/`border-t` between regions) always use `border-input` — never the default `border` token.
+
+**`Card` component pattern**: Always override Card defaults — never use a bare `<Card>` without explicit classes. Full pattern: `<Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden">`. `CardHeader`: `flex items-baseline px-4 py-4`. `CardTitle`: `text-sm uppercase font-stashly`. `CardDescription`: `text-sm text-muted-foreground`. `CardContent`: `p-4`.
+
+**Inline icons in tables/lists**: Use `size-5` — matches the standard icon scale used in `DataTable` cells and list rows. Don't override icon color unless intentional (they inherit `text-current`).
+
+**Section/card headers**: Label text uses `text-sm uppercase font-stashly`; secondary descriptor (count, subtitle) uses `text-sm text-muted-foreground` via `CardDescription` or a `<span>`. Keep them on the same baseline row with `flex items-baseline gap-3`.
+
+**`font-stashly`**: Apply to all data-display components (cards, tables, lists, KPI strips). It is the app's monospaced/display font — use it consistently, not just on headings.
+
+**Search inputs use `InputGroup`**: import `InputGroup` + `InputGroupAddon` + `InputGroupInput` from `@/ui/input-group`. Don't roll your own input with an absolutely-positioned search icon — mirror the `filters.tsx` pattern.
+
+**`ButtonGroup` is for related secondary actions only**: never fuse a primary submit button with a secondary action in a `ButtonGroup` — primary actions stand alone.
+
+**Toggle/segmented control styling**: For filter rows or segmented controls, mirror `LayoutMenu`/`LayoutMenuItem` from `app/components/ui/layout-menu.tsx` — container `max-w-max rounded`, items `bg-card text-foreground hover:bg-muted aria-checked:bg-muted! aria-checked:text-accent-foreground first-of-type:rounded-l-md last-of-type:rounded-r-md`. Don't roll your own `ToggleGroup` styling.
+
+**No sub-`text-xs` sizes**: never use arbitrary text sizes like `text-[10px]` / `text-[11px]`. `text-xs` is the smallest allowed scale value.
+
+**AA contrast on fixed-color backgrounds**: when text sits on a fixed gradient or color (e.g. `from-black/90` overlays), use literal `text-white` / `text-white/80` — `text-foreground` and `text-muted-foreground` invert per theme and break contrast in the opposite scheme.
+
+**Hooks location**: All hooks go in `app/hooks/` — never co-locate them inside `app/components/` subdirectories, even if tightly coupled to one component family.
+
+**Filter system layout**: `app/components/filters/` contains `filter.types.ts` (all types), `filter.data.ts` (CATEGORIES/STATUSES/TYPES/FLAGS + URL constants), `filter-primitives.tsx` (Chip/Kbd/DashedDiv), `sort-pill.tsx` (SortPill), and `filters.tsx` (Filters + HeaderFilters). `useFilters` hook lives in `app/hooks/useFilters.ts`.
+
+**`JSX` namespace**: Always `import type { JSX } from 'react'` when a file uses `JSX.Element` in type annotations — the namespace is not globally available in this project.
+
 ### Prisma Schema
 
 Models are split across `prisma/models/*.prisma` files and merged. Generated client outputs to `app/prisma/`. Core models: `User`, `Workspace`, `Item`, `Collection`, `Permission`, `Comment`.
 
 **Nullable relation filtering**: To filter on fields inside a nullable relation, use `relation: { is: { field: value } }` — **not** `relation: { isNot: null, field: value }`. Prisma's TS types reject field filters alongside `isNot`.
+
+**`orderBy` one-field-per-object rule**: `ItemOrderByWithRelationInput` allows exactly one relation field per object. Never merge two relation sorts into one object — Prisma throws at runtime. Use an array: `[{ folder: { childCount: 'asc' } }, { collectionItems: { _count: 'asc' } }]`.
+
+**Relation count sort**: To sort by a relation's count, use `{ relation: { _count: 'asc' } }` (underscore required — `count` without it throws `Unknown argument`). Example: `{ collectionItems: { _count: 'desc' } }`.
+
+**Sort URL convention**: `?orderBy[col]=dir` → qs parses to `{ orderBy: { col: dir } }`. For nested fields: `?orderBy[folder][childCount]=asc`. For multi-field array orderBy: indexed notation `?orderBy[0][folder][childCount]=asc&orderBy[1][collectionItems][_count]=asc` → qs produces `[{ folder: {...} }, { collectionItems: {...} }]`. `getFolderContent` defensively splits any merged multi-key objects before passing to Prisma.
 
 ### Integrations
 
@@ -278,7 +325,9 @@ When adding a new feature, these steps are **mandatory** in order:
 
 **`Activity.access` include level**: `access: true` belongs at the top-level `Activity` include, not inside `action: { include: { ... } }` (which maps to `ItemAction` — `ItemAction` has no `access` field).
 
-**Item card dropdown**: Actions live in the internal `ItemCardActions` component inside `app/components/stash/item-card.tsx`. The file `item-card-actions.tsx` is unused — don't edit it.
+**Item card dropdown**: Actions live in the internal `ItemCardActions` component inside `app/components/stash/item-card.tsx`.
+
+**`openedAt` tracking**: Any route loader that opens a file, folder, collection, or image must call `touchOpenedAt(itemId)` from `@/services/item-actions` fire-and-forget — `Promise.resolve().then(() => touchOpenedAt(id)).catch(() => {})`. This keeps `openedAt` current for recency/suggested-items features. Current callers: `folder.tsx`, `file.tsx`, `collection.tsx`, `gallery-image.tsx`.
 
 ## Gallery Views
 
