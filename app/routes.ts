@@ -149,7 +149,7 @@ export default [
       // stash prefix is used to scope all routes related to the user's personal stash, such as their files, collections, favorites, etc. This keeps the URL structure organized and makes it clear that these routes pertain to the user's own content. The ':me' segment allows for easy redirection to the user's stash without needing to know their specific user ID, while still maintaining a clean and intuitive URL structure for all stash-related pages.
       ...prefix('stash', [
         // home route for stash, could be a dashboard or overview page showing recent activity, stats, or quick links to different sections of the stash. This serves as the landing page when users navigate to their stash and provides a central hub for accessing all their personal content and features.
-        index('routes/stash/home.tsx'),
+        index('routes/stash/home.tsx', { id: 'stash-home' }),
 
         //all route shows all items in the user's stash, providing a comprehensive view of their content. This could include files, collections, folders, suggestions, allowing users to easily browse and manage everything they have stored in their stash from one central location.
         route('all', 'routes/stash/all.tsx', { id: 'stash-all' }),

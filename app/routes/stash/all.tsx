@@ -45,20 +45,39 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   nextUrl,
   currentUrl,
   formAction,
+  formData,
+  defaultShouldRevalidate,
 }) => {
+  let currentSelectedItems = getQueryParamArray(
+    currentUrl.searchParams,
+    'selectedItems'
+  )
+  let nextSelectedItems = getQueryParamArray(
+    nextUrl.searchParams,
+    'selectedItems'
+  )
+
   ;['favorites', 'sidebar', 'theme'].forEach((action) => {
     if (formAction?.includes(action)) {
       return false
     }
   })
-  let current = currentUrl.searchParams
-  let next = nextUrl.searchParams
-  let currentSelectedItems = getQueryParamArray(current, 'selectedItems')
-  let nextSelectedItems = getQueryParamArray(next, 'selectedItems')
-  if (currentSelectedItems.length !== nextSelectedItems.length) {
+  
+  ;['trash_items', 'move_items'].forEach((action) => {
+    if (formData?.get('intent') === action) {
+      return true
+    }
+  })
+
+
+  if (
+    currentSelectedItems.some((item) => !nextSelectedItems.includes(item)) &&
+    currentUrl.pathname === nextUrl.pathname
+  ) {
     return false
   }
-  return true
+
+  return defaultShouldRevalidate
 }
 
 export async function loader({ request, params }: Route.ActionArgs) {
@@ -101,7 +120,7 @@ export default function Index() {
             <ItemCard key={item.id} {...item}>
               <ItemCard.Header>
                 <ItemCard.Checkbox name="selectedItems" value={item.id} />
-                <ItemCard.Actions  className='place-self-end' />
+                <ItemCard.Actions className="place-self-end" />
               </ItemCard.Header>
               <ItemCard.Content>
                 <ItemCard.Thumbnail />

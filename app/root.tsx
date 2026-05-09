@@ -63,7 +63,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [loaderData.colorScheme])
+  }, [])
 
   return (
     // Suppress hydration warning because the script might modify this class

@@ -5,7 +5,7 @@ import {
   Restore,
 } from './core-components/buttons'
 import { useParams, useSearchParams } from 'react-router'
-import { hasQueryParam } from '@/utils/query-params'
+import { getQueryParamArray, hasQueryParam } from '@/utils/query-params'
 import { cn } from '@/utils/styles'
 import { Breadcrumbs } from './core-components/breadcrumb-navigation'
 import { ButtonGroup } from './ui/button-group'
@@ -25,7 +25,7 @@ export const AppToolbar = ({
   }
   let [searchParams] = useSearchParams()
   let hasSelectedItems = hasQueryParam(searchParams, 'selectedItems')
-  let selectedCount = searchParams.getAll('selectedItems').length
+  let selectedCount = getQueryParamArray(searchParams, 'selectedItems').length
   if (!folderId && selectedCount <= 1) return null
   return (
     <div

@@ -30,22 +30,38 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   nextUrl,
   currentUrl,
   formAction,
+  formData,
   defaultShouldRevalidate,
 }) => {
-  let current = currentUrl.searchParams
-  let next = nextUrl.searchParams
+  let currentSelectedItems = getQueryParamArray(
+    currentUrl.searchParams,
+    'selectedItems'
+  )
+  let nextSelectedItems = getQueryParamArray(
+    nextUrl.searchParams,
+    'selectedItems'
+  )
 
-  ;['sidebar', 'theme'].forEach((action) => {
+  ;['favorites', 'sidebar', 'theme'].forEach((action) => {
     if (formAction?.includes(action)) {
       return false
     }
   })
-  let currentSelectedItems = getQueryParamArray(current, 'selectedItems')
-  let nextSelectedItems = getQueryParamArray(next, 'selectedItems')
 
-  if (currentSelectedItems.length !== nextSelectedItems.length) {
+  if (
+    formData?.get('intent') === 'move_items' ||
+    formData?.get('intent') === 'trash_items'
+  ) {
+    return true
+  }
+
+  if (
+    currentSelectedItems.some((item) => !nextSelectedItems.includes(item)) &&
+    currentUrl.pathname === nextUrl.pathname
+  ) {
     return false
   }
+
   return defaultShouldRevalidate
 }
 

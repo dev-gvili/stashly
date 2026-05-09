@@ -672,7 +672,7 @@ type RouteFiles = {
     page: "/";
   };
   "routes/stash/home.tsx": {
-    id: "routes/stash/home";
+    id: "stash-home";
     page: "/:me/stash";
   };
   "routes/stash/all.tsx": {
@@ -905,7 +905,7 @@ type RouteModules = {
   "s3-multipart": typeof import("./app/routes/api/upload.ts");
   "layout": typeof import("./app/routes/layout.tsx");
   "routes/index": typeof import("./app/routes/index.tsx");
-  "routes/stash/home": typeof import("./app/routes/stash/home.tsx");
+  "stash-home": typeof import("./app/routes/stash/home.tsx");
   "stash-all": typeof import("./app/routes/stash/all.tsx");
   "stash-collections": typeof import("./app/routes/stash/collections.tsx");
   "stash-collection": typeof import("./app/routes/stash/collection.tsx");
