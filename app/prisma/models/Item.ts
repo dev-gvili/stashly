@@ -1085,6 +1085,12 @@ export type ItemUpdateOneWithoutPermissionsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutPermissionsInput, Prisma.ItemUpdateWithoutPermissionsInput>, Prisma.ItemUncheckedUpdateWithoutPermissionsInput>
 }
 
+export type ItemCreateNestedOneWithoutSearchInput = {
+  create?: Prisma.XOR<Prisma.ItemCreateWithoutSearchInput, Prisma.ItemUncheckedCreateWithoutSearchInput>
+  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutSearchInput
+  connect?: Prisma.ItemWhereUniqueInput
+}
+
 export type ItemUpdateOneRequiredWithoutSearchNestedInput = {
   create?: Prisma.XOR<Prisma.ItemCreateWithoutSearchInput, Prisma.ItemUncheckedCreateWithoutSearchInput>
   connectOrCreate?: Prisma.ItemCreateOrConnectWithoutSearchInput

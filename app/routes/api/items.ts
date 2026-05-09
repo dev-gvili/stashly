@@ -13,6 +13,7 @@ import {
   trashItem,
   trashItems,
 } from '@/services/item-actions'
+import { upsertSearchContent } from '@/services/search-actions'
 import { parseFormData } from '@/utils/parsers'
 import { removeQueryParam, removeQueryParamValue } from '@/utils/query-params'
 import { data, redirect } from 'react-router'
@@ -75,7 +76,9 @@ export async function action({ request, params }: Route.ActionArgs) {
     case 'trash_items':
       try {
         await trashItems(parsedData.selectedItems, user.id)
-        return redirect(`${url.pathname}${url.search}`)
+        console.log('searchParams before:', `${url.pathname}${url.search}`)
+        searchParams = removeQueryParam(searchParams, 'selectedItems')
+        return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
         console.error(e)
         return { success: false, error: e }
@@ -143,11 +146,14 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
     case 'save_media_metadata': {
       try {
-        const { itemId, imageWidth, imageHeight, cameraMake, cameraModel, iso, fNumber, exposureTime, focalLength, takenDateTime, latitude, longitude, videoWidth, videoHeight, duration, frameRate } = parsedData
+        const { itemId, imageWidth, imageHeight, cameraMake, cameraModel, iso, fNumber, exposureTime, focalLength, takenDateTime, latitude, longitude, videoWidth, videoHeight, duration, frameRate, documentText } = parsedData
         if (imageWidth != null || imageHeight != null) {
           await upsertImageFacet(itemId, { width: imageWidth, height: imageHeight, cameraMake, cameraModel, iso, fNumber, exposureTime, focalLength, takenDateTime, latitude, longitude })
         } else if (videoWidth != null || videoHeight != null || duration != null) {
           await upsertVideoFacet(itemId, { width: videoWidth, height: videoHeight, duration, frameRate })
+        }
+        if (documentText) {
+          await upsertSearchContent(itemId, documentText)
         }
         return data({ success: true })
       } catch (e) {

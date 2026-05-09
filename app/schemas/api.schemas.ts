@@ -117,6 +117,9 @@ export const itemsApiRouteInput = z.discriminatedUnion('intent', [
     videoHeight: z.coerce.number().int().optional(),
     duration: z.coerce.number().optional(),
     frameRate: z.coerce.number().optional(),
+    // document fields (currently PDF; extensible to other text formats)
+    documentText: z.string().optional(),
+    documentPageCount: z.coerce.number().int().optional(),
   }),
 ])
 

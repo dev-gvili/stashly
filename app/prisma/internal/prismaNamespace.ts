@@ -2916,6 +2916,18 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
           args: Prisma.SearchFindManyArgs<ExtArgs>
           result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchPayload>[]
         }
+        create: {
+          args: Prisma.SearchCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchPayload>
+        }
+        createMany: {
+          args: Prisma.SearchCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SearchCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchPayload>[]
+        }
         delete: {
           args: Prisma.SearchDeleteArgs<ExtArgs>
           result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchPayload>
@@ -2935,6 +2947,10 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         updateManyAndReturn: {
           args: Prisma.SearchUpdateManyAndReturnArgs<ExtArgs>
           result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchPayload>[]
+        }
+        upsert: {
+          args: Prisma.SearchUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchPayload>
         }
         aggregate: {
           args: Prisma.SearchAggregateArgs<ExtArgs>
