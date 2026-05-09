@@ -1,4 +1,5 @@
 // ItemCard.tsx
+import * as AvatarPrimitive from '@radix-ui/react-avatar'
 import type { StashItem } from '@/types/stash.types'
 import {
   CardContent,
@@ -417,35 +418,76 @@ function ItemCardCheckBox({
 ItemCardCheckBox.displayName = 'ItemCardCheckBox'
 
 const ItemThumbnail = React.forwardRef<
-  React.ComponentRef<'div'>,
-  Omit<React.ComponentPropsWithoutRef<'div'>, 'name' | 'alt' | 'title'> & {
-    alt?: string
-    title?: string
-  }
+  React.ComponentRef<typeof AvatarPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
 >((props, ref) => {
-  const { type, category, className } = useItemCard()
-  const { alt, ...rest } = props
-
-  if (type === 'folder') {
-    return (
-      <div ref={ref} className={cn('rounded-md p-4', className)} {...rest}>
-        <FolderIcon className="size-14 fill-current" />
-      </div>
-    )
-  }
-
-  const Icon = toIcon(category)
-  if (Icon) {
-    return (
-      <div ref={ref} className={cn('rounded-md p-4', className)} {...rest}>
-        <Icon className="size-14" />
-      </div>
-    )
-  }
-
-  return <div ref={ref} className={cn('rounded-md p-4', className)} {...rest} />
+  const { className, children, ...rest } = props
+  return (
+    <AvatarPrimitive.Root
+      ref={ref}
+      data-slot="item-thumbnail"
+      className={cn(
+        'relative flex w-full shrink-0 overflow-hidden rounded-md aspect-video',
+        className
+      )}
+      {...rest}
+    >
+      {children ?? (
+        <>
+          <ItemThumbnailImage />
+          <ItemThumbnailFallback />
+        </>
+      )}
+    </AvatarPrimitive.Root>
+  )
 })
 ItemThumbnail.displayName = 'ItemThumbnail'
+
+const ItemThumbnailImage = React.forwardRef<
+  React.ComponentRef<typeof AvatarPrimitive.Image>,
+  Omit<React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>, 'src'>
+>((props, ref) => {
+  const { thumbnails, name } = useItemCard()
+  const thumbnail = thumbnails?.find((t) => t.url && !t.url.startsWith('#'))
+  const { className, alt, ...rest } = props
+  if (!thumbnail?.url) return null
+  return (
+    <AvatarPrimitive.Image
+      ref={ref}
+      src={thumbnail.url}
+      alt={alt ?? name}
+      width={thumbnail.width ?? undefined}
+      height={thumbnail.height ?? undefined}
+      data-slot="item-thumbnail-image"
+      className={cn('w-full h-full object-cover rounded-md', className)}
+      {...rest}
+    />
+  )
+})
+ItemThumbnailImage.displayName = 'ItemThumbnailImage'
+
+const ItemThumbnailFallback = React.forwardRef<
+  React.ComponentRef<typeof AvatarPrimitive.Fallback>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
+>((props, ref) => {
+  const { type, category } = useItemCard()
+  const { className, children, ...rest } = props
+  const Icon = type === 'folder' ? FolderIcon : toIcon(category)
+  return (
+    <AvatarPrimitive.Fallback
+      ref={ref}
+      data-slot="item-thumbnail-fallback"
+      className={cn(
+        'flex w-full h-full items-center justify-center rounded-md p-4',
+        className
+      )}
+      {...rest}
+    >
+      {children ?? (Icon && <Icon className={cn('size-14', type === 'folder' && 'fill-current')} />)}
+    </AvatarPrimitive.Fallback>
+  )
+})
+ItemThumbnailFallback.displayName = 'ItemThumbnailFallback'
 
 const ItemName = React.forwardRef<
   React.ComponentRef<typeof CardTitle>,
@@ -453,19 +495,18 @@ const ItemName = React.forwardRef<
 >((props, ref) => {
   const { name, file, type } = useItemCard()
   const { className, ...rest } = props
-  const title = type === 'file' ? `${name}.${file?.extension}` : name
 
   return (
     <CardTitle
       ref={ref}
-      title={title}
+      title={name}
       className={cn(
-        'in-data-[slot=item-content]:text-md text-sidebar-foreground truncate w-[90%] text-center z-10 max-w-max',
+        'in-data-[slot=item-content]:text-md text-sidebar-foreground truncate w-[90%] text-center h-full max-h-max z-10 max-w-max',
         className
       )}
       {...rest}
     >
-      {title}
+      {name}
     </CardTitle>
   )
 })
@@ -622,7 +663,7 @@ const ItemCardRoot = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          'p-2 grid gap-0 rounded border-none font-stashly surface-glass  h-64 overflow-hidden group/card card select-none relative z-0 transition-colors',
+          'rounded-md p-2 grid gap-0  border-input font-stashly surface-glass overflow-hidden group/card card select-none relative z-0 transition-colors',
           isFolder &&
             isDragOver &&
             'ring-2 ring-muted bg-grid surface-elevated',
@@ -687,7 +728,7 @@ const ItemContent = React.forwardRef<
       ref={ref}
       data-slot="item-content"
       className={cn(
-        'overflow-hidden p-0 flex flex-col items-center relative gap-y-2',
+        'overflow-hidden p-1 flex flex-col items-center relative gap-y-2',
         props.className
       )}
     >
@@ -703,6 +744,8 @@ export const ItemCard = Object.assign(ItemCardRoot, {
   Footer: ItemFooter,
   Name: ItemName,
   Thumbnail: ItemThumbnail,
+  ThumbnailImage: ItemThumbnailImage,
+  ThumbnailFallback: ItemThumbnailFallback,
   Count: ItemCount,
   Size: ItemSize,
   Link: ItemLink,

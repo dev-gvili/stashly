@@ -41,9 +41,10 @@ import { cn } from '@/utils/styles'
 import useConfirm from '@/hooks/useConfirm'
 import type { ItemType } from '@/prisma/client'
 import type { StashItem, StashPickerItem } from '@/types/stash.types'
-import { toIcon } from '@/utils'
 import { GridLayout } from './grid-view'
 import { ListLayout } from './list-view'
+import { ItemCard } from '@/components/stash/item-card'
+import { ButtonGroup } from '../ui'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -122,29 +123,14 @@ function CollectionPageHeader({
 
   return (
     <>
-      <div className="flex items-start justify-between gap-4 px-4 pt-4">
-        <div className="flex flex-col gap-1 min-w-0">
-          {/* Breadcrumb */}
-          <nav
-            aria-label="Breadcrumb"
-            className="flex items-center gap-1 text-xs text-muted-foreground"
-          >
-            <Link
-              to={collectionsHref}
-              className="hover:text-foreground transition-colors"
-            >
-              Collections
-            </Link>
-            <span aria-hidden>/</span>
-            <span className="text-foreground truncate">{collection.name}</span>
-          </nav>
-
+      <div className="flex items-start justify-between gap-4 px-0 ">
+        <div className="flex gap-1 min-w-0 items-center">
           <h1 className="text-xl font-semibold font-stashly truncate">
             {collection.name}
           </h1>
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-            <Badge variant="secondary" className="font-normal">
+            <Badge variant="default" className="rounded">
               {collection.itemCount}{' '}
               {collection.itemCount === 1 ? 'item' : 'items'}
             </Badge>
@@ -152,12 +138,11 @@ function CollectionPageHeader({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <ButtonGroup>
           {/* Add items button */}
           <Button
-            size="sm"
             variant="outline"
-            className="font-stashly gap-1.5"
+            className="font-stashly bg-card border-input"
             onClick={() => setAddOpen(true)}
           >
             <AddIcon className="size-4!" />
@@ -166,11 +151,20 @@ function CollectionPageHeader({
 
           {/* Actions dropdown — mirrors item-card-actions.tsx structure */}
           <DropdownMenu modal={false}>
-            <DropdownMenuTrigger>
-              <MenuDotsIcon className="size-6!" />
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="bg-card border-input"
+              >
+                <MenuDotsIcon className="size-6!" />
+              </Button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end" className="space-y-4 w-48">
+            <DropdownMenuContent
+              align="end"
+              className="space-y-4 w-48 bg-sidebar p-2"
+            >
               <DropdownMenuGroup className="mt-2">
                 <DropdownMenuItem
                   className="items-start"
@@ -278,7 +272,7 @@ function CollectionPageHeader({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        </ButtonGroup>
       </div>
 
       {/* Full-screen add-to-collection dialog */}
@@ -299,66 +293,48 @@ function CollectionPageHeader({
 // ---------------------------------------------------------------------------
 
 function CollectionItemCard({ item }: { item: StashPickerItem }) {
-  const fetcher = useFetcher()
-  const { open } = useConfirm()
-  const { collectionId } = useParams()
-  const isRemoving = fetcher.state !== 'idle'
-
-  function handleRemove() {
-    fetcher.submit(
-      { intent: 'remove_item', itemId: item.id, collectionId: collectionId! },
-      { method: 'post', action: '/api/collections' }
-    )
+  const stashItem: StashItem = {
+    ...item,
+    status: 'normal',
+    inclusiveSize: item.size,
+    updatedAt: null,
+    parentId: null,
+    ownerId: '',
+    workspaceId: null,
+    driveId: '',
+    tags: [],
+    thumbnails: item.thumbnailUrl
+      ? [
+          {
+            id: item.id,
+            url: item.thumbnailUrl,
+            width: null,
+            height: null,
+            size: 'medium' as const,
+            view: 'grid' as const,
+          },
+        ]
+      : [],
+    favorites: [],
+    file: null,
+    folder: null,
   }
 
-  let Icon = toIcon(item.category)
   return (
-    <motion.div
-      layout
-      variants={rowVariants}
-      initial="hidden"
-      animate="visible"
-      exit="exit"
-      transition={{ duration: 0.15 }}
-      className={cn(
-        'group relative flex flex-col rounded-lg border bg-card overflow-hidden select-none transition-colors hover:bg-accent/50',
-        isRemoving && 'opacity-50 pointer-events-none'
-      )}
-    >
-      {/* Thumbnail / icon area */}
-      <div className="flex items-center justify-center bg-muted/40 h-32">
-        {/* <ItemTypeIcon type={item.type} className="size-10!" /> */}
-        <Icon className="size-10!" />
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center gap-2 px-3 py-2">
-        <ItemTypeIcon type={item.type} className="shrink-0" />
-        <span className="flex-1 truncate text-sm font-medium">{item.name}</span>
-        <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-          {formatSize('byte', 'unit', Number(item.size))}
-        </span>
-      </div>
-
-      {/* Remove button — top-right on hover */}
-      <Button
-        variant="secondary"
-        size="icon"
-        className="absolute top-2 right-2 size-7 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={() =>
-          open({
-            variant: 'destructive',
-            title: `Remove "${item.name}"?`,
-            description: 'This will remove the item from this collection.',
-            confirmText: 'Remove',
-            onConfirm: handleRemove,
-          })
-        }
-        aria-label={`Remove ${item.name} from collection`}
-      >
-        <RemoveIcon className="size-4!" />
-      </Button>
-    </motion.div>
+    <ItemCard {...stashItem} className="rounded-md border! border-input">
+      <ItemCard.Header>
+        <ItemCard.Checkbox name="selectedItems" value={item.id} />
+        <ItemCard.Actions className="place-self-end" />
+      </ItemCard.Header>
+      <ItemCard.Content>
+        <ItemCard.Thumbnail />
+        <ItemCard.Name />
+      </ItemCard.Content>
+      <ItemCard.Footer>
+        <ItemCard.Size />
+        <ItemCard.Count />
+      </ItemCard.Footer>
+    </ItemCard>
   )
 }
 
@@ -398,7 +374,17 @@ function CollectionItemRow({ item }: { item: StashPickerItem }) {
         isRemoving && 'opacity-50 pointer-events-none'
       )}
     >
-      <ItemTypeIcon type={item.type} />
+      {!item.thumbnailUrl ? (
+        <ItemTypeIcon type={item.type} />
+      ) : (
+        <img
+          src={item.thumbnailUrl}
+          alt=""
+          className="size-6 rounded object-cover shrink-0"
+          width={24}
+          height={24}
+        />
+      )}
 
       <span className="flex-1 truncate text-sm font-medium">{item.name}</span>
 
@@ -455,10 +441,6 @@ export function CollectionView({
         existingItemIds={existingItemIds}
       />
 
-      <Separator />
-
-      {/* <div className={cn('px-4', isGrid ? 'grid 2xl:grid-cols-6 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-2' : 'flex flex-col gap-1.5')}>
-        <AnimatePresence mode="popLayout"> */}
       {items.length === 0 ? (
         <CollectionEmptyState key="empty" />
       ) : isGrid ? (

@@ -57,7 +57,7 @@ export function CollectionCard({
 
   return (
     <Card
-      className="group relative bg-sidebar rounded p-4 gap-3 justify-evenly transition-colors cursor-pointer border-none hover:bg-sidebar-accent aspect-video w-full max-w-xs"
+      className="group relative bg-card rounded p-4 gap-3 justify-evenly transition-colors cursor-pointer border-none hover:bg-muted aspect-video w-full max-w-xs"
       onClick={() =>
         navigate(
           `${href('/:me/stash/collections/:collectionId', {
@@ -123,7 +123,7 @@ export function CollectionCard({
       </CollectionContent>
       <CollectionFooter className="p-0 mt-2">
         <CollectionSize size={collection.size} />
-        <CollectionCount count={collection.itemCount} />
+        <CollectionCount _count={collection.itemCount} />
       </CollectionFooter>
     </Card>
   )
@@ -198,13 +198,13 @@ CollectionFooter.displayName = 'CollectionFooter'
 const CollectionCount = React.forwardRef<
   React.ComponentRef<typeof CardDescription>,
   React.ComponentPropsWithoutRef<typeof CardDescription> & {
-    count: number
+    _count: number
   }
 >((props, ref) => {
-  const { className, count, ...rest } = props
+  const { className, _count, ...rest } = props
 
   return (
-    <CardDescription
+    <CardDescription  
       ref={ref}
       data-slot="collection-count"
       className={cn(
@@ -213,7 +213,7 @@ const CollectionCount = React.forwardRef<
       )}
       {...rest}
     >
-      {count} {count === 1 ? 'item' : 'items'}
+          {_count} {_count === 1 ? 'item' : 'items'}
     </CardDescription>
   )
 })
