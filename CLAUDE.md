@@ -227,7 +227,7 @@ Models are split across `prisma/models/*.prisma` files and merged. Generated cli
 
 - **Auth**: `better-auth` configured in `app/.server/auth.ts`, OAuth via GitHub/Google/Microsoft
 - **Search**: pgvector + embeddings for full-text and semantic search (`app/.server/search/`)
-- **AI features**: Hugging Face transformers, ONNX Runtime, Whisper (speech-to-text), Tesseract (OCR)
+- **AI features**: Hugging Face transformers, ONNX Runtime, Whisper (speech-to-text).
 - **Payments**: Stripe, webhooks handled at `/api/stripe`
 - **Storage**: AWS S3-compatible (Tigris on Fly.io), configured in `app/.server/s3.ts`
 
@@ -249,7 +249,7 @@ Start with the simplest query that works. Do not use recursive CTEs or over-engi
 - Primary language: TypeScript (strict)
 - Use path aliases (e.g. `@/schemas/`, `@/machines/`) for cross-directory imports; use relative imports only within the same directory
 - Schema and type definitions go in `app/schemas/` and `app/types/` respectively — do not scatter them across feature files
-- Avoid raw `prisma` calls in route loaders — always go through a service and repository
+- Avoid raw `prisma` calls in route loaders — always go through actions files in `app/.server//[feature]-actions.ts`
 - Client-only code (browser APIs, client-side state) goes in `app/.client/`; server-only code goes in `app/.server/`
 
 ## Testing
