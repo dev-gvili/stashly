@@ -1,6 +1,8 @@
 # Pipeline Machine Extraction Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Status: ✅ Implemented (2026-04-02 → 2026-04-04).** All three tasks shipped in commits `b617d76` (sub-machines), `6846882` (rewire pipelineMachine), `2f1aba2` (remove stale layout comment). Follow-ups added GPU resilience and long-audio handling: `b6e896c`, `ec5275d`, `946f50f`. `pnpm typecheck` passes cleanly for `pipeline.machine.ts` (2026-05-09).
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Extract the six processing steps from the monolithic `pipelineMachine` into dedicated XState 5 sub-machines, so `pipelineMachine` becomes a pure orchestrator that invokes them via `invoke + onDone`.
 
@@ -37,7 +39,7 @@ Each sub-machine follows this identical pattern:
 
 `clearInput` action: sets the primary input field (`audio` or `text`) to `null`, so the `hasInput` guard evaluates to false and the `failed → idle → always` chain does not re-enter `working`.
 
-- [ ] **Step 1.1: Update the xstate import to add `sendParent`**
+- [x] **Step 1.1: Update the xstate import to add `sendParent`**
 
 In `app/machines/pipeline/pipeline.machine.ts`, change line 1:
 
@@ -45,7 +47,7 @@ In `app/machines/pipeline/pipeline.machine.ts`, change line 1:
 import { setup, assign, assertEvent, sendParent } from 'xstate'
 ```
 
-- [ ] **Step 1.2: Add `languageDetectionMachine` after the helper functions (before `pipelineMachine`)**
+- [x] **Step 1.2: Add `languageDetectionMachine` after the helper functions (before `pipelineMachine`)**
 
 Insert after the last helper function (`formatFileSize`) and before `export const pipelineMachine = setup({`:
 
@@ -130,7 +132,7 @@ export const languageDetectionMachine = setup({
 })
 ```
 
-- [ ] **Step 1.3: Add `transcriptionMachine`**
+- [x] **Step 1.3: Add `transcriptionMachine`**
 
 Insert immediately after `languageDetectionMachine`:
 
@@ -218,7 +220,7 @@ export const transcriptionMachine = setup({
 })
 ```
 
-- [ ] **Step 1.4: Add `textCorrectionMachine`**
+- [x] **Step 1.4: Add `textCorrectionMachine`**
 
 Insert immediately after `transcriptionMachine`:
 
@@ -295,7 +297,7 @@ export const textCorrectionMachine = setup({
 })
 ```
 
-- [ ] **Step 1.5: Add `summarizationMachine`**
+- [x] **Step 1.5: Add `summarizationMachine`**
 
 Insert immediately after `textCorrectionMachine`:
 
@@ -372,7 +374,7 @@ export const summarizationMachine = setup({
 })
 ```
 
-- [ ] **Step 1.6: Add `keywordExtractionMachine`**
+- [x] **Step 1.6: Add `keywordExtractionMachine`**
 
 Insert immediately after `summarizationMachine`:
 
@@ -447,7 +449,7 @@ export const keywordExtractionMachine = setup({
 })
 ```
 
-- [ ] **Step 1.7: Add `tagGenerationMachine`**
+- [x] **Step 1.7: Add `tagGenerationMachine`**
 
 Insert immediately after `keywordExtractionMachine`:
 
@@ -524,7 +526,7 @@ export const tagGenerationMachine = setup({
 })
 ```
 
-- [ ] **Step 1.8: Run typecheck**
+- [x] **Step 1.8: Run typecheck**
 
 ```bash
 pnpm typecheck
@@ -532,7 +534,7 @@ pnpm typecheck
 
 Expected: no errors. All 6 machines compile correctly alongside the existing `pipelineMachine` (which still uses the old callback actors at this point — that's fine).
 
-- [ ] **Step 1.9: Commit**
+- [x] **Step 1.9: Commit**
 
 ```bash
 git add app/machines/pipeline/pipeline.machine.ts
@@ -556,7 +558,7 @@ git commit -m "feat: add 6 dedicated pipeline sub-machines"
 The global `on['WORKER.ERROR']` handler stays — sub-machines forward errors via `sendParent`.
 The global `on['WORKER.PROGRESS']` and `on['WORKER.STATUS']` handlers stay — sub-machines forward these too.
 
-- [ ] **Step 2.1: Replace the `actors` block in `pipelineMachine`'s `setup()`**
+- [x] **Step 2.1: Replace the `actors` block in `pipelineMachine`'s `setup()`**
 
 Find this block (currently around line 57–65):
 
@@ -586,7 +588,7 @@ Replace with:
   },
 ```
 
-- [ ] **Step 2.2: Remove the 6 no-longer-needed named actions from `setup()`**
+- [x] **Step 2.2: Remove the 6 no-longer-needed named actions from `setup()`**
 
 Delete these 6 named actions from the `actions:` block in `setup()` (keep all others):
 - `assignLanguage`
@@ -596,7 +598,7 @@ Delete these 6 named actions from the `actions:` block in `setup()` (keep all ot
 - `assignKeywords`
 - `assignTags`
 
-- [ ] **Step 2.3: Replace the `detecting_language` state**
+- [x] **Step 2.3: Replace the `detecting_language` state**
 
 Find the `detecting_language` state and replace it entirely:
 
@@ -620,7 +622,7 @@ Find the `detecting_language` state and replace it entirely:
     },
 ```
 
-- [ ] **Step 2.4: Replace the `transcribing` state**
+- [x] **Step 2.4: Replace the `transcribing` state**
 
 Find the `transcribing` state and replace it entirely:
 
@@ -651,7 +653,7 @@ Find the `transcribing` state and replace it entirely:
     },
 ```
 
-- [ ] **Step 2.5: Replace the `correcting_text` state**
+- [x] **Step 2.5: Replace the `correcting_text` state**
 
 Find the `correcting_text` state and replace it entirely:
 
@@ -678,7 +680,7 @@ Find the `correcting_text` state and replace it entirely:
     },
 ```
 
-- [ ] **Step 2.6: Replace the `summarizing` state**
+- [x] **Step 2.6: Replace the `summarizing` state**
 
 Find the `summarizing` state and replace it entirely:
 
@@ -703,7 +705,7 @@ Find the `summarizing` state and replace it entirely:
     },
 ```
 
-- [ ] **Step 2.7: Replace the `extracting_keywords` state**
+- [x] **Step 2.7: Replace the `extracting_keywords` state**
 
 Find the `extracting_keywords` state and replace it entirely:
 
@@ -725,7 +727,7 @@ Find the `extracting_keywords` state and replace it entirely:
     },
 ```
 
-- [ ] **Step 2.8: Replace the `generating_tags` state**
+- [x] **Step 2.8: Replace the `generating_tags` state**
 
 Find the `generating_tags` state and replace it entirely:
 
@@ -750,7 +752,7 @@ Find the `generating_tags` state and replace it entirely:
     },
 ```
 
-- [ ] **Step 2.9: Run typecheck**
+- [x] **Step 2.9: Run typecheck**
 
 ```bash
 pnpm typecheck
@@ -758,7 +760,7 @@ pnpm typecheck
 
 Expected: no errors. If you see errors about `event.output` being `unknown`, check that the machine's `output` type is correctly declared in its `types` block. If you see errors about missing actions, verify that the 6 named actions were fully removed in Step 2.2.
 
-- [ ] **Step 2.10: Commit**
+- [x] **Step 2.10: Commit**
 
 ```bash
 git add app/machines/pipeline/pipeline.machine.ts
@@ -774,11 +776,11 @@ git commit -m "refactor: pipelineMachine now invokes dedicated sub-machines"
 
 The `/** @xstate-layout ... */` comment on `pipelineMachine.createMachine()` encodes the machine's state chart. After the refactoring the machine structure changed, so this comment is stale. It's only used by the Stately visualiser — it doesn't affect runtime behaviour.
 
-- [ ] **Step 3.1: Remove the stale `@xstate-layout` comment**
+- [x] **Step 3.1: Remove the stale `@xstate-layout` comment**
 
 Delete the entire `/** @xstate-layout N4Igp... */` comment block from `pipelineMachine.createMachine()`. It starts with `/** @xstate-layout` and ends with `*/`. The machine will still work; the visualiser will just show a default layout until regenerated from Stately.
 
-- [ ] **Step 3.2: Run final typecheck and confirm clean**
+- [x] **Step 3.2: Run final typecheck and confirm clean**
 
 ```bash
 pnpm typecheck
@@ -786,7 +788,7 @@ pnpm typecheck
 
 Expected: 0 errors, 0 warnings.
 
-- [ ] **Step 3.3: Commit**
+- [x] **Step 3.3: Commit**
 
 ```bash
 git add app/machines/pipeline/pipeline.machine.ts

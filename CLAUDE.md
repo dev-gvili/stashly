@@ -95,12 +95,28 @@ const collection = await getCollectionForUser(session.user.id, collectionId)
 ### Upload Architecture (XState)
 
 The upload system uses a parent-child actor pattern:
-- `upload.machine.ts` — parent, spawns one `file.machine` per file, manages the queue
-- `reviset/file.machine.ts` — individual file (active implementation in `app/machines/reviset/`): creates multipart upload, uploads chunks in parallel, verifies ETags
-- `queue.machine.ts` — controls concurrent upload slots
-- `quota.machine.ts` — tracks and enforces storage quota
+- `upload/upload.machine.ts` — parent, spawns one `file.machine` per file, manages the queue
+- `upload/file.machine.ts` — active upload actor: creates multipart upload, uploads chunks in parallel, verifies ETags
+- `reviset/file.machine.ts` — legacy reviset actor (still present; `upload/file.machine.ts` is the active path)
+- `actors/queue.machine.ts` — controls concurrent upload slots
+- `actors/quota.machine.ts` — tracks and enforces storage quota
+- `actors/multipart.machine.ts` — multipart S3 coordination actor
 
-Files upload via S3 presigned URLs: frontend → `/api/s3/presigned` → uploads directly to S3 bucket.
+Files upload via S3 multipart: frontend → `/api/s3/upload` → uploads directly to S3 bucket. **The `/api/s3/upload` route uses JSON body (`request.json()`) with an `action` discriminator — not form-encoded.**
+
+**Item creation gate**: The thumbnail pipeline and `POST /api/items` must NOT fire on `status === 'done'` (S3 done, but DB row not yet written). Wait for `status === 'itemCreated'` — set by `markAsItemCreated` action in `upload.machine.ts` after `upload.createItem.success`. Firing on `'done'` causes FK violations on `Thumbnail.itemId`.
+
+**`parentId` derivation**: `mediaFile.key.split('/')[0]` — the first segment of the S3 key is always the destination folder ID. Exception: directory drops get `parentId = rootId` (nested folders are not created — known gap).
+
+**Post-upload pagination reset**: After `itemCreated`, call `navigate(location.pathname + location.search, { replace: true, state: { reset: true } })` to trigger `usePagination`'s reset detection. Do NOT use `useRevalidator` — it doesn't update `usePagination`.
+
+### AI Machines
+
+`app/machines/ai/` contains two actors:
+- `ai.machine.ts` — coordinates AI inference jobs
+- `caption.machine.ts` — generates captions for media items
+
+AI API routes live under the `/api/ai/` prefix (see `app/routes.ts`).
 
 ### Web Workers
 
@@ -118,6 +134,8 @@ Workers are loaded via `new Worker(new URL('./workers/...', import.meta.url))`. 
 - `app/types/` — Shared TypeScript types for API contracts (`api.types.ts`), machine actor payloads (`machine.types.ts`, `upload-actors.types.ts`), and global augmentations (`react.d.ts`). Import with `@/types/*`.
 
 Keep Zod schemas and derived TypeScript types co-located: define the Zod schema in `app/schemas/`, then infer and export the TS type from the same file or a parallel file in `app/types/`.
+
+**Temp schema files**: `app/schemas/_temp_a.schemas.ts`, `_temp_b.schemas.ts`, `_temp_c.schemas.ts` contain valid schemas for comments/versions, users/notifications/settings, and members/subscription respectively. These are not yet merged into `api.schemas.ts`. Add new schemas to `api.schemas.ts` directly — do not extend the `_temp_*` files.
 
 ### Routing Structure
 
@@ -156,6 +174,8 @@ Components use shadcn/ui (source-owned, in `app/components/ui/`) built on Radix 
 **Dialog + Dropdown composition**: To open a dialog from a dropdown item, wrap the item with `DialogTrigger asChild` and call `onSelect={(e) => e.preventDefault()}` to prevent the menu closing before the dialog opens. Don't lift open/close state into the parent as props.
 
 **Dropdowns inside clickable cards**: Always use `modal={false}` on `DropdownMenu` and `e.stopPropagation()` on the trigger to prevent card navigation firing.
+
+**Portal event bubbling in clickable cards**: React portals (dialogs, dropdowns) bubble events through the fiber tree even when not DOM descendants. Do NOT add `stopPropagation` inside `DialogContent`. Instead, guard the card's click handler: `if (!e.currentTarget.contains(e.target as Node)) return` — this silently ignores clicks that originate from any portal overlaying the card.
 
 **`formatSize` signature**: Three args — `formatSize('byte', 'unit', Number(value))`.
 
@@ -214,6 +234,8 @@ Components use shadcn/ui (source-owned, in `app/components/ui/`) built on Radix 
 ### Prisma Schema
 
 Models are split across `prisma/models/*.prisma` files and merged. Generated client outputs to `app/prisma/`. Core models: `User`, `Workspace`, `Item`, `Collection`, `Permission`, `Comment`.
+
+**Collection size is DB-managed**: Two Postgres triggers (`collection_size_trigger` on `CollectionMember`, `item_size_collection_sync_trigger` on `Item`) automatically maintain `Item.size` for collections. Never add manual size arithmetic back to `collection-actions.ts` — `addItemToCollection`, `removeItemFromCollection`, etc. do NOT need to update size.
 
 **Nullable relation filtering**: To filter on fields inside a nullable relation, use `relation: { is: { field: value } }` — **not** `relation: { isNot: null, field: value }`. Prisma's TS types reject field filters alongside `isNot`.
 
@@ -313,7 +335,7 @@ When adding a new feature, these steps are **mandatory** in order:
 - Use `usePagination<T>(limit)` for any route that returns a list of items — never build ad-hoc pagination.
 - No arbitrary Tailwind sizes: use scale values (`text-sm`, `p-4`) not raw values (`text-[10px]`, `p-[13px]`).
 - Check `app/utils/` before creating new utility functions — reuse what exists.
-- Use the `/shadcn-ui-component-builder` skill when building new UI components.
+- Use the `/shadcn-ui` skill when building new UI components.
 
 ## Activity Recording
 
@@ -331,6 +353,17 @@ When adding a new feature, these steps are **mandatory** in order:
 
 ## Gallery Views
 
+**Gallery route structure**: `gallery.tsx` is a parent route; `gallery-image.tsx` is the child (fixed overlay, `z-50`). Both render simultaneously — the gallery stays mounted behind the overlay. Child route closes via `navigate(-1)`.
+
+**Per-item view transition components**: Can't call hooks inside `.map()`, so each gallery layout has its own item component (`GridItem`, `RiverItem`, `WaterfallItem`). Each calls `useViewTransitionState(item.id)` and sets the transition name only when the transition is active — prevents duplicate `viewTransitionName` values while the gallery stays mounted:
+```tsx
+const isTransitioning = useViewTransitionState(item.id)
+style={isTransitioning ? { viewTransitionName: `img-${item.id}` } : undefined}
+```
+Links use `<Link to={item.id} viewTransition unstable_mask=".">` — `unstable_mask="."` keeps the gallery URL in the address bar.
+
+**`backdrop-blur` on named view-transition elements**: NEVER apply `backdrop-filter: blur` to an element that has a `view-transition-name`. The blur bakes into the rasterized snapshot at capture time — as the old snapshot fades out over live content, it produces a visible ripple/blur artifact. Put `backdrop-blur` on an unnamed parent or sibling; use `bg-black/75` opacity on the named element itself.
+
 **Waterfall layout**: CSS `columns-*` masonry in `app/components/views/waterfall-view.tsx`. Each item uses an id-derived aspect ratio (`aspectFromId`) to vary cell height. The `<img>` element **must keep both `width` and `height` HTML attributes** — removing `height` breaks lazy loading because CSS columns renders items as 0-height boxes that never enter the viewport.
 
 **Seed thumbnail dimensions**: `generateThumbnail` in `prisma/seedData/data.ts` stores dimensions differently per view:
@@ -339,6 +372,53 @@ When adding a new feature, these steps are **mandatory** in order:
 - `grid` → square (equal width and height)
 
 **Theme structure**: `app/styles/globals.css` has **four** theme blocks that must all be updated together: `[data-theme='light']`, `[data-theme='dark']`, and two `[data-theme='system']` blocks (one per `prefers-color-scheme` media query).
+
+## Thumbnail Pipeline
+
+Client-side 5-stage progressive generation. All output is **WebP**. Entry point: `app/hooks/useThumbnail.ts`.
+
+**Gate**: pipeline starts only after `status === 'itemCreated'` (not `'done'`). `useUpload.ts` watches for `itemCreated` and calls `runThumbnail(id, file)`. A module-level `thumbnailedIds = new Set<string>()` (shared across hook instances) ensures the pipeline fires exactly once per file.
+
+| Stage | What | Mechanism |
+|-------|------|-----------|
+| 0 | Color hash placeholder | `hashToColor(name, type)` → hex stored directly as `url` in DB — no S3 |
+| 1 | 8×8 blur preview | Image: `extractTinyThumbnail` · Video: `generateVideoThumbnail` · PDF: `generatePdfThumbnail` (from `@/utils/pdf`) — **local `URL.createObjectURL` only, NOT persisted to S3 or DB** |
+| 2 | 512px resize | Image: `canvasResize(file, 512)` · Video: re-encode frame · PDF: `renderPdfPageToBlob(file, 512)` → presign → PUT to S3, URL written as `${publicUrl}?v=2` |
+| 3 | ViT saliency crop | AI worker (`thumbnail.ai.ts`) — **images only**, URL written as `${publicUrl}?v=3` |
+| 4 | Florence-2 caption overlay | AI worker — **images only**, URL written as `${publicUrl}?v=4` |
+
+**Cache-bust query param**: stages 2/3/4 share the same S3 key, so the URL written to `Thumbnail.url` includes `?v={stage}`. Without this, browser cache (`Cache-Control: max-age=3600` on the S3 object) keeps showing the prior stage even after the object is overwritten.
+
+**S3 client config**: `app/.server/s3.ts` sets `requestChecksumCalculation: 'WHEN_REQUIRED'` on `S3Client`. Without this, AWS SDK v3 signs a CRC32 checksum requirement (`x-amz-checksum-crc32=AAAAAA==`, CRC32 of empty body) into presigned `PutObject` URLs, causing browser PUTs to fail with a checksum mismatch.
+
+PDFs stop after stage 2. The PDF.js worker URL is set globally on import in `app/utils/pdf.ts` via `pdfjs-dist/build/pdf.worker.min.mjs?url`.
+
+**Compute worker**: heavy thumbnail compute (PDF.js parsing, canvas resize, image decoding, PDF text extraction) runs in a singleton dedicated worker at `app/workers/thumbnail.compute.worker.ts` with an internal concurrency cap of **1** and a 30-second per-op timeout. `useThumbnail.ts` is a thin orchestrator that dispatches RPC requests via `compute({ kind, file })` and handles HTTP + React state on main. Video thumbnails stay on main because they require `<video>` DOM access. Stages 3 and 4 (image AI) also stay on main — they call into `app/workers/thumbnail.ai.ts`, which is a regular module using WebGPU (not a Worker — the file location is historical).
+
+The cap is 1 because PDF.js inside a dedicated worker falls back to **fake worker mode** (it can't spawn a sub-worker reliably from inside another worker). In fake-worker mode, multiple concurrent PDF operations terminate each other's tasks ("Worker task was terminated" warnings) — serializing is safer than the throughput win.
+
+**OffscreenCanvas**: `app/utils/thumbnail.ts` and `app/utils/pdf.ts` use `OffscreenCanvas` rather than `document.createElement('canvas')` so they work in both main and worker contexts. `extractTinyThumbnail` and `generatePdfThumbnail` return `Blob` (not data URL).
+
+**PDF.js `OffscreenCanvasFactory`**: passing our own `OffscreenCanvas` as the *target* of `page.render()` is not enough — PDF.js's default `DOMCanvasFactory` calls `document.createElement('canvas')` for **internal auxiliary canvases** (subpixel-AA font detection, intermediate image-scaling buffers). In a worker, `document` is undefined and rendering crashes silently with `Cannot read properties of undefined (reading 'createElement')`. `app/utils/pdf.ts` defines a custom `OffscreenCanvasFactory` (`{ create, reset, destroy }`) and passes it via `getDocument({ CanvasFactory: OffscreenCanvasFactory })` only when `typeof document === 'undefined'`. In a normal page context the default `DOMCanvasFactory` is used. Without this, simple PDFs render fine but anything with text + AA or images blows up — the user-visible symptom was "stage 0 only".
+
+**PDF.js verbosity**: `pdfjs.getDocument(...)` calls pass `verbosity: 0` (errors only) to silence the high-frequency `"Worker task was terminated"` warnings PDF.js emits on every `doc.destroy()` in fake-worker mode. They are non-fatal (PDF.js logs them with "ignoring errors") but spam the console.
+
+**Presign → PUT → PATCH pattern** (stages 1–4):
+1. `GET /api/thumbnails/:itemId/presign` → `{ uploadUrl, publicUrl }`
+2. `PUT blob` to S3 `uploadUrl` with `Content-Type: image/webp`
+3. `PATCH /api/thumbnails/:itemId` with `{ stage, url, width, height }`
+
+**S3 key**: `thumbnails/{itemId}.webp` — one file per item, overwritten as stages improve. `publicUrl = https://{bucket}.t3.tigrisfiles.io/thumbnails/{itemId}.webp`.
+
+**Gallery query** — always exclude hex-color stage-0 placeholders from both the item filter and the thumbnail select:
+```typescript
+// where (items must have a real thumbnail)
+thumbnails: { some: { url: { not: null }, NOT: { url: { startsWith: '#' } } } }
+// select (best thumbnail per item)
+thumbnails: { take: 1, where: { NOT: { url: { startsWith: '#' } } } }
+```
+
+**Thumbnail utils** (`app/utils/thumbnail.ts`): `hashToColor`, `extractTinyThumbnail`, `canvasResize`, `dataUrlToBlob`. For video thumbnails: `generateVideoThumbnail(file)` from `app/utils/video.ts`.
 
 ## Workflows
 

@@ -1,326 +1,153 @@
 # Stashly Project Roadmap
 
-## Overview
+Last updated: **2026-05-09**
 
-Stashly is a secure, intuitive, and powerful file storage and collaboration platform. This document outlines the full development roadmap, combining product goals, technical architecture, and a learner-friendly rationale for each phase.
+Stashly is a secure, intuitive, and powerful file storage and collaboration platform. This roadmap tracks shipped phases and remaining work.
 
----
-
-## Project Structure
-
-```
-.
-├── app/                     # Main application folder
-│   ├── .client/             # Client-side specific logic
-│   ├── .server/             # Server-side logic (API, auth, etc.)
-│   ├── assets/              # Static assets
-│   ├── auth/                # Authentication components and logic
-│   ├── components/          # UI components
-│   ├── hooks/               # Custom React hooks
-│   ├── machines/            # XState state machines
-│   ├── prisma/              # Prisma client generation for browser
-│   ├── routes/              # Application routes/pages
-│   ├── styles/              # Global and shared styles
-│   ├── types/               # TypeScript type definitions
-│   └── utils/               # Utility functions
-├── components/              # Shared, reusable UI components
-│   ├── comments-panel.tsx
-│   ├── file-card.tsx
-│   ├── file-grid.tsx
-│   ├── file-list-item.tsx
-│   ├── file-manager.tsx
-│   ├── file-preview.tsx
-│   ├── folder-card.tsx
-│   ├── settings-page.tsx
-│   ├── share-folder-modal.tsx
-│   ├── sidebar.tsx
-│   └── storage-panel.tsx
-├── docs/                    # Project documentation
-├── hooks/                   # Global custom React hooks
-│   └── use-mobile.ts
-├── prisma/                  # Database configuration
-│   ├── migrations/
-│   ├── models/
-│   ├── seedData/
-│   └── schema.prisma
-├── public/                  # Publicly accessible files
-├── scripts/                 # Automation and utility scripts
-│   ├── apply-index-settings.ts
-│   ├── gen.ts
-│   ├── generate.ts
-├── server/                  # Backend server
-│   ├── adapters/
-│   ├── middleware/
-│   └── plugins/
-├── tests/
-│   ├── e2e/
-│   ├── integration/
-│   └── unit/
-├── .github/
-│   ├── instructions/
-│   └── prompts/
-├── package.json
-├── vite.config.ts
-└── server.js
-```
+For developer conventions and the actual project structure, see [`CLAUDE.md`](../CLAUDE.md). For the architecture overview, see [`project-overview.md`](project-overview.md).
 
 ---
 
-## Phase 1: Foundation & Core Functionality (MVP)
+## Phase 1: Foundation & Core (MVP) — ✅ Shipped
 
-**Why:** Build the Minimum Viable Product to launch, gather feedback, and validate the core idea without getting bogged down in complex features. A roadmap ensures focus, clarity, and motivation by breaking a large project into smaller milestones.
-
-**Status:** Most features complete.
-
-- [x] **User Authentication:** Secure user sign-up, login, and password management.
-- [x] **File Uploads:** Ability to upload files, including large files using multipart uploads.
-- [x] **File Storage:** Securely store files using AWS S3.
-- [x] **File Management:** View, organize, rename, and delete files.
-- [x] **Dashboard UI:** A central dashboard to display user's files and storage usage.
-- [x] **Basic Subscription:** Integration with Stripe for basic subscription plans.
-- [x] **Storage Quotas:** Enforce storage limits based on user subscription plans.
-
-### Folder Structure
-
-```
-app/
-├── components/
-│   ├── ui/                 # Reusable UI components
-│   ├── layouts/            # Page layouts
-│   └── upload/             # File upload components
-├── machines/               # XState machines
-│   ├── actors/
-│   └── types/
-├── routes/
-│   ├── api/
-│   └── auth/
-├── .server/
-│   ├── services/
-│   ├── repositories/
-│   └── filters/
-└── hooks/
-```
-
-### Tasks
-
-- [ ] Set up project with Vite, React, and TypeScript
-- [ ] Configure React Router for application routing
-- [ ] Implement authentication system with better-auth
-- [ ] Create basic UI component library with Tailwind CSS
-- [ ] Set up XState for state management
-- [ ] Design and implement core application layout
-- [ ] Create shared types and interfaces
-- [ ] Set up development environment and tooling
-- [ ] Implement basic error handling and logging
-- [ ] Create project documentation and contribution guidelines
+- [x] **User Authentication** — `better-auth` with OAuth (GitHub, Google, Microsoft)
+- [x] **File Uploads** — multipart S3 with concurrent parts, ETag verification
+- [x] **File Storage** — Tigris (S3-compatible) on Fly.io
+- [x] **File Management** — view, organize, rename, move, trash, restore, delete
+- [x] **Dashboard UI** — sidebar with `Library` / `Sharing` / `Manage` groups
+- [x] **Subscription** — Stripe integration with webhook-driven state sync
+- [x] **Storage Quotas** — quota state machine, deltas on trash/restore/delete
 
 ---
 
-## Phase 2: File Management & Upload System
+## Phase 2: File Management & Upload — ✅ Shipped
 
-**Why:** Transform Stashly into a fully functional file management platform with robust upload capabilities, quota enforcement, and an intuitive UI.
-
-- [x] **File Uploads** (multipart, large files)
-- [x] **File Storage** (AWS S3)
-- [x] **File Management** (view, organize, rename, delete)
-- [x] **Storage Quotas** (XState-managed)
-
-### Folder Structure
-
-```
-app/
-├── components/
-│   ├── file-manager/
-│   ├── upload/
-│   │   ├── uploader.tsx
-│   │   ├── progress.tsx
-│   │   └── queue.tsx
-│   └── workspace/
-│       ├── sidebar.tsx
-│       └── file-list.tsx
-├── machines/
-│   ├── upload.machine.ts
-│   ├── file.machine.ts
-│   ├── queue.machine.ts
-│   └── quota.machine.ts
-└── .server/
-    ├── services/
-    │   └── file.service.ts
-    └── adapters/
-        └── s3.adapter.ts
-```
-
-### Tasks
-
-- [ ] Design and implement file upload architecture
-- [ ] Create multipart upload implementation for large files
-- [ ] Develop upload progress tracking and visualization
-- [ ] Implement upload queue management system
-- [ ] Create file browsing and management UI
-- [ ] Implement storage quota system with XState
-- [ ] Build file preview capabilities for common file types
-- [ ] Add file organization features (folders, tags)
-- [ ] Implement file metadata extraction and storage
-- [ ] Create responsive and accessible UI components
+- [x] **Multipart upload** — `app/machines/upload/upload.machine.ts` parent + `file.machine.ts` per file, `actors/queue.machine.ts` (5-slot concurrency), `actors/quota.machine.ts`
+- [x] **Concurrent multipart** — parallel chunk uploads with ETag tracking ([spec](superpowers/specs/2026-04-02-concurrent-multipart-upload-design.md))
+- [x] **Multipart contract tests** — Vitest suite over the streaming layer
+- [x] **Post-upload DB chain** — `createDbItem` actor → `POST /api/items` → `createUploadedItem()`
+- [x] **`itemCreated` gate** — solves race between S3 done and DB row write
+- [x] **Folders** — self-referencing `parentId`, `childCount` maintained by Postgres trigger
+- [x] **Collections** — many-to-many with item; size auto-maintained by triggers
+- [x] **Favorites** — toggle, filter
+- [x] **Trash + restore + permanent delete** — quota deltas applied on each transition
+- [x] **Storage overview route** — `app/routes/stash/storage.tsx` with `DataTable` + ops dashboard
 
 ---
 
-## Phase 3: Collaboration & Sharing
+## Phase 3: Collaboration & Sharing — 🚧 Partial
 
-**Why:** Transform Stashly from a personal storage tool into a collaborative platform. The first step is sharing; the second is creating shared environments for teams.
+### Shipped
 
-- [ ] **File & Folder Sharing:** Generate shareable links for files and folders.
-- [ ] **Link Permissions:** Set permissions for shared links (view-only, password, expiration dates).
-- [ ] **Team Workspaces:** Create shared workspaces for teams.
-- [ ] **User Invitations:** Invite users to collaborate via email.
-- [ ] **Commenting:** Add comments to files for feedback and discussion.
-- [ ] **Version History:** Keep track of file versions and allow restoring previous versions.
+- [x] **Share Links** — `ShareLink` + `Permission` model; URL-based access (anonymous or scoped to users)
+- [x] **Link Permissions** — read/write scopes
+- [x] **Activity Feed** — full activity timeline (create/rename/move/trash/restore/delete/copy/share/comment/version), `ItemActivityDrawer`, `ActivityFeed` component on the gallery image sidebar
+- [x] **Permission model** — `Permission` table; per-item access grants enforced in action functions
 
-### Folder Structure
+### Backend Only — Awaiting UI
 
-```
-app/
-├── components/
-│   ├── sharing/
-│   │   ├── share-modal.tsx
-│   │   └── permissions.tsx
-│   └── workspace/
-│       ├── shared-items.tsx
-│       └── activity-feed.tsx
-├── routes/
-│   └── shared/
-├── .server/
-│   ├── services/
-│   │   ├── share.service.ts
-│   │   └── permission.service.ts
-│   └── repositories/
-│       └── share.repository.ts
-└── machines/
-    └── share.machine.ts
-```
+These all have working `*-actions.ts` files and API routes wired, but **no UI consumers** exist yet. The settings/notifications route is a 17-line stub returning `<div>Notifications Route</div>`.
 
-### Tasks
+- [ ] **Comments** — `comment-actions.ts` + `/api/comments` exist; `CommentsThreadPanel.tsx` component file is present but not mounted from any route or item view
+- [ ] **Versions** — `version-actions.ts` + `/api/versions` exist; no `VersionList` / `VersionHistory` UI; no UI to trigger version creation or restore
+- [ ] **Notifications** — `notification-actions.ts` + `/api/notifications` exist; settings route is a TODO stub; no notification feed UI, no toast/inbox surface
+- [ ] **Workspace Invitations** — `invitation-actions.ts` exists; no invite-flow UI
+- [ ] **Item Invitations** — backend wiring present; no invite-flow UI
 
-- [ ] Design and implement file/folder sharing system
-- [ ] Create permissions management interface
-- [ ] Implement real-time collaboration features
-- [ ] Build shared workspace functionality
-- [ ] Add commenting and annotation features
-- [ ] Create activity feed for collaboration tracking
-- [ ] Implement notification system for shared items
-- [ ] Add version history for collaborative documents
-- [ ] Create audit logs for file access and changes
-- [ ] Implement secure link sharing with expiration
+### Workspaces — Routes Stubbed, Views Missing
+
+The workspace URL space is registered in `app/routes.ts` and routes exist for index/create/folder/file/collection/members/settings/shares/favorites/recent — but every route file is a 13–30-line skeleton. **Only `workspaces/trash.tsx` (~149 lines) has any real UI.**
+
+- [x] Schema — `Workspace`, `WorkspaceMember`, role enum (Owner / Admin / Member / Viewer)
+- [x] `workspace-actions.ts` — backend membership management
+- [x] Routing structure — `/:me/workspaces/:workspaceId/*` registered
+- [ ] Workspace views — index, create, folder, file, collection, members, settings, shares, favorites, recent are all stub files
+- [ ] Member management UI
+- [ ] Workspace creation flow
+- [ ] Role change UI
+
+See: [`docs/sharing-and-invitations.md`](sharing-and-invitations.md) for the share/invitation backend model.
 
 ---
 
-## Phase 4: Advanced Features, Intelligence & Optimization
+## Phase 4: Advanced Features & Intelligence — 🚧 Partial
 
-**Why:** Differentiate Stashly from basic storage providers by adding smart features that enhance user experience — advanced search, AI-powered organization, cross-platform access, and performance improvements.
+### Shipped
 
-- [ ] **Advanced Search:** Implement semantic search using pgvector to search within file content (.txt, .md, .pdf).
-- [ ] **AI-powered Organization:** Automatically categorize and tag files based on their content.
-- [ ] **Desktop Sync Client:** Develop a desktop application to sync files.
-- [ ] **Mobile App (iOS & Android):** Native mobile applications.
-- [ ] **Third-party Integrations:** Google Drive, Dropbox, Slack, Zapier.
-- [ ] **Public API:** Expose a public API for developers.
+- [x] **Full-text search** — PostgreSQL `search` field with filters (type, date, workspace)
+- [x] **Semantic search infrastructure** — pgvector extension installed; `sentence-transformers/all-MiniLM-L6-v2` (384-dim embeddings, cosine distance) wired into the embed worker; query path can search by vector
+- [x] **Living thumbnails** — 5-stage progressive WebP pipeline ([thumbnail-pipeline.md](thumbnail-pipeline.md))
+  - Stage 0: hash → color placeholder
+  - Stage 1: 8×8 blur preview
+  - Stage 2: 512px resize
+  - Stage 3: ViT saliency crop with face-aware crop via native `FaceDetector` API
+  - Stage 4: Florence-2 caption overlay (currently hidden from gallery — capped at stage 3)
+- [x] **Browser-side AI inference** — Transformers.js + ONNX Runtime (WebGPU with WASM fallback)
+  - Whisper transcription (120+ languages)
+  - Image captioning
+  - Multilingual embeddings
+- [x] **Gallery views** — Grid / River / Waterfall layouts with View Transition API morph between gallery and detail overlay
+- [x] **Filters system** — compound `Filters` (`app/components/filters/`), standalone `SearchInput`, `useFilters` hook; replaced old `FilterList` (commit `205ef51`)
+- [x] **AI Studio (prototype)** — `app/routes/stash/ai-studio.tsx` — UI mockup for transcription / language detect / summarization / keyword extraction / tag generation pipeline (uncommitted, not wired to real workers yet)
+- [x] **Pipeline machine extraction** — `pipeline.machine.ts` split into 6 dedicated sub-machines (`languageDetectionMachine`, `transcriptionMachine`, `textCorrectionMachine`, `summarizationMachine`, `keywordExtractionMachine`, `tagGenerationMachine`); pipelineMachine is now a pure orchestrator. Plus GPU resilience, long-audio content hints, and GPU load balancer for correction. ([plan](superpowers/plans/2026-03-21-pipeline-machine-extraction.md), commits `b617d76`, `6846882`, `2f1aba2`, `b6e896c`, `ec5275d`, `946f50f`)
 
-### Folder Structure
+### In Progress
 
-```
-app/
-├── components/
-│   ├── search/
-│   │   ├── search-bar.tsx
-│   │   └── results.tsx
-│   └── versioning/
-│       ├── history.tsx
-│       └── compare.tsx
-├── .server/
-│   ├── services/
-│   │   ├── search.service.ts
-│   │   └── version.service.ts
-│   └── repositories/
-│       └── version.repository.ts
-└── machines/
-    └── search.machine.ts
-```
+- [ ] **Semantic search — end-to-end wiring**
+  - [x] PDF: client-side text extraction (`extractPdfText` in `app/utils/pdf.ts`) → `documentText` field on `save_media_metadata` → `upsertSearchContent(itemId, content)` writes `Search.content` (vector left null pending embedding). Schema migration: `Search.vector` made nullable.
+  - [ ] Apply the same pattern to other text formats (`.txt`, `.md`, `.docx`, etc.)
+  - [ ] OCR for images, transcript for audio/video, EXIF/captions for photos — gather and persist
+  - [ ] Hook embedding generation into the upload completion path — backfill `Search.vector` after `Search.content` is written. Decide: server-side embedding (env-aware, slower) vs client-side worker.
+  - [ ] Re-embed on relevant content changes (rename, description edit)
+  - [ ] Backfill embeddings for existing items once the pipeline is live
 
-### Tasks
+### Not Started
 
-- [ ] Implement file versioning and history tracking
-- [ ] Create advanced search functionality with filters
-- [ ] Add file comparison features for versions
-- [ ] Implement performance optimizations for large file sets
-- [ ] Add offline support for file access
-- [ ] Create backup and restore functionality
-- [ ] Implement data deduplication for storage optimization
-- [ ] Add compression for file transfers
-- [ ] Optimize database queries and indexing
-- [ ] Implement caching strategies for improved performance
+- [ ] **AI-powered organization** — auto-tag and categorize files based on content
+- [ ] **Desktop sync client**
+- [ ] **Mobile apps** (iOS / Android)
+- [ ] **Third-party integrations** — Google Drive, Dropbox, Slack, Zapier
+- [ ] **Public API**
 
 ---
 
-## Phase 5: Analytics, Monetization & Growth
+## Phase 5: Analytics, Monetization & Growth — ⏳ Not Started
 
-**Why:** Build a sustainable business by expanding revenue streams and driving user growth, while giving users visibility into their own usage patterns.
-
-- [ ] **Tiered Subscription Plans:** Free, Pro, Business tiers with different features and storage limits.
-- [ ] **Pay-as-you-go:** Purchase additional storage or features on a one-time basis.
-- [ ] **Referral Program:** Incentivize user growth.
-- [ ] **Affiliate Program:** Partners to promote Stashly.
-- [ ] **Analytics Dashboard:** Detailed analytics on file usage and sharing.
-
-### Folder Structure
-
-```
-app/
-├── components/
-│   └── analytics/
-│       ├── charts/
-│       ├── reports/
-│       └── metrics/
-├── routes/
-│   └── analytics/
-├── .server/
-│   ├── services/
-│   │   └── analytics.service.ts
-│   └── repositories/
-│       └── analytics.repository.ts
-└── machines/
-    └── analytics.machine.ts
-```
-
-### Tasks
-
-- [ ] Design and implement analytics dashboard
-- [ ] Create storage usage reporting
-- [ ] Implement user activity tracking
-- [ ] Build file access and sharing analytics
-- [ ] Add performance metrics monitoring
-- [ ] Create customizable report generation
-- [ ] Implement data export functionality
-- [ ] Add real-time analytics updates
-- [ ] Create admin-level system analytics
-- [ ] Implement alerting for storage quotas and anomalies
+- [ ] **Tiered Subscription Plans** — Free / Pro / Business with different feature sets
+- [ ] **Pay-as-you-go** — additional storage purchases
+- [ ] **Referral Program**
+- [ ] **Affiliate Program**
+- [ ] **Analytics Dashboard** — file usage, sharing patterns
 
 ---
 
-## Phase 6: Enterprise & Teams
+## Phase 6: Enterprise & Teams — ⏳ Not Started
 
-**Why:** Address the specific security, compliance, and administrative needs of large organizations, making Stashly a viable enterprise solution.
+- [ ] **SSO** — Okta, Auth0, SAML
+- [ ] **Advanced Admin Controls** — granular team management
+- [ ] **Audit Logs** — full activity for security/compliance
+- [ ] **Data Residency** — choose storage region
+- [ ] **SLAs** — uptime and support guarantees
 
-- [ ] **Single Sign-On (SSO):** Support for Okta, Auth0, and SAML.
-- [ ] **Advanced Admin Controls:** Granular control over team members, permissions, and security.
-- [ ] **Audit Logs:** Detailed logs of all activities for security and compliance.
-- [ ] **Data Residency Options:** Let enterprise customers choose where their data is stored.
-- [ ] **Service Level Agreements (SLAs):** Offer SLAs for uptime and support.
+---
+
+## Active Cleanup / Tech Debt
+
+These items are tracked but not blocking shipping work:
+
+- [ ] **Temp schema consolidation** — `app/schemas/_temp_a.schemas.ts`, `_temp_b.schemas.ts`, `_temp_c.schemas.ts` need merging into `api.schemas.ts`
+- [ ] **Flat item routes** — flat versions still registered alongside nested; migrate callers and remove flat
+- [ ] **Orphaned files** — ~30 candidates in `app/components/` (see `orphaned.md`)
+- [ ] **Search infra decision** — integrate or delete `search.repository.ts`, `search.ts`, `filters.ts` artifacts
+- [ ] **Models without action files** — `Favorite`, `AuditLog`, `Thumbnail` (read), `Trash`/`TrashItem`, `View`
+- [ ] **Package update type errors** — `workspaceItem.service.ts`, `stripe.ts`, `subscription.ts`
+- [ ] **Directory drops** — nested intermediate folders are not currently created (files drop to `rootId`)
+- [ ] **`app/routes/api/shares.ts`** — dot-server import fix deferred
 
 ---
 
 ## Future Ideas
 
-- [ ] **Real-time Document Editing:** Integrate a collaborative editor like Etherpad.
-- [ ] **Encrypted Vaults:** Client-side encrypted folders for maximum security.
-- [ ] **Blockchain Integration:** File verification and decentralized storage options.
-- [ ] **NFT Support:** Store and manage NFTs.
+- [ ] **Real-time Document Editing** — collaborative editor (Etherpad-style)
+- [ ] **Encrypted Vaults** — client-side encryption for sensitive folders
+- [ ] **Blockchain / NFT** — file verification, decentralized storage options

@@ -8,11 +8,13 @@ This document covers the full architecture and implementation of the S3 multipar
 
 The multipart upload system is composed of:
 
-1. **XState Machine** (`s3.multipart.ts`) — orchestrates the overall upload lifecycle
-2. **Actors / Utils** (`s3.mulipart.utils.ts`) — side-effect handlers for each operation
-3. **Streaming** (`s3.multipart.stream.ts`) — Web Streams API implementation for chunked uploads
-4. **UI Components** (`file-upload.tsx`) — React components connected to the upload manager actor
-5. **Backend Endpoint** (`api/upload.ts`) — Remix resource route handling multipart actions
+1. **Parent machine** (`app/machines/upload/upload.machine.ts`) — orchestrates the queue, spawns one file actor per file, runs the post-upload `createDbItem` actor
+2. **File machine** (`app/machines/upload/file.machine.ts`) — the active per-file actor: creates multipart upload, uploads chunks in parallel, verifies ETags, emits `upload.done`
+3. **Multipart utils** (`app/machines/multipart/s3.mulipart.utils.ts`, `s3.multipart.stream.ts`, `s3.multipart.concurrent.ts`) — side-effect handlers + streaming
+4. **Queue / quota** (`app/machines/actors/queue.machine.ts`, `actors/quota.machine.ts`, `actors/multipart.machine.ts`) — concurrency, quota enforcement, multipart coordination
+5. **Backend endpoint** (`app/routes/api/upload.ts`, registered as both `/api/s3/upload` and `/api/s3/multipart`) — handles multipart actions
+
+> The `app/machines/reviset/` directory contains a legacy file actor. `upload/file.machine.ts` is the current active path.
 
 ---
 
@@ -90,7 +92,7 @@ export const uploadParts = fromCallback(({ sendBack, receive, input }) => {
 })
 ```
 
-All API calls go to `POST /api/s3/upload` with an `action` discriminator field.
+All API calls go to `POST /api/s3/upload` with an `action` discriminator field. **The route accepts JSON body (`request.json()`), not form-encoded data** — this is the only API route in the project that does so. Every other mutating route uses `parseFormData` + an `intent` discriminator.
 
 ---
 
@@ -297,3 +299,94 @@ cancelButton.addEventListener('click', () => {
 - **Idempotency:** Calling abort multiple times has the same effect as calling it once
 - **Robustness:** Never rely solely on client signals — implement server-side timeouts and scheduled cleanup
 - **Observability:** Log aborted uploads; monitor orphaned resource counts
+
+---
+
+## Post-Upload Chain — DB Item Creation
+
+Completing the S3 upload only writes the binary. The DB row is created by the parent machine's `createDbItem` actor immediately after `upload.done`.
+
+### Event Flow
+
+```
+upload/file.machine.ts
+  → sendUploadDoneToParent → upload.done event
+upload/upload.machine.ts
+  → markAsDone, removeFromActiveQueue, removeFromUploads, uploadPendingFiles
+  → triggerItemCreation → spawnChild('createDbItem', { input: { mediaFile, user } })
+createDbItem (fromPromise actor in upload.machine.ts)
+  → POST /api/items (URLSearchParams body, intent=create_upload_item)
+app/routes/api/items.ts
+  → parseFormData + itemsApiRouteInput schema
+  → case 'create_upload_item' → createUploadedItem(data)
+app/.server/item-actions.ts → createUploadedItem()
+  → prisma.item.create({ ...item, file: { create: { ...fileFacet } } })
+```
+
+### Available on `upload.done`
+
+`event.mediaFile` shape:
+
+| Field | Source |
+|-------|--------|
+| `id` | Pre-generated as `item_xxx` by `toMediaFile()` in `app/utils/converters.ts` |
+| `key` | S3 object path: `${parentFolderId}/${filename}` (or `${folderId}/${relPath}` for directory drops) |
+| `file` | Browser `File` object |
+| `etag` | Returned from `complete-multipart-upload` |
+| `ownerId` | Set by upload manager from config |
+| `status` | `'done'` at this point |
+
+### Key Derivations
+
+| Field | Source |
+|-------|--------|
+| `Item.id` | `mediaFile.id` (already `item_xxx` format) |
+| `Item.parentId` | **`mediaFile.key.split('/')[0]`** — first key segment is always the destination folder ID |
+| `Item.driveId` | `context.config.user.driveId` |
+| `Item.ownerId` | `mediaFile.ownerId ?? user.id` |
+| `Item.category` | `toCategory(mediaFile.file)` from `app/utils/converters.ts` |
+| `File.id` | Generated server-side: `toObjectId(getPrefixForModel('File'))` |
+| `File.bucket` | `context.config.user.bucket` |
+
+### `createUploadedItem` signature
+
+```typescript
+// app/.server/item-actions.ts
+export async function createUploadedItem(data: {
+  id: string; name: string; key: string; size: bigint
+  mimeType?: string; etag?: string; bucket: string
+  driveId: string; parentId: string; ownerId: string; category?: string
+})
+```
+
+Creates `Item` (type=file, status=normal) + nested `File` facet in one Prisma transaction. Returns with `defaultItemSelect`.
+
+Schema lives in `app/schemas/api.schemas.ts` under `itemsApiRouteInput` (discriminated union on `intent`, includes `create_upload_item` with `z.coerce.bigint()` for size).
+
+### Scope Limitation — Directory Drops
+
+| Drop type | Behavior |
+|-----------|----------|
+| Single file or batch into a folder | Correct — `parentId = key.split('/')[0]` |
+| Directory drop (folder tree) | Files get `parentId = rootId` — **nested intermediate folders are NOT created** (known gap) |
+
+### `itemCreated` Gate — Critical for Thumbnails
+
+After `createDbItem` resolves, `markAsItemCreated` flips the file's `status` from `'done'` to `'itemCreated'`. The `'itemCreated'` status was added to `app/schemas/machine.schemas.ts` to fix a race condition: the thumbnail pipeline (and any downstream consumer that needs the DB row to exist) MUST gate on `'itemCreated'`, not `'done'`. Triggering on `'done'` produces FK violations on `Thumbnail.itemId` because the `Item` row hasn't been written yet.
+
+```typescript
+// app/schemas/machine.schemas.ts
+export const status = z.enum([
+  'aborted', 'done', 'uploading', 'paused', 'skipped',
+  'pending', 'validating', 'queued', 'itemCreated',
+])
+```
+
+### `useUpload.ts` — Post-Upload Effects
+
+`app/hooks/useUpload.ts` watches for `status === 'itemCreated'` and:
+
+1. Triggers a **route rerender** so the new item appears in the current view: `navigate(location.pathname + location.search, { replace: true, state: { reset: true } })`. The `state: { reset: true }` is detected by `usePagination` to reset its cursor. **Do NOT use `useRevalidator` here — it doesn't update `usePagination`.**
+2. Starts the thumbnail pipeline via `runThumbnail(id, file)`. A module-level `thumbnailedIds = new Set<string>()` ensures the pipeline runs exactly once per file across all hook instances.
+
+See: [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md) for the full thumbnail flow.

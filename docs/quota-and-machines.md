@@ -1,12 +1,23 @@
 # Quota & State Machine Integration
 
-This document covers the quota state machine architecture, the `QuotaService` implementation, and patterns for managing user storage quotas.
+This document covers the quota state machine architecture and patterns for managing user storage quotas.
+
+> ⚠️ **Current implementation:** The class-based `QuotaService` pattern shown below has been **superseded** by plain exported functions in [`app/.server/quota-actions.ts`](../app/.server/quota-actions.ts). The state-machine and conceptual portions of this doc still apply; the `QuotaService` class examples are historical. Current entry points include:
+>
+> - `findQuotaByUserId(userId, client?)`, `findQuotaByDriveId`, `findQuotaByUserAndDrive`
+> - `ensureUserQuota(userId, client?)` — idempotent creation
+> - `validateQuotaFreeSpace(quota, size)` — throws if insufficient
+> - `onItemsUploaded`, `onItemsCopied`, `onItemsTrashed`, `onItemsRestored`, `onItemsDeleted`, `onActiveItemsDeleted` — apply quota deltas
+> - `updateTotalQuota` — adjust the total (e.g. on plan change)
+> - `searchQuotas` — `searchFactory`-backed list
+>
+> All functions accept an optional `Prisma.TransactionClient` so callers can compose them inside a transaction.
 
 ---
 
 ## Overview
 
-The quota system uses XState to model quota lifecycle events and a `QuotaService` (module-level singleton) to perform the actual database operations. The state machine represents all quota-affecting actions: upload, copy, restore, delete.
+The quota system uses XState to model quota lifecycle events. The actual database operations are performed by plain exported functions in `app/.server/quota-actions.ts`. The state machine represents all quota-affecting actions: upload, copy, restore, delete.
 
 ---
 

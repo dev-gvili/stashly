@@ -43,14 +43,15 @@ Built with React Router 7 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatib
 │       Express 5 Server        │              │  S3-compatible│
 │                               │              │  Storage      │
 │  ┌──────────┐  ┌───────────┐ │              │  (Tigris)     │
-│  │  Services │  │ API Routes│ │              └───────────────┘
+│  │  Actions  │  │ API Routes│ │              └───────────────┘
 │  │ (business │  │ (/api/*)  │ │
-│  │  logic)   │  │           │ │
+│  │  logic +  │  │           │ │
+│  │  Prisma)  │  │           │ │
 │  └─────┬─────┘  └───────────┘ │
 │        │                      │
 │  ┌─────▼──────────────┐      │
-│  │   Repositories      │      │
-│  │   (Prisma ORM)      │      │
+│  │   Prisma Client     │      │
+│  │   (app/prisma/)     │      │
 │  └─────┬──────────────┘      │
 └────────┼──────────────────────┘
          │
@@ -61,9 +62,9 @@ Built with React Router 7 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatib
 └───────────────────┘                   └─────────┘
 ```
 
-**Request flow:** Browser → React Router SSR loader/action → Service (permission check) → Repository (Prisma) → PostgreSQL.
+**Request flow:** Browser → React Router SSR loader/action → Action function (`app/.server/*-actions.ts`, with permission checks + Prisma) → PostgreSQL.
 
-**Upload flow:** Browser → presigned URL from server → direct PUT to S3 bucket → server records metadata.
+**Upload flow:** Browser → multipart presigned URLs from `/api/s3/upload` → direct PUT to S3 bucket → upload machine spawns `createDbItem` actor → `POST /api/items` → server records metadata.
 
 **AI flow:** Browser → Web Worker → HuggingFace Transformers.js (ONNX Runtime, WebGPU) → results back to UI.
 
@@ -161,7 +162,7 @@ User ──┬── Workspace ──── WorkspaceMember (role-based)
        └── Session / Account / Verification (auth)
 ```
 
-### Key Models (29 total)
+### Key Models (44 total)
 
 | Model | Purpose |
 |-------|---------|
@@ -181,16 +182,15 @@ User ──┬── Workspace ──── WorkspaceMember (role-based)
 
 ## 5. Layer Architecture
 
-### Routes → Services → Repositories
+### Routes → Actions → Prisma
+
+The repository/service split has been collapsed into a single **actions layer**. Each action file holds plain exported functions that combine business logic, permission checks, and direct Prisma access.
 
 ```
-app/routes/              Route loaders/actions (data fetching, mutations)
+app/routes/              Route loaders/actions (data fetching, mutations) — call action functions
         │
         ▼
-app/.server/services/    Business logic, permission enforcement, orchestration
-        │
-        ▼
-app/.server/repositories/ Database access via Prisma (auto-generated)
+app/.server/*-actions.ts Plain exported functions — business logic + permission enforcement + Prisma
         │
         ▼
 app/prisma/              Generated Prisma client → PostgreSQL
@@ -198,7 +198,7 @@ app/prisma/              Generated Prisma client → PostgreSQL
 
 ### Routes (`app/routes/`)
 
-Route modules export `loader` (GET) and `action` (POST/PUT/DELETE) functions plus a default React component. Loaders check sessions and redirect unauthenticated users.
+Route modules export `loader` (GET) and `action` (POST/PUT/DELETE) functions plus a default React component. Loaders check sessions and redirect unauthenticated users. **Routes never call Prisma directly** — they import action functions via relative paths from `app/.server/`.
 
 ```typescript
 export async function loader({ request }: Route.LoaderArgs) {
@@ -208,47 +208,49 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 ```
 
-### Services (`app/.server/services/`)
+> Note: The dot-server plugin blocks `@/services/*` path-alias imports inside `app/routes/` files. Use relative imports from `.server/` instead.
 
-Services enforce permissions before performing operations. They call repositories, never raw Prisma.
+### Actions (`app/.server/*-actions.ts`)
+
+No classes — every action file exports plain functions. Permissions are enforced inline. The action functions own the full chain: validation → permission check → Prisma → return.
 
 ```typescript
-// Typical service pattern
-await workspaceMemberRepository.requireAtLeastRole(userId, workspaceId, 'member')
-const item = await itemRepository.create({ ... })
-await permissionRepository.create({ ... })
+// In a route loader/action:
+import { getCollectionForUser } from '../../.server/collection-actions'
+const collection = await getCollectionForUser(session.user.id, collectionId)
 ```
 
-| Service | Responsibility |
+| Action file | Responsibility |
 |---------|---------------|
-| `ItemService` | Item CRUD with permission checks |
-| `WorkspaceItemService` | Sync item permissions with workspace roles |
-| `workspaceMember.service` | Membership management, role changes |
-| `shareLink.service` | Share link creation, permission grants |
-| `search.service` | Search orchestration (pgvector + embeddings) |
+| `item-actions.ts` | Item CRUD, `paginateItems`, `defaultItemSelect`, `createUploadedItem`, `touchOpenedAt`, `getFileItem` |
+| `collection-actions.ts` | Collection CRUD, member add/remove (size is DB-trigger maintained) |
+| `workspace-actions.ts` | Workspace + membership |
+| `permission-actions.ts` | Per-item access grants |
+| `share-actions.ts` | Share link CRUD |
+| `invitation-actions.ts` | Email invitation lifecycle |
+| `comment-actions.ts` | Threaded comments on items |
+| `version-actions.ts` | File versions, restore |
+| `subscription-actions.ts` | Stripe subscription state |
+| `storage-actions.ts` / `storagePlan-actions.ts` | Storage usage + plans |
+| `quota-actions.ts` | Quota deltas on trash/restore/delete |
+| `notification-actions.ts` | Notification feed |
+| `settings-actions.ts` | User settings |
+| `user-actions.ts` | User profile lookups |
+| `drive-actions.ts` | Drive provisioning |
+| `thumbnail-actions.ts` | Thumbnail records (presign + PATCH) |
+| `activity-actions.ts` | Activity feed (uses `createActivity` fire-and-forget) |
 
-### Repositories (`app/.server/repositories/`)
+Models still without dedicated action files: `Favorite`, `AuditLog`, `Trash/TrashItem`, `View`. Search action lives under `app/.server/search/`.
 
-Auto-generated via `pnpm tsx ./scripts/generateRepository.v2.ts <ModelName>`. Provide typed CRUD, filtering, and pagination. **Do not hand-edit** — regenerate instead.
+### Search Helper
 
-| Repository | Model |
-|------------|-------|
-| `ItemRepository` | Items (files/folders) |
-| `WorkspaceRepository` | Workspaces |
-| `PermissionRepository` | Access grants |
-| `CollectionRepository` | Collections |
-| `QuotaRepository` | Storage quotas |
-| `SubscriptionRepository` | Stripe subscriptions |
-| `StoragePlanRepository` | Storage tiers |
-| `NotificationRepository` | Notifications |
-| `ActivityRepository` | Audit trail |
-| `userRepository` | User profiles |
-| `shareLinkRepository` | Share links |
-| `workspaceMember.repository` | Workspace members |
+All action files use `searchFactory` from `app/utils/search.ts` for consistent paginated, filterable list operations. Filter builders live in `app/.server/filters/`.
+
+> ⚠️ `searchFactory` does NOT auto-apply `defaultInclude`. Pass `include` explicitly on every `searchActivities` / `searchItems` call or relations will be omitted.
 
 ### Error Handling
 
-All API errors use `ApiError` with typed `StashlyErrorCode` values (70+ codes covering storage, uploads, permissions, AI, and billing). Defined in `app/.server/api.errors.ts`.
+All action functions use `ApiError` and `ApiErrorCode` from `app/.server/api.errors.ts` for consistent typed errors. **Do not import `ApiError` in route files** — the dot-server plugin rejects `@/services/*` imports in `app/routes/`. Inside route action handlers, duck-type the error: `const err = e as { statusCode?: number; message?: string }`.
 
 ---
 
@@ -258,16 +260,39 @@ All API errors use `ApiError` with typed `StashlyErrorCode` values (70+ codes co
 
 The upload pipeline uses XState state machines in a parent-child actor pattern:
 
-1. **User drops files** → Upload Manager spawns one File Actor per file
-2. **File Actor** requests presigned URL from `/api/s3/presigned`
-3. **File Actor** uploads chunks directly to S3 via presigned URLs (multipart for large files)
-4. **Queue Machine** limits concurrent uploads (default: 5 slots)
-5. **Quota Machine** checks storage limits before each upload
-6. Upload complete → server records item metadata in database
+1. **User drops files** → `upload/upload.machine.ts` (parent) spawns one `upload/file.machine.ts` per file
+2. **File machine** requests presigned URLs from `/api/s3/upload` (action: `get-presigned-url`)
+3. **File machine** uploads chunks in parallel directly to S3, verifies ETags
+4. **`actors/queue.machine.ts`** limits concurrent uploads (default: 5 slots)
+5. **`actors/quota.machine.ts`** checks storage limits before each upload
+6. On `upload.done`, the parent spawns a `createDbItem` actor → `POST /api/items` (intent: `create_upload_item`) → `createUploadedItem()` writes the row
+7. After DB write, status flips to `'itemCreated'` — this is the gate that triggers the thumbnail pipeline (prevents FK violations on `Thumbnail.itemId`)
 
-Key files: `app/machines/upload/`, `app/machines/upload-v2/`, `app/machines/multipart/`
+Key files: `app/machines/upload/`, `app/machines/actors/`, `app/machines/multipart/`. The `app/machines/reviset/` directory holds a legacy actor; `upload/file.machine.ts` is the active path.
 
-See: [`docs/upload-multipart.md`](upload-multipart.md)
+See: [`docs/upload-multipart.md`](upload-multipart.md), [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md)
+
+### Thumbnail Pipeline
+
+Client-side, 5-stage progressive WebP generation. Gated on `status === 'itemCreated'` (not `'done'`). All output is one WebP per item at `thumbnails/{itemId}.webp` in S3, overwritten as later stages complete.
+
+| Stage | Output |
+|-------|--------|
+| 0 | Color hash placeholder (hex, no S3) |
+| 1 | 8×8 blur preview |
+| 2 | 512px resize |
+| 3 | ViT saliency crop with face-aware crop via `FaceDetector` API |
+| 4 | Florence-2 caption overlay (currently hidden from gallery — capped at stage 3) |
+
+Pattern: `GET /api/thumbnails/:itemId/presign` → PUT to S3 → `PATCH /api/thumbnails/:itemId`. Hex-color stage-0 placeholders are filtered out of gallery queries.
+
+See: [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md)
+
+### Activity Feed
+
+`activity-actions.ts` records create / rename / move / trash / restore / delete / copy / share / comment / version events on items. Activities fire-and-forget via `Promise.resolve().then(() => createActivity({...})).catch(() => {})` (so synchronous throws inside `createActivity` are caught). Rendered as a vertical timeline in `ActivityFeed` and the `ItemActivityDrawer`.
+
+Routes: `GET /api/activities` (resource route).
 
 ### AI Pipeline
 
@@ -335,23 +360,25 @@ See: [`docs/quota-and-machines.md`](quota-and-machines.md)
 
 Complex async workflows are modeled as XState 5 state machines in `app/machines/`:
 
-| Machine | Purpose |
-|---------|---------|
-| `upload.machine` | Parent orchestrator — spawns file actors, manages queue |
-| `upload-v2/upload-manager.machine` | Next-gen upload: manager + queue + worker separation |
-| `file.machine` | Individual file upload lifecycle |
-| `queue.machine` | Concurrent upload slot management |
-| `quota.machine` | Storage quota state tracking |
-| `s3.multipart` | S3 multipart upload lifecycle (create → upload → complete) |
-| `ai.machine` | AI task orchestration (caption, transcribe, summarize) |
-| `caption.machine` | Focused image captioning pipeline |
-| `pipeline.machine` | Full audio pipeline (detect → transcribe → summarize → tag) |
-| `subscription.machine` | Stripe subscription state |
-| `onboard.machine` | New user setup flow |
-| `selection.machine` | Multi-select UI state |
-| `sidebar.machine` | Navigation panel state |
-| `infiniteScroll.machine` | Lazy-loading pagination |
-| `confirm.machine` | Confirmation dialog state |
+| Machine | Location | Purpose |
+|---------|----------|---------|
+| `upload.machine` | `upload/` | Parent orchestrator — spawns file actors, manages queue, runs `createDbItem` actor on upload done |
+| `file.machine` | `upload/` | Individual file upload lifecycle (active implementation) |
+| `file.machine` | `reviset/` | Legacy file upload actor (kept for reference) |
+| `queue.machine` | `actors/` | Concurrent upload slot management |
+| `quota.machine` | `actors/` | Storage quota state tracking |
+| `multipart.machine` | `actors/` | Multipart S3 coordination |
+| `s3.multipart.*` | `multipart/` | Streaming + presign utilities for multipart upload |
+| `ai.machine` | `ai/` | AI task orchestration (caption, transcribe, summarize) |
+| `caption.machine` | `ai/` | Focused image captioning pipeline |
+| `pipeline.machine` | `pipeline/` | Full audio pipeline (detect → transcribe → summarize → tag) |
+| `subscription.machine` | `subscription/` | Stripe subscription state |
+| `onboard.machine` | `onboard/` | New user setup flow |
+| `selection.machine` | `selection/` | Multi-select UI state |
+| `sidebar.machine` | `sidebar/` | Navigation panel state |
+| `pagination` | `pagination/` | Lazy-loading pagination |
+| `confirm.machine` | top-level | Confirmation dialog state |
+| `session/` | `session/` | Auth/session helpers |
 
 Machines are connected to React via `@xstate/react`. Parent machines spawn child actors for per-item or per-task state.
 
@@ -388,10 +415,10 @@ All API routes live in `app/routes/api/` and are resource routes (no UI componen
 ### Storage & Upload
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| POST | `/api/s3/presigned` | Generate S3 presigned URLs |
-| POST | `/api/s3/sts-token` | AWS STS token for direct upload |
-| POST | `/api/upload` | Multipart upload operations |
+| POST | `/api/s3/upload` | Multipart upload operations (JSON body, `action` discriminator: `create-multipart-upload` / `get-presigned-url` / `complete-multipart-upload` / `abort-multipart-upload`) |
 | GET | `/api/quota` | Check storage quota |
+| GET | `/api/thumbnails/:itemId/presign` | Get presigned URL for thumbnail upload |
+| POST/PATCH | `/api/thumbnails/:itemId` | Create / update thumbnail record |
 
 ### AI
 | Method | Endpoint | Purpose |
@@ -404,13 +431,20 @@ All API routes live in `app/routes/api/` and are resource routes (no UI componen
 | POST | `/api/ai/suggestion` | AI-powered suggestions |
 | POST | `/api/ai/chat` | Conversational AI |
 
-### Search & Billing
+### Search, Billing & Activity
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | GET | `/api/search/:type` | Full-text or semantic search |
 | POST | `/api/stripe` | Stripe webhook handler |
 | GET | `/api/subscription` | Subscription status |
-| GET | `/api/notifications` | Activity feed |
+| GET | `/api/notifications` | Notification feed |
+| GET | `/api/activities` | Item activity timeline |
+| GET/POST | `/api/versions` | List / create file versions |
+| GET | `/api/sidebar` | Sidebar tree data |
+| GET/POST | `/api/settings` | User settings |
+| GET/POST | `/api/theme` | Theme preference |
+| GET/POST | `/api/view` | Layout/view preference |
+| GET | `/api/health` | Health check |
 
 ---
 
@@ -467,13 +501,16 @@ Stage 4: Runtime (node:20-alpine) — copy prod deps + build output, run npm sta
 ### Commands
 
 ```bash
-pnpm dev                  # Dev server (Vite HMR + Express) at http://localhost:5173
+pnpm dev                  # Dev server (Express + Vite HMR) at http://localhost:3000
 pnpm build                # Production build
 pnpm start                # Production server
 pnpm typecheck            # Type-check (typegen + tsc)
 pnpm format               # Prettier
 pnpm prisma migrate dev   # Run database migrations
-pnpm test                 # Run tests (Vitest)
+pnpm test                 # Run unit tests (Vitest, app/utils/__tests__/)
+pnpm test:watch           # Unit tests in watch mode
+pnpm test:e2e             # E2E tests (Playwright, requires dev server)
+pnpm test:e2e:ui          # E2E tests with Playwright UI
 ```
 
 ---
@@ -485,6 +522,9 @@ pnpm test                 # Run tests (Vitest)
 | [`docs/ai-pipeline.md`](ai-pipeline.md) | AI pipeline architecture (Transformers.js, Whisper, summarization) |
 | [`docs/search.md`](search.md) | Semantic search, pgvector + embeddings |
 | [`docs/upload-multipart.md`](upload-multipart.md) | S3 multipart upload state machine and streaming |
+| [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md) | 5-stage progressive WebP thumbnail pipeline |
 | [`docs/quota-and-machines.md`](quota-and-machines.md) | Quota system, XState integration |
 | [`docs/routing-and-ui.md`](routing-and-ui.md) | Route handles, sidebars, pagination patterns |
+| [`docs/sharing-and-invitations.md`](sharing-and-invitations.md) | Share links, invitations, permission model |
+| [`docs/roadmap.md`](roadmap.md) | Product roadmap and shipped phases |
 | [`CLAUDE.md`](../CLAUDE.md) | Developer conventions, path aliases, workflows |
