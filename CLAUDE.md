@@ -313,7 +313,7 @@ When adding a new feature, these steps are **mandatory** in order:
 - Use `usePagination<T>(limit)` for any route that returns a list of items — never build ad-hoc pagination.
 - No arbitrary Tailwind sizes: use scale values (`text-sm`, `p-4`) not raw values (`text-[10px]`, `p-[13px]`).
 - Check `app/utils/` before creating new utility functions — reuse what exists.
-- Use the `/shadcn` skill when building new shadcn/ui components.
+- Use the `/shadcn-ui-component-builder` skill when building new UI components.
 
 ## Activity Recording
 
