@@ -21,7 +21,6 @@ import { useLocation, useSearchParams } from 'react-router'
 import { FilterListItem } from './FilterListItem'
 import { Tooltip } from '../ui/tooltip'
 
-
 const FilterList = <TData extends Record<string, string> = {}>({
   filterKey,
   label,
@@ -36,14 +35,14 @@ const FilterList = <TData extends Record<string, string> = {}>({
     location.pathname.includes('/videos') ||
     location.pathname.includes('/images')
   ) {
-    return null 
+    return null
   }
   let [searchParams, setSearchParams] = useSearchParams()
   let canReset = hasQueryParam(searchParams, filterKey)
   let selectedItems = getQueryParamArray(searchParams, filterKey)
 
   return (
-    <DropDown modal={false} key={searchParams.toString()}>
+    <DropDown modal={true} key={searchParams.toString()}>
       <Tooltip content={label} asChild>
         <DropdownMenuTrigger asChild>
           <Button
@@ -83,9 +82,9 @@ const FilterList = <TData extends Record<string, string> = {}>({
       </Tooltip>
       <DropdownMenuContent
         align="start"
-        alignOffset={-6}
-        className="shadow-stashly border border-border rounded-md bg-sidebar p-1 w-48"
-      > 
+        alignOffset={4}
+        className="shadow-stashly border border-border rounded-md p-1 w-48"
+      >
         <ButtonGroup className="w-full">
           <Button
             variant="ghost"
@@ -122,8 +121,11 @@ const FilterList = <TData extends Record<string, string> = {}>({
             Apply
           </Button>
         </ButtonGroup>
-        <ScrollArea className="h-full pr-1" type="auto">
-          <section className="max-h-80">
+        <ScrollArea type="hover" className="max-h-80">
+          <section
+            className="max-h-80 
+ [*:has([data-state='visible'])_&]:w-fit "
+          >
             {Object.keys(data)
               .sort()
               .map((value) => {

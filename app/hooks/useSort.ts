@@ -1,5 +1,27 @@
 import { useSearchParams } from "react-router";
 
+/**
+ * Simple URL-driven sort helper for `orderBy` / `direction` search params.
+ * Prefer `SortPill` (from `app/components/filters/sort-pill.tsx`) for the full
+ * Stashly sort UI — this hook is the low-level primitive underneath it.
+ *
+ * @returns `{ sortAsc, sortDesc, sortNone }` — functions to update the URL.
+ *
+ * @example
+ * // Sort by name ascending
+ * const { sortAsc } = useSort()
+ * <button onClick={() => sortAsc('name')}>A → Z</button>
+ *
+ * @example
+ * // Sort by size descending
+ * const { sortDesc } = useSort()
+ * <button onClick={() => sortDesc('size')}>Largest first</button>
+ *
+ * @example
+ * // Clear sorting entirely
+ * const { sortNone } = useSort()
+ * <button onClick={sortNone}>Default order</button>
+ */
 export function useSort() {
   let [searchParams, setSearchParams] = useSearchParams();
   const sortDesc = (column: string) => {
