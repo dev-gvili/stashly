@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import type { ThumbnailStage } from '@/types/machine.types'
 import { hashToColor, dataUrlToBlob } from '@/utils/thumbnail'
 import { generateVideoThumbnail, getVideoMetadata } from '@/utils/video'
-import { useFetcher } from 'react-router'
+import { useFetcher, useRevalidator } from 'react-router'
 import exifr from 'exifr'
 import type {
   ComputeRequest,
@@ -192,6 +192,7 @@ export function useThumbnail() {
   })
 
   const fetcher = useFetcher()
+  const { revalidate } = useRevalidator()
 
   const run = useCallback(async (itemId: string, file: File, onReady?: () => void) => {
     // ── Stage 0: color hash ──────────────────────────────────────────────
@@ -255,11 +256,21 @@ export function useThumbnail() {
       )
       const presign = presignRes ? await presignRes.json().catch(() => null) : null
       if (presign?.uploadUrl && presign?.publicUrl) {
-        await fetch(presign.uploadUrl, {
+        // Don't write a URL to the DB if the S3 PUT didn't actually succeed —
+        // otherwise the gallery shows a broken image. Stage 0 (color) remains
+        // visible if PUT fails.
+        const putRes = await fetch(presign.uploadUrl, {
           method: 'PUT',
           body: resizedBlob,
           headers: { 'Content-Type': 'image/webp' },
-        }).catch(() => {})
+        }).catch((err) => {
+          console.error('[stage 2 PUT] network error', itemId, err)
+          return null
+        })
+        if (!putRes || !putRes.ok) {
+          console.error('[stage 2 PUT] non-ok', itemId, putRes?.status, await putRes?.text().catch(() => '') ?? '')
+          return
+        }
 
         // Cache-bust: stages share the same S3 key (`thumbnails/{itemId}.webp`),
         // so without a query param the browser keeps showing the prior stage.
@@ -269,15 +280,26 @@ export function useThumbnail() {
         fd2.append('url', stage2Url)
         fd2.append('width', String(resizedDims.width))
         fd2.append('height', String(resizedDims.height))
-        await fetch(`/api/thumbnails/${itemId}`, {
+        const patchRes = await fetch(`/api/thumbnails/${itemId}`, {
           method: 'PATCH',
           body: fd2,
-        }).catch(() => {})
+        }).catch((err) => {
+          console.error('[stage 2 PATCH] network error', itemId, err)
+          return null
+        })
+        if (!patchRes || !patchRes.ok) {
+          console.error('[stage 2 PATCH] non-ok', itemId, patchRes?.status)
+          return
+        }
         if (stage1ObjectUrl) {
           URL.revokeObjectURL(stage1ObjectUrl)
           stage1ObjectUrl = null
         }
         setState({ stage: 2, src: stage2Url, color })
+        // Trigger React Router to re-run loaders so the gallery picks up the
+        // new thumbnail URL without a manual navigation. Raw fetch above
+        // doesn't trigger this on its own.
+        revalidate()
 
         // Fire-and-forget: save real media dimensions + EXIF / document text
         saveMediaMetadata(itemId, file).catch((e) => console.error('[saveMediaMetadata]', e))
@@ -290,19 +312,29 @@ export function useThumbnail() {
             const presign3Res = await fetch(`/api/thumbnails/${itemId}/presign`).catch(() => null)
             const presign3 = presign3Res ? await presign3Res.json().catch(() => null) : null
             if (presign3?.uploadUrl && presign3?.publicUrl) {
-              await fetch(presign3.uploadUrl, {
+              const put3 = await fetch(presign3.uploadUrl, {
                 method: 'PUT',
                 body: salientBlob,
                 headers: { 'Content-Type': 'image/webp' },
-              }).catch(() => {})
-              const stage3Url = `${presign3.publicUrl}?v=3`
-              const fd3 = new FormData()
-              fd3.append('stage', '3')
-              fd3.append('url', stage3Url)
-              fd3.append('width', '512')
-              fd3.append('height', '512')
-              await fetch(`/api/thumbnails/${itemId}`, { method: 'PATCH', body: fd3 }).catch(() => {})
-              setState({ stage: 3, src: stage3Url, color })
+              }).catch((err) => {
+                console.error('[stage 3 PUT] network error', itemId, err)
+                return null
+              })
+              if (put3 && put3.ok) {
+                const stage3Url = `${presign3.publicUrl}?v=3`
+                const fd3 = new FormData()
+                fd3.append('stage', '3')
+                fd3.append('url', stage3Url)
+                fd3.append('width', '512')
+                fd3.append('height', '512')
+                const patch3 = await fetch(`/api/thumbnails/${itemId}`, { method: 'PATCH', body: fd3 }).catch(() => null)
+                if (patch3 && patch3.ok) {
+                  setState({ stage: 3, src: stage3Url, color })
+                  revalidate()
+                }
+              } else {
+                console.error('[stage 3 PUT] non-ok', itemId, put3?.status)
+              }
             }
 
             // ── Stage 4: Florence-2 caption overlay ────────────────────
@@ -311,26 +343,36 @@ export function useThumbnail() {
               const presign4Res = await fetch(`/api/thumbnails/${itemId}/presign`).catch(() => null)
               const presign4 = presign4Res ? await presign4Res.json().catch(() => null) : null
               if (presign4?.uploadUrl && presign4?.publicUrl) {
-                await fetch(presign4.uploadUrl, {
+                const put4 = await fetch(presign4.uploadUrl, {
                   method: 'PUT',
                   body: captionResult.blob,
                   headers: { 'Content-Type': 'image/webp' },
-                }).catch(() => {})
-                const stage4Url = `${presign4.publicUrl}?v=4`
-                const fd4 = new FormData()
-                fd4.append('stage', '4')
-                fd4.append('url', stage4Url)
-                fd4.append('width', '512')
-                fd4.append('height', '512')
-                await fetch(`/api/thumbnails/${itemId}`, { method: 'PATCH', body: fd4 }).catch(() => {})
-                setState({ stage: 4, src: stage4Url, color })
+                }).catch((err) => {
+                  console.error('[stage 4 PUT] network error', itemId, err)
+                  return null
+                })
+                if (put4 && put4.ok) {
+                  const stage4Url = `${presign4.publicUrl}?v=4`
+                  const fd4 = new FormData()
+                  fd4.append('stage', '4')
+                  fd4.append('url', stage4Url)
+                  fd4.append('width', '512')
+                  fd4.append('height', '512')
+                  const patch4 = await fetch(`/api/thumbnails/${itemId}`, { method: 'PATCH', body: fd4 }).catch(() => null)
+                  if (patch4 && patch4.ok) {
+                    setState({ stage: 4, src: stage4Url, color })
+                    revalidate()
+                  }
+                } else {
+                  console.error('[stage 4 PUT] non-ok', itemId, put4?.status)
+                }
               }
             }
           }
         }
       }
     }
-  }, [fetcher])
+  }, [fetcher, revalidate])
 
   return { ...state, run }
 }
