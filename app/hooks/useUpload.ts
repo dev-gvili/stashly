@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useThumbnail } from '@/hooks/useThumbnail'
+import { useThumbnailV2 as useThumbnail } from '@/hooks/useThumbnailV2'
 import { shallowEqual, useSelector } from '@xstate/react'
 import { createActor } from 'xstate'
 import { uploadMachine } from '@/machines/upload/upload.machine'
