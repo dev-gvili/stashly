@@ -133,16 +133,23 @@ See: [`docs/sharing-and-invitations.md`](sharing-and-invitations.md) for the sha
 
 ## Active Cleanup / Tech Debt
 
-These items are tracked but not blocking shipping work:
+Some are blocking the OSS-quality bar (see [`user_project_vision.md`](../C:/Users/PoshI/.claude/projects/x--stashly/memory/user_project_vision.md) — Stashly is positioned as a reference implementation; pre-existing rot is not minor).
 
-- [ ] **Temp schema consolidation** — `app/schemas/_temp_a.schemas.ts`, `_temp_b.schemas.ts`, `_temp_c.schemas.ts` need merging into `api.schemas.ts`
+### Done
+
+- [x] **Temp schema consolidation** — `_temp_a/b/c.schemas.ts` no longer present (verified 2026-05-10).
+- [x] **Search infra decision** — `app/.server/search/` directory deleted (2026-05-10). Pure utilities salvaged to `app/utils/search-text.ts` (`cleanText`, `buildSearchTextFromItem`); server adapter `mapItemToSearch` moved to `app/.server/search-actions.ts`. The old `searchFactory`/`buildItemFilters` from that dir were duplicates of the canonical `@/utils/search` and `@/utils/filters/item.filters` — `item-actions.ts` migrated.
+- [x] **Empty stub modules** — `app/routes/api/ai.ts` and `app/routes/api/images.ts` had bulk-commented bodies causing cascading typegen errors. Replaced with valid 501-returning loader/action stubs (2026-05-10).
+
+### Open
+
 - [ ] **Flat item routes** — flat versions still registered alongside nested; migrate callers and remove flat
-- [ ] **Orphaned files** — ~30 candidates in `app/components/` (see `orphaned.md`)
-- [ ] **Search infra decision** — integrate or delete `search.repository.ts`, `search.ts`, `filters.ts` artifacts
+- [ ] **Orphaned UI components** — `dropbox ui/`, `Gemini3Dashboard*.tsx`, `FileManagementDashboard.tsx`, `file-uploader.tsx`, `Gallery.tsx` legacy etc. — substantial component dust. Many cause typecheck errors due to references to nonexistent modules / removed icon names.
 - [ ] **Models without action files** — `Favorite`, `AuditLog`, `Thumbnail` (read), `Trash`/`TrashItem`, `View`
-- [ ] **Package update type errors** — `workspaceItem.service.ts`, `stripe.ts`, `subscription.ts`
+- [ ] **Package update type errors** — `workspaceItem.service.ts`, `stripe.ts`, `subscription.ts`, `subscription.machine.ts`, `upload/file.machine.ts`, `permission-actions.ts`
 - [ ] **Directory drops** — nested intermediate folders are not currently created (files drop to `rootId`)
 - [ ] **`app/routes/api/shares.ts`** — dot-server import fix deferred
+- [ ] **Test runner globals** — `app/.server/__tests__/collection-actions.test.ts` references `describe`/`it`/`expect` without `vitest/globals` types in scope
 
 ---
 

@@ -24,8 +24,8 @@ import {
 } from '../.server/quota-actions'
 import { createActivity } from './activity-actions'
 import { formatSize } from '@/utils/formaters'
-import { searchFactory } from './search/search'
-import { buildItemFilters } from './search/item.filters'
+import { searchFactory } from '@/utils/search'
+import { buildItemFilters } from '@/utils/filters/item.filters'
 
 /**
  * Get an item with its permissions, checking if the user has access.
