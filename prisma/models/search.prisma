@@ -1,17 +1,44 @@
 model Search {
-    id      String  @id
-    content String? @db.Text // Combined searchable content (e.g., name, metadata, tags, versions)
+  id      String  @id
+  content String? @db.Text // Combined searchable content (e.g., name, metadata, tags, versions)
 
-    vector    Unsupported("vector(768)")?
-    createdAt DateTime                   @default(now())
-    updatedAt DateTime                   @updatedAt
+  vector    Unsupported("vector(768)")?
+  createdAt DateTime                    @default(now())
+  updatedAt DateTime                    @updatedAt
 
-    itemId String @unique
-    item   Item   @relation(fields: [itemId], references: [id])
+  itemId String @unique
+  item   Item   @relation(fields: [itemId], references: [id])
 
-    // Creating an index on the vector field for fast similarity searches.
-    @@index([vector], map: "Search_vector_idx")
-    // @@index([content(ops: raw("gin_trgm_ops"))], type: Gin) // Full-text search index
-    @@index([createdAt])
-    @@index([updatedAt])
+  // Creating an index on the vector field for fast similarity searches.
+  @@index([vector], map: "Search_vector_idx")
+  // @@index([content(ops: raw("gin_trgm_ops"))], type: Gin) // Full-text search index
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+/// Per-passage embedding store. One row per ~300-token chunk extracted from
+/// an item's text content. Indexed with a single document-level Search row
+/// (parent), and joined back to Item for filtering.
+///
+/// pageNum / charStart / charEnd let us highlight the matching passage in
+/// the UI later — write them at index time so we never have to re-chunk.
+model SearchChunk {
+  id      String @id
+  itemId  String
+  ord     Int // position within the item (0-based)
+  content String @db.Text
+
+  pageNum   Int? // null for non-paginated formats (.txt, .md)
+  charStart Int // offset into the cleaned full text
+  charEnd   Int
+
+  vector    Unsupported("vector(768)")?
+  createdAt DateTime                    @default(now())
+  updatedAt DateTime                    @updatedAt
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, ord])
+  @@index([itemId])
+  @@index([vector], map: "SearchChunk_vector_idx")
 }

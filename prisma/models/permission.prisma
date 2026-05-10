@@ -1,28 +1,28 @@
 model Permission {
-    id           String         @id
-    createdAt    DateTime       @default(now())
-    updatedAt    DateTime       @updatedAt @db.Timestamp()
-    expiresAt    DateTime?      @db.Timestamp()
-    deletedAt    DateTime?      @db.Timestamp()
-    roles        PermissionRole @default(read)
-    recipientId  String?        @unique
-    recipient    InvitationRecipient? @relation(fields: [recipientId], references: [id])
-    linkId       String?
-    link         ShareLink?     @relation(fields: [linkId], references: [id])
-    itemId       String?
-    item         Item?          @relation(fields: [itemId], references: [id])
-    users        User[]
+  id          String               @id
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt @db.Timestamp()
+  expiresAt   DateTime?            @db.Timestamp()
+  deletedAt   DateTime?            @db.Timestamp()
+  roles       PermissionRole       @default(read)
+  recipientId String?              @unique
+  recipient   InvitationRecipient? @relation(fields: [recipientId], references: [id])
+  linkId      String?
+  link        ShareLink?           @relation(fields: [linkId], references: [id])
+  itemId      String?
+  item        Item?                @relation(fields: [itemId], references: [id])
+  users       User[]
 
-    @@index([createdAt(sort: Desc)])
-    @@index([updatedAt(sort: Desc)])
-    @@index([roles])
-    @@index([recipientId])
-    @@index([linkId])
-    @@index([itemId])
+  @@index([createdAt(sort: Desc)])
+  @@index([updatedAt(sort: Desc)])
+  @@index([roles])
+  @@index([recipientId])
+  @@index([linkId])
+  @@index([itemId])
 }
 
 enum PermissionRole {
-    owner
-    read
-    write
+  owner
+  read
+  write
 }

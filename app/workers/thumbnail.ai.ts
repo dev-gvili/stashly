@@ -12,13 +12,10 @@ import { PipelineManager } from './stash.ai'
 const VIT_MODEL = 'Xenova/vit-base-patch16-224'
 const FLORENCE_MODEL = 'onnx-community/Florence-2-base-ft'
 
-// Serialize all AI operations — WebGPU can't handle concurrent Florence-2 inference
-let aiQueue: Promise<unknown> = Promise.resolve()
-function enqueue<T>(fn: () => Promise<T>): Promise<T> {
-  const next = aiQueue.then(fn, fn)
-  aiQueue = next.catch(() => {})
-  return next
-}
+// Serialize all AI operations — WebGPU can't handle concurrent inference.
+// Shared with the embedding worker via `app/workers/ai-queue.ts` so saliency
+// crops, captions, and text embeddings never overlap.
+import { enqueue } from './ai-queue'
 
 // Cached Florence-2 instances (loaded once, reused across stages)
 let florenceModel: PreTrainedModel | null = null

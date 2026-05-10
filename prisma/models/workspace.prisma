@@ -1,43 +1,41 @@
-
-
 model Workspace {
-    id          String   @id @unique
-    name        String
-    slug        String?  @unique
-    description String?  @default("")
-    default     Boolean? @default(false)
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @updatedAt
+  id          String   @id @unique
+  name        String
+  slug        String?  @unique
+  description String?  @default("")
+  default     Boolean? @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-    // Relations
-    storagePlan   StoragePlan? @relation(fields: [storagePlanId], references: [id])
-    storagePlanId String?
+  // Relations
+  storagePlan   StoragePlan? @relation(fields: [storagePlanId], references: [id])
+  storagePlanId String?
 
-    items       Item[]
-    invitations Invitation[]
-    members     WorkspaceMember[]
+  items       Item[]
+  invitations Invitation[]
+  members     WorkspaceMember[]
 
-    @@index([name])
-    @@index([default])
-    @@index([storagePlanId])
-    @@index([slug])
+  @@index([name])
+  @@index([default])
+  @@index([storagePlanId])
+  @@index([slug])
 }
 
 model WorkspaceMember {
-    id          String              @id
-    role        WorkspaceMemberRole @default(member)
-    memberId    String
-    member      User                @relation(fields: [memberId], references: [id])
-    workspaceId String
-    workspace   Workspace           @relation(fields: [workspaceId], references: [id])
+  id          String              @id
+  role        WorkspaceMemberRole @default(member)
+  memberId    String
+  member      User                @relation(fields: [memberId], references: [id])
+  workspaceId String
+  workspace   Workspace           @relation(fields: [workspaceId], references: [id])
 
-    @@unique([memberId, workspaceId])
-    @@index([role])
+  @@unique([memberId, workspaceId])
+  @@index([role])
 }
 
 enum WorkspaceMemberRole {
-    viewer
-    member
-    admin
-    owner
+  viewer
+  member
+  admin
+  owner
 }

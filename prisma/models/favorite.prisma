@@ -1,14 +1,11 @@
-
-
 model Favorite {
-    id            String   @id 
-    favoritedById String
-    favoritedBy   User     @relation(fields: [favoritedById], references: [id], onDelete: Cascade)
-    itemId        String
-    item          Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
-    createdAt     DateTime @default(now())
-    updatedAt     DateTime @updatedAt
+  id            String   @id
+  favoritedById String
+  favoritedBy   User     @relation(fields: [favoritedById], references: [id], onDelete: Cascade)
+  itemId        String
+  item          Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-    @@unique([favoritedById, itemId])
+  @@unique([favoritedById, itemId])
 }
-

@@ -237,7 +237,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
 `getPdfMetadata(file)` returns `{ pageCount, width, height }` from page 1 — useful when extending document metadata persistence in `saveMediaMetadata`.
 
-`extractPdfText(file, { maxPages = 5, maxChars = 20_000 })` returns `{ text, pageCount, pagesRead }` for indexing. `useThumbnail.ts` calls this for `application/pdf` uploads inside `saveMediaMetadata` and POSTs the result via the existing `save_media_metadata` intent (new fields: `documentText`, `documentPageCount`). The server route persists the text via `upsertSearchContent(itemId, content)` from `app/.server/search-actions.ts` — this writes to `Search.content` only; `Search.vector` is left `null` and filled in by a separate embedding step (not yet wired).
+`extractPdfText(file, { maxPages = 5, maxChars = 20_000 })` returns `{ text, pageCount, pagesRead }` for indexing. `useThumbnail.ts` calls this for `application/pdf` uploads inside `saveMediaMetadata` and POSTs the result via the existing `save_media_metadata` intent (new fields: `documentText`, `documentPageCount`). The server stores it in `Search.content` (document-level fallback) and chunks it into `SearchChunk` rows (passage-level retrieval) via `upsertSearchChunks`. The chunked indexing flow is described in `## Semantic Search` below.
 
 ---
 

@@ -121,6 +121,14 @@ export const itemsApiRouteInput = z.discriminatedUnion('intent', [
     documentText: z.string().optional(),
     documentPageCount: z.coerce.number().int().optional(),
   }),
+  z.object({
+    intent: z.literal('save_search_chunk_embeddings'),
+    // JSON-encoded `[{ chunkId, vector: number[] }]`. Vectors are 768-dim
+    // (validated server-side in setSearchChunkVectors). Using a JSON-encoded
+    // string field keeps the request shape consistent with the rest of the
+    // form-data API; acceptable for typical batch sizes (<50 chunks).
+    embeddings: z.string().min(2),
+  }),
 ])
 
 // ====================================================== //

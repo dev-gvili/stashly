@@ -1,6 +1,6 @@
 generator client {
-  provider               = "prisma-client"
-  output                 = "../../app/prisma"
+  provider = "prisma-client"
+  output   = "../../app/prisma"
 
   moduleFormat           = "esm"
   generatedFileExtension = "ts"

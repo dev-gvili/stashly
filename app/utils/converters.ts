@@ -769,6 +769,7 @@ export const StashlyPrefixMap = {
   Permission: 'perm',
   Quota: 'qot',
   Search: 'srch',
+  SearchChunk: 'schk',
   Session: 'sess',
   ShareLink: 'sl',
   StoragePlan: 'sp',

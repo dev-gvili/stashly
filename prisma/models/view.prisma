@@ -1,4 +1,3 @@
-
 model View {
   id        String    @id @default(uuid())
   viewType  ViewType
@@ -10,10 +9,10 @@ model View {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  @@unique([folderId, viewType]) // A folder can only have one view of a specific type
   @@index([viewType])
   @@index([sortBy])
   @@index([folderId])
-  @@unique([folderId, viewType]) // A folder can only have one view of a specific type
 }
 
 enum ViewType {

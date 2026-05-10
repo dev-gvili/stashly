@@ -1,10 +1,10 @@
 model AuditLog {
-    id        String   @id
-    action    String
-    timestamp DateTime @default(now()) @db.Timestamp()
-    itemId    String?
-    item      Item?    @relation(fields: [itemId], references: [id])
-    metadata  Json?    @db.JsonB
+  id        String   @id
+  action    String
+  timestamp DateTime @default(now()) @db.Timestamp()
+  itemId    String?
+  item      Item?    @relation(fields: [itemId], references: [id])
+  metadata  Json?    @db.JsonB
 
-    @@index([timestamp])
+  @@index([timestamp])
 }

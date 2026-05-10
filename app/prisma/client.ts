@@ -131,7 +131,6 @@ export type AuditLog = Prisma.AuditLogModel
  * *
  *  * Junction table for the many-to-many self-relation on Item that represents
  *  * collection membership. A Collection is simply an Item with type='collection'.
- *  *
  *  * Replaces the old `Collection` facet model and `CollectionItem` junction table.
  *  * `collectionId` points to an Item whose type='collection'.
  *  * `itemId` points to any Item that is a member of that collection.
@@ -217,6 +216,16 @@ export type Quota = Prisma.QuotaModel
  * 
  */
 export type Search = Prisma.SearchModel
+/**
+ * Model SearchChunk
+ * Per-passage embedding store. One row per ~300-token chunk extracted from
+ * an item's text content. Indexed with a single document-level Search row
+ * (parent), and joined back to Item for filtering.
+ * 
+ * pageNum / charStart / charEnd let us highlight the matching passage in
+ * the UI later — write them at index time so we never have to re-chunk.
+ */
+export type SearchChunk = Prisma.SearchChunkModel
 /**
  * Model Session
  * 

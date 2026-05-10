@@ -1,59 +1,59 @@
 enum InvitationStatus {
-    pending
-    accepted
-    rejected
-    canceled
-    expired
+  pending
+  accepted
+  rejected
+  canceled
+  expired
 }
 
 model Invitation {
-    id        String    @id
-    createdAt DateTime  @default(now()) @db.Timestamp()
-    expiresAt DateTime? @db.Timestamp()
+  id        String    @id
+  createdAt DateTime  @default(now()) @db.Timestamp()
+  expiresAt DateTime? @db.Timestamp()
 
-    // Who sent the invitation
-    senderId String
-    sender   User   @relation(fields: [senderId], references: [id])
+  // Who sent the invitation
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id])
 
-    // For item sharing
-    itemId String?
-    item   Item?   @relation(fields: [itemId], references: [id])
+  // For item sharing
+  itemId String?
+  item   Item?   @relation(fields: [itemId], references: [id])
 
-    // For workspace invitation
-    workspaceId String?
-    workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+  // For workspace invitation
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
 
-    // Recipients
-    recipients InvitationRecipient[]
+  // Recipients
+  recipients InvitationRecipient[]
 
-    @@index([senderId])
-    @@index([itemId])
-    @@index([workspaceId])
+  @@index([senderId])
+  @@index([itemId])
+  @@index([workspaceId])
 }
 
 model InvitationRecipient {
-    id        String   @id
-    createdAt DateTime @default(now()) @db.Timestamp()
+  id        String   @id
+  createdAt DateTime @default(now()) @db.Timestamp()
 
-    // Recipient email
-    email String
+  // Recipient email
+  email String
 
-    // Per-recipient status
-    status InvitationStatus @default(pending)
+  // Per-recipient status
+  status InvitationStatus @default(pending)
 
-    // Role granted to this recipient
-    // For item invitations: PermissionRole (read/write/owner)
-    // For workspace invitations: stored as string, maps to WorkspaceMemberRole
-    role String @default("read")
+  // Role granted to this recipient
+  // For item invitations: PermissionRole (read/write/owner)
+  // For workspace invitations: stored as string, maps to WorkspaceMemberRole
+  role String @default("read")
 
-    // Parent invitation
-    invitationId String
-    invitation   Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  // Parent invitation
+  invitationId String
+  invitation   Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
 
-    // Permission created for item invitations
-    permission Permission?
+  // Permission created for item invitations
+  permission Permission?
 
-    @@index([invitationId])
-    @@index([email])
-    @@index([status])
+  @@index([invitationId])
+  @@index([email])
+  @@index([status])
 }

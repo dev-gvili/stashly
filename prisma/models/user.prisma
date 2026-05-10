@@ -1,42 +1,42 @@
 model User {
-    id               String   @id
-    name             String   @db.VarChar(50)
-    displayName      String?
-    email            String   @unique
-    image            String?
-    emailVerified    Boolean
-    createdAt        DateTime @default(now())
-    updatedAt        DateTime @updatedAt
-    bucket           String   @default("default-bucket")
-    driveId          String?  @unique // drive ID for the user
-    subscriptionId   String?  @unique // Subscription ID for the user
-    rootId           String?  @unique // Root folder ID for the user
-    storagePlanId    String? // Storage plan ID for the user
-    stripeCustomerId String?  @unique // Stripe customer ID
+  id               String   @id
+  name             String   @db.VarChar(50)
+  displayName      String?
+  email            String   @unique
+  image            String?
+  emailVerified    Boolean
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  bucket           String   @default("default-bucket")
+  driveId          String?  @unique // drive ID for the user
+  subscriptionId   String?  @unique // Subscription ID for the user
+  rootId           String?  @unique // Root folder ID for the user
+  storagePlanId    String? // Storage plan ID for the user
+  stripeCustomerId String?  @unique // Stripe customer ID
 
-    // Monitoring and Auditing
-    notifications Notification[]
+  // Monitoring and Auditing
+  notifications Notification[]
 
-    // Authentication and Authorization 
-    permissions Permission[]
-    accounts    Account[]
-    sessions    Session[]
+  // Authentication and Authorization 
+  permissions Permission[]
+  accounts    Account[]
+  sessions    Session[]
 
-    // Memberships and Invitations
-    workspaces    WorkspaceMember[]
-    subscriptions Subscription[]
+  // Memberships and Invitations
+  workspaces    WorkspaceMember[]
+  subscriptions Subscription[]
 
-    // collaboration and sharing
-    comments    Comment[]
-    invitations Invitation[]
+  // collaboration and sharing
+  comments    Comment[]
+  invitations Invitation[]
 
-    // Data Management
-    items       Item[]
-    lockedItems LockedItem[]
-    drive       Drive?
-    favorites   Favorite[]
+  // Data Management
+  items       Item[]
+  lockedItems LockedItem[]
+  drive       Drive?
+  favorites   Favorite[]
 
-    @@index([email])
-    @@index([name])
-    @@map("user")
+  @@index([email])
+  @@index([name])
+  @@map("user")
 }

@@ -1,28 +1,28 @@
 model Notification {
-    id        String             @id
-    message   String
-    type      NotificationType
-    status    NotificationStatus @default(unread)
-    createdAt DateTime           @default(now())
-    updatedAt DateTime           @default(now()) @updatedAt
+  id        String             @id
+  message   String
+  type      NotificationType
+  status    NotificationStatus @default(unread)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @default(now()) @updatedAt
 
-    userId String
-    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@index([createdAt])
-    @@index([type])
-    @@index([status])
-    @@index([message(raw: "gin_trgm_ops")], type: SpGist)
+  @@index([createdAt])
+  @@index([type])
+  @@index([status])
+  @@index([message(raw: "gin_trgm_ops")], type: SpGist)
 }
 
 enum NotificationType {
-    info
-    warning
-    error
-    success
+  info
+  warning
+  error
+  success
 }
 
 enum NotificationStatus {
-    read
-    unread
+  read
+  unread
 }

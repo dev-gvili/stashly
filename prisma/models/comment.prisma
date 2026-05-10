@@ -1,15 +1,15 @@
 model Comment {
-    id        String   @id
-    content   String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  id        String   @id
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    itemId String
-    item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-    ownerId String
-    owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
-    @@unique([itemId, ownerId])
-    @@index([createdAt])
+  @@unique([itemId, ownerId])
+  @@index([createdAt])
 }

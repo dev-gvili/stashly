@@ -1,34 +1,34 @@
 model StoragePlan {
-    id             String          @id
-    name           String // e.g., "Free", "Basic", "Standard", "Premium"
-    tag            String          @unique // A short, unique tag for the plan (e.g., "free", "basic")  
-    description    String? // A short description of the plan
-    type           StoragePlanType @default(free) // Enum for plan type
-    storageLimit   BigInt // e.g., 15, 100, 200, 2000
-    workspaceLimit Int // 5, 10, …
-    memberLimit    Int // 5, 10, …
-    features       String[] // List of features included in the plan
+  id             String          @id
+  name           String // e.g., "Free", "Basic", "Standard", "Premium"
+  tag            String          @unique // A short, unique tag for the plan (e.g., "free", "basic")  
+  description    String? // A short description of the plan
+  type           StoragePlanType @default(free) // Enum for plan type
+  storageLimit   BigInt // e.g., 15, 100, 200, 2000
+  workspaceLimit Int // 5, 10, …
+  memberLimit    Int // 5, 10, …
+  features       String[] // List of features included in the plan
 
-    // Pricing
-    priceCents    Int? // Price in cents, null for free plan
-    currency      String? // e.g., "USD", null for free plan
-    stripePriceId String? @unique // Stripe price ID for this plan
+  // Pricing
+  priceCents    Int? // Price in cents, null for free plan
+  currency      String? // e.g., "USD", null for free plan
+  stripePriceId String? @unique // Stripe price ID for this plan
 
-    // Relations
-    subscriptions Subscription[]
-    workspaces    Workspace[]
-    drives        Drive[]
+  // Relations
+  subscriptions Subscription[]
+  workspaces    Workspace[]
+  drives        Drive[]
 
-    @@unique([memberLimit, workspaceLimit, storageLimit])
-    @@index([name])
-    @@index([type])
-    @@index([stripePriceId]) // Index for quick lookup by Stripe Price ID
+  @@unique([memberLimit, workspaceLimit, storageLimit])
+  @@index([name])
+  @@index([type])
+  @@index([stripePriceId]) // Index for quick lookup by Stripe Price ID
 }
 
 enum StoragePlanType {
-    free // 10 GB storage space.
-    basic // 100 GB storage space.
-    standard // 200 GB storage space.
-    premium // 2 TB storage space.
-    custom // For custom plans not fitting predefined types
+  free // 10 GB storage space.
+  basic // 100 GB storage space.
+  standard // 200 GB storage space.
+  premium // 2 TB storage space.
+  custom // For custom plans not fitting predefined types
 }

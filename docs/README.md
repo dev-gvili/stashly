@@ -10,6 +10,7 @@ Architecture and design documentation for the Stashly codebase.
 | [ai-pipeline.md](ai-pipeline.md) | AI inference pipeline — Transformers.js, WebGPU, Whisper transcription, language detection, Web Worker architecture |
 | [upload-multipart.md](upload-multipart.md) | S3 multipart upload + post-upload DB item creation chain (`itemCreated` gate, `parentId` derivation) |
 | [thumbnail-pipeline.md](thumbnail-pipeline.md) | 5-stage progressive WebP thumbnail pipeline — color hash, blur, resize, ViT saliency, Florence-2 caption |
+| [semantic-search.md](semantic-search.md) | Chunked + hybrid (pg_trgm + pgvector) retrieval over document text — index pipeline, schema, tuning, roadmap |
 | [quota-and-machines.md](quota-and-machines.md) | Storage quota — QuotaService singleton, `toUpdatedQuota` transformer, quota state machine, backend endpoint |
 | [search.md](search.md) | Search architecture — pgvector semantic search, SearchFactory pattern, filter system |
 | [routing-and-ui.md](routing-and-ui.md) | Route handles, dual-sidebar layout, pagination helpers, `runSearch` overloads |

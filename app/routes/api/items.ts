@@ -13,7 +13,12 @@ import {
   trashItem,
   trashItems,
 } from '@/services/item-actions'
-import { upsertSearchContent } from '@/services/search-actions'
+import {
+  upsertSearchContent,
+  upsertSearchChunks,
+  chunkText,
+  setSearchChunkVectors,
+} from '@/services/search-actions'
 import { parseFormData } from '@/utils/parsers'
 import { removeQueryParam, removeQueryParamValue } from '@/utils/query-params'
 import { data, redirect } from 'react-router'
@@ -152,10 +157,31 @@ export async function action({ request, params }: Route.ActionArgs) {
         } else if (videoWidth != null || videoHeight != null || duration != null) {
           await upsertVideoFacet(itemId, { width: videoWidth, height: videoHeight, duration, frameRate })
         }
+        // Chunked indexing: store full content (document-level fallback) and
+        // per-passage chunks. Server is authoritative for chunk boundaries —
+        // client only sees the resulting `{id, content}` pairs to embed.
+        let chunks: { id: string; ord: number; content: string }[] = []
         if (documentText) {
           await upsertSearchContent(itemId, documentText)
+          const split = chunkText(documentText)
+          chunks = await upsertSearchChunks(itemId, split)
         }
-        return data({ success: true })
+        return data({ success: true, chunks })
+      } catch (e) {
+        const err = e as { message?: string }
+        return { success: false, error: err.message }
+      }
+    }
+    case 'save_search_chunk_embeddings': {
+      try {
+        const parsed: { chunkId: string; vector: number[] }[] = JSON.parse(
+          parsedData.embeddings,
+        )
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+          return data({ success: true, written: 0 })
+        }
+        const written = await setSearchChunkVectors(parsed)
+        return data({ success: true, written })
       } catch (e) {
         const err = e as { message?: string }
         return { success: false, error: err.message }

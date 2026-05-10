@@ -1,24 +1,22 @@
 model Thumbnail {
-    id        String        @id
-    createdAt DateTime      @default(now())
-    updatedAt DateTime      @updatedAt
-    width     Int?
-    height    Int?
-    url       String?
-    content   Bytes?        @db.ByteA
-    view      ViewType      @default(grid)
-    size      ThumbnailSize @default(small)
-    stage     Int           @default(0)
-    itemId    String?
-    item      Item?         @relation(fields: [itemId], references: [id], onDelete: Cascade)
-
+  id        String        @id
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  width     Int?
+  height    Int?
+  url       String?
+  content   Bytes?        @db.ByteA
+  view      ViewType      @default(grid)
+  size      ThumbnailSize @default(small)
+  stage     Int           @default(0)
+  itemId    String?
+  item      Item?         @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 enum ThumbnailSize {
-    small // e.g., 256x256
-    medium // e.g., 512x512
-    large // e.g., 1024x1024
-    original // e.g., original size
-    custom // The custom size is used when the thumbnail is generated with specific dimensions not matching the predefined sizes.
+  small // e.g., 256x256
+  medium // e.g., 512x512
+  large // e.g., 1024x1024
+  original // e.g., original size
+  custom // The custom size is used when the thumbnail is generated with specific dimensions not matching the predefined sizes.
 }
-

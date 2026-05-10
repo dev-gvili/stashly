@@ -1,18 +1,18 @@
 model Trash {
-    id        String   @id
-    updatedAt DateTime @updatedAt @db.Timestamp()
-    items TrashItem[]
+  id        String      @id
+  updatedAt DateTime    @updatedAt @db.Timestamp()
+  items     TrashItem[]
 }
 
 model TrashItem {
-    id         String    @id
-    itemId     String    @unique
-    item       Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
-    trashId    String
-    trash      Trash     @relation(fields: [trashId], references: [id])
-    createdAt  DateTime  @default(now()) @db.Timestamp()
-    restoredAt DateTime? @db.Timestamp()
-    deletedAt  DateTime? @db.Timestamp()
+  id         String    @id
+  itemId     String    @unique
+  item       Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  trashId    String
+  trash      Trash     @relation(fields: [trashId], references: [id])
+  createdAt  DateTime  @default(now()) @db.Timestamp()
+  restoredAt DateTime? @db.Timestamp()
+  deletedAt  DateTime? @db.Timestamp()
 
-    @@unique([itemId, trashId])
+  @@unique([itemId, trashId])
 }

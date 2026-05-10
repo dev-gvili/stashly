@@ -327,6 +327,7 @@ export type ItemWhereInput = {
   logs?: Prisma.AuditLogListRelationFilter
   favorites?: Prisma.FavoriteListRelationFilter
   search?: Prisma.XOR<Prisma.SearchNullableScalarRelationFilter, Prisma.SearchWhereInput> | null
+  searchChunks?: Prisma.SearchChunkListRelationFilter
 }
 
 export type ItemOrderByWithRelationInput = {
@@ -369,6 +370,7 @@ export type ItemOrderByWithRelationInput = {
   logs?: Prisma.AuditLogOrderByRelationAggregateInput
   favorites?: Prisma.FavoriteOrderByRelationAggregateInput
   search?: Prisma.SearchOrderByWithRelationInput
+  searchChunks?: Prisma.SearchChunkOrderByRelationAggregateInput
 }
 
 export type ItemWhereUniqueInput = Prisma.AtLeast<{
@@ -414,6 +416,7 @@ export type ItemWhereUniqueInput = Prisma.AtLeast<{
   logs?: Prisma.AuditLogListRelationFilter
   favorites?: Prisma.FavoriteListRelationFilter
   search?: Prisma.XOR<Prisma.SearchNullableScalarRelationFilter, Prisma.SearchWhereInput> | null
+  searchChunks?: Prisma.SearchChunkListRelationFilter
 }, "id">
 
 export type ItemOrderByWithAggregationInput = {
@@ -498,6 +501,7 @@ export type ItemCreateInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateInput = {
@@ -536,6 +540,7 @@ export type ItemUncheckedCreateInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemUpdateInput = {
@@ -574,6 +579,7 @@ export type ItemUpdateInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateInput = {
@@ -612,6 +618,7 @@ export type ItemUncheckedUpdateInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateManyInput = {
@@ -1099,6 +1106,20 @@ export type ItemUpdateOneRequiredWithoutSearchNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutSearchInput, Prisma.ItemUpdateWithoutSearchInput>, Prisma.ItemUncheckedUpdateWithoutSearchInput>
 }
 
+export type ItemCreateNestedOneWithoutSearchChunksInput = {
+  create?: Prisma.XOR<Prisma.ItemCreateWithoutSearchChunksInput, Prisma.ItemUncheckedCreateWithoutSearchChunksInput>
+  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutSearchChunksInput
+  connect?: Prisma.ItemWhereUniqueInput
+}
+
+export type ItemUpdateOneRequiredWithoutSearchChunksNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemCreateWithoutSearchChunksInput, Prisma.ItemUncheckedCreateWithoutSearchChunksInput>
+  connectOrCreate?: Prisma.ItemCreateOrConnectWithoutSearchChunksInput
+  upsert?: Prisma.ItemUpsertWithoutSearchChunksInput
+  connect?: Prisma.ItemWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemUpdateToOneWithWhereWithoutSearchChunksInput, Prisma.ItemUpdateWithoutSearchChunksInput>, Prisma.ItemUncheckedUpdateWithoutSearchChunksInput>
+}
+
 export type ItemCreateNestedOneWithoutThumbnailsInput = {
   create?: Prisma.XOR<Prisma.ItemCreateWithoutThumbnailsInput, Prisma.ItemUncheckedCreateWithoutThumbnailsInput>
   connectOrCreate?: Prisma.ItemCreateOrConnectWithoutThumbnailsInput
@@ -1264,6 +1285,7 @@ export type ItemCreateWithoutActivitiesInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutActivitiesInput = {
@@ -1301,6 +1323,7 @@ export type ItemUncheckedCreateWithoutActivitiesInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutActivitiesInput = {
@@ -1354,6 +1377,7 @@ export type ItemUpdateWithoutActivitiesInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutActivitiesInput = {
@@ -1391,6 +1415,7 @@ export type ItemUncheckedUpdateWithoutActivitiesInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutLogsInput = {
@@ -1428,6 +1453,7 @@ export type ItemCreateWithoutLogsInput = {
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutLogsInput = {
@@ -1465,6 +1491,7 @@ export type ItemUncheckedCreateWithoutLogsInput = {
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutLogsInput = {
@@ -1518,6 +1545,7 @@ export type ItemUpdateWithoutLogsInput = {
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutLogsInput = {
@@ -1555,6 +1583,7 @@ export type ItemUncheckedUpdateWithoutLogsInput = {
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutCollectionItemsInput = {
@@ -1592,6 +1621,7 @@ export type ItemCreateWithoutCollectionItemsInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutCollectionItemsInput = {
@@ -1629,6 +1659,7 @@ export type ItemUncheckedCreateWithoutCollectionItemsInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutCollectionItemsInput = {
@@ -1671,6 +1702,7 @@ export type ItemCreateWithoutMemberOfCollectionsInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutMemberOfCollectionsInput = {
@@ -1708,6 +1740,7 @@ export type ItemUncheckedCreateWithoutMemberOfCollectionsInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutMemberOfCollectionsInput = {
@@ -1761,6 +1794,7 @@ export type ItemUpdateWithoutCollectionItemsInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutCollectionItemsInput = {
@@ -1798,6 +1832,7 @@ export type ItemUncheckedUpdateWithoutCollectionItemsInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUpsertWithoutMemberOfCollectionsInput = {
@@ -1846,6 +1881,7 @@ export type ItemUpdateWithoutMemberOfCollectionsInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutMemberOfCollectionsInput = {
@@ -1883,6 +1919,7 @@ export type ItemUncheckedUpdateWithoutMemberOfCollectionsInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutCommentsInput = {
@@ -1920,6 +1957,7 @@ export type ItemCreateWithoutCommentsInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutCommentsInput = {
@@ -1957,6 +1995,7 @@ export type ItemUncheckedCreateWithoutCommentsInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutCommentsInput = {
@@ -2010,6 +2049,7 @@ export type ItemUpdateWithoutCommentsInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutCommentsInput = {
@@ -2047,6 +2087,7 @@ export type ItemUncheckedUpdateWithoutCommentsInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutDriveInput = {
@@ -2084,6 +2125,7 @@ export type ItemCreateWithoutDriveInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutDriveInput = {
@@ -2121,6 +2163,7 @@ export type ItemUncheckedCreateWithoutDriveInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutDriveInput = {
@@ -2206,6 +2249,7 @@ export type ItemCreateWithoutFileInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutFileInput = {
@@ -2243,6 +2287,7 @@ export type ItemUncheckedCreateWithoutFileInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutFileInput = {
@@ -2296,6 +2341,7 @@ export type ItemUpdateWithoutFileInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutFileInput = {
@@ -2333,6 +2379,7 @@ export type ItemUncheckedUpdateWithoutFileInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutFolderInput = {
@@ -2370,6 +2417,7 @@ export type ItemCreateWithoutFolderInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutFolderInput = {
@@ -2407,6 +2455,7 @@ export type ItemUncheckedCreateWithoutFolderInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutFolderInput = {
@@ -2460,6 +2509,7 @@ export type ItemUpdateWithoutFolderInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutFolderInput = {
@@ -2497,6 +2547,7 @@ export type ItemUncheckedUpdateWithoutFolderInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutImageInput = {
@@ -2534,6 +2585,7 @@ export type ItemCreateWithoutImageInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutImageInput = {
@@ -2571,6 +2623,7 @@ export type ItemUncheckedCreateWithoutImageInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutImageInput = {
@@ -2624,6 +2677,7 @@ export type ItemUpdateWithoutImageInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutImageInput = {
@@ -2661,6 +2715,7 @@ export type ItemUncheckedUpdateWithoutImageInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutVideoInput = {
@@ -2698,6 +2753,7 @@ export type ItemCreateWithoutVideoInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutVideoInput = {
@@ -2735,6 +2791,7 @@ export type ItemUncheckedCreateWithoutVideoInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutVideoInput = {
@@ -2788,6 +2845,7 @@ export type ItemUpdateWithoutVideoInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutVideoInput = {
@@ -2825,6 +2883,7 @@ export type ItemUncheckedUpdateWithoutVideoInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutAudioInput = {
@@ -2862,6 +2921,7 @@ export type ItemCreateWithoutAudioInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutAudioInput = {
@@ -2899,6 +2959,7 @@ export type ItemUncheckedCreateWithoutAudioInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutAudioInput = {
@@ -2952,6 +3013,7 @@ export type ItemUpdateWithoutAudioInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutAudioInput = {
@@ -2989,6 +3051,7 @@ export type ItemUncheckedUpdateWithoutAudioInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutFavoritesInput = {
@@ -3026,6 +3089,7 @@ export type ItemCreateWithoutFavoritesInput = {
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutFavoritesInput = {
@@ -3063,6 +3127,7 @@ export type ItemUncheckedCreateWithoutFavoritesInput = {
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutFavoritesInput = {
@@ -3116,6 +3181,7 @@ export type ItemUpdateWithoutFavoritesInput = {
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutFavoritesInput = {
@@ -3153,6 +3219,7 @@ export type ItemUncheckedUpdateWithoutFavoritesInput = {
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutInvitationsInput = {
@@ -3190,6 +3257,7 @@ export type ItemCreateWithoutInvitationsInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutInvitationsInput = {
@@ -3227,6 +3295,7 @@ export type ItemUncheckedCreateWithoutInvitationsInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutInvitationsInput = {
@@ -3280,6 +3349,7 @@ export type ItemUpdateWithoutInvitationsInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutInvitationsInput = {
@@ -3317,6 +3387,7 @@ export type ItemUncheckedUpdateWithoutInvitationsInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutParentInput = {
@@ -3354,6 +3425,7 @@ export type ItemCreateWithoutParentInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutParentInput = {
@@ -3391,6 +3463,7 @@ export type ItemUncheckedCreateWithoutParentInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutParentInput = {
@@ -3438,6 +3511,7 @@ export type ItemCreateWithoutChildrenInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutChildrenInput = {
@@ -3475,6 +3549,7 @@ export type ItemUncheckedCreateWithoutChildrenInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutChildrenInput = {
@@ -3544,6 +3619,7 @@ export type ItemUpdateWithoutChildrenInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutChildrenInput = {
@@ -3581,6 +3657,7 @@ export type ItemUncheckedUpdateWithoutChildrenInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutLockedInput = {
@@ -3618,6 +3695,7 @@ export type ItemCreateWithoutLockedInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutLockedInput = {
@@ -3655,6 +3733,7 @@ export type ItemUncheckedCreateWithoutLockedInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutLockedInput = {
@@ -3708,6 +3787,7 @@ export type ItemUpdateWithoutLockedInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutLockedInput = {
@@ -3745,6 +3825,7 @@ export type ItemUncheckedUpdateWithoutLockedInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutPermissionsInput = {
@@ -3782,6 +3863,7 @@ export type ItemCreateWithoutPermissionsInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutPermissionsInput = {
@@ -3819,6 +3901,7 @@ export type ItemUncheckedCreateWithoutPermissionsInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutPermissionsInput = {
@@ -3872,6 +3955,7 @@ export type ItemUpdateWithoutPermissionsInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutPermissionsInput = {
@@ -3909,6 +3993,7 @@ export type ItemUncheckedUpdateWithoutPermissionsInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutSearchInput = {
@@ -3946,6 +4031,7 @@ export type ItemCreateWithoutSearchInput = {
   comments?: Prisma.CommentCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutSearchInput = {
@@ -3983,6 +4069,7 @@ export type ItemUncheckedCreateWithoutSearchInput = {
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutSearchInput = {
@@ -4036,6 +4123,7 @@ export type ItemUpdateWithoutSearchInput = {
   comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutSearchInput = {
@@ -4073,6 +4161,175 @@ export type ItemUncheckedUpdateWithoutSearchInput = {
   comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
+}
+
+export type ItemCreateWithoutSearchChunksInput = {
+  id: string
+  name: string
+  size?: bigint | number
+  inclusiveSize?: bigint | number
+  type?: $Enums.ItemType
+  category?: $Enums.ItemCategory
+  status?: $Enums.ItemStatus
+  uploadId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  openedAt?: Date | string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
+  file?: Prisma.FileCreateNestedOneWithoutItemInput
+  folder?: Prisma.FolderCreateNestedOneWithoutItemInput
+  image?: Prisma.ImageCreateNestedOneWithoutItemInput
+  video?: Prisma.VideoCreateNestedOneWithoutItemInput
+  audio?: Prisma.AudioCreateNestedOneWithoutItemInput
+  owner: Prisma.UserCreateNestedOneWithoutItemsInput
+  workspace?: Prisma.WorkspaceCreateNestedOneWithoutItemsInput
+  drive: Prisma.DriveCreateNestedOneWithoutItemsInput
+  children?: Prisma.ItemCreateNestedManyWithoutParentInput
+  parent?: Prisma.ItemCreateNestedOneWithoutChildrenInput
+  trash?: Prisma.TrashItemCreateNestedOneWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberCreateNestedManyWithoutItemInput
+  locked?: Prisma.LockedItemCreateNestedOneWithoutItemInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutItemInput
+  thumbnails?: Prisma.ThumbnailCreateNestedManyWithoutItemInput
+  versions?: Prisma.ItemVersionCreateNestedManyWithoutItemInput
+  activities?: Prisma.ActivityCreateNestedManyWithoutItemInput
+  comments?: Prisma.CommentCreateNestedManyWithoutItemInput
+  logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
+  favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchCreateNestedOneWithoutItemInput
+}
+
+export type ItemUncheckedCreateWithoutSearchChunksInput = {
+  id: string
+  name: string
+  size?: bigint | number
+  inclusiveSize?: bigint | number
+  type?: $Enums.ItemType
+  category?: $Enums.ItemCategory
+  status?: $Enums.ItemStatus
+  uploadId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  openedAt?: Date | string | null
+  ownerId: string
+  workspaceId?: string | null
+  driveId: string
+  parentId?: string | null
+  tags?: Prisma.ItemCreatetagsInput | string[]
+  file?: Prisma.FileUncheckedCreateNestedOneWithoutItemInput
+  folder?: Prisma.FolderUncheckedCreateNestedOneWithoutItemInput
+  image?: Prisma.ImageUncheckedCreateNestedOneWithoutItemInput
+  video?: Prisma.VideoUncheckedCreateNestedOneWithoutItemInput
+  audio?: Prisma.AudioUncheckedCreateNestedOneWithoutItemInput
+  children?: Prisma.ItemUncheckedCreateNestedManyWithoutParentInput
+  trash?: Prisma.TrashItemUncheckedCreateNestedOneWithoutItemInput
+  collectionItems?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutCollectionInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedCreateNestedManyWithoutItemInput
+  locked?: Prisma.LockedItemUncheckedCreateNestedOneWithoutItemInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutItemInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutItemInput
+  thumbnails?: Prisma.ThumbnailUncheckedCreateNestedManyWithoutItemInput
+  versions?: Prisma.ItemVersionUncheckedCreateNestedManyWithoutItemInput
+  activities?: Prisma.ActivityUncheckedCreateNestedManyWithoutItemInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutItemInput
+  logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
+  favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
+  search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+}
+
+export type ItemCreateOrConnectWithoutSearchChunksInput = {
+  where: Prisma.ItemWhereUniqueInput
+  create: Prisma.XOR<Prisma.ItemCreateWithoutSearchChunksInput, Prisma.ItemUncheckedCreateWithoutSearchChunksInput>
+}
+
+export type ItemUpsertWithoutSearchChunksInput = {
+  update: Prisma.XOR<Prisma.ItemUpdateWithoutSearchChunksInput, Prisma.ItemUncheckedUpdateWithoutSearchChunksInput>
+  create: Prisma.XOR<Prisma.ItemCreateWithoutSearchChunksInput, Prisma.ItemUncheckedCreateWithoutSearchChunksInput>
+  where?: Prisma.ItemWhereInput
+}
+
+export type ItemUpdateToOneWithWhereWithoutSearchChunksInput = {
+  where?: Prisma.ItemWhereInput
+  data: Prisma.XOR<Prisma.ItemUpdateWithoutSearchChunksInput, Prisma.ItemUncheckedUpdateWithoutSearchChunksInput>
+}
+
+export type ItemUpdateWithoutSearchChunksInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  inclusiveSize?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
+  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
+  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
+  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
+  file?: Prisma.FileUpdateOneWithoutItemNestedInput
+  folder?: Prisma.FolderUpdateOneWithoutItemNestedInput
+  image?: Prisma.ImageUpdateOneWithoutItemNestedInput
+  video?: Prisma.VideoUpdateOneWithoutItemNestedInput
+  audio?: Prisma.AudioUpdateOneWithoutItemNestedInput
+  owner?: Prisma.UserUpdateOneRequiredWithoutItemsNestedInput
+  workspace?: Prisma.WorkspaceUpdateOneWithoutItemsNestedInput
+  drive?: Prisma.DriveUpdateOneRequiredWithoutItemsNestedInput
+  children?: Prisma.ItemUpdateManyWithoutParentNestedInput
+  parent?: Prisma.ItemUpdateOneWithoutChildrenNestedInput
+  trash?: Prisma.TrashItemUpdateOneWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUpdateManyWithoutItemNestedInput
+  locked?: Prisma.LockedItemUpdateOneWithoutItemNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutItemNestedInput
+  thumbnails?: Prisma.ThumbnailUpdateManyWithoutItemNestedInput
+  versions?: Prisma.ItemVersionUpdateManyWithoutItemNestedInput
+  activities?: Prisma.ActivityUpdateManyWithoutItemNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutItemNestedInput
+  logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
+  favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+}
+
+export type ItemUncheckedUpdateWithoutSearchChunksInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  size?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  inclusiveSize?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  type?: Prisma.EnumItemTypeFieldUpdateOperationsInput | $Enums.ItemType
+  category?: Prisma.EnumItemCategoryFieldUpdateOperationsInput | $Enums.ItemCategory
+  status?: Prisma.EnumItemStatusFieldUpdateOperationsInput | $Enums.ItemStatus
+  uploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ownerId?: Prisma.StringFieldUpdateOperationsInput | string
+  workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  driveId?: Prisma.StringFieldUpdateOperationsInput | string
+  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ItemUpdatetagsInput | string[]
+  file?: Prisma.FileUncheckedUpdateOneWithoutItemNestedInput
+  folder?: Prisma.FolderUncheckedUpdateOneWithoutItemNestedInput
+  image?: Prisma.ImageUncheckedUpdateOneWithoutItemNestedInput
+  video?: Prisma.VideoUncheckedUpdateOneWithoutItemNestedInput
+  audio?: Prisma.AudioUncheckedUpdateOneWithoutItemNestedInput
+  children?: Prisma.ItemUncheckedUpdateManyWithoutParentNestedInput
+  trash?: Prisma.TrashItemUncheckedUpdateOneWithoutItemNestedInput
+  collectionItems?: Prisma.CollectionMemberUncheckedUpdateManyWithoutCollectionNestedInput
+  memberOfCollections?: Prisma.CollectionMemberUncheckedUpdateManyWithoutItemNestedInput
+  locked?: Prisma.LockedItemUncheckedUpdateOneWithoutItemNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutItemNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutItemNestedInput
+  thumbnails?: Prisma.ThumbnailUncheckedUpdateManyWithoutItemNestedInput
+  versions?: Prisma.ItemVersionUncheckedUpdateManyWithoutItemNestedInput
+  activities?: Prisma.ActivityUncheckedUpdateManyWithoutItemNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutItemNestedInput
+  logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
+  favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
+  search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutThumbnailsInput = {
@@ -4110,6 +4367,7 @@ export type ItemCreateWithoutThumbnailsInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutThumbnailsInput = {
@@ -4147,6 +4405,7 @@ export type ItemUncheckedCreateWithoutThumbnailsInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutThumbnailsInput = {
@@ -4200,6 +4459,7 @@ export type ItemUpdateWithoutThumbnailsInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutThumbnailsInput = {
@@ -4237,6 +4497,7 @@ export type ItemUncheckedUpdateWithoutThumbnailsInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutTrashInput = {
@@ -4274,6 +4535,7 @@ export type ItemCreateWithoutTrashInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutTrashInput = {
@@ -4311,6 +4573,7 @@ export type ItemUncheckedCreateWithoutTrashInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutTrashInput = {
@@ -4364,6 +4627,7 @@ export type ItemUpdateWithoutTrashInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutTrashInput = {
@@ -4401,6 +4665,7 @@ export type ItemUncheckedUpdateWithoutTrashInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutOwnerInput = {
@@ -4438,6 +4703,7 @@ export type ItemCreateWithoutOwnerInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutOwnerInput = {
@@ -4475,6 +4741,7 @@ export type ItemUncheckedCreateWithoutOwnerInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutOwnerInput = {
@@ -4538,6 +4805,7 @@ export type ItemCreateWithoutVersionsInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutVersionsInput = {
@@ -4575,6 +4843,7 @@ export type ItemUncheckedCreateWithoutVersionsInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutVersionsInput = {
@@ -4628,6 +4897,7 @@ export type ItemUpdateWithoutVersionsInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutVersionsInput = {
@@ -4665,6 +4935,7 @@ export type ItemUncheckedUpdateWithoutVersionsInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemCreateWithoutWorkspaceInput = {
@@ -4702,6 +4973,7 @@ export type ItemCreateWithoutWorkspaceInput = {
   logs?: Prisma.AuditLogCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutItemInput
   search?: Prisma.SearchCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkCreateNestedManyWithoutItemInput
 }
 
 export type ItemUncheckedCreateWithoutWorkspaceInput = {
@@ -4739,6 +5011,7 @@ export type ItemUncheckedCreateWithoutWorkspaceInput = {
   logs?: Prisma.AuditLogUncheckedCreateNestedManyWithoutItemInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutItemInput
   search?: Prisma.SearchUncheckedCreateNestedOneWithoutItemInput
+  searchChunks?: Prisma.SearchChunkUncheckedCreateNestedManyWithoutItemInput
 }
 
 export type ItemCreateOrConnectWithoutWorkspaceInput = {
@@ -4820,6 +5093,7 @@ export type ItemUpdateWithoutDriveInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutDriveInput = {
@@ -4857,6 +5131,7 @@ export type ItemUncheckedUpdateWithoutDriveInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateManyWithoutDriveInput = {
@@ -4930,6 +5205,7 @@ export type ItemUpdateWithoutParentInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutParentInput = {
@@ -4967,6 +5243,7 @@ export type ItemUncheckedUpdateWithoutParentInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateManyWithoutParentInput = {
@@ -5040,6 +5317,7 @@ export type ItemUpdateWithoutOwnerInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutOwnerInput = {
@@ -5077,6 +5355,7 @@ export type ItemUncheckedUpdateWithoutOwnerInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateManyWithoutOwnerInput = {
@@ -5150,6 +5429,7 @@ export type ItemUpdateWithoutWorkspaceInput = {
   logs?: Prisma.AuditLogUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateWithoutWorkspaceInput = {
@@ -5187,6 +5467,7 @@ export type ItemUncheckedUpdateWithoutWorkspaceInput = {
   logs?: Prisma.AuditLogUncheckedUpdateManyWithoutItemNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutItemNestedInput
   search?: Prisma.SearchUncheckedUpdateOneWithoutItemNestedInput
+  searchChunks?: Prisma.SearchChunkUncheckedUpdateManyWithoutItemNestedInput
 }
 
 export type ItemUncheckedUpdateManyWithoutWorkspaceInput = {
@@ -5224,6 +5505,7 @@ export type ItemCountOutputType = {
   comments: number
   logs: number
   favorites: number
+  searchChunks: number
 }
 
 export type ItemCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -5238,6 +5520,7 @@ export type ItemCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   comments?: boolean | ItemCountOutputTypeCountCommentsArgs
   logs?: boolean | ItemCountOutputTypeCountLogsArgs
   favorites?: boolean | ItemCountOutputTypeCountFavoritesArgs
+  searchChunks?: boolean | ItemCountOutputTypeCountSearchChunksArgs
 }
 
 /**
@@ -5327,6 +5610,13 @@ export type ItemCountOutputTypeCountFavoritesArgs<ExtArgs extends runtime.Types.
   where?: Prisma.FavoriteWhereInput
 }
 
+/**
+ * ItemCountOutputType without action
+ */
+export type ItemCountOutputTypeCountSearchChunksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SearchChunkWhereInput
+}
+
 
 export type ItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -5368,6 +5658,7 @@ export type ItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   logs?: boolean | Prisma.Item$logsArgs<ExtArgs>
   favorites?: boolean | Prisma.Item$favoritesArgs<ExtArgs>
   search?: boolean | Prisma.Item$searchArgs<ExtArgs>
+  searchChunks?: boolean | Prisma.Item$searchChunksArgs<ExtArgs>
   _count?: boolean | Prisma.ItemCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["item"]>
 
@@ -5461,6 +5752,7 @@ export type ItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   logs?: boolean | Prisma.Item$logsArgs<ExtArgs>
   favorites?: boolean | Prisma.Item$favoritesArgs<ExtArgs>
   search?: boolean | Prisma.Item$searchArgs<ExtArgs>
+  searchChunks?: boolean | Prisma.Item$searchChunksArgs<ExtArgs>
   _count?: boolean | Prisma.ItemCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ItemIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -5489,28 +5781,28 @@ export type $ItemPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     drive: Prisma.$DrivePayload<ExtArgs>
     /**
      * *
-     *      * `One-to-Many` self-relation to represent hierarchical structure
-     *      * An Item can have multiple children (sub-items) and one parent (container item)
-     *      * On deletion of a parent item, all its children are also deleted (Cascade)
+     *    * `One-to-Many` self-relation to represent hierarchical structure
+     *    * An Item can have multiple children (sub-items) and one parent (container item)
+     *    * On deletion of a parent item, all its children are also deleted (Cascade)
      */
     children: Prisma.$ItemPayload<ExtArgs>[]
     /**
      * *
-     *      * Many-to-One self-relation to represent hierarchical structure
-     *      * An Item can have multiple children (sub-items) and one parent (container item)
-     *      * On deletion of a parent item, all its children are also deleted (Cascade)
+     *    * Many-to-One self-relation to represent hierarchical structure
+     *    * An Item can have multiple children (sub-items) and one parent (container item)
+     *    * On deletion of a parent item, all its children are also deleted (Cascade)
      */
     parent: Prisma.$ItemPayload<ExtArgs> | null
     trash: Prisma.$TrashItemPayload<ExtArgs> | null
     /**
      * *
-     *      * Items that belong to this collection (only meaningful when type='collection').
-     *      * An Item with type='collection' is the host; its members are linked via CollectionMember.
+     *    * Items that belong to this collection (only meaningful when type='collection').
+     *    * An Item with type='collection' is the host; its members are linked via CollectionMember.
      */
     collectionItems: Prisma.$CollectionMemberPayload<ExtArgs>[]
     /**
      * *
-     *      * Collections this item belongs to (many-to-many self-relation via CollectionMember).
+     *    * Collections this item belongs to (many-to-many self-relation via CollectionMember).
      */
     memberOfCollections: Prisma.$CollectionMemberPayload<ExtArgs>[]
     locked: Prisma.$LockedItemPayload<ExtArgs> | null
@@ -5523,6 +5815,7 @@ export type $ItemPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     logs: Prisma.$AuditLogPayload<ExtArgs>[]
     favorites: Prisma.$FavoritePayload<ExtArgs>[]
     search: Prisma.$SearchPayload<ExtArgs> | null
+    searchChunks: Prisma.$SearchChunkPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -5958,6 +6251,7 @@ export interface Prisma__ItemClient<T, Null = never, ExtArgs extends runtime.Typ
   logs<T extends Prisma.Item$logsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$logsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AuditLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   favorites<T extends Prisma.Item$favoritesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$favoritesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FavoritePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   search<T extends Prisma.Item$searchArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$searchArgs<ExtArgs>>): Prisma.Prisma__SearchClient<runtime.Types.Result.GetResult<Prisma.$SearchPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  searchChunks<T extends Prisma.Item$searchChunksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Item$searchChunksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SearchChunkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -6864,6 +7158,30 @@ export type Item$searchArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
    */
   include?: Prisma.SearchInclude<ExtArgs> | null
   where?: Prisma.SearchWhereInput
+}
+
+/**
+ * Item.searchChunks
+ */
+export type Item$searchChunksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SearchChunk
+   */
+  select?: Prisma.SearchChunkSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SearchChunk
+   */
+  omit?: Prisma.SearchChunkOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SearchChunkInclude<ExtArgs> | null
+  where?: Prisma.SearchChunkWhereInput
+  orderBy?: Prisma.SearchChunkOrderByWithRelationInput | Prisma.SearchChunkOrderByWithRelationInput[]
+  cursor?: Prisma.SearchChunkWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SearchChunkScalarFieldEnum | Prisma.SearchChunkScalarFieldEnum[]
 }
 
 /**

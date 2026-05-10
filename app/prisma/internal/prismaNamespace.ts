@@ -418,6 +418,7 @@ export const ModelName = {
   Permission: 'Permission',
   Quota: 'Quota',
   Search: 'Search',
+  SearchChunk: 'SearchChunk',
   Session: 'Session',
   ShareLink: 'ShareLink',
   StoragePlan: 'StoragePlan',
@@ -446,7 +447,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "account" | "itemAction" | "permissionAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "quota" | "search" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
+    modelProps: "account" | "itemAction" | "permissionAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "quota" | "search" | "searchChunk" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2966,6 +2967,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SearchChunk: {
+      payload: Prisma.$SearchChunkPayload<ExtArgs>
+      fields: Prisma.SearchChunkFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SearchChunkFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchChunkPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SearchChunkFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchChunkPayload>
+        }
+        findFirst: {
+          args: Prisma.SearchChunkFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchChunkPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SearchChunkFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchChunkPayload>
+        }
+        findMany: {
+          args: Prisma.SearchChunkFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchChunkPayload>[]
+        }
+        create: {
+          args: Prisma.SearchChunkCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchChunkPayload>
+        }
+        createMany: {
+          args: Prisma.SearchChunkCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SearchChunkCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchChunkPayload>[]
+        }
+        delete: {
+          args: Prisma.SearchChunkDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchChunkPayload>
+        }
+        update: {
+          args: Prisma.SearchChunkUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchChunkPayload>
+        }
+        deleteMany: {
+          args: Prisma.SearchChunkDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SearchChunkUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SearchChunkUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchChunkPayload>[]
+        }
+        upsert: {
+          args: Prisma.SearchChunkUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SearchChunkPayload>
+        }
+        aggregate: {
+          args: Prisma.SearchChunkAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSearchChunk>
+        }
+        groupBy: {
+          args: Prisma.SearchChunkGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SearchChunkGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SearchChunkCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SearchChunkCountAggregateOutputType> | number
+        }
+      }
+    }
     Session: {
       payload: Prisma.$SessionPayload<ExtArgs>
       fields: Prisma.SessionFieldRefs
@@ -4392,6 +4467,21 @@ export const SearchScalarFieldEnum = {
 export type SearchScalarFieldEnum = (typeof SearchScalarFieldEnum)[keyof typeof SearchScalarFieldEnum]
 
 
+export const SearchChunkScalarFieldEnum = {
+  id: 'id',
+  itemId: 'itemId',
+  ord: 'ord',
+  content: 'content',
+  pageNum: 'pageNum',
+  charStart: 'charStart',
+  charEnd: 'charEnd',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SearchChunkScalarFieldEnum = (typeof SearchChunkScalarFieldEnum)[keyof typeof SearchChunkScalarFieldEnum]
+
+
 export const SessionScalarFieldEnum = {
   id: 'id',
   expiresAt: 'expiresAt',
@@ -5124,6 +5214,7 @@ export type GlobalOmitConfig = {
   permission?: Prisma.PermissionOmit
   quota?: Prisma.QuotaOmit
   search?: Prisma.SearchOmit
+  searchChunk?: Prisma.SearchChunkOmit
   session?: Prisma.SessionOmit
   shareLink?: Prisma.ShareLinkOmit
   storagePlan?: Prisma.StoragePlanOmit

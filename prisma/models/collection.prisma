@@ -1,22 +1,21 @@
 /**
  * Junction table for the many-to-many self-relation on Item that represents
  * collection membership. A Collection is simply an Item with type='collection'.
- *
  * Replaces the old `Collection` facet model and `CollectionItem` junction table.
  * `collectionId` points to an Item whose type='collection'.
  * `itemId` points to any Item that is a member of that collection.
  */
 model CollectionMember {
-    id           String   @id
-    collectionId String
-    collection   Item     @relation("CollectionHost", fields: [collectionId], references: [id], onDelete: Cascade)
-    itemId       String
-    item         Item     @relation("ItemMember", fields: [itemId], references: [id], onDelete: Cascade)
-    createdAt    DateTime @default(now())
-    updatedAt    DateTime @updatedAt
+  id           String   @id
+  collectionId String
+  collection   Item     @relation("CollectionHost", fields: [collectionId], references: [id], onDelete: Cascade)
+  itemId       String
+  item         Item     @relation("ItemMember", fields: [itemId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-    @@unique([collectionId, itemId])
-    @@index([collectionId])
-    @@index([itemId])
-    @@index([createdAt(sort: Desc)])
+  @@unique([collectionId, itemId])
+  @@index([collectionId])
+  @@index([itemId])
+  @@index([createdAt(sort: Desc)])
 }

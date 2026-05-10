@@ -1,29 +1,29 @@
 model Quota {
-    id        String      @id @unique
-    createdAt DateTime    @default(now())
-    updatedAt DateTime    @updatedAt
-    // Total space consumed by files in the trash.
-    deleted   BigInt      @default(0)
-    // Total allowed storage space, in bytes.
-    // This is based on the value storageLimit in StoragePlan model.
-    total     BigInt      @default(0)
-    // Total space used, in bytes. Read-only.
-    used      BigInt      @default(0)
-    status    QuotaStatus @default(normal)
+  id        String      @id @unique
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  // Total space consumed by files in the trash.
+  deleted   BigInt      @default(0)
+  // Total allowed storage space, in bytes.
+  // This is based on the value storageLimit in StoragePlan model.
+  total     BigInt      @default(0)
+  // Total space used, in bytes. Read-only.
+  used      BigInt      @default(0)
+  status    QuotaStatus @default(normal)
 
-    // Relations
-    driveId String @unique
-    drive   Drive  @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  // Relations
+  driveId String @unique
+  drive   Drive  @relation(fields: [driveId], references: [id], onDelete: Cascade)
 
-    @@index([driveId])
-    @@index([status])
-    @@index([createdAt])
-    @@index([updatedAt])
+  @@index([driveId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([updatedAt])
 }
 
 enum QuotaStatus {
-    normal // The drive has plenty of remaining quota left.
-    warning // Remaining quota is less than 10% of total quota space.
-    critical // Remaining quota is less than 1% of total quota space.
-    exceeded // The used quota has exceeded the total quota. New files or folders cannot be added to the drive until it is under the total quota amount or more storage space is purchased.
+  normal // The drive has plenty of remaining quota left.
+  warning // Remaining quota is less than 10% of total quota space.
+  critical // Remaining quota is less than 1% of total quota space.
+  exceeded // The used quota has exceeded the total quota. New files or folders cannot be added to the drive until it is under the total quota amount or more storage space is purchased.
 }

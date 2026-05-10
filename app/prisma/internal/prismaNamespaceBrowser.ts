@@ -85,6 +85,7 @@ export const ModelName = {
   Permission: 'Permission',
   Quota: 'Quota',
   Search: 'Search',
+  SearchChunk: 'SearchChunk',
   Session: 'Session',
   ShareLink: 'ShareLink',
   StoragePlan: 'StoragePlan',
@@ -539,6 +540,21 @@ export const SearchScalarFieldEnum = {
 } as const
 
 export type SearchScalarFieldEnum = (typeof SearchScalarFieldEnum)[keyof typeof SearchScalarFieldEnum]
+
+
+export const SearchChunkScalarFieldEnum = {
+  id: 'id',
+  itemId: 'itemId',
+  ord: 'ord',
+  content: 'content',
+  pageNum: 'pageNum',
+  charStart: 'charStart',
+  charEnd: 'charEnd',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SearchChunkScalarFieldEnum = (typeof SearchChunkScalarFieldEnum)[keyof typeof SearchChunkScalarFieldEnum]
 
 
 export const SessionScalarFieldEnum = {

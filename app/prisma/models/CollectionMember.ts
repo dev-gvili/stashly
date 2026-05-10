@@ -17,7 +17,6 @@ import type * as Prisma from "../internal/prismaNamespace.js"
  * *
  *  * Junction table for the many-to-many self-relation on Item that represents
  *  * collection membership. A Collection is simply an Item with type='collection'.
- *  *
  *  * Replaces the old `Collection` facet model and `CollectionItem` junction table.
  *  * `collectionId` points to an Item whose type='collection'.
  *  * `itemId` points to any Item that is a member of that collection.

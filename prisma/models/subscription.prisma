@@ -1,40 +1,40 @@
 model Subscription {
-    id       String             @id
-    status   SubscriptionStatus @default(active)
-    metadata Json?
+  id       String             @id
+  status   SubscriptionStatus @default(active)
+  metadata Json?
 
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
-    endedAt   DateTime? // End date of the subscription, can be null if ongoing
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  endedAt   DateTime? // End date of the subscription, can be null if ongoing
 
-    // Storage plan details
-    storagePlanId String
-    storagePlan   StoragePlan @relation(fields: [storagePlanId], references: [id], onDelete: Cascade)
+  // Storage plan details
+  storagePlanId String
+  storagePlan   StoragePlan @relation(fields: [storagePlanId], references: [id], onDelete: Cascade)
 
-    // Stripe integration
-    stripeSubscriptionId String? @unique // Stripe subscription ID
+  // Stripe integration
+  stripeSubscriptionId String? @unique // Stripe subscription ID
 
-    // Relations
-    ownerId String @unique
-    owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  // Relations
+  ownerId String @unique
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
-    @@unique([ownerId, storagePlanId])
-    // A user can only have one active Stripe subscription at a time. This unique constraint
-    // ensures that a user cannot have multiple active Stripe subscriptions simultaneously.
-    @@unique([ownerId, stripeSubscriptionId]) // This constraint is only valid if stripeSubscriptionId is not null      
-    @@index([storagePlanId])
-    @@index([status])
-    @@index([createdAt])
-    @@index([endedAt])
+  @@unique([ownerId, storagePlanId])
+  // A user can only have one active Stripe subscription at a time. This unique constraint
+  // ensures that a user cannot have multiple active Stripe subscriptions simultaneously.
+  @@unique([ownerId, stripeSubscriptionId]) // This constraint is only valid if stripeSubscriptionId is not null      
+  @@index([storagePlanId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([endedAt])
 }
 
 // Enum for subscription status, map to Stripe's subscription statuses
 enum SubscriptionStatus {
-    active
-    canceled
-    incomplete
-    incomplete_expired
-    past_due
-    trialing
-    unpaid
+  active
+  canceled
+  incomplete
+  incomplete_expired
+  past_due
+  trialing
+  unpaid
 }

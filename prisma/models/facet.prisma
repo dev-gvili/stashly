@@ -1,82 +1,80 @@
 model File {
-    id        String  @id
-    mimeType  String?
-    hash      String?
-    extension String?
-    bucket    String
-    key       String
-    etag      String?
-    itemId    String @unique
-    item      Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id        String  @id
+  mimeType  String?
+  hash      String?
+  extension String?
+  bucket    String
+  key       String
+  etag      String?
+  itemId    String  @unique
+  item      Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model Folder {
-    id         String @id
-    childCount Int?    @default(0)
-    inclusiveChildCount Int @default(0)
-    view       View?
-    itemId     String @unique
-    item       Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id                  String @id
+  childCount          Int?   @default(0)
+  inclusiveChildCount Int    @default(0)
+  view                View?
+  itemId              String @unique
+  item                Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model Image {
-    id                   String    @id
-    height               Int?
-    width                Int?
-    horizontalResolution Int?
-    verticalResolution   Int?
-    cameraMake           String?
-    cameraModel          String?
-    exposureTime         Float?
-    focalLength          Float?
-    fNumber              Float?
-    iso                  Int?
-    takenDateTime        DateTime?
-    latitude             Float?
-    longitude            Float?
-    itemId               String    @unique
-    item                 Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id                   String    @id
+  height               Int?
+  width                Int?
+  horizontalResolution Int?
+  verticalResolution   Int?
+  cameraMake           String?
+  cameraModel          String?
+  exposureTime         Float?
+  focalLength          Float?
+  fNumber              Float?
+  iso                  Int?
+  takenDateTime        DateTime?
+  latitude             Float?
+  longitude            Float?
+  itemId               String    @unique
+  item                 Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model Video {
-    id                    String  @id
-    bitrate               Int?
-    codec                 String?
-    container             String?
-    duration              Int?
-    height                Int?
-    width                 Int?
-    audioBitsPerSample    Int?
-    audioChannels         Int?
-    audioFormat           String?
-    audioSamplesPerSecond Int?
-    frameRate             Float?
-    fourCC                String?
-    itemId                String  @unique
-    item                  Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id                    String  @id
+  bitrate               Int?
+  codec                 String?
+  container             String?
+  duration              Int?
+  height                Int?
+  width                 Int?
+  audioBitsPerSample    Int?
+  audioChannels         Int?
+  audioFormat           String?
+  audioSamplesPerSecond Int?
+  frameRate             Float?
+  fourCC                String?
+  itemId                String  @unique
+  item                  Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model Audio {
-    id                String   @id
-    album             String?
-    albumArtist       String?
-    artist            String?
-    composer          String?
-    bitrate           Int?
-    composers         String?
-    copyright         String?
-    disc              Int?
-    discCount         Int?
-    duration          Int?
-    genre             String?
-    hasDrm            Boolean?
-    isVariableBitrate Boolean?
-    title             String?
-    track             Int?
-    trackCount        Int?
-    year              Int?
-    itemId            String   @unique
-    item              Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id                String   @id
+  album             String?
+  albumArtist       String?
+  artist            String?
+  composer          String?
+  bitrate           Int?
+  composers         String?
+  copyright         String?
+  disc              Int?
+  discCount         Int?
+  duration          Int?
+  genre             String?
+  hasDrm            Boolean?
+  isVariableBitrate Boolean?
+  title             String?
+  track             Int?
+  trackCount        Int?
+  year              Int?
+  itemId            String   @unique
+  item              Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
-
-

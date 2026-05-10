@@ -132,7 +132,47 @@ async function saveMediaMetadata(itemId: string, file: File) {
   }
 
   const res = await fetch('/api/items', { method: 'POST', body: fd }).catch((e) => { console.error('[saveMediaMetadata] fetch failed', e); return null })
-  if (res && !res.ok) console.error('[saveMediaMetadata] server error', res.status, await res.text().catch(() => ''))
+  if (!res) return
+  if (!res.ok) {
+    console.error('[saveMediaMetadata] server error', res.status, await res.text().catch(() => ''))
+    return
+  }
+
+  // If the server returned chunk records (PDF / future text formats), kick
+  // off embedding generation. Fire-and-forget — the file is already usable
+  // before its semantic-search index is populated.
+  const body = await res.json().catch(() => null) as
+    | { success: boolean; chunks?: { id: string; ord: number; content: string }[] }
+    | null
+  if (body?.chunks && body.chunks.length > 0) {
+    embedAndPersistChunks(body.chunks).catch((e) =>
+      console.error('[embed chunks]', e),
+    )
+  }
+}
+
+/**
+ * Embed each SearchChunk content via the WebGPU embedding worker, then
+ * POST the vectors back to the server for raw-SQL pgvector write.
+ * Fire-and-forget — runs after `saveMediaMetadata` returns the chunk ids.
+ */
+async function embedAndPersistChunks(
+  chunks: { id: string; content: string }[],
+) {
+  const { embedTexts } = await import('@/workers/embedding.ai')
+  const vectors = await embedTexts(chunks.map((c) => c.content))
+  if (vectors.length !== chunks.length) {
+    console.error('[embed chunks] vector count mismatch', vectors.length, chunks.length)
+    return
+  }
+  const payload = chunks.map((c, i) => ({ chunkId: c.id, vector: vectors[i] }))
+
+  const fd = new FormData()
+  fd.append('intent', 'save_search_chunk_embeddings')
+  fd.append('embeddings', JSON.stringify(payload))
+  await fetch('/api/items', { method: 'POST', body: fd }).catch((e) =>
+    console.error('[embed chunks] fetch failed', e),
+  )
 }
 
 /**
