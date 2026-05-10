@@ -1,17 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useThumbnailV2 as useThumbnail } from '@/hooks/useThumbnailV2'
+import { useCallback, useRef, useState } from 'react'
 import { shallowEqual, useSelector } from '@xstate/react'
 import { createActor } from 'xstate'
 import { uploadMachine } from '@/machines/upload/upload.machine'
 import type { Config } from '@/types/machine.types'
 import { toMediaFile } from '@/utils/converters'
-import { useNavigate, useLocation } from 'react-router'
 
 export const upload = createActor(uploadMachine, { id: 'uploadManager' })
 upload.start()
-
-// Module-level: shared across all hook instances so thumbnails run exactly once per file
-const thumbnailedIds = new Set<string>()
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -106,10 +101,6 @@ export function useUpload() {
   const [isDragging, setIsDragging] = useState(false)
   const dragCounter = useRef(0)
 
-  const { run: runThumbnail } = useThumbnail()
-  const navigate = useNavigate()
-  const location = useLocation()
-
   const files = useSelector(
     upload,
     (s) =>
@@ -133,24 +124,6 @@ export function useUpload() {
   const configure = useCallback((config: Config) => {
     upload.send({ type: 'upload.config', config })
   }, [])
-
-  // Trigger thumbnail pipeline + reload view after DB item is confirmed created
-  useEffect(() => {
-    for (const mediaFile of files) {
-      if (mediaFile.status === 'itemCreated' && !thumbnailedIds.has(mediaFile.id)) {
-        thumbnailedIds.add(mediaFile.id)
-        navigate(location.pathname + location.search, {
-          replace: true,
-          state: { reset: true },
-        })
-        runThumbnail(mediaFile.id, mediaFile.file, () => {
-          navigate(location.pathname + location.search, { replace: true, state: { reset: true } })
-        }).catch((err) => {
-          console.error(`Thumbnail failed for ${mediaFile.id}:`, err)
-        })
-      }
-    }
-  }, [files])
 
   const add = useCallback(
     (file: File, overrideRootId?: string, skipQuotaCheck?: boolean) => {
@@ -283,8 +256,7 @@ export function useUpload() {
     configure,
     toggleView,
     dismiss,
-    runThumbnail,
-    
+
     // spread onto a droppable container
     dragHandlers: { onDragEnter, onDragLeave, onDragOver, onDrop },
 

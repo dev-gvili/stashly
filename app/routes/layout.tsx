@@ -3,6 +3,7 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarProvider } from '@/components/ui/sidebar'
 // import { UploadPanel } from '@/machines/upload-v2/ui'
 import { UploadPanel } from '@/components/upload'
+import { UploadThumbnailRunner } from '@/components/upload/upload-thumbnail-runner'
 import { auth } from '@/services/auth'
 import { findStoragePlanById, findDefaultStoragePlan } from '@/.server/storagePlan-actions'
 import { Outlet, redirect, type ShouldRevalidateFunction } from 'react-router'
@@ -50,6 +51,7 @@ export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
       <AppContent>
         <Outlet />
         <UploadPanel user={user} />
+        <UploadThumbnailRunner />
         <Confirm />
       </AppContent>
     </SidebarProvider>
