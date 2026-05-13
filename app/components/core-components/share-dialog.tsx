@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useFetcher } from 'react-router'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/ui/dialog'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/ui/dialog'
 import { Button } from '@/ui/button'
 import { Input } from '@/ui/input'
 import { Badge } from '@/ui/badge'
@@ -32,22 +38,22 @@ import {
   GroupIcon,
   LinkIcon,
   Embedicon,
+  DropdownIcon,
+  RecentIcon,
+  TrashIcon,
+  RemoveIcon,
 } from '@/components/icons'
-import { CheckIcon } from 'lucide-react'
-import {
-  Globe,
-  Users,
-  Building2,
-  Link2,
-  Pencil,
-  Eye,
-  Upload,
-  Code2,
-  ChevronDown,
-  Trash2,
-  Clock,
-} from 'lucide-react'
 import type { ShareLinkType, ShareScope } from '@/prisma/client'
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '../ui'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -284,27 +290,33 @@ function ShareLinkRow({
   const expiry = formatExpiry(link.expiresAt)
   const isExpired = link.expiresAt && new Date(link.expiresAt) < new Date()
   const [showExpiry, setShowExpiry] = useState(false)
+  const [copied, setCopied] = useState(false)
   const expiryRef = useRef<HTMLInputElement>(null)
 
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
   return (
-    <div className="rounded-md  bg-card p-3 space-y-3 w-full">
+    <Card className="rounded-md bg-card border-input p-2 gap-y-2">
       {/* Header row: type + scope badges + revoke */}
-      <div className="flex items-center gap-2 justify-between">
-        <div className="grid gap-2 grid-cols-3 ">
+      <CardHeader className="p-0 inline-flex items-start gap-2 justify-between">
+        <div className="inline-flex items-center gap-2 max-w-max w-full flex-1">
           {/* Type selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
               <Button
+                size="default"
                 variant="outline"
-                size="sm"
-                className="font-stashly"
+                className="font-stashly bg-background! border-input!"
               >
-                <TypeIcon className="" />
+                <TypeIcon className="size-5 text-current" />
                 {typeLabel(link.type)}
-                <ChevronDown className="" />
+                <DropdownIcon className="size-5 text-current" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuContent align="start" className="bg-sidebar shadow-md">
               {TYPE_OPTIONS.map((opt) => (
                 <DropdownMenuItem
                   key={opt.value}
@@ -328,16 +340,15 @@ function ShareLinkRow({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                size="sm"
-                className="font-stashly"
+                className="font-stashly bg-background! border-input"
                 disabled={link.type === 'embed'}
               >
-                <ScopeIcon className="" />
+                <ScopeIcon className="size-5 text-current" />
                 {scopeLabel(link.scope)}
-                <ChevronDown className="size-3" />
+                <DropdownIcon className="size-5 text-current" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuContent align="start" className="w-60 bg-sidebar">
               {SCOPE_OPTIONS.map((opt) => (
                 <DropdownMenuItem
                   key={opt.value}
@@ -355,141 +366,145 @@ function ShareLinkRow({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {/* Expiry badge */}
-          {expiry && (
-            <Badge
-              variant={isExpired ? 'destructive' : 'secondary'}
-              className="h-7 gap-1 text-xs font-stashly cursor-pointer"
-              onClick={() => setShowExpiry((v) => !v)}
-            >
-              <Clock className="size-3" />
-              {expiry}
-            </Badge>
-          )}
         </div>
+      </CardHeader>
 
-        {/* Revoke */}
+      <CardContent className="p-0 inline-flex justify-between gap-2">
+        {/* URL row */}
+        <InputGroup className="bg-sidebar! rounded-md! flex">
+          <InputGroupInput
+            className="font-stashly truncate select-all h-9!"
+            readOnly
+            value={shareUrl}
+          />
+          <InputGroupAddon align="inline-end" className="h-auto">
+            <InputGroupButton
+              onClick={() => handleCopy(shareUrl)}
+              aria-label="Copy share URL"
+              className="bg-transparent! border-input! text-current"
+            >
+              {copied ? (
+                <DoubleCheckIcon className="size-5 text-current" />
+              ) : (
+                <CopyIcon className="size-5 text-current" />
+              )}
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
         <Button
-          variant="destructive"
+          variant="outline"
           size="icon-sm"
           onClick={() => onRevoke(link.id)}
           aria-label="Revoke link"
+          className="text-destructive-foreground bg-destructive! size-9"
         >
-          <Trash2 className="size-4" />
+          <TrashIcon className="size-5 text-current" />
         </Button>
-      </div>
+      </CardContent>
+      <CardFooter className="inline-flex justify-between w-full">
+        {/* Downloadable toggle (view/embed only) */}
+        {(link.type === 'view' || link.type === 'embed') && (
+          <div className="flex items-center justify-between flex-1 mt-2">
+            <Label
+              className="text-xs text-muted-foreground font-stashly cursor-pointer pl-1"
+              htmlFor={`dl-${link.id}`}
+            >
+              Allow download
+            </Label>
+            <Switch
+              id={`dl-${link.id}`}
+              checked={link.downloadable ?? false}
+              onCheckedChange={(v) => onUpdateDownloadable(link.id, v)}
+              className="aria-checked:bg-primary! bg-muted!"
+            />
+          </div>
+        )}
 
-      {/* URL row */}
-      <div className="flex items-center gap-2">
-        <div className="flex-1 rounded-md bg-muted px-3 py-1.5 text-xs text-muted-foreground font-stashly truncate select-all">
-          {shareUrl}
-        </div>
-        <CopyButton value={shareUrl} />
-      </div>
-
-      {/* Downloadable toggle (view/embed only) */}
-      {(link.type === 'view' || link.type === 'embed') && (
-        <div className="flex items-center justify-between">
-          <Label
-            className="text-xs text-muted-foreground font-stashly cursor-pointer"
-            htmlFor={`dl-${link.id}`}
-          >
-            Allow download
-          </Label>
-          <Switch
-            id={`dl-${link.id}`}
-            checked={link.downloadable ?? false}
-            onCheckedChange={(v) => onUpdateDownloadable(link.id, v)}
-            className="scale-75"
-          />
-        </div>
-      )}
-
-      {/* Expiry picker */}
-      <AnimatePresence>
-        {showExpiry && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="overflow-hidden"
-          >
-            <div className="flex items-center gap-2 pt-1">
-              <Input
-                ref={expiryRef}
-                type="datetime-local"
-                className="h-7 text-xs font-stashly"
-                defaultValue={
-                  link.expiresAt
-                    ? new Date(link.expiresAt).toISOString().slice(0, 16)
-                    : ''
-                }
-              />
-              <Button
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => {
-                  const val = expiryRef.current?.value
-                  if (val) {
-                    onUpdateExpiry(link.id, new Date(val))
-                    setShowExpiry(false)
+        {/* Expiry picker */}
+        <AnimatePresence>
+          {showExpiry && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="overflow-hidden"
+            >
+              <div className="flex items-center gap-2 pt-1">
+                <Input
+                  ref={expiryRef}
+                  type="datetime-local"
+                  className="h-7 text-xs font-stashly"
+                  defaultValue={
+                    link.expiresAt
+                      ? new Date(link.expiresAt).toISOString().slice(0, 16)
+                      : ''
                   }
-                }}
-              >
-                Set
-              </Button>
-              {link.expiresAt && (
+                />
                 <Button
-                  variant="ghost"
                   size="sm"
-                  className="h-7 text-xs text-muted-foreground"
+                  className="h-7 text-xs"
                   onClick={() => {
-                    onRemoveExpiry(link.id)
-                    setShowExpiry(false)
+                    const val = expiryRef.current?.value
+                    if (val) {
+                      onUpdateExpiry(link.id, new Date(val))
+                      setShowExpiry(false)
+                    }
                   }}
                 >
-                  Remove
+                  Set
                 </Button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Users with access (scope=users) */}
-      {link.permission.length > 0 && link.permission[0].users.length > 0 && (
-        <div className="pt-1">
-          <p className="text-xs text-muted-foreground mb-1.5 font-stashly">
-            People with access
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {link.permission[0].users.map((u) => (
-              <div
-                key={u.id}
-                className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5"
-              >
-                {u.image ? (
-                  <img
-                    src={u.image}
-                    alt={u.name ?? ''}
-                    className="size-4 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="size-4 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-medium">
-                    {u.name?.[0]?.toUpperCase() ?? '?'}
-                  </div>
+                {link.expiresAt && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-muted-foreground"
+                    onClick={() => {
+                      onRemoveExpiry(link.id)
+                      setShowExpiry(false)
+                    }}
+                  >
+                    Remove
+                  </Button>
                 )}
-                <span className="text-xs font-stashly truncate max-w-[120px]">
-                  {u.name}
-                </span>
               </div>
-            ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Users with access (scope=users) */}
+        {link.permission.length > 0 && link.permission[0].users.length > 0 && (
+          <div className="pt-1">
+            <p className="text-xs text-muted-foreground mb-1.5 font-stashly">
+              People with access
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {link.permission[0].users.map((u) => (
+                <div
+                  key={u.id}
+                  className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5"
+                >
+                  {u.image ? (
+                    <img
+                      src={u.image}
+                      alt={u.name ?? ''}
+                      className="size-4 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="size-4 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-medium">
+                      {u.name?.[0]?.toUpperCase() ?? '?'}
+                    </div>
+                  )}
+                  <span className="text-xs font-stashly truncate max-w-[120px]">
+                    {u.name}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </CardFooter>
+    </Card>
   )
 }
 
@@ -624,6 +639,7 @@ function CreateLinkForm({
               id="create-downloadable"
               checked={downloadable}
               onCheckedChange={setDownloadable}
+              className="rounded!"
             />
           </div>
         )}
@@ -693,10 +709,7 @@ function CreateLinkForm({
         </AnimatePresence>
       </div>
 
-      <Button
-        onClick={handleCreate}
-        className="w-full font-stashly rounded-md"
-      >
+      <Button onClick={handleCreate} className="w-full font-stashly rounded-md">
         <LinkIcon className="size-5 mr-2" />
         Create link
       </Button>
@@ -830,28 +843,43 @@ export function ShareDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl! w-full font-stashly bg-sidebar">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <ShareItemIcon className="size-5" />
-            Share "{itemName}"
+      <DialogContent
+        showCloseButton={false}
+        className="max-w-xl! w-full font-stashly bg-sidebar border-input shadow-2xl shadow-stashly"
+      >
+        <DialogHeader className="flex flex-row items-center justify-between w-full">
+          <DialogTitle className="flex items-center gap-2 text-base ">
+            <ShareItemIcon className="size-6" />
+            <span className="truncate">Share "{itemName}"</span>
           </DialogTitle>
+          <DialogClose asChild>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              className="bg-card border-input place-self-end"
+            >
+              <RemoveIcon className="text-current size-5" />
+            </Button>
+          </DialogClose>
         </DialogHeader>
 
         <Tabs defaultValue="create" className="w-full">
-          <TabsList className="w-full grid grid-cols-2">
-            <TabsTrigger value="links" className="text-xs font-stashly">
+          <TabsList className="w-full grid grid-cols-2 rounded-md! bg-card h-auto border-input! border p-0">
+            <TabsTrigger
+              value="links"
+              className="font-stashly data-[state=active]:bg-primary! data-[state=active]:text-primary-foreground! data-[state=active]:border-none data-[state=active]:rounded-0.5 h-9"
+            >
               Share links
               {links.length > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="ml-1.5 px-1.5 py-0 text-[10px]"
-                >
+                <Badge variant="default" className="rounded-sm bg-primary-foreground text-primary font-medium">
                   {links.length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="create" className="text-xs font-stashly">
+            <TabsTrigger
+              value="create"
+              className="font-stashly data-[state=active]:bg-primary! data-[state=active]:text-primary-foreground! data-[state=active]:border-none data-[state=active]:rounded-0.5 h-9"
+            >
               Create link
             </TabsTrigger>
           </TabsList>
@@ -891,19 +919,16 @@ export function ShareDialog({
             )}
 
             {links.length > 0 && (
-              <>
-                <Separator className="my-3" />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-xs text-destructive hover:text-destructive font-stashly"
-                  onClick={handleRevokeAll}
-                  disabled={isMutating}
-                >
-                  <Trash2 className="size-3.5 mr-1.5" />
-                  Revoke all links
-                </Button>
-              </>
+              <Button
+                variant="destructive"
+                size="default"
+                onClick={handleRevokeAll}
+                disabled={isMutating}
+                className="w-full mt-4"
+              >
+                <TrashIcon className="size-5 text-current" />
+                Revoke all links
+              </Button>
             )}
           </TabsContent>
 

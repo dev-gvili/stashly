@@ -39,7 +39,7 @@ export function RenameDialog({
   const fetcher = useFetcher()
   const [name, setName] = useState(defaultName)
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!name.trim() || name === defaultName) return
     fetcher.submit(
