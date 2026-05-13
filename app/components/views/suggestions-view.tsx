@@ -22,14 +22,13 @@ export type SuggestionsViewProps = SuggestedItemsResult & { className?: string }
 export const SuggestionsView = React.forwardRef<
   HTMLDivElement,
   SuggestionsViewProps & { key: string }
->(({ suggestedFolders, suggestedFiles, className }, ref) => {
-  const id = useId()
+>(({ key, suggestedFolders, suggestedFiles, className }, ref) => {
 
   const hasFolders = suggestedFolders.length > 0
   const hasFiles = suggestedFiles.length > 0
 
   return (
-    <div key={id} className={cn('flex flex-col gap-4', className)}>
+    <div key={key} className={cn('flex flex-col gap-4', className)}>
       {/* Suggested Folders Section */}
       {hasFolders && (
         <section>
@@ -72,7 +71,7 @@ export const SuggestionsView = React.forwardRef<
 
       {/* Suggested Files Section */}
       {hasFiles && (
-        <>
+        <section>
           <h2 className="text-lg">Suggested Files</h2>
           <ListLayout items={suggestedFiles} />
 
@@ -106,7 +105,7 @@ export const SuggestionsView = React.forwardRef<
               </motion.div>
             ))}
           </GridLayout>
-        </>
+        </section>
       )}
 
       {/* Empty State */}

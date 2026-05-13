@@ -140,14 +140,21 @@ function CollectionPageHeader({
 
         <ButtonGroup>
           {/* Add items button */}
-          <Button
-            variant="outline"
-            className="font-stashly bg-card border-input"
-            onClick={() => setAddOpen(true)}
+          <AddToCollectionDialog
+            collectionId={collection.id}
+            collectionName={collection.name}
+            items={availableItems}
+            existingItemIds={existingItemIds}
           >
-            <AddIcon className="size-4!" />
-            Add items
-          </Button>
+            <Button
+              variant="outline"
+              size="default"
+              className="font-stashly bg-card border-input"
+            >
+              <AddIcon className="size-5 text-current" />
+              Add items
+            </Button>
+          </AddToCollectionDialog>
 
           {/* Actions dropdown — mirrors item-card-actions.tsx structure */}
           <DropdownMenu modal={false}>
@@ -166,13 +173,20 @@ function CollectionPageHeader({
               className="space-y-4 w-48 bg-sidebar p-2"
             >
               <DropdownMenuGroup className="mt-2">
-                <DropdownMenuItem
-                  className="items-start"
-                  onSelect={() => setAddOpen(true)}
+                <AddToCollectionDialog
+                  collectionId={collection.id}
+                  collectionName={collection.name}
+                  items={availableItems}
+                  existingItemIds={existingItemIds}
                 >
-                  <AddIcon className="text-foreground" />
-                  Add items
-                </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="items-start"
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <AddIcon className="text-foreground" />
+                    Add items
+                  </DropdownMenuItem>
+                </AddToCollectionDialog>
               </DropdownMenuGroup>
 
               <DropdownMenuGroup>
@@ -274,16 +288,6 @@ function CollectionPageHeader({
           </DropdownMenu>
         </ButtonGroup>
       </div>
-
-      {/* Full-screen add-to-collection dialog */}
-      <AddToCollectionDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        collectionId={collection.id}
-        collectionName={collection.name}
-        items={availableItems}
-        existingItemIds={existingItemIds}
-      />
     </>
   )
 }
