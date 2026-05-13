@@ -1,0 +1,767 @@
+/*
+ * Option C: "Paper Canvas" Theme
+ * Warm, editorial, content-first design.
+ * Notion meets Are.na meets a beautifully typeset magazine.
+ *
+ * Apply via: <html data-theme="paper">
+ * Fonts: Instrument Serif (headings), Inter (body), IBM Plex Mono (technical)
+ */
+
+/* ─── Base Theme Tokens ─────────────────────────────────────────────── */
+
+[data-theme='paper'] {
+  /* Core surfaces — warm cream base */
+  --background: oklch(0.97 0.01 85);
+  --foreground: oklch(0.25 0.01 60);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.25 0.01 60);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.25 0.01 60);
+
+  /* Primary — deep charcoal */
+  --primary: oklch(0.25 0.01 60);
+  --primary-foreground: oklch(0.97 0.01 85);
+
+  /* Secondary — warm gray surface for alternating sections */
+  --secondary: oklch(0.94 0.008 80);
+  --secondary-foreground: oklch(0.3 0.01 60);
+
+  /* Muted — subdued warm tones */
+  --muted: oklch(0.94 0.008 80);
+  --muted-foreground: oklch(0.6 0.015 60);
+
+  /* Accent — terracotta/rust */
+  --accent: oklch(0.6 0.16 40);
+  --accent-foreground: oklch(0.98 0.005 60);
+
+  /* Destructive — deep rust */
+  --destructive: oklch(0.5 0.18 25);
+  --destructive-foreground: oklch(0.98 0.005 60);
+
+  /* Warning — warm amber */
+  --warning: oklch(0.75 0.12 70);
+  --warning-foreground: oklch(0.25 0.01 60);
+
+  /* Borders & inputs — barely-there warm gray */
+  --border: oklch(0.88 0.01 60);
+  --input: oklch(0.94 0.008 80);
+  --ring: oklch(0.6 0.16 40);
+
+  /* Radius — soft, not too round */
+  --radius: 0.5rem;
+
+  /* Sidebar — warm taupe */
+  --sidebar: oklch(0.93 0.012 60);
+  --sidebar-foreground: oklch(0.25 0.01 60);
+  --sidebar-primary: oklch(0.6 0.16 40);
+  --sidebar-primary-foreground: oklch(0.98 0.005 60);
+  --sidebar-accent: oklch(0.96 0.01 75);
+  --sidebar-accent-foreground: oklch(0.25 0.01 60);
+  --sidebar-border: oklch(0.88 0.01 60);
+  --sidebar-ring: oklch(0.6 0.16 40);
+
+  /* Chart colors — earth tones */
+  --chart-1: oklch(0.6 0.16 40);   /* terracotta */
+  --chart-2: oklch(0.6 0.1 155);   /* sage green */
+  --chart-3: oklch(0.7 0.1 290);   /* soft lavender */
+  --chart-4: oklch(0.75 0.12 70);  /* warm amber */
+  --chart-5: oklch(0.55 0.08 220); /* slate blue */
+
+  /* ─── Custom Tokens ─────────────────────────────────────────────── */
+
+  /* Font families */
+  --font-editorial: 'Instrument Serif', 'Georgia', 'Times New Roman', serif;
+  --font-body: 'Inter', 'Helvetica Neue', 'Arial', sans-serif;
+  --font-technical: 'IBM Plex Mono', 'Menlo', 'Consolas', monospace;
+
+  /* Extended palette for direct use */
+  --paper-cream: oklch(0.97 0.01 85);
+  --paper-white: oklch(1 0 0);
+  --paper-canvas: oklch(0.94 0.008 80);
+  --paper-taupe: oklch(0.93 0.012 60);
+  --paper-charcoal: oklch(0.25 0.01 60);
+  --paper-charcoal-light: oklch(0.35 0.01 60);
+  --paper-terracotta: oklch(0.6 0.16 40);
+  --paper-terracotta-light: oklch(0.7 0.12 40);
+  --paper-terracotta-dim: oklch(0.5 0.12 40);
+  --paper-sage: oklch(0.6 0.1 155);
+  --paper-sage-light: oklch(0.75 0.08 155);
+  --paper-lavender: oklch(0.7 0.1 290);
+  --paper-lavender-light: oklch(0.85 0.06 290);
+  --paper-rust: oklch(0.5 0.18 25);
+  --paper-amber: oklch(0.75 0.12 70);
+  --paper-text: oklch(0.25 0.01 60);
+  --paper-text-muted: oklch(0.6 0.015 60);
+  --paper-text-dim: oklch(0.72 0.01 60);
+  --paper-border: oklch(0.88 0.01 60);
+  --paper-border-hairline: oklch(0.91 0.008 60);
+  --paper-selection: oklch(0.6 0.16 40 / 0.12);
+
+  /* Surface noise texture */
+  --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.018'/%3E%3C/svg%3E");
+}
+
+/* ─── Typography ────────────────────────────────────────────────────── */
+
+[data-theme='paper'] {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  font-feature-settings: 'liga' 1, 'kern' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--paper-charcoal);
+}
+
+/* Editorial heading style */
+.text-editorial {
+  font-family: var(--font-editorial);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--paper-charcoal);
+}
+
+/* Technical / monospace text */
+.text-technical {
+  font-family: var(--font-technical);
+  font-size: 12px;
+  letter-spacing: 0;
+  line-height: 1.5;
+  color: var(--paper-text-muted);
+}
+
+/* Micro-text for section labels */
+.text-micro {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--paper-text-dim);
+}
+
+/* Serif italic for decorative use */
+.text-editorial-italic {
+  font-family: var(--font-editorial);
+  font-style: italic;
+  color: var(--paper-text-muted);
+}
+
+/* Large display text */
+.text-display {
+  font-family: var(--font-editorial);
+  font-size: 48px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--paper-charcoal);
+}
+
+/* ─── Surface Patterns ──────────────────────────────────────────────── */
+
+/* Paper surface — warm cream with subtle texture */
+.surface-paper {
+  background-color: var(--paper-cream);
+  background-image: var(--surface-noise);
+  background-repeat: repeat;
+  background-size: 512px 512px;
+}
+
+/* Canvas surface — slightly darker warm gray */
+.surface-canvas {
+  background-color: var(--paper-canvas);
+}
+
+/* White card surface */
+.surface-card {
+  background-color: var(--paper-white);
+}
+
+/* Taupe surface for sidebar */
+.surface-taupe {
+  background-color: var(--paper-taupe);
+}
+
+/* Elevated surface with editorial shadow */
+.surface-elevated {
+  background-color: var(--paper-white);
+  box-shadow:
+    0 1px 3px oklch(0.25 0.01 60 / 0.06),
+    0 4px 12px oklch(0.25 0.01 60 / 0.04);
+}
+
+/* Deeply elevated surface for dialogs */
+.surface-dialog {
+  background-color: var(--paper-white);
+  box-shadow:
+    0 2px 8px oklch(0.25 0.01 60 / 0.08),
+    0 12px 40px oklch(0.25 0.01 60 / 0.1);
+}
+
+/* ─── Border Styles ────────────────────────────────────────────────── */
+
+/* Hairline border — barely visible separator */
+.border-hairline {
+  border-color: var(--paper-border-hairline);
+  border-width: 1px;
+  border-style: solid;
+}
+
+/* Bottom hairline only */
+.border-hairline-b {
+  border-bottom: 1px solid var(--paper-border-hairline);
+}
+
+/* Top hairline only */
+.border-hairline-t {
+  border-top: 1px solid var(--paper-border-hairline);
+}
+
+/* Editorial rule — thicker, decorative horizontal rule */
+.rule-editorial {
+  border: none;
+  border-top: 2px solid var(--paper-charcoal);
+  width: 100%;
+}
+
+/* Thin rule — subtle separator */
+.rule-thin {
+  border: none;
+  border-top: 1px solid var(--paper-border);
+  width: 100%;
+}
+
+/* Dashed border for drop zones */
+.border-dashed-paper {
+  border: 1px dashed var(--paper-text-muted);
+}
+
+/* ─── Link & Underline Styles ──────────────────────────────────────── */
+
+/* Editorial link — offset underline */
+.link-editorial {
+  color: var(--paper-terracotta);
+  text-decoration: underline;
+  text-decoration-color: oklch(0.6 0.16 40 / 0.3);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: text-decoration-color 200ms ease;
+}
+
+.link-editorial:hover {
+  text-decoration-color: var(--paper-terracotta);
+}
+
+/* Wavy underline link */
+.link-wavy {
+  color: var(--paper-terracotta);
+  text-decoration: underline wavy;
+  text-decoration-color: oklch(0.6 0.16 40 / 0.4);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+.link-wavy:hover {
+  text-decoration-color: var(--paper-terracotta);
+}
+
+/* Subtle link — no underline until hover */
+.link-subtle {
+  color: var(--paper-text);
+  text-decoration: none;
+  transition: color 200ms ease;
+}
+
+.link-subtle:hover {
+  color: var(--paper-terracotta);
+}
+
+/* Active navigation link */
+.link-active {
+  color: var(--paper-terracotta);
+  border-left: 2px solid var(--paper-terracotta);
+  padding-left: 12px;
+}
+
+/* ─── Card Styles ──────────────────────────────────────────────────── */
+
+/* Editorial card — shadow only, no border */
+.card-editorial {
+  background-color: var(--paper-white);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: 0 1px 4px oklch(0.25 0.01 60 / 0.06);
+  transition:
+    box-shadow 250ms ease,
+    transform 250ms ease;
+}
+
+.card-editorial:hover {
+  box-shadow:
+    0 2px 8px oklch(0.25 0.01 60 / 0.08),
+    0 8px 24px oklch(0.25 0.01 60 / 0.06);
+  transform: translateY(-2px);
+}
+
+/* Hero card — larger, more prominent */
+.card-hero {
+  background-color: var(--paper-white);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px oklch(0.25 0.01 60 / 0.07);
+  transition:
+    box-shadow 300ms ease,
+    transform 300ms ease;
+}
+
+.card-hero:hover {
+  box-shadow:
+    0 4px 16px oklch(0.25 0.01 60 / 0.1),
+    0 12px 32px oklch(0.25 0.01 60 / 0.06);
+  transform: translateY(-3px);
+}
+
+/* Reading list row */
+.row-reading {
+  background-color: transparent;
+  border-bottom: 1px solid var(--paper-border-hairline);
+  transition: background-color 200ms ease;
+}
+
+.row-reading:hover {
+  background-color: oklch(0.97 0.01 85 / 0.7);
+}
+
+.row-reading-selected {
+  background-color: oklch(0.97 0.01 85);
+}
+
+/* Contact sheet thumbnail */
+.thumb-contact {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 1;
+  border-radius: 2px;
+}
+
+.thumb-contact-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 8px;
+  background: linear-gradient(
+    to top,
+    oklch(0.25 0.01 60 / 0.7) 0%,
+    oklch(0.25 0.01 60 / 0) 60%
+  );
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.thumb-contact:hover .thumb-contact-overlay {
+  opacity: 1;
+}
+
+/* ─── Badge & Pill Styles ──────────────────────────────────────────── */
+
+/* Terracotta pill */
+.pill-terracotta {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  font-family: var(--font-technical);
+  font-size: 11px;
+  color: var(--paper-terracotta);
+  background-color: oklch(0.6 0.16 40 / 0.08);
+  border-radius: 100px;
+}
+
+/* Sage pill */
+.pill-sage {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  font-family: var(--font-technical);
+  font-size: 11px;
+  color: var(--paper-sage);
+  background-color: oklch(0.6 0.1 155 / 0.1);
+  border-radius: 100px;
+}
+
+/* Lavender pill */
+.pill-lavender {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  font-family: var(--font-technical);
+  font-size: 11px;
+  color: var(--paper-lavender);
+  background-color: oklch(0.7 0.1 290 / 0.1);
+  border-radius: 100px;
+}
+
+/* Neutral pill */
+.pill-neutral {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  font-family: var(--font-technical);
+  font-size: 11px;
+  color: var(--paper-text-muted);
+  background-color: oklch(0.6 0.015 60 / 0.08);
+  border-radius: 100px;
+}
+
+/* ─── Progress Bar ─────────────────────────────────────────────────── */
+
+.paper-progress-track {
+  height: 4px;
+  background-color: oklch(0.91 0.008 60);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.paper-progress-fill {
+  height: 100%;
+  background-color: var(--paper-terracotta);
+  border-radius: 2px;
+  transition: width 400ms ease-out;
+}
+
+/* Thin progress bar variant */
+.paper-progress-thin {
+  height: 2px;
+  background-color: oklch(0.91 0.008 60);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.paper-progress-thin-fill {
+  height: 100%;
+  background-color: var(--paper-terracotta);
+  border-radius: 1px;
+  transition: width 400ms ease-out;
+}
+
+/* ─── Micro-animations ──────────────────────────────────────────────── */
+
+/* Gentle fade-in */
+.paper-fade-in {
+  animation: paper-fade-in 200ms ease-out;
+}
+
+@keyframes paper-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide in from right for panels */
+.paper-slide-in-right {
+  animation: paper-slide-right 250ms ease-out;
+}
+
+@keyframes paper-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Subtle scale for card appearance */
+.paper-scale-in {
+  animation: paper-scale-in 200ms ease-out;
+}
+
+@keyframes paper-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ─── Print-Inspired Utilities ─────────────────────────────────────── */
+
+/* Drop cap for first letter */
+.drop-cap::first-letter {
+  font-family: var(--font-editorial);
+  font-size: 3.5em;
+  float: left;
+  line-height: 0.8;
+  padding-right: 8px;
+  padding-top: 4px;
+  color: var(--paper-terracotta);
+}
+
+/* Pull quote style */
+.pull-quote {
+  font-family: var(--font-editorial);
+  font-size: 24px;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--paper-text-muted);
+  border-left: 3px solid var(--paper-terracotta);
+  padding-left: 20px;
+  margin: 24px 0;
+}
+
+/* Folio / page number style */
+.folio {
+  font-family: var(--font-technical);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--paper-text-dim);
+}
+
+/* Colophon — small print info */
+.colophon {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--paper-text-dim);
+  line-height: 1.7;
+}
+
+/* Running header style */
+.running-header {
+  font-family: var(--font-technical);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--paper-text-dim);
+}
+
+/* Em dash separator */
+.em-dash::before {
+  content: '\2014';
+  margin: 0 0.3em;
+  color: var(--paper-text-dim);
+}
+
+/* ─── Drop Zone ────────────────────────────────────────────────────── */
+
+.paper-drop-zone {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: oklch(0.97 0.01 85 / 0.92);
+  border: 1px dashed var(--paper-text-muted);
+  z-index: 50;
+  pointer-events: none;
+}
+
+.paper-drop-zone-text {
+  font-family: var(--font-editorial);
+  font-size: 24px;
+  color: var(--paper-charcoal);
+  margin-bottom: 8px;
+}
+
+.paper-drop-zone-subtext {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--paper-text-muted);
+}
+
+/* ─── Stacked Bar Chart Colors ─────────────────────────────────────── */
+
+.paper-bar-images {
+  background-color: var(--paper-terracotta);
+}
+.paper-bar-videos {
+  background-color: var(--paper-sage);
+}
+.paper-bar-documents {
+  background-color: var(--paper-lavender);
+}
+.paper-bar-other {
+  background-color: oklch(0.82 0.01 60);
+}
+
+/* ─── File Type Accent Colors ──────────────────────────────────────── */
+
+.paper-type-image {
+  color: var(--paper-terracotta);
+}
+.paper-type-video {
+  color: var(--paper-sage);
+}
+.paper-type-document {
+  color: var(--paper-lavender);
+}
+.paper-type-audio {
+  color: var(--paper-amber);
+}
+.paper-type-archive {
+  color: var(--paper-text-dim);
+}
+
+/* Pastel backgrounds for non-visual file types in contact sheet */
+.paper-bg-document {
+  background-color: oklch(0.92 0.04 290);
+}
+.paper-bg-audio {
+  background-color: oklch(0.92 0.04 70);
+}
+.paper-bg-archive {
+  background-color: oklch(0.92 0.015 60);
+}
+.paper-bg-video {
+  background-color: oklch(0.92 0.04 155);
+}
+.paper-bg-code {
+  background-color: oklch(0.92 0.03 220);
+}
+
+/* ─── Scrollbar Styling ─────────────────────────────────────────────── */
+
+[data-theme='paper'] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+[data-theme='paper'] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-theme='paper'] ::-webkit-scrollbar-thumb {
+  background-color: oklch(0.82 0.01 60);
+  border-radius: 3px;
+}
+
+[data-theme='paper'] ::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.72 0.01 60);
+}
+
+/* ─── Selection ─────────────────────────────────────────────────────── */
+
+[data-theme='paper'] ::selection {
+  background-color: var(--paper-selection);
+  color: var(--paper-charcoal);
+}
+
+/* ─── Focus Ring Override ───────────────────────────────────────────── */
+
+[data-theme='paper'] :focus-visible {
+  outline: 1.5px solid var(--paper-terracotta);
+  outline-offset: 2px;
+}
+
+/* ─── Filter Text Button ───────────────────────────────────────────── */
+
+.filter-text {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--paper-text-muted);
+  text-decoration: none;
+  padding-bottom: 2px;
+  border-bottom: 1.5px solid transparent;
+  transition:
+    color 200ms ease,
+    border-color 200ms ease;
+  cursor: pointer;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.filter-text:hover {
+  color: var(--paper-charcoal);
+}
+
+.filter-text-active {
+  color: var(--paper-terracotta);
+  border-bottom-color: var(--paper-terracotta);
+}
+
+/* ─── Bulk Selection Bar ───────────────────────────────────────────── */
+
+.paper-selection-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background-color: var(--paper-charcoal);
+  color: oklch(0.95 0.005 60);
+  border-radius: 12px;
+  box-shadow:
+    0 4px 16px oklch(0.25 0.01 60 / 0.2),
+    0 12px 40px oklch(0.25 0.01 60 / 0.15);
+  font-family: var(--font-body);
+  font-size: 14px;
+  z-index: 50;
+  animation: paper-fade-in 200ms ease-out;
+}
+
+.paper-selection-bar button {
+  background: none;
+  border: none;
+  color: oklch(0.85 0.005 60);
+  font-family: var(--font-body);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.paper-selection-bar button:hover {
+  color: oklch(0.98 0.005 60);
+  background-color: oklch(0.35 0.01 60);
+}
+
+/* ─── Upload Indicator Dot ─────────────────────────────────────────── */
+
+.upload-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--paper-terracotta);
+  animation: upload-dot-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes upload-dot-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+  }
+}
+
+/* ─── Transitions ──────────────────────────────────────────────────── */
+
+[data-theme='paper'] * {
+  transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+}

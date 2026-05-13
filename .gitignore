@@ -65,3 +65,16 @@ prisma/erDiagram.md
 .github/*.chatmode.md
 .env
 tsconfig.vite.tsbuildinfo
+.github/ask.chatmode.md.backup
+.vscode/mcp.json
+memory-bank/activeContext.md
+memory-bank/architect.md
+memory-bank/decisionLog.md
+memory-bank/productContext.md
+memory-bank/progress.md
+memory-bank/projectBrief.md
+memory-bank/systemPatterns.md
+playground/semantic-search-playground.html
+.env
+app/components/core-components/card-examples/codespaces-card.tsx
+app/components/core-components/card-examples/codespaces-card.tsx
