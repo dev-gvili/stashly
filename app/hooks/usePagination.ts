@@ -63,7 +63,9 @@ export function usePagination<T extends Identifiable>(
   /**
    * Optional action URL for the useSubmit; defaults to current route.
    */
-  action: string = ''
+  action: string = '',
+
+  initData?: LoaderData<T>["items"] // Optional initial data for better type inference
 ) {
   // Get initial data from the current route loader
   const initialData = useLoaderData() as LoaderData<T>
@@ -77,7 +79,7 @@ export function usePagination<T extends Identifiable>(
   // Get current route params
   const routeParams = useParams()
   // State for concatenated items
-  const [items, setItems] = useState<T[]>(initialData.items)
+  const [items, setItems] = useState<T[]>(initData || initialData.items)
   // State for the next cursor
   const [nextCursor, setNextCursor] = useState<string | null>(initialData.nextCursor)
   // State for error handling
@@ -268,7 +270,7 @@ export function usePagination<T extends Identifiable>(
 
       // 4. Use useSubmit to trigger the loader with the updated params
       // This performs a "GET" against the current route's loader.
-      submit(params, { method: 'GET', action: action, replace: true })
+      submit(params, { method: 'GET', action: action, replace: true, })
     } catch (err) {
       console.error('Pagination Error:', err)
       setError(

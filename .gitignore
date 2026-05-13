@@ -65,3 +65,8 @@ prisma/erDiagram.md
 .github/*.chatmode.md
 .env
 tsconfig.vite.tsbuildinfo
+.github/ask.chatmode.md.backup
+.vscode/mcp.json
+memory-bank/*
+playground/semantic-search-playground.html
+card-examples/*

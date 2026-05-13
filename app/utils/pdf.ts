@@ -3,6 +3,16 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
+// PDF.js v5+ configuration for CMaps and standard fonts
+// disableFontFace: true forces PDF.js to render text via canvas instead of trying
+// to load fonts from the network, which prevents squares/missing-glyph issues
+const pdfjsOptions = {
+  cMapUrl: '/pdfjs-cmaps/',
+  cMapPacked: true,
+  standardFontDataUrl: '/pdfjs-standard-fonts/',
+  disableFontFace: true, // Use canvas-rendered text to avoid font loading failures
+}
+
 // Quiet PDF.js's noisy "Worker task was terminated" warnings that fire on
 // every doc.destroy() in fake-worker mode. They are non-fatal — pdfjs already
 // logs them with "ignoring errors" — but they spam the console.
@@ -63,7 +73,7 @@ async function withFirstPage<T>(
   let doc: pdfjs.PDFDocumentProxy | null = null
   try {
     const buffer = await file.arrayBuffer()
-    doc = await pdfjs.getDocument({ data: buffer, verbosity: PDFJS_VERBOSITY_ERRORS, ...workerSafeDocOptions }).promise
+    doc = await pdfjs.getDocument({ data: buffer, verbosity: PDFJS_VERBOSITY_ERRORS, ...workerSafeDocOptions, ...pdfjsOptions }).promise
     if (doc.numPages === 0) {
       console.error(`[pdf] ${label}: doc has 0 pages`)
       return null
@@ -89,7 +99,7 @@ export function getPdfMetadata(
     let doc: pdfjs.PDFDocumentProxy | null = null
     try {
       const buffer = await file.arrayBuffer()
-      doc = await pdfjs.getDocument({ data: buffer, verbosity: PDFJS_VERBOSITY_ERRORS, ...workerSafeDocOptions }).promise
+      doc = await pdfjs.getDocument({ data: buffer, verbosity: PDFJS_VERBOSITY_ERRORS, ...workerSafeDocOptions, ...pdfjsOptions }).promise
       const page = await doc.getPage(1)
       const viewport = page.getViewport({ scale: 1 })
       const result = {
@@ -217,7 +227,7 @@ export function extractPdfText(
     let doc: pdfjs.PDFDocumentProxy | null = null
     try {
       const buffer = await file.arrayBuffer()
-      doc = await pdfjs.getDocument({ data: buffer, verbosity: PDFJS_VERBOSITY_ERRORS, ...workerSafeDocOptions }).promise
+      doc = await pdfjs.getDocument({ data: buffer, verbosity: PDFJS_VERBOSITY_ERRORS, ...workerSafeDocOptions, ...pdfjsOptions }).promise
       const pageCount = doc.numPages
       if (pageCount === 0) return null
 

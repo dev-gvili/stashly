@@ -1,19 +1,25 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useFetcher, useRouteLoaderData, useSearchParams } from 'react-router'
+import {
+  useFetcher,
+  useLocation,
+  useRouteLoaderData,
+  useSearchParams,
+} from 'react-router'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Dialog, DialogPortal } from '@/ui/dialog'
+import { Dialog, DialogClose, DialogPortal, DialogTrigger } from '@/ui/dialog'
 import { Button } from '@/ui/button'
 import { Badge } from '@/ui/badge'
 import { ScrollArea } from '@/ui/scroll-area'
 import { Checkbox } from '@/ui/checkbox'
 import {
   CollectionIcon,
+  RemoveIcon,
   RemoveSquareIcon,
   SearchIcon,
 } from '@/components/icons'
 import { cn } from '@/utils/styles'
 import { formatSize } from '@/utils/formaters'
-import type { StashPickerItem } from '@/types/stash.types'
+import type { StashItem, StashPickerItem } from '@/types/stash.types'
 import { CATEGORIES } from '@/components/filters/filter.data'
 import { ItemCard } from '@/components/stash/item-card'
 import { ItemCardContext } from '@/hooks/useItemCard'
@@ -21,6 +27,9 @@ import type { Route } from '../../routes/+types/layout'
 import { SearchInput } from '@/components/core-components/search-input'
 import { Filters } from '../filters/filters'
 import { useFilters } from '@/hooks/useFilters'
+import { GridLayout } from '../views/grid-view'
+import { LoadMoreItems } from './buttons'
+import { usePagination } from '@/hooks'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,12 +38,11 @@ import { useFilters } from '@/hooks/useFilters'
 export type AddToCollectionItem = StashPickerItem
 
 interface AddToCollectionDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
   collectionId: string
   collectionName: string
   items: AddToCollectionItem[]
   existingItemIds?: string[]
+  children?: React.ReactNode
 }
 
 // ---------------------------------------------------------------------------
@@ -212,14 +220,14 @@ function YearScrubber({
 // ---------------------------------------------------------------------------
 
 export function AddToCollectionDialog({
-  open,
-  onOpenChange,
   collectionId,
   collectionName,
-  items,
+  items: initialItems,
   existingItemIds = [],
+  children,
 }: AddToCollectionDialogProps) {
   const fetcher = useFetcher()
+  let location = useLocation()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -230,22 +238,19 @@ export function AddToCollectionDialog({
   const user =
     useRouteLoaderData<Route.ComponentProps['loaderData']>('layout')!.user
   const [searchParams, setSearchParams] = useSearchParams()
-  // Reset state on open and on close — keeps category param from leaking either way
-  useEffect(() => {
-    filters.clearAll()
-    if (open) {
-      setSelected(new Set())
-      setQuery('')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
-
-  // Close on successful submit
-  useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data != null) {
-      onOpenChange(!open)
-    }
-  }, [fetcher.state, fetcher.data])
+  
+  // Use usePagination with initialItems passed as the third parameter (initData)
+  const { hasMore, isLoading, loadMore, items } = usePagination<StashPickerItem>(
+    60,
+    '/api/collections?' + searchParams.toString(),
+    initialItems
+  )
+  // // Close on successful submit
+  // useEffect(() => {
+  //   if (fetcher.state === 'idle' && fetcher.data != null) {
+  //     onOpenChange(!open)
+  //   }
+  // }, [fetcher.state, fetcher.data])
 
   const toggleItem = useCallback((id: string) => {
     setSelected((prev) => {
@@ -263,7 +268,7 @@ export function AddToCollectionDialog({
       items.map((item) => ({
         ...item,
         _dateLabel: item.createdAt
-          ? new Date(item.createdAt).toLocaleDateString('en-US', DATE_FMT)
+          ? new Date(item.createdAt).toLocaleDateString(undefined, DATE_FMT)
           : 'Unknown date',
         _nameLower: item.name.toLowerCase(),
       })),
@@ -303,14 +308,22 @@ export function AddToCollectionDialog({
       },
       { method: 'post', action: '/api/collections' }
     )
-    onOpenChange(!open)
   }
 
   const selectedCount = selected.size
   const isSubmitting = fetcher.state !== 'idle'
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      onOpenChange={(open) => {
+        filters.clearAll()
+        if (open) {
+          setSelected(new Set())
+          setQuery('')
+        }
+      }}
+    >
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogPortal>
         {/* Backdrop */}
         <motion.div
@@ -392,16 +405,17 @@ export function AddToCollectionDialog({
               )}
             </section>
             {/* Close */}
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-              aria-label="Close"
-              className="font-stashly bg-card! border-input rounded-md!"
-            >
-              <RemoveSquareIcon className="size-5" />
-            </Button>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Close"
+                className="font-stashly bg-card! border-input rounded-md!"
+              >
+                <RemoveIcon className="size-5" />
+              </Button>
+            </DialogClose>
           </header>
 
           {/* ── Content ── */}
@@ -416,53 +430,58 @@ export function AddToCollectionDialog({
                 </div>
               ) : (
                 <div className="p-4 space-y-8">
-                  {groups.map(([dateLabel, groupItems]) => (
-                    <section
-                      key={dateLabel}
-                      ref={(el) => {
-                        if (el) groupRefs.current.set(dateLabel, el)
-                        else groupRefs.current.delete(dateLabel)
-                      }}
-                    >
-                      <DateGroupHeader
-                        label={dateLabel}
-                        items={groupItems}
-                        selected={selected}
-                        existingSet={existingSet}
-                        onToggleAll={(ids) => {
-                          setSelected((prev) => {
-                            const next = new Set(prev)
-                            const allSelected = ids.every(
-                              (id) => next.has(id) || existingSet.has(id)
-                            )
-                            ids.forEach((id) => {
-                              if (existingSet.has(id)) return
-                              if (allSelected) next.delete(id)
-                              else next.add(id)
-                            })
-                            return next
-                          })
+                    {groups.map(([dateLabel, groupItems]) => (
+                      <section
+                        key={dateLabel}
+                        ref={(el) => {
+                          if (el) groupRefs.current.set(dateLabel, el)
+                          else groupRefs.current.delete(dateLabel)
                         }}
-                      />
+                      >
+                        <DateGroupHeader
+                          label={dateLabel}
+                          items={groupItems}
+                          selected={selected}
+                          existingSet={existingSet}
+                          onToggleAll={(ids) => {
+                            setSelected((prev) => {
+                              const next = new Set(prev)
+                              const allSelected = ids.every(
+                                (id) => next.has(id) || existingSet.has(id)
+                              )
+                              ids.forEach((id) => {
+                                if (existingSet.has(id)) return
+                                if (allSelected) next.delete(id)
+                                else next.add(id)
+                              })
+                              return next
+                            })
+                          }}
+                        />
 
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-1 mt-2">
-                        {groupItems.map((item) => (
-                          <GridItem
-                            key={item.id}
-                            item={item}
-                            selected={selected.has(item.id)}
-                            existing={existingSet.has(item.id)}
-                            onToggle={toggleItem}
-                            user={user}
-                            searchParams={searchParams}
-                            setSearchParams={setSearchParams}
-                          />
-                        ))}
-                      </div>
-                    </section>
-                  ))}
+                        <GridLayout>
+                          {groupItems.map((item) => (
+                            <GridItem
+                              key={item.id}
+                              item={item}
+                              selected={selected.has(item.id)}
+                              existing={existingSet.has(item.id)}
+                              onToggle={toggleItem}
+                              user={user}
+                              searchParams={searchParams}
+                              setSearchParams={setSearchParams}
+                            />
+                          ))}
+                        </GridLayout>
+                      </section>
+                    ))}
                 </div>
               )}
+              <LoadMoreItems
+                hasMore={hasMore}
+                isLoading={isLoading}
+                loadMore={loadMore}
+              />
             </ScrollArea>
           </div>
 
@@ -493,16 +512,17 @@ export function AddToCollectionDialog({
                   >
                     Clear
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleAdd}
-                    disabled={isSubmitting}
-                    className="font-stashly"
-                  >
-                    {isSubmitting
-                      ? 'Adding…'
-                      : `Add ${selectedCount} item${selectedCount !== 1 ? 's' : ''}`}
-                  </Button>
+                  <DialogClose asChild>
+                    <Button
+                      onClick={handleAdd}
+                      disabled={isSubmitting}
+                      className="font-stashly bg-foreground text-background border-input rounded-md"
+                    >
+                      {isSubmitting
+                        ? 'Adding…'
+                        : `Add ${selectedCount} item${selectedCount !== 1 ? 's' : ''}`}
+                    </Button>
+                  </DialogClose>
                 </div>
               </motion.div>
             )}
@@ -571,20 +591,20 @@ function DateGroupHeader({
 // Trigger helper — wraps any element to open the dialog
 // ---------------------------------------------------------------------------
 
-export function AddToCollectionTrigger({
-  children,
-  ...props
-}: Omit<AddToCollectionDialogProps, 'open' | 'onOpenChange'> & {
-  children: React.ReactNode
-}) {
-  const [open, setOpen] = useState(false)
+// export function AddToCollectionTrigger({
+//   children,
+//   ...props
+// }: Omit<AddToCollectionDialogProps, 'open' | 'onOpenChange'> & {
+//   children: React.ReactNode
+// }) {
+//   const [open, setOpen] = useState(false)
 
-  return (
-    <>
-      <span onClick={() => setOpen(true)} className="contents">
-        {children}
-      </span>
-      <AddToCollectionDialog open={open} onOpenChange={setOpen} {...props} />
-    </>
-  )
-}
+//   return (
+//     <>
+//       <span onClick={() => setOpen(true)} className="contents">
+//         {children}
+//       </span>
+//       <AddToCollectionDialog open={open} onOpenChange={setOpen} {...props} />
+//     </>
+//   )
+// }

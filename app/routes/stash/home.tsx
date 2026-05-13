@@ -56,13 +56,13 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   }
 
   if (
-    currentSelectedItems.some((item) => !nextSelectedItems.includes(item)) &&
+    currentSelectedItems.length !== nextSelectedItems.length &&
     currentUrl.pathname === nextUrl.pathname
   ) {
     return false
   }
 
-  return defaultShouldRevalidate
+  return true
 }
 
 export async function loader({ request, params }: Route.ActionArgs) {
@@ -77,7 +77,7 @@ export async function loader({ request, params }: Route.ActionArgs) {
     driveId: session.user.driveId,
     rootId: session.user.rootId,
     maxFolders: 6,
-    maxFiles: 50,
+    maxFiles: 25,
   })
 
   return {

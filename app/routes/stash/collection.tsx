@@ -5,7 +5,11 @@ import {
 } from '@/services/collection-actions'
 import { paginateItems, touchOpenedAt } from '@/services/item-actions'
 import { CollectionView } from '@/components/views/collection-view'
-import { redirect, useParams } from 'react-router'
+import {
+  redirect,
+  useParams,
+  type ShouldRevalidateFunction,
+} from 'react-router'
 import type { Route } from './+types/collection'
 import { usePagination } from '@/hooks/usePagination'
 
@@ -25,7 +29,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     getCollectionItems(session.user.id, collectionId, limit, cursor),
     // Fetch the user's items to populate the add-to-collection picker
     paginateItems({
-      limit: 500,
+      limit,
       cursor,
       where: {
         ownerId: session.user.id,
@@ -56,7 +60,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     category: item.category,
     size: item.size,
     createdAt: item.createdAt,
-    thumbnailUrl: item.thumbnails?.find((t) => t.url && !t.url.startsWith('#'))?.url ?? null,
+    thumbnailUrl:
+      item.thumbnails?.find((t) => t.url && !t.url.startsWith('#'))?.url ??
+      null,
   }))
 
   Promise.resolve()
@@ -81,10 +87,36 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }
 }
 
-export default function Collection({ loaderData }: Route.ComponentProps) {
-  const params = useParams()
-  const me = params.me as string
+export const shouldRevalidate: ShouldRevalidateFunction = ({
+  nextUrl,
+  currentUrl,
+  formAction,
+  formData,
+  defaultShouldRevalidate,
+}) => {
+  ;['sidebar', 'theme'].forEach((action) => {
+    if (formAction?.includes(action)) {
+      return false
+    }
+  })
 
+  console.log('shouldRevalidate', { nextUrl, currentUrl, formAction, formData })
+  if (
+    formData?.get('intent') === 'add_item_to_collection' ||
+    formData?.get('intent') === 'add_items_to_collection' ||
+    formData?.get('intent') === 'remove_items_from_collection' ||
+    formData?.get('intent') === 'remove_item'
+  ) {
+    return true
+  }
+
+  return true
+}
+
+export default function Collection({
+  loaderData,
+  params,
+}: Route.ComponentProps) {
   const { items, hasMore, isLoading, loadMore } =
     usePagination<Route.ComponentProps['loaderData']['items'][number]>(50)
 
@@ -97,7 +129,7 @@ export default function Collection({ loaderData }: Route.ComponentProps) {
       hasMore={hasMore}
       isLoading={isLoading}
       loadMore={loadMore}
-      collectionsHref={`/${me}/stash/collections`}
+      collectionsHref={`/${params.me}/stash/collections`}
     />
   )
 }

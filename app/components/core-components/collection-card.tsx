@@ -51,7 +51,11 @@ export function CollectionCard({
   function handleDelete() {
     fetcher.submit(
       { intent: 'delete_collection', collectionId: collection.id },
-      { method: 'post', action: '/api/collections', preventScrollReset: true }
+      {
+        method: 'post',
+        action: href('/api/collections'),
+        preventScrollReset: true,
+      }
     )
   }
 
@@ -63,7 +67,7 @@ export function CollectionCard({
           `${href('/:me/stash/collections/:collectionId', {
             me: me!,
             collectionId: collection.id,
-          })}?layout=grid`
+          })}?layout=grid&take=50`
         )
       }
     >
@@ -204,7 +208,7 @@ const CollectionCount = React.forwardRef<
   const { className, _count, ...rest } = props
 
   return (
-    <CardDescription  
+    <CardDescription
       ref={ref}
       data-slot="collection-count"
       className={cn(
@@ -213,7 +217,7 @@ const CollectionCount = React.forwardRef<
       )}
       {...rest}
     >
-          {_count} {_count === 1 ? 'item' : 'items'}
+      {_count} {_count === 1 ? 'item' : 'items'}
     </CardDescription>
   )
 })
