@@ -369,7 +369,11 @@ export async function removeItemsFromCollection({
   itemIds: string[]
 }) {
   await assertItemPermission(userId, collectionId, 'write')
-  if (!itemIds.length) return []
+  if (!itemIds.length)
+    throw new StashlyError(
+      StashlyErrorCode.REMOVE_ITEMS_FROM_COLLECTION_FAILED,
+      'No item IDs provided'
+    )
 
   await prisma.collectionMember.deleteMany({
     where: { collectionId, itemId: { in: itemIds } },
@@ -395,7 +399,11 @@ export async function addItemsToCollection({
   itemIds: string[]
 }) {
   await assertItemPermission(userId, collectionId, 'write')
-  if (!itemIds.length) return []
+  if (!itemIds.length)
+    throw new StashlyError(
+      StashlyErrorCode.ADD_ITEMS_TO_COLLECTION_FAILED,
+      'No item IDs provided'
+    )
 
   const toAdd = await prisma.$queryRaw<{ id: string; size: bigint }[]>`
     WITH accessible AS (
@@ -426,7 +434,7 @@ export async function addItemsToCollection({
 
   if (!toAdd.length) return []
 
-  await prisma.collectionMember.createMany({
+  return await prisma.collectionMember.createManyAndReturn({
     skipDuplicates: true,
     data: toAdd.map((i) => ({
       id: toObjectId(getPrefixForModel('CollectionMember')),
@@ -434,8 +442,6 @@ export async function addItemsToCollection({
       itemId: i.id,
     })),
   })
-
-  return toAdd.map((i) => i.id)
 }
 
 /**
@@ -470,7 +476,7 @@ export async function getCollectionForUser(
 
   const collection = await findCollectionById(collectionId)
   if (!collection) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Collection not found')
+    throw new StashlyError(StashlyErrorCode.COLLECTION_NOT_FOUND, 'Collection not found')
   }
   return collection
 }
@@ -538,6 +544,7 @@ export async function getCollectionItems(
       thumbnailUrl,
     })),
     nextCursor,
+    hasMore: !!nextCursor,
   }
 }
 
@@ -567,7 +574,7 @@ export async function listCollectionPermissions(
 ) {
   const item = await findFirstItem({ where: { id: collectionId } })
   if (!item) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Collection not found')
+    throw new StashlyError(StashlyErrorCode.COLLECTION_NOT_FOUND, 'Collection not found')
   }
 
   const isOwner = item.ownerId === userId
@@ -595,7 +602,7 @@ export async function grantCollectionPermission(
 ) {
   const item = await findFirstItem({ where: { id: collectionId } })
   if (!item) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Collection not found')
+    throw new StashlyError(StashlyErrorCode.COLLECTION_NOT_FOUND, 'Collection not found')
   }
 
   const isOwner = item.ownerId === actingUserId

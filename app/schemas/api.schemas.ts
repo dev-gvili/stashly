@@ -182,6 +182,15 @@ export const aiApiRouteInput = z.discriminatedUnion('intent', [
 // ================ Collections Api Route =============== //
 // ====================================================== //
 
+// Note: the loader for this route is currently unused, but will be needed to fetch collection details for the add to collection dialog on the client side. the input schema will include the collectionId param and any query params needed for pagination of collection items.
+
+export const addItemsToCollectionInput = z.object({
+  cursor: z.string().optional(),
+  take: z.coerce.number().optional(),
+  ownerId: z.string(),
+})
+
+
 export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
   z.object({
     intent: z.literal('create_collection'),

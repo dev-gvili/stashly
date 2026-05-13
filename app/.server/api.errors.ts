@@ -29,6 +29,19 @@ export enum StashlyErrorCode {
   UPLOAD_FAILED = 'UPLOAD_FAILED',
   DOWNLOAD_FAILED = 'DOWNLOAD_FAILED',
 
+  // Collection-related errors
+  ADD_ITEM_TO_COLLECTION_FAILED = 'ADD_ITEM_TO_COLLECTION_FAILED',
+  ADD_ITEMS_TO_COLLECTION_FAILED = 'ADD_ITEMS_TO_COLLECTION_FAILED',
+  REMOVE_ITEM_FROM_COLLECTION_FAILED = 'REMOVE_ITEM_FROM_COLLECTION_FAILED',
+  REMOVE_ITEMS_FROM_COLLECTION_FAILED = 'REMOVE_ITEMS_FROM_COLLECTION_FAILED',
+  COLLECTION_NOT_FOUND = 'COLLECTION_NOT_FOUND',
+  CREATE_COLLECTION_FAILED = 'CREATE_COLLECTION_FAILED',
+  TRASH_COLLECTION_FAILED = 'TRASH_COLLECTION_FAILED',
+  CLEAR_COLLECTION_FAILED = 'CLEAR_COLLECTION_FAILED',
+  RENAME_COLLECTION_FAILED = 'RENAME_COLLECTION_FAILED',
+  DELETE_COLLECTION_FAILED = 'DELETE_COLLECTION_FAILED',
+  RESTORE_COLLECTION_FAILED = 'RESTORE_COLLECTION_FAILED',
+
   // Item-related errors
   ITEM_NOT_FOUND = 'ITEM_NOT_FOUND',
   LIST_ITEMS_FAILED = 'LIST_ITEMS_FAILED',
@@ -69,13 +82,12 @@ export enum StashlyErrorCode {
   ITEM_LOCKED = 'ITEM_LOCKED',
   ITEM_NOT_LOCKED = 'ITEM_NOT_LOCKED',
 
-
   // User-related errors
   INSUFFICIENT_FUNDS = 'INSUFFICIENT_FUNDS',
   USER_NOT_FOUND = 'USER_NOT_FOUND',
   USER_ALREADY_EXISTS = 'USER_ALREADY_EXISTS',
   USER_NOT_AUTHORIZED = 'USER_NOT_AUTHORIZED',
-  
+
   // AI errors
   AI_MODEL_LOADING_FAILED = 'AI_MODEL_LOADING_FAILED',
   AI_PROCESSING_FAILED = 'AI_PROCESSING_FAILED',
@@ -186,9 +198,6 @@ const ERROR_DETAILS: Record<
     message: 'The item is not currently locked.',
     statusCode: 409,
   },
-
-
-
 
   // Storage Plan errors
   [StashlyErrorCode.CREATE_STORAGE_PLAN_FAILED]: {
@@ -408,9 +417,53 @@ const ERROR_DETAILS: Record<
   [StashlyErrorCode.AI_IMAGE_PROCESSING_FAILED]: {
     message: 'AI image processing failed.',
     statusCode: 500,
-  }
+  },
 
-
+  // Collection errors
+  [StashlyErrorCode.ADD_ITEM_TO_COLLECTION_FAILED]: {
+    message: 'Failed to add item to collection.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.ADD_ITEMS_TO_COLLECTION_FAILED]: {
+    message: 'Failed to add items to collection.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.REMOVE_ITEM_FROM_COLLECTION_FAILED]: {
+    message: 'Failed to remove item from collection.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.REMOVE_ITEMS_FROM_COLLECTION_FAILED]: {
+    message: 'Failed to remove items from collection.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.COLLECTION_NOT_FOUND]: {
+    message: 'The specified collection could not be found.',
+    statusCode: 404,
+  },
+  [StashlyErrorCode.CREATE_COLLECTION_FAILED]: {
+    message: 'Failed to create the collection.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.CLEAR_COLLECTION_FAILED]: {
+    message: 'Failed to clear the collection.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.RENAME_COLLECTION_FAILED]: {
+    message: 'Failed to rename the collection.',  
+    statusCode: 500,
+  },
+  [StashlyErrorCode.DELETE_COLLECTION_FAILED]: {
+    message: 'Failed to delete the collection.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.RESTORE_COLLECTION_FAILED]: {
+    message: 'Failed to restore the collection.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.TRASH_COLLECTION_FAILED]: {
+    message: 'Failed to trash the collection.',
+    statusCode: 500,
+  },
 }
 
 /**
