@@ -44,6 +44,7 @@ export default [
     // Top-level resources
     route('shares', 'routes/api/shares.ts'),
     route('favorites', 'routes/api/favorites.ts'),
+    route('pins', 'routes/api/pins.ts'),
     route('versions', 'routes/api/versions.ts'),
     route('thumbnails', 'routes/api/thumbnails.ts'),
     ...prefix('thumbnails', [
