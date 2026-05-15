@@ -349,6 +349,8 @@ When adding a new feature, these steps are **mandatory** in order:
 
 **Item card dropdown**: Actions live in the internal `ItemCardActions` component inside `app/components/stash/item-card.tsx`.
 
+**Pinned items**: `PinItem` is a per-user, per-item join row with a `position` int for manual ordering. Business logic lives in `app/.server/pin-actions.ts`; the resource route is `/api/pins` (POST `intent: pin|unpin|reorder`, GET `intent: list|check`). Pin/Unpin is surfaced in `ItemCard.Actions` via the `usePinItem` hook (`app/hooks/usePinItem.ts`) for optimistic toggling. The pinned page lives at `/:me/stash/pinned`. `StashItem` carries an optional `pins?: StashPin[]` field — populated by `getPinnedItems` and `getFavoritedItems` selects so the dropdown shows the correct initial label.
+
 **`openedAt` tracking**: Any route loader that opens a file, folder, collection, or image must call `touchOpenedAt(itemId)` from `@/services/item-actions` fire-and-forget — `Promise.resolve().then(() => touchOpenedAt(id)).catch(() => {})`. This keeps `openedAt` current for recency/suggested-items features. Current callers: `folder.tsx`, `file.tsx`, `collection.tsx`, `gallery-image.tsx`.
 
 ## Gallery Views
