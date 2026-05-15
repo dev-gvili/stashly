@@ -23,6 +23,15 @@ const itemListSelect = {
     where: { NOT: { url: { startsWith: '#' } } },
     select: { id: true, url: true, width: true, height: true, size: true, view: true },
   },
+  favorites: {
+    select: {
+      id: true,
+      favoritedBy: {
+        select: { id: true, name: true, displayName: true, image: true },
+      },
+    },
+  },
+  tags: true,
 } satisfies Prisma.ItemSelect
 
 export async function pinItem(
