@@ -42,6 +42,8 @@ import {
   LockIcon,
   MenuDotsIcon,
   MoveToFolder,
+  PinIcon,
+  PinFillIcon,
   PreviewIcon,
   RenameIcon,
   RestoreIcon,
@@ -61,6 +63,7 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu'
 import useConfirm from '@/hooks/useConfirm'
+import { usePinItem } from '@/hooks/usePinItem'
 import { Button } from '../ui/button'
 import { ScrollArea } from '../ui/scroll-area'
 
@@ -98,6 +101,7 @@ const ItemCardActions = (
   let fetcher = useFetcher()
   let { id, name, type, status, favorites, user } = useItemCard()
   let favorited = toFavorite({ favorites, userId: user?.id })
+  let { pinned, toggle: togglePin, isPending: isPinPending } = usePinItem(id)
   let [shareOpen, setShareOpen] = React.useState(false)
   let [dmo, setDMOpen] = React.useState(false)
   let [activityOpen, setActivityOpen] = React.useState(false)
@@ -191,6 +195,21 @@ const ItemCardActions = (
                       className="text-current"
                     />
                     {favorited ? 'Unfavorite' : 'Favorite'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="items-start hover:cursor-pointer"
+                    disabled={isPinPending}
+                    onSelect={(e) => {
+                      e.preventDefault()
+                      togglePin()
+                    }}
+                  >
+                    {pinned ? (
+                      <PinFillIcon className="text-current" />
+                    ) : (
+                      <PinIcon className="text-current" />
+                    )}
+                    {pinned ? 'Unpin' : 'Pin'}
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuGroup>
