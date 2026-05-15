@@ -14,6 +14,10 @@ import {
   E2E_ITEM_B_NAME,
   E2E_ITEM_C_NAME,
   E2E_ROOT_FOLDER_ID,
+  E2E_PIN_ITEM_A_ID,
+  E2E_PIN_ITEM_B_ID,
+  E2E_PIN_ITEM_A_NAME,
+  E2E_PIN_ITEM_B_NAME,
 } from './constants'
 
 /**
@@ -166,6 +170,26 @@ export default async function globalSetup() {
         { id: 'fav_e2e_test_000_bbb', favoritedById: TEST_USER_ID, itemId: E2E_ITEM_B_ID },
         { id: 'fav_e2e_test_000_ccc', favoritedById: TEST_USER_ID, itemId: E2E_ITEM_C_ID },
       ],
+    })
+
+    // Seed pin test items.
+    await prisma.item.upsert({
+      where: { id: E2E_PIN_ITEM_A_ID },
+      create: { id: E2E_PIN_ITEM_A_ID, name: E2E_PIN_ITEM_A_NAME, ...itemBase },
+      update: { name: E2E_PIN_ITEM_A_NAME },
+    })
+    await prisma.item.upsert({
+      where: { id: E2E_PIN_ITEM_B_ID },
+      create: { id: E2E_PIN_ITEM_B_ID, name: E2E_PIN_ITEM_B_NAME, ...itemBase },
+      update: { name: E2E_PIN_ITEM_B_NAME },
+    })
+
+    // Reset pins: A starts unpinned, B starts pre-pinned.
+    await prisma.pinItem.deleteMany({
+      where: { pinnedById: TEST_USER_ID, itemId: { in: [E2E_PIN_ITEM_A_ID, E2E_PIN_ITEM_B_ID] } },
+    })
+    await prisma.pinItem.create({
+      data: { id: 'pin_e2e_test_000_bbb', pinnedById: TEST_USER_ID, itemId: E2E_PIN_ITEM_B_ID, position: 0 },
     })
 
     // Write Playwright storageState — better-auth reads `better-auth.session_token` cookie

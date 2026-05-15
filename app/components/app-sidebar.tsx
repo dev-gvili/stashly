@@ -19,6 +19,7 @@ import {
   FolderIcon,
   HomeIcon,
   ImagesIcon,
+  PinIcon,
   RecentIcon,
   SendInvitationIcon,
   ShareIcon,
@@ -97,6 +98,14 @@ const libraryItems: SidebarItemProps[] = [
     label: 'Favorites',
     to: 'favorites?layout=grid',
     tooltip: 'Favorites',
+  },
+  {
+    icon: (isActive) => (
+      <PinIcon className="size-5! group-data-[state=collapsed]:ml-2" />
+    ),
+    label: 'Pinned',
+    to: 'pinned?layout=grid',
+    tooltip: 'Pinned',
   },
 ]
 

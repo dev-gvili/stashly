@@ -44,6 +44,7 @@ export default [
     // Top-level resources
     route('shares', 'routes/api/shares.ts'),
     route('favorites', 'routes/api/favorites.ts'),
+    route('pins', 'routes/api/pins.ts'),
     route('versions', 'routes/api/versions.ts'),
     route('thumbnails', 'routes/api/thumbnails.ts'),
     ...prefix('thumbnails', [
@@ -168,6 +169,8 @@ export default [
         route('favorites', 'routes/stash/favorites.tsx', {
           id: 'stash-favorites',
         }),
+
+        route('pinned', 'routes/stash/pinned.tsx', { id: 'stash-pinned' }),
 
         //folder route shows the contents of a specific folder in the user's stash. The ':folderId' dynamic segment allows users to navigate into individual folders to view and manage the items contained within them. This page could provide options for organizing files, such as moving items between folders, renaming the folder, or viewing folder-specific details and activity.
         route('folders/:folderId', 'routes/stash/folder.tsx', {

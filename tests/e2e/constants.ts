@@ -9,3 +9,9 @@ export const E2E_ITEM_A_NAME = 'E2E Fav Item A'
 export const E2E_ITEM_B_NAME = 'E2E Fav Item B'
 export const E2E_ITEM_C_NAME = 'E2E Fav Item C'
 export const E2E_ROOT_FOLDER_ID = 'root_e2e_test_000000'
+
+// Pins E2E — stable IDs reset on every global-setup run
+export const E2E_PIN_ITEM_A_ID = 'item_e2e_pin_aaa0000000000000' // starts unpinned (toggle-on test)
+export const E2E_PIN_ITEM_B_ID = 'item_e2e_pin_bbb0000000000000' // starts pre-pinned (toggle-off test)
+export const E2E_PIN_ITEM_A_NAME = 'E2E Pin Item A'
+export const E2E_PIN_ITEM_B_NAME = 'E2E Pin Item B'

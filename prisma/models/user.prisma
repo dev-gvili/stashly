@@ -35,6 +35,7 @@ model User {
   lockedItems LockedItem[]
   drive       Drive?
   favorites   Favorite[]
+  pins        PinItem[]
 
   @@index([email])
   @@index([name])

@@ -610,3 +610,35 @@ export const thumbnailUpdateSchema = z.object({
   width: z.coerce.number().int().optional(),
   height: z.coerce.number().int().optional(),
 })
+
+// ====================================================== //
+// ==================== Pins Api Route ================== //
+// ====================================================== //
+
+const pinSchema = z.object({
+  intent: z.literal('pin'),
+  itemId: z.string().nonempty(),
+})
+
+const unpinSchema = z.object({
+  intent: z.literal('unpin'),
+  itemId: z.string().nonempty(),
+})
+
+const reorderSchema = z.object({
+  intent: z.literal('reorder'),
+  pinId: z.string().nonempty(),
+  position: z.coerce.number().int(),
+})
+
+export const pinApiRouteInput = z.discriminatedUnion('intent', [
+  pinSchema,
+  unpinSchema,
+  reorderSchema,
+])
+
+export const pinApiRouteQuery = z.object({
+  intent: z.enum(['list', 'check']).default('list'),
+  itemId: z.string().optional(),
+  cursor: z.string().optional(),
+})
