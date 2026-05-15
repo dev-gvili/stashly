@@ -1,0 +1,13 @@
+model PinItem {
+  id         String   @id
+  pinnedById String
+  pinnedBy   User     @relation(fields: [pinnedById], references: [id], onDelete: Cascade)
+  itemId     String
+  item       Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  position   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([pinnedById, itemId])
+  @@index([pinnedById, position])
+}
