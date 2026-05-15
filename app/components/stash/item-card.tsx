@@ -99,9 +99,10 @@ const ItemCardActions = (
   props: React.ComponentPropsWithoutRef<typeof Button>
 ) => {
   let fetcher = useFetcher()
-  let { id, name, type, status, favorites, user } = useItemCard()
+  let { id, name, type, status, favorites, pins, user } = useItemCard()
   let favorited = toFavorite({ favorites, userId: user?.id })
-  let { pinned, toggle: togglePin, isPending: isPinPending } = usePinItem(id)
+  let initiallyPinned = Array.isArray(pins) && pins.some((p) => p.pinnedById === user?.id)
+  let { pinned, toggle: togglePin, isPending: isPinPending } = usePinItem(id, initiallyPinned)
   let [shareOpen, setShareOpen] = React.useState(false)
   let [dmo, setDMOpen] = React.useState(false)
   let [activityOpen, setActivityOpen] = React.useState(false)

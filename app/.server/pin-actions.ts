@@ -31,6 +31,7 @@ const itemListSelect = {
       },
     },
   },
+  pins: { select: { id: true, pinnedById: true } },
   tags: true,
 } satisfies Prisma.ItemSelect
 

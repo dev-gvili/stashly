@@ -2113,6 +2113,7 @@ export async function getFavoritedItems({
           id: true,
         },
       },
+      pins: { select: { id: true, pinnedById: true } },
       tags: true,
     },
   })

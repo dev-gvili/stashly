@@ -15,6 +15,11 @@ export type StashFavorite = {
   }
 }
 
+export type StashPin = {
+  id: string
+  pinnedById: string
+}
+
 // ---------------------------------------------------------------------------
 // Base item shape — the single source of truth for item data across the app.
 // Used by ItemCard, ListLayout, SuggestionsView, and anywhere an item is displayed.
@@ -37,6 +42,7 @@ export interface StashItem {
   tags: string[]
   thumbnails: Pick<Thumbnail, 'id' | 'url' | 'width' | 'height' | 'size' | 'view'>[]
   favorites: StashFavorite[]
+  pins?: StashPin[]
   file: File | null
   folder: Folder | null
 }
