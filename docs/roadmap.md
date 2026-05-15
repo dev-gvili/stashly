@@ -1,6 +1,6 @@
 # Stashly Project Roadmap
 
-Last updated: **2026-05-09**
+Last updated: **2026-05-16**
 
 Stashly is a secure, intuitive, and powerful file storage and collaboration platform. This roadmap tracks shipped phases and remaining work.
 
@@ -30,6 +30,7 @@ For developer conventions and the actual project structure, see [`CLAUDE.md`](..
 - [x] **Folders** — self-referencing `parentId`, `childCount` maintained by Postgres trigger
 - [x] **Collections** — many-to-many with item; size auto-maintained by triggers
 - [x] **Favorites** — toggle, filter
+- [x] **Pinned items** — `PinItem` per-user join row with `position`, `pin-actions.ts`, `/api/pins` resource route (`intent: pin|unpin|reorder|list|check`), `usePinItem` hook for optimistic toggling, `/:me/stash/pinned` page, sidebar entry
 - [x] **Trash + restore + permanent delete** — quota deltas applied on each transition
 - [x] **Storage overview route** — `app/routes/stash/storage.tsx` with `DataTable` + ops dashboard
 

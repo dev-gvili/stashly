@@ -93,6 +93,7 @@ Built with React Router 7 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatib
 - **Personal Stash** — private file storage with folders, collections, favorites, and trash
 - **Workspaces** — shared spaces with role-based access (Owner / Admin / Member / Viewer)
 - **Collections** — group files across folders by topic or project
+- **Pins** — personal bookmarks surfaced at `/:me/stash/pinned`, ordered by user-defined position
 - **Versioning** — track file history over time
 - **Trash** — soft-delete with restore, permanent deletion
 
@@ -149,7 +150,8 @@ User ──┬── Workspace ──── WorkspaceMember (role-based)
        │        │        ├── Thumbnail
        │        │        ├── Metadata
        │        │        ├── Tag
-       │        │        └── Favorite
+       │        │        ├── Favorite
+       │        │        └── PinItem (per-user)
        │        │
        │        ├── ShareLink ── Permission
        │        ├── Invitation
@@ -238,6 +240,7 @@ const collection = await getCollectionForUser(session.user.id, collectionId)
 | `user-actions.ts` | User profile lookups |
 | `drive-actions.ts` | Drive provisioning |
 | `thumbnail-actions.ts` | Thumbnail records (presign + PATCH) |
+| `pin-actions.ts` | Pinned items — `pinItem`, `unpinItem`, `reorderPin`, `isPinned`, `getPinnedItems` (idempotent, cursor-paginated) |
 | `activity-actions.ts` | Activity feed (uses `createActivity` fire-and-forget) |
 
 Models still without dedicated action files: `Favorite`, `AuditLog`, `Trash/TrashItem`, `View`. Search action lives under `app/.server/search/`.
@@ -397,6 +400,7 @@ All API routes live in `app/routes/api/` and are resource routes (no UI componen
 | DELETE | `/api/items/delete` | Permanent deletion |
 | GET/POST | `/api/collections` | List / create collections |
 | GET/POST | `/api/favorites` | List / toggle favorites |
+| GET/POST | `/api/pins` | List / check pinned items (GET: `intent: list\|check`); pin / unpin / reorder (POST: `intent: pin\|unpin\|reorder`) |
 
 ### Workspaces & Members
 | Method | Endpoint | Purpose |

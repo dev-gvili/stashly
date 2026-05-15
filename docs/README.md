@@ -41,6 +41,7 @@ Implementation plans and design specs for significant features. Plans use checkb
 | [2026-04-04-multipart-upload-tests.md](superpowers/plans/2026-04-04-multipart-upload-tests.md) | Implemented | Contract tests for the multipart upload streaming layer |
 | [2026-04-24-living-thumbnails.md](superpowers/plans/2026-04-24-living-thumbnails.md) | Implemented | 5-stage progressive thumbnail pipeline with WebP, race-condition fix |
 | [2026-04-25-item-activities.md](superpowers/plans/2026-04-25-item-activities.md) | Implemented | Item activity timeline — create/rename/move/trash/share/comment/version events |
+| [2026-05-15-pinned-items.md](superpowers/plans/2026-05-15-pinned-items.md) | Implemented | Pinned items — PinItem model, pin-actions.ts, /api/pins route, usePinItem hook, /:me/stash/pinned page |
 
 ### Specs
 
