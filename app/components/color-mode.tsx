@@ -1,4 +1,8 @@
-import { ColorSchemeIcon, MoonIcon, SunIcon } from '@/components/icons'
+import {
+  ColorModeFillIcon,
+  MoonIcon,
+  SunIcon,
+} from '@/components/icons'
 import { Button } from '@/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { useFetcher, useRouteLoaderData } from 'react-router'
@@ -22,7 +26,7 @@ export function ModeToggle() {
           {data?.colorScheme === 'dark' && <MoonIcon className="size-5!" />}
           {data?.colorScheme === 'light' && <SunIcon className="size-5!" />}
           {data?.colorScheme === 'system' && (
-            <ColorSchemeIcon className="size-5!" />
+            <ColorModeFillIcon className="size-5!" />
           )}
         </Button>
       </PopoverTrigger>
@@ -69,7 +73,7 @@ export function ModeToggle() {
             )
           }}
         >
-          <ColorSchemeIcon className="size-5! text-current!" />
+          <ColorModeFillIcon className="size-5! text-current!" />
           <span>System</span>
         </Button>
       </PopoverContent>
