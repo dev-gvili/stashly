@@ -266,6 +266,7 @@ export type UserWhereInput = {
   lockedItems?: Prisma.LockedItemListRelationFilter
   drive?: Prisma.XOR<Prisma.DriveNullableScalarRelationFilter, Prisma.DriveWhereInput> | null
   favorites?: Prisma.FavoriteListRelationFilter
+  pins?: Prisma.PinItemListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -295,6 +296,7 @@ export type UserOrderByWithRelationInput = {
   lockedItems?: Prisma.LockedItemOrderByRelationAggregateInput
   drive?: Prisma.DriveOrderByWithRelationInput
   favorites?: Prisma.FavoriteOrderByRelationAggregateInput
+  pins?: Prisma.PinItemOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -327,6 +329,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   lockedItems?: Prisma.LockedItemListRelationFilter
   drive?: Prisma.XOR<Prisma.DriveNullableScalarRelationFilter, Prisma.DriveWhereInput> | null
   favorites?: Prisma.FavoriteListRelationFilter
+  pins?: Prisma.PinItemListRelationFilter
 }, "id" | "email" | "driveId" | "subscriptionId" | "rootId" | "stripeCustomerId">
 
 export type UserOrderByWithAggregationInput = {
@@ -396,6 +399,7 @@ export type UserCreateInput = {
   lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -425,6 +429,7 @@ export type UserUncheckedCreateInput = {
   lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemUncheckedCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUpdateInput = {
@@ -454,6 +459,7 @@ export type UserUpdateInput = {
   lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -483,6 +489,7 @@ export type UserUncheckedUpdateInput = {
   lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUncheckedUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -752,6 +759,20 @@ export type UserUncheckedUpdateManyWithoutPermissionsNestedInput = {
   deleteMany?: Prisma.UserScalarWhereInput | Prisma.UserScalarWhereInput[]
 }
 
+export type UserCreateNestedOneWithoutPinsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutPinsInput, Prisma.UserUncheckedCreateWithoutPinsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutPinsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutPinsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutPinsInput, Prisma.UserUncheckedCreateWithoutPinsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutPinsInput
+  upsert?: Prisma.UserUpsertWithoutPinsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutPinsInput, Prisma.UserUpdateWithoutPinsInput>, Prisma.UserUncheckedUpdateWithoutPinsInput>
+}
+
 export type UserCreateNestedOneWithoutSessionsInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutSessionsInput, Prisma.UserUncheckedCreateWithoutSessionsInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutSessionsInput
@@ -820,6 +841,7 @@ export type UserCreateWithoutAccountsInput = {
   lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUncheckedCreateWithoutAccountsInput = {
@@ -848,6 +870,7 @@ export type UserUncheckedCreateWithoutAccountsInput = {
   lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemUncheckedCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserCreateOrConnectWithoutAccountsInput = {
@@ -892,6 +915,7 @@ export type UserUpdateWithoutAccountsInput = {
   lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAccountsInput = {
@@ -920,6 +944,7 @@ export type UserUncheckedUpdateWithoutAccountsInput = {
   lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUncheckedUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserCreateWithoutCommentsInput = {
@@ -948,6 +973,7 @@ export type UserCreateWithoutCommentsInput = {
   lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUncheckedCreateWithoutCommentsInput = {
@@ -976,6 +1002,7 @@ export type UserUncheckedCreateWithoutCommentsInput = {
   lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemUncheckedCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserCreateOrConnectWithoutCommentsInput = {
@@ -1020,6 +1047,7 @@ export type UserUpdateWithoutCommentsInput = {
   lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutCommentsInput = {
@@ -1048,6 +1076,7 @@ export type UserUncheckedUpdateWithoutCommentsInput = {
   lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUncheckedUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserCreateWithoutDriveInput = {
@@ -1076,6 +1105,7 @@ export type UserCreateWithoutDriveInput = {
   items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
   lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUncheckedCreateWithoutDriveInput = {
@@ -1104,6 +1134,7 @@ export type UserUncheckedCreateWithoutDriveInput = {
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
   lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemUncheckedCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserCreateOrConnectWithoutDriveInput = {
@@ -1148,6 +1179,7 @@ export type UserUpdateWithoutDriveInput = {
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
   lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutDriveInput = {
@@ -1176,6 +1208,7 @@ export type UserUncheckedUpdateWithoutDriveInput = {
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
   lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUncheckedUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserCreateWithoutFavoritesInput = {
@@ -1204,6 +1237,7 @@ export type UserCreateWithoutFavoritesInput = {
   items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
   lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
+  pins?: Prisma.PinItemCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUncheckedCreateWithoutFavoritesInput = {
@@ -1232,6 +1266,7 @@ export type UserUncheckedCreateWithoutFavoritesInput = {
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
   lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
+  pins?: Prisma.PinItemUncheckedCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserCreateOrConnectWithoutFavoritesInput = {
@@ -1276,6 +1311,7 @@ export type UserUpdateWithoutFavoritesInput = {
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
   lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
+  pins?: Prisma.PinItemUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutFavoritesInput = {
@@ -1304,6 +1340,7 @@ export type UserUncheckedUpdateWithoutFavoritesInput = {
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
   lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
+  pins?: Prisma.PinItemUncheckedUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserCreateWithoutInvitationsInput = {
@@ -1332,6 +1369,7 @@ export type UserCreateWithoutInvitationsInput = {
   lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUncheckedCreateWithoutInvitationsInput = {
@@ -1360,6 +1398,7 @@ export type UserUncheckedCreateWithoutInvitationsInput = {
   lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemUncheckedCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserCreateOrConnectWithoutInvitationsInput = {
@@ -1404,6 +1443,7 @@ export type UserUpdateWithoutInvitationsInput = {
   lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutInvitationsInput = {
@@ -1432,6 +1472,7 @@ export type UserUncheckedUpdateWithoutInvitationsInput = {
   lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUncheckedUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserCreateWithoutItemsInput = {
@@ -1460,6 +1501,7 @@ export type UserCreateWithoutItemsInput = {
   lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUncheckedCreateWithoutItemsInput = {
@@ -1488,6 +1530,7 @@ export type UserUncheckedCreateWithoutItemsInput = {
   lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemUncheckedCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserCreateOrConnectWithoutItemsInput = {
@@ -1532,6 +1575,7 @@ export type UserUpdateWithoutItemsInput = {
   lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutItemsInput = {
@@ -1560,6 +1604,7 @@ export type UserUncheckedUpdateWithoutItemsInput = {
   lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUncheckedUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserCreateWithoutLockedItemsInput = {
@@ -1588,6 +1633,7 @@ export type UserCreateWithoutLockedItemsInput = {
   items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUncheckedCreateWithoutLockedItemsInput = {
@@ -1616,6 +1662,7 @@ export type UserUncheckedCreateWithoutLockedItemsInput = {
   items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemUncheckedCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserCreateOrConnectWithoutLockedItemsInput = {
@@ -1660,6 +1707,7 @@ export type UserUpdateWithoutLockedItemsInput = {
   items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutLockedItemsInput = {
@@ -1688,6 +1736,7 @@ export type UserUncheckedUpdateWithoutLockedItemsInput = {
   items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUncheckedUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserCreateWithoutNotificationsInput = {
@@ -1716,6 +1765,7 @@ export type UserCreateWithoutNotificationsInput = {
   lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUncheckedCreateWithoutNotificationsInput = {
@@ -1744,6 +1794,7 @@ export type UserUncheckedCreateWithoutNotificationsInput = {
   lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemUncheckedCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserCreateOrConnectWithoutNotificationsInput = {
@@ -1788,6 +1839,7 @@ export type UserUpdateWithoutNotificationsInput = {
   lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutNotificationsInput = {
@@ -1816,6 +1868,7 @@ export type UserUncheckedUpdateWithoutNotificationsInput = {
   lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUncheckedUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserCreateWithoutPermissionsInput = {
@@ -1844,6 +1897,7 @@ export type UserCreateWithoutPermissionsInput = {
   lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUncheckedCreateWithoutPermissionsInput = {
@@ -1872,6 +1926,7 @@ export type UserUncheckedCreateWithoutPermissionsInput = {
   lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemUncheckedCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserCreateOrConnectWithoutPermissionsInput = {
@@ -1915,6 +1970,138 @@ export type UserScalarWhereInput = {
   stripeCustomerId?: Prisma.StringNullableFilter<"User"> | string | null
 }
 
+export type UserCreateWithoutPinsInput = {
+  id: string
+  name: string
+  displayName?: string | null
+  email: string
+  image?: string | null
+  emailVerified: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bucket?: string
+  driveId?: string | null
+  subscriptionId?: string | null
+  rootId?: string | null
+  storagePlanId?: string | null
+  stripeCustomerId?: string | null
+  notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
+  permissions?: Prisma.PermissionCreateNestedManyWithoutUsersInput
+  accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberCreateNestedManyWithoutMemberInput
+  subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutOwnerInput
+  comments?: Prisma.CommentCreateNestedManyWithoutOwnerInput
+  invitations?: Prisma.InvitationCreateNestedManyWithoutSenderInput
+  items?: Prisma.ItemCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
+  drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
+  favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+}
+
+export type UserUncheckedCreateWithoutPinsInput = {
+  id: string
+  name: string
+  displayName?: string | null
+  email: string
+  image?: string | null
+  emailVerified: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bucket?: string
+  driveId?: string | null
+  subscriptionId?: string | null
+  rootId?: string | null
+  storagePlanId?: string | null
+  stripeCustomerId?: string | null
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
+  permissions?: Prisma.PermissionUncheckedCreateNestedManyWithoutUsersInput
+  accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutMemberInput
+  subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutOwnerInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutOwnerInput
+  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutSenderInput
+  items?: Prisma.ItemUncheckedCreateNestedManyWithoutOwnerInput
+  lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
+  drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
+  favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+}
+
+export type UserCreateOrConnectWithoutPinsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutPinsInput, Prisma.UserUncheckedCreateWithoutPinsInput>
+}
+
+export type UserUpsertWithoutPinsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutPinsInput, Prisma.UserUncheckedUpdateWithoutPinsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutPinsInput, Prisma.UserUncheckedCreateWithoutPinsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutPinsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutPinsInput, Prisma.UserUncheckedUpdateWithoutPinsInput>
+}
+
+export type UserUpdateWithoutPinsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bucket?: Prisma.StringFieldUpdateOperationsInput | string
+  driveId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rootId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
+  permissions?: Prisma.PermissionUpdateManyWithoutUsersNestedInput
+  accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUpdateManyWithoutMemberNestedInput
+  subscriptions?: Prisma.SubscriptionUpdateManyWithoutOwnerNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutOwnerNestedInput
+  invitations?: Prisma.InvitationUpdateManyWithoutSenderNestedInput
+  items?: Prisma.ItemUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
+  drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
+  favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+}
+
+export type UserUncheckedUpdateWithoutPinsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bucket?: Prisma.StringFieldUpdateOperationsInput | string
+  driveId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rootId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storagePlanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
+  permissions?: Prisma.PermissionUncheckedUpdateManyWithoutUsersNestedInput
+  accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  workspaces?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutMemberNestedInput
+  subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutOwnerNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutOwnerNestedInput
+  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutSenderNestedInput
+  items?: Prisma.ItemUncheckedUpdateManyWithoutOwnerNestedInput
+  lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
+  drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
+  favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+}
+
 export type UserCreateWithoutSessionsInput = {
   id: string
   name: string
@@ -1941,6 +2128,7 @@ export type UserCreateWithoutSessionsInput = {
   lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUncheckedCreateWithoutSessionsInput = {
@@ -1969,6 +2157,7 @@ export type UserUncheckedCreateWithoutSessionsInput = {
   lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemUncheckedCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserCreateOrConnectWithoutSessionsInput = {
@@ -2013,6 +2202,7 @@ export type UserUpdateWithoutSessionsInput = {
   lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSessionsInput = {
@@ -2041,6 +2231,7 @@ export type UserUncheckedUpdateWithoutSessionsInput = {
   lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUncheckedUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserCreateWithoutSubscriptionsInput = {
@@ -2069,6 +2260,7 @@ export type UserCreateWithoutSubscriptionsInput = {
   lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUncheckedCreateWithoutSubscriptionsInput = {
@@ -2097,6 +2289,7 @@ export type UserUncheckedCreateWithoutSubscriptionsInput = {
   lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemUncheckedCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserCreateOrConnectWithoutSubscriptionsInput = {
@@ -2141,6 +2334,7 @@ export type UserUpdateWithoutSubscriptionsInput = {
   lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSubscriptionsInput = {
@@ -2169,6 +2363,7 @@ export type UserUncheckedUpdateWithoutSubscriptionsInput = {
   lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUncheckedUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserCreateWithoutWorkspacesInput = {
@@ -2197,6 +2392,7 @@ export type UserCreateWithoutWorkspacesInput = {
   lockedItems?: Prisma.LockedItemCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserUncheckedCreateWithoutWorkspacesInput = {
@@ -2225,6 +2421,7 @@ export type UserUncheckedCreateWithoutWorkspacesInput = {
   lockedItems?: Prisma.LockedItemUncheckedCreateNestedManyWithoutLockedByInput
   drive?: Prisma.DriveUncheckedCreateNestedOneWithoutOwnerInput
   favorites?: Prisma.FavoriteUncheckedCreateNestedManyWithoutFavoritedByInput
+  pins?: Prisma.PinItemUncheckedCreateNestedManyWithoutPinnedByInput
 }
 
 export type UserCreateOrConnectWithoutWorkspacesInput = {
@@ -2269,6 +2466,7 @@ export type UserUpdateWithoutWorkspacesInput = {
   lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutWorkspacesInput = {
@@ -2297,6 +2495,7 @@ export type UserUncheckedUpdateWithoutWorkspacesInput = {
   lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUncheckedUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUpdateWithoutPermissionsInput = {
@@ -2325,6 +2524,7 @@ export type UserUpdateWithoutPermissionsInput = {
   lockedItems?: Prisma.LockedItemUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateWithoutPermissionsInput = {
@@ -2353,6 +2553,7 @@ export type UserUncheckedUpdateWithoutPermissionsInput = {
   lockedItems?: Prisma.LockedItemUncheckedUpdateManyWithoutLockedByNestedInput
   drive?: Prisma.DriveUncheckedUpdateOneWithoutOwnerNestedInput
   favorites?: Prisma.FavoriteUncheckedUpdateManyWithoutFavoritedByNestedInput
+  pins?: Prisma.PinItemUncheckedUpdateManyWithoutPinnedByNestedInput
 }
 
 export type UserUncheckedUpdateManyWithoutPermissionsInput = {
@@ -2389,6 +2590,7 @@ export type UserCountOutputType = {
   items: number
   lockedItems: number
   favorites: number
+  pins: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2403,6 +2605,7 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   items?: boolean | UserCountOutputTypeCountItemsArgs
   lockedItems?: boolean | UserCountOutputTypeCountLockedItemsArgs
   favorites?: boolean | UserCountOutputTypeCountFavoritesArgs
+  pins?: boolean | UserCountOutputTypeCountPinsArgs
 }
 
 /**
@@ -2492,6 +2695,13 @@ export type UserCountOutputTypeCountFavoritesArgs<ExtArgs extends runtime.Types.
   where?: Prisma.FavoriteWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountPinsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PinItemWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -2520,6 +2730,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   lockedItems?: boolean | Prisma.User$lockedItemsArgs<ExtArgs>
   drive?: boolean | Prisma.User$driveArgs<ExtArgs>
   favorites?: boolean | Prisma.User$favoritesArgs<ExtArgs>
+  pins?: boolean | Prisma.User$pinsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -2588,6 +2799,7 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   lockedItems?: boolean | Prisma.User$lockedItemsArgs<ExtArgs>
   drive?: boolean | Prisma.User$driveArgs<ExtArgs>
   favorites?: boolean | Prisma.User$favoritesArgs<ExtArgs>
+  pins?: boolean | Prisma.User$pinsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -2608,6 +2820,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     lockedItems: Prisma.$LockedItemPayload<ExtArgs>[]
     drive: Prisma.$DrivePayload<ExtArgs> | null
     favorites: Prisma.$FavoritePayload<ExtArgs>[]
+    pins: Prisma.$PinItemPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -3030,6 +3243,7 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   lockedItems<T extends Prisma.User$lockedItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$lockedItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LockedItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   drive<T extends Prisma.User$driveArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$driveArgs<ExtArgs>>): Prisma.Prisma__DriveClient<runtime.Types.Result.GetResult<Prisma.$DrivePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   favorites<T extends Prisma.User$favoritesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$favoritesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FavoritePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  pins<T extends Prisma.User$pinsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$pinsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PinItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3755,6 +3969,30 @@ export type User$favoritesArgs<ExtArgs extends runtime.Types.Extensions.Internal
   take?: number
   skip?: number
   distinct?: Prisma.FavoriteScalarFieldEnum | Prisma.FavoriteScalarFieldEnum[]
+}
+
+/**
+ * User.pins
+ */
+export type User$pinsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the PinItem
+   */
+  select?: Prisma.PinItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the PinItem
+   */
+  omit?: Prisma.PinItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PinItemInclude<ExtArgs> | null
+  where?: Prisma.PinItemWhereInput
+  orderBy?: Prisma.PinItemOrderByWithRelationInput | Prisma.PinItemOrderByWithRelationInput[]
+  cursor?: Prisma.PinItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PinItemScalarFieldEnum | Prisma.PinItemScalarFieldEnum[]
 }
 
 /**

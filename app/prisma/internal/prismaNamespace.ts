@@ -416,6 +416,7 @@ export const ModelName = {
   LockedItem: 'LockedItem',
   Notification: 'Notification',
   Permission: 'Permission',
+  PinItem: 'PinItem',
   Quota: 'Quota',
   Search: 'Search',
   SearchChunk: 'SearchChunk',
@@ -447,7 +448,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "account" | "itemAction" | "permissionAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "quota" | "search" | "searchChunk" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
+    modelProps: "account" | "itemAction" | "permissionAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "pinItem" | "quota" | "search" | "searchChunk" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2819,6 +2820,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    PinItem: {
+      payload: Prisma.$PinItemPayload<ExtArgs>
+      fields: Prisma.PinItemFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PinItemFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinItemPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PinItemFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinItemPayload>
+        }
+        findFirst: {
+          args: Prisma.PinItemFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinItemPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PinItemFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinItemPayload>
+        }
+        findMany: {
+          args: Prisma.PinItemFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinItemPayload>[]
+        }
+        create: {
+          args: Prisma.PinItemCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinItemPayload>
+        }
+        createMany: {
+          args: Prisma.PinItemCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PinItemCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinItemPayload>[]
+        }
+        delete: {
+          args: Prisma.PinItemDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinItemPayload>
+        }
+        update: {
+          args: Prisma.PinItemUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinItemPayload>
+        }
+        deleteMany: {
+          args: Prisma.PinItemDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PinItemUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PinItemUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinItemPayload>[]
+        }
+        upsert: {
+          args: Prisma.PinItemUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinItemPayload>
+        }
+        aggregate: {
+          args: Prisma.PinItemAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePinItem>
+        }
+        groupBy: {
+          args: Prisma.PinItemGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PinItemGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PinItemCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PinItemCountAggregateOutputType> | number
+        }
+      }
+    }
     Quota: {
       payload: Prisma.$QuotaPayload<ExtArgs>
       fields: Prisma.QuotaFieldRefs
@@ -4442,6 +4517,18 @@ export const PermissionScalarFieldEnum = {
 export type PermissionScalarFieldEnum = (typeof PermissionScalarFieldEnum)[keyof typeof PermissionScalarFieldEnum]
 
 
+export const PinItemScalarFieldEnum = {
+  id: 'id',
+  pinnedById: 'pinnedById',
+  itemId: 'itemId',
+  position: 'position',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PinItemScalarFieldEnum = (typeof PinItemScalarFieldEnum)[keyof typeof PinItemScalarFieldEnum]
+
+
 export const QuotaScalarFieldEnum = {
   id: 'id',
   createdAt: 'createdAt',
@@ -5212,6 +5299,7 @@ export type GlobalOmitConfig = {
   lockedItem?: Prisma.LockedItemOmit
   notification?: Prisma.NotificationOmit
   permission?: Prisma.PermissionOmit
+  pinItem?: Prisma.PinItemOmit
   quota?: Prisma.QuotaOmit
   search?: Prisma.SearchOmit
   searchChunk?: Prisma.SearchChunkOmit

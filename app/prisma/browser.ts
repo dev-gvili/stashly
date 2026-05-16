@@ -183,6 +183,11 @@ export type Notification = Prisma.NotificationModel
  */
 export type Permission = Prisma.PermissionModel
 /**
+ * Model PinItem
+ * 
+ */
+export type PinItem = Prisma.PinItemModel
+/**
  * Model Quota
  * 
  */

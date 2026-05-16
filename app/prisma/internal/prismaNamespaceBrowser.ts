@@ -83,6 +83,7 @@ export const ModelName = {
   LockedItem: 'LockedItem',
   Notification: 'Notification',
   Permission: 'Permission',
+  PinItem: 'PinItem',
   Quota: 'Quota',
   Search: 'Search',
   SearchChunk: 'SearchChunk',
@@ -515,6 +516,18 @@ export const PermissionScalarFieldEnum = {
 } as const
 
 export type PermissionScalarFieldEnum = (typeof PermissionScalarFieldEnum)[keyof typeof PermissionScalarFieldEnum]
+
+
+export const PinItemScalarFieldEnum = {
+  id: 'id',
+  pinnedById: 'pinnedById',
+  itemId: 'itemId',
+  position: 'position',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PinItemScalarFieldEnum = (typeof PinItemScalarFieldEnum)[keyof typeof PinItemScalarFieldEnum]
 
 
 export const QuotaScalarFieldEnum = {

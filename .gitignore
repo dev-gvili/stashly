@@ -70,3 +70,4 @@ tsconfig.vite.tsbuildinfo
 memory-bank/*
 playground/semantic-search-playground.html
 card-examples/*
+.agents/*
