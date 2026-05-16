@@ -13,19 +13,22 @@ import {
 
 import {
   AIcon,
+  CollectionFillIcon,
   CollectionIcon,
   CollectionLineIcon,
   FavoriteIcon,
   FolderIcon,
+  HomeFillIcon,
   HomeIcon,
+  ImagesFillIcon,
   ImagesIcon,
   PinIcon,
   RecentIcon,
   SendInvitationIcon,
   ShareIcon,
-  StorageFullIcon,
-  StorageIcon,
-  TrashIcon,
+  StorageFillIcon,
+  TrashFillIcon,
+  VideoFillIcon,
   VideosIcon,
 } from '@/components/icons'
 import { NavMedia } from '@/components/navigation/nav-media'
@@ -33,7 +36,6 @@ import {
   NavWorkspaces,
   type WorkspacesSidebarItem,
 } from '@/components/navigation/nav-workspaces'
-import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import {
   Link,
   NavLink,
@@ -64,7 +66,7 @@ export interface SidebarItemProps extends SidebarItemType {
 
 const home: SidebarItemProps = {
   icon: (isActive) => (
-    <HomeIcon className="size-5! group-data-[state=collapsed]:ml-2" />
+    <HomeFillIcon className="size-5! group-data-[state=collapsed]:ml-2" />
   ),
   label: 'My stash',
   to: '/',
@@ -85,7 +87,7 @@ const libraryItems: SidebarItemProps[] = [
   },
   {
     icon: (isActive) => (
-      <CollectionLineIcon className="size-5! group-data-[state=collapsed]:ml-2" />
+      <CollectionFillIcon className="size-5! group-data-[state=collapsed]:ml-2" />
     ),
     label: 'Collections',
     to: 'collections?layout=grid',
@@ -131,7 +133,7 @@ const sharingItems: SidebarItemProps[] = [
 const manageItems: SidebarItemProps[] = [
   {
     icon: (isActive) => (
-      <StorageFullIcon className="size-5! group-data-[state=collapsed]:ml-2" />
+      <StorageFillIcon className="size-5! group-data-[state=collapsed]:ml-2" />
     ),
     label: 'Storage',
     to: 'storage',
@@ -139,7 +141,7 @@ const manageItems: SidebarItemProps[] = [
   },
   {
     icon: (isActive) => (
-      <TrashIcon className="size-5! group-data-[state=collapsed]:ml-2" />
+      <TrashFillIcon className="size-5! group-data-[state=collapsed]:ml-2" />
     ),
     label: 'Trash',
     to: 'trash?status=trashed&layout=grid&take=100',
@@ -170,7 +172,7 @@ const mediaItems: SidebarItemProps[] = [
   },
   {
     icon: (isActive) => (
-      <ImagesIcon className="size-5! group-data-[state=collapsed]:ml-2" />
+      <ImagesFillIcon className="size-5! group-data-[state=collapsed]:ml-2" />
     ),
     label: 'Images',
     to: 'images?layout=waterfall',
@@ -179,40 +181,12 @@ const mediaItems: SidebarItemProps[] = [
   },
   {
     icon: (isActive) => (
-      <VideosIcon className="size-5! group-data-[state=collapsed]:ml-2" />
+      <VideoFillIcon className="size-5! group-data-[state=collapsed]:ml-2" />
     ),
     label: 'Videos',
     to: 'videos?layout=grid',
     tooltip: 'Videos',
     prefetch: 'intent',
-  },
-]
-
-const workspaces: WorkspacesSidebarItem[] = [
-  {
-    id: toObjectId(getPrefixForModel('Workspace')),
-    name: 'Stashly Dev Team',
-    slug: 'stashly-dev-team',
-  },
-  {
-    id: toObjectId(getPrefixForModel('Workspace')),
-    name: 'Personal',
-    slug: 'personal',
-  },
-  {
-    id: toObjectId(getPrefixForModel('Workspace')),
-    name: 'Dark UX/UI',
-    slug: 'dark-ux-ui',
-  },
-  {
-    id: toObjectId(getPrefixForModel('Workspace')),
-    name: 'Projects',
-    slug: 'projects',
-  },
-  {
-    id: toObjectId(getPrefixForModel('Workspace')),
-    name: 'Public Docs',
-    slug: 'public-docs',
   },
 ]
 
@@ -224,7 +198,7 @@ const workspaces: WorkspacesSidebarItem[] = [
  * Sidebar primitives from the UI library and wires up navigation
  * links using react-router.
  */
-export const AppSidebar = ({ user }: { user: User }) => {
+export const AppSidebar = ({ user, workspaces }: { user: User; workspaces: WorkspacesSidebarItem[] }) => {
   let { pathname } = useLocation()
   let params = useParams()
   let url = ''
@@ -313,7 +287,7 @@ export const AppSidebar = ({ user }: { user: User }) => {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-          {/* <NavWorkspaces workspaces={workspaces} /> */}
+          <NavWorkspaces workspaces={workspaces} />
         </ScrollArea>
       </SidebarContent>
       <SidebarFooter className="bg-sidebar">

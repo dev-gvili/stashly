@@ -6,6 +6,7 @@ import { UploadPanel } from '@/components/upload'
 import { UploadThumbnailRunner } from '@/components/upload/upload-thumbnail-runner'
 import { auth } from '@/services/auth'
 import { findStoragePlanById, findDefaultStoragePlan } from '@/.server/storagePlan-actions'
+import { prisma } from '@/services/db'
 import { Outlet, redirect, type ShouldRevalidateFunction } from 'react-router'
 import type { Route } from './+types/layout'
 import { sidebarCookie } from '@/.server/sidebar'
@@ -23,12 +24,26 @@ export async function loader({ request }: Route.LoaderArgs) {
     plan = await findDefaultStoragePlan()
   }
 
-  const sidebarCookieValue = await sidebarCookie.parse(
-    request.headers.get('cookie')
-  )
+  const [sidebarCookieValue, workspaceMemberships] = await Promise.all([
+    sidebarCookie.parse(request.headers.get('cookie')),
+    prisma.workspaceMember.findMany({
+      where: { memberId: session.user.id },
+      select: {
+        role: true,
+        workspace: { select: { id: true, name: true, slug: true } },
+      },
+      orderBy: { workspace: { name: 'asc' } },
+    }),
+  ])
 
   return {
     user: session.user,
+    workspaces: workspaceMemberships.map((m) => ({
+      id: m.workspace.id,
+      name: m.workspace.name,
+      slug: m.workspace.slug ?? m.workspace.id,
+      role: m.role,
+    })),
     storagePlan: {
       id: plan.id,
       name: plan.name,
@@ -44,10 +59,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 export const shouldRevalidate: ShouldRevalidateFunction = () => false
 
 export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
-  const { user, sidebarState } = loaderData
+  const { user, sidebarState, workspaces } = loaderData
   return (
     <SidebarProvider defaultOpen={sidebarState}>
-      <AppSidebar user={user} />
+      <AppSidebar user={user} workspaces={workspaces} />
       <AppContent>
         <Outlet />
         <UploadPanel user={user} />

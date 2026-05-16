@@ -26,7 +26,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   if (workspaceId) {
     const workspace = await findWorkspaceById(workspaceId)
-    return data({ workspace })
+    return data({ workspaces: [workspace] })
   }
 
   // List workspaces — optionally filter by userId from params or query

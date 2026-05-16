@@ -58,7 +58,7 @@ export default [
     route('activities', 'routes/api/activities.ts'),
 
     // Workspaces
-    route('workspaces/*', 'routes/api/workspaces.ts'),
+    route('workspaces', 'routes/api/workspaces.ts'),
     ...prefix('workspaces', [
       route(':workspaceId', 'routes/api/workspaces.ts', {
         id: 'workspace-detail',
@@ -187,7 +187,9 @@ export default [
 
         // images route shows all images in the user's stash, providing a visual gallery of their stored photos and graphics. This page includes different views ( waterfall, river, grid). It serves as a dedicated space for users to easily access and enjoy their visual content within their stash.
         route('images', 'routes/stash/gallery.tsx', { id: 'stash-images' }, [
-          route(':itemId', 'routes/stash/gallery-image.tsx', { id: 'stash-image-detail' }),
+          route(':itemId', 'routes/stash/gallery-image.tsx', {
+            id: 'stash-image-detail',
+          }),
         ]),
 
         // videos route shows all videos in the user's stash, providing a dedicated space for users to access and manage their video content. This page could include features such as video previews. playback, and allowing users to easily find and enjoy their stored videos within their stash.
@@ -209,7 +211,9 @@ export default [
         route('storage', 'routes/stash/storage.tsx', { id: 'stash-storage' }),
         route('trash', 'routes/stash/trash.tsx', { id: 'stash-trash' }),
         route('demo', 'routes/stash/demo.tsx', { id: 'stash-demo' }),
-        route('ai-studio', 'routes/stash/ai-studio.tsx', { id: 'stash-ai-studio' }),
+        route('ai-studio', 'routes/stash/ai-studio.tsx', {
+          id: 'stash-ai-studio',
+        }),
         route('examples', 'routes/stash/examples.tsx', {
           id: 'stash-examples',
         }),
@@ -218,16 +222,28 @@ export default [
       // Workspaces UI Routes
       ...prefix('workspaces', [
         index('routes/workspaces/index.tsx'),
-        route('create', 'routes/workspaces/create.tsx'),
-        route(':workspaceId', 'routes/workspaces/workspace.tsx'),
-        route(':workspaceId/settings', 'routes/workspaces/settings.tsx'),
-        route(':workspaceId/members', 'routes/workspaces/members.tsx'),
-        route(':workspaceId/folders/:folderId', 'routes/workspaces/folder.tsx'),
+        route(':workspaceId', 'routes/workspaces/workspace.tsx', {
+          id: 'stash-workspace',
+        }),
+        route(':workspaceId/settings', 'routes/workspaces/settings.tsx', {
+          id: 'stash-workspace-settings',
+        }),
+        route(':workspaceId/members', 'routes/workspaces/members.tsx', {
+          id: 'stash-workspace-members',
+        }),
+        route(
+          ':workspaceId/folders/:folderId',
+          'routes/workspaces/folder.tsx',
+          { id: 'stash-workspace-folder' }
+        ),
         route(
           ':workspaceId/folders/:folderId/files/:fileId',
-          'routes/workspaces/file.tsx'
+          'routes/workspaces/file.tsx',
+          { id: 'stash-workspace-file' }
         ),
-        route(':workspaceId/shares', 'routes/workspaces/shares.tsx'),
+        route(':workspaceId/shares', 'routes/workspaces/shares.tsx', {
+          id: 'stash-workspace-shares',
+        }),
         route(':workspaceId/favorites', 'routes/workspaces/favorites.tsx'),
         route(':workspaceId/collections', 'routes/workspaces/collections.tsx'),
         route(

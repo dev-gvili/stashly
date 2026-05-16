@@ -23,7 +23,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useParams } from 'react-router'
-import { useId } from 'react'
+import { useId, useState } from 'react'
+import { CreateWorkspaceDialog } from '@/components/core-components/create-workspace-dialog'
 
 /**
  * WorkspacesSidebarItem
@@ -55,10 +56,13 @@ export function NavWorkspaces({
   const id = useId()
   const { isMobile } = useSidebar()
   const params = useParams()
+  const [createOpen, setCreateOpen] = useState(false)
   return (
+    <>
+    <CreateWorkspaceDialog open={createOpen} onOpenChange={setCreateOpen} />
     <SidebarGroup id={id} key={id} className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Workspaces</SidebarGroupLabel>
-      <SidebarGroupAction title="add workspace">
+      <SidebarGroupAction title="add workspace" onClick={() => setCreateOpen(true)}>
         <AddIcon className="size-5! text-muted-foreground  hover:cursor-pointer" />
         <span className="sr-only">Add Workspace</span>
       </SidebarGroupAction>
@@ -106,5 +110,6 @@ export function NavWorkspaces({
         ))}
       </SidebarMenu>
     </SidebarGroup>
+    </>
   )
 }
