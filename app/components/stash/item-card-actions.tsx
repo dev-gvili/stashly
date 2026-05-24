@@ -76,6 +76,62 @@ const Item = React.forwardRef<
 ))
 Item.displayName = 'Actions.Item'
 
+// -- Stateless sub-components ------------------------------------------------
+
+function Preview(props: ItemProps) {
+  return (
+    <Item {...props}>
+      <PreviewIcon className="text-current" />
+      Preview
+    </Item>
+  )
+}
+
+function Download(props: ItemProps) {
+  return (
+    <Item {...props}>
+      <DownloadIcon className="text-current" />
+      Download
+    </Item>
+  )
+}
+
+function Copy(props: ItemProps) {
+  return (
+    <Item {...props}>
+      <CopyIcon className="text-current" />
+      Copy
+    </Item>
+  )
+}
+
+function Move(props: ItemProps) {
+  return (
+    <Item {...props}>
+      <MoveToFolder className="text-current" />
+      Move
+    </Item>
+  )
+}
+
+function Rename(props: ItemProps) {
+  return (
+    <Item {...props}>
+      <RenameIcon className="text-current" />
+      Rename
+    </Item>
+  )
+}
+
+function Details(props: ItemProps) {
+  return (
+    <Item {...props}>
+      <FileDetailsIcon className="text-current" />
+      Details
+    </Item>
+  )
+}
+
 // -- Root --------------------------------------------------------------------
 
 interface ActionsRootProps extends React.ComponentPropsWithoutRef<typeof Button> {
@@ -118,7 +174,22 @@ function DefaultMenu({ status }: { status: string }) {
 
 // -- Public API --------------------------------------------------------------
 
-export const Actions = Object.assign(ActionsRoot, {
+export const Actions: typeof ActionsRoot & {
+  Group: typeof Group
+  Item: typeof Item
+  Preview: typeof Preview
+  Download: typeof Download
+  Copy: typeof Copy
+  Move: typeof Move
+  Rename: typeof Rename
+  Details: typeof Details
+} = Object.assign(ActionsRoot, {
   Group,
   Item,
+  Preview,
+  Download,
+  Copy,
+  Move,
+  Rename,
+  Details,
 })
