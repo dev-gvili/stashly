@@ -162,6 +162,61 @@ function Favorite(props: ItemProps) {
   )
 }
 
+// -- Pin ---------------------------------------------------------------------
+
+function Pin(props: ItemProps) {
+  const { id, pins, user } = useItemCard()
+  const initiallyPinned =
+    Array.isArray(pins) && pins.some((p) => p.pinnedById === user?.id)
+  const { pinned, toggle, isPending } = usePinItem(id, initiallyPinned)
+
+  return (
+    <Item
+      {...props}
+      disabled={isPending}
+      onSelect={(e) => {
+        e.preventDefault()
+        toggle()
+        props.onSelect?.(e)
+      }}
+    >
+      {pinned ? (
+        <PinFillIcon className="text-current" />
+      ) : (
+        <PinIcon className="text-current" />
+      )}
+      {pinned ? 'Unpin' : 'Pin'}
+    </Item>
+  )
+}
+
+// -- Lock --------------------------------------------------------------------
+
+function Lock(props: ItemProps) {
+  const { id, locked: itemLock, user } = useItemCard()
+  const initiallyLocked = itemLock?.lockedById === user?.id
+  const { locked, toggle, isPending } = useLockItem(id, initiallyLocked)
+
+  return (
+    <Item
+      {...props}
+      disabled={isPending}
+      onSelect={(e) => {
+        e.preventDefault()
+        toggle()
+        props.onSelect?.(e)
+      }}
+    >
+      {locked ? (
+        <LockFillIcon className="text-current" />
+      ) : (
+        <UnlockFillIcon className="text-current" />
+      )}
+      {locked ? 'Unlock' : 'Lock'}
+    </Item>
+  )
+}
+
 // -- Root --------------------------------------------------------------------
 
 interface ActionsRootProps extends React.ComponentPropsWithoutRef<typeof Button> {
@@ -214,6 +269,8 @@ export const Actions: typeof ActionsRoot & {
   Rename: typeof Rename
   Details: typeof Details
   Favorite: typeof Favorite
+  Pin: typeof Pin
+  Lock: typeof Lock
 } = Object.assign(ActionsRoot, {
   Group,
   Item,
@@ -224,4 +281,6 @@ export const Actions: typeof ActionsRoot & {
   Rename,
   Details,
   Favorite,
+  Pin,
+  Lock,
 })
