@@ -441,8 +441,25 @@ interface ActionsRootProps extends React.ComponentPropsWithoutRef<typeof Button>
 }
 
 function ActionsRoot({ children, ...triggerProps }: ActionsRootProps) {
-  const { status } = useItemCard()
+  const fetcher = useFetcher()
+  const { id, status } = useItemCard()
   const hasChildren = React.Children.count(children) > 0
+
+  React.useEffect(() => {
+    if (hasChildren) return
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'Delete') {
+        event.preventDefault()
+        event.stopPropagation()
+        fetcher.submit(
+          { intent: 'trash_item', selectedItem: id },
+          { method: 'POST', action: href('/api/items') }
+        )
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [hasChildren, id, fetcher])
 
   return (
     <DropdownMenu modal={false}>
@@ -469,9 +486,43 @@ function ActionsRoot({ children, ...triggerProps }: ActionsRootProps) {
   )
 }
 
-// DefaultMenu is filled in by Task 8 (shorthand wiring). Placeholder for now.
 function DefaultMenu({ status }: { status: string }) {
-  return null
+  if (status === 'trashed') {
+    return (
+      <>
+        <Restore />
+        <Delete />
+      </>
+    )
+  }
+
+  return (
+    <>
+      <Group>
+        <Preview />
+        <Download />
+      </Group>
+      <Group label="Quick actions">
+        <Favorite />
+        <Pin />
+      </Group>
+      <Group label="Access">
+        <Share />
+        <Invite />
+        <Lock />
+      </Group>
+      <Group label="Organize">
+        <Copy />
+        <Move />
+        <Rename />
+      </Group>
+      <Group label="Information">
+        <Activity />
+        <Details />
+      </Group>
+      <Trash />
+    </>
+  )
 }
 
 // -- Public API --------------------------------------------------------------
