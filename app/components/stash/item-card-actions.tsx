@@ -217,6 +217,91 @@ function Lock(props: ItemProps) {
   )
 }
 
+// -- Share -------------------------------------------------------------------
+
+function Share(props: ItemProps) {
+  const [open, setOpen] = React.useState(false)
+  const { id, name, type } = useItemCard()
+  const itemType = type === 'folder' ? 'folder' : 'file'
+
+  return (
+    <>
+      <Item
+        {...props}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setOpen(true)
+          props.onClick?.(e)
+        }}
+      >
+        <ShareItemFillIcon className="text-current" />
+        Share
+      </Item>
+      <ShareDialog
+        open={open}
+        onOpenChange={setOpen}
+        itemId={id}
+        itemName={name}
+        itemType={itemType}
+      />
+    </>
+  )
+}
+
+// -- Invite ------------------------------------------------------------------
+
+function Invite(props: ItemProps) {
+  const [open, setOpen] = React.useState(false)
+  const { id, name } = useItemCard()
+
+  return (
+    <>
+      <Item
+        {...props}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setOpen(true)
+          props.onClick?.(e)
+        }}
+      >
+        <GroupIcon className="text-current" />
+        Invite
+      </Item>
+      <InviteDialog
+        itemId={id}
+        itemName={name}
+        open={open}
+        onOpenChange={setOpen}
+      />
+    </>
+  )
+}
+
+// -- Activity ----------------------------------------------------------------
+
+function Activity(props: ItemProps) {
+  const [open, setOpen] = React.useState(false)
+  const { id } = useItemCard()
+
+  return (
+    <>
+      <Item
+        {...props}
+        onClick={(e) => {
+          setOpen(true)
+          props.onClick?.(e)
+        }}
+      >
+        <ActivityIcon className="text-current" />
+        Activity
+      </Item>
+      <ItemActivityDrawer itemId={id} open={open} onOpenChange={setOpen} />
+    </>
+  )
+}
+
 // -- Root --------------------------------------------------------------------
 
 interface ActionsRootProps extends React.ComponentPropsWithoutRef<typeof Button> {
@@ -271,6 +356,9 @@ export const Actions: typeof ActionsRoot & {
   Favorite: typeof Favorite
   Pin: typeof Pin
   Lock: typeof Lock
+  Share: typeof Share
+  Invite: typeof Invite
+  Activity: typeof Activity
 } = Object.assign(ActionsRoot, {
   Group,
   Item,
@@ -283,4 +371,7 @@ export const Actions: typeof ActionsRoot & {
   Favorite,
   Pin,
   Lock,
+  Share,
+  Invite,
+  Activity,
 })
