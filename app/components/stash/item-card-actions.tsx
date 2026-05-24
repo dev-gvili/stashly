@@ -302,6 +302,138 @@ function Activity(props: ItemProps) {
   )
 }
 
+// -- Trash -------------------------------------------------------------------
+
+function Trash(props: ItemProps) {
+  const fetcher = useFetcher()
+  const { id } = useItemCard()
+
+  return (
+    <Item
+      variant="destructive"
+      {...props}
+      className={cn('mt-2 items-start hover:cursor-pointer', props.className)}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        fetcher.submit(
+          { intent: 'trash_item', selectedItem: id },
+          { method: 'POST', action: href('/api/items') }
+        )
+        props.onClick?.(e)
+      }}
+    >
+      <TrashIcon className="text-current" />
+      <span className="text-nowrap shrink-0">Trash</span>
+    </Item>
+  )
+}
+
+// -- Restore -----------------------------------------------------------------
+
+function Restore(props: ItemProps) {
+  const fetcher = useFetcher()
+  const { id } = useItemCard()
+
+  return (
+    <Item
+      {...props}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        fetcher.submit(
+          { intent: 'restore_item', selectedItem: id },
+          { method: 'POST', action: href('/api/items') }
+        )
+        props.onClick?.(e)
+      }}
+    >
+      <RestoreIcon className="text-current" />
+      Restore
+    </Item>
+  )
+}
+
+// -- Delete ------------------------------------------------------------------
+
+function Delete(props: ItemProps) {
+  const fetcher = useFetcher()
+  const { id, name } = useItemCard()
+  const onDelete = React.useCallback(() => {
+    fetcher.submit(
+      { intent: 'delete_item', selectedItem: id },
+      { method: 'POST', action: href('/api/items') }
+    )
+  }, [id, fetcher])
+  const { open } = useConfirm(onDelete)
+
+  return (
+    <Item
+      variant="destructive"
+      {...props}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        open({
+          variant: 'destructive',
+          title: `Are you sure you want to delete ${name}?`,
+          description:
+            'This action cannot be undone, deleted items cannot be restored.',
+          confirmText: 'Delete',
+        })
+        props.onClick?.(e)
+      }}
+    >
+      <DeleteIcon className="text-current" />
+      <span>Delete</span>
+    </Item>
+  )
+}
+
+// -- RemoveFromCollection ----------------------------------------------------
+
+interface RemoveFromCollectionProps extends ItemProps {
+  collectionId: string
+}
+
+function RemoveFromCollection({
+  collectionId,
+  ...props
+}: RemoveFromCollectionProps) {
+  const fetcher = useFetcher()
+  const { id, name } = useItemCard()
+  const onRemove = React.useCallback(() => {
+    fetcher.submit(
+      { intent: 'remove_item', itemId: id, collectionId },
+      { method: 'POST', action: href('/api/collections') }
+    )
+  }, [id, collectionId, fetcher])
+  const { open } = useConfirm(onRemove)
+
+  return (
+    <Item
+      variant="destructive"
+      {...props}
+      className={cn('mt-2 items-start hover:cursor-pointer', props.className)}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        open({
+          variant: 'destructive',
+          title: `Remove ${name} from this collection?`,
+          description:
+            'The item stays in your stash; it just leaves this collection.',
+          confirmText: 'Remove',
+        })
+        props.onClick?.(e)
+      }}
+    >
+      <RemoveIcon className="text-current" />
+      <span className="text-nowrap shrink-0">Remove from collection</span>
+    </Item>
+  )
+}
+
 // -- Root --------------------------------------------------------------------
 
 interface ActionsRootProps extends React.ComponentPropsWithoutRef<typeof Button> {
@@ -359,6 +491,10 @@ export const Actions: typeof ActionsRoot & {
   Share: typeof Share
   Invite: typeof Invite
   Activity: typeof Activity
+  Trash: typeof Trash
+  Restore: typeof Restore
+  Delete: typeof Delete
+  RemoveFromCollection: typeof RemoveFromCollection
 } = Object.assign(ActionsRoot, {
   Group,
   Item,
@@ -374,4 +510,8 @@ export const Actions: typeof ActionsRoot & {
   Share,
   Invite,
   Activity,
+  Trash,
+  Restore,
+  Delete,
+  RemoveFromCollection,
 })
