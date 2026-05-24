@@ -132,6 +132,36 @@ function Details(props: ItemProps) {
   )
 }
 
+// -- Favorite ----------------------------------------------------------------
+
+function Favorite(props: ItemProps) {
+  const fetcher = useFetcher<{ favorited?: boolean }>()
+  const { id, favorites, user } = useItemCard()
+  const initial = toFavorite({ favorites, userId: user?.id })
+  const favorited = fetcher.data?.favorited ?? initial
+
+  return (
+    <Item
+      {...props}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        fetcher.submit(
+          { intent: favorited ? 'unfavorite' : 'favorite', itemId: id },
+          { method: 'GET', action: href('/api/favorites') }
+        )
+        props.onClick?.(e)
+      }}
+    >
+      <HeartIcon
+        fill={favorited ? 'currentColor' : 'none'}
+        className="text-current"
+      />
+      {favorited ? 'Unfavorite' : 'Favorite'}
+    </Item>
+  )
+}
+
 // -- Root --------------------------------------------------------------------
 
 interface ActionsRootProps extends React.ComponentPropsWithoutRef<typeof Button> {
@@ -183,6 +213,7 @@ export const Actions: typeof ActionsRoot & {
   Move: typeof Move
   Rename: typeof Rename
   Details: typeof Details
+  Favorite: typeof Favorite
 } = Object.assign(ActionsRoot, {
   Group,
   Item,
@@ -192,4 +223,5 @@ export const Actions: typeof ActionsRoot & {
   Move,
   Rename,
   Details,
+  Favorite,
 })
