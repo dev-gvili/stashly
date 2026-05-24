@@ -31,7 +31,7 @@ import { useSelection } from './selection'
 import type { Route } from '../../routes/+types/layout'
 import { ItemCardContext, useItemCard } from '@/hooks/useItemCard'
 import { useItemDragDrop, DRAG_ITEM_KEY } from '@/hooks/useItemDragDrop'
-import {
+import ShareItemFillIcon, {
   FolderIcon,
   ActivityIcon,
   CopyIcon,
@@ -48,8 +48,11 @@ import {
   RenameIcon,
   RestoreIcon,
   ShareItemIcon,
+  ShareFillIcon,
   TrashIcon,
   GroupIcon,
+  LockFillIcon,
+  UnlockFillIcon,
 } from '@/components/icons'
 import { ShareDialog } from '@/components/core-components/share-dialog'
 import { InviteDialog } from '@/components/core-components/invite-dialog'
@@ -64,8 +67,10 @@ import {
 } from '@/ui/dropdown-menu'
 import useConfirm from '@/hooks/useConfirm'
 import { usePinItem } from '@/hooks/usePinItem'
+import { useLockItem } from '@/hooks/useLockItem'
 import { Button } from '../ui/button'
 import { ScrollArea } from '../ui/scroll-area'
+import { href } from 'react-router'
 
 export interface ItemCardProps extends StashItem {
   asChild?: boolean
@@ -99,10 +104,12 @@ const ItemCardActions = (
   props: React.ComponentPropsWithoutRef<typeof Button>
 ) => {
   let fetcher = useFetcher()
-  let { id, name, type, status, favorites, pins, user } = useItemCard()
+  let { id, name, type, status, favorites, pins, locked: itemLock, user } = useItemCard()
   let favorited = toFavorite({ favorites, userId: user?.id })
   let initiallyPinned = Array.isArray(pins) && pins.some((p) => p.pinnedById === user?.id)
+  let initiallyLocked = itemLock?.lockedById === user?.id
   let { pinned, toggle: togglePin, isPending: isPinPending } = usePinItem(id, initiallyPinned)
+  let { locked, toggle: toggleLock, isPending: isLockPending } = useLockItem(id, initiallyLocked)
   let [shareOpen, setShareOpen] = React.useState(false)
   let [dmo, setDMOpen] = React.useState(false)
   let [activityOpen, setActivityOpen] = React.useState(false)
@@ -110,10 +117,11 @@ const ItemCardActions = (
     favorited = fetcher.data?.favorited ?? favorited
   }
 
+  console.log('rendering actions for', name, { favorited, pinned, itemLock })
   let onDelete = useCallback(() => {
     fetcher.submit(
       { intent: 'delete_item', selectedItem: id },
-      { method: 'POST', action: '/api/items' }
+      { method: 'POST', action: href('/api/items') }
     )
   }, [id, fetcher])
 
@@ -126,7 +134,7 @@ const ItemCardActions = (
         event.stopPropagation()
         fetcher.submit(
           { intent: 'trash_item', selectedItem: id },
-          { method: 'POST', action: '/api/items' }
+          { method: 'POST', action: href('/api/items') }
         )
       }
     }
@@ -186,7 +194,7 @@ const ItemCardActions = (
                         },
                         {
                           method: 'GET',
-                          action: '/api/favorites',
+                          action: href('/api/favorites'),
                         }
                       )
                     }}
@@ -225,7 +233,7 @@ const ItemCardActions = (
                       setShareOpen(true)
                     }}
                   >
-                    <ShareItemIcon className="text-current" />
+                    <ShareItemFillIcon className="text-current" />
                     Share
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -239,9 +247,20 @@ const ItemCardActions = (
                     <GroupIcon className="text-current" />
                     Invite
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="items-start hover:cursor-pointer">
-                    <LockIcon className="text-current" />
-                    Lock
+                  <DropdownMenuItem
+                    className="items-start hover:cursor-pointer"
+                    disabled={isLockPending}
+                    onSelect={(e) => {
+                      e.preventDefault()
+                      toggleLock()
+                    }}
+                  >
+                    {locked ? (
+                      <LockFillIcon className="text-current" />
+                    ) : (
+                      <UnlockFillIcon className="text-current" />
+                    )}
+                    {locked ? 'Unlock' : 'Lock'}
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuGroup>
@@ -282,7 +301,7 @@ const ItemCardActions = (
                     e.stopPropagation()
                     fetcher.submit(
                       { intent: 'trash_item', selectedItem: id },
-                      { method: 'POST', action: '/api/items' }
+                      { method: 'POST', action: href('/api/items') }
                     )
                   }}
                 >
@@ -302,7 +321,7 @@ const ItemCardActions = (
                 e.stopPropagation()
                 fetcher.submit(
                   { intent: 'restore_item', selectedItem: id },
-                  { method: 'POST', action: '/api/items' }
+                  { method: 'POST', action: href('/api/items') }
                 )
               }}
             >
@@ -639,7 +658,7 @@ const ItemCardRoot = ({
 
   let [searchParams, setSearchParams] = useSearchParams()
   const layout = searchParams.get('layout')
-  const take = searchParams.get('take')
+  const take = searchParams.get('take') ?? 100
 
   const { size, ...rest } = props
 
