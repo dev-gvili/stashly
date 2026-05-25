@@ -505,11 +505,6 @@ export function AddToCollectionDialog({
                     ))}
                 </div>
               )}
-              <LoadMoreItems
-                hasMore={hasMore}
-                isLoading={isLoading}
-                loadMore={loadMore}
-              />
             </ScrollArea>
           </div>
 
