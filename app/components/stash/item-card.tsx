@@ -8,13 +8,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/ui/card'
-import { toFavorite, toIcon, toItemUrl } from '@/utils/converters'
+import { toIcon, toItemUrl } from '@/utils/converters'
 import { formatSize } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
-import React, { useCallback } from 'react'
+import React from 'react'
 import {
   Link,
-  useFetcher,
   useNavigate,
   useRouteLoaderData,
   useSearchParams,
@@ -31,41 +30,8 @@ import { useSelection } from './selection'
 import type { Route } from '../../routes/+types/layout'
 import { ItemCardContext, useItemCard } from '@/hooks/useItemCard'
 import { useItemDragDrop, DRAG_ITEM_KEY } from '@/hooks/useItemDragDrop'
-import {
-  FolderIcon,
-  ActivityIcon,
-  CopyIcon,
-  DeleteIcon,
-  DownloadIcon,
-  FileDetailsIcon,
-  HeartIcon,
-  LockIcon,
-  MenuDotsIcon,
-  MoveToFolder,
-  PinIcon,
-  PinFillIcon,
-  PreviewIcon,
-  RenameIcon,
-  RestoreIcon,
-  ShareItemIcon,
-  TrashIcon,
-  GroupIcon,
-} from '@/components/icons'
-import { ShareDialog } from '@/components/core-components/share-dialog'
-import { InviteDialog } from '@/components/core-components/invite-dialog'
-import { ItemActivityDrawer } from '@/components/core-components/item-activity-drawer'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/ui/dropdown-menu'
-import useConfirm from '@/hooks/useConfirm'
-import { usePinItem } from '@/hooks/usePinItem'
-import { Button } from '../ui/button'
-import { ScrollArea } from '../ui/scroll-area'
+import { FolderIcon } from '@/components/icons'
+import { Actions as ItemCardActions } from './item-card-actions'
 
 export interface ItemCardProps extends StashItem {
   asChild?: boolean
@@ -95,253 +61,6 @@ const ItemHeader = React.forwardRef<
 })
 ItemHeader.displayName = 'ItemHeader'
 
-const ItemCardActions = (
-  props: React.ComponentPropsWithoutRef<typeof Button>
-) => {
-  let fetcher = useFetcher()
-  let { id, name, type, status, favorites, pins, user } = useItemCard()
-  let favorited = toFavorite({ favorites, userId: user?.id })
-  let initiallyPinned = Array.isArray(pins) && pins.some((p) => p.pinnedById === user?.id)
-  let { pinned, toggle: togglePin, isPending: isPinPending } = usePinItem(id, initiallyPinned)
-  let [shareOpen, setShareOpen] = React.useState(false)
-  let [dmo, setDMOpen] = React.useState(false)
-  let [activityOpen, setActivityOpen] = React.useState(false)
-  if (fetcher.data) {
-    favorited = fetcher.data?.favorited ?? favorited
-  }
-
-  let onDelete = useCallback(() => {
-    fetcher.submit(
-      { intent: 'delete_item', selectedItem: id },
-      { method: 'POST', action: '/api/items' }
-    )
-  }, [id, fetcher])
-
-  let { open } = useConfirm(onDelete)
-
-  React.useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Delete') {
-        event.preventDefault()
-        event.stopPropagation()
-        fetcher.submit(
-          { intent: 'trash_item', selectedItem: id },
-          { method: 'POST', action: '/api/items' }
-        )
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
-  const itemType = type === 'folder' ? 'folder' : 'file'
-
-  return (
-    <>
-      <ShareDialog
-        open={shareOpen}
-        onOpenChange={setShareOpen}
-        itemId={id}
-        itemName={name}
-        itemType={itemType}
-      />
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger onClick={(e) => e.stopPropagation()} {...props}>
-          <MenuDotsIcon className="size-6!" />
-        </DropdownMenuTrigger>
-
-        {status !== 'trashed' && (
-          <DropdownMenuContent
-            hideWhenDetached={true}
-            align="end"
-            avoidCollisions={true}
-            className="space-y-4 w-48 bg-sidebar z-40"
-            onCloseAutoFocus={(e) => e.preventDefault()}
-          >
-            <ScrollArea className="h-full pr-2" type="auto">
-              <section className="max-h-80 space-y-2">
-                <DropdownMenuGroup className="mt-2">
-                  <DropdownMenuItem className="items-start hover:cursor-pointer">
-                    <PreviewIcon className="text-current" />
-                    Preview
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="items-start hover:cursor-pointer">
-                    <DownloadIcon className="text-current" />
-                    Download
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-                    Quick actions
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    className="items-start hover:cursor-pointer"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      fetcher.submit(
-                        {
-                          intent: favorited ? 'unfavorite' : 'favorite',
-                          itemId: id,
-                        },
-                        {
-                          method: 'GET',
-                          action: '/api/favorites',
-                        }
-                      )
-                    }}
-                  >
-                    <HeartIcon
-                      fill={favorited ? 'currentColor' : 'none'}
-                      className="text-current"
-                    />
-                    {favorited ? 'Unfavorite' : 'Favorite'}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="items-start hover:cursor-pointer"
-                    disabled={isPinPending}
-                    onSelect={(e) => {
-                      e.preventDefault()
-                      togglePin()
-                    }}
-                  >
-                    {pinned ? (
-                      <PinFillIcon className="text-current" />
-                    ) : (
-                      <PinIcon className="text-current" />
-                    )}
-                    {pinned ? 'Unpin' : 'Pin'}
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-                    Access
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    className="items-start hover:cursor-pointer"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setShareOpen(true)
-                    }}
-                  >
-                    <ShareItemIcon className="text-current" />
-                    Share
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      setDMOpen(true)
-                    }}
-                    className="hover:cursor-pointer"
-                  >
-                    <GroupIcon className="text-current" />
-                    Invite
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="items-start hover:cursor-pointer">
-                    <LockIcon className="text-current" />
-                    Lock
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-                    Organize
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem className="items-start hover:cursor-pointer">
-                    <CopyIcon className="text-current" />
-                    Copy
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="items-start hover:cursor-pointer">
-                    <MoveToFolder className="text-current" />
-                    Move
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="items-start hover:cursor-pointer">
-                    <RenameIcon className="text-current" />
-                    Rename
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-                    Information
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem className="items-start hover:cursor-pointer" onClick={() => setActivityOpen(true)}>
-                    <ActivityIcon className="text-current" />
-                    Activity
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="items-start hover:cursor-pointer">
-                    <FileDetailsIcon className="text-current" />
-                    Details
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuItem
-                  variant="destructive"
-                  className="mt-2 items-start hover:cursor-pointer"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    fetcher.submit(
-                      { intent: 'trash_item', selectedItem: id },
-                      { method: 'POST', action: '/api/items' }
-                    )
-                  }}
-                >
-                  <TrashIcon className="text-current" />
-                  <span className="text-nowrap shrink-0">Trash</span>
-                </DropdownMenuItem>
-              </section>
-            </ScrollArea>
-          </DropdownMenuContent>
-        )}
-        {status === 'trashed' && (
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              className="items-start hover:cursor-pointer"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                fetcher.submit(
-                  { intent: 'restore_item', selectedItem: id },
-                  { method: 'POST', action: '/api/items' }
-                )
-              }}
-            >
-              <RestoreIcon className="text-current" />
-              Restore
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="items-start hover:cursor-pointer"
-              variant="destructive"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                open({
-                  variant: 'destructive',
-                  title: `Are you sure you want to delete ${name}?`,
-                  description:
-                    'This action cannot be undone, deleted items cannot be restored.',
-                  confirmText: 'Delete',
-                })
-              }}
-            >
-              <DeleteIcon className="text-current" />
-              <span>Delete</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        )}
-      </DropdownMenu>
-      <InviteDialog
-        itemId={id}
-        itemName={name}
-        open={dmo}
-        onOpenChange={setDMOpen}
-      />
-      <ItemActivityDrawer itemId={id} open={activityOpen} onOpenChange={setActivityOpen} />
-    </>
-  )
-}
-ItemCardActions.displayName = 'ItemCardActions'
-// 'z-10 hover:cursor-pointer font-stashly max-w-max place-self-end',
 
 const ItemFavorite = React.forwardRef<
   React.ComponentRef<typeof Favorite>,
@@ -639,7 +358,7 @@ const ItemCardRoot = ({
 
   let [searchParams, setSearchParams] = useSearchParams()
   const layout = searchParams.get('layout')
-  const take = searchParams.get('take')
+  const take = searchParams.get('take') ?? 100
 
   const { size, ...rest } = props
 

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   useFetcher,
-  useLocation,
   useRouteLoaderData,
   useSearchParams,
 } from 'react-router'
@@ -29,7 +28,6 @@ import { Filters } from '../filters/filters'
 import { useFilters } from '@/hooks/useFilters'
 import { GridLayout } from '../views/grid-view'
 import { LoadMoreItems } from './buttons'
-import { usePagination } from '@/hooks'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -227,7 +225,11 @@ export function AddToCollectionDialog({
   children,
 }: AddToCollectionDialogProps) {
   const fetcher = useFetcher()
-  let location = useLocation()
+  const pickerFetcher = useFetcher<{
+    items: StashPickerItem[]
+    nextCursor: string | null
+    hasMore: boolean
+  }>()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -238,19 +240,45 @@ export function AddToCollectionDialog({
   const user =
     useRouteLoaderData<Route.ComponentProps['loaderData']>('layout')!.user
   const [searchParams, setSearchParams] = useSearchParams()
-  
-  // Use usePagination with initialItems passed as the third parameter (initData)
-  const { hasMore, isLoading, loadMore, items } = usePagination<StashPickerItem>(
-    60,
-    '/api/collections?' + searchParams.toString(),
-    initialItems
-  )
-  // // Close on successful submit
-  // useEffect(() => {
-  //   if (fetcher.state === 'idle' && fetcher.data != null) {
-  //     onOpenChange(!open)
-  //   }
-  // }, [fetcher.state, fetcher.data])
+
+  // Picker items are driven by the `initialItems` prop (the parent's loaderData.availableItems).
+  // Do NOT use usePagination here — it reads useLoaderData() from the host route, which inside
+  // a collection route returns the in-collection items (not the picker source) and clobbers
+  // local state after every action redirect.
+  const [items, setItems] = useState<StashPickerItem[]>(initialItems)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(initialItems.length >= 50)
+
+  // Re-sync when the parent reloads availableItems (after add/remove triggers a revalidation).
+  useEffect(() => {
+    setItems(initialItems)
+    setNextCursor(null)
+    setHasMore(initialItems.length >= 50)
+  }, [initialItems])
+
+  // Append fetched pages.
+  useEffect(() => {
+    if (pickerFetcher.state !== 'idle' || !pickerFetcher.data) return
+    setItems((prev) => {
+      const existing = new Set(prev.map((i) => i.id))
+      return [
+        ...prev,
+        ...pickerFetcher.data!.items.filter((i) => !existing.has(i.id)),
+      ]
+    })
+    setNextCursor(pickerFetcher.data.nextCursor)
+    setHasMore(pickerFetcher.data.hasMore)
+  }, [pickerFetcher.state, pickerFetcher.data])
+
+  const isLoading = pickerFetcher.state !== 'idle'
+
+  const loadMore = useCallback(() => {
+    if (isLoading || !hasMore || !nextCursor) return
+    const params = new URLSearchParams()
+    params.set('cursor', nextCursor)
+    params.set('take', '60')
+    pickerFetcher.load(`/api/collections?${params.toString()}`)
+  }, [isLoading, hasMore, nextCursor, pickerFetcher])
 
   const toggleItem = useCallback((id: string) => {
     setSelected((prev) => {
@@ -477,11 +505,6 @@ export function AddToCollectionDialog({
                     ))}
                 </div>
               )}
-              <LoadMoreItems
-                hasMore={hasMore}
-                isLoading={isLoading}
-                loadMore={loadMore}
-              />
             </ScrollArea>
           </div>
 

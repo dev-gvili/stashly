@@ -324,11 +324,41 @@ function CollectionItemCard({ item }: { item: StashPickerItem }) {
     folder: null,
   }
 
+  const { collectionId } = useParams()
+
   return (
     <ItemCard {...stashItem} className="rounded-md border! border-input">
       <ItemCard.Header>
         <ItemCard.Checkbox name="selectedItems" value={item.id} />
-        <ItemCard.Actions className="place-self-end" />
+        {collectionId ? (
+          <ItemCard.Actions className="place-self-end">
+            <ItemCard.Actions.Group>
+              <ItemCard.Actions.Preview />
+              <ItemCard.Actions.Download />
+            </ItemCard.Actions.Group>
+            <ItemCard.Actions.Group label="Quick actions">
+              <ItemCard.Actions.Favorite />
+              <ItemCard.Actions.Pin />
+            </ItemCard.Actions.Group>
+            <ItemCard.Actions.Group label="Access">
+              <ItemCard.Actions.Share />
+              <ItemCard.Actions.Invite />
+              <ItemCard.Actions.Lock />
+            </ItemCard.Actions.Group>
+            <ItemCard.Actions.Group label="Organize">
+              <ItemCard.Actions.Copy />
+              <ItemCard.Actions.Move />
+              <ItemCard.Actions.Rename />
+            </ItemCard.Actions.Group>
+            <ItemCard.Actions.Group label="Information">
+              <ItemCard.Actions.Activity />
+              <ItemCard.Actions.Details />
+            </ItemCard.Actions.Group>
+            <ItemCard.Actions.RemoveFromCollection collectionId={collectionId} />
+          </ItemCard.Actions>
+        ) : (
+          <ItemCard.Actions className="place-self-end" />
+        )}
       </ItemCard.Header>
       <ItemCard.Content>
         <ItemCard.Thumbnail />
