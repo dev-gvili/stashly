@@ -33,13 +33,20 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from '../ui/tooltip'
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '../ui/hover-card'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   DoubleCheckIcon,
+  DropdownIcon,
   ExpandCollapsedIcon,
   PauseV2Icon,
   RemoveIcon,
   RemoveSquareIcon,
+  ResumeFillIcon,
   ResumeIcon,
 } from '../icons'
 
@@ -59,21 +66,21 @@ const Styles = {
   ItemBody: 'col-span-6 w-full',
   ItemContent: 'flex w-full justify-between',
   Progress:
-    'group-data-[state=aborted]:opacity-40 group-data-[state=uploading]:hover:cursor-default',
+    'group-data-[state=aborted]:opacity-50 group-data-[state=uploading]:hover:cursor-default',
   FileIcon:
-    'flex appearance-none items-center justify-center bg-transparent [&_svg]:size-8 group-data-[state=aborted]:opacity-40',
+    'flex appearance-none items-center justify-center bg-transparent [&_svg]:size-8 group-data-[state=aborted]:opacity-50',
   FileName:
-    'overflow-hidden text-ellipsis text-nowrap text-start font-stashly text-xs font-bold text-foreground group-data-[state=aborted]:opacity-20',
+    'overflow-hidden text-ellipsis text-nowrap text-start font-stashly text-xs font-bold text-foreground group-data-[state=aborted]:opacity-50',
   Total:
     'w-56 overflow-hidden text-ellipsis text-nowrap text-start font-stashly text-xs font-bold dark:text-white group-data-[state=aborted]:dark:opacity-20',
   CountDown:
     'text-start font-stashly text-xs group-data-[state=aborted]:hidden text-nowrap',
   StatusText: (status: Status) =>
-    `text-start font-stashly text-xs group-data-[state=aborted]:block! group-data-[state=aborted]:opacity-20! group-data-[state=uploading]:hidden! text-nowrap capitalize`,
+    `text-start font-stashly text-xs group-data-[state=aborted]:block! group-data-[state=uploading]:hidden! text-nowrap capitalize`,
   Description:
     'font-stashly text-xs text-muted-foreground group-data-[state=aborted]:opacity-20',
   Cancel:
-    'appearance-none bg-inherit fill-foreground disabled:cursor-default hidden group-data-[state=uploading]:group-hover/progress:block! group-data-[status=done]:hidden group-hover:fill-foreground',
+    'appearance-none bg-inherit fill-foreground disabled:cursor-default group-data-[status=done]:hidden group-hover:fill-foreground',
 } as const
 
 // ====================================================== //
@@ -133,7 +140,9 @@ export const DropArea = React.forwardRef<
   ) => {
     id = id || React.useId()
     const { dragHandlers, makeDropHandler } = useUpload()
-    const targetedOnDrop = folderId ? makeDropHandler(folderId) : dragHandlers.onDrop
+    const targetedOnDrop = folderId
+      ? makeDropHandler(folderId)
+      : dragHandlers.onDrop
 
     const _onDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
       for (const child of event.currentTarget.children) {
@@ -315,19 +324,42 @@ const Item = React.forwardRef<
           </StatusText>
         </div>
       </div>
-      <Progress
-        mediafileId={mediaFileId}
-        // hide the double-check only when THIS progress element is hovered
-        className="relative hover:[&_[data-slot='double-check']]:hidden"
-      >
-        <DoubleCheckIcon
-          data-slot="double-check"
-          className="size-14 group-data-[state=done]:block group-data-[state=uploading]:hidden"
-        />
-        <Cancel mediaFileId={mediaFileId} />
-        <PauseResume mediaFileId={mediaFileId} />
-        <Dismiss mediaFileId={mediaFileId} />
-      </Progress>
+      {mediafile?.status === 'uploading' || mediafile?.status === 'paused' ? (
+        <HoverCard openDelay={50} closeDelay={150}>
+          <HoverCardTrigger asChild>
+            <Progress
+              mediafileId={mediaFileId}
+              className="relative hover:**:data-[slot='double-check']:hidden"
+            >
+              <DoubleCheckIcon
+                data-slot="double-check"
+                className="size-14 group-data-[state=done]:block group-data-[state=uploading]:hidden group-data-[state=aborted]:hidden group-data-[state=paused]:hidden"
+              />
+              <Dismiss mediaFileId={mediaFileId} />
+            </Progress>
+          </HoverCardTrigger>
+          <HoverCardContent
+            side="left"
+            align="center"
+            sideOffset={-4}
+            className="w-auto p-2 flex items-center gap-2 border-none rounded-md bg-background shadow-none"
+          >
+            <PauseResume mediaFileId={mediaFileId} />
+            <Cancel mediaFileId={mediaFileId} />
+          </HoverCardContent>
+        </HoverCard>
+      ) : (
+        <Progress
+          mediafileId={mediaFileId}
+          className="relative hover:[&_[data-slot='double-check']]:hidden"
+        >
+          <DoubleCheckIcon
+            data-slot="double-check"
+            className="size-14 group-data-[state=done]:block group-data-[state=uploading]:hidden group-data-[state=aborted]:hidden group-data-[state=paused]:hidden"
+          />
+          <Dismiss mediaFileId={mediaFileId} />
+        </Progress>
+      )}
     </li>
   )
 })
@@ -341,6 +373,7 @@ const Progress = React.forwardRef<
 >(({ id, children, mediafileId, className, ...props }, forwardRef) => {
   id = id || React.useId()
   const progress = useUploadProgress(mediafileId)
+  const status = useUploadStatus(mediafileId) // subscribe to status changes so we can re-render and show/hide controls
 
   return (
     <CircleProgressBar.Root
@@ -358,10 +391,10 @@ const Progress = React.forwardRef<
         height={70}
         x="12.5"
         y="12.5"
-        className="flex-col content-center justify-items-center "
+        className="flex-col content-center justify-items-center text-lg"
       >
         {children}
-        <p className="text-xl text-center font-stashly hidden group-data-[state=uploading]:block! group-data-[state=paused]:block!">
+        <p className="text-2xl! text-center font-stashly hidden group-data-[state=uploading]:block! group-data-[state=paused]:block group-data-[state=aborted]:hidden">
           {`${progress?.percentage}%`}
         </p>
       </CircleProgressBar.Value>
@@ -500,20 +533,20 @@ const Cancel = React.forwardRef<
       <TooltipRoot>
         <TooltipTrigger asChild>
           <Button
-            variant="ghost"
-            size="icon-lg"
+            variant="outline"
+            size="icon-sm"
             hidden={status === 'done'}
             disabled={status === 'aborted' || status === 'done'}
             ref={forwardRef}
             onClick={callAll(() => cancel(mediaFileId), onClick)}
             className={cn(
               Styles.Cancel,
-              'hover:cursor-pointer w-8 h-8',
+              'hover:cursor-pointer bg-sidebar border-input rounded-md',
               className
             )}
             {...props}
           >
-            <RemoveSquareIcon className="size-8" />
+            <RemoveIcon className="size-5" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>Cancel</TooltipContent>
@@ -533,19 +566,19 @@ const Dismiss = React.forwardRef<
   if (status !== 'done' && status !== 'aborted') return null
 
   return (
-      <Button
-        variant="ghost"
-        size="icon-lg"
-        ref={forwardRef}
-        onClick={callAll(() => dismiss(mediaFileId), onClick)}
-        className={cn(
-          'hover:cursor-pointer hidden group-hover/progress:flex items-center justify-center hover:bg-accent/30!  hover:text-foreground size-12',
-          className
-        )}
-        {...props}
-      >
-        <RemoveIcon className="size-12" />
-      </Button>
+    <Button
+      variant="ghost"
+      size="icon-lg"
+      ref={forwardRef}
+      onClick={callAll(() => dismiss(mediaFileId), onClick)}
+      className={cn(
+        'hover:cursor-pointer hidden group-hover/progress:flex items-center justify-center hover:bg-accent/30! hover:text-foreground size-12 group-data-[state=aborted]:flex',
+        className
+      )}
+      {...props}
+    >
+      <RemoveIcon className="text-current" />
+    </Button>
   )
 })
 Dismiss.displayName = 'DismissButton'
@@ -566,23 +599,23 @@ const PauseResume = React.forwardRef<
       <TooltipRoot>
         <TooltipTrigger asChild>
           <Button
-            variant="ghost"
-            size="icon-lg"
+            variant="outline"
+            size="icon-sm"
             ref={forwardRef}
             onClick={callAll(
               () => (isPaused ? resume(mediaFileId) : pause(mediaFileId)),
               onClick
             )}
             className={cn(
-              'hover:cursor-pointer hidden group-hover/progress:block',
+              'hover:cursor-pointer flex bg-sidebar border-input rounded-md!',
               className
             )}
             {...props}
           >
             {isPaused ? (
-              <ResumeIcon className="size-6" />
+              <ResumeFillIcon className="size-3!" />
             ) : (
-              <PauseV2Icon className="size-6" />
+              <PauseV2Icon className="size-3!" />
             )}
           </Button>
         </TooltipTrigger>
@@ -618,29 +651,29 @@ export const UploadPanel = ({ user }: { user: User }) => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       hidden={!isVisible}
-      className="fixed bottom-8 right-8 w-sm shadow-stashly bg-sidebar  rounded-md shadow-lg flex flex-col max-h-2/3 overflow-hidden z-50"
+      className="fixed bottom-8 right-8 w-md bg-sidebar rounded-md shadow-lg flex flex-col max-h-2/3 overflow-hidden z-50 border border-input!"
     >
       <Upload user={user}>
-        <div className="flex justify-between items-center h-12 px-4 bg-sidebar rounded-md-tl rounded-md-tr shadow-stashly">
+        <div className="flex justify-between items-center h-14 px-4 bg-sidebar rounded-md-tl rounded-md-tr">
           <Label className="font-stashly text-sm">
             Uploading Files ({uploadingFiles.length})
           </Label>
           <div className="inline-flex gap-1">
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon-sm"
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="hover:cursor-pointer"
+              className="hover:cursor-pointer bg-sidebar border-input"
             >
-              <ExpandCollapsedIcon className="size-6" />
+              <DropdownIcon className={`${isCollapsed ? 'rotate-180' : ''}`} />
             </Button>
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon-sm"
               onClick={toggleView}
-              className="hover:cursor-pointer"
+              className="hover:cursor-pointer bg-sidebar border-input"
             >
-              <RemoveSquareIcon className="size-6" />
+              <RemoveIcon className="text-current size-5" />
             </Button>
           </div>
         </div>
@@ -653,10 +686,7 @@ export const UploadPanel = ({ user }: { user: User }) => {
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <DropArea
-                className="border-none h-auto p-0"
-                data-testid="upload-drop-area"
-              >
+              <DropArea className="h-auto p-0" data-testid="upload-drop-area">
                 <FileList className="px-2 pt-2 h-full" />
               </DropArea>
             </motion.div>
