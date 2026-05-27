@@ -23,7 +23,7 @@ import { Button } from '@/ui/button'
 import useConfirm from '@/hooks/useConfirm'
 import type { JSX, SVGProps } from 'react'
 import type { ItemCategory } from '@/prisma/enums'
-import { toIcon } from '@/utils'
+import { toIcon, type IconKey } from '@/utils'
 import {
   DataTable,
   type DataTableColumn,
@@ -262,7 +262,7 @@ function ByTypeTable({ breakdown }: { breakdown: Breakdown[] }) {
       header: 'Category',
       width: '160px',
       cell: (item: Breakdown) => {
-        const Icon = categoryIcon[item.category] || FileIcon
+        const Icon = toIcon(item.category)
         return (
           <div className="inline-flex items-center gap-2">
             <Icon className="size-5" />

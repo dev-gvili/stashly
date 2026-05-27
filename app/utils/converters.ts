@@ -1,22 +1,39 @@
 import {
+  ArchiveFillIcon,
   ArchiveIcon,
+  AudioFillIcon,
   AudioIcon,
+  BinariesFillIcon,
   BinaryIcon,
+  CodeFillIcon,
   CodeIcon,
+  CollectionFillIcon,
   CollectionIcon,
   CollectionLineIcon,
+  CollectionsFillIcon,
+  DocumentFillIcon,
   DocumentIcon,
+  FileFillIcon,
   FileIcon,
+  FolderFillIcon,
   FolderIcon,
+  GraphicIcon,
   HashTagIcon,
+  ImageFillIcon,
   ImageIcon,
+  LockedFillIcon,
   LockedIcon,
   Pdf2Icon,
+  PresentationFillIcon,
+  ShareFillIcon,
   ShareIcon,
+  ShellFillIcon,
   ShellIcon,
   SlidesIcon,
+  SpreadSheetFillIcon,
+  TrashFillIcon,
   TrashIcon,
-  Video2Icon,
+  VideoFillIcon,
 } from '@/components/icons'
 import type {
   MediaFile,
@@ -276,43 +293,45 @@ export type IconKey =
 export function toIcon(value: IconKey) {
   switch (value) {
     case 'audio':
-      return AudioIcon
+      return AudioFillIcon
     case 'video':
-      return Video2Icon
+      return VideoFillIcon
     case 'image':
-      return ImageIcon
+      return ImageFillIcon
     case 'archive':
-      return ArchiveIcon
+      return ArchiveFillIcon
     case 'spreadsheet':
-      return HashTagIcon
+      return SpreadSheetFillIcon
     case 'document':
-      return DocumentIcon
+      return DocumentFillIcon
     case 'code':
-      return CodeIcon
+      return CodeFillIcon
     case 'script':
-      return ShellIcon
+      return ShellFillIcon
     case 'pdf':
       return Pdf2Icon
     case 'presentation':
-      return SlidesIcon
+      return PresentationFillIcon
     case 'binaries':
-      return BinaryIcon
+      return BinariesFillIcon
+    case 'graphic':
+      return GraphicIcon  
     case 'file':
-      return FileIcon
+      return FileFillIcon
     case 'folder':
-      return FolderIcon
+      return FolderFillIcon
     case 'collection':
-      return CollectionLineIcon
+      return CollectionsFillIcon
     case 'archived':
-      return ArchiveIcon
+      return ArchiveFillIcon
     case 'trashed':
-      return TrashIcon
+      return TrashFillIcon
     case 'text':
-      return DocumentIcon
+      return DocumentFillIcon
     case 'shared':
-      return ShareIcon
+      return ShareFillIcon
     case 'locked':
-      return LockedIcon
+      return LockedFillIcon
     default:
       return FileIcon
   }

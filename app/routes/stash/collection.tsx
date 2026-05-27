@@ -12,6 +12,7 @@ import {
 } from 'react-router'
 import type { Route } from './+types/collection'
 import { usePagination } from '@/hooks/usePagination'
+import { useEffect } from 'react'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
@@ -105,12 +106,12 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
     formData?.get('intent') === 'add_item_to_collection' ||
     formData?.get('intent') === 'add_items_to_collection' ||
     formData?.get('intent') === 'remove_items_from_collection' ||
-    formData?.get('intent') === 'remove_item'
+    formData?.get('intent') === 'remove_item_from_collection' 
   ) {
     return true
   }
 
-  return true
+  return defaultShouldRevalidate
 }
 
 export default function Collection({
@@ -119,6 +120,10 @@ export default function Collection({
 }: Route.ComponentProps) {
   const { items, hasMore, isLoading, loadMore } =
     usePagination<Route.ComponentProps['loaderData']['items'][number]>(50)
+
+  useEffect(() => {
+    console.log("Collection loaderData.items:", loaderData.items)
+  }, [loaderData.items])  
 
   return (
     <CollectionView

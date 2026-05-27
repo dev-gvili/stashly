@@ -51,7 +51,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     }),
   ])
 
-  Promise.resolve().then(() => touchOpenedAt(params.folderId)).catch(() => {})
+  Promise.resolve()
+    .then(() => touchOpenedAt(params.folderId))
+    .catch(() => {})
 
   const crumbs =
     folder?.ownerId === session.user.id ? allCrumbs : allCrumbs.slice(-1)
@@ -63,28 +65,39 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   currentUrl,
   formAction,
   formData,
+  defaultShouldRevalidate,
 }) => {
-  let current = currentUrl.searchParams
-  let next = nextUrl.searchParams
-  ;['sidebar'].forEach((action) => {
+  let currentSelectedItems = getQueryParamArray(
+    currentUrl.searchParams,
+    'selectedItems'
+  )
+  let nextSelectedItems = getQueryParamArray(
+    nextUrl.searchParams,
+    'selectedItems'
+  )
+
+  ;['favorites', 'sidebar', 'theme'].forEach((action) => {
     if (formAction?.includes(action)) {
       return false
     }
   })
-  let currentSelectedItems = getQueryParamArray(current, 'selectedItems')
-  let nextSelectedItems = getQueryParamArray(next, 'selectedItems')
 
-  if (formData?.get('intent') === 'move_items') {
+  if (
+    formData?.get('intent') === 'move_items' ||
+    formData?.get('intent') === 'trash_items' ||
+    formData?.get('intent') === 'create_folder' 
+  ) {
     return true
   }
 
   if (
-    currentSelectedItems.some((item) => !nextSelectedItems.includes(item)) &&
+    currentSelectedItems.length !== nextSelectedItems.length &&
     currentUrl.pathname === nextUrl.pathname
   ) {
     return false
   }
-  return true
+
+  return defaultShouldRevalidate
 }
 
 export default () => {

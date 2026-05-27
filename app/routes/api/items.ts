@@ -166,11 +166,50 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
     case 'save_media_metadata': {
       try {
-        const { itemId, imageWidth, imageHeight, cameraMake, cameraModel, iso, fNumber, exposureTime, focalLength, takenDateTime, latitude, longitude, videoWidth, videoHeight, duration, frameRate, documentText } = parsedData
+        const {
+          itemId,
+          imageWidth,
+          imageHeight,
+          cameraMake,
+          cameraModel,
+          iso,
+          fNumber,
+          exposureTime,
+          focalLength,
+          takenDateTime,
+          latitude,
+          longitude,
+          videoWidth,
+          videoHeight,
+          duration,
+          frameRate,
+          documentText,
+        } = parsedData
         if (imageWidth != null || imageHeight != null) {
-          await upsertImageFacet(itemId, { width: imageWidth, height: imageHeight, cameraMake, cameraModel, iso, fNumber, exposureTime, focalLength, takenDateTime, latitude, longitude })
-        } else if (videoWidth != null || videoHeight != null || duration != null) {
-          await upsertVideoFacet(itemId, { width: videoWidth, height: videoHeight, duration, frameRate })
+          await upsertImageFacet(itemId, {
+            width: imageWidth,
+            height: imageHeight,
+            cameraMake,
+            cameraModel,
+            iso,
+            fNumber,
+            exposureTime,
+            focalLength,
+            takenDateTime,
+            latitude,
+            longitude,
+          })
+        } else if (
+          videoWidth != null ||
+          videoHeight != null ||
+          duration != null
+        ) {
+          await upsertVideoFacet(itemId, {
+            width: videoWidth,
+            height: videoHeight,
+            duration,
+            frameRate,
+          })
         }
         // Chunked indexing: store full content (document-level fallback) and
         // per-passage chunks. Server is authoritative for chunk boundaries —
@@ -190,7 +229,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     case 'save_search_chunk_embeddings': {
       try {
         const parsed: { chunkId: string; vector: number[] }[] = JSON.parse(
-          parsedData.embeddings,
+          parsedData.embeddings
         )
         if (!Array.isArray(parsed) || parsed.length === 0) {
           return data({ success: true, written: 0 })
