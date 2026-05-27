@@ -82,6 +82,17 @@
   --grid-size: 1px;
   --grid-gap: 64px;
   --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+
+  /* real shadows — foreground-tinted, visible on light surfaces */
+  --shadow-stashly:
+    0 1px 2px 0 oklch(0.057 0.004 242 / 0.1),
+    0 2px 4px -1px oklch(0.057 0.004 242 / 0.07),
+    0 4px 6px -2px oklch(0.057 0.004 242 / 0.04);
+  --shadow-md:
+    0 4px 6px -1px oklch(0.057 0.004 242 / 0.08),
+    0 2px 4px -1px oklch(0.057 0.004 242 / 0.05);
+  --shadow-sm: 0 1px 2px 0 oklch(0.057 0.004 242 / 0.05);
+  --shadow-xs: 0 0px 1px 0 oklch(0.057 0.004 242 / 0.03);
 }
 
 [data-theme='system'] {
@@ -140,6 +151,17 @@
     --grid-size: 1px;
     --grid-gap: 64px;
     --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+
+    /* real shadows — foreground-tinted, visible on light surfaces */
+    --shadow-stashly:
+      0 1px 2px 0 oklch(0.057 0.004 242 / 0.1),
+      0 2px 4px -1px oklch(0.057 0.004 242 / 0.07),
+      0 4px 6px -2px oklch(0.057 0.004 242 / 0.04);
+    --shadow-md:
+      0 4px 6px -1px oklch(0.057 0.004 242 / 0.08),
+      0 2px 4px -1px oklch(0.057 0.004 242 / 0.05);
+    --shadow-sm: 0 1px 2px 0 oklch(0.057 0.004 242 / 0.05);
+    --shadow-xs: 0 0px 1px 0 oklch(0.057 0.004 242 / 0.03);
   }
 }
 

@@ -9,6 +9,7 @@ import {
   FuzzySearchIcon,
   RemoveIcon,
   SearchIcon,
+  SearchFillIcon, 
   ShareIcon,
 } from '@/components/icons'
 import { cn } from '@/utils/styles'
@@ -67,7 +68,7 @@ export function SearchInput({
   return (
     <InputGroup className={cn('bg-card!', className)}>
       <InputGroupAddon align="inline-start">
-        <SearchIcon className="size-4 text-current" />
+        <SearchFillIcon className="size-4 text-current" />
       </InputGroupAddon>
       <InputGroupInput
         value={value}

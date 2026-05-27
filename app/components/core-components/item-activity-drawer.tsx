@@ -6,6 +6,7 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from '@/components/ui/sheet'
 import { ActivityFeed } from './activity-feed'
 import type { ActivityWithRelations } from '@/utils/activity'
@@ -15,20 +16,22 @@ interface ItemActivityDrawerProps {
   itemId: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  children?: React.ReactNode
 }
 
 export function ItemActivityDrawer({
   itemId,
   open,
   onOpenChange,
+  children
 }: ItemActivityDrawerProps) {
   const fetcher = useFetcher<{ data: ActivityWithRelations[] }>()
 
   useEffect(() => {
-    if (open && fetcher.state === 'idle' && !fetcher.data) {
+    if (fetcher.state === 'idle' && !fetcher.data) {
       fetcher.load(`/api/activities?itemId=${itemId}`)
     }
-  }, [open, itemId])
+  }, [itemId])
 
   const activities = fetcher.data?.data ?? []
   const isLoading = fetcher.state === 'loading'

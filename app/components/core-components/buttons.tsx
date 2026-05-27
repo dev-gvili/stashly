@@ -2,7 +2,7 @@ import {
   DeleteIcon,
   FavoriteIcon,
   LoaderIcon,
-  LoadMoreIcon,
+  LoadMoreFillIcon,
   RestoreIcon,
   TrashIcon,
 } from '@/components/icons'
@@ -10,10 +10,10 @@ import useConfirm from '@/hooks/useConfirm'
 import { Button } from '@/ui/button'
 import { getQueryParam } from '@/utils/query-params'
 // import { LoaderIcon } from 'lucide-react'
-import { useCallback } from 'react'
-import { useFetcher, useLocation, useSearchParams } from 'react-router'
-import { cn } from '../../utils/styles'
 import { Tooltip } from '@/ui/tooltip'
+import { cn } from '@/utils/styles'
+import { useCallback } from 'react'
+import { href, useFetcher, useLocation, useSearchParams } from 'react-router'
 
 const Delete = (props: React.ComponentProps<typeof Button>) => {
   let location = useLocation()
@@ -25,7 +25,7 @@ const Delete = (props: React.ComponentProps<typeof Button>) => {
   const onDelete = useCallback(() => {
     fetcher.submit(
       { intent: 'delete_items', selectedItems: selectedItems },
-      { method: 'POST', action: '/api/items' }
+      { method: 'POST', action: href('/api/items') }
     )
   }, [searchParams, fetcher])
 
@@ -69,7 +69,7 @@ const MoveToTrash = (props: React.ComponentProps<typeof Button>) => {
         onClick={() => {
           fetcher.submit(
             { intent: 'trash_items', selectedItems },
-            { method: 'POST', action: '/api/items' }
+            { method: 'POST', action: href('/api/items') }
           )
         }}
         disabled={!selectedItems}
@@ -96,7 +96,7 @@ const Restore = (props: React.ComponentProps<typeof Button>) => {
         onClick={() => {
           fetcher.submit(
             { intent: 'restore_items', selectedItems },
-            { method: 'POST', action: '/api/items' }
+            { method: 'POST', action: href('/api/items') }
           )
         }}
         {...props}
@@ -120,7 +120,7 @@ const FavoriteItems = (props: React.ComponentProps<typeof Button>) => {
         onClick={() => {
           fetcher.submit(
             { intent: 'favorite_items', selectedItems },
-            { method: 'POST', action: '/api/favorites' }
+            { method: 'POST', action: href('/api/favorites') }
           )
         }}
         {...props}
@@ -130,29 +130,6 @@ const FavoriteItems = (props: React.ComponentProps<typeof Button>) => {
     </Tooltip>
   )
 }
-
-// const UnfavoriteItems = (props: React.ComponentProps<typeof Button>) => {
-//   let fetcher = useFetcher()
-//   let location = useLocation()
-//   let [searchParams] = useSearchParams()
-//   let selectedItems = getQueryParam(searchParams, 'selectedItems')
-//   return (
-//     <Button
-//       disabled={!selectedItems}
-//       onClick={() => {
-//         fetcher.submit(
-//           { intent: 'unfavorite_items', selectedItems },
-//           { method: 'POST', action: '/api/favorites' }
-//         )
-//       }}
-//       variant="ghost"
-//       size="icon-sm"
-//       {...props}
-//     >
-//       <UnfavoriteIcon className="size-5!" />
-//     </Button>
-//   )
-// }
 
 const LoadMoreItems = ({
   loadMore,
@@ -177,7 +154,7 @@ const LoadMoreItems = ({
     >
       {children || (
         <>
-          <LoadMoreIcon
+          <LoadMoreFillIcon
             className={cn('size-5 rotate-45 mr-1', isLoading && 'hidden')}
           />
           <LoaderIcon
@@ -189,4 +166,4 @@ const LoadMoreItems = ({
     </Button>
   )
 }
-export { Delete, FavoriteItems, MoveToTrash, Restore, LoadMoreItems }
+export { Delete, FavoriteItems, LoadMoreItems, MoveToTrash, Restore }
