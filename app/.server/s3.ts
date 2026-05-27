@@ -197,10 +197,13 @@ export async function emptyBucket(bucketName: string) {
 }
 
 /**
- * Creates a private S3 bucket for a user and returns the generated bucket name.
+ * Creates a private S3 bucket for a user and applies the default bucket policy
+ * (permissive CORS for browser uploads via presigned URLs).
  *
  * The bucket name is generated via `generateUniqueBucketName` to ensure
- * global uniqueness and compliance with AWS naming rules.
+ * global uniqueness and compliance with AWS naming rules. After the bucket is
+ * created, `applyDefaultBucketPolicy` is called so the bucket is ready for
+ * direct browser PUTs from any origin.
  *
  * @returns The name of the newly created bucket.
  *
@@ -214,11 +217,53 @@ export async function createUserBucket(user: User): Promise<string> {
     await s3.send(
       new CreateBucketCommand({ Bucket: bucketName, ACL: 'private' })
     )
+    await applyDefaultBucketPolicy(bucketName)
     return bucketName
   } catch (error) {
     console.error('Error creating bucket:', error)
     throw new Error('Failed to create user bucket')
   }
+}
+
+/**
+ * Applies the default S3 bucket configuration used for newly-provisioned user
+ * buckets during onboarding.
+ *
+ * The bucket itself is created as `ACL: 'private'` in `createUserBucket`; this
+ * function layers a permissive CORS configuration on top so the browser can
+ * `PUT` directly to presigned URLs from any origin.
+ * - `AllowedOrigins: ['*']`
+ * - `AllowedMethods: ['*']`
+ * - `AllowedHeaders: ['*']`
+ * - `ExposeHeaders: ['*']`
+ * - `MaxAgeSeconds: 80000`
+ *
+ * Public-read access for thumbnails is NOT handled here. Tigris returns 501
+ * `NotImplemented` for `PutBucketPolicy`, so per-prefix bucket policies are
+ * unavailable. Instead, thumbnail uploads are signed with object-level
+ * `ACL: 'public-read'` (see `getPresignedUrl` and the thumbnails-presign
+ * route) — each thumbnail object is individually made public on PUT.
+ *
+ * @example
+ * await applyDefaultBucketPolicy('stashly-johndoe-a1b2c3d4')
+ */
+export async function applyDefaultBucketPolicy(bucket: string) {
+  return await s3.send(
+    new PutBucketCorsCommand({
+      Bucket: bucket,
+      CORSConfiguration: {
+        CORSRules: [
+          {
+            AllowedOrigins: ['*'],
+            AllowedMethods: ['*'],
+            AllowedHeaders: ['*'],
+            ExposeHeaders: ['*'],
+            MaxAgeSeconds: 80000,
+          },
+        ],
+      },
+    })
+  )
 }
 
 /**
@@ -413,22 +458,29 @@ export async function uploadFile(
  * @param type - `'get'` for a download URL, `'put'` for an upload URL.
  * @param key - The S3 object key.
  * @param expiresIn - URL lifetime in seconds (default: 3600).
+ * @param options.acl - Optional canned ACL signed into a `put` URL. Set to
+ *   `'public-read'` for thumbnails so the uploaded object is anonymously
+ *   readable on a private bucket (Tigris doesn't support `PutBucketPolicy`,
+ *   so per-object ACL is the only way to expose individual prefixes).
+ *   Ignored for `get` URLs.
  * @returns A signed HTTPS URL string.
  *
  * @example
  * const downloadUrl = await getPresignedUrl(user.bucket, 'get', 'ws_abc/report.pdf')
  * const uploadUrl   = await getPresignedUrl(user.bucket, 'put', 'ws_abc/photo.jpg', 300)
+ * const publicThumb = await getPresignedUrl(user.bucket, 'put', 'thumbnails/itm_123.webp', 300, { acl: 'public-read' })
  */
 export async function getPresignedUrl(
   bucket: string,
   type: 'get' | 'put',
   key: string,
-  expiresIn = 3600
+  expiresIn = 3600,
+  options?: { acl?: 'public-read' | 'private' }
 ) {
   const command =
     type === 'get'
       ? new GetObjectCommand({ Bucket: bucket, Key: key })
-      : new PutObjectCommand({ Bucket: bucket, Key: key })
+      : new PutObjectCommand({ Bucket: bucket, Key: key, ACL: options?.acl })
   return await getSignedUrl(s3, command, { expiresIn })
 }
 

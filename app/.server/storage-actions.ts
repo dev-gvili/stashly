@@ -1,8 +1,10 @@
 import { prisma } from '@/services/db'
 import { findQuotaByUserId, toQuotaStatus } from './quota-actions'
+import { emptyBucket } from './s3'
+import type { ItemCategory } from '@/prisma/enums'
 
 export interface CategoryBreakdown {
-  category: string
+  category: ItemCategory
   size: bigint
   count: number
 }
@@ -11,7 +13,7 @@ export interface LargestItem {
   id: string
   name: string
   size: bigint
-  category: string
+  category: ItemCategory
   parentId: string | null
 }
 
@@ -95,17 +97,66 @@ export async function getStorageOverview(userId: string) {
 }
 
 export async function emptyUserBucket(userId: string) {
-  const quota = await findQuotaByUserId(userId)
+  const [quota, user] = await Promise.all([
+    findQuotaByUserId(userId),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { rootId: true, bucket: true },
+    }),
+  ])
+  const rootId = user?.rootId ?? null
 
-  // Explicitly delete facet records first — Prisma 7's local executor doesn't
-  // reliably trigger PG ON DELETE CASCADE, so we handle ordering manually.
-  await prisma.folder.deleteMany({ where: { item: { ownerId: userId } } })
-  await prisma.file.deleteMany({ where: { item: { ownerId: userId } } })
-  await prisma.image.deleteMany({ where: { item: { ownerId: userId } } })
-  await prisma.video.deleteMany({ where: { item: { ownerId: userId } } })
-  await prisma.audio.deleteMany({ where: { item: { ownerId: userId } } })
-  await prisma.item.deleteMany({ where: { ownerId: userId } })
+  await prisma.$transaction(async (tx) => {
+    // Flag the session so the size/count triggers skip cross-row UPDATEs that
+    // target this user's own rows — those rows are also being DELETEd by the
+    // same outer statement and would raise Postgres 27000. Triggers still
+    // maintain rollups for OTHER users' rows (e.g. another user's collection
+    // that contains items being deleted here). See migration
+    // 20260526000000_user_wipe_trigger_bypass.
+    //
+    // Both flags are required; the consent timestamp is a safety belt against
+    // a stale `SET stashly.delete_all_data_for_user` accidentally enabling the
+    // bypass. set_config(..., true) scopes both to this transaction.
+    await tx.$queryRaw`SELECT set_config('stashly.delete_all_data_for_user', ${userId}, true)`
+    await tx.$queryRaw`SELECT set_config('stashly.delete_all_data_for_user_consent', ${new Date().toISOString()}, true)`
 
+    // Preserve the user's root Item + its Folder facet — every uploaded file
+    // and created folder lives under it, so removing the root would leave the
+    // account unable to accept new uploads.
+    const exceptRoot = rootId ? { itemId: { not: rootId } } : {}
+    const exceptRootItem = rootId ? { id: { not: rootId } } : {}
+
+    // Explicitly delete facet records first — Prisma 7's local executor doesn't
+    // reliably trigger PG ON DELETE CASCADE, so we handle ordering manually.
+    await tx.folder.deleteMany({
+      where: { item: { ownerId: userId }, ...exceptRoot },
+    })
+    await tx.file.deleteMany({ where: { item: { ownerId: userId } } })
+    await tx.image.deleteMany({ where: { item: { ownerId: userId } } })
+    await tx.video.deleteMany({ where: { item: { ownerId: userId } } })
+    await tx.audio.deleteMany({ where: { item: { ownerId: userId } } })
+    await tx.item.deleteMany({
+      where: { ownerId: userId, ...exceptRootItem },
+    })
+
+    // The wipe-bypass flags suppressed size/childCount maintenance on the
+    // root (its `ownerId` matched), so its rollups still reflect the pre-wipe
+    // tree. Reset them directly — no triggers fire on parents because the
+    // root has no parent (parentId IS NULL).
+    if (rootId) {
+      await tx.item.update({
+        where: { id: rootId },
+        data: { size: 0n, inclusiveSize: 0n },
+      })
+      await tx.folder.update({
+        where: { itemId: rootId },
+        data: { childCount: 0, inclusiveChildCount: 0 },
+      })
+    }
+  })
+
+  // Zero quota usage now that DB is committed, so the user sees fresh numbers
+  // even if S3 cleanup below fails partway.
   if (quota) {
     await prisma.quota.update({
       where: { id: quota.id },
@@ -117,4 +168,11 @@ export async function emptyUserBucket(userId: string) {
     })
   }
 
+  // Empty the S3 bucket last — it's not transactional, can be slow on large
+  // buckets, and may partially fail. By this point the DB is already
+  // consistent; any S3 objects left behind are orphans that no metadata
+  // references and can be cleaned up by a retry or background job.
+  if (user?.bucket) {
+    await emptyBucket(user.bucket)
+  }
 }

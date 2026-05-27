@@ -7,7 +7,7 @@ model Item {
   category      ItemCategory @default(unknown)
   status        ItemStatus   @default(normal)
 
-  // Integration with 33 multipart upload
+  // Integration with multipart upload
   uploadId String?
 
   createdAt DateTime  @default(now())

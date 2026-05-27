@@ -7,7 +7,7 @@ model Workspace {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relations
+  // Storage plan details are optional because a workspace can exist without a storage plan (e.g., during creation or if the plan is removed).
   storagePlan   StoragePlan? @relation(fields: [storagePlanId], references: [id])
   storagePlanId String?
 

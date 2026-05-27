@@ -7,7 +7,7 @@ model Search {
   updatedAt DateTime                    @updatedAt
 
   itemId String @unique
-  item   Item   @relation(fields: [itemId], references: [id])
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   // Creating an index on the vector field for fast similarity searches.
   @@index([vector], map: "Search_vector_idx")
