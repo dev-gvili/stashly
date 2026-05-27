@@ -7,7 +7,6 @@ import {
 } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import { reactRouter } from '@react-router/dev/vite'
-import tsconfigPaths from 'vite-tsconfig-paths'
 import svgr from 'vite-plugin-svgr'
 import { dirname, join, relative, resolve } from 'path'
 import { createHash } from 'crypto'
@@ -25,6 +24,9 @@ import {
 export default defineConfig(({ isSsrBuild, mode }) => ({
   define: {
     env: JSON.stringify(loadEnv(mode, process.cwd(), '')),
+  },
+  resolve: {
+    tsconfigPaths: true,
   },
   server: {
     cors: true,
@@ -51,7 +53,6 @@ export default defineConfig(({ isSsrBuild, mode }) => ({
     svgr(),
     tailwindcss(),
     reactRouter(),
-    tsconfigPaths(),
     // Copy PDF.js assets to public directory
     pdfjsHybridCopyPluginAsync(),
   ] as unknown as PluginOption[],

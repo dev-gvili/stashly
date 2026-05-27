@@ -12,10 +12,15 @@ coverage
 playwright-report/
 test-results/
 tests/e2e/.auth/
+app/utils/aimodel.test.ts
 
 # Production
 build
 dist
+.react-router
+
+# Build artifacts
+*.tsbuildinfo
 
 # Environment variables
 .env
@@ -34,40 +39,30 @@ yarn-error.log*
 # Git worktrees
 .worktrees/
 
+# IDE
+.idea
+.vscode/*
+!.vscode/extensions.json
+
 # Misc
 .DS_Store
 .chat-history
 stashly.code-workspace
 copilot_exports
 .svg-backup/
+.github/*.chatmode.md
+.github/ask.chatmode.md.backup
 
-# IDE
-.idea
-# .vscode/
-!.vscode/extensions.json
-
-# Build artifacts
-.react-router
-tsconfig.vite.tsbuildinfo
+# Data / assets
+models/*
+card-examples/*
+memory-bank/*
+playground/semantic-search-playground.html
+prisma/erDiagram.md
 
 # Storybook
 *storybook.log
 storybook-static
 
-# Test files excluded from runs
-app/utils/aimodel.test.ts
-
-models/*
-prisma/erDiagram.md
-# orphaned.md
-
-# Copilot chatmode configs (personal tooling)
-.github/*.chatmode.md
-.env
-tsconfig.vite.tsbuildinfo
-.github/ask.chatmode.md.backup
-.vscode/mcp.json
-memory-bank/*
-playground/semantic-search-playground.html
-card-examples/*
+# Agents
 .agents/*

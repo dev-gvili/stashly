@@ -128,5 +128,6 @@
   "chat.mcp.assisted.nuget.enabled": true,
   "chat.restoreLastPanelSession": false,
   "python-envs.defaultEnvManager": "ms-python.python:venv",
-  "files.autoSave": "onFocusChange"
+  "files.autoSave": "onFocusChange",
+  "markdown.validate.enabled": true
 }
