@@ -345,11 +345,15 @@ export async function addItemToCollection(
  *
  * Requires `write` access on the collection.
  */
-export async function removeItemFromCollection(
-  userId: string,
-  collectionId: string,
+export async function removeItemFromCollection({
+  userId,
+  collectionId,
+  itemId,
+}: {
+  userId: string
+  collectionId: string
   itemId: string
-) {
+}) {
   await assertItemPermission(userId, collectionId, 'write')
 
   return prisma.collectionMember.delete({
@@ -476,7 +480,10 @@ export async function getCollectionForUser(
 
   const collection = await findCollectionById(collectionId)
   if (!collection) {
-    throw new StashlyError(StashlyErrorCode.COLLECTION_NOT_FOUND, 'Collection not found')
+    throw new StashlyError(
+      StashlyErrorCode.COLLECTION_NOT_FOUND,
+      'Collection not found'
+    )
   }
   return collection
 }
@@ -574,7 +581,10 @@ export async function listCollectionPermissions(
 ) {
   const item = await findFirstItem({ where: { id: collectionId } })
   if (!item) {
-    throw new StashlyError(StashlyErrorCode.COLLECTION_NOT_FOUND, 'Collection not found')
+    throw new StashlyError(
+      StashlyErrorCode.COLLECTION_NOT_FOUND,
+      'Collection not found'
+    )
   }
 
   const isOwner = item.ownerId === userId
@@ -602,7 +612,10 @@ export async function grantCollectionPermission(
 ) {
   const item = await findFirstItem({ where: { id: collectionId } })
   if (!item) {
-    throw new StashlyError(StashlyErrorCode.COLLECTION_NOT_FOUND, 'Collection not found')
+    throw new StashlyError(
+      StashlyErrorCode.COLLECTION_NOT_FOUND,
+      'Collection not found'
+    )
   }
 
   const isOwner = item.ownerId === actingUserId

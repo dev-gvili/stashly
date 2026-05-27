@@ -21,7 +21,9 @@ import { ShareDialog } from '@/components/core-components/share-dialog'
 import { InviteDialog } from '@/components/core-components/invite-dialog'
 import { ItemActivityDrawer } from '@/components/core-components/item-activity-drawer'
 import ShareItemFillIcon, {
+  ActivityFillIcon,
   ActivityIcon,
+  CopyFillIcon,
   CopyIcon,
   DeleteIcon,
   DownloadIcon,
@@ -30,20 +32,28 @@ import ShareItemFillIcon, {
   HeartIcon,
   LockFillIcon,
   MenuDotsIcon,
+  MinusFillIcon,
+  MoreMenuFillIcon,
   MoveToFolder,
   PinFillIcon,
   PinIcon,
+  PinItemFillIcon,
+  PinItemIcon,
   PreviewIcon,
   RemoveIcon,
+  RenameFillIcon,
   RenameIcon,
   RestoreIcon,
+  TrashFillIcon,
   TrashIcon,
   UnlockFillIcon,
 } from '@/components/icons'
 
 // -- Group primitive ---------------------------------------------------------
 
-interface GroupProps extends React.ComponentPropsWithoutRef<typeof DropdownMenuGroup> {
+interface GroupProps extends React.ComponentPropsWithoutRef<
+  typeof DropdownMenuGroup
+> {
   label?: React.ReactNode
 }
 
@@ -70,10 +80,12 @@ const Item = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuItem
     ref={ref}
-    className={cn('items-start hover:cursor-pointer', className)}
+    className={cn('items-start hover:cursor-pointer [&_svg]:size-5!', className)}
     {...props}
   />
-))
+)) as React.ForwardRefExoticComponent<
+  ItemProps & React.RefAttributes<React.ComponentRef<typeof DropdownMenuItem>>
+>
 Item.displayName = 'Actions.Item'
 
 // -- Stateless sub-components ------------------------------------------------
@@ -99,7 +111,7 @@ function Download(props: ItemProps) {
 function Copy(props: ItemProps) {
   return (
     <Item {...props}>
-      <CopyIcon className="text-current" />
+      <CopyFillIcon className="text-current" />
       Copy
     </Item>
   )
@@ -117,7 +129,7 @@ function Move(props: ItemProps) {
 function Rename(props: ItemProps) {
   return (
     <Item {...props}>
-      <RenameIcon className="text-current" />
+      <RenameFillIcon className="text-current" />
       Rename
     </Item>
   )
@@ -183,7 +195,7 @@ function Pin(props: ItemProps) {
       {pinned ? (
         <PinFillIcon className="text-current" />
       ) : (
-        <PinIcon className="text-current" />
+        <PinItemIcon className="text-current" />
       )}
       {pinned ? 'Unpin' : 'Pin'}
     </Item>
@@ -290,11 +302,13 @@ function Activity(props: ItemProps) {
       <Item
         {...props}
         onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
           setOpen(true)
           props.onClick?.(e)
         }}
       >
-        <ActivityIcon className="text-current" />
+        <ActivityFillIcon className="text-current" />
         Activity
       </Item>
       <ItemActivityDrawer itemId={id} open={open} onOpenChange={setOpen} />
@@ -323,7 +337,7 @@ function Trash(props: ItemProps) {
         props.onClick?.(e)
       }}
     >
-      <TrashIcon className="text-current" />
+      <TrashFillIcon className="text-current" />
       <span className="text-nowrap shrink-0">Trash</span>
     </Item>
   )
@@ -404,7 +418,7 @@ function RemoveFromCollection({
   const { id, name } = useItemCard()
   const onRemove = React.useCallback(() => {
     fetcher.submit(
-      { intent: 'remove_item', itemId: id, collectionId },
+      { intent: 'remove_item_from_collection', itemId: id, collectionId },
       { method: 'POST', action: href('/api/collections') }
     )
   }, [id, collectionId, fetcher])
@@ -414,7 +428,7 @@ function RemoveFromCollection({
     <Item
       variant="destructive"
       {...props}
-      className={cn('mt-2 items-start hover:cursor-pointer', props.className)}
+      className={cn('mt-2 items-center hover:cursor-pointer', props.className)}
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
@@ -428,15 +442,17 @@ function RemoveFromCollection({
         props.onClick?.(e)
       }}
     >
-      <RemoveIcon className="text-current" />
-      <span className="text-nowrap shrink-0">Remove from collection</span>
+      <MinusFillIcon className="text-current" />
+      <span className="text-nowrap shrink-0">Remove</span>
     </Item>
   )
 }
 
 // -- Root --------------------------------------------------------------------
 
-interface ActionsRootProps extends React.ComponentPropsWithoutRef<typeof Button> {
+interface ActionsRootProps extends React.ComponentPropsWithoutRef<
+  typeof Button
+> {
   children?: React.ReactNode
 }
 
@@ -467,7 +483,7 @@ function ActionsRoot({ children, ...triggerProps }: ActionsRootProps) {
         onClick={(e) => e.stopPropagation()}
         {...triggerProps}
       >
-        <MenuDotsIcon className="size-6!" />
+        <MoreMenuFillIcon className="size-6!" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         hideWhenDetached

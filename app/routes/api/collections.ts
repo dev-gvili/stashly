@@ -14,17 +14,25 @@ import {
 import { auth } from '@/services/auth'
 import type { Route } from './+types/collections'
 import { parseFormData, parseSearchParams } from '../../utils/parsers'
-import { addItemsToCollectionInput, collectionsApiRouteInput } from '../../schemas'
+import {
+  addItemsToCollectionInput,
+  collectionsApiRouteInput,
+} from '../../schemas'
 import { paginateItems } from '@/.server/item-actions'
-import { buildItemFilters, itemFilterSchema } from '@/utils/filters/item.filters'
+import {
+  buildItemFilters,
+  itemFilterSchema,
+} from '@/utils/filters/item.filters'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  // TODO: implement loader logic
   const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/signin')
-  
+
   let searchParams = new URL(request.url).searchParams
   searchParams.set('currentUserId', session.user.id)
+  if(params.collectionId) {
+    searchParams.set('collectionId', params.collectionId)
+  }
 
   let parsedParams = parseSearchParams({
     schema: itemFilterSchema,
@@ -32,9 +40,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   })
 
   let filters = buildItemFilters(parsedParams)
-  
-  return await paginateItems({
-    limit: parsedParams.take ?? 50,
+
+  let allItems = await paginateItems({
+    limit: parsedParams.take,
     cursor: parsedParams.cursor,
     where: {
       ...filters,
@@ -42,6 +50,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       status: 'normal',
       type: { not: 'collection' },
     },
+    orderBy: { createdAt: 'desc' },
     include: {
       thumbnails: {
         select: {
@@ -54,6 +63,25 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         },
       },
     },
+  })
+
+  // Map to lightweight shape for the picker
+  const availableItems = allItems.items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    category: item.category,
+    size: item.size,
+    createdAt: item.createdAt,
+    thumbnailUrl:
+      item.thumbnails?.find((t) => t.url && !t.url.startsWith('#'))?.url ??
+      null,
+  }))
+
+  return data({
+    items: availableItems,
+    nextCursor: allItems.nextCursor,
+    hasMore: allItems.hasMore,
   })
 }
 
@@ -119,15 +147,12 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (formData.intent === 'add_items_to_collection') {
     let { intent, ...rest } = formData
     await addItemsToCollection({ ...rest, userId: session.user.id })
-    return redirect(`${url.pathname}${url.search}`)
+    return redirect(`${url.pathname}${url.search}`, { status: 303 })
   }
 
-  if (formData.intent === 'remove_item') {
-    await removeItemFromCollection(
-      session.user.id,
-      formData.collectionId,
-      formData.itemId
-    )
+  if (formData.intent === 'remove_item_from_collection') {
+    let { intent, ...rest } = formData
+    await removeItemFromCollection({ ...rest, userId: session.user.id })
     return redirect(`${url.pathname}${url.search}`)
   }
 

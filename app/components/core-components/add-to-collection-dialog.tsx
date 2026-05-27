@@ -1,9 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  useFetcher,
-  useRouteLoaderData,
-  useSearchParams,
-} from 'react-router'
+import { useFetcher, useLocation, useRouteLoaderData, useSearchParams } from 'react-router'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Dialog, DialogClose, DialogPortal, DialogTrigger } from '@/ui/dialog'
 import { Button } from '@/ui/button'
@@ -224,7 +220,6 @@ export function AddToCollectionDialog({
   existingItemIds = [],
   children,
 }: AddToCollectionDialogProps) {
-  const fetcher = useFetcher()
   const pickerFetcher = useFetcher<{
     items: StashPickerItem[]
     nextCursor: string | null
@@ -245,14 +240,23 @@ export function AddToCollectionDialog({
   // Do NOT use usePagination here — it reads useLoaderData() from the host route, which inside
   // a collection route returns the in-collection items (not the picker source) and clobbers
   // local state after every action redirect.
-  const [items, setItems] = useState<StashPickerItem[]>(initialItems)
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(initialItems.length >= 50)
+  const [items, setItems] = useState<StashPickerItem[]>(() => {
+    // Seed the picker with the initial items from the parent route's loaderData.
+    // This ensures the picker is populated immediately on open, without waiting for an API call.
+    // Subsequent pages are fetched via the "Load more" button, which appends to this state.
+    return initialItems
+  })
+  const [nextCursor, setNextCursor] = useState<string | null>(
+    pickerFetcher.data?.nextCursor ?? null
+  )
+  const [hasMore, setHasMore] = useState(
+    pickerFetcher.data?.hasMore ?? initialItems.length >= 50
+  )
 
   // Re-sync when the parent reloads availableItems (after add/remove triggers a revalidation).
   useEffect(() => {
     setItems(initialItems)
-    setNextCursor(null)
+    setNextCursor('')
     setHasMore(initialItems.length >= 50)
   }, [initialItems])
 
@@ -273,12 +277,12 @@ export function AddToCollectionDialog({
   const isLoading = pickerFetcher.state !== 'idle'
 
   const loadMore = useCallback(() => {
-    if (isLoading || !hasMore || !nextCursor) return
+    if (!hasMore) return
     const params = new URLSearchParams()
-    params.set('cursor', nextCursor)
+    params.set('cursor', pickerFetcher.data?.nextCursor ?? '')
     params.set('take', '60')
-    pickerFetcher.load(`/api/collections?${params.toString()}`)
-  }, [isLoading, hasMore, nextCursor, pickerFetcher])
+    pickerFetcher.load(`/api/collections/${collectionId}?${params.toString()}`)
+  }, [isLoading, hasMore, nextCursor, pickerFetcher, collectionId])
 
   const toggleItem = useCallback((id: string) => {
     setSelected((prev) => {
@@ -328,7 +332,7 @@ export function AddToCollectionDialog({
   }
 
   function handleAdd() {
-    fetcher.submit(
+    pickerFetcher.submit(
       {
         intent: 'add_items_to_collection',
         collectionId,
@@ -336,10 +340,11 @@ export function AddToCollectionDialog({
       },
       { method: 'post', action: '/api/collections' }
     )
+    setSelected(new Set())
   }
 
   const selectedCount = selected.size
-  const isSubmitting = fetcher.state !== 'idle'
+  const isSubmitting = pickerFetcher.state !== 'idle'
 
   return (
     <Dialog
@@ -458,53 +463,58 @@ export function AddToCollectionDialog({
                 </div>
               ) : (
                 <div className="p-4 space-y-8">
-                    {groups.map(([dateLabel, groupItems]) => (
-                      <section
-                        key={dateLabel}
-                        ref={(el) => {
-                          if (el) groupRefs.current.set(dateLabel, el)
-                          else groupRefs.current.delete(dateLabel)
-                        }}
-                      >
-                        <DateGroupHeader
-                          label={dateLabel}
-                          items={groupItems}
-                          selected={selected}
-                          existingSet={existingSet}
-                          onToggleAll={(ids) => {
-                            setSelected((prev) => {
-                              const next = new Set(prev)
-                              const allSelected = ids.every(
-                                (id) => next.has(id) || existingSet.has(id)
-                              )
-                              ids.forEach((id) => {
-                                if (existingSet.has(id)) return
-                                if (allSelected) next.delete(id)
-                                else next.add(id)
-                              })
-                              return next
+                  {groups.map(([dateLabel, groupItems]) => (
+                    <section
+                      key={dateLabel}
+                      ref={(el) => {
+                        if (el) groupRefs.current.set(dateLabel, el)
+                        else groupRefs.current.delete(dateLabel)
+                      }}
+                    >
+                      <DateGroupHeader
+                        label={dateLabel}
+                        items={groupItems}
+                        selected={selected}
+                        existingSet={existingSet}
+                        onToggleAll={(ids) => {
+                          setSelected((prev) => {
+                            const next = new Set(prev)
+                            const allSelected = ids.every(
+                              (id) => next.has(id) || existingSet.has(id)
+                            )
+                            ids.forEach((id) => {
+                              if (existingSet.has(id)) return
+                              if (allSelected) next.delete(id)
+                              else next.add(id)
                             })
-                          }}
-                        />
+                            return next
+                          })
+                        }}
+                      />
 
-                        <GridLayout>
-                          {groupItems.map((item) => (
-                            <GridItem
-                              key={item.id}
-                              item={item}
-                              selected={selected.has(item.id)}
-                              existing={existingSet.has(item.id)}
-                              onToggle={toggleItem}
-                              user={user}
-                              searchParams={searchParams}
-                              setSearchParams={setSearchParams}
-                            />
-                          ))}
-                        </GridLayout>
-                      </section>
-                    ))}
+                      <GridLayout>
+                        {groupItems.map((item) => (
+                          <GridItem
+                            key={item.id}
+                            item={item}
+                            selected={selected.has(item.id)}
+                            existing={existingSet.has(item.id)}
+                            onToggle={toggleItem}
+                            user={user}
+                            searchParams={searchParams}
+                            setSearchParams={setSearchParams}
+                          />
+                        ))}
+                      </GridLayout>
+                    </section>
+                  ))}
                 </div>
               )}
+              <LoadMoreItems
+                hasMore={hasMore}
+                isLoading={isLoading}
+                loadMore={loadMore}
+              />
             </ScrollArea>
           </div>
 
@@ -535,7 +545,6 @@ export function AddToCollectionDialog({
                   >
                     Clear
                   </Button>
-                  <DialogClose asChild>
                     <Button
                       onClick={handleAdd}
                       disabled={isSubmitting}
@@ -545,7 +554,6 @@ export function AddToCollectionDialog({
                         ? 'Adding…'
                         : `Add ${selectedCount} item${selectedCount !== 1 ? 's' : ''}`}
                     </Button>
-                  </DialogClose>
                 </div>
               </motion.div>
             )}

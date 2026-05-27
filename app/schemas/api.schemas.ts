@@ -231,7 +231,7 @@ export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
     collectionId: z.string().nonempty(),
   }),
   z.object({
-    intent: z.literal('remove_item'),
+    intent: z.literal('remove_item_from_collection'),
     itemId: z.string().nonempty(),
     collectionId: z.string().nonempty(),
   }),
