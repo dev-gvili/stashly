@@ -4,16 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Working Style
 
-- Act first, explain second. When the user asks for commits, edits, or a PR, DO the work — don't produce plans or commit messages without executing.
-- Avoid over-reading / over-exploring. Make the change, then verify.
-- If blocked by auth (e.g., `gh` GITHUB_TOKEN), surface it immediately rather than retrying silently.
-- Avoid over-engineering. Start with the simplest query or approach that works; do not reach for recursive CTEs, abstractions, or sub-agents when a direct edit will do.
-
-## Core Rules
-
-When I ask you to do something, DO IT immediately. Don't over-explain, don't read extra files, don't write specs or plans unless I ask. Act first, explain only if needed.
-
-If I interrupt you, stop immediately and wait for my next instruction. Don't restart from scratch — continue from where you left off unless told otherwise.
+- **Act first, explain second** — execute commits, edits, and PRs immediately; never describe what you'd do instead of doing it.
+- **Stop on interrupt** — if interrupted, stop and wait; resume from where you left off unless told otherwise.
+- **Simplest approach** — no recursive CTEs, sub-agents, or abstractions when a direct edit works. Don't modify files outside `app/` unless asked.
+- **Surface blockers** — if `gh` auth fails, ask the user to run `gh auth login` interactively; don't retry with env vars.
 
 ## Git Workflow
 
@@ -24,12 +18,6 @@ Set GITHUB_TOKEN properly before using `gh` CLI. If gh auth fails, ask the user 
 ## Development
 
 This is a TypeScript project. Always use TypeScript for new files. Run `pnpm run build` or type-check after significant edits to catch errors early.
-
-## General Instructions
-
-Prefer action over exploration. When the user gives a clear task, execute it immediately rather than exploring the codebase or explaining the approach first.
-
-If you need to choose between approaches, pick the simplest one. Do not modify files outside of app/ unless I say so.
 
 ## Project Structure
 
@@ -96,8 +84,8 @@ const collection = await getCollectionForUser(session.user.id, collectionId)
 
 The upload system uses a parent-child actor pattern:
 - `upload/upload.machine.ts` — parent, spawns one `file.machine` per file, manages the queue
-- `upload/file.machine.ts` — active upload actor: creates multipart upload, uploads chunks in parallel, verifies ETags
-- `reviset/file.machine.ts` — legacy reviset actor (still present; `upload/file.machine.ts` is the active path)
+- `reviset/file.machine.ts` — active upload actor: creates multipart upload, uploads chunks in parallel, verifies ETags
+- `upload/file.machine.ts` — unused sibling (present but not imported by `upload.machine.ts`)
 - `actors/queue.machine.ts` — controls concurrent upload slots
 - `actors/quota.machine.ts` — tracks and enforces storage quota
 - `actors/multipart.machine.ts` — multipart S3 coordination actor
@@ -271,7 +259,7 @@ Start with the simplest query that works. Do not use recursive CTEs or over-engi
 - Primary language: TypeScript (strict)
 - Use path aliases (e.g. `@/schemas/`, `@/machines/`) for cross-directory imports; use relative imports only within the same directory
 - Schema and type definitions go in `app/schemas/` and `app/types/` respectively — do not scatter them across feature files
-- Avoid raw `prisma` calls in route loaders — always go through actions files in `app/.server//[feature]-actions.ts`
+- Avoid raw `prisma` calls in route loaders — always go through actions files in `app/.server/[feature]-actions.ts`
 - Client-only code (browser APIs, client-side state) goes in `app/.client/`; server-only code goes in `app/.server/`
 
 ## Testing
@@ -377,7 +365,7 @@ Links use `<Link to={item.id} viewTransition unstable_mask=".">` — `unstable_m
 
 ## Thumbnail Pipeline
 
-Client-side 5-stage progressive generation. All output is **WebP**. Entry point: `app/hooks/useThumbnail.ts`.
+Client-side 4-stage progressive generation. All output is **WebP**. Entry point: `app/hooks/useThumbnail.ts`.
 
 **Gate**: pipeline starts only after `status === 'itemCreated'` (not `'done'`). `useUpload.ts` watches for `itemCreated` and calls `runThumbnail(id, file)`. A module-level `thumbnailedIds = new Set<string>()` (shared across hook instances) ensures the pipeline fires exactly once per file.
 
@@ -387,15 +375,14 @@ Client-side 5-stage progressive generation. All output is **WebP**. Entry point:
 | 1 | 8×8 blur preview | Image: `extractTinyThumbnail` · Video: `generateVideoThumbnail` · PDF: `generatePdfThumbnail` (from `@/utils/pdf`) — **local `URL.createObjectURL` only, NOT persisted to S3 or DB** |
 | 2 | 512px resize | Image: `canvasResize(file, 512)` · Video: re-encode frame · PDF: `renderPdfPageToBlob(file, 512)` → presign → PUT to S3, URL written as `${publicUrl}?v=2` |
 | 3 | ViT saliency crop | AI worker (`thumbnail.ai.ts`) — **images only**, URL written as `${publicUrl}?v=3` |
-| 4 | Florence-2 caption overlay | AI worker — **images only**, URL written as `${publicUrl}?v=4` |
 
-**Cache-bust query param**: stages 2/3/4 share the same S3 key, so the URL written to `Thumbnail.url` includes `?v={stage}`. Without this, browser cache (`Cache-Control: max-age=3600` on the S3 object) keeps showing the prior stage even after the object is overwritten.
+**Cache-bust query param**: stages 2/3 share the same S3 key, so the URL written to `Thumbnail.url` includes `?v={stage}`. Without this, browser cache (`Cache-Control: max-age=3600` on the S3 object) keeps showing the prior stage even after the object is overwritten.
 
 **S3 client config**: `app/.server/s3.ts` sets `requestChecksumCalculation: 'WHEN_REQUIRED'` on `S3Client`. Without this, AWS SDK v3 signs a CRC32 checksum requirement (`x-amz-checksum-crc32=AAAAAA==`, CRC32 of empty body) into presigned `PutObject` URLs, causing browser PUTs to fail with a checksum mismatch.
 
 PDFs stop after stage 2. The PDF.js worker URL is set globally on import in `app/utils/pdf.ts` via `pdfjs-dist/build/pdf.worker.min.mjs?url`.
 
-**Compute worker**: heavy thumbnail compute (PDF.js parsing, canvas resize, image decoding, PDF text extraction) runs in a singleton dedicated worker at `app/workers/thumbnail.compute.worker.ts` with an internal concurrency cap of **1** and a 30-second per-op timeout. `useThumbnail.ts` is a thin orchestrator that dispatches RPC requests via `compute({ kind, file })` and handles HTTP + React state on main. Video thumbnails stay on main because they require `<video>` DOM access. Stages 3 and 4 (image AI) also stay on main — they call into `app/workers/thumbnail.ai.ts`, which is a regular module using WebGPU (not a Worker — the file location is historical).
+**Compute worker**: heavy thumbnail compute (PDF.js parsing, canvas resize, image decoding, PDF text extraction) runs in a singleton dedicated worker at `app/workers/thumbnail.compute.worker.ts` with an internal concurrency cap of **1** and a 30-second per-op timeout. `useThumbnail.ts` is a thin orchestrator that dispatches RPC requests via `compute({ kind, file })` and handles HTTP + React state on main. Video thumbnails stay on main because they require `<video>` DOM access. Stage 3 (image AI) also stays on main — it calls into `app/workers/thumbnail.ai.ts`, which is a regular module using WebGPU (not a Worker — the file location is historical).
 
 The cap is 1 because PDF.js inside a dedicated worker falls back to **fake worker mode** (it can't spawn a sub-worker reliably from inside another worker). In fake-worker mode, multiple concurrent PDF operations terminate each other's tasks ("Worker task was terminated" warnings) — serializing is safer than the throughput win.
 
@@ -422,9 +409,4 @@ thumbnails: { take: 1, where: { NOT: { url: { startsWith: '#' } } } }
 
 **Thumbnail utils** (`app/utils/thumbnail.ts`): `hashToColor`, `extractTinyThumbnail`, `canvasResize`, `dataUrlToBlob`. For video thumbnails: `generateVideoThumbnail(file)` from `app/utils/video.ts`.
 
-## Workflows
-
-### Agent/Subagent Creation
-
-When creating new agents or subagents, define the agent's purpose, inputs, outputs, and dependencies in a markdown spec before writing code.
 

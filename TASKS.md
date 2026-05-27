@@ -3,19 +3,22 @@
 ## Active
 
 - [ ] Orphaned file cleanup — tackle `app/components/` (~30 orphans remaining; `item-card-actions.tsx` + `item-card-checkbox.tsx` deleted 2026-04-29). See `orphaned.md` for full list.
-- [ ] Finish package update type errors — `workspaceItem.service.ts` (6 schema mismatches), `stripe.ts` (undefined check), `subscription.ts` (create signature mismatch)
 - [ ] Decide search infra: integrate the built-but-unwired `search.repository.ts`, `search.ts`, `filters.ts` — or delete them to reduce dead code. *(deferred — revisit after collections stabilises)*
 - [ ] Fix `app/routes/api/shares.ts` — replace `@/services/share-actions` import with relative `../../.server/share-actions` to resolve dot-server plugin build failure (deferred per "skip production build")
-- [ ] Consolidate temp schemas — merge `_temp_a/b/c.schemas.ts` into `app/schemas/api.schemas.ts` then delete temps
 - [ ] Migrate flat item API routes — callers of `/api/items/comments` etc. should move to nested `/api/items/:itemId/comments`; remove flat registrations after
 
 ## Someday / Low Priority
+
+- [ ] **URL model** — central `Url` table for short-link routing, analytics, and expiry. Approach settled: Url owns nullable FKs to each resource (facet pattern, matching `Item`). 1:1 per resource with `@unique` FK cols for now; workspace slug aliasing (1:many) deferred. Path prefixes from `StashlyPrefixMap` (`/ws/:slug`, `/sl/:slug`, `/inv/:slug`). Each resource type gets its own redirect route. Brainstormed 2026-05-16.
 
 - [ ] Review and clean 6 stale git stashes (2 have alarming names suggesting past instability)
 - [ ] Delete leftover worktree branches: `copilot-worktree-*`, `elderly-monkey`, `tasteless-muskox`, `main1`
 
 ## Done
 
+- [x] Pinned items feature — `PinItem` model, `pin-actions.ts`, `/api/pins` route, `usePinItem` hook, optimistic toggle, pinned page at `/:me/stash/pinned`; PR #14 merged (2026-05-15)
+- [x] Consolidate temp schemas — `_temp_a/b/c.schemas.ts` merged into `api.schemas.ts` and deleted (2026-05-16)
+- [x] CLAUDE.md audit — fixed file.machine active/legacy labels, merged redundant Working Style/Core Rules/General Instructions sections, fixed double-slash typo, removed thin stub section (2026-05-16)
 - [x] Item activities feature — fire-and-forget recording in 11 server functions (rename/move/copy/delete/restore/create/comment/version/permission grant+update+revoke), `ActivityFeed` + `ActivityEntry` + `ItemActivityDrawer` components, `/api/activities` route, gallery-image sidebar integration, item card dropdown wired (2026-04-25)
 - [x] Sharing items feature — `share-actions.ts`, `/api/shares` route, `ShareDialog`, `ItemCard` wiring, `shares.tsx` shared-with-me view; PR #11 (2026-04-11)
 - [x] CLAUDE.md improvements — dot-server plugin gotcha, nullable relation `is` operator, dialog data loading pattern, New Feature Checklist, icon rule hardened (2026-04-11)

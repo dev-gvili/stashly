@@ -409,7 +409,9 @@ ShareLink
 
 ### Entity Relationship Diagram
 
-```
+The following Mermaid diagram illustrates the relationships between users, items, workspaces, invitations, share links, and permissions in the Stashly sharing and invitation system:
+
+```mermaid
 erDiagram
     User ||--o{ Invitation : "sends"
     User }o--o{ Permission : "granted via"
@@ -485,9 +487,10 @@ erDiagram
         string memberId FK
         string workspaceId FK
         string role
+        string role
     }
-```    
----
+```
+
 
 ## 5. API Reference
 
