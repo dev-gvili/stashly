@@ -176,9 +176,9 @@ async function embedAndPersistChunks(
 }
 
 /**
- * Runs the 5-stage thumbnail pipeline for a newly uploaded file.
+ * Runs the 4-stage thumbnail pipeline for a newly uploaded file.
  * Stages: 0 = color hash placeholder → 1 = tiny WebP local objectURL →
- * 2 = 512px resize (S3 + DB) → 3 = ViT salient crop → 4 = Florence-2 caption.
+ * 2 = 512px resize (S3 + DB) → 3 = ViT salient crop.
  *
  * Heavy compute runs in `thumbnail.compute.worker.ts` (concurrency-capped).
  * Stage 0 is a small fetcher.submit. HTTP calls + React state updates run
@@ -262,7 +262,10 @@ export function useThumbnail() {
         const putRes = await fetch(presign.uploadUrl, {
           method: 'PUT',
           body: resizedBlob,
-          headers: { 'Content-Type': 'image/webp' },
+          headers: {
+            'Content-Type': 'image/webp',
+            'x-amz-acl': 'public-read',
+          },
         }).catch((err) => {
           console.error('[stage 2 PUT] network error', itemId, err)
           return null
@@ -306,7 +309,7 @@ export function useThumbnail() {
 
         // ── Stage 3: ViT saliency crop (images only) ────────────────────
         if (file.type.startsWith('image/')) {
-          const { generateSalientCrop, generateCaption } = await import('@/workers/thumbnail.ai')
+          const { generateSalientCrop } = await import('@/workers/thumbnail.ai')
           const salientBlob = await generateSalientCrop(file).catch(() => null)
           if (salientBlob) {
             const presign3Res = await fetch(`/api/thumbnails/${itemId}/presign`).catch(() => null)
@@ -315,7 +318,10 @@ export function useThumbnail() {
               const put3 = await fetch(presign3.uploadUrl, {
                 method: 'PUT',
                 body: salientBlob,
-                headers: { 'Content-Type': 'image/webp' },
+                headers: {
+                  'Content-Type': 'image/webp',
+                  'x-amz-acl': 'public-read',
+                },
               }).catch((err) => {
                 console.error('[stage 3 PUT] network error', itemId, err)
                 return null
@@ -334,38 +340,6 @@ export function useThumbnail() {
                 }
               } else {
                 console.error('[stage 3 PUT] non-ok', itemId, put3?.status)
-              }
-            }
-
-            // ── Stage 4: Florence-2 caption overlay ────────────────────
-            const captionResult = await generateCaption(salientBlob).catch(() => null)
-            if (captionResult) {
-              const presign4Res = await fetch(`/api/thumbnails/${itemId}/presign`).catch(() => null)
-              const presign4 = presign4Res ? await presign4Res.json().catch(() => null) : null
-              if (presign4?.uploadUrl && presign4?.publicUrl) {
-                const put4 = await fetch(presign4.uploadUrl, {
-                  method: 'PUT',
-                  body: captionResult.blob,
-                  headers: { 'Content-Type': 'image/webp' },
-                }).catch((err) => {
-                  console.error('[stage 4 PUT] network error', itemId, err)
-                  return null
-                })
-                if (put4 && put4.ok) {
-                  const stage4Url = `${presign4.publicUrl}?v=4`
-                  const fd4 = new FormData()
-                  fd4.append('stage', '4')
-                  fd4.append('url', stage4Url)
-                  fd4.append('width', '512')
-                  fd4.append('height', '512')
-                  const patch4 = await fetch(`/api/thumbnails/${itemId}`, { method: 'PATCH', body: fd4 }).catch(() => null)
-                  if (patch4 && patch4.ok) {
-                    setState({ stage: 4, src: stage4Url, color })
-                    revalidate()
-                  }
-                } else {
-                  console.error('[stage 4 PUT] non-ok', itemId, put4?.status)
-                }
               }
             }
           }

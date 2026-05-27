@@ -611,7 +611,7 @@ export const thumbnailCreateSchema = z.object({
 
 // PATCH sends url-encoded or JSON — url is a data URL e.g. 'data:image/jpeg;base64,...'
 export const thumbnailUpdateSchema = z.object({
-  stage: z.coerce.number().int().min(1).max(4),
+  stage: z.coerce.number().int().min(1).max(3),
   url: z.string().min(1),
   width: z.coerce.number().int().optional(),
   height: z.coerce.number().int().optional(),

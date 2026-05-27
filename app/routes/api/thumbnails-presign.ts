@@ -21,7 +21,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const key = `thumbnails/${itemId}.webp`
-  const uploadUrl = await getPresignedUrl(user.bucket, 'put', key, 300)
+  const uploadUrl = await getPresignedUrl(user.bucket, 'put', key, 300, {
+    acl: 'public-read',
+  })
   const publicUrl = `https://${user.bucket}.t3.tigrisfiles.io/${key}`
 
   return Response.json({ uploadUrl, publicUrl })

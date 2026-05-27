@@ -17,7 +17,7 @@
  *   - Multiple `useFetcher()` calls per hook instance — heavier than
  *     one shared fetcher, but each instance is per-file in practice
  *
- * S3 PUTs (stage 2/3/4 binary uploads) stay as raw `fetch` — they go
+ * S3 PUTs (stage 2/3 binary uploads) stay as raw `fetch` — they go
  * to a different origin (Tigris) so they aren't a React Router route.
  */
 import { useCallback, useRef, useState } from 'react'
@@ -232,7 +232,7 @@ export function useThumbnailV2() {
   // (each instance has its own set of fetcher hooks).
   const colorFetcher = useFetcher()         // stage 0 POST
   const presignFetcher = useFetcher<{ uploadUrl: string; publicUrl: string }>()
-  const patchFetcher = useFetcher()         // stages 2/3/4 PATCH (sequential)
+  const patchFetcher = useFetcher()         // stages 2/3 PATCH (sequential)
   const metadataFetcher = useFetcher()      // saveMediaMetadata POST
   const embeddingFetcher = useFetcher()     // chunk embedding POST
 
@@ -328,9 +328,9 @@ export function useThumbnailV2() {
           }
         })()
 
-        // ── Stages 3 + 4 (images only) ──────────────────────────────────
+        // ── Stage 3 (images only) ───────────────────────────────────────
         if (file.type.startsWith('image/')) {
-          const { generateSalientCrop, generateCaption } = await import('@/workers/thumbnail.ai')
+          const { generateSalientCrop } = await import('@/workers/thumbnail.ai')
           const salientBlob = await generateSalientCrop(file).catch(() => null)
           if (salientBlob) {
             const stage3Url = await persistStage(
@@ -338,15 +338,6 @@ export function useThumbnailV2() {
               presignRef, patchFetcher, patchRef,
             )
             if (stage3Url) setState({ stage: 3, src: stage3Url, color })
-
-            const captionResult = await generateCaption(salientBlob).catch(() => null)
-            if (captionResult) {
-              const stage4Url = await persistStage(
-                itemId, 4, captionResult.blob, 512, 512,
-                presignRef, patchFetcher, patchRef,
-              )
-              if (stage4Url) setState({ stage: 4, src: stage4Url, color })
-            }
           }
         }
       }
@@ -363,7 +354,7 @@ export function useThumbnailV2() {
  */
 async function persistStage(
   itemId: string,
-  stage: 2 | 3 | 4,
+  stage: 2 | 3,
   blob: Blob,
   width: number,
   height: number,
@@ -380,11 +371,20 @@ async function persistStage(
     return null
   }
 
-  // 2) Raw PUT to S3 (different origin — can't be a fetcher)
+  // 2) Raw PUT to S3 (different origin — can't be a fetcher).
+  //
+  // `x-amz-acl: public-read` must be sent as a header. The presigned URL is
+  // signed with `ACL: 'public-read'` in the PutObjectCommand, but Tigris
+  // honors object-level ACL from the request header — not from a hoisted
+  // query parameter. Without this header, the object inherits the bucket's
+  // private ACL and anonymous GETs return 403.
   const putRes = await fetch(presign.uploadUrl, {
     method: 'PUT',
     body: blob,
-    headers: { 'Content-Type': 'image/webp' },
+    headers: {
+      'Content-Type': 'image/webp',
+      'x-amz-acl': 'public-read',
+    },
   }).catch((err) => {
     console.error(`[stage ${stage} PUT] network error`, itemId, err)
     return null
