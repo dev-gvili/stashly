@@ -648,3 +648,29 @@ export const pinApiRouteQuery = z.object({
   itemId: z.string().optional(),
   cursor: z.string().optional(),
 })
+
+// ====================================================== //
+// ==================== Locks Api Route ================= //
+// ====================================================== //
+
+const lockSchema = z.object({
+  intent: z.literal('lock'),
+  itemId: z.string().nonempty(),
+  expiresAt: z.string().datetime().optional(),
+})
+
+const unlockSchema = z.object({
+  intent: z.literal('unlock'),
+  itemId: z.string().nonempty(),
+})
+
+export const lockApiRouteInput = z.discriminatedUnion('intent', [
+  lockSchema,
+  unlockSchema,
+])
+
+export const lockApiRouteQuery = z.object({
+  intent: z.enum(['list', 'check']).default('list'),
+  itemId: z.string().optional(),
+  cursor: z.string().optional(),
+})

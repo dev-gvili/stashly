@@ -1175,6 +1175,7 @@ export async function getFolderContent(params: GetFolderContentParams) {
         driveId: true,
         file: true,
         folder: true,
+        locked: true,
         favorites: {
           select: {
             id: true,
@@ -1650,6 +1651,11 @@ export async function getSuggestedItems(
       view: string
       size: number
     }>
+    locked: {
+      id: string
+      lockedById: string
+      lockedAt: Date
+    } | null
   }
 
   const buildQuery = (type: 'file' | 'folder', limit: number) => Prisma.sql`
@@ -1710,7 +1716,12 @@ export async function getSuggestedItems(
           )
         ) FILTER (WHERE t.id IS NOT NULL),
         '[]'::json
-      ) as "thumbnails"
+      ) as "thumbnails",
+      (CASE WHEN li.id IS NOT NULL THEN jsonb_build_object(
+        'id', li.id,
+        'lockedById', li."lockedById",
+        'lockedAt', li."lockedAt"
+      ) ELSE NULL END) as "locked"
     FROM "Item" i
     LEFT JOIN "File" f ON i.id = f."itemId"
     LEFT JOIN "Folder" fo ON i.id = fo."itemId"
@@ -1718,6 +1729,7 @@ export async function getSuggestedItems(
     LEFT JOIN "user" u ON fav."favoritedById" = u.id
     LEFT JOIN "Thumbnail" t ON i.id = t."itemId"
     LEFT JOIN "Permission" p ON i.id = p."itemId"
+    LEFT JOIN "LockedItem" li ON i.id = li."itemId"
     WHERE
       i."ownerId" = ${userId}
       AND i."driveId" = ${driveId}
@@ -1725,7 +1737,7 @@ export async function getSuggestedItems(
       AND i.type::text = ${type}
       AND i.status = 'normal'
       ${workspaceId ? Prisma.sql`AND i."workspaceId" = ${workspaceId}` : Prisma.empty}
-    GROUP BY i.id, f.id, fo.id
+    GROUP BY i.id, f.id, fo.id, li.id
     ORDER BY
       GREATEST(
         i."updatedAt",
