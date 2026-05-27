@@ -98,6 +98,12 @@ export const itemsApiRouteInput = z.discriminatedUnion('intent', [
     category: z.string().optional(),
   }),
   z.object({
+    intent: z.literal('create_folder'),
+    name: z.string().nonempty(),
+    parentId: z.string().nonempty(),
+    driveId: z.string().nonempty(),
+  }),
+  z.object({
     intent: z.literal('save_media_metadata'),
     itemId: z.string().nonempty(),
     // image fields

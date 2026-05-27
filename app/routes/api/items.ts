@@ -1,6 +1,7 @@
 import { auth } from '@/services/auth'
 import { toZodArraySchema } from '@/utils/converters'
 import {
+  createFolder,
   createUploadedItem,
   upsertImageFacet,
   upsertVideoFacet,
@@ -124,6 +125,20 @@ export async function action({ request, params }: Route.ActionArgs) {
         console.error(e)
         return { success: false, error: e }
       }
+    case 'create_folder': {
+      try {
+        const folder = await createFolder(
+          parsedData.name,
+          parsedData.parentId,
+          user.id,
+          parsedData.driveId
+        )
+        return redirect(`${url.pathname}?${searchParams.toString()}`)
+      } catch (e) {
+        const err = e as { message?: string }
+        return { success: false, error: err.message }
+      }
+    }
     case 'create_upload_item': {
       try {
         const item = await createUploadedItem({
