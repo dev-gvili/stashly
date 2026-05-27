@@ -143,7 +143,7 @@ function Glyph({ g }: { g: string }) {
 
 function MiniBar({ pct, color = 'var(--foreground)' }: { pct: number; color?: string }) {
   return (
-    <div className="h-[3px] bg-muted rounded-full overflow-hidden">
+    <div className="h-0.75 bg-muted rounded-full overflow-hidden">
       <div className="h-full transition-all" style={{ width: `${Math.min(100, pct)}%`, background: color }} />
     </div>
   )
@@ -191,7 +191,7 @@ function StatTile({ label, value, sub, dot }: { label: string; value: string | n
         {dot && <span className="w-1 h-1 rounded-[1px]" style={{ background: dot }} />}
         {label}
       </div>
-      <div className="text-[18px] font-stashly mt-0.5 leading-tight">{value}</div>
+      <div className="text-lg font-stashly mt-0.5 leading-tight">{value}</div>
       <div className="text-[10px] text-muted-foreground">{sub}</div>
     </div>
   )
@@ -241,7 +241,7 @@ function OverviewOps({ workspace, members, pendingInvites, recentItems, pinnedIt
               <MemberAvatar key={m.id} name={m.name} image={m.image} size={22} ring />
             ))}
             {members.length > 5 && (
-              <span className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-full bg-muted border border-card text-[9px] font-stashly text-muted-foreground">
+              <span className="inline-flex items-center justify-center w-5.5 h-5.5 rounded-full bg-muted border border-card text-[9px] font-stashly text-muted-foreground">
                 +{members.length - 5}
               </span>
             )}
@@ -403,21 +403,21 @@ function OverviewDossier({ workspace, members, recentItems, pinnedItems, pending
             <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Storage</div>
             <div className="text-[28px] font-stashly leading-none">
               {fmtStorage(workspace.storageUsedBytes)}{' '}
-              <span className="text-[14px] text-muted-foreground">of {fmtStorage(workspace.storageLimitBytes)}</span>
+              <span className="text-sm text-muted-foreground">of {fmtStorage(workspace.storageLimitBytes)}</span>
             </div>
             <MiniBar pct={pct} color="oklch(0.62 0.15 39)" />
             <div className="grid grid-cols-3 gap-3 mt-3 text-[10px]">
               <div>
                 <div className="text-muted-foreground uppercase tracking-wider">Files</div>
-                <div className="text-[14px] mt-0.5">{recentItems.length}</div>
+                <div className="text-sm mt-0.5">{recentItems.length}</div>
               </div>
               <div>
                 <div className="text-muted-foreground uppercase tracking-wider">Members</div>
-                <div className="text-[14px] mt-0.5">{members.length}</div>
+                <div className="text-sm mt-0.5">{members.length}</div>
               </div>
               <div>
                 <div className="text-muted-foreground uppercase tracking-wider">Pending</div>
-                <div className="text-[14px] mt-0.5">{pendingInvites.length}</div>
+                <div className="text-sm mt-0.5">{pendingInvites.length}</div>
               </div>
             </div>
           </div>
@@ -512,13 +512,13 @@ function OverviewSplit({ workspace, members, recentItems, pinnedItems, pendingIn
             <Corners />
             <div className="flex items-center gap-2">
               <span
-                className="w-7 h-7 rounded-md flex items-center justify-center font-stashly text-[14px] text-white"
+                className="w-7 h-7 rounded-md flex items-center justify-center font-stashly text-sm text-white"
                 style={{ background: workspace.color ?? 'oklch(0.62 0.15 39)' }}
               >
                 {workspace.name.slice(0, 2).toUpperCase()}
               </span>
               <div className="flex-1 min-w-0">
-                <div className="text-[12px] font-stashly truncate">{workspace.name}</div>
+                <div className="text-xs font-stashly truncate">{workspace.name}</div>
                 <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
                   {workspace.role} · {workspace.slug ?? workspace.id.slice(-8)}
                 </div>

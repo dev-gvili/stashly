@@ -2,7 +2,7 @@ import { RiLayoutMasonryFill } from '@remixicon/react'
 import { LayoutMenu, LayoutMenuItem } from './ui/layout-menu'
 import { cn } from '@/utils/styles'
 import { useLocation, useSearchParams } from 'react-router'
-import { WaterfallIcon, GridIcon, ListIcon, RiverIcon } from './icons'
+import { WaterfallIcon, GridIcon, ListIcon, RiverIcon, WaterfallFillIcon, GridFillIcon, ListFillIcon, RiverFillIcon } from './icons'
 
 const LayoutToggle = ({
   className,
@@ -29,7 +29,7 @@ export function River() {
   if (!location.pathname.includes('/images') && !location.pathname.includes('/videos')) return null
   return (
     <LayoutMenuItem tooltip="River view" value="river">
-      <RiverIcon className="size-5!" />
+      <RiverFillIcon className="size-5! rotate-90" />
     </LayoutMenuItem>
   )
 }
@@ -39,7 +39,7 @@ export function Waterfall() {
   if (!location.pathname.includes('/images') && !location.pathname.includes('/videos')) return null
   return (
     <LayoutMenuItem tooltip="Waterfall view" value="waterfall">
-      <WaterfallIcon className="size-5!" />
+      <WaterfallFillIcon className="size-5!" />
     </LayoutMenuItem>
   )
 }
@@ -47,7 +47,7 @@ export function Waterfall() {
 export function Grid() {
   return (
     <LayoutMenuItem tooltip="Grid view" value="grid">
-      <GridIcon className="size-5!" />
+      <GridFillIcon className="size-5!" />
     </LayoutMenuItem>
   )
 }
@@ -61,7 +61,7 @@ export function List() {
     return null
   return (
     <LayoutMenuItem tooltip="List view" value="list">
-      <ListIcon className="size-5!" />
+      <ListFillIcon className="size-5! rotate-90" />
     </LayoutMenuItem>
   )
 }

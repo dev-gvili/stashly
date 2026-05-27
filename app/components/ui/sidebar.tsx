@@ -22,7 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { SidebarIcon } from '../icons'
+import { SidebarFillIcon, SidebarIcon } from '../icons'
 import { useBeforeUnload, useFetcher } from 'react-router'
 import { ScrollArea } from './scroll-area'
 
@@ -409,7 +409,7 @@ function SidebarTrigger({
       >
         {children || (
           <>
-            <SidebarIcon
+            <SidebarFillIcon
               className={cn(
                 'size-5',
                 state === 'expanded' ? 'rotate-180 duration-200' : ''

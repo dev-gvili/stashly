@@ -14,6 +14,7 @@ import {
   SettingsIcon,
   ShareItemIcon,
   TrashIcon,
+  WorkspaceFillIcon,
   WorkspaceIcon,
 } from '@/components/icons'
 import {
@@ -73,7 +74,7 @@ export function NavWorkspaces({
             to={`/${params.me}/workspaces/${item.id}`}
             label={item.name}
             tooltip={item.name}
-            icon={(isActive) => <WorkspaceIcon className="size-5!" />}
+            icon={(isActive) => <WorkspaceFillIcon className="size-5!" />}
             action={
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

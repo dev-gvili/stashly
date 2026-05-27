@@ -1,5 +1,7 @@
 import {
   ColorModeFillIcon,
+  DarkModeFillIcon,
+  LightModeFillIcon,
   MoonIcon,
   SunIcon,
 } from '@/components/icons'
@@ -23,8 +25,8 @@ export function ModeToggle() {
           size="icon"
           className="font-stashly bg-card! border-accent data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground  rounded-md!"
         >
-          {data?.colorScheme === 'dark' && <MoonIcon className="size-5!" />}
-          {data?.colorScheme === 'light' && <SunIcon className="size-5!" />}
+          {data?.colorScheme === 'dark' && <DarkModeFillIcon className="size-5!" />}
+          {data?.colorScheme === 'light' && <LightModeFillIcon className="size-5!" />}
           {data?.colorScheme === 'system' && (
             <ColorModeFillIcon className="size-5!" />
           )}
@@ -45,7 +47,7 @@ export function ModeToggle() {
             )
           }}
         >
-          <MoonIcon className="size-5! text-current!" />
+          <DarkModeFillIcon className="size-5! text-current!" />
           <span>Dark</span>
         </Button>
         <Button
@@ -59,7 +61,7 @@ export function ModeToggle() {
             )
           }}
         >
-          <SunIcon className="size-5! text-current!" />
+          <LightModeFillIcon className="size-5! text-current!" />
           <span>Light</span>
         </Button>
         <Button
