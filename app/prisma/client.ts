@@ -112,6 +112,11 @@ export type ShareAction = Prisma.ShareActionModel
  */
 export type VersionAction = Prisma.VersionActionModel
 /**
+ * Model PinAction
+ * 
+ */
+export type PinAction = Prisma.PinActionModel
+/**
  * Model Activity
  * 
  */

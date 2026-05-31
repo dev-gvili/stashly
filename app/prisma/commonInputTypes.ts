@@ -165,6 +165,23 @@ export type EnumObjectTypeWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedEnumObjectTypeFilter<$PrismaModel>
 }
 
+export type EnumPinKindFilter<$PrismaModel = never> = {
+  equals?: $Enums.PinKind | Prisma.EnumPinKindFieldRefInput<$PrismaModel>
+  in?: $Enums.PinKind[] | Prisma.ListEnumPinKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.PinKind[] | Prisma.ListEnumPinKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumPinKindFilter<$PrismaModel> | $Enums.PinKind
+}
+
+export type EnumPinKindWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.PinKind | Prisma.EnumPinKindFieldRefInput<$PrismaModel>
+  in?: $Enums.PinKind[] | Prisma.ListEnumPinKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.PinKind[] | Prisma.ListEnumPinKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumPinKindWithAggregatesFilter<$PrismaModel> | $Enums.PinKind
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumPinKindFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumPinKindFilter<$PrismaModel>
+}
+
 export type JsonNullableFilter<$PrismaModel = never> =
 | Prisma.PatchUndefined<
     Prisma.Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
@@ -849,6 +866,23 @@ export type NestedEnumObjectTypeWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumObjectTypeFilter<$PrismaModel>
   _max?: Prisma.NestedEnumObjectTypeFilter<$PrismaModel>
+}
+
+export type NestedEnumPinKindFilter<$PrismaModel = never> = {
+  equals?: $Enums.PinKind | Prisma.EnumPinKindFieldRefInput<$PrismaModel>
+  in?: $Enums.PinKind[] | Prisma.ListEnumPinKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.PinKind[] | Prisma.ListEnumPinKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumPinKindFilter<$PrismaModel> | $Enums.PinKind
+}
+
+export type NestedEnumPinKindWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.PinKind | Prisma.EnumPinKindFieldRefInput<$PrismaModel>
+  in?: $Enums.PinKind[] | Prisma.ListEnumPinKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.PinKind[] | Prisma.ListEnumPinKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumPinKindWithAggregatesFilter<$PrismaModel> | $Enums.PinKind
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumPinKindFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumPinKindFilter<$PrismaModel>
 }
 
 export type NestedJsonNullableFilter<$PrismaModel = never> =

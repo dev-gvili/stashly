@@ -17,6 +17,15 @@ export const ObjectType = {
 export type ObjectType = (typeof ObjectType)[keyof typeof ObjectType]
 
 
+export const PinKind = {
+  pinned: 'pinned',
+  unpinned: 'unpinned',
+  reordered: 'reordered'
+} as const
+
+export type PinKind = (typeof PinKind)[keyof typeof PinKind]
+
+
 export const DriveType = {
   personal: 'personal',
   business: 'business'

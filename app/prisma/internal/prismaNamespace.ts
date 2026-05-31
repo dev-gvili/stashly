@@ -398,6 +398,7 @@ export const ModelName = {
   RestoreAction: 'RestoreAction',
   ShareAction: 'ShareAction',
   VersionAction: 'VersionAction',
+  PinAction: 'PinAction',
   Activity: 'Activity',
   ActivityTime: 'ActivityTime',
   AuditLog: 'AuditLog',
@@ -448,7 +449,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "account" | "itemAction" | "permissionAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "pinItem" | "quota" | "search" | "searchChunk" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
+    modelProps: "account" | "itemAction" | "permissionAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "pinAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "pinItem" | "quota" | "search" | "searchChunk" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1485,6 +1486,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.VersionActionCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.VersionActionCountAggregateOutputType> | number
+        }
+      }
+    }
+    PinAction: {
+      payload: Prisma.$PinActionPayload<ExtArgs>
+      fields: Prisma.PinActionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PinActionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinActionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PinActionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinActionPayload>
+        }
+        findFirst: {
+          args: Prisma.PinActionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinActionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PinActionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinActionPayload>
+        }
+        findMany: {
+          args: Prisma.PinActionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinActionPayload>[]
+        }
+        create: {
+          args: Prisma.PinActionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinActionPayload>
+        }
+        createMany: {
+          args: Prisma.PinActionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PinActionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinActionPayload>[]
+        }
+        delete: {
+          args: Prisma.PinActionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinActionPayload>
+        }
+        update: {
+          args: Prisma.PinActionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinActionPayload>
+        }
+        deleteMany: {
+          args: Prisma.PinActionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PinActionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PinActionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinActionPayload>[]
+        }
+        upsert: {
+          args: Prisma.PinActionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinActionPayload>
+        }
+        aggregate: {
+          args: Prisma.PinActionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePinAction>
+        }
+        groupBy: {
+          args: Prisma.PinActionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PinActionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PinActionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PinActionCountAggregateOutputType> | number
         }
       }
     }
@@ -4157,7 +4232,8 @@ export const ItemActionScalarFieldEnum = {
   versionActionId: 'versionActionId',
   activityId: 'activityId',
   copyActionId: 'copyActionId',
-  permissionActionId: 'permissionActionId'
+  permissionActionId: 'permissionActionId',
+  pinActionId: 'pinActionId'
 } as const
 
 export type ItemActionScalarFieldEnum = (typeof ItemActionScalarFieldEnum)[keyof typeof ItemActionScalarFieldEnum]
@@ -4262,6 +4338,14 @@ export const VersionActionScalarFieldEnum = {
 } as const
 
 export type VersionActionScalarFieldEnum = (typeof VersionActionScalarFieldEnum)[keyof typeof VersionActionScalarFieldEnum]
+
+
+export const PinActionScalarFieldEnum = {
+  id: 'id',
+  kind: 'kind'
+} as const
+
+export type PinActionScalarFieldEnum = (typeof PinActionScalarFieldEnum)[keyof typeof PinActionScalarFieldEnum]
 
 
 export const ActivityScalarFieldEnum = {
@@ -4852,6 +4936,20 @@ export type ListEnumObjectTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$P
 
 
 /**
+ * Reference to a field of type 'PinKind'
+ */
+export type EnumPinKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PinKind'>
+    
+
+
+/**
+ * Reference to a field of type 'PinKind[]'
+ */
+export type ListEnumPinKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PinKind[]'>
+    
+
+
+/**
  * Reference to a field of type 'Json'
  */
 export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
@@ -5281,6 +5379,7 @@ export type GlobalOmitConfig = {
   restoreAction?: Prisma.RestoreActionOmit
   shareAction?: Prisma.ShareActionOmit
   versionAction?: Prisma.VersionActionOmit
+  pinAction?: Prisma.PinActionOmit
   activity?: Prisma.ActivityOmit
   activityTime?: Prisma.ActivityTimeOmit
   auditLog?: Prisma.AuditLogOmit

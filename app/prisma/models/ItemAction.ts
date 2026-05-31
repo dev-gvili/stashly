@@ -38,6 +38,7 @@ export type ItemActionMinAggregateOutputType = {
   activityId: string | null
   copyActionId: string | null
   permissionActionId: string | null
+  pinActionId: string | null
 }
 
 export type ItemActionMaxAggregateOutputType = {
@@ -54,6 +55,7 @@ export type ItemActionMaxAggregateOutputType = {
   activityId: string | null
   copyActionId: string | null
   permissionActionId: string | null
+  pinActionId: string | null
 }
 
 export type ItemActionCountAggregateOutputType = {
@@ -70,6 +72,7 @@ export type ItemActionCountAggregateOutputType = {
   activityId: number
   copyActionId: number
   permissionActionId: number
+  pinActionId: number
   _all: number
 }
 
@@ -88,6 +91,7 @@ export type ItemActionMinAggregateInputType = {
   activityId?: true
   copyActionId?: true
   permissionActionId?: true
+  pinActionId?: true
 }
 
 export type ItemActionMaxAggregateInputType = {
@@ -104,6 +108,7 @@ export type ItemActionMaxAggregateInputType = {
   activityId?: true
   copyActionId?: true
   permissionActionId?: true
+  pinActionId?: true
 }
 
 export type ItemActionCountAggregateInputType = {
@@ -120,6 +125,7 @@ export type ItemActionCountAggregateInputType = {
   activityId?: true
   copyActionId?: true
   permissionActionId?: true
+  pinActionId?: true
   _all?: true
 }
 
@@ -209,6 +215,7 @@ export type ItemActionGroupByOutputType = {
   activityId: string | null
   copyActionId: string | null
   permissionActionId: string | null
+  pinActionId: string | null
   _count: ItemActionCountAggregateOutputType | null
   _min: ItemActionMinAggregateOutputType | null
   _max: ItemActionMaxAggregateOutputType | null
@@ -246,6 +253,7 @@ export type ItemActionWhereInput = {
   activityId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
   copyActionId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
   permissionActionId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
+  pinActionId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
   comment?: Prisma.XOR<Prisma.CommentActionNullableScalarRelationFilter, Prisma.CommentActionWhereInput> | null
   create?: Prisma.XOR<Prisma.CreateActionNullableScalarRelationFilter, Prisma.CreateActionWhereInput> | null
   delete?: Prisma.XOR<Prisma.DeleteActionNullableScalarRelationFilter, Prisma.DeleteActionWhereInput> | null
@@ -258,6 +266,7 @@ export type ItemActionWhereInput = {
   activity?: Prisma.XOR<Prisma.ActivityNullableScalarRelationFilter, Prisma.ActivityWhereInput> | null
   copy?: Prisma.XOR<Prisma.CopyActionNullableScalarRelationFilter, Prisma.CopyActionWhereInput> | null
   permission?: Prisma.XOR<Prisma.PermissionActionNullableScalarRelationFilter, Prisma.PermissionActionWhereInput> | null
+  pin?: Prisma.XOR<Prisma.PinActionNullableScalarRelationFilter, Prisma.PinActionWhereInput> | null
 }
 
 export type ItemActionOrderByWithRelationInput = {
@@ -274,6 +283,7 @@ export type ItemActionOrderByWithRelationInput = {
   activityId?: Prisma.SortOrderInput | Prisma.SortOrder
   copyActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   permissionActionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  pinActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   comment?: Prisma.CommentActionOrderByWithRelationInput
   create?: Prisma.CreateActionOrderByWithRelationInput
   delete?: Prisma.DeleteActionOrderByWithRelationInput
@@ -286,6 +296,7 @@ export type ItemActionOrderByWithRelationInput = {
   activity?: Prisma.ActivityOrderByWithRelationInput
   copy?: Prisma.CopyActionOrderByWithRelationInput
   permission?: Prisma.PermissionActionOrderByWithRelationInput
+  pin?: Prisma.PinActionOrderByWithRelationInput
 }
 
 export type ItemActionWhereUniqueInput = Prisma.AtLeast<{
@@ -302,6 +313,7 @@ export type ItemActionWhereUniqueInput = Prisma.AtLeast<{
   activityId?: string
   copyActionId?: string
   permissionActionId?: string
+  pinActionId?: string
   AND?: Prisma.ItemActionWhereInput | Prisma.ItemActionWhereInput[]
   OR?: Prisma.ItemActionWhereInput[]
   NOT?: Prisma.ItemActionWhereInput | Prisma.ItemActionWhereInput[]
@@ -317,7 +329,8 @@ export type ItemActionWhereUniqueInput = Prisma.AtLeast<{
   activity?: Prisma.XOR<Prisma.ActivityNullableScalarRelationFilter, Prisma.ActivityWhereInput> | null
   copy?: Prisma.XOR<Prisma.CopyActionNullableScalarRelationFilter, Prisma.CopyActionWhereInput> | null
   permission?: Prisma.XOR<Prisma.PermissionActionNullableScalarRelationFilter, Prisma.PermissionActionWhereInput> | null
-}, "id" | "commentActionId" | "createActionId" | "deleteActionId" | "editActionId" | "moveActionId" | "renameActionId" | "restoreActionId" | "shareActionId" | "versionActionId" | "activityId" | "copyActionId" | "permissionActionId">
+  pin?: Prisma.XOR<Prisma.PinActionNullableScalarRelationFilter, Prisma.PinActionWhereInput> | null
+}, "id" | "commentActionId" | "createActionId" | "deleteActionId" | "editActionId" | "moveActionId" | "renameActionId" | "restoreActionId" | "shareActionId" | "versionActionId" | "activityId" | "copyActionId" | "permissionActionId" | "pinActionId">
 
 export type ItemActionOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -333,6 +346,7 @@ export type ItemActionOrderByWithAggregationInput = {
   activityId?: Prisma.SortOrderInput | Prisma.SortOrder
   copyActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   permissionActionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  pinActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ItemActionCountOrderByAggregateInput
   _max?: Prisma.ItemActionMaxOrderByAggregateInput
   _min?: Prisma.ItemActionMinOrderByAggregateInput
@@ -355,6 +369,7 @@ export type ItemActionScalarWhereWithAggregatesInput = {
   activityId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
   copyActionId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
   permissionActionId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
+  pinActionId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
 }
 
 export type ItemActionCreateInput = {
@@ -371,6 +386,7 @@ export type ItemActionCreateInput = {
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateInput = {
@@ -387,6 +403,7 @@ export type ItemActionUncheckedCreateInput = {
   activityId?: string | null
   copyActionId?: string | null
   permissionActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionUpdateInput = {
@@ -403,6 +420,7 @@ export type ItemActionUpdateInput = {
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateInput = {
@@ -419,6 +437,7 @@ export type ItemActionUncheckedUpdateInput = {
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateManyInput = {
@@ -435,6 +454,7 @@ export type ItemActionCreateManyInput = {
   activityId?: string | null
   copyActionId?: string | null
   permissionActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionUpdateManyMutationInput = {
@@ -455,6 +475,7 @@ export type ItemActionUncheckedUpdateManyInput = {
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCountOrderByAggregateInput = {
@@ -471,6 +492,7 @@ export type ItemActionCountOrderByAggregateInput = {
   activityId?: Prisma.SortOrder
   copyActionId?: Prisma.SortOrder
   permissionActionId?: Prisma.SortOrder
+  pinActionId?: Prisma.SortOrder
 }
 
 export type ItemActionMaxOrderByAggregateInput = {
@@ -487,6 +509,7 @@ export type ItemActionMaxOrderByAggregateInput = {
   activityId?: Prisma.SortOrder
   copyActionId?: Prisma.SortOrder
   permissionActionId?: Prisma.SortOrder
+  pinActionId?: Prisma.SortOrder
 }
 
 export type ItemActionMinOrderByAggregateInput = {
@@ -503,6 +526,7 @@ export type ItemActionMinOrderByAggregateInput = {
   activityId?: Prisma.SortOrder
   copyActionId?: Prisma.SortOrder
   permissionActionId?: Prisma.SortOrder
+  pinActionId?: Prisma.SortOrder
 }
 
 export type ItemActionNullableScalarRelationFilter = {
@@ -862,6 +886,38 @@ export type ItemActionUncheckedUpdateOneWithoutVersionNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutVersionInput, Prisma.ItemActionUpdateWithoutVersionInput>, Prisma.ItemActionUncheckedUpdateWithoutVersionInput>
 }
 
+export type ItemActionCreateNestedOneWithoutPinInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutPinInput, Prisma.ItemActionUncheckedCreateWithoutPinInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutPinInput
+  connect?: Prisma.ItemActionWhereUniqueInput
+}
+
+export type ItemActionUncheckedCreateNestedOneWithoutPinInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutPinInput, Prisma.ItemActionUncheckedCreateWithoutPinInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutPinInput
+  connect?: Prisma.ItemActionWhereUniqueInput
+}
+
+export type ItemActionUpdateOneWithoutPinNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutPinInput, Prisma.ItemActionUncheckedCreateWithoutPinInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutPinInput
+  upsert?: Prisma.ItemActionUpsertWithoutPinInput
+  disconnect?: Prisma.ItemActionWhereInput | boolean
+  delete?: Prisma.ItemActionWhereInput | boolean
+  connect?: Prisma.ItemActionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutPinInput, Prisma.ItemActionUpdateWithoutPinInput>, Prisma.ItemActionUncheckedUpdateWithoutPinInput>
+}
+
+export type ItemActionUncheckedUpdateOneWithoutPinNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutPinInput, Prisma.ItemActionUncheckedCreateWithoutPinInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutPinInput
+  upsert?: Prisma.ItemActionUpsertWithoutPinInput
+  disconnect?: Prisma.ItemActionWhereInput | boolean
+  delete?: Prisma.ItemActionWhereInput | boolean
+  connect?: Prisma.ItemActionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutPinInput, Prisma.ItemActionUpdateWithoutPinInput>, Prisma.ItemActionUncheckedUpdateWithoutPinInput>
+}
+
 export type ItemActionCreateNestedOneWithoutActivityInput = {
   create?: Prisma.XOR<Prisma.ItemActionCreateWithoutActivityInput, Prisma.ItemActionUncheckedCreateWithoutActivityInput>
   connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutActivityInput
@@ -907,6 +963,7 @@ export type ItemActionCreateWithoutPermissionInput = {
   version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutPermissionInput = {
@@ -922,6 +979,7 @@ export type ItemActionUncheckedCreateWithoutPermissionInput = {
   versionActionId?: string | null
   activityId?: string | null
   copyActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutPermissionInput = {
@@ -953,6 +1011,7 @@ export type ItemActionUpdateWithoutPermissionInput = {
   version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutPermissionInput = {
@@ -968,6 +1027,7 @@ export type ItemActionUncheckedUpdateWithoutPermissionInput = {
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutCommentInput = {
@@ -983,6 +1043,7 @@ export type ItemActionCreateWithoutCommentInput = {
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutCommentInput = {
@@ -998,6 +1059,7 @@ export type ItemActionUncheckedCreateWithoutCommentInput = {
   activityId?: string | null
   copyActionId?: string | null
   permissionActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutCommentInput = {
@@ -1029,6 +1091,7 @@ export type ItemActionUpdateWithoutCommentInput = {
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutCommentInput = {
@@ -1044,6 +1107,7 @@ export type ItemActionUncheckedUpdateWithoutCommentInput = {
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutCreateInput = {
@@ -1059,6 +1123,7 @@ export type ItemActionCreateWithoutCreateInput = {
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutCreateInput = {
@@ -1074,6 +1139,7 @@ export type ItemActionUncheckedCreateWithoutCreateInput = {
   activityId?: string | null
   copyActionId?: string | null
   permissionActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutCreateInput = {
@@ -1105,6 +1171,7 @@ export type ItemActionUpdateWithoutCreateInput = {
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutCreateInput = {
@@ -1120,6 +1187,7 @@ export type ItemActionUncheckedUpdateWithoutCreateInput = {
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutDeleteInput = {
@@ -1135,6 +1203,7 @@ export type ItemActionCreateWithoutDeleteInput = {
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutDeleteInput = {
@@ -1150,6 +1219,7 @@ export type ItemActionUncheckedCreateWithoutDeleteInput = {
   activityId?: string | null
   copyActionId?: string | null
   permissionActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutDeleteInput = {
@@ -1181,6 +1251,7 @@ export type ItemActionUpdateWithoutDeleteInput = {
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutDeleteInput = {
@@ -1196,6 +1267,7 @@ export type ItemActionUncheckedUpdateWithoutDeleteInput = {
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutEditInput = {
@@ -1211,6 +1283,7 @@ export type ItemActionCreateWithoutEditInput = {
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutEditInput = {
@@ -1226,6 +1299,7 @@ export type ItemActionUncheckedCreateWithoutEditInput = {
   activityId?: string | null
   copyActionId?: string | null
   permissionActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutEditInput = {
@@ -1257,6 +1331,7 @@ export type ItemActionUpdateWithoutEditInput = {
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutEditInput = {
@@ -1272,6 +1347,7 @@ export type ItemActionUncheckedUpdateWithoutEditInput = {
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutMoveInput = {
@@ -1287,6 +1363,7 @@ export type ItemActionCreateWithoutMoveInput = {
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutMoveInput = {
@@ -1302,6 +1379,7 @@ export type ItemActionUncheckedCreateWithoutMoveInput = {
   activityId?: string | null
   copyActionId?: string | null
   permissionActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutMoveInput = {
@@ -1333,6 +1411,7 @@ export type ItemActionUpdateWithoutMoveInput = {
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutMoveInput = {
@@ -1348,6 +1427,7 @@ export type ItemActionUncheckedUpdateWithoutMoveInput = {
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutCopyInput = {
@@ -1363,6 +1443,7 @@ export type ItemActionCreateWithoutCopyInput = {
   version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutCopyInput = {
@@ -1378,6 +1459,7 @@ export type ItemActionUncheckedCreateWithoutCopyInput = {
   versionActionId?: string | null
   activityId?: string | null
   permissionActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutCopyInput = {
@@ -1409,6 +1491,7 @@ export type ItemActionUpdateWithoutCopyInput = {
   version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutCopyInput = {
@@ -1424,6 +1507,7 @@ export type ItemActionUncheckedUpdateWithoutCopyInput = {
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutRenameInput = {
@@ -1439,6 +1523,7 @@ export type ItemActionCreateWithoutRenameInput = {
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutRenameInput = {
@@ -1454,6 +1539,7 @@ export type ItemActionUncheckedCreateWithoutRenameInput = {
   activityId?: string | null
   copyActionId?: string | null
   permissionActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutRenameInput = {
@@ -1485,6 +1571,7 @@ export type ItemActionUpdateWithoutRenameInput = {
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutRenameInput = {
@@ -1500,6 +1587,7 @@ export type ItemActionUncheckedUpdateWithoutRenameInput = {
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutRestoreInput = {
@@ -1515,6 +1603,7 @@ export type ItemActionCreateWithoutRestoreInput = {
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutRestoreInput = {
@@ -1530,6 +1619,7 @@ export type ItemActionUncheckedCreateWithoutRestoreInput = {
   activityId?: string | null
   copyActionId?: string | null
   permissionActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutRestoreInput = {
@@ -1561,6 +1651,7 @@ export type ItemActionUpdateWithoutRestoreInput = {
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutRestoreInput = {
@@ -1576,6 +1667,7 @@ export type ItemActionUncheckedUpdateWithoutRestoreInput = {
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutShareInput = {
@@ -1591,6 +1683,7 @@ export type ItemActionCreateWithoutShareInput = {
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutShareInput = {
@@ -1606,6 +1699,7 @@ export type ItemActionUncheckedCreateWithoutShareInput = {
   activityId?: string | null
   copyActionId?: string | null
   permissionActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutShareInput = {
@@ -1637,6 +1731,7 @@ export type ItemActionUpdateWithoutShareInput = {
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutShareInput = {
@@ -1652,6 +1747,7 @@ export type ItemActionUncheckedUpdateWithoutShareInput = {
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutVersionInput = {
@@ -1667,6 +1763,7 @@ export type ItemActionCreateWithoutVersionInput = {
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutVersionInput = {
@@ -1682,6 +1779,7 @@ export type ItemActionUncheckedCreateWithoutVersionInput = {
   activityId?: string | null
   copyActionId?: string | null
   permissionActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutVersionInput = {
@@ -1713,6 +1811,7 @@ export type ItemActionUpdateWithoutVersionInput = {
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutVersionInput = {
@@ -1725,6 +1824,87 @@ export type ItemActionUncheckedUpdateWithoutVersionInput = {
   renameActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   restoreActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+}
+
+export type ItemActionCreateWithoutPinInput = {
+  id: string
+  comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
+  create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
+  delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
+  edit?: Prisma.EditActionCreateNestedOneWithoutActionInput
+  move?: Prisma.MoveActionCreateNestedOneWithoutActionInput
+  rename?: Prisma.RenameActionCreateNestedOneWithoutActionInput
+  restore?: Prisma.RestoreActionCreateNestedOneWithoutActionInput
+  share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
+  version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
+  activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
+  permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+}
+
+export type ItemActionUncheckedCreateWithoutPinInput = {
+  id: string
+  commentActionId?: string | null
+  createActionId?: string | null
+  deleteActionId?: string | null
+  editActionId?: string | null
+  moveActionId?: string | null
+  renameActionId?: string | null
+  restoreActionId?: string | null
+  shareActionId?: string | null
+  versionActionId?: string | null
+  activityId?: string | null
+  copyActionId?: string | null
+  permissionActionId?: string | null
+}
+
+export type ItemActionCreateOrConnectWithoutPinInput = {
+  where: Prisma.ItemActionWhereUniqueInput
+  create: Prisma.XOR<Prisma.ItemActionCreateWithoutPinInput, Prisma.ItemActionUncheckedCreateWithoutPinInput>
+}
+
+export type ItemActionUpsertWithoutPinInput = {
+  update: Prisma.XOR<Prisma.ItemActionUpdateWithoutPinInput, Prisma.ItemActionUncheckedUpdateWithoutPinInput>
+  create: Prisma.XOR<Prisma.ItemActionCreateWithoutPinInput, Prisma.ItemActionUncheckedCreateWithoutPinInput>
+  where?: Prisma.ItemActionWhereInput
+}
+
+export type ItemActionUpdateToOneWithWhereWithoutPinInput = {
+  where?: Prisma.ItemActionWhereInput
+  data: Prisma.XOR<Prisma.ItemActionUpdateWithoutPinInput, Prisma.ItemActionUncheckedUpdateWithoutPinInput>
+}
+
+export type ItemActionUpdateWithoutPinInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  comment?: Prisma.CommentActionUpdateOneWithoutActionNestedInput
+  create?: Prisma.CreateActionUpdateOneWithoutActionNestedInput
+  delete?: Prisma.DeleteActionUpdateOneWithoutActionNestedInput
+  edit?: Prisma.EditActionUpdateOneWithoutActionNestedInput
+  move?: Prisma.MoveActionUpdateOneWithoutActionNestedInput
+  rename?: Prisma.RenameActionUpdateOneWithoutActionNestedInput
+  restore?: Prisma.RestoreActionUpdateOneWithoutActionNestedInput
+  share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
+  version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
+  activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
+  permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+}
+
+export type ItemActionUncheckedUpdateWithoutPinInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  commentActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deleteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  moveActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  renameActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  restoreActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1743,6 +1923,7 @@ export type ItemActionCreateWithoutActivityInput = {
   version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutActivityInput = {
@@ -1758,6 +1939,7 @@ export type ItemActionUncheckedCreateWithoutActivityInput = {
   versionActionId?: string | null
   copyActionId?: string | null
   permissionActionId?: string | null
+  pinActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutActivityInput = {
@@ -1789,6 +1971,7 @@ export type ItemActionUpdateWithoutActivityInput = {
   version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutActivityInput = {
@@ -1804,6 +1987,7 @@ export type ItemActionUncheckedUpdateWithoutActivityInput = {
   versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 
@@ -1822,6 +2006,7 @@ export type ItemActionSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   activityId?: boolean
   copyActionId?: boolean
   permissionActionId?: boolean
+  pinActionId?: boolean
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
   create?: boolean | Prisma.ItemAction$createArgs<ExtArgs>
   delete?: boolean | Prisma.ItemAction$deleteArgs<ExtArgs>
@@ -1834,6 +2019,7 @@ export type ItemActionSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   activity?: boolean | Prisma.ItemAction$activityArgs<ExtArgs>
   copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
   permission?: boolean | Prisma.ItemAction$permissionArgs<ExtArgs>
+  pin?: boolean | Prisma.ItemAction$pinArgs<ExtArgs>
 }, ExtArgs["result"]["itemAction"]>
 
 export type ItemActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1850,6 +2036,7 @@ export type ItemActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   activityId?: boolean
   copyActionId?: boolean
   permissionActionId?: boolean
+  pinActionId?: boolean
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
   create?: boolean | Prisma.ItemAction$createArgs<ExtArgs>
   delete?: boolean | Prisma.ItemAction$deleteArgs<ExtArgs>
@@ -1862,6 +2049,7 @@ export type ItemActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   activity?: boolean | Prisma.ItemAction$activityArgs<ExtArgs>
   copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
   permission?: boolean | Prisma.ItemAction$permissionArgs<ExtArgs>
+  pin?: boolean | Prisma.ItemAction$pinArgs<ExtArgs>
 }, ExtArgs["result"]["itemAction"]>
 
 export type ItemActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1878,6 +2066,7 @@ export type ItemActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   activityId?: boolean
   copyActionId?: boolean
   permissionActionId?: boolean
+  pinActionId?: boolean
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
   create?: boolean | Prisma.ItemAction$createArgs<ExtArgs>
   delete?: boolean | Prisma.ItemAction$deleteArgs<ExtArgs>
@@ -1890,6 +2079,7 @@ export type ItemActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   activity?: boolean | Prisma.ItemAction$activityArgs<ExtArgs>
   copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
   permission?: boolean | Prisma.ItemAction$permissionArgs<ExtArgs>
+  pin?: boolean | Prisma.ItemAction$pinArgs<ExtArgs>
 }, ExtArgs["result"]["itemAction"]>
 
 export type ItemActionSelectScalar = {
@@ -1906,9 +2096,10 @@ export type ItemActionSelectScalar = {
   activityId?: boolean
   copyActionId?: boolean
   permissionActionId?: boolean
+  pinActionId?: boolean
 }
 
-export type ItemActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "commentActionId" | "createActionId" | "deleteActionId" | "editActionId" | "moveActionId" | "renameActionId" | "restoreActionId" | "shareActionId" | "versionActionId" | "activityId" | "copyActionId" | "permissionActionId", ExtArgs["result"]["itemAction"]>
+export type ItemActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "commentActionId" | "createActionId" | "deleteActionId" | "editActionId" | "moveActionId" | "renameActionId" | "restoreActionId" | "shareActionId" | "versionActionId" | "activityId" | "copyActionId" | "permissionActionId" | "pinActionId", ExtArgs["result"]["itemAction"]>
 export type ItemActionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
   create?: boolean | Prisma.ItemAction$createArgs<ExtArgs>
@@ -1922,6 +2113,7 @@ export type ItemActionInclude<ExtArgs extends runtime.Types.Extensions.InternalA
   activity?: boolean | Prisma.ItemAction$activityArgs<ExtArgs>
   copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
   permission?: boolean | Prisma.ItemAction$permissionArgs<ExtArgs>
+  pin?: boolean | Prisma.ItemAction$pinArgs<ExtArgs>
 }
 export type ItemActionIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
@@ -1936,6 +2128,7 @@ export type ItemActionIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.E
   activity?: boolean | Prisma.ItemAction$activityArgs<ExtArgs>
   copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
   permission?: boolean | Prisma.ItemAction$permissionArgs<ExtArgs>
+  pin?: boolean | Prisma.ItemAction$pinArgs<ExtArgs>
 }
 export type ItemActionIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
@@ -1950,6 +2143,7 @@ export type ItemActionIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   activity?: boolean | Prisma.ItemAction$activityArgs<ExtArgs>
   copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
   permission?: boolean | Prisma.ItemAction$permissionArgs<ExtArgs>
+  pin?: boolean | Prisma.ItemAction$pinArgs<ExtArgs>
 }
 
 export type $ItemActionPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1967,6 +2161,7 @@ export type $ItemActionPayload<ExtArgs extends runtime.Types.Extensions.Internal
     activity: Prisma.$ActivityPayload<ExtArgs> | null
     copy: Prisma.$CopyActionPayload<ExtArgs> | null
     permission: Prisma.$PermissionActionPayload<ExtArgs> | null
+    pin: Prisma.$PinActionPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1982,6 +2177,7 @@ export type $ItemActionPayload<ExtArgs extends runtime.Types.Extensions.Internal
     activityId: string | null
     copyActionId: string | null
     permissionActionId: string | null
+    pinActionId: string | null
   }, ExtArgs["result"]["itemAction"]>
   composites: {}
 }
@@ -2388,6 +2584,7 @@ export interface Prisma__ItemActionClient<T, Null = never, ExtArgs extends runti
   activity<T extends Prisma.ItemAction$activityArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$activityArgs<ExtArgs>>): Prisma.Prisma__ActivityClient<runtime.Types.Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   copy<T extends Prisma.ItemAction$copyArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$copyArgs<ExtArgs>>): Prisma.Prisma__CopyActionClient<runtime.Types.Result.GetResult<Prisma.$CopyActionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   permission<T extends Prisma.ItemAction$permissionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$permissionArgs<ExtArgs>>): Prisma.Prisma__PermissionActionClient<runtime.Types.Result.GetResult<Prisma.$PermissionActionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  pin<T extends Prisma.ItemAction$pinArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$pinArgs<ExtArgs>>): Prisma.Prisma__PinActionClient<runtime.Types.Result.GetResult<Prisma.$PinActionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2430,6 +2627,7 @@ export interface ItemActionFieldRefs {
   readonly activityId: Prisma.FieldRef<"ItemAction", 'String'>
   readonly copyActionId: Prisma.FieldRef<"ItemAction", 'String'>
   readonly permissionActionId: Prisma.FieldRef<"ItemAction", 'String'>
+  readonly pinActionId: Prisma.FieldRef<"ItemAction", 'String'>
 }
     
 
@@ -3065,6 +3263,25 @@ export type ItemAction$permissionArgs<ExtArgs extends runtime.Types.Extensions.I
    */
   include?: Prisma.PermissionActionInclude<ExtArgs> | null
   where?: Prisma.PermissionActionWhereInput
+}
+
+/**
+ * ItemAction.pin
+ */
+export type ItemAction$pinArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the PinAction
+   */
+  select?: Prisma.PinActionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the PinAction
+   */
+  omit?: Prisma.PinActionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PinActionInclude<ExtArgs> | null
+  where?: Prisma.PinActionWhereInput
 }
 
 /**

@@ -65,6 +65,7 @@ export const ModelName = {
   RestoreAction: 'RestoreAction',
   ShareAction: 'ShareAction',
   VersionAction: 'VersionAction',
+  PinAction: 'PinAction',
   Activity: 'Activity',
   ActivityTime: 'ActivityTime',
   AuditLog: 'AuditLog',
@@ -158,7 +159,8 @@ export const ItemActionScalarFieldEnum = {
   versionActionId: 'versionActionId',
   activityId: 'activityId',
   copyActionId: 'copyActionId',
-  permissionActionId: 'permissionActionId'
+  permissionActionId: 'permissionActionId',
+  pinActionId: 'pinActionId'
 } as const
 
 export type ItemActionScalarFieldEnum = (typeof ItemActionScalarFieldEnum)[keyof typeof ItemActionScalarFieldEnum]
@@ -263,6 +265,14 @@ export const VersionActionScalarFieldEnum = {
 } as const
 
 export type VersionActionScalarFieldEnum = (typeof VersionActionScalarFieldEnum)[keyof typeof VersionActionScalarFieldEnum]
+
+
+export const PinActionScalarFieldEnum = {
+  id: 'id',
+  kind: 'kind'
+} as const
+
+export type PinActionScalarFieldEnum = (typeof PinActionScalarFieldEnum)[keyof typeof PinActionScalarFieldEnum]
 
 
 export const ActivityScalarFieldEnum = {

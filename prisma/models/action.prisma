@@ -24,6 +24,8 @@ model ItemAction {
   copyActionId       String?           @unique
   permission         PermissionAction? @relation(fields: [permissionActionId], references: [id])
   permissionActionId String?           @unique
+  pin                PinAction?        @relation(fields: [pinActionId], references: [id])
+  pinActionId        String?           @unique
 }
 
 model PermissionAction {
@@ -107,7 +109,19 @@ model VersionAction {
   action     ItemAction?
 }
 
+model PinAction {
+  id     String      @id
+  kind   PinKind
+  action ItemAction?
+}
+
 enum ObjectType {
   file
   folder
+}
+
+enum PinKind {
+  pinned
+  unpinned
+  reordered
 }
