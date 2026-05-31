@@ -1651,6 +1651,10 @@ export async function getSuggestedItems(
       view: string
       size: number
     }>
+    pins: Array<{
+      id: string
+      pinnedById: string
+    }>
     locked: {
       id: string
       lockedById: string
@@ -1717,6 +1721,15 @@ export async function getSuggestedItems(
         ) FILTER (WHERE t.id IS NOT NULL),
         '[]'::json
       ) as "thumbnails",
+      COALESCE(
+        json_agg(
+          jsonb_build_object(
+            'id', pin.id,
+            'pinnedById', pin."pinnedById"
+          )
+        ) FILTER (WHERE pin.id IS NOT NULL),
+        '[]'::json
+      ) as "pins",
       (CASE WHEN li.id IS NOT NULL THEN jsonb_build_object(
         'id', li.id,
         'lockedById', li."lockedById",
@@ -1728,12 +1741,12 @@ export async function getSuggestedItems(
     LEFT JOIN "Favorite" fav ON i.id = fav."itemId"
     LEFT JOIN "user" u ON fav."favoritedById" = u.id
     LEFT JOIN "Thumbnail" t ON i.id = t."itemId"
+    LEFT JOIN "PinItem" pin ON i.id = pin."itemId"
     LEFT JOIN "Permission" p ON i.id = p."itemId"
     LEFT JOIN "LockedItem" li ON i.id = li."itemId"
     WHERE
       i."ownerId" = ${userId}
       AND i."driveId" = ${driveId}
-      AND i."parentId" = ${rootId}
       AND i.type::text = ${type}
       AND i.status = 'normal'
       ${workspaceId ? Prisma.sql`AND i."workspaceId" = ${workspaceId}` : Prisma.empty}

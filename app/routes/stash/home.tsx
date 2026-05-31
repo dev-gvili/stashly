@@ -1,12 +1,14 @@
 import type { Route } from './+types/home'
 import { auth } from '@/services/auth'
 import { redirect } from 'react-router'
-import { useId } from 'react'
 import type { ShouldRevalidateFunction } from 'react-router'
-import { getQueryParam, getQueryParamArray } from '@/utils/query-params'
-import { FilesEmptyState } from '@/components/states/files-empty-state'
-import { SuggestionsView } from '@/components/views/suggestions-view'
+import { getQueryParamArray } from '@/utils/query-params'
+import { OverviewView } from '@/components/views/overview-view'
+import type { StashItem } from '@/types/stash.types'
 import { getSuggestedItems } from '@/services/item-actions'
+import { getPinnedItems } from '@/services/pin-actions'
+import { getFavoritedItems } from '@/services/item-actions'
+import { getRecentActivityForUser } from '@/services/activity-actions'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
@@ -65,39 +67,45 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   return true
 }
 
-export async function loader({ request, params }: Route.ActionArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   const session = await auth.api.getSession(request)
   if (!session) {
     throw redirect('/auth/signin')
   }
 
-  // let filters = buildItemFilters(parsedParams)
-  const { suggestedFolders, suggestedFiles } = await getSuggestedItems({
-    userId: session.user.id,
-    driveId: session.user.driveId,
-    rootId: session.user.rootId,
-    maxFolders: 6,
-    maxFiles: 25,
-  })
+  const [suggestions, pinned, favorites, activity] = await Promise.all([
+    getSuggestedItems({
+      userId: session.user.id,
+      driveId: session.user.driveId,
+      rootId: session.user.rootId,
+      maxFolders: 6,
+      maxFiles: 10,
+    }),
+    getPinnedItems({ userId: session.user.id, limit: 6 }),
+    getFavoritedItems({ userId: session.user.id, limit: 6 }),
+    getRecentActivityForUser({ userId: session.user.id, limit: 8 }),
+  ])
 
   return {
-    suggestedFolders,
-    suggestedFiles,
+    suggestedFolders: suggestions.suggestedFolders,
+    suggestedFiles: suggestions.suggestedFiles,
+    pinned: pinned.items,
+    favorites: favorites.items,
+    activity,
     user: session.user,
   }
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  let id = useId()
-  const { suggestedFolders, suggestedFiles } = loaderData
-  if (!suggestedFolders && !suggestedFiles) {
-    return <FilesEmptyState />
-  }
+  const { user, suggestedFolders, suggestedFiles, pinned, favorites, activity } = loaderData
   return (
-    <SuggestionsView
-      key={id}
+    <OverviewView
+      user={{ id: user.id, name: user.name }}
       suggestedFolders={suggestedFolders}
       suggestedFiles={suggestedFiles}
+      pinned={pinned as StashItem[]}
+      favorites={favorites as StashItem[]}
+      activity={activity}
     />
   )
 }
