@@ -18,6 +18,12 @@ export type StashFavorite = {
 export type StashPin = {
   id: string
   pinnedById: string
+  pinnedBy: {
+    id: string
+    name: string
+    displayName: string | null
+    image: string | null
+  }
 }
 
 export type StashLock = {

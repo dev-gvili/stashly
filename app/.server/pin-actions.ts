@@ -1,6 +1,37 @@
 import type { Prisma } from '@/prisma/client'
 import { prisma } from '@/services/db'
 import { toObjectId, getPrefixForModel } from '@/utils/converters'
+import { createActivity } from './activity-actions'
+
+function recordPinActivity(
+  itemId: string,
+  kind: 'pinned' | 'unpinned' | 'reordered'
+) {
+  Promise.resolve()
+    .then(() =>
+      createActivity({
+        item: { connect: { id: itemId } },
+        time: {
+          create: {
+            id: toObjectId(getPrefixForModel('ActivityTime')),
+            observedAt: new Date(),
+          },
+        },
+        action: {
+          create: {
+            id: toObjectId(getPrefixForModel('ItemAction')),
+            pin: {
+              create: {
+                id: toObjectId(getPrefixForModel('PinAction')),
+                kind,
+              },
+            },
+          },
+        },
+      })
+    )
+    .catch(() => {})
+}
 
 const itemListSelect = {
   id: true,
@@ -21,7 +52,14 @@ const itemListSelect = {
   thumbnails: {
     take: 1,
     where: { NOT: { url: { startsWith: '#' } } },
-    select: { id: true, url: true, width: true, height: true, size: true, view: true },
+    select: {
+      id: true,
+      url: true,
+      width: true,
+      height: true,
+      size: true,
+      view: true,
+    },
   },
   favorites: {
     select: {
@@ -31,7 +69,15 @@ const itemListSelect = {
       },
     },
   },
-  pins: { select: { id: true, pinnedById: true } },
+  pins: {
+    select: {
+      id: true,
+      pinnedById: true,
+      pinnedBy: {
+        select: { id: true, name: true, displayName: true, image: true },
+      },
+    },
+  },
   tags: true,
 } satisfies Prisma.ItemSelect
 
@@ -44,7 +90,7 @@ export async function pinItem(
     where: { pinnedById_itemId: { pinnedById, itemId } },
   })
   if (existing) return existing
-  return client.pinItem.create({
+  const created = await client.pinItem.create({
     data: {
       id: toObjectId(getPrefixForModel('PinItem')),
       itemId,
@@ -52,6 +98,8 @@ export async function pinItem(
       position: 0,
     },
   })
+  recordPinActivity(itemId, 'pinned')
+  return created
 }
 
 export async function unpinItem(
@@ -64,6 +112,7 @@ export async function unpinItem(
   })
   if (!row) return
   await client.pinItem.delete({ where: { id: row.id } })
+  recordPinActivity(itemId, 'unpinned')
 }
 
 export async function reorderPin(
@@ -72,6 +121,10 @@ export async function reorderPin(
   position: number,
   client: Prisma.TransactionClient = prisma
 ) {
+  const updated = await client.pinItem.findFirst({
+    where: { id: pinId, pinnedById },
+    select: { itemId: true },
+  })
   const result = await client.pinItem.updateMany({
     where: { id: pinId, pinnedById },
     data: { position },
@@ -79,6 +132,7 @@ export async function reorderPin(
   if (result.count === 0) {
     throw new Error('Pin not found or not owned by user')
   }
+  if (updated) recordPinActivity(updated.itemId, 'reordered')
 }
 
 export async function isPinned(
@@ -110,6 +164,8 @@ export async function getPinnedItems({
     skip: cursor ? 1 : 0,
     select: {
       id: true,
+      pinnedById: true,
+      itemId: true,
       position: true,
       createdAt: true,
       item: { select: itemListSelect },

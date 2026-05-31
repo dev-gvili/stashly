@@ -1,4 +1,5 @@
 import type { Prisma } from '@/prisma/client'
+import type { ItemCategory } from '@/prisma/enums'
 import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { buildActivityFilters } from '@/utils/filters/activity.filters'
@@ -183,4 +184,120 @@ export async function countActivities(
   args?: Prisma.ActivityCountArgs
 ): Promise<number> {
   return prisma.activity.count(args)
+}
+
+// ---------------------------------------------------------------------------
+// Overview feed
+// ---------------------------------------------------------------------------
+
+export type OverviewActivityKind =
+  | 'viewed'
+  | 'created'
+  | 'edited'
+  | 'renamed'
+  | 'moved'
+  | 'copied'
+  | 'shared'
+  | 'restored'
+  | 'deleted'
+  | 'commented'
+  | 'updated'
+  | 'pinned'
+  | 'unpinned'
+  | 'reordered'
+
+export interface OverviewActivity {
+  id: string
+  kind: OverviewActivityKind
+  observedAt: Date | null
+  item: {
+    id: string
+    name: string
+    type: 'file' | 'folder'
+    category: ItemCategory
+    parentId: string | null
+    ownerId: string
+  } | null
+}
+
+/**
+ * Activities recently observed on items owned by the user, projected into a
+ * small UI-friendly shape for the Home overview feed.
+ */
+export async function getRecentActivityForUser({
+  userId,
+  limit = 8,
+}: {
+  userId: string
+  limit?: number
+}): Promise<OverviewActivity[]> {
+  const rows = await prisma.activity.findMany({
+    where: { item: { ownerId: userId } },
+    orderBy: { time: { observedAt: 'desc' } },
+    take: limit,
+    select: {
+      id: true,
+      time: { select: { observedAt: true } },
+      item: {
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          category: true,
+          parentId: true,
+          ownerId: true,
+        },
+      },
+      access: { select: { id: true } },
+      action: {
+        select: {
+          create: { select: { id: true } },
+          rename: { select: { id: true } },
+          move: { select: { id: true } },
+          delete: { select: { id: true } },
+          restore: { select: { id: true } },
+          copy: { select: { id: true } },
+          share: { select: { id: true } },
+          version: { select: { id: true } },
+          comment: { select: { id: true } },
+          permission: { select: { id: true } },
+          edit: { select: { id: true } },
+          pin: { select: { id: true, kind: true } },
+        },
+      },
+    },
+  })
+
+  return rows.map((row) => {
+    let kind: OverviewActivityKind = 'viewed'
+    const a = row.action
+    if (a?.edit) kind = 'edited'
+    else if (a?.create) kind = 'created'
+    else if (a?.rename) kind = 'renamed'
+    else if (a?.move) kind = 'moved'
+    else if (a?.copy) kind = 'copied'
+    else if (a?.share || a?.permission) kind = 'shared'
+    else if (a?.restore) kind = 'restored'
+    else if (a?.delete) kind = 'deleted'
+    else if (a?.comment) kind = 'commented'
+    else if (a?.version) kind = 'updated'
+    else if (a?.pin) kind = a.pin.kind
+    else if (row.access) kind = 'viewed'
+
+    return {
+      id: row.id,
+      kind,
+      observedAt: row.time?.observedAt ?? null,
+      item: row.item
+        ? {
+            id: row.item.id,
+            name: row.item.name,
+            type: row.item.type as 'file' | 'folder',
+            category: row.item.category,
+            parentId: row.item.parentId,
+            ownerId: row.item.ownerId,
+          }
+        : null,
+    }
+  })
 }
