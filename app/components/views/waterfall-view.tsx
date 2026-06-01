@@ -49,7 +49,7 @@ function WaterfallItem({
                 ? { viewTransitionName: `img-${img.id}` }
                 : undefined
             }
-            className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer"
+            className="w-full h-full object-cover cursor-pointer"
             width={img.width}
             height={img.height}
             sizes={img.sizes}

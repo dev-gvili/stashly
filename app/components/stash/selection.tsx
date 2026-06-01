@@ -1,115 +1,53 @@
 import React, {
-  createContext,
-  useContext,
-  useState,
   type ReactNode,
-  useRef,
   useCallback,
   useEffect,
+  useRef,
 } from 'react'
 import { useSearchParams } from 'react-router'
-import { useMachine } from '@xstate/react'
+import { createActor } from 'xstate'
+import { useSelector } from '@xstate/react'
 import selectionMachine from '../../machines/selection/selection.machine'
 import {
-  addQueryParamValue,
   getQueryParamArray,
   hasQueryParamValue,
-  removeQueryParamValue,
 } from '../../utils/query-params'
 
-type SelectionContextType = {
-  items: string[]
-  lastChecked: string | null
-  setLastChecked: (id: string | null) => void
-  isChecked: (id: string, paramName?: string) => boolean
-  onMouseDown: (e: React.MouseEvent) => void
-  onCheckedChange: (
-    id: string,
-    checked: boolean | 'indeterminate',
-    paramName?: string
-  ) => void
-}
+// Module-scope actor: single source of truth for selection state.
+// Started once at module-load time so every consumer (provider, toolbar,
+// item cards) subscribes to the same instance via useSelector.
+export const selectionActor = createActor(selectionMachine).start()
 
-const SelectionContext = createContext<SelectionContextType | undefined>(
-  undefined
-)
+const selectContext = (
+  s: ReturnType<typeof selectionActor.getSnapshot>
+) => s.context
 
-export const SelectionProvider = ({
-  items,
-  children,
-}: {
-  items: string[]
-  children: ReactNode
-}) => {
-  const [lastChecked, setLastChecked] = useState<string | null>(null)
+// Public hook — works from any component, no provider required.
+export const useSelection = () => {
+  const context = useSelector(selectionActor, selectContext)
+  const [searchParams] = useSearchParams()
   const shiftKeyRef = useRef(false)
-  const [searchParams, setSearchParams] = useSearchParams()
 
-  // XState machine to compute selection changes
-  const [state, send] = useMachine(selectionMachine)
+  const items = context.items ?? []
+  const selectedIds = context.selectedIds ?? []
+  const allSelected =
+    items.length > 0 && items.every((id) => selectedIds.includes(id))
+  const someSelected = selectedIds.length > 0 && !allSelected
 
-  // keep machine items in sync
-  useEffect(() => {
-    send({ type: 'SET_ITEMS', items })
-  }, [items, send])
-
-  // detect initial selection param name (prefer 'selectedItems' then 'ids')
-  useEffect(() => {
-    const paramCandidates = ['selectedItems', 'ids']
-    const found = paramCandidates.find((p) => searchParams.has(p)) ?? 'ids'
-    const selected = getQueryParamArray(searchParams, found)
-    send({ type: 'SET_SELECTED', selected, paramName: found })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // when machine selection changes, reflect it to URL search params
-  useEffect(() => {
-    const param = state.context.paramName ?? 'ids'
-    const selected = state.context.selectedIds ?? []
-    const existing = getQueryParamArray(searchParams, param)
-    const eq =
-      selected.length === existing.length &&
-      selected.every((v) => existing.includes(v))
-    if (!eq) {
-      const newParams = new URLSearchParams(searchParams)
-      if (selected.length === 0) {
-        newParams.delete(param)
-      } else {
-        newParams.set(param, selected.join(','))
-      }
-      setSearchParams(newParams, { replace: true })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.context.selectedIds, state.context.paramName])
-
-  // when URL params change externally, sync to machine
-  useEffect(() => {
-    const param = state.context.paramName ??
-      (searchParams.has('selectedItems') ? 'selectedItems' : 'ids')
-    const selected = getQueryParamArray(searchParams, param)
-    const current = state.context.selectedIds ?? []
-    const eq =
-      selected.length === current.length &&
-      selected.every((v) => current.includes(v))
-    if (!eq) {
-      send({ type: 'SET_SELECTED', selected, paramName: param })
-    }
-  }, [searchParams])
-
+  // Prefer actor state; fall back to URL params for callers rendered
+  // outside any SelectionProvider (URL sync may not be running).
   const isChecked = useCallback(
-    (id: string, paramName = 'selectedItems') => {
-      // prefer machine state, fall back to URL params
-      const inMachine = state.context.selectedIds?.includes(id)
-      if (inMachine) return true
+    (id: string, paramName: string = 'selectedItems') => {
+      if (selectedIds.includes(id)) return true
       return hasQueryParamValue(searchParams, paramName, id)
     },
-    [searchParams, state.context.selectedIds]
+    [searchParams, selectedIds]
   )
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     shiftKeyRef.current = e.shiftKey
-  }, [shiftKeyRef])
+  }, [])
 
   const onCheckedChange = useCallback(
     (
@@ -117,27 +55,130 @@ export const SelectionProvider = ({
       checked: boolean | 'indeterminate',
       paramName = 'selectedItems'
     ) => {
-      const checkedBool = checked === 'indeterminate' ? true : (checked as boolean)
-      send({ type: 'TOGGLE', id, checked: checkedBool, shiftKey: shiftKeyRef.current, paramName })
+      const checkedBool =
+        checked === 'indeterminate' ? true : (checked as boolean)
+      selectionActor.send({
+        type: 'TOGGLE',
+        id,
+        checked: checkedBool,
+        shiftKey: shiftKeyRef.current,
+        paramName,
+      })
       shiftKeyRef.current = false
     },
-    [send]
+    []
   )
 
-  return (
-    <SelectionContext.Provider
-      value={{
-        items,
-        lastChecked,
-        setLastChecked,
-        isChecked,
-        onMouseDown,
-        onCheckedChange,
-      }}
-    >
-      {children}
-    </SelectionContext.Provider>
+  const setLastChecked = useCallback(
+    (id: string | null) => selectionActor.send({ type: 'SET_LAST_CHECKED', id }),
+    []
   )
+
+  const selectAll = useCallback(
+    (paramName?: string) =>
+      selectionActor.send({ type: 'SELECT_ALL', paramName }),
+    []
+  )
+
+  const unselectAll = useCallback(
+    (paramName?: string) =>
+      selectionActor.send({ type: 'UNSELECT_ALL', paramName }),
+    []
+  )
+
+  const toggleAll = useCallback(
+    (paramName?: string) =>
+      selectionActor.send({
+        type: allSelected ? 'UNSELECT_ALL' : 'SELECT_ALL',
+        paramName,
+      }),
+    [allSelected]
+  )
+
+  return {
+    items,
+    selectedIds,
+    allSelected,
+    someSelected,
+    lastChecked: context.lastChecked,
+    setLastChecked,
+    isChecked,
+    onMouseDown,
+    onCheckedChange,
+    selectAll,
+    unselectAll,
+    toggleAll,
+  }
 }
 
-export const useSelection = () => useContext(SelectionContext)
+// Hook to register the current route's item IDs into the actor.
+// Call from any route that owns a list of items.
+export const useRegisterSelectionItems = (items: string[]) => {
+  useEffect(() => {
+    selectionActor.send({ type: 'SET_ITEMS', items })
+  }, [items])
+}
+
+// URL ↔ actor sync. Lives inside SelectionProvider because each route
+// owns its own ?selectedItems= param and remounts on navigation.
+const useSelectionURLSync = () => {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const context = useSelector(selectionActor, selectContext)
+
+  // seed actor from URL on mount
+  useEffect(() => {
+    const paramCandidates = ['selectedItems', 'ids']
+    const found = paramCandidates.find((p) => searchParams.has(p)) ?? 'selectedItems'
+    const selected = getQueryParamArray(searchParams, found)
+    selectionActor.send({ type: 'SET_SELECTED', selected, paramName: found })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // actor → URL
+  useEffect(() => {
+    const param = context.paramName ?? 'selectedItems'
+    const selected = context.selectedIds ?? []
+    const existing = getQueryParamArray(searchParams, param)
+    const eq =
+      selected.length === existing.length &&
+      selected.every((v) => existing.includes(v))
+    if (!eq) {
+      const newParams = new URLSearchParams(searchParams)
+      if (selected.length === 0) newParams.delete(param)
+      else newParams.set(param, selected.join(','))
+      setSearchParams(newParams, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [context.selectedIds, context.paramName])
+
+  // URL → actor
+  useEffect(() => {
+    const param =
+      context.paramName ??
+      (searchParams.has('selectedItems') ? 'selectedItems' : 'ids')
+    const selected = getQueryParamArray(searchParams, param)
+    const current = context.selectedIds ?? []
+    const eq =
+      selected.length === current.length &&
+      selected.every((v) => current.includes(v))
+    if (!eq) {
+      selectionActor.send({ type: 'SET_SELECTED', selected, paramName: param })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+}
+
+// Lightweight wrapper that registers a route's items and mounts URL sync.
+// No React context — useSelection() reads directly from the module actor,
+// so consumers above this in the tree (e.g. AppToolbar) work too.
+export const SelectionProvider = ({
+  items,
+  children,
+}: {
+  items: string[]
+  children: ReactNode
+}) => {
+  useRegisterSelectionItems(items)
+  useSelectionURLSync()
+  return <>{children}</>
+}

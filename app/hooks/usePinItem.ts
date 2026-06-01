@@ -48,6 +48,8 @@ export function usePinItem(itemId: string, initiallyPinned = false) {
         ? false
         : (fetcher.data?.pinned ?? initiallyPinned)
 
+  console.log('usePinItem', { itemId, initiallyPinned, pinned, formData: fetcher.formData, responseData: fetcher.data })      
+  
   const toggle = useCallback(() => {
     const intent = pinned ? 'unpin' : 'pin'
     fetcher.submit(

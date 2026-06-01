@@ -76,12 +76,12 @@ async function _generateSalientCrop(
           return { x: Math.round((imgW - size) / 2), y: Math.round((imgH - size) / 2), size }
         })()
 
-    // Run ViT in background for future attention-map use (don't await — don't block)
-    if (!faceCenter) {
-      PipelineManager.getPipeline('image-classification', VIT_MODEL, onProgress)
-        .then((pipe) => pipe(imageBlob, { top_k: 1 }).catch(() => {}))
-        .catch(() => {})
-    }
+    // // Run ViT in background for future attention-map use (don't await — don't block)
+    // if (!faceCenter) {
+    //   PipelineManager.getPipeline('image-classification', VIT_MODEL, onProgress)
+    //     .then((pipe) => pipe(imageBlob).catch((e) => { throw e }))
+    //     .catch(() => {})
+    // }
 
     const cropCanvas = document.createElement('canvas')
     cropCanvas.width = 512

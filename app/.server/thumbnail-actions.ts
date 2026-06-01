@@ -52,10 +52,38 @@ export async function updateThumbnail(
   view: string = 'grid',
   size: string = 'medium'
 ) {
-  return prisma.thumbnail.updateMany({
+  const result = await prisma.thumbnail.updateMany({
     where: { itemId, view: view as any, size: size as any },
     data: { stage, url, width, height },
   })
+  if (result.count > 0) return result
+
+  // No row yet (stage 0 was removed from the pipeline) — insert the first stage.
+  try {
+    await prisma.thumbnail.create({
+      data: {
+        id: toObjectId(getPrefixForModel('Thumbnail')),
+        itemId,
+        view: view as any,
+        size: size as any,
+        stage,
+        url,
+        width,
+        height,
+      },
+    })
+  } catch (e: unknown) {
+    // P2002 = a concurrent PATCH for the same (itemId,view,size) won the race.
+    // Retry update — the winner's row now exists.
+    if ((e as { code?: string })?.code === 'P2002') {
+      return prisma.thumbnail.updateMany({
+        where: { itemId, view: view as any, size: size as any },
+        data: { stage, url, width, height },
+      })
+    }
+    throw e
+  }
+  return result
 }
 
 export async function getThumbnailByItemId(

@@ -40,7 +40,7 @@ export function ItemActivityDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-80  bg-background rounded-md focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-none shadow-stashly flex-col justify-center"
+        className="w-80 bg-background rounded-md focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-none shadow-stashly flex-col justify-center"
       >
         <SheetHeader>
           <SheetTitle className="text-sm font-stashly">Activity</SheetTitle>

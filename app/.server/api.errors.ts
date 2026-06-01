@@ -8,6 +8,21 @@
  */
 export enum StashlyErrorCode {
   // Add your app-specific error codes here
+
+  // S3-related errors
+  DELETE_OBJECT_FAILED = 'DELETE_OBJECT_FAILED',
+  RENAME_OBJECT_FAILED = 'RENAME_OBJECT_FAILED',
+  COPY_OBJECT_FAILED = 'COPY_OBJECT_FAILED',
+  MOVE_OBJECT_FAILED = 'MOVE_OBJECT_FAILED',
+  CREATE_BUCKET_FAILED = 'CREATE_BUCKET_FAILED',
+  DELETE_BUCKET_FAILED = 'DELETE_BUCKET_FAILED',
+  SET_BUCKET_CORS_FAILED = 'SET_BUCKET_CORS_FAILED',
+  APPLY_BUCKET_POLICY_FAILED = 'APPLY_BUCKET_POLICY_FAILED',
+  ENABLE_BUCKET_VERSIONING_FAILED = 'ENABLE_BUCKET_VERSIONING_FAILED',
+  BUCKET_CORS_NOT_FOUND = 'BUCKET_CORS_NOT_FOUND',
+  EMPTY_BUCKET_FAILED = 'EMPTY_BUCKET_FAILED',
+
+
   // Storage-related errors
   STORAGE_PLAN_NOT_FOUND = 'STORAGE_PLAN_NOT_FOUND',
   CREATE_STORAGE_PLAN_FAILED = 'CREATE_STORAGE_PLAN_FAILED',
@@ -464,6 +479,51 @@ const ERROR_DETAILS: Record<
     message: 'Failed to trash the collection.',
     statusCode: 500,
   },
+  [StashlyErrorCode.RENAME_OBJECT_FAILED]: {
+    message: 'Failed to rename the object.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.COPY_OBJECT_FAILED]: {
+    message: 'Failed to copy the object.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.MOVE_OBJECT_FAILED]: {
+    message: 'Failed to move the object.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.DELETE_OBJECT_FAILED]: {
+    message: 'Failed to delete the object.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.CREATE_BUCKET_FAILED]: {
+    message: 'Failed to create the bucket.',
+    statusCode: 500,  
+  },
+  [StashlyErrorCode.DELETE_BUCKET_FAILED]: {
+    message: 'Failed to delete the bucket.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.SET_BUCKET_CORS_FAILED]: {
+    message: 'Failed to set bucket CORS configuration.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.APPLY_BUCKET_POLICY_FAILED]: {
+    message: 'Failed to apply bucket policy.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.ENABLE_BUCKET_VERSIONING_FAILED]: {
+    message: 'Failed to enable bucket versioning.',
+    statusCode: 500,
+  },
+  [StashlyErrorCode.BUCKET_CORS_NOT_FOUND]: {
+    message: 'Bucket CORS configuration not found.',
+    statusCode: 404,
+  },
+  [StashlyErrorCode.EMPTY_BUCKET_FAILED]: {
+    message: 'Failed to empty the bucket.',
+    statusCode: 500,
+  },
+
 }
 
 /**

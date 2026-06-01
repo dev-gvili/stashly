@@ -97,7 +97,11 @@ export async function loader({ request }: Route.ActionArgs) {
       h = 180
     }
 
-    const thumbSrc = `/api/thumbnails/${item.id}`
+    // Use the public Tigris URL stored on the thumbnail row directly.
+    // Going through /api/thumbnails/:itemId hits a server-side redirect
+    // that signs a fresh presigned URL on every image request — that
+    // path defeats browser caching and floods the API with sign calls.
+    const thumbSrc = thumb?.url ?? ''
     return {
       id: item.id,
       src: thumbSrc,

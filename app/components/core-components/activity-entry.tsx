@@ -39,6 +39,7 @@ function actionIcon(activity: ActivityWithRelations): IconComponent {
   if (a.comment) return EditIcon
   if (a.permission) return LockIcon
   if (a.version) return RefreshIcon
+  if (a.upload) return UploadIcon
   if (activity.access) return PreviewIcon
   return ActivityIcon
 }

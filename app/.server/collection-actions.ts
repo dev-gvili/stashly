@@ -13,6 +13,153 @@ import { requireAtLeastRole } from '@/services/workspace-actions'
 import { StashlyError, StashlyErrorCode } from '@/services/api.errors'
 import { buildCollectionFilters } from '@/utils/filters/collection.filters'
 import { searchFactory } from '@/utils/search'
+import { createActivity } from './activity-actions'
+
+function recordCollectionActivity(
+  itemId: string,
+  data: {
+    kind: 'item_added' | 'item_removed' | 'emptied'
+    collectionId?: string | null
+    targetItemId?: string | null
+    count?: number | null
+  }
+) {
+  Promise.resolve()
+    .then(() =>
+      createActivity({
+        item: { connect: { id: itemId } },
+        time: {
+          create: {
+            id: toObjectId(getPrefixForModel('ActivityTime')),
+            observedAt: new Date(),
+          },
+        },
+        action: {
+          create: {
+            id: toObjectId(getPrefixForModel('ItemAction')),
+            collection: {
+              create: {
+                id: toObjectId(getPrefixForModel('CollectionAction')),
+                kind: data.kind,
+                collectionId: data.collectionId ?? null,
+                itemId: data.targetItemId ?? null,
+                count: data.count ?? null,
+              },
+            },
+          },
+        },
+      })
+    )
+    .catch(() => {})
+}
+
+function recordCollectionCreate(itemId: string) {
+  Promise.resolve()
+    .then(() =>
+      createActivity({
+        item: { connect: { id: itemId } },
+        time: {
+          create: {
+            id: toObjectId(getPrefixForModel('ActivityTime')),
+            observedAt: new Date(),
+          },
+        },
+        action: {
+          create: {
+            id: toObjectId(getPrefixForModel('ItemAction')),
+            create: {
+              create: { id: toObjectId(getPrefixForModel('CreateAction')) },
+            },
+          },
+        },
+      })
+    )
+    .catch(() => {})
+}
+
+function recordCollectionRename(
+  itemId: string,
+  oldName: string,
+  newName: string
+) {
+  Promise.resolve()
+    .then(() =>
+      createActivity({
+        item: { connect: { id: itemId } },
+        time: {
+          create: {
+            id: toObjectId(getPrefixForModel('ActivityTime')),
+            observedAt: new Date(),
+          },
+        },
+        action: {
+          create: {
+            id: toObjectId(getPrefixForModel('ItemAction')),
+            rename: {
+              create: {
+                id: toObjectId(getPrefixForModel('RenameAction')),
+                oldName,
+                newName,
+              },
+            },
+          },
+        },
+      })
+    )
+    .catch(() => {})
+}
+
+function recordCollectionDelete(itemId: string, name: string) {
+  Promise.resolve()
+    .then(() =>
+      createActivity({
+        item: { connect: { id: itemId } },
+        time: {
+          create: {
+            id: toObjectId(getPrefixForModel('ActivityTime')),
+            observedAt: new Date(),
+          },
+        },
+        action: {
+          create: {
+            id: toObjectId(getPrefixForModel('ItemAction')),
+            delete: {
+              create: {
+                id: toObjectId(getPrefixForModel('DeleteAction')),
+                name,
+                itemType: 'folder',
+              },
+            },
+          },
+        },
+      })
+    )
+    .catch(() => {})
+}
+
+function recordCollectionRestore(itemId: string) {
+  Promise.resolve()
+    .then(() =>
+      createActivity({
+        item: { connect: { id: itemId } },
+        time: {
+          create: {
+            id: toObjectId(getPrefixForModel('ActivityTime')),
+            observedAt: new Date(),
+          },
+        },
+        action: {
+          create: {
+            id: toObjectId(getPrefixForModel('ItemAction')),
+            restore: {
+              create: { id: toObjectId(getPrefixForModel('RestoreAction')) },
+            },
+          },
+        },
+      })
+    )
+    .catch(() => {})
+}
 
 // ---------------------------------------------------------------------------
 // Search
@@ -139,7 +286,7 @@ export async function createCollection({
   ownerId: string
   driveId: string
 }) {
-  return prisma.$transaction(async (tx) => {
+  const created = await prisma.$transaction(async (tx) => {
     const id = toObjectId(getPrefixForModel('Item'))
     const newItem = await tx.item.create({
       data: {
@@ -164,6 +311,8 @@ export async function createCollection({
 
     return newItem
   })
+  recordCollectionCreate(created.id)
+  return created
 }
 
 /**
@@ -187,7 +336,7 @@ export async function createWorkspaceCollection({
     message: 'You must be a workspace member to create collections',
   })
 
-  return prisma.$transaction(async (tx) => {
+  const created = await prisma.$transaction(async (tx) => {
     const newItem = await tx.item.create({
       data: {
         id: toObjectId(getPrefixForModel('Item')),
@@ -214,6 +363,8 @@ export async function createWorkspaceCollection({
 
     return newItem
   })
+  recordCollectionCreate(created.id)
+  return created
 }
 
 // ---------------------------------------------------------------------------
@@ -234,11 +385,19 @@ export async function renameCollection({
 }) {
   await assertItemPermission(userId, collectionId, 'write')
 
-  return prisma.item.update({
+  const existing = await prisma.item.findUniqueOrThrow({
+    where: { id: collectionId },
+    select: { name: true },
+  })
+
+  const updated = await prisma.item.update({
     where: { id: collectionId },
     data: { name: newName },
     include: defaultInclude,
   })
+
+  recordCollectionRename(collectionId, existing.name, newName)
+  return updated
 }
 
 // ---------------------------------------------------------------------------
@@ -257,10 +416,12 @@ export async function trashCollection({
 }) {
   await assertItemPermission(userId, collectionId, 'write')
 
-  return prisma.item.update({
+  const trashed = await prisma.item.update({
     where: { id: collectionId },
     data: { status: ItemStatus.trashed },
   })
+  recordCollectionDelete(collectionId, trashed.name)
+  return trashed
 }
 
 /**
@@ -275,10 +436,12 @@ export async function restoreCollection({
 }) {
   await assertItemPermission(userId, collectionId, 'write')
 
-  return prisma.item.update({
+  const restored = await prisma.item.update({
     where: { id: collectionId },
     data: { status: ItemStatus.normal },
   })
+  recordCollectionRestore(collectionId)
+  return restored
 }
 
 /**
@@ -293,7 +456,13 @@ export async function deleteCollection({
 }) {
   await assertItemPermission(userId, collectionId, 'write')
 
-  return prisma.item.delete({ where: { id: collectionId } })
+  const existing = await prisma.item.findUnique({
+    where: { id: collectionId },
+    select: { name: true },
+  })
+  const deleted = await prisma.item.delete({ where: { id: collectionId } })
+  recordCollectionDelete(collectionId, existing?.name ?? deleted.name)
+  return deleted
 }
 
 // ---------------------------------------------------------------------------
@@ -330,13 +499,20 @@ export async function addItemToCollection(
   await assertItemPermission(userId, collectionId, 'write')
   await assertItemPermission(userId, itemId, 'read')
 
-  return prisma.collectionMember.create({
+  const member = await prisma.collectionMember.create({
     data: {
       id: toObjectId(getPrefixForModel('CollectionMember')),
       collectionId,
       itemId,
     },
   })
+  recordCollectionActivity(collectionId, {
+    kind: 'item_added',
+    collectionId,
+    targetItemId: itemId,
+    count: 1,
+  })
+  return member
 }
 
 /**
@@ -356,9 +532,16 @@ export async function removeItemFromCollection({
 }) {
   await assertItemPermission(userId, collectionId, 'write')
 
-  return prisma.collectionMember.delete({
+  const removed = await prisma.collectionMember.delete({
     where: { collectionId_itemId: { collectionId, itemId } },
   })
+  recordCollectionActivity(collectionId, {
+    kind: 'item_removed',
+    collectionId,
+    targetItemId: itemId,
+    count: 1,
+  })
+  return removed
 }
 
 // Remove multiple items at once, with a single permission check for better performance when managing large collections.
@@ -379,9 +562,17 @@ export async function removeItemsFromCollection({
       'No item IDs provided'
     )
 
-  await prisma.collectionMember.deleteMany({
+  const result = await prisma.collectionMember.deleteMany({
     where: { collectionId, itemId: { in: itemIds } },
   })
+
+  if (result.count > 0) {
+    recordCollectionActivity(collectionId, {
+      kind: 'item_removed',
+      collectionId,
+      count: result.count,
+    })
+  }
 
   return itemIds
 }
@@ -438,7 +629,7 @@ export async function addItemsToCollection({
 
   if (!toAdd.length) return []
 
-  return await prisma.collectionMember.createManyAndReturn({
+  const created = await prisma.collectionMember.createManyAndReturn({
     skipDuplicates: true,
     data: toAdd.map((i) => ({
       id: toObjectId(getPrefixForModel('CollectionMember')),
@@ -446,6 +637,16 @@ export async function addItemsToCollection({
       itemId: i.id,
     })),
   })
+
+  if (created.length > 0) {
+    recordCollectionActivity(collectionId, {
+      kind: 'item_added',
+      collectionId,
+      count: created.length,
+    })
+  }
+
+  return created
 }
 
 /**
@@ -462,7 +663,15 @@ export async function clearCollection({
 }) {
   await assertItemPermission(userId, collectionId, 'write')
 
-  await prisma.collectionMember.deleteMany({ where: { collectionId } })
+  const result = await prisma.collectionMember.deleteMany({
+    where: { collectionId },
+  })
+
+  recordCollectionActivity(collectionId, {
+    kind: 'emptied',
+    collectionId,
+    count: result.count,
+  })
 }
 
 // ---------------------------------------------------------------------------

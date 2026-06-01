@@ -26,6 +26,14 @@ model ItemAction {
   permissionActionId String?           @unique
   pin                PinAction?        @relation(fields: [pinActionId], references: [id])
   pinActionId        String?           @unique
+  upload             UploadAction?     @relation(fields: [uploadActionId], references: [id])
+  uploadActionId     String?           @unique
+  collection         CollectionAction? @relation(fields: [collectionActionId], references: [id])
+  collectionActionId String?           @unique
+  favorite           FavoriteAction?   @relation(fields: [favoriteActionId], references: [id])
+  favoriteActionId   String?           @unique
+  bucket             BucketAction?     @relation(fields: [bucketActionId], references: [id])
+  bucketActionId     String?           @unique
 }
 
 model PermissionAction {
@@ -56,6 +64,13 @@ model CommentAction {
 model CreateAction {
   id     String      @id
   action ItemAction?
+}
+
+// Track the uploading of items, such as files.
+model UploadAction {
+  id       String      @id
+  uploadId String // reference to the uploadId that return from s3 when starting an multuipart upload session. 
+  action   ItemAction?
 }
 
 // Track the deletion of items, such as files or folders.
@@ -115,6 +130,31 @@ model PinAction {
   action ItemAction?
 }
 
+// Track collection-membership operations (adding/removing items, emptying).
+// Collection create/rename/trash/delete reuse CreateAction/RenameAction/DeleteAction/RestoreAction.
+model CollectionAction {
+  id           String               @id
+  kind         CollectionActionKind
+  collectionId String?
+  itemId       String?
+  count        Int? // for bulk operations (item_added/item_removed/emptied)
+  action       ItemAction?
+}
+
+// Track favorite/unfavorite events recorded on the favorited item.
+model FavoriteAction {
+  id     String       @id
+  kind   FavoriteKind
+  action ItemAction?
+}
+
+// Track the user-level "empty bucket" wipe (recorded on the user's root Item).
+model BucketAction {
+  id     String      @id
+  kind   BucketKind
+  action ItemAction?
+}
+
 enum ObjectType {
   file
   folder
@@ -124,4 +164,19 @@ enum PinKind {
   pinned
   unpinned
   reordered
+}
+
+enum CollectionActionKind {
+  item_added
+  item_removed
+  emptied
+}
+
+enum FavoriteKind {
+  favorited
+  unfavorited
+}
+
+enum BucketKind {
+  emptied
 }

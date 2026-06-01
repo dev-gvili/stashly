@@ -491,14 +491,6 @@ export type EnumDriveTypeFieldUpdateOperationsInput = {
   set?: $Enums.DriveType
 }
 
-export type NullableIntFieldUpdateOperationsInput = {
-  set?: number | null
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type NullableBigIntFieldUpdateOperationsInput = {
   set?: bigint | number | null
   increment?: bigint | number

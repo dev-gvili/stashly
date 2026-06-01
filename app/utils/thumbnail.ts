@@ -66,6 +66,30 @@ export async function canvasResize(
   }
 }
 
+/**
+ * Re-encode a WebP/JPEG/PNG Blob through a canvas with a CSS-style blur
+ * filter applied. Used for the stage-2 transient blur preview. Returns
+ * null on decode failure.
+ */
+export async function blurImageBlob(
+  blob: Blob,
+  radius = 12,
+): Promise<Blob | null> {
+  try {
+    const bitmap = await createImageBitmap(blob)
+    const w = bitmap.width
+    const h = bitmap.height
+    const canvas = new OffscreenCanvas(w, h)
+    const ctx = canvas.getContext('2d')!
+    ctx.filter = `blur(${radius}px)`
+    ctx.drawImage(bitmap, 0, 0, w, h)
+    bitmap.close()
+    return await canvas.convertToBlob({ type: 'image/webp', quality: 0.5 })
+  } catch {
+    return null
+  }
+}
+
 /** Convert a data-URL to a Blob */
 export function dataUrlToBlob(dataUrl: string): Blob {
   const commaIdx = dataUrl.indexOf(',')

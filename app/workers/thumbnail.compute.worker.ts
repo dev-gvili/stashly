@@ -12,13 +12,13 @@
  * the whole worker down — image paths keep working.
  */
 
-import { extractTinyThumbnail, canvasResize } from '../utils/thumbnail'
+import { extractTinyThumbnail, canvasResize, blurImageBlob } from '../utils/thumbnail'
 
 export type ComputeRequest =
   | { id: number; kind: 'tinyImage'; file: File }
   | { id: number; kind: 'tinyPdf'; file: File }
-  | { id: number; kind: 'resizeImage'; file: File; maxSize?: number }
-  | { id: number; kind: 'resizePdf'; file: File; maxSize?: number }
+  | { id: number; kind: 'resizeImage'; file: File; maxSize?: number; blur?: number }
+  | { id: number; kind: 'resizePdf'; file: File; maxSize?: number; blur?: number }
   | { id: number; kind: 'pdfText'; file: File; maxPages?: number; maxChars?: number }
   | { id: number; kind: 'imageDimensions'; file: File }
 
@@ -114,14 +114,17 @@ async function handle(req: ComputeRequest): Promise<void> {
       return
     }
     case 'resizeImage': {
-      const blob = await canvasResize(req.file, req.maxSize ?? 512).catch((err) => {
+      const resized = await canvasResize(req.file, req.maxSize ?? 512).catch((err) => {
         console.error('[thumbnail.compute.worker] resizeImage failed', err)
         return null
       })
-      if (!blob) {
+      if (!resized) {
         post({ id: req.id, kind: 'resizeImage', result: null })
         return
       }
+      const blob = req.blur
+        ? (await blurImageBlob(resized, req.blur).catch(() => null)) ?? resized
+        : resized
       const bitmap = await createImageBitmap(blob)
       const result = { blob, width: bitmap.width, height: bitmap.height }
       bitmap.close()
@@ -154,8 +157,19 @@ async function handle(req: ComputeRequest): Promise<void> {
     case 'resizePdf': {
       try {
         const { renderPdfPageToBlob } = await import('../utils/pdf')
-        const result = await renderPdfPageToBlob(req.file, req.maxSize ?? 512)
-        post({ id: req.id, kind: 'resizePdf', result })
+        const rendered = await renderPdfPageToBlob(req.file, req.maxSize ?? 512)
+        if (!rendered || !req.blur) {
+          post({ id: req.id, kind: 'resizePdf', result: rendered })
+          return
+        }
+        const blurred = await blurImageBlob(rendered.blob, req.blur).catch(() => null)
+        post({
+          id: req.id,
+          kind: 'resizePdf',
+          result: blurred
+            ? { blob: blurred, width: rendered.width, height: rendered.height }
+            : rendered,
+        })
       } catch (err) {
         console.error('[thumbnail.compute.worker] resizePdf failed', err)
         post({ id: req.id, kind: 'resizePdf', result: null })

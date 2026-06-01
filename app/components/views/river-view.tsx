@@ -54,7 +54,7 @@ function RiverItem({ img }: { img: ImageData }) {
           srcSet={img.srcSet}
           sizes={img.sizes}
           alt={img.alt}
-          className="w-full h-full flex-auto object-cover grayscale hover:grayscale-0 cursor-pointer transition-all duration-300"
+          className="w-full h-full flex-auto object-cover cursor-pointer"
           loading="lazy"
           decoding="async"
           width={img.width}

@@ -38,6 +38,8 @@ export async function loader({ request }: Route.LoaderArgs) {
           version: true,
           comment: true,
           permission: true,
+          upload: true,
+          pin: true,
           edit: true,
         },
       },
@@ -45,5 +47,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     },
   })
 
-  return data(result)
+  let parsedResult = z.looseObject({
+    item: z.looseObject({
+      id: z.string(),
+      name: z.string(),
+      size: z.coerce.number().min(0),
+      inclusiveSize: z.coerce.number().min(0),
+    }),
+  })
+  let dataResult = parsedResult.array().parse(result.data)
+  return data({ data: dataResult })
 }

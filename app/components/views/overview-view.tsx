@@ -19,8 +19,12 @@ import { cn } from '@/utils/styles'
 import { FilesEmptyState } from '@/components/states/files-empty-state'
 import {
   FavoriteIcon,
+  FavoritesFillIcon,
+  FolderFillIcon,
   FolderIcon,
+  PinFillIcon,
   PinIcon,
+  RecentFillIcon,
   RecentIcon,
 } from '@/components/icons'
 
@@ -36,7 +40,7 @@ export interface OverviewViewProps {
 
 const ACTIVITY_VERB: Record<OverviewActivityKind, string> = {
   viewed: 'viewed',
-  created: 'uploaded',
+  created: 'created',
   edited: 'edited',
   renamed: 'renamed',
   moved: 'moved',
@@ -49,15 +53,33 @@ const ACTIVITY_VERB: Record<OverviewActivityKind, string> = {
   pinned: 'pinned',
   unpinned: 'unpinned',
   reordered: 'reordered',
+  changed_permission: 'changed permissions for',
+  uploaded: 'uploaded',
+  collection_item_added: 'added items to',
+  collection_item_removed: 'removed items from',
+  collection_emptied: 'emptied',
+  favorited: 'favorited',
+  unfavorited: 'unfavorited',
+  bucket_emptied: 'emptied stash',
 }
 
-function greetingPart(hour: number) {
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
+type DayPart = 'morning' | 'afternoon' | 'evening' | 'night'
+
+function toDayPart(hour: number): DayPart {
+  if (hour < 12) return 'morning'
+  if (hour < 18) return 'afternoon'
+  if (hour < 21) return 'evening'
+  return 'night'
 }
 
-function formatRelative(value: Date | string | null | undefined) {
+const GREETINGS: Record<DayPart, string> = {
+  morning: 'Good morning',
+  afternoon: 'Good afternoon',
+  evening: 'Good evening',
+  night: 'Good night',
+}
+
+function toRelativeTime(value: Date | string | null | undefined) {
   if (!value) return null
   const date = typeof value === 'string' ? new Date(value) : value
   const diff = Date.now() - date.getTime()
@@ -74,7 +96,7 @@ function formatRelative(value: Date | string | null | undefined) {
 
 function Greeting({ name }: { name: string }) {
   const first = name.split(/\s+/)[0]
-  const part = greetingPart(new Date().getHours())
+  const part = GREETINGS[toDayPart(new Date().getHours())]
   return (
     <header className="flex items-end justify-between pb-4 border-b border-dashed border-input">
       <div>
@@ -108,27 +130,22 @@ function SectionLabel({
 
 function PanelCard({
   title,
-  count,
   icon,
   viewAll,
   children,
 }: {
   title: string
-  count: number
   icon: JSX.Element
   viewAll: { to: string; label: string }
-  children: JSX.Element
+  children: React.ReactNode
 }) {
   return (
     <Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden gap-0 py-0 shadow-none">
-      <CardHeader className="flex! items-baseline px-4 py-4">
+      <CardHeader className="flex! items-center px-4 py-4">
         <CardTitle className="text-sm uppercase font-stashly flex items-center gap-2">
           {icon}
           {title}
         </CardTitle>
-        <CardDescription className="text-sm text-muted-foreground ml-2">
-          {count}
-        </CardDescription>
         <Link
           to={viewAll.to}
           className="ml-auto text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
@@ -136,7 +153,9 @@ function PanelCard({
           {viewAll.label} →
         </Link>
       </CardHeader>
-      <CardContent className="p-4 pt-0">{children}</CardContent>
+      <CardContent className="p-4 pt-0 grid grid-cols-4 gap-2 flex-0">
+        {children}
+      </CardContent>
     </Card>
   )
 }
@@ -157,11 +176,18 @@ function ItemListRow({ item }: { item: StashItem }) {
   return (
     <Link
       to={url}
-      className="group flex items-center gap-3 p-2 rounded-md border border-dashed border-input hover:border-ring hover:bg-muted/30 transition-colors min-w-0"
+      className="group relative bg-muted rounded-md p-4 gap-3 justify-evenly cursor-pointer border-input border aspect-video w-full max-w-xs"
     >
-      <Icon className="size-5 shrink-0 text-muted-foreground" />
+      <Icon
+        className={cn(
+          'size-12 shrink-0',
+          item.type === 'folder' && 'fill-current!'
+        )}
+      />
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-stashly truncate">{item.name}</div>
+        <div className="text-sm font-stashly truncate" title={item.name}>
+          {item.name}
+        </div>
         <div className="text-xs uppercase tracking-wider text-muted-foreground truncate">
           {meta}
         </div>
@@ -215,7 +241,7 @@ function ActivityRow({ activity }: { activity: OverviewActivity }) {
           <span>{activity.item.name}</span>
         </span>
         <span className="text-xs uppercase tracking-wider text-muted-foreground tabular-nums shrink-0">
-          {formatRelative(activity.observedAt)}
+          {toRelativeTime(activity.observedAt)}
         </span>
       </Link>
     </li>
@@ -240,7 +266,19 @@ export function OverviewView({
 
   if (!hasAny) return <FilesEmptyState />
 
-  console.log('OverviewView',{user, pinned, favorites, suggestedFolders, suggestedFiles, activity  })
+  console.log('OverviewView', {
+    user,
+    pinned,
+    favorites,
+    suggestedFolders,
+    suggestedFiles,
+    activity,
+  })
+
+  let pinnedRows = pinned
+    .slice(0, 4)
+    .map((item) => <ItemListRow key={item.id} item={item} />)
+
   return (
     <div className={cn('flex flex-col gap-6 w-full', className)}>
       <Greeting name={user.name} />
@@ -249,35 +287,29 @@ export function OverviewView({
           {pinned.length > 0 && (
             <PanelCard
               title="Pinned"
-              count={pinned.length}
-              icon={<PinIcon className="size-5 text-accent-foreground" />}
+              icon={<PinFillIcon className="size-5 text-accent-foreground" />}
               viewAll={{
                 to: href('/:me/stash/pinned', { me: user.id }),
                 label: 'View all',
               }}
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {pinned.slice(0, 6).map((item) => (
-                  <ItemListRow key={item.id} item={item} />
-                ))}
-              </div>
+              {pinnedRows}
             </PanelCard>
           )}
           {favorites.length > 0 && (
             <PanelCard
               title="Favorites"
-              count={favorites.length}
-              icon={<FavoriteIcon className="size-5 text-accent-foreground" />}
+              icon={
+                <FavoritesFillIcon className="size-5 text-accent-foreground" />
+              }
               viewAll={{
                 to: href('/:me/stash/favorites', { me: user.id }),
                 label: 'View all',
               }}
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {favorites.slice(0, 6).map((item) => (
-                  <ItemListRow key={item.id} item={item} />
-                ))}
-              </div>
+              {favorites.slice(0, 4).map((item) => (
+                <ItemListRow key={item.id} item={item} />
+              ))}
             </PanelCard>
           )}
         </div>
@@ -304,9 +336,9 @@ export function OverviewView({
       )}
       {activity.length > 0 && (
         <Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden gap-0 py-0 shadow-none">
-          <CardHeader className="flex! items-baseline px-4 py-4">
+          <CardHeader className="flex! items-center px-4 py-4">
             <CardTitle className="text-sm uppercase font-stashly flex items-center gap-2">
-              <RecentIcon className="size-5 text-muted-foreground" />
+              <RecentFillIcon className="size-5 text-muted-foreground" />
               Activity
             </CardTitle>
             <CardDescription className="text-sm text-muted-foreground ml-2">

@@ -2,6 +2,35 @@ import { prisma } from '@/services/db'
 import { findQuotaByUserId, toQuotaStatus } from './quota-actions'
 import { emptyBucket } from './s3'
 import type { ItemCategory } from '@/prisma/enums'
+import { createActivity } from './activity-actions'
+import { getPrefixForModel, toObjectId } from '@/utils/converters'
+
+function recordBucketEmptied(rootId: string) {
+  Promise.resolve()
+    .then(() =>
+      createActivity({
+        item: { connect: { id: rootId } },
+        time: {
+          create: {
+            id: toObjectId(getPrefixForModel('ActivityTime')),
+            observedAt: new Date(),
+          },
+        },
+        action: {
+          create: {
+            id: toObjectId(getPrefixForModel('ItemAction')),
+            bucket: {
+              create: {
+                id: toObjectId(getPrefixForModel('BucketAction')),
+                kind: 'emptied',
+              },
+            },
+          },
+        },
+      })
+    )
+    .catch(() => {})
+}
 
 export interface CategoryBreakdown {
   category: ItemCategory
@@ -175,4 +204,6 @@ export async function emptyUserBucket(userId: string) {
   if (user?.bucket) {
     await emptyBucket(user.bucket)
   }
+
+  if (rootId) recordBucketEmptied(rootId)
 }

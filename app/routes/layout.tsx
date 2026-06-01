@@ -5,13 +5,17 @@ import { SidebarProvider } from '@/components/ui/sidebar'
 import { UploadPanel } from '@/components/upload'
 import { UploadThumbnailRunner } from '@/components/upload/upload-thumbnail-runner'
 import { auth } from '@/services/auth'
-import { findStoragePlanById, findDefaultStoragePlan } from '@/.server/storagePlan-actions'
+import {
+  findStoragePlanById,
+  findDefaultStoragePlan,
+} from '@/.server/storagePlan-actions'
 import { prisma } from '@/services/db'
 import { Outlet, redirect, type ShouldRevalidateFunction } from 'react-router'
 import type { Route } from './+types/layout'
 import { sidebarCookie } from '@/.server/sidebar'
 import z from 'zod'
 import { Confirm } from '@/components/confirm-renderer'
+import { AppToolbar } from '@/components/app-toolbar'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
@@ -64,6 +68,7 @@ export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
     <SidebarProvider defaultOpen={sidebarState}>
       <AppSidebar user={user} workspaces={workspaces} />
       <AppContent>
+        <AppToolbar />
         <Outlet />
         <UploadPanel user={user} />
         <UploadThumbnailRunner />

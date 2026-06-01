@@ -96,6 +96,7 @@ export const itemsApiRouteInput = z.discriminatedUnion('intent', [
     parentId: z.string(),
     ownerId: z.string(),
     category: z.string().optional(),
+    uploadId: z.string(),
   }),
   z.object({
     intent: z.literal('create_folder'),
@@ -604,7 +605,7 @@ export const permissionsApiRouteInput = z.discriminatedUnion('intent', [
 
 export const thumbnailCreateSchema = z.object({
   itemId: z.string().nonempty(),
-  url: z.string().nonempty(), // hex color e.g. '#3b82f6'
+  url: z.string().nonempty(), 
   view: z.enum(['list', 'grid', 'river', 'waterfall']).default('grid'),
   size: z.enum(['small', 'medium', 'large', 'original', 'custom']).default('medium'),
 })

@@ -38,7 +38,12 @@ const defaultInclude = {
       version: true,
       comment: true,
       permission: true,
+      upload: true,
+      pin: true,
       edit: true,
+      collection: true,
+      favorite: true,
+      bucket: true,
     },
   },
   access: true,
@@ -202,9 +207,17 @@ export type OverviewActivityKind =
   | 'deleted'
   | 'commented'
   | 'updated'
+  | 'uploaded'
   | 'pinned'
   | 'unpinned'
   | 'reordered'
+  | 'changed_permission'
+  | 'collection_item_added'
+  | 'collection_item_removed'
+  | 'collection_emptied'
+  | 'favorited'
+  | 'unfavorited'
+  | 'bucket_emptied'
 
 export interface OverviewActivity {
   id: string
@@ -263,6 +276,10 @@ export async function getRecentActivityForUser({
           permission: { select: { id: true } },
           edit: { select: { id: true } },
           pin: { select: { id: true, kind: true } },
+          upload: { select: { id: true } },
+          collection: { select: { id: true, kind: true } },
+          favorite: { select: { id: true, kind: true } },
+          bucket: { select: { id: true, kind: true } },
         },
       },
     },
@@ -276,12 +293,23 @@ export async function getRecentActivityForUser({
     else if (a?.rename) kind = 'renamed'
     else if (a?.move) kind = 'moved'
     else if (a?.copy) kind = 'copied'
-    else if (a?.share || a?.permission) kind = 'shared'
+    else if (a?.share) kind = 'shared'
+    else if (a?.permission) kind = 'changed_permission'
     else if (a?.restore) kind = 'restored'
     else if (a?.delete) kind = 'deleted'
     else if (a?.comment) kind = 'commented'
     else if (a?.version) kind = 'updated'
+    else if (a?.upload) kind = 'uploaded'
     else if (a?.pin) kind = a.pin.kind
+    else if (a?.collection) {
+      kind =
+        a.collection.kind === 'item_added'
+          ? 'collection_item_added'
+          : a.collection.kind === 'item_removed'
+            ? 'collection_item_removed'
+            : 'collection_emptied'
+    } else if (a?.favorite) kind = a.favorite.kind
+    else if (a?.bucket) kind = 'bucket_emptied'
     else if (row.access) kind = 'viewed'
 
     return {

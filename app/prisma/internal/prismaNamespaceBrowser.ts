@@ -57,6 +57,7 @@ export const ModelName = {
   AccessAction: 'AccessAction',
   CommentAction: 'CommentAction',
   CreateAction: 'CreateAction',
+  UploadAction: 'UploadAction',
   DeleteAction: 'DeleteAction',
   EditAction: 'EditAction',
   MoveAction: 'MoveAction',
@@ -66,6 +67,9 @@ export const ModelName = {
   ShareAction: 'ShareAction',
   VersionAction: 'VersionAction',
   PinAction: 'PinAction',
+  CollectionAction: 'CollectionAction',
+  FavoriteAction: 'FavoriteAction',
+  BucketAction: 'BucketAction',
   Activity: 'Activity',
   ActivityTime: 'ActivityTime',
   AuditLog: 'AuditLog',
@@ -160,7 +164,11 @@ export const ItemActionScalarFieldEnum = {
   activityId: 'activityId',
   copyActionId: 'copyActionId',
   permissionActionId: 'permissionActionId',
-  pinActionId: 'pinActionId'
+  pinActionId: 'pinActionId',
+  uploadActionId: 'uploadActionId',
+  collectionActionId: 'collectionActionId',
+  favoriteActionId: 'favoriteActionId',
+  bucketActionId: 'bucketActionId'
 } as const
 
 export type ItemActionScalarFieldEnum = (typeof ItemActionScalarFieldEnum)[keyof typeof ItemActionScalarFieldEnum]
@@ -199,6 +207,14 @@ export const CreateActionScalarFieldEnum = {
 } as const
 
 export type CreateActionScalarFieldEnum = (typeof CreateActionScalarFieldEnum)[keyof typeof CreateActionScalarFieldEnum]
+
+
+export const UploadActionScalarFieldEnum = {
+  id: 'id',
+  uploadId: 'uploadId'
+} as const
+
+export type UploadActionScalarFieldEnum = (typeof UploadActionScalarFieldEnum)[keyof typeof UploadActionScalarFieldEnum]
 
 
 export const DeleteActionScalarFieldEnum = {
@@ -273,6 +289,33 @@ export const PinActionScalarFieldEnum = {
 } as const
 
 export type PinActionScalarFieldEnum = (typeof PinActionScalarFieldEnum)[keyof typeof PinActionScalarFieldEnum]
+
+
+export const CollectionActionScalarFieldEnum = {
+  id: 'id',
+  kind: 'kind',
+  collectionId: 'collectionId',
+  itemId: 'itemId',
+  count: 'count'
+} as const
+
+export type CollectionActionScalarFieldEnum = (typeof CollectionActionScalarFieldEnum)[keyof typeof CollectionActionScalarFieldEnum]
+
+
+export const FavoriteActionScalarFieldEnum = {
+  id: 'id',
+  kind: 'kind'
+} as const
+
+export type FavoriteActionScalarFieldEnum = (typeof FavoriteActionScalarFieldEnum)[keyof typeof FavoriteActionScalarFieldEnum]
+
+
+export const BucketActionScalarFieldEnum = {
+  id: 'id',
+  kind: 'kind'
+} as const
+
+export type BucketActionScalarFieldEnum = (typeof BucketActionScalarFieldEnum)[keyof typeof BucketActionScalarFieldEnum]
 
 
 export const ActivityScalarFieldEnum = {

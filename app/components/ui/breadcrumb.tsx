@@ -3,7 +3,7 @@ import { Slot as SlotPrimitive } from 'radix-ui'
 import { ChevronRight, MoreHorizontal } from 'lucide-react'
 
 import { cn } from '@/utils/styles'
-import { MenuDotsIcon } from '../icons'
+import { MenuDotsIcon, MoreFillIcon } from '../icons'
 
 function Breadcrumb({ ...props }: React.ComponentProps<'nav'>) {
   return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />
@@ -14,7 +14,7 @@ function BreadcrumbList({ className, ...props }: React.ComponentProps<'ol'>) {
     <ol
       data-slot="breadcrumb-list"
       className={cn(
-        'text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm break-words sm:gap-2.5',
+        'text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm wrap-break-word sm:gap-2.5',
         className
       )}
       {...props}
@@ -91,10 +91,10 @@ function BreadcrumbEllipsis({
       data-slot="breadcrumb-ellipsis"
       role="presentation"
       aria-hidden="true"
-      className={cn('flex size-9 items-center justify-center', className)}
+      className={cn('flex size-10! items-center justify-center', className)}
       {...props}
     >
-      {children ?? <MenuDotsIcon className="size-4" />}
+      {children ?? <MoreFillIcon className="size-5!" />}
       <span className="sr-only">More</span>
     </span>
   )

@@ -80,7 +80,10 @@ const Item = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuItem
     ref={ref}
-    className={cn('items-start hover:cursor-pointer [&_svg]:size-5!', className)}
+    className={cn(
+      'items-start hover:cursor-pointer [&_svg]:size-5!',
+      className
+    )}
     {...props}
   />
 )) as React.ForwardRefExoticComponent<
@@ -178,6 +181,7 @@ function Favorite(props: ItemProps) {
 
 function Pin(props: ItemProps) {
   const { id, pins, user } = useItemCard()
+  console.log('Pin component', { id, pins, user })
   const initiallyPinned =
     Array.isArray(pins) && pins.some((p) => p.pinnedById === user?.id)
   const { pinned, toggle, isPending } = usePinItem(id, initiallyPinned)
@@ -186,10 +190,11 @@ function Pin(props: ItemProps) {
     <Item
       {...props}
       disabled={isPending}
-      onSelect={(e) => {
+      onClick={(e) => {
         e.preventDefault()
+        e.stopPropagation()
         toggle()
-        props.onSelect?.(e)
+        props.onClick?.(e)
       }}
     >
       {pinned ? (
@@ -213,10 +218,11 @@ function Lock(props: ItemProps) {
     <Item
       {...props}
       disabled={isPending}
-      onSelect={(e) => {
+      onClick={(e) => {
         e.preventDefault()
+        e.stopPropagation()
         toggle()
-        props.onSelect?.(e)
+        props.onClick?.(e)
       }}
     >
       {locked ? (

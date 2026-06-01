@@ -32,6 +32,7 @@ import { ItemCardContext, useItemCard } from '@/hooks/useItemCard'
 import { useItemDragDrop, DRAG_ITEM_KEY } from '@/hooks/useItemDragDrop'
 import { FolderIcon } from '@/components/icons'
 import { Actions as ItemCardActions } from './item-card-actions'
+import { useLiveThumbnail } from '@/hooks/thumbnail-signal'
 
 export interface ItemCardProps extends StashItem {
   asChild?: boolean
@@ -145,7 +146,7 @@ function ItemCardCheckBox({
       onCheckedChange={handleCheckedChange}
       data-slot="item-checkbox"
       className={cn(
-        'size-6 z-10 place-self-start hover:cursor-pointer bg-input',
+        'size-6 z-10 place-self-start hover:cursor-pointer bg-muted! aria-checked:bg-primary!',
         className
       )}
       name={name}
@@ -183,22 +184,33 @@ const ItemThumbnail = React.forwardRef<
 ItemThumbnail.displayName = 'ItemThumbnail'
 
 const ItemThumbnailImage = React.forwardRef<
-  React.ComponentRef<typeof AvatarPrimitive.Image>,
-  Omit<React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>, 'src'>
+  HTMLImageElement,
+  Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'>
 >((props, ref) => {
-  const { thumbnails, name } = useItemCard()
-  const thumbnail = thumbnails?.find((t) => t.url && !t.url.startsWith('#'))
+  const { id, thumbnails, name } = useItemCard()
+  const live = useLiveThumbnail(id)
+  const persisted = thumbnails?.find((t) => t.url && !t.url.startsWith('#'))
   const { className, alt, ...rest } = props
-  if (!thumbnail?.url) return null
+
+  const src = live?.src ?? persisted?.url
+  const width = live?.width ?? persisted?.width ?? undefined
+  const height = live?.height ?? persisted?.height ?? undefined
+  if (!src) return null
+  // Plain <img> (not Radix Avatar.Image) so progressive src swaps don't
+  // flash the Fallback during each stage's load. The browser holds the
+  // prior frame until the new src decodes. Absolute-positioned over the
+  // sibling Fallback, which shows through only on the very first load.
   return (
-    <AvatarPrimitive.Image
+    <img
       ref={ref}
-      src={thumbnail.url}
+      src={src}
       alt={alt ?? name}
-      width={thumbnail.width ?? undefined}
-      height={thumbnail.height ?? undefined}
+      width={width}
+      height={height}
+      decoding="async"
       data-slot="item-thumbnail-image"
-      className={cn('w-full h-full object-cover rounded-md', className)}
+      data-stage={live?.stage}
+      className={cn('absolute inset-0 w-full h-full object-cover rounded-md', className)}
       {...rest}
     />
   )
@@ -412,7 +424,9 @@ const ItemCardRoot = ({
           // Ignore clicks from portaled elements (dialogs, dropdowns)
           if (!e.currentTarget.contains(e.target as Node)) return false
           e.stopPropagation()
-          navigate(layout ? `${to}?layout=${layout}&take=${take}` : to)
+          navigate(layout ? `${to}?layout=${layout}&take=${take}` : to, {
+            state:{ name: props.name }
+          })
         }}
       >
         {children}

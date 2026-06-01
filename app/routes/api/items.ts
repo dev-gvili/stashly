@@ -127,6 +127,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
     case 'create_folder': {
       try {
+        console.log('Creating folder with data:', parsedData)
         const folder = await createFolder(
           parsedData.name,
           parsedData.parentId,
@@ -153,6 +154,7 @@ export async function action({ request, params }: Route.ActionArgs) {
           parentId: parsedData.parentId,
           ownerId: parsedData.ownerId,
           category: parsedData.category,
+          uploadId: parsedData.uploadId,
         })
         const serializable = z
           .object({ size: z.coerce.string(), inclusiveSize: z.coerce.string() })

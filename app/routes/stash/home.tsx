@@ -52,7 +52,9 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
 
   if (
     formData?.get('intent') === 'move_items' ||
-    formData?.get('intent') === 'trash_items'
+    formData?.get('intent') === 'trash_items' ||
+    formData?.get('intent') === 'create_folder' ||
+    formData?.get('intent') === 'create_upload_item'
   ) {
     return true
   }

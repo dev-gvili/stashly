@@ -27,6 +27,36 @@ import { formatSize } from '@/utils/formaters'
 import { searchFactory } from '@/utils/search'
 import { buildItemFilters } from '@/utils/filters/item.filters'
 
+function recordFavoriteActivity(
+  itemId: string,
+  kind: 'favorited' | 'unfavorited'
+) {
+  Promise.resolve()
+    .then(() =>
+      createActivity({
+        item: { connect: { id: itemId } },
+        time: {
+          create: {
+            id: toObjectId(getPrefixForModel('ActivityTime')),
+            observedAt: new Date(),
+          },
+        },
+        action: {
+          create: {
+            id: toObjectId(getPrefixForModel('ItemAction')),
+            favorite: {
+              create: {
+                id: toObjectId(getPrefixForModel('FavoriteAction')),
+                kind,
+              },
+            },
+          },
+        },
+      })
+    )
+    .catch(() => {})
+}
+
 /**
  * Get an item with its permissions, checking if the user has access.
  * @param userId The ID of the user requesting the item.
@@ -56,7 +86,10 @@ export async function getItemWithPermissions(userId: string, itemId: string) {
  */
 export async function renameItem(itemId: string, newName: string) {
   return await prisma.$transaction(async (tx) => {
-    const existing = await tx.item.findUniqueOrThrow({ where: { id: itemId }, select: { name: true } })
+    const existing = await tx.item.findUniqueOrThrow({
+      where: { id: itemId },
+      select: { name: true },
+    })
 
     // 1. Update the item's name
     const item = await tx.item.update({
@@ -67,8 +100,24 @@ export async function renameItem(itemId: string, newName: string) {
 
     createActivity({
       item: { connect: { id: itemId } },
-      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), rename: { create: { id: toObjectId(getPrefixForModel('RenameAction')), oldName: existing.name, newName } } } },
+      time: {
+        create: {
+          id: toObjectId(getPrefixForModel('ActivityTime')),
+          observedAt: new Date(),
+        },
+      },
+      action: {
+        create: {
+          id: toObjectId(getPrefixForModel('ItemAction')),
+          rename: {
+            create: {
+              id: toObjectId(getPrefixForModel('RenameAction')),
+              oldName: existing.name,
+              newName,
+            },
+          },
+        },
+      },
     }).catch(() => {})
 
     return item
@@ -199,8 +248,24 @@ export async function moveItem(
 
     createActivity({
       item: { connect: { id: itemId } },
-      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), move: { create: { id: toObjectId(getPrefixForModel('MoveAction')), from: itemToMove.parentId ?? '', to: targetFolderId } } } },
+      time: {
+        create: {
+          id: toObjectId(getPrefixForModel('ActivityTime')),
+          observedAt: new Date(),
+        },
+      },
+      action: {
+        create: {
+          id: toObjectId(getPrefixForModel('ItemAction')),
+          move: {
+            create: {
+              id: toObjectId(getPrefixForModel('MoveAction')),
+              from: itemToMove.parentId ?? '',
+              to: targetFolderId,
+            },
+          },
+        },
+      },
     }).catch(() => {})
 
     return item
@@ -391,8 +456,24 @@ export async function trashItems(ids: string[], userId: string) {
     const meta = metaMap[id]
     createActivity({
       item: { connect: { id } },
-      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), delete: { create: { id: toObjectId(getPrefixForModel('DeleteAction')), name: meta?.name ?? id, itemType: meta?.type === 'folder' ? 'folder' : 'file' } } } },
+      time: {
+        create: {
+          id: toObjectId(getPrefixForModel('ActivityTime')),
+          observedAt: new Date(),
+        },
+      },
+      action: {
+        create: {
+          id: toObjectId(getPrefixForModel('ItemAction')),
+          delete: {
+            create: {
+              id: toObjectId(getPrefixForModel('DeleteAction')),
+              name: meta?.name ?? id,
+              itemType: meta?.type === 'folder' ? 'folder' : 'file',
+            },
+          },
+        },
+      },
     }).catch(() => {})
   }
 
@@ -481,8 +562,20 @@ export async function restoreItems(ids: string[], userId: string) {
   for (const id of ids) {
     createActivity({
       item: { connect: { id } },
-      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), restore: { create: { id: toObjectId(getPrefixForModel('RestoreAction')) } } } },
+      time: {
+        create: {
+          id: toObjectId(getPrefixForModel('ActivityTime')),
+          observedAt: new Date(),
+        },
+      },
+      action: {
+        create: {
+          id: toObjectId(getPrefixForModel('ItemAction')),
+          restore: {
+            create: { id: toObjectId(getPrefixForModel('RestoreAction')) },
+          },
+        },
+      },
     }).catch(() => {})
   }
 
@@ -505,7 +598,8 @@ export async function deleteItem(id: string, userId: string) {
   if (size > 0n) {
     // Items deleted from trash: reduce deleted quota.
     // Items force-deleted while active: reduce used quota.
-    const quotaFn = deleted.status === 'trashed' ? onItemsDeleted : onActiveItemsDeleted
+    const quotaFn =
+      deleted.status === 'trashed' ? onItemsDeleted : onActiveItemsDeleted
     Promise.resolve()
       .then(() => quotaFn({ userId, dataSize: size }))
       .catch(() => {})
@@ -513,8 +607,24 @@ export async function deleteItem(id: string, userId: string) {
 
   createActivity({
     item: { connect: { id } },
-    time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-    action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), delete: { create: { id: toObjectId(getPrefixForModel('DeleteAction')), name: deleted.name, itemType: deleted.type === 'folder' ? 'folder' : 'file' } } } },
+    time: {
+      create: {
+        id: toObjectId(getPrefixForModel('ActivityTime')),
+        observedAt: new Date(),
+      },
+    },
+    action: {
+      create: {
+        id: toObjectId(getPrefixForModel('ItemAction')),
+        delete: {
+          create: {
+            id: toObjectId(getPrefixForModel('DeleteAction')),
+            name: deleted.name,
+            itemType: deleted.type === 'folder' ? 'folder' : 'file',
+          },
+        },
+      },
+    },
   }).catch(() => {})
 
   return deleted
@@ -674,8 +784,24 @@ export async function copyItem(
 
       createActivity({
         item: { connect: { id: newItem.id } },
-        time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), copy: { create: { id: toObjectId(getPrefixForModel('CopyAction')), from: itemId, to: targetParentId ?? '' } } } },
+        time: {
+          create: {
+            id: toObjectId(getPrefixForModel('ActivityTime')),
+            observedAt: new Date(),
+          },
+        },
+        action: {
+          create: {
+            id: toObjectId(getPrefixForModel('ItemAction')),
+            copy: {
+              create: {
+                id: toObjectId(getPrefixForModel('CopyAction')),
+                from: itemId,
+                to: targetParentId ?? '',
+              },
+            },
+          },
+        },
       }).catch(() => {})
 
       return newItem
@@ -721,8 +847,24 @@ export async function copyItem(
 
       createActivity({
         item: { connect: { id: newItem.id } },
-        time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), copy: { create: { id: toObjectId(getPrefixForModel('CopyAction')), from: itemId, to: targetParentId ?? '' } } } },
+        time: {
+          create: {
+            id: toObjectId(getPrefixForModel('ActivityTime')),
+            observedAt: new Date(),
+          },
+        },
+        action: {
+          create: {
+            id: toObjectId(getPrefixForModel('ItemAction')),
+            copy: {
+              create: {
+                id: toObjectId(getPrefixForModel('CopyAction')),
+                from: itemId,
+                to: targetParentId ?? '',
+              },
+            },
+          },
+        },
       }).catch(() => {})
 
       return newItem
@@ -763,8 +905,24 @@ export async function copyItem(
 
       createActivity({
         item: { connect: { id: newItem.id } },
-        time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), copy: { create: { id: toObjectId(getPrefixForModel('CopyAction')), from: itemId, to: targetParentId ?? '' } } } },
+        time: {
+          create: {
+            id: toObjectId(getPrefixForModel('ActivityTime')),
+            observedAt: new Date(),
+          },
+        },
+        action: {
+          create: {
+            id: toObjectId(getPrefixForModel('ItemAction')),
+            copy: {
+              create: {
+                id: toObjectId(getPrefixForModel('CopyAction')),
+                from: itemId,
+                to: targetParentId ?? '',
+              },
+            },
+          },
+        },
       }).catch(() => {})
 
       return newItem
@@ -815,8 +973,24 @@ export async function copyItem(
 
       createActivity({
         item: { connect: { id: newItem.id } },
-        time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-        action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), copy: { create: { id: toObjectId(getPrefixForModel('CopyAction')), from: itemId, to: targetParentId ?? '' } } } },
+        time: {
+          create: {
+            id: toObjectId(getPrefixForModel('ActivityTime')),
+            observedAt: new Date(),
+          },
+        },
+        action: {
+          create: {
+            id: toObjectId(getPrefixForModel('ItemAction')),
+            copy: {
+              create: {
+                id: toObjectId(getPrefixForModel('CopyAction')),
+                from: itemId,
+                to: targetParentId ?? '',
+              },
+            },
+          },
+        },
       }).catch(() => {})
 
       return newItem
@@ -870,8 +1044,20 @@ export async function createFolder(
 
   createActivity({
     item: { connect: { id: folder.id } },
-    time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-    action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), create: { create: { id: toObjectId(getPrefixForModel('CreateAction')) } } } },
+    time: {
+      create: {
+        id: toObjectId(getPrefixForModel('ActivityTime')),
+        observedAt: new Date(),
+      },
+    },
+    action: {
+      create: {
+        id: toObjectId(getPrefixForModel('ItemAction')),
+        create: {
+          create: { id: toObjectId(getPrefixForModel('CreateAction')) },
+        },
+      },
+    },
   }).catch(() => {})
 
   return folder
@@ -888,7 +1074,12 @@ async function findOrCreateFolderPath(
   const createdFolderIds: string[] = []
   for (const folderName of pathParts) {
     const existing = await tx.item.findFirst({
-      where: { name: folderName, parentId: currentParentId, type: 'folder', ownerId },
+      where: {
+        name: folderName,
+        parentId: currentParentId,
+        type: 'folder',
+        ownerId,
+      },
       select: { id: true },
     })
     if (existing) {
@@ -908,7 +1099,11 @@ async function findOrCreateFolderPath(
             create: {
               id: toObjectId(getPrefixForModel('Folder')),
               view: {
-                create: { viewType: 'grid', sortBy: 'type', sortOrder: 'ascending' },
+                create: {
+                  viewType: 'grid',
+                  sortBy: 'type',
+                  sortOrder: 'ascending',
+                },
               },
             },
           },
@@ -976,6 +1171,7 @@ export async function createUploadedItem(data: {
   driveId: string
   parentId: string
   ownerId: string
+  uploadId: string
   category?: string
 }) {
   let createdFolderIds: string[] = []
@@ -985,7 +1181,13 @@ export async function createUploadedItem(data: {
     const pathParts = segments.slice(1, -1)
     let resolvedParentId = rootId
     if (pathParts.length > 0) {
-      const folderResult = await findOrCreateFolderPath(pathParts, rootId, data.ownerId, data.driveId, tx)
+      const folderResult = await findOrCreateFolderPath(
+        pathParts,
+        rootId,
+        data.ownerId,
+        data.driveId,
+        tx
+      )
       resolvedParentId = folderResult.parentId
       createdFolderIds = folderResult.createdFolderIds
     }
@@ -1001,6 +1203,7 @@ export async function createUploadedItem(data: {
         driveId: data.driveId,
         parentId: resolvedParentId,
         size: data.size,
+        uploadId: data.uploadId,
         file: {
           create: {
             id: toObjectId(getPrefixForModel('File')),
@@ -1022,12 +1225,31 @@ export async function createUploadedItem(data: {
       select: defaultItemSelect,
     })
 
-    await onItemsUploaded({ userId: data.ownerId, dataSize: data.size, client: tx })
+    await onItemsUploaded({
+      userId: data.ownerId,
+      dataSize: data.size,
+      client: tx,
+    })
 
     createActivity({
       item: { connect: { id: item.id } },
-      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), create: { create: { id: toObjectId(getPrefixForModel('CreateAction')) } } } },
+      time: {
+        create: {
+          id: toObjectId(getPrefixForModel('ActivityTime')),
+          observedAt: new Date(),
+        },
+      },
+      action: {
+        create: {
+          id: toObjectId(getPrefixForModel('ItemAction')),
+          upload: {
+            create: {
+              uploadId: item.uploadId ?? '',
+              id: toObjectId(getPrefixForModel('UploadAction')),
+            },
+          },
+        },
+      },
     }).catch(() => {})
 
     return item
@@ -1035,11 +1257,30 @@ export async function createUploadedItem(data: {
 
   for (const folderId of createdFolderIds) {
     const id = folderId
-    Promise.resolve().then(() => createActivity({
-      item: { connect: { id } },
-      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
-      action: { create: { id: toObjectId(getPrefixForModel('ItemAction')), create: { create: { id: toObjectId(getPrefixForModel('CreateAction')) } } } },
-    })).catch(() => {})
+    Promise.resolve()
+      .then(() =>
+        createActivity({
+          item: { connect: { id } },
+          time: {
+            create: {
+              id: toObjectId(getPrefixForModel('ActivityTime')),
+              observedAt: new Date(),
+            },
+          },
+          action: {
+            create: {
+              id: toObjectId(getPrefixForModel('ItemAction')),
+              upload: {
+                create: {
+                  id: toObjectId(getPrefixForModel('UploadAction')),
+                  uploadId: data.uploadId,
+                },
+              },
+            },
+          },
+        })
+      )
+      .catch(() => {})
   }
 
   return result
@@ -1136,7 +1377,10 @@ export async function getFolderContent(params: GetFolderContentParams) {
     for (const entry of arr) {
       const keys = Object.keys(entry)
       if (keys.length > 1) {
-        for (const k of keys) orderBy.push({ [k]: (entry as Record<string, unknown>)[k] } as Prisma.ItemOrderByWithRelationInput)
+        for (const k of keys)
+          orderBy.push({
+            [k]: (entry as Record<string, unknown>)[k],
+          } as Prisma.ItemOrderByWithRelationInput)
       } else {
         orderBy.push(entry)
       }
@@ -1748,6 +1992,7 @@ export async function getSuggestedItems(
       i."ownerId" = ${userId}
       AND i."driveId" = ${driveId}
       AND i.type::text = ${type}
+      AND i.name != 'root'
       AND i.status = 'normal'
       ${workspaceId ? Prisma.sql`AND i."workspaceId" = ${workspaceId}` : Prisma.empty}
     GROUP BY i.id, f.id, fo.id, li.id
@@ -1881,6 +2126,7 @@ const defaultItemSelect = {
   parentId: true,
   ownerId: true,
   workspaceId: true,
+  uploadId: true,
   folder: {
     select: {
       id: true,
@@ -1921,7 +2167,7 @@ const defaultItemSelect = {
  * Full-text / filter-based search over items.
  * Built with `searchFactory` using `buildItemFilters` for filter composition.
  * Supports cursor pagination and custom ordering.
- * 
+ *
  * @example
  * // Search for items with "report" in the name, sorted by creation date
  * const results = await searchItems({
@@ -1938,8 +2184,8 @@ const defaultItemSelect = {
  *     workspaceId: 'ws_123',
  *     tags: { has: 'important' },
  *   },
- * });  
- * 
+ * });
+ *
  */
 export const searchItems = searchFactory({
   dbDelegate: prisma.item,
@@ -1980,7 +2226,7 @@ export async function createItem(args: Prisma.ItemCreateArgs) {
  * Creates multiple item records in a single operation. Note that this does not support creating related facets (e.g. File, Folder) or relations (e.g. Favorites) — use `createManyItemsBatched` for that.
  *
  * @param args - Prisma `createMany` arguments (`data` is required).
- */ 
+ */
 export async function createManyItems(args: Prisma.ItemCreateManyArgs) {
   return prisma.item.createMany(args)
 }
@@ -2176,7 +2422,7 @@ export async function addFavorite(
   favoritedById: string,
   client: Prisma.TransactionClient = prisma
 ) {
-  return client.item.update({
+  const updated = await client.item.update({
     where: { id: itemId },
     data: {
       favorites: {
@@ -2187,9 +2433,9 @@ export async function addFavorite(
       },
     },
   })
+  recordFavoriteActivity(itemId, 'favorited')
+  return updated
 }
-
-
 
 /**
  * Removes a favorite record for the given user and item.
@@ -2208,10 +2454,12 @@ export async function removeFavorite(
     where: { itemId, favoritedById },
   })
   if (!item) return
-  return client.item.update({
+  const updated = await client.item.update({
     where: { id: itemId },
     data: { favorites: { delete: { id: item.id } } },
   })
+  recordFavoriteActivity(itemId, 'unfavorited')
+  return updated
 }
 
 /**
@@ -2307,9 +2555,18 @@ export async function getFileItem(fileId: string, folderId: string) {
           lockedBy: { select: { image: true, name: true, id: true } },
         },
       },
-      file: { select: { id: true, mimeType: true, extension: true, key: true } },
+      file: {
+        select: { id: true, mimeType: true, extension: true, key: true },
+      },
       thumbnails: {
-        select: { url: true, size: true, stage: true, view: true, width: true, height: true },
+        select: {
+          url: true,
+          size: true,
+          stage: true,
+          view: true,
+          width: true,
+          height: true,
+        },
       },
     },
   })

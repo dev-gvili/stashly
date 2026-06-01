@@ -1,34 +1,29 @@
 import { auth } from '@/services/auth'
-import { redirect } from 'react-router'
-import {
-  createThumbnail,
-  updateThumbnail,
-} from '@/services/thumbnail-actions'
+import { data, redirect } from 'react-router'
+import { createThumbnail, updateThumbnail } from '@/services/thumbnail-actions'
 import { parseFormData } from '@/utils/parsers'
-import { thumbnailCreateSchema, thumbnailUpdateSchema } from '@/schemas/api.schemas'
-import { getPresignedUrl } from '@/services/s3'
+import {
+  thumbnailCreateSchema,
+  thumbnailUpdateSchema,
+} from '@/schemas/api.schemas'
 import type { Route } from './+types/thumbnails'
-
-export async function loader({ request, params }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
-  if (!session) throw redirect('/auth/sign-in')
-
-  const itemId = params.itemId
-  if (!itemId) return new Response('Not found', { status: 404 })
-
-  const key = `thumbnails/${itemId}.webp`
-  const presignedUrl = await getPresignedUrl(session.user.bucket, 'get', key, 3600)
-  return redirect(presignedUrl, 302)
-}
 
 export async function action({ request, params }: Route.ActionArgs) {
   const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/sign-in')
 
   if (request.method === 'POST') {
-    const data = await parseFormData({ request, schema: thumbnailCreateSchema })
-    const thumbnail = await createThumbnail(params.itemId || data.itemId, data.url, data.view, data.size)
-    return Response.json({ id: thumbnail.id })
+    const parsedData = await parseFormData({
+      request,
+      schema: thumbnailCreateSchema,
+    })
+    const thumbnail = await createThumbnail(
+      params.itemId || parsedData.itemId,
+      parsedData.url,
+      parsedData.view,
+      parsedData.size
+    )
+    return data({ id: thumbnail.id })
   }
 
   if (request.method === 'PATCH') {
@@ -39,10 +34,27 @@ export async function action({ request, params }: Route.ActionArgs) {
     const view = url.searchParams.get('view') || 'grid'
     const size = url.searchParams.get('size') || 'medium'
 
-    const data = await parseFormData({ request, schema: thumbnailUpdateSchema })
-    await updateThumbnail(itemId, data.stage, data.url, data.width, data.height, view, size)
-    return Response.json({ ok: true })
+    const parsedData = await parseFormData({
+      request,
+      schema: thumbnailUpdateSchema,
+    })
+    await updateThumbnail(
+      itemId,
+      parsedData.stage,
+      parsedData.url,
+      parsedData.width,
+      parsedData.height,
+      view,
+      size
+    )
+    return data({
+      ok: true,
+      stage: parsedData.stage,
+      url: parsedData.url,
+      width: parsedData.width,
+      height: parsedData.height,
+    })
   }
 
-  return new Response('Method not allowed', { status: 405 })
+  return data('Method not allowed', { status: 405 })
 }

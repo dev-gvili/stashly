@@ -48,6 +48,11 @@ export type CommentAction = Prisma.CommentActionModel
  */
 export type CreateAction = Prisma.CreateActionModel
 /**
+ * Model UploadAction
+ * 
+ */
+export type UploadAction = Prisma.UploadActionModel
+/**
  * Model DeleteAction
  * 
  */
@@ -92,6 +97,21 @@ export type VersionAction = Prisma.VersionActionModel
  * 
  */
 export type PinAction = Prisma.PinActionModel
+/**
+ * Model CollectionAction
+ * 
+ */
+export type CollectionAction = Prisma.CollectionActionModel
+/**
+ * Model FavoriteAction
+ * 
+ */
+export type FavoriteAction = Prisma.FavoriteActionModel
+/**
+ * Model BucketAction
+ * 
+ */
+export type BucketAction = Prisma.BucketActionModel
 /**
  * Model Activity
  * 

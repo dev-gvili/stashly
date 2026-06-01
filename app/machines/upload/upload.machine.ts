@@ -82,6 +82,7 @@ const uploadMachine = setup({
           formData.append('parentId', mediaFile.key.split('/')[0])
           formData.append('ownerId', mediaFile.ownerId ?? user.id)
           formData.append('category', category)
+          formData.append('uploadId', mediaFile.uploadId ?? '')
 
           const res = await fetch('/api/items', {
             method: 'POST',

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { prisma } from '@/services/db'
 import { auth } from '@/.server/auth'
 import { redirect } from 'react-router'
-import { BackIcon, InfoIcon } from '@/components/icons'
+import { BackIcon, InfoIcon, RemoveIcon } from '@/components/icons'
 import { formatSize } from '@/utils/formaters'
 import { findManyActivities } from '@/services/activity-actions'
 import { ActivityFeed } from '@/components/core-components/activity-feed'
@@ -18,13 +18,19 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/ui/dialog'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarSeparator,
+} from '@/ui/sidebar'
 import { VisuallyHidden } from 'radix-ui'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const session = await auth.api.getSession(request)
   if (!session) throw redirect('/auth/sign-in')
 
-  const [_,item] = await Promise.all([
+  const [_, item] = await Promise.all([
     touchOpenedAt(params.itemId),
     prisma.item.findUniqueOrThrow({
       where: { id: params.itemId },
@@ -44,7 +50,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           where: { NOT: { url: { startsWith: '#' } } },
           orderBy: { stage: 'desc' },
           take: 1,
-          select: { url: true, width: true, height: true, stage: true, id: true },
+          select: {
+            url: true,
+            width: true,
+            height: true,
+            stage: true,
+            id: true,
+          },
         },
         image: {
           select: {
@@ -62,10 +74,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           },
         },
         video: {
-          select: { width: true, height: true, duration: true, frameRate: true },
+          select: {
+            width: true,
+            height: true,
+            duration: true,
+            frameRate: true,
+          },
         },
       },
-    })
+    }),
   ])
 
   const fileKey = item.file?.key ?? `${item.parentId}/${item.name}`
@@ -128,10 +145,10 @@ export default function GalleryImageDetail({
       : null
 
   return (
-    <Dialog open onOpenChange={(open) => !open && navigate(-1)} >
+    <Dialog open onOpenChange={(open) => !open && navigate(-1)}>
       <DialogContent
         showCloseButton={false}
-        className="grid grid-cols-[5fr_1fr] gap-0 p-0 w-screen h-screen max-w-none sm:max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none border-0 shadow-none bg-transparent backdrop-blur-sm"
+        className="grid grid-cols-[5fr_1fr] gap-0 w-screen h-screen max-w-none sm:max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none border-0 shadow-none bg-popover backdrop-blur-sm p-4"
         style={{ viewTransitionName: 'gallery-overlay' }}
       >
         <VisuallyHidden.Root>
@@ -140,126 +157,131 @@ export default function GalleryImageDetail({
         </VisuallyHidden.Root>
 
         {/* Left: image — 75% */}
-        <div className="@container flex items-center justify-center p-4 overflow-hidden bg-transparent" >
+        <div className="@container flex items-center justify-center p-4 overflow-hidden  ">
           <img
             src={fullUrl}
             alt={item.name}
             style={{
               viewTransitionName: `img-${item.id}`,
             }}
-            className="@landscape:max-h-full @landscape:w-full @portrait:h-full @portrait:max-w-full rounded-xl shadow-stashly @min-lg:max-w-[90%] @min-lg:max-h-[90%] object-contain"
+            className="@landscape:max-h-full @landscape:w-full @portrait:h-full @portrait:max-w-full rounded-md @min-lg:max-w-[90%] @min-lg:max-h-[90%] object-contain border border-input"
           />
         </div>
 
         {/* Right: sidebar — 25% */}
-        <aside
-          className="flex flex-col max-w-80 place-self-stretch  bg-background"
+        <Sidebar
+          id="gallery"
+          side="right"
+          collapsible="none"
+          variant="inset"
+          width="20rem"
+          className="place-self-stretch h-full rounded-md bg-card border border-input!"
           style={{ viewTransitionName: 'gallery-sidebar' }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
-          <header className="flex items-center gap-2 px-4 py-3">
+          <SidebarHeader className="flex-row justify-between gap-2 p-4 w-full h-auto">
+            <h1 className="text-lg font-medium wrap-break-word w-full max-w-max min-w-0">
+              {item.name}
+            </h1>
             <Button
-              variant="ghost"
-              size="icon"
+              variant="outline"
+              size="icon-sm"
               onClick={() => navigate(-1)}
               aria-label="Close"
+              className="bg-muted! border-input place-self-start shrink-0"
             >
-              <BackIcon className="size-5" />
+              <RemoveIcon className="size-5" />
             </Button>
-            <p className="flex-1 truncate text-sm font-medium">{item.name}</p>
-          </header>
-          <Separator />
+          </SidebarHeader>
 
-          <ScrollArea className="flex-1">
-            <div className="space-y-6 p-4">
-              {/* File info */}
-              <section>
-                <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  <InfoIcon className="size-3.5" />
-                  Details
-                </h3>
-                <dl className="space-y-2 text-sm">
-                  <Row label="Type" value={item.file?.mimeType} mono />
-                  <Row
-                    label="Extension"
-                    value={
-                      item.file?.extension ? `.${item.file.extension}` : null
-                    }
-                    mono
-                  />
-                  <Row
-                    label="Size"
-                    value={
-                      item.size
-                        ? formatSize('byte', 'unit', Number(item.size))
-                        : null
-                    }
-                  />
-                  <Row label="Dimensions" value={dims} mono />
-                  {durationVal && (
-                    <Row label="Duration" value={durationVal} mono />
-                  )}
-                  <Row label="Taken" value={takenVal} />
-                  <Row
-                    label="Added"
-                    value={new Date(item.createdAt).toLocaleDateString(
-                      undefined,
-                      {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
+          <SidebarContent>
+            <ScrollArea className="flex-1">
+              <div className="space-y-10 p-4">
+                {/* File info */}
+                <section>
+                  <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                    Details
+                  </h3>
+                  <dl className="space-y-2 text-sm">
+                    <Row label="Type" value={item.file?.mimeType} mono />
+                    <Row
+                      label="Extension"
+                      value={
+                        item.file?.extension ? `.${item.file.extension}` : null
                       }
-                    )}
-                  />
-                  <Row
-                    label="Modified"
-                    value={new Date(item.updatedAt).toLocaleDateString(
-                      undefined,
-                      {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
+                      mono
+                    />
+                    <Row
+                      label="Size"
+                      value={
+                        item.size
+                          ? formatSize('byte', 'unit', Number(item.size))
+                          : null
                       }
+                    />
+                    <Row label="Dimensions" value={dims} mono />
+                    {durationVal && (
+                      <Row label="Duration" value={durationVal} mono />
                     )}
-                  />
-                </dl>
-              </section>
+                    <Row label="Taken" value={takenVal} />
+                    <Row
+                      label="Added"
+                      value={new Date(item.createdAt).toLocaleDateString(
+                        undefined,
+                        {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        }
+                      )}
+                    />
+                    <Row
+                      label="Modified"
+                      value={new Date(item.updatedAt).toLocaleDateString(
+                        undefined,
+                        {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        }
+                      )}
+                    />
+                  </dl>
+                </section>
 
-              {(camera ||
-                exposure ||
-                isoVal ||
-                shutterVal ||
-                focalVal ||
-                gpsVal) && (
-                <>
-                  <Separator />
-                  <section>
-                    <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Camera
-                    </h3>
-                    <dl className="space-y-2 text-sm">
-                      <Row label="Camera" value={camera} />
-                      <Row label="Aperture" value={exposure} mono />
-                      <Row label="ISO" value={isoVal} mono />
-                      <Row label="Shutter" value={shutterVal} mono />
-                      <Row label="Focal length" value={focalVal} mono />
-                      <Row label="GPS" value={gpsVal} mono />
-                    </dl>
-                  </section>
-                </>
-              )}
+                {(camera ||
+                  exposure ||
+                  isoVal ||
+                  shutterVal ||
+                  focalVal ||
+                  gpsVal) && (
+                  <>
+                    <section>
+                      <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        Camera
+                      </h3>
+                      <dl className="space-y-2 text-sm">
+                        <Row label="Camera" value={camera} />
+                        <Row label="Aperture" value={exposure} mono />
+                        <Row label="ISO" value={isoVal} mono />
+                        <Row label="Shutter" value={shutterVal} mono />
+                        <Row label="Focal length" value={focalVal} mono />
+                        <Row label="GPS" value={gpsVal} mono />
+                      </dl>
+                    </section>
+                  </>
+                )}
 
-              <Separator />
-              <section>
-                <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Activity
-                </h3>
-                <ActivityFeed activities={activities} />
-              </section>
-            </div>
-          </ScrollArea>
-        </aside>
+                <section>
+                  <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                    Activity
+                  </h3>
+                  <ActivityFeed activities={activities} />
+                </section>
+              </div>
+            </ScrollArea>
+          </SidebarContent>
+        </Sidebar>
       </DialogContent>
     </Dialog>
   )

@@ -39,6 +39,10 @@ export type ItemActionMinAggregateOutputType = {
   copyActionId: string | null
   permissionActionId: string | null
   pinActionId: string | null
+  uploadActionId: string | null
+  collectionActionId: string | null
+  favoriteActionId: string | null
+  bucketActionId: string | null
 }
 
 export type ItemActionMaxAggregateOutputType = {
@@ -56,6 +60,10 @@ export type ItemActionMaxAggregateOutputType = {
   copyActionId: string | null
   permissionActionId: string | null
   pinActionId: string | null
+  uploadActionId: string | null
+  collectionActionId: string | null
+  favoriteActionId: string | null
+  bucketActionId: string | null
 }
 
 export type ItemActionCountAggregateOutputType = {
@@ -73,6 +81,10 @@ export type ItemActionCountAggregateOutputType = {
   copyActionId: number
   permissionActionId: number
   pinActionId: number
+  uploadActionId: number
+  collectionActionId: number
+  favoriteActionId: number
+  bucketActionId: number
   _all: number
 }
 
@@ -92,6 +104,10 @@ export type ItemActionMinAggregateInputType = {
   copyActionId?: true
   permissionActionId?: true
   pinActionId?: true
+  uploadActionId?: true
+  collectionActionId?: true
+  favoriteActionId?: true
+  bucketActionId?: true
 }
 
 export type ItemActionMaxAggregateInputType = {
@@ -109,6 +125,10 @@ export type ItemActionMaxAggregateInputType = {
   copyActionId?: true
   permissionActionId?: true
   pinActionId?: true
+  uploadActionId?: true
+  collectionActionId?: true
+  favoriteActionId?: true
+  bucketActionId?: true
 }
 
 export type ItemActionCountAggregateInputType = {
@@ -126,6 +146,10 @@ export type ItemActionCountAggregateInputType = {
   copyActionId?: true
   permissionActionId?: true
   pinActionId?: true
+  uploadActionId?: true
+  collectionActionId?: true
+  favoriteActionId?: true
+  bucketActionId?: true
   _all?: true
 }
 
@@ -216,6 +240,10 @@ export type ItemActionGroupByOutputType = {
   copyActionId: string | null
   permissionActionId: string | null
   pinActionId: string | null
+  uploadActionId: string | null
+  collectionActionId: string | null
+  favoriteActionId: string | null
+  bucketActionId: string | null
   _count: ItemActionCountAggregateOutputType | null
   _min: ItemActionMinAggregateOutputType | null
   _max: ItemActionMaxAggregateOutputType | null
@@ -254,6 +282,10 @@ export type ItemActionWhereInput = {
   copyActionId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
   permissionActionId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
   pinActionId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
+  uploadActionId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
+  collectionActionId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
+  favoriteActionId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
+  bucketActionId?: Prisma.StringNullableFilter<"ItemAction"> | string | null
   comment?: Prisma.XOR<Prisma.CommentActionNullableScalarRelationFilter, Prisma.CommentActionWhereInput> | null
   create?: Prisma.XOR<Prisma.CreateActionNullableScalarRelationFilter, Prisma.CreateActionWhereInput> | null
   delete?: Prisma.XOR<Prisma.DeleteActionNullableScalarRelationFilter, Prisma.DeleteActionWhereInput> | null
@@ -267,6 +299,10 @@ export type ItemActionWhereInput = {
   copy?: Prisma.XOR<Prisma.CopyActionNullableScalarRelationFilter, Prisma.CopyActionWhereInput> | null
   permission?: Prisma.XOR<Prisma.PermissionActionNullableScalarRelationFilter, Prisma.PermissionActionWhereInput> | null
   pin?: Prisma.XOR<Prisma.PinActionNullableScalarRelationFilter, Prisma.PinActionWhereInput> | null
+  upload?: Prisma.XOR<Prisma.UploadActionNullableScalarRelationFilter, Prisma.UploadActionWhereInput> | null
+  collection?: Prisma.XOR<Prisma.CollectionActionNullableScalarRelationFilter, Prisma.CollectionActionWhereInput> | null
+  favorite?: Prisma.XOR<Prisma.FavoriteActionNullableScalarRelationFilter, Prisma.FavoriteActionWhereInput> | null
+  bucket?: Prisma.XOR<Prisma.BucketActionNullableScalarRelationFilter, Prisma.BucketActionWhereInput> | null
 }
 
 export type ItemActionOrderByWithRelationInput = {
@@ -284,6 +320,10 @@ export type ItemActionOrderByWithRelationInput = {
   copyActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   permissionActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   pinActionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  uploadActionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  collectionActionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  favoriteActionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  bucketActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   comment?: Prisma.CommentActionOrderByWithRelationInput
   create?: Prisma.CreateActionOrderByWithRelationInput
   delete?: Prisma.DeleteActionOrderByWithRelationInput
@@ -297,6 +337,10 @@ export type ItemActionOrderByWithRelationInput = {
   copy?: Prisma.CopyActionOrderByWithRelationInput
   permission?: Prisma.PermissionActionOrderByWithRelationInput
   pin?: Prisma.PinActionOrderByWithRelationInput
+  upload?: Prisma.UploadActionOrderByWithRelationInput
+  collection?: Prisma.CollectionActionOrderByWithRelationInput
+  favorite?: Prisma.FavoriteActionOrderByWithRelationInput
+  bucket?: Prisma.BucketActionOrderByWithRelationInput
 }
 
 export type ItemActionWhereUniqueInput = Prisma.AtLeast<{
@@ -314,6 +358,10 @@ export type ItemActionWhereUniqueInput = Prisma.AtLeast<{
   copyActionId?: string
   permissionActionId?: string
   pinActionId?: string
+  uploadActionId?: string
+  collectionActionId?: string
+  favoriteActionId?: string
+  bucketActionId?: string
   AND?: Prisma.ItemActionWhereInput | Prisma.ItemActionWhereInput[]
   OR?: Prisma.ItemActionWhereInput[]
   NOT?: Prisma.ItemActionWhereInput | Prisma.ItemActionWhereInput[]
@@ -330,7 +378,11 @@ export type ItemActionWhereUniqueInput = Prisma.AtLeast<{
   copy?: Prisma.XOR<Prisma.CopyActionNullableScalarRelationFilter, Prisma.CopyActionWhereInput> | null
   permission?: Prisma.XOR<Prisma.PermissionActionNullableScalarRelationFilter, Prisma.PermissionActionWhereInput> | null
   pin?: Prisma.XOR<Prisma.PinActionNullableScalarRelationFilter, Prisma.PinActionWhereInput> | null
-}, "id" | "commentActionId" | "createActionId" | "deleteActionId" | "editActionId" | "moveActionId" | "renameActionId" | "restoreActionId" | "shareActionId" | "versionActionId" | "activityId" | "copyActionId" | "permissionActionId" | "pinActionId">
+  upload?: Prisma.XOR<Prisma.UploadActionNullableScalarRelationFilter, Prisma.UploadActionWhereInput> | null
+  collection?: Prisma.XOR<Prisma.CollectionActionNullableScalarRelationFilter, Prisma.CollectionActionWhereInput> | null
+  favorite?: Prisma.XOR<Prisma.FavoriteActionNullableScalarRelationFilter, Prisma.FavoriteActionWhereInput> | null
+  bucket?: Prisma.XOR<Prisma.BucketActionNullableScalarRelationFilter, Prisma.BucketActionWhereInput> | null
+}, "id" | "commentActionId" | "createActionId" | "deleteActionId" | "editActionId" | "moveActionId" | "renameActionId" | "restoreActionId" | "shareActionId" | "versionActionId" | "activityId" | "copyActionId" | "permissionActionId" | "pinActionId" | "uploadActionId" | "collectionActionId" | "favoriteActionId" | "bucketActionId">
 
 export type ItemActionOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -347,6 +399,10 @@ export type ItemActionOrderByWithAggregationInput = {
   copyActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   permissionActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   pinActionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  uploadActionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  collectionActionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  favoriteActionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  bucketActionId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ItemActionCountOrderByAggregateInput
   _max?: Prisma.ItemActionMaxOrderByAggregateInput
   _min?: Prisma.ItemActionMinOrderByAggregateInput
@@ -370,6 +426,10 @@ export type ItemActionScalarWhereWithAggregatesInput = {
   copyActionId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
   permissionActionId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
   pinActionId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
+  uploadActionId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
+  collectionActionId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
+  favoriteActionId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
+  bucketActionId?: Prisma.StringNullableWithAggregatesFilter<"ItemAction"> | string | null
 }
 
 export type ItemActionCreateInput = {
@@ -387,6 +447,10 @@ export type ItemActionCreateInput = {
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
   pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateInput = {
@@ -404,6 +468,10 @@ export type ItemActionUncheckedCreateInput = {
   copyActionId?: string | null
   permissionActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionUpdateInput = {
@@ -421,6 +489,10 @@ export type ItemActionUpdateInput = {
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
   pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateInput = {
@@ -438,6 +510,10 @@ export type ItemActionUncheckedUpdateInput = {
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateManyInput = {
@@ -455,6 +531,10 @@ export type ItemActionCreateManyInput = {
   copyActionId?: string | null
   permissionActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionUpdateManyMutationInput = {
@@ -476,6 +556,10 @@ export type ItemActionUncheckedUpdateManyInput = {
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCountOrderByAggregateInput = {
@@ -493,6 +577,10 @@ export type ItemActionCountOrderByAggregateInput = {
   copyActionId?: Prisma.SortOrder
   permissionActionId?: Prisma.SortOrder
   pinActionId?: Prisma.SortOrder
+  uploadActionId?: Prisma.SortOrder
+  collectionActionId?: Prisma.SortOrder
+  favoriteActionId?: Prisma.SortOrder
+  bucketActionId?: Prisma.SortOrder
 }
 
 export type ItemActionMaxOrderByAggregateInput = {
@@ -510,6 +598,10 @@ export type ItemActionMaxOrderByAggregateInput = {
   copyActionId?: Prisma.SortOrder
   permissionActionId?: Prisma.SortOrder
   pinActionId?: Prisma.SortOrder
+  uploadActionId?: Prisma.SortOrder
+  collectionActionId?: Prisma.SortOrder
+  favoriteActionId?: Prisma.SortOrder
+  bucketActionId?: Prisma.SortOrder
 }
 
 export type ItemActionMinOrderByAggregateInput = {
@@ -527,6 +619,10 @@ export type ItemActionMinOrderByAggregateInput = {
   copyActionId?: Prisma.SortOrder
   permissionActionId?: Prisma.SortOrder
   pinActionId?: Prisma.SortOrder
+  uploadActionId?: Prisma.SortOrder
+  collectionActionId?: Prisma.SortOrder
+  favoriteActionId?: Prisma.SortOrder
+  bucketActionId?: Prisma.SortOrder
 }
 
 export type ItemActionNullableScalarRelationFilter = {
@@ -628,6 +724,38 @@ export type ItemActionUncheckedUpdateOneWithoutCreateNestedInput = {
   delete?: Prisma.ItemActionWhereInput | boolean
   connect?: Prisma.ItemActionWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutCreateInput, Prisma.ItemActionUpdateWithoutCreateInput>, Prisma.ItemActionUncheckedUpdateWithoutCreateInput>
+}
+
+export type ItemActionCreateNestedOneWithoutUploadInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutUploadInput, Prisma.ItemActionUncheckedCreateWithoutUploadInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutUploadInput
+  connect?: Prisma.ItemActionWhereUniqueInput
+}
+
+export type ItemActionUncheckedCreateNestedOneWithoutUploadInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutUploadInput, Prisma.ItemActionUncheckedCreateWithoutUploadInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutUploadInput
+  connect?: Prisma.ItemActionWhereUniqueInput
+}
+
+export type ItemActionUpdateOneWithoutUploadNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutUploadInput, Prisma.ItemActionUncheckedCreateWithoutUploadInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutUploadInput
+  upsert?: Prisma.ItemActionUpsertWithoutUploadInput
+  disconnect?: Prisma.ItemActionWhereInput | boolean
+  delete?: Prisma.ItemActionWhereInput | boolean
+  connect?: Prisma.ItemActionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutUploadInput, Prisma.ItemActionUpdateWithoutUploadInput>, Prisma.ItemActionUncheckedUpdateWithoutUploadInput>
+}
+
+export type ItemActionUncheckedUpdateOneWithoutUploadNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutUploadInput, Prisma.ItemActionUncheckedCreateWithoutUploadInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutUploadInput
+  upsert?: Prisma.ItemActionUpsertWithoutUploadInput
+  disconnect?: Prisma.ItemActionWhereInput | boolean
+  delete?: Prisma.ItemActionWhereInput | boolean
+  connect?: Prisma.ItemActionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutUploadInput, Prisma.ItemActionUpdateWithoutUploadInput>, Prisma.ItemActionUncheckedUpdateWithoutUploadInput>
 }
 
 export type ItemActionCreateNestedOneWithoutDeleteInput = {
@@ -918,6 +1046,102 @@ export type ItemActionUncheckedUpdateOneWithoutPinNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutPinInput, Prisma.ItemActionUpdateWithoutPinInput>, Prisma.ItemActionUncheckedUpdateWithoutPinInput>
 }
 
+export type ItemActionCreateNestedOneWithoutCollectionInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutCollectionInput, Prisma.ItemActionUncheckedCreateWithoutCollectionInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutCollectionInput
+  connect?: Prisma.ItemActionWhereUniqueInput
+}
+
+export type ItemActionUncheckedCreateNestedOneWithoutCollectionInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutCollectionInput, Prisma.ItemActionUncheckedCreateWithoutCollectionInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutCollectionInput
+  connect?: Prisma.ItemActionWhereUniqueInput
+}
+
+export type ItemActionUpdateOneWithoutCollectionNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutCollectionInput, Prisma.ItemActionUncheckedCreateWithoutCollectionInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutCollectionInput
+  upsert?: Prisma.ItemActionUpsertWithoutCollectionInput
+  disconnect?: Prisma.ItemActionWhereInput | boolean
+  delete?: Prisma.ItemActionWhereInput | boolean
+  connect?: Prisma.ItemActionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutCollectionInput, Prisma.ItemActionUpdateWithoutCollectionInput>, Prisma.ItemActionUncheckedUpdateWithoutCollectionInput>
+}
+
+export type ItemActionUncheckedUpdateOneWithoutCollectionNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutCollectionInput, Prisma.ItemActionUncheckedCreateWithoutCollectionInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutCollectionInput
+  upsert?: Prisma.ItemActionUpsertWithoutCollectionInput
+  disconnect?: Prisma.ItemActionWhereInput | boolean
+  delete?: Prisma.ItemActionWhereInput | boolean
+  connect?: Prisma.ItemActionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutCollectionInput, Prisma.ItemActionUpdateWithoutCollectionInput>, Prisma.ItemActionUncheckedUpdateWithoutCollectionInput>
+}
+
+export type ItemActionCreateNestedOneWithoutFavoriteInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutFavoriteInput, Prisma.ItemActionUncheckedCreateWithoutFavoriteInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutFavoriteInput
+  connect?: Prisma.ItemActionWhereUniqueInput
+}
+
+export type ItemActionUncheckedCreateNestedOneWithoutFavoriteInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutFavoriteInput, Prisma.ItemActionUncheckedCreateWithoutFavoriteInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutFavoriteInput
+  connect?: Prisma.ItemActionWhereUniqueInput
+}
+
+export type ItemActionUpdateOneWithoutFavoriteNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutFavoriteInput, Prisma.ItemActionUncheckedCreateWithoutFavoriteInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutFavoriteInput
+  upsert?: Prisma.ItemActionUpsertWithoutFavoriteInput
+  disconnect?: Prisma.ItemActionWhereInput | boolean
+  delete?: Prisma.ItemActionWhereInput | boolean
+  connect?: Prisma.ItemActionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutFavoriteInput, Prisma.ItemActionUpdateWithoutFavoriteInput>, Prisma.ItemActionUncheckedUpdateWithoutFavoriteInput>
+}
+
+export type ItemActionUncheckedUpdateOneWithoutFavoriteNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutFavoriteInput, Prisma.ItemActionUncheckedCreateWithoutFavoriteInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutFavoriteInput
+  upsert?: Prisma.ItemActionUpsertWithoutFavoriteInput
+  disconnect?: Prisma.ItemActionWhereInput | boolean
+  delete?: Prisma.ItemActionWhereInput | boolean
+  connect?: Prisma.ItemActionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutFavoriteInput, Prisma.ItemActionUpdateWithoutFavoriteInput>, Prisma.ItemActionUncheckedUpdateWithoutFavoriteInput>
+}
+
+export type ItemActionCreateNestedOneWithoutBucketInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutBucketInput, Prisma.ItemActionUncheckedCreateWithoutBucketInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutBucketInput
+  connect?: Prisma.ItemActionWhereUniqueInput
+}
+
+export type ItemActionUncheckedCreateNestedOneWithoutBucketInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutBucketInput, Prisma.ItemActionUncheckedCreateWithoutBucketInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutBucketInput
+  connect?: Prisma.ItemActionWhereUniqueInput
+}
+
+export type ItemActionUpdateOneWithoutBucketNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutBucketInput, Prisma.ItemActionUncheckedCreateWithoutBucketInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutBucketInput
+  upsert?: Prisma.ItemActionUpsertWithoutBucketInput
+  disconnect?: Prisma.ItemActionWhereInput | boolean
+  delete?: Prisma.ItemActionWhereInput | boolean
+  connect?: Prisma.ItemActionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutBucketInput, Prisma.ItemActionUpdateWithoutBucketInput>, Prisma.ItemActionUncheckedUpdateWithoutBucketInput>
+}
+
+export type ItemActionUncheckedUpdateOneWithoutBucketNestedInput = {
+  create?: Prisma.XOR<Prisma.ItemActionCreateWithoutBucketInput, Prisma.ItemActionUncheckedCreateWithoutBucketInput>
+  connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutBucketInput
+  upsert?: Prisma.ItemActionUpsertWithoutBucketInput
+  disconnect?: Prisma.ItemActionWhereInput | boolean
+  delete?: Prisma.ItemActionWhereInput | boolean
+  connect?: Prisma.ItemActionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ItemActionUpdateToOneWithWhereWithoutBucketInput, Prisma.ItemActionUpdateWithoutBucketInput>, Prisma.ItemActionUncheckedUpdateWithoutBucketInput>
+}
+
 export type ItemActionCreateNestedOneWithoutActivityInput = {
   create?: Prisma.XOR<Prisma.ItemActionCreateWithoutActivityInput, Prisma.ItemActionUncheckedCreateWithoutActivityInput>
   connectOrCreate?: Prisma.ItemActionCreateOrConnectWithoutActivityInput
@@ -964,6 +1188,10 @@ export type ItemActionCreateWithoutPermissionInput = {
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutPermissionInput = {
@@ -980,6 +1208,10 @@ export type ItemActionUncheckedCreateWithoutPermissionInput = {
   activityId?: string | null
   copyActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutPermissionInput = {
@@ -1012,6 +1244,10 @@ export type ItemActionUpdateWithoutPermissionInput = {
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutPermissionInput = {
@@ -1028,6 +1264,10 @@ export type ItemActionUncheckedUpdateWithoutPermissionInput = {
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutCommentInput = {
@@ -1044,6 +1284,10 @@ export type ItemActionCreateWithoutCommentInput = {
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
   pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutCommentInput = {
@@ -1060,6 +1304,10 @@ export type ItemActionUncheckedCreateWithoutCommentInput = {
   copyActionId?: string | null
   permissionActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutCommentInput = {
@@ -1092,6 +1340,10 @@ export type ItemActionUpdateWithoutCommentInput = {
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
   pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutCommentInput = {
@@ -1108,6 +1360,10 @@ export type ItemActionUncheckedUpdateWithoutCommentInput = {
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutCreateInput = {
@@ -1124,6 +1380,10 @@ export type ItemActionCreateWithoutCreateInput = {
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
   pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutCreateInput = {
@@ -1140,6 +1400,10 @@ export type ItemActionUncheckedCreateWithoutCreateInput = {
   copyActionId?: string | null
   permissionActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutCreateInput = {
@@ -1172,6 +1436,10 @@ export type ItemActionUpdateWithoutCreateInput = {
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
   pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutCreateInput = {
@@ -1188,6 +1456,106 @@ export type ItemActionUncheckedUpdateWithoutCreateInput = {
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+}
+
+export type ItemActionCreateWithoutUploadInput = {
+  id: string
+  comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
+  create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
+  delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
+  edit?: Prisma.EditActionCreateNestedOneWithoutActionInput
+  move?: Prisma.MoveActionCreateNestedOneWithoutActionInput
+  rename?: Prisma.RenameActionCreateNestedOneWithoutActionInput
+  restore?: Prisma.RestoreActionCreateNestedOneWithoutActionInput
+  share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
+  version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
+  activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
+  permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
+}
+
+export type ItemActionUncheckedCreateWithoutUploadInput = {
+  id: string
+  commentActionId?: string | null
+  createActionId?: string | null
+  deleteActionId?: string | null
+  editActionId?: string | null
+  moveActionId?: string | null
+  renameActionId?: string | null
+  restoreActionId?: string | null
+  shareActionId?: string | null
+  versionActionId?: string | null
+  activityId?: string | null
+  copyActionId?: string | null
+  permissionActionId?: string | null
+  pinActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
+}
+
+export type ItemActionCreateOrConnectWithoutUploadInput = {
+  where: Prisma.ItemActionWhereUniqueInput
+  create: Prisma.XOR<Prisma.ItemActionCreateWithoutUploadInput, Prisma.ItemActionUncheckedCreateWithoutUploadInput>
+}
+
+export type ItemActionUpsertWithoutUploadInput = {
+  update: Prisma.XOR<Prisma.ItemActionUpdateWithoutUploadInput, Prisma.ItemActionUncheckedUpdateWithoutUploadInput>
+  create: Prisma.XOR<Prisma.ItemActionCreateWithoutUploadInput, Prisma.ItemActionUncheckedCreateWithoutUploadInput>
+  where?: Prisma.ItemActionWhereInput
+}
+
+export type ItemActionUpdateToOneWithWhereWithoutUploadInput = {
+  where?: Prisma.ItemActionWhereInput
+  data: Prisma.XOR<Prisma.ItemActionUpdateWithoutUploadInput, Prisma.ItemActionUncheckedUpdateWithoutUploadInput>
+}
+
+export type ItemActionUpdateWithoutUploadInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  comment?: Prisma.CommentActionUpdateOneWithoutActionNestedInput
+  create?: Prisma.CreateActionUpdateOneWithoutActionNestedInput
+  delete?: Prisma.DeleteActionUpdateOneWithoutActionNestedInput
+  edit?: Prisma.EditActionUpdateOneWithoutActionNestedInput
+  move?: Prisma.MoveActionUpdateOneWithoutActionNestedInput
+  rename?: Prisma.RenameActionUpdateOneWithoutActionNestedInput
+  restore?: Prisma.RestoreActionUpdateOneWithoutActionNestedInput
+  share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
+  version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
+  activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
+  permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
+}
+
+export type ItemActionUncheckedUpdateWithoutUploadInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  commentActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deleteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  moveActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  renameActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  restoreActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutDeleteInput = {
@@ -1204,6 +1572,10 @@ export type ItemActionCreateWithoutDeleteInput = {
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
   pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutDeleteInput = {
@@ -1220,6 +1592,10 @@ export type ItemActionUncheckedCreateWithoutDeleteInput = {
   copyActionId?: string | null
   permissionActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutDeleteInput = {
@@ -1252,6 +1628,10 @@ export type ItemActionUpdateWithoutDeleteInput = {
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
   pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutDeleteInput = {
@@ -1268,6 +1648,10 @@ export type ItemActionUncheckedUpdateWithoutDeleteInput = {
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutEditInput = {
@@ -1284,6 +1668,10 @@ export type ItemActionCreateWithoutEditInput = {
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
   pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutEditInput = {
@@ -1300,6 +1688,10 @@ export type ItemActionUncheckedCreateWithoutEditInput = {
   copyActionId?: string | null
   permissionActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutEditInput = {
@@ -1332,6 +1724,10 @@ export type ItemActionUpdateWithoutEditInput = {
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
   pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutEditInput = {
@@ -1348,6 +1744,10 @@ export type ItemActionUncheckedUpdateWithoutEditInput = {
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutMoveInput = {
@@ -1364,6 +1764,10 @@ export type ItemActionCreateWithoutMoveInput = {
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
   pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutMoveInput = {
@@ -1380,6 +1784,10 @@ export type ItemActionUncheckedCreateWithoutMoveInput = {
   copyActionId?: string | null
   permissionActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutMoveInput = {
@@ -1412,6 +1820,10 @@ export type ItemActionUpdateWithoutMoveInput = {
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
   pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutMoveInput = {
@@ -1428,6 +1840,10 @@ export type ItemActionUncheckedUpdateWithoutMoveInput = {
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutCopyInput = {
@@ -1444,6 +1860,10 @@ export type ItemActionCreateWithoutCopyInput = {
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
   pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutCopyInput = {
@@ -1460,6 +1880,10 @@ export type ItemActionUncheckedCreateWithoutCopyInput = {
   activityId?: string | null
   permissionActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutCopyInput = {
@@ -1492,6 +1916,10 @@ export type ItemActionUpdateWithoutCopyInput = {
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
   pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutCopyInput = {
@@ -1508,6 +1936,10 @@ export type ItemActionUncheckedUpdateWithoutCopyInput = {
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutRenameInput = {
@@ -1524,6 +1956,10 @@ export type ItemActionCreateWithoutRenameInput = {
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
   pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutRenameInput = {
@@ -1540,6 +1976,10 @@ export type ItemActionUncheckedCreateWithoutRenameInput = {
   copyActionId?: string | null
   permissionActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutRenameInput = {
@@ -1572,6 +2012,10 @@ export type ItemActionUpdateWithoutRenameInput = {
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
   pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutRenameInput = {
@@ -1588,6 +2032,10 @@ export type ItemActionUncheckedUpdateWithoutRenameInput = {
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutRestoreInput = {
@@ -1604,6 +2052,10 @@ export type ItemActionCreateWithoutRestoreInput = {
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
   pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutRestoreInput = {
@@ -1620,6 +2072,10 @@ export type ItemActionUncheckedCreateWithoutRestoreInput = {
   copyActionId?: string | null
   permissionActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutRestoreInput = {
@@ -1652,6 +2108,10 @@ export type ItemActionUpdateWithoutRestoreInput = {
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
   pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutRestoreInput = {
@@ -1668,6 +2128,10 @@ export type ItemActionUncheckedUpdateWithoutRestoreInput = {
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutShareInput = {
@@ -1684,6 +2148,10 @@ export type ItemActionCreateWithoutShareInput = {
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
   pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutShareInput = {
@@ -1700,6 +2168,10 @@ export type ItemActionUncheckedCreateWithoutShareInput = {
   copyActionId?: string | null
   permissionActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutShareInput = {
@@ -1732,6 +2204,10 @@ export type ItemActionUpdateWithoutShareInput = {
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
   pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutShareInput = {
@@ -1748,6 +2224,10 @@ export type ItemActionUncheckedUpdateWithoutShareInput = {
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutVersionInput = {
@@ -1764,6 +2244,10 @@ export type ItemActionCreateWithoutVersionInput = {
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
   pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutVersionInput = {
@@ -1780,6 +2264,10 @@ export type ItemActionUncheckedCreateWithoutVersionInput = {
   copyActionId?: string | null
   permissionActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutVersionInput = {
@@ -1812,6 +2300,10 @@ export type ItemActionUpdateWithoutVersionInput = {
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
   pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutVersionInput = {
@@ -1828,6 +2320,10 @@ export type ItemActionUncheckedUpdateWithoutVersionInput = {
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutPinInput = {
@@ -1844,6 +2340,10 @@ export type ItemActionCreateWithoutPinInput = {
   activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutPinInput = {
@@ -1860,6 +2360,10 @@ export type ItemActionUncheckedCreateWithoutPinInput = {
   activityId?: string | null
   copyActionId?: string | null
   permissionActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutPinInput = {
@@ -1892,6 +2396,10 @@ export type ItemActionUpdateWithoutPinInput = {
   activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutPinInput = {
@@ -1908,6 +2416,298 @@ export type ItemActionUncheckedUpdateWithoutPinInput = {
   activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+}
+
+export type ItemActionCreateWithoutCollectionInput = {
+  id: string
+  comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
+  create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
+  delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
+  edit?: Prisma.EditActionCreateNestedOneWithoutActionInput
+  move?: Prisma.MoveActionCreateNestedOneWithoutActionInput
+  rename?: Prisma.RenameActionCreateNestedOneWithoutActionInput
+  restore?: Prisma.RestoreActionCreateNestedOneWithoutActionInput
+  share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
+  version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
+  activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
+  permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
+}
+
+export type ItemActionUncheckedCreateWithoutCollectionInput = {
+  id: string
+  commentActionId?: string | null
+  createActionId?: string | null
+  deleteActionId?: string | null
+  editActionId?: string | null
+  moveActionId?: string | null
+  renameActionId?: string | null
+  restoreActionId?: string | null
+  shareActionId?: string | null
+  versionActionId?: string | null
+  activityId?: string | null
+  copyActionId?: string | null
+  permissionActionId?: string | null
+  pinActionId?: string | null
+  uploadActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
+}
+
+export type ItemActionCreateOrConnectWithoutCollectionInput = {
+  where: Prisma.ItemActionWhereUniqueInput
+  create: Prisma.XOR<Prisma.ItemActionCreateWithoutCollectionInput, Prisma.ItemActionUncheckedCreateWithoutCollectionInput>
+}
+
+export type ItemActionUpsertWithoutCollectionInput = {
+  update: Prisma.XOR<Prisma.ItemActionUpdateWithoutCollectionInput, Prisma.ItemActionUncheckedUpdateWithoutCollectionInput>
+  create: Prisma.XOR<Prisma.ItemActionCreateWithoutCollectionInput, Prisma.ItemActionUncheckedCreateWithoutCollectionInput>
+  where?: Prisma.ItemActionWhereInput
+}
+
+export type ItemActionUpdateToOneWithWhereWithoutCollectionInput = {
+  where?: Prisma.ItemActionWhereInput
+  data: Prisma.XOR<Prisma.ItemActionUpdateWithoutCollectionInput, Prisma.ItemActionUncheckedUpdateWithoutCollectionInput>
+}
+
+export type ItemActionUpdateWithoutCollectionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  comment?: Prisma.CommentActionUpdateOneWithoutActionNestedInput
+  create?: Prisma.CreateActionUpdateOneWithoutActionNestedInput
+  delete?: Prisma.DeleteActionUpdateOneWithoutActionNestedInput
+  edit?: Prisma.EditActionUpdateOneWithoutActionNestedInput
+  move?: Prisma.MoveActionUpdateOneWithoutActionNestedInput
+  rename?: Prisma.RenameActionUpdateOneWithoutActionNestedInput
+  restore?: Prisma.RestoreActionUpdateOneWithoutActionNestedInput
+  share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
+  version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
+  activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
+  permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
+}
+
+export type ItemActionUncheckedUpdateWithoutCollectionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  commentActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deleteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  moveActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  renameActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  restoreActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+}
+
+export type ItemActionCreateWithoutFavoriteInput = {
+  id: string
+  comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
+  create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
+  delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
+  edit?: Prisma.EditActionCreateNestedOneWithoutActionInput
+  move?: Prisma.MoveActionCreateNestedOneWithoutActionInput
+  rename?: Prisma.RenameActionCreateNestedOneWithoutActionInput
+  restore?: Prisma.RestoreActionCreateNestedOneWithoutActionInput
+  share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
+  version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
+  activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
+  permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
+}
+
+export type ItemActionUncheckedCreateWithoutFavoriteInput = {
+  id: string
+  commentActionId?: string | null
+  createActionId?: string | null
+  deleteActionId?: string | null
+  editActionId?: string | null
+  moveActionId?: string | null
+  renameActionId?: string | null
+  restoreActionId?: string | null
+  shareActionId?: string | null
+  versionActionId?: string | null
+  activityId?: string | null
+  copyActionId?: string | null
+  permissionActionId?: string | null
+  pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  bucketActionId?: string | null
+}
+
+export type ItemActionCreateOrConnectWithoutFavoriteInput = {
+  where: Prisma.ItemActionWhereUniqueInput
+  create: Prisma.XOR<Prisma.ItemActionCreateWithoutFavoriteInput, Prisma.ItemActionUncheckedCreateWithoutFavoriteInput>
+}
+
+export type ItemActionUpsertWithoutFavoriteInput = {
+  update: Prisma.XOR<Prisma.ItemActionUpdateWithoutFavoriteInput, Prisma.ItemActionUncheckedUpdateWithoutFavoriteInput>
+  create: Prisma.XOR<Prisma.ItemActionCreateWithoutFavoriteInput, Prisma.ItemActionUncheckedCreateWithoutFavoriteInput>
+  where?: Prisma.ItemActionWhereInput
+}
+
+export type ItemActionUpdateToOneWithWhereWithoutFavoriteInput = {
+  where?: Prisma.ItemActionWhereInput
+  data: Prisma.XOR<Prisma.ItemActionUpdateWithoutFavoriteInput, Prisma.ItemActionUncheckedUpdateWithoutFavoriteInput>
+}
+
+export type ItemActionUpdateWithoutFavoriteInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  comment?: Prisma.CommentActionUpdateOneWithoutActionNestedInput
+  create?: Prisma.CreateActionUpdateOneWithoutActionNestedInput
+  delete?: Prisma.DeleteActionUpdateOneWithoutActionNestedInput
+  edit?: Prisma.EditActionUpdateOneWithoutActionNestedInput
+  move?: Prisma.MoveActionUpdateOneWithoutActionNestedInput
+  rename?: Prisma.RenameActionUpdateOneWithoutActionNestedInput
+  restore?: Prisma.RestoreActionUpdateOneWithoutActionNestedInput
+  share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
+  version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
+  activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
+  permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
+}
+
+export type ItemActionUncheckedUpdateWithoutFavoriteInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  commentActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deleteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  moveActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  renameActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  restoreActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+}
+
+export type ItemActionCreateWithoutBucketInput = {
+  id: string
+  comment?: Prisma.CommentActionCreateNestedOneWithoutActionInput
+  create?: Prisma.CreateActionCreateNestedOneWithoutActionInput
+  delete?: Prisma.DeleteActionCreateNestedOneWithoutActionInput
+  edit?: Prisma.EditActionCreateNestedOneWithoutActionInput
+  move?: Prisma.MoveActionCreateNestedOneWithoutActionInput
+  rename?: Prisma.RenameActionCreateNestedOneWithoutActionInput
+  restore?: Prisma.RestoreActionCreateNestedOneWithoutActionInput
+  share?: Prisma.ShareActionCreateNestedOneWithoutActionInput
+  version?: Prisma.VersionActionCreateNestedOneWithoutActionInput
+  activity?: Prisma.ActivityCreateNestedOneWithoutActionInput
+  copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
+  permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
+  pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+}
+
+export type ItemActionUncheckedCreateWithoutBucketInput = {
+  id: string
+  commentActionId?: string | null
+  createActionId?: string | null
+  deleteActionId?: string | null
+  editActionId?: string | null
+  moveActionId?: string | null
+  renameActionId?: string | null
+  restoreActionId?: string | null
+  shareActionId?: string | null
+  versionActionId?: string | null
+  activityId?: string | null
+  copyActionId?: string | null
+  permissionActionId?: string | null
+  pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+}
+
+export type ItemActionCreateOrConnectWithoutBucketInput = {
+  where: Prisma.ItemActionWhereUniqueInput
+  create: Prisma.XOR<Prisma.ItemActionCreateWithoutBucketInput, Prisma.ItemActionUncheckedCreateWithoutBucketInput>
+}
+
+export type ItemActionUpsertWithoutBucketInput = {
+  update: Prisma.XOR<Prisma.ItemActionUpdateWithoutBucketInput, Prisma.ItemActionUncheckedUpdateWithoutBucketInput>
+  create: Prisma.XOR<Prisma.ItemActionCreateWithoutBucketInput, Prisma.ItemActionUncheckedCreateWithoutBucketInput>
+  where?: Prisma.ItemActionWhereInput
+}
+
+export type ItemActionUpdateToOneWithWhereWithoutBucketInput = {
+  where?: Prisma.ItemActionWhereInput
+  data: Prisma.XOR<Prisma.ItemActionUpdateWithoutBucketInput, Prisma.ItemActionUncheckedUpdateWithoutBucketInput>
+}
+
+export type ItemActionUpdateWithoutBucketInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  comment?: Prisma.CommentActionUpdateOneWithoutActionNestedInput
+  create?: Prisma.CreateActionUpdateOneWithoutActionNestedInput
+  delete?: Prisma.DeleteActionUpdateOneWithoutActionNestedInput
+  edit?: Prisma.EditActionUpdateOneWithoutActionNestedInput
+  move?: Prisma.MoveActionUpdateOneWithoutActionNestedInput
+  rename?: Prisma.RenameActionUpdateOneWithoutActionNestedInput
+  restore?: Prisma.RestoreActionUpdateOneWithoutActionNestedInput
+  share?: Prisma.ShareActionUpdateOneWithoutActionNestedInput
+  version?: Prisma.VersionActionUpdateOneWithoutActionNestedInput
+  activity?: Prisma.ActivityUpdateOneWithoutActionNestedInput
+  copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
+  permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
+  pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+}
+
+export type ItemActionUncheckedUpdateWithoutBucketInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  commentActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deleteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  moveActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  renameActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  restoreActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shareActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  versionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  activityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ItemActionCreateWithoutActivityInput = {
@@ -1924,6 +2724,10 @@ export type ItemActionCreateWithoutActivityInput = {
   copy?: Prisma.CopyActionCreateNestedOneWithoutActionInput
   permission?: Prisma.PermissionActionCreateNestedOneWithoutActionInput
   pin?: Prisma.PinActionCreateNestedOneWithoutActionInput
+  upload?: Prisma.UploadActionCreateNestedOneWithoutActionInput
+  collection?: Prisma.CollectionActionCreateNestedOneWithoutActionInput
+  favorite?: Prisma.FavoriteActionCreateNestedOneWithoutActionInput
+  bucket?: Prisma.BucketActionCreateNestedOneWithoutActionInput
 }
 
 export type ItemActionUncheckedCreateWithoutActivityInput = {
@@ -1940,6 +2744,10 @@ export type ItemActionUncheckedCreateWithoutActivityInput = {
   copyActionId?: string | null
   permissionActionId?: string | null
   pinActionId?: string | null
+  uploadActionId?: string | null
+  collectionActionId?: string | null
+  favoriteActionId?: string | null
+  bucketActionId?: string | null
 }
 
 export type ItemActionCreateOrConnectWithoutActivityInput = {
@@ -1972,6 +2780,10 @@ export type ItemActionUpdateWithoutActivityInput = {
   copy?: Prisma.CopyActionUpdateOneWithoutActionNestedInput
   permission?: Prisma.PermissionActionUpdateOneWithoutActionNestedInput
   pin?: Prisma.PinActionUpdateOneWithoutActionNestedInput
+  upload?: Prisma.UploadActionUpdateOneWithoutActionNestedInput
+  collection?: Prisma.CollectionActionUpdateOneWithoutActionNestedInput
+  favorite?: Prisma.FavoriteActionUpdateOneWithoutActionNestedInput
+  bucket?: Prisma.BucketActionUpdateOneWithoutActionNestedInput
 }
 
 export type ItemActionUncheckedUpdateWithoutActivityInput = {
@@ -1988,6 +2800,10 @@ export type ItemActionUncheckedUpdateWithoutActivityInput = {
   copyActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   permissionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pinActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  uploadActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  collectionActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  favoriteActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bucketActionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 
@@ -2007,6 +2823,10 @@ export type ItemActionSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   copyActionId?: boolean
   permissionActionId?: boolean
   pinActionId?: boolean
+  uploadActionId?: boolean
+  collectionActionId?: boolean
+  favoriteActionId?: boolean
+  bucketActionId?: boolean
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
   create?: boolean | Prisma.ItemAction$createArgs<ExtArgs>
   delete?: boolean | Prisma.ItemAction$deleteArgs<ExtArgs>
@@ -2020,6 +2840,10 @@ export type ItemActionSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
   permission?: boolean | Prisma.ItemAction$permissionArgs<ExtArgs>
   pin?: boolean | Prisma.ItemAction$pinArgs<ExtArgs>
+  upload?: boolean | Prisma.ItemAction$uploadArgs<ExtArgs>
+  collection?: boolean | Prisma.ItemAction$collectionArgs<ExtArgs>
+  favorite?: boolean | Prisma.ItemAction$favoriteArgs<ExtArgs>
+  bucket?: boolean | Prisma.ItemAction$bucketArgs<ExtArgs>
 }, ExtArgs["result"]["itemAction"]>
 
 export type ItemActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -2037,6 +2861,10 @@ export type ItemActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   copyActionId?: boolean
   permissionActionId?: boolean
   pinActionId?: boolean
+  uploadActionId?: boolean
+  collectionActionId?: boolean
+  favoriteActionId?: boolean
+  bucketActionId?: boolean
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
   create?: boolean | Prisma.ItemAction$createArgs<ExtArgs>
   delete?: boolean | Prisma.ItemAction$deleteArgs<ExtArgs>
@@ -2050,6 +2878,10 @@ export type ItemActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
   permission?: boolean | Prisma.ItemAction$permissionArgs<ExtArgs>
   pin?: boolean | Prisma.ItemAction$pinArgs<ExtArgs>
+  upload?: boolean | Prisma.ItemAction$uploadArgs<ExtArgs>
+  collection?: boolean | Prisma.ItemAction$collectionArgs<ExtArgs>
+  favorite?: boolean | Prisma.ItemAction$favoriteArgs<ExtArgs>
+  bucket?: boolean | Prisma.ItemAction$bucketArgs<ExtArgs>
 }, ExtArgs["result"]["itemAction"]>
 
 export type ItemActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -2067,6 +2899,10 @@ export type ItemActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   copyActionId?: boolean
   permissionActionId?: boolean
   pinActionId?: boolean
+  uploadActionId?: boolean
+  collectionActionId?: boolean
+  favoriteActionId?: boolean
+  bucketActionId?: boolean
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
   create?: boolean | Prisma.ItemAction$createArgs<ExtArgs>
   delete?: boolean | Prisma.ItemAction$deleteArgs<ExtArgs>
@@ -2080,6 +2916,10 @@ export type ItemActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
   permission?: boolean | Prisma.ItemAction$permissionArgs<ExtArgs>
   pin?: boolean | Prisma.ItemAction$pinArgs<ExtArgs>
+  upload?: boolean | Prisma.ItemAction$uploadArgs<ExtArgs>
+  collection?: boolean | Prisma.ItemAction$collectionArgs<ExtArgs>
+  favorite?: boolean | Prisma.ItemAction$favoriteArgs<ExtArgs>
+  bucket?: boolean | Prisma.ItemAction$bucketArgs<ExtArgs>
 }, ExtArgs["result"]["itemAction"]>
 
 export type ItemActionSelectScalar = {
@@ -2097,9 +2937,13 @@ export type ItemActionSelectScalar = {
   copyActionId?: boolean
   permissionActionId?: boolean
   pinActionId?: boolean
+  uploadActionId?: boolean
+  collectionActionId?: boolean
+  favoriteActionId?: boolean
+  bucketActionId?: boolean
 }
 
-export type ItemActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "commentActionId" | "createActionId" | "deleteActionId" | "editActionId" | "moveActionId" | "renameActionId" | "restoreActionId" | "shareActionId" | "versionActionId" | "activityId" | "copyActionId" | "permissionActionId" | "pinActionId", ExtArgs["result"]["itemAction"]>
+export type ItemActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "commentActionId" | "createActionId" | "deleteActionId" | "editActionId" | "moveActionId" | "renameActionId" | "restoreActionId" | "shareActionId" | "versionActionId" | "activityId" | "copyActionId" | "permissionActionId" | "pinActionId" | "uploadActionId" | "collectionActionId" | "favoriteActionId" | "bucketActionId", ExtArgs["result"]["itemAction"]>
 export type ItemActionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
   create?: boolean | Prisma.ItemAction$createArgs<ExtArgs>
@@ -2114,6 +2958,10 @@ export type ItemActionInclude<ExtArgs extends runtime.Types.Extensions.InternalA
   copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
   permission?: boolean | Prisma.ItemAction$permissionArgs<ExtArgs>
   pin?: boolean | Prisma.ItemAction$pinArgs<ExtArgs>
+  upload?: boolean | Prisma.ItemAction$uploadArgs<ExtArgs>
+  collection?: boolean | Prisma.ItemAction$collectionArgs<ExtArgs>
+  favorite?: boolean | Prisma.ItemAction$favoriteArgs<ExtArgs>
+  bucket?: boolean | Prisma.ItemAction$bucketArgs<ExtArgs>
 }
 export type ItemActionIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
@@ -2129,6 +2977,10 @@ export type ItemActionIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.E
   copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
   permission?: boolean | Prisma.ItemAction$permissionArgs<ExtArgs>
   pin?: boolean | Prisma.ItemAction$pinArgs<ExtArgs>
+  upload?: boolean | Prisma.ItemAction$uploadArgs<ExtArgs>
+  collection?: boolean | Prisma.ItemAction$collectionArgs<ExtArgs>
+  favorite?: boolean | Prisma.ItemAction$favoriteArgs<ExtArgs>
+  bucket?: boolean | Prisma.ItemAction$bucketArgs<ExtArgs>
 }
 export type ItemActionIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   comment?: boolean | Prisma.ItemAction$commentArgs<ExtArgs>
@@ -2144,6 +2996,10 @@ export type ItemActionIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   copy?: boolean | Prisma.ItemAction$copyArgs<ExtArgs>
   permission?: boolean | Prisma.ItemAction$permissionArgs<ExtArgs>
   pin?: boolean | Prisma.ItemAction$pinArgs<ExtArgs>
+  upload?: boolean | Prisma.ItemAction$uploadArgs<ExtArgs>
+  collection?: boolean | Prisma.ItemAction$collectionArgs<ExtArgs>
+  favorite?: boolean | Prisma.ItemAction$favoriteArgs<ExtArgs>
+  bucket?: boolean | Prisma.ItemAction$bucketArgs<ExtArgs>
 }
 
 export type $ItemActionPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2162,6 +3018,10 @@ export type $ItemActionPayload<ExtArgs extends runtime.Types.Extensions.Internal
     copy: Prisma.$CopyActionPayload<ExtArgs> | null
     permission: Prisma.$PermissionActionPayload<ExtArgs> | null
     pin: Prisma.$PinActionPayload<ExtArgs> | null
+    upload: Prisma.$UploadActionPayload<ExtArgs> | null
+    collection: Prisma.$CollectionActionPayload<ExtArgs> | null
+    favorite: Prisma.$FavoriteActionPayload<ExtArgs> | null
+    bucket: Prisma.$BucketActionPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2178,6 +3038,10 @@ export type $ItemActionPayload<ExtArgs extends runtime.Types.Extensions.Internal
     copyActionId: string | null
     permissionActionId: string | null
     pinActionId: string | null
+    uploadActionId: string | null
+    collectionActionId: string | null
+    favoriteActionId: string | null
+    bucketActionId: string | null
   }, ExtArgs["result"]["itemAction"]>
   composites: {}
 }
@@ -2585,6 +3449,10 @@ export interface Prisma__ItemActionClient<T, Null = never, ExtArgs extends runti
   copy<T extends Prisma.ItemAction$copyArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$copyArgs<ExtArgs>>): Prisma.Prisma__CopyActionClient<runtime.Types.Result.GetResult<Prisma.$CopyActionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   permission<T extends Prisma.ItemAction$permissionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$permissionArgs<ExtArgs>>): Prisma.Prisma__PermissionActionClient<runtime.Types.Result.GetResult<Prisma.$PermissionActionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   pin<T extends Prisma.ItemAction$pinArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$pinArgs<ExtArgs>>): Prisma.Prisma__PinActionClient<runtime.Types.Result.GetResult<Prisma.$PinActionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  upload<T extends Prisma.ItemAction$uploadArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$uploadArgs<ExtArgs>>): Prisma.Prisma__UploadActionClient<runtime.Types.Result.GetResult<Prisma.$UploadActionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  collection<T extends Prisma.ItemAction$collectionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$collectionArgs<ExtArgs>>): Prisma.Prisma__CollectionActionClient<runtime.Types.Result.GetResult<Prisma.$CollectionActionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  favorite<T extends Prisma.ItemAction$favoriteArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$favoriteArgs<ExtArgs>>): Prisma.Prisma__FavoriteActionClient<runtime.Types.Result.GetResult<Prisma.$FavoriteActionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  bucket<T extends Prisma.ItemAction$bucketArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ItemAction$bucketArgs<ExtArgs>>): Prisma.Prisma__BucketActionClient<runtime.Types.Result.GetResult<Prisma.$BucketActionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2628,6 +3496,10 @@ export interface ItemActionFieldRefs {
   readonly copyActionId: Prisma.FieldRef<"ItemAction", 'String'>
   readonly permissionActionId: Prisma.FieldRef<"ItemAction", 'String'>
   readonly pinActionId: Prisma.FieldRef<"ItemAction", 'String'>
+  readonly uploadActionId: Prisma.FieldRef<"ItemAction", 'String'>
+  readonly collectionActionId: Prisma.FieldRef<"ItemAction", 'String'>
+  readonly favoriteActionId: Prisma.FieldRef<"ItemAction", 'String'>
+  readonly bucketActionId: Prisma.FieldRef<"ItemAction", 'String'>
 }
     
 
@@ -3282,6 +4154,82 @@ export type ItemAction$pinArgs<ExtArgs extends runtime.Types.Extensions.Internal
    */
   include?: Prisma.PinActionInclude<ExtArgs> | null
   where?: Prisma.PinActionWhereInput
+}
+
+/**
+ * ItemAction.upload
+ */
+export type ItemAction$uploadArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the UploadAction
+   */
+  select?: Prisma.UploadActionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the UploadAction
+   */
+  omit?: Prisma.UploadActionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UploadActionInclude<ExtArgs> | null
+  where?: Prisma.UploadActionWhereInput
+}
+
+/**
+ * ItemAction.collection
+ */
+export type ItemAction$collectionArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CollectionAction
+   */
+  select?: Prisma.CollectionActionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CollectionAction
+   */
+  omit?: Prisma.CollectionActionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CollectionActionInclude<ExtArgs> | null
+  where?: Prisma.CollectionActionWhereInput
+}
+
+/**
+ * ItemAction.favorite
+ */
+export type ItemAction$favoriteArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FavoriteAction
+   */
+  select?: Prisma.FavoriteActionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FavoriteAction
+   */
+  omit?: Prisma.FavoriteActionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FavoriteActionInclude<ExtArgs> | null
+  where?: Prisma.FavoriteActionWhereInput
+}
+
+/**
+ * ItemAction.bucket
+ */
+export type ItemAction$bucketArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BucketAction
+   */
+  select?: Prisma.BucketActionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BucketAction
+   */
+  omit?: Prisma.BucketActionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BucketActionInclude<ExtArgs> | null
+  where?: Prisma.BucketActionWhereInput
 }
 
 /**

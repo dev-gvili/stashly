@@ -55,7 +55,7 @@ export interface StashItem {
   thumbnails: Pick<Thumbnail, 'id' | 'url' | 'width' | 'height' | 'size' | 'view'>[]
   favorites: StashFavorite[]
   pins?: StashPin[]
-  locked?: StashLock
+  locked: StashLock | null
   file: File | null
   folder: Folder | null
 }

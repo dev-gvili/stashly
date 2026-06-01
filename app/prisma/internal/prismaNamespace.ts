@@ -390,6 +390,7 @@ export const ModelName = {
   AccessAction: 'AccessAction',
   CommentAction: 'CommentAction',
   CreateAction: 'CreateAction',
+  UploadAction: 'UploadAction',
   DeleteAction: 'DeleteAction',
   EditAction: 'EditAction',
   MoveAction: 'MoveAction',
@@ -399,6 +400,9 @@ export const ModelName = {
   ShareAction: 'ShareAction',
   VersionAction: 'VersionAction',
   PinAction: 'PinAction',
+  CollectionAction: 'CollectionAction',
+  FavoriteAction: 'FavoriteAction',
+  BucketAction: 'BucketAction',
   Activity: 'Activity',
   ActivityTime: 'ActivityTime',
   AuditLog: 'AuditLog',
@@ -449,7 +453,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "account" | "itemAction" | "permissionAction" | "accessAction" | "commentAction" | "createAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "pinAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "pinItem" | "quota" | "search" | "searchChunk" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
+    modelProps: "account" | "itemAction" | "permissionAction" | "accessAction" | "commentAction" | "createAction" | "uploadAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "pinAction" | "collectionAction" | "favoriteAction" | "bucketAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "pinItem" | "quota" | "search" | "searchChunk" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -894,6 +898,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.CreateActionCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.CreateActionCountAggregateOutputType> | number
+        }
+      }
+    }
+    UploadAction: {
+      payload: Prisma.$UploadActionPayload<ExtArgs>
+      fields: Prisma.UploadActionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.UploadActionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UploadActionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.UploadActionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UploadActionPayload>
+        }
+        findFirst: {
+          args: Prisma.UploadActionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UploadActionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.UploadActionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UploadActionPayload>
+        }
+        findMany: {
+          args: Prisma.UploadActionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UploadActionPayload>[]
+        }
+        create: {
+          args: Prisma.UploadActionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UploadActionPayload>
+        }
+        createMany: {
+          args: Prisma.UploadActionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.UploadActionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UploadActionPayload>[]
+        }
+        delete: {
+          args: Prisma.UploadActionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UploadActionPayload>
+        }
+        update: {
+          args: Prisma.UploadActionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UploadActionPayload>
+        }
+        deleteMany: {
+          args: Prisma.UploadActionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.UploadActionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.UploadActionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UploadActionPayload>[]
+        }
+        upsert: {
+          args: Prisma.UploadActionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UploadActionPayload>
+        }
+        aggregate: {
+          args: Prisma.UploadActionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateUploadAction>
+        }
+        groupBy: {
+          args: Prisma.UploadActionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UploadActionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.UploadActionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UploadActionCountAggregateOutputType> | number
         }
       }
     }
@@ -1560,6 +1638,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.PinActionCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.PinActionCountAggregateOutputType> | number
+        }
+      }
+    }
+    CollectionAction: {
+      payload: Prisma.$CollectionActionPayload<ExtArgs>
+      fields: Prisma.CollectionActionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CollectionActionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CollectionActionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CollectionActionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CollectionActionPayload>
+        }
+        findFirst: {
+          args: Prisma.CollectionActionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CollectionActionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CollectionActionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CollectionActionPayload>
+        }
+        findMany: {
+          args: Prisma.CollectionActionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CollectionActionPayload>[]
+        }
+        create: {
+          args: Prisma.CollectionActionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CollectionActionPayload>
+        }
+        createMany: {
+          args: Prisma.CollectionActionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CollectionActionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CollectionActionPayload>[]
+        }
+        delete: {
+          args: Prisma.CollectionActionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CollectionActionPayload>
+        }
+        update: {
+          args: Prisma.CollectionActionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CollectionActionPayload>
+        }
+        deleteMany: {
+          args: Prisma.CollectionActionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CollectionActionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CollectionActionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CollectionActionPayload>[]
+        }
+        upsert: {
+          args: Prisma.CollectionActionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CollectionActionPayload>
+        }
+        aggregate: {
+          args: Prisma.CollectionActionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCollectionAction>
+        }
+        groupBy: {
+          args: Prisma.CollectionActionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CollectionActionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CollectionActionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CollectionActionCountAggregateOutputType> | number
+        }
+      }
+    }
+    FavoriteAction: {
+      payload: Prisma.$FavoriteActionPayload<ExtArgs>
+      fields: Prisma.FavoriteActionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.FavoriteActionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FavoriteActionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.FavoriteActionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FavoriteActionPayload>
+        }
+        findFirst: {
+          args: Prisma.FavoriteActionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FavoriteActionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.FavoriteActionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FavoriteActionPayload>
+        }
+        findMany: {
+          args: Prisma.FavoriteActionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FavoriteActionPayload>[]
+        }
+        create: {
+          args: Prisma.FavoriteActionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FavoriteActionPayload>
+        }
+        createMany: {
+          args: Prisma.FavoriteActionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.FavoriteActionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FavoriteActionPayload>[]
+        }
+        delete: {
+          args: Prisma.FavoriteActionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FavoriteActionPayload>
+        }
+        update: {
+          args: Prisma.FavoriteActionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FavoriteActionPayload>
+        }
+        deleteMany: {
+          args: Prisma.FavoriteActionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.FavoriteActionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.FavoriteActionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FavoriteActionPayload>[]
+        }
+        upsert: {
+          args: Prisma.FavoriteActionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FavoriteActionPayload>
+        }
+        aggregate: {
+          args: Prisma.FavoriteActionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateFavoriteAction>
+        }
+        groupBy: {
+          args: Prisma.FavoriteActionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FavoriteActionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.FavoriteActionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FavoriteActionCountAggregateOutputType> | number
+        }
+      }
+    }
+    BucketAction: {
+      payload: Prisma.$BucketActionPayload<ExtArgs>
+      fields: Prisma.BucketActionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BucketActionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BucketActionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BucketActionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BucketActionPayload>
+        }
+        findFirst: {
+          args: Prisma.BucketActionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BucketActionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BucketActionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BucketActionPayload>
+        }
+        findMany: {
+          args: Prisma.BucketActionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BucketActionPayload>[]
+        }
+        create: {
+          args: Prisma.BucketActionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BucketActionPayload>
+        }
+        createMany: {
+          args: Prisma.BucketActionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BucketActionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BucketActionPayload>[]
+        }
+        delete: {
+          args: Prisma.BucketActionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BucketActionPayload>
+        }
+        update: {
+          args: Prisma.BucketActionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BucketActionPayload>
+        }
+        deleteMany: {
+          args: Prisma.BucketActionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BucketActionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BucketActionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BucketActionPayload>[]
+        }
+        upsert: {
+          args: Prisma.BucketActionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BucketActionPayload>
+        }
+        aggregate: {
+          args: Prisma.BucketActionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBucketAction>
+        }
+        groupBy: {
+          args: Prisma.BucketActionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BucketActionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BucketActionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BucketActionCountAggregateOutputType> | number
         }
       }
     }
@@ -4233,7 +4533,11 @@ export const ItemActionScalarFieldEnum = {
   activityId: 'activityId',
   copyActionId: 'copyActionId',
   permissionActionId: 'permissionActionId',
-  pinActionId: 'pinActionId'
+  pinActionId: 'pinActionId',
+  uploadActionId: 'uploadActionId',
+  collectionActionId: 'collectionActionId',
+  favoriteActionId: 'favoriteActionId',
+  bucketActionId: 'bucketActionId'
 } as const
 
 export type ItemActionScalarFieldEnum = (typeof ItemActionScalarFieldEnum)[keyof typeof ItemActionScalarFieldEnum]
@@ -4272,6 +4576,14 @@ export const CreateActionScalarFieldEnum = {
 } as const
 
 export type CreateActionScalarFieldEnum = (typeof CreateActionScalarFieldEnum)[keyof typeof CreateActionScalarFieldEnum]
+
+
+export const UploadActionScalarFieldEnum = {
+  id: 'id',
+  uploadId: 'uploadId'
+} as const
+
+export type UploadActionScalarFieldEnum = (typeof UploadActionScalarFieldEnum)[keyof typeof UploadActionScalarFieldEnum]
 
 
 export const DeleteActionScalarFieldEnum = {
@@ -4346,6 +4658,33 @@ export const PinActionScalarFieldEnum = {
 } as const
 
 export type PinActionScalarFieldEnum = (typeof PinActionScalarFieldEnum)[keyof typeof PinActionScalarFieldEnum]
+
+
+export const CollectionActionScalarFieldEnum = {
+  id: 'id',
+  kind: 'kind',
+  collectionId: 'collectionId',
+  itemId: 'itemId',
+  count: 'count'
+} as const
+
+export type CollectionActionScalarFieldEnum = (typeof CollectionActionScalarFieldEnum)[keyof typeof CollectionActionScalarFieldEnum]
+
+
+export const FavoriteActionScalarFieldEnum = {
+  id: 'id',
+  kind: 'kind'
+} as const
+
+export type FavoriteActionScalarFieldEnum = (typeof FavoriteActionScalarFieldEnum)[keyof typeof FavoriteActionScalarFieldEnum]
+
+
+export const BucketActionScalarFieldEnum = {
+  id: 'id',
+  kind: 'kind'
+} as const
+
+export type BucketActionScalarFieldEnum = (typeof BucketActionScalarFieldEnum)[keyof typeof BucketActionScalarFieldEnum]
 
 
 export const ActivityScalarFieldEnum = {
@@ -4950,6 +5289,62 @@ export type ListEnumPinKindFieldRefInput<$PrismaModel> = FieldRefInputType<$Pris
 
 
 /**
+ * Reference to a field of type 'CollectionActionKind'
+ */
+export type EnumCollectionActionKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CollectionActionKind'>
+    
+
+
+/**
+ * Reference to a field of type 'CollectionActionKind[]'
+ */
+export type ListEnumCollectionActionKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CollectionActionKind[]'>
+    
+
+
+/**
+ * Reference to a field of type 'Int'
+ */
+export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
+    
+
+
+/**
+ * Reference to a field of type 'Int[]'
+ */
+export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
+ * Reference to a field of type 'FavoriteKind'
+ */
+export type EnumFavoriteKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FavoriteKind'>
+    
+
+
+/**
+ * Reference to a field of type 'FavoriteKind[]'
+ */
+export type ListEnumFavoriteKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FavoriteKind[]'>
+    
+
+
+/**
+ * Reference to a field of type 'BucketKind'
+ */
+export type EnumBucketKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BucketKind'>
+    
+
+
+/**
+ * Reference to a field of type 'BucketKind[]'
+ */
+export type ListEnumBucketKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BucketKind[]'>
+    
+
+
+/**
  * Reference to a field of type 'Json'
  */
 export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
@@ -4974,20 +5369,6 @@ export type EnumDriveTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$Prisma
  * Reference to a field of type 'DriveType[]'
  */
 export type ListEnumDriveTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DriveType[]'>
-    
-
-
-/**
- * Reference to a field of type 'Int'
- */
-export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
-    
-
-
-/**
- * Reference to a field of type 'Int[]'
- */
-export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
     
 
 
@@ -5371,6 +5752,7 @@ export type GlobalOmitConfig = {
   accessAction?: Prisma.AccessActionOmit
   commentAction?: Prisma.CommentActionOmit
   createAction?: Prisma.CreateActionOmit
+  uploadAction?: Prisma.UploadActionOmit
   deleteAction?: Prisma.DeleteActionOmit
   editAction?: Prisma.EditActionOmit
   moveAction?: Prisma.MoveActionOmit
@@ -5380,6 +5762,9 @@ export type GlobalOmitConfig = {
   shareAction?: Prisma.ShareActionOmit
   versionAction?: Prisma.VersionActionOmit
   pinAction?: Prisma.PinActionOmit
+  collectionAction?: Prisma.CollectionActionOmit
+  favoriteAction?: Prisma.FavoriteActionOmit
+  bucketAction?: Prisma.BucketActionOmit
   activity?: Prisma.ActivityOmit
   activityTime?: Prisma.ActivityTimeOmit
   auditLog?: Prisma.AuditLogOmit

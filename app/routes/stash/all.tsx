@@ -63,11 +63,14 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
     }
   })
   
-  ;['trash_items', 'move_items'].forEach((action) => {
-    if (formData?.get('intent') === action) {
-      return true
-    }
-  })
+   if (
+    formData?.get('intent') === 'move_items' ||
+    formData?.get('intent') === 'trash_items' ||
+    formData?.get('intent') === 'create_folder' ||
+    formData?.get('intent') === 'create_upload_item'
+  ) {
+    return true
+  }
 
 
   if (

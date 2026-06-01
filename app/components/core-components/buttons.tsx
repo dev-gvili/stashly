@@ -1,11 +1,14 @@
 import {
   DeleteIcon,
+  DoubleCheckIcon,
   FavoriteIcon,
+  FavoritesFillIcon,
   LoaderIcon,
   LoadMoreFillIcon,
   RestoreIcon,
-  TrashIcon,
+  TrashFillIcon,
 } from '@/components/icons'
+import { useSelection } from '@/components/stash/selection'
 import useConfirm from '@/hooks/useConfirm'
 import { Button } from '@/ui/button'
 import { getQueryParam } from '@/utils/query-params'
@@ -49,7 +52,7 @@ const Delete = (props: React.ComponentProps<typeof Button>) => {
         }
         {...props}
       >
-        <DeleteIcon className="size-5!" />
+        <TrashFillIcon className="size-5!" />
       </Button>
     </Tooltip>
   )
@@ -75,7 +78,7 @@ const MoveToTrash = (props: React.ComponentProps<typeof Button>) => {
         disabled={!selectedItems}
         {...props}
       >
-        <TrashIcon className="size-5!" />
+        <TrashFillIcon className="size-5!" />
       </Button>
     </Tooltip>
   )
@@ -125,7 +128,26 @@ const FavoriteItems = (props: React.ComponentProps<typeof Button>) => {
         }}
         {...props}
       >
-        <FavoriteIcon className="size-5!" />
+        <FavoritesFillIcon className="size-5!" />
+      </Button>
+    </Tooltip>
+  )
+}
+
+const SelectAll = (props: React.ComponentProps<typeof Button>) => {
+  let { items, allSelected, toggleAll } = useSelection()
+  if (items.length === 0) return null
+
+  return (
+    <Tooltip content={allSelected ? 'Unselect all' : 'Select all'}>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-pressed={allSelected}
+        onClick={() => toggleAll()}
+        {...props}
+      >
+        <DoubleCheckIcon className="size-5!" />
       </Button>
     </Tooltip>
   )
@@ -166,4 +188,4 @@ const LoadMoreItems = ({
     </Button>
   )
 }
-export { Delete, FavoriteItems, LoadMoreItems, MoveToTrash, Restore }
+export { Delete, FavoriteItems, LoadMoreItems, MoveToTrash, Restore, SelectAll }

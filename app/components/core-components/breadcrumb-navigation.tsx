@@ -10,7 +10,13 @@ import {
 import type { Breadcrumb as BreadcrumbData } from '@/services/breadcrumbs'
 import { href, useSearchParams } from 'react-router'
 import { Link } from 'react-router'
-import { BreadcrumbSeparatorIcon, FolderOpenIcon, HomeIcon } from '@/components/icons'
+import {
+  BreadcrumbSeparatorIcon,
+  FolderFillIcon,
+  FolderOpenIcon,
+  HomeFillIcon,
+  HomeIcon,
+} from '@/components/icons'
 import {
   Button,
   DropdownMenu,
@@ -35,24 +41,32 @@ const BreadcrumbDropdown = ({ crumbs, me }: StashBreadcrumbsProps) => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            size="icon-sm"
+            size="icon"
             variant="ghost"
-            className="[&_svg]:size-5! hover:text-foreground transition-colors hover:bg-transparent! hover:cursor-pointer p-0! size-5! rounded-xs appearance-none focus-visible:border-ring focus-visible:ring-primary/80 focus-visible:ring-2"
+            className="[&_svg]:size-6! hover:text-foreground transition-colors hover:bg-transparent! hover:cursor-pointer p-0! size-5! rounded-xs appearance-none border-none ring-0 focus:ring-0 focus-visible:border-none focus-visible:ring-0 "
           >
             <BreadcrumbEllipsis />
             <span className="sr-only">Toggle menu</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
+        <DropdownMenuContent
+          align="start"
+          className="min-w-40 bg-card text-card-foreground font-stashly"
+        >
           <DropdownMenuGroup>
             {crumbs.map((crumb) => (
-              <DropdownMenuItem key={crumb.id}>
+              <DropdownMenuItem
+                key={crumb.id}
+                asChild
+                className="hover:bg-transparent! hover:cursor-pointer"
+              >
                 <Link
                   to={`${href('/:me/stash/folders/:folderId', {
                     me,
                     folderId: crumb.id,
                   })}?${searchParams.toString()}`}
                 >
+                  <FolderFillIcon className="size-5! text-current" />
                   {crumb.name}
                 </Link>
               </DropdownMenuItem>
@@ -76,19 +90,20 @@ function CrumbLink({
   removeQueryParam(searchParams, 'cursor') // Clear cursor when navigating via breadcrumbs, to prevent confusion when the selected item(s) disappear from the new page. Note: this mutates searchParams in-place, which is fine because we're only using it to build the href for the Link component below.
   removeQueryParam(searchParams, 'selectedItems') // Clear selected items for same reason as cursor. If we kept selectedItems in the URL, then when the user clicks a breadcrumb to navigate to a parent folder, the selectedItems that were relevant in the child folder would still be in the URL, which could cause unexpected behavior (e.g. bulk actions appearing for items that aren't actually selected in the new folder).
 
+  let to =
+    crumb.name === 'root'
+      ? href('/:me/stash/all', { me })
+      : href('/:me/stash/folders/:folderId', { me, folderId: crumb.id })
   return (
     <>
       <BreadcrumbLink asChild>
-        <Link
-          to={`${href('/:me/stash/folders/:folderId', { me, folderId: crumb.id })}?${searchParams.toString()}`}
-          className="font-stashly"
-        >
+        <Link to={`${to}?${searchParams.toString()}`} className="font-stashly">
           {crumb.name === 'root' ? (
-            <HomeIcon className="size-5!" />
+            <HomeFillIcon className="size-5!" />
           ) : crumb.type === 'folder' ? (
             <span className="flex items-center gap-2">
-            <FolderOpenIcon className="size-5!" />
-            <span>{crumb.name}</span>
+              <FolderFillIcon className="size-5!" />
+              <span>{crumb.name}</span>
             </span>
           ) : (
             crumb.name
@@ -112,7 +127,7 @@ export function Breadcrumbs() {
   const last = crumbs[crumbs.length - 1]
   const secondToLast = crumbs.length > 1 ? crumbs[crumbs.length - 2] : null
   const collapsed =
-    crumbs.length > 3 ? crumbs.slice(1, crumbs.length - 2) : null
+    crumbs.length > 2 ? crumbs.slice(1, crumbs.length - 2) : null
   const showAll = crumbs.length <= 3
 
   return (
@@ -158,8 +173,8 @@ export function Breadcrumbs() {
               <HomeIcon className="size-5!" />
             ) : last?.type === 'folder' ? (
               <span className="flex items-center gap-2">
-              <FolderOpenIcon className="size-5!" />
-              <span>{last.name}</span>
+                <FolderFillIcon className="size-5!" />
+                <span>{last.name}</span>
               </span>
             ) : (
               last?.name

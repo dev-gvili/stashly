@@ -92,7 +92,7 @@ function GridItem({ item, showVideo }: { item: ImageData; showVideo: boolean }) 
             sizes={item.sizes}
             srcSet={item.srcSet}
             style={isTransitioning ? { viewTransitionName: `img-${item.id}` } : undefined}
-            className="rounded-md object-cover w-full h-full grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer"
+            className="rounded-md object-cover w-full h-full cursor-pointer"
             decoding="async"
             loading="lazy"
           />

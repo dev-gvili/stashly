@@ -26,6 +26,30 @@ export const PinKind = {
 export type PinKind = (typeof PinKind)[keyof typeof PinKind]
 
 
+export const CollectionActionKind = {
+  item_added: 'item_added',
+  item_removed: 'item_removed',
+  emptied: 'emptied'
+} as const
+
+export type CollectionActionKind = (typeof CollectionActionKind)[keyof typeof CollectionActionKind]
+
+
+export const FavoriteKind = {
+  favorited: 'favorited',
+  unfavorited: 'unfavorited'
+} as const
+
+export type FavoriteKind = (typeof FavoriteKind)[keyof typeof FavoriteKind]
+
+
+export const BucketKind = {
+  emptied: 'emptied'
+} as const
+
+export type BucketKind = (typeof BucketKind)[keyof typeof BucketKind]
+
+
 export const DriveType = {
   personal: 'personal',
   business: 'business'

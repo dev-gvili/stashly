@@ -3,18 +3,28 @@ import {
   FavoriteItems,
   MoveToTrash,
   Restore,
+  SelectAll,
 } from './core-components/buttons'
-import { useParams, useSearchParams } from 'react-router'
+import { useParams, useSearchParams, type Params, type UIMatch } from 'react-router'
 import { getQueryParamArray, hasQueryParam } from '@/utils/query-params'
 import { cn } from '@/utils/styles'
 import { Breadcrumbs } from './core-components/breadcrumb-navigation'
 import { ButtonGroup } from './ui/button-group'
 import { useLocation } from 'react-router'
+import { useBreadcrumbs } from '@/hooks'
+
+type AppToolbarProps =
+  React.ComponentPropsWithoutRef<'div'> & {
+    title?: string
+    route?: any
+  }
 
 export const AppToolbar = ({
   className,
+  title,
+  route,
   ...props
-}: React.ComponentPropsWithoutRef<'div'>) => {
+}: AppToolbarProps) => {
   let { me, folderId } = useParams()
   let location = useLocation()
   if (
@@ -26,28 +36,31 @@ export const AppToolbar = ({
   let [searchParams] = useSearchParams()
   let hasSelectedItems = hasQueryParam(searchParams, 'selectedItems')
   let selectedCount = getQueryParamArray(searchParams, 'selectedItems').length
-  if (!folderId && selectedCount <= 1) return null
+  let breadcrumbs = useBreadcrumbs()
+  title = title ?? location.state?.name ?? breadcrumbs?.at(-1)?.name ?? 'Stashly'
   return (
     <div
       className={cn(
-        'sticky bottom-0 w-full inline-flex gap-2 p-2 items-center bg-background z-40 h-12',
+        'mb-2  h-14 w-full gap-2 py-2 items-center justify-start bg-background z-40 flex shrink-0 sticky top-0',
         className
       )}
       {...props}
     >
+      <h1 className="text-lg font-bold  w-full max-w-max min-w-24">{title}</h1>
       <Breadcrumbs />
-      <ButtonGroup hidden={!hasSelectedItems} className="ml-auto">
+      <ButtonGroup  className="ml-auto gap-2">
         <Restore variant="ghost" size="icon-sm" />
-        <FavoriteItems variant="ghost" size="icon-sm" />
+        <FavoriteItems variant="outline" size="icon-sm" className='bg-card border-input' />
         <Delete
           variant="ghost"
           size="icon-sm"
           className="hover:bg-destructive/25! text-destructive-foreground!"
         />
+        <SelectAll variant="outline" size="icon-sm" className='bg-card border-input' />
         <MoveToTrash
-          variant="ghost"
+          variant="outline"
           size="icon-sm"
-          className="hover:bg-destructive/25! text-destructive-foreground!"
+          className="hover:text-destructive-foreground! bg-destructive! border-input"
         />
       </ButtonGroup>
     </div>

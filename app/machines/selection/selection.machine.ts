@@ -18,9 +18,12 @@ export const selectionMachine = setup({
           shiftKey?: boolean
           paramName?: string
         }
+      | { type: 'SELECT_ALL'; paramName?: string }
+      | { type: 'UNSELECT_ALL'; paramName?: string }
       | { type: 'SET_LAST_CHECKED'; id: string | null },
   },
 }).createMachine({
+  /** @xstate-layout N4IgpgJg5mDOIC5SzAGzAYwC4EsD2AdgHQBOYAhhAJ4DEAygKIAqA+gJJMMCydA2gAwBdRKAAOeWDlyERIAB6IA7IqIBWAEzqAbAA5+qjZoCcBgDQgqiAMxaVOmztX8r6gCzrVARkUBfH+ZR0bHxiMkpaRlZGABkGAGFOABEBYSQQcUlpAlkFBC11In5+e35PdSMyq09XVXNLBHVFAqtXXX51UvLXRSM-ALRMLNIKanpmFmiAQTpWOIAJeIBpBmShWQypEJzEdzrEby0iR1tVK0VSrVdXflc+kEDBkOHwmiYAeQBxD9iU9YlNmRpXI6FSqLSeKxGRRXTSeVQ6Ix7BA6TxEGy2fSQ5zXTy9O4EPAQOCyB7BQFif5ZbYIAC0WiRdLupKGYWof0yWyBiBBaNORh03W8HUaSNaOjR2gROi0VgMctUfj8QA */
   id: 'selection',
   initial: 'ready',
   context: {
@@ -44,6 +47,20 @@ export const selectionMachine = setup({
         // Anchor point for shift+click range selection
         SET_LAST_CHECKED: {
           actions: assign({ lastChecked: ({ event }) => event.id }),
+        },
+        SELECT_ALL: {
+          actions: assign(({ context, event }) => ({
+            selectedIds: [...(context.items ?? [])],
+            lastChecked: null,
+            paramName: event.paramName ?? context.paramName ?? 'selectedItems',
+          })),
+        },
+        UNSELECT_ALL: {
+          actions: assign(({ context, event }) => ({
+            selectedIds: [],
+            lastChecked: null,
+            paramName: event.paramName ?? context.paramName ?? 'selectedItems',
+          })),
         },
         TOGGLE: {
           actions: assign(({ context, event }) => {

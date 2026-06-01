@@ -25,6 +25,7 @@ import type { User } from 'better-auth'
 import type { auth } from './auth'
 import { toCategory } from '../utils/converters'
 import { parseEtag } from '../utils/parsers'
+import { StashlyError, StashlyErrorCode } from './api.errors'
 
 export interface UploadProgress {
   percentage: number
@@ -156,7 +157,7 @@ export async function deleteBucket(bucketName: string) {
     await s3.send(new DeleteBucketCommand({ Bucket: bucketName }))
   } catch (error) {
     console.error('Error deleting bucket:', error)
-    throw new Error('Failed to delete bucket')
+    throw new StashlyError(StashlyErrorCode.DELETE_BUCKET_FAILED, 'Failed to delete bucket')
   }
 }
 
@@ -221,7 +222,7 @@ export async function createUserBucket(user: User): Promise<string> {
     return bucketName
   } catch (error) {
     console.error('Error creating bucket:', error)
-    throw new Error('Failed to create user bucket')
+    throw new StashlyError(StashlyErrorCode.CREATE_BUCKET_FAILED, 'Failed to create user bucket')
   }
 }
 
@@ -258,6 +259,7 @@ export async function applyDefaultBucketPolicy(bucket: string) {
             AllowedMethods: ['*'],
             AllowedHeaders: ['*'],
             ExposeHeaders: ['*'],
+            ID: 'DefaultPolicy',
             MaxAgeSeconds: 80000,
           },
         ],

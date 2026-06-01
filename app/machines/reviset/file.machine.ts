@@ -54,6 +54,13 @@ export const fileMachine = setup({
         return (event as unknown as DoneActorEvent<{ uploadId: string }>).output
           .uploadId
       },
+      mediaFile: ({ context, event }) => {
+        return {
+          ...context.mediaFile,
+          uploadId: (event as unknown as DoneActorEvent<{ uploadId: string }>)
+            .output.uploadId,
+        }
+      },
     }),
     // Saves the error message to the context
     assignError: assign({

@@ -3,6 +3,7 @@ import { pipeline, env, type SupportedTasks } from '@huggingface/transformers'
 import {
   pipeline as pipelineNext8,
   env as envNext8,
+  type SupportedTasks as SupportedTasksNext8,
 } from '@huggingface/transformers-next4.0.1'
 import {
   extractAudioChunk,
@@ -337,18 +338,9 @@ if (DEBUG) {
 }
 env.useBrowserCache = true
 env.allowRemoteModels = true
-env.useWasmCache = true
-env.backends.onnx!.webgpu!.profiling = {
-  mode: 'default',
-}
-env.backends.onnx.wasm!.numThreads = 1
 
 envNext8.useBrowserCache = true
 envNext8.allowRemoteModels = true
-envNext8.useWasmCache = true
-envNext8.backends.onnx!.webgpu!.profiling = {
-  mode: 'default',
-}
 // -------------------------
 // WebGPU Device Manager (generic fallback chain)
 // -------------------------
@@ -357,7 +349,7 @@ envNext8.backends.onnx!.webgpu!.profiling = {
 // Fallback order: high-performance GPU → low-power GPU → WASM
 const WebGPUDeviceManager = {
   device: null as GPUDevice | null,
-  adapters: [] as { adapter: GPUAdapter; name: string; preference: string }[],
+  adapters: [] as { adapter: GPUAdapter; name: string; preference?: string }[],
   currentAdapterIndex: 0,
 
   /** Build a dedup key from adapter info */
@@ -396,7 +388,7 @@ const WebGPUDeviceManager = {
   async discoverAdapters(): Promise<void> {
     if (this.adapters.length > 0) return // already discovered
 
-    const optionSets: { options: GPURequestAdapterOptions; label: string }[] = [
+    const optionSets: { options: GPURequestAdapterOptions; label?: string }[] = [
       {
         options: { powerPreference: 'high-performance' },
         label: 'high-performance',
@@ -406,7 +398,7 @@ const WebGPUDeviceManager = {
         options: { featureLevel: 'compatibility' } as GPURequestAdapterOptions,
         label: 'compatibility',
       },
-      { options: {}, label: 'default' },
+      { options: {} },
     ]
 
     const seen = new Set<string>()
@@ -457,6 +449,11 @@ const WebGPUDeviceManager = {
       console.warn(`GPU device lost (${name}):`, info.message)
       this.device = null
       await PipelineManager.resetAllPipelines()
+      try {
+        await this.init() // try to reinitialize the same adapter
+      } catch (e) {
+        await this.switchToNextAdapter()
+      }
     })
 
     return this.device
@@ -505,7 +502,7 @@ const WebGPUDeviceManager = {
 // Pipeline Manager
 // -------------------------
 export class PipelineManager {
-  static instances: Record<string, SupportedTasks[keyof SupportedTasks]> = {}
+  static instances: Record<string, SupportedTasksNext8[keyof SupportedTasksNext8]> = {}
 
   static async resetAllPipelines(): Promise<void> {
     console.warn('Resetting all pipelines due to device loss')
@@ -521,7 +518,7 @@ export class PipelineManager {
     this.instances = {}
   }
 
-  static async getPipeline<T extends keyof SupportedTasks>(
+  static async getPipeline<T extends keyof SupportedTasksNext8>(
     task: T,
     model: string,
     progressCallback?: ProgressCallback
@@ -537,21 +534,21 @@ export class PipelineManager {
         console.warn('WebGPU not available, using WASM')
         device = 'wasm'
       }
-      const dtype = device === 'wasm' ? 'q4' : (MODEL_DTYPE[model] ?? 'fp16')
+      const dtype: "q4" | "fp16" | "fp32" | "q4f16" | "auto" | "q8" | "int8" | "uint8" | "bnb4" | Record<string, "q4" | "fp16" | "fp32" | "q4f16" | "auto" | "q8" | "int8" | "uint8" | "bnb4"> | undefined = device === 'wasm' ? 'fp16' : (MODEL_DTYPE[model] as "q4" | "fp16" | "fp32" | "q4f16" | "auto" | "q8" | "int8" | "uint8" | "bnb4"  ?? 'fp16')
       const opts = {
         device,
-        dtype: dtype as any,
+        dtype: dtype,
         progress_callback: progressCallback,
       }
       try {
-        this.instances[key] = await pipeline(task, model, opts)
+        this.instances[key] = await pipelineNext8(task, model, opts)
       } catch (e) {
         console.warn(
           `Pipeline load failed for ${model}, resetting and retrying:`,
           e
         )
         await this.resetAllPipelines()
-        this.instances[key] = await pipeline(task, model, opts)
+        this.instances[key] = await pipelineNext8(task, model, opts)
       }
     }
 

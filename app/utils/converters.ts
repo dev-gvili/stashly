@@ -600,6 +600,7 @@ export let toMediaFile = (
     processingError: '',
     caption: '',
     embedding: [],
+    uploadId: '',
   }
 }
 
@@ -767,6 +768,10 @@ export const StashlyPrefixMap = {
   VersionAction: 'va',
   PermissionAction: 'pa',
   PinAction: 'pna',
+  UploadAction: 'ula',
+  CollectionAction: 'cola',
+  FavoriteAction: 'fava',
+  BucketAction: 'bka',
   Activity: 'act',
   ActivityTime: 'at',
   AuditLog: 'aud',
