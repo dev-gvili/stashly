@@ -248,6 +248,9 @@ Start with the simplest query that works. Do not use recursive CTEs or over-engi
 ## Prisma Client
 
 - Import Prisma client from `app/prisma/client` — do NOT use the generated client via tsx or any other path.
+- **No `--schema` flag**: schema lives in `prisma/models/*.prisma` and is wired through `prisma.config.ts`. Passing `--schema=` fails with "file not found".
+- **DB drift recovery**: if `prisma migrate dev` reports drift and wants to reset (destructive), prefer `prisma db push --accept-data-loss` for non-destructive changes (new nullable columns). The "data loss" warning on adding a unique constraint to a new nullable column is spurious — existing rows are NULL, no duplicates possible.
+- **`db push` does NOT auto-regenerate the client** in this repo (Prisma 7 + `prisma.config.ts`). If TS still shows `Property 'X' does not exist on type 'never'` for a new field after push, run `pnpm prisma generate` explicitly.
 
 ## Zod Conventions
 
@@ -329,6 +332,12 @@ When adding a new feature, these steps are **mandatory** in order:
 
 **Fire-and-forget pattern**: Use `Promise.resolve().then(() => createActivity({...})).catch(() => {})` — not just `createActivity({...}).catch(() => {})`. Arguments to `createActivity` may throw synchronously (e.g. `toObjectId` when a prefix is missing), which `.catch()` on the returned promise cannot intercept.
 
+**Per-file `record*Activity` helpers**: each `*-actions.ts` defines its own private helper at the top of the file (see `pin-actions.ts`, `collection-actions.ts`, `item-actions.ts`'s `recordFavoriteActivity`, `storage-actions.ts`'s `recordBucketEmptied`). Keeps fire-and-forget boilerplate out of business logic; mirror this pattern in new action files.
+
+**`DeleteAction.itemType`**: the `ObjectType` enum only has `file | folder` — collections map to `'folder'` (closest semantic match, mirrors `trashItems` behaviour).
+
+**Hard-delete activity is best-effort**: `Activity.itemId` has `onDelete: Cascade`. Recording an activity after a permanent delete (`permanentlyDeleteItem`, `deleteCollection`) will FK-fail silently because the parent item is already gone. Pattern is intentional — soft-delete (trash) is the durable record.
+
 **`searchFactory` does not auto-apply `defaultInclude`**: Pass `include` explicitly on every `searchActivities` / `searchItems` call or relations will be omitted from results.
 
 **`StashlyPrefixMap`**: Every new Prisma model that uses `toObjectId(getPrefixForModel('ModelName'))` must have an entry in `app/utils/converters.ts`. Missing entries throw synchronously: `Invalid prefix: must be a non-empty string without an underscore`.
@@ -338,6 +347,8 @@ When adding a new feature, these steps are **mandatory** in order:
 **Item card dropdown**: Actions live in the internal `ItemCardActions` component inside `app/components/stash/item-card.tsx`.
 
 **Pinned items**: `PinItem` is a per-user, per-item join row with a `position` int for manual ordering. Business logic lives in `app/.server/pin-actions.ts`; the resource route is `/api/pins` (POST `intent: pin|unpin|reorder`, GET `intent: list|check`). Pin/Unpin is surfaced in `ItemCard.Actions` via the `usePinItem` hook (`app/hooks/usePinItem.ts`) for optimistic toggling. The pinned page lives at `/:me/stash/pinned`. `StashItem` carries an optional `pins?: StashPin[]` field — populated by `getPinnedItems` and `getFavoritedItems` selects so the dropdown shows the correct initial label.
+
+**Activity action types**: `ItemAction` has a 1:1 relation to one of: `CreateAction`, `RenameAction`, `MoveAction`, `CopyAction`, `DeleteAction { name, itemType }`, `RestoreAction`, `ShareAction`, `VersionAction`, `CommentAction`, `PermissionAction`, `UploadAction`, `EditAction`, `PinAction { kind: pinned|unpinned|reordered }`, `FavoriteAction { kind: favorited|unfavorited }`, `CollectionAction { kind: item_added|item_removed|emptied, collectionId, itemId, count }`, `BucketAction { kind: emptied }`. When adding a new kind: add the model + enum, add a prefix to `StashlyPrefixMap`, extend `defaultInclude` and `OverviewActivityKind` in `activity-actions.ts`, extend `formatActivity` in `app/utils/activity.ts`, and add a verb to `ACTIVITY_VERB` in `overview-view.tsx`.
 
 **`openedAt` tracking**: Any route loader that opens a file, folder, collection, or image must call `touchOpenedAt(itemId)` from `@/services/item-actions` fire-and-forget — `Promise.resolve().then(() => touchOpenedAt(id)).catch(() => {})`. This keeps `openedAt` current for recency/suggested-items features. Current callers: `folder.tsx`, `file.tsx`, `collection.tsx`, `gallery-image.tsx`.
 
@@ -365,13 +376,18 @@ Links use `<Link to={item.id} viewTransition unstable_mask=".">` — `unstable_m
 
 ## Thumbnail Pipeline
 
-Client-side 4-stage progressive generation. All output is **WebP**. Entry point: `app/hooks/useThumbnail.ts`.
+Client-side 3-stage progressive generation. All output is **WebP**. Entry point: `app/hooks/useThumbnailV2.ts` — a thin orchestrator that composes pure helpers from `@/utils/thumbnail-pipeline` (`generateStage1Preview`, `generateStage2Resize`, `generateStage3Salient`, `putThumbnailToS3`, `makeStageUrl`) and a swappable broadcast channel from `@/hooks/thumbnail-signal`. Spawned per-file by `app/components/upload/upload-thumbnail-runner.tsx`, which keys the component on `mediaFile.id` so each upload gets its own hook instance.
 
-**Gate**: pipeline starts only after `status === 'itemCreated'` (not `'done'`). `useUpload.ts` watches for `itemCreated` and calls `runThumbnail(id, file)`. A module-level `thumbnailedIds = new Set<string>()` (shared across hook instances) ensures the pipeline fires exactly once per file.
+**Stage 0 (hex color) was removed in V2** — every consumer already filters `url.startsWith('#')`, so writing it to the DB was pure waste. The pipeline now starts at stage 1.
+
+**Gate**: pipeline starts only after `status === 'itemCreated'` (not `'done'`). `upload-thumbnail-runner.tsx` watches for `itemCreated` and calls `runThumbnail(file)`. A module-level `thumbnailedIds = new Set<string>()` (shared across hook instances) ensures the pipeline fires exactly once per file.
+
+**Signal architecture** (`app/hooks/thumbnail-signal/`): three interchangeable implementations behind a single `ACTIVE_SIGNAL` constant in `index.ts`. Both producer (`useThumbnailPublisher`) and consumer (`useLiveThumbnail`) import from the index, so flipping the constant changes both sides atomically. Implementations: `signal-store.ts` (module-store + `useSyncExternalStore`), `signal-fetcher.ts` (keyed `useFetcher`), `signal-xstate.ts` (actor).
+
+**Currently chosen: `'fetcher'`** (`signal-fetcher.ts`). Producer and consumer both call `useFetcher({ key: 'thumb:<itemId>' })`. Stages 2/3 ride the fetcher itself: producer submits the PATCH via `patchFetcher.submit(fd, { method: 'patch', action: '/api/thumbnails/:id' })`; consumer reads `fetcher.formData?.get('url')` for the optimistic value (available immediately on submit) and `fetcher.data?.url` after the PATCH lands. React Router retains keyed-fetcher state globally, so the consumer sees the latest stage across mount/unmount of any single ItemCard. Stage 1 (local blob URL, no HTTP) rides a tiny side `Map<id, {src}>` with `useSyncExternalStore` subscribers — only what can't go through a fetcher uses the side channel.
 
 | Stage | What | Mechanism |
 |-------|------|-----------|
-| 0 | Color hash placeholder | `hashToColor(name, type)` → hex stored directly as `url` in DB — no S3 |
 | 1 | 8×8 blur preview | Image: `extractTinyThumbnail` · Video: `generateVideoThumbnail` · PDF: `generatePdfThumbnail` (from `@/utils/pdf`) — **local `URL.createObjectURL` only, NOT persisted to S3 or DB** |
 | 2 | 512px resize | Image: `canvasResize(file, 512)` · Video: re-encode frame · PDF: `renderPdfPageToBlob(file, 512)` → presign → PUT to S3, URL written as `${publicUrl}?v=2` |
 | 3 | ViT saliency crop | AI worker (`thumbnail.ai.ts`) — **images only**, URL written as `${publicUrl}?v=3` |
@@ -382,7 +398,7 @@ Client-side 4-stage progressive generation. All output is **WebP**. Entry point:
 
 PDFs stop after stage 2. The PDF.js worker URL is set globally on import in `app/utils/pdf.ts` via `pdfjs-dist/build/pdf.worker.min.mjs?url`.
 
-**Compute worker**: heavy thumbnail compute (PDF.js parsing, canvas resize, image decoding, PDF text extraction) runs in a singleton dedicated worker at `app/workers/thumbnail.compute.worker.ts` with an internal concurrency cap of **1** and a 30-second per-op timeout. `useThumbnail.ts` is a thin orchestrator that dispatches RPC requests via `compute({ kind, file })` and handles HTTP + React state on main. Video thumbnails stay on main because they require `<video>` DOM access. Stage 3 (image AI) also stays on main — it calls into `app/workers/thumbnail.ai.ts`, which is a regular module using WebGPU (not a Worker — the file location is historical).
+**Compute worker**: heavy thumbnail compute (PDF.js parsing, canvas resize, image decoding, PDF text extraction) runs in a singleton dedicated worker at `app/workers/thumbnail.compute.worker.ts` with an internal concurrency cap of **1** and a 30-second per-op timeout. The pipeline helpers in `@/utils/thumbnail-pipeline` dispatch RPC requests via `compute({ kind, file })`; `useThumbnailV2` handles HTTP + React state on main. Video thumbnails stay on main because they require `<video>` DOM access. Stage 3 (image AI) also stays on main — it calls into `app/workers/thumbnail.ai.ts`, which is a regular module using WebGPU (not a Worker — the file location is historical).
 
 The cap is 1 because PDF.js inside a dedicated worker falls back to **fake worker mode** (it can't spawn a sub-worker reliably from inside another worker). In fake-worker mode, multiple concurrent PDF operations terminate each other's tasks ("Worker task was terminated" warnings) — serializing is safer than the throughput win.
 

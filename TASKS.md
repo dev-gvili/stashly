@@ -2,12 +2,15 @@
 
 ## Active
 
-- [ ] Orphaned file cleanup — tackle `app/components/` (~30 orphans remaining; `item-card-actions.tsx` + `item-card-checkbox.tsx` deleted 2026-04-29). See `orphaned.md` for full list.
+- [ ] Commit + PR the activity-tracking work shipped 2026-06-02 — new `CollectionAction` / `FavoriteAction` / `BucketAction` models, `record*Activity` helpers in `collection-actions.ts`, `item-actions.ts`, `storage-actions.ts`, extended `activity-actions.ts` (defaultInclude + OverviewActivityKind), UI labels in `app/utils/activity.ts` + `overview-view.tsx`. Currently uncommitted in working tree.
+- [ ] Author consolidated Prisma migration — DB was synced via `prisma db push --accept-data-loss` to bypass pre-existing `UploadAction` drift. No migration file exists yet for the new action models or the drifted table. Required before deploy.
 - [ ] Decide search infra: integrate the built-but-unwired `search.repository.ts`, `search.ts`, `filters.ts` — or delete them to reduce dead code. *(deferred — revisit after collections stabilises)*
 - [ ] Fix `app/routes/api/shares.ts` — replace `@/services/share-actions` import with relative `../../.server/share-actions` to resolve dot-server plugin build failure (deferred per "skip production build")
 - [ ] Migrate flat item API routes — callers of `/api/items/comments` etc. should move to nested `/api/items/:itemId/comments`; remove flat registrations after
 
 ## Someday / Low Priority
+
+- [ ] Orphaned file cleanup — tackle `app/components/` (~30 orphans remaining; `item-card-actions.tsx` + `item-card-checkbox.tsx` deleted 2026-04-29). See `orphaned.md` for full list. *(demoted 2026-06-02 — 5 weeks stale, not blocking; re-scan before next pass since the codebase has changed substantially)*
 
 - [ ] **URL model** — central `Url` table for short-link routing, analytics, and expiry. Approach settled: Url owns nullable FKs to each resource (facet pattern, matching `Item`). 1:1 per resource with `@unique` FK cols for now; workspace slug aliasing (1:many) deferred. Path prefixes from `StashlyPrefixMap` (`/ws/:slug`, `/sl/:slug`, `/inv/:slug`). Each resource type gets its own redirect route. Brainstormed 2026-05-16.
 
