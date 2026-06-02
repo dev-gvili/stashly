@@ -2,8 +2,6 @@
 
 ## Active
 
-- [ ] Commit + PR the activity-tracking work shipped 2026-06-02 — new `CollectionAction` / `FavoriteAction` / `BucketAction` models, `record*Activity` helpers in `collection-actions.ts`, `item-actions.ts`, `storage-actions.ts`, extended `activity-actions.ts` (defaultInclude + OverviewActivityKind), UI labels in `app/utils/activity.ts` + `overview-view.tsx`. Currently uncommitted in working tree.
-- [ ] Author consolidated Prisma migration — DB was synced via `prisma db push --accept-data-loss` to bypass pre-existing `UploadAction` drift. No migration file exists yet for the new action models or the drifted table. Required before deploy.
 - [ ] Decide search infra: integrate the built-but-unwired `search.repository.ts`, `search.ts`, `filters.ts` — or delete them to reduce dead code. *(deferred — revisit after collections stabilises)*
 - [ ] Fix `app/routes/api/shares.ts` — replace `@/services/share-actions` import with relative `../../.server/share-actions` to resolve dot-server plugin build failure (deferred per "skip production build")
 - [ ] Migrate flat item API routes — callers of `/api/items/comments` etc. should move to nested `/api/items/:itemId/comments`; remove flat registrations after
@@ -19,6 +17,8 @@
 
 ## Done
 
+- [x] Activity tracking expansion — `CollectionAction` / `FavoriteAction` / `BucketAction` Prisma models with `record*Activity` helpers wired into `collection-actions.ts`, `item-actions.ts` (favorites), `storage-actions.ts` (empty bucket); extended `activity-actions.ts` defaultInclude + `OverviewActivityKind`; UI labels in `app/utils/activity.ts` + `overview-view.tsx`. Shipped in commit `21c1106` (2026-06-02).
+- [x] Consolidated Prisma migration — `20260602000000_consolidate_upload_collection_favorite_bucket_actions` captures the `UploadAction` drift + the new action models/columns/FKs. Marked `--applied` (DB was already in sync via prior `db push`). `prisma migrate status` clean. Commit `a60b962` (2026-06-02).
 - [x] Pinned items feature — `PinItem` model, `pin-actions.ts`, `/api/pins` route, `usePinItem` hook, optimistic toggle, pinned page at `/:me/stash/pinned`; PR #14 merged (2026-05-15)
 - [x] Consolidate temp schemas — `_temp_a/b/c.schemas.ts` merged into `api.schemas.ts` and deleted (2026-05-16)
 - [x] CLAUDE.md audit — fixed file.machine active/legacy labels, merged redundant Working Style/Core Rules/General Instructions sections, fixed double-slash typo, removed thin stub section (2026-05-16)
