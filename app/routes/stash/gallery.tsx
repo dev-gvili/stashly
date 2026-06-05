@@ -37,7 +37,9 @@ export async function loader({ request }: Route.ActionArgs) {
     // cursor: params.cursor ? { id: params.cursor } : undefined,
     where: {
       type: ItemType.file,
-      category: ItemCategory.image,
+      category: {
+        in: [ItemCategory.image, ItemCategory.video],
+      },
       thumbnails: {
         some: {
           url: {
@@ -62,7 +64,7 @@ export async function loader({ request }: Route.ActionArgs) {
       },
       thumbnails: {
         orderBy: { stage: 'desc' },
-        take: 1,
+        take: 2,
         where: { NOT: { url: { startsWith: '#' } } },
         select: {
           height: true,
@@ -74,7 +76,15 @@ export async function loader({ request }: Route.ActionArgs) {
         },
       },
       image: { select: { width: true, height: true } },
-      video: { select: { width: true, height: true } },
+      video: {
+        select: {
+          width: true,
+          height: true,
+          duration: true,
+          bitrate: true,
+          codec: true,
+        },
+      },
     },
   })
 

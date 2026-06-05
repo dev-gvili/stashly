@@ -2113,7 +2113,7 @@ export async function unlockItem(itemId: string, userId: string) {
 
 // --- REPOSITORY-LEVEL FUNCTIONS ---
 
-const defaultItemSelect = {
+export const defaultItemSelect = {
   id: true,
   name: true,
   type: true,
@@ -2127,6 +2127,9 @@ const defaultItemSelect = {
   ownerId: true,
   workspaceId: true,
   uploadId: true,
+  image: true,
+  tags: true,
+  video: true,
   folder: {
     select: {
       id: true,
