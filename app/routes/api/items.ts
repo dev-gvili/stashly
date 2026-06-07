@@ -7,10 +7,12 @@ import {
   upsertVideoFacet,
   deleteItem,
   deleteItems,
+  getChildFolders,
   moveItem,
   moveItems,
   restoreItem,
   restoreItems,
+  searchFolders,
   trashItem,
   trashItems,
 } from '@/services/item-actions'
@@ -27,8 +29,47 @@ import type { Route } from './+types/items'
 import { itemsApiRouteInput } from '@/schemas/api.schemas'
 import { z } from 'zod'
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-  // TODO: implement loader logic
+export async function loader({ request }: Route.LoaderArgs) {
+  const session = await auth.api.getSession(request)
+  if (!session) throw redirect('/auth/sign-in')
+
+  const user = session.user as any
+  const url = new URL(request.url)
+  const intent = url.searchParams.get('intent')
+
+  if (intent === 'list_folders') {
+    const parentId = url.searchParams.get('parentId')
+    const driveId: string = user.driveId
+    const rootId: string = user.rootId
+    const resolvedParentId = !parentId || parentId === 'root' ? rootId : parentId
+    const folders = await getChildFolders(resolvedParentId, driveId)
+    return data({
+      rootId,
+      folders: folders.map((f) => ({
+        id: f.id,
+        name: f.name,
+        parentId: f.parentId,
+        childFolderCount: f._count.children,
+      })),
+    })
+  }
+
+  if (intent === 'search_folders') {
+    const q = url.searchParams.get('q') ?? ''
+    const driveId: string = user.driveId
+    const rootId: string = user.rootId
+    const results = await searchFolders(q, driveId)
+    return data({
+      rootId,
+      folders: results.map((f) => ({
+        id: f.id,
+        name: f.name,
+        parentId: f.parentId,
+        childFolderCount: f._count.children,
+      })),
+    })
+  }
+
   return null
 }
 
@@ -128,7 +169,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     case 'create_folder': {
       try {
         console.log('Creating folder with data:', parsedData)
-        const folder = await createFolder(
+        await createFolder(
           parsedData.name,
           parsedData.parentId,
           user.id,
@@ -138,6 +179,27 @@ export async function action({ request, params }: Route.ActionArgs) {
       } catch (e) {
         const err = e as { message?: string }
         return { success: false, error: err.message }
+      }
+    }
+    case 'create_folder_inline': {
+      try {
+        const folder = await createFolder(
+          parsedData.name,
+          parsedData.parentId,
+          user.id,
+          parsedData.driveId
+        )
+        return data({
+          folder: {
+            id: folder.id,
+            name: folder.name,
+            parentId: folder.parentId,
+            childFolderCount: 0,
+          },
+        })
+      } catch (e) {
+        const err = e as { message?: string }
+        return data({ error: err.message }, { status: 500 })
       }
     }
     case 'create_upload_item': {

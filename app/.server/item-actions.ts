@@ -1063,6 +1063,46 @@ export async function createFolder(
   return folder
 }
 
+export async function getChildFolders(parentId: string, driveId: string) {
+  return prisma.item.findMany({
+    where: { parentId, driveId, type: 'folder', status: 'normal' },
+    select: {
+      id: true,
+      name: true,
+      parentId: true,
+      _count: {
+        select: {
+          children: { where: { type: 'folder', status: 'normal' } },
+        },
+      },
+    },
+    orderBy: { name: 'asc' },
+  })
+}
+
+export async function searchFolders(query: string, driveId: string) {
+  return prisma.item.findMany({
+    where: {
+      driveId,
+      type: 'folder',
+      status: 'normal',
+      name: { contains: query, mode: 'insensitive' },
+    },
+    select: {
+      id: true,
+      name: true,
+      parentId: true,
+      _count: {
+        select: {
+          children: { where: { type: 'folder', status: 'normal' } },
+        },
+      },
+    },
+    orderBy: { name: 'asc' },
+    take: 50,
+  })
+}
+
 async function findOrCreateFolderPath(
   pathParts: string[],
   rootId: string,

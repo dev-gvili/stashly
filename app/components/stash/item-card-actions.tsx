@@ -17,6 +17,7 @@ import {
 } from '@/ui/dropdown-menu'
 import { ScrollArea } from '@/ui/scroll-area'
 import { Button } from '@/ui/button'
+import { MoveToFolderDialog } from '@/components/core-components/move-to-folder-dialog'
 import { ShareDialog } from '@/components/core-components/share-dialog'
 import { InviteDialog } from '@/components/core-components/invite-dialog'
 import { ItemActivityDrawer } from '@/components/core-components/item-activity-drawer'
@@ -121,11 +122,35 @@ function Copy(props: ItemProps) {
 }
 
 function Move(props: ItemProps) {
+  const [open, setOpen] = React.useState(false)
+  const { id, name, type, parentId, driveId, thumbnails } = useItemCard()
+  const thumbnailUrl = thumbnails?.[0]?.url?.startsWith('#') ? null : (thumbnails?.[0]?.url ?? null)
+
   return (
-    <Item {...props}>
-      <MoveToFolder className="text-current" />
-      Move
-    </Item>
+    <>
+      <Item
+        {...props}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setOpen(true)
+          props.onClick?.(e)
+        }}
+      >
+        <MoveToFolder className="text-current" />
+        Move
+      </Item>
+      <MoveToFolderDialog
+        open={open}
+        onOpenChange={setOpen}
+        itemId={id}
+        itemName={name}
+        itemType={type === 'folder' ? 'folder' : 'file'}
+        sourceParentId={parentId}
+        driveId={driveId}
+        thumbnailUrl={thumbnailUrl}
+      />
+    </>
   )
 }
 
