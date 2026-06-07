@@ -193,6 +193,8 @@ Components use shadcn/ui (source-owned, in `app/components/ui/`) built on Radix 
 
 **Surface layering**: chrome (headers, toolbars, dialog top/bottom) uses `bg-sidebar`; canvas (content, item grids) uses `bg-background`. App-header pattern: `h-14`, outline buttons with `bg-card!`. App-toolbar pattern: `h-12 p-2` sticky bottom.
 
+**z-index layering**: Tooltips use `z-9999` (highest). Sticky headers/toolbars use `z-10` max — never `z-40` or higher, or they cover tooltip portals. Dialogs/dropdowns inherit from Radix Portal defaults.
+
 **Border color**: structural separators (`border-b`/`border-t` between regions) always use `border-input` — never the default `border` token.
 
 **`Card` component pattern**: Always override Card defaults — never use a bare `<Card>` without explicit classes. Full pattern: `<Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden">`. `CardHeader`: `flex items-baseline px-4 py-4`. `CardTitle`: `text-sm uppercase font-stashly`. `CardDescription`: `text-sm text-muted-foreground`. `CardContent`: `p-4`.
@@ -214,6 +216,8 @@ Components use shadcn/ui (source-owned, in `app/components/ui/`) built on Radix 
 **AA contrast on fixed-color backgrounds**: when text sits on a fixed gradient or color (e.g. `from-black/90` overlays), use literal `text-white` / `text-white/80` — `text-foreground` and `text-muted-foreground` invert per theme and break contrast in the opposite scheme.
 
 **Hooks location**: All hooks go in `app/hooks/` — never co-locate them inside `app/components/` subdirectories, even if tightly coupled to one component family.
+
+**Clipboard copy**: Always use `useClipboard` from `@/hooks/useClipboard` — never call `navigator.clipboard.writeText` directly. The hook ladders through the Clipboard API then an `execCommand` fallback for iOS Safari < 13.1 and Android WebView.
 
 **Filter system layout**: `app/components/filters/` contains `filter.types.ts` (all types), `filter.data.ts` (CATEGORIES/STATUSES/TYPES/FLAGS + URL constants), `filter-primitives.tsx` (Chip/Kbd/DashedDiv), `sort-pill.tsx` (SortPill), and `filters.tsx` (Filters + HeaderFilters). `useFilters` hook lives in `app/hooks/useFilters.ts`.
 
