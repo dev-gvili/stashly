@@ -241,6 +241,12 @@ Models are split across `prisma/models/*.prisma` files and merged. Generated cli
 - **Payments**: Stripe, webhooks handled at `/api/stripe`
 - **Storage**: AWS S3-compatible (Tigris on Fly.io), configured in `app/.server/s3.ts`
 
+## Styling Conventions
+
+- Use Tailwind utility classNames directly. Do NOT use `var(--*)` CSS variables or injected style tokens unless explicitly requested.
+- Follow the app's established Card override pattern rather than bare shadcn Card styles.
+- Use theme classNames over arbitrary values (e.g., `text-sm` not `text-[14px]`).
+
 ## Database / SQL
 
 Start with the simplest query that works. Do not use recursive CTEs or over-engineered approaches. Optimize only if there's a demonstrated performance need.
@@ -309,6 +315,12 @@ For significant changes, follow these steps:
 4. **PR** — Descriptive title and body (summary + test plan)
 
 5. **Merge** — Merge to `main` once the PR is clean
+
+## Verification & Commits
+
+- Only run typecheck at the END of a task, not mid-edit, unless explicitly asked.
+- After Prisma schema changes, remind the user to restart the dev server (cached client issues observed).
+- Group large commits into logical conventional commits rather than one mega-commit when staging >50 files.
 
 ## New Feature Checklist
 

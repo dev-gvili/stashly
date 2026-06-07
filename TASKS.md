@@ -2,8 +2,7 @@
 
 ## Active
 
-- [ ] Decide search infra: integrate the built-but-unwired `search.repository.ts`, `search.ts`, `filters.ts` — or delete them to reduce dead code. *(deferred — revisit after collections stabilises)*
-- [ ] Fix `app/routes/api/shares.ts` — replace `@/services/share-actions` import with relative `../../.server/share-actions` to resolve dot-server plugin build failure (deferred per "skip production build")
+- [ ] Decide search infra: integrate the built-but-unwired `search.repository.ts`, `search.ts`, `filters.ts` — or delete them to reduce dead code.
 - [ ] Migrate flat item API routes — callers of `/api/items/comments` etc. should move to nested `/api/items/:itemId/comments`; remove flat registrations after
 
 ## Someday / Low Priority
@@ -12,8 +11,9 @@
 
 - [ ] **URL model** — central `Url` table for short-link routing, analytics, and expiry. Approach settled: Url owns nullable FKs to each resource (facet pattern, matching `Item`). 1:1 per resource with `@unique` FK cols for now; workspace slug aliasing (1:many) deferred. Path prefixes from `StashlyPrefixMap` (`/ws/:slug`, `/sl/:slug`, `/inv/:slug`). Each resource type gets its own redirect route. Brainstormed 2026-05-16.
 
-- [ ] Review and clean 6 stale git stashes (2 have alarming names suggesting past instability)
-- [ ] Delete leftover worktree branches: `copilot-worktree-*`, `elderly-monkey`, `tasteless-muskox`, `main1`
+- [ ] Fix `app/routes/api/shares.ts` — replace `@/services/share-actions` import with relative `../../.server/share-actions` to resolve dot-server plugin build failure *(deferred)*
+- [ ] Review and clean 7 stale git stashes (2 have alarming names: "after im fucked…", "fuck")
+- [ ] Delete leftover worktree branches: `copilot-worktree-*` × 4, `elderly-monkey`, `tasteless-muskox`, `main1`; plus shipped branches not yet deleted: `feat/pinned-items`, `feature/sharing-items`, `feat/concurrent-multipart-upload`, `fix/concurrent-upload-hardening`, `feature/invitations`, `e2e-tests`, `blue`, `list`, `split-language-detection`, `refactor/collection-self-relation`
 
 ## Done
 
