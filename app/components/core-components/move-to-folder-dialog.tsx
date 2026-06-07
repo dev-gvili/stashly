@@ -1,106 +1,21 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useFetcher, href } from 'react-router'
 import { cn } from '@/utils/styles'
-import { Dialog, DialogContent } from '@/ui/dialog'
-import { AddFoldersIcon, MoveToFolder } from '@/components/icons'
+import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/ui/dialog'
+import {
+  AddFoldersIcon,
+  DropdownIcon,
+  FolderFillIcon,
+  FolderIcon,
+  ImageFillIcon,
+  MoveFillIcon,
+  MoveToFolder,
+  RemoveIcon,
+  SearchFillIcon,
+} from '@/components/icons'
 import type { JSX } from 'react'
+import { Button } from '../ui'
 
-// ── inline SVGs (match the design; not in icons.tsx) ──────────────────────────
-
-function FolderFillIcon(p: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" {...p}>
-      <path
-        fill="currentColor"
-        opacity="0.5"
-        d="M2 6.95c0-.883 0-1.324.07-1.692A4 4 0 0 1 5.257 2.07C5.626 2 6.068 2 6.95 2c.386 0 .58 0 .766.017a4 4 0 0 1 2.18.904c.144.119.28.255.554.529L11 4c.816.816 1.224 1.224 1.712 1.495a4 4 0 0 0 .848.352C14.098 6 14.675 6 15.828 6h.374c2.632 0 3.949 0 4.804.77q.119.105.224.224c.77.855.77 2.172.77 4.804V14c0 3.771 0 5.657-1.172 6.828S17.771 22 14 22h-4c-3.771 0-5.657 0-6.828-1.172S2 17.771 2 14z"
-      />
-      <path
-        fill="currentColor"
-        d="M20 6.238c-.001-.298-.005-.475-.026-.63a3 3 0 0 0-2.582-2.582C17.197 3 16.965 3 16.5 3H9.988c.116.104.247.234.462.45L11 4c.816.816 1.224 1.224 1.712 1.495a4 4 0 0 0 .848.352C14.098 6 14.675 6 15.828 6h.374c1.78 0 2.957 0 3.798.238"
-      />
-    </svg>
-  )
-}
-
-function ChevronIcon(p: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" {...p}>
-      <path
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m9 6 6 6-6 6"
-      />
-    </svg>
-  )
-}
-
-function CheckIcon(p: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" {...p}>
-      <path
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m7 12.9 3.143 3.6L18 7.5"
-      />
-    </svg>
-  )
-}
-
-function SearchIcon(p: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" {...p}>
-      <circle
-        cx="11"
-        cy="11"
-        r="7.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        opacity="0.6"
-      />
-      <path
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        d="M17 17l3.5 3.5"
-      />
-    </svg>
-  )
-}
-
-function XMarkIcon(p: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" {...p}>
-      <path
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        d="m7.5 7.5 9 9"
-        opacity="0.5"
-      />
-      <path
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        d="m7.5 16.5 9-9"
-      />
-    </svg>
-  )
-}
-
-function ImageGlyph(p: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" {...p}>
-      <rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
-      <circle cx="8.5" cy="9.5" r="1.5" fill="currentColor" />
-      <path stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="m4 17 4.5-4 3.5 3 3-2.5L21 17" />
-    </svg>
-  )
-}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -157,23 +72,25 @@ export function MoveToFolderDialog({
   thumbnailUrl,
 }: MoveToFolderDialogProps) {
   const [path, setPath] = useState<PathNode[]>([])
-  const [childrenMap, setChildrenMap] = useState<Record<string, FolderNode[]>>({})
+  const [childrenMap, setChildrenMap] = useState<Record<string, FolderNode[]>>(
+    {}
+  )
   const [query, setQuery] = useState('')
   const [editingNewFolder, setEditingNewFolder] = useState(false)
-  const [newFolderName, setNewFolderName] = useState('Untitled folder')
+  const [newFolderName, setNewFolderName] = useState('')
 
-  const loadFetcher = useFetcher<FolderLoaderData>()
-  const searchFetcher = useFetcher<FolderLoaderData>()
+  const folderFetcher = useFetcher<FolderLoaderData>()
   const moveFetcher = useFetcher()
   const createFetcher = useFetcher<CreateFolderData>()
 
   const newFolderInputRef = useRef<HTMLInputElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const pendingLoadRef = useRef<string | null>(null)
+  const fetcherModeRef = useRef<'browse' | 'search'>('browse')
 
   const current = path[path.length - 1] ?? null
   const isSource = current?.id === sourceParentId
-  const isLoading = loadFetcher.state !== 'idle'
+  const isLoading = folderFetcher.state !== 'idle'
 
   // ── reset + initial load on open ──
   useEffect(() => {
@@ -182,24 +99,25 @@ export function MoveToFolderDialog({
     setChildrenMap({})
     setQuery('')
     setEditingNewFolder(false)
-    setNewFolderName('Untitled folder')
+    setNewFolderName('')
+    fetcherModeRef.current = 'browse'
     pendingLoadRef.current = 'root'
-    loadFetcher.load('/api/items?intent=list_folders&parentId=root')
+    folderFetcher.load('/api/items?intent=list_folders&parentId=root')
   }, [open])
 
-  // ── handle load responses ──
+  // ── handle browse responses — update children cache ──
   useEffect(() => {
-    if (!loadFetcher.data || !pendingLoadRef.current) return
+    if (!folderFetcher.data || fetcherModeRef.current !== 'browse' || !pendingLoadRef.current) return
     const key = pendingLoadRef.current
     pendingLoadRef.current = null
-    const { rootId, folders } = loadFetcher.data
+    const { rootId, folders } = folderFetcher.data
     if (key === 'root') {
       setPath([{ id: rootId, name: 'All files' }])
       setChildrenMap({ [rootId]: folders })
     } else {
       setChildrenMap((m) => ({ ...m, [key]: folders }))
     }
-  }, [loadFetcher.data])
+  }, [folderFetcher.data])
 
   // ── handle new folder creation response ──
   useEffect(() => {
@@ -224,7 +142,8 @@ export function MoveToFolderDialog({
     const q = query.trim()
     if (!q) return
     const timer = setTimeout(() => {
-      searchFetcher.load(
+      fetcherModeRef.current = 'search'
+      folderFetcher.load(
         `/api/items?intent=search_folders&q=${encodeURIComponent(q)}`
       )
     }, 200)
@@ -255,7 +174,7 @@ export function MoveToFolderDialog({
   function loadChildren(nodeId: string) {
     if (childrenMap[nodeId] !== undefined) return
     pendingLoadRef.current = nodeId
-    loadFetcher.load(`/api/items?intent=list_folders&parentId=${nodeId}`)
+    folderFetcher.load(`/api/items?intent=list_folders&parentId=${nodeId}`)
   }
 
   const drillInto = useCallback(
@@ -275,7 +194,8 @@ export function MoveToFolderDialog({
     setEditingNewFolder(false)
     if (!childrenMap[target.id]) {
       pendingLoadRef.current = target.id
-      loadFetcher.load(`/api/items?intent=list_folders&parentId=${target.id}`)
+      fetcherModeRef.current = 'browse'
+      folderFetcher.load(`/api/items?intent=list_folders&parentId=${target.id}`)
     }
   }
 
@@ -289,10 +209,10 @@ export function MoveToFolderDialog({
     loadChildren(folder.id)
   }
 
-  function commitNewFolder(name: string) {
+  const commitNewFolder = useCallback((name: string) => {
     if (!name.trim() || !current) {
       setEditingNewFolder(false)
-      setNewFolderName('Untitled folder')
+      setNewFolderName('')
       return
     }
     createFetcher.submit(
@@ -302,9 +222,9 @@ export function MoveToFolderDialog({
         parentId: current.id,
         driveId,
       },
-      { method: 'post', action: '/api/items' }
+      { method: 'POST', action: href('/api/items') }
     )
-  }
+  },[current])
 
   function handleMove() {
     if (!current) return
@@ -314,25 +234,26 @@ export function MoveToFolderDialog({
         selectedItem: itemId,
         targetFolderId: current.id,
       },
-      { method: 'post', action: href('/api/items') }
+      { method: 'POST', action: href('/api/items') }
     )
     onOpenChange(false)
   }
 
   const currentFolders = current ? (childrenMap[current.id] ?? null) : null
   const searchResults = query.trim()
-    ? (searchFetcher.data?.folders ?? (searchFetcher.state !== 'idle' ? null : undefined))
+    ? (fetcherModeRef.current === 'search'
+        ? (folderFetcher.data?.folders ?? (folderFetcher.state !== 'idle' ? null : undefined))
+        : null)
     : undefined
 
   const isRoot = current?.id === path[0]?.id
-  const destLabel =
-    isRoot ? 'All files' : (current?.name ?? '')
+  const destLabel = isRoot ? 'All files' : (current?.name ?? '')
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="p-0 gap-0 w-[440px] max-w-[440px] overflow-hidden flex flex-col border-input">
+      <DialogContent className=" w-md overflow-hidden flex flex-col border-input bg-sidebar!">
         {/* ── Header ── */}
-        <div className="flex items-start gap-3 px-5 pt-[18px] pb-[14px]">
+        <DialogHeader>
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Move to folder
@@ -340,13 +261,20 @@ export function MoveToFolderDialog({
             <div className="flex items-center gap-[10px] mt-[9px]">
               {/* thumb stack */}
               <div className="relative w-[38px] h-[30px] flex-shrink-0">
-                <div className="absolute w-[26px] h-[26px] rounded-[6px] border-[1.5px] border-background bg-muted grid place-items-center text-muted-foreground/60 overflow-hidden shadow-sm" style={{ left: 0, top: 0, zIndex: 3 }}>
+                <div
+                  className="absolute w-[26px] h-[26px] rounded-[6px] border-[1.5px] border-background bg-muted grid place-items-center text-muted-foreground/60 overflow-hidden shadow-sm"
+                  style={{ left: 0, top: 0, zIndex: 3 }}
+                >
                   {thumbnailUrl ? (
-                    <img src={thumbnailUrl} className="w-full h-full object-cover" alt="" />
+                    <img
+                      src={thumbnailUrl}
+                      className="w-full h-full object-cover"
+                      alt=""
+                    />
                   ) : itemType === 'folder' ? (
                     <FolderFillIcon className="w-[14px] h-[14px]" />
                   ) : (
-                    <ImageGlyph className="w-[14px] h-[14px]" />
+                    <ImageFillIcon className="size-5" />
                   )}
                 </div>
               </div>
@@ -357,14 +285,8 @@ export function MoveToFolderDialog({
               </div>
             </div>
           </div>
-          <button
-            className="flex-shrink-0 w-8 h-8 rounded-[8px] border border-input bg-card grid place-items-center cursor-pointer text-foreground shadow-sm hover:bg-accent transition-colors"
-            onClick={() => onOpenChange(false)}
-            title="Close"
-          >
-            <XMarkIcon className="w-[18px] h-[18px]" />
-          </button>
-        </div>
+
+        </DialogHeader>
 
         {/* ── Search ── */}
         <div className="px-4 pb-3">
@@ -374,7 +296,7 @@ export function MoveToFolderDialog({
               'focus-within:border-ring focus-within:shadow-[0_0_0_3px_oklch(0.708_0_0_/_0.16)]'
             )}
           >
-            <SearchIcon className="w-[17px] h-[17px] text-muted-foreground flex-shrink-0" />
+            <SearchFillIcon className="w-[17px] h-[17px] text-muted-foreground flex-shrink-0" />
             <input
               ref={searchInputRef}
               value={query}
@@ -387,7 +309,7 @@ export function MoveToFolderDialog({
                 className="w-[22px] h-[22px] grid place-items-center"
                 onClick={() => setQuery('')}
               >
-                <XMarkIcon className="w-[15px] h-[15px]" />
+                <RemoveIcon className="size-5" />
               </button>
             ) : (
               <kbd className="font-mono text-[10px] text-muted-foreground bg-muted border border-border rounded px-[5px] py-[1px] leading-[1.4]">
@@ -404,7 +326,7 @@ export function MoveToFolderDialog({
               <React.Fragment key={n.id}>
                 {i > 0 && (
                   <span className="text-muted-foreground/60 grid place-items-center flex-shrink-0">
-                    <ChevronIcon className="w-[13px] h-[13px]" />
+                    <DropdownIcon className="size-5 rotate-45" />
                   </span>
                 )}
                 <button
@@ -428,12 +350,12 @@ export function MoveToFolderDialog({
           <div className="flex-1 min-h-0 overflow-y-auto px-2 py-1">
             {query ? (
               /* Search results */
-              searchFetcher.state !== 'idle' ? (
+              folderFetcher.state !== 'idle' ? (
                 <EmptyState label="Searching…" />
               ) : searchResults && searchResults.length === 0 ? (
                 <EmptyState label={`No folders match "${query}"`} />
               ) : searchResults ? (
-                searchResults.map((folder) => {
+                searchResults.map((folder: FolderNode) => {
                   const disabled = folder.id === sourceParentId
                   return (
                     <button
@@ -462,7 +384,7 @@ export function MoveToFolderDialog({
                           </span>
                         ) : (
                           <span className="w-[22px] h-[22px] grid place-items-center">
-                            <ChevronIcon className="w-[16px] h-[16px]" />
+                            <DropdownIcon className="size-5 rotate-45" />
                           </span>
                         )}
                       </div>
@@ -478,7 +400,7 @@ export function MoveToFolderDialog({
               <>
                 {currentFolders?.length === 0 && !editingNewFolder && (
                   <EmptyState
-                    label="This folder is empty"
+                    label="No sub folders"
                     sub="Move here, or create a subfolder below."
                   />
                 )}
@@ -497,7 +419,7 @@ export function MoveToFolderDialog({
                       onClick={() => !disabled && drillInto(node)}
                     >
                       <div className="flex-shrink-0 w-[30px] h-[30px] grid place-items-center text-foreground">
-                        <FolderFillIcon className="w-[26px] h-[26px]" />
+                        <FolderIcon className="size-6 fill-current!" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-[14px] font-medium tracking-[-0.01em] truncate">
@@ -516,7 +438,7 @@ export function MoveToFolderDialog({
                         ) : null}
                         {!disabled && (
                           <span className="w-[22px] h-[22px] grid place-items-center">
-                            <ChevronIcon className="w-[16px] h-[16px]" />
+                            <DropdownIcon className="size-5 -rotate-90" />
                           </span>
                         )}
                       </div>
@@ -528,7 +450,7 @@ export function MoveToFolderDialog({
                 {editingNewFolder ? (
                   <div className="flex items-center gap-[11px] px-[10px] py-[7px] rounded-[8px] bg-card border border-ring shadow-[0_0_0_3px_oklch(0.708_0_0_/_0.16)]">
                     <div className="flex-shrink-0 w-[30px] h-[30px] grid place-items-center text-foreground">
-                      <FolderFillIcon className="w-[26px] h-[26px]" />
+                      <FolderIcon className="size-6 fill-current" />
                     </div>
                     <input
                       ref={newFolderInputRef}
@@ -549,15 +471,14 @@ export function MoveToFolderDialog({
                     </span>
                   </div>
                 ) : (
-                  <button
-                    className="flex items-center gap-[11px] w-full text-left px-[10px] py-[9px] rounded-[8px] border-0 bg-transparent cursor-pointer font-sans text-muted-foreground transition-[background,color] hover:bg-muted hover:text-foreground"
+                  <Button
+                    variant="outline"
+                    className="rounded-md bg-card border border-input"
                     onClick={() => setEditingNewFolder(true)}
                   >
-                    <div className="flex-shrink-0 w-[30px] h-[30px] grid place-items-center">
-                      <AddFoldersIcon className="w-[26px] h-[26px]" />
-                    </div>
-                    <span className="text-[14px] font-medium">New folder</span>
-                  </button>
+                    <AddFoldersIcon className="size-6" />
+                    <span className="text-sm font-medium">New folder</span>
+                  </Button>
                 )}
               </>
             )}
@@ -565,11 +486,11 @@ export function MoveToFolderDialog({
         </div>
 
         {/* ── Footer ── */}
-        <div className="flex items-center gap-3 px-4 py-3 border-t border-input bg-sidebar">
-          {/* Destination indicator */}
+        <DialogFooter>
+
           <div className="flex-1 min-w-0 flex items-center gap-2">
             <div className="flex-shrink-0 text-muted-foreground grid place-items-center">
-              <MoveToFolder className="w-[18px] h-[18px]" />
+              <MoveFillIcon className="size-5" />
             </div>
             <div className="min-w-0">
               <div className="text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground/60">
@@ -604,11 +525,15 @@ export function MoveToFolderDialog({
               )}
               onClick={handleMove}
             >
-              <MoveToFolder className="w-[17px] h-[17px]" />
-              {isSource ? 'Already here' : isRoot ? 'Move to top level' : 'Move here'}
+              <MoveFillIcon className="w-[17px] h-[17px]" />
+              {isSource
+                ? 'Already here'
+                : isRoot
+                  ? 'Move to top level'
+                  : 'Move here'}
             </button>
           </div>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
@@ -616,7 +541,13 @@ export function MoveToFolderDialog({
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
-function EmptyState({ label, sub }: { label: string; sub?: string }): JSX.Element {
+function EmptyState({
+  label,
+  sub,
+}: {
+  label: string
+  sub?: string
+}): JSX.Element {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-8 text-muted-foreground/40 text-center px-8">
       <FolderFillIcon className="w-10 h-10 opacity-40" />
