@@ -20,6 +20,7 @@ model Item {
   image  Image?
   video  Video?
   audio  Audio?
+  pdf    Pdf?
 
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)

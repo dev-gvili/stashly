@@ -56,6 +56,27 @@ model Video {
   item                  Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
+model Pdf {
+  id               String    @id
+  pageCount        Int?
+  title            String?
+  author           String?
+  subject          String?
+  keywords         String?
+  creator          String?
+  producer         String?
+  pdfVersion       String?
+  language         String?
+  isEncrypted      Boolean?
+  hasFormFields    Boolean?
+  hasAnnotations   Boolean?
+  hasSignatures    Boolean?
+  docCreatedAt     DateTime?
+  docModifiedAt    DateTime?
+  itemId           String    @unique
+  item             Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
 model Audio {
   id                String   @id
   album             String?
