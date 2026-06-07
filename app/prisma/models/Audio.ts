@@ -700,10 +700,6 @@ export type AudioNullableScalarRelationFilter = {
   isNot?: Prisma.AudioWhereInput | null
 }
 
-export type NullableBoolFieldUpdateOperationsInput = {
-  set?: boolean | null
-}
-
 export type AudioCreateNestedOneWithoutItemInput = {
   create?: Prisma.XOR<Prisma.AudioCreateWithoutItemInput, Prisma.AudioUncheckedCreateWithoutItemInput>
   connectOrCreate?: Prisma.AudioCreateOrConnectWithoutItemInput

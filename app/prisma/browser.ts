@@ -168,6 +168,11 @@ export type Image = Prisma.ImageModel
  */
 export type Video = Prisma.VideoModel
 /**
+ * Model Pdf
+ * 
+ */
+export type Pdf = Prisma.PdfModel
+/**
  * Model Audio
  * 
  */

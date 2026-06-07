@@ -413,6 +413,7 @@ export const ModelName = {
   Folder: 'Folder',
   Image: 'Image',
   Video: 'Video',
+  Pdf: 'Pdf',
   Audio: 'Audio',
   Favorite: 'Favorite',
   Invitation: 'Invitation',
@@ -453,7 +454,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "account" | "itemAction" | "permissionAction" | "accessAction" | "commentAction" | "createAction" | "uploadAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "pinAction" | "collectionAction" | "favoriteAction" | "bucketAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "pinItem" | "quota" | "search" | "searchChunk" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
+    modelProps: "account" | "itemAction" | "permissionAction" | "accessAction" | "commentAction" | "createAction" | "uploadAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "pinAction" | "collectionAction" | "favoriteAction" | "bucketAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "pdf" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "pinItem" | "quota" | "search" | "searchChunk" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2600,6 +2601,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.VideoCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.VideoCountAggregateOutputType> | number
+        }
+      }
+    }
+    Pdf: {
+      payload: Prisma.$PdfPayload<ExtArgs>
+      fields: Prisma.PdfFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PdfFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PdfPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PdfFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PdfPayload>
+        }
+        findFirst: {
+          args: Prisma.PdfFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PdfPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PdfFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PdfPayload>
+        }
+        findMany: {
+          args: Prisma.PdfFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PdfPayload>[]
+        }
+        create: {
+          args: Prisma.PdfCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PdfPayload>
+        }
+        createMany: {
+          args: Prisma.PdfCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PdfCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PdfPayload>[]
+        }
+        delete: {
+          args: Prisma.PdfDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PdfPayload>
+        }
+        update: {
+          args: Prisma.PdfUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PdfPayload>
+        }
+        deleteMany: {
+          args: Prisma.PdfDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PdfUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PdfUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PdfPayload>[]
+        }
+        upsert: {
+          args: Prisma.PdfUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PdfPayload>
+        }
+        aggregate: {
+          args: Prisma.PdfAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePdf>
+        }
+        groupBy: {
+          args: Prisma.PdfGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PdfGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PdfCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PdfCountAggregateOutputType> | number
         }
       }
     }
@@ -4819,6 +4894,29 @@ export const VideoScalarFieldEnum = {
 export type VideoScalarFieldEnum = (typeof VideoScalarFieldEnum)[keyof typeof VideoScalarFieldEnum]
 
 
+export const PdfScalarFieldEnum = {
+  id: 'id',
+  pageCount: 'pageCount',
+  title: 'title',
+  author: 'author',
+  subject: 'subject',
+  keywords: 'keywords',
+  creator: 'creator',
+  producer: 'producer',
+  pdfVersion: 'pdfVersion',
+  language: 'language',
+  isEncrypted: 'isEncrypted',
+  hasFormFields: 'hasFormFields',
+  hasAnnotations: 'hasAnnotations',
+  hasSignatures: 'hasSignatures',
+  docCreatedAt: 'docCreatedAt',
+  docModifiedAt: 'docModifiedAt',
+  itemId: 'itemId'
+} as const
+
+export type PdfScalarFieldEnum = (typeof PdfScalarFieldEnum)[keyof typeof PdfScalarFieldEnum]
+
+
 export const AudioScalarFieldEnum = {
   id: 'id',
   album: 'album',
@@ -5775,6 +5873,7 @@ export type GlobalOmitConfig = {
   folder?: Prisma.FolderOmit
   image?: Prisma.ImageOmit
   video?: Prisma.VideoOmit
+  pdf?: Prisma.PdfOmit
   audio?: Prisma.AudioOmit
   favorite?: Prisma.FavoriteOmit
   invitation?: Prisma.InvitationOmit
