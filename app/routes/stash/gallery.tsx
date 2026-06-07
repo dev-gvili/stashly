@@ -64,7 +64,7 @@ export async function loader({ request }: Route.ActionArgs) {
       },
       thumbnails: {
         orderBy: { stage: 'desc' },
-        take: 2,
+        take: 1,
         where: { NOT: { url: { startsWith: '#' } } },
         select: {
           height: true,

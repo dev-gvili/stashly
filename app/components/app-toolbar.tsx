@@ -41,12 +41,12 @@ export const AppToolbar = ({
   return (
     <div
       className={cn(
-        'mb-2  h-14 w-full gap-2 py-2 items-center justify-start bg-background z-40 flex shrink-0 sticky top-0',
+        'mb-2  h-14 w-full gap-2 py-2 items-center justify-start bg-background z-10 flex shrink-0 sticky top-0',
         className
       )}
       {...props}
     >
-      <h1 className="text-lg font-bold  w-full max-w-max min-w-24">{title}</h1>
+      <h1 className="text-lg font-bold w-full max-w-max min-w-24">{title}</h1>
       <Breadcrumbs />
       <ButtonGroup  className="ml-auto gap-2">
         <Restore variant="ghost" size="icon-sm" />
