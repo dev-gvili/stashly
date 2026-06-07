@@ -1,6 +1,6 @@
 import type { Route } from './+types/gallery-image'
 import * as React from 'react'
-import { useNavigate } from 'react-router'
+import { href, useFetcher, useNavigate } from 'react-router'
 import { redirect } from 'react-router'
 import { VisuallyHidden } from 'radix-ui'
 
@@ -35,6 +35,19 @@ import ShareItemFillIcon, {
   ShareFillIcon,
   MoreFillIcon,
   DropdownIcon,
+  ZoomOutFillIcon,
+  ZoomInFillIcon,
+  MinimizeFillIcon,
+  VideoFillIcon,
+  ImageFillIcon,
+  DownloadFillIcon,
+  CollectionFillIcon,
+  CollectionsFillIcon,
+  MoreMenuFillIcon,
+  MoveFillIcon,
+  RenameFillIcon,
+  TrashFillIcon,
+  HeartIcon,
 } from '@/components/icons'
 
 import { Button } from '@/ui/button'
@@ -56,6 +69,10 @@ import {
   DropdownMenuSeparator,
 } from '@/ui/dropdown-menu'
 import { ItemCategory } from '@/prisma/enums'
+import { useZoom } from '../../hooks/useZoom'
+import { useClipboard } from '@/hooks/useClipboard'
+import { ShareDialog } from '@/components/core-components/share-dialog'
+import { RenameDialog } from '@/components/core-components/rename-dialog'
 
 /* -------------------------------------------------------------------------- */
 /*  Loader                                                                    */
@@ -113,7 +130,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     getPresignedUrl(session.user.bucket, 'get', fileKey, 3600),
     findManyActivities({
       where: { itemId: item.id },
-      orderBy: { id: 'desc' },
+      orderBy: { time: { observedAt: 'desc' } },
       take: 20,
     }),
     prisma.item.findMany({
@@ -138,10 +155,10 @@ export default function GalleryImageDetail({
 }: Route.ComponentProps) {
   const { item, fullUrl, activities, siblings } = loaderData
   const navigate = useNavigate()
-
+  const fetcher = useFetcher()
   const isVideo: boolean = item.category === ItemCategory.video
   const [isFavorite, setIsFavorite] = React.useState(false) // wire to item.favorite
-
+  const [open, setOpen] = React.useState(false) // share dialog
   /* ----- sibling navigation ------------------------------------------------ */
   const index = siblings.findIndex((s) => s.id === item.id)
   const total = siblings.length
@@ -157,8 +174,32 @@ export default function GalleryImageDetail({
     [navigate]
   )
 
+  /* ----- download ---------------------------------------------------------- */
+  const [isDownloading, setIsDownloading] = React.useState(false)
+  const handleDownload = React.useCallback(async () => {
+    if (isDownloading) return
+    setIsDownloading(true)
+    try {
+      const res = await fetch(fullUrl)
+      const blob = await res.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = item.name
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(objectUrl)
+    } finally {
+      setIsDownloading(false)
+    }
+  }, [fullUrl, item.name, isDownloading])
+
   /* ----- zoom & pan -------------------------------------------------------- */
-  const zoom = useZoomPan()
+  const zoom = useZoom()
+
+  /* ----- clipboard --------------------------------------------------------- */
+  const { copy: copyLink, copied: linkCopied } = useClipboard()
 
   /* ----- keyboard ---------------------------------------------------------- */
   React.useEffect(() => {
@@ -199,9 +240,9 @@ export default function GalleryImageDetail({
             <div className="flex min-w-0 items-center gap-2.5">
               <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                 {isVideo ? (
-                  <VideoIcon className="size-4" />
+                  <VideoFillIcon className="size-5" />
                 ) : (
-                  <ImageIcon className="size-4" />
+                  <ImageFillIcon className="size-5" />
                 )}
               </span>
               <h1 className="truncate text-sm font-medium">{item.name}</h1>
@@ -235,7 +276,7 @@ export default function GalleryImageDetail({
           >
             {/* floating action toolbar */}
             <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-center p-4">
-              <div className="pointer-events-auto flex items-center gap-0.5 rounded-md border border-input bg-sidebar p-1 shadow-md backdrop-blur-sm">
+              <div className="pointer-events-auto flex items-center gap-0.5 rounded-md border border-input bg-sidebar p-1 shadow-stashly backdrop-blur-sm">
                 <ToolButton
                   label={
                     isFavorite ? 'Remove from Favorites' : 'Add to Favorites'
@@ -243,59 +284,87 @@ export default function GalleryImageDetail({
                   active={isFavorite}
                   onClick={() => setIsFavorite((v) => !v)}
                 >
-                  <FavoritesFillIcon className="size-5" />
+                  <HeartIcon
+                    className={cn(
+                      'size-5',
+                      isFavorite && 'fill-primary text-primary'
+                    )}
+                  />
                 </ToolButton>
-                <ToolButton label="Share">
+                <ToolButton label="Share" onClick={() => setOpen(true)}>
                   <ShareFillIcon className="size-5" />
-                </ToolButton>
-                <ToolButton label="Download" asChild>
-                  <a href={fullUrl} download={item.name}>
-                    <DownloadIcon className="size-5" />
-                  </a>
+                  <ShareDialog
+                    open={open}
+                    onOpenChange={setOpen}
+                    itemId={item.id}
+                    itemName={item.name}
+                    itemType={item.type}
+                  />
                 </ToolButton>
                 <ToolButton
-                  label="Copy link"
-                  onClick={() =>
-                    navigator.clipboard?.writeText(window.location.href)
-                  }
+                  label="Download"
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                >
+                  <DownloadFillIcon className="size-5" />
+                </ToolButton>
+                <ToolButton
+                  label={linkCopied ? 'Copied!' : 'Copy link'}
+                  onClick={() => copyLink(fullUrl)}
                 >
                   <LinkIcon className="size-5" />
                 </ToolButton>
 
-
                 <ToolButton label="Add to collection">
-                  <CollectionIcon className="size-5" />
+                  <CollectionsFillIcon className="size-5" />
                 </ToolButton>
-
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      className="rounded-md"
+                      className="rounded-md hover:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-accent-foreground "
                       aria-label="More"
                     >
-                      <MoreFillIcon className="size-5" />
+                      <MoreMenuFillIcon className="size-5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="end"
                     sideOffset={8}
-                    className="w-52"
+                    alignOffset={-3}
+                    className="w-52 rounded-md border border-input bg-sidebar shadow-stashly"
                   >
-                    <DropdownMenuItem>
-                      <RenameIcon className="size-4" /> Rename
+                    <RenameDialog
+                      defaultName={item.name}
+                      intent="rename_item"
+                      extraData={{ itemId: item.id }}
+                      action="/api/items"
+                      title="Rename item"
+                    >
+                      <DropdownMenuItem
+                        className="hover:bg-transparent!"
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        <RenameFillIcon className="text-current" /> Rename
+                      </DropdownMenuItem>
+                    </RenameDialog>
+                    <DropdownMenuItem className="hover:bg-transparent!">
+                      <MoveFillIcon className=" text-current" /> Move
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <MoveToFolder className="size-4" /> Move to…
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <RefreshIcon className="size-4" /> Rotate 90°
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive">
-                      <TrashIcon className="size-4" /> Delete
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        fetcher.submit(
+                          { intent: 'trash_item', selectedItem: item.id },
+                          { method: 'POST', action: href('/api/items') }
+                        )
+                      }}
+                    >
+                      <TrashFillIcon /> Trash
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -328,42 +397,44 @@ export default function GalleryImageDetail({
                     viewTransitionName: `img-${item.id}`,
                     transform: `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.scale})`,
                   }}
+                  onWheel={zoom.onWheel}
                 />
               )}
-            </div>  
+            </div>
             {/* zoom controls (images only) */}
             {!isVideo && (
-              <div className="absolute bottom-5 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-border bg-popover/90 p-1 shadow-sm backdrop-blur-sm">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
+              <div className="absolute bottom-2 left-1/2 z-30 flex -translate-x-1/2 pointer-events-auto items-center gap-0.5 rounded-md border border-input bg-sidebar p-1 shadow-stashly backdrop-blur-sm">
+                <ToolButton
+                  label="Zoom out"
                   onClick={zoom.zoomOut}
                   disabled={zoom.scale <= 1}
                   aria-label="Zoom out"
+                  active={false}
                 >
-                  <ZoomOutGlyph />
-                </Button>
+                  <ZoomOutFillIcon />
+                </ToolButton>
                 <span className="w-11 text-center text-xs font-medium tabular-nums text-muted-foreground">
                   {Math.round(zoom.scale * 100)}%
                 </span>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
+
+                <ToolButton
+                  label="Zoom in"
                   onClick={zoom.zoomIn}
                   disabled={zoom.scale >= 5}
                   aria-label="Zoom in"
+                  active={false}
                 >
-                  <ZoomInGlyph />
-                </Button>
-                <Separator orientation="vertical" className="mx-0.5 h-5" />
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
+                  <ZoomInFillIcon className="size-5 text-current" />
+                </ToolButton>
+                <ToolButton
+                  label="Reset zoom"
                   onClick={zoom.reset}
-                  aria-label="Fit to screen"
+                  disabled={zoom.scale === 1}
+                  aria-label="Reset zoom"
+                  active={false}
                 >
-                  <FitGlyph />
-                </Button>
+                  <MinimizeFillIcon />
+                </ToolButton>
               </div>
             )}
           </div>
@@ -476,21 +547,30 @@ function ToolButton({
   children,
   onClick,
   active,
+  disabled,
   asChild,
 }: {
   label: string
   children: React.ReactNode
   onClick?: () => void
   active?: boolean
+  disabled?: boolean
   asChild?: boolean
 }) {
   return (
-    <Tooltip content={label} >
+    <Tooltip
+      content={label}
+      side="bottom"
+      align="center"
+      aria-disabled={disabled}
+      asChild
+    >
       <Button
         variant="ghost"
         size="icon-sm"
         asChild={asChild}
         onClick={onClick}
+        disabled={disabled}
         aria-label={label}
         aria-pressed={active}
         className={cn(
@@ -522,7 +602,13 @@ function EdgeNav({
         side === 'left' ? 'left-4' : 'right-4'
       )}
     >
-      <DropdownIcon className={cn('size-5', side === 'right' && '-rotate-90', side === 'left' && 'rotate-90')} />
+      <DropdownIcon
+        className={cn(
+          'size-5',
+          side === 'right' && '-rotate-90',
+          side === 'left' && 'rotate-90'
+        )}
+      />
     </Button>
   )
 }
@@ -594,101 +680,6 @@ function MiniMap() {
       <PinIcon className="absolute left-1/2 top-1/2 size-6 -translate-x-1/2 -translate-y-full text-primary" />
     </div>
   )
-}
-
-/* zoom glyphs — Stash has no magnifier icon, so these are local 1.6-stroke SVGs */
-const ZoomInGlyph = () => (
-  <svg
-    viewBox="0 0 24 24"
-    className="size-5"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="11" cy="11" r="7" />
-    <path d="m20 20-3-3M11 8v6M8 11h6" />
-  </svg>
-)
-const ZoomOutGlyph = () => (
-  <svg
-    viewBox="0 0 24 24"
-    className="size-5"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="11" cy="11" r="7" />
-    <path d="m20 20-3-3M8 11h6" />
-  </svg>
-)
-const FitGlyph = () => (
-  <svg
-    viewBox="0 0 24 24"
-    className="size-5"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3" />
-  </svg>
-)
-
-/* -------------------------------------------------------------------------- */
-/*  Hooks & helpers                                                           */
-/* -------------------------------------------------------------------------- */
-
-function useZoomPan() {
-  const [scale, setScale] = React.useState(1)
-  const [tx, setTx] = React.useState(0)
-  const [ty, setTy] = React.useState(0)
-  const drag = React.useRef<{ x: number; y: number } | null>(null)
-
-  const reset = React.useCallback(() => {
-    setScale(1)
-    setTx(0)
-    setTy(0)
-  }, [])
-
-  const zoomTo = React.useCallback((next: number) => {
-    const s = Math.min(5, Math.max(1, next))
-    setScale(s)
-    if (s === 1) {
-      setTx(0)
-      setTy(0)
-    }
-  }, [])
-
-  return {
-    scale,
-    tx,
-    ty,
-    reset,
-    zoomIn: () => zoomTo(scale + 0.5),
-    zoomOut: () => zoomTo(scale - 0.5),
-    onWheel: (e: React.WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return
-      e.preventDefault()
-      zoomTo(scale - e.deltaY * 0.01)
-    },
-    onMouseDown: (e: React.MouseEvent) => {
-      if (scale === 1) return
-      drag.current = { x: e.clientX - tx, y: e.clientY - ty }
-    },
-    onMouseMove: (e: React.MouseEvent) => {
-      if (!drag.current) return
-      setTx(e.clientX - drag.current.x)
-      setTy(e.clientY - drag.current.y)
-    },
-    onMouseUp: () => {
-      drag.current = null
-    },
-  }
 }
 
 function fmtDate(d: Date | string) {

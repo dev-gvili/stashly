@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useClipboard } from '@/hooks/useClipboard'
 import { useFetcher } from 'react-router'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -205,30 +206,14 @@ function CopyButton({
   value: string
   className?: string
 }) {
-  const [copied, setCopied] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>(null)
-
-  const copy = useCallback(() => {
-    navigator.clipboard.writeText(value).then(() => {
-      setCopied(true)
-      if (timer.current) clearTimeout(timer.current)
-      timer.current = setTimeout(() => setCopied(false), 2000)
-    })
-  }, [value])
-
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current)
-    },
-    []
-  )
+  const { copy, copied } = useClipboard()
 
   return (
     <Button
       type="button"
       variant="outline"
       size="sm"
-      onClick={copy}
+      onClick={() => copy(value)}
       className={cn('shrink-0 gap-1.5', className)}
       aria-label="Copy link"
     >
@@ -290,13 +275,11 @@ function ShareLinkRow({
   const expiry = formatExpiry(link.expiresAt)
   const isExpired = link.expiresAt && new Date(link.expiresAt) < new Date()
   const [showExpiry, setShowExpiry] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const { copy: copyToClipboard, copied } = useClipboard({ resetDelay: 1500 })
   const expiryRef = useRef<HTMLInputElement>(null)
 
   const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+    copyToClipboard(text)
   }
   return (
     <Card className="rounded-md bg-card border-input p-2 gap-y-2">
@@ -846,6 +829,16 @@ export function ShareDialog({
       <DialogContent
         showCloseButton={false}
         className="max-w-xl! w-full font-stashly bg-sidebar border-input shadow-2xl shadow-stashly"
+        onPointerDownOutside={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onOpenChange(false)
+        }}
+        onInteractOutside={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onOpenChange(false)
+        }}
       >
         <DialogHeader className="flex flex-row items-center justify-between w-full">
           <DialogTitle className="flex items-center gap-2 text-base ">
@@ -857,6 +850,12 @@ export function ShareDialog({
               variant="outline"
               size="icon-sm"
               className="bg-card border-input place-self-end"
+              aria-label="Close"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onOpenChange(false)
+              }}
             >
               <RemoveIcon className="text-current size-5" />
             </Button>
@@ -871,7 +870,10 @@ export function ShareDialog({
             >
               Share links
               {links.length > 0 && (
-                <Badge variant="default" className="rounded-sm bg-primary-foreground text-primary font-medium">
+                <Badge
+                  variant="default"
+                  className="rounded-sm bg-primary-foreground text-primary font-medium"
+                >
                   {links.length}
                 </Badge>
               )}
