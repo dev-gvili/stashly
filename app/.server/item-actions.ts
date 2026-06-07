@@ -2561,6 +2561,8 @@ export async function getFileItem(fileId: string, folderId: string) {
       file: {
         select: { id: true, mimeType: true, extension: true, key: true },
       },
+      image: true,
+      video: true,
       thumbnails: {
         select: {
           url: true,
