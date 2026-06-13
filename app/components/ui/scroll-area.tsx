@@ -5,8 +5,13 @@ import { cn } from '@/utils/styles'
 function ScrollArea({
   className,
   children,
+  scrollbars = 'vertical',
   ...props
-}: React.ComponentProps<typeof ScrollAreaPrimitive.Root>) {
+}: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
+  // Radix keeps the viewport's overflow-x hidden unless a horizontal
+  // scrollbar is mounted — pass 'both' for content wider than the viewport.
+  scrollbars?: 'vertical' | 'both'
+}) {
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
@@ -20,6 +25,7 @@ function ScrollArea({
         {children}
       </ScrollAreaPrimitive.Viewport>
       <ScrollBar />
+      {scrollbars === 'both' && <ScrollBar orientation="horizontal" />}
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>
   )
