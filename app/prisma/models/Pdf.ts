@@ -28,10 +28,14 @@ export type AggregatePdf = {
 
 export type PdfAvgAggregateOutputType = {
   pageCount: number | null
+  pageWidth: number | null
+  pageHeight: number | null
 }
 
 export type PdfSumAggregateOutputType = {
   pageCount: number | null
+  pageWidth: number | null
+  pageHeight: number | null
 }
 
 export type PdfMinAggregateOutputType = {
@@ -49,6 +53,8 @@ export type PdfMinAggregateOutputType = {
   hasFormFields: boolean | null
   hasAnnotations: boolean | null
   hasSignatures: boolean | null
+  pageWidth: number | null
+  pageHeight: number | null
   docCreatedAt: Date | null
   docModifiedAt: Date | null
   itemId: string | null
@@ -69,6 +75,8 @@ export type PdfMaxAggregateOutputType = {
   hasFormFields: boolean | null
   hasAnnotations: boolean | null
   hasSignatures: boolean | null
+  pageWidth: number | null
+  pageHeight: number | null
   docCreatedAt: Date | null
   docModifiedAt: Date | null
   itemId: string | null
@@ -89,6 +97,8 @@ export type PdfCountAggregateOutputType = {
   hasFormFields: number
   hasAnnotations: number
   hasSignatures: number
+  pageWidth: number
+  pageHeight: number
   docCreatedAt: number
   docModifiedAt: number
   itemId: number
@@ -98,10 +108,14 @@ export type PdfCountAggregateOutputType = {
 
 export type PdfAvgAggregateInputType = {
   pageCount?: true
+  pageWidth?: true
+  pageHeight?: true
 }
 
 export type PdfSumAggregateInputType = {
   pageCount?: true
+  pageWidth?: true
+  pageHeight?: true
 }
 
 export type PdfMinAggregateInputType = {
@@ -119,6 +133,8 @@ export type PdfMinAggregateInputType = {
   hasFormFields?: true
   hasAnnotations?: true
   hasSignatures?: true
+  pageWidth?: true
+  pageHeight?: true
   docCreatedAt?: true
   docModifiedAt?: true
   itemId?: true
@@ -139,6 +155,8 @@ export type PdfMaxAggregateInputType = {
   hasFormFields?: true
   hasAnnotations?: true
   hasSignatures?: true
+  pageWidth?: true
+  pageHeight?: true
   docCreatedAt?: true
   docModifiedAt?: true
   itemId?: true
@@ -159,6 +177,8 @@ export type PdfCountAggregateInputType = {
   hasFormFields?: true
   hasAnnotations?: true
   hasSignatures?: true
+  pageWidth?: true
+  pageHeight?: true
   docCreatedAt?: true
   docModifiedAt?: true
   itemId?: true
@@ -266,6 +286,8 @@ export type PdfGroupByOutputType = {
   hasFormFields: boolean | null
   hasAnnotations: boolean | null
   hasSignatures: boolean | null
+  pageWidth: number | null
+  pageHeight: number | null
   docCreatedAt: Date | null
   docModifiedAt: Date | null
   itemId: string
@@ -309,6 +331,8 @@ export type PdfWhereInput = {
   hasFormFields?: Prisma.BoolNullableFilter<"Pdf"> | boolean | null
   hasAnnotations?: Prisma.BoolNullableFilter<"Pdf"> | boolean | null
   hasSignatures?: Prisma.BoolNullableFilter<"Pdf"> | boolean | null
+  pageWidth?: Prisma.FloatNullableFilter<"Pdf"> | number | null
+  pageHeight?: Prisma.FloatNullableFilter<"Pdf"> | number | null
   docCreatedAt?: Prisma.DateTimeNullableFilter<"Pdf"> | Date | string | null
   docModifiedAt?: Prisma.DateTimeNullableFilter<"Pdf"> | Date | string | null
   itemId?: Prisma.StringFilter<"Pdf"> | string
@@ -330,6 +354,8 @@ export type PdfOrderByWithRelationInput = {
   hasFormFields?: Prisma.SortOrderInput | Prisma.SortOrder
   hasAnnotations?: Prisma.SortOrderInput | Prisma.SortOrder
   hasSignatures?: Prisma.SortOrderInput | Prisma.SortOrder
+  pageWidth?: Prisma.SortOrderInput | Prisma.SortOrder
+  pageHeight?: Prisma.SortOrderInput | Prisma.SortOrder
   docCreatedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   docModifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   itemId?: Prisma.SortOrder
@@ -355,6 +381,8 @@ export type PdfWhereUniqueInput = Prisma.AtLeast<{
   hasFormFields?: Prisma.BoolNullableFilter<"Pdf"> | boolean | null
   hasAnnotations?: Prisma.BoolNullableFilter<"Pdf"> | boolean | null
   hasSignatures?: Prisma.BoolNullableFilter<"Pdf"> | boolean | null
+  pageWidth?: Prisma.FloatNullableFilter<"Pdf"> | number | null
+  pageHeight?: Prisma.FloatNullableFilter<"Pdf"> | number | null
   docCreatedAt?: Prisma.DateTimeNullableFilter<"Pdf"> | Date | string | null
   docModifiedAt?: Prisma.DateTimeNullableFilter<"Pdf"> | Date | string | null
   item?: Prisma.XOR<Prisma.ItemScalarRelationFilter, Prisma.ItemWhereInput>
@@ -375,6 +403,8 @@ export type PdfOrderByWithAggregationInput = {
   hasFormFields?: Prisma.SortOrderInput | Prisma.SortOrder
   hasAnnotations?: Prisma.SortOrderInput | Prisma.SortOrder
   hasSignatures?: Prisma.SortOrderInput | Prisma.SortOrder
+  pageWidth?: Prisma.SortOrderInput | Prisma.SortOrder
+  pageHeight?: Prisma.SortOrderInput | Prisma.SortOrder
   docCreatedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   docModifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   itemId?: Prisma.SortOrder
@@ -403,6 +433,8 @@ export type PdfScalarWhereWithAggregatesInput = {
   hasFormFields?: Prisma.BoolNullableWithAggregatesFilter<"Pdf"> | boolean | null
   hasAnnotations?: Prisma.BoolNullableWithAggregatesFilter<"Pdf"> | boolean | null
   hasSignatures?: Prisma.BoolNullableWithAggregatesFilter<"Pdf"> | boolean | null
+  pageWidth?: Prisma.FloatNullableWithAggregatesFilter<"Pdf"> | number | null
+  pageHeight?: Prisma.FloatNullableWithAggregatesFilter<"Pdf"> | number | null
   docCreatedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Pdf"> | Date | string | null
   docModifiedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Pdf"> | Date | string | null
   itemId?: Prisma.StringWithAggregatesFilter<"Pdf"> | string
@@ -423,6 +455,8 @@ export type PdfCreateInput = {
   hasFormFields?: boolean | null
   hasAnnotations?: boolean | null
   hasSignatures?: boolean | null
+  pageWidth?: number | null
+  pageHeight?: number | null
   docCreatedAt?: Date | string | null
   docModifiedAt?: Date | string | null
   item: Prisma.ItemCreateNestedOneWithoutPdfInput
@@ -443,6 +477,8 @@ export type PdfUncheckedCreateInput = {
   hasFormFields?: boolean | null
   hasAnnotations?: boolean | null
   hasSignatures?: boolean | null
+  pageWidth?: number | null
+  pageHeight?: number | null
   docCreatedAt?: Date | string | null
   docModifiedAt?: Date | string | null
   itemId: string
@@ -463,6 +499,8 @@ export type PdfUpdateInput = {
   hasFormFields?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasAnnotations?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasSignatures?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  pageWidth?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  pageHeight?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   docCreatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   docModifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   item?: Prisma.ItemUpdateOneRequiredWithoutPdfNestedInput
@@ -483,6 +521,8 @@ export type PdfUncheckedUpdateInput = {
   hasFormFields?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasAnnotations?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasSignatures?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  pageWidth?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  pageHeight?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   docCreatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   docModifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   itemId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -503,6 +543,8 @@ export type PdfCreateManyInput = {
   hasFormFields?: boolean | null
   hasAnnotations?: boolean | null
   hasSignatures?: boolean | null
+  pageWidth?: number | null
+  pageHeight?: number | null
   docCreatedAt?: Date | string | null
   docModifiedAt?: Date | string | null
   itemId: string
@@ -523,6 +565,8 @@ export type PdfUpdateManyMutationInput = {
   hasFormFields?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasAnnotations?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasSignatures?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  pageWidth?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  pageHeight?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   docCreatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   docModifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
@@ -542,6 +586,8 @@ export type PdfUncheckedUpdateManyInput = {
   hasFormFields?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasAnnotations?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasSignatures?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  pageWidth?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  pageHeight?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   docCreatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   docModifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   itemId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -562,6 +608,8 @@ export type PdfCountOrderByAggregateInput = {
   hasFormFields?: Prisma.SortOrder
   hasAnnotations?: Prisma.SortOrder
   hasSignatures?: Prisma.SortOrder
+  pageWidth?: Prisma.SortOrder
+  pageHeight?: Prisma.SortOrder
   docCreatedAt?: Prisma.SortOrder
   docModifiedAt?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
@@ -569,6 +617,8 @@ export type PdfCountOrderByAggregateInput = {
 
 export type PdfAvgOrderByAggregateInput = {
   pageCount?: Prisma.SortOrder
+  pageWidth?: Prisma.SortOrder
+  pageHeight?: Prisma.SortOrder
 }
 
 export type PdfMaxOrderByAggregateInput = {
@@ -586,6 +636,8 @@ export type PdfMaxOrderByAggregateInput = {
   hasFormFields?: Prisma.SortOrder
   hasAnnotations?: Prisma.SortOrder
   hasSignatures?: Prisma.SortOrder
+  pageWidth?: Prisma.SortOrder
+  pageHeight?: Prisma.SortOrder
   docCreatedAt?: Prisma.SortOrder
   docModifiedAt?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
@@ -606,6 +658,8 @@ export type PdfMinOrderByAggregateInput = {
   hasFormFields?: Prisma.SortOrder
   hasAnnotations?: Prisma.SortOrder
   hasSignatures?: Prisma.SortOrder
+  pageWidth?: Prisma.SortOrder
+  pageHeight?: Prisma.SortOrder
   docCreatedAt?: Prisma.SortOrder
   docModifiedAt?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
@@ -613,6 +667,8 @@ export type PdfMinOrderByAggregateInput = {
 
 export type PdfSumOrderByAggregateInput = {
   pageCount?: Prisma.SortOrder
+  pageWidth?: Prisma.SortOrder
+  pageHeight?: Prisma.SortOrder
 }
 
 export type PdfNullableScalarRelationFilter = {
@@ -671,6 +727,8 @@ export type PdfCreateWithoutItemInput = {
   hasFormFields?: boolean | null
   hasAnnotations?: boolean | null
   hasSignatures?: boolean | null
+  pageWidth?: number | null
+  pageHeight?: number | null
   docCreatedAt?: Date | string | null
   docModifiedAt?: Date | string | null
 }
@@ -690,6 +748,8 @@ export type PdfUncheckedCreateWithoutItemInput = {
   hasFormFields?: boolean | null
   hasAnnotations?: boolean | null
   hasSignatures?: boolean | null
+  pageWidth?: number | null
+  pageHeight?: number | null
   docCreatedAt?: Date | string | null
   docModifiedAt?: Date | string | null
 }
@@ -725,6 +785,8 @@ export type PdfUpdateWithoutItemInput = {
   hasFormFields?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasAnnotations?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasSignatures?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  pageWidth?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  pageHeight?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   docCreatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   docModifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
@@ -744,6 +806,8 @@ export type PdfUncheckedUpdateWithoutItemInput = {
   hasFormFields?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasAnnotations?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasSignatures?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  pageWidth?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  pageHeight?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   docCreatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   docModifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
@@ -765,6 +829,8 @@ export type PdfSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
   hasFormFields?: boolean
   hasAnnotations?: boolean
   hasSignatures?: boolean
+  pageWidth?: boolean
+  pageHeight?: boolean
   docCreatedAt?: boolean
   docModifiedAt?: boolean
   itemId?: boolean
@@ -786,6 +852,8 @@ export type PdfSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extension
   hasFormFields?: boolean
   hasAnnotations?: boolean
   hasSignatures?: boolean
+  pageWidth?: boolean
+  pageHeight?: boolean
   docCreatedAt?: boolean
   docModifiedAt?: boolean
   itemId?: boolean
@@ -807,6 +875,8 @@ export type PdfSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extension
   hasFormFields?: boolean
   hasAnnotations?: boolean
   hasSignatures?: boolean
+  pageWidth?: boolean
+  pageHeight?: boolean
   docCreatedAt?: boolean
   docModifiedAt?: boolean
   itemId?: boolean
@@ -828,12 +898,14 @@ export type PdfSelectScalar = {
   hasFormFields?: boolean
   hasAnnotations?: boolean
   hasSignatures?: boolean
+  pageWidth?: boolean
+  pageHeight?: boolean
   docCreatedAt?: boolean
   docModifiedAt?: boolean
   itemId?: boolean
 }
 
-export type PdfOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "pageCount" | "title" | "author" | "subject" | "keywords" | "creator" | "producer" | "pdfVersion" | "language" | "isEncrypted" | "hasFormFields" | "hasAnnotations" | "hasSignatures" | "docCreatedAt" | "docModifiedAt" | "itemId", ExtArgs["result"]["pdf"]>
+export type PdfOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "pageCount" | "title" | "author" | "subject" | "keywords" | "creator" | "producer" | "pdfVersion" | "language" | "isEncrypted" | "hasFormFields" | "hasAnnotations" | "hasSignatures" | "pageWidth" | "pageHeight" | "docCreatedAt" | "docModifiedAt" | "itemId", ExtArgs["result"]["pdf"]>
 export type PdfInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
 }
@@ -864,6 +936,8 @@ export type $PdfPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
     hasFormFields: boolean | null
     hasAnnotations: boolean | null
     hasSignatures: boolean | null
+    pageWidth: number | null
+    pageHeight: number | null
     docCreatedAt: Date | null
     docModifiedAt: Date | null
     itemId: string
@@ -1305,6 +1379,8 @@ export interface PdfFieldRefs {
   readonly hasFormFields: Prisma.FieldRef<"Pdf", 'Boolean'>
   readonly hasAnnotations: Prisma.FieldRef<"Pdf", 'Boolean'>
   readonly hasSignatures: Prisma.FieldRef<"Pdf", 'Boolean'>
+  readonly pageWidth: Prisma.FieldRef<"Pdf", 'Float'>
+  readonly pageHeight: Prisma.FieldRef<"Pdf", 'Float'>
   readonly docCreatedAt: Prisma.FieldRef<"Pdf", 'DateTime'>
   readonly docModifiedAt: Prisma.FieldRef<"Pdf", 'DateTime'>
   readonly itemId: Prisma.FieldRef<"Pdf", 'String'>

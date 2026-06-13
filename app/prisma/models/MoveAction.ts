@@ -26,40 +26,52 @@ export type AggregateMoveAction = {
 
 export type MoveActionMinAggregateOutputType = {
   id: string | null
-  from: string | null
-  to: string | null
+  fromParentId: string | null
+  fromParentName: string | null
+  toParentId: string | null
+  toParentName: string | null
 }
 
 export type MoveActionMaxAggregateOutputType = {
   id: string | null
-  from: string | null
-  to: string | null
+  fromParentId: string | null
+  fromParentName: string | null
+  toParentId: string | null
+  toParentName: string | null
 }
 
 export type MoveActionCountAggregateOutputType = {
   id: number
-  from: number
-  to: number
+  fromParentId: number
+  fromParentName: number
+  toParentId: number
+  toParentName: number
   _all: number
 }
 
 
 export type MoveActionMinAggregateInputType = {
   id?: true
-  from?: true
-  to?: true
+  fromParentId?: true
+  fromParentName?: true
+  toParentId?: true
+  toParentName?: true
 }
 
 export type MoveActionMaxAggregateInputType = {
   id?: true
-  from?: true
-  to?: true
+  fromParentId?: true
+  fromParentName?: true
+  toParentId?: true
+  toParentName?: true
 }
 
 export type MoveActionCountAggregateInputType = {
   id?: true
-  from?: true
-  to?: true
+  fromParentId?: true
+  fromParentName?: true
+  toParentId?: true
+  toParentName?: true
   _all?: true
 }
 
@@ -137,8 +149,10 @@ export type MoveActionGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inter
 
 export type MoveActionGroupByOutputType = {
   id: string
-  from: string
-  to: string
+  fromParentId: string
+  fromParentName: string
+  toParentId: string
+  toParentName: string
   _count: MoveActionCountAggregateOutputType | null
   _min: MoveActionMinAggregateOutputType | null
   _max: MoveActionMaxAggregateOutputType | null
@@ -164,15 +178,19 @@ export type MoveActionWhereInput = {
   OR?: Prisma.MoveActionWhereInput[]
   NOT?: Prisma.MoveActionWhereInput | Prisma.MoveActionWhereInput[]
   id?: Prisma.StringFilter<"MoveAction"> | string
-  from?: Prisma.StringFilter<"MoveAction"> | string
-  to?: Prisma.StringFilter<"MoveAction"> | string
+  fromParentId?: Prisma.StringFilter<"MoveAction"> | string
+  fromParentName?: Prisma.StringFilter<"MoveAction"> | string
+  toParentId?: Prisma.StringFilter<"MoveAction"> | string
+  toParentName?: Prisma.StringFilter<"MoveAction"> | string
   action?: Prisma.XOR<Prisma.ItemActionNullableScalarRelationFilter, Prisma.ItemActionWhereInput> | null
 }
 
 export type MoveActionOrderByWithRelationInput = {
   id?: Prisma.SortOrder
-  from?: Prisma.SortOrder
-  to?: Prisma.SortOrder
+  fromParentId?: Prisma.SortOrder
+  fromParentName?: Prisma.SortOrder
+  toParentId?: Prisma.SortOrder
+  toParentName?: Prisma.SortOrder
   action?: Prisma.ItemActionOrderByWithRelationInput
 }
 
@@ -181,15 +199,19 @@ export type MoveActionWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.MoveActionWhereInput | Prisma.MoveActionWhereInput[]
   OR?: Prisma.MoveActionWhereInput[]
   NOT?: Prisma.MoveActionWhereInput | Prisma.MoveActionWhereInput[]
-  from?: Prisma.StringFilter<"MoveAction"> | string
-  to?: Prisma.StringFilter<"MoveAction"> | string
+  fromParentId?: Prisma.StringFilter<"MoveAction"> | string
+  fromParentName?: Prisma.StringFilter<"MoveAction"> | string
+  toParentId?: Prisma.StringFilter<"MoveAction"> | string
+  toParentName?: Prisma.StringFilter<"MoveAction"> | string
   action?: Prisma.XOR<Prisma.ItemActionNullableScalarRelationFilter, Prisma.ItemActionWhereInput> | null
 }, "id">
 
 export type MoveActionOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
-  from?: Prisma.SortOrder
-  to?: Prisma.SortOrder
+  fromParentId?: Prisma.SortOrder
+  fromParentName?: Prisma.SortOrder
+  toParentId?: Prisma.SortOrder
+  toParentName?: Prisma.SortOrder
   _count?: Prisma.MoveActionCountOrderByAggregateInput
   _max?: Prisma.MoveActionMaxOrderByAggregateInput
   _min?: Prisma.MoveActionMinOrderByAggregateInput
@@ -200,54 +222,70 @@ export type MoveActionScalarWhereWithAggregatesInput = {
   OR?: Prisma.MoveActionScalarWhereWithAggregatesInput[]
   NOT?: Prisma.MoveActionScalarWhereWithAggregatesInput | Prisma.MoveActionScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"MoveAction"> | string
-  from?: Prisma.StringWithAggregatesFilter<"MoveAction"> | string
-  to?: Prisma.StringWithAggregatesFilter<"MoveAction"> | string
+  fromParentId?: Prisma.StringWithAggregatesFilter<"MoveAction"> | string
+  fromParentName?: Prisma.StringWithAggregatesFilter<"MoveAction"> | string
+  toParentId?: Prisma.StringWithAggregatesFilter<"MoveAction"> | string
+  toParentName?: Prisma.StringWithAggregatesFilter<"MoveAction"> | string
 }
 
 export type MoveActionCreateInput = {
   id: string
-  from: string
-  to: string
+  fromParentId: string
+  fromParentName: string
+  toParentId: string
+  toParentName: string
   action?: Prisma.ItemActionCreateNestedOneWithoutMoveInput
 }
 
 export type MoveActionUncheckedCreateInput = {
   id: string
-  from: string
-  to: string
+  fromParentId: string
+  fromParentName: string
+  toParentId: string
+  toParentName: string
   action?: Prisma.ItemActionUncheckedCreateNestedOneWithoutMoveInput
 }
 
 export type MoveActionUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  from?: Prisma.StringFieldUpdateOperationsInput | string
-  to?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentName?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentName?: Prisma.StringFieldUpdateOperationsInput | string
   action?: Prisma.ItemActionUpdateOneWithoutMoveNestedInput
 }
 
 export type MoveActionUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  from?: Prisma.StringFieldUpdateOperationsInput | string
-  to?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentName?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentName?: Prisma.StringFieldUpdateOperationsInput | string
   action?: Prisma.ItemActionUncheckedUpdateOneWithoutMoveNestedInput
 }
 
 export type MoveActionCreateManyInput = {
   id: string
-  from: string
-  to: string
+  fromParentId: string
+  fromParentName: string
+  toParentId: string
+  toParentName: string
 }
 
 export type MoveActionUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  from?: Prisma.StringFieldUpdateOperationsInput | string
-  to?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentName?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentName?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type MoveActionUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  from?: Prisma.StringFieldUpdateOperationsInput | string
-  to?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentName?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentName?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type MoveActionNullableScalarRelationFilter = {
@@ -257,20 +295,26 @@ export type MoveActionNullableScalarRelationFilter = {
 
 export type MoveActionCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  from?: Prisma.SortOrder
-  to?: Prisma.SortOrder
+  fromParentId?: Prisma.SortOrder
+  fromParentName?: Prisma.SortOrder
+  toParentId?: Prisma.SortOrder
+  toParentName?: Prisma.SortOrder
 }
 
 export type MoveActionMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  from?: Prisma.SortOrder
-  to?: Prisma.SortOrder
+  fromParentId?: Prisma.SortOrder
+  fromParentName?: Prisma.SortOrder
+  toParentId?: Prisma.SortOrder
+  toParentName?: Prisma.SortOrder
 }
 
 export type MoveActionMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  from?: Prisma.SortOrder
-  to?: Prisma.SortOrder
+  fromParentId?: Prisma.SortOrder
+  fromParentName?: Prisma.SortOrder
+  toParentId?: Prisma.SortOrder
+  toParentName?: Prisma.SortOrder
 }
 
 export type MoveActionCreateNestedOneWithoutActionInput = {
@@ -291,14 +335,18 @@ export type MoveActionUpdateOneWithoutActionNestedInput = {
 
 export type MoveActionCreateWithoutActionInput = {
   id: string
-  from: string
-  to: string
+  fromParentId: string
+  fromParentName: string
+  toParentId: string
+  toParentName: string
 }
 
 export type MoveActionUncheckedCreateWithoutActionInput = {
   id: string
-  from: string
-  to: string
+  fromParentId: string
+  fromParentName: string
+  toParentId: string
+  toParentName: string
 }
 
 export type MoveActionCreateOrConnectWithoutActionInput = {
@@ -319,44 +367,56 @@ export type MoveActionUpdateToOneWithWhereWithoutActionInput = {
 
 export type MoveActionUpdateWithoutActionInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  from?: Prisma.StringFieldUpdateOperationsInput | string
-  to?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentName?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentName?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type MoveActionUncheckedUpdateWithoutActionInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  from?: Prisma.StringFieldUpdateOperationsInput | string
-  to?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentName?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentName?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 
 
 export type MoveActionSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  from?: boolean
-  to?: boolean
+  fromParentId?: boolean
+  fromParentName?: boolean
+  toParentId?: boolean
+  toParentName?: boolean
   action?: boolean | Prisma.MoveAction$actionArgs<ExtArgs>
 }, ExtArgs["result"]["moveAction"]>
 
 export type MoveActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  from?: boolean
-  to?: boolean
+  fromParentId?: boolean
+  fromParentName?: boolean
+  toParentId?: boolean
+  toParentName?: boolean
 }, ExtArgs["result"]["moveAction"]>
 
 export type MoveActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  from?: boolean
-  to?: boolean
+  fromParentId?: boolean
+  fromParentName?: boolean
+  toParentId?: boolean
+  toParentName?: boolean
 }, ExtArgs["result"]["moveAction"]>
 
 export type MoveActionSelectScalar = {
   id?: boolean
-  from?: boolean
-  to?: boolean
+  fromParentId?: boolean
+  fromParentName?: boolean
+  toParentId?: boolean
+  toParentName?: boolean
 }
 
-export type MoveActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "from" | "to", ExtArgs["result"]["moveAction"]>
+export type MoveActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "fromParentId" | "fromParentName" | "toParentId" | "toParentName", ExtArgs["result"]["moveAction"]>
 export type MoveActionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   action?: boolean | Prisma.MoveAction$actionArgs<ExtArgs>
 }
@@ -370,8 +430,10 @@ export type $MoveActionPayload<ExtArgs extends runtime.Types.Extensions.Internal
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
-    from: string
-    to: string
+    fromParentId: string
+    fromParentName: string
+    toParentId: string
+    toParentName: string
   }, ExtArgs["result"]["moveAction"]>
   composites: {}
 }
@@ -797,8 +859,10 @@ export interface Prisma__MoveActionClient<T, Null = never, ExtArgs extends runti
  */
 export interface MoveActionFieldRefs {
   readonly id: Prisma.FieldRef<"MoveAction", 'String'>
-  readonly from: Prisma.FieldRef<"MoveAction", 'String'>
-  readonly to: Prisma.FieldRef<"MoveAction", 'String'>
+  readonly fromParentId: Prisma.FieldRef<"MoveAction", 'String'>
+  readonly fromParentName: Prisma.FieldRef<"MoveAction", 'String'>
+  readonly toParentId: Prisma.FieldRef<"MoveAction", 'String'>
+  readonly toParentName: Prisma.FieldRef<"MoveAction", 'String'>
 }
     
 

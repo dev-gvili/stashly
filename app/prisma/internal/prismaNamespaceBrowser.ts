@@ -236,8 +236,10 @@ export type EditActionScalarFieldEnum = (typeof EditActionScalarFieldEnum)[keyof
 
 export const MoveActionScalarFieldEnum = {
   id: 'id',
-  from: 'from',
-  to: 'to'
+  fromParentId: 'fromParentId',
+  fromParentName: 'fromParentName',
+  toParentId: 'toParentId',
+  toParentName: 'toParentName'
 } as const
 
 export type MoveActionScalarFieldEnum = (typeof MoveActionScalarFieldEnum)[keyof typeof MoveActionScalarFieldEnum]
@@ -245,8 +247,10 @@ export type MoveActionScalarFieldEnum = (typeof MoveActionScalarFieldEnum)[keyof
 
 export const CopyActionScalarFieldEnum = {
   id: 'id',
-  from: 'from',
-  to: 'to'
+  fromParentId: 'fromParentId',
+  fromParentName: 'fromParentName',
+  toParentId: 'toParentId',
+  toParentName: 'toParentName'
 } as const
 
 export type CopyActionScalarFieldEnum = (typeof CopyActionScalarFieldEnum)[keyof typeof CopyActionScalarFieldEnum]
@@ -466,6 +470,8 @@ export const PdfScalarFieldEnum = {
   hasFormFields: 'hasFormFields',
   hasAnnotations: 'hasAnnotations',
   hasSignatures: 'hasSignatures',
+  pageWidth: 'pageWidth',
+  pageHeight: 'pageHeight',
   docCreatedAt: 'docCreatedAt',
   docModifiedAt: 'docModifiedAt',
   itemId: 'itemId'

@@ -71,6 +71,9 @@ model Pdf {
   hasFormFields    Boolean?
   hasAnnotations   Boolean?
   hasSignatures    Boolean?
+  // First-page media box in PDF points (1pt = 1/72in) — drives "Page size"
+  pageWidth        Float?
+  pageHeight       Float?
   docCreatedAt     DateTime?
   docModifiedAt    DateTime?
   itemId           String    @unique

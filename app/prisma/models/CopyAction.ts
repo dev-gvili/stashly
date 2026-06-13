@@ -26,40 +26,52 @@ export type AggregateCopyAction = {
 
 export type CopyActionMinAggregateOutputType = {
   id: string | null
-  from: string | null
-  to: string | null
+  fromParentId: string | null
+  fromParentName: string | null
+  toParentId: string | null
+  toParentName: string | null
 }
 
 export type CopyActionMaxAggregateOutputType = {
   id: string | null
-  from: string | null
-  to: string | null
+  fromParentId: string | null
+  fromParentName: string | null
+  toParentId: string | null
+  toParentName: string | null
 }
 
 export type CopyActionCountAggregateOutputType = {
   id: number
-  from: number
-  to: number
+  fromParentId: number
+  fromParentName: number
+  toParentId: number
+  toParentName: number
   _all: number
 }
 
 
 export type CopyActionMinAggregateInputType = {
   id?: true
-  from?: true
-  to?: true
+  fromParentId?: true
+  fromParentName?: true
+  toParentId?: true
+  toParentName?: true
 }
 
 export type CopyActionMaxAggregateInputType = {
   id?: true
-  from?: true
-  to?: true
+  fromParentId?: true
+  fromParentName?: true
+  toParentId?: true
+  toParentName?: true
 }
 
 export type CopyActionCountAggregateInputType = {
   id?: true
-  from?: true
-  to?: true
+  fromParentId?: true
+  fromParentName?: true
+  toParentId?: true
+  toParentName?: true
   _all?: true
 }
 
@@ -137,8 +149,10 @@ export type CopyActionGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inter
 
 export type CopyActionGroupByOutputType = {
   id: string
-  from: string
-  to: string
+  fromParentId: string
+  fromParentName: string
+  toParentId: string
+  toParentName: string
   _count: CopyActionCountAggregateOutputType | null
   _min: CopyActionMinAggregateOutputType | null
   _max: CopyActionMaxAggregateOutputType | null
@@ -164,15 +178,19 @@ export type CopyActionWhereInput = {
   OR?: Prisma.CopyActionWhereInput[]
   NOT?: Prisma.CopyActionWhereInput | Prisma.CopyActionWhereInput[]
   id?: Prisma.StringFilter<"CopyAction"> | string
-  from?: Prisma.StringFilter<"CopyAction"> | string
-  to?: Prisma.StringFilter<"CopyAction"> | string
+  fromParentId?: Prisma.StringFilter<"CopyAction"> | string
+  fromParentName?: Prisma.StringFilter<"CopyAction"> | string
+  toParentId?: Prisma.StringFilter<"CopyAction"> | string
+  toParentName?: Prisma.StringFilter<"CopyAction"> | string
   action?: Prisma.XOR<Prisma.ItemActionNullableScalarRelationFilter, Prisma.ItemActionWhereInput> | null
 }
 
 export type CopyActionOrderByWithRelationInput = {
   id?: Prisma.SortOrder
-  from?: Prisma.SortOrder
-  to?: Prisma.SortOrder
+  fromParentId?: Prisma.SortOrder
+  fromParentName?: Prisma.SortOrder
+  toParentId?: Prisma.SortOrder
+  toParentName?: Prisma.SortOrder
   action?: Prisma.ItemActionOrderByWithRelationInput
 }
 
@@ -181,15 +199,19 @@ export type CopyActionWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.CopyActionWhereInput | Prisma.CopyActionWhereInput[]
   OR?: Prisma.CopyActionWhereInput[]
   NOT?: Prisma.CopyActionWhereInput | Prisma.CopyActionWhereInput[]
-  from?: Prisma.StringFilter<"CopyAction"> | string
-  to?: Prisma.StringFilter<"CopyAction"> | string
+  fromParentId?: Prisma.StringFilter<"CopyAction"> | string
+  fromParentName?: Prisma.StringFilter<"CopyAction"> | string
+  toParentId?: Prisma.StringFilter<"CopyAction"> | string
+  toParentName?: Prisma.StringFilter<"CopyAction"> | string
   action?: Prisma.XOR<Prisma.ItemActionNullableScalarRelationFilter, Prisma.ItemActionWhereInput> | null
 }, "id">
 
 export type CopyActionOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
-  from?: Prisma.SortOrder
-  to?: Prisma.SortOrder
+  fromParentId?: Prisma.SortOrder
+  fromParentName?: Prisma.SortOrder
+  toParentId?: Prisma.SortOrder
+  toParentName?: Prisma.SortOrder
   _count?: Prisma.CopyActionCountOrderByAggregateInput
   _max?: Prisma.CopyActionMaxOrderByAggregateInput
   _min?: Prisma.CopyActionMinOrderByAggregateInput
@@ -200,54 +222,70 @@ export type CopyActionScalarWhereWithAggregatesInput = {
   OR?: Prisma.CopyActionScalarWhereWithAggregatesInput[]
   NOT?: Prisma.CopyActionScalarWhereWithAggregatesInput | Prisma.CopyActionScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"CopyAction"> | string
-  from?: Prisma.StringWithAggregatesFilter<"CopyAction"> | string
-  to?: Prisma.StringWithAggregatesFilter<"CopyAction"> | string
+  fromParentId?: Prisma.StringWithAggregatesFilter<"CopyAction"> | string
+  fromParentName?: Prisma.StringWithAggregatesFilter<"CopyAction"> | string
+  toParentId?: Prisma.StringWithAggregatesFilter<"CopyAction"> | string
+  toParentName?: Prisma.StringWithAggregatesFilter<"CopyAction"> | string
 }
 
 export type CopyActionCreateInput = {
   id: string
-  from: string
-  to: string
+  fromParentId: string
+  fromParentName: string
+  toParentId: string
+  toParentName: string
   action?: Prisma.ItemActionCreateNestedOneWithoutCopyInput
 }
 
 export type CopyActionUncheckedCreateInput = {
   id: string
-  from: string
-  to: string
+  fromParentId: string
+  fromParentName: string
+  toParentId: string
+  toParentName: string
   action?: Prisma.ItemActionUncheckedCreateNestedOneWithoutCopyInput
 }
 
 export type CopyActionUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  from?: Prisma.StringFieldUpdateOperationsInput | string
-  to?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentName?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentName?: Prisma.StringFieldUpdateOperationsInput | string
   action?: Prisma.ItemActionUpdateOneWithoutCopyNestedInput
 }
 
 export type CopyActionUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  from?: Prisma.StringFieldUpdateOperationsInput | string
-  to?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentName?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentName?: Prisma.StringFieldUpdateOperationsInput | string
   action?: Prisma.ItemActionUncheckedUpdateOneWithoutCopyNestedInput
 }
 
 export type CopyActionCreateManyInput = {
   id: string
-  from: string
-  to: string
+  fromParentId: string
+  fromParentName: string
+  toParentId: string
+  toParentName: string
 }
 
 export type CopyActionUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  from?: Prisma.StringFieldUpdateOperationsInput | string
-  to?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentName?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentName?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type CopyActionUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  from?: Prisma.StringFieldUpdateOperationsInput | string
-  to?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentName?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentName?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type CopyActionNullableScalarRelationFilter = {
@@ -257,20 +295,26 @@ export type CopyActionNullableScalarRelationFilter = {
 
 export type CopyActionCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  from?: Prisma.SortOrder
-  to?: Prisma.SortOrder
+  fromParentId?: Prisma.SortOrder
+  fromParentName?: Prisma.SortOrder
+  toParentId?: Prisma.SortOrder
+  toParentName?: Prisma.SortOrder
 }
 
 export type CopyActionMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  from?: Prisma.SortOrder
-  to?: Prisma.SortOrder
+  fromParentId?: Prisma.SortOrder
+  fromParentName?: Prisma.SortOrder
+  toParentId?: Prisma.SortOrder
+  toParentName?: Prisma.SortOrder
 }
 
 export type CopyActionMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  from?: Prisma.SortOrder
-  to?: Prisma.SortOrder
+  fromParentId?: Prisma.SortOrder
+  fromParentName?: Prisma.SortOrder
+  toParentId?: Prisma.SortOrder
+  toParentName?: Prisma.SortOrder
 }
 
 export type CopyActionCreateNestedOneWithoutActionInput = {
@@ -291,14 +335,18 @@ export type CopyActionUpdateOneWithoutActionNestedInput = {
 
 export type CopyActionCreateWithoutActionInput = {
   id: string
-  from: string
-  to: string
+  fromParentId: string
+  fromParentName: string
+  toParentId: string
+  toParentName: string
 }
 
 export type CopyActionUncheckedCreateWithoutActionInput = {
   id: string
-  from: string
-  to: string
+  fromParentId: string
+  fromParentName: string
+  toParentId: string
+  toParentName: string
 }
 
 export type CopyActionCreateOrConnectWithoutActionInput = {
@@ -319,44 +367,56 @@ export type CopyActionUpdateToOneWithWhereWithoutActionInput = {
 
 export type CopyActionUpdateWithoutActionInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  from?: Prisma.StringFieldUpdateOperationsInput | string
-  to?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentName?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentName?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type CopyActionUncheckedUpdateWithoutActionInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  from?: Prisma.StringFieldUpdateOperationsInput | string
-  to?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  fromParentName?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentId?: Prisma.StringFieldUpdateOperationsInput | string
+  toParentName?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 
 
 export type CopyActionSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  from?: boolean
-  to?: boolean
+  fromParentId?: boolean
+  fromParentName?: boolean
+  toParentId?: boolean
+  toParentName?: boolean
   action?: boolean | Prisma.CopyAction$actionArgs<ExtArgs>
 }, ExtArgs["result"]["copyAction"]>
 
 export type CopyActionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  from?: boolean
-  to?: boolean
+  fromParentId?: boolean
+  fromParentName?: boolean
+  toParentId?: boolean
+  toParentName?: boolean
 }, ExtArgs["result"]["copyAction"]>
 
 export type CopyActionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  from?: boolean
-  to?: boolean
+  fromParentId?: boolean
+  fromParentName?: boolean
+  toParentId?: boolean
+  toParentName?: boolean
 }, ExtArgs["result"]["copyAction"]>
 
 export type CopyActionSelectScalar = {
   id?: boolean
-  from?: boolean
-  to?: boolean
+  fromParentId?: boolean
+  fromParentName?: boolean
+  toParentId?: boolean
+  toParentName?: boolean
 }
 
-export type CopyActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "from" | "to", ExtArgs["result"]["copyAction"]>
+export type CopyActionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "fromParentId" | "fromParentName" | "toParentId" | "toParentName", ExtArgs["result"]["copyAction"]>
 export type CopyActionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   action?: boolean | Prisma.CopyAction$actionArgs<ExtArgs>
 }
@@ -370,8 +430,10 @@ export type $CopyActionPayload<ExtArgs extends runtime.Types.Extensions.Internal
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
-    from: string
-    to: string
+    fromParentId: string
+    fromParentName: string
+    toParentId: string
+    toParentName: string
   }, ExtArgs["result"]["copyAction"]>
   composites: {}
 }
@@ -797,8 +859,10 @@ export interface Prisma__CopyActionClient<T, Null = never, ExtArgs extends runti
  */
 export interface CopyActionFieldRefs {
   readonly id: Prisma.FieldRef<"CopyAction", 'String'>
-  readonly from: Prisma.FieldRef<"CopyAction", 'String'>
-  readonly to: Prisma.FieldRef<"CopyAction", 'String'>
+  readonly fromParentId: Prisma.FieldRef<"CopyAction", 'String'>
+  readonly fromParentName: Prisma.FieldRef<"CopyAction", 'String'>
+  readonly toParentId: Prisma.FieldRef<"CopyAction", 'String'>
+  readonly toParentName: Prisma.FieldRef<"CopyAction", 'String'>
 }
     
 

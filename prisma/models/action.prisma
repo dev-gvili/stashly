@@ -87,17 +87,21 @@ model EditAction {
 }
 
 model MoveAction {
-  id     String      @id
-  from   String
-  to     String
-  action ItemAction?
+  id             String      @id
+  fromParentId   String
+  fromParentName String
+  toParentId     String
+  toParentName   String
+  action         ItemAction?
 }
 
 model CopyAction {
-  id     String      @id
-  from   String
-  to     String
-  action ItemAction?
+  id             String      @id
+  fromParentId   String
+  fromParentName String
+  toParentId     String
+  toParentName   String
+  action         ItemAction?
 }
 
 model RenameAction {
