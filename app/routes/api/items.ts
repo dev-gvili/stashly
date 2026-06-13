@@ -5,6 +5,8 @@ import {
   createUploadedItem,
   upsertImageFacet,
   upsertVideoFacet,
+  upsertAudioFacet,
+  upsertPdfFacet,
   deleteItem,
   deleteItems,
   getChildFolders,
@@ -41,7 +43,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     const parentId = url.searchParams.get('parentId')
     const driveId: string = user.driveId
     const rootId: string = user.rootId
-    const resolvedParentId = !parentId || parentId === 'root' ? rootId : parentId
+    const resolvedParentId =
+      !parentId || parentId === 'root' ? rootId : parentId
     const folders = await getChildFolders(resolvedParentId, driveId)
     return data({
       rootId,
@@ -132,7 +135,12 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
     case 'move_items':
       try {
-        await moveItems(parsedData.selectedItems, parsedData.targetFolderId)
+        await moveItems(
+          parsedData.selectedItems,
+          parsedData.targetFolderId,
+          user.id,
+          parsedData.currentParentId
+        )
         searchParams = removeQueryParam(searchParams, 'selectedItems')
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
@@ -159,7 +167,12 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
     case 'move_item':
       try {
-        await moveItem(parsedData.selectedItem, parsedData.targetFolderId)
+        await moveItem(
+          parsedData.selectedItem,
+          parsedData.targetFolderId,
+          user.id,
+          parsedData.currentParentId
+        )
         searchParams = removeQueryParam(searchParams, 'selectedItem')
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
@@ -219,9 +232,20 @@ export async function action({ request, params }: Route.ActionArgs) {
           uploadId: parsedData.uploadId,
         })
         const serializable = z
-          .object({ size: z.coerce.string(), inclusiveSize: z.coerce.string() })
+          .object({
+            size: z.coerce.number(),
+            inclusiveSize: z.coerce.number().optional(),
+            parent: z
+              .object({
+                size: z.coerce.number(),
+                inclusiveSize: z.coerce.number().optional(),
+              })
+              .loose()
+              .optional(),
+          })
           .loose()
           .parse(item)
+
         return data({ success: true, item: serializable })
       } catch (e) {
         const err = e as { message?: string }
@@ -248,6 +272,24 @@ export async function action({ request, params }: Route.ActionArgs) {
           duration,
           frameRate,
           documentText,
+          documentPageCount,
+          pdfTitle,
+          pdfAuthor,
+          pdfSubject,
+          pdfKeywords,
+          pdfCreator,
+          pdfProducer,
+          pdfVersion,
+          pdfLanguage,
+          pdfIsEncrypted,
+          pdfHasFormFields,
+          pdfHasAnnotations,
+          pdfHasSignatures,
+          pdfPageWidth,
+          pdfPageHeight,
+          pdfDocCreatedAt,
+          pdfDocModifiedAt,
+          ...audioData
         } = parsedData
         if (imageWidth != null || imageHeight != null) {
           await upsertImageFacet(itemId, {
@@ -263,16 +305,54 @@ export async function action({ request, params }: Route.ActionArgs) {
             latitude,
             longitude,
           })
-        } else if (
-          videoWidth != null ||
-          videoHeight != null ||
-          duration != null
-        ) {
+        } else if (videoWidth || videoHeight) {
           await upsertVideoFacet(itemId, {
             width: videoWidth,
             height: videoHeight,
             duration,
             frameRate,
+          })
+        } else if (
+          documentPageCount != null ||
+          pdfVersion != null ||
+          pdfIsEncrypted != null
+        ) {
+          await upsertPdfFacet(itemId, {
+            pageCount: documentPageCount,
+            title: pdfTitle,
+            author: pdfAuthor,
+            subject: pdfSubject,
+            keywords: pdfKeywords,
+            creator: pdfCreator,
+            producer: pdfProducer,
+            pdfVersion,
+            language: pdfLanguage,
+            isEncrypted: pdfIsEncrypted,
+            hasFormFields: pdfHasFormFields,
+            hasAnnotations: pdfHasAnnotations,
+            hasSignatures: pdfHasSignatures,
+            pageWidth: pdfPageWidth,
+            pageHeight: pdfPageHeight,
+            docCreatedAt: pdfDocCreatedAt,
+            docModifiedAt: pdfDocModifiedAt,
+          })
+        } else {
+          console.log('Audio Parsed Data: ', audioData)
+          await upsertAudioFacet(itemId, {
+            duration: parsedData.audioDuration,
+            bitrate: parsedData.audioBitrate,
+            title: parsedData.audioTitle,
+            artist: parsedData.audioArtist,
+            album: parsedData.audioAlbum,
+            albumArtist: parsedData.audioAlbumArtist,
+            composer: parsedData.audioComposer,
+            genre: parsedData.audioGenre,
+            copyright: parsedData.audioCopyright,
+            year: parsedData.audioYear,
+            track: parsedData.audioTrack,
+            trackCount: parsedData.audioTrackCount,
+            disc: parsedData.audioDisc,
+            discCount: parsedData.audioDiscCount,
           })
         }
         // Chunked indexing: store full content (document-level fallback) and

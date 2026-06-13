@@ -69,12 +69,13 @@ let moveItemSchema = z.object({
   intent: z.literal('move_item'),
   selectedItem: z.string(),
   targetFolderId: z.string(),
+  currentParentId: z.string().default(''),
 })
 /**
  * This schema is for validating and parsing the input from the client for item-related actions.
  * It uses a discriminated union based on the 'intent' field to handle single item or multiple items actions.
  */
-export const itemsApiRouteInput = z.discriminatedUnion('intent', [
+export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
   itemSchema,
   itemsSchema,
   moveItemSchema,
@@ -82,6 +83,7 @@ export const itemsApiRouteInput = z.discriminatedUnion('intent', [
     intent: z.literal('move_items'),
     selectedItems: toZodArraySchema(z.string()),
     targetFolderId: z.string(),
+    currentParentId: z.string().default(''),
   }),
   z.object({
     intent: z.literal('create_upload_item'),
@@ -116,8 +118,11 @@ export const itemsApiRouteInput = z.discriminatedUnion('intent', [
     // image fields
     imageWidth: z.coerce.number().int().optional(),
     imageHeight: z.coerce.number().int().optional(),
-    cameraMake: z.string().optional(),
-    cameraModel: z.string().optional(),
+    // free-text fields use z.coerce.string(): parseFormData's urlencoded
+    // decoder turns numeric-looking values (camera model '5100', album '2112')
+    // into numbers before Zod sees them — see the pdf* fields below.
+    cameraMake: z.coerce.string().optional(),
+    cameraModel: z.coerce.string().optional(),
     iso: z.coerce.number().int().optional(),
     fNumber: z.coerce.number().optional(),
     exposureTime: z.coerce.number().optional(),
@@ -133,6 +138,41 @@ export const itemsApiRouteInput = z.discriminatedUnion('intent', [
     // document fields (currently PDF; extensible to other text formats)
     documentText: z.string().optional(),
     documentPageCount: z.coerce.number().int().optional(),
+    // pdf document-info fields (Pdf facet). parseFormData's urlencoded decoder
+    // pre-coerces values: 'true'/'false' arrive as booleans and numeric-looking
+    // strings (e.g. pdfVersion '1.7', a title like '2026') arrive as numbers —
+    // so booleans accept both shapes and text fields coerce back to string.
+    pdfTitle: z.coerce.string().optional(),
+    pdfAuthor: z.coerce.string().optional(),
+    pdfSubject: z.coerce.string().optional(),
+    pdfKeywords: z.coerce.string().optional(),
+    pdfCreator: z.coerce.string().optional(),
+    pdfProducer: z.coerce.string().optional(),
+    pdfVersion: z.coerce.string().optional(),
+    pdfLanguage: z.coerce.string().optional(),
+    pdfIsEncrypted: z.union([z.boolean(), z.stringbool()]).optional(),
+    pdfHasFormFields: z.union([z.boolean(), z.stringbool()]).optional(),
+    pdfHasAnnotations: z.union([z.boolean(), z.stringbool()]).optional(),
+    pdfHasSignatures: z.union([z.boolean(), z.stringbool()]).optional(),
+    pdfPageWidth: z.coerce.number().optional(),
+    pdfPageHeight: z.coerce.number().optional(),
+    pdfDocCreatedAt: z.coerce.date().optional(),
+    pdfDocModifiedAt: z.coerce.date().optional(),
+    // audio fields
+    audioDuration: z.coerce.number().int().optional(),
+    audioBitrate: z.coerce.number().int().optional(),
+    audioTitle: z.coerce.string().optional(),
+    audioArtist: z.coerce.string().optional(),
+    audioAlbum: z.coerce.string().optional(),
+    audioAlbumArtist: z.coerce.string().optional(),
+    audioComposer: z.coerce.string().optional(),
+    audioGenre: z.coerce.string().optional(),
+    audioCopyright: z.coerce.string().optional(),
+    audioYear: z.coerce.number().int().optional(),
+    audioTrack: z.coerce.number().int().optional(),
+    audioTrackCount: z.coerce.number().int().optional(),
+    audioDisc: z.coerce.number().int().optional(),
+    audioDiscCount: z.coerce.number().int().optional(),
   }),
   z.object({
     intent: z.literal('save_search_chunk_embeddings'),
@@ -369,6 +409,12 @@ export const sharesApiRouteInput = z.discriminatedUnion('intent', [
     intent: z.literal('update_link_downloadable'),
     linkId: z.string().nonempty(),
     downloadable: z.coerce.boolean(),
+  }),
+  // Set, update, or remove password on a link
+  z.object({
+    intent: z.literal('update_link_password'),
+    linkId: z.string().nonempty(),
+    password: z.coerce.string().optional(),
   }),
   // Revoke (delete) a specific share link
   z.object({

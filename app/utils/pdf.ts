@@ -65,6 +65,12 @@ const workerSafeDocOptions =
     ? { CanvasFactory: OffscreenCanvasFactory as unknown as never }
     : {}
 
+// pdfjs-dist v6 removed `PDFDocumentProxy.destroy()` — teardown lives only on
+// the loading task. Calling `doc.destroy()` throws TypeError at runtime.
+function destroyPdfDocument(doc: pdfjs.PDFDocumentProxy | null) {
+  doc?.loadingTask.destroy().catch(() => {})
+}
+
 async function withFirstPage<T>(
   label: string,
   file: File,
@@ -88,8 +94,123 @@ async function withFirstPage<T>(
     console.error(`[pdf] ${label} failed:`, err)
     return null
   } finally {
-    doc?.destroy()
+    destroyPdfDocument(doc)
   }
+}
+
+export interface PdfDocumentMetadata {
+  pageCount: number
+  title?: string
+  author?: string
+  subject?: string
+  keywords?: string
+  creator?: string
+  producer?: string
+  pdfVersion?: string
+  language?: string
+  isEncrypted?: boolean
+  hasFormFields?: boolean
+  hasAnnotations?: boolean
+  hasSignatures?: boolean
+  /** First-page media box in PDF points (1pt = 1/72in) */
+  pageWidth?: number
+  pageHeight?: number
+  /** ISO-8601 — kept as string so it serializes through FormData/postMessage */
+  docCreatedAt?: string
+  docModifiedAt?: string
+}
+
+// PDF date strings look like `D:20240131120000+02'00'` with everything after
+// the year optional.
+function parsePdfDate(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const m = raw.match(
+    /^D:(\d{4})(\d{2})?(\d{2})?(\d{2})?(\d{2})?(\d{2})?(?:([+\-Z])(?:(\d{2})'?(\d{2})?'?)?)?/,
+  )
+  if (!m) return undefined
+  const [, y, mo = '01', d = '01', h = '00', mi = '00', s = '00', tzSign, tzH = '00', tzM = '00'] = m
+  const offset = !tzSign || tzSign === 'Z' ? 'Z' : `${tzSign}${tzH}:${tzM}`
+  const date = new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}${offset}`)
+  return isNaN(date.getTime()) ? undefined : date.toISOString()
+}
+
+/**
+ * Extract document-info metadata (title, author, dates, form/signature flags, …)
+ * matching the `Pdf` facet model. Worker-compatible. `hasAnnotations` is
+ * best-effort: only the first page is inspected to keep this cheap.
+ */
+export function extractPdfMetadata(file: File): Promise<PdfDocumentMetadata | null> {
+  return (async () => {
+    let doc: pdfjs.PDFDocumentProxy | null = null
+    try {
+      const buffer = await file.arrayBuffer()
+      doc = await pdfjs.getDocument({ data: buffer, verbosity: PDFJS_VERBOSITY_ERRORS, ...workerSafeDocOptions, ...pdfjsOptions }).promise
+      const { info } = await doc.getMetadata()
+      const i = info as Record<string, unknown>
+      const str = (key: string): string | undefined => {
+        const v = i[key]
+        return typeof v === 'string' && v.trim() ? v.trim() : undefined
+      }
+      const bool = (key: string): boolean | undefined =>
+        typeof i[key] === 'boolean' ? (i[key] as boolean) : undefined
+
+      let hasAnnotations: boolean | undefined
+      let pageWidth: number | undefined
+      let pageHeight: number | undefined
+      try {
+        const page = await doc.getPage(1)
+        try {
+          const vp = page.getViewport({ scale: 1 })
+          pageWidth = Math.round(vp.width * 100) / 100
+          pageHeight = Math.round(vp.height * 100) / 100
+          hasAnnotations = (await page.getAnnotations()).length > 0
+        } finally {
+          page.cleanup()
+        }
+      } catch {
+        // best-effort fields — ignore
+      }
+
+      return {
+        pageCount: doc.numPages,
+        title: str('Title'),
+        author: str('Author'),
+        subject: str('Subject'),
+        keywords: str('Keywords'),
+        creator: str('Creator'),
+        producer: str('Producer'),
+        pdfVersion: str('PDFFormatVersion'),
+        language: str('Language'),
+        isEncrypted: str('EncryptFilterName') != null,
+        hasFormFields: bool('IsAcroFormPresent'),
+        hasSignatures: bool('IsSignaturesPresent'),
+        hasAnnotations,
+        pageWidth,
+        pageHeight,
+        docCreatedAt: parsePdfDate(i.CreationDate),
+        docModifiedAt: parsePdfDate(i.ModDate),
+      }
+    } catch (err) {
+      console.error('[pdf] extractPdfMetadata failed:', err)
+      return null
+    } finally {
+      destroyPdfDocument(doc)
+    }
+  })()
+}
+
+/**
+ * Open a PDF from a URL with the project-standard PDF.js options.
+ * Browser-only (used by the PDF viewer stage) — import dynamically so
+ * pdfjs-dist never executes during SSR.
+ */
+export function loadPdfDocument(url: string): pdfjs.PDFDocumentLoadingTask {
+  return pdfjs.getDocument({
+    url,
+    verbosity: PDFJS_VERBOSITY_ERRORS,
+    ...workerSafeDocOptions,
+    ...pdfjsOptions,
+  })
 }
 
 export function getPdfMetadata(
@@ -112,7 +233,7 @@ export function getPdfMetadata(
     } catch {
       return null
     } finally {
-      doc?.destroy()
+      destroyPdfDocument(doc)
     }
   })()
 }
@@ -259,7 +380,7 @@ export function extractPdfText(
       console.error('[pdf] extractPdfText failed:', err)
       return null
     } finally {
-      doc?.destroy()
+      destroyPdfDocument(doc)
     }
   })()
 }

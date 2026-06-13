@@ -125,177 +125,205 @@ export async function renameItem(itemId: string, newName: string) {
 }
 
 // --- 2. MOVE ---
+
 /**
- * Moves an item to a new folder.
- * This changes the parentId.
+ * Moves multiple items to the same target folder.
+ * Validates all structural constraints and checks write permission on every
+ * source item and on the destination folder before performing the batch update.
+ *
+ * @param ids - IDs of the items to move.
+ * @param targetFolderId - The ID of the destination folder.
+ * @param userId - The ID of the user performing the operation.
  */
-export async function moveItem(
-  itemId: string,
+export async function moveItems(
+  ids: string[],
   targetFolderId: string,
-  client?: PrismaClient
+  userId: string,
+  currentParentId = ''
 ) {
-  const prismaClient = client ?? prisma
-  if (!itemId) {
-    throw new StashlyError(
-      StashlyErrorCode.MOVE_ITEM_FAILED,
-      'itemId is required'
-    )
+  if (ids.length === 0) {
+    return
   }
 
-  if (targetFolderId === undefined || targetFolderId === '') {
+  if (!targetFolderId) {
     throw new StashlyError(
       StashlyErrorCode.MOVE_ITEM_FAILED,
       'targetFolderId is required'
     )
   }
 
-  // Check if the targetFolderId is the item's current parentId
-  // This prevents moving an item into its own folder, which is a no-op and can cause issues.
-  // This check will be performed after fetching the item to avoid an extra DB call if the above checks fail.
-  if (itemId === targetFolderId) {
-    throw new StashlyError(
-      StashlyErrorCode.MOVE_ITEM_FAILED,
-      'Cannot move an item into itself'
-    )
-  }
+  const { result, fromParentId, fromParentName, toParentId, toParentName } =
+    await prisma.$transaction(async (tx) => {
+      const [items, targetFolder] = await Promise.all([
+        tx.item.findMany({
+          where: { id: { in: ids } },
+          select: {
+            id: true,
+            parentId: true,
+            type: true,
+            owner: { select: { rootId: true } },
+          },
+        }),
+        tx.item.findUnique({
+          where: { id: targetFolderId },
+          select: { id: true, name: true, type: true, parentId: true },
+        }),
+      ])
 
-  const itemToMovePromise = prismaClient.item.findUnique({
-    where: { id: itemId },
-    select: {
-      id: true,
-      parentId: true,
-      type: true,
-      owner: {
-        select: {
-          rootId: true,
-        },
-      },
-    },
-  })
+      if (!targetFolder) {
+        throw new StashlyError(
+          StashlyErrorCode.NOT_FOUND,
+          'Target folder not found'
+        )
+      }
 
-  const targetFolderPromise = prismaClient.item.findUnique({
-    where: { id: targetFolderId },
-    select: {
-      id: true,
-      type: true,
-      parentId: true,
-    },
-  })
+      if (targetFolder.type !== 'folder') {
+        throw new StashlyError(
+          StashlyErrorCode.MOVE_ITEM_FAILED,
+          'Target must be a folder'
+        )
+      }
 
-  const [itemToMove, targetFolder] = await prismaClient.$transaction([
-    itemToMovePromise,
-    targetFolderPromise,
-  ])
+      const canWriteTarget = await hasItemPermission(
+        userId,
+        targetFolderId,
+        'write',
+        tx
+      )
+      if (!canWriteTarget) {
+        throw new StashlyError(
+          StashlyErrorCode.FORBIDDEN,
+          'You do not have write access to the target folder'
+        )
+      }
 
-  if (!itemToMove) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
-  }
+      const foundIds = new Set(items.map((i) => i.id))
+      for (const id of ids) {
+        if (!foundIds.has(id)) {
+          throw new StashlyError(
+            StashlyErrorCode.NOT_FOUND,
+            `Item ${id} not found`
+          )
+        }
+      }
 
-  if (!targetFolder) {
-    throw new StashlyError(
-      StashlyErrorCode.NOT_FOUND,
-      'Target folder not found'
-    )
-  }
+      for (const item of items) {
+        if (item.id === targetFolderId) {
+          throw new StashlyError(
+            StashlyErrorCode.MOVE_ITEM_FAILED,
+            'Cannot move an item into itself'
+          )
+        }
 
-  if (itemToMove.parentId === targetFolderId) {
-    throw new StashlyError(
-      StashlyErrorCode.MOVE_ITEM_FAILED,
-      'Item is already in the target folder'
-    )
-  }
+        if (item.parentId === targetFolderId) {
+          throw new StashlyError(
+            StashlyErrorCode.MOVE_ITEM_FAILED,
+            'One or more items are already in the target folder'
+          )
+        }
 
-  // Check if the target folder is a descendant of the item to be moved
-  // This prevents moving a folder into one of its own subfolders, which would create a circular reference.
-  const isTargetDescendant = targetFolder.parentId === itemToMove.id
-  if (isTargetDescendant) {
-    throw new StashlyError(
-      StashlyErrorCode.MOVE_ITEM_FAILED,
-      'Cannot move a folder into its own subfolder'
-    )
-  }
+        if (targetFolder.parentId === item.id) {
+          throw new StashlyError(
+            StashlyErrorCode.MOVE_ITEM_FAILED,
+            'Cannot move a folder into its own subfolder'
+          )
+        }
 
-  if (
-    itemToMove.type === 'folder' &&
-    itemToMove.parentId === null &&
-    targetFolderId !== null
-  ) {
-    throw new StashlyError(
-      StashlyErrorCode.MOVE_ITEM_FAILED,
-      'Cannot move a root folder into another folder'
-    )
-  }
+        if (item.type === 'folder' && item.parentId === null) {
+          throw new StashlyError(
+            StashlyErrorCode.MOVE_ITEM_FAILED,
+            'Cannot move a root folder into another folder'
+          )
+        }
 
-  // If the item is a folder and the target is null (root), and it's already a root folder,
-  // then it's a no-op and should be prevented.
-  if (
-    itemToMove.type === 'folder' &&
-    targetFolderId === itemToMove.owner.rootId &&
-    itemToMove.parentId === itemToMove.owner.rootId
-  ) {
-    throw new StashlyError(
-      StashlyErrorCode.MOVE_ITEM_FAILED,
-      'Cannot move a folder to root if it is already a root folder'
-    )
-  }
+        if (
+          item.type === 'folder' &&
+          targetFolderId === item.owner.rootId &&
+          item.parentId === item.owner.rootId
+        ) {
+          throw new StashlyError(
+            StashlyErrorCode.MOVE_ITEM_FAILED,
+            'Cannot move a folder to root if it is already a root folder'
+          )
+        }
 
-  return await prismaClient.$transaction(async (tx) => {
-    // 1. Update the item's parent
-    const item = await tx.item.update({
-      where: { id: itemId },
-      data: { parentId: targetFolderId },
+        const canWrite = await hasItemPermission(userId, item.id, 'write', tx)
+        if (!canWrite) {
+          throw new StashlyError(
+            StashlyErrorCode.FORBIDDEN,
+            'You do not have write access to one or more items'
+          )
+        }
+      }
+
+      const sourceId = currentParentId || items[0]?.parentId || ''
+      const sourceFolder = sourceId
+        ? await tx.item.findUnique({
+            where: { id: sourceId },
+            select: { name: true },
+          })
+        : null
+
+      const updated = await tx.item.updateManyAndReturn({
+        where: { id: { in: ids } },
+        data: { parentId: targetFolderId },
+      })
+
+      return {
+        result: updated,
+        fromParentId: sourceId,
+        fromParentName: sourceFolder?.name ?? 'My Stash',
+        toParentId: targetFolderId,
+        toParentName: targetFolder!.name,
+      }
     })
 
-    createActivity({
-      item: { connect: { id: itemId } },
-      time: {
-        create: {
-          id: toObjectId(getPrefixForModel('ActivityTime')),
-          observedAt: new Date(),
-        },
-      },
-      action: {
-        create: {
-          id: toObjectId(getPrefixForModel('ItemAction')),
-          move: {
-            create: {
-              id: toObjectId(getPrefixForModel('MoveAction')),
-              from: itemToMove.parentId ?? '',
-              to: targetFolderId,
+  Promise.resolve()
+    .then(() =>
+      Promise.all(
+        result.map((item) =>
+          createActivity({
+            item: { connect: { id: item.id } },
+            time: {
+              create: {
+                id: toObjectId(getPrefixForModel('ActivityTime')),
+                observedAt: new Date(),
+              },
             },
-          },
-        },
-      },
-    }).catch(() => {})
+            action: {
+              create: {
+                id: toObjectId(getPrefixForModel('ItemAction')),
+                move: {
+                  create: {
+                    id: toObjectId(getPrefixForModel('MoveAction')),
+                    fromParentId,
+                    fromParentName,
+                    toParentId,
+                    toParentName,
+                  },
+                },
+              },
+            },
+          })
+        )
+      )
+    )
+    .catch(() => {})
 
-    return item
-  })
+  return result
 }
 
 /**
- * Moves multiple items to the same target folder in a single transaction.
- *
- * @param itemIds - IDs of the items to move.
- * @param targetFolderId - The ID of the destination folder.
- * @param client - Optional Prisma client (defaults to the global instance).
+ * Moves a single item to a new folder.
+ * Delegates to {@link moveItems}.
  */
-export async function moveItems(
-  itemIds: string[],
+export async function moveItem(
+  itemId: string,
   targetFolderId: string,
-  client?: PrismaClient
+  userId: string,
+  currentParentId = ''
 ) {
-  const prismaClient = client ?? prisma
-  return await prismaClient.$transaction(async (tx) => {
-    const updatedItems = await tx.item.updateMany({
-      where: {
-        id: { in: itemIds },
-      },
-      data: {
-        parentId: targetFolderId,
-      },
-    })
-    return updatedItems
-  })
+  return await moveItems([itemId], targetFolderId, userId, currentParentId)
 }
 
 // --- 3. UPDATE OWNER ---
@@ -737,14 +765,13 @@ export async function copyItem(
         folder: true,
         drive: true,
         owner: true,
+        video: true,
+        image: true,
+        pdf: true,
+        parent: true,
         thumbnails: true,
-        // Include other facets as needed (image, video, etc)
       },
     })
-
-    if (!source) {
-      throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
-    }
 
     // 2. Check for read permission on the source item
     const canRead = await hasItemPermission(userId, itemId, 'read', tx)
@@ -796,8 +823,10 @@ export async function copyItem(
             copy: {
               create: {
                 id: toObjectId(getPrefixForModel('CopyAction')),
-                from: itemId,
-                to: targetParentId ?? '',
+                fromParentId: source.parentId!,
+                fromParentName: source.parent?.name ?? '',
+                toParentId: targetParentId,
+                toParentName: newItem.parent?.name ?? '',
               },
             },
           },
@@ -859,8 +888,10 @@ export async function copyItem(
             copy: {
               create: {
                 id: toObjectId(getPrefixForModel('CopyAction')),
-                from: itemId,
-                to: targetParentId ?? '',
+                fromParentId: source.parentId!,
+                fromParentName: source.parent?.name ?? '',
+                toParentId: targetParentId,
+                toParentName: newItem.parent?.name ?? '',
               },
             },
           },
@@ -917,8 +948,10 @@ export async function copyItem(
             copy: {
               create: {
                 id: toObjectId(getPrefixForModel('CopyAction')),
-                from: itemId,
-                to: targetParentId ?? '',
+                fromParentId: source.parentId!,
+                fromParentName: source.parent?.name ?? '',
+                toParentId: targetParentId,
+                toParentName: newItem.parent?.name ?? '',
               },
             },
           },
@@ -985,8 +1018,10 @@ export async function copyItem(
             copy: {
               create: {
                 id: toObjectId(getPrefixForModel('CopyAction')),
-                from: itemId,
-                to: targetParentId ?? '',
+                fromParentId: source.parentId!,
+                fromParentName: source.parent?.name ?? '',
+                toParentId: targetParentId,
+                toParentName: newItem.parent?.name ?? '',
               },
             },
           },
@@ -1197,6 +1232,65 @@ export async function upsertVideoFacet(
   }
   return prisma.video.create({
     data: { id: toObjectId(getPrefixForModel('Video')), itemId, ...data },
+  })
+}
+
+export async function upsertAudioFacet(
+  itemId: string,
+  data: {
+    duration?: number
+    bitrate?: number
+    title?: string
+    artist?: string
+    album?: string
+    albumArtist?: string
+    composer?: string
+    genre?: string
+    copyright?: string
+    year?: number
+    track?: number
+    trackCount?: number
+    disc?: number
+    discCount?: number
+  }
+) {
+  const existing = await prisma.audio.findFirst({ where: { itemId } })
+  if (existing) {
+    return prisma.audio.update({ where: { id: existing.id }, data })
+  }
+  return prisma.audio.create({
+    data: { id: toObjectId(getPrefixForModel('Audio')), itemId, ...data },
+  })
+}
+
+export async function upsertPdfFacet(
+  itemId: string,
+  data: {
+    pageCount?: number
+    title?: string
+    author?: string
+    subject?: string
+    keywords?: string
+    creator?: string
+    producer?: string
+    pdfVersion?: string
+    language?: string
+    isEncrypted?: boolean
+    hasFormFields?: boolean
+    hasAnnotations?: boolean
+    hasSignatures?: boolean
+    pageWidth?: number
+    pageHeight?: number
+    docCreatedAt?: Date
+    docModifiedAt?: Date
+  }
+) {
+  const existing = await prisma.pdf.findFirst({ where: { itemId } })
+  if (existing) {
+    return prisma.pdf.update({ where: { id: existing.id }, data })
+  }
+  return prisma.pdf.create({
+    data: { id: toObjectId(getPrefixForModel('Pdf')), itemId, ...data },
   })
 }
 
@@ -1484,6 +1578,7 @@ export async function getFolderContent(params: GetFolderContentParams) {
           },
         },
         tags: true,
+        parent: true,
       },
     })
 
@@ -1767,13 +1862,13 @@ export async function paginateItems<
 async function recursiveCopy(
   tx: TransactionClient = prisma, // Prisma Transaction Client
   sourceItem: Prisma.ItemGetPayload<{
-    include: { file: true; folder: true }
+    include: { file: true; folder: true; video: true; image: true; pdf: true }
   }>, // Typed as Item & { file: File | null, folder: Folder | null }
   parentId: string | null,
   workspaceId: string | null = null
 ) {
   // 1. Create the new item
-  let { file, folder, ...itemData } = sourceItem
+  let { file, folder, video, image, pdf, ...itemData } = sourceItem
   const newItem = await tx.item.create({
     data: {
       ...itemData,
@@ -1801,6 +1896,44 @@ async function recursiveCopy(
             },
           }
         : {}),
+      ...(video
+        ? {
+            video: {
+              create: {
+                ...video,
+                id: toObjectId(getPrefixForModel('Video')),
+              },
+            },
+          }
+        : {}),
+      ...(image
+        ? {
+            image: {
+              create: {
+                ...image,
+                id: toObjectId(getPrefixForModel('Image')),
+              },
+            },
+          }
+        : {}),
+      ...(pdf
+        ? {
+            pdf: {
+              create: {
+                ...pdf,
+                id: toObjectId(getPrefixForModel('Pdf')),
+              },
+            },
+          }
+        : {}),
+    },
+    include: {
+      file: true,
+      folder: true,
+      video: true,
+      image: true,
+      pdf: true,
+      parent: true,
     },
   })
 
@@ -1808,7 +1941,13 @@ async function recursiveCopy(
   if (sourceItem.type === 'folder') {
     const children = await tx.item.findMany({
       where: { parentId: sourceItem.id },
-      include: { file: true, folder: true },
+      include: {
+        file: true,
+        folder: true,
+        video: true,
+        image: true,
+        pdf: true,
+      },
     })
 
     for (const child of children) {
@@ -1944,6 +2083,10 @@ export async function getSuggestedItems(
       lockedById: string
       lockedAt: Date
     } | null
+    parent: {
+      id: string
+      name: string
+    } | null
   }
 
   const buildQuery = (type: 'file' | 'folder', limit: number) => Prisma.sql`
@@ -2018,7 +2161,11 @@ export async function getSuggestedItems(
         'id', li.id,
         'lockedById', li."lockedById",
         'lockedAt', li."lockedAt"
-      ) ELSE NULL END) as "locked"
+      ) ELSE NULL END) as "locked",
+      (CASE WHEN parent.id IS NOT NULL THEN jsonb_build_object(
+        'id', parent.id,
+        'name', parent.name
+      ) ELSE NULL END) as "parent"
     FROM "Item" i
     LEFT JOIN "File" f ON i.id = f."itemId"
     LEFT JOIN "Folder" fo ON i.id = fo."itemId"
@@ -2028,6 +2175,7 @@ export async function getSuggestedItems(
     LEFT JOIN "PinItem" pin ON i.id = pin."itemId"
     LEFT JOIN "Permission" p ON i.id = p."itemId"
     LEFT JOIN "LockedItem" li ON i.id = li."itemId"
+    LEFT JOIN "Item" parent ON i."parentId" = parent.id
     WHERE
       i."ownerId" = ${userId}
       AND i."driveId" = ${driveId}
@@ -2035,7 +2183,7 @@ export async function getSuggestedItems(
       AND i.name != 'root'
       AND i.status = 'normal'
       ${workspaceId ? Prisma.sql`AND i."workspaceId" = ${workspaceId}` : Prisma.empty}
-    GROUP BY i.id, f.id, fo.id, li.id
+    GROUP BY i.id, f.id, fo.id, li.id, parent.id, parent.name
     ORDER BY
       GREATEST(
         i."updatedAt",
@@ -2164,12 +2312,14 @@ export const defaultItemSelect = {
   updatedAt: true,
   driveId: true,
   parentId: true,
+  parent: true,
   ownerId: true,
   workspaceId: true,
   uploadId: true,
   image: true,
   tags: true,
   video: true,
+  audio:true,
   folder: {
     select: {
       id: true,
@@ -2409,6 +2559,7 @@ export async function getFavoritedItems({
       driveId: true,
       file: true,
       folder: true,
+      tags: true,
       favorites: {
         select: {
           id: true,
@@ -2427,8 +2578,39 @@ export async function getFavoritedItems({
           id: true,
         },
       },
-      pins: { select: { id: true, pinnedById: true } },
-      tags: true,
+      pins: {
+        select: {
+          id: true,
+          pinnedBy: {
+            select: { id: true, name: true, displayName: true, image: true },
+          },
+        },
+      },
+      parent: { select: { id: true, name: true } },
+      locked: {
+        select: {
+          id: true,
+          lockedById: true,
+          lockedAt: true,
+        },
+      },
+      permissions: {
+        select: {
+          id: true,
+          roles: true,
+          linkId: true,
+          recipientId: true,
+          users: {
+            select: {
+              displayName: true,
+              email: true,
+              id: true,
+              image: true,
+              name: true,
+            },
+          },
+        },
+      },
     },
   })
 
@@ -2603,6 +2785,8 @@ export async function getFileItem(fileId: string, folderId: string) {
       },
       image: true,
       video: true,
+      audio: true,
+      pdf: true,
       thumbnails: {
         select: {
           url: true,
@@ -2613,6 +2797,7 @@ export async function getFileItem(fileId: string, folderId: string) {
           height: true,
         },
       },
+      pins: { select: { id: true, pinnedById: true } },
     },
   })
 }

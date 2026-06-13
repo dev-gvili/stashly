@@ -13,6 +13,7 @@
  */
 
 import { extractTinyThumbnail, canvasResize, blurImageBlob } from '../utils/thumbnail'
+import type { PdfDocumentMetadata } from '../utils/pdf'
 
 export type ComputeRequest =
   | { id: number; kind: 'tinyImage'; file: File }
@@ -20,12 +21,14 @@ export type ComputeRequest =
   | { id: number; kind: 'resizeImage'; file: File; maxSize?: number; blur?: number }
   | { id: number; kind: 'resizePdf'; file: File; maxSize?: number; blur?: number }
   | { id: number; kind: 'pdfText'; file: File; maxPages?: number; maxChars?: number }
+  | { id: number; kind: 'pdfMeta'; file: File }
   | { id: number; kind: 'imageDimensions'; file: File }
 
 export type ComputeResponse =
   | { id: number; kind: 'tinyImage' | 'tinyPdf'; blob: Blob | null }
   | { id: number; kind: 'resizeImage' | 'resizePdf'; result: { blob: Blob; width: number; height: number } | null }
   | { id: number; kind: 'pdfText'; result: { text: string; pageCount: number; pagesRead: number } | null }
+  | { id: number; kind: 'pdfMeta'; result: PdfDocumentMetadata | null }
   | { id: number; kind: 'imageDimensions'; result: { width: number; height: number } | null }
   | { id: number; kind: 'error'; message: string }
 
@@ -187,6 +190,17 @@ async function handle(req: ComputeRequest): Promise<void> {
       } catch (err) {
         console.error('[thumbnail.compute.worker] pdfText failed', err)
         post({ id: req.id, kind: 'pdfText', result: null })
+      }
+      return
+    }
+    case 'pdfMeta': {
+      try {
+        const { extractPdfMetadata } = await import('../utils/pdf')
+        const result = await extractPdfMetadata(req.file)
+        post({ id: req.id, kind: 'pdfMeta', result })
+      } catch (err) {
+        console.error('[thumbnail.compute.worker] pdfMeta failed', err)
+        post({ id: req.id, kind: 'pdfMeta', result: null })
       }
       return
     }
