@@ -35,7 +35,7 @@ export function formatActivity(activity: ActivityWithRelations): string {
   if (!a) return 'Activity recorded'
   if (a.create) return 'You created this item'
   if (a.rename) return `You renamed ${a.rename.oldName} → ${a.rename.newName}`
-  if (a.move) return `You moved this item to ${a.move.to}`
+  if (a.move) return `You moved this item from ${a.move.fromParentName} to ${a.move.toParentName}`
   if (a.delete) return `You deleted ${a.delete.name}`
   if (a.restore) return 'You restored this item'
   if (a.upload) return `You uploaded this item`

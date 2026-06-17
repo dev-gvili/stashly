@@ -19,7 +19,9 @@ import { createActivity } from './activity-actions'
 export const searchPermissions = searchFactory({
   dbDelegate: prisma.permission,
   buildFilters: buildPermissionFilters,
-  defaultOrderBy: (): Prisma.PermissionOrderByWithRelationInput => ({ createdAt: 'desc' }),
+  defaultOrderBy: (): Prisma.PermissionOrderByWithRelationInput => ({
+    createdAt: 'desc',
+  }),
 })
 
 type PrismaTx = Omit<
@@ -57,22 +59,40 @@ type PrismaTx = Omit<
  * )
  */
 export async function createPermission(
-  data: Prisma.PermissionCreateInput,
+  data: Prisma.PermissionUncheckedCreateInput,
   tx?: PrismaTx
 ): Promise<Permission> {
   const db = tx ?? prisma
+  if (!data.itemId) {
+    throw new StashlyError(
+      StashlyErrorCode.INVALID_INPUT,
+      'Permission must be associated with an item'
+    )
+  }
   const perm = await db.permission.create({ data })
-  if (data.item?.connect?.id) {
-    Promise.resolve().then(() => createActivity({
-      item: { connect: { id: data.item!.connect!.id as string } },
-      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+  if (perm) {
+    await createActivity({
+      item: { connect: { id: perm.itemId as string } },
+      time: {
+        create: {
+          id: toObjectId(getPrefixForModel('ActivityTime')),
+          observedAt: new Date(),
+        },
+      },
       action: {
         create: {
           id: toObjectId(getPrefixForModel('ItemAction')),
-          permission: { create: { id: toObjectId(getPrefixForModel('PermissionAction')), type: 'grant', userId: String(data.users?.connect?.id ?? ''), role: String(data.roles ?? '') } },
+          permission: {
+            create: {
+              id: toObjectId(getPrefixForModel('PermissionAction')),
+              type: 'grant',
+              userId: String(perm.recipientId ?? ''),
+              role: String(perm.roles ?? ''),
+            },
+          },
         },
       },
-    })).catch(() => {})
+    })
   }
   return perm
 }
@@ -102,22 +122,37 @@ export async function createPermission(
  * })
  */
 export async function updatePermission(
-  args: Prisma.PermissionUpdateArgs,
+  args: Prisma.PermissionUpdateInput,
   tx?: PrismaTx
 ): Promise<Permission> {
   const db = tx ?? prisma
-  const perm = await db.permission.update(args)
+  const perm = await db.permission.update({
+    where: { id: args.id as string },
+    data: args,
+  })
   if (perm.itemId) {
-    createActivity({
+    await createActivity({
       item: { connect: { id: perm.itemId } },
-      time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+      time: {
+        create: {
+          id: toObjectId(getPrefixForModel('ActivityTime')),
+          observedAt: new Date(),
+        },
+      },
       action: {
         create: {
           id: toObjectId(getPrefixForModel('ItemAction')),
-          permission: { create: { id: toObjectId(getPrefixForModel('PermissionAction')), type: 'update', userId: perm.userId ?? '', role: String(perm.roles ?? '') } },
+          permission: {
+            create: {
+              id: toObjectId(getPrefixForModel('PermissionAction')),
+              type: 'update',
+              userId: perm.recipientId ?? '',
+              role: String(perm.roles ?? ''),
+            },
+          },
         },
       },
-    }).catch(() => {})
+    })
   }
   return perm
 }
@@ -139,19 +174,38 @@ export async function updatePermission(
  * // Inside a transaction:
  * await deletePermission(perm.id, tx)
  */
-export function deletePermission(id: string, tx?: PrismaTx): Promise<Permission> {
+export function deletePermission(
+  id: string,
+  tx?: PrismaTx
+): Promise<Permission> {
   const client = tx ?? prisma
-  return client.permission.findUniqueOrThrow({ where: { id }, select: { itemId: true, userId: true, roles: true } })
+  return client.permission
+    .findUniqueOrThrow({
+      where: { id },
+      select: { itemId: true, userId: true, roles: true },
+    })
     .then((found) =>
       client.permission.delete({ where: { id } }).then((deleted) => {
         if (found.itemId) {
           createActivity({
             item: { connect: { id: found.itemId! } },
-            time: { create: { id: toObjectId(getPrefixForModel('ActivityTime')), observedAt: new Date() } },
+            time: {
+              create: {
+                id: toObjectId(getPrefixForModel('ActivityTime')),
+                observedAt: new Date(),
+              },
+            },
             action: {
               create: {
                 id: toObjectId(getPrefixForModel('ItemAction')),
-                permission: { create: { id: toObjectId(getPrefixForModel('PermissionAction')), type: 'revoke', userId: found.userId ?? '', role: String(found.roles ?? '') } },
+                permission: {
+                  create: {
+                    id: toObjectId(getPrefixForModel('PermissionAction')),
+                    type: 'revoke',
+                    userId: found.userId ?? '',
+                    role: String(found.roles ?? ''),
+                  },
+                },
               },
             },
           }).catch(() => {})
@@ -330,10 +384,17 @@ export async function hasItemPermission(
       : role === 'write'
         ? ['write', 'owner']
         : ['owner']
-  const perm = await db.permission.findFirst({
-    where: { itemId, users: { some: { id: userId } }, roles: { in: satisfyingRoles } },
-  })
-  return !!perm
+  const [perm, item] = await Promise.all([
+    db.permission.findFirst({
+      where: {
+        itemId,
+        users: { some: { id: userId } },
+        roles: { in: satisfyingRoles },
+      },
+    }),
+    db.item.findUnique({ where: { id: itemId }, select: { ownerId: true } }),
+  ])
+  return !!perm || item?.ownerId === userId
 }
 
 /**
@@ -480,16 +541,27 @@ export function assertCanUpdateItem(userId: string, itemId: string) {
  *   await grantItemPermission(viewerId, item.id, 'read', tx)
  * })
  */
-export function grantItemPermission(
+export async function grantItemPermission(
   userId: string,
   itemId: string,
   role: PermissionRole = 'read',
   tx?: PrismaTx
 ): Promise<Permission> {
+  const db = tx ?? prisma
+  // If the user already has a permission on this item (e.g. granted directly or
+  // connected after accepting an invitation), update its role in place instead
+  // of inserting a duplicate Permission row.
+  const existing = await db.permission.findFirst({
+    where: { itemId, users: { some: { id: userId } }, deletedAt: null },
+    select: { id: true },
+  })
+  if (existing) {
+    return updatePermission({ id: existing.id, roles: role }, tx)
+  }
   return createPermission(
     {
       id: toObjectId(getPrefixForModel('Permission')),
-      item: { connect: { id: itemId } },
+      itemId,
       users: { connect: { id: userId } },
       roles: role,
     },
@@ -529,10 +601,7 @@ export async function revokeItemPermission(
   if (!perm) return
 
   await updatePermission(
-    {
-      where: { id: perm.id },
-      data: { users: { disconnect: { id: userId } } },
-    },
+    { id: perm.id, users: { disconnect: { id: userId } } },
     tx
   )
 }
@@ -572,8 +641,8 @@ export function createPermissionForLink(
     {
       id: toObjectId(getPrefixForModel('Permission')),
       ...data,
-      item: { connect: { id: itemId } },
-      link: { connect: { id: linkId } },
+      itemId,
+      linkId,
     },
     tx
   )
@@ -608,10 +677,7 @@ export async function grantLinkPermission(
     )
   }
   return updatePermission(
-    {
-      where: { id: permissions[0].id },
-      data: { users: { connect: { id: userId } } },
-    },
+    { id: permissions[0].id, users: { connect: { id: userId } } },
     tx
   )
 }
@@ -661,10 +727,7 @@ export async function revokeLinkPermission(
     )
   }
   return updatePermission(
-    {
-      where: { id: permissions[0].id },
-      data: { users: { disconnect: { id: userId } } },
-    },
+    { id: permissions[0].id, users: { disconnect: { id: userId } } },
     tx
   )
 }
@@ -717,9 +780,15 @@ export function expirePermission(
  *   await revokePermission(perm.id)
  * }
  */
-export function revokePermission(id: string, tx?: PrismaTx): Promise<Permission> {
+export function revokePermission(
+  id: string,
+  tx?: PrismaTx
+): Promise<Permission> {
   const db = tx ?? prisma
-  return db.permission.update({ where: { id }, data: { deletedAt: new Date() } })
+  return db.permission.update({
+    where: { id },
+    data: { deletedAt: new Date() },
+  })
 }
 
 // ---------------------------------------------------------------------------

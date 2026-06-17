@@ -173,6 +173,14 @@ export async function action({ request }: Route.ActionArgs) {
         return data({ success: true, link })
       }
 
+      case 'update_link_password': {
+        const link = await updateShareLink({
+          where: { id: parsedData.linkId },
+          data: { password: parsedData.password },
+        })
+        return data({ success: true, link })
+      }
+
       case 'revoke_link': {
         await revokeShareLink(parsedData.linkId)
         return data({ success: true })

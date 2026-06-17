@@ -12,7 +12,12 @@ import {
   shareLinkFilterSchema,
 } from '@/utils/filters/shareLink.filters'
 import { searchFactory } from '@/utils/search'
-import type { ShareLink, ShareLinkType, ShareScope, Prisma } from '@/prisma/client'
+import type {
+  ShareLink,
+  ShareLinkType,
+  ShareScope,
+  Prisma,
+} from '@/prisma/client'
 import { z } from 'zod'
 
 type PrismaTx = Omit<
@@ -265,7 +270,10 @@ export async function isShareLinkActive(id: string): Promise<boolean> {
 export function createShareLinkForItem(
   itemId: string,
   linkData: Omit<Prisma.ShareLinkCreateInput, 'permission'>,
-  permissionData: Omit<Prisma.PermissionCreateInput, 'item' | 'link' | 'id'>
+  permissionData: Omit<
+    Prisma.PermissionUncheckedCreateInput,
+    'itemId' | 'linkId' | 'id'
+  >
 ): Promise<ShareLink> {
   return prisma.$transaction(async (tx) => {
     const newLink = await createShareLink(linkData, tx)
@@ -273,8 +281,8 @@ export function createShareLinkForItem(
       {
         id: toObjectId(getPrefixForModel('Permission')),
         ...permissionData,
-        item: { connect: { id: itemId } },
-        link: { connect: { id: newLink.id } },
+        itemId,
+        linkId: newLink.id,
       },
       tx
     )
@@ -312,7 +320,9 @@ export async function revokeShareLink(linkId: string): Promise<void> {
  * @example
  * await revokeAllShareLinksForItem(itemId)
  */
-export async function revokeAllShareLinksForItem(itemId: string): Promise<void> {
+export async function revokeAllShareLinksForItem(
+  itemId: string
+): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const links = await findShareLinksForItem(itemId, tx)
     if (!links.length) return
@@ -372,13 +382,7 @@ export async function addUserToShareLink(
       'Permission for the given share link not found'
     )
   }
-  return updatePermission(
-    {
-      where: { id: permissions[0].id },
-      data: { users: { connect: { id: userId } } },
-    },
-    tx
-  )
+  return updatePermission({ users: { connect: { id: userId } } }, tx)
 }
 
 /**
@@ -418,13 +422,7 @@ export async function removeUserFromShareLink(
       'Permission for the given share link not found'
     )
   }
-  return updatePermission(
-    {
-      where: { id: permissions[0].id },
-      data: { users: { disconnect: { id: userId } } },
-    },
-    tx
-  )
+  return updatePermission({ users: { disconnect: { id: userId } } }, tx)
 }
 
 // ---------------------------------------------------------------------------
@@ -458,7 +456,12 @@ export function createViewLink(
 ): Promise<ShareLink> {
   return createShareLinkForItem(
     itemId,
-    { id: toObjectId(getPrefixForModel('ShareLink')), type: 'view', scope, ...options },
+    {
+      id: toObjectId(getPrefixForModel('ShareLink')),
+      type: 'view',
+      scope,
+      ...options,
+    },
     { roles: 'read' }
   )
 }
@@ -482,7 +485,12 @@ export function createEditLink(
 ): Promise<ShareLink> {
   return createShareLinkForItem(
     itemId,
-    { id: toObjectId(getPrefixForModel('ShareLink')), type: 'edit', scope, ...options },
+    {
+      id: toObjectId(getPrefixForModel('ShareLink')),
+      type: 'edit',
+      scope,
+      ...options,
+    },
     { roles: 'write' }
   )
 }
@@ -505,7 +513,13 @@ export function createEmbedLink(
 ): Promise<ShareLink> {
   return createShareLinkForItem(
     itemId,
-    { id: toObjectId(getPrefixForModel('ShareLink')), type: 'embed', scope: 'anonymous', downloadable: false, ...options },
+    {
+      id: toObjectId(getPrefixForModel('ShareLink')),
+      type: 'embed',
+      scope: 'anonymous',
+      downloadable: false,
+      ...options,
+    },
     { roles: 'read' }
   )
 }
@@ -529,7 +543,12 @@ export function createUploadLink(
 ): Promise<ShareLink> {
   return createShareLinkForItem(
     itemId,
-    { id: toObjectId(getPrefixForModel('ShareLink')), type: 'upload', scope, ...options },
+    {
+      id: toObjectId(getPrefixForModel('ShareLink')),
+      type: 'upload',
+      scope,
+      ...options,
+    },
     { roles: 'write' }
   )
 }
@@ -676,7 +695,10 @@ export async function updateShareLinkType(
   const role = type === 'edit' || type === 'upload' ? 'write' : 'read'
   const [link] = await prisma.$transaction([
     prisma.shareLink.update({ where: { id }, data: { type } }),
-    prisma.permission.updateMany({ where: { linkId: id }, data: { roles: role } }),
+    prisma.permission.updateMany({
+      where: { linkId: id },
+      data: { roles: role },
+    }),
   ])
   return link
 }

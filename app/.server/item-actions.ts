@@ -1294,6 +1294,34 @@ export async function upsertPdfFacet(
   })
 }
 
+export async function upsertMarkdownFacet(
+  itemId: string,
+  data: {
+    title?: string
+    author?: string
+    description?: string
+    tags?: string
+    wordCount?: number
+    readingTime?: number
+    headingCount?: number
+    linkCount?: number
+    imageCount?: number
+    codeBlockCount?: number
+    taskCount?: number
+    hasFrontmatter?: boolean
+    docCreatedAt?: Date
+    docModifiedAt?: Date
+  }
+) {
+  const existing = await prisma.markdown.findFirst({ where: { itemId } })
+  if (existing) {
+    return prisma.markdown.update({ where: { id: existing.id }, data })
+  }
+  return prisma.markdown.create({
+    data: { id: toObjectId(getPrefixForModel('Markdown')), itemId, ...data },
+  })
+}
+
 export async function createUploadedItem(data: {
   id: string
   name: string
@@ -2787,6 +2815,7 @@ export async function getFileItem(fileId: string, folderId: string) {
       video: true,
       audio: true,
       pdf: true,
+      markdown: true,
       thumbnails: {
         select: {
           url: true,

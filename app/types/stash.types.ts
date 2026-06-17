@@ -48,6 +48,7 @@ export interface StashItem {
   createdAt: Date | string | null
   updatedAt: Date | string | null
   parentId: string | null
+  parent: StashItem | null
   ownerId: string
   workspaceId: string | null
   driveId: string
