@@ -1,3 +1,19 @@
+---
+title: "Stashly — Project Overview"
+description: "Comprehensive overview of Stashly's architecture, tech stack, features, data model, and key subsystems."
+author: "@AlonGvili"
+date: 2024-06-15
+tags:
+  - "architecture"
+  - "overview"
+  - "tech stack"
+  - "features"
+  - "data model"
+  - "state machines"
+  - "API"
+  - "auth"
+---
+
 # Stashly — Project Overview
 
 Stashly is a full-stack file management platform for personal stashes and collaborative workspaces. Users upload, organize, search, and share files — with AI-powered features like transcription, captioning, and semantic search running directly in the browser via WebGPU.
@@ -78,7 +94,7 @@ Built with React Router 7 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatib
 | **Backend** | Express 5, TypeScript (strict mode) |
 | **Database** | PostgreSQL, Prisma ORM 7, pgvector extension (semantic search), pg_trgm (full-text) |
 | **Storage** | AWS S3-compatible (Tigris on Fly.io), multipart upload via presigned URLs |
-| **AI/ML** | HuggingFace Transformers.js, ONNX Runtime (WebGPU/WASM), Whisper, Tesseract OCR |
+| **AI/ML** | HuggingFace Transformers.js, ONNX Runtime (WebGPU/WASM), Whisper |
 | **Search** | pgvector + embeddings (full-text and semantic search) |
 | **Auth** | better-auth (OAuth: GitHub, Google, Microsoft) |
 | **Payments** | Stripe (subscriptions, webhooks) |
@@ -104,8 +120,8 @@ Built with React Router 7 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatib
 - XState state machines orchestrate the full lifecycle
 
 ### Search
-- **Semantic search** via pgvector embeddings (cosine similarity on 384-dim vectors)
-- **Full-text search** via PostgreSQL `search` field with filters (type, date, workspace)
+- **Semantic search** via pgvector embeddings (HNSW cosine similarity on 768-dim vectors)
+- **Full-text search** via PostgreSQL `pg_trgm` trigram matching with filters (type, date, workspace)
 
 ### AI Features (Browser-Side)
 - **Transcription** — Whisper speech-to-text with automatic language detection (120+ languages)
@@ -142,20 +158,21 @@ The database schema is split across individual files in `prisma/models/*.prisma`
 ```
 User ──┬── Workspace ──── WorkspaceMember (role-based)
        │        │
-       │        ├── Item (file/folder) ── Permission
+       │        ├── Item (file / folder / collection) ── Permission
        │        │        │
-       │        │        ├── Collection (many-to-many)
+       │        │        ├── File / Folder / Image / Video / Audio / Pdf (1:1 facets)
+       │        │        ├── CollectionMember (self M:N — collection = Item type='collection')
        │        │        ├── Comment
-       │        │        ├── Version
+       │        │        ├── ItemVersion
        │        │        ├── Thumbnail
-       │        │        ├── Metadata
-       │        │        ├── Tag
        │        │        ├── Favorite
-       │        │        └── PinItem (per-user)
+       │        │        ├── PinItem (per-user)
+       │        │        ├── Search ── SearchChunk (per-passage vectors)
+       │        │        └── Activity ── ItemAction / AccessAction
        │        │
        │        ├── ShareLink ── Permission
-       │        ├── Invitation
-       │        └── Activity / AuditLog
+       │        ├── Invitation ── InvitationRecipient ── Permission
+       │        └── AuditLog
        │
        ├── Quota
        ├── Subscription ── StoragePlan
@@ -164,21 +181,27 @@ User ──┬── Workspace ──── WorkspaceMember (role-based)
        └── Session / Account / Verification (auth)
 ```
 
-### Key Models (44 total)
+### Key Models (55 total)
+
+The schema spans 55 models and 23 enums. A collection is **not** a separate model — it is an `Item` with `type='collection'`, with membership tracked by the `CollectionMember` self-relation. The legacy `Collection`, `CollectionItem`, `Metadata`, and `Tag` models were removed.
 
 | Model | Purpose |
 |-------|---------|
 | `User` | Account, profile, linked OAuth accounts |
-| `Item` | File or folder — the central entity |
-| `Workspace` | Collaborative space with members |
+| `Item` | File, folder, or collection — the central entity (faceted by `File`/`Folder`/`Image`/`Video`/`Audio`/`Pdf`) |
+| `CollectionMember` | Item ↔ collection membership (self M:N) |
+| `Workspace` / `WorkspaceMember` | Collaborative space + role-based membership |
 | `Permission` | Per-item or per-share access grants |
-| `Collection` | Named groupings of items |
-| `Quota` | Storage usage tracking (used / total) |
-| `Subscription` | Stripe subscription state |
+| `Quota` / `StoragePlan` / `Subscription` | Storage usage, plan limits, Stripe state |
 | `ShareLink` | Public/private share URLs |
-| `Comment` | Threaded discussions on items |
-| `Activity` | Audit log of user actions |
+| `Invitation` / `InvitationRecipient` | Multi-recipient invitation lifecycle |
+| `Comment` | Discussions on items (one per user per item) |
+| `Activity` / `ItemAction` (+17 action models) / `AuditLog` | Event log of user actions |
+| `Search` / `SearchChunk` | Document + per-passage embedding vectors |
+| `Favorite` / `PinItem` | Per-user item state |
 | `Notification` | User notification feed |
+
+> Full schema profile (every model, enum, index, and the 5 PL/pgSQL functions + 9 triggers): [`docs/data_profile_stashly _prisma_schema.md`](data_profile_stashly%20_prisma_schema.md).
 
 ---
 
@@ -241,9 +264,11 @@ const collection = await getCollectionForUser(session.user.id, collectionId)
 | `drive-actions.ts` | Drive provisioning |
 | `thumbnail-actions.ts` | Thumbnail records (presign + PATCH) |
 | `pin-actions.ts` | Pinned items — `pinItem`, `unpinItem`, `reorderPin`, `isPinned`, `getPinnedItems` (idempotent, cursor-paginated) |
+| `lock-actions.ts` | Item edit locks (`LockedItem`) |
+| `search-actions.ts` | Semantic/full-text search — `mapItemToSearch`, chunked embeddings (`SEARCH_VECTOR_DIM = 768`), raw-SQL vector writes |
 | `activity-actions.ts` | Activity feed (uses `createActivity` fire-and-forget) |
 
-Models still without dedicated action files: `Favorite`, `AuditLog`, `Trash/TrashItem`, `View`. Search action lives under `app/.server/search/`.
+Models still without dedicated action files: `Favorite`, `AuditLog`, `Trash/TrashItem`, `View`.
 
 ### Search Helper
 
@@ -263,7 +288,7 @@ All action functions use `ApiError` and `ApiErrorCode` from `app/.server/api.err
 
 The upload pipeline uses XState state machines in a parent-child actor pattern:
 
-1. **User drops files** → `upload/upload.machine.ts` (parent) spawns one `upload/file.machine.ts` per file
+1. **User drops files** → `upload/upload.machine.ts` (parent) spawns one `reviset/file.machine.ts` per file
 2. **File machine** requests presigned URLs from `/api/s3/upload` (action: `get-presigned-url`)
 3. **File machine** uploads chunks in parallel directly to S3, verifies ETags
 4. **`actors/queue.machine.ts`** limits concurrent uploads (default: 5 slots)
@@ -271,29 +296,29 @@ The upload pipeline uses XState state machines in a parent-child actor pattern:
 6. On `upload.done`, the parent spawns a `createDbItem` actor → `POST /api/items` (intent: `create_upload_item`) → `createUploadedItem()` writes the row
 7. After DB write, status flips to `'itemCreated'` — this is the gate that triggers the thumbnail pipeline (prevents FK violations on `Thumbnail.itemId`)
 
-Key files: `app/machines/upload/`, `app/machines/actors/`, `app/machines/multipart/`. The `app/machines/reviset/` directory holds a legacy actor; `upload/file.machine.ts` is the active path.
+Key files: `app/machines/upload/`, `app/machines/reviset/`, `app/machines/actors/`, `app/machines/multipart/`. The **active** per-file actor is `reviset/file.machine.ts` (imported by `upload.machine.ts`); `upload/file.machine.ts` is an unused sibling kept for reference.
 
 See: [`docs/upload-multipart.md`](upload-multipart.md), [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md)
 
 ### Thumbnail Pipeline
 
-Client-side, 5-stage progressive WebP generation. Gated on `status === 'itemCreated'` (not `'done'`). All output is one WebP per item at `thumbnails/{itemId}.webp` in S3, overwritten as later stages complete.
+Client-side, progressive WebP generation orchestrated by `useThumbnailV2`. Gated on `status === 'itemCreated'` (not `'done'`). All output is one WebP per item at `thumbnails/{itemId}.webp` in S3, overwritten as later stages complete; the URL written to `Thumbnail.url` carries a `?v={stage}` cache-buster.
 
 | Stage | Output |
 |-------|--------|
-| 0 | Color hash placeholder (hex, no S3) |
-| 1 | 8×8 blur preview |
-| 2 | 512px resize |
-| 3 | ViT saliency crop with face-aware crop via `FaceDetector` API |
-| 4 | Florence-2 caption overlay (currently hidden from gallery — capped at stage 3) |
+| 1 | 8×8 blur preview — local `URL.createObjectURL` only, **not** persisted to S3/DB (image: tiny thumbnail · video: frame grab · PDF: first page) |
+| 2 | 512px resize → presign → PUT to S3 (`?v=2`) — PDFs stop here |
+| 3 | ViT saliency crop (`Xenova/vit-base-patch16-224`) — **images only** (`?v=3`) |
 
-Pattern: `GET /api/thumbnails/:itemId/presign` → PUT to S3 → `PATCH /api/thumbnails/:itemId`. Hex-color stage-0 placeholders are filtered out of gallery queries.
+**Stage 0 (hex color) was removed in V2.** Heavy compute (PDF.js, canvas resize) runs in a singleton worker (`thumbnail.compute.worker.ts`, concurrency 1); stage-3 image AI runs on the main thread via `thumbnail.ai.ts` (WebGPU). Live stage updates ride a swappable signal layer (`app/hooks/thumbnail-signal/`, currently the keyed-fetcher implementation).
+
+Pattern: `GET /api/thumbnails/:itemId/presign` → PUT to S3 → `PATCH /api/thumbnails/:itemId`. Any hex-color (`#…`) placeholder is filtered out of gallery queries.
 
 See: [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md)
 
 ### Activity Feed
 
-`activity-actions.ts` records create / rename / move / trash / restore / delete / copy / share / comment / version events on items. Activities fire-and-forget via `Promise.resolve().then(() => createActivity({...})).catch(() => {})` (so synchronous throws inside `createActivity` are caught). Rendered as a vertical timeline in `ActivityFeed` and the `ItemActivityDrawer`.
+`activity-actions.ts` records create / upload / rename / move / copy / trash / restore / delete / share / comment / version / permission / **pin / collection (add·remove·empty) / favorite / bucket-empty** events on items — each backed by a dedicated action model (17 in total) joined to `ItemAction`. Activities fire-and-forget via `Promise.resolve().then(() => createActivity({...})).catch(() => {})` (so synchronous throws inside `createActivity` are caught). Rendered as a vertical timeline in `ActivityFeed` and the `ItemActivityDrawer`.
 
 Routes: `GET /api/activities` (resource route).
 
@@ -304,17 +329,18 @@ All AI inference runs **in the browser** via Web Workers, keeping the server sta
 ```
 Main Thread → Web Worker → ONNX Runtime (WebGPU or WASM fallback)
                               │
-                              ├── MMS-LID-256 (language detection)
+                              ├── Xenova/mms-lid-126 (language detection)
                               ├── Whisper (speech-to-text)
-                              ├── Tiny-Aya (summarization)
-                              └── Paraphrase-MultiLingual (embeddings)
+                              ├── Xenova/paraphrase-multilingual-MiniLM-L12-v2 (pipeline tagging)
+                              ├── Xenova/all-mpnet-base-v2 (search embeddings, 768-dim)
+                              └── Xenova/vit-base-patch16-224 (thumbnail saliency)
 ```
 
 - Hardware auto-detection: uses GPU if available, falls back to CPU/WASM
 - Chunked processing for long audio files
-- GPU load balancing across devices for concurrent tasks
+- All inference funnels through a single WebGPU context (`app/workers/ai-queue.ts`)
 
-Key files: `app/workers/`, `app/machines/ai/`, `app/.server/ai*.ts`
+Key files: `app/workers/` (`stash.ai.ts`, `embedding.ai.ts`, `thumbnail.ai.ts`), `app/machines/ai/`, `app/machines/pipeline/`, `app/.client/stashly-ai.ts`
 
 See: [`docs/ai-pipeline.md`](ai-pipeline.md)
 
@@ -324,12 +350,12 @@ Search is powered entirely by PostgreSQL + pgvector:
 
 | Mode | Backend | Use Case |
 |------|---------|----------|
-| Full-text | PostgreSQL | Keyword search, faceted filtering |
+| Full-text | PostgreSQL (`pg_trgm`) | Keyword search, faceted filtering |
 | Semantic | pgvector (PostgreSQL) | "Find similar" queries, meaning-based search |
 
-Embeddings are generated with `sentence-transformers/all-MiniLM-L6-v2` (384-dim vectors, cosine distance).
+Embeddings are generated in-browser with `Xenova/all-mpnet-base-v2` (**768-dim** vectors). The document-level `Search.vector` is indexed HNSW with `vector_cosine_ops`; long documents are split into ~300-token passages stored in `SearchChunk` (one embedding per chunk) so matches can be highlighted.
 
-Key files: `app/.server/search/`
+Key files: `app/.server/search-actions.ts`, `app/.server/filters/`, `app/workers/embedding.ai.ts`
 
 See: [`docs/search.md`](search.md)
 
@@ -346,7 +372,7 @@ Storage quotas are tracked per user with four states:
 
 The quota state machine reacts to upload, copy, restore, and delete events.
 
-Key files: `app/machines/quota/`, `app/.server/quota.ts`
+Key files: `app/machines/quota/`, `app/.server/quota-actions.ts`
 
 See: [`docs/quota-and-machines.md`](quota-and-machines.md)
 
@@ -355,7 +381,7 @@ See: [`docs/quota-and-machines.md`](quota-and-machines.md)
 - Subscriptions managed via Stripe Checkout and Customer Portal
 - Webhook handler at `/api/stripe` syncs subscription state to database
 - Storage plans define quota limits per tier
-- `SubscriptionRepository` and `StoragePlanRepository` manage the data layer
+- `subscription-actions.ts` and `storagePlan-actions.ts` own the data layer (no repository classes)
 
 ---
 
@@ -366,12 +392,12 @@ Complex async workflows are modeled as XState 5 state machines in `app/machines/
 | Machine | Location | Purpose |
 |---------|----------|---------|
 | `upload.machine` | `upload/` | Parent orchestrator — spawns file actors, manages queue, runs `createDbItem` actor on upload done |
-| `file.machine` | `upload/` | Individual file upload lifecycle (active implementation) |
-| `file.machine` | `reviset/` | Legacy file upload actor (kept for reference) |
+| `file.machine` | `reviset/` | Individual file upload lifecycle (**active** — imported by `upload.machine`) |
+| `file.machine` | `upload/` | Unused sibling, kept for reference |
 | `queue.machine` | `actors/` | Concurrent upload slot management |
-| `quota.machine` | `actors/` | Storage quota state tracking |
+| `quota.machine` | `actors/` / `quota/` | Storage quota state tracking |
 | `multipart.machine` | `actors/` | Multipart S3 coordination |
-| `s3.multipart.*` | `multipart/` | Streaming + presign utilities for multipart upload |
+| `s3.multipart.concurrent` / `.stream` | `multipart/` | Concurrent + streaming multipart utilities |
 | `ai.machine` | `ai/` | AI task orchestration (caption, transcribe, summarize) |
 | `caption.machine` | `ai/` | Focused image captioning pipeline |
 | `pipeline.machine` | `pipeline/` | Full audio pipeline (detect → transcribe → summarize → tag) |
@@ -379,9 +405,9 @@ Complex async workflows are modeled as XState 5 state machines in `app/machines/
 | `onboard.machine` | `onboard/` | New user setup flow |
 | `selection.machine` | `selection/` | Multi-select UI state |
 | `sidebar.machine` | `sidebar/` | Navigation panel state |
-| `pagination` | `pagination/` | Lazy-loading pagination |
+| `infinite-scroll.machine` | `pagination/` | Lazy-loading pagination |
 | `confirm.machine` | top-level | Confirmation dialog state |
-| `session/` | `session/` | Auth/session helpers |
+| `sessionStorage.machine` | `session/` | Auth/session helpers |
 
 Machines are connected to React via `@xstate/react`. Parent machines spawn child actors for per-item or per-task state.
 
@@ -391,23 +417,26 @@ Machines are connected to React via `@xstate/react`. Parent machines spawn child
 
 All API routes live in `app/routes/api/` and are resource routes (no UI component).
 
+> Routes are declared in `app/routes.ts`. Many resources expose both a top-level collection route and item-scoped nested routes (same handler, distinct `id`) — e.g. `/api/items/:itemId`, `/api/items/:itemId/{permissions,versions,comments,shares,favorites,invitations,download}`, `/api/collections/:collectionId/items`, `/api/users/:userId/{items,workspaces}`, `/api/workspaces/:workspaceId/{members,permissions}`.
+
 ### Items & Collections
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET/POST | `/api/items` | List / create items |
-| POST | `/api/items/trash` | Move items to trash |
-| POST | `/api/items/restore` | Restore from trash |
-| DELETE | `/api/items/delete` | Permanent deletion |
+| GET/POST | `/api/items` | List / create items (trash/restore/delete via `intent` on the items handler) |
+| GET | `/api/items/:itemId/download` | Item download |
 | GET/POST | `/api/collections` | List / create collections |
+| GET | `/api/collections/:collectionId/items` | Items in a collection |
 | GET/POST | `/api/favorites` | List / toggle favorites |
+| GET/POST | `/api/locks` | Acquire / release item edit locks |
 | GET/POST | `/api/pins` | List / check pinned items (GET: `intent: list\|check`); pin / unpin / reorder (POST: `intent: pin\|unpin\|reorder`) |
 
 ### Workspaces & Members
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET/POST | `/api/workspaces` | List / create workspaces |
+| GET/POST | `/api/workspaces` | List / create workspaces (+ `:workspaceId`, `/members`, `/permissions`) |
 | GET/PATCH | `/api/members` | List / update workspace members |
-| POST | `/api/invitations` | Invite users to workspaces |
+| GET | `/api/users` | User lookups (+ `:userId`, `/items`, `/workspaces`) |
+| POST | `/api/invitations` | Invite users (workspace or per-item) |
 | GET/POST | `/api/permissions` | Manage item permissions |
 
 ### Sharing & Comments
@@ -419,8 +448,9 @@ All API routes live in `app/routes/api/` and are resource routes (no UI componen
 ### Storage & Upload
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| POST | `/api/s3/upload` | Multipart upload operations (JSON body, `action` discriminator: `create-multipart-upload` / `get-presigned-url` / `complete-multipart-upload` / `abort-multipart-upload`) |
+| POST | `/api/s3/upload`, `/api/s3/multipart` | Multipart upload operations (JSON body, `action` discriminator: `create-multipart-upload` / `get-presigned-url` / `complete-multipart-upload` / `abort-multipart-upload`) |
 | GET | `/api/quota` | Check storage quota |
+| GET | `/api/images` | Image listing for gallery |
 | GET | `/api/thumbnails/:itemId/presign` | Get presigned URL for thumbnail upload |
 | POST/PATCH | `/api/thumbnails/:itemId` | Create / update thumbnail record |
 
@@ -473,10 +503,10 @@ On user creation, an auto-onboard hook provisions:
 
 Two-level permission model:
 
-1. **Workspace roles** — Owner / Admin / Member / Viewer (checked in services via `requireAtLeastRole`)
-2. **Item permissions** — Read / Write grants per item or share link (checked in services via `PermissionRepository`)
+1. **Workspace roles** — Viewer / Member / Admin / Owner (`WorkspaceMemberRole`)
+2. **Item permissions** — Read / Write / Owner grants (`PermissionRole`) per item or share link
 
-Services enforce permissions before any data mutation. Routes check session existence and redirect to sign-in if unauthenticated.
+Both are enforced **inline inside the action files** (`app/.server/*-actions.ts`) — there is no separate repository or service layer. Every action validates the caller before any Prisma mutation. Routes only check session existence and redirect to sign-in if unauthenticated.
 
 ---
 
@@ -523,12 +553,14 @@ pnpm test:e2e:ui          # E2E tests with Playwright UI
 
 | Document | Topic |
 |----------|-------|
+| [`docs/data_profile_stashly _prisma_schema.md`](data_profile_stashly%20_prisma_schema.md) | Full schema profile — models, enums, indexes, DB functions & triggers |
 | [`docs/ai-pipeline.md`](ai-pipeline.md) | AI pipeline architecture (Transformers.js, Whisper, summarization) |
-| [`docs/search.md`](search.md) | Semantic search, pgvector + embeddings |
+| [`docs/search.md`](search.md) / [`docs/semantic-search.md`](semantic-search.md) | Semantic search, pgvector + embeddings |
 | [`docs/upload-multipart.md`](upload-multipart.md) | S3 multipart upload state machine and streaming |
-| [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md) | 5-stage progressive WebP thumbnail pipeline |
+| [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md) | Progressive WebP thumbnail pipeline (V2, stages 1–3) |
 | [`docs/quota-and-machines.md`](quota-and-machines.md) | Quota system, XState integration |
 | [`docs/routing-and-ui.md`](routing-and-ui.md) | Route handles, sidebars, pagination patterns |
+| [`docs/suggestions-view.md`](suggestions-view.md) | Suggested-items / recency surface |
 | [`docs/sharing-and-invitations.md`](sharing-and-invitations.md) | Share links, invitations, permission model |
 | [`docs/roadmap.md`](roadmap.md) | Product roadmap and shipped phases |
 | [`CLAUDE.md`](../CLAUDE.md) | Developer conventions, path aliases, workflows |
