@@ -1,7 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useFetcher, href } from 'react-router'
+import { useMoveToFolder } from '@/hooks/useMoveToFolder'
 import { cn } from '@/utils/styles'
-import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/ui/dialog'
 import {
   AddFoldersIcon,
   DropdownIcon,
@@ -9,13 +17,30 @@ import {
   FolderIcon,
   ImageFillIcon,
   MoveFillIcon,
-  MoveToFolder,
   RemoveIcon,
   SearchFillIcon,
 } from '@/components/icons'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/ui/command'
+import { Input } from '@/ui/input'
+import { ScrollArea } from '@/ui/scroll-area'
 import type { JSX } from 'react'
-import { Button } from '../ui'
-
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Button,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '../ui'
+import { toUserInitial } from '@/utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -53,6 +78,8 @@ export interface MoveToFolderDialogProps {
   itemType: 'file' | 'folder'
   /** Current parent folder ID — disabled in the picker */
   sourceParentId: string | null
+  /** Optional display name of the source parent, shown in the header for context */
+  sourceParentName?: string | null
   /** Drive ID for creating new folders */
   driveId: string
   /** Optional thumbnail URL for the header */
@@ -70,6 +97,7 @@ export function MoveToFolderDialog({
   sourceParentId,
   driveId,
   thumbnailUrl,
+  sourceParentName,
 }: MoveToFolderDialogProps) {
   const [path, setPath] = useState<PathNode[]>([])
   const [childrenMap, setChildrenMap] = useState<Record<string, FolderNode[]>>(
@@ -80,8 +108,10 @@ export function MoveToFolderDialog({
   const [newFolderName, setNewFolderName] = useState('')
 
   const folderFetcher = useFetcher<FolderLoaderData>()
-  const moveFetcher = useFetcher()
   const createFetcher = useFetcher<CreateFolderData>()
+  const { move, isPending: isMovePending } = useMoveToFolder(
+    sourceParentId ?? ''
+  )
 
   const newFolderInputRef = useRef<HTMLInputElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -102,12 +132,19 @@ export function MoveToFolderDialog({
     setNewFolderName('')
     fetcherModeRef.current = 'browse'
     pendingLoadRef.current = 'root'
-    folderFetcher.load('/api/items?intent=list_folders&parentId=root')
+    if (!folderFetcher.data && folderFetcher.state === 'idle') {
+      folderFetcher.load('/api/items?intent=list_folders&parentId=root')
+    }
   }, [open])
 
   // ── handle browse responses — update children cache ──
   useEffect(() => {
-    if (!folderFetcher.data || fetcherModeRef.current !== 'browse' || !pendingLoadRef.current) return
+    if (
+      !folderFetcher.data ||
+      fetcherModeRef.current !== 'browse' ||
+      !pendingLoadRef.current
+    )
+      return
     const key = pendingLoadRef.current
     pendingLoadRef.current = null
     const { rootId, folders } = folderFetcher.data
@@ -209,129 +246,120 @@ export function MoveToFolderDialog({
     loadChildren(folder.id)
   }
 
-  const commitNewFolder = useCallback((name: string) => {
-    if (!name.trim() || !current) {
-      setEditingNewFolder(false)
-      setNewFolderName('')
-      return
-    }
-    createFetcher.submit(
-      {
-        intent: 'create_folder_inline',
-        name: name.trim(),
-        parentId: current.id,
-        driveId,
-      },
-      { method: 'POST', action: href('/api/items') }
-    )
-  },[current])
+  const commitNewFolder = useCallback(
+    (name: string) => {
+      if (!name.trim()) {
+        setEditingNewFolder(false)
+        return
+      }
+      createFetcher.submit(
+        {
+          intent: 'create_folder_inline',
+          name: name.trim(),
+          parentId: current.id,
+          driveId,
+        },
+        { method: 'POST', action: href('/api/items') }
+      )
+    },
+    [current]
+  )
 
   function handleMove() {
     if (!current) return
-    moveFetcher.submit(
-      {
-        intent: 'move_item',
-        selectedItem: itemId,
-        targetFolderId: current.id,
-      },
-      { method: 'POST', action: href('/api/items') }
-    )
+    move(current.id, [itemId])
     onOpenChange(false)
   }
 
   const currentFolders = current ? (childrenMap[current.id] ?? null) : null
+  const currentParentName =
+    currentFolders?.find((f) => f.id === sourceParentId)?.name ??
+    sourceParentName
   const searchResults = query.trim()
-    ? (fetcherModeRef.current === 'search'
-        ? (folderFetcher.data?.folders ?? (folderFetcher.state !== 'idle' ? null : undefined))
-        : null)
+    ? fetcherModeRef.current === 'search'
+      ? (folderFetcher.data?.folders ??
+        (folderFetcher.state !== 'idle' ? null : undefined))
+      : null
     : undefined
 
   const isRoot = current?.id === path[0]?.id
-  const destLabel = isRoot ? 'All files' : (current?.name ?? '')
+  const destLabel = isRoot ? 'All' : (current?.name ?? '')
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className=" w-md overflow-hidden flex flex-col border-input bg-sidebar!">
+      <DialogContent
+        className="w-md overflow-hidden flex flex-col border-input bg-sidebar! focus:border-none p-4"
+        forceMount
+      >
         {/* ── Header ── */}
-        <DialogHeader>
-          <div className="flex-1 min-w-0">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Move to folder
-            </div>
-            <div className="flex items-center gap-[10px] mt-[9px]">
-              {/* thumb stack */}
-              <div className="relative w-[38px] h-[30px] flex-shrink-0">
-                <div
-                  className="absolute w-[26px] h-[26px] rounded-[6px] border-[1.5px] border-background bg-muted grid place-items-center text-muted-foreground/60 overflow-hidden shadow-sm"
-                  style={{ left: 0, top: 0, zIndex: 3 }}
-                >
-                  {thumbnailUrl ? (
-                    <img
-                      src={thumbnailUrl}
-                      className="w-full h-full object-cover"
-                      alt=""
-                    />
-                  ) : itemType === 'folder' ? (
-                    <FolderFillIcon className="w-[14px] h-[14px]" />
-                  ) : (
-                    <ImageFillIcon className="size-5" />
-                  )}
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-[15px] font-semibold tracking-[-0.01em] truncate leading-tight">
-                  {itemName}
-                </div>
-              </div>
-            </div>
+        <DialogHeader className="flex flex-row items-start h-full">
+          {thumbnailUrl ? (
+            <Avatar className="h-10 w-10 rounded-md border-input border">
+              <AvatarImage
+                src={thumbnailUrl}
+                alt={itemName}
+                className="object-cover scale-125 "
+              />
+              <AvatarFallback className="rounded-sm font-stashly">
+                {toUserInitial(itemName)}
+              </AvatarFallback>
+            </Avatar>
+          ) : itemType === 'folder' ? (
+            <FolderFillIcon className="size-5" />
+          ) : (
+            <ImageFillIcon className="size-5" />
+          )}
+          <div className=" flex flex-col items-start gap-1">
+            <DialogTitle className="truncate max-w-4/5">
+              {itemName}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              in {currentParentName}
+            </DialogDescription>
           </div>
-
         </DialogHeader>
 
         {/* ── Search ── */}
-        <div className="px-4 pb-3">
-          <div
-            className={cn(
-              'flex items-center gap-2 h-[38px] px-3 border border-input rounded-[8px] bg-card transition-[border-color,box-shadow]',
-              'focus-within:border-ring focus-within:shadow-[0_0_0_3px_oklch(0.708_0_0_/_0.16)]'
-            )}
-          >
-            <SearchFillIcon className="w-[17px] h-[17px] text-muted-foreground flex-shrink-0" />
-            <input
-              ref={searchInputRef}
+        <div className="pb-2">
+          <InputGroup className="bg-card! h-10">
+            <InputGroupAddon align="inline-start">
+              <SearchFillIcon className="size-5 text-muted-foreground shrink-0" />
+            </InputGroupAddon>
+            <InputGroupInput
               value={query}
+              ref={searchInputRef}
               placeholder="Search folders"
               onChange={(e) => setQuery(e.target.value)}
-              className="border-0 outline-none bg-transparent text-[14px] w-full text-foreground placeholder:text-muted-foreground"
             />
-            {query ? (
-              <button
-                className="w-[22px] h-[22px] grid place-items-center"
-                onClick={() => setQuery('')}
-              >
-                <RemoveIcon className="size-5" />
-              </button>
-            ) : (
-              <kbd className="font-mono text-[10px] text-muted-foreground bg-muted border border-border rounded px-[5px] py-[1px] leading-[1.4]">
-                ⌘F
-              </kbd>
+            {query && (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton asChild className="size-6">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setQuery('')}
+                  >
+                    <RemoveIcon className="size-5" />
+                  </Button>
+                </InputGroupButton>
+              </InputGroupAddon>
             )}
-          </div>
+          </InputGroup>
         </div>
 
         {/* ── Breadcrumb (hidden during search) ── */}
         {!query && path.length > 0 && (
-          <div className="flex items-center gap-[1px] px-4 pb-3 flex-nowrap overflow-hidden">
+          <div className="flex items-center gap-px pb-3 flex-nowrap overflow-hidden">
             {path.map((n, i) => (
               <React.Fragment key={n.id}>
                 {i > 0 && (
-                  <span className="text-muted-foreground/60 grid place-items-center flex-shrink-0">
-                    <DropdownIcon className="size-5 rotate-45" />
+                  <span className="text-muted-foreground/60 grid place-items-center shrink-0">
+                    <DropdownIcon className="size-5 -rotate-90" />
                   </span>
                 )}
                 <button
                   className={cn(
-                    'text-[12.5px] text-muted-foreground bg-transparent border-0 cursor-pointer px-[7px] py-[3px] rounded-[6px] font-sans whitespace-nowrap max-w-[130px] overflow-hidden text-ellipsis transition-[background,color]',
+                    'text-xs text-muted-foreground bg-transparent border-0 cursor-pointer px-2 py-1 rounded-md font-stashly whitespace-nowrap max-w-32 overflow-hidden text-ellipsis transition-[background,color]',
                     i === path.length - 1
                       ? 'text-foreground font-semibold hover:bg-transparent cursor-default'
                       : 'hover:bg-muted hover:text-foreground'
@@ -345,160 +373,171 @@ export function MoveToFolderDialog({
           </div>
         )}
 
-        {/* ── Body / List ── */}
-        <div className="flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 overflow-y-auto px-2 py-1">
-            {query ? (
-              /* Search results */
-              folderFetcher.state !== 'idle' ? (
-                <EmptyState label="Searching…" />
-              ) : searchResults && searchResults.length === 0 ? (
-                <EmptyState label={`No folders match "${query}"`} />
-              ) : searchResults ? (
-                searchResults.map((folder: FolderNode) => {
-                  const disabled = folder.id === sourceParentId
-                  return (
-                    <button
-                      key={folder.id}
-                      disabled={disabled}
-                      className={cn(
-                        'flex items-center gap-[11px] w-full text-left px-[10px] py-[9px] rounded-[8px] border-0 bg-transparent cursor-pointer font-sans text-foreground transition-[background]',
-                        disabled
-                          ? 'cursor-not-allowed opacity-55 hover:bg-transparent'
-                          : 'hover:bg-muted'
-                      )}
-                      onClick={() => !disabled && openSearchResult(folder)}
-                    >
-                      <div className="flex-shrink-0 w-[30px] h-[30px] grid place-items-center text-foreground">
-                        <FolderFillIcon className="w-[26px] h-[26px]" />
-                      </div>
-                      <div className="flex-1 min-w-0 flex flex-col">
-                        <div className="text-[14px] font-medium tracking-[-0.01em] truncate">
-                          {folder.name}
-                        </div>
-                      </div>
-                      <div className="flex-shrink-0 flex items-center gap-1 text-muted-foreground/60">
-                        {disabled ? (
-                          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground bg-muted border border-border rounded-[5px] px-[6px] py-[2px]">
-                            Current
-                          </span>
-                        ) : (
-                          <span className="w-[22px] h-[22px] grid place-items-center">
-                            <DropdownIcon className="size-5 rotate-45" />
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  )
-                })
-              ) : null
-            ) : isLoading && !currentFolders ? (
-              /* Loading skeleton */
-              <EmptyState label="Loading…" />
-            ) : (
-              /* Drill-down list */
-              <>
-                {currentFolders?.length === 0 && !editingNewFolder && (
-                  <EmptyState
-                    label="No sub folders"
-                    sub="Move here, or create a subfolder below."
-                  />
-                )}
-                {currentFolders?.map((node) => {
-                  const disabled = node.id === sourceParentId
-                  return (
-                    <button
-                      key={node.id}
-                      disabled={disabled}
-                      className={cn(
-                        'flex items-center gap-[11px] w-full text-left px-[10px] py-[9px] rounded-[8px] border-0 bg-transparent cursor-pointer font-sans text-foreground transition-[background]',
-                        disabled
-                          ? 'cursor-not-allowed opacity-55 hover:bg-transparent'
-                          : 'hover:bg-muted'
-                      )}
-                      onClick={() => !disabled && drillInto(node)}
-                    >
-                      <div className="flex-shrink-0 w-[30px] h-[30px] grid place-items-center text-foreground">
-                        <FolderIcon className="size-6 fill-current!" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[14px] font-medium tracking-[-0.01em] truncate">
-                          {node.name}
-                        </div>
-                      </div>
-                      <div className="flex-shrink-0 flex items-center gap-1 text-muted-foreground/60">
-                        {disabled ? (
-                          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground bg-muted border border-border rounded-[5px] px-[6px] py-[2px]">
-                            Current
-                          </span>
-                        ) : node._new ? (
-                          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground bg-muted border border-border rounded-[5px] px-[6px] py-[2px]">
-                            New
-                          </span>
-                        ) : null}
-                        {!disabled && (
-                          <span className="w-[22px] h-[22px] grid place-items-center">
-                            <DropdownIcon className="size-5 -rotate-90" />
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  )
-                })}
-
-                {/* New folder row */}
-                {editingNewFolder ? (
-                  <div className="flex items-center gap-[11px] px-[10px] py-[7px] rounded-[8px] bg-card border border-ring shadow-[0_0_0_3px_oklch(0.708_0_0_/_0.16)]">
-                    <div className="flex-shrink-0 w-[30px] h-[30px] grid place-items-center text-foreground">
-                      <FolderIcon className="size-6 fill-current" />
-                    </div>
-                    <input
-                      ref={newFolderInputRef}
-                      value={newFolderName}
-                      onChange={(e) => setNewFolderName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') commitNewFolder(newFolderName)
-                        if (e.key === 'Escape') {
-                          setEditingNewFolder(false)
-                          setNewFolderName('Untitled folder')
-                        }
-                      }}
-                      onBlur={() => commitNewFolder(newFolderName)}
-                      className="flex-1 min-w-0 border-0 outline-none bg-transparent text-[14px] font-medium text-foreground"
+        {/* ── Body / Folder List ── */}
+        <Command
+          shouldFilter={false}
+          className="flex-1 min-h-12 flex flex-col bg-transparent"
+        >
+          <ScrollArea className="h-full">
+            <CommandList className="max-h-75 flex-1">
+              {query ? (
+                /* Search results */
+                folderFetcher.state !== 'idle' ? (
+                  <CommandEmpty>
+                    <EmptyState label="Searching…" />
+                  </CommandEmpty>
+                ) : searchResults && searchResults.length === 0 ? (
+                  <CommandEmpty>
+                    <EmptyState label={`No folders match "${query}"`} />
+                  </CommandEmpty>
+                ) : searchResults ? (
+                  <CommandGroup className="p-0">
+                    {searchResults.map((folder: FolderNode) => {
+                      const disabled = folder.id === sourceParentId
+                      return (
+                        <CommandItem
+                          key={folder.id}
+                          disabled={disabled}
+                          onSelect={() => !disabled && openSearchResult(folder)}
+                          className={cn(
+                            'flex items-center gap-3 px-2.5 py-2 rounded-lg cursor-pointer',
+                            disabled && 'cursor-not-allowed opacity-55'
+                          )}
+                        >
+                          <div className="shrink-0 size-8 grid place-items-center">
+                            <FolderFillIcon className="size-6" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium tracking-tight truncate">
+                              {folder.name}
+                            </div>
+                          </div>
+                          <div className="shrink-0 flex items-center gap-1 text-muted-foreground/60">
+                            {disabled ? (
+                              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted border border-border rounded px-1.5 py-0.5">
+                                Current
+                              </span>
+                            ) : (
+                              <span className="size-5 grid place-items-center">
+                                <DropdownIcon className="size-5 -rotate-90" />
+                              </span>
+                            )}
+                          </div>
+                        </CommandItem>
+                      )
+                    })}
+                  </CommandGroup>
+                ) : null
+              ) : isLoading && !currentFolders ? (
+                /* Loading state */
+                <CommandEmpty>
+                  <EmptyState label="Loading…" />
+                </CommandEmpty>
+              ) : (
+                /* Drill-down list */
+                <CommandGroup className="p-0">
+                  {currentFolders?.length === 0 && !editingNewFolder && (
+                    <EmptyState
+                      label="No sub folders"
+                      sub="Move here, or create a subfolder below."
                     />
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground bg-muted border border-border rounded-[5px] px-[6px] py-[2px]">
-                      New
-                    </span>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    className="rounded-md bg-card border border-input"
-                    onClick={() => setEditingNewFolder(true)}
-                  >
-                    <AddFoldersIcon className="size-6" />
-                    <span className="text-sm font-medium">New folder</span>
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
-        </div>
+                  )}
+
+                  {currentFolders?.map((node) => {
+                    const disabled =
+                      node.id === sourceParentId && node.childFolderCount === 0
+                    return (
+                      <CommandItem
+                        key={node.id}
+                        disabled={disabled}
+                        onSelect={() => !disabled && drillInto(node)}
+                        className={cn(
+                          'flex items-center gap-2 rounded-md cursor-pointer hover:bg-transparent! bg-transparent! ',
+                          disabled && 'cursor-not-allowed opacity-55'
+                        )}
+                        value={node.id}
+                      >
+                        <div className="shrink-0 size-8 grid place-items-center">
+                          <FolderIcon className="size-6 fill-current!" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium tracking-tight truncate">
+                            {node.name}
+                          </div>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-1 text-muted-foreground/60">
+                          {disabled ? (
+                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted border border-border rounded px-1.5 py-0.5">
+                              Current
+                            </span>
+                          ) : node._new ? (
+                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted border border-border rounded px-1.5 py-0.5">
+                              New
+                            </span>
+                          ) : null}
+                          {!disabled && (
+                            <span className="size-5 grid place-items-center">
+                              <DropdownIcon className="size-5 -rotate-90" />
+                            </span>
+                          )}
+                        </div>
+                      </CommandItem>
+                    )
+                  })}
+
+                  {/* New folder row */}
+                  {editingNewFolder ? (
+                    <div className="flex items-center gap-3 px-2.5 py-2 rounded-lg bg-card border border-ring shadow-[0_0_0_3px_oklch(0.708_0_0_/_0.16)]">
+                      <div className="shrink-0 size-8 grid place-items-center text-foreground">
+                        <FolderIcon className="size-6 fill-current" />
+                      </div>
+                      <Input
+                        ref={newFolderInputRef}
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitNewFolder(newFolderName)
+                          if (e.key === 'Escape') {
+                            e.stopPropagation()
+                            setEditingNewFolder(false)
+                            setNewFolderName('')
+                          }
+                        }}
+                        onBlur={() => commitNewFolder(newFolderName)}
+                        className="flex-1 min-w-0 border-0 shadow-none focus-visible:ring-0 bg-transparent text-sm font-medium h-auto py-0 px-0"
+                      />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted border border-border rounded px-1.5 py-0.5 shrink-0">
+                        New
+                      </span>
+                    </div>
+                  ) : (
+                    <CommandItem
+                      onSelect={() => setEditingNewFolder(true)}
+                      className="flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer text-muted-foreground mt-1 border border-dashed border-input hover:text-foreground"
+                    >
+                      <AddFoldersIcon className="size-5" />
+                      <span className="text-sm font-medium">New folder</span>
+                    </CommandItem>
+                  )}
+                </CommandGroup>
+              )}
+            </CommandList>
+          </ScrollArea>
+        </Command>
 
         {/* ── Footer ── */}
-        <DialogFooter>
-
+        <DialogFooter className="mt-4">
           <div className="flex-1 min-w-0 flex items-center gap-2">
-            <div className="flex-shrink-0 text-muted-foreground grid place-items-center">
+            <div className="shrink-0 text-muted-foreground grid place-items-center">
               <MoveFillIcon className="size-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground/60">
+              <div className="text-xs uppercase tracking-[0.12em] text-muted-foreground/60">
                 Destination
               </div>
               <div
                 className={cn(
-                  'text-[13px] font-semibold tracking-[-0.01em] truncate',
+                  'text-xs font-semibold tracking-tight truncate',
                   !current && 'text-muted-foreground font-medium'
                 )}
               >
@@ -507,31 +546,26 @@ export function MoveToFolderDialog({
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              className="h-9 px-4 rounded-[8px] text-[13.5px] font-medium cursor-pointer bg-transparent border-0 text-foreground hover:bg-muted transition-colors"
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => onOpenChange(false)}
             >
               Cancel
-            </button>
-            <button
-              disabled={!current || isSource}
+            </Button>
+            <Button
+              disabled={!current || isSource || isMovePending}
               title={isSource ? 'Items are already here' : undefined}
-              className={cn(
-                'h-9 px-4 rounded-[8px] text-[13.5px] font-medium cursor-pointer flex items-center gap-[7px] whitespace-nowrap border-0 transition-[background,opacity]',
-                'bg-primary text-primary-foreground hover:bg-primary/90',
-                'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary'
-              )}
               onClick={handleMove}
+              variant="default"
             >
-              <MoveFillIcon className="w-[17px] h-[17px]" />
               {isSource
                 ? 'Already here'
                 : isRoot
                   ? 'Move to top level'
-                  : 'Move here'}
-            </button>
+                  : 'Move'}
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>
@@ -549,11 +583,11 @@ function EmptyState({
   sub?: string
 }): JSX.Element {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-8 text-muted-foreground/40 text-center px-8">
-      <FolderFillIcon className="w-10 h-10 opacity-40" />
+    <div className="flex flex-col items-center justify-center gap-3 py-8 text-center px-8">
+      <FolderFillIcon className="size-10 opacity-40 text-muted-foreground" />
       <div>
-        <p className="text-[13px] font-medium text-muted-foreground">{label}</p>
-        {sub && <p className="text-[13px] mt-1">{sub}</p>}
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        {sub && <p className="text-xs mt-1 text-muted-foreground/60">{sub}</p>}
       </div>
     </div>
   )

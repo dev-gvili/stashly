@@ -1,4 +1,5 @@
 export { default as useConfirm } from './useConfirm'
+export * from './useMoveToFolder'
 export * from './useClipboard'
 export * from './useBreadcrumbs'
 export * from './useFilters'
