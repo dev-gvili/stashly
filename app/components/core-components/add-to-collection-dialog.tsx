@@ -7,10 +7,10 @@ import { Badge } from '@/ui/badge'
 import { ScrollArea } from '@/ui/scroll-area'
 import { Checkbox } from '@/ui/checkbox'
 import {
-  CollectionIcon,
+  CollectionFillIcon,
   RemoveIcon,
   RemoveSquareIcon,
-  SearchIcon,
+  SearchFillIcon,
 } from '@/components/icons'
 import { cn } from '@/utils/styles'
 import { formatSize } from '@/utils/formaters'
@@ -458,7 +458,7 @@ export function AddToCollectionDialog({
             <ScrollArea className="h-full pr-8" ref={scrollRef}>
               {groups.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 gap-3 text-muted-foreground">
-                  <SearchIcon className="size-10 opacity-30" />
+                  <SearchFillIcon className="size-10 opacity-30" />
                   <p className="text-sm font-stashly">No items found</p>
                 </div>
               ) : (
@@ -528,7 +528,7 @@ export function AddToCollectionDialog({
                 transition={{ duration: 0.2, ease: 'easeOut' }}
                 className="sticky bottom-0 w-full inline-flex gap-2 p-2 items-center bg-sidebar z-40 h-12 border-t border-input shrink-0"
               >
-                <CollectionIcon className="size-5 text-muted-foreground" />
+                <CollectionFillIcon className="size-5 text-muted-foreground" />
                 <span className="font-stashly text-sm font-medium truncate max-w-50">
                   {collectionName}
                 </span>

@@ -26,260 +26,275 @@
 }
 
 [data-theme='light'] {
-  /* palette: Black → Deep Cerulean → Anchor Gray → Amethyst Shadow → Mount Saint Anne */
-  --background: oklch(0.97 0.005 220);
-  --foreground: oklch(0.057 0.004 242);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.057 0.004 242);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.057 0.004 242);
-  --primary: oklch(0.477 0.025 255);
-  --primary-foreground: oklch(0.97 0.005 220);
-  --secondary: oklch(0.93 0.007 220);
-  --secondary-foreground: oklch(0.35 0.015 240);
-  --muted: oklch(0.94 0.006 220);
-  --muted-foreground: oklch(0.5 0.02 240);
-  --accent: oklch(0.91 0.009 220);
-  --accent-foreground: oklch(0.25 0.012 240);
+  /* palette: Branco #eaeaea → Inox #acaba9 → Cinza #75706f → Chumbo #2c2c2c → Preto #121212 */
+  --background: #f5f4f3;
+  --foreground: #121212;
+  --card: #ffffff;
+  --card-foreground: #121212;
+  --popover: #ffffff;
+  --popover-foreground: #121212;
+  --primary: #2c2c2c;
+  --primary-foreground: #eaeaea;
+  --secondary: #eaeaea;
+  --secondary-foreground: #2c2c2c;
+  --muted: #ebebea;
+  --muted-foreground: #75706f;
+  --accent: #e2e1e0;
+  --accent-foreground: #2c2c2c;
   --destructive: oklch(0.55 0.225 27);
   --destructive-foreground: oklch(0.55 0.225 27);
-  --border: oklch(0.88 0.01 220);
-  --input: oklch(0.86 0.012 220);
-  --ring: oklch(0.477 0.025 255);
-  --chart-1: oklch(0.408 0.016 242);
-  --chart-2: oklch(0.477 0.025 255);
-  --chart-3: oklch(0.724 0.017 196);
-  --chart-4: oklch(0.494 0.004 196);
-  --chart-5: oklch(0.196 0.003 210);
-  --chart-6: oklch(0.59 0.2 285);
-  --chart-7: oklch(0.53 0.15 230);
-  --chart-8: oklch(0.55 0.17 200);
-  --chart-9: oklch(70.578% 0.12401 162.539);
-  --chart-10: oklch(57.959% 0.09068 113.474);
-  --chart-11: oklch(65.106% 0.10528 69.097);
-  --chart-12: oklch(62.474% 0.12773 40.44);
-  --chart-13: oklch(53.972% 0.16766 18.519);
-  --chart-14: oklch(52.351% 0.14809 357.668);
+  --border: #d8d7d6;
+  --input: #d2d1d0;
+  --ring: #2c2c2c;
+  --chart-1: #121212;
+  --chart-2: #2c2c2c;
+  --chart-3: #75706f;
+  --chart-4: #acaba9;
+  --chart-5: #eaeaea;
+  --chart-6: #585655;
+  --chart-7: #8a8987;
+  --chart-8: #c5c4c3;
+  --chart-9: #404040;
+  --chart-10: #606060;
+  --chart-11: #303030;
+  --chart-12: #1a1a1a;
+  --chart-13: #4a4a48;
+  --chart-14: #6e6d6c;
   --radius: 0.75rem;
-  --sidebar: oklch(0.95 0.007 220);
-  --sidebar-foreground: oklch(0.057 0.004 242);
-  --sidebar-primary: oklch(0.477 0.025 255);
-  --sidebar-primary-foreground: oklch(0.97 0.005 220);
-  --sidebar-accent: oklch(0.93 0.007 220);
-  --sidebar-accent-foreground: oklch(0.35 0.015 240);
-  --sidebar-border: oklch(0.88 0.01 220);
-  --sidebar-ring: oklch(0.477 0.025 255);
+  --sidebar: #eaeaea;
+  --sidebar-foreground: #121212;
+  --sidebar-primary: #2c2c2c;
+  --sidebar-primary-foreground: #eaeaea;
+  --sidebar-accent: #dededd;
+  --sidebar-accent-foreground: #2c2c2c;
+  --sidebar-border: #d0cfce;
+  --sidebar-ring: #2c2c2c;
   --font-sans: 'Geist Dark', 'Geist Fallback';
-  --font-mono: 'Geist Mono Dark', 'Geist Mono Fallback';
+  --font-mono: 'JetBrains Mono Variable', 'Geist Mono Dark', 'Geist Mono Fallback';
   --font-stashly:
     'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
 
   /* surface patterns */
-  --dot-color: oklch(0.477 0.025 255 / 0.5);
+  --dot-color: rgba(44, 44, 44, 0.25);
   --dot-size: 1px;
   --dot-gap: 22px;
-  --grid-color: oklch(0.86 0.012 220 / 0.35);
+  --grid-color: rgba(172, 171, 169, 0.4);
   --grid-size: 1px;
   --grid-gap: 64px;
   --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
 
   /* real shadows — foreground-tinted, visible on light surfaces */
   --shadow-stashly:
-    0 1px 2px 0 oklch(0.057 0.004 242 / 0.1),
-    0 2px 4px -1px oklch(0.057 0.004 242 / 0.07),
-    0 4px 6px -2px oklch(0.057 0.004 242 / 0.04);
+    0 1px 2px 0 rgba(18, 18, 18, 0.1),
+    0 2px 4px -1px rgba(18, 18, 18, 0.07),
+    0 4px 6px -2px rgba(18, 18, 18, 0.04);
   --shadow-md:
-    0 4px 6px -1px oklch(0.057 0.004 242 / 0.08),
-    0 2px 4px -1px oklch(0.057 0.004 242 / 0.05);
-  --shadow-sm: 0 1px 2px 0 oklch(0.057 0.004 242 / 0.05);
-  --shadow-xs: 0 0px 1px 0 oklch(0.057 0.004 242 / 0.03);
+    0 4px 6px -1px rgba(18, 18, 18, 0.08),
+    0 2px 4px -1px rgba(18, 18, 18, 0.05);
+  --shadow-sm: 0 1px 2px 0 rgba(18, 18, 18, 0.05);
+  --shadow-xs: 0 0px 1px 0 rgba(18, 18, 18, 0.03);
 }
 
 [data-theme='system'] {
   @media (prefers-color-scheme: light) {
-    --background: oklch(0.97 0.005 220);
-    --foreground: oklch(0.057 0.004 242);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.057 0.004 242);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.057 0.004 242);
-    --primary: oklch(0.477 0.025 255);
-    --primary-foreground: oklch(0.97 0.005 220);
-    --secondary: oklch(0.93 0.007 220);
-    --secondary-foreground: oklch(0.35 0.015 240);
-    --muted: oklch(0.94 0.006 220);
-    --muted-foreground: oklch(0.5 0.02 240);
-    --accent: oklch(0.91 0.009 220);
-    --accent-foreground: oklch(0.25 0.012 240);
+    --background: #f5f4f3;
+    --foreground: #121212;
+    --card: #ffffff;
+    --card-foreground: #121212;
+    --popover: #ffffff;
+    --popover-foreground: #121212;
+    --primary: #2c2c2c;
+    --primary-foreground: #eaeaea;
+    --secondary: #eaeaea;
+    --secondary-foreground: #2c2c2c;
+    --muted: #ebebea;
+    --muted-foreground: #75706f;
+    --accent: #e2e1e0;
+    --accent-foreground: #2c2c2c;
     --destructive: oklch(0.55 0.225 27);
     --destructive-foreground: oklch(0.55 0.225 27);
-    --border: oklch(0.88 0.01 220);
-    --input: oklch(0.86 0.012 220);
-    --ring: oklch(0.477 0.025 255);
-    --chart-1: oklch(0.408 0.016 242);
-    --chart-2: oklch(0.477 0.025 255);
-    --chart-3: oklch(0.724 0.017 196);
-    --chart-4: oklch(0.494 0.004 196);
-    --chart-5: oklch(0.196 0.003 210);
-    --chart-6: oklch(60.43% 0.12837 290.581);
-    --chart-7: oklch(65.503% 0.11119 250.257);
-    --chart-8: oklch(62.804% 0.07503 203.538);
-    --chart-9: oklch(56.198% 0.08195 160.772);
-    --chart-10: oklch(57.247% 0.07452 113.185);
-    --chart-11: oklch(65.274% 0.09317 70.86);
-    --chart-12: oklch(62.182% 0.14832 39.707);
-    --chart-13: oklch(55.408% 0.18546 19.477);
-    --chart-14: oklch(59.573% 0.12862 355.517);
+    --border: #d8d7d6;
+    --input: #d2d1d0;
+    --ring: #2c2c2c;
+    --chart-1: #121212;
+    --chart-2: #2c2c2c;
+    --chart-3: #75706f;
+    --chart-4: #acaba9;
+    --chart-5: #eaeaea;
+    --chart-6: #585655;
+    --chart-7: #8a8987;
+    --chart-8: #c5c4c3;
+    --chart-9: #404040;
+    --chart-10: #606060;
+    --chart-11: #303030;
+    --chart-12: #1a1a1a;
+    --chart-13: #4a4a48;
+    --chart-14: #6e6d6c;
     --radius: 0.75rem;
-    --sidebar: oklch(0.95 0.007 220);
-    --sidebar-foreground: oklch(0.057 0.004 242);
-    --sidebar-primary: oklch(0.477 0.025 255);
-    --sidebar-primary-foreground: oklch(0.97 0.005 220);
-    --sidebar-accent: oklch(0.93 0.007 220);
-    --sidebar-accent-foreground: oklch(0.35 0.015 240);
-    --sidebar-border: oklch(0.88 0.01 220);
-    --sidebar-ring: oklch(0.477 0.025 255);
+    --sidebar: #eaeaea;
+    --sidebar-foreground: #121212;
+    --sidebar-primary: #2c2c2c;
+    --sidebar-primary-foreground: #eaeaea;
+    --sidebar-accent: #dededd;
+    --sidebar-accent-foreground: #2c2c2c;
+    --sidebar-border: #d0cfce;
+    --sidebar-ring: #2c2c2c;
     --font-sans: 'Geist Dark', 'Geist Fallback';
-    --font-mono: 'Geist Mono Dark', 'Geist Mono Fallback';
+    --font-mono: 'JetBrains Mono Variable','Geist Mono Dark', 'Geist Mono Fallback';
     --font-stashly:
       'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
 
-    --dot-color: oklch(0.477 0.025 255 / 0.5);
+    --dot-color: rgba(44, 44, 44, 0.25);
     --dot-size: 1px;
     --dot-gap: 22px;
-    --grid-color: oklch(0.86 0.012 220 / 0.35);
+    --grid-color: rgba(172, 171, 169, 0.4);
     --grid-size: 1px;
     --grid-gap: 64px;
     --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
 
-    /* real shadows — foreground-tinted, visible on light surfaces */
     --shadow-stashly:
-      0 1px 2px 0 oklch(0.057 0.004 242 / 0.1),
-      0 2px 4px -1px oklch(0.057 0.004 242 / 0.07),
-      0 4px 6px -2px oklch(0.057 0.004 242 / 0.04);
+      0 1px 2px 0 rgba(18, 18, 18, 0.1),
+      0 2px 4px -1px rgba(18, 18, 18, 0.07),
+      0 4px 6px -2px rgba(18, 18, 18, 0.04);
     --shadow-md:
-      0 4px 6px -1px oklch(0.057 0.004 242 / 0.08),
-      0 2px 4px -1px oklch(0.057 0.004 242 / 0.05);
-    --shadow-sm: 0 1px 2px 0 oklch(0.057 0.004 242 / 0.05);
-    --shadow-xs: 0 0px 1px 0 oklch(0.057 0.004 242 / 0.03);
+      0 4px 6px -1px rgba(18, 18, 18, 0.08),
+      0 2px 4px -1px rgba(18, 18, 18, 0.05);
+    --shadow-sm: 0 1px 2px 0 rgba(18, 18, 18, 0.05);
+    --shadow-xs: 0 0px 1px 0 rgba(18, 18, 18, 0.03);
   }
 }
 
 [data-theme='dark'] {
-  /* palette: Black → Dark Gray → Mid Gray → Light Gray → Pale Gray */
-  --background: #111111;
-  --foreground: #e0e0e0;
-  --card: #262626;
-  --card-foreground: #e0e0e0;
-  --popover: #4b4b4b;
-  --popover-foreground: #e0e0e0;
-  --primary: #DFB6B2;
-  --primary-foreground: #111111;
-  --secondary: #b7b7b7;
-  --secondary-foreground: #111111;
-  --muted: #4b4b4b;
-  --muted-foreground: #e0e0e0;
-  --accent: #c2c2c2;
-  --accent-foreground: #655d5d;
+  /* palette: Branco #eaeaea → Inox #acaba9 → Cinza #75706f → Chumbo #2c2c2c → Preto #121212 */
+  --background: #121212;
+  --foreground: #eaeaea;
+  --card: #1e1d1c;
+  --card-foreground: #eaeaea;
+  --popover: #2c2b2a;
+  --popover-foreground: #eaeaea;
+  --primary: #acaba9;
+  --primary-foreground: #121212;
+  --secondary: #2c2b2a;
+  --secondary-foreground: #eaeaea;
+  --muted: #282726;
+  --muted-foreground: #acaba9;
+  --accent: #343332;
+  --accent-foreground: #eaeaea;
   --destructive: oklch(0.62 0.2 25);
   --destructive-foreground: oklch(0.95 0.02 25);
-  --border: #262626;
-  --input: #262626;
-  --ring: #DFB6B2;
-  --chart-1: #111111;
-  --chart-2: #262626;
-  --chart-3: #4b4b4b;
-  --chart-4: #DFB6B2;
-  --chart-5: #b7b7b7;
-  --chart-6: #c2c2c2;
-  --chart-7: #9a9a9a;
-  --chart-8: #7a7a7a;
-  --chart-9: #5f5f5f;
-  --chart-10: #a0a0a0;
-  --chart-11: #343434;
-  --chart-12: #3f3f3f;
-  --chart-13: #474747;
-  --chart-14: #191919;
+  --border: #2c2b2a;
+  --input: #252423;
+  --ring: #acaba9;
+  --chart-1: #eaeaea;
+  --chart-2: #acaba9;
+  --chart-3: #75706f;
+  --chart-4: #4a4947;
+  --chart-5: #2c2b2a;
+  --chart-6: #c5c4c3;
+  --chart-7: #9a9997;
+  --chart-8: #6e6d6c;
+  --chart-9: #585655;
+  --chart-10: #3d3c3b;
+  --chart-11: #d8d7d6;
+  --chart-12: #b0afad;
+  --chart-13: #848382;
+  --chart-14: #1e1d1c;
   --radius: 0.75rem;
-  --sidebar: #111111;
-  --sidebar-foreground: #e0e0e0;
-  --sidebar-primary: #DFB6B2;
-  --sidebar-primary-foreground: #e0e0e0;
-  --sidebar-accent: #b7b7b7;
-  --sidebar-accent-foreground: #111111;
-  --sidebar-border: #262626;
-  --sidebar-ring: #DFB6B2;
+  --sidebar: #121212;
+  --sidebar-foreground: #eaeaea;
+  --sidebar-primary: #acaba9;
+  --sidebar-primary-foreground: #eaeaea;
+  --sidebar-accent: #2c2b2a;
+  --sidebar-accent-foreground: #eaeaea;
+  --sidebar-border: #2c2b2a;
+  --sidebar-ring: #acaba9;
   --font-sans: 'Geist Dark', 'Geist Fallback';
-  --font-mono: 'Geist Mono Dark', 'Geist Mono Fallback';
+  --font-mono: 'JetBrains Mono Variable','Geist Mono Dark', 'Geist Mono Fallback';
   --font-stashly: 'Share Tech Mono', 'IBM Plex Sans Hebrew';
+
+  /* surface patterns */
+  --dot-color: rgba(172, 171, 169, 0.2);
+  --dot-size: 1px;
+  --dot-gap: 22px;
+  --grid-color: rgba(44, 43, 42, 0.8);
+  --grid-size: 1px;
+  --grid-gap: 64px;
+  --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
 
   /* real shadows — dark neutral shadows */
   --shadow-stashly:
-    0 1px 2px 0 rgba(17, 17, 17, 0.16), 0 2px 4px -1px rgba(17, 17, 17, 0.1),
-    0 4px 6px -2px rgba(17, 17, 17, 0.05);
+    0 1px 2px 0 rgba(18, 18, 18, 0.4), 0 2px 4px -1px rgba(18, 18, 18, 0.3),
+    0 4px 6px -2px rgba(18, 18, 18, 0.2);
   --shadow-md:
-    0 4px 6px -1px rgba(17, 17, 17, 0.1), 0 2px 4px -1px rgba(17, 17, 17, 0.06);
-  --shadow-sm: 0 1px 2px 0 rgba(17, 17, 17, 0.05);
-  --shadow-xs: 0 0px 1px 0 rgba(17, 17, 17, 0.03);
+    0 4px 6px -1px rgba(18, 18, 18, 0.3), 0 2px 4px -1px rgba(18, 18, 18, 0.2);
+  --shadow-sm: 0 1px 2px 0 rgba(18, 18, 18, 0.2);
+  --shadow-xs: 0 0px 1px 0 rgba(18, 18, 18, 0.15);
 }
 
 [data-theme='system'] {
   @media (prefers-color-scheme: dark) {
-    --background: #111111;
-    --foreground: #e0e0e0;
-    --card: #262626;
-    --card-foreground: #e0e0e0;
-    --popover: #4b4b4b;
-    --popover-foreground: #e0e0e0;
-    --primary: #d2b2df;
-    --primary-foreground: #111111;
-    --secondary: #b7b7b7;
-    --secondary-foreground: #111111;
-    --muted: #4b4b4b;
-    --muted-foreground: #e0e0e0;
-    --accent: oklch(56.123% 0.08014 168.324);;
-    --accent-foreground: oklch(87.753% 0.06285 159.282);
-    --destructive: oklch(51.905% 0.11795 359.014);
-    --destructive-foreground: oklch(85.54% 0.04861 25.972);
-    --border: #262626;
-    --input: #262626;
-    --ring: #DFB6B2;
+    --background: #121212;
+    --foreground: #eaeaea;
+    --card: #1e1d1c;
+    --card-foreground: #eaeaea;
+    --popover: #2c2b2a;
+    --popover-foreground: #eaeaea;
+    --primary: #acaba9;
+    --primary-foreground: #121212;
+    --secondary: #2c2b2a;
+    --secondary-foreground: #eaeaea;
+    --muted: #282726;
+    --muted-foreground: #acaba9;
+    --accent: #343332;
+    --accent-foreground: #eaeaea;
+    --destructive: oklch(0.62 0.2 25);
+    --destructive-foreground: oklch(0.95 0.02 25);
+    --border: #2c2b2a;
+    --input: #252423;
+    --ring: #acaba9;
     --radius: 0.75rem;
-    --chart-1: #111111;
-    --chart-2: #262626;
-    --chart-3: #4b4b4b;
-    --chart-4: #DFB6B2;
-    --chart-5: #b7b7b7;
-    --chart-6: #c2c2c2;
-    --chart-7: #9a9a9a;
-    --chart-8: #7a7a7a;
-    --chart-9: #5f5f5f;
-    --chart-10: #a0a0a0;
-    --chart-11: #343434;
-    --chart-12: #3f3f3f;
-    --chart-13: #474747;
-    --chart-14: #191919;
-    --sidebar: #111111;
-    --sidebar-foreground: #e0e0e0;
-    --sidebar-primary: #DFB6B2;
-    --sidebar-primary-foreground: #e0e0e0;
-    --sidebar-accent: #b7b7b7;
-    --sidebar-accent-foreground: #111111;
-    --sidebar-border: #262626;
-    --sidebar-ring: #DFB6B2;
+    --chart-1: #eaeaea;
+    --chart-2: #acaba9;
+    --chart-3: #75706f;
+    --chart-4: #4a4947;
+    --chart-5: #2c2b2a;
+    --chart-6: #c5c4c3;
+    --chart-7: #9a9997;
+    --chart-8: #6e6d6c;
+    --chart-9: #585655;
+    --chart-10: #3d3c3b;
+    --chart-11: #d8d7d6;
+    --chart-12: #b0afad;
+    --chart-13: #848382;
+    --chart-14: #1e1d1c;
+    --sidebar: #121212;
+    --sidebar-foreground: #eaeaea;
+    --sidebar-primary: #acaba9;
+    --sidebar-primary-foreground: #eaeaea;
+    --sidebar-accent: #2c2b2a;
+    --sidebar-accent-foreground: #eaeaea;
+    --sidebar-border: #2c2b2a;
+    --sidebar-ring: #acaba9;
     --font-sans: 'Geist Dark', 'Geist Fallback';
-    --font-mono: 'Geist Mono Dark', 'Geist Mono Fallback';
+    --font-mono: 'JetBrains Mono Variable','Geist Mono Dark', 'Geist Mono Fallback';
     --font-stashly: 'Share Tech Mono', 'IBM Plex Sans Hebrew';
 
-    /* real shadows — dark neutral shadows */
+    --dot-color: rgba(172, 171, 169, 0.2);
+    --dot-size: 1px;
+    --dot-gap: 22px;
+    --grid-color: rgba(44, 43, 42, 0.8);
+    --grid-size: 1px;
+    --grid-gap: 64px;
+    --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+
     --shadow-stashly:
-      0 1px 2px 0 rgba(17, 17, 17, 0.16), 0 2px 4px -1px rgba(17, 17, 17, 0.1),
-      0 4px 6px -2px rgba(17, 17, 17, 0.05);
+      0 1px 2px 0 rgba(18, 18, 18, 0.4), 0 2px 4px -1px rgba(18, 18, 18, 0.3),
+      0 4px 6px -2px rgba(18, 18, 18, 0.2);
     --shadow-md:
-      0 4px 6px -1px rgba(17, 17, 17, 0.1),
-      0 2px 4px -1px rgba(17, 17, 17, 0.06);
-    --shadow-sm: 0 1px 2px 0 rgba(17, 17, 17, 0.05);
-    --shadow-xs: 0 0px 1px 0 rgba(17, 17, 17, 0.03);
+      0 4px 6px -1px rgba(18, 18, 18, 0.3),
+      0 2px 4px -1px rgba(18, 18, 18, 0.2);
+    --shadow-sm: 0 1px 2px 0 rgba(18, 18, 18, 0.2);
+    --shadow-xs: 0 0px 1px 0 rgba(18, 18, 18, 0.15);
   }
 }
 
@@ -446,4 +461,203 @@
     background: oklch(from var(--muted) l c h / 0.5);
     box-shadow: inset 0 1px 3px 0 oklch(0.2 0.03 270 / 0.06);
   }
+}
+
+/* ── Markdown reader (MarkdownStage) ──────────────────────────────────────
+   Styles the react-markdown (remark-gfm) output rendered into `.markdown-stage`;
+   those nodes are outside Tailwind's reach, so they're styled here against
+   theme tokens. */
+.markdown-stage {
+  color: var(--foreground);
+  font-size: var(--font-size, 0.9375rem);
+  line-height: 1.7;
+}
+.markdown-stage h1,
+.markdown-stage h2,
+.markdown-stage h3,
+.markdown-stage h4,
+.markdown-stage h5,
+.markdown-stage h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  scroll-margin-top: 1.5rem;
+  margin: 1.75em 0 0.6em;
+}
+.markdown-stage > div > *:first-child {
+  margin-top: 0;
+}
+.markdown-stage h1 {
+  font-size: var(--font-size-h1, 1.75rem);
+}
+.markdown-stage h2 {
+  font-size: var(--font-size-h2, 1.4rem);
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--input);
+}
+.markdown-stage h3 {
+  font-size: var(--font-size-h3, 1.2rem);
+}
+.markdown-stage h4 {
+  font-size: var(--font-size-h4, 1.05rem);
+}
+.markdown-stage p,
+.markdown-stage ul,
+.markdown-stage ol,
+.markdown-stage blockquote {
+  margin: 0.85em 0;
+}
+.markdown-stage a {
+  color: var(--accent-foreground);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.markdown-stage ul,
+.markdown-stage ol {
+  padding-left: 1.5rem;
+}
+.markdown-stage ul {
+  list-style: none;
+}
+.markdown-stage ol {
+  list-style: decimal;
+}
+.markdown-stage li {
+  margin: 0.25em 0;
+}
+.markdown-stage ul.contains-task-list {
+  list-style: none;
+  padding-left: 0.5rem;
+}
+.markdown-stage li.task-list-item {
+  list-style: none;
+}
+.markdown-stage li.task-list-item input {
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+.markdown-stage blockquote {
+  padding-left: 1rem;
+  border-left: 3px solid var(--input);
+  color: var(--muted-foreground);
+}
+.markdown-stage code {
+  /* JetBrains Mono ships coding ligatures; calt/liga turn them on (=>, !==,
+     >=, ->). Falls back to the app mono if the webfont hasn't loaded. */
+  font-family: var(--font-mono, monospace);
+  font-feature-settings: 'liga' 1, 'calt' 1;
+  font-variant-ligatures: normal;
+  font-size: var(--text-base--line-height, 0.95em);
+  background: var(--muted);
+  color: var(--muted-foreground);
+  /* background: oklch(from var(--muted) l c h / 0.6); */
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-xs);
+}
+.markdown-stage pre {
+  position: relative;
+  margin: 1em 0;
+  padding: 1rem;
+  overflow-x: auto;
+  background: var(--color-muted);
+  border: 1px solid var(--input);
+  border-radius: var(--radius-md);
+}
+.markdown-stage pre code {
+  background: transparent;
+  padding: 0;
+  font-size: var(--font-size, 0.95em);
+  line-height: 1.6;
+}
+
+/* ── Language badge + accent (Option A: CSS-only, no highlighter) ──────────
+   react-markdown emits `<code class="language-<lang>">`; the class survives
+   sanitize. CSS can label/accent the block by language but not colour tokens —
+   that needs a highlighter (rehype-highlight). Both `ts` and `typescript`
+   info-strings are matched since either fence alias may be used. */
+.markdown-stage pre:has(code[class*='language-']) {
+  padding-top: 2.25rem;
+}
+.markdown-stage pre:has(code[class*='language-'])::before {
+  content: 'Code';
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--foreground);
+  background: var(--background);
+  border-bottom-left-radius: var(--radius-md);
+  font-family: var(--font-stashly);
+}
+.markdown-stage pre:has(code.language-ts)::before,
+.markdown-stage pre:has(code.language-typescript)::before {
+  content: 'TypeScript';
+}
+.markdown-stage pre:has(code.language-tsx)::before {
+  content: 'TSX';
+}
+.markdown-stage pre:has(code.language-js)::before,
+.markdown-stage pre:has(code.language-javascript)::before {
+  content: 'JavaScript';
+}
+.markdown-stage pre:has(code.language-jsx)::before {
+  content: 'JSX';
+}
+.markdown-stage pre:has(code.language-json)::before {
+  content: 'JSON';
+}
+.markdown-stage pre:has(code.language-bash)::before,
+.markdown-stage pre:has(code.language-sh)::before,
+.markdown-stage pre:has(code.language-shell)::before {
+  content: 'Shell';
+}
+.markdown-stage pre:has(code.language-css)::before {
+  content: 'CSS';
+}
+.markdown-stage pre:has(code.language-html)::before {
+  content: 'HTML';
+}
+.markdown-stage pre:has(code.language-python)::before,
+.markdown-stage pre:has(code.language-py)::before {
+  content: 'Python';
+}
+.markdown-stage pre:has(code.language-sql)::before {
+  content: 'SQL';
+}
+.markdown-stage pre:has(code.language-prisma)::before {
+  content: 'Prisma';
+}
+.markdown-stage pre:has(code.language-markdown)::before,
+.markdown-stage pre:has(code.language-md)::before {
+  content: 'Markdown';
+}
+
+.markdown-stage img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  margin: 0.5em 0;
+}
+.markdown-stage hr {
+  margin: 2em 0;
+  border: none;
+  border-top: 1px solid var(--input);
+}
+.markdown-stage table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--spacing) 0;
+}
+
+.markdown-stage th,
+.markdown-stage td {
+  border: 1px solid var(--input);
+  padding: var(--spacing) 0.75rem;
+  text-align: left;
+}
+.markdown-stage th {
+  background: var(--muted);
+  font-weight: 600;
 }

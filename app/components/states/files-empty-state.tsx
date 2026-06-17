@@ -1,4 +1,4 @@
-import { FileIcon, FolderIcon, TrashIcon } from '@/components/icons'
+import { FileFillIcon, FolderIcon } from '@/components/icons'
 import { GenericEmptyState } from './generic-empty-state'
 import { Logo } from '../logo'
 import { Button } from '../ui/button'
@@ -12,7 +12,7 @@ export const FilesEmptyState = () => {
     >
       <Button variant="outline" asChild>
         <Trigger className="font-stashly capitalize items-start">
-          <FileIcon className="size-5" />
+          <FileFillIcon className="size-5" />
           Files
         </Trigger>
       </Button>

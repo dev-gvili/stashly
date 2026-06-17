@@ -1,5 +1,5 @@
 import { cn } from '@/utils/styles'
-import { WorkspaceIcon, ActivityIcon, UserIcon, FavoriteIcon, AddIcon, MoreIcon } from '@/components/icons'
+import { WorkspaceFillIcon, ActivityFillIcon, UserIcon, FavoriteIcon, AddIcon, MoreIcon } from '@/components/icons'
 import type { WorkspaceMemberRole } from '@/prisma/enums'
 import { formatSize } from '@/utils/formaters'
 import { href, Link } from 'react-router'
@@ -665,7 +665,7 @@ function WorkspaceEmpty({ workspace, me }: Pick<WorkspaceOverviewProps, 'workspa
     <div className="flex flex-col items-center justify-center gap-6 py-24 px-4">
       <div className="relative">
         <div className="w-16 h-16 rounded-xl border-2 border-dashed border-input flex items-center justify-center">
-          <WorkspaceIcon className="w-7 h-7 text-muted-foreground/40" />
+          <WorkspaceFillIcon className="w-7 h-7 text-muted-foreground/40" />
         </div>
         <Corners />
       </div>

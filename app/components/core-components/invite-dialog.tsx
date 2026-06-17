@@ -17,9 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/tabs'
 import { cn } from '@/utils/styles'
 import {
   UserIcon,
-  GroupIcon,
+  GroupFillIcon,
   SubmitIcon,
-  DeleteIcon,
+  TrashFillIcon,
   LoaderIcon,
   AddIcon,
 } from '@/components/icons'
@@ -155,7 +155,7 @@ export function InviteDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <GroupIcon className="size-4" />
+            <GroupFillIcon className="size-4" />
             Invite people
           </DialogTitle>
           <p className="text-xs text-muted-foreground truncate">{itemName}</p>
@@ -219,7 +219,7 @@ export function InviteDialog({
                       className={cn('hidden', recipients.length > 1 && 'block')}
                     >
                       <InputGroupButton onClick={() => removeRecipient(index)}>
-                        <DeleteIcon />
+                        <TrashFillIcon />
                       </InputGroupButton>
                     </InputGroupAddon>
                   </InputGroup>
@@ -277,7 +277,7 @@ export function InviteDialog({
               </div>
             ) : invitations.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
-                <GroupIcon className="size-8 opacity-30" />
+                <GroupFillIcon className="size-8 opacity-30" />
                 <p className="text-xs">No invitations sent yet</p>
               </div>
             ) : (

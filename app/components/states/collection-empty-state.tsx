@@ -1,4 +1,4 @@
-import { CollectionIcon, CollectionLineIcon } from '@/components/icons'
+import { CollectionFillIcon } from '@/components/icons'
 import { GenericEmptyState, type GenericEmptyStateProps } from './generic-empty-state'
 import type React from 'react'
 export const CollectionEmptyState = ({
@@ -10,7 +10,7 @@ export const CollectionEmptyState = ({
     <GenericEmptyState
       description={description}
       title={title}
-      icon={<CollectionLineIcon className="size-20" />}
+      icon={<CollectionFillIcon className="size-20" />}
       children={children}
     />
   )

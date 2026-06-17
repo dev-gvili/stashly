@@ -19,10 +19,10 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu'
 import {
-  CollectionsFillIcon,
-  MenuDotsIcon,
-  RenameIcon,
-  TrashIcon,
+  CollectionFillIcon,
+  MoreMenuFillIcon,
+  RenameFillIcon,
+  TrashFillIcon,
 } from '@/components/icons'
 import { RenameDialog } from '@/components/core-components/rename-dialog'
 import { formatSize } from '@/utils/formaters'
@@ -78,7 +78,7 @@ export function CollectionCard({
               onClick={(e) => e.stopPropagation()}
               aria-label="Collection options"
             >
-              <MenuDotsIcon className="size-6!" />
+              <MoreMenuFillIcon className="size-6!" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="space-y-4 w-48">
               <DropdownMenuGroup className="mt-2">
@@ -96,7 +96,7 @@ export function CollectionCard({
                     onSelect={(e) => e.preventDefault()}
                     className="items-start"
                   >
-                    <RenameIcon className="text-foreground" />
+                    <RenameFillIcon className="text-foreground" />
                     Rename
                   </DropdownMenuItem>
                 </RenameDialog>
@@ -113,14 +113,14 @@ export function CollectionCard({
                     })
                   }}
                 >
-                  <TrashIcon />
+                  <TrashFillIcon />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </CardAction>
-        <CollectionsFillIcon className="size-14" />
+        <CollectionFillIcon className="size-14" />
       </CardHeader>
       <CollectionContent className="p-0 items-start">
         <CollectionName name={collection.name} className="mt-2" />

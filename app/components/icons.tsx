@@ -428,6 +428,34 @@ const WorkspaceFillIcon = (props: SVGProps<SVGSVGElement>) => (
 
 export { WorkspaceFillIcon }
 
+const WorkspaceMembersFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path fill="currentColor" d="M15.5 7.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0" />
+    <path
+      fill="currentColor"
+      d="M19.5 7.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0M4.5 7.5a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0"
+      opacity={0.5}
+    />
+    <path
+      fill="currentColor"
+      d="M18 16.5c0 1.933-2.686 3.5-6 3.5s-6-1.567-6-3.5S8.686 13 12 13s6 1.567 6 3.5"
+    />
+    <path
+      fill="currentColor"
+      d="M22 16.5c0 1.38-1.79 2.5-4 2.5s-4-1.12-4-2.5 1.79-2.5 4-2.5 4 1.12 4 2.5M2 16.5C2 17.88 3.79 19 6 19s4-1.12 4-2.5S8.21 14 6 14s-4 1.12-4 2.5"
+      opacity={0.5}
+    />
+  </svg>
+);
+export {WorkspaceMembersFillIcon};
+
 const CollectionIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -690,6 +718,30 @@ const SettingsIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 export { SettingsIcon }
 
+const SettingsFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M12.428 2c-1.114 0-2.129.6-4.157 1.802l-.686.406C5.555 5.41 4.542 6.011 3.985 7c-.557.99-.557 2.19-.557 4.594v.812c0 2.403 0 3.605.557 4.594s1.57 1.59 3.6 2.791l.686.407C10.299 21.399 11.314 22 12.428 22s2.128-.6 4.157-1.802l.686-.407c2.028-1.2 3.043-1.802 3.6-2.791.557-.99.557-2.19.557-4.594v-.812c0-2.403 0-3.605-.557-4.594s-1.572-1.59-3.6-2.792l-.686-.406C14.555 2.601 13.542 2 12.428 2"
+      clipRule="evenodd"
+      opacity={0.5}
+    />
+    <path
+      fill="currentColor"
+      d="M12.428 8.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5"
+    />
+  </svg>
+);
+export { SettingsFillIcon };
+
 const LogoutIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -721,6 +773,35 @@ const LogoutIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 export { LogoutIcon }
+
+const LogoutFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M15 2h-1c-2.828 0-4.243 0-5.121.879C8 3.757 8 5.172 8 8v8c0 2.828 0 4.243.879 5.121C9.757 22 11.172 22 14 22h1c2.828 0 4.243 0 5.121-.879C21 20.243 21 18.828 21 16V8c0-2.828 0-4.243-.879-5.121C19.243 2 17.828 2 15 2"
+      opacity={0.6}
+    />
+    <path
+      fill="currentColor"
+      d="M8 8c0-1.538 0-2.657.141-3.5H8c-2.357 0-3.536 0-4.268.732S3 7.143 3 9.5v5c0 2.357 0 3.535.732 4.268S5.643 19.5 8 19.5h.141C8 18.657 8 17.538 8 16V8"
+      opacity={0.4}
+    />
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M4.47 11.47a.75.75 0 0 0 0 1.06l2 2a.75.75 0 0 0 1.06-1.06l-.72-.72H14a.75.75 0 0 0 0-1.5H6.81l.72-.72a.75.75 0 1 0-1.06-1.06z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+export { LogoutFillIcon };
 
 const UserIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -1499,7 +1580,7 @@ const ShareItemFillIcon = (props: SVGProps<SVGSVGElement>) => (
     />
   </svg>
 )
-export default ShareItemFillIcon
+export { ShareItemFillIcon }
 
 const EditIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -1531,6 +1612,28 @@ const EditIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 export { EditIcon }
+
+const EditFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M1 12c0-5.185 0-7.778 1.61-9.39C4.223 1 6.816 1 12 1s7.778 0 9.39 1.61C23 4.223 23 6.816 23 12s0 7.778-1.61 9.39C19.777 23 17.184 23 12 23s-7.778 0-9.39-1.61C1 19.777 1 17.184 1 12"
+      opacity={0.5}
+    />
+    <path
+      fill="currentColor"
+      d="M13.926 14.302c.245-.191.467-.413.912-.858l5.54-5.54c.134-.134.073-.365-.106-.427a6.1 6.1 0 0 1-2.3-1.449 6.1 6.1 0 0 1-1.45-2.3c-.061-.179-.292-.24-.426-.106l-5.54 5.54c-.445.444-.667.667-.858.912a5 5 0 0 0-.577.932c-.133.28-.233.579-.431 1.175l-.257.77-.409 1.226-.382 1.148a.817.817 0 0 0 1.032 1.033l1.15-.383 1.224-.408.77-.257c.597-.199.895-.298 1.175-.432q.498-.236.933-.576M22.113 6.17a3.028 3.028 0 0 0-4.282-4.283l-.178.178a.73.73 0 0 0-.207.651c.027.15.077.37.168.633a4.9 4.9 0 0 0 1.174 1.863 4.9 4.9 0 0 0 1.862 1.174c.263.09.483.141.634.168.239.043.479-.035.65-.207z"
+    />
+  </svg>
+);
+export  {EditFillIcon};
 
 const DownloadIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -1738,6 +1841,30 @@ const FileDetailsIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 export { FileDetailsIcon }
 
+const DetailsFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M14 22h-4c-3.771 0-5.657 0-6.828-1.172S2 17.771 2 14v-4c0-3.771 0-5.657 1.172-6.828S6.239 2 10.03 2c.606 0 1.091 0 1.5.017q-.02.12-.02.244l-.01 2.834c0 1.097 0 2.067.105 2.848.114.847.375 1.694 1.067 2.386.69.69 1.538.952 2.385 1.066.781.105 1.751.105 2.848.105h4.052c.043.534.043 1.19.043 2.063V14c0 3.771 0 5.657-1.172 6.828S17.771 22 14 22"
+      clipRule="evenodd"
+      opacity={0.5}
+    />
+    <path
+      fill="currentColor"
+      d="M6 13.75a.75.75 0 0 0 0 1.5h8a.75.75 0 0 0 0-1.5zM6 17.25a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5zM11.51 2.26l-.01 2.835c0 1.097 0 2.066.105 2.848.114.847.375 1.694 1.067 2.385.69.691 1.538.953 2.385 1.067.781.105 1.751.105 2.848.105h4.052q.02.232.028.5H22c0-.268 0-.402-.01-.56a5.3 5.3 0 0 0-.958-2.641c-.094-.128-.158-.204-.285-.357C19.954 7.494 18.91 6.312 18 5.5c-.81-.724-1.921-1.515-2.89-2.161-.832-.556-1.248-.834-1.819-1.04a6 6 0 0 0-.506-.154c-.384-.095-.758-.128-1.285-.14z"
+    />
+  </svg>
+);
+export  {DetailsFillIcon};
+
 const HeartIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -1763,6 +1890,30 @@ const HeartIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 export { HeartIcon }
+
+const HeartFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M2 9.137c0 4.405 3.298 6.946 6.106 9.11q.44.337.856.664C10 19.729 11 20.5 12 20.5v-15C7.5.826 2 4.275 2 9.138"
+      clipRule="evenodd"
+      opacity={0.5}
+    />
+    <path
+      fill="currentColor"
+      d="m14 7.5-2-2v15c1 0 2-.77 3.038-1.59q.417-.326.856-.663C18.702 16.083 22 13.542 22 9.137c0-4.462-4.631-7.734-8.871-4.63l1.931 1.931A.75.75 0 0 1 14 7.5"
+    />
+  </svg>
+);
+export {HeartFillIcon};
 
 const MenuDotsIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -2264,34 +2415,7 @@ const PreviewIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 export { PreviewIcon }
 
-const DeleteIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="1em"
-    height="1em"
-    fill="none"
-    viewBox="0 0 24 24"
-    {...props}
-  >
-    <path
-      fill="currentColor"
-      d="m5.505 11.41.53.53zM3 14.952h-.75zM9.048 21v.75zM11.41 5.505l-.53-.53zm6.555 6.555-5.905 5.905 1.06 1.06 5.905-5.904zm-11.93-.12 5.905-5.905-1.06-1.06-5.905 5.904zm0 6.025c-.85-.85-1.433-1.436-1.812-1.933-.367-.481-.473-.79-.473-1.08h-1.5c0 .749.312 1.375.78 1.99.455.596 1.125 1.263 1.945 2.083zm-1.06-7.086c-.82.82-1.49 1.488-1.945 2.084-.468.614-.78 1.24-.78 1.99h1.5c0-.29.106-.6.473-1.08.38-.498.962-1.083 1.812-1.933zm7.085 7.086c-.85.85-1.435 1.433-1.933 1.813-.48.366-.79.472-1.08.472v1.5c.75 0 1.376-.312 1.99-.78.596-.455 1.264-1.125 2.084-1.945zm-7.085 1.06c.82.82 1.487 1.49 2.084 1.945.614.468 1.24.78 1.989.78v-1.5c-.29 0-.599-.106-1.08-.473-.497-.38-1.083-.962-1.933-1.812zm12.99-12.99c.85.85 1.433 1.436 1.813 1.933.366.481.472.79.472 1.08h1.5c0-.749-.312-1.375-.78-1.99-.455-.596-1.125-1.263-1.945-2.083zm1.06 7.086c.82-.82 1.49-1.488 1.945-2.084.468-.614.78-1.24.78-1.99h-1.5c0 .29-.106.6-.473 1.08-.38.498-.962 1.083-1.812 1.933zm0-8.146c-.82-.82-1.487-1.49-2.084-1.945-.614-.468-1.24-.78-1.989-.78v1.5c.29 0 .599.106 1.08.473.497.38 1.083.962 1.933 1.812zm-7.085 1.06c.85-.85 1.435-1.433 1.933-1.812.48-.367.79-.473 1.08-.473v-1.5c-.75 0-1.376.312-1.99.78-.596.455-1.264 1.125-2.084 1.945z"
-    />
-    <path
-      fill="currentColor"
-      d="M13.241 17.844a.75.75 0 0 0 1.06-1.06zM7.216 9.698a.75.75 0 1 0-1.06 1.061zm7.086 7.086L7.216 9.698l-1.06 1.061 7.085 7.085z"
-      opacity={0.5}
-    />
-    <path
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeWidth={1.5}
-      d="M9 21h12"
-      opacity={0.5}
-    />
-  </svg>
-)
-export { DeleteIcon }
+
 
 const FilesEmptyStateIllustration = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -3160,7 +3284,7 @@ const CheckSquareIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 export { CheckSquareIcon }
 
-const PauseV2Icon = (props: SVGProps<SVGSVGElement>) => (
+const PauseFillIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -3180,7 +3304,7 @@ const PauseV2Icon = (props: SVGProps<SVGSVGElement>) => (
     />
   </svg>
 )
-export { PauseV2Icon }
+export { PauseFillIcon }
 
 const DoubleCheckIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -3230,7 +3354,7 @@ const BreadcrumbSeparatorIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 export { BreadcrumbSeparatorIcon }
 
-const CollectionsFillIcon = (props: SVGProps<SVGSVGElement>) => (
+const CollectionFillIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -3250,7 +3374,7 @@ const CollectionsFillIcon = (props: SVGProps<SVGSVGElement>) => (
     />
   </svg>
 )
-export { CollectionsFillIcon }
+export { CollectionFillIcon  }
 
 const CollectionLineIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -3300,6 +3424,31 @@ const ViewIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 export { ViewIcon }
 
+
+const ViewFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M2 12c0 1.64.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.192 22 13.639 22 12c0-1.64-.425-2.191-1.275-3.296C19.028 6.5 16.182 4 12 4S4.972 6.5 3.275 8.704C2.425 9.81 2 10.361 2 12"
+      opacity={0.5}
+    />
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M8.25 12a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0m1.5 0a2.25 2.25 0 1 1 4.5 0 2.25 2.25 0 0 1-4.5 0"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+export {ViewFillIcon};
+
 const AnonymouseIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -3343,6 +3492,37 @@ const AnonymouseIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 export { AnonymouseIcon }
 
+const AnonymousFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path fill="currentColor" d="M21 16.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0" />
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M1.25 10A.75.75 0 0 1 2 9.25h20a.75.75 0 0 1 0 1.5H2a.75.75 0 0 1-.75-.75"
+      clipRule="evenodd"
+    />
+    <path
+      fill="currentColor"
+      d="m4.188 9.25.426-1.705c.545-2.183.818-3.274 1.632-3.91C7.06 3 8.185 3 10.435 3h3.13c2.25 0 3.375 0 4.189.635.814.636 1.086 1.727 1.632 3.91l.427 1.705z"
+      opacity={0.5}
+    />
+    <path fill="currentColor" d="M10 16.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0" />
+    <path
+      fill="currentColor"
+      d="M9.884 17.397a3.5 3.5 0 0 0 .025-1.69l.414-.207a3.75 3.75 0 0 1 3.354 0l.413.206a3.5 3.5 0 0 0 .026 1.69l-1.11-.555a2.25 2.25 0 0 0-2.012 0z"
+      opacity={0.5}
+    />
+  </svg>
+);
+export {AnonymousFillIcon};
+
 const GroupIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -3378,6 +3558,23 @@ const GroupIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 export { GroupIcon }
+
+const GroupFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <circle cx={15} cy={6} r={3} fill="currentColor" opacity={0.5} />
+    <ellipse cx={16} cy={17} fill="currentColor" opacity={0.5} rx={5} ry={3} />
+    <circle cx={9.001} cy={6} r={4} fill="currentColor" />
+    <ellipse cx={9.001} cy={17.001} fill="currentColor" rx={7} ry={4} />
+  </svg>
+);
+export {GroupFillIcon};
 
 const LinkIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -4330,38 +4527,6 @@ const MusicFillIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 export { MusicFillIcon }
 
-const CollectionFillIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="1em"
-    height="1em"
-    fill="none"
-    viewBox="0 0 24 24"
-    {...props}
-  >
-    <path
-      fill="currentColor"
-      d="M4.979 9.685C2.993 8.891 2 8.494 2 8s.993-.89 2.979-1.685l2.808-1.123C9.773 4.397 10.767 4 12 4s2.227.397 4.213 1.192l2.808 1.123C21.007 7.109 22 7.506 22 8s-.993.89-2.979 1.685l-2.808 1.124C14.227 11.603 13.233 12 12 12s-2.227-.397-4.213-1.191z"
-    />
-    <path
-      fill="currentColor"
-      fillRule="evenodd"
-      d="M2 8c0 .494.993.89 2.979 1.685l2.808 1.124C9.773 11.603 10.767 12 12 12s2.227-.397 4.213-1.191l2.808-1.124C21.007 8.891 22 8.494 22 8s-.993-.89-2.979-1.685l-2.808-1.123C14.227 4.397 13.233 4 12 4s-2.227.397-4.213 1.192L4.98 6.315C2.993 7.109 2 7.506 2 8"
-      clipRule="evenodd"
-    />
-    <path
-      fill="currentColor"
-      d="m5.766 10-.787.315C2.993 11.109 2 11.507 2 12s.993.89 2.979 1.685l2.808 1.124C9.773 15.603 10.767 16 12 16s2.227-.397 4.213-1.191l2.808-1.124C21.007 12.891 22 12.493 22 12s-.993-.89-2.979-1.685L18.234 10l-2.021.809C14.227 11.603 13.233 12 12 12s-2.227-.397-4.213-1.191z"
-      opacity={0.7}
-    />
-    <path
-      fill="currentColor"
-      d="m5.766 14-.787.315C2.993 15.109 2 15.507 2 16s.993.89 2.979 1.685l2.808 1.124C9.773 19.603 10.767 20 12 20s2.227-.397 4.213-1.192l2.808-1.123C21.007 16.891 22 16.494 22 16c0-.493-.993-.89-2.979-1.685L18.234 14l-2.021.809C14.227 15.603 13.233 16 12 16s-2.227-.397-4.213-1.191z"
-      opacity={0.4}
-    />
-  </svg>
-)
-export { CollectionFillIcon }
 
 const FolderFillIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -4977,3 +5142,233 @@ const CameraFillIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 export {CameraFillIcon};
+
+const SkipPreviousFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M10.3 6.837C7.433 9.029 6 10.125 6 12s1.433 2.97 4.3 5.163a41 41 0 0 0 2.297 1.65c.633.416 1.35.847 2.091 1.27 2.86 1.63 4.29 2.446 5.572 1.543 1.283-.902 1.4-2.792 1.632-6.57.066-1.07.108-2.117.108-3.056s-.042-1.987-.108-3.055c-.233-3.78-.35-5.668-1.632-6.571s-2.712-.087-5.572 1.543a39 39 0 0 0-2.091 1.27 41 41 0 0 0-2.297 1.65"
+    />
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M2 4.25a.75.75 0 0 0-.75.75v15a.75.75 0 0 0 1.5 0V5A.75.75 0 0 0 2 4.25"
+      clipRule="evenodd"
+      opacity={0.5}
+    />
+  </svg>
+);
+export {SkipPreviousFillIcon};
+
+const RepeatFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M8.716 3.203a.7.7 0 0 1 .987 0l1.86 1.846c.2.198.26.496.151.754a.7.7 0 0 1-.644.428H9.21C5.997 6.23 3.394 8.814 3.394 12S6 17.77 9.21 17.77h.464c.386 0 .698.31.698.692a.695.695 0 0 1-.698.692H9.21C5.228 19.154 2 15.95 2 12s3.228-7.154 7.21-7.154h.175l-.669-.664a.69.69 0 0 1 0-.98M13.628 5.538c0-.382.312-.692.698-.692h.465C18.772 4.846 22 8.05 22 12s-3.228 7.154-7.21 7.154h-.175l.669.664a.69.69 0 0 1 0 .98.7.7 0 0 1-.987 0l-1.86-1.847a.69.69 0 0 1-.151-.754.7.7 0 0 1 .644-.428h1.86c3.212 0 5.815-2.583 5.815-5.769s-2.603-5.77-5.814-5.77h-.465a.695.695 0 0 1-.698-.692"
+      clipRule="evenodd"
+    />
+    <path
+      fill="currentColor"
+      d="M5.488 12c0-2.04 1.666-3.692 3.721-3.692h5.582c2.055 0 3.72 1.653 3.72 3.692s-1.665 3.692-3.72 3.692H9.209c-2.055 0-3.72-1.653-3.72-3.692"
+      opacity={0.5}
+    />
+  </svg>
+);
+export {RepeatFillIcon};
+
+const ShuffleFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M2 16.25a.75.75 0 0 0 0 1.5zm8.748-2.163-.643-.386zm2.504-4.174.643.386zM22 7l.53.53a.75.75 0 0 0 0-1.06zm-2.53 1.47a.75.75 0 0 0 1.06 1.06zm1.06-4a.75.75 0 1 0-1.06 1.06zm-5.31 2.92-.369-.653zM2 17.75h3.603v-1.5H2zm9.39-3.277 2.505-4.174-1.286-.772-2.504 4.174zm7.007-6.723H22v-1.5h-3.603zm3.073-1.28-2 2 1.06 1.06 2-2zm1.06 0-2-2-1.06 1.06 2 2zm-8.635 3.829c.434-.724.734-1.22 1.006-1.589.263-.355.468-.543.689-.668l-.739-1.305c-.467.264-.82.627-1.155 1.08-.326.44-.668 1.011-1.087 1.71zm4.502-4.049c-.815 0-1.48 0-2.025.052-.562.055-1.054.17-1.521.435l.739 1.305c.22-.125.487-.204.927-.247.456-.044 1.036-.045 1.88-.045zM5.603 17.75c.815 0 1.48 0 2.025-.052.562-.055 1.054-.17 1.521-.435l-.739-1.305c-.22.125-.487.204-.927.247-.456.044-1.036.045-1.88.045zm4.502-4.049c-.435.724-.734 1.22-1.006 1.589-.263.355-.468.543-.689.668l.74 1.305c.466-.264.819-.627 1.154-1.08.326-.44.668-1.011 1.087-1.71z"
+    />
+    <path
+      fill="currentColor"
+      d="M2 7.75a.75.75 0 0 1 0-1.5zm8.748 2.163-.643.386zm2.504 4.174.643-.386zM22 17l.53-.53a.75.75 0 0 1 0 1.06zm-2.53-1.47a.75.75 0 1 1 1.06-1.06zm1.06 4a.75.75 0 1 1-1.06-1.06zm-5.31-2.92-.369.653zM2 6.25h3.603v1.5H2zm9.39 3.277 2.505 4.174-1.286.772-2.504-4.174zm7.007 6.723H22v1.5h-3.603zm3.073 1.28-2-2 1.06-1.06 2 2zm1.06 0-2 2-1.06-1.06 2-2zm-8.635-3.829c.434.724.734 1.22 1.006 1.589.263.355.468.543.689.668l-.739 1.305c-.467-.264-.82-.627-1.155-1.08-.326-.44-.668-1.011-1.087-1.71zm4.502 4.049c-.815 0-1.48 0-2.025-.052-.562-.055-1.054-.17-1.521-.435l.739-1.305c.22.125.487.204.927.247.456.044 1.036.045 1.88.045zM5.603 6.25c.815 0 1.48 0 2.025.052.562.055 1.054.17 1.521.435L8.41 8.042c-.22-.125-.487-.204-.927-.247-.456-.044-1.036-.045-1.88-.045zm4.502 4.049c-.435-.724-.734-1.22-1.006-1.589-.263-.355-.468-.543-.689-.668l.74-1.305c.466.264.819.627 1.154 1.08.326.44.668 1.011 1.087 1.71z"
+      opacity={0.5}
+    />
+  </svg>
+);
+export {ShuffleFillIcon};
+
+const VolumeFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M2.003 11.716c.037-1.843.056-2.764.668-3.552.112-.144.276-.315.413-.431.752-.636 1.746-.636 3.733-.636.71 0 1.065 0 1.403-.092q.105-.03.209-.067c.33-.121.627-.33 1.22-.746 2.338-1.645 3.508-2.467 4.489-2.11.188.069.37.168.533.29.848.635.913 2.115 1.042 5.073.048 1.096.08 2.034.08 2.555s-.032 1.46-.08 2.555c-.13 2.958-.194 4.438-1.042 5.073-.163.122-.345.221-.533.29-.982.357-2.15-.465-4.49-2.11-.592-.416-.889-.625-1.22-.746a3 3 0 0 0-.208-.067c-.338-.092-.693-.092-1.403-.092-1.987 0-2.98 0-3.733-.636a3 3 0 0 1-.413-.43c-.612-.79-.63-1.71-.668-3.552a14 14 0 0 1 0-.57"
+    />
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M19.49 5.552a.66.66 0 0 1 .97.094l-.529.471.53-.47h.001l.001.002.003.004.007.009.079.112q.073.107.186.305c.149.265.34.652.527 1.171C21.64 8.291 22 9.851 22 12s-.36 3.71-.735 4.75c-.188.52-.378.907-.527 1.172a5 5 0 0 1-.265.417l-.007.009-.003.003-.001.002s-.001.001-.53-.47l.529.471a.66.66 0 0 1-.971.094.77.77 0 0 1-.092-1.03l.003-.005.028-.04q.043-.062.126-.208a6 6 0 0 0 .422-.943c.314-.871.644-2.252.644-4.222 0-1.969-.33-3.35-.644-4.222a6 6 0 0 0-.422-.942 3 3 0 0 0-.157-.252"
+      clipRule="evenodd"
+      opacity={0.4}
+    />
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M17.757 8.416c.333-.197.753-.07.938.286l-.603.357.603-.357.001.002.002.003.003.007.01.018.024.053q.028.063.07.17c.053.145.12.35.185.62.13.54.252 1.337.252 2.425 0 1.089-.122 1.886-.252 2.426-.065.27-.132.475-.186.619a3 3 0 0 1-.094.223l-.009.018-.003.007-.002.003v.002s-.001.001-.604-.356l.603.357c-.185.355-.605.483-.938.286-.33-.196-.45-.638-.272-.991l.004-.01.035-.085c.032-.086.08-.23.13-.438.1-.416.208-1.09.208-2.06 0-.971-.108-1.645-.208-2.061a4 4 0 0 0-.165-.523l-.004-.01c-.179-.354-.058-.796.272-.991"
+      clipRule="evenodd"
+      opacity={0.7}
+    />
+  </svg>
+);
+export {VolumeFillIcon};
+
+const MutedillIcon = (props: SVGProps<SVGSVGElement>) => (
+   <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M17.782 9.52a.745.745 0 0 1 1.048 0l1.452 1.44 1.453-1.44a.745.745 0 0 1 1.048 0c.29.286.29.752 0 1.04L21.33 12l1.453 1.441c.29.287.29.753 0 1.04a.745.745 0 0 1-1.048 0l-1.453-1.44-1.452 1.44a.745.745 0 0 1-1.048 0 .73.73 0 0 1 0-1.04l1.452-1.44-1.452-1.442a.73.73 0 0 1 0-1.04"
+      clipRule="evenodd"
+    />
+    <path
+      fill="currentColor"
+      d="M2.003 11.716c.04-1.843.06-2.764.718-3.552.12-.144.296-.315.444-.431.809-.636 1.876-.636 4.012-.636.763 0 1.144 0 1.508-.092q.114-.03.224-.067c.355-.121.674-.33 1.31-.746 2.514-1.645 3.771-2.467 4.826-2.11.202.069.398.168.573.29.911.635.98 2.115 1.12 5.073.05 1.096.085 2.034.085 2.555s-.034 1.46-.086 2.555c-.138 2.958-.208 4.438-1.12 5.073-.174.122-.37.221-.572.29-1.055.357-2.312-.465-4.825-2.11-.637-.416-.956-.625-1.31-.746a3 3 0 0 0-.225-.067c-.364-.092-.745-.092-1.508-.092-2.136 0-3.203 0-4.012-.636a3.3 3.3 0 0 1-.444-.43c-.658-.79-.678-1.71-.718-3.552a13 13 0 0 1 0-.57"
+      opacity={0.5}
+    />
+  </svg>
+
+);
+export {MutedillIcon};
+
+const Forward10FillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M10.325 7.824a.75.75 0 0 1 .425.676v7a.75.75 0 0 1-1.5 0v-5.44l-1.281 1.026a.75.75 0 0 1-.937-1.172l2.5-2a.75.75 0 0 1 .793-.09"
+    />
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M14.25 7.75a2.5 2.5 0 0 0-2.5 2.5v3.5a2.5 2.5 0 0 0 5 0v-3.5a2.5 2.5 0 0 0-2.5-2.5m0 1.5a1 1 0 0 0-1 1v3.5a1 1 0 1 0 2 0v-3.5a1 1 0 0 0-1-1"
+      clipRule="evenodd"
+    />
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M12.676 1.675A.75.75 0 0 0 12 1.25q-1.104.002-2.15.215C4.945 2.461 1.25 6.798 1.25 12c0 5.937 4.813 10.75 10.75 10.75S22.75 17.937 22.75 12c0-4.41-2.655-8.197-6.45-9.855a.75.75 0 0 0-.6 1.374A9.25 9.25 0 1 1 2.75 12a9.255 9.255 0 0 1 6.5-8.834V4.5a.75.75 0 0 0 1.336.469l2-2.5a.75.75 0 0 0 .09-.794"
+      clipRule="evenodd"
+      opacity={0.5}
+    />
+  </svg>
+);
+export {Forward10FillIcon};
+
+const Previous10FillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M10.325 7.824a.75.75 0 0 1 .425.676v7a.75.75 0 0 1-1.5 0v-5.44l-1.281 1.026a.75.75 0 0 1-.937-1.172l2.5-2a.75.75 0 0 1 .793-.09"
+    />
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M14.25 7.75a2.5 2.5 0 0 0-2.5 2.5v3.5a2.5 2.5 0 0 0 5 0v-3.5a2.5 2.5 0 0 0-2.5-2.5m0 1.5a1 1 0 0 0-1 1v3.5a1 1 0 1 0 2 0v-3.5a1 1 0 0 0-1-1"
+      clipRule="evenodd"
+    />
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M11.324 1.675A.75.75 0 0 1 12 1.25q1.104.002 2.15.215c4.906.996 8.6 5.333 8.6 10.535 0 5.937-4.813 10.75-10.75 10.75S1.25 17.937 1.25 12c0-4.41 2.655-8.197 6.45-9.855a.75.75 0 1 1 .6 1.374A9.25 9.25 0 1 0 21.25 12a9.255 9.255 0 0 0-6.5-8.834V4.5a.75.75 0 0 1-1.336.469l-2-2.5a.75.75 0 0 1-.09-.794"
+      clipRule="evenodd"
+      opacity={0.5}
+    />
+  </svg>
+);
+export {Previous10FillIcon};
+
+const FullscreenFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M18.29 2.89c-1.028-.138-2.383-.14-4.29-.14a.75.75 0 0 1 0-1.5h.056c1.838 0 3.294 0 4.433.153 1.172.158 2.121.49 2.87 1.238.748.749 1.08 1.698 1.238 2.87.153 1.14.153 2.595.153 4.433V10a.75.75 0 0 1-1.5 0c0-1.907-.002-3.261-.14-4.29-.135-1.005-.389-1.585-.812-2.008s-1.003-.677-2.009-.812M2 13.25a.75.75 0 0 1 .75.75c0 1.907.002 3.262.14 4.29.135 1.005.389 1.585.812 2.008s1.003.677 2.009.812c1.028.138 2.382.14 4.289.14a.75.75 0 0 1 0 1.5h-.056c-1.838 0-3.294 0-4.433-.153-1.172-.158-2.121-.49-2.87-1.238-.748-.749-1.08-1.698-1.238-2.87-.153-1.14-.153-2.595-.153-4.433V14a.75.75 0 0 1 .75-.75"
+      clipRule="evenodd"
+    />
+    <g fill="currentColor" opacity={0.5}>
+      <path d="M9.944 1.25H10a.75.75 0 0 1 0 1.5c-1.907 0-3.261.002-4.29.14-1.005.135-1.585.389-2.008.812S3.025 4.705 2.89 5.71C2.752 6.739 2.75 8.093 2.75 10a.75.75 0 0 1-1.5 0v-.056c0-1.838 0-3.294.153-4.433.158-1.172.49-2.121 1.238-2.87.749-.748 1.698-1.08 2.87-1.238 1.14-.153 2.595-.153 4.433-.153M22 13.25a.75.75 0 0 1 .75.75v.056c0 1.838 0 3.294-.153 4.433-.158 1.172-.49 2.121-1.238 2.87-.749.748-1.698 1.08-2.87 1.238-1.14.153-2.595.153-4.433.153H14a.75.75 0 0 1 0-1.5c1.907 0 3.262-.002 4.29-.14 1.005-.135 1.585-.389 2.008-.812s.677-1.003.812-2.009c.138-1.027.14-2.382.14-4.289a.75.75 0 0 1 .75-.75" />
+    </g>
+  </svg>
+);
+export {FullscreenFillIcon};
+
+const QuitFullscreenFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M10 1.25a.75.75 0 0 1 .75.75v.056c0 1.838 0 3.294-.153 4.433-.158 1.172-.49 2.121-1.238 2.87-.749.748-1.698 1.08-2.87 1.238-1.14.153-2.595.153-4.433.153H2a.75.75 0 0 1 0-1.5c1.907 0 3.261-.002 4.29-.14 1.005-.135 1.585-.389 2.008-.812s.677-1.003.812-2.009c.138-1.028.14-2.382.14-4.289a.75.75 0 0 1 .75-.75m11.944 12H22a.75.75 0 0 1 0 1.5c-1.907 0-3.262.002-4.29.14-1.005.135-1.585.389-2.008.812s-.677 1.003-.812 2.009c-.138 1.027-.14 2.382-.14 4.289a.75.75 0 0 1-1.5 0v-.056c0-1.838 0-3.294.153-4.433.158-1.172.49-2.121 1.238-2.87.749-.748 1.698-1.08 2.87-1.238 1.14-.153 2.595-.153 4.433-.153"
+      clipRule="evenodd"
+    />
+    <g fill="currentColor" opacity={0.5}>
+      <path d="M14 1.25a.75.75 0 0 1 .75.75c0 1.907.002 3.261.14 4.29.135 1.005.389 1.585.812 2.008s1.003.677 2.009.812c1.027.138 2.382.14 4.289.14a.75.75 0 0 1 0 1.5h-.056c-1.838 0-3.294 0-4.433-.153-1.172-.158-2.121-.49-2.87-1.238-.748-.749-1.08-1.698-1.238-2.87-.153-1.14-.153-2.595-.153-4.433V2a.75.75 0 0 1 .75-.75M1.25 14a.75.75 0 0 1 .75-.75h.056c1.838 0 3.294 0 4.433.153 1.172.158 2.121.49 2.87 1.238.748.749 1.08 1.698 1.238 2.87.153 1.14.153 2.595.153 4.433V22a.75.75 0 0 1-1.5 0c0-1.907-.002-3.262-.14-4.29-.135-1.005-.389-1.585-.812-2.008s-1.003-.677-2.009-.812c-1.028-.138-2.382-.14-4.289-.14a.75.75 0 0 1-.75-.75" />
+    </g>
+  </svg>
+);
+export {QuitFullscreenFillIcon};

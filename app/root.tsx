@@ -1,4 +1,5 @@
 import shareTechMonoFonts from '@fontsource/share-tech-mono/index.css?url'
+import jetbrainsMonoFonts from '@fontsource-variable/jetbrains-mono/index.css?url'
 import styles from '@/styles/globals.css?url'
 import {
   Links,
@@ -17,6 +18,7 @@ import React from 'react'
 export const links: Route.LinksFunction = () => [
   { rel: 'stylesheet', href: styles },
   { rel: 'stylesheet', href: shareTechMonoFonts },
+  { rel: 'stylesheet', href: jetbrainsMonoFonts },
 ]
 
 export function meta({}: Route.MetaArgs) {

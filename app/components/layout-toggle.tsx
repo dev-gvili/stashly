@@ -2,7 +2,12 @@ import { RiLayoutMasonryFill } from '@remixicon/react'
 import { LayoutMenu, LayoutMenuItem } from './ui/layout-menu'
 import { cn } from '@/utils/styles'
 import { useLocation, useSearchParams } from 'react-router'
-import { WaterfallIcon, GridIcon, ListIcon, RiverIcon, WaterfallFillIcon, GridFillIcon, ListFillIcon, RiverFillIcon } from './icons'
+import {
+  WaterfallFillIcon,
+  GridFillIcon,
+  ListFillIcon,
+  RiverFillIcon,
+} from './icons'
 
 const LayoutToggle = ({
   className,
@@ -10,6 +15,9 @@ const LayoutToggle = ({
   value,
   ...props
 }: React.ComponentPropsWithoutRef<typeof LayoutMenu>) => {
+  let location = useLocation()
+  if (location.pathname.includes('/files')) return null
+
   let [searchParams] = useSearchParams()
   value = value ?? searchParams.get('layout') ?? 'river'
   return (
@@ -26,7 +34,11 @@ const LayoutToggle = ({
 
 export function River() {
   let location = useLocation()
-  if (!location.pathname.includes('/images') && !location.pathname.includes('/videos')) return null
+  if (
+    !location.pathname.includes('/images') &&
+    !location.pathname.includes('/videos')
+  )
+    return null
   return (
     <LayoutMenuItem tooltip="River view" value="river">
       <RiverFillIcon className="size-5! rotate-90" />
@@ -36,7 +48,11 @@ export function River() {
 
 export function Waterfall() {
   let location = useLocation()
-  if (!location.pathname.includes('/images') && !location.pathname.includes('/videos')) return null
+  if (
+    !location.pathname.includes('/images') &&
+    !location.pathname.includes('/videos')
+  )
+    return null
   return (
     <LayoutMenuItem tooltip="Waterfall view" value="waterfall">
       <WaterfallFillIcon className="size-5!" />

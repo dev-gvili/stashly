@@ -19,34 +19,25 @@ import { ScrollArea } from '@/ui/scroll-area'
 import { Button } from '@/ui/button'
 import { MoveToFolderDialog } from '@/components/core-components/move-to-folder-dialog'
 import { ShareDialog } from '@/components/core-components/share-dialog'
-import { InviteDialog } from '@/components/core-components/invite-dialog'
 import { ItemActivityDrawer } from '@/components/core-components/item-activity-drawer'
-import ShareItemFillIcon, {
+import {
+  ShareItemFillIcon,
   ActivityFillIcon,
-  ActivityIcon,
   CopyFillIcon,
-  CopyIcon,
-  DeleteIcon,
-  DownloadIcon,
-  FileDetailsIcon,
-  GroupIcon,
-  HeartIcon,
+  DownloadFillIcon,
+  DetailsFillIcon,
+  GroupFillIcon,
+  HeartFillIcon,
   LockFillIcon,
-  MenuDotsIcon,
-  MinusFillIcon,
   MoreMenuFillIcon,
-  MoveToFolder,
+  MinusFillIcon,
+  MoveFillIcon,
   PinFillIcon,
-  PinIcon,
-  PinItemFillIcon,
-  PinItemIcon,
   PreviewIcon,
   RemoveIcon,
   RenameFillIcon,
-  RenameIcon,
   RestoreIcon,
   TrashFillIcon,
-  TrashIcon,
   UnlockFillIcon,
 } from '@/components/icons'
 
@@ -106,7 +97,7 @@ function Preview(props: ItemProps) {
 function Download(props: ItemProps) {
   return (
     <Item {...props}>
-      <DownloadIcon className="text-current" />
+      <DownloadFillIcon className="text-current" />
       Download
     </Item>
   )
@@ -123,8 +114,10 @@ function Copy(props: ItemProps) {
 
 function Move(props: ItemProps) {
   const [open, setOpen] = React.useState(false)
-  const { id, name, type, parentId, driveId, thumbnails } = useItemCard()
-  const thumbnailUrl = thumbnails?.[0]?.url?.startsWith('#') ? null : (thumbnails?.[0]?.url ?? null)
+  const { id, name, type, parentId, driveId, thumbnails, parent } = useItemCard()
+  const thumbnailUrl = thumbnails?.[0]?.url?.startsWith('#')
+    ? null
+    : (thumbnails?.[0]?.url ?? null)
 
   return (
     <>
@@ -137,7 +130,7 @@ function Move(props: ItemProps) {
           props.onClick?.(e)
         }}
       >
-        <MoveToFolder className="text-current" />
+        <MoveFillIcon className="text-current" />
         Move
       </Item>
       <MoveToFolderDialog
@@ -147,6 +140,7 @@ function Move(props: ItemProps) {
         itemName={name}
         itemType={type === 'folder' ? 'folder' : 'file'}
         sourceParentId={parentId}
+        sourceParentName={parent?.name ?? null}
         driveId={driveId}
         thumbnailUrl={thumbnailUrl}
       />
@@ -166,7 +160,7 @@ function Rename(props: ItemProps) {
 function Details(props: ItemProps) {
   return (
     <Item {...props}>
-      <FileDetailsIcon className="text-current" />
+      <DetailsFillIcon className="text-current" />
       Details
     </Item>
   )
@@ -193,10 +187,7 @@ function Favorite(props: ItemProps) {
         props.onClick?.(e)
       }}
     >
-      <HeartIcon
-        fill={favorited ? 'currentColor' : 'none'}
-        className="text-current"
-      />
+      <HeartFillIcon className="text-current" />
       {favorited ? 'Unfavorite' : 'Favorite'}
     </Item>
   )
@@ -222,11 +213,7 @@ function Pin(props: ItemProps) {
         props.onClick?.(e)
       }}
     >
-      {pinned ? (
-        <PinFillIcon className="text-current" />
-      ) : (
-        <PinItemIcon className="text-current" />
-      )}
+      <PinFillIcon className="text-current" />
       {pinned ? 'Unpin' : 'Pin'}
     </Item>
   )
@@ -309,12 +296,13 @@ function Invite(props: ItemProps) {
           props.onClick?.(e)
         }}
       >
-        <GroupIcon className="text-current" />
+        <GroupFillIcon className="text-current" />
         Invite
       </Item>
-      <InviteDialog
+      <ShareDialog
         itemId={id}
         itemName={name}
+        itemType="file"
         open={open}
         onOpenChange={setOpen}
       />
@@ -429,7 +417,7 @@ function Delete(props: ItemProps) {
         props.onClick?.(e)
       }}
     >
-      <DeleteIcon className="text-current" />
+      <TrashFillIcon className="text-current" />
       <span>Delete</span>
     </Item>
   )
@@ -555,7 +543,6 @@ function DefaultMenu({ status }: { status: string }) {
       </Group>
       <Group label="Access">
         <Share />
-        <Invite />
         <Lock />
       </Group>
       <Group label="Organize">

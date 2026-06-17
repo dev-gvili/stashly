@@ -29,7 +29,8 @@ export const AppToolbar = ({
   let location = useLocation()
   if (
     location.pathname.includes('/videos') ||
-    location.pathname.includes('/images')
+    location.pathname.includes('/images') || 
+    location.pathname.includes('/files') 
   ) {
     return null
   }
@@ -37,7 +38,9 @@ export const AppToolbar = ({
   let hasSelectedItems = hasQueryParam(searchParams, 'selectedItems')
   let selectedCount = getQueryParamArray(searchParams, 'selectedItems').length
   let breadcrumbs = useBreadcrumbs()
-  title = title ?? location.state?.name ?? breadcrumbs?.at(-1)?.name ?? 'Stashly'
+
+  // todo: create a function to detarmaind the title
+  title = title ?? location.state?.name ?? breadcrumbs?.at(-1)?.name ?? location.pathname.split('/').filter(Boolean).at(-1)?.replace(/-/g, ' ') ?? ''
   return (
     <div
       className={cn(

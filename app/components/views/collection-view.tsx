@@ -21,20 +21,20 @@ import {
 } from '@/components/core-components/add-to-collection-dialog'
 import { CollectionEmptyState } from '@/components/states/collection-empty-state'
 import {
-  ActivityIcon,
+  ActivityFillIcon,
   AddIcon,
-  CollectionIcon,
-  CopyIcon,
-  FileDetailsIcon,
-  FileIcon,
+  CollectionFillIcon,
+  CopyFillIcon,
+  DetailsFillIcon,
+  FileFillIcon,
   FolderIcon,
-  LockIcon,
-  MenuDotsIcon,
-  MoveToFolder,
+  LockFillIcon,
+  MoreMenuFillIcon,
+  MoveFillIcon,
   RemoveIcon,
-  RenameIcon,
-  ShareItemIcon,
-  TrashIcon,
+  RenameFillIcon,
+  ShareItemFillIcon,
+  TrashFillIcon,
 } from '@/components/icons'
 import { formatSize } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
@@ -83,9 +83,9 @@ function ItemTypeIcon({
     return <FolderIcon className={cn('size-4 text-amber-500', className)} />
   if (type === 'collection')
     return (
-      <CollectionIcon className={cn('size-4 text-violet-500', className)} />
+      <CollectionFillIcon className={cn('size-4 text-violet-500', className)} />
     )
-  return <FileIcon className={cn('size-4 text-muted-foreground', className)} />
+  return <FileFillIcon className={cn('size-4 text-muted-foreground', className)} />
 }
 
 // ---------------------------------------------------------------------------
@@ -164,7 +164,7 @@ function CollectionPageHeader({
                 size="icon"
                 className="bg-card border-input"
               >
-                <MenuDotsIcon className="size-6!" />
+                <MoreMenuFillIcon className="size-6!" />
               </Button>
             </DropdownMenuTrigger>
 
@@ -194,11 +194,11 @@ function CollectionPageHeader({
                   Access
                 </DropdownMenuLabel>
                 <DropdownMenuItem className="items-start">
-                  <ShareItemIcon className="text-foreground" />
+                  <ShareItemFillIcon className="text-foreground" />
                   Share
                 </DropdownMenuItem>
                 <DropdownMenuItem className="items-start">
-                  <LockIcon className="text-foreground" />
+                  <LockFillIcon className="text-foreground" />
                   Lock
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -208,11 +208,11 @@ function CollectionPageHeader({
                   Organize
                 </DropdownMenuLabel>
                 <DropdownMenuItem className="items-start">
-                  <CopyIcon className="text-foreground" />
+                  <CopyFillIcon className="text-foreground" />
                   Copy
                 </DropdownMenuItem>
                 <DropdownMenuItem className="items-start">
-                  <MoveToFolder className="text-foreground" />
+                  <MoveFillIcon className="text-foreground" />
                   Move
                 </DropdownMenuItem>
                 <RenameDialog
@@ -226,7 +226,7 @@ function CollectionPageHeader({
                     className="items-start"
                     onSelect={(e) => e.preventDefault()}
                   >
-                    <RenameIcon className="text-foreground" />
+                    <RenameFillIcon className="text-foreground" />
                     Rename
                   </DropdownMenuItem>
                 </RenameDialog>
@@ -237,11 +237,11 @@ function CollectionPageHeader({
                   Information
                 </DropdownMenuLabel>
                 <DropdownMenuItem className="items-start">
-                  <ActivityIcon className="text-foreground" />
+                  <ActivityFillIcon className="text-foreground" />
                   Activity
                 </DropdownMenuItem>
                 <DropdownMenuItem className="items-start">
-                  <FileDetailsIcon className="text-foreground" />
+                  <DetailsFillIcon className="text-foreground" />
                   Details
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -262,7 +262,7 @@ function CollectionPageHeader({
                   })
                 }}
               >
-                <TrashIcon className="text-foreground" />
+                <TrashFillIcon className="text-foreground" />
                 <span className="text-nowrap shrink-0">Move to trash</span>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -281,7 +281,7 @@ function CollectionPageHeader({
                   })
                 }}
               >
-                <TrashIcon className="text-foreground" />
+                <TrashFillIcon className="text-foreground" />
                 <span className="text-nowrap shrink-0">Empty collection</span>
               </DropdownMenuItem>
             </DropdownMenuContent>

@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router'
 import { generateVideoThumbnail } from '@/utils/video'
 import { cn } from '@/utils'
-import { MediaIcon, PauseV2Icon } from './icons'
+import { MediaIcon, PauseFillIcon } from './icons'
 
 function VideoItem({ src, className }: { src: string; className?: string }) {
   const [poster, setPoster] = useState<string | undefined>(undefined)
@@ -56,7 +56,7 @@ function VideoItem({ src, className }: { src: string; className?: string }) {
           className="absolute inset-0 flex items-center justify-center"
         >
           {isPlaying ? (
-            <PauseV2Icon className="size-12 drop-shadow-md" />
+            <PauseFillIcon className="size-12 drop-shadow-md" />
           ) : (
             <MediaIcon className="size-12 drop-shadow-md" />
           )}
@@ -81,7 +81,7 @@ function GridItem({ item, showVideo }: { item: ImageData; showVideo: boolean }) 
           className="rounded-md object-cover w-full h-full"
         />
       ) : (
-        <Link to={item.id} viewTransition unstable_mask=".">
+        <Link to={item.id} viewTransition mask=".">
           <motion.img
             data-prefetch="true"
             layoutId={item.id}
