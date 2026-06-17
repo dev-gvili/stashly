@@ -39,7 +39,7 @@ export async function getMoE(progressCallback?: ProgressCallback) {
   const model_id = 'onnx-community/gemma-4-E4B-it-ONNX'
   const processor = await AutoProcessor.from_pretrained(model_id)
   const model = await Gemma4ForConditionalGeneration.from_pretrained(model_id, {
-    dtype: 'q4',
+    dtype: 'q4f16', // Use fp16 for better accuracy; q4f16 can be used for lower memory usage,
     device: 'webgpu',
     progress_callback: progressCallback,
   })
@@ -82,7 +82,6 @@ Follow these specific instructions for formatting the answer:
   ]
 
   const prompt = processor.apply_chat_template(messages, {
-    enable_thinking: true,
     add_generation_prompt: true,
   })
 
