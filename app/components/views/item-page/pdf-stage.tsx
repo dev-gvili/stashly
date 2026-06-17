@@ -6,10 +6,15 @@ import {
   ChevronRightIcon,
   Pdf2Icon,
   LoaderIcon,
+  ZoomOutFillIcon,
+  ZoomInFillIcon,
+  DropdownIcon,
+  SidebarFillIcon,
 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/utils/styles'
+import { SidebarTrigger, useSidebar } from '@/components/ui'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,8 +35,9 @@ export type PdfItemShape = {
 
 // Zoom is a multiplier on top of the fit-to-width scale; 1 = fit width.
 const ZOOM_LEVELS = [0.5, 0.67, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3]
-const STAGE_PADDING = 0 // total horizontal padding around a page
+const STAGE_PADDING = 64 // page container's horizontal padding (px-8 × 2)
 const THUMB_WIDTH = 128 // css px width of rail thumbnails
+const RAIL_WIDTH = '11rem' // expanded rail width
 
 function stepZoom(zoom: number, dir: 1 | -1): number {
   const idx = ZOOM_LEVELS.findIndex((z) => Math.abs(z - zoom) < 0.001)
@@ -119,6 +125,12 @@ function useLazyPageCanvas({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const renderTaskRef = useRef<{ cancel: () => void } | null>(null)
+  // Scale the canvas was last painted at. The canvas keeps its bitmap when the
+  // page scrolls out of view, so once painted at a given scale there's nothing
+  // to redo — only a zoom (scale change) needs a repaint. Guarding on this
+  // prevents re-rendering already-painted pages every time navigation scrolls
+  // them back through the IntersectionObserver margin.
+  const renderedScaleRef = useRef<number | null>(null)
   const [visible, setVisible] = useState(false)
   const [rendered, setRendered] = useState(false)
 
@@ -135,6 +147,7 @@ function useLazyPageCanvas({
 
   useEffect(() => {
     if (!visible) return
+    if (renderedScaleRef.current === scale) return // already painted at this scale
     let cancelled = false
     ;(async () => {
       try {
@@ -146,7 +159,7 @@ function useLazyPageCanvas({
         }
         const dpr = Math.min(window.devicePixelRatio || 1, 2)
         const cssViewport = page.getViewport({ scale })
-        const renderViewport = page.getViewport({ scale: scale  })
+        const renderViewport = page.getViewport({ scale: scale })
         canvas.width = Math.floor(renderViewport.width)
         canvas.height = Math.floor(renderViewport.height)
         canvas.style.width = `${Math.floor(cssViewport.width)}px`
@@ -162,7 +175,10 @@ function useLazyPageCanvas({
         renderTaskRef.current = task
         try {
           await task.promise
-          if (!cancelled) setRendered(true)
+          if (!cancelled) {
+            renderedScaleRef.current = scale
+            setRendered(true)
+          }
         } catch {
           // render cancelled (zoom changed / unmounted) — next effect re-renders
         } finally {
@@ -283,7 +299,7 @@ function PdfPageView({
     <div
       ref={containerRef}
       data-page={pageNumber}
-      className="relative bg-card! shadow-stashly ring-1 ring-input"
+      className="relative bg-card! shadow-stashly ring-1 ring-input rounded-md"
       style={
         rendered
           ? undefined
@@ -311,6 +327,11 @@ function PdfPageView({
 // ---------------------------------------------------------------------------
 
 export function PdfStage({ item, src }: { item: PdfItemShape; src: string }) {
+  // The rail's open state lives in the app's shared sidebar provider (keyed by
+  // id), so the SidebarTrigger toggle and cookie persistence integrate with the
+  // rest of the app. We render the rail inline (not the fixed-position Sidebar
+  // container) so it nests after the main app sidebar instead of overlapping it.
+  const { open: railOpen } = useSidebar('pdf_pages_rails')
   const { doc, baseSize, error } = usePdfDocument(src)
   const scrollRef = useRef<HTMLDivElement>(null)
   const pageEls = useRef(new Map<number, HTMLDivElement>())
@@ -325,9 +346,11 @@ export function PdfStage({ item, src }: { item: PdfItemShape; src: string }) {
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
+    // The rail is a flex sibling, so the viewer's measured width already
+    // excludes it — only subtract the page's own horizontal padding (px-8).
     const ro = new ResizeObserver(([entry]) =>
       setStageWidth(
-        Math.round(entry.target.getBoundingClientRect().width) - STAGE_PADDING - THUMB_WIDTH
+        Math.round(entry.target.getBoundingClientRect().width) - STAGE_PADDING
       )
     )
     ro.observe(el)
@@ -379,7 +402,9 @@ export function PdfStage({ item, src }: { item: PdfItemShape; src: string }) {
   useEffect(() => {
     const el = thumbEls.current.get(currentPage)
     if (!el) return
-    const viewport = el.closest<HTMLElement>('[data-slot="scroll-area-viewport"]')
+    const viewport = el.closest<HTMLElement>(
+      '[data-slot="scroll-area-viewport"]'
+    )
     if (!viewport) return
     const elTop =
       el.getBoundingClientRect().top -
@@ -445,25 +470,35 @@ export function PdfStage({ item, src }: { item: PdfItemShape; src: string }) {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 overflow-hidden">
-      {/* Thumbnail rail — own scroll context, pinned while pages scroll */}
-      <ScrollArea className="h-full w-40 shrink-0 bg-card">
-        {/* pb-20: lets the last thumbnail scroll fully clear of the viewer's
+    <div className="relative flex h-full min-h-0 w-full min-w-0 overflow-hidden">
+      {/* Thumbnail rail — inline collapsible panel nested after the app
+          sidebar. Driven by the shared provider state (useSidebar +
+          SidebarTrigger); width animates to 0 when collapsed. */}
+      <div
+        data-state={railOpen ? 'open' : 'closed'}
+        className="h-full shrink-0 overflow-hidden bg-card transition-[width] duration-200 ease-linear"
+        style={{ width: railOpen ? RAIL_WIDTH : 0 }}
+      >
+        {/* Fixed inner width so thumbnails slide out (overflow-hidden) rather
+            than squish during the collapse animation. */}
+        <ScrollArea className="h-full" style={{ width: RAIL_WIDTH }}>
+          {/* pb-20: lets the last thumbnail scroll fully clear of the viewer's
             bottom edge / overlaying chrome */}
-        <div className="flex flex-col gap-4 px-4 pt-4 pb-20">
-          {Array.from({ length: doc.numPages }, (_, i) => (
-            <PdfThumb
-              key={i + 1}
-              doc={doc}
-              pageNumber={i + 1}
-              estimate={baseSize}
-              active={currentPage === i + 1}
-              onSelect={goToPage}
-              registerEl={registerThumbEl}
-            />
-          ))}
-        </div>
-      </ScrollArea>
+          <div className="flex flex-col gap-4 px-4 pt-4 pb-20">
+            {Array.from({ length: doc.numPages }, (_, i) => (
+              <PdfThumb
+                key={i + 1}
+                doc={doc}
+                pageNumber={i + 1}
+                estimate={baseSize}
+                active={currentPage === i + 1}
+                onSelect={goToPage}
+                registerEl={registerThumbEl}
+              />
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
 
       {/* Main viewer. overflow-hidden: the wrapper's width is the fit-width
           measurement basis, so content width must never influence it. */}
@@ -490,63 +525,66 @@ export function PdfStage({ item, src }: { item: PdfItemShape; src: string }) {
               />
             ))}
 
-          {/* Floating toolbar */}
-          <div className="fixed bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-md border border-input bg-card px-2 py-1 shadow-md shadow-stashly">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
-              aria-label="Previous page"
-              disabled={currentPage <= 1}
-              onClick={() => goToPage(currentPage - 1)}
-            >
-              <ChevronRightIcon className="size-5 rotate-180" />
-            </Button>
-            <span className="px-1 font-stashly text-xs tabular-nums text-muted-foreground">
-              {currentPage} / {numPages}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
-              aria-label="Next page"
-              disabled={currentPage >= numPages}
-              onClick={() => goToPage(currentPage + 1)}
-            >
-              <ChevronRightIcon className="size-5" />
-            </Button>
+            {/* Floating toolbar */}
+            <div className="fixed bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-md border border-input bg-card px-2 py-1 shadow-lg ">
+              <SidebarTrigger
+                sidebarId="pdf_pages_rails"
+                className="size-9 rounded-md"
+              >
+                <SidebarFillIcon className="size-5" />
+              </SidebarTrigger>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                aria-label="Previous page"
+                disabled={currentPage <= 1}
+                onClick={() => goToPage(currentPage - 1)}
+              >
+                <DropdownIcon className="size-5 rotate-180" />
+              </Button>
+              <span className="px-1 font-stashly text-xs tabular-nums text-muted-foreground">
+                {currentPage} / {numPages}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Next page"
+                disabled={currentPage >= numPages}
+                onClick={() => goToPage(currentPage + 1)}
+              >
+                <DropdownIcon className="size-5 " />
+              </Button>
 
-            <span className="mx-1 h-5 w-px bg-input" />
+              <span className="mx-1 h-5 w-px bg-input" />
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
-              aria-label="Zoom out"
-              disabled={zoom <= ZOOM_LEVELS[0]}
-              onClick={() => setZoom((z) => stepZoom(z, -1))}
-            >
-              <MinusFillIcon className="size-5" />
-            </Button>
-            <button
-              type="button"
-              title="Reset zoom (fit width)"
-              onClick={() => setZoom(1)}
-              className="w-12 text-center font-stashly text-xs tabular-nums text-muted-foreground hover:text-foreground"
-            >
-              {Math.round(zoom * 100)}%
-            </button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
-              aria-label="Zoom in"
-              disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
-              onClick={() => setZoom((z) => stepZoom(z, 1))}
-            >
-              <AddIcon className="size-5" />
-            </Button>
-          </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Zoom out"
+                disabled={zoom <= ZOOM_LEVELS[0]}
+                onClick={() => setZoom((z) => stepZoom(z, -1))}
+              >
+                <ZoomOutFillIcon className="size-5" />
+              </Button>
+              <button
+                type="button"
+                title="Reset zoom (fit width)"
+                onClick={() => setZoom(1)}
+                className="w-12 text-center font-stashly text-xs tabular-nums text-muted-foreground hover:text-foreground"
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Zoom in"
+                disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
+                onClick={() => setZoom((z) => stepZoom(z, 1))}
+              >
+                <ZoomInFillIcon className="size-5" />
+              </Button>
+            </div>
           </div>
         </ScrollArea>
       </div>

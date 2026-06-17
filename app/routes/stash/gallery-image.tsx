@@ -1,6 +1,6 @@
 import type { Route } from './+types/gallery-image'
 import * as React from 'react'
-import { href, useFetcher, useNavigate } from 'react-router'
+import { href, useFetcher, useNavigate, Link } from 'react-router'
 import { redirect } from 'react-router'
 import { VisuallyHidden } from 'radix-ui'
 
@@ -8,12 +8,17 @@ import { prisma } from '@/services/db'
 import { auth } from '@/.server/auth'
 import { getPresignedUrl } from '@/services/s3'
 import { defaultItemSelect, touchOpenedAt } from '@/services/item-actions'
-import { findManyActivities } from '@/services/activity-actions'
+import {
+  searchActivities,
+} from '@/services/activity-actions'
+import { breadcrumbs as getBreadcrumbs } from '@/services/breadcrumbs'
+import type { Breadcrumb } from '@/services/breadcrumbs'
 import { formatSize } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
 
 import { ActivityFeed } from '@/components/core-components/activity-feed'
-import ShareItemFillIcon, {
+import {
+  ShareItemFillIcon,
   RemoveIcon,
   BackIcon,
   FavoriteIcon,
@@ -42,7 +47,6 @@ import ShareItemFillIcon, {
   ImageFillIcon,
   DownloadFillIcon,
   CollectionFillIcon,
-  CollectionsFillIcon,
   MoreMenuFillIcon,
   MoveFillIcon,
   RenameFillIcon,
@@ -51,6 +55,7 @@ import ShareItemFillIcon, {
 } from '@/components/icons'
 
 import { Button } from '@/ui/button'
+import { Badge } from '@/ui/badge'
 import { Separator } from '@/ui/separator'
 import { ScrollArea } from '@/ui/scroll-area'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/ui/tabs'
@@ -96,6 +101,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         createdAt: true,
         updatedAt: true,
         file: { select: { mimeType: true, extension: true, key: true } },
+        memberOfCollections: {
+          select: { collection: { select: { id: true, name: true } } },
+        },
         image: {
           select: {
             width: true,
@@ -126,13 +134,46 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const fileKey = item.file?.key ?? `${item.parentId}/${item.name}`
 
   // Sibling media in the same folder — powers prev / next + the "n of N" counter.
-  const [fullUrl, activities, siblings] = await Promise.all([
+  const [fullUrl, acts, siblings, path] = await Promise.all([
     getPresignedUrl(session.user.bucket, 'get', fileKey, 3600),
-    findManyActivities({
-      where: { itemId: item.id },
-      orderBy: { time: { observedAt: 'desc' } },
+    // findManyActivities({
+    //   where: { itemId: item.id },
+    //   orderBy: { time: { observedAt: 'desc' } },
+    //   take: 20,
+    // }),
+    await searchActivities({
+      itemId: { equals: item.id },
       take: 20,
+      include: {
+        time: true,
+        item: true,
+        action: {
+          include: {
+            create: true,
+            rename: true,
+            move: true,
+            delete: true,
+            restore: true,
+            copy: true,
+            share: true,
+            version: true,
+            comment: true,
+            permission: true,
+            upload: true,
+            pin: true,
+            edit: true,
+            collection: true,
+            favorite: true,
+            bucket: true,
+          },
+        },
+        access: true,
+      },
+      cursor: new URL(request.url)?.searchParams?.get('cursor') || '',
+      orderBy: { time: { observedAt: 'desc' } },
+      strategy: 'cursor',
     }),
+
     prisma.item.findMany({
       where: {
         parentId: item.parentId,
@@ -141,9 +182,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       orderBy: { name: 'asc' },
       select: defaultItemSelect,
     }),
+    item.parentId ? getBreadcrumbs(item.parentId) : Promise.resolve([]),
   ])
 
-  return { item, fullUrl, activities, siblings }
+  return { item, fullUrl, activities: acts.data, siblings, path }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -152,8 +194,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
 export default function GalleryImageDetail({
   loaderData,
+  params,
 }: Route.ComponentProps) {
-  const { item, fullUrl, activities, siblings } = loaderData
+  const { item, fullUrl, activities, siblings, path } = loaderData
+  const { me } = params
   const navigate = useNavigate()
   const fetcher = useFetcher()
   const isVideo: boolean = item.category === ItemCategory.video
@@ -316,7 +360,7 @@ export default function GalleryImageDetail({
                 </ToolButton>
 
                 <ToolButton label="Add to collection">
-                  <CollectionsFillIcon className="size-5" />
+                  <CollectionFillIcon className="size-5" />
                 </ToolButton>
 
                 <DropdownMenu>
@@ -492,6 +536,43 @@ export default function GalleryImageDetail({
                     </dl>
                   </section>
 
+                  {/* Location */}
+                  <section>
+                    <SectionLabel>Location</SectionLabel>
+                    <PathDisplay crumbs={path} me={me} />
+                  </section>
+
+                  {/* Collections */}
+                  {item.memberOfCollections.length > 0 && (
+                    <section>
+                      <SectionLabel
+                        icon={<CollectionFillIcon className="size-5" />}
+                      >
+                        Collections
+                      </SectionLabel>
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.memberOfCollections.map(({ collection }) => (
+                          <Badge
+                            key={collection.id}
+                            variant="default"
+                            className="rounded!"
+                            asChild
+                          >
+                            <Link
+                              to={`${href(
+                                '/:me/stash/collections/:collectionId',
+                                { me, collectionId: collection.id }
+                              )}?layout=grid`}
+                              className="font-stashly"
+                            >
+                              {collection.name}
+                            </Link>
+                          </Badge>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
                   {/* Camera (merged into Info) */}
                   {meta.hasCamera && (
                     <section>
@@ -524,8 +605,8 @@ export default function GalleryImageDetail({
               </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="activity" className="min-h-0 flex-1">
-              <ScrollArea className="h-full">
+            <TabsContent value="activity" className=" flex-1">
+              <ScrollArea className="h-[calc(100vh-4rem)]">
                 <div className="p-4">
                   <ActivityFeed activities={activities} />
                 </div>
@@ -644,6 +725,43 @@ function Row({
       <dd className={cn('truncate text-right text-xs', mono && 'font-stashly')}>
         {value}
       </dd>
+    </div>
+  )
+}
+
+function PathDisplay({ crumbs, me }: { crumbs: Breadcrumb[]; me: string }) {
+  if (crumbs.length === 0) {
+    return (
+      <Link
+        to={href('/:me/stash/all', { me })}
+        className="text-xs font-stashly text-foreground hover:text-primary transition-colors"
+      >
+        Home
+      </Link>
+    )
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-1 text-xs font-stashly">
+      {crumbs.map((crumb, i) => {
+        const isLast = i === crumbs.length - 1
+        const to =
+          crumb.name === 'root'
+            ? href('/:me/stash/all', { me })
+            : href('/:me/stash/folders/:folderId', { me, folderId: crumb.id })
+        return (
+          <React.Fragment key={crumb.id}>
+            <Link
+              to={`${to}?layout=grid&take=50`}
+              className="shrink-0 text-foreground hover:text-primary transition-colors"
+            >
+              {crumb.name === 'root' ? 'Home' : crumb.name}
+            </Link>
+            {!isLast && (
+              <span className="select-none text-muted-foreground">/</span>
+            )}
+          </React.Fragment>
+        )
+      })}
     </div>
   )
 }
