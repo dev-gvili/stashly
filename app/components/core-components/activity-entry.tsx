@@ -3,18 +3,19 @@ import type { ActivityWithRelations } from '@/utils/activity'
 import { cn } from '@/utils/styles'
 import type { JSX, SVGProps } from 'react'
 import {
-  UploadIcon,
-  TrashIcon,
-  RenameIcon,
-  MoveToFolder,
-  CopyIcon,
   RestoreIcon,
-  ShareItemIcon,
-  LockIcon,
   RefreshIcon,
-  EditIcon,
+  ShareItemFillIcon,
+  EditFillIcon,
   PreviewIcon,
-  ActivityIcon,
+  MoveFillIcon,
+  CopyFillIcon,
+  RenameFillIcon,
+  TrashFillIcon,
+  UploadFillIcon,
+  ActivityFillIcon,
+  ShareFillIcon,
+  LockFillIcon,
 } from '@/components/icons'
 import { Badge } from '../ui'
 
@@ -28,20 +29,20 @@ type IconComponent = (props: SVGProps<SVGSVGElement>) => JSX.Element
 
 function actionIcon(activity: ActivityWithRelations): IconComponent {
   const a = activity.action
-  if (!a) return ActivityIcon
-  if (a.create) return UploadIcon
-  if (a.delete) return TrashIcon
-  if (a.rename) return RenameIcon
-  if (a.move) return MoveToFolder
-  if (a.copy) return CopyIcon
+  if (!a) return ActivityFillIcon
+  if (a.create) return UploadFillIcon
+  if (a.delete) return TrashFillIcon
+  if (a.rename) return RenameFillIcon
+  if (a.move) return MoveFillIcon
+  if (a.copy) return CopyFillIcon
   if (a.restore) return RestoreIcon
-  if (a.share) return ShareItemIcon
-  if (a.comment) return EditIcon
-  if (a.permission) return LockIcon
+  if (a.share) return ShareFillIcon
+  if (a.comment) return EditFillIcon
+  if (a.permission) return LockFillIcon
   if (a.version) return RefreshIcon
-  if (a.upload) return UploadIcon
+  if (a.upload) return UploadFillIcon
   if (activity.access) return PreviewIcon
-  return ActivityIcon
+  return ActivityFillIcon
 }
 
 export function ActivityEntry({
@@ -58,20 +59,15 @@ export function ActivityEntry({
   return (
     <div className={cn('relative flex gap-4', !isLast && 'pb-6', className)}>
       {!isLast && (
-        <div className="absolute left-4 top-11 -bottom-1 w-px bg-accent dark:bg-accent/20" />
+        <div className="absolute left-4 top-11 -bottom-1 w-px bg-accent" />
       )}
       <div
         className={cn(
-          'relative z-10 mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-background ',
-          passive ? 'ring-border' : 'ring-accent/40 bg-accent/30 text-accent'
+          'relative z-10 mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md ',
+          passive ? 'ring-border' : 'bg-secondary text-secondary-foreground'
         )}
       >
-        <Icon
-          className={cn(
-            'size-4',
-            passive ? 'text-current' : 'text-accent-foreground'
-          )}
-        />
+        <Icon className={cn('size-5 ')} />
       </div>
       <div className="flex-1 space-y-1 pt-0.5">
         {timestamp && (

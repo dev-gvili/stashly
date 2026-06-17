@@ -6,7 +6,7 @@ import { ButtonGroup } from './ui/button-group'
 import { Button } from './ui/button'
 import { ScrollArea } from './ui/scroll-area'
 import { RiExpandUpDownLine } from '@remixicon/react'
-import { CopyIcon, ExpandCollapsedIcon, HomeIcon, RefreshIcon } from './icons'
+import { CopyFillIcon, ExpandCollapsedIcon, HomeFillIcon, RefreshIcon } from './icons'
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   error = error ?? useRouteError()
@@ -56,7 +56,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
               className="text-xs"
               onClick={() => navigate('/')}
             >
-              <HomeIcon className="size-5" />
+              <HomeFillIcon className="size-5" />
             </Button>
 
             {stack && (
@@ -66,7 +66,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
                 className="text-xs"
                 onClick={() => navigator.clipboard?.writeText(stack)}
               >
-                <CopyIcon className="size-5" />
+                <CopyFillIcon className="size-5" />
               </Button>
             )}
 

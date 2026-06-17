@@ -1,22 +1,21 @@
 import {
-  DeleteIcon,
+  TrashFillIcon,
   DoubleCheckIcon,
   FavoriteIcon,
   FavoritesFillIcon,
   LoaderIcon,
   LoadMoreFillIcon,
   RestoreIcon,
-  TrashFillIcon,
 } from '@/components/icons'
 import { useSelection } from '@/components/stash/selection'
 import useConfirm from '@/hooks/useConfirm'
 import { Button } from '@/ui/button'
 import { getQueryParam } from '@/utils/query-params'
-// import { LoaderIcon } from 'lucide-react'
 import { Tooltip } from '@/ui/tooltip'
 import { cn } from '@/utils/styles'
 import { useCallback } from 'react'
 import { href, useFetcher, useLocation, useSearchParams } from 'react-router'
+import { useMoveToFolder } from '@/hooks'
 
 const Delete = (props: React.ComponentProps<typeof Button>) => {
   let location = useLocation()
@@ -152,6 +151,8 @@ const SelectAll = (props: React.ComponentProps<typeof Button>) => {
     </Tooltip>
   )
 }
+
+const MoveToFolder = (props: React.ComponentProps<typeof Button>) => {}
 
 const LoadMoreItems = ({
   loadMore,

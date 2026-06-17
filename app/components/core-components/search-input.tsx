@@ -8,9 +8,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/ui/toggle-group'
 import {
   FuzzySearchIcon,
   RemoveIcon,
-  SearchIcon,
-  SearchFillIcon, 
-  ShareIcon,
+  SearchFillIcon,
+  ShareFillIcon,
 } from '@/components/icons'
 import { cn } from '@/utils/styles'
 import type { SearchMode } from '@/components/filters/filter.types'
@@ -113,7 +112,7 @@ export function SearchInput({
               size="sm"
               variant="default"
             >
-              <ShareIcon className="size-5 text-current!" />
+              <ShareFillIcon className="size-5 text-current!" />
             </ToggleGroupItem>
           </ToggleGroup>
         </InputGroupAddon>

@@ -158,6 +158,23 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
     pdfPageHeight: z.coerce.number().optional(),
     pdfDocCreatedAt: z.coerce.date().optional(),
     pdfDocModifiedAt: z.coerce.date().optional(),
+    // markdown document-info fields (Markdown facet). Same coercion caveat as
+    // the pdf* fields above — text fields coerce back to string, booleans
+    // accept both shapes.
+    mdTitle: z.coerce.string().optional(),
+    mdAuthor: z.coerce.string().optional(),
+    mdDescription: z.coerce.string().optional(),
+    mdTags: z.coerce.string().optional(),
+    mdWordCount: z.coerce.number().int().optional(),
+    mdReadingTime: z.coerce.number().int().optional(),
+    mdHeadingCount: z.coerce.number().int().optional(),
+    mdLinkCount: z.coerce.number().int().optional(),
+    mdImageCount: z.coerce.number().int().optional(),
+    mdCodeBlockCount: z.coerce.number().int().optional(),
+    mdTaskCount: z.coerce.number().int().optional(),
+    mdHasFrontmatter: z.union([z.boolean(), z.stringbool()]).optional(),
+    mdDocCreatedAt: z.coerce.date().optional(),
+    mdDocModifiedAt: z.coerce.date().optional(),
     // audio fields
     audioDuration: z.coerce.number().int().optional(),
     audioBitrate: z.coerce.number().int().optional(),

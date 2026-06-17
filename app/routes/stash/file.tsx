@@ -6,7 +6,10 @@ import { breadcrumbs } from '@/services/breadcrumbs'
 import { getPresignedUrl } from '@/services/s3'
 import { AudioStage } from '@/components/views/item-page/audio-stage'
 import { PdfStage } from '@/components/views/item-page/pdf-stage'
+import { MarkdownStage } from '@/components/views/item-page/markdown-stage'
+import { VideoStage } from '@/components/views/item-page/video-stage'
 import { ItemPanel } from '@/components/views/item-page/item-panel'
+import { isMarkdownName } from '@/utils/markdown'
 import { searchActivities } from '@/.server/activity-actions'
 import { useEffect } from 'react'
 import { useSearchParams } from 'react-router'
@@ -73,9 +76,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   const isAudio =
     item.audio != null || item.file?.mimeType?.startsWith('audio/')
+  const isVideo =
+    item.video != null || item.file?.mimeType?.startsWith('video/')
   const isPdf = item.pdf != null || item.file?.mimeType === 'application/pdf'
+  const isMarkdown =
+    item.markdown != null || isMarkdownName(item.name, item.file?.mimeType)
   const mediaSrc =
-    (isAudio || isPdf) && item.file?.key
+    (isAudio || isVideo || isPdf || isMarkdown) && item.file?.key
       ? await getPresignedUrl(session.user.bucket, 'get', item.file.key, 3600)
       : null
 
@@ -88,13 +95,13 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export default function FilePage({ loaderData }: Route.ComponentProps) {
   const { item, mediaSrc, activities } = loaderData
-  const [searchParams] = useSearchParams()
-  useEffect(() => {
-    console.log('searchParams', Object.fromEntries(searchParams.entries()))
-  }, [item.name])
   const isAudio =
     item.audio != null || item.file?.mimeType?.startsWith('audio/')
+  const isVideo =
+    item.video != null || item.file?.mimeType?.startsWith('video/')
   const isPdf = item.pdf != null || item.file?.mimeType === 'application/pdf'
+  const isMarkdown =
+    item.markdown != null || isMarkdownName(item.name, item.file?.mimeType)
 
   const panelItem = {
     activities: activities,
@@ -141,6 +148,35 @@ export default function FilePage({ loaderData }: Route.ComponentProps) {
           docModifiedAt: item.pdf.docModifiedAt,
         }
       : null,
+    markdown: item.markdown
+      ? {
+          title: item.markdown.title,
+          author: item.markdown.author,
+          description: item.markdown.description,
+          tags: item.markdown.tags,
+          wordCount: item.markdown.wordCount,
+          readingTime: item.markdown.readingTime,
+          headingCount: item.markdown.headingCount,
+          linkCount: item.markdown.linkCount,
+          imageCount: item.markdown.imageCount,
+          codeBlockCount: item.markdown.codeBlockCount,
+          taskCount: item.markdown.taskCount,
+          hasFrontmatter: item.markdown.hasFrontmatter,
+          docCreatedAt: item.markdown.docCreatedAt,
+          docModifiedAt: item.markdown.docModifiedAt,
+        }
+      : null,
+    video: item.video
+      ? {
+          width: item.video.width,
+          height: item.video.height,
+          duration: item.video.duration,
+          bitrate: item.video.bitrate,
+          codec: item.video.codec,
+          container: item.video.container,
+          frameRate: item.video.frameRate,
+        }
+      : null,
     favorites: item.favorites.map((f) => ({
       favoritedBy: {
         id: f.favoritedBy.id,
@@ -176,6 +212,58 @@ export default function FilePage({ loaderData }: Route.ComponentProps) {
             name: item.name,
             pdf: item.pdf
               ? { title: item.pdf.title, pageCount: item.pdf.pageCount }
+              : null,
+          }}
+        />
+
+        {/* Details panel */}
+        <ItemPanel item={panelItem} />
+      </div>
+    )
+  }
+
+  if (isMarkdown) {
+    return (
+      <div className="absolute inset-0 grid h-screen min-h-0 w-full grid-cols-[minmax(0,1fr)_auto] gap-2 pb-10">
+        {/* Stage */}
+        <MarkdownStage
+          key={item.id}
+          src={mediaSrc ?? ''}
+          item={{
+            id: item.id,
+            name: item.name,
+            markdown: item.markdown
+              ? {
+                  title: item.markdown.title,
+                  headingCount: item.markdown.headingCount,
+                }
+              : null,
+          }}
+        />
+
+        {/* Details panel */}
+        <ItemPanel item={panelItem} />
+      </div>
+    )
+  }
+
+  if (isVideo) {
+    return (
+      <div className="absolute inset-0 grid h-screen min-h-0 w-full grid-cols-[minmax(0,1fr)_auto]">
+        {/* Stage */}
+        <VideoStage
+          key={item.id}
+          src={mediaSrc ?? ''}
+          item={{
+            id: item.id,
+            name: item.name,
+            thumbnails: item.thumbnails,
+            video: item.video
+              ? {
+                  width: item.video.width,
+                  height: item.video.height,
+                  duration: item.video.duration,
+                }
               : null,
           }}
         />

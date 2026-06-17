@@ -7,10 +7,9 @@ import {
   BinaryIcon,
   CodeFillIcon,
   CodeIcon,
-  CollectionFillIcon,
   CollectionIcon,
   CollectionLineIcon,
-  CollectionsFillIcon,
+  CollectionFillIcon,
   DocumentFillIcon,
   DocumentIcon,
   FileFillIcon,
@@ -321,7 +320,7 @@ export function toIcon(value: IconKey) {
     case 'folder':
       return FolderFillIcon
     case 'collection':
-      return CollectionsFillIcon
+      return CollectionFillIcon
     case 'archived':
       return ArchiveFillIcon
     case 'trashed':
@@ -784,6 +783,8 @@ export const StashlyPrefixMap = {
   Video: 'vid',
   Audio: 'ado',
   Photo: 'pht',
+  Pdf: 'pdf',
+  Markdown: 'mdn',
   Favorite: 'fav',
   PinItem: 'pin',
   Invitation: 'inv',

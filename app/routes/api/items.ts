@@ -7,6 +7,7 @@ import {
   upsertVideoFacet,
   upsertAudioFacet,
   upsertPdfFacet,
+  upsertMarkdownFacet,
   deleteItem,
   deleteItems,
   getChildFolders,
@@ -289,6 +290,20 @@ export async function action({ request, params }: Route.ActionArgs) {
           pdfPageHeight,
           pdfDocCreatedAt,
           pdfDocModifiedAt,
+          mdTitle,
+          mdAuthor,
+          mdDescription,
+          mdTags,
+          mdWordCount,
+          mdReadingTime,
+          mdHeadingCount,
+          mdLinkCount,
+          mdImageCount,
+          mdCodeBlockCount,
+          mdTaskCount,
+          mdHasFrontmatter,
+          mdDocCreatedAt,
+          mdDocModifiedAt,
           ...audioData
         } = parsedData
         if (imageWidth != null || imageHeight != null) {
@@ -335,6 +350,27 @@ export async function action({ request, params }: Route.ActionArgs) {
             pageHeight: pdfPageHeight,
             docCreatedAt: pdfDocCreatedAt,
             docModifiedAt: pdfDocModifiedAt,
+          })
+        } else if (
+          mdWordCount != null ||
+          mdHeadingCount != null ||
+          mdHasFrontmatter != null
+        ) {
+          await upsertMarkdownFacet(itemId, {
+            title: mdTitle,
+            author: mdAuthor,
+            description: mdDescription,
+            tags: mdTags,
+            wordCount: mdWordCount,
+            readingTime: mdReadingTime,
+            headingCount: mdHeadingCount,
+            linkCount: mdLinkCount,
+            imageCount: mdImageCount,
+            codeBlockCount: mdCodeBlockCount,
+            taskCount: mdTaskCount,
+            hasFrontmatter: mdHasFrontmatter,
+            docCreatedAt: mdDocCreatedAt,
+            docModifiedAt: mdDocModifiedAt,
           })
         } else {
           console.log('Audio Parsed Data: ', audioData)

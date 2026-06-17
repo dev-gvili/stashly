@@ -6,6 +6,7 @@
  */
 import { dataUrlToBlob } from '@/utils/thumbnail'
 import { generateVideoThumbnail, getVideoMetadata } from '@/utils/video'
+import { isMarkdownFile } from '@/utils/markdown'
 import exifr from 'exifr'
 import type {
   ComputeRequest,
@@ -202,6 +203,21 @@ export interface MediaMetadata {
   pdfPageHeight?: number
   pdfDocCreatedAt?: string
   pdfDocModifiedAt?: string
+  // markdown document info
+  mdTitle?: string
+  mdAuthor?: string
+  mdDescription?: string
+  mdTags?: string
+  mdWordCount?: number
+  mdReadingTime?: number
+  mdHeadingCount?: number
+  mdLinkCount?: number
+  mdImageCount?: number
+  mdCodeBlockCount?: number
+  mdTaskCount?: number
+  mdHasFrontmatter?: boolean
+  mdDocCreatedAt?: string
+  mdDocModifiedAt?: string
   // audio
   audioDuration?: number
   audioBitrate?: number
@@ -442,6 +458,27 @@ export async function extractMediaMetadata(file: File): Promise<MediaMetadata> {
       meta.pdfPageHeight = m.pageHeight
       meta.pdfDocCreatedAt = m.docCreatedAt
       meta.pdfDocModifiedAt = m.docModifiedAt
+    }
+  } else if (isMarkdownFile(file)) {
+    const res = await compute({ kind: 'mdMeta', file })
+    if (res.kind === 'mdMeta' && res.result) {
+      const m = res.result
+      // Body text feeds the same search-indexing path PDFs use.
+      if (m.text) meta.documentText = m.text
+      meta.mdTitle = m.title
+      meta.mdAuthor = m.author
+      meta.mdDescription = m.description
+      meta.mdTags = m.tags
+      meta.mdWordCount = m.wordCount
+      meta.mdReadingTime = m.readingTime
+      meta.mdHeadingCount = m.headingCount
+      meta.mdLinkCount = m.linkCount
+      meta.mdImageCount = m.imageCount
+      meta.mdCodeBlockCount = m.codeBlockCount
+      meta.mdTaskCount = m.taskCount
+      meta.mdHasFrontmatter = m.hasFrontmatter
+      meta.mdDocCreatedAt = m.docCreatedAt
+      meta.mdDocModifiedAt = m.docModifiedAt
     }
   } else if (file.type.startsWith('audio/')) {
     const audioMetadata = await extractAudioMetadata(file)

@@ -15,7 +15,6 @@ import {
   FolderFillIcon,
   FolderOpenIcon,
   HomeFillIcon,
-  HomeIcon,
 } from '@/components/icons'
 import {
   Button,
@@ -170,7 +169,7 @@ export function Breadcrumbs() {
         <BreadcrumbItem key={last?.id}>
           <BreadcrumbPage className="font-stashly">
             {last?.name === 'root' ? (
-              <HomeIcon className="size-5!" />
+              <HomeFillIcon className="size-5!" />
             ) : last?.type === 'folder' ? (
               <span className="flex items-center gap-2">
                 <FolderFillIcon className="size-5!" />

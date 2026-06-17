@@ -40,7 +40,6 @@ export function ItemActivityDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-80 bg-background rounded-md focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-none shadow-stashly flex-col justify-center"
       >
         <SheetHeader>
           <SheetTitle className="text-sm font-stashly">Activity</SheetTitle>
@@ -48,7 +47,7 @@ export function ItemActivityDrawer({
             View the activity feed for this item.
           </SheetDescription>
         </SheetHeader>
-        <ScrollArea className="h-[calc(100vh-8rem)] pr-4">
+        <ScrollArea className="h-screen px-2">
           <ActivityFeed activities={activities} isLoading={isLoading} />
         </ScrollArea>
       </SheetContent>

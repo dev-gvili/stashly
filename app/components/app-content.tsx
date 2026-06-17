@@ -8,14 +8,14 @@ import { DropZoneOverlay } from './upload/drop-zone-overlay'
 const AppContent = ({ children }: { children: React.ReactNode }) => {
   const id = React.useId()
   return (
-    <SidebarInset id={id} surface-elevated>
+    <div className="relative h-screen w-full">
       <AppHeader />
-      <ScrollArea className="h-screen pr-2 pb-10">
-        <main className="mb-16 p-2">{children}</main>
-        <DropZoneOverlay visible={false} />
-      </ScrollArea>
-      <AppToolbar />
-    </SidebarInset>
+      <SidebarInset id={id}>
+        <main className="h-screen w-full overflow-hidden">
+          <ScrollArea className="h-full w-full">{children}</ScrollArea>
+        </main>
+      </SidebarInset>
+    </div>
   )
 }
 export { AppContent }

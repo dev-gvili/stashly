@@ -10,12 +10,11 @@ import { SidebarItem } from '@/components/app-sidebar'
 import {
   AddIcon,
   FolderIcon,
-  MoreIcon,
-  SettingsIcon,
-  ShareItemIcon,
-  TrashIcon,
+  MoreFillIcon,
+  SettingsFillIcon,
+  ShareItemFillIcon,
+  TrashFillIcon,
   WorkspaceFillIcon,
-  WorkspaceIcon,
 } from '@/components/icons'
 import {
   DropdownMenu,
@@ -79,7 +78,7 @@ export function NavWorkspaces({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuAction className="rounded-xs" showOnHover>
-                    <MoreIcon className="text-muted-foreground size-5!" />
+                    <MoreFillIcon className="text-muted-foreground size-5!" />
                     <span className="sr-only">More</span>
                   </SidebarMenuAction>
                 </DropdownMenuTrigger>
@@ -93,15 +92,15 @@ export function NavWorkspaces({
                     <span>View</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem>
-                    <ShareItemIcon className="text-foreground size-5!" />
+                    <ShareItemFillIcon className="text-foreground size-5!" />
                     <span>Share</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem>
-                    <SettingsIcon className="text-foreground size-5!" />
+                    <SettingsFillIcon className="text-foreground size-5!" />
                     <span>Settings</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem variant="destructive" className="mt-2">
-                    <TrashIcon className="size-5!" />
+                    <TrashFillIcon className="size-5!" />
                     <span>Delete</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>

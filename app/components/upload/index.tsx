@@ -43,11 +43,10 @@ import {
   DoubleCheckIcon,
   DropdownIcon,
   ExpandCollapsedIcon,
-  PauseV2Icon,
+  PauseFillIcon,
   RemoveIcon,
   RemoveSquareIcon,
   ResumeFillIcon,
-  ResumeIcon,
 } from '../icons'
 
 // ====================================================== //
@@ -615,7 +614,7 @@ const PauseResume = React.forwardRef<
             {isPaused ? (
               <ResumeFillIcon className="size-3!" />
             ) : (
-              <PauseV2Icon className="size-3!" />
+              <PauseFillIcon className="size-3!" />
             )}
           </Button>
         </TooltipTrigger>

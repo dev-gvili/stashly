@@ -2,12 +2,8 @@ import { Grid, LayoutToggle, List, River, Waterfall } from './layout-toggle'
 import { ModeToggle } from './color-mode'
 import { HeaderFilters } from './filters/filters'
 import {
-  UploadIcon,
-  FolderIcon,
-  FileIcon,
   DropdownIcon,
   UploadFillIcon,
-  FileFillIcon,
   FolderFillIcon,
   AddFoldersIcon,
   UploadFileFillIcon,
@@ -38,6 +34,7 @@ import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { useEffect, useState } from 'react'
 import type { Route } from '../routes/+types/layout'
+import { useLocation } from 'react-router'
 
 export function AppHeader() {
   let { toggleView } = useUpload()
@@ -73,6 +70,10 @@ function StashlyUpload({
   toggleView: () => void
   folderId: string | undefined
 }) {
+  const location = useLocation()
+  if (location.pathname.includes('files')) {
+     return null 
+  }
   const [menuOpen, setMenuOpen] = useState(false)
   const [newFolderOpen, setNewFolderOpen] = useState(false)
 

@@ -414,6 +414,7 @@ export const ModelName = {
   Image: 'Image',
   Video: 'Video',
   Pdf: 'Pdf',
+  Markdown: 'Markdown',
   Audio: 'Audio',
   Favorite: 'Favorite',
   Invitation: 'Invitation',
@@ -454,7 +455,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "account" | "itemAction" | "permissionAction" | "accessAction" | "commentAction" | "createAction" | "uploadAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "pinAction" | "collectionAction" | "favoriteAction" | "bucketAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "pdf" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "pinItem" | "quota" | "search" | "searchChunk" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
+    modelProps: "account" | "itemAction" | "permissionAction" | "accessAction" | "commentAction" | "createAction" | "uploadAction" | "deleteAction" | "editAction" | "moveAction" | "copyAction" | "renameAction" | "restoreAction" | "shareAction" | "versionAction" | "pinAction" | "collectionAction" | "favoriteAction" | "bucketAction" | "activity" | "activityTime" | "auditLog" | "collectionMember" | "comment" | "drive" | "file" | "folder" | "image" | "video" | "pdf" | "markdown" | "audio" | "favorite" | "invitation" | "invitationRecipient" | "item" | "lockedItem" | "notification" | "permission" | "pinItem" | "quota" | "search" | "searchChunk" | "session" | "shareLink" | "storagePlan" | "subscription" | "thumbnail" | "trash" | "trashItem" | "user" | "verification" | "itemVersion" | "view" | "workspace" | "workspaceMember"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2675,6 +2676,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.PdfCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.PdfCountAggregateOutputType> | number
+        }
+      }
+    }
+    Markdown: {
+      payload: Prisma.$MarkdownPayload<ExtArgs>
+      fields: Prisma.MarkdownFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.MarkdownFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MarkdownPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.MarkdownFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MarkdownPayload>
+        }
+        findFirst: {
+          args: Prisma.MarkdownFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MarkdownPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.MarkdownFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MarkdownPayload>
+        }
+        findMany: {
+          args: Prisma.MarkdownFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MarkdownPayload>[]
+        }
+        create: {
+          args: Prisma.MarkdownCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MarkdownPayload>
+        }
+        createMany: {
+          args: Prisma.MarkdownCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.MarkdownCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MarkdownPayload>[]
+        }
+        delete: {
+          args: Prisma.MarkdownDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MarkdownPayload>
+        }
+        update: {
+          args: Prisma.MarkdownUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MarkdownPayload>
+        }
+        deleteMany: {
+          args: Prisma.MarkdownDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.MarkdownUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.MarkdownUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MarkdownPayload>[]
+        }
+        upsert: {
+          args: Prisma.MarkdownUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$MarkdownPayload>
+        }
+        aggregate: {
+          args: Prisma.MarkdownAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateMarkdown>
+        }
+        groupBy: {
+          args: Prisma.MarkdownGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MarkdownGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.MarkdownCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.MarkdownCountAggregateOutputType> | number
         }
       }
     }
@@ -4923,6 +4998,28 @@ export const PdfScalarFieldEnum = {
 export type PdfScalarFieldEnum = (typeof PdfScalarFieldEnum)[keyof typeof PdfScalarFieldEnum]
 
 
+export const MarkdownScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  author: 'author',
+  description: 'description',
+  tags: 'tags',
+  wordCount: 'wordCount',
+  readingTime: 'readingTime',
+  headingCount: 'headingCount',
+  linkCount: 'linkCount',
+  imageCount: 'imageCount',
+  codeBlockCount: 'codeBlockCount',
+  taskCount: 'taskCount',
+  hasFrontmatter: 'hasFrontmatter',
+  docCreatedAt: 'docCreatedAt',
+  docModifiedAt: 'docModifiedAt',
+  itemId: 'itemId'
+} as const
+
+export type MarkdownScalarFieldEnum = (typeof MarkdownScalarFieldEnum)[keyof typeof MarkdownScalarFieldEnum]
+
+
 export const AudioScalarFieldEnum = {
   id: 'id',
   album: 'album',
@@ -5880,6 +5977,7 @@ export type GlobalOmitConfig = {
   image?: Prisma.ImageOmit
   video?: Prisma.VideoOmit
   pdf?: Prisma.PdfOmit
+  markdown?: Prisma.MarkdownOmit
   audio?: Prisma.AudioOmit
   favorite?: Prisma.FavoriteOmit
   invitation?: Prisma.InvitationOmit

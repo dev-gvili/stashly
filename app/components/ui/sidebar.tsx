@@ -356,7 +356,7 @@ function Sidebar({
         <div
           data-slot="sidebar-container"
           className={cn(
-            'fixed inset-y-0 z-10 h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
+            'fixed  h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
             side === 'left'
               ? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
               : 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',
@@ -386,12 +386,13 @@ function SidebarTrigger({
   className,
   onClick,
   children,
+  tooltip,
   ...props
-}: React.ComponentProps<typeof Button> & { sidebarId?: string }) {
+}: React.ComponentProps<typeof Button> & { sidebarId?: string, tooltip?: string }) {
   const { isMobile, setOpenMobile, open, toggleSidebar, state } =
     useSidebar(sidebarId)
 
-  let tooltipContent = state === 'collapsed' ? 'Open Sidebar' : 'Close Sidebar'
+  let tooltipContent = tooltip || (state === 'collapsed' ? 'Open Sidebar' : 'Close Sidebar')
 
   return (
     <Tooltip content={tooltipContent} align="start" asChild>

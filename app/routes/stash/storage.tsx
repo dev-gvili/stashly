@@ -13,11 +13,22 @@ import {
   CodeIcon,
   PdfIcon,
   SlidesIcon,
-  FileIcon,
+  FileFillIcon,
   BinaryIcon,
   ShellIcon,
-  TrashIcon,
+  TrashFillIcon,
   StorageIcon,
+  GraphicIcon,
+  CodeFillIcon,
+  ArchiveFillIcon,
+  Pdf2Icon,
+  PresentationFillIcon,
+  SpreadSheetFillIcon,
+  DocumentFillIcon,
+  AudioFillIcon,
+  VideoFillIcon,
+  ImageFillIcon,
+  ShellFillIcon,
 } from '@/components/icons'
 import { Button } from '@/ui/button'
 import useConfirm from '@/hooks/useConfirm'
@@ -97,20 +108,20 @@ export async function loader({ request }: Route.LoaderArgs) {
 type IconComp = (props: SVGProps<SVGSVGElement>) => JSX.Element
 
 const categoryIcon: Record<string, IconComp> = {
-  image: ImageIcon,
-  video: VideoIcon,
-  audio: AudioIcon,
-  document: DocumentIcon,
-  spreadsheet: FileIcon,
-  presentation: SlidesIcon,
-  text: FileIcon,
-  pdf: PdfIcon,
-  archive: ArchiveIcon,
-  code: CodeIcon,
-  script: ShellIcon,
+  image: ImageFillIcon,
+  video: VideoFillIcon,
+  audio: AudioFillIcon,
+  document: DocumentFillIcon,
+  spreadsheet: SpreadSheetFillIcon,
+  presentation: PresentationFillIcon,
+  text: FileFillIcon,
+  pdf: Pdf2Icon,
+  archive: ArchiveFillIcon,
+  code: CodeFillIcon,
+  script: ShellFillIcon,
   binaries: BinaryIcon,
-  graphic: FileIcon,
-  unknown: FileIcon,
+  graphic: GraphicIcon,
+  unknown: FileFillIcon,
 }
 
 const categoryColor: Record<ItemCategory, string> = {
@@ -467,7 +478,7 @@ function LargestFilesList({ items }: { items: LargestItem[] }) {
       <CardContent className="p-4">
         <ul className="space-y-0.5 font-stashly">
           {items.map((f, i) => {
-            const Icon = categoryIcon[f.category] ?? FileIcon
+            const Icon = toIcon(f.category) ?? FileFillIcon
             return (
               <li
                 key={f.id}
@@ -476,7 +487,7 @@ function LargestFilesList({ items }: { items: LargestItem[] }) {
                 <span className="text-xs text-muted-foreground text-right tabular-nums">
                   {String(i + 1).padStart(2, '0')}
                 </span>
-                <Icon className="size-5" />
+                <Icon className="size-5!" />
                 <span className="text-xs truncate min-w-0">{f.name}</span>
                 <span className="text-xs text-right tabular-nums">
                   {fmt(f.size)}
@@ -621,7 +632,7 @@ export default function StoragePage({ loaderData }: Route.ComponentProps) {
             disabled={emptying}
             className="font-stashly uppercase tracking-wider bg-transparent border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
           >
-            <TrashIcon className="size-4" />
+            <TrashFillIcon className="size-4" />
             Empty bucket
           </Button>
         </div>

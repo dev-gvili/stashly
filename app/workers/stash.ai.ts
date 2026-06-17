@@ -328,7 +328,7 @@ interface ChatMessage {
 // -------------------------
 // Environment configuration
 // -------------------------
-const DEBUG = false // flip to true for local WebGPU profiling
+const DEBUG = true // flip to true for local WebGPU profiling
 if (DEBUG) {
   env.backends.onnx!.webgpu!.profiling = {
     mode: 'default',
@@ -387,41 +387,30 @@ const WebGPUDeviceManager = {
    */
   async discoverAdapters(): Promise<void> {
     if (this.adapters.length > 0) return // already discovered
-
-    const optionSets: { options: GPURequestAdapterOptions; label?: string }[] = [
-      {
-        options: { powerPreference: 'high-performance' },
-        label: 'high-performance',
-      },
-      { options: { powerPreference: 'low-power' }, label: 'low-power' },
-      {
-        options: { featureLevel: 'compatibility' } as GPURequestAdapterOptions,
-        label: 'compatibility',
-      },
-      { options: {} },
-    ]
-
     const seen = new Set<string>()
 
-    for (const { options, label } of optionSets) {
-      try {
-        const adapter = await navigator.gpu?.requestAdapter(options)
-        if (!adapter) continue
+    try {
+      const adapter = await navigator.gpu?.requestAdapter()
+      if (!adapter) throw new Error('No adapter returned')
 
-        const key = this.adapterKey(adapter)
-        if (seen.has(key)) continue
-        seen.add(key)
-
-        // Skip software fallback adapters — too slow for AI inference
-        if ((adapter as any).info?.isFallbackAdapter) {
-          continue
-        }
-
-        const name = this.adapterName(adapter)
-        this.adapters.push({ adapter, name, preference: label })
-      } catch {
-        /* adapter not available for this option set */
+      const key = this.adapterKey(adapter)
+      if (seen.has(key)) {
+        console.warn(
+          `Duplicate GPU adapter found and skipped: ${this.adapterName(adapter)}`
+        )
+        return
       }
+      seen.add(key)
+
+      // Skip software fallback adapters — too slow for AI inference
+      if ((adapter as any).info?.isFallbackAdapter) {
+        throw new Error('Fallback adapter not allowed')
+      }
+
+      const name = this.adapterName(adapter)
+      this.adapters.push({ adapter, name })
+    } catch {
+      /* adapter not available for this option set */
     }
 
     // Sort: largest maxBufferSize first (discrete GPUs >> integrated)
@@ -502,7 +491,10 @@ const WebGPUDeviceManager = {
 // Pipeline Manager
 // -------------------------
 export class PipelineManager {
-  static instances: Record<string, SupportedTasksNext8[keyof SupportedTasksNext8]> = {}
+  static instances: Record<
+    string,
+    SupportedTasksNext8[keyof SupportedTasksNext8]
+  > = {}
 
   static async resetAllPipelines(): Promise<void> {
     console.warn('Resetting all pipelines due to device loss')
@@ -530,14 +522,48 @@ export class PipelineManager {
       let device: 'webgpu' | 'wasm' = 'webgpu'
       try {
         await WebGPUDeviceManager.init()
+        device = 'webgpu'
       } catch {
         console.warn('WebGPU not available, using WASM')
-        device = 'wasm'
       }
-      const dtype: "q4" | "fp16" | "fp32" | "q4f16" | "auto" | "q8" | "int8" | "uint8" | "bnb4" | Record<string, "q4" | "fp16" | "fp32" | "q4f16" | "auto" | "q8" | "int8" | "uint8" | "bnb4"> | undefined = device === 'wasm' ? 'fp16' : (MODEL_DTYPE[model] as "q4" | "fp16" | "fp32" | "q4f16" | "auto" | "q8" | "int8" | "uint8" | "bnb4"  ?? 'fp16')
+      const dtype:
+        | 'q4'
+        | 'fp16'
+        | 'fp32'
+        | 'q4f16'
+        | 'auto'
+        | 'q8'
+        | 'int8'
+        | 'uint8'
+        | 'bnb4'
+        | Record<
+            string,
+            | 'q4'
+            | 'fp16'
+            | 'fp32'
+            | 'q4f16'
+            | 'auto'
+            | 'q8'
+            | 'int8'
+            | 'uint8'
+            | 'bnb4'
+          >
+        | undefined =
+        device === 'webgpu'
+          ? ((MODEL_DTYPE[model] as
+              | 'q4'
+              | 'fp16'
+              | 'fp32'
+              | 'q4f16'
+              | 'auto'
+              | 'q8'
+              | 'int8'
+              | 'uint8'
+              | 'bnb4') ?? 'fp16')
+          : 'auto'
       const opts = {
         device,
-        dtype: dtype,
+        dtype: 'q4f16' as const,
         progress_callback: progressCallback,
       }
       try {

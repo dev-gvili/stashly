@@ -21,6 +21,7 @@ model Item {
   video  Video?
   audio  Audio?
   pdf    Pdf?
+  markdown Markdown?
 
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)

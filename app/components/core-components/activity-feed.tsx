@@ -45,7 +45,7 @@ export function ActivityFeed({ activities, isLoading, className }: ActivityFeedP
   }
 
   return (
-    <div className={cn('flex-col  space-y-3 justify-center w-full', className)}>
+    <div className={cn('flex-col h-full flex-1 space-y-3 justify-center w-full items-start', className)}>
       {activities.map((activity, i) => (
         <ActivityEntry
           key={activity.id}

@@ -5,7 +5,7 @@ import {
   DropdownIcon,
   FavoriteIcon,
   FilterIcon,
-  LockIcon,
+  LockFillIcon,
 } from '@/components/icons'
 import {
   Button,
@@ -161,7 +161,7 @@ function FiltersFlagToggles({ className }: { className?: string }) {
             onPressedChange={() => filters.toggleMulti('flags', f.id)}
           >
             {f.id === 'locked' ? (
-              <LockIcon className="size-4" />
+              <LockFillIcon className="size-4" />
             ) : (
               <FavoriteIcon className="size-4" />
             )}
@@ -488,7 +488,8 @@ export function HeaderFilters() {
   const location = useLocation()
   if (
     location.pathname.includes('/videos') ||
-    location.pathname.includes('/images')
+    location.pathname.includes('/images') ||
+    location.pathname.includes('/files')
   ) {
     return null
   }

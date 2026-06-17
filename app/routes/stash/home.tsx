@@ -106,7 +106,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       suggestedFolders={suggestedFolders}
       suggestedFiles={suggestedFiles}
       pinned={pinned as StashItem[]}
-      favorites={favorites as StashItem[]}
+      favorites={favorites as unknown as StashItem[]}
       activity={activity}
     />
   )

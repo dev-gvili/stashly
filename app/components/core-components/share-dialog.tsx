@@ -4,8 +4,8 @@ import { useFetcher } from 'react-router'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/ui/dialog'
@@ -14,47 +14,63 @@ import { Input } from '@/ui/input'
 import { Badge } from '@/ui/badge'
 import { Switch } from '@/ui/switch'
 import { Label } from '@/ui/label'
-import { Separator } from '@/ui/separator'
 import { ScrollArea } from '@/ui/scroll-area'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from '@/ui/dropdown-menu'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/tabs'
 import { cn } from '@/utils/styles'
 import {
-  ShareItemIcon,
-  CopyIcon,
-  LockIcon,
-  ShareIcon,
-  UploadIcon,
-  CodeIcon,
-  EditIcon,
-  DoubleCheckIcon,
-  ViewIcon,
-  AnonymouseIcon,
-  WorkspaceIcon,
-  GroupIcon,
-  LinkIcon,
-  Embedicon,
-  DropdownIcon,
-  RecentIcon,
-  TrashIcon,
+  ShareItemFillIcon,
+  CopyFillIcon,
+  LockFillIcon,
+  ViewFillIcon,
+  EditFillIcon,
+  UploadFillIcon,
+  CodeFillIcon,
+  AnonymousFillIcon,
+  WorkspaceMembersFillIcon,
+  GroupFillIcon,
   RemoveIcon,
+  DropdownIcon,
+  DoubleCheckIcon,
+  TrashFillIcon,
+  AddIcon,
+  SendInvitationIcon,
+  ChevronRightIcon,
+  DownloadFillIcon,
+  RecentFillIcon,
+  SettingsFillIcon,
+  RefreshIcon,
+  LinkIcon,
+  SubmitIcon,
+  LoaderIcon,
+  UserIcon,
+  LockedFillIcon,
+  CalendarFillIcon,
 } from '@/components/icons'
 import type { ShareLinkType, ShareScope } from '@/prisma/client'
+import type { StashInvitation } from '@/types/stash.types'
+import type { PermissionRole } from '@/prisma/enums'
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  InputGroup,
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
   InputGroupAddon,
   InputGroupButton,
+  InputGroup,
   InputGroupInput,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '../ui'
+import { toUserInitial } from '@/utils'
+import { Check } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -76,6 +92,19 @@ export interface ShareLinkWithPermissions {
   }[]
 }
 
+interface PermissionWithUsers {
+  id: string
+  roles: PermissionRole
+  linkId: string | null
+  recipientId: string | null
+  users: {
+    id: string
+    name: string | null
+    image: string | null
+    email: string
+  }[]
+}
+
 export interface ShareDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -84,619 +113,551 @@ export interface ShareDialogProps {
   itemType: 'file' | 'folder' | 'collection'
 }
 
+type InviteRow = { id: string; email: string; role: string }
+
 // ---------------------------------------------------------------------------
-// Helpers
+// Constants
 // ---------------------------------------------------------------------------
 
 const SCOPE_OPTIONS: {
   value: ShareScope
   label: string
-  icon: React.ElementType
-  description: string
+  desc: string
+  Icon: React.ElementType
 }[] = [
   {
     value: 'anonymous',
     label: 'Anyone with the link',
-    icon: AnonymouseIcon,
-    description: 'No sign-in required',
+    desc: 'No sign-in required',
+    Icon: AnonymousFillIcon,
   },
   {
     value: 'organization',
     label: 'Workspace members',
-    icon: WorkspaceIcon,
-    description: 'Must be a workspace member',
+    desc: 'Must be a workspace member',
+    Icon: WorkspaceMembersFillIcon,
   },
   {
     value: 'users',
-    label: 'Specific people',
-    icon: GroupIcon,
-    description: 'Only invited users',
+    label: 'Restricted',
+    desc: 'Only people invited',
+    Icon: GroupFillIcon,
   },
 ]
 
-const TYPE_OPTIONS: {
+const GENERAL_ROLE_OPTIONS: {
   value: ShareLinkType
   label: string
-  icon: React.ElementType
-  description: string
-  folderOnly?: boolean
+  desc: string
+  Icon: React.ElementType
 }[] = [
   {
     value: 'view',
-    label: 'View only',
-    icon: ViewIcon,
-    description: 'Can view but not edit',
+    label: 'Can view',
+    desc: 'View but not edit',
+    Icon: ViewFillIcon,
   },
   {
     value: 'edit',
     label: 'Can edit',
-    icon: EditIcon,
-    description: 'Can modify content',
-  },
-  {
-    value: 'embed',
-    label: 'Embed',
-    icon: Embedicon,
-    description: 'Public embed (anonymous only)',
+    desc: 'Edit and comment',
+    Icon: EditFillIcon,
   },
   {
     value: 'upload',
-    label: 'Upload',
-    icon: UploadIcon,
-    description: 'Can add files (folder only)',
-    folderOnly: true,
+    label: 'Can upload',
+    desc: 'Add files to folder',
+    Icon: UploadFillIcon,
   },
 ]
 
-function typeIcon(type: ShareLinkType) {
-  switch (type) {
-    case 'view':
-      return ViewIcon
-    case 'edit':
-      return EditIcon
-    case 'embed':
-      return Embedicon
-    case 'upload':
-      return UploadIcon
-  }
-}
+const MEMBER_ROLE_OPTIONS: {
+  value: string
+  label: string
+  Icon: React.ElementType
+}[] = [
+  {
+    value: 'read',
+    label: 'Can view',
+    Icon: ViewFillIcon,
+  },
+  {
+    value: 'write',
+    label: 'Can edit',
+    Icon: EditFillIcon,
+  },
+]
 
-function scopeIcon(scope: ShareScope) {
-  switch (scope) {
-    case 'anonymous':
-      return AnonymouseIcon
-    case 'organization':
-      return WorkspaceIcon
-    case 'users':
-      return GroupIcon
-  }
-}
+const INVITE_ROLE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'read', label: 'Can view' },
+  { value: 'write', label: 'Can edit' },
+]
 
-function scopeLabel(scope: ShareScope) {
-  return SCOPE_OPTIONS.find((o) => o.value === scope)?.label ?? scope
-}
-
-function typeLabel(type: ShareLinkType) {
-  return TYPE_OPTIONS.find((o) => o.value === type)?.label ?? type
-}
-
-function formatExpiry(expiresAt: Date | string | null) {
-  if (!expiresAt) return null
-  const d = new Date(expiresAt)
-  if (d < new Date()) return 'Expired'
-  return `Expires ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-}
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function buildShareUrl(link: ShareLinkWithPermissions) {
   if (link.url) return link.url
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined')
     return `${window.location.origin}/s/${link.id}`
-  }
   return `/s/${link.id}`
 }
 
+function formatRelativeDate(date: Date | string) {
+  const d = new Date(date)
+  const now = new Date()
+  const diff = now.getTime() - d.getTime()
+  const days = Math.floor(diff / 86400000)
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `${days}d ago`
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+const AVATAR_PALETTES = [
+  { bg: 'bg-amber-100', text: 'text-amber-800' },
+  { bg: 'bg-blue-100', text: 'text-blue-800' },
+  { bg: 'bg-green-100', text: 'text-green-800' },
+  { bg: 'bg-pink-100', text: 'text-pink-800' },
+  { bg: 'bg-violet-100', text: 'text-violet-800' },
+]
+
+function getInitials(name: string | null, fallback?: string) {
+  if (!name) return (fallback ?? '?').charAt(0).toUpperCase()
+  return name
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+}
+
 // ---------------------------------------------------------------------------
-// CopyButton — inline clipboard copy with checkmark feedback
+// RoleSelect — compact inline role dropdown
 // ---------------------------------------------------------------------------
 
-function CopyButton({
+function RoleSelect({
   value,
-  className,
+  options,
+  onChange,
+  placeholder,
 }: {
   value: string
-  className?: string
+  options: { value: string; label: string }[]
+  onChange: (v: string) => void
+  placeholder?: string
 }) {
-  const { copy, copied } = useClipboard()
-
+  const current = options.find((o) => o.value === value)
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      onClick={() => copy(value)}
-      className={cn('shrink-0 gap-1.5', className)}
-      aria-label="Copy link"
-    >
-      <AnimatePresence mode="wait" initial={false}>
-        {copied ? (
-          <motion.span
-            key="check"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.15 }}
-            className="flex items-center gap-1"
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="font-stashly text-xs h-7 px-2 gap-1 text-muted-foreground hover:text-foreground"
+        >
+          {current?.label ?? placeholder ?? value}
+          <DropdownIcon className="size-4 text-current opacity-60" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="bg-card shadow-stashly border-input"
+      >
+        {options.map((opt) => (
+          <DropdownMenuItem
+            key={opt.value}
+            onSelect={() => onChange(opt.value)}
+            className={cn(
+              'font-stashly text-xs',
+              value === opt.value && 'bg-accent'
+            )}
           >
-            <DoubleCheckIcon className="size-5" />
-            <span className="text-xs">Copied</span>
-          </motion.span>
-        ) : (
-          <motion.span
-            key="copy"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.15 }}
-            className="flex items-center gap-1"
-          >
-            <CopyIcon className="size-5" />
-            <span className="text-xs">Copy</span>
-          </motion.span>
-        )}
-      </AnimatePresence>
-    </Button>
+            {opt.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
 // ---------------------------------------------------------------------------
-// ShareLinkRow — renders one existing share link
+// InviteRecipientRow — email input + role selector for invite form
 // ---------------------------------------------------------------------------
 
-function ShareLinkRow({
-  link,
-  onRevoke,
-  onUpdateScope,
-  onUpdateType,
-  onUpdateDownloadable,
-  onUpdateExpiry,
-  onRemoveExpiry,
+function InviteRecipientRow({
+  row,
+  showRemove,
+  onEmail,
+  onRole,
+  onRemove,
 }: {
-  link: ShareLinkWithPermissions
-  onRevoke: (linkId: string) => void
-  onUpdateScope: (linkId: string, scope: ShareScope) => void
-  onUpdateType: (linkId: string, type: ShareLinkType) => void
-  onUpdateDownloadable: (linkId: string, downloadable: boolean) => void
-  onUpdateExpiry: (linkId: string, expiresAt: Date) => void
-  onRemoveExpiry: (linkId: string) => void
+  row: InviteRow
+  showRemove: boolean
+  onEmail: (v: string) => void
+  onRole: (v: string) => void
+  onRemove: () => void
 }) {
-  const shareUrl = buildShareUrl(link)
-  const TypeIcon = typeIcon(link.type)
-  const ScopeIcon = scopeIcon(link.scope)
-  const expiry = formatExpiry(link.expiresAt)
-  const isExpired = link.expiresAt && new Date(link.expiresAt) < new Date()
-  const [showExpiry, setShowExpiry] = useState(false)
-  const { copy: copyToClipboard, copied } = useClipboard({ resetDelay: 1500 })
-  const expiryRef = useRef<HTMLInputElement>(null)
-
-  const handleCopy = (text: string) => {
-    copyToClipboard(text)
-  }
   return (
-    <Card className="rounded-md bg-card border-input p-2 gap-y-2">
-      {/* Header row: type + scope badges + revoke */}
-      <CardHeader className="p-0 inline-flex items-start gap-2 justify-between">
-        <div className="inline-flex items-center gap-2 max-w-max w-full flex-1">
-          {/* Type selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button
-                size="default"
-                variant="outline"
-                className="font-stashly bg-background! border-input!"
-              >
-                <TypeIcon className="size-5 text-current" />
-                {typeLabel(link.type)}
-                <DropdownIcon className="size-5 text-current" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="bg-sidebar shadow-md">
-              {TYPE_OPTIONS.map((opt) => (
-                <DropdownMenuItem
-                  key={opt.value}
-                  onSelect={() => onUpdateType(link.id, opt.value)}
-                  className={cn(link.type === opt.value && 'bg-accent')}
-                >
-                  <opt.icon className="size-5! mr-2 text-current" />
-                  <div>
-                    <div className="text-xs font-medium">{opt.label}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {opt.description}
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <div className="flex items-center gap-1 h-9 pl-3 pr-1 rounded-lg border border-input bg-card focus-within:ring-1 focus-within:ring-ring transition-shadow">
+      <input
+        type="email"
+        placeholder="colleague@example.com"
+        value={row.email}
+        onChange={(e) => onEmail(e.target.value)}
+        className="flex-1 min-w-0 bg-transparent outline-none text-xs font-stashly placeholder:text-muted-foreground"
+      />
+      <div className="flex items-center gap-0.5 border-l border-input pl-1">
+        <RoleSelect
+          value={row.role}
+          options={INVITE_ROLE_OPTIONS}
+          onChange={onRole}
+        />
+        {showRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label="Remove"
+            className="size-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <RemoveIcon className="size-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
 
-          {/* Scope selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="font-stashly bg-background! border-input"
-                disabled={link.type === 'embed'}
-              >
-                <ScopeIcon className="size-5 text-current" />
-                {scopeLabel(link.scope)}
-                <DropdownIcon className="size-5 text-current" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-60 bg-sidebar">
-              {SCOPE_OPTIONS.map((opt) => (
-                <DropdownMenuItem
-                  key={opt.value}
-                  onSelect={() => onUpdateScope(link.id, opt.value)}
-                  className={cn(link.scope === opt.value && 'bg-accent')}
-                >
-                  <opt.icon className="size-5 mr-2 text-current" />
-                  <div>
-                    <div className="text-xs font-medium">{opt.label}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {opt.description}
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+// ---------------------------------------------------------------------------
+// PersonRow — existing user with permission
+// ---------------------------------------------------------------------------
+
+function PersonRow({
+  user,
+  role,
+  idx,
+  onRole,
+  onRemove,
+}: {
+  user: { id: string; name: string | null; image: string | null; email: string }
+  role: PermissionRole
+  idx: number
+  onRole: (role: string) => void
+  onRemove: () => void
+}) {
+  const isOwner = role === 'owner'
+  return (
+    <div className="flex items-center gap-2.5 py-1">
+      <Avatar className="h-8 w-8 rounded-md shadow-stashly">
+        <AvatarImage src={user.image || ''} alt={user.name!} />
+        <AvatarFallback className="rounded-sm font-sans">
+          {toUserInitial(user.name!)}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium font-stashly truncate">
+            {user.name ?? user.email}
+          </span>
         </div>
-      </CardHeader>
-
-      <CardContent className="p-0 inline-flex justify-between gap-2">
-        {/* URL row */}
-        <InputGroup className="bg-sidebar! rounded-md! flex">
-          <InputGroupInput
-            className="font-stashly truncate select-all h-9!"
-            readOnly
-            value={shareUrl}
-          />
-          <InputGroupAddon align="inline-end" className="h-auto">
-            <InputGroupButton
-              onClick={() => handleCopy(shareUrl)}
-              aria-label="Copy share URL"
-              className="bg-transparent! border-input! text-current"
+        <p className="text-xs text-muted-foreground font-stashly truncate">
+          {user.email}
+        </p>
+      </div>
+      {isOwner ? (
+        <span className="text-xs text-muted-foreground font-stashly pr-1.5">
+          Owner
+        </span>
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="default"
+              className="font-stashly bg-card! border-input! text-xs h-8 gap-1 shrink-0"
             >
-              {copied ? (
-                <DoubleCheckIcon className="size-5 text-current" />
-              ) : (
-                <CopyIcon className="size-5 text-current" />
-              )}
-            </InputGroupButton>
-          </InputGroupAddon>
-        </InputGroup>
+              {role === 'read' ? 'Can view' : 'Can edit'}
+              <DropdownIcon className="size-4 text-current" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="bg-card shadow-stashly border-input w-48"
+          >
+            {MEMBER_ROLE_OPTIONS.map((opt) => (
+              <DropdownMenuItem
+                key={opt.value}
+                onSelect={() => onRole(opt.value)}
+                className={cn('font-stashly')}
+              >
+                <opt.Icon className="size-5 text-current" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium">{opt.label}</p>
+                </div>
+                {role === opt.value && (
+                  <DoubleCheckIcon className="size-5 text-current" />
+                )}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuItem
+              onSelect={onRemove}
+              className="font-stashly text-xs text-destructive focus:text-destructive"
+            >
+              <RemoveIcon className="size-5 text-destructive" />
+              Remove access
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// InviteStatusRow — sent invitation row
+// ---------------------------------------------------------------------------
+
+function InviteStatusRow({
+  email,
+  role,
+  status,
+  date,
+  onCancel,
+  image,
+}: {
+  email: string
+  role: string
+  status: string
+  date: string
+  image: string | null
+  onCancel: () => void
+}) {
+  const statusVariant =
+    status === 'accepted'
+      ? 'bg-green-100 text-green-800'
+      : status === 'rejected'
+        ? 'bg-red-100 text-red-800'
+        : status === 'canceled' || status === 'expired'
+          ? 'bg-muted text-muted-foreground'
+          : 'bg-amber-100 text-amber-800'
+
+  const roleLabel = role === 'write' ? 'Can edit' : 'Can view'
+
+  return (
+    <div className="flex items-center gap-2.5 py-1">
+      <Avatar className="h-8 w-8 rounded-md shadow-stashly">
+        <AvatarImage src={image || ''} alt={email!} />
+        <AvatarFallback className="rounded-sm font-sans">
+          {toUserInitial(email!)}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium font-stashly truncate">{email}</p>
+        <p className="text-xs text-muted-foreground font-stashly">
+          {roleLabel} · {date}
+        </p>
+      </div>
+      <span
+        className={cn(
+          'inline-flex items-center h-5 px-2 rounded-full text-xs font-stashly font-medium',
+          statusVariant
+        )}
+      >
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+      <Button
+        variant="destructive"
+        size="icon-sm"
+        onClick={onCancel}
+        aria-label="Cancel invitation"
+      >
+        <RemoveIcon className="size-4" />
+      </Button>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// LinkSettingsDropdown — icon gear button → settings panel
+// ---------------------------------------------------------------------------
+
+interface LinkSettings {
+  download: boolean
+  expiry: boolean
+  expiresAt: string
+  password: boolean
+  passwordValue: string
+}
+
+function LinkSettingsDropdown({
+  settings,
+  onChange,
+  onApply,
+  downloadDisabled,
+}: {
+  settings: LinkSettings
+  onChange: (patch: Partial<LinkSettings>) => void
+  onApply: () => void
+  downloadDisabled?: boolean
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
           size="icon-sm"
-          onClick={() => onRevoke(link.id)}
-          aria-label="Revoke link"
-          className="text-destructive-foreground bg-destructive! size-9"
+          className="size-9 border-input bg-card shrink-0"
+          aria-label="Link settings"
         >
-          <TrashIcon className="size-5 text-current" />
+          <SettingsFillIcon className="size-4 text-muted-foreground" />
         </Button>
-      </CardContent>
-      <CardFooter className="inline-flex justify-between w-full">
-        {/* Downloadable toggle (view/embed only) */}
-        {(link.type === 'view' || link.type === 'embed') && (
-          <div className="flex items-center justify-between flex-1 mt-2">
-            <Label
-              className="text-xs text-muted-foreground font-stashly cursor-pointer pl-1"
-              htmlFor={`dl-${link.id}`}
-            >
-              Allow download
-            </Label>
-            <Switch
-              id={`dl-${link.id}`}
-              checked={link.downloadable ?? false}
-              onCheckedChange={(v) => onUpdateDownloadable(link.id, v)}
-              className="aria-checked:bg-primary! bg-muted!"
-            />
-          </div>
-        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        side="top"
+        className="w-72 bg-card border-input shadow-stashly p-0 overflow-hidden"
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
+        <DropdownMenuLabel className="font-stashly text-xs uppercase text-muted-foreground px-3 py-2.5 ">
+          Link settings
+        </DropdownMenuLabel>
 
-        {/* Expiry picker */}
-        <AnimatePresence>
-          {showExpiry && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="overflow-hidden"
-            >
-              <div className="flex items-center gap-2 pt-1">
-                <Input
-                  ref={expiryRef}
-                  type="datetime-local"
-                  className="h-7 text-xs font-stashly"
-                  defaultValue={
-                    link.expiresAt
-                      ? new Date(link.expiresAt).toISOString().slice(0, 16)
-                      : ''
-                  }
-                />
-                <Button
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => {
-                    const val = expiryRef.current?.value
-                    if (val) {
-                      onUpdateExpiry(link.id, new Date(val))
-                      setShowExpiry(false)
-                    }
-                  }}
-                >
-                  Set
-                </Button>
-                {link.expiresAt && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs text-muted-foreground"
-                    onClick={() => {
-                      onRemoveExpiry(link.id)
-                      setShowExpiry(false)
-                    }}
-                  >
-                    Remove
-                  </Button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Users with access (scope=users) */}
-        {link.permission.length > 0 && link.permission[0].users.length > 0 && (
-          <div className="pt-1">
-            <p className="text-xs text-muted-foreground mb-1.5 font-stashly">
-              People with access
+        {/* Allow download */}
+        <div className="flex items-start gap-2.5 px-3 py-2.5">
+          <DownloadFillIcon className="size-4 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium font-stashly">Allow download</p>
+            <p className="text-xs text-muted-foreground font-stashly">
+              {downloadDisabled
+                ? 'Embed links cannot be downloaded'
+                : 'Recipients can save a copy'}
             </p>
-            <div className="flex flex-wrap gap-1.5">
-              {link.permission[0].users.map((u) => (
-                <div
-                  key={u.id}
-                  className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5"
-                >
-                  {u.image ? (
-                    <img
-                      src={u.image}
-                      alt={u.name ?? ''}
-                      className="size-4 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="size-4 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-medium">
-                      {u.name?.[0]?.toUpperCase() ?? '?'}
-                    </div>
-                  )}
-                  <span className="text-xs font-stashly truncate max-w-[120px]">
-                    {u.name}
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
+          <Switch
+            className="h-4"
+            checked={downloadDisabled ? false : settings.download}
+            disabled={downloadDisabled}
+            onCheckedChange={(v) => onChange({ download: v })}
+          />
+        </div>
+
+
+        {/* Set expiry date */}
+        <div className="flex items-start gap-2.5 px-3 py-2.5">
+          <CalendarFillIcon className="size-4 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium font-stashly">Set expiry date</p>
+            <p className="text-xs text-muted-foreground font-stashly">
+              Link expires after this date
+            </p>
+            <AnimatePresence>
+              {settings.expiry && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="overflow-hidden"
+                >
+                  <Input
+                    type="datetime-local"
+                    className="h-7 text-xs font-stashly mt-1.5"
+                    value={settings.expiresAt}
+                    onChange={(e) => onChange({ expiresAt: e.target.value })}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <Switch
+            checked={settings.expiry}
+            onCheckedChange={(v) => onChange({ expiry: v })}
+            className="h-4"
+          />
+        </div>
+
+
+        {/* Password protect */}
+        <div className="flex items-start gap-2.5 px-3 py-2.5">
+          <LockedFillIcon className="size-4 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium font-stashly">Password protect</p>
+            <p className="text-xs text-muted-foreground font-stashly">
+              Require a password to open
+            </p>
+            <AnimatePresence>
+              {settings.password && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="overflow-hidden"
+                >
+                  <Input
+                    type="string"
+                    placeholder="Set a password"
+                    className="h-7 text-xs font-stashly mt-1.5"
+                    value={settings.passwordValue}
+                    onChange={(e) =>
+                      onChange({ passwordValue: e.target.value })
+                    }
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <Switch
+            checked={settings.password}
+            onCheckedChange={(v) => onChange({ password: v })}
+            className="h-4"
+          />
+        </div>
+
+        {(settings.expiry || settings.password) && (
+          <>
+            <DropdownMenuSeparator className="my-0" />
+            <div className="px-3 py-2">
+              <Button
+                size="sm"
+                className="w-full font-stashly h-7 text-xs rounded-md"
+                onClick={onApply}
+              >
+                Apply
+              </Button>
+            </div>
+          </>
         )}
-      </CardFooter>
-    </Card>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
 // ---------------------------------------------------------------------------
-// CreateLinkForm — form for creating a new share link
+// CopyField — link URL with copy button
 // ---------------------------------------------------------------------------
 
-function CreateLinkForm({
-  itemId,
-  itemType,
-  onCreate,
-}: {
-  itemId: string
-  itemType: 'file' | 'folder' | 'collection'
-  onCreate: (intent: string, extra?: Record<string, unknown>) => void
-}) {
-  const [type, setType] = useState<ShareLinkType>('view')
-  const [scope, setScope] = useState<ShareScope>('anonymous')
-  const [downloadable, setDownloadable] = useState(false)
-  const [withExpiry, setWithExpiry] = useState(false)
-  const [expiresAt, setExpiresAt] = useState('')
-  const [withPassword, setWithPassword] = useState(false)
-  const [password, setPassword] = useState('')
-
-  const availableTypes = TYPE_OPTIONS.filter(
-    (t) => !t.folderOnly || itemType === 'folder'
-  )
-
-  const handleCreate = () => {
-    const intentMap: Record<ShareLinkType, string> = {
-      view: 'create_view_link',
-      edit: 'create_edit_link',
-      embed: 'create_embed_link',
-      upload: 'create_upload_link',
-    }
-    const intent = intentMap[type]
-    const extra: Record<string, unknown> = {}
-    if (type !== 'embed') extra.scope = scope
-    if (type === 'view') extra.downloadable = downloadable
-    if (withPassword && password) extra.password = password
-    if (withExpiry && expiresAt) extra.expiresAt = expiresAt
-    onCreate(intent, extra)
-  }
-
-  // Embed is always anonymous
-  useEffect(() => {
-    if (type === 'embed') setScope('anonymous')
-  }, [type])
-
+function CopyField({ url }: { url: string | null }) {
+  const { copy, copied } = useClipboard()
   return (
-    <div className="space-y-4">
-      {/* Link type */}
-      <div>
-        <Label className="text-xs text-muted-foreground font-stashly mb-2 block">
-          Link type
-        </Label>
-        <div className="grid grid-cols-2 gap-2">
-          {availableTypes.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setType(opt.value)}
-              className={cn(
-                'flex items-start gap-2 rounded-lg border p-3 text-left transition-colors',
-                type === opt.value
-                  ? 'border-primary bg-background text-primary'
-                  : 'border-border hover:bg-muted/50 bg-background'
-              )}
-            >
-              <opt.icon className="size-6 mt-0.5 shrink-0" />
-              <div>
-                <div className="text-sm font-medium font-stashly">
-                  {opt.label}
-                </div>
-                <div className="text-[0.65rem] text-muted-foreground">
-                  {opt.description}
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Scope */}
-      {type !== 'embed' && (
-        <div>
-          <Label className="text-xs text-muted-foreground font-stashly mb-2 block">
-            Who can access
-          </Label>
-          <div className="space-y-1.5">
-            {SCOPE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setScope(opt.value)}
-                className={cn(
-                  'w-full flex items-center gap-3 rounded-md border p-2.5 text-left transition-colors',
-                  scope === opt.value
-                    ? 'border-primary bg-background'
-                    : 'border-border hover:bg-muted/50 bg-background'
-                )}
-              >
-                <opt.icon className="size-6 shrink-0 text-muted-foreground" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium font-stashly">
-                    {opt.label}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {opt.description}
-                  </div>
-                </div>
-                {scope === opt.value && (
-                  <DoubleCheckIcon className="size-6 text-current shrink-0" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Options */}
-      <div className="space-y-2.5">
-        {type === 'view' && (
-          <div className="flex items-center justify-between">
-            <Label
-              className="text-xs font-stashly cursor-pointer"
-              htmlFor="create-downloadable"
-            >
-              Allow download
-            </Label>
-            <Switch
-              id="create-downloadable"
-              checked={downloadable}
-              onCheckedChange={setDownloadable}
-              className="rounded!"
-            />
-          </div>
-        )}
-        <div className="flex items-center justify-between">
-          <Label
-            className="text-xs font-stashly cursor-pointer"
-            htmlFor="create-expiry"
-          >
-            Set expiry date
-          </Label>
-          <Switch
-            id="create-expiry"
-            checked={withExpiry}
-            onCheckedChange={setWithExpiry}
-          />
-        </div>
-        <AnimatePresence>
-          {withExpiry && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="overflow-hidden"
-            >
-              <Input
-                type="datetime-local"
-                className="h-8 text-xs font-stashly"
-                value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <div className="flex items-center justify-between">
-          <Label
-            className="text-xs font-stashly cursor-pointer"
-            htmlFor="create-password"
-          >
-            Password protect
-          </Label>
-          <Switch
-            id="create-password"
-            checked={withPassword}
-            onCheckedChange={setWithPassword}
-            className=""
-          />
-        </div>
-        <AnimatePresence>
-          {withPassword && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="overflow-hidden"
-            >
-              <Input
-                type="password"
-                placeholder="Set a password"
-                className="h-8 text-xs font-stashly"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <Button onClick={handleCreate} className="w-full font-stashly rounded-md">
-        <LinkIcon className="size-5 mr-2" />
-        Create link
-      </Button>
-    </div>
+    <InputGroup className="rounded-md border border-input bg-card shadow-stashly">
+      <InputGroupAddon align="inline-start">
+        <LinkIcon />
+      </InputGroupAddon>
+      <InputGroupInput
+        type="url"
+        disabled
+        defaultValue={url ?? undefined}
+        placeholder="https://stashly.app/s/abc123"
+        className="pl-8 text-sm"
+      />
+      <InputGroupAddon align="inline-end">
+        <InputGroupButton onClick={() => copy(url ?? '')} disabled={!url}>
+          {copied ? <DoubleCheckIcon /> : <CopyFillIcon />}
+        </InputGroupButton>
+      </InputGroupAddon>
+    </InputGroup>
   )
 }
 
@@ -711,124 +672,257 @@ export function ShareDialog({
   itemName,
   itemType,
 }: ShareDialogProps) {
-  const fetcher = useFetcher<{
-    links?: ShareLinkWithPermissions[]
+  // Data fetchers
+  const sharesFetcher = useFetcher<{ links?: ShareLinkWithPermissions[] }>()
+  const permsFetcher = useFetcher<{ permissions?: PermissionWithUsers[] }>()
+  const invitesFetcher = useFetcher<{ invitations?: StashInvitation[] }>()
+  const actionFetcher = useFetcher<{ success?: boolean; error?: string }>()
+  const invitesFetcher2 = useFetcher<{ success?: boolean; error?: string }>()
+  const permActionFetcher = useFetcher<{
     success?: boolean
-    link?: ShareLinkWithPermissions
+    permission?: unknown
+    error?: string
   }>()
-  const loaderFetcher = useFetcher<{ links?: ShareLinkWithPermissions[] }>()
-  const [links, setLinks] = useState<ShareLinkWithPermissions[]>([])
 
-  // Load links when dialog opens
+  // Form state
+  const [inviteRows, setInviteRows] = useState<InviteRow[]>([
+    { id: 'r1', email: '', role: 'read' },
+  ])
+  const [showInvites, setShowInvites] = useState(false)
+  const [scope, setScope] = useState<ShareScope>('anonymous')
+  const [generalRole, setGeneralRole] = useState<ShareLinkType>('view')
+  const [linkSettings, setLinkSettings] = useState<LinkSettings>({
+    download: true,
+    expiry: false,
+    expiresAt: '',
+    password: false,
+    passwordValue: '',
+  })
+  const rowIdRef = useRef(2)
+
+  // Load data when dialog opens
   useEffect(() => {
-    if (open && itemId) {
-      loaderFetcher.load(`/api/shares?itemId=${itemId}`)
-    }
+    if (!open || !itemId) return
+    sharesFetcher.load(`/api/shares?itemId=${itemId}`)
+    permsFetcher.load(`/api/permissions?itemId=${itemId}`)
+    invitesFetcher.load(`/api/invitations?itemId=${itemId}`)
   }, [open, itemId])
 
-  // Sync loader data into state
+  // Sync scope/role from loaded share links
+  const links = sharesFetcher.data?.links ?? []
+  const generalLink = links.find(
+    (l) => !l.expiresAt || new Date(l.expiresAt) > new Date()
+  )
+
   useEffect(() => {
-    if (loaderFetcher.data?.links) {
-      setLinks(loaderFetcher.data.links)
+    if (generalLink) {
+      setScope(generalLink.scope)
+      setGeneralRole(generalLink.type)
+      setLinkSettings((s) => ({
+        ...s,
+        download: generalLink.downloadable ?? true,
+      }))
     }
-  }, [loaderFetcher.data])
+  }, [generalLink?.id])
 
-  // After a mutation, reload the links
+  // Reload data after mutations
   useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data?.success) {
-      loaderFetcher.load(`/api/shares?itemId=${itemId}`)
+    if (actionFetcher.state === 'idle' && actionFetcher.data?.success) {
+      sharesFetcher.load(`/api/shares?itemId=${itemId}`)
     }
-  }, [fetcher.state, fetcher.data])
+  }, [actionFetcher.state, actionFetcher.data])
 
-  const submit = useCallback(
-    (intent: string, extra: Record<string, unknown> = {}) => {
-      fetcher.submit(
-        { intent, itemId, ...extra },
-        { method: 'POST', action: '/api/shares' }
-      )
-    },
-    [fetcher, itemId]
+  useEffect(() => {
+    if (invitesFetcher2.state === 'idle' && invitesFetcher2.data?.success) {
+      invitesFetcher.load(`/api/invitations?itemId=${itemId}`)
+      setInviteRows([{ id: 'r1', email: '', role: 'read' }])
+      rowIdRef.current = 2
+    }
+  }, [invitesFetcher2.state, invitesFetcher2.data])
+
+  useEffect(() => {
+    // grant_permission returns `{ permission }` (201) while revoke_permission
+    // returns `{ success }` — reload on any non-error settled response.
+    if (
+      permActionFetcher.state === 'idle' &&
+      permActionFetcher.data &&
+      !permActionFetcher.data.error
+    ) {
+      permsFetcher.load(`/api/permissions?itemId=${itemId}`)
+    }
+  }, [permActionFetcher.state, permActionFetcher.data])
+
+  // Derived data
+  const rawPermissions = permsFetcher.data?.permissions ?? []
+  const directPermissions = rawPermissions.filter(
+    (p) => !p.linkId || (!p.recipientId && p.users.length > 0)
   )
-
-  const handleRevoke = useCallback(
-    (linkId: string) => {
-      fetcher.submit(
-        { intent: 'revoke_link', linkId },
-        { method: 'POST', action: '/api/shares' }
-      )
-    },
-    [fetcher]
+  const invitations = invitesFetcher.data?.invitations ?? []
+  const allRecipients = invitations.flatMap((inv) =>
+    inv.recipients.map((r) => ({
+      id: r.id,
+      email: r.email,
+      status: r.status,
+      role: r.role ?? 'read',
+      date: formatRelativeDate(inv.createdAt),
+      invitationId: inv.id,
+      image: r?.image ?? null,
+    }))
   )
+  const pendingRecipients = allRecipients.filter((r) => r.status === 'pending')
 
-  const handleUpdateScope = useCallback(
-    (linkId: string, scope: ShareScope) => {
-      fetcher.submit(
-        { intent: 'update_link_scope', linkId, scope },
-        { method: 'POST', action: '/api/shares' }
-      )
-    },
-    [fetcher]
-  )
+  const shareUrl = generalLink ? buildShareUrl(generalLink) : null
+  // Embed links are always anonymous and never downloadable (see docs Flow H).
+  const isEmbed = generalRole === 'embed'
+  const effectiveScope: ShareScope = isEmbed ? 'anonymous' : scope
+  const scopeOpt =
+    SCOPE_OPTIONS.find((s) => s.value === effectiveScope) ?? SCOPE_OPTIONS[0]
+  const ScopeIcon = scopeOpt.Icon
+  const isRestricted = effectiveScope === 'users'
 
-  const handleUpdateType = useCallback(
-    (linkId: string, type: ShareLinkType) => {
-      fetcher.submit(
-        { intent: 'update_link_type', linkId, type },
-        { method: 'POST', action: '/api/shares' }
-      )
-    },
-    [fetcher]
-  )
+  // Actions
+  const addRow = () => {
+    const id = `r${rowIdRef.current++}`
+    setInviteRows((rows) => [...rows, { id, email: '', role: 'read' }])
+  }
 
-  const handleUpdateDownloadable = useCallback(
-    (linkId: string, downloadable: boolean) => {
-      fetcher.submit(
-        {
-          intent: 'update_link_downloadable',
-          linkId,
-          downloadable: String(downloadable),
-        },
-        { method: 'POST', action: '/api/shares' }
-      )
-    },
-    [fetcher]
-  )
+  const removeRow = (id: string) =>
+    setInviteRows((rows) => rows.filter((r) => r.id !== id))
 
-  const handleUpdateExpiry = useCallback(
-    (linkId: string, expiresAt: Date) => {
-      fetcher.submit(
-        { intent: 'expire_link', linkId, expiresAt: expiresAt.toISOString() },
-        { method: 'POST', action: '/api/shares' }
-      )
-    },
-    [fetcher]
-  )
-
-  const handleRemoveExpiry = useCallback(
-    (linkId: string) => {
-      fetcher.submit(
-        { intent: 'remove_link_expiry', linkId },
-        { method: 'POST', action: '/api/shares' }
-      )
-    },
-    [fetcher]
-  )
-
-  const handleRevokeAll = useCallback(() => {
-    fetcher.submit(
-      { intent: 'revoke_all_links', itemId },
-      { method: 'POST', action: '/api/shares' }
+  const patchRow = (id: string, patch: Partial<InviteRow>) =>
+    setInviteRows((rows) =>
+      rows.map((r) => (r.id === id ? { ...r, ...patch } : r))
     )
-  }, [fetcher, itemId])
 
-  const isLoading = loaderFetcher.state === 'loading'
-  const isMutating = fetcher.state !== 'idle'
+  const handleSendInvites = useCallback(() => {
+    const valid = inviteRows.filter((r) => r.email.trim())
+    if (!valid.length) return
+    // parseFormData uses qs.parse for nested keys — expand the array manually
+    const qsRecipients: Record<string, string> = {}
+    valid.forEach((r, i) => {
+      qsRecipients[`recipients[${i}][email]`] = r.email.trim()
+      qsRecipients[`recipients[${i}][role]`] = r.role
+    })
+    invitesFetcher2.submit(
+      { intent: 'send_item_invitation', itemId, ...qsRecipients },
+      { method: 'post', action: '/api/invitations' }
+    )
+  }, [inviteRows, itemId, invitesFetcher2])
+
+  const handleCancelInvitation = useCallback(
+    (invitationId: string) => {
+      invitesFetcher2.submit(
+        { intent: 'cancel_invitation', invitationId },
+        { method: 'post', action: '/api/invitations' }
+      )
+    },
+    [invitesFetcher2]
+  )
+
+  const handleRemovePerm = useCallback(
+    (userId: string) => {
+      permActionFetcher.submit(
+        { intent: 'revoke_permission', userId, itemId },
+        { method: 'post', action: '/api/permissions' }
+      )
+    },
+    [permActionFetcher, itemId]
+  )
+
+  const handleRoleChange = useCallback(
+    (userId: string, role: string) => {
+      permActionFetcher.submit(
+        { intent: 'grant_permission', userId, itemId, role },
+        { method: 'post', action: '/api/permissions' }
+      )
+    },
+    [itemId]
+  )
+
+  const submitLinkMutation = useCallback(
+    (intent: string, extra: Record<string, unknown> = {}) => {
+      actionFetcher.submit(
+        { intent, itemId, ...extra },
+        { method: 'post', action: '/api/shares' }
+      )
+    },
+    [itemId]
+  )
+
+  const handleScopeChange = useCallback(
+    (newScope: ShareScope) => {
+      if (isEmbed) return // embed is locked to anonymous
+      setScope(newScope)
+      if (generalLink) {
+        submitLinkMutation('update_link_scope', {
+          linkId: generalLink.id,
+          scope: newScope,
+        })
+      } else {
+        submitLinkMutation('create_view_link', { scope: newScope })
+      }
+    },
+    [generalLink, submitLinkMutation, isEmbed]
+  )
+
+  const handleRoleChange2 = useCallback(
+    (newRole: ShareLinkType) => {
+      setGeneralRole(newRole)
+      // Embed forces anonymous scope and no downloads (docs Flow H).
+      if (newRole === 'embed') {
+        setScope('anonymous')
+        setLinkSettings((s) => ({ ...s, download: false }))
+      }
+      if (generalLink) {
+        submitLinkMutation('update_link_type', {
+          linkId: generalLink.id,
+          type: newRole,
+        })
+      } else if (newRole === 'embed') {
+        submitLinkMutation('create_embed_link', {})
+      } else {
+        submitLinkMutation(`create_${newRole}_link`, { scope })
+      }
+    },
+    [generalLink, submitLinkMutation, scope]
+  )
+
+  const handleApplyLinkSettings = useCallback(() => {
+    if (!generalLink) return
+    if (linkSettings.expiry && linkSettings.expiresAt) {
+      submitLinkMutation('expire_link', {
+        linkId: generalLink.id,
+        expiresAt: new Date(linkSettings.expiresAt).toISOString(),
+      })
+      return
+    }
+
+    if (linkSettings.password) {
+      console.log('Setting password', linkSettings)
+      submitLinkMutation('update_link_password', {
+        linkId: generalLink.id,
+        password: linkSettings.passwordValue,
+      })
+      return
+    }
+
+    // Embed links can never be downloadable (docs Flow H).
+    if (!isEmbed) {
+      submitLinkMutation('update_link_downloadable', {
+        linkId: generalLink.id,
+        downloadable: String(linkSettings.download),
+      })
+    }
+  }, [generalLink, linkSettings, submitLinkMutation, isEmbed])
+
+  const isLoading =
+    sharesFetcher.state === 'loading' || permsFetcher.state === 'loading'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        showCloseButton={false}
-        className="max-w-xl! w-full font-stashly bg-sidebar border-input shadow-2xl shadow-stashly"
+        showCloseButton
+        className="font-stashly bg-card border-input shadow-stashly"
         onPointerDownOutside={(e) => {
           e.preventDefault()
           e.stopPropagation()
@@ -840,118 +934,275 @@ export function ShareDialog({
           onOpenChange(false)
         }}
       >
-        <DialogHeader className="flex flex-row items-center justify-between w-full">
-          <DialogTitle className="flex items-center gap-2 text-base ">
-            <ShareItemIcon className="size-6" />
-            <span className="truncate">Share "{itemName}"</span>
-          </DialogTitle>
-          <DialogClose asChild>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              className="bg-card border-input place-self-end"
-              aria-label="Close"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onOpenChange(false)
-              }}
-            >
-              <RemoveIcon className="text-current size-5" />
-            </Button>
-          </DialogClose>
+        {/* Header */}
+        <DialogHeader className="mb-4 w-full">
+          <DialogTitle>Share</DialogTitle>
+          <DialogDescription className="font-stashly max-w-sm truncate">
+            {itemName}
+          </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="create" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 rounded-md! bg-card h-auto border-input! border p-0">
-            <TabsTrigger
-              value="links"
-              className="font-stashly data-[state=active]:bg-primary! data-[state=active]:text-primary-foreground! data-[state=active]:border-none data-[state=active]:rounded-0.5 h-9"
-            >
-              Share links
-              {links.length > 0 && (
-                <Badge
-                  variant="default"
-                  className="rounded-sm bg-primary-foreground text-primary font-medium"
+        <ScrollArea className="max-h-[min(calc(100svh-10rem),32rem)]">
+          <div className="flex flex-col gap-5">
+            {/* ── Invite people ──────────────────────────────────── */}
+            <section className="flex flex-col gap-2.5">
+              <h3 className="text-xs font-bold text-muted-foreground capitalize tracking-wide font-stashly">
+                Invite people
+              </h3>
+              <div className="flex flex-col gap-2">
+                {inviteRows.map((row) => (
+                  <InviteRecipientRow
+                    key={row.id}
+                    row={row}
+                    showRemove={inviteRows.length > 1}
+                    onEmail={(v) => patchRow(row.id, { email: v })}
+                    onRole={(v) => patchRow(row.id, { role: v })}
+                    onRemove={() => removeRow(row.id)}
+                  />
+                ))}
+              </div>
+              {invitesFetcher2.state === 'idle' &&
+                invitesFetcher2.data?.error && (
+                  <p className="text-xs text-destructive font-stashly">
+                    {invitesFetcher2.data.error}
+                  </p>
+                )}
+              <div className="flex items-center justify-between">
+                <Button
+                  onClick={addRow}
+                  variant="link"
+                  size="sm"
+                  className="text-xs font-stashly hover:no-underline gap-1.5"
                 >
-                  {links.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger
-              value="create"
-              className="font-stashly data-[state=active]:bg-primary! data-[state=active]:text-primary-foreground! data-[state=active]:border-none data-[state=active]:rounded-0.5 h-9"
+                  <AddIcon className="size-5" />
+                  Add another
+                </Button>
+                <Button
+                  size="sm"
+                  className="font-stashly rounded-md"
+                  onClick={handleSendInvites}
+                  disabled={
+                    invitesFetcher2.state !== 'idle' ||
+                    !inviteRows.some((r) => r.email.trim())
+                  }
+                >
+                  Send
+                </Button>
+              </div>
+            </section>
+
+            {/* ── People with access ─────────────────────────────── */}
+            {(directPermissions.length > 0 ||
+              permsFetcher.state === 'loading') && (
+              <section className="flex flex-col gap-1">
+                <h3 className="text-xs font-bold text-muted-foreground capitalize tracking-wide font-stashly">
+                  People with access
+                </h3>
+                {permsFetcher.state === 'loading' ? (
+                  <div className="h-9 flex items-center">
+                    <LoaderIcon className="size-5 text-muted-foreground animate-spin" />
+                  </div>
+                ) : (
+                  directPermissions.flatMap((perm, pi) =>
+                    perm.users.map((user, ui) => (
+                      <PersonRow
+                        key={`${perm.id}-${user.id}`}
+                        user={user}
+                        role={perm.roles}
+                        idx={pi + ui}
+                        onRole={(role) => handleRoleChange(user.id, role)}
+                        onRemove={() => handleRemovePerm(user.id)}
+                      />
+                    ))
+                  )
+                )}
+              </section>
+            )}
+
+            {/* ── Sent invitations (disclosure) ──────────────────── */}
+            {pendingRecipients.length > 0 && (
+              <section className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => setShowInvites((v) => !v)}
+                  className="flex items-center gap-2 w-full text-left"
+                >
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-stashly flex-1">
+                    Sent invitations
+                  </p>
+                  <Badge
+                    variant="secondary"
+                    className="rounded-sm font-stashly text-xs h-5 px-1.5"
+                  >
+                    {pendingRecipients.length}
+                  </Badge>
+                  <ChevronRightIcon
+                    className={cn(
+                      'size-4 text-muted-foreground transition-transform',
+                      showInvites && 'rotate-90'
+                    )}
+                  />
+                </button>
+                <AnimatePresence>
+                  {showInvites && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="flex flex-col gap-0.5 pt-1">
+                        {pendingRecipients.map((r) => (
+                          <InviteStatusRow
+                            key={r.id}
+                            email={r.email}
+                            role={r.role}
+                            status={r.status}
+                            date={r.date}
+                            image={r.image}
+                            onCancel={() =>
+                              handleCancelInvitation(r.invitationId)
+                            }
+                          />
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </section>
+            )}
+
+            {/* Divider
+            <div className="h-px bg-input" /> */}
+
+            {/* ── General access ─────────────────────────────────── */}
+            <section className="flex flex-col gap-2">
+              <DialogTitle className="text-xs font-bold text-muted-foreground capitalize tracking-wide font-stashly">
+                General access
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild disabled={isEmbed}>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      disabled={isEmbed}
+                      className="gap-1 text-xs font-stashly bg-card border-input"
+                    >
+                      <ScopeIcon className="size-5" />
+                      <span className="flex flex-col items-start">
+                        {scopeOpt.label}
+                        <p className="text-xs text-muted-foreground font-stashly">
+                          {isEmbed
+                            ? 'Embed links are always public'
+                            : scopeOpt.desc}
+                        </p>
+                      </span>
+                      <DropdownIcon className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    className="w-64 bg-sidebar shadow-md border-input"
+                  >
+                    {SCOPE_OPTIONS.map((opt) => (
+                      <DropdownMenuItem
+                        key={opt.value}
+                        onSelect={() => handleScopeChange(opt.value)}
+                        className={cn(
+                          'font-stashly',
+                          effectiveScope === opt.value && 'bg-accent'
+                        )}
+                      >
+                        <opt.Icon className="size-5 shrink-0 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium">{opt.label}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {opt.desc}
+                          </p>
+                        </div>
+                        {effectiveScope === opt.value && (
+                          <DoubleCheckIcon className="size-4 shrink-0" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {!isRestricted && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="default"
+                        className="font-stashly bg-card! border-input! text-xs h-8 gap-1 shrink-0"
+                      >
+                        {GENERAL_ROLE_OPTIONS.find(
+                          (r) => r.value === generalRole
+                        )?.label ?? 'Can view'}
+                        <DropdownIcon className="size-4 text-current" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="bg-card shadow-stashly border-input"
+                    >
+                      {GENERAL_ROLE_OPTIONS.filter(
+                        (r) => r.value !== 'upload' || itemType === 'folder'
+                      ).map((opt) => (
+                        <DropdownMenuItem
+                          key={opt.value}
+                          onSelect={() => handleRoleChange2(opt.value)}
+                          className={cn(
+                            'font-stashly',
+                            generalRole === opt.value &&
+                              'text-accent-foreground!'
+                          )}
+                        >
+                          <opt.Icon className="size-5 text-current" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium">{opt.label}</p>
+                            <p className="text-xs">{opt.desc}</p>
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </section>
+          </div>
+        </ScrollArea>
+
+        {/* Footer — copy link + link settings */}
+        <div className="flex items-center gap-2">
+          {shareUrl ? (
+            <CopyField url={shareUrl} />
+          ) : (
+            <Button
+              variant="outline"
+              className="flex-1 font-stashly border-input bg-card"
+              onClick={() => submitLinkMutation('create_view_link', { scope })}
+              disabled={actionFetcher.state !== 'idle'}
             >
+              <LinkIcon className="size-5" />
               Create link
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Existing links tab */}
-          <TabsContent value="links" className="mt-4">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-10 text-muted-foreground">
-                <div className="animate-spin size-5 rounded-full border-2 border-current border-t-transparent mr-3" />
-                <span className="text-sm font-stashly">Loading links…</span>
-              </div>
-            ) : links.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
-                <ShareItemIcon className="size-10 opacity-30" />
-                <p className="text-sm font-stashly">No share links yet</p>
-                <p className="text-xs text-center max-w-xs">
-                  Create a link to share this {itemType} with others.
-                </p>
-              </div>
-            ) : (
-              <ScrollArea className="max-h-90 pr-1">
-                <div className="space-y-3">
-                  {links.map((link) => (
-                    <ShareLinkRow
-                      key={link.id}
-                      link={link}
-                      onRevoke={handleRevoke}
-                      onUpdateScope={handleUpdateScope}
-                      onUpdateType={handleUpdateType}
-                      onUpdateDownloadable={handleUpdateDownloadable}
-                      onUpdateExpiry={handleUpdateExpiry}
-                      onRemoveExpiry={handleRemoveExpiry}
-                    />
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
-
-            {links.length > 0 && (
-              <Button
-                variant="destructive"
-                size="default"
-                onClick={handleRevokeAll}
-                disabled={isMutating}
-                className="w-full mt-4"
-              >
-                <TrashIcon className="size-5 text-current" />
-                Revoke all links
-              </Button>
-            )}
-          </TabsContent>
-
-          {/* Create link tab */}
-          <TabsContent value="create" className="mt-4">
-            <CreateLinkForm
-              itemId={itemId}
-              itemType={itemType}
-              onCreate={(intent, extra) => {
-                submit(intent, extra)
-              }}
-            />
-          </TabsContent>
-        </Tabs>
+            </Button>
+          )}
+          <LinkSettingsDropdown
+            settings={linkSettings}
+            onChange={(patch) => setLinkSettings((s) => ({ ...s, ...patch }))}
+            onApply={handleApplyLinkSettings}
+            downloadDisabled={isEmbed}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   )
 }
 
 // ---------------------------------------------------------------------------
-// ShareTrigger — convenience wrapper that manages open state
+// ShareTrigger — convenience wrapper
 // ---------------------------------------------------------------------------
 
 export function ShareTrigger({

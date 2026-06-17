@@ -20,7 +20,9 @@ import { searchFactory } from '@/utils/search'
 export const searchInvitations = searchFactory({
   dbDelegate: prisma.invitation,
   buildFilters: buildInvitationFilters,
-  defaultOrderBy: (): Prisma.InvitationOrderByWithRelationInput => ({ createdAt: 'desc' }),
+  defaultOrderBy: (): Prisma.InvitationOrderByWithRelationInput => ({
+    createdAt: 'desc',
+  }),
 })
 
 type PrismaTx = Omit<
@@ -41,6 +43,7 @@ export type RecipientWithPermission = {
     id: string
     roles: PermissionRole
     item: { id: string; name: string } | null
+    users: { id: string; name: string; image: string | null; displayName: string | null }[]
   } | null
 }
 
@@ -76,6 +79,15 @@ const invitationInclude = {
         select: {
           id: true,
           roles: true,
+          users: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+              displayName: true,
+              email: true,
+            },
+          },
           item: { select: { id: true, name: true } },
         },
       },
@@ -100,7 +112,9 @@ export function findInvitationById(
   }) as Promise<InvitationWithDetails | null>
 }
 
-export function listSentInvitations(senderId: string): Promise<InvitationWithDetails[]> {
+export function listSentInvitations(
+  senderId: string
+): Promise<InvitationWithDetails[]> {
   return prisma.invitation.findMany({
     where: { senderId },
     include: invitationInclude,
@@ -108,7 +122,9 @@ export function listSentInvitations(senderId: string): Promise<InvitationWithDet
   }) as Promise<InvitationWithDetails[]>
 }
 
-export function listReceivedInvitations(email: string): Promise<InvitationWithDetails[]> {
+export function listReceivedInvitations(
+  email: string
+): Promise<InvitationWithDetails[]> {
   return prisma.invitation.findMany({
     where: {
       recipients: { some: { email, status: 'pending' } },
@@ -120,12 +136,12 @@ export function listReceivedInvitations(email: string): Promise<InvitationWithDe
 
 export function listItemInvitations(
   itemId: string
-): Promise<InvitationWithDetails[]> {
+){
   return prisma.invitation.findMany({
     where: { itemId },
     include: invitationInclude,
     orderBy: { createdAt: 'desc' },
-  }) as Promise<InvitationWithDetails[]>
+  }) 
 }
 
 // ---------------------------------------------------------------------------
@@ -149,7 +165,10 @@ export async function sendItemInvitation(
   recipients: RecipientInput[],
   options: SendInvitationOptions = {}
 ): Promise<InvitationWithDetails> {
-  const item = await prisma.item.findUnique({ where: { id: itemId }, select: { id: true, ownerId: true } })
+  const item = await prisma.item.findUnique({
+    where: { id: itemId },
+    select: { id: true, ownerId: true },
+  })
   if (!item) {
     throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
   }
@@ -158,7 +177,10 @@ export async function sendItemInvitation(
   if (!isOwner) {
     const canWrite = await hasItemPermission(senderId, itemId, 'write')
     if (!canWrite) {
-      throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'You do not have permission to invite others to this item')
+      throw new StashlyError(
+        StashlyErrorCode.FORBIDDEN,
+        'You do not have permission to invite others to this item'
+      )
     }
   }
 
@@ -215,7 +237,10 @@ export async function sendItemInvitation(
       })
     }
 
-    return findInvitationById(invitationId, tx) as Promise<InvitationWithDetails>
+    return findInvitationById(
+      invitationId,
+      tx
+    ) as Promise<InvitationWithDetails>
   })
 }
 
@@ -243,9 +268,13 @@ export async function sendWorkspaceInvitation(
   }
 
   const senderMembership = workspace.members[0]
-  const isAdmin = senderMembership?.role === 'admin' || senderMembership?.role === 'owner'
+  const isAdmin =
+    senderMembership?.role === 'admin' || senderMembership?.role === 'owner'
   if (!isAdmin) {
-    throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'Only workspace admins can send invitations')
+    throw new StashlyError(
+      StashlyErrorCode.FORBIDDEN,
+      'Only workspace admins can send invitations'
+    )
   }
 
   const emails = recipients.map((r) => r.email)
@@ -315,7 +344,10 @@ export async function sendWorkspaceInvitation(
       })
     }
 
-    return findInvitationById(invitationId, tx) as Promise<InvitationWithDetails>
+    return findInvitationById(
+      invitationId,
+      tx
+    ) as Promise<InvitationWithDetails>
   })
 }
 
@@ -346,13 +378,22 @@ export async function acceptInvitation(
     },
   })
   if (!recipient) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Invitation recipient not found')
+    throw new StashlyError(
+      StashlyErrorCode.NOT_FOUND,
+      'Invitation recipient not found'
+    )
   }
   if (recipient.email !== userEmail) {
-    throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'This invitation was not sent to you')
+    throw new StashlyError(
+      StashlyErrorCode.FORBIDDEN,
+      'This invitation was not sent to you'
+    )
   }
   if (recipient.status !== 'pending') {
-    throw new StashlyError(StashlyErrorCode.GONE, `Invitation is already ${recipient.status}`)
+    throw new StashlyError(
+      StashlyErrorCode.GONE,
+      `Invitation is already ${recipient.status}`
+    )
   }
 
   const invitation = recipient.invitation
@@ -390,7 +431,10 @@ export async function acceptInvitation(
       data: { status: 'accepted' },
     })
 
-    return findInvitationById(invitation.id, tx) as Promise<InvitationWithDetails>
+    return findInvitationById(
+      invitation.id,
+      tx
+    ) as Promise<InvitationWithDetails>
   })
 }
 
@@ -411,20 +455,31 @@ export async function rejectInvitation(
     include: { invitation: true },
   })
   if (!recipient) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Invitation recipient not found')
+    throw new StashlyError(
+      StashlyErrorCode.NOT_FOUND,
+      'Invitation recipient not found'
+    )
   }
   if (recipient.email !== userEmail) {
-    throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'This invitation was not sent to you')
+    throw new StashlyError(
+      StashlyErrorCode.FORBIDDEN,
+      'This invitation was not sent to you'
+    )
   }
   if (recipient.status !== 'pending') {
-    throw new StashlyError(StashlyErrorCode.GONE, `Invitation is already ${recipient.status}`)
+    throw new StashlyError(
+      StashlyErrorCode.GONE,
+      `Invitation is already ${recipient.status}`
+    )
   }
 
   await prisma.invitationRecipient.update({
     where: { id: recipientId },
     data: { status: 'rejected' },
   })
-  return findInvitationById(recipient.invitationId) as Promise<InvitationWithDetails>
+  return findInvitationById(
+    recipient.invitationId
+  ) as Promise<InvitationWithDetails>
 }
 
 /**
@@ -444,12 +499,20 @@ export async function cancelInvitation(
     throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Invitation not found')
   }
   if (invitation.senderId !== senderId) {
-    throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'Only the sender can cancel an invitation')
+    throw new StashlyError(
+      StashlyErrorCode.FORBIDDEN,
+      'Only the sender can cancel an invitation'
+    )
   }
 
-  const pendingRecipients = invitation.recipients.filter((r) => r.status === 'pending')
+  const pendingRecipients = invitation.recipients.filter(
+    (r) => r.status === 'pending'
+  )
   if (pendingRecipients.length === 0) {
-    throw new StashlyError(StashlyErrorCode.GONE, 'No pending recipients to cancel')
+    throw new StashlyError(
+      StashlyErrorCode.GONE,
+      'No pending recipients to cancel'
+    )
   }
 
   return prisma.$transaction(async (tx) => {
@@ -468,6 +531,9 @@ export async function cancelInvitation(
       })
     }
 
-    return findInvitationById(invitationId, tx) as Promise<InvitationWithDetails>
+    return findInvitationById(
+      invitationId,
+      tx
+    ) as Promise<InvitationWithDetails>
   })
 }

@@ -14,28 +14,19 @@ import {
 import {
   AIcon,
   CollectionFillIcon,
-  CollectionIcon,
-  CollectionLineIcon,
-  CollectionsFillIcon,
   FavoriteIcon,
   FavoritesFillIcon,
   FolderFillIcon,
   FolderIcon,
   HomeFillIcon,
-  HomeIcon,
   ImagesFillIcon,
-  ImagesIcon,
   PinFillIcon,
-  PinIcon,
   RecentFillIcon,
-  RecentIcon,
   SendInvitationIcon,
   ShareFillIcon,
-  ShareIcon,
   StorageFillIcon,
   TrashFillIcon,
   VideosFillIcon,
-  VideosIcon,
 } from '@/components/icons'
 import { NavMedia } from '@/components/navigation/nav-media'
 import {
@@ -93,7 +84,7 @@ const libraryItems: SidebarItemProps[] = [
   },
   {
     icon: (isActive) => (
-      <CollectionsFillIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
+      <CollectionFillIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
     ),
     label: 'Collections',
     to: 'collections?layout=grid',
@@ -229,7 +220,7 @@ export const AppSidebar = ({
       collapsible="icon"
       variant="floating"
       widthIcon="5rem"
-      className="rounded-md! overflow-hidden"
+      className="rounded-lg! overflow-hidden"
     >
       <SidebarHeader className="bg-card rounded-t-md">
         <SidebarMenu>

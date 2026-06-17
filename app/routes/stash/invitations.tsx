@@ -8,7 +8,7 @@ import { Button } from '@/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/ui/avatar'
 import { cn } from '@/utils/styles'
 import { toUserInitial } from '@/utils/converters'
-import { ShareIcon, CheckIcon, RemoveIcon, DeleteIcon, UserIcon } from '@/components/icons'
+import { ShareIcon, CheckIcon, RemoveIcon, TrashFillIcon, UserIcon } from '@/components/icons'
 import type { StashInvitation, StashInvitationRecipient } from '@/types/stash.types'
 
 // ---------------------------------------------------------------------------
@@ -142,7 +142,7 @@ function SentInvitationCard({ invitation }: { invitation: StashInvitation }) {
             <input type="hidden" name="intent" value="cancel_invitation" />
             <input type="hidden" name="invitationId" value={invitation.id} />
             <Button size="sm" variant="ghost" disabled={isPending} type="submit">
-              <DeleteIcon className="size-3.5 mr-1" />
+              <TrashFillIcon className="size-3.5 mr-1" />
               Cancel all
             </Button>
           </fetcher.Form>

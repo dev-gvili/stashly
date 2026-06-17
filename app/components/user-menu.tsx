@@ -7,7 +7,7 @@ import {
 } from '@/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/ui/avatar'
 import { Link, useLoaderData, useSubmit } from 'react-router'
-import { LogoutIcon, SettingsIcon, UserIcon } from '@/components/icons'
+import { LogoutFillIcon, SettingsFillIcon, UserIcon } from '@/components/icons'
 import { toUserInitial } from '@/utils/converters'
 import type { Route } from '../routes/+types/layout'
 import { SidebarMenuButton, useSidebar } from './ui/sidebar'
@@ -68,12 +68,12 @@ export function UserMenu() {
         </DropdownMenuItem>
         <DropdownMenuItem className="hover:cursor-pointer" asChild>
           <Link to={`/${user.id}/settings`}>
-            <SettingsIcon className="size-5! text-current" />
+            <SettingsFillIcon className="size-5! text-current" />
             <span>Settings</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem className="hover:cursor-pointer" onClick={_onClick}>
-          <LogoutIcon className="size-5! text-current" />
+          <LogoutFillIcon className="size-5! text-current" />
           <span>Logout</span>
         </DropdownMenuItem>
       </DropdownMenuContent>

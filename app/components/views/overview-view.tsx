@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { href, Link } from 'react-router'
+import { href, Link, useLocation } from 'react-router'
 import type { StashItem } from '@/types/stash.types'
 import type {
   OverviewActivity,
@@ -23,9 +23,7 @@ import {
   FolderFillIcon,
   FolderIcon,
   PinFillIcon,
-  PinIcon,
   RecentFillIcon,
-  RecentIcon,
 } from '@/components/icons'
 
 export interface OverviewViewProps {
@@ -265,15 +263,7 @@ export function OverviewView({
     activity.length > 0
 
   if (!hasAny) return <FilesEmptyState />
-
-  console.log('OverviewView', {
-    user,
-    pinned,
-    favorites,
-    suggestedFolders,
-    suggestedFiles,
-    activity,
-  })
+  let location = useLocation()
 
   let pinnedRows = pinned
     .slice(0, 4)
@@ -289,7 +279,7 @@ export function OverviewView({
               title="Pinned"
               icon={<PinFillIcon className="size-5 text-accent-foreground" />}
               viewAll={{
-                to: href('/:me/stash/pinned', { me: user.id }),
+                to: `${href('/:me/stash/pinned', { me: user.id })}${location.search}`,
                 label: 'View all',
               }}
             >
@@ -303,7 +293,7 @@ export function OverviewView({
                 <FavoritesFillIcon className="size-5 text-accent-foreground" />
               }
               viewAll={{
-                to: href('/:me/stash/favorites', { me: user.id }),
+                to: `${href('/:me/stash/favorites', { me: user.id })}${location.search}`,
                 label: 'View all',
               }}
             >

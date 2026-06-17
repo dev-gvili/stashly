@@ -89,6 +89,10 @@ export function useThumbnailV2(itemId: string) {
         console.error('[thumb stage 2 compute]', e)
         return null
       })
+
+      // Metadata + indexing run for all file types regardless of thumbnail availability.
+      void runMetadataPipeline(itemId, file, metadataFetcher, metadataRef, embeddingFetcher, embeddingRef)
+
       if (!resized) return
 
       presignRef.current.load(`/api/thumbnails/${itemId}/presign`)
@@ -114,9 +118,6 @@ export function useThumbnailV2(itemId: string) {
         URL.revokeObjectURL(stage1ObjectUrl)
         stage1ObjectUrl = null
       }
-
-      // Metadata + indexing run independently in the background.
-      void runMetadataPipeline(itemId, file, metadataFetcher, metadataRef, embeddingFetcher, embeddingRef)
 
       // ── Stage 3: salient crop (images only) ─────────────────────────────
       const salient = await generateStage3Salient(file)
