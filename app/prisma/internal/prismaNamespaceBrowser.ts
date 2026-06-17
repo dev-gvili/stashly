@@ -81,6 +81,7 @@ export const ModelName = {
   Image: 'Image',
   Video: 'Video',
   Pdf: 'Pdf',
+  Markdown: 'Markdown',
   Audio: 'Audio',
   Favorite: 'Favorite',
   Invitation: 'Invitation',
@@ -478,6 +479,28 @@ export const PdfScalarFieldEnum = {
 } as const
 
 export type PdfScalarFieldEnum = (typeof PdfScalarFieldEnum)[keyof typeof PdfScalarFieldEnum]
+
+
+export const MarkdownScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  author: 'author',
+  description: 'description',
+  tags: 'tags',
+  wordCount: 'wordCount',
+  readingTime: 'readingTime',
+  headingCount: 'headingCount',
+  linkCount: 'linkCount',
+  imageCount: 'imageCount',
+  codeBlockCount: 'codeBlockCount',
+  taskCount: 'taskCount',
+  hasFrontmatter: 'hasFrontmatter',
+  docCreatedAt: 'docCreatedAt',
+  docModifiedAt: 'docModifiedAt',
+  itemId: 'itemId'
+} as const
+
+export type MarkdownScalarFieldEnum = (typeof MarkdownScalarFieldEnum)[keyof typeof MarkdownScalarFieldEnum]
 
 
 export const AudioScalarFieldEnum = {

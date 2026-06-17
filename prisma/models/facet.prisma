@@ -80,6 +80,28 @@ model Pdf {
   item             Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
+model Markdown {
+  id              String    @id
+  title           String?
+  author          String?
+  description     String?
+  // Comma-joined frontmatter tags (mirrors Pdf.keywords)
+  tags            String?
+  wordCount       Int?
+  // Estimated reading time in whole minutes
+  readingTime     Int?
+  headingCount    Int?
+  linkCount       Int?
+  imageCount      Int?
+  codeBlockCount  Int?
+  taskCount       Int?
+  hasFrontmatter  Boolean?
+  docCreatedAt    DateTime?
+  docModifiedAt   DateTime?
+  itemId          String    @unique
+  item            Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
 model Audio {
   id                String   @id
   album             String?

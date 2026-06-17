@@ -31,6 +31,7 @@ model Invitation {
   @@index([workspaceId])
 }
 
+// Separate model to track per-recipient status and role, since an invitation can be sent to multiple recipients with different roles
 model InvitationRecipient {
   id        String   @id
   createdAt DateTime @default(now()) @db.Timestamp()
@@ -46,11 +47,12 @@ model InvitationRecipient {
   // For workspace invitations: stored as string, maps to WorkspaceMemberRole
   role String @default("read")
 
-  // Parent invitation
+  // Parent invitation, either for item sharing or workspace invitation 
   invitationId String
   invitation   Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
 
-  // Permission created for item invitations
+  // Permission created for item invitations, null for workspace invitations, since workspace permissions are managed differently. 
+  // This allows us to easily query the permission details for item invitations, while keeping workspace invitations simpler.  
   permission Permission?
 
   @@index([invitationId])

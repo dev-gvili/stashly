@@ -173,6 +173,11 @@ export type Video = Prisma.VideoModel
  */
 export type Pdf = Prisma.PdfModel
 /**
+ * Model Markdown
+ * 
+ */
+export type Markdown = Prisma.MarkdownModel
+/**
  * Model Audio
  * 
  */
