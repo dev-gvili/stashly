@@ -1,5 +1,5 @@
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode } from './api.errors'
+import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
 import type { Prisma } from '@/prisma/client'
 
 /**

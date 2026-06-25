@@ -133,395 +133,395 @@ export enum StashlyErrorCode {
  */
 const ERROR_DETAILS: Record<
   StashlyErrorCode,
-  { message: string; statusCode: number }
+  { message: string; status: number }
 > = {
   // General client/server errors
   [StashlyErrorCode.BAD_GATEWAY]: {
     message: 'The server received an invalid response from an upstream server.',
-    statusCode: 502,
+    status: 502,
   },
   [StashlyErrorCode.FORBIDDEN]: {
-    message: 'You do not have permission to perform this action.',
-    statusCode: 403,
+    message: 'You do not have permission.',
+    status: 403,
   },
   [StashlyErrorCode.INTERNAL_SERVER_ERROR]: {
     message: 'An unexpected error occurred on the server.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.INVALID_INPUT]: {
     message: 'The data provided was invalid.',
-    statusCode: 400,
+    status: 400,
   },
   [StashlyErrorCode.NOT_FOUND]: {
     message: 'The requested resource could not be found.',
-    statusCode: 404,
+    status: 404,
   },
   [StashlyErrorCode.CONFLICT]: {
     message: 'The request conflicts with the current state of the resource.',
-    statusCode: 409,
+    status: 409,
   },
   [StashlyErrorCode.GONE]: {
     message: 'The requested resource is no longer available.',
-    statusCode: 410,
+    status: 410,
   },
   [StashlyErrorCode.SERVICE_UNAVAILABLE]: {
     message: 'The service is temporarily unavailable.',
-    statusCode: 503,
+    status: 503,
   },
   [StashlyErrorCode.UNAUTHORIZED]: {
     message:
       'Authentication is required and has failed or has not yet been provided.',
-    statusCode: 401,
+    status: 401,
   },
 
   // User-related errors
   [StashlyErrorCode.INSUFFICIENT_FUNDS]: {
     message: 'Insufficient funds for this operation.',
-    statusCode: 402,
+    status: 402,
   },
   [StashlyErrorCode.USER_NOT_FOUND]: {
     message: 'The specified user could not be found.',
-    statusCode: 404,
+    status: 404,
   },
   [StashlyErrorCode.USER_ALREADY_EXISTS]: {
     message: 'A user with this email already exists.',
-    statusCode: 409,
+    status: 409,
   },
   [StashlyErrorCode.USER_NOT_AUTHORIZED]: {
-    message: 'The user is not authorized to perform this action.',
-    statusCode: 403,
+    message: 'Unauthorized.',
+    status: 403,
   },
 
   // Lock errors
   [StashlyErrorCode.LOCK_FAILED]: {
     message: 'Failed to acquire the lock.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.UNLOCK_FAILED]: {
     message: 'Failed to release the lock.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.LOCK_NOT_FOUND]: {
     message: 'The specified lock could not be found.',
-    statusCode: 404,
+    status: 404,
   },
   [StashlyErrorCode.ITEM_LOCKED]: {
     message: 'The item is currently locked.',
-    statusCode: 409,
+    status: 409,
   },
   [StashlyErrorCode.ITEM_NOT_LOCKED]: {
     message: 'The item is not currently locked.',
-    statusCode: 409,
+    status: 409,
   },
 
   // Storage Plan errors
   [StashlyErrorCode.CREATE_STORAGE_PLAN_FAILED]: {
     message: 'Failed to create the storage plan.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.DELETE_STORAGE_PLAN_FAILED]: {
     message: 'Failed to delete the storage plan.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.STORAGE_PLAN_NOT_FOUND]: {
     message: 'The specified storage plan could not be found.',
-    statusCode: 404,
+    status: 404,
   },
   [StashlyErrorCode.UPDATE_STORAGE_PLAN_FAILED]: {
     message: 'Failed to update the storage plan.',
-    statusCode: 500,
+    status: 500,
   },
 
   // Subscription errors
   [StashlyErrorCode.CANCEL_SUBSCRIPTION_FAILED]: {
     message: 'Failed to cancel the subscription.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.CREATE_SUBSCRIPTION_FAILED]: {
     message: 'Failed to create the subscription.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.DELETE_SUBSCRIPTION_FAILED]: {
     message: 'Failed to delete the subscription.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.SUBSCRIPTION_NOT_FOUND]: {
     message: 'The specified subscription could not be found.',
-    statusCode: 404,
+    status: 404,
   },
   [StashlyErrorCode.UPDATE_SUBSCRIPTION_FAILED]: {
     message: 'Failed to update the subscription.',
-    statusCode: 500,
+    status: 500,
   },
 
   // Quota errors
   [StashlyErrorCode.CREATE_QUOTA_FAILED]: {
     message: 'Failed to create the quota.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.DELETE_QUOTA_FAILED]: {
     message: 'Failed to delete the quota.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.QUOTA_EXCEEDED]: {
     message: 'You have exceeded your storage quota.',
-    statusCode: 507,
+    status: 507,
   },
   [StashlyErrorCode.INSUFFICIENT_QUOTA]: {
     message: 'Insufficient storage quota.',
-    statusCode: 507,
+    status: 507,
   },
   [StashlyErrorCode.QUOTA_NOT_FOUND]: {
     message: 'The specified quota could not be found.',
-    statusCode: 404,
+    status: 404,
   },
   [StashlyErrorCode.QUOTA_NOT_DEFINED_FOR_USER]: {
     message: 'The user does not have a quota defined.',
-    statusCode: 404,
+    status: 404,
   },
   [StashlyErrorCode.UPDATE_QUOTA_FAILED]: {
     message: 'Failed to update the quota.',
-    statusCode: 500,
+    status: 500,
   },
 
   // Drive errors
   [StashlyErrorCode.CREATE_DRIVE_FAILED]: {
     message: 'Failed to create the drive.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.DELETE_DRIVE_FAILED]: {
     message: 'Failed to delete the drive.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.DRIVE_NOT_FOUND]: {
     message: 'The specified drive could not be found.',
-    statusCode: 404,
+    status: 404,
   },
   [StashlyErrorCode.UPDATE_DRIVE_FAILED]: {
     message: 'Failed to update the drive.',
-    statusCode: 500,
+    status: 500,
   },
 
   // Item errors
   [StashlyErrorCode.COPY_ITEM_FAILED]: {
     message: 'Failed to copy the item.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.CREATE_ITEM_FAILED]: {
     message: 'Failed to create the item.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.DELETE_ITEM_FAILED]: {
     message: 'Failed to delete the item.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.ITEM_NOT_FOUND]: {
     message: 'The specified item could not be found.',
-    statusCode: 404,
+    status: 404,
   },
   [StashlyErrorCode.LIST_ITEMS_FAILED]: {
     message: 'Failed to list items.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.MOVE_ITEM_FAILED]: {
     message: 'Failed to move the item.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.RENAME_ITEM_FAILED]: {
     message: 'Failed to rename the item.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.UPDATE_ITEM_FAILED]: {
     message: 'Failed to update the item.',
-    statusCode: 500,
+    status: 500,
   },
 
   // Upload/Download errors
   [StashlyErrorCode.ABORT_UPLOAD_FAILED]: {
     message: 'Failed to abort the upload.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.COMPLETE_UPLOAD_FAILED]: {
     message: 'Failed to complete the upload.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.CREATE_UPLOAD_FAILED]: {
     message: 'Failed to create the upload session.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.DOWNLOAD_FAILED]: {
     message: 'The download failed.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.PRESIGNED_URL_FAILED]: {
     message: 'Failed to generate presigned URL.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.UPLOAD_FAILED]: {
     message: 'The upload failed.',
-    statusCode: 500,
+    status: 500,
   },
 
   // Share errors
   [StashlyErrorCode.CREATE_SHARE_FAILED]: {
     message: 'Failed to create the share.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.DELETE_SHARE_FAILED]: {
     message: 'Failed to delete the share.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.LIST_SHARES_FAILED]: {
     message: 'Failed to list shares.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.SHARE_FAILED]: {
     message: 'Failed to share the item.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.SHARE_NOT_FOUND]: {
     message: 'The specified share could not be found.',
-    statusCode: 404,
+    status: 404,
   },
   [StashlyErrorCode.UPDATE_SHARE_FAILED]: {
     message: 'Failed to update the share.',
-    statusCode: 500,
+    status: 500,
   },
 
   // AI errors
   [StashlyErrorCode.AI_MODEL_LOADING_FAILED]: {
     message: 'Failed to load the AI model.',
-    statusCode: 503,
+    status: 503,
   },
   [StashlyErrorCode.AI_PROCESSING_FAILED]: {
     message: 'AI processing failed.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.AI_CAPTION_GENERATION_FAILED]: {
     message: 'AI caption generation failed.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.AI_EMBEDDING_FAILED]: {
     message: 'AI embedding generation failed.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.AI_TRANSLATION_FAILED]: {
     message: 'AI translation failed.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.AI_SUMMARIZATION_FAILED]: {
     message: 'AI summarization failed.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.AI_SUGGESTION_FAILED]: {
     message: 'AI suggestion failed.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.AI_CHAT_FAILED]: {
     message: 'AI chat failed.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.AI_TRANSCRIPTION_FAILED]: {
     message: 'AI transcription failed.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.AI_AUDIO_PROCESSING_FAILED]: {
     message: 'AI audio processing failed.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.AI_IMAGE_PROCESSING_FAILED]: {
     message: 'AI image processing failed.',
-    statusCode: 500,
+    status: 500,
   },
 
   // Collection errors
   [StashlyErrorCode.ADD_ITEM_TO_COLLECTION_FAILED]: {
     message: 'Failed to add item to collection.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.ADD_ITEMS_TO_COLLECTION_FAILED]: {
     message: 'Failed to add items to collection.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.REMOVE_ITEM_FROM_COLLECTION_FAILED]: {
     message: 'Failed to remove item from collection.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.REMOVE_ITEMS_FROM_COLLECTION_FAILED]: {
     message: 'Failed to remove items from collection.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.COLLECTION_NOT_FOUND]: {
     message: 'The specified collection could not be found.',
-    statusCode: 404,
+    status: 404,
   },
   [StashlyErrorCode.CREATE_COLLECTION_FAILED]: {
     message: 'Failed to create the collection.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.CLEAR_COLLECTION_FAILED]: {
     message: 'Failed to clear the collection.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.RENAME_COLLECTION_FAILED]: {
     message: 'Failed to rename the collection.',  
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.DELETE_COLLECTION_FAILED]: {
     message: 'Failed to delete the collection.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.RESTORE_COLLECTION_FAILED]: {
     message: 'Failed to restore the collection.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.TRASH_COLLECTION_FAILED]: {
     message: 'Failed to trash the collection.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.RENAME_OBJECT_FAILED]: {
     message: 'Failed to rename the object.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.COPY_OBJECT_FAILED]: {
     message: 'Failed to copy the object.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.MOVE_OBJECT_FAILED]: {
     message: 'Failed to move the object.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.DELETE_OBJECT_FAILED]: {
     message: 'Failed to delete the object.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.CREATE_BUCKET_FAILED]: {
     message: 'Failed to create the bucket.',
-    statusCode: 500,  
+    status: 500,  
   },
   [StashlyErrorCode.DELETE_BUCKET_FAILED]: {
     message: 'Failed to delete the bucket.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.SET_BUCKET_CORS_FAILED]: {
     message: 'Failed to set bucket CORS configuration.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.APPLY_BUCKET_POLICY_FAILED]: {
     message: 'Failed to apply bucket policy.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.ENABLE_BUCKET_VERSIONING_FAILED]: {
     message: 'Failed to enable bucket versioning.',
-    statusCode: 500,
+    status: 500,
   },
   [StashlyErrorCode.BUCKET_CORS_NOT_FOUND]: {
     message: 'Bucket CORS configuration not found.',
-    statusCode: 404,
+    status: 404,
   },
   [StashlyErrorCode.EMPTY_BUCKET_FAILED]: {
     message: 'Failed to empty the bucket.',
-    statusCode: 500,
+    status: 500,
   },
 
 }
@@ -531,7 +531,7 @@ const ERROR_DETAILS: Record<
  * It extends the native Error class to include an HTTP status code and a specific error code.
  */
 export class StashlyError extends Error {
-  public readonly statusCode: number
+  public readonly status: number
   public readonly errorCode: StashlyErrorCode
 
   constructor(errorCode: StashlyErrorCode, message?: string) {
@@ -543,7 +543,8 @@ export class StashlyError extends Error {
     Object.setPrototypeOf(this, StashlyError.prototype)
 
     this.name = 'StashlyError'
-    this.statusCode = details.statusCode
+    this.status = details.status
+    this.cause = details.status
     this.message = message || details.message
     this.errorCode = errorCode
 

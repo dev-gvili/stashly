@@ -25,7 +25,7 @@ import type { User } from 'better-auth'
 import type { auth } from './auth'
 import { toCategory } from '../utils/converters'
 import { parseEtag } from '../utils/parsers'
-import { StashlyError, StashlyErrorCode } from './api.errors'
+import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
 
 export interface UploadProgress {
   percentage: number
