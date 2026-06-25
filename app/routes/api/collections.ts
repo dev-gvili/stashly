@@ -25,7 +25,9 @@ import {
 } from '@/utils/filters/item.filters'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/signin')
 
   let searchParams = new URL(request.url).searchParams
@@ -86,7 +88,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/signin')
 
   const formData = await parseFormData({

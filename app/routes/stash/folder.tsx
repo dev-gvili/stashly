@@ -22,7 +22,9 @@ import {
 import type { Route } from './+types/folder'
 import { SelectionProvider } from '../../components/stash/selection'
 export async function loader({ request, params }: Route.LoaderArgs) {
-  let session = await auth.api.getSession(request)
+  let session = await auth.api.getSession({
+    headers: request.headers
+  })
   if (!session) throw redirect('/auth/signin')
 
   let url = new URL(request.url)

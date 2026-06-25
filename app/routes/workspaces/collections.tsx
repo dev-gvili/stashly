@@ -3,7 +3,9 @@ import type { Route } from './+types/collections'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   // TODO: implement loader logic
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   // if (!session) throw new Error('Unauthorized')
   return { session }
 }

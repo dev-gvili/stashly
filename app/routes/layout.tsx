@@ -20,7 +20,9 @@ import { AppToolbar } from '@/components/app-toolbar'
 export { ErrorBoundary } from '@/components/error-boundary'
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+  const session = await auth.api.getSession({
+    headers: request.headers
+  })
   if (!session) throw redirect('/auth/sign-in')
   // Determine the storage plan: prefer active subscription, then user.storagePlanId, then default
   let plan = await findStoragePlanById(session.user.storagePlanId)

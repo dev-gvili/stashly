@@ -19,7 +19,9 @@ import { LoadMoreItems } from '@/components/core-components/buttons'
 export { ErrorBoundary } from '@/components/error-boundary'
 
 export async function loader({ request }: Route.LoaderArgs) {
-  let session = await auth.api.getSession(request)
+  const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/signin')
   let searchParams = new URL(request.url).searchParams
   searchParams.set('currentUserId', session.user.id)
@@ -43,6 +45,42 @@ export async function loader({ request }: Route.LoaderArgs) {
           childCount: true,
           inclusiveChildCount: true,
           itemId: true,
+        },
+      },
+      parent: {
+        include: {
+          file:true,
+          folder:true,
+          favorites: {
+            select: {
+              id: true,
+              favoritedBy: {
+                select: {
+                  displayName: true,
+                  image: true,
+                  name: true,
+                  id: true,
+                },
+              },
+            },
+          },
+          locked: true,
+          thumbnails: {
+            where: {
+              size: {
+                equals: 'large',
+              },
+              view: layout,
+            },
+            select: {
+              url: true,
+              width: true,
+              height: true,
+              size: true,
+              view: true,
+              id: true,
+            },
+          },
         },
       },
       favorites: {
@@ -100,7 +138,7 @@ export default () => {
             <ItemCard key={item.id} {...item}>
               <ItemCard.Header>
                 <ItemCard.Checkbox name="selectedItems" value={item.id} />
-                <ItemCard.Actions className='place-self-end' />
+                <ItemCard.Actions className="place-self-end" />
               </ItemCard.Header>
               <ItemCard.Content>
                 <ItemCard.Thumbnail />

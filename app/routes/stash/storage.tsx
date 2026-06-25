@@ -51,7 +51,9 @@ import {
 export { ErrorBoundary } from '@/components/error-boundary'
 
 export async function action({ request }: Route.ActionArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   await emptyUserBucket(session.user.id)
@@ -59,7 +61,9 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const { quota, breakdown, largestItems, duplicates } =

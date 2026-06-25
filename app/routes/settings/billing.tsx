@@ -36,7 +36,9 @@ function formatBytes(b: bigint | number) {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const user = await findUserById(session.user.id)
@@ -53,7 +55,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const userId = session.user.id

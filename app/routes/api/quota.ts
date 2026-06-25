@@ -15,7 +15,9 @@ import {
 import { quotaApiRouteInput, quotaApiRouteOutput } from '@/schemas/api.schemas'
 
 export async function action({ request }: Route.ActionArgs) {
-  let session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
   let { user } = session
 

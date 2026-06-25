@@ -33,7 +33,9 @@ import { itemsApiRouteInput } from '@/schemas/api.schemas'
 import { z } from 'zod'
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const user = session.user as any
@@ -78,7 +80,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  let session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
   let { user } = session
 

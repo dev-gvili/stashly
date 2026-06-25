@@ -15,7 +15,9 @@ import {
 } from '@/services/version-actions'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const { itemId: queryItemId, versionId: queryVersionId } = parseSearchParams({
@@ -48,7 +50,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params, unstable_url, context, unstable_pattern }: Route.ActionArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const itemId = params.itemId

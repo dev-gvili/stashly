@@ -11,7 +11,9 @@ const ApiFavoriteSchema = z.object({
 })
 
 // export const action = async ({ request }: Route.ActionArgs) => {
-//   const session = await auth.api.getSession(request)
+//     const session = await auth.api.getSession({
+//    headers: request.headers,
+//  })
 //   if (!session) throw redirect('/auth/sign-in')
 //   let referer = request.headers.get('referer')
 //   let url = new URL(referer || request.url)
@@ -31,7 +33,9 @@ const ApiFavoriteSchema = z.object({
 // }
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const data = parseSearchParams({ request, schema: ApiFavoriteSchema })
