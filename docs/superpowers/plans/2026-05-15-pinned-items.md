@@ -459,7 +459,9 @@ import {
 } from '@/services/pin-actions'
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const params = parseSearchParams({ request, schema: pinApiRouteQuery })
@@ -479,7 +481,9 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
 }
 
 export const action = async ({ request }: Route.ActionArgs) => {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const data = await parseFormData({ request, schema: pinApiRouteInput })
@@ -730,7 +734,9 @@ import type { Route } from './+types/pinned'
 import { SelectionProvider } from '../../components/stash/selection'
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const url = new URL(request.url)

@@ -190,7 +190,9 @@ const uploadFormData = z.discriminatedUnion('action', [
 ])
 
 export async function action({ request }: Route.ActionArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const data = await request.json()

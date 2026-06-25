@@ -227,7 +227,9 @@ Route modules export `loader` (GET) and `action` (POST/PUT/DELETE) functions plu
 
 ```typescript
 export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
   return { user: session.user }
 }

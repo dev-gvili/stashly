@@ -147,7 +147,9 @@ The route is nested under the stash folder and accessible at `/<userId>/stash/ho
 
 ```typescript
 export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session?.user) {
     throw redirect('/auth/signin')
   }
@@ -186,7 +188,9 @@ export default function StashHomePage({ loaderData }: Route.ComponentProps) {
 ```typescript
 // In a route loader
 export async function loader({ request }: LoaderFunctionArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session?.user) throw redirect('/auth/signin')
 
   const { suggestedFolders, suggestedFiles } = await getSuggestedItems({
@@ -291,7 +295,9 @@ try {
 
 ```typescript
 export async function loader({ request }: LoaderFunctionArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   const url = new URL(request.url)
   const searchQuery = url.searchParams.get('q')
 
