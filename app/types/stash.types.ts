@@ -1,5 +1,6 @@
-import type { File, Folder, ItemCategory, ItemStatus, ItemType, Thumbnail } from '@/prisma/browser'
+import type { File, Folder, Video, Audio, Image, Pdf, Markdown, ItemCategory, ItemStatus, ItemType, Thumbnail } from '@/prisma/browser'
 import type { InvitationStatus, PermissionRole, WorkspaceMemberRole } from '@/prisma/enums'
+import type { ActivityWithRelations } from '@/utils/activity'
 
 // ---------------------------------------------------------------------------
 // Sub-types
@@ -48,7 +49,7 @@ export interface StashItem {
   createdAt: Date | string | null
   updatedAt: Date | string | null
   parentId: string | null
-  parent: StashItem | null
+  parent: StashAncestor | null
   ownerId: string
   workspaceId: string | null
   driveId: string
@@ -59,6 +60,14 @@ export interface StashItem {
   locked: StashLock | null
   file: File | null
   folder: Folder | null
+}
+
+// A parent/ancestor item. Same fields as `StashItem`, but the ancestor chain is
+// only loaded one level deep with its own parent fetched shallowly (scalars,
+// no relations) — so `parent` here is intentionally loose to break the
+// otherwise-infinite `StashItem.parent` recursion.
+export interface StashAncestor extends Omit<StashItem, 'parent'> {
+  parent?: { id: string; name: string } | null
 }
 
 // ---------------------------------------------------------------------------
@@ -117,4 +126,130 @@ export type StashPickerItem = Pick<
   'id' | 'name' | 'type' | 'category' | 'size' | 'createdAt'
 > & {
   thumbnailUrl?: string | null
+}
+
+// ---------------------------------------------------------------------------
+// Item-page stage shapes — the per-stage subsets of the item data that each
+// file-detail view (audio/video/pdf/markdown stage + item panel) renders.
+// ---------------------------------------------------------------------------
+
+export type StashItemAudio = {
+  id: string
+  name: string
+  thumbnails: Array<{ url: string | null; size: string; view: string }>
+  audio: {
+    title: string | null
+    artist: string | null
+    album: string | null
+    albumArtist: string | null
+    duration: number | null
+    track: number | null
+    trackCount: number | null
+    bitrate: number | null
+  } | null
+}
+
+export type StashItemVideo = {
+  id: string
+  name: string
+  thumbnails: Array<{ url: string | null; size: string; view: string }>
+  video: {
+    width: number | null
+    height: number | null
+    duration: number | null
+  } | null
+}
+
+export type StashItemPdf = {
+  id: string
+  name: string
+  pdf: {
+    title: string | null
+    pageCount: number | null
+  } | null
+}
+
+export type StashItemMarkdown = {
+  id: string
+  name: string
+  markdown: {
+    title: string | null
+    headingCount: number | null
+  } | null
+}
+
+// Subset of what getFileItem returns — only what the item panel renders.
+export type StashItemPanel = {
+  id: string
+  name: string
+  size: bigint
+  category: ItemCategory
+  createdAt: Date | string | null
+  updatedAt: Date | string | null
+  openedAt?: Date | string | null
+  status: ItemStatus
+  url: string
+  file: { mimeType: string | null; extension: string | null } | null
+  audio: {
+    title: string | null
+    artist: string | null
+    album: string | null
+    albumArtist: string | null
+    track: number | null
+    trackCount: number | null
+    duration: number | null
+    bitrate: number | null
+    bitDepth?: number | null
+    sampleRate?: number | null
+    channels?: number | null
+  } | null
+  pdf?: {
+    pageCount: number | null
+    title: string | null
+    author: string | null
+    subject: string | null
+    creator: string | null
+    producer: string | null
+    pdfVersion: string | null
+    language: string | null
+    hasFormFields: boolean | null
+    hasSignatures: boolean | null
+    pageWidth: number | null
+    pageHeight: number | null
+    docCreatedAt: Date | string | null
+    docModifiedAt: Date | string | null
+  } | null
+  markdown?: {
+    title: string | null
+    author: string | null
+    description: string | null
+    tags: string | null
+    wordCount: number | null
+    readingTime: number | null
+    headingCount: number | null
+    linkCount: number | null
+    imageCount: number | null
+    codeBlockCount: number | null
+    taskCount: number | null
+    hasFrontmatter: boolean | null
+    docCreatedAt: Date | string | null
+    docModifiedAt: Date | string | null
+  } | null
+  video?: {
+    width: number | null
+    height: number | null
+    duration: number | null
+    bitrate: number | null
+    codec: string | null
+    container: string | null
+    frameRate: number | null
+  } | null
+  favorites: Array<{
+    favoritedBy: { id: string; name: string; image: string | null }
+  }>
+  permissions: Array<{
+    roles: string
+    users: Array<{ id: string; name: string; image: string | null }>
+  }>
+  activities: Array<ActivityWithRelations>
 }

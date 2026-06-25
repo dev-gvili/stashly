@@ -1,7 +1,7 @@
 import type { Prisma, Quota as PrismaQuota } from '@/prisma/client'
 import { QuotaStatus } from '@/prisma/enums'
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode } from './api.errors'
+import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
 import { findDefaultStoragePlan, findStoragePlanById } from './storagePlan-actions'
 import { buildQuotaFilters } from '@/utils/filters/quota.filters'
 import { searchFactory } from '@/utils/search'

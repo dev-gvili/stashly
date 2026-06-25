@@ -7,6 +7,7 @@ export const activityFilterSchema = z
     id: z.object({ equals: z.string().optional() }).optional(),
     timeId: z.object({ equals: z.string().optional() }).optional(),
     itemId: z.object({ equals: z.string().optional() }).optional(),
+    ownerId: z.object({ equals: z.string().optional() }).optional(),
 
     // Pagination Params
     cursor: z.string().optional(),
@@ -33,6 +34,14 @@ export const activityFilters = {
   itemId: createActivityFilter(
     z.object({ equals: z.any().optional() }).optional(),
     (itemId) => ({ itemId })
+  ),
+  ownerId: createActivityFilter(
+    z.object({ equals: z.any().optional() }).optional(),
+    (ownerId) => ({
+      item: {
+        ownerId,
+      },
+    })
   ),
 }
 

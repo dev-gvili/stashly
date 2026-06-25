@@ -1,8 +1,8 @@
 import React from 'react'
 import type { ImageData } from './buildRows'
 import { Link, useSearchParams, useViewTransitionState } from 'react-router'
-import { cn, toChunkArray } from '@/utils'
 import { useLocation } from 'react-router'
+import { useScrollRestoration } from '@/hooks/useScrollRestoration'
 
 export function buildSrcSet(src: string, widths: number[]) {
   const hasQuery = src?.indexOf('?') !== -1
@@ -11,37 +11,84 @@ export function buildSrcSet(src: string, widths: number[]) {
     .join(', ')
 }
 
-const ASPECT_CYCLE = [
-  'aspect-square',
-  'aspect-[4/2]',
-  'aspect-[3/4]',
-  'aspect-[2/1]',
-  'aspect-[4/3]',
-  'aspect-[2/2]',
-  'aspect-square',
-] as const
+// Preset aspect ratios (width / height), picked deterministically from the item
+// id so a given item always lands on the same shape. Rows are justified: each
+// row's height is solved so its items fill the full container width edge-to-edge.
+const ASPECT_CYCLE = [1, 2, 3 / 4, 2, 16 / 9, 4 / 3, 1, 1] as const
 
-function aspectFromId(id: string): string {
-  const sum = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+const ROW_GAP = 16 // gap-4
+const TARGET_ROW_HEIGHT = 150
+const MAX_PER_ROW = 7
+
+function aspectFromId(id: string): number {
+  const sum = id.split('').reduceRight((acc, c) => acc + c.charCodeAt(0), 0)
   return ASPECT_CYCLE[sum % ASPECT_CYCLE.length]
 }
 
-function RiverItem({ img }: { img: ImageData }) {
+type JustifiedItem = { img: ImageData; aspect: number }
+type JustifiedRow = { items: JustifiedItem[]; height: number; justified: boolean }
+
+// Greedy justified layout: accumulate items until they'd overflow the container
+// at the target height (or hit the per-row cap), then solve the row height that
+// makes them fill the width exactly. The trailing leftover row keeps the target
+// height (left-aligned) so a lone item never balloons to full width.
+function buildJustifiedRows(
+  images: ImageData[],
+  containerWidth: number
+): JustifiedRow[] {
+  const rows: JustifiedRow[] = []
+  let current: JustifiedItem[] = []
+  let aspectSum = 0
+
+  for (const img of images) {
+    const aspect = aspectFromId(img.id)
+    current.push({ img, aspect })
+    aspectSum += aspect
+
+    const gaps = ROW_GAP * (current.length - 1)
+    const widthAtTarget = aspectSum * TARGET_ROW_HEIGHT + gaps
+    if (widthAtTarget >= containerWidth || current.length >= MAX_PER_ROW) {
+      const height = (containerWidth - gaps) / aspectSum
+      rows.push({ items: current, height, justified: true })
+      current = []
+      aspectSum = 0
+    }
+  }
+
+  if (current.length > 0) {
+    rows.push({ items: current, height: TARGET_ROW_HEIGHT, justified: false })
+  }
+
+  return rows
+}
+
+function RiverItem({
+  item,
+  grow,
+}: {
+  item: JustifiedItem
+  grow: boolean
+}) {
+  const { img, aspect } = item
   const isTransitioning = useViewTransitionState(img.id)
   let location = useLocation()
   return (
     <div
-      className={cn(
-        'h-32 grow overflow-hidden rounded-md ',
-        aspectFromId(img.id)
-      )}
+      className="h-full overflow-hidden rounded-md min-w-0"
+      style={
+        // Justified row: grow proportional to aspect with flex-basis 0 lets the
+        // browser fill the real width exactly (robust to measurement drift).
+        // Trailing row: keep natural width at the target height, left-aligned.
+        grow
+          ? { flexGrow: aspect, flexShrink: 1, flexBasis: 0 }
+          : { width: aspect * TARGET_ROW_HEIGHT, flexGrow: 0, flexShrink: 0 }
+      }
     >
       <Link
         to={img.id}
         viewTransition
-        unstable_mask={`${location.pathname}/${img.alt}`}
+        mask={`${location.pathname}/${img.alt}`}
         prefetch="intent"
-        className="block w-full h-full"
       >
         <img
           style={
@@ -54,7 +101,7 @@ function RiverItem({ img }: { img: ImageData }) {
           srcSet={img.srcSet}
           sizes={img.sizes}
           alt={img.alt}
-          className="w-full h-full flex-auto object-cover cursor-pointer"
+          className="w-full h-full object-cover cursor-pointer"
           loading="lazy"
           decoding="async"
           width={img.width}
@@ -70,20 +117,43 @@ export const RiverView: React.FC<{
 }> = ({ images }) => {
   const [searchParams] = useSearchParams()
   const isRiverLayout = searchParams.has('layout', 'river')
+
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = React.useState(0)
+
+  // Preserve scroll position when opening/closing the full-page item preview.
+  const getScrollElement = React.useCallback(
+    () =>
+      (containerRef.current?.closest(
+        '[data-slot="scroll-area-viewport"]'
+      ) as HTMLElement | null) ?? null,
+    []
+  )
+  useScrollRestoration(getScrollElement)
+
+  // Measure the container so rows re-justify to the real available width — which
+  // changes whenever the sidebar is collapsed/expanded.
+  React.useLayoutEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const update = () => setContainerWidth(el.clientWidth)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [isRiverLayout])
+
   if (!isRiverLayout) return null
 
-  let chunks = toChunkArray(images, 7)
+  const rows =
+    containerWidth > 0 ? buildJustifiedRows(images, containerWidth) : []
+
   return (
-    <div className="flex flex-col ">
-      {chunks.map((chunk, i) => (
-        // react doesn't like it when the same image appears in multiple rows during a transition, so we use the chunk index as part of the key to force a full re-render of each row when the layout changes
-        <div
-          key={i}
-          className="flex gap-4 mb-4 overflow-hidden rounded-md shrink-0"
-        >
-          {chunk.map((img) => (
-            // RiverItem will use the image ID for its own view transition keys, so we can safely reuse the same images across rows without key conflicts
-            <RiverItem key={img.id} img={img} />
+    <div ref={containerRef} className="flex flex-col gap-4 pr-4">
+      {rows.map((row, i) => (
+        <div key={i} className="flex gap-4 h-32" >
+          {row.items.map((item) => (
+            <RiverItem key={item.img.id} item={item} grow={row.justified} />
           ))}
         </div>
       ))}

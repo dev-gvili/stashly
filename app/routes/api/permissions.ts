@@ -14,7 +14,9 @@ import {
 } from '@/services/permission-actions'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   // itemId can come from URL params (e.g. /api/items/:itemId/permissions) or query string
@@ -30,7 +32,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const formData = await parseFormData({

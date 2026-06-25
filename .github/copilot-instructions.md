@@ -95,7 +95,9 @@ React Router is used for file-based routing. Key patterns include:
 ```typescript
 // app/routes/layout.tsx
 export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) {
     throw redirect('/auth/sign-in')
   }

@@ -62,7 +62,9 @@ Stashly is a **full-stack file management platform** using React Router 7 in fra
 **Authentication**: Route `loader` functions check sessions and redirect unauthenticated users:
 ```typescript
 export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
   return { user: session.user }
 }

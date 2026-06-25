@@ -12,7 +12,9 @@ const schema = z.object({
 })
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) return data({ error: 'Unauthorized' }, { status: 401 })
 
   const params = parseSearchParams({ request, schema })

@@ -1,5 +1,5 @@
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode } from '@/services/api.errors'
+import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Permission, PermissionRole, Prisma } from '@/prisma/client'
 import { buildPermissionFilters } from '@/utils/filters/permission.filters'

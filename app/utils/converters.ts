@@ -924,3 +924,61 @@ export const toItemUrl = ({ type, id, parentId, ownerId }: ToItemUrlProps) => {
       return href('/:me/stash', { me: ownerId })
   }
 }
+
+/**
+ * Derives a stable pseudo-random seed (3–99) from a string id, so the same item
+ * always renders the same generated waveform. Used by the audio stage.
+ *
+ * @example
+ * toSeedFromId('item_abc') // e.g. 42
+ */
+export function toSeedFromId(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i++) {
+    h = (h * 31 + id.charCodeAt(i)) & 0xffffffff
+  }
+  return (Math.abs(h) % 97) + 3
+}
+
+/**
+ * Generates a deterministic waveform: `n` bar heights (0–1) shaped by a sine
+ * envelope, jittered by a seeded PRNG. Pair with {@link toSeedFromId} so a given
+ * item always renders the same waveform.
+ *
+ * @example
+ * toWaveform(72, toSeedFromId(item.id)) // number[] of length 72
+ */
+export function toWaveform(n: number, seed: number): number[] {
+  let s = seed
+  const rnd = () => {
+    s = (s * 9301 + 49297) % 233280
+    return s / 233280
+  }
+  return Array.from({ length: n }, (_, i) => {
+    const env = Math.sin((i / n) * Math.PI)
+    return 0.12 + (0.35 + 0.65 * rnd()) * (0.45 + 0.55 * env)
+  })
+}
+
+// Zoom is a multiplier on top of the fit-to-width scale; 1 = fit width.
+export const ZOOM_LEVELS = [
+  0.5, 0.67, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3,
+]
+
+/**
+ * Steps a zoom multiplier to the next/previous level in {@link ZOOM_LEVELS}.
+ * When the current value isn't a known level, snaps to the nearest level in the
+ * requested direction. Used by the PDF stage zoom controls.
+ *
+ * @param dir `1` to zoom in, `-1` to zoom out.
+ */
+export function toSteppedZoom(zoom: number, dir: 1 | -1): number {
+  const idx = ZOOM_LEVELS.findIndex((z) => Math.abs(z - zoom) < 0.001)
+  if (idx === -1) {
+    return dir === 1
+      ? (ZOOM_LEVELS.find((z) => z > zoom) ??
+          ZOOM_LEVELS[ZOOM_LEVELS.length - 1])
+      : ([...ZOOM_LEVELS].reverse().find((z) => z < zoom) ?? ZOOM_LEVELS[0])
+  }
+  return ZOOM_LEVELS[Math.max(0, Math.min(ZOOM_LEVELS.length - 1, idx + dir))]
+}

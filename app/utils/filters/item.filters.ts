@@ -32,8 +32,8 @@ export const itemFilterSchema = z.object({
   // Pagination Params
   cursor: z.string().optional(),
   take: z.coerce.number().default(25),
-  orderBy: z.custom<Prisma.ItemOrderByWithRelationInput>(),
-  include: z.custom<Prisma.ItemInclude>(),
+  orderBy: z.custom<Prisma.ItemOrderByWithRelationInput>().optional(),
+  include: z.custom<Prisma.ItemInclude>().optional(),
 })
 
 /**

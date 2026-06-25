@@ -20,7 +20,7 @@ import { formatSize } from '@/utils/formaters'
 // } from './search/embeddings'
 // import { transcribeMedia } from './ai'
 // import { APIError } from 'better-auth'
-// import { StashlyError, StashlyErrorCode } from './api.errors'
+// import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
 // import {
 //   AutoModelForCausalLM,
 //   AutoTokenizer,

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import {
   PauseFillIcon,
   ResumeFillIcon,
@@ -12,153 +12,10 @@ import {
 import { cn } from '@/utils/styles'
 import { Button } from '@/components/ui/button'
 import { Slider, Toggle } from '@/components/ui'
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export type AudioItemShape = {
-  id: string
-  name: string
-  thumbnails: Array<{ url: string | null; size: string; view: string }>
-  audio: {
-    title: string | null
-    artist: string | null
-    album: string | null
-    albumArtist: string | null
-    duration: number | null
-    track: number | null
-    trackCount: number | null
-    bitrate: number | null
-  } | null
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function fmtClock(sec: number): string {
-  const s = Math.max(0, Math.round(sec))
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-}
-
-function makeWave(n: number, seed: number): number[] {
-  let s = seed
-  const rnd = () => {
-    s = (s * 9301 + 49297) % 233280
-    return s / 233280
-  }
-  return Array.from({ length: n }, (_, i) => {
-    const env = Math.sin((i / n) * Math.PI)
-    return 0.12 + (0.35 + 0.65 * rnd()) * (0.45 + 0.55 * env)
-  })
-}
-
-function seedFromId(id: string): number {
-  let h = 0
-  for (let i = 0; i < id.length; i++) {
-    h = (h * 31 + id.charCodeAt(i)) & 0xffffffff
-  }
-  return (Math.abs(h) % 97) + 3
-}
-
-// ---------------------------------------------------------------------------
-// useAudio — drives a real <audio> element
-// ---------------------------------------------------------------------------
-
-function useAudio(ref: React.RefObject<HTMLAudioElement | null>) {
-  const [playing, setPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const [buffered, setBuffered] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [muted, setMuted] = useState(false)
-  const [volume, setVolume] = useState(0.75)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const onPlay = () => setPlaying(true)
-    const onPause = () => setPlaying(false)
-    const onEnded = () => {
-      setPlaying(false)
-      setCurrentTime(0)
-    }
-    const onTimeUpdate = () => {
-      setCurrentTime(el.currentTime)
-      if (el.buffered.length > 0)
-        setBuffered(
-          el.buffered.end(el.buffered.length - 1) / (el.duration || 1)
-        )
-    }
-    const onLoadedMetadata = () => {
-      setDuration(el.duration)
-      setLoading(false)
-    }
-    const onWaiting = () => setLoading(true)
-    const onCanPlay = () => setLoading(false)
-    const onMutedChange = () => setMuted(el.muted || el.volume === 0)
-    const onVolumeChange = () => setVolume(el.volume)
-    el.addEventListener('play', onPlay)
-    el.addEventListener('pause', onPause)
-    el.addEventListener('ended', onEnded)
-    el.addEventListener('timeupdate', onTimeUpdate)
-    el.addEventListener('loadedmetadata', onLoadedMetadata)
-    el.addEventListener('waiting', onWaiting)
-    el.addEventListener('canplay', onCanPlay)
-    el.addEventListener('volumechange', onVolumeChange)
-    el.addEventListener('volumechange', onMutedChange)
-    return () => {
-      el.removeEventListener('play', onPlay)
-      el.removeEventListener('pause', onPause)
-      el.removeEventListener('ended', onEnded)
-      el.removeEventListener('timeupdate', onTimeUpdate)
-      el.removeEventListener('loadedmetadata', onLoadedMetadata)
-      el.removeEventListener('waiting', onWaiting)
-      el.removeEventListener('canplay', onCanPlay)
-      el.removeEventListener('volumechange', onVolumeChange)
-      el.removeEventListener('volumechange', onMutedChange)
-    }
-  }, [ref])
-
-  const togglePlay = useCallback(() => {
-    const el = ref.current
-    if (!el) return
-    el.paused ? el.play() : el.pause()
-  }, [ref])
-
-  const seek = useCallback(
-    (frac: number) => {
-      const el = ref.current
-      if (!el || !el.duration) return
-      el.currentTime = Math.max(0, Math.min(el.duration, frac * el.duration))
-    },
-    [ref]
-  )
-
-  const toggleMuted = useCallback(() => {
-    const el = ref.current
-    if (!el) return
-    el.muted = !el.muted
-    setMuted(el.muted)
-    el.volume = el.muted ? 0 : volume
-  }, [ref])
-
-  const t = duration > 0 ? currentTime / duration : 0
-  return {
-    playing,
-    currentTime,
-    duration,
-    buffered,
-    loading,
-    t,
-    togglePlay,
-    seek,
-    volume,
-    muted,
-    toggleMuted,
-  }
-}
+import { useAudioPlayer } from '@/hooks/useAudioPlayer'
+import { formatClock } from '@/utils/formaters'
+import { toSeedFromId, toWaveform } from '@/utils/converters'
+import type { StashItemAudio } from '@/types/stash.types'
 
 // ---------------------------------------------------------------------------
 // Scrubber
@@ -337,12 +194,12 @@ export function AudioStage({
   item,
   src,
 }: {
-  item: AudioItemShape
+  item: StashItemAudio
   src: string
 }) {
   const audioRef = useRef<HTMLAudioElement>(null)
-  const audio = useAudio(audioRef)
-  const wave = useMemo(() => makeWave(72, seedFromId(item.id)), [item.id])
+  const audio = useAudioPlayer(audioRef)
+  const wave = useMemo(() => toWaveform(72, toSeedFromId(item.id)), [item.id])
   const [volume, setVolume] = useState(audio.volume)
   const prevVolumeRef = useRef(audio.volume)
   const [shuffle, setShuffle] = useState(false)
@@ -377,8 +234,8 @@ export function AudioStage({
   const playedBars = Math.round(wave.length * audio.t)
   const displayDuration =
     audio.duration > 0
-      ? fmtClock(audio.duration)
-      : fmtClock(item.audio?.duration ?? 0)
+      ? formatClock(audio.duration)
+      : formatClock(item.audio?.duration ?? 0)
 
   return (
     <div className="flex h-full w-full items-center justify-center overflow-hidden p-6">
@@ -405,7 +262,7 @@ export function AudioStage({
         <div className="space-y-2 h-20 min-w-lg mx-auto">
           <Waveform bars={wave} playedCount={playedBars} onSeek={audio.seek} />
           <div className="flex items-center justify-between font-stashly text-xs tabular-nums text-muted-foreground">
-            <span>{fmtClock(audio.currentTime)}</span>
+            <span>{formatClock(audio.currentTime)}</span>
             <span>{displayDuration}</span>
           </div>
         </div>

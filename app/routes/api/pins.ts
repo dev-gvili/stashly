@@ -12,7 +12,9 @@ import {
 } from '@/services/pin-actions'
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const params = parseSearchParams({ request, schema: pinApiRouteQuery })
@@ -30,7 +32,9 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
 }
 
 export const action = async ({ request }: Route.ActionArgs) => {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const parsedData = await parseFormData({ request, schema: pinApiRouteInput })

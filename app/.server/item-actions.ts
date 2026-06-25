@@ -2,7 +2,7 @@ import type { TransactionClient } from '@/prisma/internal/prismaNamespace'
 import { prisma } from '@/services/db'
 import { getPrefixForModel, toChunkArray, toObjectId } from '@/utils/converters'
 import { Prisma, type Item, type PrismaClient } from '@/prisma/client'
-import { StashlyError, StashlyErrorCode } from '../.server/api.errors'
+import { StashlyError, StashlyErrorCode } from '../utils/api.errors'
 import type { StashItem } from '@/types/stash.types'
 import {
   hasItemPermission,
@@ -1606,7 +1606,52 @@ export async function getFolderContent(params: GetFolderContentParams) {
           },
         },
         tags: true,
-        parent: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            size: true,
+            inclusiveSize: true,
+            category: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            ownerId: true,
+            parentId: true,
+            workspaceId: true,
+            driveId: true,
+            file: true,
+            folder: true,
+            locked: true,
+            favorites: {
+              select: {
+                id: true,
+                favoritedById: true,
+                favoritedBy: {
+                  select: {
+                    id: true,
+                    name: true,
+                    displayName: true,
+                    image: true,
+                  },
+                },
+              },
+            },
+            thumbnails: {
+              select: {
+                height: true,
+                width: true,
+                url: true,
+                view: true,
+                size: true,
+                id: true,
+              },
+            },
+            tags: true,
+            parent: true,
+          },
+        },
       },
     })
 
@@ -2347,7 +2392,7 @@ export const defaultItemSelect = {
   image: true,
   tags: true,
   video: true,
-  audio:true,
+  audio: true,
   folder: {
     select: {
       id: true,
@@ -2769,17 +2814,31 @@ export async function createRootFolder(
   })
 }
 
-/**
- * Updates the `openedAt` timestamp of an item to the current time.
- * This is used to track recent activity for features like "Suggested Items".
- *
- * @param itemId - The ID of the item to update.
- * @returns A promise that resolves when the update is complete.
- */
-export async function getFileItem(fileId: string, folderId: string) {
+
+export async function getFileItem(
+  userId: string,
+  fileId: string,
+  folderId: string
+) {
+  const canRead = await hasItemPermission(userId, fileId, 'read')
+  if (!canRead) {
+    throw new StashlyError(
+      StashlyErrorCode.FORBIDDEN,
+    )
+  }
+
   return prisma.item.findUniqueOrThrow({
     where: { id: fileId, parentId: folderId },
     include: {
+      owner:{
+        select:{
+          id:true,
+          name: true,
+          email:true,
+          image:true,
+          bucket:true
+        }
+      },
       parent: {
         select: {
           id: true,
@@ -2796,7 +2855,7 @@ export async function getFileItem(fileId: string, folderId: string) {
         select: {
           _count: { select: { users: true } },
           roles: true,
-          users: { select: { id: true, image: true, name: true } },
+          users: { select: { id: true, image: true, name: true, bucket: true } },
         },
       },
       locked: {
@@ -2809,7 +2868,7 @@ export async function getFileItem(fileId: string, folderId: string) {
         },
       },
       file: {
-        select: { id: true, mimeType: true, extension: true, key: true },
+        select: { id: true, mimeType: true, extension: true, key: true, bucket: true },
       },
       image: true,
       video: true,
@@ -2831,6 +2890,14 @@ export async function getFileItem(fileId: string, folderId: string) {
   })
 }
 
+
+/**
+ * Updates the `openedAt` timestamp of an item to the current time.
+ * This is used to track recent activity for features like "Suggested Items".
+ *
+ * @param itemId - The ID of the item to update.
+ * @returns A promise that resolves when the update is complete.
+ */
 export async function touchOpenedAt(itemId: string) {
   await prisma.item.update({
     where: { id: itemId },

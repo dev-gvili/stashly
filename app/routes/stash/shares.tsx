@@ -19,7 +19,9 @@ import { GenericEmptyState } from '@/components/states/generic-empty-state'
 // ---------------------------------------------------------------------------
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+  const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/signin')
 
   const userId = session.user.id
@@ -70,6 +72,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       file: true,
       folder: true,
       thumbnails: true,
+      locked: true,
       favorites: {
         select: {
           id: true,
@@ -78,6 +81,41 @@ export async function loader({ request }: Route.LoaderArgs) {
               name: true,
               displayName: true,
               image: true,
+              id: true,
+            },
+          },
+        },
+      },
+      parent: {
+        include: {
+          file: true,
+          folder: true,
+          favorites: {
+            select: {
+              id: true,
+              favoritedBy: {
+                select: {
+                  displayName: true,
+                  image: true,
+                  name: true,
+                  id: true,
+                },
+              },
+            },
+          },
+          locked: true,
+          thumbnails: {
+            where: {
+              size: {
+                equals: 'large',
+              },
+            },
+            select: {
+              url: true,
+              width: true,
+              height: true,
+              size: true,
+              view: true,
               id: true,
             },
           },

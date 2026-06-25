@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker'
 import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { ItemType, ItemStatus } from '@/prisma/client'
-import { StashlyError, StashlyErrorCode } from '@/services/api.errors'
+import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
 import {
   createCollection,
   createWorkspaceCollection,

@@ -11,7 +11,9 @@ import {
 } from '@/services/lock-actions'
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const params = parseSearchParams({ request, schema: lockApiRouteQuery })
@@ -26,7 +28,9 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
 }
 
 export const action = async ({ request }: Route.ActionArgs) => {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const formData = await parseFormData({ request, schema: lockApiRouteInput })

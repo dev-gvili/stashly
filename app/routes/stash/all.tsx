@@ -62,8 +62,8 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
       return false
     }
   })
-  
-   if (
+
+  if (
     formData?.get('intent') === 'move_items' ||
     formData?.get('intent') === 'trash_items' ||
     formData?.get('intent') === 'create_folder' ||
@@ -71,7 +71,6 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   ) {
     return true
   }
-
 
   if (
     currentSelectedItems.some((item) => !nextSelectedItems.includes(item)) &&
@@ -84,7 +83,9 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
 }
 
 export async function loader({ request, params }: Route.ActionArgs) {
-  const session = await auth.api.getSession(request)
+  const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) {
     throw redirect('/auth/signin')
   }

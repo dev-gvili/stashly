@@ -2,7 +2,7 @@ import { useSearchParams } from "react-router";
 
 /**
  * Simple URL-driven sort helper for `orderBy` / `direction` search params.
- * Prefer `SortPill` (from `app/components/filters/sort-pill.tsx`) for the full
+ * Prefer @link [SortPill](../components/filters/sort-pill.tsx) for the full
  * Stashly sort UI — this hook is the low-level primitive underneath it.
  *
  * @returns `{ sortAsc, sortDesc, sortNone }` — functions to update the URL.

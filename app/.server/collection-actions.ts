@@ -10,7 +10,7 @@ import {
 } from '@/services/permission-actions'
 import { findFirstItem } from '@/services/item-actions'
 import { requireAtLeastRole } from '@/services/workspace-actions'
-import { StashlyError, StashlyErrorCode } from '@/services/api.errors'
+import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
 import { buildCollectionFilters } from '@/utils/filters/collection.filters'
 import { searchFactory } from '@/utils/search'
 import { createActivity } from './activity-actions'

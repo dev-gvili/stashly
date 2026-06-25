@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth/minimal'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { prisma } from '@/services/db'
 import { customSession, openAPI } from 'better-auth/plugins'
+import { dash } from '@better-auth/infra'
 import { onboardNewUser } from './onboard'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Session, User } from '@/types/machine.types'
@@ -47,6 +48,10 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),
+  trustedOrigins: [
+    'http://localhost:80',
+    'https://conjoined-superelegantly-ebony.ngrok-free.dev',
+  ],
   session: {
     additionalFields: {
       rootId: {
@@ -95,27 +100,27 @@ export const auth = betterAuth({
       subscriptionId: {
         type: 'string',
         required: true,
-        input: false
+        input: false,
       },
       storagePlanId: {
         type: 'string',
         required: true,
-        input: false
+        input: false,
       },
       driveId: {
         type: 'string',
         required: true,
-        input: false
+        input: false,
       },
       rootId: {
         type: 'string',
         required: true,
-        input: false
+        input: false,
       },
       role: {
         type: 'string',
         required: false,
-        input: false
+        input: false,
       },
     },
   },
@@ -123,6 +128,7 @@ export const auth = betterAuth({
     github: {
       clientId: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      redirectURI: 'https://conjoined-superelegantly-ebony.ngrok-free.dev/api/auth/callback/github'
     },
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -142,11 +148,14 @@ export const auth = betterAuth({
         rootId: extendedUser.rootId,
         driveId: extendedUser.driveId,
       } as Session
-      
+
       return {
         user: extendedUser,
         session: extendedSession,
       }
+    }),
+    dash({
+      apiKey: process.env.BETTER_AUTH_API_KEY,
     }),
     openAPI(),
   ],

@@ -27,7 +27,7 @@ type SortFieldDef = {
   key: string
   column: string | string[] | null
   label: string
-  glyph: string | ((props: SVGProps<SVGSVGElement>) => JSX.Element)
+  icon: string | ((props: SVGProps<SVGSVGElement>) => JSX.Element)
   hint: (dir: SortDir) => string
 }
 
@@ -36,49 +36,49 @@ const SORT_FIELDS: SortFieldDef[] = [
     key: 'similarity',
     column: null,
     label: 'Similarity',
-    glyph: FuzzySearchIcon,
+    icon: FuzzySearchIcon,
     hint: (d) => (d === 'asc' ? 'Least similar' : 'Most similar'),
   },
   {
     key: 'name',
     column: 'name',
     label: 'Name',
-    glyph: SortByTextIcon,
+    icon: SortByTextIcon,
     hint: (d) => (d === 'asc' ? 'A → Z' : 'Z → A'),
   },
   {
     key: 'updated',
     column: 'updatedAt',
     label: 'Updated',
-    glyph: SortByDateTimeIcon,
+    icon: SortByDateTimeIcon,
     hint: (d) => (d === 'asc' ? 'Old → New' : 'New → Old'),
   },
   {
     key: 'created',
     column: 'createdAt',
     label: 'Created',
-    glyph: SortByDateTimeIcon,
+    icon: SortByDateTimeIcon,
     hint: (d) => (d === 'asc' ? 'Old → New' : 'New → Old'),
   },
   {
     key: 'size',
     column: 'size',
     label: 'Size',
-    glyph: SortByNumberIcon,
+    icon: SortByNumberIcon,
     hint: (d) => (d === 'asc' ? 'Smallest first' : 'Largest first'),
   },
   {
     key: 'type',
     column: 'type',
     label: 'Type',
-    glyph: SortByTextIcon,
+    icon: SortByTextIcon,
     hint: (d) => (d === 'asc' ? 'A → Z' : 'Z → A'),
   },
   {
     key: 'count',
     column: ['folder][childCount', 'collectionItems][_count'],
     label: 'Count',
-    glyph: SortByNumberIcon,
+    icon: SortByNumberIcon,
     hint: (d) => (d === 'asc' ? 'Fewest first' : 'Most first'),
   },
 ]
@@ -182,7 +182,7 @@ export function SortPill() {
                   onClick={() => update({ field: f })}
                   className="inline-flex items-center gap-2 px-1.5 py-0"
                 >
-                  <f.glyph className="size-6!" />
+                  <f.icon className="size-6!" />
                   <span className="flex-1 text-left h-full align-text-bottom">
                     {f.label}
                   </span>

@@ -1,7 +1,9 @@
 import type { Route } from './+types/favorites'
 import { auth } from '@/services/auth'
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   // if (!session) throw new Error('Unauthorized')
   return { session }
 }

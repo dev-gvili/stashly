@@ -45,7 +45,6 @@ const AuthButton = ({
       onClick={() => {
         authClient.signIn.social({
           provider,
-          callbackURL: '/',
         })
       }}
     >
