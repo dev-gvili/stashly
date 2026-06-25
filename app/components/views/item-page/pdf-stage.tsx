@@ -15,187 +15,18 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/utils/styles'
 import { SidebarTrigger, useSidebar } from '@/components/ui'
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export type PdfItemShape = {
-  id: string
-  name: string
-  pdf: {
-    title: string | null
-    pageCount: number | null
-  } | null
-}
+import { usePdfDocument } from '@/hooks/usePdfDocument'
+import { useLazyPageCanvas } from '@/hooks/useLazyPageCanvas'
+import { ZOOM_LEVELS, toSteppedZoom } from '@/utils/converters'
+import type { StashItemPdf } from '@/types/stash.types'
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-// Zoom is a multiplier on top of the fit-to-width scale; 1 = fit width.
-const ZOOM_LEVELS = [0.5, 0.67, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3]
 const STAGE_PADDING = 64 // page container's horizontal padding (px-8 × 2)
 const THUMB_WIDTH = 128 // css px width of rail thumbnails
 const RAIL_WIDTH = '11rem' // expanded rail width
-
-function stepZoom(zoom: number, dir: 1 | -1): number {
-  const idx = ZOOM_LEVELS.findIndex((z) => Math.abs(z - zoom) < 0.001)
-  if (idx === -1) {
-    return dir === 1
-      ? (ZOOM_LEVELS.find((z) => z > zoom) ??
-          ZOOM_LEVELS[ZOOM_LEVELS.length - 1])
-      : ([...ZOOM_LEVELS].reverse().find((z) => z < zoom) ?? ZOOM_LEVELS[0])
-  }
-  return ZOOM_LEVELS[Math.max(0, Math.min(ZOOM_LEVELS.length - 1, idx + dir))]
-}
-
-// ---------------------------------------------------------------------------
-// usePdfDocument — loads the document client-side (pdfjs never runs on SSR)
-// ---------------------------------------------------------------------------
-
-function usePdfDocument(src: string) {
-  const [doc, setDoc] = useState<PDFDocumentProxy | null>(null)
-  const [baseSize, setBaseSize] = useState<{
-    width: number
-    height: number
-  } | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    // pdfjs v6: teardown lives on the loading task, not the document proxy.
-    // Destroying the task also aborts in-flight network requests.
-    let task: { destroy: () => Promise<void> } | null = null
-    setDoc(null)
-    setBaseSize(null)
-    setError(null)
-    if (!src) {
-      setError('No file URL')
-      return
-    }
-    ;(async () => {
-      try {
-        const { loadPdfDocument } = await import('@/utils/pdf')
-        const t = loadPdfDocument(src)
-        if (cancelled) {
-          t.destroy().catch(() => {})
-          return
-        }
-        task = t
-        const d = await t.promise
-        if (cancelled) return
-        const page = await d.getPage(1)
-        const vp = page.getViewport({ scale: 1 })
-        page.cleanup()
-        if (cancelled) return
-        setBaseSize({ width: vp.width, height: vp.height })
-        setDoc(d)
-      } catch (err) {
-        if (cancelled) return // rejection from task.destroy() on unmount
-        console.error('[pdf-stage] failed to load document', err)
-        setError('Could not load this PDF')
-      }
-    })()
-    return () => {
-      cancelled = true
-      task?.destroy().catch(() => {})
-    }
-  }, [src])
-
-  return { doc, baseSize, error }
-}
-
-// ---------------------------------------------------------------------------
-// useLazyPageCanvas — renders a page to a canvas while it is near a viewport
-// ---------------------------------------------------------------------------
-
-function useLazyPageCanvas({
-  doc,
-  pageNumber,
-  scale,
-  observeEl,
-  rootMargin,
-}: {
-  doc: PDFDocumentProxy
-  pageNumber: number
-  scale: number
-  observeEl: React.RefObject<HTMLElement | null>
-  rootMargin: string
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const renderTaskRef = useRef<{ cancel: () => void } | null>(null)
-  // Scale the canvas was last painted at. The canvas keeps its bitmap when the
-  // page scrolls out of view, so once painted at a given scale there's nothing
-  // to redo — only a zoom (scale change) needs a repaint. Guarding on this
-  // prevents re-rendering already-painted pages every time navigation scrolls
-  // them back through the IntersectionObserver margin.
-  const renderedScaleRef = useRef<number | null>(null)
-  const [visible, setVisible] = useState(false)
-  const [rendered, setRendered] = useState(false)
-
-  useEffect(() => {
-    const el = observeEl.current
-    if (!el) return
-    const io = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
-      { rootMargin }
-    )
-    io.observe(el)
-    return () => io.disconnect()
-  }, [observeEl, rootMargin])
-
-  useEffect(() => {
-    if (!visible) return
-    if (renderedScaleRef.current === scale) return // already painted at this scale
-    let cancelled = false
-    ;(async () => {
-      try {
-        const page = await doc.getPage(pageNumber)
-        const canvas = canvasRef.current
-        if (cancelled || !canvas) {
-          page.cleanup()
-          return
-        }
-        const dpr = Math.min(window.devicePixelRatio || 1, 2)
-        const cssViewport = page.getViewport({ scale })
-        const renderViewport = page.getViewport({ scale: scale })
-        canvas.width = Math.floor(renderViewport.width)
-        canvas.height = Math.floor(renderViewport.height)
-        canvas.style.width = `${Math.floor(cssViewport.width)}px`
-        canvas.style.height = `${Math.floor(cssViewport.height)}px`
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-        renderTaskRef.current?.cancel()
-        const task = page.render({
-          canvasContext: ctx,
-          viewport: renderViewport,
-          canvas,
-        })
-        renderTaskRef.current = task
-        try {
-          await task.promise
-          if (!cancelled) {
-            renderedScaleRef.current = scale
-            setRendered(true)
-          }
-        } catch {
-          // render cancelled (zoom changed / unmounted) — next effect re-renders
-        } finally {
-          page.cleanup()
-        }
-      } catch (err) {
-        console.error(`[pdf-stage] page ${pageNumber} render failed`, err)
-      }
-    })()
-    return () => {
-      cancelled = true
-      renderTaskRef.current?.cancel()
-    }
-  }, [visible, scale, doc, pageNumber])
-
-  return { canvasRef, rendered }
-}
 
 // ---------------------------------------------------------------------------
 // PdfThumb — thumbnail rail entry
@@ -326,7 +157,7 @@ function PdfPageView({
 // PdfStage — exported main component
 // ---------------------------------------------------------------------------
 
-export function PdfStage({ item, src }: { item: PdfItemShape; src: string }) {
+export function PdfStage({ item, src }: { item: StashItemPdf; src: string }) {
   // The rail's open state lives in the app's shared sidebar provider (keyed by
   // id), so the SidebarTrigger toggle and cookie persistence integrate with the
   // rest of the app. We render the rail inline (not the fixed-position Sidebar
@@ -563,7 +394,7 @@ export function PdfStage({ item, src }: { item: PdfItemShape; src: string }) {
                 size="icon"
                 aria-label="Zoom out"
                 disabled={zoom <= ZOOM_LEVELS[0]}
-                onClick={() => setZoom((z) => stepZoom(z, -1))}
+                onClick={() => setZoom((z) => toSteppedZoom(z, -1))}
               >
                 <ZoomOutFillIcon className="size-5" />
               </Button>
@@ -580,7 +411,7 @@ export function PdfStage({ item, src }: { item: PdfItemShape; src: string }) {
                 size="icon"
                 aria-label="Zoom in"
                 disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
-                onClick={() => setZoom((z) => stepZoom(z, 1))}
+                onClick={() => setZoom((z) => toSteppedZoom(z, 1))}
               >
                 <ZoomInFillIcon className="size-5" />
               </Button>

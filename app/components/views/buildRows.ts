@@ -108,6 +108,19 @@ export function buildRows(
     }
   }
 
+  // Push any trailing images as a final, non-stretched row. These don't fill the
+  // container, so keep them at the target height (left-aligned) rather than
+  // justifying — otherwise a lone leftover image would stretch full-width.
+  if (currentRow.length > 0) {
+    rows.push(
+      currentRow.map((item) => ({
+        img: item.img,
+        width: targetRowHeight * (item.img.width / item.img.height),
+        height: targetRowHeight,
+      }))
+    )
+  }
+
   // Return the completed rows.
   return rows
 }

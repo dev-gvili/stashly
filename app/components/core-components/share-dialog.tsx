@@ -766,7 +766,7 @@ export function ShareDialog({
       role: r.role ?? 'read',
       date: formatRelativeDate(inv.createdAt),
       invitationId: inv.id,
-      image: r?.image ?? null,
+      // image: r?.image ?? null,
     }))
   )
   const pendingRecipients = allRecipients.filter((r) => r.status === 'pending')

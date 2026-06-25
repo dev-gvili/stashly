@@ -1,170 +1,57 @@
-import type { JSX } from 'react'
-import { formatSize } from '@/utils/formaters'
-import { cn } from '@/utils/styles'
+import { ActivityFeed } from '@/components/core-components/activity-feed'
+import { RenameDialog } from '@/components/core-components/rename-dialog'
+import { ShareDialog } from '@/components/core-components/share-dialog'
 import {
+  ActivityFillIcon,
   AudioFillIcon,
   CollectionFillIcon,
   DetailsFillIcon,
   DocumentFillIcon,
+  DownloadFillIcon,
   HeartFillIcon,
-  ActivityFillIcon,
+  HeartIcon,
+  LinkIcon,
+  MoreMenuFillIcon,
+  MoveFillIcon,
   Pdf2Icon,
+  RenameFillIcon,
+  ShareItemFillIcon,
+  TrashFillIcon,
   VideoFillIcon,
 } from '@/components/icons'
-import { ActivityFeed } from '@/components/core-components/activity-feed'
-import type { ActivityWithRelations } from '@/utils/activity'
 import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   ScrollArea,
   Sidebar,
-  useSidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarGroup,
-  SidebarGroupContent,
   SidebarFooter,
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
+  SidebarHeader,
   SidebarProvider,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Tooltip,
 } from '@/components/ui'
+import { useClipboard, useZoom } from '@/hooks'
+import type { StashItemPanel } from '@/types/stash.types'
 import { toUserInitial } from '@/utils'
-import { user } from '@/schemas/machine.schemas'
-
-// ---------------------------------------------------------------------------
-// Types (subset of what getFileItem returns — only what the panel renders)
-// ---------------------------------------------------------------------------
-
-export type PanelItemShape = {
-  id: string
-  name: string
-  size: bigint
-  createdAt: Date | string | null
-  updatedAt: Date | string | null
-  openedAt?: Date | string | null
-  status: string
-  file: { mimeType: string | null; extension: string | null } | null
-  audio: {
-    title: string | null
-    artist: string | null
-    album: string | null
-    albumArtist: string | null
-    track: number | null
-    trackCount: number | null
-    duration: number | null
-    bitrate: number | null
-    bitDepth?: number | null
-    sampleRate?: number | null
-    channels?: number | null
-  } | null
-  pdf?: {
-    pageCount: number | null
-    title: string | null
-    author: string | null
-    subject: string | null
-    creator: string | null
-    producer: string | null
-    pdfVersion: string | null
-    language: string | null
-    hasFormFields: boolean | null
-    hasSignatures: boolean | null
-    pageWidth: number | null
-    pageHeight: number | null
-    docCreatedAt: Date | string | null
-    docModifiedAt: Date | string | null
-  } | null
-  markdown?: {
-    title: string | null
-    author: string | null
-    description: string | null
-    tags: string | null
-    wordCount: number | null
-    readingTime: number | null
-    headingCount: number | null
-    linkCount: number | null
-    imageCount: number | null
-    codeBlockCount: number | null
-    taskCount: number | null
-    hasFrontmatter: boolean | null
-    docCreatedAt: Date | string | null
-    docModifiedAt: Date | string | null
-  } | null
-  video?: {
-    width: number | null
-    height: number | null
-    duration: number | null
-    bitrate: number | null
-    codec: string | null
-    container: string | null
-    frameRate: number | null
-  } | null
-  favorites: Array<{
-    favoritedBy: { id: string; name: string; image: string | null }
-  }>
-  permissions: Array<{
-    roles: string
-    users: Array<{ id: string; name: string; image: string | null }>
-  }>
-  activities: Array<ActivityWithRelations>
-}
-
-// ---------------------------------------------------------------------------
-// Local helpers
-// ---------------------------------------------------------------------------
-
-function fmtDuration(sec: number | null | undefined): string {
-  if (!sec) return '—'
-  const m = Math.floor(sec / 60)
-  const s = sec % 60
-  return `${m}:${String(s).padStart(2, '0')}`
-}
-
-function fmtDate(d: Date | string | null | undefined): string {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-function fmtSize(bytes: bigint): string {
-  return formatSize('byte', 'unit', Number(bytes))
-}
-
-// Named paper sizes in PDF points (1pt = 1/72in), portrait orientation.
-const PAPER_SIZES: Array<{
-  name: string
-  w: number
-  h: number
-  metric: boolean
-}> = [
-  { name: 'Letter', w: 612, h: 792, metric: false },
-  { name: 'Legal', w: 612, h: 1008, metric: false },
-  { name: 'Tabloid', w: 792, h: 1224, metric: false },
-  { name: 'A3', w: 842, h: 1191, metric: true },
-  { name: 'A4', w: 595, h: 842, metric: true },
-  { name: 'A5', w: 420, h: 595, metric: true },
-]
-
-function fmtPageSize(
-  widthPt: number | null | undefined,
-  heightPt: number | null | undefined
-): string | null {
-  if (!widthPt || !heightPt) return null
-  const short = Math.min(widthPt, heightPt)
-  const long = Math.max(widthPt, heightPt)
-  const match = PAPER_SIZES.find(
-    (p) => Math.abs(p.w - short) <= 3 && Math.abs(p.h - long) <= 3
-  )
-  const dims = match?.metric
-    ? `${Math.round((widthPt / 72) * 25.4)} × ${Math.round((heightPt / 72) * 25.4)} mm`
-    : `${Math.round((widthPt / 72) * 10) / 10} × ${Math.round((heightPt / 72) * 10) / 10} in`
-  return match ? `${match.name} · ${dims}` : dims
-}
-
-// ---------------------------------------------------------------------------
-// Panel atoms
-// ---------------------------------------------------------------------------
+import {
+  formatDuration,
+  formatMediaDate,
+  formatPageSize,
+  formatSize,
+} from '@/utils/formaters'
+import { cn } from '@/utils/styles'
+import type { JSX } from 'react'
+import React from 'react'
+import { href, useFetcher } from 'react-router'
 
 function SectionHead({ icon, label }: { icon?: JSX.Element; label: string }) {
   return (
@@ -233,14 +120,14 @@ function UserAvatar({
 // Detail blocks
 // ---------------------------------------------------------------------------
 
-function AudioDetails({ item }: { item: PanelItemShape }) {
+function AudioDetails({ item }: { item: StashItemPanel }) {
   const a = item.audio
   return (
     <dl>
       <Row label="Kind" value={item.file?.mimeType} mono />
-      <Row label="Size" value={fmtSize(item.size)} />
+      <Row label="Size" value={formatSize('byte', 'unit', Number(item.size))} />
       {a?.duration != null && (
-        <Row label="Duration" value={fmtDuration(a.duration)} mono />
+        <Row label="Duration" value={formatDuration(a.duration)} mono />
       )}
       {a?.bitrate != null && (
         <Row label="Bitrate" value={`${a.bitrate} kbps`} mono />
@@ -249,15 +136,15 @@ function AudioDetails({ item }: { item: PanelItemShape }) {
   )
 }
 
-function VideoDetails({ item }: { item: PanelItemShape }) {
+function VideoDetails({ item }: { item: StashItemPanel }) {
   const v = item.video
   const resolution = v?.width && v?.height ? `${v.width} × ${v.height}` : null
   return (
     <dl className="space-y-1">
       <Row label="Kind" value={item.file?.mimeType || 'Video'} mono />
-      <Row label="Size" value={fmtSize(item.size)} />
+      <Row label="Size" value={formatSize('byte', 'unit', Number(item.size))} />
       {v?.duration != null && (
-        <Row label="Duration" value={fmtDuration(v.duration)} mono />
+        <Row label="Duration" value={formatDuration(v.duration)} mono />
       )}
       <Row label="Resolution" value={resolution} mono />
       {v?.frameRate != null && (
@@ -276,16 +163,19 @@ function VideoDetails({ item }: { item: PanelItemShape }) {
   )
 }
 
-function PdfDetails({ item }: { item: PanelItemShape }) {
+function PdfDetails({ item }: { item: StashItemPanel }) {
   const p = item.pdf
   return (
     <dl className="space-y-1">
       <Row label="Kind" value={item.file?.mimeType} mono />
-      <Row label="Size" value={fmtSize(item.size)} />
+      <Row label="Size" value={formatSize('byte', 'unit', Number(item.size))} />
       {p?.pageCount != null && (
         <Row label="Pages" value={String(p.pageCount)} mono />
       )}
-      <Row label="Page size" value={fmtPageSize(p?.pageWidth, p?.pageHeight)} />
+      <Row
+        label="Page size"
+        value={formatPageSize(p?.pageWidth, p?.pageHeight)}
+      />
       <Row label="Title" value={p?.title} />
       <Row label="Author" value={p?.author} />
       <Row label="Producer" value={p?.producer} />
@@ -293,7 +183,7 @@ function PdfDetails({ item }: { item: PanelItemShape }) {
   )
 }
 
-function DocumentInfo({ pdf }: { pdf: PanelItemShape['pdf'] }) {
+function DocumentInfo({ pdf }: { pdf: StashItemPanel['pdf'] }) {
   if (!pdf) return null
   const rows = [
     pdf.subject,
@@ -320,10 +210,18 @@ function DocumentInfo({ pdf }: { pdf: PanelItemShape['pdf'] }) {
           <Row label="PDF version" value={pdf.pdfVersion} mono />
         )}
         {pdf.docCreatedAt && (
-          <Row label="Doc created" value={fmtDate(pdf.docCreatedAt)} mono />
+          <Row
+            label="Doc created"
+            value={formatMediaDate(pdf.docCreatedAt)}
+            mono
+          />
         )}
         {pdf.docModifiedAt && (
-          <Row label="Doc modified" value={fmtDate(pdf.docModifiedAt)} mono />
+          <Row
+            label="Doc modified"
+            value={formatMediaDate(pdf.docModifiedAt)}
+            mono
+          />
         )}
         {pdf.hasFormFields && <Row label="Form fields" value="Yes" />}
         {pdf.hasSignatures && <Row label="Signed" value="Yes" />}
@@ -332,12 +230,12 @@ function DocumentInfo({ pdf }: { pdf: PanelItemShape['pdf'] }) {
   )
 }
 
-function MarkdownDetails({ item }: { item: PanelItemShape }) {
+function MarkdownDetails({ item }: { item: StashItemPanel }) {
   const m = item.markdown
   return (
     <dl>
       <Row label="Kind" value={item.file?.mimeType || 'Markdown'} mono />
-      <Row label="Size" value={fmtSize(item.size)} />
+      <Row label="Size" value={formatSize('byte', 'unit', Number(item.size))} />
       {m?.wordCount != null && (
         <Row label="Words" value={m.wordCount.toLocaleString()} mono />
       )}
@@ -353,7 +251,7 @@ function MarkdownDetails({ item }: { item: PanelItemShape }) {
   )
 }
 
-function MarkdownInfo({ md }: { md: PanelItemShape['markdown'] }) {
+function MarkdownInfo({ md }: { md: StashItemPanel['markdown'] }) {
   if (!md) return null
   const rows = [
     md.description,
@@ -388,17 +286,25 @@ function MarkdownInfo({ md }: { md: PanelItemShape['markdown'] }) {
           <Row label="Tasks" value={String(md.taskCount)} mono />
         )}
         {md.docCreatedAt && (
-          <Row label="Doc created" value={fmtDate(md.docCreatedAt)} mono />
+          <Row
+            label="Doc created"
+            value={formatMediaDate(md.docCreatedAt)}
+            mono
+          />
         )}
         {md.docModifiedAt && (
-          <Row label="Doc modified" value={fmtDate(md.docModifiedAt)} mono />
+          <Row
+            label="Doc modified"
+            value={formatMediaDate(md.docModifiedAt)}
+            mono
+          />
         )}
       </dl>
     </section>
   )
 }
 
-function TrackDetails({ audio }: { audio: PanelItemShape['audio'] }) {
+function TrackDetails({ audio }: { audio: StashItemPanel['audio'] }) {
   if (!audio) return null
   const { artist, album, albumArtist, track, trackCount } = audio
   const trackStr =
@@ -423,25 +329,25 @@ function TrackDetails({ audio }: { audio: PanelItemShape['audio'] }) {
   )
 }
 
-function Timeline({ item }: { item: PanelItemShape }) {
+function Timeline({ item }: { item: StashItemPanel }) {
   return <ActivityFeed activities={item.activities} />
 }
 
-function ItemDates({ item }: { item: PanelItemShape }) {
+function ItemDates({ item }: { item: StashItemPanel }) {
   return (
     <dl className="space-y-1">
-      <Row label="Added" value={fmtDate(item.createdAt)} mono />
+      <Row label="Added" value={formatMediaDate(item.createdAt)} mono />
       {item.updatedAt && (
-        <Row label="Modified" value={fmtDate(item.updatedAt)} mono />
+        <Row label="Modified" value={formatMediaDate(item.updatedAt)} mono />
       )}
       {item.openedAt && (
-        <Row label="Last opened" value={fmtDate(item.openedAt)} mono />
+        <Row label="Last opened" value={formatMediaDate(item.openedAt)} mono />
       )}
     </dl>
   )
 }
 
-function Sharing({ item }: { item: PanelItemShape }) {
+function Sharing({ item }: { item: StashItemPanel }) {
   const allUsers = item.permissions.flatMap((p) =>
     p.users.map((u) => ({ ...u, role: p.roles }))
   )
@@ -459,7 +365,7 @@ function Sharing({ item }: { item: PanelItemShape }) {
   )
 }
 
-function FavoriteCount({ item }: { item: PanelItemShape }) {
+function FavoriteCount({ item }: { item: StashItemPanel }) {
   const count = item.favorites.length
   if (!count) return null
   return (
@@ -487,7 +393,7 @@ export function ItemPanel({
   item,
   className,
 }: {
-  item: PanelItemShape
+  item: StashItemPanel
   className?: string
 }) {
   const isPdf = !!item.pdf || item.file?.mimeType === 'application/pdf'
@@ -500,108 +406,302 @@ export function ItemPanel({
     item.markdown?.title ??
     item.name.replace(/\.[^.]+$/, '')
   return (
-    <SidebarProvider defaultOpen>
-      <Sidebar
-        side="right"
-        id="item_panel"
-        collapsible="offcanvas"
-        variant="floating"
-        width="20rem"
-        className="p-0 bg-card border border-input! shadow-stashly rounded-md h-[calc(100vh-4rem)] overflow-hidden"
+    <Sidebar
+      side="right"
+      id="item_panel"
+      collapsible="offcanvas"
+      variant="floating"
+      width="20rem"
+      className="p-0 bg-card border border-none rounded-md h-[calc(100vh-4rem)] overflow-hidden"
+    >
+      {/* Header */}
+      <SidebarHeader className="bg-card! ">
+        {/* Category badge */}
+        <span className="mb-2.5 inline-flex items-center gap-1.5 rounded-md  px-2 py-1 font-stashly text-xs text-secondary-foreground">
+          {isPdf ? (
+            <Pdf2Icon className="size-4" />
+          ) : isMarkdown ? (
+            <DocumentFillIcon className="size-4" />
+          ) : isVideo ? (
+            <VideoFillIcon className="size-4" />
+          ) : (
+            <AudioFillIcon className="size-4" />
+          )}
+          {isPdf
+            ? 'PDF'
+            : isMarkdown
+              ? 'Markdown'
+              : isVideo
+                ? 'Video'
+                : 'Audio'}
+        </span>
+        <h1 className="wrap-break-word text-sm font-semibold leading-snug text-foreground">
+          {displayTitle}
+        </h1>
+        {(item.audio?.artist || item.pdf?.author || item.markdown?.author) && (
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {item.audio?.artist ?? item.pdf?.author ?? item.markdown?.author}
+          </p>
+        )}
+        <FavoriteCount item={item} />
+      </SidebarHeader>
+
+      {/* Tabbed body — Details (everything) vs Activity feed */}
+      <Tabs
+        defaultValue="details"
+        className="flex min-h-0 flex-1 flex-col gap-0 bg-card!"
       >
-        {/* Header */}
-        <SidebarHeader className="bg-card! ">
-          {/* Category badge */}
-          <span className="mb-2.5 inline-flex items-center gap-1.5 rounded-md  px-2 py-1 font-stashly text-xs text-secondary-foreground">
-            {isPdf ? (
-              <Pdf2Icon className="size-4" />
-            ) : isMarkdown ? (
-              <DocumentFillIcon className="size-4" />
-            ) : isVideo ? (
-              <VideoFillIcon className="size-4" />
-            ) : (
-              <AudioFillIcon className="size-4" />
-            )}
-            {isPdf
-              ? 'PDF'
-              : isMarkdown
-                ? 'Markdown'
-                : isVideo
-                  ? 'Video'
-                  : 'Audio'}
-          </span>
-          <h1 className="wrap-break-word text-sm font-semibold leading-snug text-foreground">
-            {displayTitle}
-          </h1>
-          {(item.audio?.artist ||
-            item.pdf?.author ||
-            item.markdown?.author) && (
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {item.audio?.artist ?? item.pdf?.author ?? item.markdown?.author}
-            </p>
-          )}
-          <FavoriteCount item={item} />
-        </SidebarHeader>
+        <div className="px-4 pt-2">
+          <TabsList className="w-full">
+            <TabsTrigger value="details" className="gap-1.5">
+              <DetailsFillIcon className="size-4" />
+              Details
+            </TabsTrigger>
+            <TabsTrigger value="activity" className="gap-1.5">
+              <ActivityFillIcon className="size-4" />
+              Activity
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        {/* Scrollable body */}
-        <ScrollArea className="h-screen overflow-hidden bg-card! p-4">
-          {/* Details */}
-          <section className="py-4">
-            <SectionHead
-              icon={<DetailsFillIcon className="size-5" />}
-              label="Details"
-            />
-            {isPdf ? (
-              <PdfDetails item={item} />
-            ) : isMarkdown ? (
-              <MarkdownDetails item={item} />
-            ) : isVideo ? (
-              <VideoDetails item={item} />
-            ) : (
-              <AudioDetails item={item} />
-            )}
-          </section>
-
-          {/* Track info */}
-          <TrackDetails audio={item.audio} />
-
-          {/* PDF document info */}
-          <DocumentInfo pdf={item.pdf ?? null} />
-
-          {/* Markdown content info */}
-          <MarkdownInfo md={item.markdown ?? null} />
-
-          {/* Timeline */}
-          <section className="py-4">
-            <SectionHead
-              icon={<ActivityFillIcon className="size-4" />}
-              label="Timeline"
-            />
-            <ItemDates item={item} />
-          </section>
-
-          {/* Sharing */}
-          {item.permissions.length > 0 && (
-            <section>
+        {/* Details tab — everything that isn't the activity feed */}
+        <TabsContent value="details" className="min-h-0 pb-16">
+          <ScrollArea className="h-full overflow-hidden bg-card! p-4 ">
+            {/* Details */}
+            <section className="py-4">
               <SectionHead
-                icon={<CollectionFillIcon className="size-4" />}
-                label="Shared with"
+                icon={<DetailsFillIcon className="size-5" />}
+                label="Details"
               />
-              <Sharing item={item} />
+              {isPdf ? (
+                <PdfDetails item={item} />
+              ) : isMarkdown ? (
+                <MarkdownDetails item={item} />
+              ) : isVideo ? (
+                <VideoDetails item={item} />
+              ) : (
+                <AudioDetails item={item} />
+              )}
             </section>
-          )}
 
-          {/* Activity */}
-          <section className="py-4">
-            <SectionHead
-              icon={<ActivityFillIcon className="size-4" />}
-              label="Activity"
-            />
-            <Timeline item={item} />
-          </section>
-        </ScrollArea>
-        <SidebarFooter className="bg-card"></SidebarFooter>
-      </Sidebar>
-    </SidebarProvider>
+            {/* Track info */}
+            <TrackDetails audio={item.audio} />
+
+            {/* PDF document info */}
+            <DocumentInfo pdf={item.pdf ?? null} />
+
+            {/* Markdown content info */}
+            <MarkdownInfo md={item.markdown ?? null} />
+
+            {/* Timeline */}
+            <section className="py-4">
+              <SectionHead
+                icon={<ActivityFillIcon className="size-4" />}
+                label="Timeline"
+              />
+              <ItemDates item={item} />
+            </section>
+
+            {/* Sharing */}
+            {item.permissions.length > 0 && (
+              <section className="py-4">
+                <SectionHead
+                  icon={<CollectionFillIcon className="size-4" />}
+                  label="Shared with"
+                />
+                <Sharing item={item} />
+              </section>
+            )}
+          </ScrollArea>
+        </TabsContent>
+
+        {/* Activity tab — the activity feed */}
+        <TabsContent value="activity" className="min-h-0">
+          <ScrollArea className="h-full overflow-hidden bg-card! p-4">
+            <section className="py-4">
+              <SectionHead
+                icon={<ActivityFillIcon className="size-4" />}
+                label="Activity"
+              />
+              <Timeline item={item} />
+            </section>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
+      <SidebarFooter className="bg-card p-0 relative">
+        <ActionToolbar item={item} />
+      </SidebarFooter>
+    </Sidebar>
+  )
+}
+
+function ToolButton({
+  label,
+  children,
+  onClick,
+  active,
+  disabled,
+  asChild,
+}: React.ComponentPropsWithoutRef<typeof Button> & {
+  label: string
+  active?: boolean
+  disabled?: boolean
+}) {
+  return (
+    <Tooltip
+      content={label}
+      side="bottom"
+      align="center"
+      aria-disabled={disabled}
+      asChild
+    >
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        asChild={asChild}
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+        aria-pressed={active}
+        className={cn(
+          'hover:bg-transparent data-[state=open]:bg-transparent',
+          active && 'text-primary!!'
+        )}
+      >
+        {children}
+      </Button>
+    </Tooltip>
+  )
+}
+
+/* floating action toolbar */
+function ActionToolbar({ item }: { item: StashItemPanel }) {
+  const fetcher = useFetcher({ key: item.id })
+  const [isFavorite, setIsFavorite] = React.useState(false) // wire to item.favorite
+  const [open, setOpen] = React.useState(false) // share dialog
+
+  /* ----- download ---------------------------------------------------------- */
+  const [isDownloading, setIsDownloading] = React.useState(false)
+  const handleDownload = React.useCallback(async () => {
+    if (isDownloading) return
+    setIsDownloading(true)
+    try {
+      const res = await fetch(item.url)
+      const blob = await res.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = item.name
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(objectUrl)
+    } finally {
+      setIsDownloading(false)
+    }
+  }, [item.url, item.name, isDownloading])
+
+  /* ----- zoom & pan -------------------------------------------------------- */
+  const zoom = useZoom()
+
+  /* ----- clipboard --------------------------------------------------------- */
+  const { copy: copyLink, copied: linkCopied } = useClipboard()
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 ">
+      <div className="pointer-events-auto flex items-center justify-around bg-card p-2 w-full">
+        <ToolButton
+          label={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+          active={isFavorite}
+          onClick={() => setIsFavorite((v) => !v)}
+        >
+          <HeartIcon
+            className={cn('size-5', isFavorite && 'fill-primary text-primary')}
+          />
+        </ToolButton>
+        <ToolButton
+          label="Share"
+          onClick={(e) => {
+            setOpen(true)
+          }}
+        >
+          <ShareItemFillIcon className="size-5" />
+        </ToolButton>
+        <ShareDialog
+          open={open}
+          onOpenChange={setOpen}
+          itemId={item.id}
+          itemName={item.name}
+          itemType="file"
+        />
+        <ToolButton
+          label="Download"
+          onClick={handleDownload}
+          disabled={isDownloading}
+        >
+          <DownloadFillIcon className="size-5" />
+        </ToolButton>
+        <ToolButton
+          label={linkCopied ? 'Copied!' : 'Copy link'}
+          onClick={() => copyLink(item.url)}
+        >
+          <LinkIcon className="size-5" />
+        </ToolButton>
+
+        <ToolButton label="Add to collection">
+          <CollectionFillIcon className="size-5" />
+        </ToolButton>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="rounded-md hover:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-accent-foreground "
+              aria-label="More"
+            >
+              <MoreMenuFillIcon className="size-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            sideOffset={8}
+            className="flex-col flex rounded-md shadow-stashly overflow-hidden font-stashly border border-input p-2 bg-sidebar max-w-max"
+          >
+            <RenameDialog
+              defaultName={item.name}
+              intent="rename_item"
+              extraData={{ itemId: item.id }}
+              action="/api/items"
+              title="Rename item"
+            >
+              <DropdownMenuItem
+                className="font-stashly text-sidebar-foreground justify-start px-1.5 hover:bg-transparent"
+                onSelect={(e) => e.preventDefault()}
+              >
+                <RenameFillIcon className="text-current size-5!" /> Rename
+              </DropdownMenuItem>
+            </RenameDialog>
+            <DropdownMenuItem className="font-stashly text-sidebar-foreground justify-start px-1.5 hover:bg-transparent">
+              <MoveFillIcon className=" text-current size-5" /> Move
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              className="font-stashly text-sidebar-foreground justify-start px-1.5 hover:bg-transparent"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                fetcher.submit(
+                  { intent: 'trash_item', selectedItem: item.id },
+                  { method: 'POST', action: href('/api/items') }
+                )
+              }}
+            >
+              <TrashFillIcon className="size-5 text-current" /> Trash
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
   )
 }
