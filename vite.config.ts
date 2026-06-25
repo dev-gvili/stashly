@@ -22,18 +22,20 @@ import {
 } from 'fs/promises'
 
 export default defineConfig(({ isSsrBuild, mode }) => ({
-  define: {
-    env: JSON.stringify(loadEnv(mode, process.cwd(), '')),
-  },
+  envDir: '.',
   resolve: {
     tsconfigPaths: true,
   },
   server: {
     cors: true,
-    allowedHosts: ['*', 'localhost:3000'],
-    hmr: {
-      port: Number(process.env.VITE_HMR_PORT || process.env.HMR_PORT || 24678),
-    },
+    allowedHosts: [
+      '*',
+      'localhost:80',
+      'localhost:3000',
+      '.ngrok-free.app',
+      '.ngrok-free.dev',
+    ],
+    host: true,
   },
   build: {
     rollupOptions: isSsrBuild
