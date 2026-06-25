@@ -14,6 +14,7 @@ import { searchActivities } from '@/.server/activity-actions'
 import { useEffect } from 'react'
 import { useSearchParams } from 'react-router'
 
+export {ErrorBoundary} from '@/components/error-boundary'
 export const shouldRevalidate: ShouldRevalidateFunction = ({
   formAction,
   defaultShouldRevalidate,
@@ -30,13 +31,16 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   return defaultShouldRevalidate
 }
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
 
   const [, allCrumbs, acts, item] = await Promise.all([
     touchOpenedAt(params.fileId),
     breadcrumbs(params.fileId),
     searchActivities({
+      ownerId: {equals: session.user.id},
       itemId: { equals: params.fileId },
       take: 20,
       include: {
@@ -68,7 +72,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       orderBy: { time: { observedAt: 'desc' } },
       strategy: 'cursor',
     }),
-    getFileItem(params.fileId, params.folderId),
+    getFileItem(session.user.id, params.fileId, params.folderId),
   ])
 
   const crumbs =
@@ -83,7 +87,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     item.markdown != null || isMarkdownName(item.name, item.file?.mimeType)
   const mediaSrc =
     (isAudio || isVideo || isPdf || isMarkdown) && item.file?.key
-      ? await getPresignedUrl(session.user.bucket, 'get', item.file.key, 3600)
+      ? await getPresignedUrl(item.file.bucket, 'get', item.file.key, 3600)
       : null
 
   return { item, crumbs, activities: acts.data, mediaSrc }

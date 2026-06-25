@@ -20,7 +20,9 @@ export function meta({ matches }: Route.MetaArgs) {
 
 export async function loader({ request }: Route.ActionArgs) {
   // TODO: implement action logic
-  const session = await auth.api.getSession(request)
+    const session = await auth.api.getSession({
+    headers: request.headers,
+  })
   if (!session) throw redirect('/auth/sign-in')
   const url = new URL(request.url)
   const searchParams = url.searchParams
@@ -40,6 +42,7 @@ export async function loader({ request }: Route.ActionArgs) {
       category: {
         in: [ItemCategory.image, ItemCategory.video],
       },
+      ownerId: session.user.id,
       thumbnails: {
         some: {
           url: {
