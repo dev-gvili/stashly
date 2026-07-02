@@ -2,12 +2,11 @@
 
 ## Active
 
-- [ ] Decide search infra: integrate the built-but-unwired `search.repository.ts`, `search.ts`, `filters.ts` — or delete them to reduce dead code.
-- [ ] Migrate flat item API routes — callers of `/api/items/comments` etc. should move to nested `/api/items/:itemId/comments`; remove flat registrations after
+- [ ] Migrate flat item API routes — `routes.ts` still registers both flat (`shares`, `favorites`, `pins`, `versions`, `comments/*`, `invitations`) and nested (`items/:itemId/...`) paths for the same resources; move remaining flat callers to nested and remove the flat registrations after. *(confirmed still open 2026-07-02)*
 
 ## Someday / Low Priority
 
-- [ ] Orphaned file cleanup — tackle `app/components/` (~30 orphans remaining; `item-card-actions.tsx` + `item-card-checkbox.tsx` deleted 2026-04-29). See `orphaned.md` for full list. *(demoted 2026-06-02 — 5 weeks stale, not blocking; re-scan before next pass since the codebase has changed substantially)*
+- [ ] Orphaned file cleanup — tackle `app/components/` (~30 orphans remaining; `item-card-actions.tsx` + `item-card-checkbox.tsx` deleted 2026-04-29). See `orphaned.md` for full list. *(orphaned.md dated 2026-04-02, now 3 months stale; re-scan before next pass since the codebase has changed substantially — confirmed still needed 2026-07-02)*
 
 - [ ] **URL model** — central `Url` table for short-link routing, analytics, and expiry. Approach settled: Url owns nullable FKs to each resource (facet pattern, matching `Item`). 1:1 per resource with `@unique` FK cols for now; workspace slug aliasing (1:many) deferred. Path prefixes from `StashlyPrefixMap` (`/ws/:slug`, `/sl/:slug`, `/inv/:slug`). Each resource type gets its own redirect route. Brainstormed 2026-05-16.
 
@@ -17,6 +16,7 @@
 
 ## Done
 
+- [x] Search infra resolved — `search.repository.ts` no longer exists; `utils/search.ts` (searchFactory) is imported by 15+ action files, `utils/filters.ts` (createFilter/buildFiltersFactory) is imported by all 16 per-model `*.filters.ts` files. Both fully wired, nothing to delete. (confirmed 2026-07-02)
 - [x] Activity tracking expansion — `CollectionAction` / `FavoriteAction` / `BucketAction` Prisma models with `record*Activity` helpers wired into `collection-actions.ts`, `item-actions.ts` (favorites), `storage-actions.ts` (empty bucket); extended `activity-actions.ts` defaultInclude + `OverviewActivityKind`; UI labels in `app/utils/activity.ts` + `overview-view.tsx`. Shipped in commit `21c1106` (2026-06-02).
 - [x] Consolidated Prisma migration — `20260602000000_consolidate_upload_collection_favorite_bucket_actions` captures the `UploadAction` drift + the new action models/columns/FKs. Marked `--applied` (DB was already in sync via prior `db push`). `prisma migrate status` clean. Commit `a60b962` (2026-06-02).
 - [x] Pinned items feature — `PinItem` model, `pin-actions.ts`, `/api/pins` route, `usePinItem` hook, optimistic toggle, pinned page at `/:me/stash/pinned`; PR #14 merged (2026-05-15)

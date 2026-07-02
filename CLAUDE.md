@@ -72,13 +72,15 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 **Actions pattern**: Business logic lives in `app/.server/*-actions.ts` files (e.g. `item-actions.ts`, `collection-actions.ts`). These export plain functions that call Prisma directly and enforce permissions inline. Route loaders/actions call these functions — never call `prisma` directly from routes.
 
+**Never mutate in a `loader`**: mutations belong in `action` functions, submitted via `fetcher.submit(..., { method: 'POST' })`. A `GET` `loader` that writes data (found and fixed in `api/favorites.ts`) breaks caching/prefetching assumptions and is easy to introduce by accident when a fetcher is wired with `method: 'GET'`.
+
 ```typescript
 // In a route loader/action:
 import { getCollectionForUser } from '@/services/collection-actions'
 const collection = await getCollectionForUser(session.user.id, collectionId)
 ```
 
-**API errors**: Use `ApiError` and `ApiErrorCode` from `app/.server/api.errors.ts` for consistent error responses in action files. **Do not import this in route files** — the dot-server plugin rejects `@/services/*` imports in `app/routes/`. In route action handlers, duck-type the error: `const err = e as { statusCode?: number; message?: string }`.
+**API errors**: Use `StashlyError` and `StashlyErrorCode` from `app/utils/api.errors.ts` for consistent error responses in action files. Route action handlers don't import it directly — duck-type the error instead: `const err = e as { statusCode?: number; message?: string }`.
 
 **Dot-server plugin**: React Router's dot-server plugin blocks `@/services/*` path-alias imports inside `app/routes/` files (it rejects them as server-only leaks). Keep server-only logic entirely in action/loader functions that import from `.server/` via relative paths. **Never use the `@/services/` alias in a route file.**
 
@@ -125,8 +127,6 @@ Workers are loaded via `new Worker(new URL('./workers/...', import.meta.url))`. 
 
 Keep Zod schemas and derived TypeScript types co-located: define the Zod schema in `app/schemas/`, then infer and export the TS type from the same file or a parallel file in `app/types/`.
 
-**Temp schema files**: `app/schemas/_temp_a.schemas.ts`, `_temp_b.schemas.ts`, `_temp_c.schemas.ts` contain valid schemas for comments/versions, users/notifications/settings, and members/subscription respectively. These are not yet merged into `api.schemas.ts`. Add new schemas to `api.schemas.ts` directly — do not extend the `_temp_*` files.
-
 ### Routing Structure
 
 Routes are defined centrally in `app/routes.ts` using `prefix`, `layout`, and `route` helpers. The main layout (`app/routes/layout.tsx`) wraps all authenticated app routes.
@@ -137,7 +137,6 @@ URL pattern: `/:me/stash/*` for personal stash, `/:me/workspaces/:workspaceId/*`
 
 ```
 @/*            → app/*
-@/db/*         → app/.server/db
 @/prisma/*     → app/prisma/*
 @/utils/*      → app/utils/*
 @/components/* → app/components/*
@@ -239,10 +238,14 @@ Models are split across `prisma/models/*.prisma` files and merged. Generated cli
 
 **Sort URL convention**: `?orderBy[col]=dir` → qs parses to `{ orderBy: { col: dir } }`. For nested fields: `?orderBy[folder][childCount]=asc`. For multi-field array orderBy: indexed notation `?orderBy[0][folder][childCount]=asc&orderBy[1][collectionItems][_count]=asc` → qs produces `[{ folder: {...} }, { collectionItems: {...} }]`. `getFolderContent` defensively splits any merged multi-key objects before passing to Prisma.
 
+**`ItemCard`-feeding selects need the full `StashAncestor`/`StashPin` shape**: any loader whose items render through `<ItemCard>` must select `parent` as the full `StashAncestor` shape (all item scalars + `file`/`folder`/`favorites`/`thumbnails`/`locked` + a shallow `parent`), not just `{ id, name }` — and the `pins` select needs `pinnedById` (`StashPin` requires it), not just `pinnedBy`. Mirror `trash.tsx`'s `parent: { include: {...} } }` pattern. A narrow select typechecks fine on its own and only fails where `<ItemCard {...item}>` is spread — easy to miss.
+
+**`Favorite` has no unique constraint**: `@@unique([favoritedById, itemId])` was intentionally removed in favor of plain indexes — the DB allows duplicate favorite rows. `addFavorite`/`addFavorites` must check-then-insert at the app level; don't rely on a DB constraint to catch double-favoriting.
+
 ### Integrations
 
 - **Auth**: `better-auth` configured in `app/.server/auth.ts`, OAuth via GitHub/Google/Microsoft
-- **Search**: pgvector + embeddings for full-text and semantic search (`app/.server/search/`)
+- **Search**: pgvector + embeddings for full-text and semantic search (`app/.server/search-actions.ts`)
 - **AI features**: Hugging Face transformers, ONNX Runtime, Whisper (speech-to-text).
 - **Payments**: Stripe, webhooks handled at `/api/stripe`
 - **Storage**: AWS S3-compatible (Tigris on Fly.io), configured in `app/.server/s3.ts`
@@ -327,6 +330,7 @@ For significant changes, follow these steps:
 - Only run typecheck at the END of a task, not mid-edit, unless explicitly asked.
 - After Prisma schema changes, remind the user to restart the dev server (cached client issues observed).
 - Group large commits into logical conventional commits rather than one mega-commit when staging >50 files.
+- `pnpm typecheck` currently has ~250 pre-existing, unrelated errors — don't expect a clean run. Pipe to a file and grep for your touched files by name, and compare total error counts before/after, to confirm you introduced no regressions.
 
 ## New Feature Checklist
 
@@ -365,6 +369,8 @@ When adding a new feature, these steps are **mandatory** in order:
 **Item card dropdown**: Actions live in the internal `ItemCardActions` component inside `app/components/stash/item-card.tsx`.
 
 **Pinned items**: `PinItem` is a per-user, per-item join row with a `position` int for manual ordering. Business logic lives in `app/.server/pin-actions.ts`; the resource route is `/api/pins` (POST `intent: pin|unpin|reorder`, GET `intent: list|check`). Pin/Unpin is surfaced in `ItemCard.Actions` via the `usePinItem` hook (`app/hooks/usePinItem.ts`) for optimistic toggling. The pinned page lives at `/:me/stash/pinned`. `StashItem` carries an optional `pins?: StashPin[]` field — populated by `getPinnedItems` and `getFavoritedItems` selects so the dropdown shows the correct initial label.
+
+**Favorites**: mirrors the pinned-items pattern. Business logic lives in `app/.server/item-actions.ts` (`addFavorite`/`addFavorites`/`removeFavorite`); the resource route is `/api/favorites` (POST `intent: favorite|unfavorite|favorite_items`). Favorite/Unfavorite is surfaced via the `useFavorite` hook (`app/hooks/useFavorite.ts`) for optimistic toggling, used in both `ItemCard.Actions` and the standalone `Favorite` heart button. `favorite_items` bulk-favorites a comma-separated `selectedItems` list for the toolbar's multi-select action.
 
 **Activity action types**: `ItemAction` has a 1:1 relation to one of: `CreateAction`, `RenameAction`, `MoveAction`, `CopyAction`, `DeleteAction { name, itemType }`, `RestoreAction`, `ShareAction`, `VersionAction`, `CommentAction`, `PermissionAction`, `UploadAction`, `EditAction`, `PinAction { kind: pinned|unpinned|reordered }`, `FavoriteAction { kind: favorited|unfavorited }`, `CollectionAction { kind: item_added|item_removed|emptied, collectionId, itemId, count }`, `BucketAction { kind: emptied }`. When adding a new kind: add the model + enum, add a prefix to `StashlyPrefixMap`, extend `defaultInclude` and `OverviewActivityKind` in `activity-actions.ts`, extend `formatActivity` in `app/utils/activity.ts`, and add a verb to `ACTIVITY_VERB` in `overview-view.tsx`.
 
