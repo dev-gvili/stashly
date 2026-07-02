@@ -10,6 +10,8 @@ import {
   ZoomInFillIcon,
   DropdownIcon,
   SidebarFillIcon,
+  ItemPanelFillIcon,
+  TogglePdfPagesFillIcon,
 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -118,7 +120,7 @@ function PdfPageView({
     scale,
     observeEl: containerRef,
     // Render pages well before they scroll into view so paging feels instant.
-    rootMargin: '150% 0px',
+    rootMargin: '200% 0px',
   })
 
   useEffect(() => {
@@ -130,7 +132,9 @@ function PdfPageView({
     <div
       ref={containerRef}
       data-page={pageNumber}
-      className="relative bg-card! shadow-stashly ring-1 ring-input rounded-md"
+      className={cn(
+        'relative bg-card! shadow-stashly ring-1 ring-input rounded-md w-full'
+      )}
       style={
         rendered
           ? undefined
@@ -142,7 +146,10 @@ function PdfPageView({
     >
       <canvas
         ref={canvasRef}
-        className={cn('block', !rendered && 'absolute inset-0')}
+        className={cn(
+          'block rounded-md overflow-hidden',
+          !rendered && 'absolute inset-0'
+        )}
       />
       {!rendered && (
         <span className="absolute inset-0 flex items-center justify-center font-stashly text-xs text-muted-foreground">
@@ -307,8 +314,10 @@ export function PdfStage({ item, src }: { item: StashItemPdf; src: string }) {
           SidebarTrigger); width animates to 0 when collapsed. */}
       <div
         data-state={railOpen ? 'open' : 'closed'}
-        className="h-full shrink-0 overflow-hidden bg-card transition-[width] duration-200 ease-linear"
-        style={{ width: railOpen ? RAIL_WIDTH : 0 }}
+        className={cn(
+          'h-[calc(100vh-4rem)] shrink-0 overflow-hidden bg-card transition-[width,display] duration-200 ease-linear border-input flex w-full flex-col rounded-lg border shadow-stashly',
+          railOpen ? `w-[${RAIL_WIDTH}] max-w-80` : 'hidden'
+        )}
       >
         {/* Fixed inner width so thumbnails slide out (overflow-hidden) rather
             than squish during the collapse animation. */}
@@ -344,7 +353,7 @@ export function PdfStage({ item, src }: { item: StashItemPdf; src: string }) {
               clip the left side past the scroll origin). */}
           {/* pb-24: the floating toolbar overlays the bottom — extra padding so
               the last page can scroll fully above it */}
-          <div className="flex w-max min-w-full flex-col items-center gap-6 px-8 pt-10 pb-24">
+          <div className="flex w-max min-w-full flex-col items-center gap-6 px-8 pt-0 pb-24">
             {Array.from({ length: doc.numPages }, (_, i) => (
               <PdfPageView
                 key={i + 1}
@@ -361,8 +370,12 @@ export function PdfStage({ item, src }: { item: StashItemPdf; src: string }) {
               <SidebarTrigger
                 sidebarId="pdf_pages_rails"
                 className="size-9 rounded-md"
+                asChild
+                tooltip="Toggle page thumbnails"
               >
-                <SidebarFillIcon className="size-5" />
+                <Button variant="ghost" size="icon" className="border-none">
+                  <TogglePdfPagesFillIcon className="size-5 text-muted-foreground" />
+                </Button>
               </SidebarTrigger>
               <Button
                 variant="ghost"
@@ -372,7 +385,7 @@ export function PdfStage({ item, src }: { item: StashItemPdf; src: string }) {
                 disabled={currentPage <= 1}
                 onClick={() => goToPage(currentPage - 1)}
               >
-                <DropdownIcon className="size-5 rotate-180" />
+                <DropdownIcon className="size-5 rotate-180 text-muted-foreground" />
               </Button>
               <span className="px-1 font-stashly text-xs tabular-nums text-muted-foreground">
                 {currentPage} / {numPages}
@@ -384,7 +397,7 @@ export function PdfStage({ item, src }: { item: StashItemPdf; src: string }) {
                 disabled={currentPage >= numPages}
                 onClick={() => goToPage(currentPage + 1)}
               >
-                <DropdownIcon className="size-5 " />
+                <DropdownIcon className="size-5 text-muted-foreground" />
               </Button>
 
               <span className="mx-1 h-5 w-px bg-input" />
@@ -396,7 +409,7 @@ export function PdfStage({ item, src }: { item: StashItemPdf; src: string }) {
                 disabled={zoom <= ZOOM_LEVELS[0]}
                 onClick={() => setZoom((z) => toSteppedZoom(z, -1))}
               >
-                <ZoomOutFillIcon className="size-5" />
+                <ZoomOutFillIcon className="size-5 text-muted-foreground" />
               </Button>
               <button
                 type="button"
@@ -413,8 +426,24 @@ export function PdfStage({ item, src }: { item: StashItemPdf; src: string }) {
                 disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
                 onClick={() => setZoom((z) => toSteppedZoom(z, 1))}
               >
-                <ZoomInFillIcon className="size-5" />
+                <ZoomInFillIcon className="size-5 text-muted-foreground" />
               </Button>
+              <SidebarTrigger
+                sidebarId="item_panel"
+                asChild
+                tooltip="Toggle Item Panel"
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Toggle Item Panel"
+                  className="border-none"
+                >
+                  <ItemPanelFillIcon
+                    className={cn('size-5 text-muted-foreground')}
+                  />
+                </Button>
+              </SidebarTrigger>
             </div>
           </div>
         </ScrollArea>

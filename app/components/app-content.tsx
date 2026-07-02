@@ -11,7 +11,7 @@ const AppContent = ({ children }: { children: React.ReactNode }) => {
     <div className="relative h-screen w-full">
       <AppHeader />
       <SidebarInset id={id}>
-        <main className="h-screen w-full overflow-hidden pb-24">
+        <main className="h-screen w-full overflow-hidden pb-16">
           <ScrollArea className="h-full w-full px-2">{children}</ScrollArea>
         </main>
       </SidebarInset>

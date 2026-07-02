@@ -8,6 +8,7 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 // pages. Code blocks use 'JetBrains Mono Variable' — see `.markdown-stage code`.
 import {
   DocumentFillIcon,
+  ItemPanelFillIcon,
   LoaderIcon,
   OutlineFillIcon,
   SidebarFillIcon,
@@ -181,7 +182,7 @@ export function MarkdownStage({
                   size="icon"
                   className="rounded-md border-none"
                 >
-                  <OutlineFillIcon
+                  <ItemPanelFillIcon
                     className={cn('size-5 text-muted-foreground')}
                   />
                 </Button>
