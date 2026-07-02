@@ -1,15 +1,10 @@
-import type { JSX, SVGProps } from 'react'
-import { useSearchParams } from 'react-router'
-import type { Prisma } from '@/prisma/browser'
-import { cn } from '@/utils/styles'
 import {
   SortAscIcon,
-  SortDescIcon,
-  SortListIcon,
-  SortByTextIcon,
-  SortByNumberIcon,
   SortByDateTimeIcon,
-  FuzzySearchIcon,
+  SortByNumberIcon,
+  SortByTextIcon,
+  SortDescIcon,
+  SortListIcon
 } from '@/components/icons'
 import {
   Button,
@@ -19,6 +14,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui'
+import type { Prisma } from '@/prisma/browser'
+import { cn } from '@/utils/styles'
+import type { JSX, SVGProps } from 'react'
+import { useSearchParams } from 'react-router'
 import { CURSOR_KEY } from './filter.data'
 
 type SortDir = Prisma.SortOrder
@@ -32,13 +31,13 @@ type SortFieldDef = {
 }
 
 const SORT_FIELDS: SortFieldDef[] = [
-  {
-    key: 'similarity',
-    column: null,
-    label: 'Similarity',
-    icon: FuzzySearchIcon,
-    hint: (d) => (d === 'asc' ? 'Least similar' : 'Most similar'),
-  },
+  // {
+  //   key: 'similarity',
+  //   column: null,
+  //   label: 'Similarity',
+  //   icon: FuzzySearchIcon,
+  //   hint: (d) => (d === 'asc' ? 'Least similar' : 'Most similar'),
+  // },
   {
     key: 'name',
     column: 'name',

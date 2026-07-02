@@ -1,10 +1,16 @@
-import type { JSX } from 'react'
-import { href, Link, useLocation } from 'react-router'
-import type { StashItem } from '@/types/stash.types'
+import {
+  FavoritesFillIcon,
+  FolderIcon,
+  PinFillIcon,
+  RecentFillIcon,
+} from '@/components/icons'
+import { ItemCard } from '@/components/stash/item-card'
+import { FilesEmptyState } from '@/components/states/files-empty-state'
 import type {
   OverviewActivity,
   OverviewActivityKind,
 } from '@/services/activity-actions'
+import type { StashItem } from '@/types/stash.types'
 import {
   Card,
   CardContent,
@@ -12,19 +18,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/ui/card'
-import { ItemCard } from '@/components/stash/item-card'
 import { toIcon, toItemUrl } from '@/utils/converters'
 import { formatSize } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
-import { FilesEmptyState } from '@/components/states/files-empty-state'
-import {
-  FavoriteIcon,
-  FavoritesFillIcon,
-  FolderFillIcon,
-  FolderIcon,
-  PinFillIcon,
-  RecentFillIcon,
-} from '@/components/icons'
+import type { JSX } from 'react'
+import { href, Link, useLocation } from 'react-router'
 
 export interface OverviewViewProps {
   user: { id: string; name: string }
@@ -272,8 +270,12 @@ export function OverviewView({
   return (
     <div className={cn('flex flex-col gap-6 w-full', className)}>
       <Greeting name={user.name} />
-      {(pinned.length > 0 || favorites.length > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="flex flex-col gap-4">
+          <SectionLabel
+            title="Quick access"
+            subtitle="your pinned & favorite items"
+          />
           {pinned.length > 0 && (
             <PanelCard
               title="Pinned"
@@ -303,7 +305,25 @@ export function OverviewView({
             </PanelCard>
           )}
         </div>
-      )}
+        <Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden gap-0 py-0 shadow-none">
+          <CardHeader className="flex! items-center px-4 py-4">
+            <CardTitle className="text-sm uppercase font-stashly flex items-center gap-2">
+              <RecentFillIcon className="size-5 text-muted-foreground" />
+              Activity
+            </CardTitle>
+            <CardDescription className="text-sm text-muted-foreground ml-2">
+              your recent actions
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <ul className="space-y-0.5">
+              {activity.map((a) => (
+                <ActivityRow key={a.id} activity={a} />
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
       {suggestedFolders.length > 0 && (
         <section>
           <SectionLabel title="Jump back in" subtitle="based on last touch" />
@@ -323,26 +343,6 @@ export function OverviewView({
             ))}
           </div>
         </section>
-      )}
-      {activity.length > 0 && (
-        <Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden gap-0 py-0 shadow-none">
-          <CardHeader className="flex! items-center px-4 py-4">
-            <CardTitle className="text-sm uppercase font-stashly flex items-center gap-2">
-              <RecentFillIcon className="size-5 text-muted-foreground" />
-              Activity
-            </CardTitle>
-            <CardDescription className="text-sm text-muted-foreground ml-2">
-              your recent actions
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <ul className="space-y-0.5">
-              {activity.map((a) => (
-                <ActivityRow key={a.id} activity={a} />
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
       )}
     </div>
   )

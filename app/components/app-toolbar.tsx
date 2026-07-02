@@ -30,12 +30,13 @@ export const AppToolbar = ({
   if (
     location.pathname.includes('/videos') ||
     location.pathname.includes('/images') || 
+    location.pathname.includes('/storage') || 
+    location.pathname.includes('/stash') || 
     location.pathname.includes('/files') 
   ) {
     return null
   }
   let [searchParams] = useSearchParams()
-  let hasSelectedItems = hasQueryParam(searchParams, 'selectedItems')
   let selectedCount = getQueryParamArray(searchParams, 'selectedItems').length
   let breadcrumbs = useBreadcrumbs()
 
