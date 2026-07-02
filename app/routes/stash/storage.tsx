@@ -1,44 +1,23 @@
-import { auth } from '@/services/auth'
-import { redirect, useFetcher } from 'react-router'
-import type { Route } from './+types/storage'
-import { getStorageOverview, emptyUserBucket } from '@/services/storage-actions'
-import { formatSize } from '@/utils/formaters'
-import { cn } from '@/utils/styles'
-import {
-  ImageIcon,
-  VideoIcon,
-  AudioIcon,
-  DocumentIcon,
-  ArchiveIcon,
-  CodeIcon,
-  PdfIcon,
-  SlidesIcon,
-  FileFillIcon,
-  BinaryIcon,
-  ShellIcon,
-  TrashFillIcon,
-  StorageIcon,
-  GraphicIcon,
-  CodeFillIcon,
-  ArchiveFillIcon,
-  Pdf2Icon,
-  PresentationFillIcon,
-  SpreadSheetFillIcon,
-  DocumentFillIcon,
-  AudioFillIcon,
-  VideoFillIcon,
-  ImageFillIcon,
-  ShellFillIcon,
-} from '@/components/icons'
-import { Button } from '@/ui/button'
-import useConfirm from '@/hooks/useConfirm'
-import type { JSX, SVGProps } from 'react'
-import type { ItemCategory } from '@/prisma/enums'
-import { toIcon, type IconKey } from '@/utils'
 import {
   DataTable,
   type DataTableColumn,
 } from '@/components/core-components/data-table'
+import {
+  ArchiveFillIcon,
+  AudioFillIcon,
+  BinaryIcon,
+  CodeFillIcon,
+  DocumentFillIcon,
+  FileFillIcon,
+  GraphicIcon,
+  ImageFillIcon,
+  Pdf2Icon,
+  PresentationFillIcon,
+  ShellFillIcon,
+  SpreadSheetFillIcon,
+  TrashFillIcon,
+  VideoFillIcon,
+} from '@/components/icons'
 import {
   Card,
   CardContent,
@@ -47,11 +26,22 @@ import {
   CardTitle,
   Progress,
 } from '@/components/ui'
+import useConfirm from '@/hooks/useConfirm'
+import type { ItemCategory } from '@/prisma/enums'
+import { auth } from '@/services/auth'
+import { emptyUserBucket, getStorageOverview } from '@/services/storage-actions'
+import { Button } from '@/ui/button'
+import { toIcon } from '@/utils'
+import { formatSize } from '@/utils/formaters'
+import { cn } from '@/utils/styles'
+import type { JSX, SVGProps } from 'react'
+import { redirect, useFetcher } from 'react-router'
+import type { Route } from './+types/storage'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
 export async function action({ request }: Route.ActionArgs) {
-    const session = await auth.api.getSession({
+  const session = await auth.api.getSession({
     headers: request.headers,
   })
   if (!session) throw redirect('/auth/sign-in')
@@ -61,7 +51,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
+  const session = await auth.api.getSession({
     headers: request.headers,
   })
   if (!session) throw redirect('/auth/sign-in')
@@ -69,22 +59,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   const { quota, breakdown, largestItems, duplicates } =
     await getStorageOverview(session.user.id)
 
-  const used = Number(quota?.used ?? 0n)
-  const total = Number(quota?.total ?? 0n)
-
   return {
-    quota: {
-      used,
-      total,
-      deleted: Number(quota?.deleted ?? 0n),
-      remaining: Number(quota?.remaining ?? 0n),
-      status: quota?.status ?? 'normal',
-    },
+    bucket: session.user.bucket,
+    quota,
     breakdown: breakdown.map((b) => ({
       category: b.category,
       size: Number(b.size),
       count: b.count,
-      percentage: total > 0 ? Math.round((Number(b.size) / total) * 100) : 0,
+      percentage: quota.total > 0 ? Math.round((Number(b.size) / Number(quota.total)) * 100) : 0,
     })),
     largestItems: largestItems.map((item) => ({
       id: item.id,
@@ -334,7 +316,11 @@ function ByTypeTable({ breakdown }: { breakdown: Breakdown[] }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="p-4">
-        <DataTable columns={columns} data={breakdown} className='[&_tr]:hover:bg-inherit'/>
+        <DataTable
+          columns={columns}
+          data={breakdown}
+          className="[&_tr]:hover:bg-inherit"
+        />
       </CardContent>
     </Card>
   )
@@ -405,9 +391,7 @@ function HealthActions({
   return (
     <Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden h-full">
       <CardHeader className="flex items-baseline px-4 py-4">
-        <CardTitle className="text-sm uppercase font-stashly">
-          Health
-        </CardTitle>
+        <CardTitle className="text-sm uppercase font-stashly">Health</CardTitle>
         <CardDescription className="text-sm text-muted-foreground">
           — actions
         </CardDescription>
@@ -521,7 +505,9 @@ function DuplicatesList({ duplicates }: { duplicates: Duplicate[] }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">No duplicates detected.</p>
+          <p className="text-sm text-muted-foreground">
+            No duplicates detected.
+          </p>
         </CardContent>
       </Card>
     )
@@ -572,17 +558,18 @@ function DuplicatesList({ duplicates }: { duplicates: Duplicate[] }) {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function StoragePage({ loaderData }: Route.ComponentProps) {
-  const { quota, breakdown, largestItems, duplicates } = loaderData
+  const { quota, breakdown, largestItems, duplicates, bucket } = loaderData
   const fetcher = useFetcher()
   const { open: confirmEmpty } = useConfirm()
-  const emptying = fetcher.state !== 'idle'
 
   // Derived KPIs
   const fileCount = breakdown.reduce((s, b) => s + b.count, 0)
   const typeCount = breakdown.length
   const usedPct =
-    quota.total > 0 ? Math.round((quota.used / quota.total) * 100) : 0
-  const avgPerFile = fileCount > 0 ? quota.used / fileCount : 0
+    quota.total > 0
+      ? Math.round((Number(quota.used) / Number(quota.total)) * 100)
+      : 0
+  const avgPerFile = fileCount > 0 ? Number(quota.used) / fileCount : 0
   const largest = largestItems[0]
   const reclaimBytes = duplicates.reduce((s, d) => s + d.wastingBytes, 0)
   const videoBucket = breakdown.find((b) => b.category === 'video')
@@ -600,21 +587,21 @@ export default function StoragePage({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <div className="space-y-4  mx-auto p-4">
+    <div className="mx-auto">
       {/* ── Page header — matches the app's flat in-route header pattern ── */}
       <header className="flex items-center justify-between gap-4 pb-3 border-b border-input">
         <div className="flex items-baseline gap-3 min-w-0">
           <h1 className="text-xl font-semibold font-stashly truncate">
             Storage
           </h1>
-          <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground font-stashly hidden md:inline">
-            / ops · dense kpis · health actions
+          <span className="text-sm text-muted-foreground font-stashly hidden md:inline">
+            / {bucket}
             {quota.status !== 'normal' && (
               <>
                 {' '}
                 ·{' '}
                 <span className="text-destructive">
-                  {statusLabel[quota.status] ?? quota.status}
+                  {quota.status}
                 </span>
               </>
             )}
@@ -633,7 +620,7 @@ export default function StoragePage({ loaderData }: Route.ComponentProps) {
             variant="outline"
             size="sm"
             onClick={handleEmptyBucket}
-            disabled={emptying}
+            disabled={fetcher.state === 'submitting'}
             className="font-stashly uppercase tracking-wider bg-transparent border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
           >
             <TrashFillIcon className="size-4" />
@@ -648,8 +635,8 @@ export default function StoragePage({ loaderData }: Route.ComponentProps) {
         <div className="col-span-12 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
           <KpiCard
             label="Bucket"
-            value={fmt(quota.used)}
-            sub={`of ${fmt(quota.total)} · ${usedPct}%`}
+            value={fmt(Number(quota.used))}
+            sub={`of ${fmt(Number(quota.total))} · ${usedPct}%`}
           />
           <KpiCard
             label="Files"
@@ -664,13 +651,13 @@ export default function StoragePage({ loaderData }: Route.ComponentProps) {
           />
           <KpiCard
             label="Trash"
-            value={fmt(quota.deleted)}
+            value={fmt(Number(quota.deleted))}
             sub="recently deleted"
             tone="danger"
           />
           <KpiCard
             label="Reclaim"
-            value={fmt(reclaimBytes)}
+            value={fmt(Number(reclaimBytes))}
             sub={`${duplicates.length} dupes`}
             tone="accent"
           />
@@ -684,14 +671,14 @@ export default function StoragePage({ loaderData }: Route.ComponentProps) {
         {/* Health */}
         <div className="col-span-12 lg:col-span-5">
           <HealthActions
-            trashBytes={quota.deleted}
+            trashBytes={Number(quota.deleted)}
             reclaimBytes={reclaimBytes}
             duplicateGroups={duplicates.length}
             videoBytes={videoBucket?.size ?? 0}
             videoCount={videoBucket?.count ?? 0}
             imageCount={imageBucket?.count ?? 0}
             onEmptyBucket={handleEmptyBucket}
-            emptying={emptying}
+            emptying={fetcher.state === 'submitting'}
           />
         </div>
 

@@ -2,7 +2,10 @@ import type { Prisma, Quota as PrismaQuota } from '@/prisma/client'
 import { QuotaStatus } from '@/prisma/enums'
 import { prisma } from '@/services/db'
 import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
-import { findDefaultStoragePlan, findStoragePlanById } from './storagePlan-actions'
+import {
+  findDefaultStoragePlan,
+  findStoragePlanById,
+} from './storagePlan-actions'
 import { buildQuotaFilters } from '@/utils/filters/quota.filters'
 import { searchFactory } from '@/utils/search'
 
@@ -19,12 +22,17 @@ import { searchFactory } from '@/utils/search'
 export const searchQuotas = searchFactory({
   dbDelegate: prisma.quota,
   buildFilters: buildQuotaFilters,
-  defaultOrderBy: (): Prisma.QuotaOrderByWithRelationInput => ({ createdAt: 'desc' }),
+  defaultOrderBy: (): Prisma.QuotaOrderByWithRelationInput => ({
+    createdAt: 'desc',
+  }),
 })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface QuotaOutput extends Omit<PrismaQuota, 'createdAt' | 'updatedAt'> {
+export interface QuotaOutput extends Omit<
+  PrismaQuota,
+  'createdAt' | 'updatedAt'
+> {
   remaining: bigint
 }
 
@@ -53,7 +61,10 @@ export interface UpdateAfterInput {
  * toQuotaStatus({ used: 95n, total: 100n }) // 'warning'
  * toQuotaStatus({ used: 101n, total: 100n }) // 'exceeded'
  */
-export function toQuotaStatus({ used, total }: Pick<QuotaOutput, 'used' | 'total'>): QuotaStatus {
+export function toQuotaStatus({
+  used,
+  total,
+}: Pick<QuotaOutput, 'used' | 'total'>): QuotaStatus {
   if (total === 0n) return used > 0n ? 'exceeded' : 'normal'
   const ratio = Number((used * 1000n) / total) / 1000
   if (ratio > 1) return 'exceeded'
@@ -87,7 +98,13 @@ export function calculateQuota(
   let deleted = current.deleted + (data.deleted ?? 0n)
   if (deleted < 0n) deleted = 0n
   const remaining = total - used
-  return { total, used, deleted, remaining, status: toQuotaStatus({ used, total }) }
+  return {
+    total,
+    used,
+    deleted,
+    remaining,
+    status: toQuotaStatus({ used, total }),
+  }
 }
 
 /**
@@ -101,7 +118,9 @@ export function calculateQuota(
  * const quota = toQuota(raw)
  * console.log(quota.remaining, quota.status)
  */
-export function toQuota(quota: Omit<PrismaQuota, 'createdAt' | 'updatedAt'>): QuotaOutput {
+export function toQuota(
+  quota: Omit<PrismaQuota, 'createdAt' | 'updatedAt'>
+): QuotaOutput {
   const { total, used, deleted } = quota
   const remaining = total - used
   return { ...quota, remaining, status: toQuotaStatus({ used, total }) }
@@ -121,7 +140,10 @@ export function toQuota(quota: Omit<PrismaQuota, 'createdAt' | 'updatedAt'>): Qu
  * const quota = await findQuotaById('qta_abc123')
  * console.log(quota.remaining)
  */
-export async function findQuotaById(id: string, client: Prisma.TransactionClient = prisma) {
+export async function findQuotaById(
+  id: string,
+  client: Prisma.TransactionClient = prisma
+) {
   const quota = await client.quota.findUniqueOrThrow({ where: { id } })
   return toQuota(quota)
 }
@@ -137,9 +159,17 @@ export async function findQuotaById(id: string, client: Prisma.TransactionClient
  * const quota = await findQuotaByUserId(session.user.id)
  * if (!quota) throw new Error('No quota found')
  */
-export async function findQuotaByUserId(userId: string, client: Prisma.TransactionClient = prisma) {
-  const quota = await client.quota.findFirst({ where: { drive: { ownerId: userId } } })
-  return quota ? toQuota(quota) : null
+export async function findQuotaByUserId(
+  userId: string,
+  client: Prisma.TransactionClient = prisma
+) {
+  const quota = await client.quota.findFirst({
+    where: { drive: { ownerId: userId } },
+  })
+  if (!quota) {
+    throw new StashlyError(StashlyErrorCode.QUOTA_NOT_DEFINED_FOR_USER)
+  }
+  return toQuota(quota)
 }
 
 /**
@@ -152,7 +182,10 @@ export async function findQuotaByUserId(userId: string, client: Prisma.Transacti
  * @example
  * const quota = await findQuotaByDriveId(session.user.driveId)
  */
-export async function findQuotaByDriveId(driveId: string, client: Prisma.TransactionClient = prisma) {
+export async function findQuotaByDriveId(
+  driveId: string,
+  client: Prisma.TransactionClient = prisma
+) {
   const quota = await client.quota.findFirst({ where: { driveId } })
   return quota ? toQuota(quota) : null
 }
@@ -187,7 +220,11 @@ export async function findQuotaByUserAndDrive(userId: string, driveId: string) {
  * @example
  * const quota = await findQuota({ userId: session.user.id })
  */
-export async function findQuota({ userId }: { userId: string }): Promise<QuotaOutput> {
+export async function findQuota({
+  userId,
+}: {
+  userId: string
+}): Promise<QuotaOutput> {
   const quota = await findQuotaByUserId(userId)
   if (!quota) throw new Error(`Quota not found for user ${userId}`)
   return quota
@@ -204,7 +241,10 @@ export async function findQuota({ userId }: { userId: string }): Promise<QuotaOu
  * @example
  * const quota = await assertQuotaExists('qta_abc123')
  */
-export async function assertQuotaExists(id: string, client: Prisma.TransactionClient = prisma) {
+export async function assertQuotaExists(
+  id: string,
+  client: Prisma.TransactionClient = prisma
+) {
   const quota = await client.quota.findUnique({ where: { id } })
   if (!quota) throw new StashlyError(StashlyErrorCode.QUOTA_NOT_FOUND)
   return toQuota(quota)
@@ -222,9 +262,13 @@ export async function assertQuotaExists(id: string, client: Prisma.TransactionCl
  * const quota = await ensureUserQuota(session.user.id)
  * validateQuotaFreeSpace(quota, file.size)
  */
-export async function ensureUserQuota(userId: string, client: Prisma.TransactionClient = prisma) {
+export async function ensureUserQuota(
+  userId: string,
+  client: Prisma.TransactionClient = prisma
+) {
   const quota = await findQuotaByUserId(userId, client)
-  if (!quota) throw new StashlyError(StashlyErrorCode.QUOTA_NOT_DEFINED_FOR_USER)
+  if (!quota)
+    throw new StashlyError(StashlyErrorCode.QUOTA_NOT_DEFINED_FOR_USER)
   return quota
 }
 
@@ -256,8 +300,15 @@ export function verifyFreeQuota(quota: QuotaOutput, dataSize: bigint): boolean {
  * const check = checkFreeQuota(item.id, quota, item.size)
  * if (check.result === 'denied') return { error: 'Quota exceeded' }
  */
-export function checkFreeQuota(itemId: string, quota: QuotaOutput, dataSize: bigint) {
-  return { itemId, result: verifyFreeQuota(quota, dataSize) ? 'allowed' : 'denied' } as const
+export function checkFreeQuota(
+  itemId: string,
+  quota: QuotaOutput,
+  dataSize: bigint
+) {
+  return {
+    itemId,
+    result: verifyFreeQuota(quota, dataSize) ? 'allowed' : 'denied',
+  } as const
 }
 
 /**
@@ -271,7 +322,8 @@ export function checkFreeQuota(itemId: string, quota: QuotaOutput, dataSize: big
  * validateQuotaFreeSpace(quota, file.size) // throws if not enough space
  */
 export function validateQuotaFreeSpace(quota: QuotaOutput, size: bigint): void {
-  if (quota.total - quota.used < size) throw new StashlyError(StashlyErrorCode.INSUFFICIENT_QUOTA)
+  if (quota.total - quota.used < size)
+    throw new StashlyError(StashlyErrorCode.INSUFFICIENT_QUOTA)
 }
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
@@ -347,7 +399,12 @@ async function applyQuotaDelta({
   else if (userId) current = await findQuotaByUserId(userId, client)
   if (!current) throw new StashlyError(StashlyErrorCode.QUOTA_NOT_FOUND)
   const { remaining, ...quota } = calculateQuota(current, data as PrismaQuota)
-  return toQuota(await client.quota.update({ where: { id: current.id }, data: { ...data, ...quota } }))
+  return toQuota(
+    await client.quota.update({
+      where: { id: current.id },
+      data: { ...data, ...quota },
+    })
+  )
 }
 
 // ─── After-action helpers ─────────────────────────────────────────────────────
@@ -360,7 +417,11 @@ async function applyQuotaDelta({
  * @example
  * await onItemsUploaded({ userId, dataSize: BigInt(file.size) })
  */
-export async function onItemsUploaded({ userId, dataSize, client }: UpdateAfterInput) {
+export async function onItemsUploaded({
+  userId,
+  dataSize,
+  client,
+}: UpdateAfterInput) {
   return applyQuotaDelta({ userId, used: dataSize, client })
 }
 
@@ -372,7 +433,11 @@ export async function onItemsUploaded({ userId, dataSize, client }: UpdateAfterI
  * @example
  * await onItemsCopied({ userId, dataSize: BigInt(item.size) })
  */
-export async function onItemsCopied({ userId, dataSize, client }: UpdateAfterInput) {
+export async function onItemsCopied({
+  userId,
+  dataSize,
+  client,
+}: UpdateAfterInput) {
   return applyQuotaDelta({ userId, used: dataSize, client })
 }
 
@@ -384,7 +449,11 @@ export async function onItemsCopied({ userId, dataSize, client }: UpdateAfterInp
  * @example
  * await onItemsTrashed({ userId, dataSize: BigInt(item.size) })
  */
-export async function onItemsTrashed({ userId, dataSize, client }: UpdateAfterInput) {
+export async function onItemsTrashed({
+  userId,
+  dataSize,
+  client,
+}: UpdateAfterInput) {
   return applyQuotaDelta({ userId, used: -dataSize, deleted: dataSize, client })
 }
 
@@ -396,7 +465,11 @@ export async function onItemsTrashed({ userId, dataSize, client }: UpdateAfterIn
  * @example
  * await onItemsRestored({ userId, dataSize: BigInt(item.size) })
  */
-export async function onItemsRestored({ userId, dataSize, client }: UpdateAfterInput) {
+export async function onItemsRestored({
+  userId,
+  dataSize,
+  client,
+}: UpdateAfterInput) {
   return applyQuotaDelta({ userId, used: dataSize, deleted: -dataSize, client })
 }
 
@@ -408,7 +481,11 @@ export async function onItemsRestored({ userId, dataSize, client }: UpdateAfterI
  * @example
  * await onItemsDeleted({ userId, dataSize: BigInt(item.size) })
  */
-export async function onItemsDeleted({ userId, dataSize, client }: UpdateAfterInput) {
+export async function onItemsDeleted({
+  userId,
+  dataSize,
+  client,
+}: UpdateAfterInput) {
   return applyQuotaDelta({ userId, deleted: -dataSize, client })
 }
 
@@ -419,7 +496,11 @@ export async function onItemsDeleted({ userId, dataSize, client }: UpdateAfterIn
  * @example
  * await onActiveItemsDeleted({ userId, dataSize: BigInt(item.size) })
  */
-export async function onActiveItemsDeleted({ userId, dataSize, client }: UpdateAfterInput) {
+export async function onActiveItemsDeleted({
+  userId,
+  dataSize,
+  client,
+}: UpdateAfterInput) {
   return applyQuotaDelta({ userId, used: -dataSize, client })
 }
 
@@ -431,6 +512,10 @@ export async function onActiveItemsDeleted({ userId, dataSize, client }: UpdateA
  * @example
  * await updateTotalQuota({ userId, dataSize: newPlan.storageLimit })
  */
-export async function updateTotalQuota({ userId, dataSize, client }: UpdateAfterInput) {
+export async function updateTotalQuota({
+  userId,
+  dataSize,
+  client,
+}: UpdateAfterInput) {
   return applyQuotaDelta({ userId, total: dataSize, client })
 }
