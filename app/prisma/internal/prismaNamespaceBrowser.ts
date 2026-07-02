@@ -421,6 +421,7 @@ export const ImageScalarFieldEnum = {
   width: 'width',
   horizontalResolution: 'horizontalResolution',
   verticalResolution: 'verticalResolution',
+  bitDepth: 'bitDepth',
   cameraMake: 'cameraMake',
   cameraModel: 'cameraModel',
   exposureTime: 'exposureTime',
