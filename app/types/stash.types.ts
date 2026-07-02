@@ -160,6 +160,15 @@ export type StashItemVideo = {
   } | null
 }
 
+export type StashItemImage = {
+  id: string
+  name: string
+  image: {
+    width: number | null
+    height: number | null
+  } | null
+}
+
 export type StashItemPdf = {
   id: string
   name: string
@@ -243,6 +252,22 @@ export type StashItemPanel = {
     codec: string | null
     container: string | null
     frameRate: number | null
+  } | null
+  image?: {
+    width: number | null
+    height: number | null
+    horizontalResolution: number | null
+    verticalResolution: number | null
+    bitDepth: number | null
+    cameraMake: string | null
+    cameraModel: string | null
+    iso: number | null
+    fNumber: number | null
+    exposureTime: number | null
+    focalLength: number | null
+    takenDateTime: Date | string | null
+    latitude: number | null
+    longitude: number | null
   } | null
   favorites: Array<{
     favoritedBy: { id: string; name: string; image: string | null }

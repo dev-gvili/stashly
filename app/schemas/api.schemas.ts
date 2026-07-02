@@ -118,6 +118,9 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
     // image fields
     imageWidth: z.coerce.number().int().optional(),
     imageHeight: z.coerce.number().int().optional(),
+    horizontalResolution: z.coerce.number().int().optional(),
+    verticalResolution: z.coerce.number().int().optional(),
+    bitDepth: z.coerce.number().int().optional(),
     // free-text fields use z.coerce.string(): parseFormData's urlencoded
     // decoder turns numeric-looking values (camera model '5100', album '2112')
     // into numbers before Zod sees them — see the pdf* fields below.

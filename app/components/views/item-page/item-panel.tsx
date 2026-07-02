@@ -10,6 +10,7 @@ import {
   DownloadFillIcon,
   HeartFillIcon,
   HeartIcon,
+  ImageFillIcon,
   LinkIcon,
   MoreMenuFillIcon,
   MoveFillIcon,
@@ -57,7 +58,7 @@ function SectionHead({ icon, label }: { icon?: JSX.Element; label: string }) {
   return (
     <div className="mb-4 inline-flex items-start gap-2">
       {icon}
-      <h3 className="font-stashly text-xs  uppercase text-muted-foreground">
+      <h3 className="font-stashly text-sm text-semibold uppercase text-muted-foreground">
         {label}
       </h3>
     </div>
@@ -163,6 +164,67 @@ function VideoDetails({ item }: { item: StashItemPanel }) {
   )
 }
 
+function ImageDetails({ item }: { item: StashItemPanel }) {
+  const img = item.image
+  const dims = img?.width && img?.height ? `${img.width} × ${img.height}` : null
+  const dpi =
+    img?.horizontalResolution && img?.verticalResolution
+      ? img.horizontalResolution === img.verticalResolution
+        ? `${img.horizontalResolution} DPI`
+        : `${img.horizontalResolution} × ${img.verticalResolution} DPI`
+      : null
+  const depth = img?.bitDepth != null ? `${img.bitDepth}-bit` : null
+  return (
+    <dl className="space-y-1">
+      <Row label="Kind" value={item.file?.mimeType || 'Image'} mono />
+      <Row label="Size" value={formatSize('byte', 'unit', Number(item.size))} />
+      <Row label="Dimensions" value={dims} mono />
+      <Row label="Resolution" value={dpi} mono />
+      <Row label="Bit depth" value={depth} mono />
+    </dl>
+  )
+}
+
+function CameraInfo({ image }: { image: StashItemPanel['image'] }) {
+  if (!image) return null
+  const camera =
+    image.cameraMake || image.cameraModel
+      ? [image.cameraMake, image.cameraModel].filter(Boolean).join(' ')
+      : null
+  const aperture = image.fNumber != null ? `f/${image.fNumber}` : null
+  const iso = image.iso != null ? `ISO ${image.iso}` : null
+  const shutter =
+    image.exposureTime != null
+      ? image.exposureTime < 1
+        ? `1/${Math.round(1 / image.exposureTime)}s`
+        : `${image.exposureTime}s`
+      : null
+  const focal = image.focalLength != null ? `${image.focalLength}mm` : null
+  const taken = image.takenDateTime ? formatMediaDate(image.takenDateTime) : null
+  const gps =
+    image.latitude != null && image.longitude != null
+      ? `${image.latitude.toFixed(5)}, ${image.longitude.toFixed(5)}`
+      : null
+
+  if (!camera && !aperture && !iso && !shutter && !focal && !taken && !gps)
+    return null
+
+  return (
+    <section className="py-4">
+      <SectionHead icon={<ImageFillIcon className="size-4" />} label="Camera" />
+      <dl className="space-y-1">
+        <Row label="Camera" value={camera} />
+        <Row label="Aperture" value={aperture} mono />
+        <Row label="ISO" value={iso} mono />
+        <Row label="Shutter" value={shutter} mono />
+        <Row label="Focal length" value={focal} mono />
+        <Row label="Taken" value={taken} mono />
+        <Row label="GPS" value={gps} mono />
+      </dl>
+    </section>
+  )
+}
+
 function PdfDetails({ item }: { item: StashItemPanel }) {
   const p = item.pdf
   return (
@@ -199,7 +261,6 @@ function DocumentInfo({ pdf }: { pdf: StashItemPanel['pdf'] }) {
   return (
     <section>
       <SectionHead
-        icon={<DocumentFillIcon className="size-6" />}
         label="Document"
       />
       <dl className="space-y-1">
@@ -267,7 +328,6 @@ function MarkdownInfo({ md }: { md: StashItemPanel['markdown'] }) {
   return (
     <section className="py-4">
       <SectionHead
-        icon={<DocumentFillIcon className="size-4" />}
         label="Content"
       />
       <dl className="space-y-1">
@@ -400,6 +460,7 @@ export function ItemPanel({
   const isMarkdown =
     !!item.markdown || /\.(md|markdown|mdown|mkd)$/i.test(item.name)
   const isVideo = !!item.video || !!item.file?.mimeType?.startsWith('video/')
+  const isImage = !!item.image || !!item.file?.mimeType?.startsWith('image/')
   const displayTitle =
     item.audio?.title ??
     item.pdf?.title ??
@@ -424,6 +485,8 @@ export function ItemPanel({
             <DocumentFillIcon className="size-4" />
           ) : isVideo ? (
             <VideoFillIcon className="size-4" />
+          ) : isImage ? (
+            <ImageFillIcon className="size-4" />
           ) : (
             <AudioFillIcon className="size-4" />
           )}
@@ -433,7 +496,9 @@ export function ItemPanel({
               ? 'Markdown'
               : isVideo
                 ? 'Video'
-                : 'Audio'}
+                : isImage
+                  ? 'Image'
+                  : 'Audio'}
         </span>
         <h1 className="wrap-break-word text-sm font-semibold leading-snug text-foreground">
           {displayTitle}
@@ -454,11 +519,11 @@ export function ItemPanel({
         <div className="px-4 pt-2">
           <TabsList className="w-full">
             <TabsTrigger value="details" className="gap-1.5">
-              <DetailsFillIcon className="size-4" />
+              <DetailsFillIcon className="size-5" />
               Details
             </TabsTrigger>
             <TabsTrigger value="activity" className="gap-1.5">
-              <ActivityFillIcon className="size-4" />
+              <ActivityFillIcon className="size-5" />
               Activity
             </TabsTrigger>
           </TabsList>
@@ -470,7 +535,6 @@ export function ItemPanel({
             {/* Details */}
             <section className="py-4">
               <SectionHead
-                icon={<DetailsFillIcon className="size-5" />}
                 label="Details"
               />
               {isPdf ? (
@@ -479,10 +543,15 @@ export function ItemPanel({
                 <MarkdownDetails item={item} />
               ) : isVideo ? (
                 <VideoDetails item={item} />
+              ) : isImage ? (
+                <ImageDetails item={item} />
               ) : (
                 <AudioDetails item={item} />
               )}
             </section>
+
+            {/* Camera / EXIF info */}
+            <CameraInfo image={item.image ?? null} />
 
             {/* Track info */}
             <TrackDetails audio={item.audio} />
@@ -496,7 +565,6 @@ export function ItemPanel({
             {/* Timeline */}
             <section className="py-4">
               <SectionHead
-                icon={<ActivityFillIcon className="size-4" />}
                 label="Timeline"
               />
               <ItemDates item={item} />
@@ -506,7 +574,6 @@ export function ItemPanel({
             {item.permissions.length > 0 && (
               <section className="py-4">
                 <SectionHead
-                  icon={<CollectionFillIcon className="size-4" />}
                   label="Shared with"
                 />
                 <Sharing item={item} />
