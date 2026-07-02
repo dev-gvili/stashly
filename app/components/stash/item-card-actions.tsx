@@ -3,6 +3,7 @@ import React from 'react'
 import { useFetcher, href } from 'react-router'
 import { useItemCard } from '@/hooks/useItemCard'
 import { usePinItem } from '@/hooks/usePinItem'
+import { useFavorite } from '@/hooks/useFavorite'
 import { useLockItem } from '@/hooks/useLockItem'
 import useConfirm from '@/hooks/useConfirm'
 import { toFavorite } from '@/utils/converters'
@@ -169,21 +170,18 @@ function Details(props: ItemProps) {
 // -- Favorite ----------------------------------------------------------------
 
 function Favorite(props: ItemProps) {
-  const fetcher = useFetcher<{ favorited?: boolean }>()
   const { id, favorites, user } = useItemCard()
-  const initial = toFavorite({ favorites, userId: user?.id })
-  const favorited = fetcher.data?.favorited ?? initial
+  const initiallyFavorited = toFavorite({ favorites, userId: user?.id })
+  const { favorited, toggle, isPending } = useFavorite(id, initiallyFavorited)
 
   return (
     <Item
       {...props}
+      disabled={isPending}
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
-        fetcher.submit(
-          { intent: favorited ? 'unfavorite' : 'favorite', itemId: id },
-          { method: 'GET', action: href('/api/favorites') }
-        )
+        toggle()
         props.onClick?.(e)
       }}
     >

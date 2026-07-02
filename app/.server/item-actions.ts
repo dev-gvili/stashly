@@ -1197,6 +1197,9 @@ export async function upsertImageFacet(
   data: {
     width?: number
     height?: number
+    horizontalResolution?: number
+    verticalResolution?: number
+    bitDepth?: number
     cameraMake?: string
     cameraModel?: string
     iso?: number
@@ -2654,12 +2657,54 @@ export async function getFavoritedItems({
       pins: {
         select: {
           id: true,
+          pinnedById: true,
           pinnedBy: {
             select: { id: true, name: true, displayName: true, image: true },
           },
         },
       },
-      parent: { select: { id: true, name: true } },
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          size: true,
+          inclusiveSize: true,
+          category: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          ownerId: true,
+          parentId: true,
+          workspaceId: true,
+          driveId: true,
+          tags: true,
+          file: true,
+          folder: true,
+          favorites: {
+            select: {
+              id: true,
+              favoritedBy: {
+                select: { id: true, name: true, displayName: true, image: true },
+              },
+            },
+          },
+          thumbnails: {
+            select: {
+              height: true,
+              width: true,
+              url: true,
+              view: true,
+              size: true,
+              id: true,
+            },
+          },
+          locked: {
+            select: { id: true, lockedById: true, lockedAt: true },
+          },
+          parent: { select: { id: true, name: true } },
+        },
+      },
       locked: {
         select: {
           id: true,
@@ -2733,6 +2778,42 @@ export async function addFavorite(
   })
   recordFavoriteActivity(itemId, 'favorited')
   return updated
+}
+
+/**
+ * Marks multiple items as favorited by a user in a single operation.
+ * Already-favorited items are skipped, so the call is idempotent.
+ *
+ * @param itemIds - The IDs of the items to favorite.
+ * @param favoritedById - The ID of the user favoriting the items.
+ * @param client - Optional transaction client (defaults to the global instance).
+ * @returns The number of new favorite records created.
+ */
+export async function addFavorites(
+  itemIds: string[],
+  favoritedById: string,
+  client: Prisma.TransactionClient = prisma
+) {
+  if (itemIds.length === 0) return 0
+
+  const existing = await client.favorite.findMany({
+    where: { favoritedById, itemId: { in: itemIds } },
+    select: { itemId: true },
+  })
+  const already = new Set(existing.map((f) => f.itemId))
+  const toAdd = itemIds.filter((id) => !already.has(id))
+  if (toAdd.length === 0) return 0
+
+  await client.favorite.createMany({
+    data: toAdd.map((itemId) => ({
+      id: toObjectId(getPrefixForModel('Favorite')),
+      itemId,
+      favoritedById,
+    })),
+  })
+
+  for (const itemId of toAdd) recordFavoriteActivity(itemId, 'favorited')
+  return toAdd.length
 }
 
 /**

@@ -44,7 +44,7 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
     'selectedItems'
   )
 
-  ;['favorites', 'sidebar', 'theme'].forEach((action) => {
+  ;['sidebar', 'theme'].forEach((action) => {
     if (formAction?.includes(action)) {
       return false
     }

@@ -7,5 +7,8 @@ model Favorite {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  @@unique([favoritedById, itemId])
+  @@index([favoritedById, id], name: "favoritedById_id_idx")
+  @@index([itemId, id], name: "itemId_id_idx")
+  @@index([favoritedById, itemId], name: "favoritedById_itemId_idx")
+  @@index([createdAt], name: "createdAt_idx")
 }

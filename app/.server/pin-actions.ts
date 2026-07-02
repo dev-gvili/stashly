@@ -78,6 +78,51 @@ const itemListSelect = {
       },
     },
   },
+  locked: {
+    select: { id: true, lockedById: true, lockedAt: true },
+  },
+  parent: {
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      size: true,
+      inclusiveSize: true,
+      category: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      ownerId: true,
+      parentId: true,
+      workspaceId: true,
+      driveId: true,
+      tags: true,
+      file: true,
+      folder: true,
+      favorites: {
+        select: {
+          id: true,
+          favoritedBy: {
+            select: { id: true, name: true, displayName: true, image: true },
+          },
+        },
+      },
+      thumbnails: {
+        select: {
+          height: true,
+          width: true,
+          url: true,
+          view: true,
+          size: true,
+          id: true,
+        },
+      },
+      locked: {
+        select: { id: true, lockedById: true, lockedAt: true },
+      },
+      parent: { select: { id: true, name: true } },
+    },
+  },
   tags: true,
 } satisfies Prisma.ItemSelect
 
