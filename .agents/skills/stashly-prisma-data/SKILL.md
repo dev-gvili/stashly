@@ -1,0 +1,42 @@
+---
+name: stashly-prisma-data
+description: Stashly Prisma and data-layer conventions — schema location, migrate vs db push, orderBy rules, relation filtering and count sorts, sort URL convention, ItemCard select shapes, the Favorite no-unique-constraint rule, Zod conventions, and SQL simplicity. Load when writing Prisma queries, migrations, schema changes, or Zod schemas in the Stashly repo.
+---
+
+# Stashly Prisma & Data Layer
+
+## Prisma Schema
+
+Models are split across `prisma/models/*.prisma` files and merged. Generated client outputs to `app/prisma/`. Core models: `User`, `Workspace`, `Item`, `Collection`, `Permission`, `Comment`.
+
+**Collection size is DB-managed**: Two Postgres triggers (`collection_size_trigger` on `CollectionMember`, `item_size_collection_sync_trigger` on `Item`) automatically maintain `Item.size` for collections. Never add manual size arithmetic back to `collection-actions.ts` — `addItemToCollection`, `removeItemFromCollection`, etc. do NOT need to update size.
+
+**Nullable relation filtering**: To filter on fields inside a nullable relation, use `relation: { is: { field: value } }` — **not** `relation: { isNot: null, field: value }`. Prisma's TS types reject field filters alongside `isNot`.
+
+**`orderBy` one-field-per-object rule**: `ItemOrderByWithRelationInput` allows exactly one relation field per object. Never merge two relation sorts into one object — Prisma throws at runtime. Use an array: `[{ folder: { childCount: 'asc' } }, { collectionItems: { _count: 'asc' } }]`.
+
+**Relation count sort**: To sort by a relation's count, use `{ relation: { _count: 'asc' } }` (underscore required — `count` without it throws `Unknown argument`). Example: `{ collectionItems: { _count: 'desc' } }`.
+
+**Sort URL convention**: `?orderBy[col]=dir` → qs parses to `{ orderBy: { col: dir } }`. For nested fields: `?orderBy[folder][childCount]=asc`. For multi-field array orderBy: indexed notation `?orderBy[0][folder][childCount]=asc&orderBy[1][collectionItems][_count]=asc` → qs produces `[{ folder: {...} }, { collectionItems: {...} }]`. `getFolderContent` defensively splits any merged multi-key objects before passing to Prisma.
+
+**`ItemCard`-feeding selects need the full `StashAncestor`/`StashPin` shape**: any loader whose items render through `<ItemCard>` must select `parent` as the full `StashAncestor` shape (all item scalars + `file`/`folder`/`favorites`/`thumbnails`/`locked` + a shallow `parent`), not just `{ id, name }` — and the `pins` select needs `pinnedById` (`StashPin` requires it), not just `pinnedBy`. Mirror `trash.tsx`'s `parent: { include: {...} } }` pattern. A narrow select typechecks fine on its own and only fails where `<ItemCard {...item}>` is spread — easy to miss.
+
+**`Favorite` has no unique constraint**: `@@unique([favoritedById, itemId])` was intentionally removed in favor of plain indexes — the DB allows duplicate favorite rows. `addFavorite`/`addFavorites` must check-then-insert at the app level; don't rely on a DB constraint to catch double-favoriting.
+
+## Prisma Client
+
+- Import Prisma client from `app/prisma/client` — do NOT use the generated client via tsx or any other path.
+- **No `--schema` flag**: schema lives in `prisma/models/*.prisma` and is wired through `prisma.config.ts`. Passing `--schema=` fails with "file not found".
+- **DB drift recovery**: if `prisma migrate dev` reports drift and wants to reset (destructive), prefer `prisma db push --accept-data-loss` for non-destructive changes (new nullable columns). The "data loss" warning on adding a unique constraint to a new nullable column is spurious — existing rows are NULL, no duplicates possible.
+- **`db push` does NOT auto-regenerate the client** in this repo (Prisma 7 + `prisma.config.ts`). If TS still shows `Property 'X' does not exist on type 'never'` for a new field after push, run `pnpm prisma generate` explicitly.
+- After Prisma schema changes, remind the user to restart the dev server (cached client issues observed).
+
+## Database / SQL
+
+Start with the simplest query that works. Do not use recursive CTEs or over-engineered approaches. Optimize only if there's a demonstrated performance need.
+
+## Zod Conventions
+
+- Use `z.url()`, `z.email()`, etc. (not deprecated `z.string().url()` syntax)
+- Follow project's existing zod schema patterns in `app/schemas/`
+- Keep Zod schemas and derived TypeScript types co-located: define the Zod schema in `app/schemas/`, then infer and export the TS type from the same file or a parallel file in `app/types/`.
