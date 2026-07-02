@@ -49,6 +49,7 @@ export const auth = betterAuth({
     provider: 'postgresql',
   }),
   trustedOrigins: [
+    'http://localhost',  
     'http://localhost:80',
     'https://conjoined-superelegantly-ebony.ngrok-free.dev',
   ],
@@ -128,7 +129,7 @@ export const auth = betterAuth({
     github: {
       clientId: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
-      redirectURI: 'https://conjoined-superelegantly-ebony.ngrok-free.dev/api/auth/callback/github'
+      // redirectURI: 'https://conjoined-superelegantly-ebony.ngrok-free.dev/api/auth/callback/github'
     },
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,
