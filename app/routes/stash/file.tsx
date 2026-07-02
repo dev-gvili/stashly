@@ -8,6 +8,7 @@ import { AudioStage } from '@/components/views/item-page/audio-stage'
 import { PdfStage } from '@/components/views/item-page/pdf-stage'
 import { MarkdownStage } from '@/components/views/item-page/markdown-stage'
 import { VideoStage } from '@/components/views/item-page/video-stage'
+import { ImageStage } from '@/components/views/item-page/image-stage'
 import { ItemPanel } from '@/components/views/item-page/item-panel'
 import { isMarkdownName } from '@/utils/markdown'
 import { searchActivities } from '@/.server/activity-actions'
@@ -85,8 +86,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const isPdf = item.pdf != null || item.file?.mimeType === 'application/pdf'
   const isMarkdown =
     item.markdown != null || isMarkdownName(item.name, item.file?.mimeType)
+  const isImage =
+    item.image != null || item.file?.mimeType?.startsWith('image/')
   const mediaSrc =
-    (isAudio || isVideo || isPdf || isMarkdown) && item.file?.key
+    (isAudio || isVideo || isPdf || isMarkdown || isImage) && item.file?.key
       ? await getPresignedUrl(item.file.bucket, 'get', item.file.key, 3600)
       : null
 
@@ -106,12 +109,16 @@ export default function FilePage({ loaderData }: Route.ComponentProps) {
   const isPdf = item.pdf != null || item.file?.mimeType === 'application/pdf'
   const isMarkdown =
     item.markdown != null || isMarkdownName(item.name, item.file?.mimeType)
+  const isImage =
+    item.image != null || item.file?.mimeType?.startsWith('image/')
 
   const panelItem = {
     activities: activities,
     id: item.id,
     name: item.name,
     size: item.size,
+    category: item.category,
+    url: mediaSrc ?? '',
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
     openedAt: item.openedAt,
@@ -181,6 +188,24 @@ export default function FilePage({ loaderData }: Route.ComponentProps) {
           frameRate: item.video.frameRate,
         }
       : null,
+    image: item.image
+      ? {
+          width: item.image.width,
+          height: item.image.height,
+          horizontalResolution: item.image.horizontalResolution,
+          verticalResolution: item.image.verticalResolution,
+          bitDepth: item.image.bitDepth,
+          cameraMake: item.image.cameraMake,
+          cameraModel: item.image.cameraModel,
+          iso: item.image.iso,
+          fNumber: item.image.fNumber,
+          exposureTime: item.image.exposureTime,
+          focalLength: item.image.focalLength,
+          takenDateTime: item.image.takenDateTime,
+          latitude: item.image.latitude,
+          longitude: item.image.longitude,
+        }
+      : null,
     favorites: item.favorites.map((f) => ({
       favoritedBy: {
         id: f.favoritedBy.id,
@@ -241,6 +266,28 @@ export default function FilePage({ loaderData }: Route.ComponentProps) {
                   title: item.markdown.title,
                   headingCount: item.markdown.headingCount,
                 }
+              : null,
+          }}
+        />
+
+        {/* Details panel */}
+        <ItemPanel item={panelItem} />
+      </div>
+    )
+  }
+
+  if (isImage) {
+    return (
+      <div className="absolute inset-0 grid h-screen min-h-0 w-full grid-cols-[minmax(0,1fr)_auto]">
+        {/* Stage */}
+        <ImageStage
+          key={item.id}
+          src={mediaSrc ?? ''}
+          item={{
+            id: item.id,
+            name: item.name,
+            image: item.image
+              ? { width: item.image.width, height: item.image.height }
               : null,
           }}
         />

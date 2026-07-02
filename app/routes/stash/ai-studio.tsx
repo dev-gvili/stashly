@@ -193,7 +193,7 @@ function Dropzone({
           disabled={isProcessing}
         />
       </div>
-      {isProcessing && phase !== 'ready' && (
+      {isProcessing && (
         <div className="absolute top-2 right-2 flex items-center gap-2">
           <button
             onClick={onCancel}

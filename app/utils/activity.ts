@@ -39,7 +39,7 @@ export function formatActivity(activity: ActivityWithRelations): string {
   if (a.delete) return `You deleted ${a.delete.name}`
   if (a.restore) return 'You restored this item'
   if (a.upload) return `You uploaded this item`
-  if (a.copy) return `You copied this item to ${a.copy.to}`
+  if (a.copy) return `You copied this item to ${a.copy.toParentName}`
   if (a.share) {
     const r = a.share.recipients
     if (r.length === 0) return 'You shared this item'
