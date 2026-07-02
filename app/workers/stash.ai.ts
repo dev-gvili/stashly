@@ -4,7 +4,7 @@ import {
   pipeline as pipelineNext8,
   env as envNext8,
   type SupportedTasks as SupportedTasksNext8,
-} from '@huggingface/transformers-next4.0.1'
+} from '@huggingface/transformers'
 import {
   extractAudioChunk,
   makeChunks,

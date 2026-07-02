@@ -7,7 +7,7 @@ import {
   read_audio,
   type ProgressCallback,
   Tensor,
-} from '@huggingface/transformers-next4.0.1'
+} from '@huggingface/transformers'
 import { formatSize } from '@/utils/formaters'
 // import { getVision, getPipeline, type TranscribeOptions } from './ai.utils'
 // import {
