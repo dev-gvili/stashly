@@ -10,7 +10,6 @@ const PORT = Number.parseInt(process.env.PORT || '80')
 
 const app = express()
 
-app.use(compression())
 app.disable('x-powered-by')
 
 // Share one HTTP server for both the app and Vite's HMR WebSocket. Serving HMR
@@ -38,6 +37,11 @@ if (DEVELOPMENT) {
     }
   })
 } else {
+  // Compress responses in production only. In dev, Vite serves hundreds of
+  // uncached module/data responses per navigation; brotli-compressing each one
+  // is CPU-heavy and slows first load, post-navigation data, and HMR reloads
+  // (and leaks `drain` listeners on BrotliCompress under concurrent streams).
+  app.use(compression())
   app.use(
     '/assets',
     express.static('build/client/assets', { immutable: true, maxAge: '1y' })
