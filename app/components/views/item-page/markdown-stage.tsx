@@ -1,24 +1,28 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react'
 import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeSlug from 'rehype-slug'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
-// Loaded only when this stage renders (React 19 hoists & dedupes the link to
-// <head> via `precedence`), so the ligature font never ships on non-markdown
-// pages. Code blocks use 'JetBrains Mono Variable' — see `.markdown-stage code`.
+import rehypeSlug from 'rehype-slug'
+import remarkGfm from 'remark-gfm'
+import { Await } from 'react-router'
 import {
   DocumentFillIcon,
   ItemPanelFillIcon,
   LoaderIcon,
-  OutlineFillIcon,
-  SidebarFillIcon,
+  OutlineFillIcon
 } from '@/components/icons'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { cn } from '@/utils/styles'
 import { Button, SidebarTrigger, useSidebar } from '@/components/ui'
-import { useMarkdownDocument } from '@/hooks/useMarkdownDocument'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import type { StashItemMarkdown } from '@/types/stash.types'
 import type { MarkdownHeading } from '@/utils/markdown'
+import { cn } from '@/utils/styles'
 
 const RAIL_WIDTH = '18rem' // expanded outline rail width
 
@@ -43,21 +47,74 @@ const REMARK_PLUGINS = [remarkGfm]
 // rehype-sanitize first (cleans the tree), then rehype-slug (adds heading ids).
 const REHYPE_PLUGINS = [[rehypeSanitize, sanitizeSchema], rehypeSlug] as never
 
+
+
+
+
 // ---------------------------------------------------------------------------
 // MarkdownStage — exported main component
 // ---------------------------------------------------------------------------
 
+type MarkdownDoc = { text: string; headings: MarkdownHeading[] }
+
+/**
+ * MarkdownStage — Suspense/Await boundary around the server-loaded document.
+ *
+ * The file loader reads the Markdown body from S3 and returns it as an
+ * unawaited promise (React Router deferred data), so the page shell paints
+ * immediately while the document streams in here. `MarkdownReader` renders the
+ * resolved text; the fallback and `errorElement` cover the streaming and
+ * failure states that the old client-side fetch handled inline.
+ */
 export function MarkdownStage({
   item,
-  src,
+  markdownDoc,
 }: {
   item: StashItemMarkdown
-  src: string
+  markdownDoc: Promise<MarkdownDoc> | null
 }) {
+  void item // received via loaderData spread; the reader needs no item fields
+  if (!markdownDoc) return <MarkdownError message="No file URL" />
+  return (
+    <Suspense fallback={<MarkdownLoading />}>
+      <Await resolve={markdownDoc} errorElement={<MarkdownError />}>
+        {(doc: MarkdownDoc) => (
+          <MarkdownReader headings={doc.headings} text={doc.text} />
+        )}
+      </Await>
+    </Suspense>
+  )
+}
+
+function MarkdownLoading() {
+  return (
+    <div className="flex h-full min-h-0 w-full items-center justify-center bg-background text-muted-foreground">
+      <LoaderIcon className="size-6 animate-spin" />
+    </div>
+  )
+}
+
+function MarkdownError({
+  message = 'Could not load this document',
+}: {
+  message?: string
+}) {
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
+      <DocumentFillIcon className="size-10 opacity-40" />
+      <p className="font-stashly text-sm">{message}</p>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// MarkdownReader — renders the resolved document + outline
+// ---------------------------------------------------------------------------
+
+function MarkdownReader({ text, headings }: MarkdownDoc) {
   // The outline rail's open state lives in the app's shared sidebar provider
   // (keyed by id) so the SidebarTrigger toggle and cookie persistence integrate
   // with the rest of the app — same pattern as the PDF page rail.
-  const { text, headings, ready, error } = useMarkdownDocument(src)
   const scrollRef = useRef<HTMLDivElement>(null)
   const headingEls = useRef(new Map<string, HTMLElement>())
   // const [activeId, setActiveId] = useState<string | null>(null)
@@ -67,33 +124,15 @@ export function MarkdownStage({
 
   // Index rendered heading elements by id once the HTML mounts.
   useEffect(() => {
-    if (!ready) return
     const root = scrollRef.current
     if (!root) return
     headingEls.current.clear()
     for (const el of root.querySelectorAll<HTMLElement>('h1,h2,h3,h4,h5,h6')) {
       if (el.id) headingEls.current.set(el.id, el)
     }
-    activeId = headings[0].id
+    activeId = headings[0]?.id ?? null
     // setActiveId(headings[0]?.id ?? null)
-  }, [ready, text, headings])
-
-  if (error) {
-    return (
-      <div className="flex h-full min-h-0 w-full flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
-        <DocumentFillIcon className="size-10 opacity-40" />
-        <p className="font-stashly text-sm">{error}</p>
-      </div>
-    )
-  }
-
-  if (!ready) {
-    return (
-      <div className="flex h-full min-h-0 w-full items-center justify-center bg-background text-muted-foreground">
-        <LoaderIcon className="size-6 animate-spin" />
-      </div>
-    )
-  }
+  }, [text, headings])
 
   return (
     <div className="relative flex h-full min-h-0 w-full min-w-0 overflow-hidden gap-2">
@@ -102,7 +141,7 @@ export function MarkdownStage({
           collapsed. */}
 
       <Outline
-        activeId={actId || activeId || headings[0].id}
+        activeId={actId || activeId || headings[0]?.id || null}
         hasOutline={hasOutline}
         headingEls={headingEls}
         headings={headings}
@@ -112,12 +151,12 @@ export function MarkdownStage({
       {/* Main reader */}
       <div
         ref={scrollRef}
-        className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-card! rounded-md p-4 border border-input shadow-stashly h-[calc(100vh-4rem)]"
+        className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-card! rounded-md p-0 border border-input shadow-stashly h-[calc(100vh-4rem)]"
       >
-        <ScrollArea type="auto" className="h-full">
+        <ScrollArea key="markdown" type="hover" className="h-full">
           {/* pb-24: the floating toolbar overlays the bottom — extra padding so
               the last block can scroll fully above it. */}
-          <article className="markdown-stage mx-auto w-full  px-8 pb-8 font-stashly">
+          <article className="markdown-stage mx-auto w-full px-4 pb-8 font-stashly">
             <ReactMarkdown
               remarkPlugins={REMARK_PLUGINS}
               rehypePlugins={REHYPE_PLUGINS}

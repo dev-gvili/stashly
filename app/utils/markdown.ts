@@ -274,10 +274,3 @@ function collectHeadings(body: string): { level: number; text: string }[] {
   return headings
 }
 
-/** Fetch and decode a markdown document from a (presigned) URL. Browser-only. */
-export async function loadMarkdownText(url: string): Promise<string> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to load markdown (${res.status})`)
-  return res.text()
-}
-
