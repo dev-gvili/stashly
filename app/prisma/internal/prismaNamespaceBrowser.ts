@@ -544,6 +544,7 @@ export const InvitationScalarFieldEnum = {
   id: 'id',
   createdAt: 'createdAt',
   expiresAt: 'expiresAt',
+  message: 'message',
   senderId: 'senderId',
   itemId: 'itemId',
   workspaceId: 'workspaceId'
@@ -784,6 +785,7 @@ export const UserScalarFieldEnum = {
   id: 'id',
   name: 'name',
   displayName: 'displayName',
+  title: 'title',
   email: 'email',
   image: 'image',
   emailVerified: 'emailVerified',

@@ -2,9 +2,7 @@
   "chat.checkpoints.showFileChanges": true,
   "chat.edits2.enabled": true,
   "chat.mcp.discovery.enabled": {
-    "claude-desktop": true,
-    "cursor-global": true,
-    "cursor-workspace": true
+    "claude-desktop": true
   },
   "chat.tools.edits.autoApprove": {
     "**/*.{prisma,sql,db}": false
@@ -66,7 +64,7 @@
     }
   },
   "zenMode.hideLineNumbers": true,
-  "editor.allowVariableFonts": false,
+  "editor.allowVariableFonts": true,
   // "editor.fontFamily": "Dank Mono, MonoLisa, MonoLisa Medium",
   "editor.fontLigatures": true,
   "editor.fontSize": 16,
@@ -80,8 +78,12 @@
   "editor.semanticTokenColorCustomizations": {
     "rules": {
       "function": {
-        "foreground": "#d4a05a",
+        "foreground": "#d3bb84",
         "fontStyle": "italic"
+      },
+      "function.declaration": {
+        "foreground": "#908375",
+        "fontStyle": "italic bold"
       },
       "*.declaration": "#c2b3aa",
       "jsdoc": "#808080", // makes all jsdoc text gray
@@ -101,19 +103,20 @@
     "[Claude Mode Dark]": {
       "textMateRules": [
         {
+          "name": "function",
+          "scope": "entity.name.function",
+          "settings": {
+            "foreground": "#d4a05a",
+            "fontStyle": "italic"
+          }
+        },
+        {
           "name": "function.declaration",
           "scope": "meta.function-call",
           "settings": {
             "foreground": "#FF0000",
             "fontStyle": "bold"
           }
-        },
-        {
-          "actionBar.toggledBackground": "#d9775733",
-          "activityBar.dropBorder": "#ffffff",
-          "activityBarTop.activeBorder": "#e7e7e7",
-          "activityBarTop.dropBorder": "#e7e7e7",
-          "activityBarTop.foreground": "#e7e7e7",
         }
       ]
     }
@@ -127,7 +130,14 @@
   "chat.customAgentInSubagent.enabled": true,
   "chat.mcp.assisted.nuget.enabled": true,
   "chat.restoreLastPanelSession": false,
-  "python-envs.defaultEnvManager": "ms-python.python:venv",
   "files.autoSave": "onFocusChange",
-  "markdown.validate.enabled": true
+  "markdown.validate.enabled": true,
+  "js/ts.experimental.useTsgo": true,
+  "github.copilot.chat.cli.sessionController.enabled": true,
+  "github.copilot.chat.cli.sessionControllerForSessionsApp.enabled": true,
+  "github.copilot.chat.agent.autoFix": true,
+  "github.copilot.chat.rateLimitAutoSwitchToAuto": true,
+  "github.copilot.completions.chat.enabled": true,
+  "python.useEnvironmentsExtension": true,
+  "claudeCode.usePythonEnvironment": false
 }
