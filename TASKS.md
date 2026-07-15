@@ -2,7 +2,7 @@
 
 ## Active
 
-- [ ] Migrate flat item API routes — `routes.ts` still registers both flat (`shares`, `favorites`, `pins`, `versions`, `comments/*`, `invitations`) and nested (`items/:itemId/...`) paths for the same resources; move remaining flat callers to nested and remove the flat registrations after. *(confirmed still open 2026-07-02)*
+- [ ] Migrate flat item API routes — `routes.ts` still registers both a flat top-level path and a nested `items/:itemId/...` path for the same resource: `shares`, `favorites`, `versions`, `invitations`, `comments/*` (invitations added a nested route this session too). Move remaining flat callers to nested and remove the flat registrations after. Note: `pins` and `locks` are flat-only (no nested counterpart) — not part of this migration. *(re-confirmed still open 2026-07-15)*
 
 ## Someday / Low Priority
 
@@ -16,6 +16,8 @@
 
 ## Done
 
+- [x] Server-side Markdown loading — `MarkdownStage` renders from React Router deferred data (`markdownDoc` promise streamed via `<Suspense>`/`<Await>`); added `getObjectText` (s3) + `loadMarkdownDocument` (item-actions); dropped `useMarkdownDocument` hook + `loadMarkdownText`. Shipped to `main` `4695f84` (2026-07-15).
+- [x] Enriched invitations feature — received/sent views, status pill, empty state, detail panels; `invitation-actions.ts` + `/api/invitations`; Prisma `invitation.message` + `user.title` (migration `20260712000000`). Shipped to `main` `9ac8714` (2026-07-15).
 - [x] Search infra resolved — `search.repository.ts` no longer exists; `utils/search.ts` (searchFactory) is imported by 15+ action files, `utils/filters.ts` (createFilter/buildFiltersFactory) is imported by all 16 per-model `*.filters.ts` files. Both fully wired, nothing to delete. (confirmed 2026-07-02)
 - [x] Activity tracking expansion — `CollectionAction` / `FavoriteAction` / `BucketAction` Prisma models with `record*Activity` helpers wired into `collection-actions.ts`, `item-actions.ts` (favorites), `storage-actions.ts` (empty bucket); extended `activity-actions.ts` defaultInclude + `OverviewActivityKind`; UI labels in `app/utils/activity.ts` + `overview-view.tsx`. Shipped in commit `21c1106` (2026-06-02).
 - [x] Consolidated Prisma migration — `20260602000000_consolidate_upload_collection_favorite_bucket_actions` captures the `UploadAction` drift + the new action models/columns/FKs. Marked `--applied` (DB was already in sync via prior `db push`). `prisma migrate status` clean. Commit `a60b962` (2026-06-02).
