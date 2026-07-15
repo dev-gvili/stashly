@@ -80,6 +80,11 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
   itemsSchema,
   moveItemSchema,
   z.object({
+    intent: z.literal('rename_item'),
+    itemId: z.string(),
+    newName: z.string().nonempty()
+  }),
+  z.object({
     intent: z.literal('move_items'),
     selectedItems: toZodArraySchema(z.string()),
     targetFolderId: z.string(),
@@ -331,6 +336,7 @@ export const invitationsApiRouteInput = z.discriminatedUnion('intent', [
     itemId: z.string().nonempty(),
     recipients: z.array(recipientInputSchema).min(1),
     expiresAt: z.coerce.date().optional(),
+    message: z.string().optional(),
   }),
   // Invite multiple recipients to a workspace
   z.object({
@@ -338,6 +344,7 @@ export const invitationsApiRouteInput = z.discriminatedUnion('intent', [
     workspaceId: z.string().nonempty(),
     recipients: z.array(recipientInputSchema).min(1),
     expiresAt: z.coerce.date().optional(),
+    message: z.string().optional(),
   }),
   // Accept a pending invitation (per recipient)
   z.object({
@@ -349,12 +356,36 @@ export const invitationsApiRouteInput = z.discriminatedUnion('intent', [
     intent: z.literal('reject_invitation'),
     recipientId: z.string().nonempty(),
   }),
+  // Undo an accepted/rejected response, back to pending (per recipient)
+  z.object({
+    intent: z.literal('undo_invitation_response'),
+    recipientId: z.string().nonempty(),
+  }),
+  // Cancel a single pending recipient (sender)
+  z.object({
+    intent: z.literal('cancel_recipient'),
+    recipientId: z.string().nonempty(),
+  }),
   // Cancel an entire invitation (sender)
   z.object({
     intent: z.literal('cancel_invitation'),
     invitationId: z.string().nonempty(),
   }),
 ])
+
+/**
+ * A single thumbnail-backed entry in an invitation's `previews` array (the
+ * children of a shared folder/workspace). Part of the enriched invitation
+ * response the detail panel renders.
+ */
+export const invitationPreviewSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  meta: z.string().optional(),
+  kind: z.string().optional(),
+  previewUrl: z.string().nullish(),
+})
+export type InvitationPreviewPayload = z.infer<typeof invitationPreviewSchema>
 
 // ====================================================== //
 // ================== Shares Api Route ================== //

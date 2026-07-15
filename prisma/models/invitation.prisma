@@ -11,6 +11,10 @@ model Invitation {
   createdAt DateTime  @default(now()) @db.Timestamp()
   expiresAt DateTime? @db.Timestamp()
 
+  // Optional personal note the sender attaches to the invitation. Surfaced in
+  // the invitation detail panel (both received and sent tabs).
+  message String?
+
   // Who sent the invitation
   senderId String
   sender   User   @relation(fields: [senderId], references: [id])

@@ -14,7 +14,9 @@ import {
   sendWorkspaceInvitation,
   acceptInvitation,
   rejectInvitation,
+  undoInvitationResponse,
   cancelInvitation,
+  cancelInvitationRecipient,
 } from '../../.server/invitation-actions'
 
 // ---------------------------------------------------------------------------
@@ -72,7 +74,7 @@ export async function action({ request }: Route.ActionArgs) {
           session.user.id,
           parsedData.itemId,
           parsedData.recipients,
-          { expiresAt: parsedData.expiresAt }
+          { expiresAt: parsedData.expiresAt, message: parsedData.message }
         )
         return data({ success: true, invitation })
       }
@@ -82,7 +84,7 @@ export async function action({ request }: Route.ActionArgs) {
           session.user.id,
           parsedData.workspaceId,
           parsedData.recipients,
-          { expiresAt: parsedData.expiresAt }
+          { expiresAt: parsedData.expiresAt, message: parsedData.message }
         )
         return data({ success: true, invitation })
       }
@@ -101,6 +103,23 @@ export async function action({ request }: Route.ActionArgs) {
           parsedData.recipientId,
           session.user.id,
           session.user.email
+        )
+        return data({ success: true, invitation })
+      }
+
+      case 'undo_invitation_response': {
+        const invitation = await undoInvitationResponse(
+          parsedData.recipientId,
+          session.user.id,
+          session.user.email
+        )
+        return data({ success: true, invitation })
+      }
+
+      case 'cancel_recipient': {
+        const invitation = await cancelInvitationRecipient(
+          parsedData.recipientId,
+          session.user.id
         )
         return data({ success: true, invitation })
       }

@@ -28,6 +28,7 @@ export type InvitationMinAggregateOutputType = {
   id: string | null
   createdAt: Date | null
   expiresAt: Date | null
+  message: string | null
   senderId: string | null
   itemId: string | null
   workspaceId: string | null
@@ -37,6 +38,7 @@ export type InvitationMaxAggregateOutputType = {
   id: string | null
   createdAt: Date | null
   expiresAt: Date | null
+  message: string | null
   senderId: string | null
   itemId: string | null
   workspaceId: string | null
@@ -46,6 +48,7 @@ export type InvitationCountAggregateOutputType = {
   id: number
   createdAt: number
   expiresAt: number
+  message: number
   senderId: number
   itemId: number
   workspaceId: number
@@ -57,6 +60,7 @@ export type InvitationMinAggregateInputType = {
   id?: true
   createdAt?: true
   expiresAt?: true
+  message?: true
   senderId?: true
   itemId?: true
   workspaceId?: true
@@ -66,6 +70,7 @@ export type InvitationMaxAggregateInputType = {
   id?: true
   createdAt?: true
   expiresAt?: true
+  message?: true
   senderId?: true
   itemId?: true
   workspaceId?: true
@@ -75,6 +80,7 @@ export type InvitationCountAggregateInputType = {
   id?: true
   createdAt?: true
   expiresAt?: true
+  message?: true
   senderId?: true
   itemId?: true
   workspaceId?: true
@@ -157,6 +163,7 @@ export type InvitationGroupByOutputType = {
   id: string
   createdAt: Date
   expiresAt: Date | null
+  message: string | null
   senderId: string
   itemId: string | null
   workspaceId: string | null
@@ -187,6 +194,7 @@ export type InvitationWhereInput = {
   id?: Prisma.StringFilter<"Invitation"> | string
   createdAt?: Prisma.DateTimeFilter<"Invitation"> | Date | string
   expiresAt?: Prisma.DateTimeNullableFilter<"Invitation"> | Date | string | null
+  message?: Prisma.StringNullableFilter<"Invitation"> | string | null
   senderId?: Prisma.StringFilter<"Invitation"> | string
   itemId?: Prisma.StringNullableFilter<"Invitation"> | string | null
   workspaceId?: Prisma.StringNullableFilter<"Invitation"> | string | null
@@ -200,6 +208,7 @@ export type InvitationOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  message?: Prisma.SortOrderInput | Prisma.SortOrder
   senderId?: Prisma.SortOrder
   itemId?: Prisma.SortOrderInput | Prisma.SortOrder
   workspaceId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -216,6 +225,7 @@ export type InvitationWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.InvitationWhereInput | Prisma.InvitationWhereInput[]
   createdAt?: Prisma.DateTimeFilter<"Invitation"> | Date | string
   expiresAt?: Prisma.DateTimeNullableFilter<"Invitation"> | Date | string | null
+  message?: Prisma.StringNullableFilter<"Invitation"> | string | null
   senderId?: Prisma.StringFilter<"Invitation"> | string
   itemId?: Prisma.StringNullableFilter<"Invitation"> | string | null
   workspaceId?: Prisma.StringNullableFilter<"Invitation"> | string | null
@@ -229,6 +239,7 @@ export type InvitationOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  message?: Prisma.SortOrderInput | Prisma.SortOrder
   senderId?: Prisma.SortOrder
   itemId?: Prisma.SortOrderInput | Prisma.SortOrder
   workspaceId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -244,6 +255,7 @@ export type InvitationScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Invitation"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Invitation"> | Date | string
   expiresAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Invitation"> | Date | string | null
+  message?: Prisma.StringNullableWithAggregatesFilter<"Invitation"> | string | null
   senderId?: Prisma.StringWithAggregatesFilter<"Invitation"> | string
   itemId?: Prisma.StringNullableWithAggregatesFilter<"Invitation"> | string | null
   workspaceId?: Prisma.StringNullableWithAggregatesFilter<"Invitation"> | string | null
@@ -253,6 +265,7 @@ export type InvitationCreateInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   sender: Prisma.UserCreateNestedOneWithoutInvitationsInput
   item?: Prisma.ItemCreateNestedOneWithoutInvitationsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutInvitationsInput
@@ -263,6 +276,7 @@ export type InvitationUncheckedCreateInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   senderId: string
   itemId?: string | null
   workspaceId?: string | null
@@ -273,6 +287,7 @@ export type InvitationUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sender?: Prisma.UserUpdateOneRequiredWithoutInvitationsNestedInput
   item?: Prisma.ItemUpdateOneWithoutInvitationsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutInvitationsNestedInput
@@ -283,6 +298,7 @@ export type InvitationUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderId?: Prisma.StringFieldUpdateOperationsInput | string
   itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -293,6 +309,7 @@ export type InvitationCreateManyInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   senderId: string
   itemId?: string | null
   workspaceId?: string | null
@@ -302,12 +319,14 @@ export type InvitationUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type InvitationUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderId?: Prisma.StringFieldUpdateOperationsInput | string
   itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -317,6 +336,7 @@ export type InvitationCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
+  message?: Prisma.SortOrder
   senderId?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
   workspaceId?: Prisma.SortOrder
@@ -326,6 +346,7 @@ export type InvitationMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
+  message?: Prisma.SortOrder
   senderId?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
   workspaceId?: Prisma.SortOrder
@@ -335,6 +356,7 @@ export type InvitationMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
+  message?: Prisma.SortOrder
   senderId?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
   workspaceId?: Prisma.SortOrder
@@ -499,6 +521,7 @@ export type InvitationCreateWithoutRecipientsInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   sender: Prisma.UserCreateNestedOneWithoutInvitationsInput
   item?: Prisma.ItemCreateNestedOneWithoutInvitationsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutInvitationsInput
@@ -508,6 +531,7 @@ export type InvitationUncheckedCreateWithoutRecipientsInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   senderId: string
   itemId?: string | null
   workspaceId?: string | null
@@ -533,6 +557,7 @@ export type InvitationUpdateWithoutRecipientsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sender?: Prisma.UserUpdateOneRequiredWithoutInvitationsNestedInput
   item?: Prisma.ItemUpdateOneWithoutInvitationsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutInvitationsNestedInput
@@ -542,6 +567,7 @@ export type InvitationUncheckedUpdateWithoutRecipientsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderId?: Prisma.StringFieldUpdateOperationsInput | string
   itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -551,6 +577,7 @@ export type InvitationCreateWithoutItemInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   sender: Prisma.UserCreateNestedOneWithoutInvitationsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutInvitationsInput
   recipients?: Prisma.InvitationRecipientCreateNestedManyWithoutInvitationInput
@@ -560,6 +587,7 @@ export type InvitationUncheckedCreateWithoutItemInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   senderId: string
   workspaceId?: string | null
   recipients?: Prisma.InvitationRecipientUncheckedCreateNestedManyWithoutInvitationInput
@@ -598,6 +626,7 @@ export type InvitationScalarWhereInput = {
   id?: Prisma.StringFilter<"Invitation"> | string
   createdAt?: Prisma.DateTimeFilter<"Invitation"> | Date | string
   expiresAt?: Prisma.DateTimeNullableFilter<"Invitation"> | Date | string | null
+  message?: Prisma.StringNullableFilter<"Invitation"> | string | null
   senderId?: Prisma.StringFilter<"Invitation"> | string
   itemId?: Prisma.StringNullableFilter<"Invitation"> | string | null
   workspaceId?: Prisma.StringNullableFilter<"Invitation"> | string | null
@@ -607,6 +636,7 @@ export type InvitationCreateWithoutSenderInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   item?: Prisma.ItemCreateNestedOneWithoutInvitationsInput
   workspace?: Prisma.WorkspaceCreateNestedOneWithoutInvitationsInput
   recipients?: Prisma.InvitationRecipientCreateNestedManyWithoutInvitationInput
@@ -616,6 +646,7 @@ export type InvitationUncheckedCreateWithoutSenderInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   itemId?: string | null
   workspaceId?: string | null
   recipients?: Prisma.InvitationRecipientUncheckedCreateNestedManyWithoutInvitationInput
@@ -651,6 +682,7 @@ export type InvitationCreateWithoutWorkspaceInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   sender: Prisma.UserCreateNestedOneWithoutInvitationsInput
   item?: Prisma.ItemCreateNestedOneWithoutInvitationsInput
   recipients?: Prisma.InvitationRecipientCreateNestedManyWithoutInvitationInput
@@ -660,6 +692,7 @@ export type InvitationUncheckedCreateWithoutWorkspaceInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   senderId: string
   itemId?: string | null
   recipients?: Prisma.InvitationRecipientUncheckedCreateNestedManyWithoutInvitationInput
@@ -695,6 +728,7 @@ export type InvitationCreateManyItemInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   senderId: string
   workspaceId?: string | null
 }
@@ -703,6 +737,7 @@ export type InvitationUpdateWithoutItemInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sender?: Prisma.UserUpdateOneRequiredWithoutInvitationsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutInvitationsNestedInput
   recipients?: Prisma.InvitationRecipientUpdateManyWithoutInvitationNestedInput
@@ -712,6 +747,7 @@ export type InvitationUncheckedUpdateWithoutItemInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipients?: Prisma.InvitationRecipientUncheckedUpdateManyWithoutInvitationNestedInput
@@ -721,6 +757,7 @@ export type InvitationUncheckedUpdateManyWithoutItemInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderId?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -729,6 +766,7 @@ export type InvitationCreateManySenderInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   itemId?: string | null
   workspaceId?: string | null
 }
@@ -737,6 +775,7 @@ export type InvitationUpdateWithoutSenderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   item?: Prisma.ItemUpdateOneWithoutInvitationsNestedInput
   workspace?: Prisma.WorkspaceUpdateOneWithoutInvitationsNestedInput
   recipients?: Prisma.InvitationRecipientUpdateManyWithoutInvitationNestedInput
@@ -746,6 +785,7 @@ export type InvitationUncheckedUpdateWithoutSenderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipients?: Prisma.InvitationRecipientUncheckedUpdateManyWithoutInvitationNestedInput
@@ -755,6 +795,7 @@ export type InvitationUncheckedUpdateManyWithoutSenderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   workspaceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -763,6 +804,7 @@ export type InvitationCreateManyWorkspaceInput = {
   id: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  message?: string | null
   senderId: string
   itemId?: string | null
 }
@@ -771,6 +813,7 @@ export type InvitationUpdateWithoutWorkspaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sender?: Prisma.UserUpdateOneRequiredWithoutInvitationsNestedInput
   item?: Prisma.ItemUpdateOneWithoutInvitationsNestedInput
   recipients?: Prisma.InvitationRecipientUpdateManyWithoutInvitationNestedInput
@@ -780,6 +823,7 @@ export type InvitationUncheckedUpdateWithoutWorkspaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderId?: Prisma.StringFieldUpdateOperationsInput | string
   itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipients?: Prisma.InvitationRecipientUncheckedUpdateManyWithoutInvitationNestedInput
@@ -789,6 +833,7 @@ export type InvitationUncheckedUpdateManyWithoutWorkspaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   senderId?: Prisma.StringFieldUpdateOperationsInput | string
   itemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -828,6 +873,7 @@ export type InvitationSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   id?: boolean
   createdAt?: boolean
   expiresAt?: boolean
+  message?: boolean
   senderId?: boolean
   itemId?: boolean
   workspaceId?: boolean
@@ -842,6 +888,7 @@ export type InvitationSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   id?: boolean
   createdAt?: boolean
   expiresAt?: boolean
+  message?: boolean
   senderId?: boolean
   itemId?: boolean
   workspaceId?: boolean
@@ -854,6 +901,7 @@ export type InvitationSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   id?: boolean
   createdAt?: boolean
   expiresAt?: boolean
+  message?: boolean
   senderId?: boolean
   itemId?: boolean
   workspaceId?: boolean
@@ -866,12 +914,13 @@ export type InvitationSelectScalar = {
   id?: boolean
   createdAt?: boolean
   expiresAt?: boolean
+  message?: boolean
   senderId?: boolean
   itemId?: boolean
   workspaceId?: boolean
 }
 
-export type InvitationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "createdAt" | "expiresAt" | "senderId" | "itemId" | "workspaceId", ExtArgs["result"]["invitation"]>
+export type InvitationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "createdAt" | "expiresAt" | "message" | "senderId" | "itemId" | "workspaceId", ExtArgs["result"]["invitation"]>
 export type InvitationInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   sender?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   item?: boolean | Prisma.Invitation$itemArgs<ExtArgs>
@@ -902,6 +951,7 @@ export type $InvitationPayload<ExtArgs extends runtime.Types.Extensions.Internal
     id: string
     createdAt: Date
     expiresAt: Date | null
+    message: string | null
     senderId: string
     itemId: string | null
     workspaceId: string | null
@@ -1335,6 +1385,7 @@ export interface InvitationFieldRefs {
   readonly id: Prisma.FieldRef<"Invitation", 'String'>
   readonly createdAt: Prisma.FieldRef<"Invitation", 'DateTime'>
   readonly expiresAt: Prisma.FieldRef<"Invitation", 'DateTime'>
+  readonly message: Prisma.FieldRef<"Invitation", 'String'>
   readonly senderId: Prisma.FieldRef<"Invitation", 'String'>
   readonly itemId: Prisma.FieldRef<"Invitation", 'String'>
   readonly workspaceId: Prisma.FieldRef<"Invitation", 'String'>

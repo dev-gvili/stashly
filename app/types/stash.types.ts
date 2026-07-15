@@ -1,6 +1,23 @@
-import type { File, Folder, Video, Audio, Image, Pdf, Markdown, ItemCategory, ItemStatus, ItemType, Thumbnail } from '@/prisma/browser'
-import type { InvitationStatus, PermissionRole, WorkspaceMemberRole } from '@/prisma/enums'
+import type {
+  File,
+  Folder,
+  Video,
+  Audio,
+  Image,
+  Pdf,
+  Markdown,
+  ItemCategory,
+  ItemStatus,
+  ItemType,
+  Thumbnail,
+} from '@/prisma/browser'
+import type {
+  InvitationStatus,
+  PermissionRole,
+  WorkspaceMemberRole,
+} from '@/prisma/enums'
 import type { ActivityWithRelations } from '@/utils/activity'
+import type { IconKey } from '@/utils/converters'
 
 // ---------------------------------------------------------------------------
 // Sub-types
@@ -54,7 +71,10 @@ export interface StashItem {
   workspaceId: string | null
   driveId: string
   tags: string[]
-  thumbnails: Pick<Thumbnail, 'id' | 'url' | 'width' | 'height' | 'size' | 'view'>[]
+  thumbnails: Pick<
+    Thumbnail,
+    'id' | 'url' | 'width' | 'height' | 'size' | 'view'
+  >[]
   favorites: StashFavorite[]
   pins?: StashPin[]
   locked: StashLock | null
@@ -99,21 +119,76 @@ export interface StashInvitationRecipient {
   } | null
 }
 
+/**
+ * A single thumbnail-backed entry in an invitation's `previews` array — the
+ * children of a shared folder/workspace (or the shared item itself). When
+ * `previewUrl` is present the UI renders the real generated thumbnail instead
+ * of a type icon.
+ */
+export interface StashInvitationPreview {
+  id: string
+  name: string
+  meta?: string
+  kind?: IconKey
+  previewUrl?: string | null
+}
+
 export interface StashInvitation {
   id: string
   createdAt: Date | string
   expiresAt: Date | string | null
   senderId: string
+  /** Optional personal note from the sender. */
+  message?: string | null
   sender: {
     id: string
     name: string
     email: string
     image: string | null
+    /** Optional role/title line shown under the sender's name. */
+    title?: string | null
   }
   recipients: StashInvitationRecipient[]
-  item: { id: string; name: string } | null
-  workspace: { id: string; name: string } | null
+  item: {
+    id: string
+    name: string
+    type: ItemType
+    size: bigint
+    category: ItemCategory
+    file: File | null
+    folder: Folder | null
+    image: Image | null
+    audio: StashItemAudio | null
+    video: StashItemVideo | null
+    pdf: StashItemPdf | null
+    markdown: StashItemMarkdown | null
+    /** MIME type of the shared file, when it is a single file. */
+    mimeType?: string | null
+    /** Number of children, when the shared item is a folder. */
+    fileCount?: number | null
+    /** Real thumbnail for the shared item, used for the hero preview. */
+    thumbnailUrl?: string | null
+  } | null
+  workspace: {
+    id: string
+    name: string
+    members: StashWorkspaceMember[]
+    /** Formatted total storage size of the workspace (e.g. "512 MB"). */
+    size?: string | null
+    /** Total number of items in the workspace. */
+    fileCount?: number | null
+    /** Total number of workspace members. */
+    memberCount?: number | null
+  } | null
   workspaceId: string | null
+  /** Thumbnail-backed peek at the shared contents. */
+  previews?: StashInvitationPreview[] | null
+}
+
+export interface StashWorkspaceMember {
+  id: string
+  role: WorkspaceMemberRole
+  member: { id: string; name: string; image: string | null }
 }
 
 // ---------------------------------------------------------------------------
@@ -193,10 +268,19 @@ export type StashItemPanel = {
   name: string
   size: bigint
   category: ItemCategory
+  tags: string[]
+  type: ItemType
   createdAt: Date | string | null
   updatedAt: Date | string | null
   openedAt?: Date | string | null
   status: ItemStatus
+  owner: {
+    id: string
+    name: string
+    email: string
+    image: string | null
+    bucket: string
+  }
   url: string
   file: { mimeType: string | null; extension: string | null } | null
   audio: {
@@ -276,5 +360,6 @@ export type StashItemPanel = {
     roles: string
     users: Array<{ id: string; name: string; image: string | null }>
   }>
+  collections: Array<{ id: string; name: string }>
   activities: Array<ActivityWithRelations>
 }
