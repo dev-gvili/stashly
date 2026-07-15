@@ -22,7 +22,7 @@ TypeScript (strict) project. Always use TypeScript for new files. When moving/re
 ## Commands
 
 ```bash
-pnpm dev          # Start dev server (Express + Vite HMR), http://localhost:3000 — kill any existing process on :3000 first
+pnpm dev          # Start dev server (Express + Vite HMR), http://localhost (PORT env, default 80) — kill any existing process on :80 first
 pnpm build        # Build for production
 pnpm start        # Run production server
 pnpm typecheck    # Generate React Router types + run tsc
@@ -36,7 +36,7 @@ pnpm test:e2e:ui  # Run E2E tests with Playwright UI
 
 ## Architecture
 
-Stashly is a **full-stack file management platform** using React Router 7 in framework mode (SSR). Server is Express 5, database is PostgreSQL via Prisma ORM, complex UI state is managed with XState 5.
+Stashly is a **full-stack file management platform** using React Router 8 in framework mode (SSR). Server is Express 5, database is PostgreSQL via Prisma ORM, complex UI state is managed with XState 5.
 
 | Layer | Location | Purpose |
 |-------|----------|---------|
