@@ -1,9 +1,10 @@
-import { useCallback, useRef, useState } from 'react'
-import { shallowEqual, useSelector } from '@xstate/react'
-import { createActor } from 'xstate'
 import { uploadMachine } from '@/machines/upload/upload.machine'
 import type { Config } from '@/types/machine.types'
 import { toMediaFile } from '@/utils/converters'
+import { normalizeFile } from '@/utils/sniff'
+import { shallowEqual, useSelector } from '@xstate/react'
+import { useCallback, useRef, useState } from 'react'
+import { createActor } from 'xstate'
 
 export const upload = createActor(uploadMachine, { id: 'uploadManager' })
 upload.start()
@@ -126,10 +127,12 @@ export function useUpload() {
   }, [])
 
   const add = useCallback(
-    (file: File, overrideRootId?: string, skipQuotaCheck?: boolean) => {
+    async (file: File, overrideRootId?: string, skipQuotaCheck?: boolean) => {
       const id = overrideRootId ?? rootId
       if (!id) return
-      const mediaFile = toMediaFile(file, id)
+      // Correct browser-misreported MIME (.ts → video/vnd.dlna.mpeg-tts)
+      // before the file is snapshotted into the machine.
+      const mediaFile = toMediaFile(await normalizeFile(file), id)
       upload.send({ type: 'upload.add', mediaFile, skipQuotaCheck })
     },
     [rootId]
@@ -145,7 +148,7 @@ export function useUpload() {
       for (const file of files) {
         upload.send({
           type: 'upload.add',
-          mediaFile: toMediaFile(file, id),
+          mediaFile: toMediaFile(await normalizeFile(file), id),
           skipQuotaCheck: true,
         })
       }
@@ -195,40 +198,39 @@ export function useUpload() {
   }, [])
 
   const makeDropHandler = useCallback(
-    (folderId?: string) =>
-      async (e: React.DragEvent) => {
-        e.preventDefault()
-        dragCounter.current = 0
-        setIsDragging(false)
-        const targetId = folderId ?? rootId
-        if (!targetId) return
+    (folderId?: string) => async (e: React.DragEvent) => {
+      e.preventDefault()
+      dragCounter.current = 0
+      setIsDragging(false)
+      const targetId = folderId ?? rootId
+      if (!targetId) return
 
-        // Snapshot synchronously — browser clears DataTransferItemList after first await
-        type SnapshotItem = { entry: FileSystemEntry | null; file: File | null }
-        const items: SnapshotItem[] = []
-        for (const item of e.dataTransfer.items) {
-          items.push({ entry: item.webkitGetAsEntry(), file: item.getAsFile() })
-        }
+      // Snapshot synchronously — browser clears DataTransferItemList after first await
+      type SnapshotItem = { entry: FileSystemEntry | null; file: File | null }
+      const items: SnapshotItem[] = []
+      for (const item of e.dataTransfer.items) {
+        items.push({ entry: item.webkitGetAsEntry(), file: item.getAsFile() })
+      }
 
-        let hasFolderDrop = false
-        const resolved = await Promise.all(
-          items.map(({ entry, file }) => {
-            if (entry) {
-              if (entry.isDirectory) hasFolderDrop = true
-              return collectFiles(entry)
-            }
-            return Promise.resolve(file ? [file] : [])
-          })
-        )
-        const allFiles = resolved.flat()
-        if (allFiles.length === 0) return
+      let hasFolderDrop = false
+      const resolved = await Promise.all(
+        items.map(({ entry, file }) => {
+          if (entry) {
+            if (entry.isDirectory) hasFolderDrop = true
+            return collectFiles(entry)
+          }
+          return Promise.resolve(file ? [file] : [])
+        })
+      )
+      const allFiles = resolved.flat()
+      if (allFiles.length === 0) return
 
-        if (hasFolderDrop && allFiles.length > 1) {
-          await addBatch(allFiles, targetId)
-        } else {
-          for (const file of allFiles) add(file, targetId)
-        }
-      },
+      if (hasFolderDrop && allFiles.length > 1) {
+        await addBatch(allFiles, targetId)
+      } else {
+        for (const file of allFiles) await add(file, targetId)
+      }
+    },
     [rootId, add, addBatch]
   )
 

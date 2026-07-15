@@ -13,6 +13,7 @@ import {
   getChildFolders,
   moveItem,
   moveItems,
+  renameItem,
   restoreItem,
   restoreItems,
   searchFolders,
@@ -33,12 +34,12 @@ import { itemsApiRouteInput } from '@/schemas/api.schemas'
 import { z } from 'zod'
 
 export async function loader({ request }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
+  const session = await auth.api.getSession({
     headers: request.headers,
   })
   if (!session) throw redirect('/auth/sign-in')
 
-  const user = session.user as any
+  const user = session.user
   const url = new URL(request.url)
   const intent = url.searchParams.get('intent')
 
@@ -80,7 +81,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-    const session = await auth.api.getSession({
+  const session = await auth.api.getSession({
     headers: request.headers,
   })
   if (!session) throw redirect('/auth/sign-in')
@@ -92,6 +93,16 @@ export async function action({ request, params }: Route.ActionArgs) {
   let searchParams = url.searchParams
 
   switch (parsedData.intent) {
+    case 'rename_item': {
+      try {
+        await renameItem(parsedData.itemId, parsedData.newName)
+        console.log({ referer, url: url.pathname })
+        return redirect(`${url.pathname}`)
+      } catch (e) {
+        console.error(e)
+        return { success: false, error: e }
+      }
+    }
     case 'trash_item': {
       try {
         await trashItem(parsedData.selectedItem, user.id)

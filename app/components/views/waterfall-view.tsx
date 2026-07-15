@@ -2,7 +2,7 @@ import React from 'react'
 import type { ImageData } from './buildRows'
 import { Link, useSearchParams, useViewTransitionState } from 'react-router'
 import { cn } from '@/utils'
-import { useLocation } from 'react-router'
+import { useFileHref } from '../../hooks/useFileHref'
 
 const ASPECT_CYCLE = [
   'aspect-square',
@@ -25,16 +25,11 @@ function WaterfallItem({
   img: ImageData
   aspectClass: string
 }) {
-  const isTransitioning = useViewTransitionState(img.id)
-  let location = useLocation()
+  const to = useFileHref(img) ?? '.'
+  const isTransitioning = useViewTransitionState(to)
   return (
     <div className="break-inside-avoid mb-4">
-      <Link
-        to={img.id}
-        viewTransition
-        unstable_mask={`${location.pathname}/${img.alt}`}
-        prefetch="intent"
-      >
+      <Link to={to} viewTransition prefetch="intent" mask={`images/${img.id}`}>
         <div
           style={{ breakInside: 'avoid' }}
           className={cn(

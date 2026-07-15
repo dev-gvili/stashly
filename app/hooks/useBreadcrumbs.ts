@@ -37,10 +37,10 @@ export function useBreadcrumbs(): Breadcrumb[] | null {
   const matches = useMatches()
 
   for (let i = matches.length - 1; i >= 0; i--) {
-    const data = matches[i].data as Record<string, unknown> | undefined
+    const data = matches[i].loaderData as Record<string, unknown> | undefined
     if (!data || !Array.isArray(data.crumbs)) continue
 
-    const crumbs = data.crumbs.filter(isBreadcrumb)
+    const crumbs = data.crumbs.filter(isBreadcrumb).filter((crumb) => crumb.name !== 'root')
     if (crumbs.length > 0) return crumbs
   }
 

@@ -6,16 +6,19 @@ function ScrollArea({
   className,
   children,
   scrollbars = 'vertical',
+  type = 'auto',
   ...props
-}: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
+}: Omit<React.ComponentProps<typeof ScrollAreaPrimitive.Root>, 'type'> & {
   // Radix keeps the viewport's overflow-x hidden unless a horizontal
   // scrollbar is mounted — pass 'both' for content wider than the viewport.
   scrollbars?: 'vertical' | 'both'
+  type?: 'hover' | 'always' | 'scroll' | 'auto' | 'hidden' | undefined
 }) {
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
       className={cn('relative', className)}
+      type={type}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport

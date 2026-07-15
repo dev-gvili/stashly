@@ -8,6 +8,7 @@ import {
   AddFoldersIcon,
   UploadFileFillIcon,
   UploadFolderFillIcon,
+  ArrowLeftFillIcon,
 } from '@/components/icons'
 import { Trigger } from './upload'
 import { SidebarTrigger } from './ui/sidebar'
@@ -20,7 +21,13 @@ import {
 import { Button } from './ui/button'
 import { ButtonGroup } from './ui/button-group'
 import { useUpload } from '@/hooks/useUpload'
-import { href, useFetcher, useParams, useRouteLoaderData } from 'react-router'
+import {
+  href,
+  useFetcher,
+  useNavigate,
+  useParams,
+  useRouteLoaderData,
+} from 'react-router'
 import { Popover, PopoverContent, PopoverTrigger, Separator } from './ui'
 import {
   Dialog,
@@ -35,17 +42,33 @@ import { Label } from './ui/label'
 import { useEffect, useState } from 'react'
 import type { Route } from '../routes/+types/layout'
 import { useLocation } from 'react-router'
+import { useBreadcrumbs } from '@/hooks'
+import { Breadcrumbs } from './core-components/breadcrumb-navigation'
+import { cn } from '@/utils'
 
 export function AppHeader() {
   let { toggleView } = useUpload()
-  const { folderId } = useParams()
+  const { folderId, fileId } = useParams()
+  let navigate = useNavigate()
   return (
-    <header className="z-40 flex items-center h-14 justify-between bg-background pr-2 pl-1 py-2 sticky top-0 shrink-0 gap-2">
-      <SidebarTrigger
+    <header className="bg-background z-40 flex items-center h-14 justify-between pl-0 pr-2 py-2 sticky top-0 shrink-0 gap-2">
+      {/* <SidebarTrigger
         variant="outline"
         size="icon"
         className="font-stashly bg-card! border-accent data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground  rounded-md!"
-      />
+      /> */}
+      <Button
+        variant="outline"
+        size="icon"
+        className={cn(
+          'font-stashly bg-card! border-input rounded-md!',
+          !fileId && 'hidden'
+        )}
+        onClick={() => navigate(-1)}
+      >
+        <ArrowLeftFillIcon className="size-5" />
+      </Button>
+      <Breadcrumbs />
       <div className="flex flex-1 gap-2 items-center">
         <StashlyUpload folderId={folderId} toggleView={toggleView} />
         <HeaderFilters />
@@ -72,26 +95,20 @@ function StashlyUpload({
 }) {
   const location = useLocation()
   if (location.pathname.includes('files')) {
-     return null 
+    return null
   }
   const [menuOpen, setMenuOpen] = useState(false)
   const [newFolderOpen, setNewFolderOpen] = useState(false)
 
   return (
-    <ButtonGroup>
-      <Button
-        onClick={toggleView}
-        variant="outline"
-        size="default"
-        className="rounded-md"
-      >
-        <UploadFillIcon />
-        Uploads
+    <ButtonGroup className="border border-sidebar-border rounded-md bg-card">
+      <Button onClick={toggleView} variant="ghost" size="icon">
+        <UploadFillIcon className="size-5! text-muted-foreground" />
       </Button>
       <Popover modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger className="cursor-pointer" asChild>
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             className="hover:cursor-pointer hover:bg-muted rounded-md hover:rounded-md  items-center! flex aria-expanded:bg-accent/30 aria-expanded:text-accent-foreground  data-[state=open]:bg-accent/30 data-[state=open]:text-accent-foreground hover:last:rounded-r-md!"
           >
@@ -197,7 +214,7 @@ function NewFolderDialog({
         parentId,
         driveId: user.driveId,
       },
-      { method: 'post', action: href('/api/items') },
+      { method: 'post', action: href('/api/items') }
     )
   }
 

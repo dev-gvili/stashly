@@ -345,24 +345,24 @@ function Sidebar({
         <div
           data-slot="sidebar-gap"
           className={cn(
-            'relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear',
+            'relative w-(--sidebar-width) bg-background transition-[width] duration-200 ease-linear',
             'group-data-[collapsible=offcanvas]:w-0',
             'group-data-[side=right]:rotate-180',
             variant === 'floating' || variant === 'inset'
-              ? 'group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]'
+              ? 'group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(1)))]'
               : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon)'
           )}
         />
         <div
           data-slot="sidebar-container"
           className={cn(
-            'fixed  h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
+            'fixed h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex bg-background',
             side === 'left'
-              ? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
-              : 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',
+              ? 'left-0 group-data-[collapsible=offcanvas]:-left-(--sidebar-width)'
+              : 'right-0 group-data-[collapsible=offcanvas]:-right-(--sidebar-width)',
             // Adjust the padding for floating and inset variants.
             variant === 'floating' || variant === 'inset'
-              ? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]'
+              ? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(1)))]'
               : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l',
             className
           )}
@@ -371,7 +371,7 @@ function Sidebar({
           <div
             data-sidebar="sidebar"
             data-slot="sidebar-inner"
-            className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
+            className="bg-background! group-data-[variant=floating]:border-input flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-stashly group-data-[variant=inset]:rounded-lg group-data-[variant=inset]:shadow-stashly  overflow-hidden group-data-[variant=inset]:border group-data-[variant=inset]:border-input"
           >
             {children}
           </div>
@@ -401,7 +401,7 @@ function SidebarTrigger({
         data-slot="sidebar-trigger"
         variant="outline"
         size="icon-sm"
-        className={cn('', className)}
+        className={cn(className)}
         onClick={(event) => {
           onClick?.(event)
           isMobile ? setOpenMobile(!open) : toggleSidebar()
@@ -542,7 +542,7 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="sidebar-group"
       data-sidebar="group"
-      className={cn('relative flex w-full min-w-0 flex-col p-2', className)}
+      className={cn('relative flex w-full min-w-0 flex-col p-2 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:mt-2', className)}
       {...props}
     />
   )
@@ -612,7 +612,7 @@ function SidebarMenu({ className, ...props }: React.ComponentProps<'ul'>) {
       data-slot="sidebar-menu"
       data-sidebar="menu"
       className={cn(
-        'flex w-full min-w-0 flex-col gap-1 group-data-[state=collapsed]:items-center',
+        'flex w-full min-w-0 flex-col gap-0.5 group-data-[state=collapsed]:items-center group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)-(--spacing(3)))]',
         className
       )}
       {...props}

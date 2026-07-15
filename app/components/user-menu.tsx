@@ -7,7 +7,7 @@ import {
 } from '@/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/ui/avatar'
 import { Link, useLoaderData, useSubmit } from 'react-router'
-import { LogoutFillIcon, SettingsFillIcon, UserIcon } from '@/components/icons'
+import { LogoutFillIcon, SettingsFillIcon, UserFillIcon, UserIcon } from '@/components/icons'
 import { toUserInitial } from '@/utils/converters'
 import type { Route } from '../routes/+types/layout'
 import { SidebarMenuButton, useSidebar } from './ui/sidebar'
@@ -62,7 +62,7 @@ export function UserMenu() {
 
         <DropdownMenuItem className="hover:cursor-pointer" asChild>
           <Link to={`/${user.id}/profile`}>
-            <UserIcon className="size-5! text-current" />
+            <UserFillIcon className="size-5! text-current" />
             <span>Profile</span>
           </Link>
         </DropdownMenuItem>

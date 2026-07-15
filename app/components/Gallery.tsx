@@ -5,7 +5,9 @@ import { WaterfallLayout } from './views/waterfall-view'
 import type { ImageData } from './views/buildRows'
 import { GridLayout } from './views/grid-view'
 import { itemVariants } from './views/variants'
-import { useEffect, useRef, useState } from 'react'
+import { useFileHref } from '../hooks/useFileHref'
+import { useScrollRestoration } from '@/hooks/useScrollRestoration'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router'
 import { generateVideoThumbnail } from '@/utils/video'
 import { cn } from '@/utils'
@@ -67,7 +69,8 @@ function VideoItem({ src, className }: { src: string; className?: string }) {
 }
 
 function GridItem({ item, showVideo }: { item: ImageData; showVideo: boolean }) {
-  const isTransitioning = useViewTransitionState(item.id)
+  const to = useFileHref(item) ?? '.'
+  const isTransitioning = useViewTransitionState(to)
   return (
     <motion.div
       variants={itemVariants}
@@ -81,7 +84,7 @@ function GridItem({ item, showVideo }: { item: ImageData; showVideo: boolean }) 
           className="rounded-md object-cover w-full h-full"
         />
       ) : (
-        <Link to={item.id} viewTransition mask=".">
+        <Link to={to} viewTransition prefetch="intent">
           <motion.img
             data-prefetch="true"
             layoutId={item.id}
@@ -107,19 +110,34 @@ export const Gallery = ({ images }: { images: ImageData[] }) => {
   const layoutType = searchParams.get('layout') ?? 'grid'
   const location = useLocation()
   const showVideo = location.pathname.includes('videos')
+
+  // Opening an item is a real navigation now (the gallery unmounts), so the
+  // list's scroll position must be restored when the user navigates back.
+  const containerRef = useRef<HTMLDivElement>(null)
+  const getScrollElement = useCallback(
+    () =>
+      (containerRef.current?.closest(
+        '[data-slot="scroll-area-viewport"]'
+      ) as HTMLElement | null) ?? null,
+    []
+  )
+  useScrollRestoration(getScrollElement)
+
   return (
-    <AnimatePresence mode="popLayout" initial={false}>
-      {layoutType === 'waterfall' ? (
-        <WaterfallLayout images={images!} />
-      ) : layoutType === 'river' ? (
-        <RiverView images={images!} />
-      ) : (
-        <GridLayout>
-          {images.map((item) => (
-            <GridItem key={item.id} item={item} showVideo={showVideo} />
-          ))}
-        </GridLayout>
-      )}
-    </AnimatePresence>
+    <div ref={containerRef}>
+      <AnimatePresence mode="popLayout" initial={false}>
+        {layoutType === 'waterfall' ? (
+          <WaterfallLayout images={images!} />
+        ) : layoutType === 'river' ? (
+          <RiverView images={images!} />
+        ) : (
+          <GridLayout>
+            {images.map((item) => (
+              <GridItem key={item.id} item={item} showVideo={showVideo} />
+            ))}
+          </GridLayout>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }

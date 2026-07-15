@@ -187,11 +187,7 @@ export default [
         route('shares', 'routes/stash/shares.tsx', { id: 'stash-shares' }),
 
         // images route shows all images in the user's stash, providing a visual gallery of their stored photos and graphics. This page includes different views ( waterfall, river, grid). It serves as a dedicated space for users to easily access and enjoy their visual content within their stash.
-        route('images', 'routes/stash/gallery.tsx', { id: 'stash-images' }, [
-          route(':itemId', 'routes/stash/gallery-image.tsx', {
-            id: 'stash-image-detail',
-          }),
-        ]),
+        route('images', 'routes/stash/gallery.tsx', { id: 'stash-images' }),
 
         // videos route shows all videos in the user's stash, providing a dedicated space for users to access and manage their video content. This page could include features such as video previews. playback, and allowing users to easily find and enjoy their stored videos within their stash.
         route('videos', 'routes/stash/gallery.tsx', { id: 'stash-videos' }),

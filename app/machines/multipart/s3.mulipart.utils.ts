@@ -11,6 +11,8 @@ interface BaseUploadArgs {
 
 export interface CreateMultipartUploadInput {
   key: string
+  /** S3 object Content-Type — set at create time, immutable after. */
+  contentType?: string
   metadata?: Record<string, string>
 }
 export interface GetPresignedUrlForPartInput extends BaseUploadArgs {

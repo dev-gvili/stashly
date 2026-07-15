@@ -34,7 +34,7 @@ export interface LoaderData<T> {
  * `useSubmit` (GET) to append subsequent pages via URL cursor params.
  * Resets the accumulated list automatically when filters/sort params change.
  *
- * @param limit - Items per page (default 100).
+ * @param take - Items per page (default 100).
  * @param action - Loader URL to submit to (default: current route).
  * @returns `{ items, nextCursor, loadMore, isLoading, hasMore, error }`.
  *
@@ -59,7 +59,7 @@ export function usePagination<T extends Identifiable>(
   /** 
    * Optional limit for items per page; defaults to 100 
   */
-  limit: number = 100,
+  take: number = 100,
   /**
    * Optional action URL for the useSubmit; defaults to current route.
    */
@@ -266,7 +266,7 @@ export function usePagination<T extends Identifiable>(
       params.set('cursor', initialData.nextCursor)
 
       // 3. Set the limit for the next fetch
-      params.set('take', limit.toString())
+      params.set('take', take.toString())
 
       // 4. Use useSubmit to trigger the loader with the updated params
       // This performs a "GET" against the current route's loader.

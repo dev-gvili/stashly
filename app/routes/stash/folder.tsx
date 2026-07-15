@@ -1,26 +1,23 @@
 import { LoadMoreItems } from '@/components/core-components/buttons'
-import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
 import { ItemCard } from '@/components/stash/item-card'
 import { GridLayout } from '@/components/views/grid-view'
 import { usePagination } from '@/hooks/usePagination'
 import { auth } from '@/services/auth'
+import { breadcrumbs } from '@/services/breadcrumbs'
+import { prisma } from '@/services/db'
+import { getFolderContent, touchOpenedAt } from '@/services/item-actions'
 import {
   buildItemFilters,
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
-import { getFolderContent, touchOpenedAt } from '@/services/item-actions'
-import { breadcrumbs } from '@/services/breadcrumbs'
-import { prisma } from '@/services/db'
 import { parseSearchParams } from '@/utils/parsers'
-import { getQueryParam, getQueryParamArray } from '@/utils/query-params'
-import { motion } from 'framer-motion'
+import { getQueryParamArray } from '@/utils/query-params'
 import {
   redirect,
-  type ShouldRevalidateFunction,
-  useLoaderData,
+  type ShouldRevalidateFunction
 } from 'react-router'
-import type { Route } from './+types/folder'
 import { SelectionProvider } from '../../components/stash/selection'
+import type { Route } from './+types/folder'
 export async function loader({ request, params }: Route.LoaderArgs) {
   let session = await auth.api.getSession({
     headers: request.headers

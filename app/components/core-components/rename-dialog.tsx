@@ -1,5 +1,5 @@
 import React, { useId, useState } from 'react'
-import { useFetcher } from 'react-router'
+import { useFetcher, useLocation } from 'react-router'
 import { Button } from '@/ui/button'
 import { Input } from '@/ui/input'
 import {
@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/ui/dialog'
+import { Form } from 'react-router'
 
 interface RenameDialogProps {
   /** The element that opens the dialog (e.g. a DropdownMenuItem). Rendered as DialogTrigger asChild. */
@@ -36,41 +37,28 @@ export function RenameDialog({
   title = 'Rename',
 }: RenameDialogProps) {
   const formId = useId()
-  const fetcher = useFetcher()
-  const [name, setName] = useState(defaultName)
-
-  function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (!name.trim() || name === defaultName) return
-    fetcher.submit(
-      { intent, newName: name.trim(), ...extraData },
-      { method: 'post', ...(action ? { action } : {}) }
-    )
-  }
+  let location = useLocation()
 
   return (
-    <Dialog>
+    <Dialog key={location.key}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <form id={formId} onSubmit={handleSubmit}>
-          <Input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </form>
+        <Form action={action} id={formId} method="POST">
+          <Input autoFocus name="newName" defaultValue={defaultName} />
+          {extraData
+            ? Object.keys(extraData).map((key) => (
+                <Input hidden name={key} defaultValue={extraData[key]} />
+              ))
+            : null}
+        </Form>
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="ghost">Cancel</Button>
           </DialogClose>
-          <Button
-            form={formId}
-            type="submit"
-            disabled={!name.trim() || name === defaultName}
-          >
+          <Button variant='default' size='sm' form={formId} name="intent" value={intent} type="submit">
             Rename
           </Button>
         </DialogFooter>

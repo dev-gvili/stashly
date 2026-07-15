@@ -157,7 +157,10 @@ export async function deleteBucket(bucketName: string) {
     await s3.send(new DeleteBucketCommand({ Bucket: bucketName }))
   } catch (error) {
     console.error('Error deleting bucket:', error)
-    throw new StashlyError(StashlyErrorCode.DELETE_BUCKET_FAILED, 'Failed to delete bucket')
+    throw new StashlyError(
+      StashlyErrorCode.DELETE_BUCKET_FAILED,
+      'Failed to delete bucket'
+    )
   }
 }
 
@@ -222,7 +225,10 @@ export async function createUserBucket(user: User): Promise<string> {
     return bucketName
   } catch (error) {
     console.error('Error creating bucket:', error)
-    throw new StashlyError(StashlyErrorCode.CREATE_BUCKET_FAILED, 'Failed to create user bucket')
+    throw new StashlyError(
+      StashlyErrorCode.CREATE_BUCKET_FAILED,
+      'Failed to create user bucket'
+    )
   }
 }
 
@@ -559,6 +565,42 @@ export async function getFileMetadata(bucket: string, key: string) {
   }
 }
 
+/**
+ * getObjectHead — ranged GET of the first N bytes, used by the
+ *  complete-multipart-upload verification in the action route.
+ * Pulls 1KB regardless of object size.
+ */
+export async function getObjectHead(
+  bucket: string,
+  key: string,
+  bytes = 1024
+): Promise<Uint8Array> {
+  const res = await s3.send(
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Range: `bytes=0-${bytes - 1}`,
+    })
+  )
+  return res.Body!.transformToByteArray()
+}
+
+/**
+ * getObjectText — full-body GET of an object decoded as UTF-8 text.
+ *
+ * Unlike `getObjectHead` (a ranged read of the first N bytes), this reads the
+ * entire object and decodes it to a string. Used for server-side loading of
+ * text documents (e.g. the Markdown reader) so the content ships in the SSR
+ * response instead of a separate browser → S3 round trip.
+ *
+ * @example
+ * const md = await getObjectText(user.bucket, 'ws_abc/README.md')
+ */
+export async function getObjectText(bucket: string, key: string): Promise<string> {
+  const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
+  return res.Body!.transformToString('utf-8')
+}
+
 // ========================================================= //
 // =================== Multipart Actions =================== //
 // ========================================================= //
@@ -581,14 +623,15 @@ export async function getFileMetadata(bucket: string, key: string) {
 export async function createMultipartUpload(
   bucket: string,
   key: string,
-  metadata?: Record<string, string>
+  metadata?: Record<string, string>,
+  contentType?: string
 ) {
-  return await s3.send(
+  return s3.send(
     new CreateMultipartUploadCommand({
       Bucket: bucket,
       Key: key,
       Metadata: metadata,
-      ContentType: metadata?.mimeType,
+      ContentType: contentType ?? 'application/octet-stream',
     })
   )
 }

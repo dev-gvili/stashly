@@ -267,6 +267,10 @@ export const fileMachine = setup({
         input: ({ context }) => ({
           bucket: context.user.bucket,
           key: context.mediaFile.key,
+          // Sets the S3 object's actual Content-Type header (what browsers/CDNs
+          // respect on download). metadata.mimeType below only sets x-amz-meta-*.
+          // file.type is already corrected by normalizeFile in useUpload.add.
+          contentType: context.mediaFile.file.type,
           metadata: {
             mimeType: context.mediaFile.file.type,
             subscriptionId: context.user.subscriptionId,

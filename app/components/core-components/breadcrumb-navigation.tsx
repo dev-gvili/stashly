@@ -65,7 +65,6 @@ const BreadcrumbDropdown = ({ crumbs, me }: StashBreadcrumbsProps) => {
                     folderId: crumb.id,
                   })}?${searchParams.toString()}`}
                 >
-                  <FolderFillIcon className="size-5! text-current" />
                   {crumb.name}
                 </Link>
               </DropdownMenuItem>
@@ -89,29 +88,19 @@ function CrumbLink({
   removeQueryParam(searchParams, 'cursor') // Clear cursor when navigating via breadcrumbs, to prevent confusion when the selected item(s) disappear from the new page. Note: this mutates searchParams in-place, which is fine because we're only using it to build the href for the Link component below.
   removeQueryParam(searchParams, 'selectedItems') // Clear selected items for same reason as cursor. If we kept selectedItems in the URL, then when the user clicks a breadcrumb to navigate to a parent folder, the selectedItems that were relevant in the child folder would still be in the URL, which could cause unexpected behavior (e.g. bulk actions appearing for items that aren't actually selected in the new folder).
 
-  let to =
-    crumb.name === 'root'
-      ? href('/:me/stash/all', { me })
-      : href('/:me/stash/folders/:folderId', { me, folderId: crumb.id })
+  let to = href('/:me/stash/folders/:folderId', { me, folderId: crumb.id })
   return (
     <>
       <BreadcrumbLink asChild>
         <Link to={`${to}?${searchParams.toString()}`} className="font-stashly">
-          {crumb.name === 'root' ? (
-            <HomeFillIcon className="size-5!" />
-          ) : crumb.type === 'folder' ? (
-            <span className="flex items-center gap-2">
-              <FolderFillIcon className="size-5!" />
-              <span>{crumb.name}</span>
-            </span>
+          {crumb.name === 'root' ? null : crumb.type === 'folder' ? (
+            <span className="flex items-center gap-2">{crumb.name}</span>
           ) : (
             crumb.name
           )}
         </Link>
       </BreadcrumbLink>
-      <BreadcrumbSeparator>
-        <BreadcrumbSeparatorIcon />
-      </BreadcrumbSeparator>
+      <BreadcrumbSeparator>/</BreadcrumbSeparator>
     </>
   )
 }
@@ -133,7 +122,7 @@ export function Breadcrumbs() {
     <Breadcrumb className="w-full text-foreground">
       <BreadcrumbList>
         {/* Root — always first */}
-        {crumbs.length > 1 ? (
+        {root.id !== last.id ? (
           <BreadcrumbItem key={root.id}>
             <CrumbLink crumb={root} me={me} searchParams={searchParams} />
           </BreadcrumbItem>
@@ -150,10 +139,8 @@ export function Breadcrumbs() {
           // > 3 items: collapse middle into dropdown
           <>
             <BreadcrumbDropdown crumbs={collapsed!} me={me} />
-            <BreadcrumbSeparator>
-              <BreadcrumbSeparatorIcon />
-            </BreadcrumbSeparator>
-            {secondToLast && secondToLast.id !== root.id && (
+            <BreadcrumbSeparator>/</BreadcrumbSeparator>
+            {secondToLast && (
               <BreadcrumbItem key={secondToLast.id}>
                 <CrumbLink
                   crumb={secondToLast}
@@ -167,18 +154,7 @@ export function Breadcrumbs() {
 
         {/* Last item — always current page */}
         <BreadcrumbItem key={last?.id}>
-          <BreadcrumbPage className="font-stashly">
-            {last?.name === 'root' ? (
-              <HomeFillIcon className="size-5!" />
-            ) : last?.type === 'folder' ? (
-              <span className="flex items-center gap-2">
-                <FolderFillIcon className="size-5!" />
-                <span>{last.name}</span>
-              </span>
-            ) : (
-              last?.name
-            )}
-          </BreadcrumbPage>
+          <BreadcrumbPage className="font-stashly">{last?.name}</BreadcrumbPage>
         </BreadcrumbItem>
       </BreadcrumbList>
     </Breadcrumb>

@@ -1,6 +1,6 @@
-import shareTechMonoFonts from '@fontsource/share-tech-mono/index.css?url'
-import jetbrainsMonoFonts from '@fontsource-variable/jetbrains-mono/index.css?url'
 import styles from '@/styles/globals.css?url'
+import shareTechMonoFonts from '@fontsource/share-tech-mono/index.css?url'
+import React from 'react'
 import {
   Links,
   Meta,
@@ -13,17 +13,19 @@ import {
 } from 'react-router'
 import type { Route } from './+types/root'
 import { getColorScheme } from './.server/theme'
-import React from 'react'
 
 export const links: Route.LinksFunction = () => [
   { rel: 'stylesheet', href: styles },
   { rel: 'stylesheet', href: shareTechMonoFonts },
-  { rel: 'stylesheet', href: jetbrainsMonoFonts },
 ]
 
-export function meta({}: Route.MetaArgs) {
+export function meta({ 
+  loaderData,
+  params
+}: Route.MetaArgs) {
   return [
     { title: 'Stashly' },
+    
     {
       name: 'description',
       content: 'Your personal file management system!',
@@ -75,9 +77,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       data-theme={loaderData?.colorScheme ?? 'system'}
     >
       <head>
+        <Meta />
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <Meta />
         <Links />
       </head>
       <body className="bg-background overflow-hidden antialiased font-stashly transition-all duration-400">

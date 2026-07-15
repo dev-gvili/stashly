@@ -179,6 +179,7 @@ export function VideoStage({
           onClick={v.togglePlay}
           onDoubleClick={v.toggleFullscreen}
           className="absolute inset-0 h-full w-full bg-black object-contain"
+          style={{ viewTransitionName: `img-${item.id}` }}
         />
 
         {/* Loading spinner */}

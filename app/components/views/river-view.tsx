@@ -1,8 +1,7 @@
 import React from 'react'
 import type { ImageData } from './buildRows'
 import { Link, useSearchParams, useViewTransitionState } from 'react-router'
-import { useLocation } from 'react-router'
-import { useScrollRestoration } from '@/hooks/useScrollRestoration'
+import { useFileHref } from '../../hooks/useFileHref'
 
 export function buildSrcSet(src: string, widths: number[]) {
   const hasQuery = src?.indexOf('?') !== -1
@@ -70,8 +69,8 @@ function RiverItem({
   grow: boolean
 }) {
   const { img, aspect } = item
-  const isTransitioning = useViewTransitionState(img.id)
-  let location = useLocation()
+  const to = useFileHref(img) ?? '.'
+  const isTransitioning = useViewTransitionState(to)
   return (
     <div
       className="h-full overflow-hidden rounded-md min-w-0"
@@ -84,12 +83,7 @@ function RiverItem({
           : { width: aspect * TARGET_ROW_HEIGHT, flexGrow: 0, flexShrink: 0 }
       }
     >
-      <Link
-        to={img.id}
-        viewTransition
-        mask={`${location.pathname}/${img.alt}`}
-        prefetch="intent"
-      >
+      <Link to={to} viewTransition prefetch="intent">
         <img
           style={
             isTransitioning
@@ -121,15 +115,7 @@ export const RiverView: React.FC<{
   const containerRef = React.useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = React.useState(0)
 
-  // Preserve scroll position when opening/closing the full-page item preview.
-  const getScrollElement = React.useCallback(
-    () =>
-      (containerRef.current?.closest(
-        '[data-slot="scroll-area-viewport"]'
-      ) as HTMLElement | null) ?? null,
-    []
-  )
-  useScrollRestoration(getScrollElement)
+  // Scroll restoration lives in the parent Gallery component (covers all layouts).
 
   // Measure the container so rows re-justify to the real available width — which
   // changes whenever the sidebar is collapsed/expanded.

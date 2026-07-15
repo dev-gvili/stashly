@@ -8,10 +8,11 @@ import {
   ShuffleFillIcon,
   VolumeFillIcon,
   MutedillIcon,
+  ItemPanelFillIcon,
 } from '@/components/icons'
 import { cn } from '@/utils/styles'
 import { Button } from '@/components/ui/button'
-import { Slider, Toggle } from '@/components/ui'
+import { Slider, Toggle, SidebarTrigger } from '@/components/ui'
 import { useAudioPlayer } from '@/hooks/useAudioPlayer'
 import { formatClock } from '@/utils/formaters'
 import { toSeedFromId, toWaveform } from '@/utils/converters'
@@ -93,10 +94,10 @@ function TransportBtn({
       aria-label={label}
       title={label}
       className={cn(
-        'flex shrink-0 items-center justify-center  transition-all',
+        'bg-transparent! [&_svg]:text-muted-foreground! [&_svg]:size-5',
         active && 'text-primary-foreground! bg-primary!',
         large &&
-          'hover:scale-110 size-16 rounded-3xl hover:bg-current! bg-current! [&_svg]:text-background!',
+          'hover:scale-110 size-16 rounded-3xl bg-current! [&_svg]:text-background!',
         className
       )}
       {...props}
@@ -271,22 +272,19 @@ export function AudioStage({
         <div className="grid gap-2 mx-auto w-xs">
           <div className="flex items-center justify-evenly gap-2 ">
             <TransportBtn
-              label="Shuffle"
-              active={shuffle}
-              onClick={() => setShuffle((s) => !s)}
+              label="Loop"
+              active={loop}
+              onClick={() => setLoop((l) => !l)}
               variant="ghost"
-              size="icon-lg"
-
-              className="hover:bg-muted! hover:text-muted-foreground!"
+              size="icon"
             >
-              <ShuffleFillIcon />
+              <RepeatFillIcon />
             </TransportBtn>
 
             <TransportBtn
               label="Previous"
               variant="ghost"
-              size="icon-lg"
-              className="hover:bg-muted! hover:text-muted-foreground!"
+              size="icon"
               onClick={() => {
                 if (audioRef.current) audioRef.current.currentTime = 0
               }}
@@ -294,33 +292,40 @@ export function AudioStage({
               <SkipPreviousFillIcon />
             </TransportBtn>
 
-            <TransportBtn
-              large
-              label={audio.playing ? 'Pause' : 'Play'}
+            <Button
+              variant="default"
+              size="icon-lg"
+              title={audio.playing ? 'Pause' : 'Play'}
               onClick={audio.togglePlay}
+              className='hover:scale-110 size-16 rounded-3xl transition-transform duration-200'
             >
               {audio.playing ? <PauseFillIcon /> : <ResumeFillIcon />}
-            </TransportBtn>
+            </Button>
 
-            <TransportBtn
-              label="Next"
+            <Button
               variant="ghost"
-              size="icon-lg"
-              className="hover:bg-muted! hover:text-muted-foreground!"
+              size="icon"
+              className="border-none! bg-transparent!"
             >
               <SkipPreviousFillIcon className="rotate-180" />
-            </TransportBtn>
-
-            <TransportBtn
-              label="Loop"
-              active={loop}
-              onClick={() => setLoop((l) => !l)}
+            </Button>
+            <SidebarTrigger
+              sidebarId="item_panel"
+              asChild
+              size="icon"
               variant="ghost"
-              size="icon-lg"
-              className="hover:bg-muted! hover:text-muted-foreground!"
+              tooltip="Toggle Item Panel"
             >
-              <RepeatFillIcon />
-            </TransportBtn>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="border-none! bg-transparent!"
+              >
+                <ItemPanelFillIcon
+                  className={cn('size-5')}
+                />
+              </Button>
+            </SidebarTrigger>
           </div>
 
           {/* Volume */}
@@ -341,7 +346,7 @@ export function AudioStage({
               }}
               pressed={audio.muted}
               aria-label="Mute"
-              size='lg'
+              size="lg"
               className="aria-pressed:bg-transparent! aria-pressed:text-current! hover:aria-pressed:bg-muted! hover:aria-pressed:text-current!"
             >
               {audio.muted ? (

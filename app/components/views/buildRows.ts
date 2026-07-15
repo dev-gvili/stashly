@@ -6,6 +6,7 @@ export type ImageData = {
   height: number
   sizes: string
   srcSet: string
+  parentId: string | null
 }
 
 export type RowImageData = {

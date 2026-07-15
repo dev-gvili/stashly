@@ -8,7 +8,9 @@ import { ScrollArea } from './ui/scroll-area'
 import { RiExpandUpDownLine } from '@remixicon/react'
 import { CopyFillIcon, ExpandCollapsedIcon, HomeFillIcon, RefreshIcon } from './icons'
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+export function ErrorBoundary({
+  error,
+}: Route.ErrorBoundaryProps) {
   error = error ?? useRouteError()
 
   const navigate = useNavigate()
@@ -21,6 +23,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let details = 'An unexpected error occurred.'
   let stack: string | undefined
 
+  console.error('ErrorBoundary caught an error:', error)
   if (isRouteErrorResponse(error)) {
     message = error.status === 404 ? '404' : 'Error'
     details =

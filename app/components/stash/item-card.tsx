@@ -491,7 +491,23 @@ const ItemContent = React.forwardRef<
 })
 ItemContent.displayName = 'ItemContent'
 
-export const ItemCard = Object.assign(ItemCardRoot, {
+type ItemCardComponent = typeof ItemCardRoot & {
+  Header: typeof ItemHeader
+  Content: typeof ItemContent
+  Footer: typeof ItemFooter
+  Name: typeof ItemName
+  Thumbnail: typeof ItemThumbnail
+  ThumbnailImage: typeof ItemThumbnailImage
+  ThumbnailFallback: typeof ItemThumbnailFallback
+  Count: typeof ItemCount
+  Size: typeof ItemSize
+  Link: typeof ItemLink
+  Favorite: typeof ItemFavorite
+  Checkbox: typeof ItemCardCheckBox
+  Actions: typeof ItemCardActions
+}
+
+export const ItemCard: ItemCardComponent = Object.assign(ItemCardRoot, {
   Header: ItemHeader,
   Content: ItemContent,
   Footer: ItemFooter,

@@ -34,7 +34,7 @@ export function formatActivity(activity: ActivityWithRelations): string {
   const a = activity.action
   if (!a) return 'Activity recorded'
   if (a.create) return 'You created this item'
-  if (a.rename) return `You renamed ${a.rename.oldName} → ${a.rename.newName}`
+  if (a.rename) return `You renamed from ${a.rename.oldName} to ${a.rename.newName}`
   if (a.move) return `You moved this item from ${a.move.fromParentName} to ${a.move.toParentName}`
   if (a.delete) return `You deleted ${a.delete.name}`
   if (a.restore) return 'You restored this item'
@@ -49,7 +49,7 @@ export function formatActivity(activity: ActivityWithRelations): string {
   if (a.version) return `You uploaded version ${a.version.newVersion}`
   if (a.comment) return a.comment.isReply ? 'You replied to a comment' : 'You commented on this item'
   if (a.permission) {
-    if (a.permission.type === 'grant') return `You shared this item with ${a.permission.role} access`
+    if (a.permission.type === 'grant') return `You granted ${a.permission.role} access to this item`
     if (a.permission.type === 'revoke') return 'You revoked access'
     return `You updated access to ${a.permission.role}`
   }

@@ -1,18 +1,16 @@
 import { ScrollArea } from '@/ui/scroll-area'
 import { SidebarInset } from '@/ui/sidebar'
-import { AppHeader } from './app-header'
 import React from 'react'
-import { AppToolbar } from './app-toolbar'
-import { DropZoneOverlay } from './upload/drop-zone-overlay'
+import { AppHeader } from './app-header'
 
 const AppContent = ({ children }: { children: React.ReactNode }) => {
   const id = React.useId()
   return (
-    <div className="relative h-screen w-full">
+    <div className="relative h-screen w-full bg-background">
       <AppHeader />
-      <SidebarInset id={id}>
-        <main className="h-screen w-full overflow-hidden pb-16">
-          <ScrollArea className="h-full w-full px-2">{children}</ScrollArea>
+      <SidebarInset id={id} className="bg-transparent">
+        <main className="h-screen w-full overflow-hidden pb-16 pr-2">
+          <ScrollArea className="h-full w-full pr-2">{children}</ScrollArea>
         </main>
       </SidebarInset>
     </div>

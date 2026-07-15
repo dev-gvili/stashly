@@ -4,7 +4,7 @@ import React, {
   useEffect,
   useRef,
 } from 'react'
-import { useSearchParams } from 'react-router'
+import { useLocation, useParams, useSearchParams } from 'react-router'
 import { createActor } from 'xstate'
 import { useSelector } from '@xstate/react'
 import selectionMachine from '../../machines/selection/selection.machine'
@@ -12,6 +12,7 @@ import {
   getQueryParamArray,
   hasQueryParamValue,
 } from '../../utils/query-params'
+import { useNavigation } from 'react-router'
 
 // Module-scope actor: single source of truth for selection state.
 // Started once at module-load time so every consumer (provider, toolbar,
@@ -122,8 +123,17 @@ export const useRegisterSelectionItems = (items: string[]) => {
 // URL ↔ actor sync. Lives inside SelectionProvider because each route
 // owns its own ?selectedItems= param and remounts on navigation.
 const useSelectionURLSync = () => {
+  let navigation = useNavigation()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const context = useSelector(selectionActor, selectContext)
+  
+  // reset selection on navigation (e.g. when leaving the route)
+  useEffect(() => {
+    if (location.pathname !== navigation.location?.pathname && navigation.state === 'loading') {
+      selectionActor.send({ type: 'UNSELECT_ALL', paramName: context.paramName })
+    }
+  }, [location, navigation])
 
   // seed actor from URL on mount
   useEffect(() => {
@@ -131,25 +141,40 @@ const useSelectionURLSync = () => {
     const found = paramCandidates.find((p) => searchParams.has(p)) ?? 'selectedItems'
     const selected = getQueryParamArray(searchParams, found)
     selectionActor.send({ type: 'SET_SELECTED', selected, paramName: found })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // actor → URL
   useEffect(() => {
-    const param = context.paramName ?? 'selectedItems'
-    const selected = context.selectedIds ?? []
+    // Never write the URL while a navigation is in flight: the reset effect
+    // above clears the actor mid-transition, and a setSearchParams here would
+    // interrupt the pending navigation (and race usePagination's submit).
+    // Re-runs on idle (navigation.state dep) to sync anything skipped.
+    if (navigation.state !== 'idle') return
+    // Read the live snapshot, not the render-captured context — on mount the
+    // seed effect has already updated the actor but not yet re-rendered, so
+    // `context` may still hold the previous route's selection.
+    const snapshot = selectionActor.getSnapshot().context
+    const param = snapshot.paramName ?? 'selectedItems'
+    const selected = snapshot.selectedIds ?? []
     const existing = getQueryParamArray(searchParams, param)
     const eq =
       selected.length === existing.length &&
       selected.every((v) => existing.includes(v))
     if (!eq) {
-      const newParams = new URLSearchParams(searchParams)
-      if (selected.length === 0) newParams.delete(param)
-      else newParams.set(param, selected.join(','))
-      setSearchParams(newParams, { replace: true })
+      // Functional form: build from the latest params so concurrent writers
+      // (cursor/take from usePagination) aren't clobbered by a stale snapshot.
+      setSearchParams(
+        (prev) => {
+          const newParams = new URLSearchParams(prev)
+          if (selected.length === 0) newParams.delete(param)
+          else newParams.set(param, selected.join(','))
+          return newParams
+        },
+        { replace: true }
+      )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [context.selectedIds, context.paramName])
+  }, [context.selectedIds, context.paramName, navigation.state])
 
   // URL → actor
   useEffect(() => {
@@ -164,7 +189,6 @@ const useSelectionURLSync = () => {
     if (!eq) {
       selectionActor.send({ type: 'SET_SELECTED', selected, paramName: param })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 }
 

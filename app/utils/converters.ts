@@ -33,6 +33,7 @@ import {
   TrashFillIcon,
   TrashIcon,
   VideoFillIcon,
+  WorkspaceFillIcon,
 } from '@/components/icons'
 import type {
   MediaFile,
@@ -115,6 +116,19 @@ export function toCategory(file: File): ItemCategory {
   const name = file.name.toLowerCase()
   const lastDotIndex = name.lastIndexOf('.')
   const extension = lastDotIndex !== -1 ? name.substring(lastDotIndex + 1) : ''
+
+  // --- 0. Ambiguous-Extension Guard ---
+  // Browsers report .ts/.tsx as MPEG transport stream video
+  // ('video/vnd.dlna.mpeg-tts' / 'video/mp2t') because the extension
+  // predates TypeScript in OS MIME tables. If normalizeFile already ran,
+  // type is 'text/typescript' and this never matches; the guard protects
+  // any path where a raw un-normalized File reaches toCategory.
+  if (
+    (extension === 'ts' || extension === 'tsx') &&
+    /^video\/(vnd\.dlna\.)?(mpeg-tts|mp2t)/.test(type)
+  ) {
+    return ItemCategory.code
+  }
 
   // --- 1. Strong Type Checks (MIME Prefix) ---
 
@@ -282,6 +296,7 @@ export type IconKey =
   | 'text'
   | 'shared'
   | 'locked'
+  | 'workspace'
 
 /**
  * Maps Category or ItemType to their corresponding Remix icon components
@@ -331,6 +346,8 @@ export function toIcon(value: IconKey) {
       return ShareFillIcon
     case 'locked':
       return LockedFillIcon
+    case 'workspace':
+      return WorkspaceFillIcon
     default:
       return FileIcon
   }

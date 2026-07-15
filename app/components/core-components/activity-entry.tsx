@@ -1,22 +1,23 @@
-import { formatActivity, formatActivityTimestamp } from '@/utils/activity'
+import {
+  ActivityFillIcon,
+  CopyFillIcon,
+  EditFillIcon,
+  HeartFillIcon,
+  LockFillIcon,
+  MoveFillIcon,
+  PinFillIcon,
+  PreviewIcon,
+  RefreshIcon,
+  RenameFillIcon,
+  RestoreIcon,
+  ShareFillIcon,
+  TrashFillIcon,
+  UploadFillIcon
+} from '@/components/icons'
 import type { ActivityWithRelations } from '@/utils/activity'
+import { formatActivity, formatActivityTimestamp } from '@/utils/activity'
 import { cn } from '@/utils/styles'
 import type { JSX, SVGProps } from 'react'
-import {
-  RestoreIcon,
-  RefreshIcon,
-  ShareItemFillIcon,
-  EditFillIcon,
-  PreviewIcon,
-  MoveFillIcon,
-  CopyFillIcon,
-  RenameFillIcon,
-  TrashFillIcon,
-  UploadFillIcon,
-  ActivityFillIcon,
-  ShareFillIcon,
-  LockFillIcon,
-} from '@/components/icons'
 import { Badge } from '../ui'
 
 interface ActivityEntryProps {
@@ -41,6 +42,8 @@ function actionIcon(activity: ActivityWithRelations): IconComponent {
   if (a.permission) return LockFillIcon
   if (a.version) return RefreshIcon
   if (a.upload) return UploadFillIcon
+  if (a.favorite) return HeartFillIcon
+  if (a.pin) return PinFillIcon
   if (activity.access) return PreviewIcon
   return ActivityFillIcon
 }

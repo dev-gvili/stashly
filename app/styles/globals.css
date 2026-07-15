@@ -33,18 +33,20 @@
   --card-foreground: #121212;
   --popover: #ffffff;
   --popover-foreground: #121212;
-  --primary: #2c2c2c;
-  --primary-foreground: #eaeaea;
-  --secondary: #eaeaea;
+  /* amber hue 75 across themes: darkened here for light surfaces, warm ink on top */
+  --primary: oklch(0.68 0.16 75);
+  --primary-foreground: oklch(0.18 0.04 75);
+  /* fill ramp, one step apart: muted < secondary < accent < border < input */
+  --secondary: #e5e3e0;
   --secondary-foreground: #2c2c2c;
-  --muted: #ebebea;
-  --muted-foreground: #75706f;
-  --accent: #e2e1e0;
+  --muted: #eceae8;
+  --muted-foreground: #6a6663;
+  --accent: #dcdad7;
   --accent-foreground: #2c2c2c;
   --destructive: oklch(0.55 0.225 27);
-  --destructive-foreground: oklch(0.55 0.225 27);
-  --border: #d8d7d6;
-  --input: #d2d1d0;
+  --destructive-foreground: oklch(0.98 0.01 27);
+  --border: #d3d1ce;
+  --input: #c8c6c3;
   --ring: #2c2c2c;
   --chart-1: #121212;
   --chart-2: #2c2c2c;
@@ -70,7 +72,8 @@
   --sidebar-border: #d0cfce;
   --sidebar-ring: #2c2c2c;
   --font-sans: 'Geist Dark', 'Geist Fallback';
-  --font-mono: 'JetBrains Mono Variable', 'Geist Mono Dark', 'Geist Mono Fallback';
+  --font-mono:
+    'JetBrains Mono Variable', 'Geist Mono Dark', 'Geist Mono Fallback';
   --font-stashly:
     'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
 
@@ -85,12 +88,10 @@
 
   /* real shadows — foreground-tinted, visible on light surfaces */
   --shadow-stashly:
-    0 1px 2px 0 rgba(18, 18, 18, 0.1),
-    0 2px 4px -1px rgba(18, 18, 18, 0.07),
+    0 1px 2px 0 rgba(18, 18, 18, 0.1), 0 2px 4px -1px rgba(18, 18, 18, 0.07),
     0 4px 6px -2px rgba(18, 18, 18, 0.04);
   --shadow-md:
-    0 4px 6px -1px rgba(18, 18, 18, 0.08),
-    0 2px 4px -1px rgba(18, 18, 18, 0.05);
+    0 4px 6px -1px rgba(18, 18, 18, 0.08), 0 2px 4px -1px rgba(18, 18, 18, 0.05);
   --shadow-sm: 0 1px 2px 0 rgba(18, 18, 18, 0.05);
   --shadow-xs: 0 0px 1px 0 rgba(18, 18, 18, 0.03);
 }
@@ -103,18 +104,19 @@
     --card-foreground: #121212;
     --popover: #ffffff;
     --popover-foreground: #121212;
-    --primary: #2c2c2c;
-    --primary-foreground: #eaeaea;
-    --secondary: #eaeaea;
+    --primary: oklch(0.68 0.16 75);
+    --primary-foreground: oklch(0.18 0.04 75);
+    /* fill ramp, one step apart: muted < secondary < accent < border < input */
+    --secondary: #e5e3e0;
     --secondary-foreground: #2c2c2c;
-    --muted: #ebebea;
-    --muted-foreground: #75706f;
-    --accent: #e2e1e0;
+    --muted: #eceae8;
+    --muted-foreground: #6a6663;
+    --accent: #dcdad7;
     --accent-foreground: #2c2c2c;
     --destructive: oklch(0.55 0.225 27);
-    --destructive-foreground: oklch(0.55 0.225 27);
-    --border: #d8d7d6;
-    --input: #d2d1d0;
+    --destructive-foreground: oklch(0.98 0.01 27);
+    --border: #d3d1ce;
+    --input: #c8c6c3;
     --ring: #2c2c2c;
     --chart-1: #121212;
     --chart-2: #2c2c2c;
@@ -140,7 +142,8 @@
     --sidebar-border: #d0cfce;
     --sidebar-ring: #2c2c2c;
     --font-sans: 'Geist Dark', 'Geist Fallback';
-    --font-mono: 'JetBrains Mono Variable','Geist Mono Dark', 'Geist Mono Fallback';
+    --font-mono:
+      'JetBrains Mono Variable', 'Geist Mono Dark', 'Geist Mono Fallback';
     --font-stashly:
       'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
 
@@ -153,8 +156,7 @@
     --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
 
     --shadow-stashly:
-      0 1px 2px 0 rgba(18, 18, 18, 0.1),
-      0 2px 4px -1px rgba(18, 18, 18, 0.07),
+      0 1px 2px 0 rgba(18, 18, 18, 0.1), 0 2px 4px -1px rgba(18, 18, 18, 0.07),
       0 4px 6px -2px rgba(18, 18, 18, 0.04);
     --shadow-md:
       0 4px 6px -1px rgba(18, 18, 18, 0.08),
@@ -172,18 +174,19 @@
   --card-foreground: #eaeaea;
   --popover: #2c2b2a;
   --popover-foreground: #eaeaea;
-  --primary: #acaba9;
-  --primary-foreground: #121212;
-  --secondary: #2c2b2a;
+  --primary: oklch(0.82 0.15 75);
+  --primary-foreground: oklch(0.2 0.05 75);
+  /* secondary sits above popover; border/input rise above all surfaces so edges read */
+  --secondary: #302e2d;
   --secondary-foreground: #eaeaea;
   --muted: #282726;
   --muted-foreground: #acaba9;
-  --accent: #343332;
+  --accent: #383634;
   --accent-foreground: #eaeaea;
   --destructive: oklch(0.62 0.2 25);
   --destructive-foreground: oklch(0.95 0.02 25);
-  --border: #2c2b2a;
-  --input: #252423;
+  --border: #393735;
+  --input: #343230;
   --ring: #acaba9;
   --chart-1: #eaeaea;
   --chart-2: #acaba9;
@@ -209,8 +212,10 @@
   --sidebar-border: #2c2b2a;
   --sidebar-ring: #acaba9;
   --font-sans: 'Geist Dark', 'Geist Fallback';
-  --font-mono: 'JetBrains Mono Variable','Geist Mono Dark', 'Geist Mono Fallback';
-  --font-stashly: 'Share Tech Mono', 'IBM Plex Sans Hebrew';
+  --font-mono:
+    'JetBrains Mono Variable', 'Geist Mono Dark', 'Geist Mono Fallback';
+  --font-stashly:
+    'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
 
   /* surface patterns */
   --dot-color: rgba(172, 171, 169, 0.2);
@@ -239,18 +244,19 @@
     --card-foreground: #eaeaea;
     --popover: #2c2b2a;
     --popover-foreground: #eaeaea;
-    --primary: #acaba9;
-    --primary-foreground: #121212;
-    --secondary: #2c2b2a;
+    --primary: oklch(0.82 0.15 75);
+    --primary-foreground: oklch(0.2 0.05 75);
+    /* secondary sits above popover; border/input rise above all surfaces so edges read */
+    --secondary: #302e2d;
     --secondary-foreground: #eaeaea;
     --muted: #282726;
     --muted-foreground: #acaba9;
-    --accent: #343332;
+    --accent: #383634;
     --accent-foreground: #eaeaea;
     --destructive: oklch(0.62 0.2 25);
     --destructive-foreground: oklch(0.95 0.02 25);
-    --border: #2c2b2a;
-    --input: #252423;
+    --border: #393735;
+    --input: #343230;
     --ring: #acaba9;
     --radius: 0.75rem;
     --chart-1: #eaeaea;
@@ -276,8 +282,10 @@
     --sidebar-border: #2c2b2a;
     --sidebar-ring: #acaba9;
     --font-sans: 'Geist Dark', 'Geist Fallback';
-    --font-mono: 'JetBrains Mono Variable','Geist Mono Dark', 'Geist Mono Fallback';
-    --font-stashly: 'Share Tech Mono', 'IBM Plex Sans Hebrew';
+    --font-mono:
+      'JetBrains Mono Variable', 'Geist Mono Dark', 'Geist Mono Fallback';
+    --font-stashly:
+      'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
 
     --dot-color: rgba(172, 171, 169, 0.2);
     --dot-size: 1px;
@@ -291,8 +299,7 @@
       0 1px 2px 0 rgba(18, 18, 18, 0.4), 0 2px 4px -1px rgba(18, 18, 18, 0.3),
       0 4px 6px -2px rgba(18, 18, 18, 0.2);
     --shadow-md:
-      0 4px 6px -1px rgba(18, 18, 18, 0.3),
-      0 2px 4px -1px rgba(18, 18, 18, 0.2);
+      0 4px 6px -1px rgba(18, 18, 18, 0.3), 0 2px 4px -1px rgba(18, 18, 18, 0.2);
     --shadow-sm: 0 1px 2px 0 rgba(18, 18, 18, 0.2);
     --shadow-xs: 0 0px 1px 0 rgba(18, 18, 18, 0.15);
   }
@@ -438,7 +445,7 @@
   .bg-glow {
     background-image: radial-gradient(
       ellipse 60% 50% at 50% 0%,
-      oklch(0.5 0.14 275 / 0.08) 0%,
+      oklch(from var(--primary) l c h / 0.08) 0%,
       transparent 70%
     );
   }
@@ -452,14 +459,15 @@
 
   /* ── elevated card surface ── */
   .surface-elevated {
-    background: var(--card-background);
+    background: var(--card);
     box-shadow: var(--shadow-stashly), var(--shadow-md);
   }
 
   /* ── inset / recessed surface ── */
   .surface-inset {
     background: oklch(from var(--muted) l c h / 0.5);
-    box-shadow: inset 0 1px 3px 0 oklch(0.2 0.03 270 / 0.06);
+    /* Preto-tinted, matching the shadow tokens */
+    box-shadow: inset 0 1px 3px 0 rgba(18, 18, 18, 0.06);
   }
 }
 
@@ -544,7 +552,9 @@
   /* JetBrains Mono ships coding ligatures; calt/liga turn them on (=>, !==,
      >=, ->). Falls back to the app mono if the webfont hasn't loaded. */
   font-family: var(--font-mono, monospace);
-  font-feature-settings: 'liga' 1, 'calt' 1;
+  font-feature-settings:
+    'liga' 1,
+    'calt' 1;
   font-variant-ligatures: normal;
   font-size: var(--text-base--line-height, 0.95em);
   background: var(--muted);

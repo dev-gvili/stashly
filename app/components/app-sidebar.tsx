@@ -9,30 +9,28 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from '@/ui/sidebar'
 
 import {
-  AIcon,
   CollectionFillIcon,
-  FavoriteIcon,
   FavoritesFillIcon,
   FolderFillIcon,
-  FolderIcon,
   HomeFillIcon,
   ImagesFillIcon,
   PinFillIcon,
-  RecentFillIcon,
-  SendInvitationIcon,
+  InboxFillIcon,
   ShareFillIcon,
   StorageFillIcon,
   TrashFillIcon,
-  VideosFillIcon,
 } from '@/components/icons'
 import { NavMedia } from '@/components/navigation/nav-media'
 import {
   NavWorkspaces,
   type WorkspacesSidebarItem,
 } from '@/components/navigation/nav-workspaces'
+import { ScrollArea } from '@/ui/scroll-area'
+import { cn } from '@/utils/styles'
 import {
   Link,
   NavLink,
@@ -43,12 +41,9 @@ import {
   type NavLinkProps,
   type To,
 } from 'react-router'
+import type { User } from '../.server/auth.types'
 import { Logo } from './logo'
 import { UserMenu } from './user-menu'
-import { GalleryWide } from '@/components/icons'
-import { cn } from '@/utils/styles'
-import { ScrollArea } from './ui/scroll-area'
-import type { User } from '../.server/auth.types'
 export type SidebarItemType = {
   icon: (isActive: boolean) => React.ReactNode
   label?: string
@@ -61,47 +56,22 @@ export interface SidebarItemProps extends SidebarItemType {
   tooltip?: string
 }
 
-const home: SidebarItemProps = {
-  icon: (isActive) => (
-    <HomeFillIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
-  ),
-  label: 'My stash',
-  to: '/',
-  state: {
-    reset: true,
-  },
-  tooltip: 'Home',
-}
 
-const libraryItems: SidebarItemProps[] = [
+const OrganizeItems: SidebarItemProps[] = [
   {
-    icon: (isActive) => (
-      <RecentFillIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
-    ),
-    label: 'Recent Files',
-    to: 'recent',
-    tooltip: 'Recent Files',
-  },
-  {
-    icon: (isActive) => (
-      <CollectionFillIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
-    ),
+    icon: (isActive) => <CollectionFillIcon />,
     label: 'Collections',
     to: 'collections?layout=grid',
     tooltip: 'Collections',
   },
   {
-    icon: (isActive) => (
-      <FavoritesFillIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
-    ),
+    icon: (isActive) => <FavoritesFillIcon />,
     label: 'Favorites',
     to: 'favorites?layout=grid',
     tooltip: 'Favorites',
   },
   {
-    icon: (isActive) => (
-      <PinFillIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
-    ),
+    icon: (isActive) => <PinFillIcon />,
     label: 'Pinned',
     to: 'pinned?layout=grid',
     tooltip: 'Pinned',
@@ -110,17 +80,13 @@ const libraryItems: SidebarItemProps[] = [
 
 const sharingItems: SidebarItemProps[] = [
   {
-    icon: (isActive) => (
-      <ShareFillIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
-    ),
+    icon: (isActive) => <ShareFillIcon />,
     label: 'Shares',
     to: 'shares',
     tooltip: 'Shares',
   },
   {
-    icon: (isActive) => (
-      <SendInvitationIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
-    ),
+    icon: (isActive) => <InboxFillIcon   />,
     label: 'Invitations',
     to: 'invitations',
     tooltip: 'Invitations',
@@ -129,37 +95,38 @@ const sharingItems: SidebarItemProps[] = [
 
 const manageItems: SidebarItemProps[] = [
   {
-    icon: (isActive) => (
-      <StorageFillIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
-    ),
+    icon: (isActive) => <StorageFillIcon />,
     label: 'Storage',
     to: 'storage',
     tooltip: 'Storage',
   },
   {
-    icon: (isActive) => (
-      <TrashFillIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
-    ),
+    icon: (isActive) => <TrashFillIcon />,
     label: 'Trash',
-    to: 'trash?status=trashed&layout=grid&take=100',
+    to: 'trash?status=trashed&layout=grid&take=25',
     tooltip: 'Trash',
   },
-  {
-    icon: (isActive) => (
-      <AIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
-    ),
-    label: 'AI',
-    to: 'demo',
-    tooltip: 'AI',
-  },
+  // {
+  //   icon: (isActive) => <AIcon className="size-5!" />,
+  //   label: 'AI',
+  //   to: 'demo',
+  //   tooltip: 'AI',
+  // },
 ]
 
 const mediaItems: SidebarItemProps[] = [
   {
-    icon: (isActive) => (
-      <FolderFillIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
-    ),
-    label: 'All Files',
+    icon: (isActive) => <HomeFillIcon />,
+    label: 'Home',
+    to: '/',
+    state: {
+      reset: true,
+    },
+    tooltip: 'Home',
+  },
+  {
+    icon: (isActive) => <FolderFillIcon />,
+    label: 'All',
     to: 'all?layout=grid&take=25',
     tooltip: 'All Files',
     prefetch: 'intent',
@@ -168,23 +135,19 @@ const mediaItems: SidebarItemProps[] = [
     },
   },
   {
-    icon: (isActive) => (
-      <ImagesFillIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
-    ),
+    icon: (isActive) => <ImagesFillIcon />,
     label: 'Images',
     to: 'images?layout=waterfall',
     tooltip: 'Images',
     prefetch: 'intent',
   },
-  {
-    icon: (isActive) => (
-      <VideosFillIcon className="size-5! group-data-[state=collapsed]:ml-2 group-data-[state=collapsed]:size-6!" />
-    ),
-    label: 'Videos',
-    to: 'videos?layout=grid',
-    tooltip: 'Videos',
-    prefetch: 'intent',
-  },
+  // {
+  //   icon: (isActive) => <VideosFillIcon  />,
+  //   label: 'Videos',
+  //   to: 'videos?layout=grid',
+  //   tooltip: 'Videos',
+  //   prefetch: 'intent',
+  // },
 ]
 
 /**
@@ -219,41 +182,26 @@ export const AppSidebar = ({
       side="left"
       collapsible="icon"
       variant="floating"
-      widthIcon="5rem"
-      className="rounded-lg! overflow-hidden"
+      widthIcon="4rem"
     >
-      <SidebarHeader className="bg-card rounded-t-md">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              size="lg"
-              className="hover:cursor-pointer max-w-max"
-            >
-              <Link to={'/'}>
-                <div className="bg-primary text-primary-foreground flex aspect-square size-8! items-center justify-center rounded-md ">
-                  <Logo className="size-6" />
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarHeader className="bg-card pt-0">
+        <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col">
+          <Link to={'/'} className="rounded-lg">
+            <Logo className="size-10! text-primary" />
+          </Link>
+          <SidebarTrigger variant="ghost" size="icon-sm" />
+        </div>
       </SidebarHeader>
-      <SidebarContent className="bg-card border-none shadow-stashly">
-        <ScrollArea className="h-full group-data-[state=collapsed]:pr-0 pr-1">
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarItem {...home} to={`${home.to}`} />
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+      <SidebarContent className="bg-card">
+        <ScrollArea className="h-full" type="hidden">
           <NavMedia media={mediaItems} basePath={url} />
-          <SidebarGroup className="mt-2">
-            <SidebarGroupLabel>Library</SidebarGroupLabel>
+          <SidebarGroup>
+            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">
+              Organize
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {libraryItems.map((item) => (
+                {OrganizeItems.map((item) => (
                   <SidebarItem
                     {...item}
                     key={item.tooltip}
@@ -264,7 +212,9 @@ export const AppSidebar = ({
             </SidebarGroupContent>
           </SidebarGroup>
           <SidebarGroup>
-            <SidebarGroupLabel>Sharing</SidebarGroupLabel>
+            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">
+              Collaboration
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {sharingItems.map((item) => (
@@ -278,26 +228,32 @@ export const AppSidebar = ({
             </SidebarGroupContent>
           </SidebarGroup>
           <SidebarGroup>
-            <SidebarGroupLabel>Manage</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {manageItems.map((item) => (
-                  <SidebarItem
-                    {...item}
-                    key={item.tooltip}
-                    to={`${url}/${item.to}`}
-                  />
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
+            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">
+              Manage
+            </SidebarGroupLabel>
+            {/* <SidebarGroupContent className="border-black border "> */}
+            <SidebarMenu className="group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)-(--spacing(3)))]">
+              {manageItems.map((item) => (
+                <SidebarItem
+                  {...item}
+                  key={item.tooltip}
+                  to={`${url}/${item.to}`}
+                />
+              ))}
+            </SidebarMenu>
+            {/* </SidebarGroupContent> */}
           </SidebarGroup>
           <NavWorkspaces workspaces={workspaces} />
         </ScrollArea>
       </SidebarContent>
       <SidebarFooter className="bg-card rounded-b-md">
-        <SidebarMenu>
-          <UserMenu />
-        </SidebarMenu>
+        <div className="flex items-center gap-2 group-data-[collapsible=icon]:flex-col">
+          <div className="min-w-0 flex-1">
+            <SidebarMenu>
+              <UserMenu />
+            </SidebarMenu>
+          </div>
+        </div>
       </SidebarFooter>
     </Sidebar>
   )
@@ -327,24 +283,24 @@ export function SidebarItem({
       key={label}
       data-active={isActive}
       data-tooltip={tooltip}
-      className="group-data-[state=collapsed]:size-8!"
+      className="group-data-[collapsible=icon]:grid! group-data-[collapsible=icon]:place-items-center! group-data-[collapsible=icon]:gap-0 "
     >
       <SidebarMenuButton
-        size="default"
         isActive={isActive}
         asChild
+        size="sm"
         tooltip={tooltip}
         className={cn(
-          'group-data-[state=collapsed]:mx-auto! hover:text-current! hover:bg-sidebar-primary/30 transition-colors duration-200',
+          'w-full hover:text-current! hover:bg-sidebar-primary/30',
           isActive &&
-            'w-full border-2 border-primary! bg-muted! text-accent-foreground! hover:text-accent-foreground!'
+            'w-full border-2 border-sidebar-primary! bg-sidebar-primary/30 text-accent-foreground! hover:text-accent-foreground!'
         )}
       >
         <NavLink
           to={to}
           end
           className={cn(
-            'flex items-center w-full group-data-[collapsible=icon]:justify-center'
+            'flex items-center flex-1  group-data-[state=collapsed]:items-center group-data-[state=collapsed]:gap-0 group-data-[state=collapsed]:justify-center'
           )}
           data-active={isActive}
           {...props}

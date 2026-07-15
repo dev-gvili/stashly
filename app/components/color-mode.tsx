@@ -1,24 +1,22 @@
 import {
-  ColorModeFillIcon,
-  DarkModeFillIcon,
-  LightModeFillIcon,
-  MoonIcon,
-  SunIcon,
-} from '@/components/icons'
-import { Button } from '@/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
-import { useFetcher, useRouteLoaderData } from 'react-router'
-import type { loader } from '../root'
-import { Popover, PopoverContent, PopoverTrigger } from './ui'
-import { cn } from '@/utils'
+    ColorModeFillIcon,
+    DarkModeFillIcon,
+    LightModeFillIcon
+} from '@/components/icons';
+import { Button } from '@/ui/button';
+import { cn } from '@/utils';
+import { useFetcher, useLocation, useRouteLoaderData } from 'react-router';
+import type { loader } from '../root';
+import { Popover, PopoverContent, PopoverTrigger } from './ui';
 
 export function ModeToggle() {
+  const location = useLocation()
   let fetcher = useFetcher<{ colorScheme: 'dark' | 'light' | 'system' | null }>(
     { key: 'color-scheme' }
   )
   let data = fetcher.data || useRouteLoaderData<typeof loader>('root')
   return (
-    <Popover modal={false}>
+    <Popover modal={false} key={fetcher.data?.colorScheme}>
       <PopoverTrigger asChild className="cursor-pointer hover:mr-0 mr-0 peer">
         <Button
           variant="outline"

@@ -2,6 +2,7 @@ import type { TransactionClient } from '@/prisma/internal/prismaNamespace'
 import { prisma } from '@/services/db'
 import { getPrefixForModel, toChunkArray, toObjectId } from '@/utils/converters'
 import { Prisma, type Item, type PrismaClient } from '@/prisma/client'
+import { ItemCategory } from '@/prisma/enums'
 import { StashlyError, StashlyErrorCode } from '../utils/api.errors'
 import type { StashItem } from '@/types/stash.types'
 import {
@@ -26,7 +27,24 @@ import { createActivity } from './activity-actions'
 import { formatSize } from '@/utils/formaters'
 import { searchFactory } from '@/utils/search'
 import { buildItemFilters } from '@/utils/filters/item.filters'
+import { getObjectText } from '@/services/s3'
+import {
+  extractMarkdownHeadings,
+  type MarkdownHeading,
+} from '@/utils/markdown'
 
+/**
+ * Fire-and-forget helper that records a favorite/unfavorite activity entry
+ * for an item. Errors are swallowed so activity logging never blocks or
+ * fails the calling operation.
+ *
+ * @param itemId - The ID of the item the activity relates to.
+ * @param kind - Whether the item was favorited or unfavorited.
+ *
+ * @example
+ * // Record that an item was favorited
+ * recordFavoriteActivity('item_123', 'favorited');
+ */
 function recordFavoriteActivity(
   itemId: string,
   kind: 'favorited' | 'unfavorited'
@@ -59,8 +77,14 @@ function recordFavoriteActivity(
 
 /**
  * Get an item with its permissions, checking if the user has access.
- * @param userId The ID of the user requesting the item.
- * @param itemId The ID of the item to retrieve.
+ * @param userId - The ID of the user requesting the item.
+ * @param itemId - The ID of the item to retrieve.
+ * @throws {StashlyError} If the item is not found or the user has no access.
+ *
+ * @example
+ * // Fetch an item together with its permission records
+ * const item = await getItemWithPermissions('usr_123', 'item_456');
+ * console.log(item.permissions);
  */
 export async function getItemWithPermissions(userId: string, itemId: string) {
   const item = await prisma.item.findUniqueOrThrow({ where: { id: itemId } })
@@ -83,6 +107,14 @@ export async function getItemWithPermissions(userId: string, itemId: string) {
 /**
  * Renames an item.
  * If the item is a folder, this triggers a path update for all descendants.
+ * A rename activity entry is recorded in the background.
+ *
+ * @param itemId - The ID of the item to rename.
+ * @param newName - The new display name for the item.
+ *
+ * @example
+ * // Rename a file
+ * const item = await renameItem('item_123', 'vacation-photos.zip');
  */
 export async function renameItem(itemId: string, newName: string) {
   return await prisma.$transaction(async (tx) => {
@@ -134,6 +166,12 @@ export async function renameItem(itemId: string, newName: string) {
  * @param ids - IDs of the items to move.
  * @param targetFolderId - The ID of the destination folder.
  * @param userId - The ID of the user performing the operation.
+ * @param currentParentId - Optional ID of the folder the items are moved from; used for activity recording (defaults to the first item's parent).
+ * @throws {StashlyError} If a structural constraint is violated or the user lacks write access.
+ *
+ * @example
+ * // Move two items into another folder
+ * await moveItems(['item_1', 'item_2'], 'fld_target', 'usr_123');
  */
 export async function moveItems(
   ids: string[],
@@ -316,6 +354,15 @@ export async function moveItems(
 /**
  * Moves a single item to a new folder.
  * Delegates to {@link moveItems}.
+ *
+ * @param itemId - The ID of the item to move.
+ * @param targetFolderId - The ID of the destination folder.
+ * @param userId - The ID of the user performing the operation.
+ * @param currentParentId - Optional ID of the folder the item is moved from; used for activity recording.
+ *
+ * @example
+ * // Move a file into a folder
+ * await moveItem('item_123', 'fld_456', 'usr_789');
  */
 export async function moveItem(
   itemId: string,
@@ -356,7 +403,6 @@ export async function changeItemOwner(
  * @param {string[]} ids - An array of item IDs to update.
  * @param {string} newOwnerId - The ID of the user who will become the new owner.
  * @param {boolean} [recursive=false] - Whether to apply the ownership change to all descendants of the provided items.
- * @returns {Promise<Prisma.BatchPayload | undefined>} A promise that resolves to the update result, or undefined if no IDs provided.
  *
  * @example
  * // Change owner for multiple specific items
@@ -406,10 +452,10 @@ export async function changeItemsOwner(
  * Soft deletes a single item by setting its status to 'trashed'.
  *
  * @param {string} id - The ID of the item to trash.
- * @returns {Promise<Prisma.BatchPayload | undefined>} A promise that resolves to the count of trashed items.
+ * @param {string} userId - The ID of the user trashing the item (used for quota adjustment).
  *
  * @example
- * await trashItem('item_123');
+ * await trashItem('item_123', 'usr_456');
  */
 export async function trashItem(id: string, userId: string) {
   return await trashItems([id], userId)
@@ -420,10 +466,10 @@ export async function trashItem(id: string, userId: string) {
  * If a folder is included in the list, all its descendants will also be marked as trashed.
  *
  * @param {string[]} ids - An array of item IDs to trash.
- * @returns {Promise<Prisma.BatchPayload | undefined>} A promise that resolves to the count of trashed items, or undefined if no IDs provided.
+ * @param {string} userId - The ID of the user trashing the items (used for quota adjustment).
  *
  * @example
- * await trashItems(['item_1', 'fld_2']);
+ * await trashItems(['item_1', 'fld_2'], 'usr_456');
  */
 export async function trashItems(ids: string[], userId: string) {
   if (ids.length === 0) {
@@ -513,11 +559,11 @@ export async function trashItems(ids: string[], userId: string) {
  * This will also recursively restore its ancestors and descendants.
  *
  * @param {string} itemId - The ID of the item to restore.
- * @returns {Promise<Prisma.BatchPayload>} A promise that resolves to the count of restored items.
+ * @param {string} userId - The ID of the user restoring the item (used for quota adjustment).
  *
  * @example
  * // Restore a specific file and its path
- * await restoreItem('item_123');
+ * await restoreItem('item_123', 'usr_456');
  */
 export async function restoreItem(itemId: string, userId: string) {
   return await restoreItems([itemId], userId)
@@ -529,11 +575,11 @@ export async function restoreItem(itemId: string, userId: string) {
  * and all their ancestors (parent folders).
  *
  * @param {string[]} ids - An array of item IDs to restore.
- * @returns {Promise<Prisma.BatchPayload | undefined>} A promise that resolves to the count of restored items, or undefined if no IDs provided.
+ * @param {string} userId - The ID of the user restoring the items (used for quota adjustment).
  *
  * @example
  * // Restore multiple items and their entire hierarchy
- * await restoreItems(['item_1', 'item_2']);
+ * await restoreItems(['item_1', 'item_2'], 'usr_456');
  */
 export async function restoreItems(ids: string[], userId: string) {
   if (!ids || ids.length === 0) {
@@ -616,6 +662,13 @@ export async function restoreItems(ids: string[], userId: string) {
  * >
  * Hard deletes an item, if item is of type **folder** all its descendants ( childrens ) also be deleted.
  * Prisma's `onDelete: Cascade` in the schema handles the children automatically.
+ *
+ * @param id - The ID of the item to permanently delete.
+ * @param userId - The ID of the user deleting the item (used for quota adjustment).
+ *
+ * @example
+ * // Permanently delete a file
+ * await deleteItem('item_123', 'usr_456');
  */
 export async function deleteItem(id: string, userId: string) {
   const deleted = await prisma.item.delete({
@@ -665,9 +718,12 @@ export async function deleteItem(id: string, userId: string) {
  * >
  * **Importent! deleted items can't be restored**
  * >
+ * @param ids - An array of item IDs to permanently delete.
+ * @param userId - The ID of the user deleting the items (used for quota adjustment).
+ *
  * @example
  * // Delete items with IDs 'item_abc' and 'item_xyz' and all their descendants if those items are of type folder`
- * await deleteItems(['item_abc', 'item_xyz']);
+ * await deleteItems(['item_abc', 'item_xyz'], 'usr_456');
  * // This will delete 'item_abc', 'item_xyz', and any files/folders nested within them.
  */
 export async function deleteItems(ids: string[], userId: string) {
@@ -1098,6 +1154,18 @@ export async function createFolder(
   return folder
 }
 
+/**
+ * Lists the direct child folders of a parent folder within a drive,
+ * including each folder's count of non-trashed subfolders.
+ * Used by folder-picker UIs (e.g. the move-to-folder dialog) for drill-down.
+ *
+ * @param parentId - The ID of the folder whose children to list.
+ * @param driveId - The drive scope to search within.
+ *
+ * @example
+ * // List subfolders for a drill-down picker
+ * const folders = await getChildFolders('fld_123', 'drv_456');
+ */
 export async function getChildFolders(parentId: string, driveId: string) {
   return prisma.item.findMany({
     where: { parentId, driveId, type: 'folder', status: 'normal' },
@@ -1115,6 +1183,18 @@ export async function getChildFolders(parentId: string, driveId: string) {
   })
 }
 
+/**
+ * Searches non-trashed folders in a drive by name (case-insensitive substring
+ * match). Returns at most 50 results, each with its count of non-trashed
+ * subfolders.
+ *
+ * @param query - The substring to match against folder names.
+ * @param driveId - The drive scope to search within.
+ *
+ * @example
+ * // Find folders whose name contains "photo"
+ * const folders = await searchFolders('photo', 'drv_456');
+ */
 export async function searchFolders(query: string, driveId: string) {
   return prisma.item.findMany({
     where: {
@@ -1138,6 +1218,27 @@ export async function searchFolders(query: string, driveId: string) {
   })
 }
 
+/**
+ * Internal helper that walks a relative folder path under a root folder,
+ * creating any missing folders along the way. Resolves to the ID of the
+ * deepest folder plus the IDs of any folders created during the walk.
+ *
+ * @param pathParts - Ordered folder names forming the relative path (e.g. `['photos', '2026']`).
+ * @param rootId - The ID of the folder to start resolving from.
+ * @param ownerId - The ID of the user who will own any created folders.
+ * @param driveId - The drive the folders belong to.
+ * @param tx - The Prisma transaction client to run all reads/writes in.
+ *
+ * @example
+ * // Resolve (and create if needed) "photos/2026" under the root folder
+ * const { parentId, createdFolderIds } = await findOrCreateFolderPath(
+ *   ['photos', '2026'],
+ *   'item_root',
+ *   'usr_123',
+ *   'drv_456',
+ *   tx
+ * );
+ */
 async function findOrCreateFolderPath(
   pathParts: string[],
   rootId: string,
@@ -1192,6 +1293,23 @@ async function findOrCreateFolderPath(
   return { parentId: currentParentId, createdFolderIds }
 }
 
+/**
+ * Creates or updates the Image facet for an item with extracted image metadata
+ * (dimensions, DPI, bit depth, and EXIF camera/exposure/GPS fields).
+ * Only the provided fields are written; other existing values are preserved.
+ *
+ * @param itemId - The ID of the item the facet belongs to.
+ * @param data - Partial image metadata to store.
+ *
+ * @example
+ * // Store dimensions and camera info extracted from a photo
+ * await upsertImageFacet('item_123', {
+ *   width: 4032,
+ *   height: 3024,
+ *   cameraMake: 'Apple',
+ *   cameraModel: 'iPhone 15 Pro',
+ * });
+ */
 export async function upsertImageFacet(
   itemId: string,
   data: {
@@ -1220,6 +1338,17 @@ export async function upsertImageFacet(
   })
 }
 
+/**
+ * Creates or updates the Video facet for an item with extracted video metadata.
+ * Only the provided fields are written; other existing values are preserved.
+ *
+ * @param itemId - The ID of the item the facet belongs to.
+ * @param data - Partial video metadata to store.
+ *
+ * @example
+ * // Store dimensions and duration extracted from a video
+ * await upsertVideoFacet('item_123', { width: 1920, height: 1080, duration: 42.5 });
+ */
 export async function upsertVideoFacet(
   itemId: string,
   data: {
@@ -1238,6 +1367,22 @@ export async function upsertVideoFacet(
   })
 }
 
+/**
+ * Creates or updates the Audio facet for an item with extracted audio metadata
+ * (duration, bitrate, and ID3 tag fields such as title/artist/album).
+ * Only the provided fields are written; other existing values are preserved.
+ *
+ * @param itemId - The ID of the item the facet belongs to.
+ * @param data - Partial audio metadata to store.
+ *
+ * @example
+ * // Store ID3 tags extracted from an MP3
+ * await upsertAudioFacet('item_123', {
+ *   title: 'Bohemian Rhapsody',
+ *   artist: 'Queen',
+ *   duration: 354,
+ * });
+ */
 export async function upsertAudioFacet(
   itemId: string,
   data: {
@@ -1266,6 +1411,23 @@ export async function upsertAudioFacet(
   })
 }
 
+/**
+ * Creates or updates the Pdf facet for an item with extracted document
+ * metadata (page count, document info fields, and feature flags such as
+ * form fields or signatures).
+ * Only the provided fields are written; other existing values are preserved.
+ *
+ * @param itemId - The ID of the item the facet belongs to.
+ * @param data - Partial PDF metadata to store.
+ *
+ * @example
+ * // Store metadata extracted from a PDF document
+ * await upsertPdfFacet('item_123', {
+ *   pageCount: 12,
+ *   title: 'Annual Report',
+ *   hasFormFields: true,
+ * });
+ */
 export async function upsertPdfFacet(
   itemId: string,
   data: {
@@ -1297,6 +1459,23 @@ export async function upsertPdfFacet(
   })
 }
 
+/**
+ * Creates or updates the Markdown facet for an item with extracted document
+ * statistics (word count, headings, links, code blocks) and frontmatter fields.
+ * Only the provided fields are written; other existing values are preserved.
+ *
+ * @param itemId - The ID of the item the facet belongs to.
+ * @param data - Partial markdown metadata to store.
+ *
+ * @example
+ * // Store stats parsed from a markdown document
+ * await upsertMarkdownFacet('item_123', {
+ *   title: 'README',
+ *   wordCount: 1250,
+ *   headingCount: 8,
+ *   hasFrontmatter: true,
+ * });
+ */
 export async function upsertMarkdownFacet(
   itemId: string,
   data: {
@@ -1325,6 +1504,30 @@ export async function upsertMarkdownFacet(
   })
 }
 
+/**
+ * Creates the database record for a freshly uploaded file, deriving its parent
+ * folder from the S3 key (missing folders in the key path are created on the
+ * fly). Also creates the File facet, an owner permission, updates the owner's
+ * quota, and records upload activity for the item and any created folders.
+ *
+ * @param data - Upload result payload: item ID/name, S3 `key`/`bucket`/`etag`, `size`, `mimeType`, owner/drive/parent IDs, the `uploadId`, and an optional `category`.
+ *
+ * @example
+ * // Create the item record after a completed S3 upload
+ * const item = await createUploadedItem({
+ *   id: 'item_123',
+ *   name: 'report.pdf',
+ *   key: 'item_root/documents/report.pdf',
+ *   size: 1024n,
+ *   mimeType: 'application/pdf',
+ *   bucket: 'stashly-bucket',
+ *   driveId: 'drv_456',
+ *   parentId: 'item_root',
+ *   ownerId: 'usr_789',
+ *   uploadId: 'upl_abc',
+ *   category: 'document',
+ * });
+ */
 export async function createUploadedItem(data: {
   id: string
   name: string
@@ -1502,7 +1705,14 @@ interface GetFolderContentParams {
  * @param sortBy Field to sort by ('name', 'size', 'updatedAt', 'createdAt') (default: 'name').
  * @param sortDirection Direction of sort ('asc' or 'desc') (default: 'asc').
  * @param foldersFirst Whether folders should appear before files (default: false).
- * @returns Object containing items, next cursor, and whether more exist.
+ *
+ * @example
+ * // First page of a folder, folders grouped before files
+ * const { items, nextCursor, hasMore } = await getFolderContent({
+ *   where: { parentId: 'fld_123', status: 'normal' },
+ *   limit: 50,
+ *   foldersFirst: true,
+ * });
  */
 export async function getFolderContent(params: GetFolderContentParams) {
   const {
@@ -1692,7 +1902,6 @@ export async function getFolderContent(params: GetFolderContentParams) {
  * This can be used for search results, recent files, shared files, etc.
  *
  * @param params Configuration object for the query
- * @returns Object containing the page of items and the cursor for the next page
  *
  * @example
  * // Fetch first 10 items with their owner details
@@ -1715,7 +1924,7 @@ export async function getPaginatedItems<TInclude extends object>(params: {
     | Prisma.ItemOrderByWithRelationInput
     | Prisma.ItemOrderByWithRelationInput[]
   cursor?: string | null
-  limit?: number
+  take?: number
   include?: TInclude
 }): Promise<{
   items: TInclude extends undefined
@@ -1724,7 +1933,7 @@ export async function getPaginatedItems<TInclude extends object>(params: {
   nextCursor: string | null
   hasMore?: boolean
 }> {
-  const { where, cursor, limit = 50, include } = params
+  const { where, cursor, take = 50, include } = params
   let { orderBy } = params
 
   // Ensure orderBy is an array
@@ -1746,13 +1955,13 @@ export async function getPaginatedItems<TInclude extends object>(params: {
   const items = await prisma.item.findMany({
     where,
     orderBy,
-    take: limit + 1,
+    take: take + 1,
     cursor: cursor ? { id: cursor } : undefined,
     include,
   })
 
-  let hasMore = items.length > limit
-  let data = items.slice(0, limit)
+  let hasMore = items.length > take
+  let data = items.slice(0, take)
   let nextCursor: string | null = null
 
   // If we got more items than the limit, we have a next page
@@ -1926,7 +2135,7 @@ export async function paginateItems<
  * @param sourceItem - The source item object including its file or folder facets.
  * @param parentId - The ID of the new parent folder.
  * @param workspaceId - Optional ID of the target workspace.
- * @returns The newly created item record.
+ *
  * @example
  * // Copy a file to a new folder within a transaction
  * await recursiveCopy(tx, sourceFile, 'fld_target123');
@@ -2076,7 +2285,6 @@ export interface SuggestedItemsResult {
  * @param {string} params.workspaceId - Optional ID of the workspace to filter items by.
  * @param {number} [params.maxFolders=6] - Maximum number of suggested folders to return.
  * @param {number} [params.maxFiles=50] - Maximum number of suggested files to return.
- * @returns {Promise<SuggestedItemsResult>} A promise resolving to an object containing arrays of suggested folders and files.
  * @throws {Error} If the database query fails.
  *
  * @example
@@ -2087,8 +2295,6 @@ export interface SuggestedItemsResult {
  *   maxFolders: 4,
  *   maxFiles: 20
  * });
- * void 0;
- *
  */
 export async function getSuggestedItems(
   params: SuggestedItemsParams
@@ -2295,7 +2501,6 @@ export async function getSuggestedItems(
  * @param itemId - The ID of the item to lock.
  * @param userId - The ID of the user requesting the lock.
  * @param ttlMs - Time-to-live for the lock in milliseconds (default: 60,000ms).
- * @returns The created LockedItem record.
  * @throws {StashlyError} If the item is already locked or lock acquisition fails.
  *
  * @example
@@ -2351,7 +2556,6 @@ export async function lockItem(itemId: string, userId: string, ttlMs = 60_000) {
  *
  * @param itemId - The ID of the item to unlock.
  * @param userId - The ID of the user requesting the unlock.
- * @returns A promise that resolves when the lock is released or if no lock exists.
  * @throws {StashlyError} If the unlock operation fails due to a database error.
  *
  * @example
@@ -2469,6 +2673,10 @@ export const searchItems = searchFactory({
  *
  * @param args - Prisma `findUnique` arguments (`where` is required).
  * @throws {PrismaClientKnownRequestError} When no record matches.
+ *
+ * @example
+ * // Find an item by ID with the default select shape
+ * const item = await findItem({ where: { id: 'item_123' } });
  */
 export async function findItem(args: Prisma.ItemFindUniqueArgs) {
   return prisma.item.findUniqueOrThrow({
@@ -2482,6 +2690,18 @@ export async function findItem(args: Prisma.ItemFindUniqueArgs) {
  * Falls back to `defaultItemSelect` when no `select` is provided.
  *
  * @param args - Prisma `create` arguments (`data` is required).
+ *
+ * @example
+ * // Create a bare folder item
+ * const item = await createItem({
+ *   data: {
+ *     id: 'item_123',
+ *     name: 'Documents',
+ *     type: 'folder',
+ *     owner: { connect: { id: 'usr_456' } },
+ *     drive: { connect: { id: 'drv_789' } },
+ *   },
+ * });
  */
 export async function createItem(args: Prisma.ItemCreateArgs) {
   return prisma.item.create({
@@ -2495,6 +2715,15 @@ export async function createItem(args: Prisma.ItemCreateArgs) {
  * Creates multiple item records in a single operation. Note that this does not support creating related facets (e.g. File, Folder) or relations (e.g. Favorites) — use `createManyItemsBatched` for that.
  *
  * @param args - Prisma `createMany` arguments (`data` is required).
+ *
+ * @example
+ * // Bulk-insert flat item records
+ * const { count } = await createManyItems({
+ *   data: [
+ *     { id: 'item_1', name: 'a.txt', type: 'file', ownerId: 'usr_1', driveId: 'drv_1' },
+ *     { id: 'item_2', name: 'b.txt', type: 'file', ownerId: 'usr_1', driveId: 'drv_1' },
+ *   ],
+ * });
  */
 export async function createManyItems(args: Prisma.ItemCreateManyArgs) {
   return prisma.item.createMany(args)
@@ -2506,8 +2735,11 @@ export async function createManyItems(args: Prisma.ItemCreateManyArgs) {
  *
  * @param items - An array of item creation data, including related facets and relations.
  * @param batchSize - The number of items to process in each batch (default: 100).
- * @returns An array of created item records with their selected fields.
  * @throws {Error} If item creation fails after retrying individually.
+ *
+ * @example
+ * // Copy a large folder's contents in batches of 50
+ * const created = await createManyItemsBatched(itemInputs, 50);
  */
 export async function createManyItemsBatched(
   items: Prisma.ItemUncheckedCreateInput[],
@@ -2564,6 +2796,13 @@ export async function createManyItemsBatched(
  * Falls back to `defaultItemSelect` when no `select` is provided.
  *
  * @param args - Prisma `update` arguments (`where` and `data` are required).
+ *
+ * @example
+ * // Add a tag to an item
+ * const item = await updateItem({
+ *   where: { id: 'item_123' },
+ *   data: { tags: { push: 'important' } },
+ * });
  */
 export async function updateItem(args: Prisma.ItemUpdateArgs) {
   return prisma.item.update({
@@ -2577,6 +2816,10 @@ export async function updateItem(args: Prisma.ItemUpdateArgs) {
  * No permission check — intended for internal/server use.
  *
  * @param workspaceId - The workspace to query.
+ *
+ * @example
+ * // Fetch the latest items added to a workspace
+ * const items = await findWorkspaceItems('ws_123');
  */
 export async function findWorkspaceItems(workspaceId: string) {
   return prisma.item.findMany({
@@ -2591,6 +2834,9 @@ export async function findWorkspaceItems(workspaceId: string) {
  * Returns all items owned by the user that they have also favorited.
  *
  * @param userId - The ID of the user.
+ *
+ * @example
+ * const favorites = await findFavoritesForUser('usr_123');
  */
 export async function findFavoritesForUser(userId: string) {
   return prisma.item.findMany({
@@ -2604,6 +2850,19 @@ export async function findFavoritesForUser(userId: string) {
 /**
  * Returns a paginated list of items favorited by the given user,
  * with all relations required by ItemCard.
+ *
+ * @param userId - The ID of the user whose favorites to list.
+ * @param cursor - Optional cursor from the previous page (ID of the last item).
+ * @param limit - Maximum number of items per page (default: 50).
+ *
+ * @example
+ * // First page of favorites, then the next page
+ * const page1 = await getFavoritedItems({ userId: 'usr_123', limit: 20 });
+ * const page2 = await getFavoritedItems({
+ *   userId: 'usr_123',
+ *   cursor: page1.nextCursor ?? undefined,
+ *   limit: 20,
+ * });
  */
 export async function getFavoritedItems({
   userId,
@@ -2743,6 +3002,10 @@ export async function getFavoritedItems({
  *
  * @param itemId - The ID of the item.
  * @param favoritedById - The ID of the user who may have favorited the item.
+ *
+ * @example
+ * const favorite = await findFavoriteItem('item_123', 'usr_456');
+ * if (favorite) console.log('Already favorited');
  */
 export async function findFavoriteItem(itemId: string, favoritedById: string) {
   return prisma.item.findFirst({
@@ -2759,6 +3022,9 @@ export async function findFavoriteItem(itemId: string, favoritedById: string) {
  * @param itemId - The ID of the item to favorite.
  * @param favoritedById - The ID of the user favoriting the item.
  * @param client - Optional transaction client (defaults to the global instance).
+ *
+ * @example
+ * await addFavorite('item_123', 'usr_456');
  */
 export async function addFavorite(
   itemId: string,
@@ -2787,7 +3053,10 @@ export async function addFavorite(
  * @param itemIds - The IDs of the items to favorite.
  * @param favoritedById - The ID of the user favoriting the items.
  * @param client - Optional transaction client (defaults to the global instance).
- * @returns The number of new favorite records created.
+ *
+ * @example
+ * // Favorite a selection of items at once
+ * const added = await addFavorites(['item_1', 'item_2'], 'usr_456');
  */
 export async function addFavorites(
   itemIds: string[],
@@ -2823,6 +3092,9 @@ export async function addFavorites(
  * @param itemId - The ID of the item to unfavorite.
  * @param favoritedById - The ID of the user removing the favorite.
  * @param client - Optional transaction client (defaults to the global instance).
+ *
+ * @example
+ * await removeFavorite('item_123', 'usr_456');
  */
 export async function removeFavorite(
   itemId: string,
@@ -2846,6 +3118,12 @@ export async function removeFavorite(
  * No default select is applied — the caller controls the shape.
  *
  * @param args - Prisma `findMany` arguments.
+ *
+ * @example
+ * // All non-trashed images in a folder
+ * const images = await findAllItems({
+ *   where: { parentId: 'fld_123', category: 'image', status: 'normal' },
+ * });
  */
 export async function findAllItems(args: Prisma.ItemFindManyArgs) {
   return prisma.item.findMany(args)
@@ -2855,6 +3133,12 @@ export async function findAllItems(args: Prisma.ItemFindManyArgs) {
  * Returns the first item matching the given Prisma `findFirst` arguments, or `null`.
  *
  * @param args - Prisma `findFirst` arguments.
+ *
+ * @example
+ * // Find a folder by name under a parent
+ * const folder = await findFirstItem({
+ *   where: { parentId: 'fld_123', name: 'Documents', type: 'folder' },
+ * });
  */
 export async function findFirstItem(args: Prisma.ItemFindFirstArgs) {
   return prisma.item.findFirst(args)
@@ -2864,6 +3148,12 @@ export async function findFirstItem(args: Prisma.ItemFindFirstArgs) {
  * Returns the count of items matching the given Prisma `count` arguments.
  *
  * @param args - Prisma `count` arguments.
+ *
+ * @example
+ * // Count non-trashed items in a folder
+ * const total = await countItems({
+ *   where: { parentId: 'fld_123', status: 'normal' },
+ * });
  */
 export async function countItems(args: Prisma.ItemCountArgs): Promise<number> {
   return prisma.item.count(args)
@@ -2876,6 +3166,10 @@ export async function countItems(args: Prisma.ItemCountArgs): Promise<number> {
  * @param userId - The ID of the user who will own the root folder.
  * @param driveId - The drive the root folder belongs to.
  * @param workspaceId - Optional workspace to associate the root folder with.
+ *
+ * @example
+ * // Provision the root folder for a new user's drive
+ * const root = await createRootFolder('usr_123', 'drv_456');
  */
 export async function createRootFolder(
   userId: string,
@@ -2895,7 +3189,21 @@ export async function createRootFolder(
   })
 }
 
-
+/**
+ * Fetches a single file item for the file page, including every relation the
+ * page renders: owner, parent, facets (image/video/audio/pdf/markdown),
+ * favorites, permissions, lock state, collections, thumbnails, and pins.
+ * Verifies the requesting user has read permission before querying.
+ *
+ * @param userId - The ID of the user requesting the file.
+ * @param fileId - The ID of the file item to fetch.
+ * @param folderId - The ID of the folder the file must belong to (guards against mismatched URLs).
+ * @throws {StashlyError} If the user lacks read permission.
+ *
+ * @example
+ * // Load a file for the item page
+ * const file = await getFileItem('usr_123', 'item_456', 'fld_789');
+ */
 export async function getFileItem(
   userId: string,
   fileId: string,
@@ -2908,7 +3216,8 @@ export async function getFileItem(
     )
   }
 
-  return prisma.item.findUniqueOrThrow({
+
+  const item = await prisma.item.findUnique({
     where: { id: fileId, parentId: folderId },
     include: {
       owner:{
@@ -2956,6 +3265,11 @@ export async function getFileItem(
       audio: true,
       pdf: true,
       markdown: true,
+      memberOfCollections: {
+        select: {
+          collection: { select: { id: true, name: true } },
+        },
+      },
       thumbnails: {
         select: {
           url: true,
@@ -2969,19 +3283,78 @@ export async function getFileItem(
       pins: { select: { id: true, pinnedById: true } },
     },
   })
+
+  if (!item) {
+    throw new StashlyError(
+      StashlyErrorCode.ITEM_NOT_FOUND,
+      `File item not found or does not belong to the specified folder`
+    )
+  }
+
+  return item
 }
 
+/**
+ * Lists the image/video items sharing a folder, for prev/next navigation on
+ * the file page. Ordered by name so the sequence is stable across visits.
+ *
+ * @param userId - The owner whose items to list (siblings are owner-scoped).
+ * @param folderId - The parent folder to list media items from.
+ *
+ * @example
+ * // Build prev/next navigation for the file page
+ * const siblings = await getMediaSiblings('usr_123', 'fld_456');
+ * const index = siblings.findIndex((s) => s.id === currentFileId);
+ */
+export async function getMediaSiblings(userId: string, folderId: string) {
+  return prisma.item.findMany({
+    where: {
+      parentId: folderId,
+      ownerId: userId,
+      category: { in: [ItemCategory.image, ItemCategory.video] },
+    },
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true },
+  })
+}
 
 /**
  * Updates the `openedAt` timestamp of an item to the current time.
  * This is used to track recent activity for features like "Suggested Items".
  *
  * @param itemId - The ID of the item to update.
- * @returns A promise that resolves when the update is complete.
+ *
+ * @example
+ * // Record that the user opened an item
+ * await touchOpenedAt('item_123');
  */
 export async function touchOpenedAt(itemId: string) {
   await prisma.item.update({
     where: { id: itemId },
     data: { openedAt: new Date() },
   })
+}
+
+/**
+ * Loads a Markdown document's body from S3 and derives its heading outline,
+ * server-side. Returns the raw text plus the `#`..`######` outline (slugged
+ * with the same algorithm rehype-slug applies to the rendered HTML, so the
+ * outline-rail ids line up with the heading element ids).
+ *
+ * Called (unawaited) from the file loader so the document streams to the client
+ * via React Router's deferred data instead of a separate browser → S3 fetch.
+ *
+ * @param bucket - The S3 bucket containing the object.
+ * @param key - The S3 object key of the `.md` file.
+ *
+ * @example
+ * const doc = loadMarkdownDocument(item.file.bucket, item.file.key) // Promise
+ * return { ...rest, markdownDoc: doc } // streamed, not awaited
+ */
+export async function loadMarkdownDocument(
+  bucket: string,
+  key: string
+): Promise<{ text: string; headings: MarkdownHeading[] }> {
+  const text = await getObjectText(bucket, key)
+  return { text, headings: extractMarkdownHeadings(text) }
 }

@@ -6,7 +6,6 @@ import {
   AudioFillIcon,
   CollectionFillIcon,
   DetailsFillIcon,
-  DocumentFillIcon,
   DownloadFillIcon,
   HeartFillIcon,
   HeartIcon,
@@ -14,16 +13,16 @@ import {
   LinkIcon,
   MoreMenuFillIcon,
   MoveFillIcon,
-  Pdf2Icon,
   RenameFillIcon,
   ShareItemFillIcon,
+  TagFillIcon,
   TrashFillIcon,
-  VideoFillIcon,
 } from '@/components/icons'
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
+  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -31,9 +30,9 @@ import {
   DropdownMenuTrigger,
   ScrollArea,
   Sidebar,
+  SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarProvider,
   Tabs,
   TabsContent,
   TabsList,
@@ -41,6 +40,7 @@ import {
   Tooltip,
 } from '@/components/ui'
 import { useClipboard, useZoom } from '@/hooks'
+import { useFavorite } from '@/hooks/useFavorite'
 import type { StashItemPanel } from '@/types/stash.types'
 import { toUserInitial } from '@/utils'
 import {
@@ -52,7 +52,7 @@ import {
 import { cn } from '@/utils/styles'
 import type { JSX } from 'react'
 import React from 'react'
-import { href, useFetcher } from 'react-router'
+import { href, Link, useFetcher, useLocation, useNavigate, useParams } from 'react-router'
 
 function SectionHead({ icon, label }: { icon?: JSX.Element; label: string }) {
   return (
@@ -200,7 +200,9 @@ function CameraInfo({ image }: { image: StashItemPanel['image'] }) {
         : `${image.exposureTime}s`
       : null
   const focal = image.focalLength != null ? `${image.focalLength}mm` : null
-  const taken = image.takenDateTime ? formatMediaDate(image.takenDateTime) : null
+  const taken = image.takenDateTime
+    ? formatMediaDate(image.takenDateTime)
+    : null
   const gps =
     image.latitude != null && image.longitude != null
       ? `${image.latitude.toFixed(5)}, ${image.longitude.toFixed(5)}`
@@ -260,9 +262,7 @@ function DocumentInfo({ pdf }: { pdf: StashItemPanel['pdf'] }) {
   if (!rows.some((v) => v != null && v !== false && v !== '')) return null
   return (
     <section>
-      <SectionHead
-        label="Document"
-      />
+      <SectionHead label="Document" />
       <dl className="space-y-1">
         <Row label="Subject" value={pdf.subject} />
         <Row label="Created with" value={pdf.creator} />
@@ -327,12 +327,9 @@ function MarkdownInfo({ md }: { md: StashItemPanel['markdown'] }) {
   if (!rows.some((v) => v != null && v !== '' && v !== 0)) return null
   return (
     <section className="py-4">
-      <SectionHead
-        label="Content"
-      />
+      <SectionHead label="Content" />
       <dl className="space-y-1">
-        <Row label="Description" value={md.description} />
-        <Row label="Tags" value={md.tags} />
+        {/* <Row label="Description" value={md.description} /> */}
         {md.linkCount != null && md.linkCount > 0 && (
           <Row label="Links" value={String(md.linkCount)} mono />
         )}
@@ -425,6 +422,61 @@ function Sharing({ item }: { item: StashItemPanel }) {
   )
 }
 
+function Collections({ item }: { item: StashItemPanel }) {
+  const { me } = useParams()
+  let location = useLocation()
+  if (!me) return null
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {item.collections.map((collection) => (
+        <Badge
+          key={collection.id}
+          variant="secondary"
+          className="rounded"
+          asChild
+        >
+          <Link
+            to={`${href('/:me/stash/collections/:collectionId', {
+              me,
+              collectionId: collection.id,
+            })}${location.search}`}
+            className="inline-flex items-center gap-2"
+          >
+            <CollectionFillIcon className="size-3" />
+            {collection.name}
+          </Link>
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
+function Tags({ value }: { value: string | string[] | null | undefined }) {
+  const tags = Array.isArray(value)
+    ? value.map((t) => t.trim()).sort((a, b) => a.localeCompare(b))
+    : value?.includes(',')
+      ? value
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b))
+      : []
+  return (
+    <div className="flex flex-wrap gap-1 items-stretch justify-start w-full">
+      {tags.map((tag) => (
+        <Badge
+          key={tag}
+          variant="accent"
+          className="rounded font-stashly text-xs! text-accent-foreground! "
+        >
+          <TagFillIcon className="size-3 rotate-90" />
+          {tag}
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
 function FavoriteCount({ item }: { item: StashItemPanel }) {
   const count = item.favorites.length
   if (!count) return null
@@ -456,11 +508,12 @@ export function ItemPanel({
   item: StashItemPanel
   className?: string
 }) {
+  let navigate = useNavigate()
   const isPdf = !!item.pdf || item.file?.mimeType === 'application/pdf'
   const isMarkdown =
     !!item.markdown || /\.(md|markdown|mdown|mkd)$/i.test(item.name)
-  const isVideo = !!item.video || !!item.file?.mimeType?.startsWith('video/')
-  const isImage = !!item.image || !!item.file?.mimeType?.startsWith('image/')
+  const isVideo = item.category === 'video'
+  const isImage = item.category === 'image'
   const displayTitle =
     item.audio?.title ??
     item.pdf?.title ??
@@ -472,132 +525,119 @@ export function ItemPanel({
       id="item_panel"
       collapsible="offcanvas"
       variant="floating"
-      width="20rem"
-      className="p-0 bg-card border border-none rounded-md h-[calc(100vh-4rem)] overflow-hidden"
+      width="18rem"
+      className="p-0 bg-card rounded-md h-[calc(100vh-4rem)] overflow-hidden right-2 shadow-stashly"
     >
-      {/* Header */}
-      <SidebarHeader className="bg-card! ">
-        {/* Category badge */}
-        <span className="mb-2.5 inline-flex items-center gap-1.5 rounded-md  px-2 py-1 font-stashly text-xs text-secondary-foreground">
-          {isPdf ? (
-            <Pdf2Icon className="size-4" />
-          ) : isMarkdown ? (
-            <DocumentFillIcon className="size-4" />
-          ) : isVideo ? (
-            <VideoFillIcon className="size-4" />
-          ) : isImage ? (
-            <ImageFillIcon className="size-4" />
-          ) : (
-            <AudioFillIcon className="size-4" />
-          )}
-          {isPdf
-            ? 'PDF'
-            : isMarkdown
-              ? 'Markdown'
-              : isVideo
-                ? 'Video'
-                : isImage
-                  ? 'Image'
-                  : 'Audio'}
-        </span>
-        <h1 className="wrap-break-word text-sm font-semibold leading-snug text-foreground">
-          {displayTitle}
-        </h1>
-        {(item.audio?.artist || item.pdf?.author || item.markdown?.author) && (
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {item.audio?.artist ?? item.pdf?.author ?? item.markdown?.author}
-          </p>
-        )}
-        <FavoriteCount item={item} />
-      </SidebarHeader>
-
-      {/* Tabbed body — Details (everything) vs Activity feed */}
       <Tabs
         defaultValue="details"
-        className="flex min-h-0 flex-1 flex-col gap-0 bg-card!"
+        className="flex min-h-0 flex-1 flex-col gap-0 bg-card! border-none!"
       >
-        <div className="px-4 pt-2">
-          <TabsList className="w-full">
-            <TabsTrigger value="details" className="gap-1.5">
+        <TabsList className="flex items-center bg-card rounded-none p-0 border border-none!">
+          <TabsTrigger
+            value="details"
+            className="bg-card border-none! data-[state=active]:text-primary! data-[state=active]:bg-card text-muted-foreground/50! hover:text-muted-foreground/80! transition-colors duration-200 ease-in-out"
+          >
+            <Tooltip content="Details" side="top" align="center">
               <DetailsFillIcon className="size-5" />
-              Details
-            </TabsTrigger>
-            <TabsTrigger value="activity" className="gap-1.5">
+            </Tooltip>
+          </TabsTrigger>
+          <TabsTrigger
+            value="activity"
+            className="bg-card border-none! data-[state=active]:text-primary! data-[state=active]:bg-card text-muted-foreground/50! hover:text-muted-foreground/80! transition-colors duration-200 ease-in-out"
+          >
+            <Tooltip content="Activity" side="top" align="center">
               <ActivityFillIcon className="size-5" />
-              Activity
-            </TabsTrigger>
-          </TabsList>
-        </div>
+            </Tooltip>
+          </TabsTrigger>
+        </TabsList>
+        {/* Header */}
+        <SidebarHeader className="flex flex-col items-start bg-card! p-4">
+          <h1 className="wrap-break-word text-sm font-semibold leading-snug text-foreground">
+            {displayTitle}
+          </h1>
+          {(item.audio?.artist ||
+            item.pdf?.author ||
+            item.markdown?.author) && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {item.audio?.artist ?? item.pdf?.author ?? item.markdown?.author}
+            </p>
+          )}
+          <article className="font-stashly text-xs font-normal text-muted-foreground! text-balance">
+            {item.markdown?.description}
+          </article>
+        </SidebarHeader>
 
-        {/* Details tab — everything that isn't the activity feed */}
-        <TabsContent value="details" className="min-h-0 pb-16">
-          <ScrollArea className="h-full overflow-hidden bg-card! p-4 ">
-            {/* Details */}
-            <section className="py-4">
-              <SectionHead
-                label="Details"
-              />
-              {isPdf ? (
-                <PdfDetails item={item} />
-              ) : isMarkdown ? (
-                <MarkdownDetails item={item} />
-              ) : isVideo ? (
-                <VideoDetails item={item} />
-              ) : isImage ? (
-                <ImageDetails item={item} />
-              ) : (
-                <AudioDetails item={item} />
-              )}
-            </section>
-
-            {/* Camera / EXIF info */}
-            <CameraInfo image={item.image ?? null} />
-
-            {/* Track info */}
-            <TrackDetails audio={item.audio} />
-
-            {/* PDF document info */}
-            <DocumentInfo pdf={item.pdf ?? null} />
-
-            {/* Markdown content info */}
-            <MarkdownInfo md={item.markdown ?? null} />
-
-            {/* Timeline */}
-            <section className="py-4">
-              <SectionHead
-                label="Timeline"
-              />
-              <ItemDates item={item} />
-            </section>
-
-            {/* Sharing */}
-            {item.permissions.length > 0 && (
+        <SidebarContent className="border-none!">
+          {/* Details tab — everything that isn't the activity feed */}
+          <ScrollArea className="h-full pb-16">
+            <TabsContent value="details" className="min-h-0 px-4">
+              {/* Details */}
               <section className="py-4">
-                <SectionHead
-                  label="Shared with"
-                />
-                <Sharing item={item} />
+                {isPdf ? (
+                  <PdfDetails item={item} />
+                ) : isMarkdown ? (
+                  <MarkdownDetails item={item} />
+                ) : isVideo ? (
+                  <VideoDetails item={item} />
+                ) : isImage ? (
+                  <ImageDetails item={item} />
+                ) : (
+                  <AudioDetails item={item} />
+                )}
               </section>
-            )}
-          </ScrollArea>
-        </TabsContent>
 
-        {/* Activity tab — the activity feed */}
-        <TabsContent value="activity" className="min-h-0">
-          <ScrollArea className="h-full overflow-hidden bg-card! p-4">
-            <section className="py-4">
-              <SectionHead
-                icon={<ActivityFillIcon className="size-4" />}
-                label="Activity"
-              />
+              {/* Camera / EXIF info */}
+              <CameraInfo image={item.image ?? null} />
+
+              {/* Track info */}
+              <TrackDetails audio={item.audio} />
+
+              {/* PDF document info */}
+              <DocumentInfo pdf={item.pdf ?? null} />
+
+              {/* Markdown content info */}
+              <MarkdownInfo md={item.markdown ?? null} />
+
+              {/* Timeline */}
+              <section className="py-4">
+                <SectionHead label="Timeline" />
+                <ItemDates item={item} />
+              </section>
+
+              {/* Collections */}
+              {item.collections.length > 0 && (
+                <section className="py-4">
+                  <SectionHead label="Collections" />
+                  <Collections item={item} />
+                </section>
+              )}
+
+              {/* Tags */}
+              <section className="py-4">
+                <SectionHead label="Tags" />
+                <Tags value={item.markdown?.tags} />
+              </section>
+
+              {/* Sharing */}
+              {item.permissions.length > 0 && (
+                <section className="py-4">
+                  <SectionHead label="Shares" />
+                  <Sharing item={item} />
+                </section>
+              )}
+            </TabsContent>
+
+            {/* Activity tab — the activity feed */}
+            <TabsContent value="activity" className="min-h-0 px-4">
               <Timeline item={item} />
-            </section>
+            </TabsContent>
           </ScrollArea>
-        </TabsContent>
+        </SidebarContent>
+
+        <SidebarFooter className="bg-card p-0 relative">
+          <ActionToolbar item={item} />
+        </SidebarFooter>
       </Tabs>
-      <SidebarFooter className="bg-card p-0 relative">
-        <ActionToolbar item={item} />
-      </SidebarFooter>
     </Sidebar>
   )
 }
@@ -644,7 +684,8 @@ function ToolButton({
 /* floating action toolbar */
 function ActionToolbar({ item }: { item: StashItemPanel }) {
   const fetcher = useFetcher({ key: item.id })
-  const [isFavorite, setIsFavorite] = React.useState(false) // wire to item.favorite
+  const alreadyFavorited = item.favorites?.some(f => f.favoritedBy.id === item.owner.id) ?? false
+  const { favorited, toggle, isPending } = useFavorite(item.id, alreadyFavorited)
   const [open, setOpen] = React.useState(false) // share dialog
 
   /* ----- download ---------------------------------------------------------- */
@@ -678,12 +719,12 @@ function ActionToolbar({ item }: { item: StashItemPanel }) {
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 ">
       <div className="pointer-events-auto flex items-center justify-around bg-card p-2 w-full">
         <ToolButton
-          label={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
-          active={isFavorite}
-          onClick={() => setIsFavorite((v) => !v)}
+          label={favorited ? 'Remove from Favorites' : 'Add to Favorites'}
+          active={favorited}
+          onClick={toggle}
         >
           <HeartIcon
-            className={cn('size-5', isFavorite && 'fill-primary text-primary')}
+            className={cn('size-5', favorited && 'fill-primary text-primary')}
           />
         </ToolButton>
         <ToolButton
@@ -744,7 +785,12 @@ function ActionToolbar({ item }: { item: StashItemPanel }) {
             >
               <DropdownMenuItem
                 className="font-stashly text-sidebar-foreground justify-start px-1.5 hover:bg-transparent"
-                onSelect={(e) => e.preventDefault()}
+                onSelect={(e) => {
+                  e.preventDefault()
+                }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                }}
               >
                 <RenameFillIcon className="text-current size-5!" /> Rename
               </DropdownMenuItem>

@@ -8,7 +8,7 @@ import {
   buildItemFilters,
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
-import { redirect, Outlet } from 'react-router'
+import { redirect } from 'react-router'
 import { auth } from '@/.server/auth'
 import type { View, ViewType } from '@/prisma/client'
 export function meta({ matches }: Route.MetaArgs) {
@@ -135,10 +135,5 @@ export async function loader({ request }: Route.ActionArgs) {
 }
 
 export default function Index({ loaderData }: Route.ComponentProps) {
-  return (
-    <>
-      <Gallery images={loaderData.data!} />
-      <Outlet />
-    </>
-  )
+  return <Gallery images={loaderData.data!} />
 }

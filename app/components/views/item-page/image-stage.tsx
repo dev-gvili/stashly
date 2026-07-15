@@ -5,7 +5,7 @@ import {
   ZoomInFillIcon,
   ZoomOutFillIcon,
 } from '@/components/icons'
-import { Button, SidebarTrigger, Tooltip } from '@/components/ui'
+import { Button, SidebarTrigger, Tooltip, useSidebar } from '@/components/ui'
 import { useZoom } from '@/hooks/useZoom'
 import type { StashItemImage } from '@/types/stash.types'
 import { cn } from '@/utils/styles'
@@ -58,6 +58,11 @@ export function ImageStage({
   src: string
 }): JSX.Element {
   const zoom = useZoom()
+  const { open: panelOpen, setOpen: setPanelOpen, toggleSidebar } = useSidebar('item_panel')
+  useEffect(() => {
+    if (!panelOpen) toggleSidebar()
+    return () => setPanelOpen(true)
+  }, [])
 
   // Reset zoom whenever the displayed image changes.
   useEffect(() => zoom.reset(), [item.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -75,7 +80,7 @@ export function ImageStage({
 
   return (
     <div
-      className="relative flex h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] min-h-0 w-full items-center justify-center min-w-0 overflow-hidden gap-2 pr-2 pb-16"
+      className="relative flex h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] min-h-0 w-full items-center justify-center min-w-0 overflow-hidden gap-2 pb-16"
       onWheel={zoom.onWheel}
       onMouseDown={zoom.onMouseDown}
       onMouseMove={zoom.onMouseMove}

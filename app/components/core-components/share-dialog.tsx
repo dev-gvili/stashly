@@ -1,7 +1,29 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  AddIcon,
+  AnonymousFillIcon,
+  CalendarFillIcon,
+  ChevronRightIcon,
+  CopyFillIcon,
+  DoubleCheckIcon,
+  DownloadFillIcon,
+  DropdownIcon,
+  EditFillIcon,
+  GroupFillIcon,
+  LinkIcon,
+  LoaderIcon,
+  LockedFillIcon,
+  RemoveIcon,
+  SettingsFillIcon,
+  UploadFillIcon,
+  ViewFillIcon,
+  WorkspaceMembersFillIcon
+} from '@/components/icons'
 import { useClipboard } from '@/hooks/useClipboard'
-import { useFetcher } from 'react-router'
-import { AnimatePresence, motion } from 'framer-motion'
+import type { ShareLinkType, ShareScope } from '@/prisma/client'
+import type { PermissionRole } from '@/prisma/enums'
+import type { StashInvitation } from '@/types/stash.types'
+import { Badge } from '@/ui/badge'
+import { Button } from '@/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -9,68 +31,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/ui/dialog'
-import { Button } from '@/ui/button'
-import { Input } from '@/ui/input'
-import { Badge } from '@/ui/badge'
-import { Switch } from '@/ui/switch'
-import { Label } from '@/ui/label'
-import { ScrollArea } from '@/ui/scroll-area'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '@/ui/dropdown-menu'
+import { Input } from '@/ui/input'
+import { ScrollArea } from '@/ui/scroll-area'
+import { Switch } from '@/ui/switch'
+import { toUserInitial } from '@/utils'
 import { cn } from '@/utils/styles'
-import {
-  ShareItemFillIcon,
-  CopyFillIcon,
-  LockFillIcon,
-  ViewFillIcon,
-  EditFillIcon,
-  UploadFillIcon,
-  CodeFillIcon,
-  AnonymousFillIcon,
-  WorkspaceMembersFillIcon,
-  GroupFillIcon,
-  RemoveIcon,
-  DropdownIcon,
-  DoubleCheckIcon,
-  TrashFillIcon,
-  AddIcon,
-  SendInvitationIcon,
-  ChevronRightIcon,
-  DownloadFillIcon,
-  RecentFillIcon,
-  SettingsFillIcon,
-  RefreshIcon,
-  LinkIcon,
-  SubmitIcon,
-  LoaderIcon,
-  UserIcon,
-  LockedFillIcon,
-  CalendarFillIcon,
-} from '@/components/icons'
-import type { ShareLinkType, ShareScope } from '@/prisma/client'
-import type { StashInvitation } from '@/types/stash.types'
-import type { PermissionRole } from '@/prisma/enums'
+import { AnimatePresence, motion } from 'framer-motion'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useFetcher } from 'react-router'
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
+  InputGroup,
   InputGroupAddon,
   InputGroupButton,
-  InputGroup,
-  InputGroupInput,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  InputGroupInput
 } from '../ui'
-import { toUserInitial } from '@/utils'
-import { Check } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1060,7 +1045,7 @@ export function ShareDialog({
                             role={r.role}
                             status={r.status}
                             date={r.date}
-                            image={r.image}
+                            image={null}
                             onCancel={() =>
                               handleCancelInvitation(r.invitationId)
                             }
