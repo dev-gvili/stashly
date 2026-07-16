@@ -29,9 +29,9 @@
   /* palette: Ink — pure greyscale; the signal is ink-black (max contrast) */
   --background: oklch(0.97 0 0);
   --foreground: oklch(0.16 0 0);
-  --card: #ffffff;
+  --card: oklch(1 0 0);
   --card-foreground: oklch(0.16 0 0);
-  --popover: #ffffff;
+  --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.16 0 0);
   /* the signal is contrast, not hue: ink on paper (light), paper on ink (dark) */
   --primary: oklch(0.16 0 0);
@@ -48,20 +48,20 @@
   --border: oklch(0.87 0 0);
   --input: oklch(0.82 0 0);
   --ring: oklch(0.16 0 0);
-  --chart-1: #121212;
-  --chart-2: #2c2c2c;
-  --chart-3: #75706f;
-  --chart-4: #acaba9;
-  --chart-5: #eaeaea;
-  --chart-6: #585655;
-  --chart-7: #8a8987;
-  --chart-8: #c5c4c3;
-  --chart-9: #404040;
-  --chart-10: #606060;
-  --chart-11: #303030;
-  --chart-12: #1a1a1a;
-  --chart-13: #4a4a48;
-  --chart-14: #6e6d6c;
+  --chart-1: oklch(0.1822 0 0);
+  --chart-2: oklch(0.2931 0 0);
+  --chart-3: oklch(0.5493 0 0);
+  --chart-4: oklch(0.7414 0 0);
+  --chart-5: oklch(0.937 0 0);
+  --chart-6: oklch(0.4547 0 0);
+  --chart-7: oklch(0.6303 0 0);
+  --chart-8: oklch(0.8208 0 0);
+  --chart-9: oklch(0.3715 0 0);
+  --chart-10: oklch(0.4891 0 0);
+  --chart-11: oklch(0.3092 0 0);
+  --chart-12: oklch(0.2178 0 0);
+  --chart-13: oklch(0.4084 0 0);
+  --chart-14: oklch(0.5353 0 0);
   --radius: 0.75rem;
   --sidebar: oklch(0.955 0 0);
   --sidebar-foreground: oklch(0.16 0 0);
@@ -78,31 +78,31 @@
     'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
 
   /* surface patterns */
-  --dot-color: rgba(44, 44, 44, 0.25);
+  --dot-color: oklch(0.2931 0 0 / 0.25);
   --dot-size: 1px;
   --dot-gap: 22px;
-  --grid-color: rgba(172, 171, 169, 0.4);
+  --grid-color: oklch(0.7414 0 0 / 0.4);
   --grid-size: 1px;
   --grid-gap: 64px;
   --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
 
   /* real shadows — foreground-tinted, visible on light surfaces */
   --shadow-stashly:
-    0 1px 2px 0 rgba(18, 18, 18, 0.1), 0 2px 4px -1px rgba(18, 18, 18, 0.07),
-    0 4px 6px -2px rgba(18, 18, 18, 0.04);
+    0 1px 2px 0 oklch(0.1822 0 0 / 0.1), 0 2px 4px -1px oklch(0.1822 0 0 / 0.07),
+    0 4px 6px -2px oklch(0.1822 0 0 / 0.04);
   --shadow-md:
-    0 4px 6px -1px rgba(18, 18, 18, 0.08), 0 2px 4px -1px rgba(18, 18, 18, 0.05);
-  --shadow-sm: 0 1px 2px 0 rgba(18, 18, 18, 0.05);
-  --shadow-xs: 0 0px 1px 0 rgba(18, 18, 18, 0.03);
+    0 4px 6px -1px oklch(0.1822 0 0 / 0.08), 0 2px 4px -1px oklch(0.1822 0 0 / 0.05);
+  --shadow-sm: 0 1px 2px 0 oklch(0.1822 0 0 / 0.05);
+  --shadow-xs: 0 0px 1px 0 oklch(0.1822 0 0 / 0.03);
 }
 
 [data-theme='system'] {
   @media (prefers-color-scheme: light) {
     --background: oklch(0.97 0 0);
     --foreground: oklch(0.16 0 0);
-    --card: #ffffff;
+    --card: oklch(1 0 0);
     --card-foreground: oklch(0.16 0 0);
-    --popover: #ffffff;
+    --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.16 0 0);
     --primary: oklch(0.16 0 0);
     --primary-foreground: oklch(0.99 0 0);
@@ -118,20 +118,20 @@
     --border: oklch(0.87 0 0);
     --input: oklch(0.82 0 0);
     --ring: oklch(0.16 0 0);
-    --chart-1: #121212;
-    --chart-2: #2c2c2c;
-    --chart-3: #75706f;
-    --chart-4: #acaba9;
-    --chart-5: #eaeaea;
-    --chart-6: #585655;
-    --chart-7: #8a8987;
-    --chart-8: #c5c4c3;
-    --chart-9: #404040;
-    --chart-10: #606060;
-    --chart-11: #303030;
-    --chart-12: #1a1a1a;
-    --chart-13: #4a4a48;
-    --chart-14: #6e6d6c;
+    --chart-1: oklch(0.1822 0 0);
+    --chart-2: oklch(0.2931 0 0);
+    --chart-3: oklch(0.5493 0 0);
+    --chart-4: oklch(0.7414 0 0);
+    --chart-5: oklch(0.937 0 0);
+    --chart-6: oklch(0.4547 0 0);
+    --chart-7: oklch(0.6303 0 0);
+    --chart-8: oklch(0.8208 0 0);
+    --chart-9: oklch(0.3715 0 0);
+    --chart-10: oklch(0.4891 0 0);
+    --chart-11: oklch(0.3092 0 0);
+    --chart-12: oklch(0.2178 0 0);
+    --chart-13: oklch(0.4084 0 0);
+    --chart-14: oklch(0.5353 0 0);
     --radius: 0.75rem;
     --sidebar: oklch(0.955 0 0);
     --sidebar-foreground: oklch(0.16 0 0);
@@ -147,22 +147,22 @@
     --font-stashly:
       'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
 
-    --dot-color: rgba(44, 44, 44, 0.25);
+    --dot-color: oklch(0.2931 0 0 / 0.25);
     --dot-size: 1px;
     --dot-gap: 22px;
-    --grid-color: rgba(172, 171, 169, 0.4);
+    --grid-color: oklch(0.7414 0 0 / 0.4);
     --grid-size: 1px;
     --grid-gap: 64px;
     --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
 
     --shadow-stashly:
-      0 1px 2px 0 rgba(18, 18, 18, 0.1), 0 2px 4px -1px rgba(18, 18, 18, 0.07),
-      0 4px 6px -2px rgba(18, 18, 18, 0.04);
+      0 1px 2px 0 oklch(0.1822 0 0 / 0.1), 0 2px 4px -1px oklch(0.1822 0 0 / 0.07),
+      0 4px 6px -2px oklch(0.1822 0 0 / 0.04);
     --shadow-md:
-      0 4px 6px -1px rgba(18, 18, 18, 0.08),
-      0 2px 4px -1px rgba(18, 18, 18, 0.05);
-    --shadow-sm: 0 1px 2px 0 rgba(18, 18, 18, 0.05);
-    --shadow-xs: 0 0px 1px 0 rgba(18, 18, 18, 0.03);
+      0 4px 6px -1px oklch(0.1822 0 0 / 0.08),
+      0 2px 4px -1px oklch(0.1822 0 0 / 0.05);
+    --shadow-sm: 0 1px 2px 0 oklch(0.1822 0 0 / 0.05);
+    --shadow-xs: 0 0px 1px 0 oklch(0.1822 0 0 / 0.03);
   }
 }
 
@@ -188,20 +188,20 @@
   --border: oklch(0.32 0 0);
   --input: oklch(0.29 0 0);
   --ring: oklch(0.97 0 0);
-  --chart-1: #eaeaea;
-  --chart-2: #acaba9;
-  --chart-3: #75706f;
-  --chart-4: #4a4947;
-  --chart-5: #2c2b2a;
-  --chart-6: #c5c4c3;
-  --chart-7: #9a9997;
-  --chart-8: #6e6d6c;
-  --chart-9: #585655;
-  --chart-10: #3d3c3b;
-  --chart-11: #d8d7d6;
-  --chart-12: #b0afad;
-  --chart-13: #848382;
-  --chart-14: #1e1d1c;
+  --chart-1: oklch(0.937 0 0);
+  --chart-2: oklch(0.7414 0 0);
+  --chart-3: oklch(0.5493 0 0);
+  --chart-4: oklch(0.4057 0 0);
+  --chart-5: oklch(0.2897 0 0);
+  --chart-6: oklch(0.8208 0 0);
+  --chart-7: oklch(0.6832 0 0);
+  --chart-8: oklch(0.5353 0 0);
+  --chart-9: oklch(0.4547 0 0);
+  --chart-10: oklch(0.3568 0 0);
+  --chart-11: oklch(0.8797 0 0);
+  --chart-12: oklch(0.7542 0 0);
+  --chart-13: oklch(0.6105 0 0);
+  --chart-14: oklch(0.2315 0 0);
   --radius: 0.75rem;
   --sidebar: oklch(0.11 0 0);
   --sidebar-foreground: oklch(0.97 0 0);
@@ -218,22 +218,22 @@
     'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
 
   /* surface patterns */
-  --dot-color: rgba(172, 171, 169, 0.2);
+  --dot-color: oklch(0.7414 0 0 / 0.2);
   --dot-size: 1px;
   --dot-gap: 22px;
-  --grid-color: rgba(44, 43, 42, 0.8);
+  --grid-color: oklch(0.2897 0 0 / 0.8);
   --grid-size: 1px;
   --grid-gap: 64px;
   --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
 
   /* real shadows — dark neutral shadows */
   --shadow-stashly:
-    0 1px 2px 0 rgba(18, 18, 18, 0.4), 0 2px 4px -1px rgba(18, 18, 18, 0.3),
-    0 4px 6px -2px rgba(18, 18, 18, 0.2);
+    0 1px 2px 0 oklch(0.1822 0 0 / 0.4), 0 2px 4px -1px oklch(0.1822 0 0 / 0.3),
+    0 4px 6px -2px oklch(0.1822 0 0 / 0.2);
   --shadow-md:
-    0 4px 6px -1px rgba(18, 18, 18, 0.3), 0 2px 4px -1px rgba(18, 18, 18, 0.2);
-  --shadow-sm: 0 1px 2px 0 rgba(18, 18, 18, 0.2);
-  --shadow-xs: 0 0px 1px 0 rgba(18, 18, 18, 0.15);
+    0 4px 6px -1px oklch(0.1822 0 0 / 0.3), 0 2px 4px -1px oklch(0.1822 0 0 / 0.2);
+  --shadow-sm: 0 1px 2px 0 oklch(0.1822 0 0 / 0.2);
+  --shadow-xs: 0 0px 1px 0 oklch(0.1822 0 0 / 0.15);
 }
 
 [data-theme='system'] {
@@ -259,20 +259,20 @@
     --input: oklch(0.29 0 0);
     --ring: oklch(0.97 0 0);
     --radius: 0.75rem;
-    --chart-1: #eaeaea;
-    --chart-2: #acaba9;
-    --chart-3: #75706f;
-    --chart-4: #4a4947;
-    --chart-5: #2c2b2a;
-    --chart-6: #c5c4c3;
-    --chart-7: #9a9997;
-    --chart-8: #6e6d6c;
-    --chart-9: #585655;
-    --chart-10: #3d3c3b;
-    --chart-11: #d8d7d6;
-    --chart-12: #b0afad;
-    --chart-13: #848382;
-    --chart-14: #1e1d1c;
+    --chart-1: oklch(0.937 0 0);
+    --chart-2: oklch(0.7414 0 0);
+    --chart-3: oklch(0.5493 0 0);
+    --chart-4: oklch(0.4057 0 0);
+    --chart-5: oklch(0.2897 0 0);
+    --chart-6: oklch(0.8208 0 0);
+    --chart-7: oklch(0.6832 0 0);
+    --chart-8: oklch(0.5353 0 0);
+    --chart-9: oklch(0.4547 0 0);
+    --chart-10: oklch(0.3568 0 0);
+    --chart-11: oklch(0.8797 0 0);
+    --chart-12: oklch(0.7542 0 0);
+    --chart-13: oklch(0.6105 0 0);
+    --chart-14: oklch(0.2315 0 0);
     --sidebar: oklch(0.11 0 0);
     --sidebar-foreground: oklch(0.97 0 0);
     --sidebar-primary: oklch(0.97 0 0);
@@ -287,21 +287,21 @@
     --font-stashly:
       'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
 
-    --dot-color: rgba(172, 171, 169, 0.2);
+    --dot-color: oklch(0.7414 0 0 / 0.2);
     --dot-size: 1px;
     --dot-gap: 22px;
-    --grid-color: rgba(44, 43, 42, 0.8);
+    --grid-color: oklch(0.2897 0 0 / 0.8);
     --grid-size: 1px;
     --grid-gap: 64px;
     --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
 
     --shadow-stashly:
-      0 1px 2px 0 rgba(18, 18, 18, 0.4), 0 2px 4px -1px rgba(18, 18, 18, 0.3),
-      0 4px 6px -2px rgba(18, 18, 18, 0.2);
+      0 1px 2px 0 oklch(0.1822 0 0 / 0.4), 0 2px 4px -1px oklch(0.1822 0 0 / 0.3),
+      0 4px 6px -2px oklch(0.1822 0 0 / 0.2);
     --shadow-md:
-      0 4px 6px -1px rgba(18, 18, 18, 0.3), 0 2px 4px -1px rgba(18, 18, 18, 0.2);
-    --shadow-sm: 0 1px 2px 0 rgba(18, 18, 18, 0.2);
-    --shadow-xs: 0 0px 1px 0 rgba(18, 18, 18, 0.15);
+      0 4px 6px -1px oklch(0.1822 0 0 / 0.3), 0 2px 4px -1px oklch(0.1822 0 0 / 0.2);
+    --shadow-sm: 0 1px 2px 0 oklch(0.1822 0 0 / 0.2);
+    --shadow-xs: 0 0px 1px 0 oklch(0.1822 0 0 / 0.15);
   }
 }
 
@@ -467,7 +467,7 @@
   .surface-inset {
     background: oklch(from var(--muted) l c h / 0.5);
     /* Preto-tinted, matching the shadow tokens */
-    box-shadow: inset 0 1px 3px 0 rgba(18, 18, 18, 0.06);
+    box-shadow: inset 0 1px 3px 0 oklch(0.1822 0 0 / 0.06);
   }
 }
 
