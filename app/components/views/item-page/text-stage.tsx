@@ -11,22 +11,27 @@ import { Button, SidebarTrigger } from '@/components/ui'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useClipboard } from '@/hooks/useClipboard'
 import type { StashItemText } from '@/types/stash.types'
-import { cn } from '@/utils/styles'
 import { isMonoFile } from '@/utils/text-thumbnail'
+import { CodeViewer } from './code-viewer'
 
-/** DOM guard: past this many lines the tail is dropped with a notice. */
+/**
+ * DOM guard for the prose path only — past this many lines the tail is
+ * dropped with a notice. Code files render through Monaco, which virtualizes
+ * and needs no cap.
+ */
 const MAX_RENDER_LINES = 10_000
 
 type TextDoc = { text: string }
 
 /**
- * TextStage — read-only viewer for text-based files (plain text, code,
- * config, logs). Suspense/Await boundary around the server-loaded body,
- * mirroring MarkdownStage: the file loader returns the S3 read as an
- * unawaited promise so the page shell paints while the document streams.
+ * TextStage — read-only viewer for text-based files. Suspense/Await boundary
+ * around the server-loaded body, mirroring MarkdownStage: the file loader
+ * returns the S3 read as an unawaited promise so the page shell paints while
+ * the document streams.
  *
- * Code-ish files (per `isMonoFile`) render monospaced with a line-number
- * gutter and horizontal scroll; prose files render as a wrapped column.
+ * Code-ish files (per `isMonoFile`) render in Monaco — VS Code's editor —
+ * with syntax highlighting, find, folding, and virtualized rendering for
+ * huge files; prose files render as a wrapped reading column.
  */
 export function TextStage({
   item,
@@ -43,7 +48,9 @@ export function TextStage({
   return (
     <Suspense fallback={<TextLoading />}>
       <Await resolve={textDoc} errorElement={<TextError />}>
-        {(doc: TextDoc) => <TextReader mono={mono} text={doc.text} />}
+        {(doc: TextDoc) => (
+          <TextReader fileName={item.name} mono={mono} text={doc.text} />
+        )}
       </Await>
     </Suspense>
   )
@@ -74,52 +81,48 @@ function TextError({
 // TextReader — renders the resolved document
 // ---------------------------------------------------------------------------
 
-function TextReader({ text, mono }: { text: string; mono: boolean }) {
-  const { copy, copied } = useClipboard()
+function TextReader({
+  text,
+  mono,
+  fileName,
+}: {
+  text: string
+  mono: boolean
+  fileName: string
+}) {
+  if (mono) {
+    const lineCount = text.split('\n').length
+    return (
+      <div className="relative h-[calc(100vh-4rem)] min-h-0 w-full min-w-0 overflow-hidden rounded-md border border-input bg-card! shadow-stashly">
+        <CodeViewer fileName={fileName} text={text} />
+        <StageToolbar label={`${lineCount.toLocaleString()} lines`} text={text} />
+      </div>
+    )
+  }
+  return <ProseReader text={text} />
+}
 
-  // Tabs become 4 spaces so mono column alignment matches the thumbnail
-  // renderer (tab-size isn't stylable without arbitrary Tailwind values).
+function ProseReader({ text }: { text: string }) {
   const lines = useMemo(
     () =>
       text
         .replace(/^﻿/, '')
         .replace(/\r\n?/g, '\n')
-        .replace(/\t/g, '    ')
         .split('\n'),
     [text]
   )
   const truncated = lines.length > MAX_RENDER_LINES
   const shown = truncated ? lines.slice(0, MAX_RENDER_LINES) : lines
-  // Gutter width tracks the widest line number so digits never overflow.
-  const gutterCh = `${String(shown.length).length + 2}ch`
+  const label = truncated
+    ? `${MAX_RENDER_LINES.toLocaleString()} / ${lines.length.toLocaleString()} lines`
+    : `${lines.length.toLocaleString()} ${lines.length === 1 ? 'line' : 'lines'}`
 
   return (
     <div className="relative h-full min-h-0 w-full min-w-0 overflow-hidden rounded-md border border-input bg-card! shadow-stashly">
-      <ScrollArea
-        key="text"
-        type="hover"
-        scrollbars={mono ? 'both' : 'vertical'}
-        className="h-[calc(100vh-4rem)]"
-      >
-        {mono ? (
-          <div className="min-w-max py-4 pr-8 font-mono text-sm leading-6">
-            {shown.map((line, i) => (
-              <div key={i} className="flex">
-                <span
-                  className="sticky left-0 shrink-0 select-none bg-card pr-4 text-right tabular-nums text-muted-foreground"
-                  style={{ width: gutterCh }}
-                >
-                  {i + 1}
-                </span>
-                <span className="whitespace-pre">{line}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <pre className="mx-auto w-full max-w-3xl whitespace-pre-wrap break-words px-4 py-8 font-stashly text-sm leading-7">
-            {shown.join('\n')}
-          </pre>
-        )}
+      <ScrollArea key="text" type="hover" className="h-[calc(100vh-4rem)]">
+        <pre className="mx-auto w-full max-w-3xl whitespace-pre-wrap wrap-break-word px-4 py-8 font-stashly text-sm leading-7">
+          {shown.join('\n')}
+        </pre>
 
         {truncated && (
           <p className="px-4 pb-8 text-center font-stashly text-xs text-muted-foreground">
@@ -129,40 +132,60 @@ function TextReader({ text, mono }: { text: string; mono: boolean }) {
           </p>
         )}
 
-        {/* Floating toolbar */}
-        <div className="fixed bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-md border border-input bg-card px-2 py-1 shadow-lg">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-md border-none"
-            title={copied ? 'Copied' : 'Copy contents'}
-            onClick={() => copy(text)}
-          >
-            {copied ? (
-              <CheckIcon className="size-5 text-muted-foreground" />
-            ) : (
-              <CopyIcon className="size-5 text-muted-foreground" />
-            )}
-          </Button>
-          <span className="px-1 font-stashly text-xs tabular-nums text-muted-foreground">
-            {lines.length.toLocaleString()}{' '}
-            {lines.length === 1 ? 'line' : 'lines'}
-          </span>
-          <SidebarTrigger
-            sidebarId="item_panel"
-            asChild
-            tooltip="Toggle Item Panel"
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-md border-none"
-            >
-              <ItemPanelFillIcon className={cn('size-5 text-muted-foreground')} />
-            </Button>
-          </SidebarTrigger>
-        </div>
+        <StageToolbar
+          label={label}
+          text={text}
+          title={
+            truncated
+              ? `Rendering the first ${MAX_RENDER_LINES.toLocaleString()} lines`
+              : undefined
+          }
+        />
       </ScrollArea>
+    </div>
+  )
+}
+
+function StageToolbar({
+  text,
+  label,
+  title,
+}: {
+  text: string
+  label: string
+  title?: string
+}) {
+  const { copy, copied } = useClipboard()
+  return (
+    <div className="fixed bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-md border border-input bg-card px-2 py-1 shadow-lg">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="rounded-md border-none"
+        title={copied ? 'Copied' : 'Copy contents'}
+        onClick={() => copy(text)}
+      >
+        {copied ? (
+          <CheckIcon className="size-5 text-muted-foreground" />
+        ) : (
+          <CopyIcon className="size-5 text-muted-foreground" />
+        )}
+      </Button>
+      <span
+        className="px-1 font-stashly text-xs tabular-nums text-muted-foreground"
+        title={title}
+      >
+        {label}
+      </span>
+      <SidebarTrigger
+        sidebarId="item_panel"
+        asChild
+        tooltip="Toggle Item Panel"
+      >
+        <Button variant="ghost" size="icon" className="rounded-md border-none">
+          <ItemPanelFillIcon className="size-5 text-muted-foreground" />
+        </Button>
+      </SidebarTrigger>
     </div>
   )
 }
