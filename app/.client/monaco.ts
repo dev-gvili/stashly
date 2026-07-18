@@ -235,7 +235,7 @@ function applyInkTheme() {
   monaco.editor.setTheme('stashly-ink')
 }
 
-const EDITOR_FONT = "'JetBrains Mono Variable', ui-monospace, monospace"
+const EDITOR_FONT = "'JetBrains Mono Variable'"
 const EDITOR_FONT_SIZE = 13
 
 /**
@@ -264,7 +264,7 @@ export function createCodeViewer(
     domReadOnly: true,
     automaticLayout: true,
     theme: 'stashly-ink',
-    fontFamily: EDITOR_FONT,
+    fontFamily: 'JetBrains Mono Variable',
     fontSize: EDITOR_FONT_SIZE,
     allowVariableFonts: true,
     fontLigatures: true,
