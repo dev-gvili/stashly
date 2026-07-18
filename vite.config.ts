@@ -45,15 +45,15 @@ export default defineConfig(({ isSsrBuild, mode }) => ({
       : undefined,
   },
   optimizeDeps: {
-    exclude: [
-      '@huggingface/transformers',
-      '@huggingface/transformers-next4.0.1',
-      'onnxruntime-web',
-    ],
+    exclude: ['@huggingface/transformers', 'onnxruntime-web'],
   },
   plugins: [
+    tailwindcss({
+      optimize: {
+        minify: true,
+      },
+    }),
     svgr(),
-    tailwindcss(),
     reactRouter(),
     // Copy PDF.js assets to public directory
     pdfjsHybridCopyPluginAsync(),
