@@ -7,6 +7,7 @@
 import { dataUrlToBlob } from '@/utils/thumbnail'
 import { generateVideoThumbnail, getVideoMetadata } from '@/utils/video'
 import { isMarkdownFile } from '@/utils/markdown'
+import { isTextRenderableFile } from '@/utils/text-thumbnail'
 import exifr from 'exifr'
 import type {
   ComputeRequest,
@@ -94,6 +95,10 @@ export async function generateStage1Preview(file: File): Promise<Blob | null> {
     const dataUrl = await generateVideoThumbnail(file).catch(() => null)
     return dataUrl ? dataUrlToBlob(dataUrl) : null
   }
+  if (isTextRenderableFile(file)) {
+    const res = await compute({ kind: 'tinyText', file })
+    return res.kind === 'tinyText' ? res.blob : null
+  }
   return null
 }
 
@@ -135,6 +140,17 @@ export async function generateStage2Resize(
     })
     const res = await compute({ kind: 'resizeImage', file: frameFile })
     if (res.kind === 'resizeImage' && res.result) {
+      return {
+        blob: res.result.blob,
+        width: res.result.width,
+        height: res.result.height,
+      }
+    }
+    return null
+  }
+  if (isTextRenderableFile(file)) {
+    const res = await compute({ kind: 'resizeText', file })
+    if (res.kind === 'resizeText' && res.result) {
       return {
         blob: res.result.blob,
         width: res.result.width,

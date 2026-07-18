@@ -13,22 +13,25 @@
  */
 
 import { extractTinyThumbnail, canvasResize, blurImageBlob } from '../utils/thumbnail'
+import { generateTextThumbnail, renderTextPageToBlob } from '../utils/text-thumbnail'
 import type { PdfDocumentMetadata } from '../utils/pdf'
 import type { MarkdownDocumentMetadata } from '../utils/markdown'
 
 export type ComputeRequest =
   | { id: number; kind: 'tinyImage'; file: File }
   | { id: number; kind: 'tinyPdf'; file: File }
+  | { id: number; kind: 'tinyText'; file: File }
   | { id: number; kind: 'resizeImage'; file: File; maxSize?: number; blur?: number }
   | { id: number; kind: 'resizePdf'; file: File; maxSize?: number; blur?: number }
+  | { id: number; kind: 'resizeText'; file: File; maxSize?: number }
   | { id: number; kind: 'pdfText'; file: File; maxPages?: number; maxChars?: number }
   | { id: number; kind: 'pdfMeta'; file: File }
   | { id: number; kind: 'mdMeta'; file: File }
   | { id: number; kind: 'imageDimensions'; file: File }
 
 export type ComputeResponse =
-  | { id: number; kind: 'tinyImage' | 'tinyPdf'; blob: Blob | null }
-  | { id: number; kind: 'resizeImage' | 'resizePdf'; result: { blob: Blob; width: number; height: number } | null }
+  | { id: number; kind: 'tinyImage' | 'tinyPdf' | 'tinyText'; blob: Blob | null }
+  | { id: number; kind: 'resizeImage' | 'resizePdf' | 'resizeText'; result: { blob: Blob; width: number; height: number } | null }
   | { id: number; kind: 'pdfText'; result: { text: string; pageCount: number; pagesRead: number } | null }
   | { id: number; kind: 'pdfMeta'; result: PdfDocumentMetadata | null }
   | { id: number; kind: 'mdMeta'; result: MarkdownDocumentMetadata | null }
@@ -205,6 +208,22 @@ async function handle(req: ComputeRequest): Promise<void> {
         console.error('[thumbnail.compute.worker] pdfMeta failed', err)
         post({ id: req.id, kind: 'pdfMeta', result: null })
       }
+      return
+    }
+    case 'tinyText': {
+      const blob = await generateTextThumbnail(req.file).catch((err) => {
+        console.error('[thumbnail.compute.worker] tinyText failed', err)
+        return null
+      })
+      post({ id: req.id, kind: 'tinyText', blob })
+      return
+    }
+    case 'resizeText': {
+      const result = await renderTextPageToBlob(req.file, req.maxSize ?? 512).catch((err) => {
+        console.error('[thumbnail.compute.worker] resizeText failed', err)
+        return null
+      })
+      post({ id: req.id, kind: 'resizeText', result })
       return
     }
     case 'mdMeta': {
