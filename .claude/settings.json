@@ -1,5 +1,19 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git commit*)",
+            "command": "if git diff --cached --name-only | grep -E '(^|/)\\.env(\\.|$)' | grep -vE '\\.env\\.example$' >&2; then echo 'BLOCK: .env file staged - unstage it before committing' >&2; exit 2; fi",
+            "shell": "bash",
+            "statusMessage": "Checking staged files for secrets"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
