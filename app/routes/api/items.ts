@@ -391,7 +391,15 @@ export async function action({ request, params }: Route.ActionArgs) {
             docCreatedAt: mdDocCreatedAt,
             docModifiedAt: mdDocModifiedAt,
           })
-        } else {
+        } else if (
+          // Only when the extractor produced actual audio metadata — a bare
+          // `else` here used to stamp an all-null Audio facet onto every
+          // non-media file (text, code, …), which then routed them to the
+          // audio stage in detectMediaKind.
+          parsedData.audioDuration != null ||
+          parsedData.audioBitrate != null ||
+          parsedData.audioTitle != null
+        ) {
           console.log('Audio Parsed Data: ', audioData)
           await upsertAudioFacet(itemId, {
             duration: parsedData.audioDuration,
