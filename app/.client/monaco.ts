@@ -235,6 +235,9 @@ function applyInkTheme() {
   monaco.editor.setTheme('stashly-ink')
 }
 
+const EDITOR_FONT = "'JetBrains Mono Variable', ui-monospace, monospace"
+const EDITOR_FONT_SIZE = 13
+
 /**
  * Mount a read-only Monaco viewer into `container`. Returns a disposer that
  * tears down the editor, its model, and the theme listeners.
@@ -244,6 +247,15 @@ export function createCodeViewer(
   text: string,
   fileName: string
 ): { dispose: () => void } {
+  // Web fonts load lazily — nothing else on the page uses JetBrains Mono, and
+  // Monaco measures glyph widths at create time, so without this it sticks
+  // with fallback-mono metrics forever. Kick the face into loading and
+  // remeasure once it lands (remeasureFonts is global and safe post-dispose).
+  document.fonts
+    .load(`${EDITOR_FONT_SIZE}px ${EDITOR_FONT}`)
+    .then(() => monaco.editor.remeasureFonts())
+    .catch(() => {})
+
   applyInkTheme()
   const model = monaco.editor.createModel(text, languageForFile(fileName))
   const editor = monaco.editor.create(container, {
@@ -252,8 +264,10 @@ export function createCodeViewer(
     domReadOnly: true,
     automaticLayout: true,
     theme: 'stashly-ink',
-    fontFamily: "'JetBrains Mono Variable', ui-monospace, monospace",
-    fontSize: 13,
+    fontFamily: EDITOR_FONT,
+    fontSize: EDITOR_FONT_SIZE,
+    allowVariableFonts: true,
+    fontLigatures: true,
     minimap: { enabled: true },
     stickyScroll: { enabled: true },
     scrollBeyondLastLine: false,

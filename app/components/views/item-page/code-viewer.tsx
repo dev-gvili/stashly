@@ -49,7 +49,7 @@ export function CodeViewer({
 
   return (
     <div className="relative h-full w-full">
-      <div ref={containerRef} className="h-full w-full" />
+      <div ref={containerRef} className="h-full w-full font-mono!" />
       {state === 'loading' && (
         <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
           <LoaderIcon className="size-6 animate-spin" />
