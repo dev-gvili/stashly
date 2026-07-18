@@ -70,13 +70,19 @@ export type RecipientWithPermission = {
   } | null
 }
 
-/** A thumbnail-backed peek at a shared folder/workspace's contents. */
+/**
+ * A thumbnail-backed peek at a shared folder/workspace's contents. Matches
+ * the client's `StashPickerItem` shape so the detail panel can render each
+ * entry through the standard `ItemCard`.
+ */
 export type InvitationPreview = {
   id: string
   name: string
-  meta?: string
-  kind?: IconKey
-  previewUrl?: string | null
+  type: ItemType
+  category: ItemCategory
+  size: bigint
+  createdAt: Date
+  thumbnailUrl?: string | null
 }
 
 /**
@@ -198,6 +204,7 @@ const invitationInclude = {
           type: true,
           category: true,
           size: true,
+          createdAt: true,
           thumbnails: { select: { url: true } },
         },
       },
@@ -228,6 +235,7 @@ const invitationInclude = {
           type: true,
           category: true,
           size: true,
+          createdAt: true,
           thumbnails: { select: { url: true } },
         },
       },
@@ -246,6 +254,7 @@ type PreviewChild = {
   type: ItemType
   category: ItemCategory
   size: bigint
+  createdAt: Date
   thumbnails: { url: string | null }[]
 }
 
@@ -265,9 +274,11 @@ function toPreview(child: PreviewChild): InvitationPreview {
   return {
     id: child.id,
     name: child.name,
-    meta: formatSize('byte', 'unit', child.size),
-    kind: child.type === 'folder' ? 'folder' : child.category,
-    previewUrl: pickThumbnailUrl(child.thumbnails),
+    type: child.type,
+    category: child.category,
+    size: child.size,
+    createdAt: child.createdAt,
+    thumbnailUrl: pickThumbnailUrl(child.thumbnails),
   }
 }
 

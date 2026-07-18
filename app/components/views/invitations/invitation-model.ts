@@ -1,11 +1,16 @@
 import {
+    DownloadFillIcon,
   DownloadIcon,
+  EditFillIcon,
   EditIcon,
   FileFillIcon,
   FolderFillIcon,
+  GroupFillIcon,
   GroupIcon,
   ImagesFillIcon,
+  InfoFillIcon,
   InfoIcon,
+  ViewFillIcon,
   ViewIcon,
   WorkspaceFillIcon,
   WorkspaceIcon,
@@ -17,13 +22,6 @@ import type {
 } from '@/types/stash.types'
 import { toIcon, type IconKey } from '@/utils';
 import { formatSize } from '@/utils/formaters'
-import type { ComponentType, SVGProps } from 'react'
-
-// ---------------------------------------------------------------------------
-// Icon type
-// ---------------------------------------------------------------------------
-
-export type IconComponent = ComponentType<SVGProps<SVGSVGElement>>
 
 // ---------------------------------------------------------------------------
 // Optional presentation fields the detail panel *can* surface when the loader
@@ -37,7 +35,7 @@ export type IconComponent = ComponentType<SVGProps<SVGSVGElement>>
 //   - sender.title
 //   - item.mimeType / item.fileCount
 //   - workspace.size / workspace.fileCount / workspace.memberCount
-//   - previews?: InvitationPreviewFile[]
+//   - previews?: StashPickerItem[]
 // ---------------------------------------------------------------------------
 
 export type InvitationExtras = StashInvitation & {
@@ -59,16 +57,6 @@ export type InvitationExtras = StashInvitation & {
         memberCount?: number | null
       })
     | null
-  previews?: InvitationPreviewFile[] | null
-}
-
-export type InvitationPreviewFile = {
-  id: string
-  name: string
-  meta?: string
-  kind?: ContextKind
-  /** Real generated thumbnail; when present the UI shows it instead of an icon. */
-  previewUrl?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -84,12 +72,11 @@ export function getContextKind(invitation: InvitationExtras): ContextKind {
   const item = invitation.item
   const type = (item?.type ?? '').toLowerCase()
   const mime = (item?.mimeType ?? '').toLowerCase()
-  if (type === 'folder' || type === 'directory') return 'folder'
-  if (mime.startsWith('image/') || type === 'image') return 'image'
-  return 'file'
+  if (type === 'folder') return 'folder'  
+  return item?.category ?? (mime.startsWith('image/') ? 'image' : 'file')
 }
 
-export function getContextIcon(kind: ContextKind): IconComponent {
+export function getContextIcon(kind: ContextKind) {
   return toIcon(kind)
 }
 
@@ -141,7 +128,7 @@ export function getContextMeta(invitation: InvitationExtras): string | null {
 // ---------------------------------------------------------------------------
 
 export type AccessPermission = {
-  icon: IconComponent
+  icon: ReturnType<typeof toIcon>
   label: string
   allowed: boolean
 }
@@ -168,11 +155,11 @@ export function getAccessPermissions(
   const edit = canEdit(role)
   const manage = MANAGE_ROLES.has((role ?? '').toLowerCase())
   return [
-    { icon: ViewIcon, label: 'View & preview all files', allowed: true },
-    { icon: DownloadIcon, label: 'Download & export', allowed: true },
-    { icon: EditIcon, label: 'Upload, edit & organize', allowed: edit },
-    { icon: InfoIcon, label: 'Comment & annotate', allowed: true },
-    { icon: GroupIcon, label: 'Invite or remove members', allowed: manage },
+    { icon: ViewFillIcon, label: 'View & preview all files', allowed: true },
+    { icon: DownloadFillIcon, label: 'Download & export', allowed: true },
+    { icon: EditFillIcon, label: 'Upload, edit & organize', allowed: edit },
+    { icon: InfoFillIcon, label: 'Comment & annotate', allowed: true },
+    { icon: GroupFillIcon, label: 'Invite or remove members', allowed: manage },
   ]
 }
 
@@ -196,30 +183,10 @@ export function countByStatus(
   return counts
 }
 
-export function aggregateStatus(
-  recipients: StashInvitationRecipient[]
-): InvitationStatus {
-  if (recipients.some((r) => r.status === 'pending')) return 'pending'
-  if (recipients.every((r) => r.status === 'accepted')) return 'accepted'
-  if (recipients.every((r) => r.status === 'canceled')) return 'canceled'
-  return 'rejected'
-}
-
 // ---------------------------------------------------------------------------
 // Formatting
 // ---------------------------------------------------------------------------
 
-export function formatDate(value: string | number | Date): string {
-  try {
-    return new Date(value).toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  } catch {
-    return String(value)
-  }
-}
 
 /** Relative "expires in" string, or null when there is no future expiry. */
 export function formatExpiry(

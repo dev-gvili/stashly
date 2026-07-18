@@ -1,5 +1,6 @@
 import { cn } from '@/utils/styles'
 import type { InvitationStatus } from '@/prisma/enums'
+import { Badge } from '../ui';
 
 // ---------------------------------------------------------------------------
 // Shared status visuals for invitations — pill badge and small colored dot.
@@ -8,20 +9,20 @@ import type { InvitationStatus } from '@/prisma/enums'
 
 const pillColors: Record<InvitationStatus, string> = {
   pending:
-    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+    'bg-amber-400 text-amber-900 dark:bg-amber-900/30 dark:text-amber-400',
   accepted:
-    'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  canceled: 'bg-muted text-muted-foreground',
-  expired: 'bg-muted text-muted-foreground',
+    'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400',
+  rejected: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400',
+  canceled: 'bg-chart-4 text-chart-800 dark:bg-chart-900/30 dark:text-chart-400',
+  expired: 'bg-stone-100 text-stone-800 dark:bg-stone-900/30 dark:text-stone-400',
 }
 
 const dotColors: Record<InvitationStatus, string> = {
-  pending: 'bg-yellow-500',
-  accepted: 'bg-green-500',
-  rejected: 'bg-red-500',
-  canceled: 'bg-muted-foreground',
-  expired: 'bg-muted-foreground',
+  pending: 'bg-amber-400',
+  accepted: 'bg-sky-400',
+  rejected: 'bg-rose-400',
+  canceled: 'bg-gray-400',
+  expired: 'bg-stone-400',
 }
 
 export function invitationStatusLabel(status: InvitationStatus) {
@@ -36,15 +37,16 @@ export function InvitationStatusPill({
   className?: string
 }) {
   return (
-    <span
+    <Badge
+      variant="default"
       className={cn(
-        'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium capitalize',
+        'rounded font-stashly capitalize',
         pillColors[status] ?? pillColors.pending,
         className
       )}
     >
       {invitationStatusLabel(status)}
-    </span>
+    </Badge>
   )
 }
 
@@ -58,7 +60,7 @@ export function InvitationStatusDot({
   return (
     <span
       className={cn(
-        'inline-block size-2 shrink-0 rounded-full',
+        'inline-block size-3 shrink-0 rounded',
         dotColors[status] ?? dotColors.pending,
         className
       )}

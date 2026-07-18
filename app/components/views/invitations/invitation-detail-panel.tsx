@@ -54,17 +54,17 @@ export function InvitationDetailPanel(props: InvitationDetailPanelProps) {
   if (props.tab === 'received') {
     if (!props.recipient) return <InvitationDetailEmpty />
     return (
-      <div className="flex h-full w-full gap-2 overflow-hidden">
-      <ReceivedInvitationDetail
-        invitation={props.invitation}
-        recipient={props.recipient}
-      />
+      <div className="flex h-full w-full gap-2 overflow-hidden items-stretch">
+        <ReceivedInvitationDetail
+          invitation={props.invitation}
+          recipient={props.recipient}
+        />
       </div>
     )
   }
 
   return (
-    <div className="flex h-full w-full gap-2">
+    <div className="flex h-full w-full gap-2 overflow-hidden">
       <SentInvitationDetail invitation={props.invitation} />
     </div>
   )

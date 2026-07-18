@@ -109,7 +109,6 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
     intent: z.literal('create_folder'),
     name: z.string().nonempty(),
     parentId: z.string().nonempty(),
-    driveId: z.string().nonempty(),
   }),
   z.object({
     intent: z.literal('create_folder_inline'),
@@ -376,14 +375,17 @@ export const invitationsApiRouteInput = z.discriminatedUnion('intent', [
 /**
  * A single thumbnail-backed entry in an invitation's `previews` array (the
  * children of a shared folder/workspace). Part of the enriched invitation
- * response the detail panel renders.
+ * response the detail panel renders. Matches the `StashPickerItem` shape so
+ * entries render through the standard `ItemCard`.
  */
 export const invitationPreviewSchema = z.object({
   id: z.string(),
   name: z.string(),
-  meta: z.string().optional(),
-  kind: z.string().optional(),
-  previewUrl: z.string().nullish(),
+  type: z.string(),
+  category: z.string(),
+  size: z.coerce.bigint(),
+  createdAt: z.coerce.date(),
+  thumbnailUrl: z.string().nullish(),
 })
 export type InvitationPreviewPayload = z.infer<typeof invitationPreviewSchema>
 

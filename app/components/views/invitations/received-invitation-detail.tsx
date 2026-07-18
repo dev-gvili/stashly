@@ -1,9 +1,11 @@
 import {
+    CalendarFillIcon,
   CalendarIcon,
   CheckIcon,
   FileFillIcon,
   GroupFillIcon,
   GroupIcon,
+  InboxSentFillIcon,
   RemoveIcon,
   SendInvitationIcon,
   UndoIcon,
@@ -15,7 +17,6 @@ import { ScrollArea } from '@/ui/scroll-area'
 import { cn } from '@/utils/styles'
 import { useFetcher } from 'react-router'
 import {
-  formatDate,
   formatExpiry,
   getAccessPermissions,
   getContextKind,
@@ -39,6 +40,7 @@ import {
 } from './invitation-parts'
 import { toCategory } from '@/utils/converters'
 import { Sidebar } from '@/components/ui'
+import { formatMediaDate } from '@/utils';
 
 // ---------------------------------------------------------------------------
 // Received invitation — full detail panel (2-column: preview + decision rail)
@@ -66,10 +68,22 @@ export function ReceivedInvitationDetail({
 
   return (
     <>
-      <div className="flex bg-card! border border-input rounded-md h-[calc(100vh-4rem)]">
+      <div className="flex bg-card! border border-input rounded-md h-[calc(100vh-4rem)] w-full overflow-hidden">
         {/* ── LEFT: preview / contents / message ── */}
-        <ScrollArea className="min-w-0">
-          <div className="flex flex-col gap-y-5 p-6">
+        <ScrollArea className="min-w-0 flex-1">
+          <div className="flex flex-col gap-y-5 p-6 w-full">
+                <SenderBlock
+              name={invitation.sender.name}
+              subtitle={
+                invitation.sender.title ?? invitation.sender.email ?? null
+              }
+              image={invitation.sender.image}
+              status={recipient.status}
+            />
+            <NoteBlock
+              message={invitation.message}
+              fromName={invitation.sender.name}
+            />
             <ContextThumbnail
               kind={invitation.item?.category ?? 'file'}
               previewUrl={invitation.item?.thumbnailUrl}
@@ -84,10 +98,6 @@ export function ReceivedInvitationDetail({
               />
             )}
 
-            <NoteBlock
-              message={invitation.message}
-              fromName={invitation.sender.name}
-            />
           </div>
         </ScrollArea>
       </div>
@@ -102,14 +112,7 @@ export function ReceivedInvitationDetail({
       >
         <ScrollArea className="flex-1">
           <div className="flex flex-col gap-6 p-6">
-            <SenderBlock
-              name={invitation.sender.name}
-              subtitle={
-                invitation.sender.title ?? invitation.sender.email ?? null
-              }
-              image={invitation.sender.image}
-              status={recipient.status}
-            />
+        
 
             {/* Invited-to callout */}
             <div className="rounded-xl bg-primary/10 p-4">
@@ -130,8 +133,8 @@ export function ReceivedInvitationDetail({
             <MetaGrid columns={2}>
               <MetaCell
                 label="Sent"
-                value={formatDate(invitation.createdAt)}
-                icon={SendInvitationIcon}
+                value={formatMediaDate(invitation.createdAt)}
+                icon={InboxSentFillIcon}
               />
               <MetaCell
                 label={isPending ? 'Expires' : 'Status'}
@@ -144,7 +147,7 @@ export function ReceivedInvitationDetail({
                     </span>
                   )
                 }
-                icon={CalendarIcon}
+                icon={CalendarFillIcon}
               />
               {meta && (
                 <MetaCell
@@ -157,7 +160,7 @@ export function ReceivedInvitationDetail({
                 <MetaCell
                   label="Members"
                   value={memberCount}
-                  icon={GroupIcon}
+                  icon={GroupFillIcon}
                 />
               )}
             </MetaGrid>

@@ -17,7 +17,6 @@ import type {
   WorkspaceMemberRole,
 } from '@/prisma/enums'
 import type { ActivityWithRelations } from '@/utils/activity'
-import type { IconKey } from '@/utils/converters'
 
 // ---------------------------------------------------------------------------
 // Sub-types
@@ -121,17 +120,11 @@ export interface StashInvitationRecipient {
 
 /**
  * A single thumbnail-backed entry in an invitation's `previews` array — the
- * children of a shared folder/workspace (or the shared item itself). When
- * `previewUrl` is present the UI renders the real generated thumbnail instead
- * of a type icon.
+ * children of a shared folder/workspace (or the shared item itself). Uses the
+ * slim `StashPickerItem` shape so the UI can render each entry through the
+ * standard `ItemCard` (via the picker → `StashItem` adapter).
  */
-export interface StashInvitationPreview {
-  id: string
-  name: string
-  meta?: string
-  kind?: IconKey
-  previewUrl?: string | null
-}
+export type StashInvitationPreview = StashPickerItem
 
 export interface StashInvitation {
   id: string

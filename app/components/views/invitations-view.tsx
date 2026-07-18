@@ -1,8 +1,11 @@
 import { InvitationStatusDot } from '@/components/core-components/invitation-status'
-import { AddIcon, SearchIcon } from '@/components/icons'
 import {
-  aggregateStatus,
-  formatDate,
+  AddIcon,
+  InboxReciveFillIcon,
+  InboxSentFillIcon,
+  SearchIcon,
+} from '@/components/icons'
+import {
   getContextIcon,
   getContextKind,
   getContextName,
@@ -25,6 +28,7 @@ import { cn } from '@/utils/styles'
 import { useState } from 'react'
 import { useRevalidator } from 'react-router'
 import { ToggleGroup, ToggleGroupItem } from '../ui'
+import { formatMediaDate } from '@/utils';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -92,11 +96,11 @@ function ReceivedListRow({
             {invitation.sender.name}
           </p>
           <span className="shrink-0 text-xs text-muted-foreground">
-            {formatDate(invitation.createdAt).split(',')[0]}
+            {formatMediaDate(invitation.createdAt).split(',')[0]}
           </span>
         </div>
         <p className="flex items-center justify-start gap-1 min-w-0 w-full truncate ">
-          <KindIcon invitation={invitation} className="size-5 max-w-max" />
+          <KindIcon invitation={invitation} className={cn('size-5', invitation.item?.type === "folder" && 'text-current!')} />
           <span className="truncate">{getContextName(invitation)}</span>
         </p>
       </div>
@@ -118,14 +122,14 @@ function SentListRow({
   ).length
   return (
     <Button
-      variant="outline"
-      type="button"
+      variant="ghost"
+      size="lg"
       onClick={onSelect}
       className={cn(
-        'flex w-full items-center gap-3 rounded-md border border-input px-3 py-2.5 text-left',
+        'flex min-w-0 w-70 mx-auto h-full items-center gap-3 rounded-md px-3 py-2.5 mt-2 overflow-hidden hover:bg-accent',
         selected
-          ? 'border-border bg-card shadow-sm'
-          : 'border-transparent hover:bg-muted/60'
+          ? 'bg-accent hover:bg-muted!'
+          : 'border-transparent hover:bg-accent'
       )}
     >
       <div className="grid size-10 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
@@ -136,13 +140,14 @@ function SentListRow({
           <p className="truncate text-sm font-medium">
             {getContextName(invitation)}
           </p>
-          <span className="shrink-0 text-xs text-muted-foreground">
-            {invitation.recipients.length}
+          <span className=" text-xs text-muted-foreground">
+            {formatMediaDate(invitation.createdAt).split(',')[0]}
           </span>
         </div>
-        <p className="truncate text-xs text-muted-foreground">
-          {pending ? `${pending} pending` : 'all responded'} ·{' '}
-          {formatDate(invitation.createdAt).split(',')[0]}
+        <p className="truncate text-xs text-muted-foreground text-start">
+          {pending
+            ? `${pending} of ${invitation.recipients.length} pending`
+            : 'all responded'}
         </p>
       </div>
     </Button>
@@ -226,16 +231,22 @@ export function InvitationsView({
           className="flex-1 min-h-0"
         >
           <TabsList className="w-full">
-            <TabsTrigger value="received" className="flex-1 gap-1.5">
+            <TabsTrigger value="received" className="flex-1 rounded-md" asChild>
+              <Button variant="ghost" className="flex items-center gap-1.5 data-[state=active]:bg-accent! data-[state=active]:text-primary">
+              <InboxReciveFillIcon className="size-4" />
               Received
               {pendingCount > 0 && (
-                <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-xs font-semibold text-accent-foreground">
+                <span className="rounded bg-primary/15 px-1.5 py-0.5 text-xs font-semibold text-accent-foreground">
                   {pendingCount}
                 </span>
               )}
+              </Button>
             </TabsTrigger>
-            <TabsTrigger value="sent" className="flex-1">
-              Sent
+            <TabsTrigger value="sent" className="flex-1" asChild>
+              <Button variant="ghost" className="flex items-center gap-1.5 data-[state=active]:bg-accent data-[state=active]:text-primary">
+                <InboxSentFillIcon className="size-5" />
+                Sent
+              </Button>
             </TabsTrigger>
           </TabsList>
           <div className="relative">
@@ -263,7 +274,7 @@ export function InvitationsView({
                 ))}
               </ScrollArea>
             ) : (
-              <ScrollArea type="hover" className="h-full pr-4">
+              <ScrollArea type="hidden" className="h-full space-y-4">
                 {filteredSent.map((invitation) => (
                   <SentListRow
                     key={invitation.id}

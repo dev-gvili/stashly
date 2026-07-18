@@ -3,12 +3,18 @@ import {
   CheckIcon,
   ChevronRightIcon,
   LockIcon,
+  MessageFillIcon,
   OpenWithIcon,
   PreviewIcon,
   SuccessIcon,
 } from '@/components/icons'
 import type { InvitationStatus } from '@/prisma/enums'
-import type { StashWorkspaceMember } from '@/types/stash.types'
+import type {
+  StashItem,
+  StashPickerItem,
+  StashWorkspaceMember,
+} from '@/types/stash.types'
+import { ItemCard } from '@/components/stash/item-card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/ui/avatar'
 import { toIcon, toUserInitial } from '@/utils/converters'
 import { cn } from '@/utils/styles'
@@ -17,8 +23,6 @@ import {
   getContextLabel,
   type AccessPermission,
   type ContextKind,
-  type IconComponent,
-  type InvitationPreviewFile,
 } from './invitation-model'
 import {
   Button,
@@ -29,6 +33,7 @@ import {
   CardTitle,
   Item,
 } from '@/components/ui'
+import { GridLayout } from '../grid-view'
 
 // ---------------------------------------------------------------------------
 // Striped placeholder background for preview thumbnails. Tailwind conversion
@@ -102,12 +107,12 @@ export function ContextThumbnail({
   return (
     <div className="overflow-hidden relative flex flex-col h-full w-full items-center justify-center gap-2 p-4">
       {previewUrl ? (
-    <div className="overflow-hidden relative flex flex-col h-full w-full items-center justify-center gap-2 bg-sidebar p-4">
-        <img
-          src={previewUrl}
-          alt=""
-          className="max-h-full max-w-full w-sm h-auto select-none rounded-xl border border-input object-fill  transition-transform duration-150"
-        />
+        <div className="overflow-hidden relative flex flex-col h-full w-full items-center justify-center gap-2 bg-sidebar p-4 rounded-md surface-elevate">
+          <img
+            src={previewUrl}
+            alt=""
+            className="max-h-full max-w-full w-sm h-auto select-none rounded-xl border border-input object-fill  transition-transform duration-150"
+          />
         </div>
       ) : (
         <div
@@ -136,7 +141,7 @@ export function ContextThumbnailFooter({
   onOpen?: () => void
 }) {
   return (
-    <div className="flex items-center gap-3 border-t border-input p-4 bg-sidebar w-full rounded-md ">
+    <div className="flex items-center gap-3 p-4 bg-sidebar w-full rounded-md border border-input">
       <div className="min-w-0 flex-1 flex flex-col items-start justify-center">
         <p className="truncate text-sm font-medium">{name}</p>
         {meta && <p className="text-xs text-muted-foreground">{meta}</p>}
@@ -149,36 +154,50 @@ export function ContextThumbnailFooter({
 }
 
 // ---------------------------------------------------------------------------
-// File preview thumbnail (grid cell)
+// File preview cell (grid cell) — renders the slim preview shape through the
+// standard ItemCard by filling the picker → StashItem adapter defaults.
 // ---------------------------------------------------------------------------
 
-export function FileThumb({ file }: { file: InvitationPreviewFile }) {
-  const Icon = toIcon(file.kind ?? 'file')
+function PreviewItemCard({ item }: { item: StashPickerItem }) {
+  const stashItem: StashItem = {
+    ...item,
+    status: 'normal',
+    inclusiveSize: item.size,
+    updatedAt: null,
+    parentId: null,
+    parent: null,
+    ownerId: '',
+    workspaceId: null,
+    driveId: '',
+    tags: [],
+    thumbnails: item.thumbnailUrl
+      ? [
+          {
+            id: item.id,
+            url: item.thumbnailUrl,
+            width: null,
+            height: null,
+            size: 'medium' as const,
+            view: 'grid' as const,
+          },
+        ]
+      : [],
+    favorites: [],
+    locked: null,
+    file: null,
+    folder: null,
+  }
+
   return (
-    <div className="overflow-hidden rounded-lg border border-input bg-card">
-      <div
-        className={cn(
-          'relative grid h-20 place-items-center text-primary',
-          stripesClass
-        )}
-      >
-        {file.previewUrl ? (
-          <img
-            src={file.previewUrl}
-            alt=""
-            className="absolute inset-0 size-full object-cover"
-          />
-        ) : (
-          <Icon className="size-6" />
-        )}
-      </div>
-      <div className="px-2.5 py-2">
-        <p className="truncate text-xs font-medium">{file.name}</p>
-        {file.meta && (
-          <p className="text-xs text-muted-foreground">{file.meta}</p>
-        )}
-      </div>
-    </div>
+    <ItemCard {...stashItem} className="rounded-md border! border-input">
+      <ItemCard.Content>
+        <ItemCard.Thumbnail />
+        <ItemCard.Name />
+      </ItemCard.Content>
+      <ItemCard.Footer>
+        <ItemCard.Size />
+      </ItemCard.Footer>
+    </ItemCard>
   )
 }
 
@@ -187,31 +206,29 @@ export function FilePreviewGrid({
   title,
   onPreviewAll,
 }: {
-  files: InvitationPreviewFile[]
+  files: StashPickerItem[]
   title: string
   onPreviewAll?: () => void
 }) {
   if (!files.length) return null
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-medium">{title}</p>
-        {onPreviewAll && (
-          <button
-            type="button"
-            onClick={onPreviewAll}
-            className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-          >
-            Preview all
-            <ChevronRightIcon className="size-3.5" />
-          </button>
-        )}
-      </div>
-      <div className="grid grid-cols-3 gap-3">
+    <div className="w-full flex flex-col gap-2">
+      <p className="text-sm font-medium">{title}</p>
+      {onPreviewAll && (
+        <button
+          type="button"
+          onClick={onPreviewAll}
+          className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+        >
+          Preview all
+          <ChevronRightIcon className="size-3.5" />
+        </button>
+      )}
+      <GridLayout>
         {files.slice(0, 6).map((file) => (
-          <FileThumb key={file.id} file={file} />
+          <PreviewItemCard key={file.id} item={file} />
         ))}
-      </div>
+      </GridLayout>
     </div>
   )
 }
@@ -229,14 +246,15 @@ export function NoteBlock({
 }) {
   const label = fromName ? `Message from ${fromName.split(' ')[0]}` : 'Message'
   return (
-    <div className="relative rounded-xl border border-input bg-muted p-4">
-      <span className="absolute -top-3.5 left-4 rounded-sm border border-input bg-card px-2 py-0.5 text-sm font-stashly font-medium text-muted-foreground">
+    <div className="relative rounded-md border border-input bg-sidebar text-primary p-4 m-4">
+      <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <MessageFillIcon className="size-5" />
         {label ?? 'From sender'}
       </span>
-      <p className="pt-1 text-sm leading-relaxed">
+      <p className="pt-1 text-base leading-relaxed font-medium">
         {message && message.trim()
-          ? `“${message}”`
-          : `“Hi — I shared a file with you. Please take a look and let me know if you have any questions.”`}
+          ? `${message}`
+          : `Hi — I shared a file with you. Please take a look and let me know if you have any questions.`}
       </p>
     </div>
   )
@@ -253,7 +271,7 @@ export function MetaCell({
 }: {
   label: string
   value: React.ReactNode
-  icon?: IconComponent
+  icon?: ReturnType<typeof toIcon>
 }) {
   return (
     <Card className="border-none flex flex-row items-start gap-1 bg-transparent  rounded-md">
@@ -366,7 +384,7 @@ export function SectionLabel({
   action?: React.ReactNode
 }) {
   return (
-    <div className="mb-3 flex items-center justify-between">
+    <div className="mb-3 flex items-center justify-between font-stashly">
       <p className="font-stashly text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {children}
       </p>

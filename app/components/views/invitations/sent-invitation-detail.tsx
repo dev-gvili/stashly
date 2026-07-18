@@ -23,7 +23,6 @@ import { ScrollArea } from '@/ui/scroll-area'
 import { useFetcher } from 'react-router'
 import {
   countByStatus,
-  formatDate,
   getContextIcon,
   getContextKind,
   getContextLabel,
@@ -41,8 +40,11 @@ import {
   SectionLabel,
 } from './invitation-parts'
 import {
+  Avatar,
+  AvatarFallback,
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -50,17 +52,18 @@ import {
 } from '@/components/ui'
 import { AddRecipientsDialog } from './add-recipients-dialog'
 import React from 'react'
+import { formatMediaDate } from '@/utils'
 
 // ---------------------------------------------------------------------------
 // Response summary bar (accepted / pending / declined / canceled)
 // ---------------------------------------------------------------------------
 
 const SEGMENT_COLORS: Record<InvitationStatus, string> = {
-  accepted: 'bg-green-500',
-  pending: 'bg-yellow-500',
-  rejected: 'bg-red-500',
-  canceled: 'bg-muted-foreground',
-  expired: 'bg-muted-foreground',
+  accepted: 'bg-sky-400',
+  pending: 'bg-amber-400',
+  rejected: 'bg-rose-400',
+  canceled: 'bg-gray-400',
+  expired: 'bg-stone-400 ',
 }
 
 function ResponseSummary({
@@ -80,7 +83,7 @@ function ResponseSummary({
   const present = order.filter((key) => counts[key] > 0)
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-input bg-card p-4">
+    <div className="flex flex-col gap-3 rounded-md bg-sidebar p-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">Response summary</p>
         <p className="text-xs text-muted-foreground">
@@ -126,17 +129,25 @@ function RecipientRow({
   const cancelable = recipient.status === 'pending'
 
   return (
-    <div className="flex items-center gap-3 rounded-md bg-sidebar p-4">
-      <UserFillIcon className="size-5 text-muted-foreground" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{recipient.email}</p>
+    <div className="flex items-center justify-evenly gap-2 rounded-md bg-sidebar-accent  text-sm p-4 h-full flex-1">
+      <Avatar className="size-8 bg-primary/20 surface-glass text-muted-foreground rounded-md items-center justify-center">
+        <UserFillIcon className="size-5 text-accent-foreground" />
+      </Avatar>
+      <span className="flex-1 overflow-hidden min-w-0 flex flex-col gap-0.5 w-40">
+        <h2 className="truncate font-stashly text-sm leading-tight">
+          {recipient.email}
+        </h2>
         <p className="text-xs text-muted-foreground">
           {roleLabel(recipient.role)} access
         </p>
-      </div>
-      <InvitationStatusPill status={recipient.status} />
-      {cancelable ? (
-        <cancelFetcher.Form method="post" action="/api/invitations">
+      </span>
+      {cancelable && (
+        <cancelFetcher.Form
+          id={`cancel-${recipient.id}`}
+          method="post"
+          action="/api/invitations"
+          className="items-end justify-end"
+        >
           <input type="hidden" name="intent" value="cancel_recipient" />
           <input type="hidden" name="recipientId" value={recipient.id} />
           <Button
@@ -145,14 +156,13 @@ function RecipientRow({
             type="submit"
             title="Cancel this invitation"
             disabled={disabled || cancelFetcher.state !== 'idle'}
-            className="border border-input bg-card"
+            className="border border-input size-6 rounded "
           >
-            <RemoveIcon className="size-5 text-current" />
+            <RemoveIcon className="size-4 text-current" />
           </Button>
         </cancelFetcher.Form>
-      ) : (
-        <span className="w-7 shrink-0" />
       )}
+      <InvitationStatusPill status={recipient.status} />
     </div>
   )
 }
@@ -181,34 +191,36 @@ export function SentInvitationDetail({
     <>
       <div className="flex w-full bg-card border border-input rounded-md h-[calc(100vh-4rem)]">
         {/* ── LEFT: preview + response summary + message ── */}
+
         <ScrollArea className="min-w-0 h-full w-full rounded-md">
-          <div className="flex flex-col gap-5 p-6">
+          <div className="flex flex-col gap-6 p-6">
+            {invitation.message && (
+              <NoteBlock
+                message={invitation.message}
+                fromName={invitation.sender.name}
+              />
+            )}
             <ContextThumbnail
               kind={invitation.item?.category || kind}
               previewUrl={invitation.item?.thumbnailUrl}
             >
               <ContextThumbnailFooter name={name} meta={meta} />
             </ContextThumbnail>
-
-            <ResponseSummary recipients={invitation.recipients} />
-
-            {invitation.message && <NoteBlock message={invitation.message} />}
           </div>
         </ScrollArea>
       </div>
 
       {/* ── RIGHT: recipients rail ── */}
       <Sidebar
-        variant="floating"
         collapsible="none"
         width="32rem"
         side="right"
-        className="h-[calc(100vh-4rem)] bg-card rounded-md overflow-hidden border border-input"
+        className="h-[calc(100vh-4rem)] bg-card rounded-md border border-input overflow-hidden w-full max-w-max"
       >
         <SidebarHeader>
           {/* Header */}
           <div className="flex items-start gap-3">
-            <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+            <div className="grid size-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
               <ContextIcon className="size-6" />
             </div>
             <div className="min-w-0 flex-1 pt-0.5">
@@ -219,52 +231,20 @@ export function SentInvitationDetail({
                 {name}
               </h2>
               <p className="text-xs text-muted-foreground">
-                on {formatDate(invitation.createdAt)}
+                on {formatMediaDate(invitation.createdAt)}
               </p>
             </div>
           </div>
         </SidebarHeader>
 
-        <SidebarContent className="flex flex-col gap-4 p-2">
-          <SidebarGroup className="p-0">
-            <MetaGrid columns={3}>
-              <MetaCell
-                label="Pending"
-                value={counts.pending}
-                icon={CalendarFillIcon}
-              />
-              <MetaCell
-                label="Sent"
-                value={invitation.recipients.length}
-                icon={SubmitIcon}
-              />
-              <MetaCell
-                label="Accepted"
-                value={counts.accepted}
-                icon={DoubleCheckIcon}
-              />
-            </MetaGrid>
+        <SidebarContent>
+          <SidebarGroup>
+            <ResponseSummary recipients={invitation.recipients} />
           </SidebarGroup>
 
-          <ScrollArea className="h-full">
-            <div className="pt-4">
-              <SectionLabel
-                action={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-
-                    onClick={() => setOpen(true)}
-                  >
-                    <AddIcon className="size-5" />
-                    Add
-                  </Button>
-                }
-              >
-                Recipients
-              </SectionLabel>
+          <SidebarGroup className="flex-1 p-1 h-full">
+            <SidebarGroupLabel>Recipients</SidebarGroupLabel>
+            <ScrollArea type="hidden" className="h-full pb-12">
               <AddRecipientsDialog
                 open={open}
                 onOpenChange={setOpen}
@@ -279,36 +259,42 @@ export function SentInvitationDetail({
                   />
                 ))}
               </div>
-            </div>
-          </ScrollArea>
+            </ScrollArea>
+          </SidebarGroup>
         </SidebarContent>
-        {/* Cancel-all pinned to the bottom of the rail */}
-        {hasPending ? (
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-input bg-card p-4">
-            <p className="text-xs text-muted-foreground">
-              {counts.pending} awaiting reply
-            </p>
-            <cancelAllFetcher.Form method="post" action="/api/invitations">
-              <input type="hidden" name="intent" value="cancel_invitation" />
-              <input type="hidden" name="invitationId" value={invitation.id} />
-              <Button
-                type="submit"
-                variant="outline"
-                size="sm"
-                disabled={isSubmitting}
-                className="text-destructive hover:bg-destructive/10"
-              >
-                <TrashFillIcon className="mr-1.5 size-5" />
-                Cancel all pending
-              </Button>
-            </cancelAllFetcher.Form>
-          </div>
-        ) : (
-          <div className="flex shrink-0 items-center gap-2 border-t border-input bg-card p-4 text-sm text-muted-foreground">
-            <CheckIcon className="size-5" />
-            Everyone has responded.
-          </div>
-        )}
+        <SidebarFooter>
+          {/* Cancel-all pinned to the bottom of the rail */}
+          {hasPending ? (
+            <div className="flex items-center justify-between gap-3 border-t border-input bg-card p-4">
+              <p className="text-xs text-muted-foreground">
+                {counts.pending} awaiting reply
+              </p>
+              <cancelAllFetcher.Form method="post" action="/api/invitations">
+                <input type="hidden" name="intent" value="cancel_invitation" />
+                <input
+                  type="hidden"
+                  name="invitationId"
+                  value={invitation.id}
+                />
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="sm"
+                  disabled={isSubmitting}
+                  className="text-destructive hover:bg-destructive/10"
+                >
+                  <TrashFillIcon className="mr-1.5 size-5" />
+                  Cancel all pending
+                </Button>
+              </cancelAllFetcher.Form>
+            </div>
+          ) : (
+            <div className="flex shrink-0 items-center gap-2 border-t border-input bg-card p-4 text-sm text-muted-foreground">
+              <CheckIcon className="size-5" />
+              Everyone has responded.
+            </div>
+          )}
+        </SidebarFooter>
       </Sidebar>
     </>
   )
