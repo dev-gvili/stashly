@@ -1,7 +1,7 @@
 import { cn } from '@/utils/styles'
 import { WorkspaceFillIcon, ActivityFillIcon, UserIcon, FavoriteIcon, AddIcon, MoreIcon } from '@/components/icons'
 import type { WorkspaceMemberRole } from '@/prisma/enums'
-import { formatSize } from '@/utils/formaters'
+import { formatSize, timeAgo } from '@/utils/formaters'
 import { href, Link } from 'react-router'
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -89,16 +89,6 @@ function fmtStorage(bytes: bigint): string {
 function storagePct(used: bigint, total: bigint): number {
   if (total === 0n) return 0
   return Math.min(100, Number((used * 100n) / total))
-}
-
-function timeAgo(date: Date): string {
-  const diff = Date.now() - date.getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return `${Math.floor(hrs / 24)}d ago`
 }
 
 // ── Atoms ────────────────────────────────────────────────────────────

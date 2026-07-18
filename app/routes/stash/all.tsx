@@ -9,6 +9,7 @@ import {
 import { parseSearchParams } from '@/utils/parsers'
 import { GridLayout } from '@/components/views/grid-view'
 import { ItemCard } from '@/components/stash/item-card'
+import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { Button } from '@/components/ui/button'
 import { usePagination } from '@/hooks/usePagination'
 import { motion } from 'framer-motion'
@@ -120,22 +121,26 @@ export default function Index() {
       <SelectionProvider items={items.map((i) => i.id)}>
         <ListLayout items={items} />
         <GridLayout>
-          {items?.map((item) => (
-            <ItemCard key={item.id} {...item}>
-              <ItemCard.Header>
-                <ItemCard.Checkbox name="selectedItems" value={item.id} />
-                <ItemCard.Actions className="place-self-end" />
-              </ItemCard.Header>
-              <ItemCard.Content>
-                <ItemCard.Thumbnail />
-                <ItemCard.Name />
-              </ItemCard.Content>
-              <ItemCard.Footer>
-                <ItemCard.Size />
-                <ItemCard.Count />
-              </ItemCard.Footer>
-            </ItemCard>
-          ))}
+          {items?.map((item) =>
+            item.type === 'folder' ? (
+              <FolderCardTab key={item.id} {...item} />
+            ) : (
+              <ItemCard key={item.id} {...item}>
+                <ItemCard.Header>
+                  <ItemCard.Checkbox name="selectedItems" value={item.id} />
+                  <ItemCard.Actions className="place-self-end" />
+                </ItemCard.Header>
+                <ItemCard.Content>
+                  <ItemCard.Thumbnail />
+                  <ItemCard.Name />
+                </ItemCard.Content>
+                <ItemCard.Footer>
+                  <ItemCard.Size />
+                  <ItemCard.Count />
+                </ItemCard.Footer>
+              </ItemCard>
+            )
+          )}
         </GridLayout>
       </SelectionProvider>
       <div className="col-span-full flex justify-center items-center h-full py-4">

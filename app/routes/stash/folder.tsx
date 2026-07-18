@@ -1,5 +1,6 @@
 import { LoadMoreItems } from '@/components/core-components/buttons'
 import { ItemCard } from '@/components/stash/item-card'
+import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { GridLayout } from '@/components/views/grid-view'
 import { usePagination } from '@/hooks/usePagination'
 import { auth } from '@/services/auth'
@@ -108,22 +109,26 @@ export default () => {
     <div className="w-full h-full relative space-y-4">
       <SelectionProvider items={items.map((i) => i.id)}>
         <GridLayout>
-          {items.map((item) => (
-            <ItemCard key={item.id} {...item}>
-              <ItemCard.Header>
-                <ItemCard.Checkbox name="selectedItems" value={item.id} />
-                <ItemCard.Actions className="place-self-end" />
-              </ItemCard.Header>
-              <ItemCard.Content>
-                <ItemCard.Thumbnail />
-                <ItemCard.Name />
-              </ItemCard.Content>
-              <ItemCard.Footer>
-                <ItemCard.Size />
-                <ItemCard.Count />
-              </ItemCard.Footer>
-            </ItemCard>
-          ))}
+          {items.map((item) =>
+            item.type === 'folder' ? (
+              <FolderCardTab key={item.id} {...item} />
+            ) : (
+              <ItemCard key={item.id} {...item}>
+                <ItemCard.Header>
+                  <ItemCard.Checkbox name="selectedItems" value={item.id} />
+                  <ItemCard.Actions className="place-self-end" />
+                </ItemCard.Header>
+                <ItemCard.Content>
+                  <ItemCard.Thumbnail />
+                  <ItemCard.Name />
+                </ItemCard.Content>
+                <ItemCard.Footer>
+                  <ItemCard.Size />
+                  <ItemCard.Count />
+                </ItemCard.Footer>
+              </ItemCard>
+            )
+          )}
         </GridLayout>
       </SelectionProvider>
       <div className="col-span-full flex justify-center mt-2">

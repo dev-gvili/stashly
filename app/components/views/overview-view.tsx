@@ -6,6 +6,7 @@ import {
 } from '@/components/icons'
 import { ItemCard } from '@/components/stash/item-card'
 import { FilesEmptyState } from '@/components/states/files-empty-state'
+import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import type {
   OverviewActivity,
   OverviewActivityKind,
@@ -193,6 +194,10 @@ function ItemListRow({ item }: { item: StashItem }) {
 }
 
 function OverviewCard({ item }: { item: StashItem }) {
+  if (item.type === 'folder') {
+    return <FolderCardTab {...item} />
+  }
+
   return (
     <ItemCard {...item}>
       <ItemCard.Header>
@@ -328,7 +333,7 @@ export function OverviewView({
         <section>
           <SectionLabel title="Jump back in" subtitle="based on last touch" />
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 auto-rows-min">
-            {suggestedFolders.slice(0, 6).map((folder) => (
+            {suggestedFolders.slice(0, 8).map((folder) => (
               <OverviewCard key={folder.id} item={folder} />
             ))}
           </div>

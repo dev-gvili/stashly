@@ -160,6 +160,21 @@ export function formatDuration(sec: number | null | undefined): string {
 }
 
 /**
+ * Format a date as a short relative string (`just now`, `5m ago`, `3h ago`,
+ * `2d ago`), falling back to an em dash when the value is missing.
+ */
+export function timeAgo(date: Date | string | null | undefined): string {
+  if (!date) return '—'
+  const diff = Date.now() - new Date(date).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
+}
+
+/**
  * Format a date for the item panel as `Jan 1, 2026` (en-US, short month),
  * falling back to an em dash when the value is missing.
  */

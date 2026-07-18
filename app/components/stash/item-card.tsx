@@ -369,7 +369,7 @@ const ItemCardRoot = ({
   let navigate = useNavigate()
 
   let [searchParams, setSearchParams] = useSearchParams()
-  const layout = searchParams.get('layout')
+  const layout = searchParams.get('layout') ?? 'grid'
   const take = searchParams.get('take') ?? 100
 
   const { size, ...rest } = props
@@ -393,12 +393,16 @@ const ItemCardRoot = ({
     [props, user, searchParams]
   )
 
-  const to = toItemUrl({
+  let to = toItemUrl({
     parentId: rest.parentId || '',
     type: rest.type,
     id: rest.id,
     ownerId: user!.id,
   })
+
+  if(rest.type === 'folder'){
+    to = `${to}?layout=${layout}&take=${take}`
+  }
 
   const Comp = asChild ? Slot : 'div'
 
@@ -414,17 +418,17 @@ const ItemCardRoot = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          'rounded-md p-2 grid gap-0  border-input font-stashly surface-glass overflow-hidden group/card card select-none relative z-0 transition-colors',
+          'rounded-md p-2 grid gap-0 border-input font-stashly surface-glass overflow-hidden group/card card select-none relative z-0 transition-colors',
           isFolder &&
             isDragOver &&
-            'ring-2 ring-muted bg-grid surface-elevated',
+            'ring-2 ring-primary bg-grid surface-elevated',
           className
         )}
         onClick={(e) => {
           // Ignore clicks from portaled elements (dialogs, dropdowns)
           if (!e.currentTarget.contains(e.target as Node)) return false
           e.stopPropagation()
-          navigate(layout ? `${to}?layout=${layout}&take=${take}` : to, {
+          navigate(to, {
             state:{ name: props.name }
           })
         }}

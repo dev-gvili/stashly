@@ -1,6 +1,7 @@
 import { auth } from '@/.server/auth'
 import { GridLayout } from '@/components/views/grid-view'
 import { ItemCard } from '@/components/stash/item-card'
+import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { prisma } from '@/services/db'
 import type { Route } from './+types/shares'
 import { redirect } from 'react-router'
@@ -164,19 +165,23 @@ export default ({ loaderData }: Route.ComponentProps) => {
               variants={itemVariants}
               transition={{ duration: 0.2 }}
             >
-              <ItemCard key={item.id} {...item}>
-                <ItemCard.Header>
-                  <ItemCard.Checkbox name="selectedItems" value={item.id} />
-                </ItemCard.Header>
-                <ItemCard.Content>
-                  <ItemCard.Thumbnail />
-                  <ItemCard.Name />
-                </ItemCard.Content>
-                <ItemCard.Footer>
-                  <ItemCard.Size />
-                  <ItemCard.Count />
-                </ItemCard.Footer>
-              </ItemCard>
+              {item.type === 'folder' ? (
+                <FolderCardTab {...item} />
+              ) : (
+                <ItemCard {...item}>
+                  <ItemCard.Header>
+                    <ItemCard.Checkbox name="selectedItems" value={item.id} />
+                  </ItemCard.Header>
+                  <ItemCard.Content>
+                    <ItemCard.Thumbnail />
+                    <ItemCard.Name />
+                  </ItemCard.Content>
+                  <ItemCard.Footer>
+                    <ItemCard.Size />
+                    <ItemCard.Count />
+                  </ItemCard.Footer>
+                </ItemCard>
+              )}
             </motion.div>
           ))}
         </GridLayout>
