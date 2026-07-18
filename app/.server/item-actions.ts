@@ -3358,3 +3358,15 @@ export async function loadMarkdownDocument(
   const text = await getObjectText(bucket, key)
   return { text, headings: extractMarkdownHeadings(text) }
 }
+
+/**
+ * Server-side load of a plain-text/code document body for TextStage. Same
+ * deferred-streaming contract as `loadMarkdownDocument`: return it unawaited
+ * from the loader so the page shell paints while the body streams.
+ */
+export async function loadTextDocument(
+  bucket: string,
+  key: string
+): Promise<{ text: string }> {
+  return { text: await getObjectText(bucket, key) }
+}

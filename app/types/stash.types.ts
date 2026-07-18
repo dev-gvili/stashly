@@ -255,6 +255,12 @@ export type StashItemMarkdown = {
   } | null
 }
 
+export type StashItemText = {
+  id: string
+  name: string
+  file: { mimeType: string | null } | null
+}
+
 // Subset of what getFileItem returns — only what the item panel renders.
 export type StashItemPanel = {
   id: string

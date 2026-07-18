@@ -47,7 +47,8 @@ export function isTextRenderableFile(file: { name: string; type?: string }): boo
   return /\b(json|xml|javascript|typescript|yaml|sql)\b/.test(type)
 }
 
-function isMonoFile(file: { name: string; type?: string }): boolean {
+/** True when the file renders monospaced (code/config/data vs prose). */
+export function isMonoFile(file: { name: string; type?: string }): boolean {
   const ext = fileExtension(file.name)
   if (MONO_EXTENSIONS.has(ext)) return true
   if (PROSE_EXTENSIONS.has(ext)) return false

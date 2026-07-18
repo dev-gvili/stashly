@@ -8,6 +8,7 @@ import { ItemPanel } from '@/components/views/item-page/item-panel'
 import { MarkdownStage } from '@/components/views/item-page/markdown-stage'
 import { PdfStage } from '@/components/views/item-page/pdf-stage'
 import { SiblingNav } from '@/components/views/item-page/sibling-nav'
+import { TextStage } from '@/components/views/item-page/text-stage'
 import { VideoStage } from '@/components/views/item-page/video-stage'
 import { auth } from '@/services/auth'
 import { breadcrumbs } from '@/services/breadcrumbs'
@@ -15,11 +16,13 @@ import {
   getFileItem,
   getMediaSiblings,
   loadMarkdownDocument,
+  loadTextDocument,
   touchOpenedAt,
 } from '@/services/item-actions'
 import { getPresignedUrl } from '@/services/s3'
 import type { StashItemPanel } from '@/types/stash.types'
 import { isMarkdownName } from '@/utils/markdown'
+import { isTextRenderableFile } from '@/utils/text-thumbnail'
 import { cn } from '@/utils/styles'
 import jetbrainsMonoFonts from '@fontsource-variable/jetbrains-mono/index.css?url'
 import type { LinksFunction } from 'react-router'
@@ -55,7 +58,7 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   return defaultShouldRevalidate
 }
 
-type MediaKind = 'pdf' | 'markdown' | 'image' | 'video' | 'audio'
+type MediaKind = 'pdf' | 'markdown' | 'image' | 'video' | 'audio' | 'text'
 
 /**
  * Which stage renders this item. A facet row is authoritative; the mime type
@@ -77,6 +80,10 @@ function detectMediaKind(item: {
   if (item.image != null || mimeType?.startsWith('image/')) return 'image'
   if (item.video != null || mimeType?.startsWith('video/')) return 'video'
   if (item.audio != null || mimeType?.startsWith('audio/')) return 'audio'
+  // Last: markdown/image (svg) matched above, so this only catches the rest
+  // of the text-renderable set (plain text, code, config, logs).
+  if (isTextRenderableFile({ name: item.name, type: mimeType ?? undefined }))
+    return 'text'
   return null
 }
 
@@ -147,7 +154,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       ? loadMarkdownDocument(item.file.bucket, item.file.key)
       : null
 
-  return { item, crumbs, activities: acts.data, src, siblings, kind, markdownDoc }
+  // Text bodies stream the same way as markdown (see above).
+  const textDoc =
+    kind === 'text' && item.file?.key
+      ? loadTextDocument(item.file.bucket, item.file.key)
+      : null
+
+  return { item, crumbs, activities: acts.data, src, siblings, kind, markdownDoc, textDoc }
 }
 
 export default function FilePage({ loaderData, params }: Route.ComponentProps) {
@@ -194,6 +207,8 @@ function Stage({
       return <PdfStage {...loaderData} />
     case 'markdown':
       return <MarkdownStage {...loaderData} />
+    case 'text':
+      return <TextStage {...loaderData} />
     case 'audio':
       return <AudioStage {...loaderData} />
     case 'image':
