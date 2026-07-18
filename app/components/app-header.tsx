@@ -1,62 +1,36 @@
-import { Grid, LayoutToggle, List, River, Waterfall } from './layout-toggle'
-import { ModeToggle } from './color-mode'
-import { HeaderFilters } from './filters/filters'
 import {
-  DropdownIcon,
-  UploadFillIcon,
-  FolderFillIcon,
   AddFoldersIcon,
-  UploadFileFillIcon,
-  UploadFolderFillIcon,
   ArrowLeftFillIcon,
+  DropdownIcon,
+  UploadFileFillIcon,
+  UploadFillIcon,
+  UploadFolderFillIcon,
 } from '@/components/icons'
-import { Trigger } from './upload'
-import { SidebarTrigger } from './ui/sidebar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from './ui/dropdown-menu'
-import { Button } from './ui/button'
-import { ButtonGroup } from './ui/button-group'
 import { useUpload } from '@/hooks/useUpload'
-import {
-  href,
-  useFetcher,
-  useNavigate,
-  useParams,
-  useRouteLoaderData,
-} from 'react-router'
-import { Popover, PopoverContent, PopoverTrigger, Separator } from './ui'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog'
-import { Input } from './ui/input'
-import { Label } from './ui/label'
-import { useEffect, useState } from 'react'
-import type { Route } from '../routes/+types/layout'
-import { useLocation } from 'react-router'
-import { useBreadcrumbs } from '@/hooks'
-import { Breadcrumbs } from './core-components/breadcrumb-navigation'
 import { cn } from '@/utils'
+import { useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router'
+import { ModeToggle } from '@/components/color-mode'
+import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
+import { NewFolderDialog } from '@/components/core-components/new-folder-dialog'
+import { HeaderFilters } from '@/components/filters/filters'
+import {
+  Grid,
+  LayoutToggle,
+  List,
+  River,
+  Waterfall,
+} from '@/components/layout-toggle'
+import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
+import { Button } from '@/ui/button'
+import { ButtonGroup } from '@/ui/button-group'
+import { Trigger } from '@/components/upload'
 
 export function AppHeader() {
-  let { toggleView } = useUpload()
   const { folderId, fileId } = useParams()
   let navigate = useNavigate()
   return (
     <header className="bg-background z-40 flex items-center h-14 justify-between pl-0 pr-2 py-2 sticky top-0 shrink-0 gap-2">
-      {/* <SidebarTrigger
-        variant="outline"
-        size="icon"
-        className="font-stashly bg-card! border-accent data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground  rounded-md!"
-      /> */}
       <Button
         variant="outline"
         size="icon"
@@ -70,7 +44,7 @@ export function AppHeader() {
       </Button>
       <Breadcrumbs />
       <div className="flex flex-1 gap-2 items-center">
-        <StashlyUpload folderId={folderId} toggleView={toggleView} />
+        <StashlyUpload folderId={folderId} />
         <HeaderFilters />
       </div>
       <div className="flex items-center space-x-2">
@@ -86,19 +60,14 @@ export function AppHeader() {
   )
 }
 
-function StashlyUpload({
-  folderId,
-  toggleView,
-}: {
-  toggleView: () => void
-  folderId: string | undefined
-}) {
+function StashlyUpload({ folderId }: { folderId: string | undefined }) {
+  let { toggleView } = useUpload()
   const location = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [newFolderOpen, setNewFolderOpen] = useState(false)
   if (location.pathname.includes('files')) {
     return null
   }
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [newFolderOpen, setNewFolderOpen] = useState(false)
 
   return (
     <ButtonGroup className="border border-sidebar-border rounded-md bg-card">
@@ -169,94 +138,5 @@ function StashlyUpload({
         folderId={folderId}
       />
     </ButtonGroup>
-  )
-}
-
-function NewFolderDialog({
-  open,
-  onOpenChange,
-  folderId,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  folderId: string | undefined
-}) {
-  const user =
-    useRouteLoaderData<Route.ComponentProps['loaderData']>('layout')!.user
-  const fetcher = useFetcher<{ success: boolean; error?: string }>()
-  const [name, setName] = useState('')
-  const isSubmitting = fetcher.state !== 'idle'
-
-  useEffect(() => {
-    if (!open) {
-      setName('')
-      return
-    }
-  }, [open])
-
-  useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data?.success) {
-      onOpenChange(false)
-    }
-  }, [fetcher.state, fetcher.data, onOpenChange])
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const trimmed = name.trim()
-    if (!trimmed || !user.driveId) return
-    const parentId = folderId ?? user.rootId
-    if (!parentId) return
-    onOpenChange(false)
-    fetcher.submit(
-      {
-        intent: 'create_folder',
-        name: trimmed,
-        parentId,
-        driveId: user.driveId,
-      },
-      { method: 'post', action: href('/api/items') }
-    )
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>New folder</DialogTitle>
-            <DialogDescription>
-              Create a new folder in the current location.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-2 py-4">
-            <Label htmlFor="new-folder-name">Name</Label>
-            <Input
-              id="new-folder-name"
-              autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Untitled folder"
-              disabled={isSubmitting}
-            />
-            {fetcher.data?.success === false && fetcher.data.error ? (
-              <p className="text-sm text-destructive">{fetcher.data.error}</p>
-            ) : null}
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={!name.trim() || isSubmitting}>
-              {isSubmitting ? 'Creating…' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   )
 }

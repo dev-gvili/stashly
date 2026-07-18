@@ -119,7 +119,7 @@ export function Breadcrumbs() {
   const showAll = crumbs.length <= 3
 
   return (
-    <Breadcrumb className="w-full text-foreground">
+    <Breadcrumb className="w-full flex-1 max-w-max">
       <BreadcrumbList>
         {/* Root — always first */}
         {root.id !== last.id ? (

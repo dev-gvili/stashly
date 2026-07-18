@@ -1,37 +1,36 @@
-import { auth } from '@/services/auth'
-import { toZodArraySchema } from '@/utils/converters'
+import { itemsApiRouteInput } from '@/schemas/api.schemas';
+import { auth } from '@/services/auth';
 import {
-  createFolder,
-  createUploadedItem,
-  upsertImageFacet,
-  upsertVideoFacet,
-  upsertAudioFacet,
-  upsertPdfFacet,
-  upsertMarkdownFacet,
-  deleteItem,
-  deleteItems,
-  getChildFolders,
-  moveItem,
-  moveItems,
-  renameItem,
-  restoreItem,
-  restoreItems,
-  searchFolders,
-  trashItem,
-  trashItems,
-} from '@/services/item-actions'
+    createFolder,
+    createUploadedItem,
+    deleteItem,
+    deleteItems,
+    getChildFolders,
+    moveItem,
+    moveItems,
+    renameItem,
+    restoreItem,
+    restoreItems,
+    searchFolders,
+    trashItem,
+    trashItems,
+    upsertAudioFacet,
+    upsertImageFacet,
+    upsertMarkdownFacet,
+    upsertPdfFacet,
+    upsertVideoFacet,
+} from '@/services/item-actions';
 import {
-  upsertSearchContent,
-  upsertSearchChunks,
-  chunkText,
-  setSearchChunkVectors,
-} from '@/services/search-actions'
-import { parseFormData } from '@/utils/parsers'
-import { removeQueryParam, removeQueryParamValue } from '@/utils/query-params'
-import { data, redirect } from 'react-router'
-import type { Route } from './+types/items'
-import { itemsApiRouteInput } from '@/schemas/api.schemas'
-import { z } from 'zod'
+    chunkText,
+    setSearchChunkVectors,
+    upsertSearchChunks,
+    upsertSearchContent,
+} from '@/services/search-actions';
+import { parseFormData } from '@/utils/parsers';
+import { removeQueryParam, removeQueryParamValue } from '@/utils/query-params';
+import { data, redirect } from 'react-router';
+import { z } from 'zod';
+import type { Route } from './+types/items';
 
 export async function loader({ request }: Route.LoaderArgs) {
   const session = await auth.api.getSession({
@@ -197,12 +196,11 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
     case 'create_folder': {
       try {
-        console.log('Creating folder with data:', parsedData)
         await createFolder(
           parsedData.name,
           parsedData.parentId,
           user.id,
-          parsedData.driveId
+          user.driveId
         )
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
