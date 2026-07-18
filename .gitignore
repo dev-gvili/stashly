@@ -1,6 +1,8 @@
 # Claude Code local config — ignore personal config, keep project settings
 .claude/*
 !.claude/settings.json
+!.claude/hooks/
+!.claude/tsc-baseline.json
 
 # Dependencies
 node_modules
