@@ -372,6 +372,16 @@
     @apply box-border font-stashly transition-colors duration-200 ease-in-out  selection:bg-primary/50 selection:text-foreground;
   }
 
+  /* Monaco (code viewer) manages fonts itself: it stamps font-family inline
+     on .view-lines etc., but the universal font-stashly rule above re-stamps
+     every descendant span — silently swapping JetBrains Mono for Share Tech,
+     which has no coding ligatures. Restore inheritance inside the editor;
+     .codicon is excluded so Monaco's icon font keeps working. */
+  .monaco-editor,
+  .monaco-editor *:not(.codicon) {
+    font-family: inherit;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
   }
