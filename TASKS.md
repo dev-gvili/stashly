@@ -2,7 +2,7 @@
 
 ## Active
 
-- [ ] Migrate flat item API routes — `routes.ts` still registers both a flat top-level path and a nested `items/:itemId/...` path for the same resource: `shares`, `favorites`, `versions`, `invitations`, `comments/*` (invitations added a nested route this session too). Move remaining flat callers to nested and remove the flat registrations after. Note: `pins` and `locks` are flat-only (no nested counterpart) — not part of this migration. *(re-confirmed still open 2026-07-15)*
+- [ ] Migrate flat item API routes — `routes.ts` still registers both a flat top-level path and a nested `items/:itemId/...` path for the same resource: `shares`, `favorites`, `versions`, `invitations`, `comments/*` (invitations added a nested route this session too). Move remaining flat callers to nested and remove the flat registrations after. Note: `pins` and `locks` are flat-only (no nested counterpart) — not part of this migration. *(re-confirmed still open 2026-07-18: flat at routes.ts:45-58, nested at routes.ts:103-116)*
 
 ## Someday / Low Priority
 
@@ -10,9 +10,9 @@
 
 - [ ] **URL model** — central `Url` table for short-link routing, analytics, and expiry. Approach settled: Url owns nullable FKs to each resource (facet pattern, matching `Item`). 1:1 per resource with `@unique` FK cols for now; workspace slug aliasing (1:many) deferred. Path prefixes from `StashlyPrefixMap` (`/ws/:slug`, `/sl/:slug`, `/inv/:slug`). Each resource type gets its own redirect route. Brainstormed 2026-05-16.
 
-- [ ] Fix `app/routes/api/shares.ts` — replace `@/services/share-actions` import with relative `../../.server/share-actions` to resolve dot-server plugin build failure *(deferred)*
-- [ ] Review and clean 7 stale git stashes (2 have alarming names: "after im fucked…", "fuck")
-- [ ] Delete leftover worktree branches: `copilot-worktree-*` × 4, `elderly-monkey`, `tasteless-muskox`, `main1`; plus shipped branches not yet deleted: `feat/pinned-items`, `feature/sharing-items`, `feat/concurrent-multipart-upload`, `fix/concurrent-upload-hardening`, `feature/invitations`, `e2e-tests`, `blue`, `list`, `split-language-detection`, `refactor/collection-self-relation`
+- [ ] Fix `app/routes/api/shares.ts` — replace `@/services/share-actions` import with relative `../../.server/share-actions` to resolve dot-server plugin build failure *(deferred; import still present at shares.ts:17, re-confirmed 2026-07-18)*
+- [ ] Review and clean 7 stale git stashes (2 have alarming names: "after im fucked…", "fuck") *(all 7 still present 2026-07-18)*
+- [ ] Delete leftover worktree branches: `copilot-worktree-*` × 4, `copilot/push-commits-to-gh`, `elderly-monkey`, `tasteless-muskox`, `main1`; plus shipped branches not yet deleted: `feat/pinned-items`, `feature/sharing-items`, `feat/concurrent-multipart-upload`, `fix/concurrent-upload-hardening`, `feature/invitations`, `e2e-tests`, `blue`, `list`, `split-language-detection`, `refactor/collection-self-relation` *(all still present 2026-07-18; also spotted `claude/friendly-einstein-c30497` which has a live worktree under `.claude/worktrees/` — check before deleting)*
 
 ## Done
 
