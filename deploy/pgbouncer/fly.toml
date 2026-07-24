@@ -1,0 +1,57 @@
+# PgBouncer — standalone Fly.io app fronting Postgres for Stashly.
+#
+# Private-only: the pooler must never be internet-facing. It is reached from the
+# main app over the 6PN private network at `stashly-pgbouncer.flycast:6432`.
+# Allocate a private (flycast) address once with:
+#   fly ips allocate-v6 --private --app stashly-pgbouncer
+#
+# Upstream Postgres credentials are set as SECRETS, not here (see README.md):
+#   fly secrets set DB_HOST=... DB_USER=... DB_PASSWORD=... DB_NAME=... \
+#     --app stashly-pgbouncer
+
+app = "stashly-pgbouncer"
+primary_region = "iad" # match your main app + Postgres region
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # Transaction pooling gives the most multiplexing and is compatible with
+  # Prisma's pg driver adapter (parameterized, unnamed statements).
+  POOL_MODE = "transaction"
+  # Client-side ceiling: how many app connections PgBouncer will accept.
+  MAX_CLIENT_CONN = "5000"
+  # Server-side: connections PgBouncer opens to Postgres per user/db pair.
+  # Keep well under Postgres `max_connections`.
+  DEFAULT_POOL_SIZE = "25"
+  MIN_POOL_SIZE = "5"
+  RESERVE_POOL_SIZE = "5"
+  RESERVE_POOL_TIMEOUT = "3"
+  AUTH_TYPE = "scram-sha-256"
+  DB_PORT = "5432"
+  # TLS to upstream Postgres. A Fly-internal Postgres reached over 6PN is
+  # already WireGuard-encrypted and runs without TLS → "disable". Switch to
+  # "require" only for an external managed provider. See
+  # ../postgres/README.md.
+  SERVER_TLS_SSLMODE = "disable"
+
+# Private TCP service on 6432 via flycast (load-balanced across machines).
+# No `force_https`, no public ports — this stays on the private network.
+[[services]]
+  protocol = "tcp"
+  internal_port = 6432
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 5000
+    soft_limit = 4500
+
+  [[services.ports]]
+    port = 6432
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

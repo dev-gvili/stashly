@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events'
 import pg from 'pg'
+import { inc } from './metrics'
 
 // ---------------------------------------------------------------------------
 // Server-side notification bus + Postgres LISTEN bridge.
@@ -53,7 +54,13 @@ export function ensureListener(): Promise<unknown> {
   if (globalForNotifications.__notificationListener)
     return globalForNotifications.__notificationListener.ready
 
-  const client = new pg.Client({ connectionString: process.env.DATABASE_URL })
+  // LISTEN needs a *session-pinned* connection, so it must bypass a transaction
+  // -mode pooler (PgBouncer): prefer DIRECT_DATABASE_URL, fall back to
+  // DATABASE_URL for local/dev where there is no pooler in front.
+  const client = new pg.Client({
+    connectionString:
+      process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL,
+  })
 
   const reconnect = () => {
     globalForNotifications.__notificationListener = undefined
@@ -66,6 +73,7 @@ export function ensureListener(): Promise<unknown> {
     if (!msg.payload) return
     try {
       const event = JSON.parse(msg.payload) as NotificationEvent
+      inc('notify_events_total')
       notificationBus.emit(event.userId, event)
     } catch {
       // ignore malformed payloads
