@@ -69,8 +69,8 @@ self.MonacoEnvironment = {
  * `tagToString` renders JSDoc far more crudely than VSCode does.
  */
 function configureTypeScript() {
-  const ts = monaco.languages.typescript
-  const compilerOptions: monaco.languages.typescript.CompilerOptions = {
+  const ts = monaco.typescript
+  const compilerOptions: monaco.typescript.CompilerOptions = {
     allowJs: true,
     // Our model URIs aren't real paths; without this the service ignores them.
     allowNonTsExtensions: true,
@@ -86,7 +86,7 @@ function configureTypeScript() {
     // array methods and friends all hover with their real signatures.
     target: ts.ScriptTarget.ESNext,
   }
-  const diagnosticsOptions: monaco.languages.typescript.DiagnosticsOptions = {
+  const diagnosticsOptions: monaco.typescript.DiagnosticsOptions = {
     noSemanticValidation: true,
     noSyntaxValidation: false,
     noSuggestionDiagnostics: true,
@@ -487,8 +487,8 @@ function registerTsHover() {
 
   const accessorFor = (languageId: string) =>
     languageId === 'javascript'
-      ? monaco.languages.typescript.getJavaScriptWorker()
-      : monaco.languages.typescript.getTypeScriptWorker()
+      ? monaco.typescript.getJavaScriptWorker()
+      : monaco.typescript.getTypeScriptWorker()
 
   for (const languageId of ['typescript', 'javascript']) {
     monaco.languages.registerHoverProvider(languageId, {
@@ -544,7 +544,7 @@ function registerTsHover() {
  * more often than it's right.
  */
 function configureJson() {
-  monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+  monaco.json.jsonDefaults.setDiagnosticsOptions({
     validate: true,
     allowComments: true,
     schemas: [],
@@ -569,7 +569,7 @@ function configureJson() {
  * this service at all.
  */
 function configureCss() {
-  const options: monaco.languages.css.Options = {
+  const options: monaco.css.Options = {
     validate: true,
     lint: {
       vendorPrefix: 'ignore',
@@ -583,7 +583,7 @@ function configureCss() {
     },
     data: { useDefaultDataProvider: true },
   }
-  const css = monaco.languages.css
+  const css = monaco.css
   for (const defaults of [css.cssDefaults, css.scssDefaults, css.lessDefaults]) {
     defaults.setOptions(options)
   }
@@ -778,8 +778,8 @@ async function loadSqlGrammar(): Promise<void> {
   try {
     // Deep basic-languages path — no co-located .d.ts. Its shape is
     // `{ conf: LanguageConfiguration, language: IMonarchLanguage }`.
-    // @ts-expect-error - no type declarations for this module path
     const { conf, language } = await import(
+      // @ts-expect-error - no type declarations for this module path
       'monaco-editor/esm/vs/basic-languages/sql/sql.js'
     )
     monaco.languages.setMonarchTokensProvider('sql', language)
