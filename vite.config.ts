@@ -1,14 +1,5 @@
-import {
-  defineConfig,
-  loadEnv,
-  type Plugin,
-  type PluginOption,
-  type ViteDevServer,
-} from 'vite'
-import tailwindcss from '@tailwindcss/vite'
 import { reactRouter } from '@react-router/dev/vite'
-import svgr from 'vite-plugin-svgr'
-import { dirname, join, relative, resolve } from 'path'
+import tailwindcss from '@tailwindcss/vite'
 import { createHash } from 'crypto'
 import {
   access,
@@ -20,6 +11,14 @@ import {
   stat,
   writeFile,
 } from 'fs/promises'
+import { dirname, join, relative, resolve } from 'path'
+import {
+  defineConfig,
+  type Plugin,
+  type PluginOption,
+  type ViteDevServer,
+} from 'vite'
+import svgr from 'vite-plugin-svgr'
 
 export default defineConfig(({ isSsrBuild, mode }) => ({
   envDir: '.',
@@ -28,13 +27,7 @@ export default defineConfig(({ isSsrBuild, mode }) => ({
   },
   server: {
     cors: true,
-    allowedHosts: [
-      '*',
-      'localhost:80',
-      'localhost:3000',
-      '.ngrok-free.app',
-      '.ngrok-free.dev',
-    ],
+    allowedHosts: ['*', 'localhost:80', '.ngrok-free.app', '.ngrok-free.dev'],
     host: true,
   },
   build: {
@@ -53,7 +46,11 @@ export default defineConfig(({ isSsrBuild, mode }) => ({
         minify: true,
       },
     }),
-    svgr(),
+    svgr({
+      svgrOptions: {
+        typescript: true,
+      },
+    }),
     reactRouter(),
     // Copy PDF.js assets to public directory
     pdfjsHybridCopyPluginAsync(),
