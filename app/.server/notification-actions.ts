@@ -5,6 +5,7 @@ import { NotificationType, NotificationStatus, NotificationKind } from '@/prisma
 import type { Prisma } from '@/prisma/client'
 import { buildNotificationFilters } from '@/utils/filters/notification.filters'
 import { searchFactory } from '@/utils/search'
+import { inc } from './metrics'
 
 // ---------------------------------------------------------------------------
 // Search
@@ -99,6 +100,9 @@ export async function markNotificationUnread(id: string, userId: string) {
  * Marks all unread notifications for a user as read in a single query.
  */
 export async function markAllNotificationsRead(userId: string) {
+  // The burst signal: one call fans out to one row-trigger NOTIFY per unread
+  // row. Tracked so a synchronized mark-all wave is visible in metrics.
+  inc('mark_all_read_total')
   return prisma.notification.updateMany({
     where: { userId, status: NotificationStatus.unread },
     data: { status: NotificationStatus.read },

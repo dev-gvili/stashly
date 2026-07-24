@@ -5,6 +5,7 @@ import {
   subscribe,
   type NotificationEvent,
 } from '@/services/notification-events'
+import { sseOpened, sseClosed } from '@/services/metrics'
 import type { Route } from './+types/notifications-stream'
 
 // ---------------------------------------------------------------------------
@@ -49,6 +50,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       const off = subscribe(userId, (event: NotificationEvent) => {
         safeSend({ event: 'notification', data: JSON.stringify(event) })
       })
+      sseOpened()
 
       // Heartbeat so intermediaries don't drop an idle connection.
       const heartbeat = setInterval(() => {
@@ -59,6 +61,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         if (closed) return
         closed = true
         off()
+        sseClosed()
         clearInterval(heartbeat)
       }
 
