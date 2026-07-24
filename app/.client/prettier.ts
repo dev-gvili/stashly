@@ -17,6 +17,7 @@ const PRETTIER_OPTIONS: Options = {
   tabWidth: 2,
   trailingComma: 'es5',
   useTabs: false,
+  printWidth: 80,
 }
 
 /**
@@ -55,11 +56,26 @@ const LANGUAGES: Record<
         import('prettier/plugins/estree'),
       ]),
   },
-  css: { parser: 'css', load: () => Promise.all([import('prettier/plugins/postcss')]) },
-  scss: { parser: 'scss', load: () => Promise.all([import('prettier/plugins/postcss')]) },
-  less: { parser: 'less', load: () => Promise.all([import('prettier/plugins/postcss')]) },
-  html: { parser: 'html', load: () => Promise.all([import('prettier/plugins/html')]) },
-  yaml: { parser: 'yaml', load: () => Promise.all([import('prettier/plugins/yaml')]) },
+  css: {
+    parser: 'css',
+    load: () => Promise.all([import('prettier/plugins/postcss')]),
+  },
+  scss: {
+    parser: 'scss',
+    load: () => Promise.all([import('prettier/plugins/postcss')]),
+  },
+  less: {
+    parser: 'less',
+    load: () => Promise.all([import('prettier/plugins/postcss')]),
+  },
+  html: {
+    parser: 'html',
+    load: () => Promise.all([import('prettier/plugins/html')]),
+  },
+  yaml: {
+    parser: 'yaml',
+    load: () => Promise.all([import('prettier/plugins/yaml')]),
+  },
   graphql: {
     parser: 'graphql',
     load: () => Promise.all([import('prettier/plugins/graphql')]),

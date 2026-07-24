@@ -254,9 +254,15 @@ const EDITOR_FONT_SIZE = 13
 function addFormatActions(
   editor: monaco.editor.IStandaloneCodeEditor,
   model: monaco.editor.ITextModel,
-  language: string
+  language: string,
+  notify: (message: string) => void
 ) {
-  const original = model.getValue()
+  // Compare and format on LF. A model created from CRLF text keeps CRLF and
+  // re-normalizes anything pushed into it, so a raw comparison against
+  // Prettier's LF output reports "changed" for a document that will render
+  // byte-identical — the edit lands, nothing moves, and the menu flips to
+  // Revert for no reason.
+  const original = model.getValue().replace(/\r\n/g, '\n')
   const isFormatted = editor.createContextKey<boolean>(
     'stashlyFormatted',
     false
@@ -289,13 +295,21 @@ function addFormatActions(
       running = true
       try {
         const formatted = await formatDocument(original, language)
-        if (model.isDisposed() || formatted === original) return
+        if (model.isDisposed()) return
+        if (formatted === original) {
+          // Common and easily mistaken for a broken action: source checked out
+          // of a Prettier-formatted repo is already at its fixed point.
+          notify('Already formatted — Prettier made no changes')
+          return
+        }
         replaceAll(formatted)
         isFormatted.set(true)
+        notify('Formatted with Prettier')
       } catch (err) {
         // Usually a syntax error in the file itself — the viewer opens
         // arbitrary uploads, so "doesn't parse" is an ordinary outcome.
         console.error('[monaco] Prettier could not format this document', err)
+        notify(`Could not format: ${firstLine(err)}`)
       } finally {
         running = false
       }
@@ -312,8 +326,18 @@ function addFormatActions(
       if (model.isDisposed()) return
       replaceAll(original)
       isFormatted.set(false)
+      notify('Reverted to the original file')
     },
   })
+}
+
+/**
+ * Prettier's parse errors carry the offending line and a caret diagram; only
+ * the first line ("Unexpected token (3:12)") fits a one-line notice.
+ */
+function firstLine(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err)
+  return message.split('\n')[0].trim() || 'unknown error'
 }
 
 /**
@@ -323,7 +347,11 @@ function addFormatActions(
 export function createCodeViewer(
   container: HTMLElement,
   text: string,
-  fileName: string
+  fileName: string,
+  options: {
+    /** Surfaces one-line results (formatting outcomes) back to React. */
+    onNotice?: (message: string) => void
+  } = {}
 ): { dispose: () => void } {
   // Web fonts load lazily — nothing else on the page uses JetBrains Mono, and
   // Monaco measures glyph widths at create time, so without this it sticks
@@ -356,7 +384,9 @@ export function createCodeViewer(
   })
 
   if (canFormatLanguage(language)) {
-    addFormatActions(editor, model, language)
+    addFormatActions(editor, model, language, (message) =>
+      options.onNotice?.(message)
+    )
   }
 
   // Follow app theme changes: Alt+T flips `data-theme`; 'system' follows the
