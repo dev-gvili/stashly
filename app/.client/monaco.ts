@@ -841,12 +841,19 @@ let modelSequence = 0
  * be used in TypeScript files", "Type annotations can only be used in
  * TypeScript files". Naming the model `…/foo.tsx` is what makes that go away.
  *
+ * The `file://` scheme matters too: acquired `@types` land at
+ * `file:///node_modules/…` (see `type-acquisition.ts`), and TS's module
+ * resolution only reaches them by walking up from the model's own directory.
+ * A model under `inmemory://…` lives in a different virtual root, so
+ * `import 'react'` would never find the libs — under `file:///stashly/…` it
+ * walks up to `file:///node_modules` and resolves.
+ *
  * The counter keeps two viewers on the same filename apart, since
  * `createModel` throws on a duplicate URI.
  */
 function modelUriFor(fileName: string): monaco.Uri {
   const safe = fileName.replace(/[^\w.-]+/g, '_')
-  return monaco.Uri.parse(`inmemory://stashly/${modelSequence++}/${safe}`)
+  return monaco.Uri.parse(`file:///stashly/${modelSequence++}/${safe}`)
 }
 
 /**
@@ -1232,6 +1239,15 @@ export function createCodeViewer(
     language === 'typescript' || language === 'javascript'
       ? highlightEmbeddedSql(editor, model)
       : null
+
+  // Automatic type acquisition: fetch @types for imported packages so
+  // `import … from 'react'` hovers with real types instead of `any`. Loaded on
+  // demand (pulls typescript + @typescript/ata) so non-TS files pay nothing.
+  if (language === 'typescript' || language === 'javascript') {
+    void import('./type-acquisition').then((m) =>
+      m.acquireTypesForSource(model.getValue())
+    )
+  }
 
   // Follow app theme changes: Alt+T flips `data-theme`; 'system' follows the
   // OS media query. The observer fires after the attribute lands, so the CSS

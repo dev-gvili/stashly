@@ -113,6 +113,8 @@
     "@types/qs": "^6.15.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@typescript/ata": "^0.9.8",
+    "@typescript/vfs": "^1.6.4",
     "@webgpu/types": "^0.1.70",
     "baseline-browser-mapping": "^2.10.38",
     "clsx": "^2.1.1",

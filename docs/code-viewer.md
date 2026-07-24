@@ -333,9 +333,13 @@ hue rather than screaming red — it's a read-only viewer).
 - **More Prettier languages** — add an entry to the `LANGUAGES` map in
   `prettier.ts` (parser + plugin chunks).
 - **More SQL tags** — add to the `SQL_TAGS` set (final-segment match).
-- **Automatic type acquisition** — imports from npm packages hover as `any`;
-  wiring `@typescript/ata` would resolve them, at the cost of jsdelivr requests
-  derived from users' file contents (a privacy call, deliberately not taken).
+- **Automatic type acquisition** — imports from npm packages resolve to real
+  types via `@typescript/ata` (see `type-acquisition.ts`): it fetches `@types`
+  from jsdelivr and feeds them to `addExtraLib`. Requires the model to live in
+  the same virtual root as the libs (`file:///stashly/…`, so node resolution
+  reaches `file:///node_modules`). App path aliases (`@/…`) are filtered out of
+  ATA — resolving those is cross-file's job. Trade-off: outbound jsdelivr
+  requests derived from a file's import statements (package names only).
 - **Cross-file `{@link}`** — navigation only works for same-file targets; the
   viewer holds one file, so cross-module links render as plain text.
 - **SQL generic nesting** — the tag regex balances 3 levels of `<…>`; deeper
