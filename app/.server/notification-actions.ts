@@ -1,10 +1,11 @@
 import { prisma } from '@/services/db'
 import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
-import { NotificationType, NotificationStatus } from '@/prisma/enums'
+import { NotificationType, NotificationStatus, NotificationKind } from '@/prisma/enums'
 import type { Prisma } from '@/prisma/client'
 import { buildNotificationFilters } from '@/utils/filters/notification.filters'
 import { searchFactory } from '@/utils/search'
+import { inc } from './metrics'
 
 // ---------------------------------------------------------------------------
 // Search
@@ -78,9 +79,30 @@ export async function markNotificationRead(id: string, userId: string) {
 }
 
 /**
+ * Marks a single notification as unread.
+ * Enforces that the notification belongs to the requesting user.
+ */
+export async function markNotificationUnread(id: string, userId: string) {
+  const notification = await prisma.notification.findUnique({ where: { id } })
+  if (!notification) {
+    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Notification not found')
+  }
+  if (notification.userId !== userId) {
+    throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'Cannot update another user\'s notification')
+  }
+  return prisma.notification.update({
+    where: { id },
+    data: { status: NotificationStatus.unread },
+  })
+}
+
+/**
  * Marks all unread notifications for a user as read in a single query.
  */
 export async function markAllNotificationsRead(userId: string) {
+  // The burst signal: one call fans out to one row-trigger NOTIFY per unread
+  // row. Tracked so a synchronized mark-all wave is visible in metrics.
+  inc('mark_all_read_total')
   return prisma.notification.updateMany({
     where: { userId, status: NotificationStatus.unread },
     data: { status: NotificationStatus.read },
@@ -109,10 +131,12 @@ export async function createNotification({
   userId,
   message,
   type,
+  kind = NotificationKind.system,
 }: {
   userId: string
   message: string
   type: NotificationType
+  kind?: NotificationKind
 }) {
   return prisma.notification.create({
     data: {
@@ -120,6 +144,7 @@ export async function createNotification({
       userId,
       message,
       type,
+      kind,
       status: NotificationStatus.unread,
     },
   })

@@ -6,12 +6,14 @@ import {
   EmptyTitle,
   EmptyContent,
 } from '@/ui/empty'
+import { cn } from '@/utils'
 
 export interface GenericEmptyStateProps {
   children?: React.ReactNode
   icon: React.ReactNode
   title: string
   description: string
+  className?: string
 }
 
 export const GenericEmptyState = ({
@@ -19,9 +21,15 @@ export const GenericEmptyState = ({
   icon,
   title,
   description,
+  className,
 }: GenericEmptyStateProps) => {
   return (
-    <div className="h-[calc(100vh-10rem)] w-full overflow-hidden flex items-center justify-center">
+    <div
+      className={cn(
+        'h-[calc(100vh-10rem)] w-full overflow-hidden flex items-center justify-center',
+        className
+      )}
+    >
       <Empty className="flex flex-col items-center justify-center">
         <EmptyHeader>
           <EmptyMedia variant="default">{icon}</EmptyMedia>

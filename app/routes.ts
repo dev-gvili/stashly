@@ -35,7 +35,11 @@ export default [
 
     // Notifications & quota
     route('notifications', 'routes/api/notifications.ts'),
+    route('notifications/stream', 'routes/api/notifications-stream.ts'),
     route('quota', 'routes/api/quota.ts'),
+
+    // Observability
+    route('metrics', 'routes/api/metrics.ts'),
 
     // Access control
     route('members/*', 'routes/api/members.ts'),

@@ -24,6 +24,7 @@ import { buildInvitationFilters } from '@/utils/filters/invitation.filters'
 import { searchFactory } from '@/utils/search'
 import type { Folder, ItemCategory } from '@/prisma/browser'
 import { prisma } from '@/services/db'
+import { createNotification } from './notification-actions'
 
 // ---------------------------------------------------------------------------
 // Search
@@ -582,7 +583,7 @@ export async function sendItemInvitation(
     )
   }
 
-  return prisma.$transaction(async (tx) => {
+  const invitation = await prisma.$transaction(async (tx) => {
     const invitationId = toObjectId(getPrefixForModel('Invitation'))
 
     await tx.invitation.create({
@@ -625,6 +626,9 @@ export async function sendItemInvitation(
       tx
     ) as Promise<InvitationWithDetails>
   })
+
+  await notifyInvitationSent(invitation, recipients)
+  return invitation
 }
 
 /**
@@ -701,7 +705,7 @@ export async function sendWorkspaceInvitation(
     )
   }
 
-  return prisma.$transaction(async (tx) => {
+  const invitation = await prisma.$transaction(async (tx) => {
     const invitationId = toObjectId(getPrefixForModel('Invitation'))
 
     await tx.invitation.create({
@@ -733,6 +737,100 @@ export async function sendWorkspaceInvitation(
       tx
     ) as Promise<InvitationWithDetails>
   })
+
+  await notifyInvitationSent(invitation, recipients)
+  return invitation
+}
+
+// ---------------------------------------------------------------------------
+// Notification fan-out (best-effort)
+//
+// Runs AFTER the invitation transaction commits, using the shared `prisma`
+// (not the tx client), so a notification hiccup can never roll back or fail the
+// invitation itself. Inserting a Notification row also pushes it live to the
+// recipient's bell via the DB NOTIFY → SSE stream — no extra plumbing needed.
+//
+// Recipients are addressed by email; only those that map to an existing user
+// account get a notification (invitees without an account will see the pending
+// invitation once they sign up).
+// ---------------------------------------------------------------------------
+
+async function notifyInvitationSent(
+  invitation: InvitationWithDetails,
+  recipients: RecipientInput[]
+) {
+  try {
+    const emails = recipients.map((r) => r.email)
+    const users = await prisma.user.findMany({
+      where: { email: { in: emails } },
+      select: { id: true },
+    })
+    if (users.length === 0) return
+
+    const senderName = invitation.sender?.name || 'Someone'
+    const isWorkspace = Boolean(invitation.workspace)
+    const target =
+      invitation.item?.name ?? invitation.workspace?.name ?? 'a resource'
+    const message = isWorkspace
+      ? `${senderName} invited you to the "${target}" workspace.`
+      : `${senderName} shared "${target}" with you.`
+
+    await Promise.all(
+      users.map((u) =>
+        createNotification({
+          userId: u.id,
+          message,
+          type: 'info',
+          kind: 'invitation',
+        })
+      )
+    )
+  } catch (err) {
+    console.error(
+      '[invitations] failed to create recipient notifications:',
+      err
+    )
+  }
+}
+
+async function notifyInvitationAccepted(
+  invitation: {
+    senderId: string
+    workspaceId: string | null
+    item: { name: string } | null
+    workspace: { name: string } | null
+  },
+  accepterUserId: string,
+  accepterEmail: string
+) {
+  try {
+    // Don't notify yourself if you somehow accept your own invite.
+    if (invitation.senderId === accepterUserId) return
+
+    const accepter = await prisma.user.findUnique({
+      where: { id: accepterUserId },
+      select: { name: true },
+    })
+    const accepterName = accepter?.name || accepterEmail
+    const isWorkspace = Boolean(invitation.workspaceId)
+    const target =
+      invitation.item?.name ?? invitation.workspace?.name ?? 'your invitation'
+    const message = isWorkspace
+      ? `${accepterName} joined the "${target}" workspace.`
+      : `${accepterName} accepted your invitation to "${target}".`
+
+    await createNotification({
+      userId: invitation.senderId,
+      message,
+      type: 'success',
+      kind: isWorkspace ? 'member' : 'invitation',
+    })
+  } catch (err) {
+    console.error(
+      '[invitations] failed to notify sender of acceptance:',
+      err
+    )
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -789,7 +887,7 @@ export async function acceptInvitation(
     throw new StashlyError(StashlyErrorCode.GONE, 'Invitation has expired')
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // Item invitation: connect user to the permission
     if (recipient.permission) {
       await tx.permission.update({
@@ -820,6 +918,9 @@ export async function acceptInvitation(
       tx
     ) as Promise<InvitationWithDetails>
   })
+
+  await notifyInvitationAccepted(invitation, userId, userEmail)
+  return result
 }
 
 /**

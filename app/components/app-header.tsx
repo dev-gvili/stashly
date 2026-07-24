@@ -5,13 +5,22 @@ import {
   UploadFileFillIcon,
   UploadFillIcon,
   UploadFolderFillIcon,
+  NotificationEmptyFillIcon,
+  NotificationFullFillIcon
 } from '@/components/icons'
 import { useUpload } from '@/hooks/useUpload'
 import { cn } from '@/utils'
 import { useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router'
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useRouteLoaderData,
+} from 'react-router'
 import { ModeToggle } from '@/components/color-mode'
 import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
+import { NotificationsPanel } from '@/components/core-components/notifications/notifications-panel'
+import type { Notification } from '@/components/core-components/notifications/notification-model'
 import { NewFolderDialog } from '@/components/core-components/new-folder-dialog'
 import { HeaderFilters } from '@/components/filters/filters'
 import {
@@ -29,6 +38,10 @@ import { Trigger } from '@/components/upload'
 export function AppHeader() {
   const { folderId, fileId } = useParams()
   let navigate = useNavigate()
+  const layoutData = useRouteLoaderData('layout') as
+    | { notifications?: Notification[] }
+    | undefined
+  const notifications = layoutData?.notifications ?? []
   return (
     <header className="bg-background z-40 flex items-center h-14 justify-between pl-0 pr-2 py-2 sticky top-0 shrink-0 gap-2">
       <Button
@@ -54,6 +67,7 @@ export function AppHeader() {
           <Grid />
           <List />
         </LayoutToggle>
+        <NotificationsPanel notifications={notifications} />
         <ModeToggle />
       </div>
     </header>

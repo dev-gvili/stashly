@@ -41,7 +41,18 @@ if (DEVELOPMENT) {
   // uncached module/data responses per navigation; brotli-compressing each one
   // is CPU-heavy and slows first load, post-navigation data, and HMR reloads
   // (and leaks `drain` listeners on BrotliCompress under concurrent streams).
-  app.use(compression())
+  app.use(
+    compression({
+      // Never compress/buffer Server-Sent Events — they must flush frame by
+      // frame. Buffering the /api/notifications/stream response would stall the
+      // live feed. Everything else defers to compression's default filter.
+      filter: (req, res) => {
+        const type = String(res.getHeader('Content-Type') || '')
+        if (type.includes('text/event-stream')) return false
+        return compression.filter(req, res)
+      },
+    })
+  )
   app.use(
     '/assets',
     express.static('build/client/assets', { immutable: true, maxAge: '1y' })

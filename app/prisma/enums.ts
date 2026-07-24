@@ -119,6 +119,25 @@ export const NotificationType = {
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType]
 
 
+export const NotificationKind = {
+  system: 'system',
+  share: 'share',
+  upload: 'upload',
+  file: 'file',
+  storage: 'storage',
+  invitation: 'invitation',
+  member: 'member',
+  workspace: 'workspace',
+  collection: 'collection',
+  favorite: 'favorite',
+  pin: 'pin',
+  comment: 'comment',
+  lock: 'lock'
+} as const
+
+export type NotificationKind = (typeof NotificationKind)[keyof typeof NotificationKind]
+
+
 export const NotificationStatus = {
   read: 'read',
   unread: 'unread'

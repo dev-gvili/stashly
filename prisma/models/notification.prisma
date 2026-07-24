@@ -1,7 +1,10 @@
 model Notification {
   id        String             @id
   message   String
+  // `type` carries severity (tile colour); `kind` carries the subject/event
+  // that drives the glyph (a share vs. an upload vs. a quota warning).
   type      NotificationType
+  kind      NotificationKind   @default(system)
   status    NotificationStatus @default(unread)
   createdAt DateTime           @default(now())
   updatedAt DateTime           @default(now()) @updatedAt
@@ -11,6 +14,7 @@ model Notification {
 
   @@index([createdAt])
   @@index([type])
+  @@index([kind])
   @@index([status])
   @@index([message(raw: "gin_trgm_ops")], type: SpGist)
 }
@@ -20,6 +24,23 @@ enum NotificationType {
   warning
   error
   success
+}
+
+// Subject/event a notification is about — selects the row's glyph.
+enum NotificationKind {
+  system
+  share
+  upload
+  file
+  storage
+  invitation
+  member
+  workspace
+  collection
+  favorite
+  pin
+  comment
+  lock
 }
 
 enum NotificationStatus {
