@@ -14,10 +14,14 @@ import type { Options, Plugin } from 'prettier'
 const PRETTIER_OPTIONS: Options = {
   semi: false,
   singleQuote: true,
+  jsxSingleQuote: true,
   tabWidth: 2,
   trailingComma: 'es5',
   useTabs: false,
   printWidth: 80,
+  objectWrap: 'collapse',
+  singleAttributePerLine: true,
+  proseWrap: "always"
 }
 
 /**

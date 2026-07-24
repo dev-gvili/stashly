@@ -15,13 +15,96 @@
  */
 import * as monaco from 'monaco-editor'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import TypeScriptWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 import { canFormatLanguage, formatDocument } from './prettier'
 
-// One base worker serves every language label: tokenization/colorization runs
-// on the main thread (Monarch), and a read-only viewer doesn't need the
-// heavyweight per-language workers (ts/json/css/html validation + IntelliSense).
+/**
+ * Workers by language label. TypeScript and JavaScript get the real TS
+ * language service — that is what backs hover type info, JSDoc in the hover
+ * card, and in-file go-to-definition. Every other language tokenizes on the
+ * main thread with Monarch, which is all a viewer needs, so they keep the
+ * base worker rather than pulling in the json/css/html services.
+ *
+ * Vite only fetches a `?worker` chunk when the constructor runs, so the ~6MB
+ * of bundled TypeScript is downloaded the first time someone opens a .ts/.js
+ * file and never for anyone else.
+ */
 self.MonacoEnvironment = {
-  getWorker: () => new EditorWorker(),
+  getWorker: (_workerId: string, label: string) =>
+    label === 'typescript' || label === 'javascript'
+      ? new TypeScriptWorker()
+      : new EditorWorker(),
+}
+
+/** TS defaults are global to the monaco instance — configure them once. */
+let typeScriptConfigured = false
+
+/**
+ * Put the language service in "one orphan file" mode.
+ *
+ * The viewer holds a single uploaded file with no tsconfig, no node_modules
+ * and no sibling sources, so *semantic* diagnostics are guaranteed wrong —
+ * every import resolves to nothing and every cross-file symbol is missing.
+ * They're off. Syntax diagnostics stay on because those are real: they only
+ * depend on the bytes in front of us.
+ *
+ * Hover is unaffected by either switch (it's `getQuickInfoAtPosition`), so
+ * types still resolve for everything the file defines itself plus the whole
+ * standard library, which ts.worker bundles.
+ */
+function configureTypeScript() {
+  if (typeScriptConfigured) return
+  typeScriptConfigured = true
+
+  const ts = monaco.languages.typescript
+  const compilerOptions: monaco.languages.typescript.CompilerOptions = {
+    allowJs: true,
+    // Our model URIs aren't real paths; without this the service ignores them.
+    allowNonTsExtensions: true,
+    checkJs: false,
+    esModuleInterop: true,
+    // Preserve keeps JSX as written — the viewer shows source, never emit.
+    jsx: ts.JsxEmit.Preserve,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeJs,
+    noEmit: true,
+    skipLibCheck: true,
+    // Widest lib the worker ships (esnext + DOM), so `document`, `Promise`,
+    // array methods and friends all hover with their real signatures.
+    target: ts.ScriptTarget.ESNext,
+  }
+  const diagnosticsOptions: monaco.languages.typescript.DiagnosticsOptions = {
+    noSemanticValidation: true,
+    noSyntaxValidation: false,
+    noSuggestionDiagnostics: true,
+  }
+
+  for (const defaults of [ts.typescriptDefaults, ts.javascriptDefaults]) {
+    defaults.setCompilerOptions(compilerOptions)
+    defaults.setDiagnosticsOptions(diagnosticsOptions)
+    defaults.setEagerModelSync(true)
+  }
+}
+
+let modelSequence = 0
+
+/**
+ * Build a model URI that ends in the file's real extension.
+ *
+ * The TS worker derives `ScriptKind` from the URI suffix alone
+ * (`getScriptKind` in tsWorker.js), and Monaco's default `inmemory://model/1`
+ * has none. The fallback there is `allowJs ? JS : TS`, and we set allowJs — so
+ * without a suffix every .ts/.tsx file is parsed as *JavaScript* and its
+ * TypeScript syntax is flagged wholesale: "'interface' declarations can only
+ * be used in TypeScript files", "Type annotations can only be used in
+ * TypeScript files". Naming the model `…/foo.tsx` is what makes that go away.
+ *
+ * The counter keeps two viewers on the same filename apart, since
+ * `createModel` throws on a duplicate URI.
+ */
+function modelUriFor(fileName: string): monaco.Uri {
+  const safe = fileName.replace(/[^\w.-]+/g, '_')
+  return monaco.Uri.parse(`inmemory://stashly/${modelSequence++}/${safe}`)
 }
 
 /**
@@ -147,12 +230,12 @@ function inkRules(p: InkPalette): monaco.editor.ITokenThemeRule[] {
   return [
     { token: '', foreground: c(p.fg) },
     { token: 'comment', foreground: c(p.muted), fontStyle: 'italic' },
-    { token: 'keyword', foreground: c(p.fg), fontStyle: 'bold' },
+    { token: 'keyword', foreground: c(p.muted), fontStyle: 'bold' },
     { token: 'identifier', foreground: c(p.hue), fontStyle: 'bold' },
-    { token: 'string', foreground: c(p.hue) },
+    { token: 'string', foreground: c(p.fg) },
     { token: 'string.escape', foreground: c(p.hue), fontStyle: 'bold' },
     { token: 'regexp', foreground: c(p.hue) },
-    { token: 'attribute.value', foreground: c(p.hue) },
+    { token: 'attribute.value', foreground: c(p.muted) },
     { token: 'string.key.json', foreground: c(p.fg) },
     { token: 'string.value.json', foreground: c(p.hue) },
     { token: 'operator', foreground: c(p.muted) },
@@ -196,11 +279,19 @@ function inkColors(p: InkPalette): monaco.editor.IColors {
     'editorBracketHighlight.foreground5': p.fg,
     'editorBracketHighlight.foreground6': p.hue,
     'editorBracketHighlight.unexpectedBracket.foreground': p.fg,
+    // Syntax diagnostics from the TS service. The default rainbow squiggles
+    // are the loudest thing on a monochrome page, so errors borrow the one
+    // hue and everything softer drops to grey.
+    'editorError.foreground': p.hue,
+    'editorWarning.foreground': p.muted,
+    'editorInfo.foreground': p.muted,
     'editorWidget.background': p.card,
     'editorWidget.foreground': p.fg,
     'editorWidget.border': p.input,
     'editorHoverWidget.background': p.card,
+    'editorHoverWidget.foreground': p.fg,
     'editorHoverWidget.border': p.input,
+    'editorHoverWidget.statusBarBackground': p.card,
     'input.background': p.card,
     'input.foreground': p.fg,
     'input.border': p.input,
@@ -364,7 +455,10 @@ export function createCodeViewer(
 
   applyInkTheme()
   const language = languageForFile(fileName)
-  const model = monaco.editor.createModel(text, language)
+  if (language === 'typescript' || language === 'javascript') {
+    configureTypeScript()
+  }
+  const model = monaco.editor.createModel(text, language, modelUriFor(fileName))
   const editor = monaco.editor.create(container, {
     model,
     readOnly: true,
@@ -384,9 +478,7 @@ export function createCodeViewer(
   })
 
   if (canFormatLanguage(language)) {
-    addFormatActions(editor, model, language, (message) =>
-      options.onNotice?.(message)
-    )
+    addFormatActions(editor, model, language)
   }
 
   // Follow app theme changes: Alt+T flips `data-theme`; 'system' follows the
