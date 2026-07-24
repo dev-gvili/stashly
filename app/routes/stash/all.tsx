@@ -8,7 +8,7 @@ import {
 } from '@/utils/filters/item.filters'
 import { parseSearchParams } from '@/utils/parsers'
 import { GridLayout } from '@/components/views/grid-view'
-import { ItemCard } from '@/components/stash/item-card'
+import { FileCard } from '@/components/core-components/file-card'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { Button } from '@/components/ui/button'
 import { usePagination } from '@/hooks/usePagination'
@@ -125,20 +125,7 @@ export default function Index() {
             item.type === 'folder' ? (
               <FolderCardTab key={item.id} {...item} />
             ) : (
-              <ItemCard key={item.id} {...item}>
-                <ItemCard.Header>
-                  <ItemCard.Checkbox name="selectedItems" value={item.id} />
-                  <ItemCard.Actions className="place-self-end" />
-                </ItemCard.Header>
-                <ItemCard.Content>
-                  <ItemCard.Thumbnail />
-                  <ItemCard.Name />
-                </ItemCard.Content>
-                <ItemCard.Footer>
-                  <ItemCard.Size />
-                  <ItemCard.Count />
-                </ItemCard.Footer>
-              </ItemCard>
+              <FileCard key={item.id} item={item} />
             )
           )}
         </GridLayout>

@@ -1,5 +1,5 @@
 import { AppToolbar } from '@/components/app-toolbar'
-import { ItemCard } from '@/components/stash/item-card'
+import { FileCard } from '@/components/core-components/file-card'
 import { SelectionProvider } from '@/components/stash/selection'
 import { TrashEmptyState } from '@/components/states/trash-empty-state'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
@@ -139,20 +139,7 @@ export default () => {
             item.type === 'folder' ? (
               <FolderCardTab key={item.id} {...item} />
             ) : (
-              <ItemCard key={item.id} {...item}>
-                <ItemCard.Header>
-                  <ItemCard.Checkbox name="selectedItems" value={item.id} />
-                  <ItemCard.Actions className="place-self-end" />
-                </ItemCard.Header>
-                <ItemCard.Content>
-                  <ItemCard.Thumbnail />
-                  <ItemCard.Name />
-                </ItemCard.Content>
-                <ItemCard.Footer>
-                  <ItemCard.Size />
-                  <ItemCard.Count />
-                </ItemCard.Footer>
-              </ItemCard>
+              <FileCard key={item.id} item={item} />
             )
           )}
         </GridLayout>

@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@/ui/card'
 import { toIcon, toItemUrl } from '@/utils/converters'
-import { formatSize } from '@/utils/formaters'
+import { capitalize, formatMediaDate, formatSize } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
 import React from 'react'
 import {
@@ -495,6 +495,144 @@ const ItemContent = React.forwardRef<
 })
 ItemContent.displayName = 'ItemContent'
 
+// -- Arched-cover parts ------------------------------------------------------
+// Compound pieces for the "cover" card layout: an edge-to-edge thumbnail whose
+// bottom edge is an oval arch, above a body that stacks name / date / size /
+// kind. Falls back to the category icon when no real thumbnail exists.
+
+// Normalized (objectBoundingBox) arch: straight top, bottom edge bowing down
+// from 0.8 → 1.0 of the cover's own height. Scales to any card size.
+const COVER_ARCH_PATH = 'M0,0 L1,0 L1,0.8 Q1,1 0,1 Q0,1 0,0.8 Z'
+
+const ItemCover = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>((props, ref) => {
+  const { id, thumbnails, type, category, name } = useItemCard()
+  const live = useLiveThumbnail(id)
+  const persisted = thumbnails?.find((t) => t.url && !t.url.startsWith('#'))
+  const { className, ...rest } = props
+
+  const src = live?.src ?? persisted?.url ?? undefined
+  const Icon = type === 'folder' ? FolderIcon : toIcon(category)
+  // Unique per card so multiple covers don't share one clipPath def. The
+  // reference must be dynamic, so it lives in `style` rather than a class.
+  const clipId = `stashly-cover-arch-${id}`
+
+  return (
+    <div
+      ref={ref}
+      data-slot="item-cover"
+      className={cn(
+        'relative basis-[65%] shrink-0 overflow-hidden bg-muted',
+        className
+      )}
+      style={{ clipPath: `url(#${clipId})` }}
+      {...rest}
+    >
+      <svg aria-hidden className="absolute size-0">
+        <defs>
+          <clipPath id={clipId} clipPathUnits="objectBoundingBox">
+            <path d={COVER_ARCH_PATH} />
+          </clipPath>
+        </defs>
+      </svg>
+      {src ? (
+        <img
+          src={src}
+          alt={name}
+          decoding="async"
+          data-slot="item-cover-image"
+          data-stage={live?.stage}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        Icon && (
+          <div
+            data-slot="item-cover-fallback"
+            className="absolute inset-0 flex items-center justify-center"
+          >
+            <Icon
+              className={cn(
+                'size-14 text-muted-foreground',
+                type === 'folder' && 'fill-current'
+              )}
+            />
+          </div>
+        )
+      )}
+    </div>
+  )
+})
+ItemCover.displayName = 'ItemCover'
+
+const ItemDate = React.forwardRef<
+  React.ComponentRef<typeof CardDescription>,
+  React.ComponentPropsWithoutRef<typeof CardDescription>
+>((props, ref) => {
+  const { createdAt } = useItemCard()
+  const { className, ...rest } = props
+  return (
+    <CardDescription
+      ref={ref}
+      data-slot="item-date"
+      className={cn('text-xs font-stashly text-muted-foreground', className)}
+      {...rest}
+    >
+      {formatMediaDate(createdAt)}
+    </CardDescription>
+  )
+})
+ItemDate.displayName = 'ItemDate'
+
+const ItemKind = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement>
+>((props, ref) => {
+  const { file, category } = useItemCard()
+  const { className, ...rest } = props
+  const kind = file?.extension?.toUpperCase() || capitalize(category)
+  return (
+    <span
+      ref={ref}
+      data-slot="item-kind"
+      className={cn(
+        'text-xs font-stashly uppercase text-muted-foreground',
+        className
+      )}
+      {...rest}
+    >
+      {kind}
+    </span>
+  )
+})
+ItemKind.displayName = 'ItemKind'
+
+// Prominent size readout: large value with a muted unit (e.g. "482 MB").
+const ItemSizeStat = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>((props, ref) => {
+  const { size } = useItemCard()
+  const { className, ...rest } = props
+  const [value, ...unitParts] = formatSize('byte', 'unit', size).split(' ')
+  const unit = unitParts.join(' ')
+  return (
+    <div
+      ref={ref}
+      data-slot="item-size-stat"
+      className={cn('flex items-baseline gap-1 font-stashly', className)}
+      {...rest}
+    >
+      <span className="text-2xl font-bold leading-none text-card-foreground">
+        {value}
+      </span>
+      <span className="text-xs text-muted-foreground">{unit}</span>
+    </div>
+  )
+})
+ItemSizeStat.displayName = 'ItemSizeStat'
+
 type ItemCardComponent = typeof ItemCardRoot & {
   Header: typeof ItemHeader
   Content: typeof ItemContent
@@ -505,6 +643,10 @@ type ItemCardComponent = typeof ItemCardRoot & {
   ThumbnailFallback: typeof ItemThumbnailFallback
   Count: typeof ItemCount
   Size: typeof ItemSize
+  SizeStat: typeof ItemSizeStat
+  Cover: typeof ItemCover
+  Date: typeof ItemDate
+  Kind: typeof ItemKind
   Link: typeof ItemLink
   Favorite: typeof ItemFavorite
   Checkbox: typeof ItemCardCheckBox
@@ -521,6 +663,10 @@ export const ItemCard: ItemCardComponent = Object.assign(ItemCardRoot, {
   ThumbnailFallback: ItemThumbnailFallback,
   Count: ItemCount,
   Size: ItemSize,
+  SizeStat: ItemSizeStat,
+  Cover: ItemCover,
+  Date: ItemDate,
+  Kind: ItemKind,
   Link: ItemLink,
   Favorite: ItemFavorite,
   Checkbox: ItemCardCheckBox,

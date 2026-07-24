@@ -1,7 +1,7 @@
 import React, { useId } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/utils/styles'
-import { ItemCard } from '@/components/stash/item-card'
+import { FileCard } from '@/components/core-components/file-card'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { GridLayout } from '@/components/views/grid-view'
 import { itemVariants } from '@/components/views/variants'
@@ -63,26 +63,7 @@ export const SuggestionsView = React.forwardRef<
                 variants={itemVariants}
                 transition={{ duration: 0.5 }}
               >
-                <ItemCard {...file}>
-                  <ItemCard.Header>
-                    <ItemCard.Checkbox
-                      name="selectedItems"
-                      value={file.id}
-                      data-slot="item-checkbox"
-                    />
-                    <ItemCard.Actions
-                      data-slot="item-actions"
-                      className="z-10 hover:cursor-pointer font-stashly max-w-max place-self-end"
-                    />
-                  </ItemCard.Header>
-                  <ItemCard.Content>
-                    <ItemCard.Thumbnail />
-                    <ItemCard.Name />
-                  </ItemCard.Content>
-                  <ItemCard.Footer>
-                    <ItemCard.Size />
-                  </ItemCard.Footer>
-                </ItemCard>
+                <FileCard item={file} />
               </motion.div>
             ))}
           </GridLayout>

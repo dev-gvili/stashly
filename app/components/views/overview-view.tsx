@@ -4,7 +4,7 @@ import {
   PinFillIcon,
   RecentFillIcon,
 } from '@/components/icons'
-import { ItemCard } from '@/components/stash/item-card'
+import { FileCard } from '@/components/core-components/file-card'
 import { FilesEmptyState } from '@/components/states/files-empty-state'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import type {
@@ -198,22 +198,7 @@ function OverviewCard({ item }: { item: StashItem }) {
     return <FolderCardTab {...item} />
   }
 
-  return (
-    <ItemCard {...item}>
-      <ItemCard.Header>
-        <ItemCard.Checkbox name="selectedItems" value={item.id} />
-        <ItemCard.Actions className="place-self-end" />
-      </ItemCard.Header>
-      <ItemCard.Content>
-        <ItemCard.Thumbnail />
-        <ItemCard.Name />
-      </ItemCard.Content>
-      <ItemCard.Footer>
-        <ItemCard.Size />
-        <ItemCard.Count />
-      </ItemCard.Footer>
-    </ItemCard>
-  )
+  return <FileCard item={item} />
 }
 
 function ActivityRow({ activity }: { activity: OverviewActivity }) {

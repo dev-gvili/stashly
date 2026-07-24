@@ -44,6 +44,7 @@ import type { StashItem, StashPickerItem } from '@/types/stash.types'
 import { GridLayout } from './grid-view'
 import { ListLayout } from './list-view'
 import { ItemCard } from '@/components/stash/item-card'
+import { FileCard } from '@/components/core-components/file-card'
 import { FolderCardTab } from './folder-card-components/folder-card-tab'
 import { ButtonGroup } from '../ui'
 
@@ -364,22 +365,11 @@ function CollectionItemCard({ item }: { item: StashPickerItem }) {
   }
 
   return (
-    <ItemCard {...stashItem} className="rounded-md border! border-input">
-      <ItemCard.Header>
-        <ItemCard.Checkbox name="selectedItems" value={item.id} />
-        <ItemCard.Actions className="place-self-end">
-          {removeFromCollectionActions}
-        </ItemCard.Actions>
-      </ItemCard.Header>
-      <ItemCard.Content>
-        <ItemCard.Thumbnail />
-        <ItemCard.Name />
-      </ItemCard.Content>
-      <ItemCard.Footer>
-        <ItemCard.Size />
-        <ItemCard.Count />
-      </ItemCard.Footer>
-    </ItemCard>
+    <FileCard
+      item={stashItem}
+      className="border! border-input"
+      actions={removeFromCollectionActions}
+    />
   )
 }
 
