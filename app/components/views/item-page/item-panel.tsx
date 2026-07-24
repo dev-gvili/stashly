@@ -524,9 +524,9 @@ export function ItemPanel({
       side="right"
       id="item_panel"
       collapsible="offcanvas"
-      variant="floating"
+      variant="inset"
       width="18rem"
-      className="p-0 bg-card rounded-md h-[calc(100vh-4rem)] overflow-hidden right-2 shadow-stashly"
+      className="p-0 bg-card rounded-md h-[calc(100vh-4rem)] right-2 shadow-stashly"
     >
       <Tabs
         defaultValue="details"

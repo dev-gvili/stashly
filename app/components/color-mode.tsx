@@ -21,7 +21,7 @@ export function ModeToggle() {
         <Button
           variant="outline"
           size="icon"
-          className="font-stashly bg-card! border-accent data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground  rounded-md!"
+          className="font-stashly bg-card! ring ring-input border-none data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground rounded-md!"
         >
           {data?.colorScheme === 'dark' && <DarkModeFillIcon className="size-5!" />}
           {data?.colorScheme === 'light' && <LightModeFillIcon className="size-5!" />}
@@ -32,11 +32,11 @@ export function ModeToggle() {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="flex-col flex rounded-md shadow-xl overflow-hidden font-stashly border border-sidebar-border p-2 bg-sidebar max-w-max"
+        className="flex-col flex rounded-md shadow-xl overflow-hidden font-stashly ring-2 ring-input border-none p-0 bg-card max-w-max"
       >
         <Button
           className={cn(
-            'font-stashly bg-sidebar text-sidebar-foreground justify-start px-1.5 hover:bg-transparent'
+            'font-stashly bg-transparent text-sidebar-foreground justify-start px-1.5 hover:bg-transparent'
           )}
           onClick={(e) => {
             fetcher.submit(
@@ -50,7 +50,7 @@ export function ModeToggle() {
         </Button>
         <Button
           className={cn(
-            'font-stashly bg-sidebar text-sidebar-foreground justify-start px-1.5 hover:bg-transparent'
+            'font-stashly bg-transparent text-sidebar-foreground justify-start px-1.5 hover:bg-transparent'
           )}
           onClick={(e) => {
             fetcher.submit(
@@ -59,12 +59,12 @@ export function ModeToggle() {
             )
           }}
         >
-          <LightModeFillIcon className="size-5! text-current!" />
+          <LightModeFillIcon className="size-5!" />
           <span>Light</span>
         </Button>
         <Button
           className={cn(
-            'font-stashly bg-sidebar text-sidebar-foreground justify-start px-1.5 hover:bg-transparent'
+            'font-stashly bg-transparent text-sidebar-foreground justify-start px-1.5 hover:bg-transparent'
           )}
           onClick={(e) => {
             fetcher.submit(
@@ -73,7 +73,7 @@ export function ModeToggle() {
             )
           }}
         >
-          <ColorModeFillIcon className="size-5! text-current!" />
+          <ColorModeFillIcon className="size-5!" />
           <span>System</span>
         </Button>
       </PopoverContent>

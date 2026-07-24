@@ -18,7 +18,7 @@ export const GridLayout: React.FC<GridLayoutProps> = ({
   return (
     <div
       className={cn(
-        'grid xl:grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-2 grid-rows-[repeat(auto-fill,minmax(10rem,1fr))]',
+        'grid xl:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-2 grid-rows-[repeat(auto-fill,minmax(10rem,1fr))]',
         className
       )}
       {...props}

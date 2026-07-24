@@ -200,7 +200,7 @@ function FiltersTrigger({ children, className }: FiltersTriggerProps) {
       <Button
         variant="outline"
         className={cn(
-          'max-w-md items-center justify-between font-stashly bg-card! border-input data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground',
+          'max-w-md items-center justify-between font-stashly bg-card! ring ring-input data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground',
           className
         )}
       >
@@ -251,8 +251,9 @@ function FiltersPanel({
   return (
     <PopoverContent
       align={align}
+      sideOffset={10}
       className={cn(
-        'w-md rounded-md shadow-xl overflow-hidden font-stashly border border-input p-0 bg-sidebar',
+        'w-md rounded-md shadow-xl overflow-hidden font-stashly ring-2 ring-input border-none p-0 bg-card',
         className
       )}
     >
@@ -295,7 +296,7 @@ function FiltersTabs({ defaultTab = 'category', children }: FiltersTabsProps) {
         onValueChange={(v) => setCurrent(v as FilterSourceKey)}
         className="w-full border-none"
       >
-        <TabsList className="flex items-center bg-sidebar rounded-none w-full p-0">
+        <TabsList className="flex items-center bg-card border-none rounded-none w-full p-0">
           {registry.map((t) => {
             const count = filters.state[t.id].length
             return (
@@ -303,8 +304,8 @@ function FiltersTabs({ defaultTab = 'category', children }: FiltersTabsProps) {
                 key={t.id}
                 value={t.id}
                 className={cn(
-                  'rounded-none border-none',
-                  t.id === current ? 'bg-background' : 'hover:bg-background'
+                  'rounded-none border-none bg-accent',
+                  t.id === current ? 'bg-card!' : 'hover:bg-background'
                 )}
               >
                 {t.label}
@@ -398,7 +399,7 @@ function FiltersTab({ id, label, items, children, className }: FiltersTabProps) 
 
 function FiltersActions({ children }: { children?: ReactNode }) {
   return (
-    <section className="px-3 py-2 flex items-center w-full gap-2 border-t border-input">
+    <section className="px-3 py-2 flex items-center w-full gap-2">
       {children ?? (
         <>
           <FiltersReset />

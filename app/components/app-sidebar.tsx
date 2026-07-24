@@ -192,7 +192,7 @@ export const AppSidebar = ({
           <SidebarTrigger variant="ghost" size="icon-sm" />
         </div>
       </SidebarHeader>
-      <SidebarContent className="bg-card">
+      <SidebarContent className="bg-card border-none!">
         <ScrollArea className="h-full" type="hidden">
           <NavMedia media={mediaItems} basePath={url} />
           <SidebarGroup>

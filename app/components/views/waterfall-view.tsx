@@ -5,12 +5,13 @@ import { cn } from '@/utils'
 import { useFileHref } from '../../hooks/useFileHref'
 
 const ASPECT_CYCLE = [
+  'aspect-[2/2.5]',
   'aspect-square',
-  'aspect-[1/2]',
-  // 'aspect-[1/3]',
-  'aspect-[3/4]',
-  'aspect-[2/1]',
-  'aspect-[4/3]',
+  'aspect-[1/2.5]',
+  'aspect-[3/2.5]',
+  // 'aspect-[4/3]',
+  // 'aspect-[2/1]',
+  // 'aspect-[3/4]',
 ] as const
 
 function aspectFromId(id: string): string {
@@ -28,33 +29,37 @@ function WaterfallItem({
   const to = useFileHref(img) ?? '.'
   const isTransitioning = useViewTransitionState(to)
   return (
-    <div className="break-inside-avoid mb-4">
-      <Link to={to} viewTransition prefetch="intent" mask={`images/${img.id}`}>
-        <div
-          style={{ breakInside: 'avoid' }}
-          className={cn(
-            'overflow-hidden rounded-md hover:ring-3 ring-primary',
-            aspectClass
-          )}
-        >
-          <img
-            src={img.src!}
-            style={
-              isTransitioning
-                ? { viewTransitionName: `img-${img.id}` }
-                : undefined
-            }
-            className="w-full h-full object-cover cursor-pointer"
-            width={img.width}
-            height={img.height}
-            sizes={img.sizes}
-            srcSet={img.srcSet}
-            decoding="async"
-            loading="lazy"
-          />
-        </div>
-      </Link>
-    </div>
+    <Link
+      to={to}
+      viewTransition
+      prefetch="intent"
+      className="surface-elevated"
+      mask={`images/${img.id}`}
+    >
+      <div
+        style={{ breakInside: 'avoid' }}
+        className={cn(
+          'overflow-hidden mb-2 rounded-md shadow-stashly',
+          aspectClass
+        )}
+      >
+        <img
+          src={img.src!}
+          style={
+            isTransitioning
+              ? { viewTransitionName: `img-${img.id}` }
+              : undefined
+          }
+          className="w-full h-full object-cover cursor-pointer ring"
+          width={img.width}
+          height={img.height}
+          sizes={img.sizes}
+          srcSet={img.srcSet}
+          decoding="async"
+          loading="lazy"
+        />
+      </div>
+    </Link>
   )
 }
 
@@ -66,7 +71,7 @@ export const WaterfallLayout: React.FC<{
   if (!isWaterfallLayout) return null
 
   return (
-    <div className="columns-2 sm:columns-3 md:columns-5 lg:columns-8 gap-4">
+    <div className="columns-2 sm:columns-3 md:columns-5 xl:columns-7 gap-2">
       {images.map((img, i) => (
         <WaterfallItem
           key={img.id}
