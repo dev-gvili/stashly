@@ -39,9 +39,12 @@ export function AppHeader() {
   const { folderId, fileId } = useParams()
   let navigate = useNavigate()
   const layoutData = useRouteLoaderData('layout') as
-    | { notifications?: Notification[] }
+    | { notifications?: Notification[]; user?: { rootId?: string } }
     | undefined
   const notifications = layoutData?.notifications ?? []
+  // At the stash root there's no `:folderId` in the URL; fall back to the
+  // user's root folder so New Folder (and uploads) have a real destination.
+  const rootId = layoutData?.user?.rootId
   return (
     <header className="bg-background z-40 flex items-center h-14 justify-between pl-0 pr-2 py-2 sticky top-0 shrink-0 gap-2">
       <Button
@@ -57,7 +60,7 @@ export function AppHeader() {
       </Button>
       <Breadcrumbs />
       <div className="flex flex-1 gap-2 items-center">
-        <StashlyUpload folderId={folderId} />
+        <StashlyUpload folderId={folderId} rootId={rootId} />
         <HeaderFilters />
       </div>
       <div className="flex items-center space-x-2">
@@ -74,7 +77,13 @@ export function AppHeader() {
   )
 }
 
-function StashlyUpload({ folderId }: { folderId: string | undefined }) {
+function StashlyUpload({
+  folderId,
+  rootId,
+}: {
+  folderId: string | undefined
+  rootId: string | undefined
+}) {
   let { toggleView } = useUpload()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -149,7 +158,7 @@ function StashlyUpload({ folderId }: { folderId: string | undefined }) {
       <NewFolderDialog
         open={newFolderOpen}
         onOpenChange={setNewFolderOpen}
-        folderId={folderId}
+        folderId={folderId ?? rootId}
       />
     </ButtonGroup>
   )
