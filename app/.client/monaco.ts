@@ -342,20 +342,26 @@ function boldParagraphs(text: string): string {
     .join('\n\n')
 }
 
-/** Injected once — Monaco ships no CSS for markdown tables in hovers. */
-let hoverStylesInjected = false
+/** Injected once — covers hover tables and embedded-SQL token colors. */
+let viewerStylesInjected = false
 
 /**
- * Style the JSDoc hover's table and code blocks. Monaco renders GFM tables as
- * bare, border-less `<table>`s (columns collapse into each other) and gives
- * stacked code blocks no separation. Colors come from the app's own Ink design
- * tokens, so the hover tracks light/dark with the rest of the shell.
+ * App-level CSS the viewer needs that Monaco doesn't ship:
+ *  - hover tables (Monaco renders GFM tables border-less, columns collapsing)
+ *    and spacing for stacked `@example` code blocks;
+ *  - the embedded-SQL token classes (see `highlightEmbeddedSql`).
+ *
+ * Greys come from the app's Ink design tokens so they track light/dark; the
+ * one syntax hue has no token, so it's hard-coded with a `data-theme` +
+ * `prefers-color-scheme` override, matching how the rest of the shell themes.
+ * SQL classes are scoped under `.view-lines` (specificity 0,3,0) so they win
+ * over Monaco's generated `.monaco-editor .mtkN` token colors (0,2,0).
  */
-function injectHoverStyles() {
-  if (hoverStylesInjected || typeof document === 'undefined') return
-  hoverStylesInjected = true
+function injectViewerStyles() {
+  if (viewerStylesInjected || typeof document === 'undefined') return
+  viewerStylesInjected = true
   const style = document.createElement('style')
-  style.dataset.stashlyMonacoHover = 'true'
+  style.dataset.stashlyMonaco = 'true'
   style.textContent = `
 .monaco-hover .rendered-markdown table {
   border-collapse: collapse;
@@ -391,6 +397,44 @@ function injectHoverStyles() {
 .monaco-hover .rendered-markdown [data-code] + pre {
   margin-top: 10px;
 }
+
+/* Embedded SQL (sql\`…\` in TS/JS). The whole template is one string token —
+   the hue — so every SQL token is reset from that baseline: keywords and
+   identifiers to foreground, functions/strings to the hue, the rest muted. */
+.monaco-editor .view-lines .stashly-sql-keyword {
+  color: var(--foreground, #232323);
+  font-weight: 600;
+}
+.monaco-editor .view-lines .stashly-sql-identifier,
+.monaco-editor .view-lines .stashly-sql-quoted,
+.monaco-editor .view-lines .stashly-sql-number {
+  color: var(--foreground, #232323);
+}
+.monaco-editor .view-lines .stashly-sql-operator {
+  color: var(--muted-foreground, #616161);
+}
+.monaco-editor .view-lines .stashly-sql-comment {
+  color: var(--muted-foreground, #616161);
+  font-style: italic;
+}
+.monaco-editor .view-lines .stashly-sql-string,
+.monaco-editor .view-lines .stashly-sql-function {
+  color: #5e6ad2;
+}
+@media (prefers-color-scheme: dark) {
+  .monaco-editor .view-lines .stashly-sql-string,
+  .monaco-editor .view-lines .stashly-sql-function {
+    color: #96a0e8;
+  }
+}
+:root[data-theme='light'] .monaco-editor .view-lines .stashly-sql-string,
+:root[data-theme='light'] .monaco-editor .view-lines .stashly-sql-function {
+  color: #5e6ad2;
+}
+:root[data-theme='dark'] .monaco-editor .view-lines .stashly-sql-string,
+:root[data-theme='dark'] .monaco-editor .view-lines .stashly-sql-function {
+  color: #96a0e8;
+}
 `
   document.head.appendChild(style)
 }
@@ -406,7 +450,7 @@ let tsHoverRegistered = false
 function registerTsHover() {
   if (tsHoverRegistered) return
   tsHoverRegistered = true
-  injectHoverStyles()
+  injectViewerStyles()
 
   // Backs the `{@link}` / `@see` command links. The arg is the target's own
   // span; we find the editor showing that model and reveal it. Same-file only
@@ -567,6 +611,181 @@ function configureLanguageService(language: string) {
   if (!configure || configuredServices.has(configure)) return
   configuredServices.add(configure)
   configure()
+}
+
+// ---------------------------------------------------------------------------
+// Embedded SQL highlighting
+//
+// SQL written inside a tagged template literal — `sql`…`` or `Prisma.sql`…`` —
+// is one big string token to the TypeScript grammar, so it renders flat. This
+// finds those templates, tokenizes their bodies with Monaco's own SQL Monarch
+// grammar, and lays down inline decorations. The viewer is read-only, so this
+// runs once at mount and never re-syncs.
+// ---------------------------------------------------------------------------
+
+/** SQL token type (from `tokenize`) → the CSS class in `injectViewerStyles`. */
+const SQL_TOKEN_CLASS: Record<string, string> = {
+  'keyword.sql': 'stashly-sql-keyword',
+  'predefined.sql': 'stashly-sql-function',
+  'string.sql': 'stashly-sql-string',
+  'string.double.sql': 'stashly-sql-string',
+  'number.sql': 'stashly-sql-number',
+  'comment.sql': 'stashly-sql-comment',
+  'comment.quote.sql': 'stashly-sql-comment',
+  'identifier.sql': 'stashly-sql-identifier',
+  'identifier.quote.sql': 'stashly-sql-quoted',
+  'operator.sql': 'stashly-sql-operator',
+  'delimiter.sql': 'stashly-sql-operator',
+  'delimiter.parenthesis.sql': 'stashly-sql-operator',
+}
+
+/** An identifier chain (`Prisma . sql`) immediately in front of a backtick. */
+const TAGGED_TEMPLATE =
+  /(?<![.\w$])([A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*)\s*`/g
+
+/** The inner SQL of one template: where its body starts + the body text. */
+type SqlTemplate = { bodyStart: number; sql: string }
+
+/**
+ * Find `…sql`…`` templates. Only chains whose final segment is `sql` count, so
+ * `css`…``, `styled.div`…`` and untagged templates are left alone. Extend the
+ * final-segment check to pick up `$queryRaw` and friends if ever needed.
+ */
+function findSqlTemplates(text: string): SqlTemplate[] {
+  const out: SqlTemplate[] = []
+  TAGGED_TEMPLATE.lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = TAGGED_TEMPLATE.exec(text))) {
+    const segments = match[1].split('.').map((s) => s.trim().toLowerCase())
+    if (segments[segments.length - 1] !== 'sql') continue
+    const bodyStart = TAGGED_TEMPLATE.lastIndex // char after the opening backtick
+    const { end, sql } = scanTemplateBody(text, bodyStart)
+    out.push({ bodyStart, sql })
+    TAGGED_TEMPLATE.lastIndex = end + 1 // resume past the closing backtick
+  }
+  return out
+}
+
+/**
+ * Walk a template body to its closing backtick. `${…}` interpolations and
+ * escapes are blanked to equal-length whitespace (newlines preserved) so the
+ * returned string lines up 1:1 with the source offsets — the SQL tokenizer
+ * never sees a `${` hole, and those regions simply aren't decorated.
+ */
+function scanTemplateBody(
+  text: string,
+  start: number
+): { end: number; sql: string } {
+  const chars: string[] = []
+  const len = text.length
+  let i = start
+  while (i < len) {
+    const ch = text[i]
+    if (ch === '\\') {
+      chars.push(' ', ' ')
+      i += 2
+    } else if (ch === '`') {
+      break
+    } else if (ch === '$' && text[i + 1] === '{') {
+      chars.push(' ', ' ')
+      let depth = 1
+      i += 2
+      while (i < len && depth > 0) {
+        const c = text[i]
+        if (c === '{') depth++
+        else if (c === '}') depth--
+        chars.push(c === '\n' ? '\n' : ' ')
+        i++
+      }
+    } else {
+      chars.push(ch)
+      i++
+    }
+  }
+  return { end: i, sql: chars.join('') }
+}
+
+/** Tokenize each template's SQL and turn the tokens into inline decorations. */
+function embeddedSqlDecorations(
+  model: monaco.editor.ITextModel,
+  templates: SqlTemplate[]
+): monaco.editor.IModelDeltaDecoration[] {
+  const decorations: monaco.editor.IModelDeltaDecoration[] = []
+  for (const { bodyStart, sql } of templates) {
+    if (!sql.trim()) continue
+    const lines = monaco.editor.tokenize(sql, 'sql')
+    const sqlLines = sql.split('\n')
+    let lineOffset = 0
+    for (let li = 0; li < lines.length; li++) {
+      const tokens = lines[li]
+      const lineText = sqlLines[li] ?? ''
+      for (let ti = 0; ti < tokens.length; ti++) {
+        const token = tokens[ti]
+        const nextOffset =
+          ti + 1 < tokens.length ? tokens[ti + 1].offset : lineText.length
+        const className = SQL_TOKEN_CLASS[token.type]
+        if (!className || nextOffset <= token.offset) continue
+        const from = model.getPositionAt(bodyStart + lineOffset + token.offset)
+        const to = model.getPositionAt(bodyStart + lineOffset + nextOffset)
+        decorations.push({
+          range: new monaco.Range(
+            from.lineNumber,
+            from.column,
+            to.lineNumber,
+            to.column
+          ),
+          options: { inlineClassName: className },
+        })
+      }
+      lineOffset += lineText.length + 1 // + the '\n' split removed
+    }
+  }
+  return decorations
+}
+
+/** Lazily register Monaco's SQL Monarch grammar so `tokenize('…','sql')` works. */
+let sqlGrammarPromise: Promise<void> | null = null
+function ensureSqlGrammar(): Promise<void> {
+  if (!sqlGrammarPromise) sqlGrammarPromise = loadSqlGrammar()
+  return sqlGrammarPromise
+}
+async function loadSqlGrammar(): Promise<void> {
+  try {
+    // Deep basic-languages path — no co-located .d.ts. Its shape is
+    // `{ conf: LanguageConfiguration, language: IMonarchLanguage }`.
+    // @ts-expect-error - no type declarations for this module path
+    const { conf, language } = await import(
+      'monaco-editor/esm/vs/basic-languages/sql/sql.js'
+    )
+    monaco.languages.setMonarchTokensProvider('sql', language)
+    monaco.languages.setLanguageConfiguration('sql', conf)
+  } catch (err) {
+    console.error('[monaco] could not load SQL grammar', err)
+  }
+}
+
+/**
+ * Decorate the SQL inside every `sql`…`` in a TS/JS model. Fire-and-forget:
+ * finding templates is cheap and synchronous, but the SQL grammar loads
+ * async, so the highlight lands a beat after mount. Returns a disposer for the
+ * decorations (a no-op when there's no embedded SQL).
+ */
+function highlightEmbeddedSql(
+  editor: monaco.editor.IStandaloneCodeEditor,
+  model: monaco.editor.ITextModel
+): { dispose: () => void } {
+  const templates = findSqlTemplates(model.getValue())
+  if (!templates.length) return { dispose: () => {} }
+
+  injectViewerStyles()
+  let collection: monaco.editor.IEditorDecorationsCollection | null = null
+  void ensureSqlGrammar().then(() => {
+    if (model.isDisposed()) return
+    collection = editor.createDecorationsCollection(
+      embeddedSqlDecorations(model, templates)
+    )
+  })
+  return { dispose: () => collection?.clear() }
 }
 
 let modelSequence = 0
@@ -968,6 +1187,12 @@ export function createCodeViewer(
     )
   }
 
+  // Colorize SQL embedded in `sql`…`` template literals (TS/JS only).
+  const embeddedSql =
+    language === 'typescript' || language === 'javascript'
+      ? highlightEmbeddedSql(editor, model)
+      : null
+
   // Follow app theme changes: Alt+T flips `data-theme`; 'system' follows the
   // OS media query. The observer fires after the attribute lands, so the CSS
   // tokens already hold their new values when the palette is re-resolved.
@@ -983,6 +1208,7 @@ export function createCodeViewer(
     dispose: () => {
       observer.disconnect()
       media.removeEventListener('change', applyInkTheme)
+      embeddedSql?.dispose()
       editor.dispose()
       model.dispose()
     },
