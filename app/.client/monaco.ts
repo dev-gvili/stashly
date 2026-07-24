@@ -790,27 +790,42 @@ async function loadSqlGrammar(): Promise<void> {
 }
 
 /**
- * Decorate the SQL inside every `sql`…`` in a TS/JS model. Fire-and-forget:
- * finding templates is cheap and synchronous, but the SQL grammar loads
- * async, so the highlight lands a beat after mount. Returns a disposer for the
- * decorations (a no-op when there's no embedded SQL).
+ * Decorate the SQL inside every `sql`…`` in a TS/JS model.
+ *
+ * The decorations are recomputed on every content change, not just at mount.
+ * The viewer is read-only, but Format Document rewrites the whole model — the
+ * SQL shifts to new positions and static decorations would smear across the
+ * wrong characters. Re-scanning on change keeps them aligned through format
+ * and revert alike. (Decoration edits don't fire change events, so no loop.)
+ *
+ * Fire-and-forget: finding templates is synchronous, but the SQL grammar loads
+ * async, so the first highlight lands a beat after mount. Returns a disposer.
  */
 function highlightEmbeddedSql(
   editor: monaco.editor.IStandaloneCodeEditor,
   model: monaco.editor.ITextModel
 ): { dispose: () => void } {
-  const templates = findSqlTemplates(model.getValue())
-  if (!templates.length) return { dispose: () => {} }
+  // A SQL-free TS file can't grow a `sql`…`` by formatting, so skip the work
+  // — no grammar load, no listener — when there's nothing embedded to begin.
+  if (!findSqlTemplates(model.getValue()).length) return { dispose: () => {} }
 
   injectViewerStyles()
-  let collection: monaco.editor.IEditorDecorationsCollection | null = null
-  void ensureSqlGrammar().then(() => {
+  const collection = editor.createDecorationsCollection([])
+  const apply = () => {
     if (model.isDisposed()) return
-    collection = editor.createDecorationsCollection(
-      embeddedSqlDecorations(model, templates)
+    const templates = findSqlTemplates(model.getValue())
+    collection.set(
+      templates.length ? embeddedSqlDecorations(model, templates) : []
     )
-  })
-  return { dispose: () => collection?.clear() }
+  }
+  void ensureSqlGrammar().then(apply)
+  const change = model.onDidChangeContent(() => void ensureSqlGrammar().then(apply))
+  return {
+    dispose: () => {
+      change.dispose()
+      collection.clear()
+    },
+  }
 }
 
 let modelSequence = 0
