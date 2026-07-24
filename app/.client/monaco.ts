@@ -647,9 +647,22 @@ const TAGGED_TEMPLATE =
 type SqlTemplate = { bodyStart: number; sql: string }
 
 /**
- * Find `…sql`…`` templates. Only chains whose final segment is `sql` count, so
- * `css`…``, `styled.div`…`` and untagged templates are left alone. Extend the
- * final-segment check to pick up `$queryRaw` and friends if ever needed.
+ * Template tags (the final identifier segment, lower-cased) whose body is SQL:
+ * the `sql` helper plus Prisma's raw-query methods. Everything else — `css`,
+ * `styled.div`, `gql` — is left alone.
+ */
+const SQL_TAGS = new Set([
+  'sql',
+  '$queryraw',
+  '$executeraw',
+  '$queryrawunsafe',
+  '$executerawunsafe',
+])
+
+/**
+ * Find `…sql`…`` / `…$queryRaw`…`` templates. Matching on the final segment of
+ * the tag chain, so `Prisma.sql`, `prisma.$queryRaw` and a bare `sql` all
+ * count while untagged templates and other tags don't.
  */
 function findSqlTemplates(text: string): SqlTemplate[] {
   const out: SqlTemplate[] = []
@@ -657,7 +670,7 @@ function findSqlTemplates(text: string): SqlTemplate[] {
   let match: RegExpExecArray | null
   while ((match = TAGGED_TEMPLATE.exec(text))) {
     const segments = match[1].split('.').map((s) => s.trim().toLowerCase())
-    if (segments[segments.length - 1] !== 'sql') continue
+    if (!SQL_TAGS.has(segments[segments.length - 1])) continue
     const bodyStart = TAGGED_TEMPLATE.lastIndex // char after the opening backtick
     const { end, sql } = scanTemplateBody(text, bodyStart)
     out.push({ bodyStart, sql })
