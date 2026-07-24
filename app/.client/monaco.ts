@@ -15,6 +15,7 @@
  */
 import * as monaco from 'monaco-editor'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import { canFormatLanguage, formatDocument } from './prettier'
 
 // One base worker serves every language label: tokenization/colorization runs
 // on the main thread (Monarch), and a read-only viewer doesn't need the
@@ -147,6 +148,7 @@ function inkRules(p: InkPalette): monaco.editor.ITokenThemeRule[] {
     { token: '', foreground: c(p.fg) },
     { token: 'comment', foreground: c(p.muted), fontStyle: 'italic' },
     { token: 'keyword', foreground: c(p.fg), fontStyle: 'bold' },
+    { token: 'identifier', foreground: c(p.hue), fontStyle: 'bold' },
     { token: 'string', foreground: c(p.hue) },
     { token: 'string.escape', foreground: c(p.hue), fontStyle: 'bold' },
     { token: 'regexp', foreground: c(p.hue) },
@@ -239,6 +241,82 @@ const EDITOR_FONT = "'JetBrains Mono Variable'"
 const EDITOR_FONT_SIZE = 13
 
 /**
+ * Wire Prettier into the context menu (plus Alt+Shift+F, VS Code's binding).
+ *
+ * Two paired actions share one context key so only one is ever visible. The
+ * pair exists because a `readOnly` editor disables undo, which would otherwise
+ * leave no way back to the bytes actually stored in S3 — formatting here is a
+ * view of the file, never a write to it.
+ *
+ * Edits go through the *model*, not `editor.executeEdits`: the latter is a
+ * no-op while `readOnly` is set, whereas the model has no such gate.
+ */
+function addFormatActions(
+  editor: monaco.editor.IStandaloneCodeEditor,
+  model: monaco.editor.ITextModel,
+  language: string
+) {
+  const original = model.getValue()
+  const isFormatted = editor.createContextKey<boolean>(
+    'stashlyFormatted',
+    false
+  )
+  let running = false
+
+  // Line counts shift under a full-range replace, so the scroll offset is only
+  // approximately preserved — still far better than snapping back to line 1.
+  const replaceAll = (next: string) => {
+    const scrollTop = editor.getScrollTop()
+    model.pushEditOperations(
+      [],
+      [{ range: model.getFullModelRange(), text: next }],
+      () => null
+    )
+    editor.setScrollTop(scrollTop)
+  }
+
+  editor.addAction({
+    id: 'stashly.formatDocument',
+    label: 'Format Document',
+    contextMenuGroupId: '1_modification',
+    contextMenuOrder: 1,
+    precondition: '!stashlyFormatted',
+    keybindings: [
+      monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF,
+    ],
+    run: async () => {
+      if (running) return
+      running = true
+      try {
+        const formatted = await formatDocument(original, language)
+        if (model.isDisposed() || formatted === original) return
+        replaceAll(formatted)
+        isFormatted.set(true)
+      } catch (err) {
+        // Usually a syntax error in the file itself — the viewer opens
+        // arbitrary uploads, so "doesn't parse" is an ordinary outcome.
+        console.error('[monaco] Prettier could not format this document', err)
+      } finally {
+        running = false
+      }
+    },
+  })
+
+  editor.addAction({
+    id: 'stashly.revertFormatting',
+    label: 'Revert Formatting',
+    contextMenuGroupId: '1_modification',
+    contextMenuOrder: 1,
+    precondition: 'stashlyFormatted',
+    run: () => {
+      if (model.isDisposed()) return
+      replaceAll(original)
+      isFormatted.set(false)
+    },
+  })
+}
+
+/**
  * Mount a read-only Monaco viewer into `container`. Returns a disposer that
  * tears down the editor, its model, and the theme listeners.
  */
@@ -257,7 +335,8 @@ export function createCodeViewer(
     .catch(() => {})
 
   applyInkTheme()
-  const model = monaco.editor.createModel(text, languageForFile(fileName))
+  const language = languageForFile(fileName)
+  const model = monaco.editor.createModel(text, language)
   const editor = monaco.editor.create(container, {
     model,
     readOnly: true,
@@ -275,6 +354,10 @@ export function createCodeViewer(
     // Bottom padding keeps the last lines clear of the floating stage toolbar.
     padding: { top: 12, bottom: 56 },
   })
+
+  if (canFormatLanguage(language)) {
+    addFormatActions(editor, model, language)
+  }
 
   // Follow app theme changes: Alt+T flips `data-theme`; 'system' follows the
   // OS media query. The observer fires after the attribute lands, so the CSS
