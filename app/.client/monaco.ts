@@ -399,10 +399,10 @@ function injectViewerStyles() {
 }
 
 /* Embedded SQL (sql\`…\` in TS/JS). The whole template is one string token —
-   the hue — so every SQL token is reset from that baseline: keywords and
-   identifiers to foreground, functions/strings to the hue, the rest muted. */
+   the hue — so every SQL token is reset from that baseline: keywords,
+   functions and strings take the hue (keywords bold), identifiers foreground,
+   the rest muted. */
 .monaco-editor .view-lines .stashly-sql-keyword {
-  color: var(--foreground, #232323);
   font-weight: 600;
 }
 .monaco-editor .view-lines .stashly-sql-identifier,
@@ -417,20 +417,24 @@ function injectViewerStyles() {
   color: var(--muted-foreground, #616161);
   font-style: italic;
 }
+.monaco-editor .view-lines .stashly-sql-keyword,
 .monaco-editor .view-lines .stashly-sql-string,
 .monaco-editor .view-lines .stashly-sql-function {
   color: #5e6ad2;
 }
 @media (prefers-color-scheme: dark) {
+  .monaco-editor .view-lines .stashly-sql-keyword,
   .monaco-editor .view-lines .stashly-sql-string,
   .monaco-editor .view-lines .stashly-sql-function {
     color: #96a0e8;
   }
 }
+:root[data-theme='light'] .monaco-editor .view-lines .stashly-sql-keyword,
 :root[data-theme='light'] .monaco-editor .view-lines .stashly-sql-string,
 :root[data-theme='light'] .monaco-editor .view-lines .stashly-sql-function {
   color: #5e6ad2;
 }
+:root[data-theme='dark'] .monaco-editor .view-lines .stashly-sql-keyword,
 :root[data-theme='dark'] .monaco-editor .view-lines .stashly-sql-string,
 :root[data-theme='dark'] .monaco-editor .view-lines .stashly-sql-function {
   color: #96a0e8;
