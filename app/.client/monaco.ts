@@ -64,6 +64,9 @@ self.MonacoEnvironment = {
  * Hover is unaffected by either switch (it's `getQuickInfoAtPosition`), so
  * types still resolve for everything the file defines itself plus the whole
  * standard library, which ts.worker bundles.
+ *
+ * The built-in hover is replaced (see `registerTsHover`): Monaco's own
+ * `tagToString` renders JSDoc far more crudely than VSCode does.
  */
 function configureTypeScript() {
   const ts = monaco.languages.typescript
@@ -93,6 +96,253 @@ function configureTypeScript() {
     defaults.setCompilerOptions(compilerOptions)
     defaults.setDiagnosticsOptions(diagnosticsOptions)
     defaults.setEagerModelSync(true)
+    // Turn off Monaco's own hover so our provider isn't a duplicate stacked
+    // on top of it. Every other built-in feature stays on. tsMode reads this
+    // when the language is first set up, which is why it must be set before
+    // the first .ts/.js model is created.
+    defaults.setModeConfiguration({
+      ...defaults.modeConfiguration,
+      hovers: false,
+    })
+  }
+
+  registerTsHover()
+}
+
+// ---------------------------------------------------------------------------
+// VSCode-parity JSDoc hover
+//
+// Monaco's built-in `tagToString` (languageFeatures.js) flattens JSDoc: it
+// emits `@param name — - text` (a doubled dash, because the `-` in the source
+// is never stripped), never fences `@example` code, and passes `{@link X}`
+// through with its literal braces. VSCode's `previewer.ts` does none of that.
+// This is a faithful port of that formatter over the same quick-info the
+// worker already returns.
+// ---------------------------------------------------------------------------
+
+/** Command that reveals a `{@link}` target's definition; see `registerTsHover`. */
+const REVEAL_TARGET_COMMAND = 'stashly.revealJsDocTarget'
+
+/** A link part's `target`: which file + span the symbol is declared at. */
+type TsLinkTarget = { fileName?: string; textSpan?: { start: number; length: number } }
+/** A `ts.SymbolDisplayPart` — `{ text, kind }`, plus link `target` when kind is a link. */
+type TsPart = { text: string; kind?: string; target?: TsLinkTarget }
+/** A `ts.JSDocTagInfo`. `text` is parts in modern TS, a bare string in old. */
+type TsTag = { name: string; text?: TsPart[] | string }
+/** Everything the formatter needs about the hovered model to build links. */
+type HoverContext = { uri: string }
+
+/** Flatten display parts to plain text (used for the signature line). */
+function partsToString(parts: TsPart[] | undefined): string {
+  return parts ? parts.map((p) => p.text).join('') : ''
+}
+
+/**
+ * Turn one resolved `{@link}` / `{@see}` reference into markdown.
+ *
+ * VSCode's three branches, kept intact:
+ *  - target in *this* file → a command link that reveals the declaration.
+ *    Cross-file targets (the stdlib, other modules) can't be revealed in a
+ *    single-file viewer, so they fall through to text rather than dangle.
+ *  - a bare URL → an ordinary markdown link.
+ *  - anything else → plain text (never literal `{@link …}` braces).
+ */
+function linkToMarkdown(
+  link: { name?: string; text?: string; target?: TsLinkTarget },
+  ctx: HoverContext
+): string {
+  const label = link.text ?? link.name ?? ''
+  if (!label) return ''
+
+  const span = link.target?.textSpan
+  if (span && link.target?.fileName === ctx.uri) {
+    const arg = { uri: ctx.uri, start: span.start, length: span.length }
+    const href = `command:${REVEAL_TARGET_COMMAND}?${encodeURIComponent(
+      JSON.stringify([arg])
+    )}`
+    return `[${label}](${href})`
+  }
+  if (/^https?:\/\//i.test(label.trim())) {
+    return `[${label}](${label.trim()})`
+  }
+  return label
+}
+
+/**
+ * Render doc-comment parts to markdown. Link parts (`{@link}` and the ones
+ * inside `@see`) become real links via `linkToMarkdown`; everything else is
+ * passed through.
+ */
+function docPartsToMarkdown(
+  text: TsPart[] | string | undefined,
+  ctx: HoverContext
+): string {
+  if (!text) return ''
+  if (typeof text === 'string') return stripInlineLinkTags(text)
+
+  let out = ''
+  let link: { name?: string; text?: string; target?: TsLinkTarget } | undefined
+  for (const part of text) {
+    if (part.kind === 'link') {
+      if (link) {
+        out += linkToMarkdown(link, ctx)
+        link = undefined
+      } else {
+        link = {}
+      }
+    } else if (part.kind === 'linkName') {
+      if (link) {
+        link.name = part.text
+        link.target = part.target
+      }
+    } else if (part.kind === 'linkText') {
+      if (link) link.text = part.text
+    } else if (!link) {
+      out += part.text
+    }
+  }
+  if (link) out += linkToMarkdown(link, ctx)
+  return stripInlineLinkTags(out)
+}
+
+/** Fallback for `{@link}`/`{@linkcode}` the worker left as raw text. */
+function stripInlineLinkTags(text: string): string {
+  return text.replace(
+    /\{@link(?:code|plain)?\s+([^}|]+?)(?:\|[^}]*)?\}/g,
+    '$1'
+  )
+}
+
+/** Wrap example/default bodies as a TS code block unless already fenced. */
+function asCodeblock(text: string): string {
+  if (/^\s*[~`]{3}/m.test(text)) return text
+  return '```ts\n' + text + '\n```'
+}
+
+/** One JSDoc tag → a markdown line, matching VSCode's `getTagDocumentation`. */
+function tagToMarkdown(tag: TsTag, ctx: HoverContext): string {
+  const label = `*@${tag.name}*`
+
+  // Named tags: "*@param* `name` — description", with the source `-` dropped.
+  if (['param', 'prop', 'property', 'template', 'typeParam'].includes(tag.name)) {
+    const body = docPartsToMarkdown(tag.text, ctx)
+    const match = body.match(/^(\S+)\s*-?\s*([\s\S]*)$/)
+    if (match) {
+      const [, name, doc] = match
+      const named = `*@${tag.name}* \`${name}\``
+      if (!doc) return named
+      return named + (/\r\n|\n/.test(doc) ? '  \n' + doc : ` — ${doc}`)
+    }
+  }
+
+  let body = docPartsToMarkdown(tag.text, ctx)
+  if (tag.name === 'example' || tag.name === 'default') {
+    const caption = body.match(/<caption>(.*?)<\/caption>\s*\r?\n/)
+    body =
+      caption && caption.index === 0
+        ? caption[1] + '\n\n' + asCodeblock(body.slice(caption[0].length))
+        : asCodeblock(body)
+  }
+  if (!body) return label
+  return label + (/\r\n|\n/.test(body) ? '  \n' + body : ` — ${body}`)
+}
+
+/** The doc-comment body plus all tags, as one markdown string. */
+function quickInfoDocsToMarkdown(
+  info: { documentation?: TsPart[]; tags?: TsTag[] },
+  ctx: HoverContext
+): string {
+  const docs = docPartsToMarkdown(info.documentation, ctx)
+  const tags = (info.tags ?? []).map((tag) => tagToMarkdown(tag, ctx)).join('  \n\n')
+  return [docs, tags].filter(Boolean).join('\n\n')
+}
+
+/** Registered once — hover providers are global to the monaco instance. */
+let tsHoverRegistered = false
+
+/**
+ * Replace Monaco's TS/JS hover with the VSCode-style formatter. The two
+ * languages sync to two separate workers, so each provider must reach for its
+ * own accessor; the quick-info shape is otherwise identical.
+ */
+function registerTsHover() {
+  if (tsHoverRegistered) return
+  tsHoverRegistered = true
+
+  // Backs the `{@link}` / `@see` command links. The arg is the target's own
+  // span; we find the editor showing that model and reveal it. Same-file only
+  // — the link is only ever built when the target lives in the hovered model
+  // (see `linkToMarkdown`), so a missing editor just means the tab was closed.
+  monaco.editor.registerCommand(
+    REVEAL_TARGET_COMMAND,
+    (_accessor, arg?: { uri: string; start: number; length: number }) => {
+      if (!arg) return
+      const model = monaco.editor
+        .getModels()
+        .find((m) => m.uri.toString() === arg.uri)
+      const editor = monaco.editor
+        .getEditors()
+        .find((e) => e.getModel() === model)
+      if (!model || !editor) return
+      const start = model.getPositionAt(arg.start)
+      const end = model.getPositionAt(arg.start + arg.length)
+      const range = new monaco.Range(
+        start.lineNumber,
+        start.column,
+        end.lineNumber,
+        end.column
+      )
+      editor.setSelection(range)
+      editor.revealRangeInCenterIfOutsideViewport(range)
+      editor.focus()
+    }
+  )
+
+  const accessorFor = (languageId: string) =>
+    languageId === 'javascript'
+      ? monaco.languages.typescript.getJavaScriptWorker()
+      : monaco.languages.typescript.getTypeScriptWorker()
+
+  for (const languageId of ['typescript', 'javascript']) {
+    monaco.languages.registerHoverProvider(languageId, {
+      provideHover: async (model, position) => {
+        const getWorker = await accessorFor(languageId)
+        if (model.isDisposed()) return null
+        const client = await getWorker(model.uri)
+        const info = await client.getQuickInfoAtPosition(
+          model.uri.toString(),
+          model.getOffsetAt(position)
+        )
+        if (!info || model.isDisposed()) return null
+
+        const signature = partsToString(info.displayParts)
+        const docs = quickInfoDocsToMarkdown(info, { uri: model.uri.toString() })
+        const start = model.getPositionAt(info.textSpan.start)
+        const end = model.getPositionAt(info.textSpan.start + info.textSpan.length)
+
+        const contents: monaco.IMarkdownString[] = [
+          { value: '```typescript\n' + signature + '\n```' },
+        ]
+        // Trust only our one reveal command — command links are inert markup
+        // otherwise. Scoped to this string, so nothing else can smuggle a
+        // command: URI into the hover.
+        if (docs) {
+          contents.push({
+            value: docs,
+            isTrusted: { enabledCommands: [REVEAL_TARGET_COMMAND] },
+          })
+        }
+        return {
+          range: new monaco.Range(
+            start.lineNumber,
+            start.column,
+            end.lineNumber,
+            end.column
+          ),
+          contents,
+        }
+      },
+    })
   }
 }
 
