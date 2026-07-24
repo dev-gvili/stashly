@@ -219,42 +219,180 @@ function asCodeblock(text: string): string {
   return '```ts\n' + text + '\n```'
 }
 
-/** One JSDoc tag → a markdown line, matching VSCode's `getTagDocumentation`. */
-function tagToMarkdown(tag: TsTag, ctx: HoverContext): string {
-  const label = `*@${tag.name}*`
+/** Split a tag body into `[name, description]`, dropping the source `-`. */
+function splitNamedTag(body: string): [string, string] {
+  const match = body.match(/^(\S+)\s*-?\s*([\s\S]*)$/)
+  return match ? [match[1], match[2]] : ['', body]
+}
 
-  // Named tags: "*@param* `name` — description", with the source `-` dropped.
-  if (['param', 'prop', 'property', 'template', 'typeParam'].includes(tag.name)) {
-    const body = docPartsToMarkdown(tag.text, ctx)
-    const match = body.match(/^(\S+)\s*-?\s*([\s\S]*)$/)
-    if (match) {
-      const [, name, doc] = match
-      const named = `*@${tag.name}* \`${name}\``
+/**
+ * All `@param` tags as one markdown table (Name | Description). A table reads
+ * far better than a stack of `*@param* \`x\` — …` lines once there are more
+ * than one or two. Descriptions are flattened to a single line and their pipes
+ * escaped so a stray `|` can't break the columns.
+ */
+function paramTable(params: TsTag[], ctx: HoverContext): string {
+  const rows = params.map((tag) => {
+    const [name, doc] = splitNamedTag(docPartsToMarkdown(tag.text, ctx))
+    const desc = doc.replace(/\s*\r?\n\s*/g, ' ').replace(/\|/g, '\\|').trim()
+    return `| \`${name}\` | ${desc || '—'} |`
+  })
+  return ['| Param | Description |', '| :--- | :--- |', ...rows].join('\n')
+}
+
+/** An `@example` body as a fenced code block, with no `@example` label. */
+function exampleBlock(tag: TsTag, ctx: HoverContext): string {
+  const body = docPartsToMarkdown(tag.text, ctx)
+  const caption = body.match(/<caption>(.*?)<\/caption>\s*\r?\n/)
+  return caption && caption.index === 0
+    ? `_${caption[1]}_\n\n` + asCodeblock(body.slice(caption[0].length))
+    : asCodeblock(body)
+}
+
+/** Nicely-cased labels for the tags that render as "**Label** — body". */
+const TAG_LABELS: Record<string, string> = {
+  returns: 'Returns',
+  see: 'See',
+  deprecated: 'Deprecated',
+  throws: 'Throws',
+  remarks: 'Remarks',
+  default: 'Default',
+  prop: 'Property',
+  property: 'Property',
+  template: 'Template',
+  typeParam: 'Type param',
+}
+
+/** "**Returns**" from `returns`; falls back to a capitalised tag name. */
+function tagLabel(name: string): string {
+  return TAG_LABELS[name] ?? name.charAt(0).toUpperCase() + name.slice(1)
+}
+
+/**
+ * Any tag that isn't `@param` or `@example` → a bold label followed by its
+ * body, e.g. "**Returns** — The new record." The bold label matches the
+ * description and the `@param` table so the whole card reads as one system,
+ * rather than VSCode's dimmer `*@returns*` italic.
+ */
+function tagToMarkdown(tag: TsTag, ctx: HoverContext): string {
+  const label = `**${tagLabel(tag.name)}**`
+
+  if (['prop', 'property', 'template', 'typeParam'].includes(tag.name)) {
+    const [name, doc] = splitNamedTag(docPartsToMarkdown(tag.text, ctx))
+    if (name) {
+      const named = `${label} \`${name}\``
       if (!doc) return named
       return named + (/\r\n|\n/.test(doc) ? '  \n' + doc : ` — ${doc}`)
     }
   }
 
-  let body = docPartsToMarkdown(tag.text, ctx)
-  if (tag.name === 'example' || tag.name === 'default') {
-    const caption = body.match(/<caption>(.*?)<\/caption>\s*\r?\n/)
-    body =
-      caption && caption.index === 0
-        ? caption[1] + '\n\n' + asCodeblock(body.slice(caption[0].length))
-        : asCodeblock(body)
-  }
+  const body =
+    tag.name === 'default'
+      ? asCodeblock(docPartsToMarkdown(tag.text, ctx))
+      : docPartsToMarkdown(tag.text, ctx)
   if (!body) return label
   return label + (/\r\n|\n/.test(body) ? '  \n' + body : ` — ${body}`)
 }
 
-/** The doc-comment body plus all tags, as one markdown string. */
+/**
+ * Assemble the hover body. Sections, in order:
+ *  1. the description, emphasised in bold so it leads the card;
+ *  2. a `@param` table;
+ *  3. every other tag (`@returns`, `@see`, `@deprecated`, …);
+ *  4. `@example` code blocks, unlabelled and each in its own section so they
+ *     get real vertical breathing room.
+ * Sections are joined by blank lines; that spacing is the whole visual point.
+ */
 function quickInfoDocsToMarkdown(
   info: { documentation?: TsPart[]; tags?: TsTag[] },
   ctx: HoverContext
 ): string {
-  const docs = docPartsToMarkdown(info.documentation, ctx)
-  const tags = (info.tags ?? []).map((tag) => tagToMarkdown(tag, ctx)).join('  \n\n')
-  return [docs, tags].filter(Boolean).join('\n\n')
+  const sections: string[] = []
+
+  const description = docPartsToMarkdown(info.documentation, ctx).trim()
+  if (description) sections.push(boldParagraphs(description))
+
+  const tags = info.tags ?? []
+  const params = tags.filter((t) => t.name === 'param')
+  const examples = tags.filter((t) => t.name === 'example')
+  const rest = tags.filter((t) => t.name !== 'param' && t.name !== 'example')
+
+  if (params.length) sections.push(paramTable(params, ctx))
+  const others = rest.map((tag) => tagToMarkdown(tag, ctx)).join('  \n\n')
+  if (others) sections.push(others)
+  for (const example of examples) sections.push(exampleBlock(example, ctx))
+
+  return sections.join('\n\n')
+}
+
+/**
+ * Bold the description, one `**…**` span per paragraph.
+ *
+ * Intra-paragraph newlines are flattened to spaces first — Markdown emphasis
+ * can't straddle a line break, so `**line1\nline2**` would print its literal
+ * asterisks. Collapsing also matches how VSCode reflows wrapped JSDoc prose.
+ * Inline code spans and `{@link}` links inside the run stay intact.
+ */
+function boldParagraphs(text: string): string {
+  return text
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.replace(/\s*\n\s*/g, ' ').trim())
+    .filter(Boolean)
+    .map((line) => `**${line}**`)
+    .join('\n\n')
+}
+
+/** Injected once — Monaco ships no CSS for markdown tables in hovers. */
+let hoverStylesInjected = false
+
+/**
+ * Style the JSDoc hover's table and code blocks. Monaco renders GFM tables as
+ * bare, border-less `<table>`s (columns collapse into each other) and gives
+ * stacked code blocks no separation. Colors come from the app's own Ink design
+ * tokens, so the hover tracks light/dark with the rest of the shell.
+ */
+function injectHoverStyles() {
+  if (hoverStylesInjected || typeof document === 'undefined') return
+  hoverStylesInjected = true
+  const style = document.createElement('style')
+  style.dataset.stashlyMonacoHover = 'true'
+  style.textContent = `
+.monaco-hover .rendered-markdown table {
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+.monaco-hover .rendered-markdown th,
+.monaco-hover .rendered-markdown td {
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border, #d7d7d7);
+  text-align: left;
+  vertical-align: top;
+}
+.monaco-hover .rendered-markdown th {
+  color: var(--muted-foreground, #616161);
+  font-weight: 600;
+}
+.monaco-hover .rendered-markdown th:first-child,
+.monaco-hover .rendered-markdown td:first-child {
+  padding-right: 18px;
+  white-space: nowrap;
+}
+.monaco-hover .rendered-markdown tr:last-child td {
+  border-bottom: none;
+}
+/* Space stacked @example blocks. They render as [data-code] divs with no
+   margin, so give one air whenever it follows other content. Sibling-scoped
+   so the lone signature block (an only child) is never pushed down. */
+.monaco-hover .rendered-markdown p + [data-code],
+.monaco-hover .rendered-markdown table + [data-code],
+.monaco-hover .rendered-markdown [data-code] + [data-code],
+.monaco-hover .rendered-markdown [data-code] + p,
+.monaco-hover .rendered-markdown p + pre,
+.monaco-hover .rendered-markdown [data-code] + pre {
+  margin-top: 10px;
+}
+`
+  document.head.appendChild(style)
 }
 
 /** Registered once — hover providers are global to the monaco instance. */
@@ -268,6 +406,7 @@ let tsHoverRegistered = false
 function registerTsHover() {
   if (tsHoverRegistered) return
   tsHoverRegistered = true
+  injectHoverStyles()
 
   // Backs the `{@link}` / `@see` command links. The arg is the target's own
   // span; we find the editor showing that model and reveal it. Same-file only
@@ -636,6 +775,10 @@ function inkColors(p: InkPalette): monaco.editor.IColors {
     'editorHoverWidget.foreground': p.fg,
     'editorHoverWidget.border': p.input,
     'editorHoverWidget.statusBarBackground': p.card,
+    // JSDoc `{@link}` / `@see` links in the hover borrow the one syntax hue.
+    'textLink.foreground': p.hue,
+    'textLink.activeForeground': p.hue,
+    'textCodeBlock.background': p.surface,
     'input.background': p.card,
     'input.foreground': p.fg,
     'input.border': p.input,
