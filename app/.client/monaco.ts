@@ -639,9 +639,17 @@ const SQL_TOKEN_CLASS: Record<string, string> = {
   'delimiter.parenthesis.sql': 'stashly-sql-operator',
 }
 
-/** An identifier chain (`Prisma . sql`) immediately in front of a backtick. */
+/**
+ * An identifier chain (`Prisma.sql`, `prisma.$queryRaw`) in front of a
+ * template backtick, with an optional generic type argument between them —
+ * `$queryRaw<Array<{ id: string }>>`…``. The generic sub-pattern balances up
+ * to three levels of `<…>` nesting, which covers real query result types;
+ * anything deeper just isn't recognised (it degrades to no highlight, never a
+ * mismatch). Requiring the trailing backtick keeps a plain `a < b` comparison
+ * on a `sql`-named value from ever matching.
+ */
 const TAGGED_TEMPLATE =
-  /(?<![.\w$])([A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*)\s*`/g
+  /(?<![.\w$])([A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*)\s*(?:<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>\s*)?`/g
 
 /** The inner SQL of one template: where its body starts + the body text. */
 type SqlTemplate = { bodyStart: number; sql: string }
