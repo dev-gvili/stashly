@@ -54,6 +54,7 @@ copilot_exports
 .svg-backup/
 .github/*.chatmode.md
 .github/ask.chatmode.md.backup
+/docs/ClaudeSessions
 
 # Data / assets
 models/*
