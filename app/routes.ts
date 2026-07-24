@@ -32,6 +32,7 @@ export default [
     route('sidebar', 'routes/api/sidebar.ts'),
     route('images', 'routes/api/images.ts'),
     route('view', 'routes/api/view.ts'),
+    route('source-types', 'routes/api/source-types.ts'),
 
     // Notifications & quota
     route('notifications', 'routes/api/notifications.ts'),

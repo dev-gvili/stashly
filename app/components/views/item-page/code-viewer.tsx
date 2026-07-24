@@ -14,9 +14,11 @@ const NOTICE_MS = 4000
 export function CodeViewer({
   text,
   fileName,
+  itemId,
 }: {
   text: string
   fileName: string
+  itemId?: string
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -47,6 +49,7 @@ export function CodeViewer({
         if (cancelled || !containerRef.current) return
         viewer = createCodeViewer(containerRef.current, text, fileName, {
           onNotice: showNotice,
+          itemId,
         })
         setState('ready')
       } catch (err) {
@@ -58,7 +61,7 @@ export function CodeViewer({
       cancelled = true
       viewer?.dispose()
     }
-  }, [text, fileName, showNotice])
+  }, [text, fileName, itemId, showNotice])
 
   if (state === 'error') {
     return (

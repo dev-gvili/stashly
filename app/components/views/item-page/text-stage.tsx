@@ -49,7 +49,12 @@ export function TextStage({
     <Suspense fallback={<TextLoading />}>
       <Await resolve={textDoc} errorElement={<TextError />}>
         {(doc: TextDoc) => (
-          <TextReader fileName={item.name} mono={mono} text={doc.text} />
+          <TextReader
+            fileName={item.name}
+            itemId={item.id}
+            mono={mono}
+            text={doc.text}
+          />
         )}
       </Await>
     </Suspense>
@@ -85,16 +90,18 @@ function TextReader({
   text,
   mono,
   fileName,
+  itemId,
 }: {
   text: string
   mono: boolean
   fileName: string
+  itemId?: string
 }) {
   if (mono) {
     const lineCount = text.split('\n').length
     return (
       <div className="relative h-[calc(100vh-4rem)] min-h-0 w-full min-w-0 overflow-hidden rounded-md border border-input bg-card! shadow-stashly">
-        <CodeViewer fileName={fileName} text={text} />
+        <CodeViewer fileName={fileName} itemId={itemId} text={text} />
         <StageToolbar label={`${lineCount.toLocaleString()} lines`} text={text} />
       </div>
     )

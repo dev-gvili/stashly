@@ -1195,6 +1195,8 @@ export function createCodeViewer(
   options: {
     /** Surfaces one-line results (formatting outcomes) back to React. */
     onNotice?: (message: string) => void
+    /** Stash item id — enables cross-file type resolution when present. */
+    itemId?: string
   } = {}
 ): { dispose: () => void } {
   // Web fonts load lazily — nothing else on the page uses JetBrains Mono, and
@@ -1247,6 +1249,14 @@ export function createCodeViewer(
     void import('./type-acquisition').then((m) =>
       m.acquireTypesForSource(model.getValue())
     )
+    // Cross-file resolution: fetch other uploaded files this one imports via
+    // path aliases (`@/types/…`) so their types resolve too. Needs the item id.
+    if (options.itemId) {
+      const itemId = options.itemId
+      void import('./cross-file-types').then((m) =>
+        m.acquireCrossFileTypes(itemId, model.getValue())
+      )
+    }
   }
 
   // Follow app theme changes: Alt+T flips `data-theme`; 'system' follows the

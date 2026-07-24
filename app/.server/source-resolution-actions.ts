@@ -1,0 +1,200 @@
+/**
+ * Cross-file type resolution for the code viewer.
+ *
+ * When a viewed `.ts`/`.tsx` file imports another *uploaded* file — usually via
+ * a path alias like `@/types/stash.types` — the viewer needs that file's source
+ * to resolve its types. This exposes two operations the client drives:
+ *
+ *  1. `getProjectConfig` — walk up from the viewed file to the nearest folder
+ *     holding a `tsconfig.json`/`jsconfig.json`, and read its `baseUrl`/`paths`.
+ *     That folder is the project root everything resolves against.
+ *  2. `getSourceFiles` — given project-relative logical paths (already alias-
+ *     mapped by the client), find each file under the root and return its text,
+ *     resolving the extension/`index` the way TypeScript would.
+ *
+ * All reads are gated by the same `read` permission the viewer already enforces
+ * on the opened file, checked against the project root.
+ */
+import { prisma } from '@/services/db'
+import { getObjectText } from './s3'
+import { hasItemPermission } from './permission-actions'
+import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+
+/** Config filenames that mark a project root, in priority order. */
+const PROJECT_FILES = ['tsconfig.json', 'jsconfig.json']
+/** Extensions tried, in order, when resolving an extensionless logical path. */
+const RESOLVE_EXTS = ['.ts', '.tsx', '.d.ts', '.js', '.jsx', '.mjs', '.cjs']
+/** Don't walk more than this many ancestors looking for a project root. */
+const MAX_ANCESTOR_WALK = 40
+/** Cap the files one `getSourceFiles` call will read. */
+const MAX_FILES_PER_REQUEST = 60
+
+export type ProjectConfig = {
+  /** Item id of the folder that is the project root. */
+  rootId: string
+  /** `compilerOptions.baseUrl`, defaulting to `.`. */
+  baseUrl: string
+  /** `compilerOptions.paths`, e.g. `{ "@/*": ["app/*"] }`. */
+  paths: Record<string, string[]>
+}
+
+export type SourceFile = { path: string; text: string }
+
+/**
+ * Find the project root for a file and read its alias config. Returns `null`
+ * when there's no `tsconfig`/`jsconfig` above the file — cross-file resolution
+ * simply stays off in that case.
+ */
+export async function getProjectConfig(
+  userId: string,
+  fileId: string
+): Promise<ProjectConfig | null> {
+  if (!(await hasItemPermission(userId, fileId, 'read'))) {
+    throw new StashlyError(StashlyErrorCode.FORBIDDEN)
+  }
+
+  const file = await prisma.item.findUnique({
+    where: { id: fileId },
+    select: { parentId: true },
+  })
+  let parentId = file?.parentId ?? null
+
+  for (let i = 0; i < MAX_ANCESTOR_WALK && parentId; i++) {
+    const config = await prisma.item.findFirst({
+      where: { parentId, type: 'file', name: { in: PROJECT_FILES } },
+      select: { file: { select: { bucket: true, key: true } } },
+    })
+    if (config?.file) {
+      const text = await getObjectText(config.file.bucket, config.file.key).catch(
+        () => null
+      )
+      const { baseUrl, paths } = parseTsconfig(text)
+      return { rootId: parentId, baseUrl, paths }
+    }
+    const folder = await prisma.item.findUnique({
+      where: { id: parentId },
+      select: { parentId: true },
+    })
+    parentId = folder?.parentId ?? null
+  }
+  return null
+}
+
+/**
+ * Read the source of each requested logical path (project-root-relative, e.g.
+ * `app/types/stash.types`). Missing files are skipped, so the client gets back
+ * only what actually resolved.
+ */
+export async function getSourceFiles(
+  userId: string,
+  rootId: string,
+  logicalPaths: string[]
+): Promise<SourceFile[]> {
+  if (!(await hasItemPermission(userId, rootId, 'read'))) {
+    throw new StashlyError(StashlyErrorCode.FORBIDDEN)
+  }
+
+  const out: SourceFile[] = []
+  const seen = new Set<string>()
+  for (const logical of logicalPaths.slice(0, MAX_FILES_PER_REQUEST)) {
+    const normalized = normalize(logical)
+    if (!normalized || seen.has(normalized)) continue
+    seen.add(normalized)
+    const resolved = await resolveUnderRoot(rootId, normalized)
+    if (resolved) out.push(resolved)
+  }
+  return out
+}
+
+// ---------------------------------------------------------------------------
+// Resolution helpers
+// ---------------------------------------------------------------------------
+
+/** Candidate real paths for a logical path, mirroring TS's extension search. */
+function candidatesFor(logical: string): string[] {
+  if (/\.[mc]?[jt]sx?$/.test(logical) || logical.endsWith('.d.ts')) {
+    return [logical]
+  }
+  return [
+    ...RESOLVE_EXTS.map((ext) => `${logical}${ext}`),
+    ...RESOLVE_EXTS.map((ext) => `${logical}/index${ext}`),
+  ]
+}
+
+/** First candidate that exists as a file under `rootId`, with its text. */
+async function resolveUnderRoot(
+  rootId: string,
+  logical: string
+): Promise<SourceFile | null> {
+  for (const candidate of candidatesFor(logical)) {
+    const file = await findFileByPath(rootId, candidate)
+    if (file) {
+      const text = await getObjectText(file.bucket, file.key).catch(() => null)
+      if (text != null) return { path: candidate, text }
+    }
+  }
+  return null
+}
+
+/** Walk the folder tree from `rootId` down a `/`-separated path to a File. */
+async function findFileByPath(
+  rootId: string,
+  relPath: string
+): Promise<{ bucket: string; key: string } | null> {
+  const segments = relPath.split('/').filter(Boolean)
+  let parentId = rootId
+  for (let i = 0; i < segments.length; i++) {
+    const last = i === segments.length - 1
+    const item = await prisma.item.findFirst({
+      where: { parentId, name: segments[i] },
+      select: {
+        id: true,
+        file: last ? { select: { bucket: true, key: true } } : false,
+      },
+    })
+    if (!item) return null
+    if (last) return item.file ?? null
+    parentId = item.id
+  }
+  return null
+}
+
+/** Collapse `./` and `../` segments; drop a leading slash. */
+function normalize(path: string): string {
+  const out: string[] = []
+  for (const seg of path.split('/')) {
+    if (!seg || seg === '.') continue
+    if (seg === '..') out.pop()
+    else out.push(seg)
+  }
+  return out.join('/')
+}
+
+/**
+ * Extract `baseUrl` + `paths` from tsconfig text. tsconfig is JSONC (comments,
+ * trailing commas), so it's lightly stripped before parsing. Any failure just
+ * yields empty config — aliases won't resolve, which fails safe.
+ */
+function parseTsconfig(text: string | null): {
+  baseUrl: string
+  paths: Record<string, string[]>
+} {
+  if (!text) return { baseUrl: '.', paths: {} }
+  try {
+    const stripped = text
+      .replace(/\/\*[\s\S]*?\*\//g, '') // block comments
+      .replace(/(^|[^:"'\\])\/\/.*$/gm, '$1') // line comments (naive)
+      .replace(/,(\s*[}\]])/g, '$1') // trailing commas
+    const json = JSON.parse(stripped)
+    const co = json?.compilerOptions ?? {}
+    return {
+      baseUrl: typeof co.baseUrl === 'string' ? co.baseUrl : '.',
+      paths:
+        co.paths && typeof co.paths === 'object'
+          ? (co.paths as Record<string, string[]>)
+          : {},
+    }
+  } catch {
+    return { baseUrl: '.', paths: {} }
+  }
+}

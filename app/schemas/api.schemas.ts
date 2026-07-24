@@ -801,3 +801,27 @@ export const lockApiRouteQuery = z.object({
   itemId: z.string().optional(),
   cursor: z.string().optional(),
 })
+
+// ====================================================== //
+// ============ Source Types (cross-file) Route ========= //
+// ====================================================== //
+
+// Cross-file type resolution for the code viewer: fetch a project's alias
+// config, then the source of specific alias-mapped files.
+
+const projectConfigSchema = z.object({
+  intent: z.literal('project-config'),
+  fileId: z.string().nonempty(),
+})
+
+const sourceFilesSchema = z.object({
+  intent: z.literal('source-files'),
+  rootId: z.string().nonempty(),
+  // Project-root-relative logical paths (client has already alias-mapped them).
+  logicalPaths: z.array(z.string().nonempty()).max(60),
+})
+
+export const sourceTypesApiRouteInput = z.discriminatedUnion('intent', [
+  projectConfigSchema,
+  sourceFilesSchema,
+])

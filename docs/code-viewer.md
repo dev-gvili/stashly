@@ -22,6 +22,9 @@ design tokens and never writing a byte back to storage.
 | `app/components/views/item-page/code-viewer.tsx` | Thin React wrapper. Dynamic-imports the Monaco module from an effect, renders a loading spinner, a notice pill, and a `<pre>` fallback if Monaco fails to load. |
 | `app/.client/monaco.ts` | Everything Monaco. Editor creation, theming, worker routing, language services, the JSDoc hover, and embedded-SQL highlighting. Lives in `.client/` so the server bundle never evaluates it. |
 | `app/.client/prettier.ts` | Browser Prettier. `prettier/standalone` + per-language parser chunks, behind `canFormatLanguage` / `formatDocument`. |
+| `app/.client/type-acquisition.ts` | npm ATA — `@typescript/ata` → jsdelivr → `addExtraLib`. |
+| `app/.client/cross-file-types.ts` | Cross-file resolution — walks the import graph, fetches sibling source via the API, registers it as extra libs. |
+| `app/.server/source-resolution-actions.ts` + `app/routes/api/source-types.ts` | Backend for cross-file: project-root/alias config + reading sibling source by logical path. |
 | `app/utils/text-thumbnail.ts` | `isMonoFile` / `isTextRenderableFile` — decides code vs prose and which files are text at all. |
 
 Both `.client/*` modules are dynamic-imported from a browser-only effect, so
@@ -340,6 +343,14 @@ hue rather than screaming red — it's a read-only viewer).
   reaches `file:///node_modules`). App path aliases (`@/…`) are filtered out of
   ATA — resolving those is cross-file's job. Trade-off: outbound jsdelivr
   requests derived from a file's import statements (package names only).
+- **Cross-file types** — imports of *other uploaded files* (path aliases like
+  `@/types/…`) resolve via `cross-file-types.ts` + the `source-types` API: it
+  reads the project's `tsconfig` `paths`, applies them (`baseUrl: file:///`,
+  libs registered at `file:///<projectPath>`), and walks the import graph,
+  fetching each referenced file's source. v1 covers alias imports (and relative
+  imports *between* fetched files); the viewed file's own relative imports
+  aren't followed, since its model lives at a synthetic URI, not its real
+  project path.
 - **Cross-file `{@link}`** — navigation only works for same-file targets; the
   viewer holds one file, so cross-module links render as plain text.
 - **SQL generic nesting** — the tag regex balances 3 levels of `<…>`; deeper
