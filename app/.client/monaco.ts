@@ -15,29 +15,42 @@
  */
 import * as monaco from 'monaco-editor'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
+import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
+import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import TypeScriptWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 import { canFormatLanguage, formatDocument } from './prettier'
 
 /**
- * Workers by language label. TypeScript and JavaScript get the real TS
- * language service — that is what backs hover type info, JSDoc in the hover
- * card, and in-file go-to-definition. Every other language tokenizes on the
- * main thread with Monarch, which is all a viewer needs, so they keep the
- * base worker rather than pulling in the json/css/html services.
+ * Language services, keyed by worker label. Each workerManager passes its own
+ * language id as the label (`label: this._defaults.languageId`), so these keys
+ * are exactly the ids `languageForFile` returns.
  *
- * Vite only fetches a `?worker` chunk when the constructor runs, so the ~6MB
- * of bundled TypeScript is downloaded the first time someone opens a .ts/.js
- * file and never for anyone else.
+ * These are what back hover cards: types and JSDoc for TS/JS, schema-aware
+ * structure for JSON, MDN property docs for CSS, and tag/attribute reference
+ * for HTML. Anything not listed falls through to the base worker and
+ * tokenizes on the main thread with Monarch, which is all a viewer needs.
+ *
+ * Vite only fetches a `?worker` chunk when its constructor runs, so each of
+ * these is downloaded the first time someone opens a matching file and never
+ * for anyone else — which matters most for TypeScript, far the largest.
  */
-self.MonacoEnvironment = {
-  getWorker: (_workerId: string, label: string) =>
-    label === 'typescript' || label === 'javascript'
-      ? new TypeScriptWorker()
-      : new EditorWorker(),
+const LANGUAGE_WORKERS: Record<string, () => Worker> = {
+  typescript: () => new TypeScriptWorker(),
+  javascript: () => new TypeScriptWorker(),
+  json: () => new JsonWorker(),
+  css: () => new CssWorker(),
+  scss: () => new CssWorker(),
+  less: () => new CssWorker(),
+  html: () => new HtmlWorker(),
+  handlebars: () => new HtmlWorker(),
+  razor: () => new HtmlWorker(),
 }
 
-/** TS defaults are global to the monaco instance — configure them once. */
-let typeScriptConfigured = false
+self.MonacoEnvironment = {
+  getWorker: (_workerId: string, label: string) =>
+    LANGUAGE_WORKERS[label]?.() ?? new EditorWorker(),
+}
 
 /**
  * Put the language service in "one orphan file" mode.
@@ -53,9 +66,6 @@ let typeScriptConfigured = false
  * standard library, which ts.worker bundles.
  */
 function configureTypeScript() {
-  if (typeScriptConfigured) return
-  typeScriptConfigured = true
-
   const ts = monaco.languages.typescript
   const compilerOptions: monaco.languages.typescript.CompilerOptions = {
     allowJs: true,
@@ -84,6 +94,90 @@ function configureTypeScript() {
     defaults.setDiagnosticsOptions(diagnosticsOptions)
     defaults.setEagerModelSync(true)
   }
+}
+
+/**
+ * JSON: keep the validator, keep it offline, stop it moralising about JSONC.
+ *
+ * `enableSchemaRequest` already defaults to false, but it is set explicitly
+ * because the consequence of it flipping is that the viewer starts fetching
+ * whatever URL a `$schema` key inside an uploaded file points at. Comments and
+ * trailing commas are downgraded from errors: a large share of real-world
+ * .json files are tsconfig/eslintrc-style JSONC, where flagging them is wrong
+ * more often than it's right.
+ */
+function configureJson() {
+  monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+    validate: true,
+    allowComments: true,
+    schemas: [],
+    enableSchemaRequest: false,
+    comments: 'ignore',
+    trailingCommas: 'warning',
+  })
+}
+
+/**
+ * CSS/SCSS/LESS: structural validation on, style lint off.
+ *
+ * The defaults warn about vendor prefixes, duplicate properties, empty rules
+ * and unknown properties — every one of which fires constantly on minified or
+ * third-party stylesheets, and none of which the reader of a stashed file can
+ * act on. Genuine mistakes (malformed hex, bad color-function arguments) stay
+ * errors.
+ *
+ * `setOptions` replaces the options object wholesale, so `data` has to be
+ * repeated: dropping it would turn off the default data provider, which is
+ * where CSS property hover documentation comes from — the main reason to run
+ * this service at all.
+ */
+function configureCss() {
+  const options: monaco.languages.css.Options = {
+    validate: true,
+    lint: {
+      vendorPrefix: 'ignore',
+      duplicateProperties: 'ignore',
+      emptyRules: 'ignore',
+      fontFaceProperties: 'ignore',
+      unknownProperties: 'ignore',
+      propertyIgnoredDueToDisplay: 'ignore',
+      hexColorLength: 'error',
+      argumentsInColorFunction: 'error',
+    },
+    data: { useDefaultDataProvider: true },
+  }
+  const css = monaco.languages.css
+  for (const defaults of [css.cssDefaults, css.scssDefaults, css.lessDefaults]) {
+    defaults.setOptions(options)
+  }
+}
+
+/**
+ * Language id → the one-time setup for its service family. HTML is absent on
+ * purpose: its defaults are already right for a viewer, so it needs a worker
+ * but no configuration.
+ */
+const SERVICE_CONFIGURERS: Record<string, () => void> = {
+  typescript: configureTypeScript,
+  javascript: configureTypeScript,
+  json: configureJson,
+  css: configureCss,
+  scss: configureCss,
+  less: configureCss,
+}
+
+/**
+ * Language-service defaults are global to the monaco instance, so each family
+ * is configured once. Keying the guard on the function itself means css/scss/
+ * less collapse to a single run for free.
+ */
+const configuredServices = new Set<() => void>()
+
+function configureLanguageService(language: string) {
+  const configure = SERVICE_CONFIGURERS[language]
+  if (!configure || configuredServices.has(configure)) return
+  configuredServices.add(configure)
+  configure()
 }
 
 let modelSequence = 0
@@ -455,9 +549,7 @@ export function createCodeViewer(
 
   applyInkTheme()
   const language = languageForFile(fileName)
-  if (language === 'typescript' || language === 'javascript') {
-    configureTypeScript()
-  }
+  configureLanguageService(language)
   const model = monaco.editor.createModel(text, language, modelUriFor(fileName))
   const editor = monaco.editor.create(container, {
     model,
@@ -478,7 +570,9 @@ export function createCodeViewer(
   })
 
   if (canFormatLanguage(language)) {
-    addFormatActions(editor, model, language)
+    addFormatActions(editor, model, language, (message) =>
+      options.onNotice?.(message)
+    )
   }
 
   // Follow app theme changes: Alt+T flips `data-theme`; 'system' follows the
