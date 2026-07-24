@@ -9,6 +9,7 @@ import {
 import {
   listNotifications,
   markNotificationRead,
+  markNotificationUnread,
   markAllNotificationsRead,
   deleteNotification,
   createNotification,
@@ -62,6 +63,14 @@ export async function action({ request }: Route.ActionArgs) {
       return data({ notification })
     }
 
+    if (formData.intent === 'mark_unread') {
+      const notification = await markNotificationUnread(
+        formData.notificationId,
+        session.user.id
+      )
+      return data({ notification })
+    }
+
     if (formData.intent === 'mark_all_read') {
       const result = await markAllNotificationsRead(session.user.id)
       return data({ count: result.count })
@@ -77,6 +86,7 @@ export async function action({ request }: Route.ActionArgs) {
         userId: session.user.id,
         message: formData.message,
         type: formData.type,
+        kind: formData.kind,
       })
       return data({ notification }, { status: 201 })
     }

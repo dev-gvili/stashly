@@ -9,6 +9,7 @@ import {
   findStoragePlanById,
   findDefaultStoragePlan,
 } from '@/.server/storagePlan-actions'
+import { listNotifications } from '@/.server/notification-actions'
 import { prisma } from '@/services/db'
 import { Outlet, redirect, type ShouldRevalidateFunction } from 'react-router'
 import type { Route } from './+types/layout'
@@ -30,20 +31,23 @@ export async function loader({ request }: Route.LoaderArgs) {
     plan = await findDefaultStoragePlan()
   }
 
-  const [sidebarCookieValue, workspaceMemberships] = await Promise.all([
-    sidebarCookie.parse(request.headers.get('cookie')),
-    prisma.workspaceMember.findMany({
-      where: { memberId: session.user.id },
-      select: {
-        role: true,
-        workspace: { select: { id: true, name: true, slug: true } },
-      },
-      orderBy: { workspace: { name: 'asc' } },
-    }),
-  ])
+  const [sidebarCookieValue, workspaceMemberships, notificationsPage] =
+    await Promise.all([
+      sidebarCookie.parse(request.headers.get('cookie')),
+      prisma.workspaceMember.findMany({
+        where: { memberId: session.user.id },
+        select: {
+          role: true,
+          workspace: { select: { id: true, name: true, slug: true } },
+        },
+        orderBy: { workspace: { name: 'asc' } },
+      }),
+      listNotifications({ userId: session.user.id, limit: 30 }),
+    ])
 
   return {
     user: session.user,
+    notifications: notificationsPage.notifications,
     workspaces: workspaceMemberships.map((m) => ({
       id: m.workspace.id,
       name: m.workspace.name,
@@ -62,6 +66,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 }
 
+// The layout loader is heavy (storage plan, workspaces, notification seed), so
+// it never revalidates on navigation. The notification bell stays live via the
+// SSE stream (useNotificationStream) rather than by re-running this loader.
 export const shouldRevalidate: ShouldRevalidateFunction = () => false
 
 export default function StashlyLayout({ loaderData }: Route.ComponentProps) {

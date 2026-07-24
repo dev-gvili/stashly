@@ -35,6 +35,7 @@ export default [
 
     // Notifications & quota
     route('notifications', 'routes/api/notifications.ts'),
+    route('notifications/stream', 'routes/api/notifications-stream.ts'),
     route('quota', 'routes/api/quota.ts'),
 
     // Access control

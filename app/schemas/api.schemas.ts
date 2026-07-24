@@ -576,6 +576,10 @@ export const notificationsApiRouteInput = z.discriminatedUnion('intent', [
     notificationId: z.string().nonempty(),
   }),
   z.object({
+    intent: z.literal('mark_unread'),
+    notificationId: z.string().nonempty(),
+  }),
+  z.object({
     intent: z.literal('mark_all_read'),
   }),
   z.object({
@@ -586,6 +590,23 @@ export const notificationsApiRouteInput = z.discriminatedUnion('intent', [
     intent: z.literal('create_notification'),
     message: z.string().nonempty(),
     type: z.enum(['info', 'warning', 'error', 'success']),
+    kind: z
+      .enum([
+        'system',
+        'share',
+        'upload',
+        'file',
+        'storage',
+        'invitation',
+        'member',
+        'workspace',
+        'collection',
+        'favorite',
+        'pin',
+        'comment',
+        'lock',
+      ])
+      .optional(),
   }),
 ])
 
