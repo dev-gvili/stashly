@@ -343,14 +343,17 @@ hue rather than screaming red — it's a read-only viewer).
   reaches `file:///node_modules`). App path aliases (`@/…`) are filtered out of
   ATA — resolving those is cross-file's job. Trade-off: outbound jsdelivr
   requests derived from a file's import statements (package names only).
-- **Cross-file types** — imports of *other uploaded files* (path aliases like
-  `@/types/…`) resolve via `cross-file-types.ts` + the `source-types` API: it
-  reads the project's `tsconfig` `paths`, applies them (`baseUrl: file:///`,
-  libs registered at `file:///<projectPath>`), and walks the import graph,
-  fetching each referenced file's source. v1 covers alias imports (and relative
-  imports *between* fetched files); the viewed file's own relative imports
-  aren't followed, since its model lives at a synthetic URI, not its real
-  project path.
+- **Cross-file types** — imports of *other uploaded files* resolve via
+  `cross-file-types.ts` + the `source-types` API. The loader-adjacent
+  `getProjectConfig` returns the file's project root, its real path, and the
+  tsconfig `paths`; the viewer **mounts the model at that real path**
+  (`file:///app/.server/x.ts`), so the file's own `./relative` imports resolve
+  natively — no tsconfig needed for those. Aliases (`@/services/…`) use the
+  tsconfig `paths`, matched longest-prefix-first so `@/services/*` beats the
+  catch-all `@/*`. The import graph is walked (relative + alias), fetching each
+  referenced file's source and registering it as an extra lib at its real path.
+  The project root falls back to the topmost uploaded folder when there's no
+  tsconfig, so relative resolution works project-wide regardless.
 - **Cross-file `{@link}`** — navigation only works for same-file targets; the
   viewer holds one file, so cross-module links render as plain text.
 - **SQL generic nesting** — the tag regex balances 3 levels of `<…>`; deeper

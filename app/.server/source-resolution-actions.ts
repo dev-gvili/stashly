@@ -36,14 +36,22 @@ export type ProjectConfig = {
   baseUrl: string
   /** `compilerOptions.paths`, e.g. `{ "@/*": ["app/*"] }`. */
   paths: Record<string, string[]>
+  /** The viewed file's path relative to `rootId`, e.g. `app/.server/x.ts`. */
+  filePath: string
 }
 
 export type SourceFile = { path: string; text: string }
 
 /**
- * Find the project root for a file and read its alias config. Returns `null`
- * when there's no `tsconfig`/`jsconfig` above the file — cross-file resolution
- * simply stays off in that case.
+ * Describe a file's place in its uploaded project: the project root, the
+ * viewed file's path under it, and the alias config.
+ *
+ * The root is the nearest ancestor holding a `tsconfig`/`jsconfig`; failing
+ * that, the topmost uploaded folder (just under the user's drive root). That
+ * fallback is deliberate — mounting the viewed file at its *real* path lets its
+ * relative imports (`./x`, `../y`) resolve on their own, so a project doesn't
+ * need a tsconfig at all for those; a tsconfig only adds alias (`@/…`) support.
+ * Returns `null` only when the file has no folder above it.
  */
 export async function getProjectConfig(
   userId: string,
@@ -53,31 +61,59 @@ export async function getProjectConfig(
     throw new StashlyError(StashlyErrorCode.FORBIDDEN)
   }
 
-  const file = await prisma.item.findUnique({
-    where: { id: fileId },
-    select: { parentId: true },
-  })
-  let parentId = file?.parentId ?? null
+  const [user, file] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { rootId: true } }),
+    prisma.item.findUnique({
+      where: { id: fileId },
+      select: { name: true, parentId: true },
+    }),
+  ])
+  if (!file?.parentId) return null
+  const driveRootId = user?.rootId ?? null
 
-  for (let i = 0; i < MAX_ANCESTOR_WALK && parentId; i++) {
-    const config = await prisma.item.findFirst({
-      where: { parentId, type: 'file', name: { in: PROJECT_FILES } },
-      select: { file: { select: { bucket: true, key: true } } },
-    })
-    if (config?.file) {
-      const text = await getObjectText(config.file.bucket, config.file.key).catch(
-        () => null
-      )
-      const { baseUrl, paths } = parseTsconfig(text)
-      return { rootId: parentId, baseUrl, paths }
-    }
+  // Walk parent → up, collecting the folder chain and the nearest tsconfig.
+  const ancestors: Array<{ id: string; name: string }> = []
+  let tsconfigRootId: string | null = null
+  let tsconfigText: string | null = null
+  let parentId: string | null = file.parentId
+
+  for (let i = 0; i < MAX_ANCESTOR_WALK && parentId && parentId !== driveRootId; i++) {
+    const currentId: string = parentId
     const folder = await prisma.item.findUnique({
-      where: { id: parentId },
-      select: { parentId: true },
+      where: { id: currentId },
+      select: { id: true, name: true, parentId: true },
     })
-    parentId = folder?.parentId ?? null
+    if (!folder) break
+    ancestors.push({ id: folder.id, name: folder.name })
+    if (!tsconfigRootId) {
+      const config = await prisma.item.findFirst({
+        where: { parentId: folder.id, type: 'file', name: { in: PROJECT_FILES } },
+        select: { file: { select: { bucket: true, key: true } } },
+      })
+      if (config?.file) {
+        tsconfigRootId = folder.id
+        tsconfigText = await getObjectText(
+          config.file.bucket,
+          config.file.key
+        ).catch(() => null)
+      }
+    }
+    parentId = folder.parentId
   }
-  return null
+  if (ancestors.length === 0) return null
+
+  // Root: the tsconfig folder, else the topmost uploaded folder.
+  const rootId = tsconfigRootId ?? ancestors[ancestors.length - 1].id
+  const rootIndex = ancestors.findIndex((a) => a.id === rootId)
+  // Folders strictly between the file and the root, nearest-first → reverse to
+  // root-first, then the file name: `app/.server/x.ts`.
+  const between = ancestors.slice(0, rootIndex === -1 ? ancestors.length : rootIndex)
+  const filePath = [...between.map((a) => a.name).reverse(), file.name].join('/')
+
+  const { baseUrl, paths } = tsconfigText
+    ? parseTsconfig(tsconfigText)
+    : { baseUrl: '.', paths: {} }
+  return { rootId, baseUrl, paths, filePath }
 }
 
 /**

@@ -20,6 +20,7 @@ import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import TypeScriptWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 import { canFormatLanguage, formatDocument } from './prettier'
+import type { SourceContext } from './cross-file-types'
 
 /**
  * Language services, keyed by worker label. Each workerManager passes its own
@@ -857,6 +858,24 @@ function modelUriFor(fileName: string): monaco.Uri {
 }
 
 /**
+ * Prefer the file's real project path (`file:///app/.server/x.ts`) when we know
+ * it — that's what lets the file's own `./relative` imports resolve against its
+ * uploaded siblings. Without a project context (or on a URI collision from the
+ * same file being open twice) fall back to the synthetic counter URI.
+ */
+function modelUriForContext(
+  fileName: string,
+  context: SourceContext | null | undefined
+): monaco.Uri {
+  if (context?.filePath) {
+    const safe = context.filePath.replace(/[^\w./-]+/g, '_')
+    const uri = monaco.Uri.parse(`file:///${safe}`)
+    if (!monaco.editor.getModel(uri)) return uri
+  }
+  return modelUriFor(fileName)
+}
+
+/**
  * Resolve a Monaco language id from a filename using Monaco's own registry
  * (extensions + exact filenames, so `Dockerfile`/`Makefile` resolve too).
  */
@@ -1195,8 +1214,12 @@ export function createCodeViewer(
   options: {
     /** Surfaces one-line results (formatting outcomes) back to React. */
     onNotice?: (message: string) => void
-    /** Stash item id — enables cross-file type resolution when present. */
-    itemId?: string
+    /**
+     * The file's project context (root, alias paths, real path). When present,
+     * the model is mounted at its real path so relative imports resolve, and
+     * cross-file type acquisition runs. Fetched in the React layer.
+     */
+    sourceContext?: SourceContext | null
   } = {}
 ): { dispose: () => void } {
   // Web fonts load lazily — nothing else on the page uses JetBrains Mono, and
@@ -1211,7 +1234,11 @@ export function createCodeViewer(
   applyInkTheme()
   const language = languageForFile(fileName)
   configureLanguageService(language)
-  const model = monaco.editor.createModel(text, language, modelUriFor(fileName))
+  const model = monaco.editor.createModel(
+    text,
+    language,
+    modelUriForContext(fileName, options.sourceContext)
+  )
   const editor = monaco.editor.create(container, {
     model,
     readOnly: true,
@@ -1249,12 +1276,13 @@ export function createCodeViewer(
     void import('./type-acquisition').then((m) =>
       m.acquireTypesForSource(model.getValue())
     )
-    // Cross-file resolution: fetch other uploaded files this one imports via
-    // path aliases (`@/types/…`) so their types resolve too. Needs the item id.
-    if (options.itemId) {
-      const itemId = options.itemId
+    // Cross-file resolution: fetch the other uploaded files this one imports
+    // (relative + path aliases) so their types resolve too. The model is
+    // already mounted at its real path, so relative imports line up.
+    if (options.sourceContext) {
+      const ctx = options.sourceContext
       void import('./cross-file-types').then((m) =>
-        m.acquireCrossFileTypes(itemId, model.getValue())
+        m.acquireCrossFileTypes(ctx, model.getValue())
       )
     }
   }

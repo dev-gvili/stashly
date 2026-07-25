@@ -45,11 +45,23 @@ export function CodeViewer({
     setNotice(null)
     ;(async () => {
       try {
-        const { createCodeViewer } = await import('@/.client/monaco')
+        // Fetch the file's project context (root, alias paths, real path) in
+        // parallel with the Monaco chunk, so it adds no latency. Used to mount
+        // the model at its real path (relative imports resolve) and to drive
+        // cross-file type acquisition. Only meaningful for TS/JS.
+        const wantsTypes = /\.(mts|cts|tsx?|mjs|cjs|jsx?)$/i.test(fileName)
+        const [{ createCodeViewer }, sourceContext] = await Promise.all([
+          import('@/.client/monaco'),
+          itemId && wantsTypes
+            ? import('@/.client/cross-file-types')
+                .then((m) => m.fetchSourceContext(itemId))
+                .catch(() => null)
+            : Promise.resolve(null),
+        ])
         if (cancelled || !containerRef.current) return
         viewer = createCodeViewer(containerRef.current, text, fileName, {
           onNotice: showNotice,
-          itemId,
+          sourceContext,
         })
         setState('ready')
       } catch (err) {

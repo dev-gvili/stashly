@@ -26,35 +26,54 @@ const requested = new Set<string>()
 /** Virtual lib paths already registered with Monaco. */
 const addedLibs = new Set<string>()
 
-type ProjectConfig = {
+export type SourceContext = {
   rootId: string
   baseUrl: string
   paths: Record<string, string[]>
-} | null
+  /** The viewed file's path relative to `rootId`, e.g. `app/.server/x.ts`. */
+  filePath: string
+}
 
 /** A compiled `paths` entry: literal prefix/suffix around the `*`, → targets. */
 type AliasMatcher = { prefix: string; suffix: string; targets: string[] }
 
 /**
- * Resolve types from other uploaded files for `source`. Fire-and-forget: as
- * libs land, Monaco re-syncs and hovers pick them up.
+ * Fetch a file's project context (root, alias config, real path). Called from
+ * the React layer in parallel with the Monaco chunk so it adds no latency, and
+ * the result is used both to mount the model at its real path and to drive
+ * cross-file acquisition. Returns `null` for files with no project around them.
+ */
+export function fetchSourceContext(
+  fileId: string
+): Promise<SourceContext | null> {
+  return postSource({ intent: 'project-config', fileId })
+}
+
+/** Directory of a project-relative path (`app/.server/x.ts` → `app/.server`). */
+function dirOf(path: string): string {
+  return path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
+}
+
+/**
+ * Resolve types from a file's other uploaded files. Fire-and-forget: as libs
+ * land, Monaco re-syncs and hovers pick them up. The model is expected to be
+ * mounted at `context.filePath` already, so the viewed file's own relative
+ * imports resolve — we seed the walk from its directory.
  */
 export async function acquireCrossFileTypes(
-  fileId: string,
+  context: SourceContext,
   source: string
 ): Promise<void> {
   try {
-    const config: ProjectConfig = await postSource({
-      intent: 'project-config',
-      fileId,
-    })
-    if (!config?.rootId) return
+    if (!context?.rootId) return
 
-    applyAliasPaths(config.paths)
-    const matchers = compileMatchers(config.paths)
+    applyAliasPaths(context.paths)
+    const matchers = compileMatchers(context.paths)
 
-    // Seed the queue from the viewed file's alias imports.
-    const queue = mapSpecifiers(importsOf(source), null, matchers)
+    // Seed from the viewed file's imports — relative ones resolve against its
+    // real directory (the model is mounted there), aliases via the matchers.
+    const queue = mapSpecifiers(importsOf(source), dirOf(context.filePath), matchers)
+    const rootId = context.rootId
     let fetched = 0
 
     while (queue.length && fetched < MAX_FILES) {
@@ -66,7 +85,7 @@ export async function acquireCrossFileTypes(
 
       const { files } = await postSource({
         intent: 'source-files',
-        rootId: config.rootId,
+        rootId,
         logicalPaths: batch,
       })
       for (const { path, text } of files as {
@@ -77,10 +96,7 @@ export async function acquireCrossFileTypes(
         fetched++
         // A fetched file sits at its real path, so its own relative imports
         // resolve against that directory — follow them too.
-        const dir = path.includes('/')
-          ? path.slice(0, path.lastIndexOf('/'))
-          : ''
-        for (const next of mapSpecifiers(importsOf(text), dir, matchers)) {
+        for (const next of mapSpecifiers(importsOf(text), dirOf(path), matchers)) {
           if (!requested.has(next)) queue.push(next)
         }
       }
@@ -142,18 +158,25 @@ function importsOf(source: string): string[] {
   return [...specs]
 }
 
-/** `@/*` → `{prefix:'@/', suffix:'', targets:['app/*']}`. */
+/**
+ * `@/*` → `{prefix:'@/', suffix:'', targets:['app/*']}`, sorted so the most
+ * specific pattern wins — TypeScript resolves the longest matching prefix, so
+ * `@/services/*` (→ app/.server/*) must beat the catch-all `@/*` (→ app/*),
+ * regardless of their order in tsconfig.
+ */
 function compileMatchers(paths: Record<string, string[]>): AliasMatcher[] {
-  return Object.entries(paths).map(([pattern, targets]) => {
-    const star = pattern.indexOf('*')
-    return star === -1
-      ? { prefix: pattern, suffix: '', targets } // exact (no wildcard)
-      : {
-          prefix: pattern.slice(0, star),
-          suffix: pattern.slice(star + 1),
-          targets,
-        }
-  })
+  return Object.entries(paths)
+    .map(([pattern, targets]) => {
+      const star = pattern.indexOf('*')
+      return star === -1
+        ? { prefix: pattern, suffix: '', targets } // exact (no wildcard)
+        : {
+            prefix: pattern.slice(0, star),
+            suffix: pattern.slice(star + 1),
+            targets,
+          }
+    })
+    .sort((a, b) => b.prefix.length - a.prefix.length || b.suffix.length - a.suffix.length)
 }
 
 /**
@@ -176,7 +199,11 @@ function mapSpecifiers(
       if (!spec.startsWith(m.prefix) || !spec.endsWith(m.suffix)) continue
       const star = spec.slice(m.prefix.length, spec.length - m.suffix.length)
       for (const target of m.targets) {
-        out.push(target.includes('*') ? target.replace('*', star) : target)
+        const mapped = target.includes('*') ? target.replace('*', star) : target
+        // tsconfig targets are baseUrl-relative (`./app/.server/*`); strip the
+        // leading `./` so the logical path lines up with the file paths the
+        // server returns and registers (`app/.server/x.ts`).
+        out.push(mapped.replace(/^\.\//, ''))
       }
       break
     }
