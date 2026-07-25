@@ -223,14 +223,22 @@ export const Trigger = React.forwardRef<
     forwardRef
   ) => {
     id = id || React.useId()
-    const { add } = useUpload()
+    const { add, addBatch } = useUpload()
 
     const _onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      if (!event.target.files) return
-      for (const file of event.target.files) {
-        add(file, folderId)
+      const input = event.currentTarget
+      if (!input.files || input.files.length === 0) return
+      const files = Array.from(input.files)
+      input.value = ''
+      // Batch multi-file/folder selections: one quota check up front, then each
+      // file starts immediately (skipQuotaCheck). Looping per-file `add` runs a
+      // separate quota gate per file, which left them stuck "Pending" until the
+      // whole selection had been added. Mirrors the drag-drop path.
+      if (files.length === 1) {
+        void add(files[0], folderId)
+      } else {
+        void addBatch(files, folderId)
       }
-      event.currentTarget.value = ''
     }
 
     return (
