@@ -47,11 +47,12 @@ export type SourceFile = { path: string; text: string }
  * viewed file's path under it, and the alias config.
  *
  * The root is the nearest ancestor holding a `tsconfig`/`jsconfig`; failing
- * that, the topmost uploaded folder (just under the user's drive root). That
- * fallback is deliberate — mounting the viewed file at its *real* path lets its
- * relative imports (`./x`, `../y`) resolve on their own, so a project doesn't
- * need a tsconfig at all for those; a tsconfig only adds alias (`@/…`) support.
- * Returns `null` only when the file has no folder above it.
+ * that, the topmost uploaded folder (just under the user's drive root), or the
+ * drive root itself for a file that sits directly in it. That fallback is
+ * deliberate — mounting the viewed file at its *real* path lets its relative
+ * imports (`./x`, `../y`) resolve on their own, so a project doesn't need a
+ * tsconfig at all for those; a tsconfig only adds alias (`@/…`) support.
+ * Returns `null` only when the file has no parent at all.
  */
 export async function getProjectConfig(
   userId: string,
@@ -100,10 +101,37 @@ export async function getProjectConfig(
     }
     parentId = folder.parentId
   }
-  if (ancestors.length === 0) return null
+  // A file sitting directly inside the drive root has no ancestors to collect —
+  // `root` itself is its project root, so don't bail. An empty chain whose
+  // parent is *not* the drive root means a broken lookup, which still fails safe.
+  if (ancestors.length === 0 && parentId !== driveRootId) return null
 
-  // Root: the tsconfig folder, else the topmost uploaded folder.
-  const rootId = tsconfigRootId ?? ancestors[ancestors.length - 1].id
+  // The walk above stops *before* the drive root (`parentId !== driveRootId`),
+  // so a tsconfig sitting at the very top of the drive — the project uploaded
+  // straight into the drive root rather than wrapped in a folder — is never
+  // inspected, and every `@/…` alias silently fails to resolve while relative
+  // imports still work. Scan the drive root itself as the last candidate. The
+  // drive root is intentionally left out of `ancestors`, so the fallback root
+  // (topmost uploaded folder) is unchanged when there's no tsconfig at all.
+  if (!tsconfigRootId && driveRootId && parentId === driveRootId) {
+    const config = await prisma.item.findFirst({
+      where: { parentId: driveRootId, type: 'file', name: { in: PROJECT_FILES } },
+      select: { file: { select: { bucket: true, key: true } } },
+    })
+    if (config?.file) {
+      tsconfigRootId = driveRootId
+      tsconfigText = await getObjectText(
+        config.file.bucket,
+        config.file.key
+      ).catch(() => null)
+    }
+  }
+
+  // Root: the tsconfig folder; else the topmost uploaded folder; else the drive
+  // root itself, for a file that sits directly in it (no ancestors collected).
+  const rootId =
+    tsconfigRootId ?? ancestors[ancestors.length - 1]?.id ?? driveRootId
+  if (!rootId) return null
   const rootIndex = ancestors.findIndex((a) => a.id === rootId)
   // Folders strictly between the file and the root, nearest-first → reverse to
   // root-first, then the file name: `app/.server/x.ts`.
@@ -112,8 +140,46 @@ export async function getProjectConfig(
 
   const { baseUrl, paths } = tsconfigText
     ? parseTsconfig(tsconfigText)
-    : { baseUrl: '.', paths: {} }
+    : { baseUrl: '.', paths: await synthesizeAliasPaths(rootId) }
   return { rootId, baseUrl, paths, filePath }
+}
+
+/**
+ * Alias sigils synthesized for a project that shipped no tsconfig. `@/`, `~/`
+ * and `#/` are the near-universal conventions; a scoped npm package
+ * (`@sentry/react`) always has characters before its slash, so a bare
+ * sigil-then-slash key never captures those.
+ */
+const SYNTH_ALIAS_PREFIXES = ['@/', '~/', '#/']
+/** Folders an alias commonly points at, tried in this order (then the root). */
+const SYNTH_SOURCE_ROOTS = ['app', 'src']
+
+/**
+ * Fabricate a `paths` map for a project with no tsconfig, so `@/…` aliases
+ * still resolve. There's no real mapping to read, so we point every common
+ * sigil at every plausible source root as an *ordered target list* — TypeScript
+ * (and the client's matcher) try `app/*`, then `src/*`, then the root itself,
+ * and the first that actually holds the file wins. Only source roots that exist
+ * under the project root are listed, plus a root-relative `*` fallback.
+ *
+ * Emitted unconditionally: an unused sigil is harmless (it simply never
+ * matches), and a scoped-package import can't collide with a `@/`-prefixed key.
+ */
+async function synthesizeAliasPaths(
+  rootId: string
+): Promise<Record<string, string[]>> {
+  const folders = await prisma.item.findMany({
+    where: { parentId: rootId, type: 'folder', name: { in: SYNTH_SOURCE_ROOTS } },
+    select: { name: true },
+  })
+  const present = new Set(folders.map((f) => f.name))
+  const targets = [
+    ...SYNTH_SOURCE_ROOTS.filter((r) => present.has(r)).map((r) => `${r}/*`),
+    '*',
+  ]
+  const paths: Record<string, string[]> = {}
+  for (const prefix of SYNTH_ALIAS_PREFIXES) paths[`${prefix}*`] = targets
+  return paths
 }
 
 /**
