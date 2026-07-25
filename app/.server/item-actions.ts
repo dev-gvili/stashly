@@ -1258,7 +1258,9 @@ async function findOrCreateFolderPath(
     // sees the committed folder and reuses it. Files in unrelated folders
     // don't contend.
     const lockKey = `folder:${ownerId}:${currentParentId}:${folderName}`
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`
+    // `$executeRaw`, not `$queryRaw`: pg_advisory_xact_lock returns `void`,
+    // which $queryRaw can't deserialize as a result column.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`
 
     const existing = await tx.item.findFirst({
       where: {
