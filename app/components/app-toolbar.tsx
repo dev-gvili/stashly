@@ -31,7 +31,6 @@ export const AppToolbar = ({
     location.pathname.includes('/videos') ||
     location.pathname.includes('/images') || 
     location.pathname.includes('/storage') || 
-    location.pathname.includes('/stash') || 
     location.pathname.includes('/files') 
   ) {
     return null
@@ -51,7 +50,6 @@ export const AppToolbar = ({
       {...props}
     >
       <h1 className="text-lg font-bold w-full max-w-max min-w-24">{title}</h1>
-      <Breadcrumbs />
       <ButtonGroup  className="ml-auto gap-2">
         <Restore variant="ghost" size="icon-sm" />
         <FavoriteItems variant="outline" size="icon-sm" className='bg-card border-input' />

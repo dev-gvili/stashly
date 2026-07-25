@@ -96,6 +96,7 @@
       "fontStyle": "italic",
       "foreground": "#656166d7"
     },
+    "textMateRules": [],
     "functions": {
       "foreground": "#d4a05a",
       "fontStyle": "italic bold strikethrough"

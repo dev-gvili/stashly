@@ -5,7 +5,9 @@ import { uploadProgress } from '@/schemas/machine.schemas'
 import type { MediaFileStatus, Status, User } from '@/types/machine.types'
 import {
   useUpload,
-  useUploadFile,
+  useUploadCounts,
+  useUploadFileIds,
+  useUploadFileMeta,
   useUploadProgress,
   useUploadStatus,
 } from '@/hooks/useUpload'
@@ -274,7 +276,9 @@ export const FileList = React.forwardRef<
   id = id || React.useId()
   const [parent] = useAutoAnimate<HTMLUListElement>()
   const refs = useComposedRefs(forwardRef, parent)
-  const { files } = useUpload()
+  // Ids only — subscribing to the file objects re-rendered every row on every
+  // progress tick, which is what tripped React's update-depth limit at 20+ files.
+  const fileIds = useUploadFileIds()
 
   return (
     <ScrollArea className={cn('h-40 w-full rounded-lg')}>
@@ -286,11 +290,11 @@ export const FileList = React.forwardRef<
             className={cn(Styles.FileList, className)}
             {...props}
           >
-            {files.map((mediaFile) => (
+            {fileIds.map((mediaFileId) => (
               <Item
-                mediaFileId={mediaFile.id}
-                key={mediaFile.id}
-                id={`media-file-${mediaFile.id}`}
+                mediaFileId={mediaFileId}
+                key={mediaFileId}
+                id={`media-file-${mediaFileId}`}
               />
             ))}
           </ul>
@@ -301,12 +305,16 @@ export const FileList = React.forwardRef<
 })
 FileList.displayName = 'Items'
 
-const Item = React.forwardRef<
+const Item = React.memo(React.forwardRef<
   React.ComponentRef<'li'>,
   React.ComponentPropsWithoutRef<'li'> & { mediaFileId: string }
 >(({ children, className, id, mediaFileId, ...props }, forwardRef) => {
   id = id || React.useId()
-  const mediafile = useUploadFile(mediaFileId)
+  // Identity + status only. The percentage is read inside `Progress`/`CountDown`
+  // so a progress tick never re-renders this row — and therefore never re-runs
+  // the HoverCard anchor effect below.
+  const mediafile = useUploadFileMeta(mediaFileId)
+  if (!mediafile.file) return null
 
   return (
     <li
@@ -314,24 +322,21 @@ const Item = React.forwardRef<
       ref={forwardRef}
       className={cn(Styles.Item, className)}
       tabIndex={0}
-      data-state={mediafile?.status}
-      data-value={mediafile?.progress.percentage}
+      data-state={mediafile.status}
       {...props}
     >
-      <FileIcon file={mediafile!.file} thumbnail={mediafile!.thumbnail} />
+      <FileIcon file={mediafile.file} thumbnail={mediafile.thumbnail} />
       <div className={Styles.ItemBody}>
-        <FileName>{mediafile!.file.name}</FileName>
+        <FileName>{mediafile.file.name}</FileName>
         <div className={Styles.ItemContent}>
-          <FileSize>
-            {formatSize('byte', 'unit', mediafile!.file.size)}
-          </FileSize>
+          <FileSize>{formatSize('byte', 'unit', mediafile.file.size)}</FileSize>
           <CountDown mediafileId={mediaFileId} />
-          <StatusText status={mediafile!.status} mediaFileId={mediaFileId}>
-            {mediafile!.status}
+          <StatusText status={mediafile.status!} mediaFileId={mediaFileId}>
+            {mediafile.status}
           </StatusText>
         </div>
       </div>
-      {mediafile?.status === 'uploading' || mediafile?.status === 'paused' ? (
+      {mediafile.status === 'uploading' || mediafile.status === 'paused' ? (
         <HoverCard openDelay={50} closeDelay={150}>
           <HoverCardTrigger asChild>
             <Progress
@@ -369,7 +374,7 @@ const Item = React.forwardRef<
       )}
     </li>
   )
-})
+}))
 Item.displayName = 'Item'
 
 const Progress = React.forwardRef<
@@ -458,7 +463,7 @@ export const Total = React.forwardRef<
   React.ComponentRef<'h1'>,
   React.ComponentPropsWithoutRef<'h1'>
 >(({ className, children, ...props }, ref) => {
-  const { totalCount } = useUpload()
+  const { total } = useUploadCounts()
 
   return (
     <h1
@@ -467,7 +472,7 @@ export const Total = React.forwardRef<
       className={cn(Styles.Total, className)}
       {...props}
     >
-      {totalCount}
+      {total}
     </h1>
   )
 })
@@ -650,7 +655,8 @@ EmptyOutline.displayName = 'EmptyOutline'
 
 export const UploadPanel = ({ user }: { user: User }) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const { uploadingFiles, isVisible, toggleView } = useUpload()
+  const { isVisible, toggleView } = useUpload()
+  const { uploading } = useUploadCounts()
 
   return (
     <motion.div
@@ -663,7 +669,7 @@ export const UploadPanel = ({ user }: { user: User }) => {
       <Upload user={user}>
         <div className="flex justify-between items-center h-14 px-4 bg-sidebar rounded-md-tl rounded-md-tr">
           <Label className="font-stashly text-sm">
-            Uploading Files ({uploadingFiles.length})
+            Uploading Files ({uploading})
           </Label>
           <div className="inline-flex gap-1">
             <Button

@@ -50,8 +50,8 @@ export async function loader({ request }: Route.LoaderArgs) {
       },
       parent: {
         include: {
-          file:true,
-          folder:true,
+          file: true,
+          folder: true,
           favorites: {
             select: {
               id: true,
@@ -133,6 +133,7 @@ export default () => {
 
   return (
     <Fragment>
+        <AppToolbar />
       <SelectionProvider items={items.map((i) => i.id)}>
         <GridLayout>
           {items.map((item) =>

@@ -55,6 +55,69 @@ export function useUploadFile(mediaFileId: string) {
   return useSelector(upload, (s) => s.context.mediaFiles.get(mediaFileId))
 }
 
+/**
+ * The identity fields of a queued file — everything that stays constant while
+ * bytes fly, plus `status`. Deliberately excludes `progress` so a component
+ * rendering a row doesn't re-render on every progress tick; subscribe to
+ * `useUploadProgress` from a leaf instead.
+ */
+export function useUploadFileMeta(mediaFileId: string) {
+  return useSelector(
+    upload,
+    (s) => {
+      const mediaFile = s.context.mediaFiles.get(mediaFileId)
+      return {
+        file: mediaFile?.file,
+        thumbnail: mediaFile?.thumbnail,
+        status: mediaFile?.status,
+      }
+    },
+    shallowEqual
+  )
+}
+
+/**
+ * Ids of the non-dismissed queue, newest first. Stable across progress ticks —
+ * list containers should subscribe to this rather than to the file objects,
+ * which get a fresh identity on every progress event.
+ */
+export function useUploadFileIds() {
+  return useSelector(
+    upload,
+    (s) =>
+      Array.from(s.context.mediaFiles.values())
+        .filter((f) => !s.context.dismissed.has(f.id))
+        .map((f) => f.id)
+        .reverse(),
+    shallowEqual
+  )
+}
+
+/** Per-status counts. Numbers only, so no churn between status transitions. */
+export function useUploadCounts() {
+  return useSelector(
+    upload,
+    (s) => {
+      const counts = {
+        total: 0,
+        uploading: 0,
+        pending: 0,
+        done: 0,
+        aborted: 0,
+      }
+      for (const mediaFile of s.context.mediaFiles.values()) {
+        if (s.context.dismissed.has(mediaFile.id)) continue
+        counts.total++
+        if (mediaFile.status in counts) {
+          counts[mediaFile.status as keyof typeof counts]++
+        }
+      }
+      return counts
+    },
+    shallowEqual
+  )
+}
+
 export function useUploadProgress(mediaFileId: string) {
   return useSelector(
     upload,
@@ -95,30 +158,29 @@ export function useUploadStatus(mediaFileId: string) {
  *
  * @example
  * // Show upload progress panel conditionally
- * const { files, toggleView, isVisible } = useUpload()
- * {isVisible && <UploadPanel files={files} onClose={toggleView} />}
+ * const { toggleView, isVisible } = useUpload()
+ * {isVisible && <UploadPanel onClose={toggleView} />}
+ *
+ * @remarks
+ * This hook subscribes only to state that changes rarely (config, visibility,
+ * active count). Per-file data lives in the narrower hooks — `useUploadFileIds`,
+ * `useUploadCounts`, `useUploadFileMeta`, `useUploadProgress`, `useUploadStatus`
+ * — so a progress tick re-renders one leaf instead of the whole panel.
  */
 export function useUpload() {
   const [isDragging, setIsDragging] = useState(false)
   const dragCounter = useRef(0)
 
-  const files = useSelector(
-    upload,
-    (s) =>
-      Array.from(s.context.mediaFiles.values())
-        .filter((f) => !s.context.dismissed.has(f.id))
-        .reverse(),
-    shallowEqual
-  )
+  // NOTE: deliberately no subscription to `mediaFiles` here. Those objects get
+  // a fresh identity on every progress event, so a `files` selector re-rendered
+  // every consumer of this hook — and with 20+ concurrent uploads that render
+  // storm kept Radix's Popper anchor effect re-firing until React threw
+  // "Maximum update depth exceeded". Use `useUploadFileIds` / `useUploadCounts`
+  // / `useUploadFileMeta` / `useUploadProgress` for per-file data instead.
   const config = useSelector(upload, (s) => s.context.config)
   const activeCount = useSelector(upload, (s) => s.context.queues.active.size)
   const rootId = useSelector(upload, (s) => s.context.config?.user?.rootId)
   const isVisible = useSelector(upload, (s) => s.context.isVisible)
-
-  const uploadingFiles = files.filter((f) => f.status === 'uploading')
-  const pendingFiles = files.filter((f) => f.status === 'pending')
-  const doneFiles = files.filter((f) => f.status === 'done')
-  const abortedFiles = files.filter((f) => f.status === 'aborted')
 
   // ── Actions ──
 
@@ -239,12 +301,6 @@ export function useUpload() {
 
   return {
     // state
-    files,
-    uploadingFiles,
-    pendingFiles,
-    doneFiles,
-    abortedFiles,
-    totalCount: files.length,
     activeCount,
     config,
     isDragging,
