@@ -73,8 +73,21 @@ export async function normalizeFile(file: File): Promise<File> {
   const { contentType } = sniffTsBytes(head)
   if (contentType === file.type) return file
 
-  return new File([file], file.name, {
+  const normalized = new File([file], file.name, {
     type: contentType,
     lastModified: file.lastModified,
   })
+
+  // `webkitRelativePath` carries the folder hierarchy for directory uploads,
+  // but it's read-only and the `File` constructor has no way to set it — so a
+  // reconstructed file comes back with it empty and uploads flat, losing its
+  // parent folders. Reinstate it explicitly. (Only `.ts`/`.tsx` files hit this
+  // path, which is exactly why a source-tree upload flattened.)
+  if (file.webkitRelativePath) {
+    Object.defineProperty(normalized, 'webkitRelativePath', {
+      value: file.webkitRelativePath,
+      configurable: true,
+    })
+  }
+  return normalized
 }
