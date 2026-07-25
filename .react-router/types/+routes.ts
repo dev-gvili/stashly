@@ -54,6 +54,9 @@ type Pages = {
   "/api/view": {
     params: {};
   };
+  "/api/source-types": {
+    params: {};
+  };
   "/api/notifications": {
     params: {};
   };
@@ -469,7 +472,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/auth/sign-in" | "/auth/sign-out" | "/api/health" | "/api/search/:type" | "/api/auth/*" | "/api/stripe" | "/api/subscription" | "/api/theme" | "/api/settings" | "/api/sidebar" | "/api/images" | "/api/view" | "/api/notifications" | "/api/notifications/stream" | "/api/quota" | "/api/metrics" | "/api/members/*" | "/api/permissions/*" | "/api/shares" | "/api/favorites" | "/api/pins" | "/api/locks" | "/api/versions" | "/api/thumbnails" | "/api/thumbnails/:itemId/presign" | "/api/thumbnails/:itemId" | "/api/invitations" | "/api/comments/*" | "/api/activities" | "/api/workspaces" | "/api/workspaces/:workspaceId" | "/api/workspaces/:workspaceId/members" | "/api/workspaces/:workspaceId/permissions" | "/api/users" | "/api/users/:userId" | "/api/users/:userId/items" | "/api/users/:userId/workspaces" | "/api/collections" | "/api/collections/:collectionId" | "/api/collections/:collectionId/items" | "/api/items" | "/api/items/:itemId" | "/api/items/:itemId/permissions" | "/api/items/:itemId/versions/:versionId?" | "/api/items/:itemId/comments/:commentId?" | "/api/items/:itemId/shares/:shareId?" | "/api/items/:itemId/favorites" | "/api/items/:itemId/invitations" | "/api/items/:itemId/download" | "/api/ai/embed" | "/api/ai/caption" | "/api/ai/translate" | "/api/ai/transcribe" | "/api/ai/suggestion" | "/api/ai/summarize" | "/api/ai/chat" | "/api/s3/upload" | "/api/s3/multipart" | "/:me/stash" | "/:me/stash/all" | "/:me/stash/collections" | "/:me/stash/collections/:collectionId" | "/:me/stash/favorites" | "/:me/stash/pinned" | "/:me/stash/folders/:folderId" | "/:me/stash/folders/:folderId/files/:fileId" | "/:me/stash/shares" | "/:me/stash/images" | "/:me/stash/videos" | "/:me/stash/recent" | "/:me/stash/search" | "/:me/stash/invitations" | "/:me/stash/storage" | "/:me/stash/trash" | "/:me/stash/demo" | "/:me/stash/ai-studio" | "/:me/stash/examples" | "/:me/workspaces" | "/:me/workspaces/:workspaceId" | "/:me/workspaces/:workspaceId/settings" | "/:me/workspaces/:workspaceId/members" | "/:me/workspaces/:workspaceId/folders/:folderId" | "/:me/workspaces/:workspaceId/folders/:folderId/files/:fileId" | "/:me/workspaces/:workspaceId/shares" | "/:me/workspaces/:workspaceId/favorites" | "/:me/workspaces/:workspaceId/collections" | "/:me/workspaces/:workspaceId/collections/:collectionId" | "/:me/workspaces/:workspaceId/trash" | "/:me/workspaces/:workspaceId/recent" | "/:me/workspaces/:workspaceId/gallery" | "/:me/settings/profile" | "/:me/settings/account" | "/:me/settings/security" | "/:me/settings/billing" | "/:me/settings/notifications" | "/:me/settings/appearance" | "/*" | "/test" | "/options/a" | "/options/b" | "/options/c";
+    page: "/" | "/auth/sign-in" | "/auth/sign-out" | "/api/health" | "/api/search/:type" | "/api/auth/*" | "/api/stripe" | "/api/subscription" | "/api/theme" | "/api/settings" | "/api/sidebar" | "/api/images" | "/api/view" | "/api/source-types" | "/api/notifications" | "/api/notifications/stream" | "/api/quota" | "/api/metrics" | "/api/members/*" | "/api/permissions/*" | "/api/shares" | "/api/favorites" | "/api/pins" | "/api/locks" | "/api/versions" | "/api/thumbnails" | "/api/thumbnails/:itemId/presign" | "/api/thumbnails/:itemId" | "/api/invitations" | "/api/comments/*" | "/api/activities" | "/api/workspaces" | "/api/workspaces/:workspaceId" | "/api/workspaces/:workspaceId/members" | "/api/workspaces/:workspaceId/permissions" | "/api/users" | "/api/users/:userId" | "/api/users/:userId/items" | "/api/users/:userId/workspaces" | "/api/collections" | "/api/collections/:collectionId" | "/api/collections/:collectionId/items" | "/api/items" | "/api/items/:itemId" | "/api/items/:itemId/permissions" | "/api/items/:itemId/versions/:versionId?" | "/api/items/:itemId/comments/:commentId?" | "/api/items/:itemId/shares/:shareId?" | "/api/items/:itemId/favorites" | "/api/items/:itemId/invitations" | "/api/items/:itemId/download" | "/api/ai/embed" | "/api/ai/caption" | "/api/ai/translate" | "/api/ai/transcribe" | "/api/ai/suggestion" | "/api/ai/summarize" | "/api/ai/chat" | "/api/s3/upload" | "/api/s3/multipart" | "/:me/stash" | "/:me/stash/all" | "/:me/stash/collections" | "/:me/stash/collections/:collectionId" | "/:me/stash/favorites" | "/:me/stash/pinned" | "/:me/stash/folders/:folderId" | "/:me/stash/folders/:folderId/files/:fileId" | "/:me/stash/shares" | "/:me/stash/images" | "/:me/stash/videos" | "/:me/stash/recent" | "/:me/stash/search" | "/:me/stash/invitations" | "/:me/stash/storage" | "/:me/stash/trash" | "/:me/stash/demo" | "/:me/stash/ai-studio" | "/:me/stash/examples" | "/:me/workspaces" | "/:me/workspaces/:workspaceId" | "/:me/workspaces/:workspaceId/settings" | "/:me/workspaces/:workspaceId/members" | "/:me/workspaces/:workspaceId/folders/:folderId" | "/:me/workspaces/:workspaceId/folders/:folderId/files/:fileId" | "/:me/workspaces/:workspaceId/shares" | "/:me/workspaces/:workspaceId/favorites" | "/:me/workspaces/:workspaceId/collections" | "/:me/workspaces/:workspaceId/collections/:collectionId" | "/:me/workspaces/:workspaceId/trash" | "/:me/workspaces/:workspaceId/recent" | "/:me/workspaces/:workspaceId/gallery" | "/:me/settings/profile" | "/:me/settings/account" | "/:me/settings/security" | "/:me/settings/billing" | "/:me/settings/notifications" | "/:me/settings/appearance" | "/*" | "/test" | "/options/a" | "/options/b" | "/options/c";
   };
   "routes/auth/layout.tsx": {
     id: "routes/auth/layout";
@@ -522,6 +525,10 @@ type RouteFiles = {
   "routes/api/view.ts": {
     id: "routes/api/view";
     page: "/api/view";
+  };
+  "routes/api/source-types.ts": {
+    id: "routes/api/source-types";
+    page: "/api/source-types";
   };
   "routes/api/notifications.ts": {
     id: "routes/api/notifications";
@@ -877,6 +884,7 @@ type RouteModules = {
   "routes/api/sidebar": typeof import("./app/routes/api/sidebar.ts");
   "routes/api/images": typeof import("./app/routes/api/images.ts");
   "routes/api/view": typeof import("./app/routes/api/view.ts");
+  "routes/api/source-types": typeof import("./app/routes/api/source-types.ts");
   "routes/api/notifications": typeof import("./app/routes/api/notifications.ts");
   "routes/api/notifications-stream": typeof import("./app/routes/api/notifications-stream.ts");
   "routes/api/quota": typeof import("./app/routes/api/quota.ts");
