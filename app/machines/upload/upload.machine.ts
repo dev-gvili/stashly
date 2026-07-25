@@ -31,7 +31,7 @@ let initialData: UploadManagerData = {
       driveId: string
       rootId: string
     },
-    maxConcurrentUploads: 5,
+    maxConcurrentUploads: 100,
     maxFileSize: 10000000000,
   },
   quotaActor: undefined,

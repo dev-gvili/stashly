@@ -282,7 +282,7 @@ export let config = z
   .object({
     user: user,
     maxFileSize: z.number().default(10000000000).optional(),
-    maxConcurrentUploads: z.number().default(5).optional(),
+    maxConcurrentUploads: z.number().default(100).optional(),
     acceptedMimeTypes: z
       .string()
       .array()
