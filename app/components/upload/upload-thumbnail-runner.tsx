@@ -19,6 +19,28 @@ const thumbnailedIds = new Set<string>()
 /** Debounce window for pulling newly-created items into the list. */
 const REVALIDATE_DEBOUNCE_MS = 700
 
+// Concurrency gate for the thumbnail pipeline. Each in-flight upload mounts its
+// own watcher, so a 534-file upload would otherwise fire 534 pipelines at once
+// — each doing presign + compute + patch + metadata + embedding — and bury the
+// server (this was a big part of the request storm). Cap how many run at a time.
+const MAX_CONCURRENT_THUMBNAILS = 4
+let activeThumbnails = 0
+const thumbnailQueue: Array<() => void> = []
+
+function acquireThumbnailSlot(): Promise<() => void> {
+  return new Promise((resolve) => {
+    const grant = () => {
+      activeThumbnails++
+      resolve(() => {
+        activeThumbnails--
+        thumbnailQueue.shift()?.()
+      })
+    }
+    if (activeThumbnails < MAX_CONCURRENT_THUMBNAILS) grant()
+    else thumbnailQueue.push(grant)
+  })
+}
+
 function FileThumbnailWatcher({ mediaFileId }: { mediaFileId: string }) {
   const mediaFile = useUploadFile(mediaFileId)
   const { run: runThumbnail } = useThumbnailV2(mediaFileId)
@@ -29,9 +51,18 @@ function FileThumbnailWatcher({ mediaFileId }: { mediaFileId: string }) {
     if (thumbnailedIds.has(mediaFile.id)) return
     thumbnailedIds.add(mediaFile.id)
 
-    runThumbnail(mediaFile.file).catch((err) => {
-      console.error(`Thumbnail failed for ${mediaFile.id}:`, err)
-    })
+    const file = mediaFile.file
+    const id = mediaFile.id
+    void (async () => {
+      const release = await acquireThumbnailSlot()
+      try {
+        await runThumbnail(file)
+      } catch (err) {
+        console.error(`Thumbnail failed for ${id}:`, err)
+      } finally {
+        release()
+      }
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mediaFile?.status, mediaFile?.id])
 
