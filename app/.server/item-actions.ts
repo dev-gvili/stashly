@@ -1249,6 +1249,17 @@ async function findOrCreateFolderPath(
   let currentParentId = rootId
   const createdFolderIds: string[] = []
   for (const folderName of pathParts) {
+    // Guard against the check-then-create race: when many files under one
+    // directory upload at once, each runs in its own transaction, so their
+    // `findFirst`s all miss and each creates a duplicate folder (same name,
+    // different id, with the directory's contents split across the copies).
+    // A transaction-scoped advisory lock keyed on (owner, parent, name)
+    // serializes concurrent creators of the *same* folder — the waiter then
+    // sees the committed folder and reuses it. Files in unrelated folders
+    // don't contend.
+    const lockKey = `folder:${ownerId}:${currentParentId}:${folderName}`
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`
+
     const existing = await tx.item.findFirst({
       where: {
         name: folderName,
