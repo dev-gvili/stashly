@@ -80,7 +80,7 @@ function addExtraLib(code: string, path: string): void {
   const uri = `file://${path}`
   if (addedLibs.has(uri)) return
   addedLibs.add(uri)
-  const ts = monaco.languages.typescript
+  const ts = monaco.typescript
   ts.typescriptDefaults.addExtraLib(code, uri)
   ts.javascriptDefaults.addExtraLib(code, uri)
 }
