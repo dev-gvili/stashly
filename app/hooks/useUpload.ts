@@ -132,7 +132,8 @@ export function useUpload() {
       if (!id) return
       // Correct browser-misreported MIME (.ts → video/vnd.dlna.mpeg-tts)
       // before the file is snapshotted into the machine.
-      const mediaFile = toMediaFile(await normalizeFile(file), id)
+      file = await normalizeFile(file)
+      const mediaFile = toMediaFile(file, id)
       upload.send({ type: 'upload.add', mediaFile, skipQuotaCheck })
     },
     [rootId]
