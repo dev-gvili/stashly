@@ -49,7 +49,7 @@ const KIND_GLYPHS: Record<string, string> = {
   operator: 'o',
   object: '{',
   array: '[',
-  key: 'k',
+  key: ':',
   string: '"',
   number: '#',
   boolean: 'b',

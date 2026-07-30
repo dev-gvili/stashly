@@ -174,8 +174,13 @@ type NavigationTree = {
 
 /**
  * `ScriptElementKind` → our slug, following VSCode's `getSymbolKind`
- * (typescript-language-features) where the two overlap, and keeping the
- * distinctions Monaco drops: `type`, `alias`, and `const` vs `let`/`var`.
+ * (typescript-language-features), plus `type` and `alias` — the two kinds
+ * Monaco's own adapter collapses into "variable".
+ *
+ * `const`, `let` and `var` are deliberately *not* split, matching VSCode: how
+ * a binding was declared says nothing about where it is, and the rail is for
+ * finding things. `constant` stays in `KIND_SLUGS` for the languages whose
+ * providers report it directly.
  */
 const TS_KIND_SLUGS: Record<string, string> = {
   module: 'module',
@@ -187,7 +192,7 @@ const TS_KIND_SLUGS: Record<string, string> = {
   'enum member': 'enum-member',
   var: 'variable',
   let: 'variable',
-  const: 'constant',
+  const: 'variable',
   'local var': 'variable',
   function: 'function',
   'local function': 'function',
