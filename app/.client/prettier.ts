@@ -19,9 +19,11 @@ const PRETTIER_OPTIONS: Options = {
   trailingComma: 'es5',
   useTabs: false,
   printWidth: 80,
+  quoteProps: "consistent",
   objectWrap: 'collapse',
   singleAttributePerLine: true,
-  proseWrap: "always"
+  proseWrap: "always",
+  bracketSpacing: true,
 }
 
 /**
