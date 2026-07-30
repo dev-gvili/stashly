@@ -267,7 +267,10 @@ export function MoveToFolderDialog({
 
   function handleMove() {
     if (!current) return
-    move(current.id, [itemId])
+    // `itemId` is documented as "the item(s) being moved" — split so a bulk
+    // selection reaches `useMoveToFolder` as N ids and picks the `move_items`
+    // intent. A single id still yields a 1-element array, i.e. `move_item`.
+    move(current.id, itemId.split(',').filter(Boolean))
     onOpenChange(false)
   }
 
