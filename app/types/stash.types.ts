@@ -72,7 +72,7 @@ export interface StashItem {
   tags: string[]
   thumbnails: Pick<
     Thumbnail,
-    'id' | 'url' | 'width' | 'height' | 'size' | 'view'
+    'id' | 'url' | 'width' | 'height' | 'size' | 'view' | 'stage'
   >[]
   favorites: StashFavorite[]
   pins?: StashPin[]

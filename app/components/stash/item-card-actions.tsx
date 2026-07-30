@@ -115,7 +115,8 @@ function Copy(props: ItemProps) {
 
 function Move(props: ItemProps) {
   const [open, setOpen] = React.useState(false)
-  const { id, name, type, parentId, driveId, thumbnails, parent } = useItemCard()
+  const { id, name, type, parentId, driveId, thumbnails, parent } =
+    useItemCard()
   const thumbnailUrl = thumbnails?.[0]?.url?.startsWith('#')
     ? null
     : (thumbnails?.[0]?.url ?? null)
@@ -498,12 +499,14 @@ function ActionsRoot({ children, ...triggerProps }: ActionsRootProps) {
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         onClick={(e) => e.stopPropagation()}
+        asChild
         {...triggerProps}
       >
-        <MoreMenuFillIcon className="size-6!" />
+        <Button size="icon-sm" variant="ghost">
+          <MoreMenuFillIcon className="size-5!" />
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        hideWhenDetached
         align="end"
         avoidCollisions
         className="space-y-4 w-48 bg-sidebar z-40"

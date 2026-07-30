@@ -147,6 +147,12 @@ function ItemCardCheckBox({
       data-slot="item-checkbox"
       className={cn(
         'size-6 z-10 place-self-start hover:cursor-pointer bg-muted! aria-checked:bg-primary!',
+        // The box is 24px; the pseudo-element lifts the pressable area to 40px
+        // (dense-desktop minimum) without changing layout. Sized to 40 rather
+        // than 44 so it can't reach the actions menu in the opposite corner.
+        'relative after:absolute after:top-1/2 after:left-1/2 after:size-10 after:-translate-1/2',
+        // Base Checkbox animates box-shadow; name both so neither is dropped.
+        'transition-[box-shadow,scale] duration-150 ease-out active:scale-[0.96]',
         className
       )}
       name={name}
@@ -210,7 +216,15 @@ const ItemThumbnailImage = React.forwardRef<
       decoding="async"
       data-slot="item-thumbnail-image"
       data-stage={live?.stage}
-      className={cn('absolute inset-0 w-full h-full object-cover rounded-md', className)}
+      className={cn(
+        'absolute inset-0 w-full h-full object-cover rounded-md',
+        // Hairline separator so a light photo on a light card (or the reverse)
+        // still reads as a distinct surface. Pure black/white only — a tinted
+        // neutral picks up the card ground and looks like dirt on the edge.
+        // `outline` rather than `border` so it adds no layout width.
+        'outline-1 -outline-offset-1 outline/10',
+        className
+      )}
       {...rest}
     />
   )
@@ -297,7 +311,7 @@ const ItemCount = React.forwardRef<
     <CardDescription
       ref={ref}
       className={cn(
-        'text-card-foreground text-sm font-stashly place-self-end col-span-1 h-full flex items-end',
+        'text-card-foreground text-sm font-stashly tabular-nums place-self-end col-span-1 h-full flex items-end',
         className
       )}
       {...rest}
@@ -318,7 +332,7 @@ const ItemSize = React.forwardRef<
     <CardDescription
       ref={ref}
       className={cn(
-        'text-card-foreground text-sm font-stashly place-self-end w-full col-span-1 h-full',
+        'text-card-foreground text-sm font-stashly tabular-nums place-self-end w-full col-span-1 h-full',
         className
       )}
       {...rest}
@@ -502,7 +516,9 @@ ItemContent.displayName = 'ItemContent'
 
 // Normalized (objectBoundingBox) arch: straight top, bottom edge bowing down
 // from 0.8 → 1.0 of the cover's own height. Scales to any card size.
-const COVER_ARCH_PATH = 'M0,0 L1,0 L1,0.8 Q1,1 0,1 Q0,1 0,0.8 Z'
+// const COVER_ARCH_PATH = 'M0,0 L1,0 L1,0.8 Q1,1 0,1 Q0,1 0,0.8 Z'
+const COVER_ARCH_PATH = 'M0,0 L1,0 L1,0.8 Q1,1 0.5,1 Q0,1 0,0.8 Z'
+
 
 const ItemCover = React.forwardRef<
   HTMLDivElement,
@@ -510,7 +526,7 @@ const ItemCover = React.forwardRef<
 >((props, ref) => {
   const { id, thumbnails, type, category, name } = useItemCard()
   const live = useLiveThumbnail(id)
-  const persisted = thumbnails?.find((t) => t.url && !t.url.startsWith('#'))
+  const persisted = thumbnails?.find((t) => t.stage === 2)
   const { className, ...rest } = props
 
   const src = live?.src ?? persisted?.url ?? undefined
@@ -524,7 +540,7 @@ const ItemCover = React.forwardRef<
       ref={ref}
       data-slot="item-cover"
       className={cn(
-        'relative basis-[65%] shrink-0 overflow-hidden bg-muted',
+        'relative basis-[48%] shrink-0 overflow-hidden bg-muted',
         className
       )}
       style={{ clipPath: `url(#${clipId})` }}
@@ -533,7 +549,7 @@ const ItemCover = React.forwardRef<
       <svg aria-hidden className="absolute size-0">
         <defs>
           <clipPath id={clipId} clipPathUnits="objectBoundingBox">
-            <path d={COVER_ARCH_PATH} />
+            <path d={COVER_ARCH_PATH}/>
           </clipPath>
         </defs>
       </svg>
@@ -544,7 +560,7 @@ const ItemCover = React.forwardRef<
           decoding="async"
           data-slot="item-cover-image"
           data-stage={live?.stage}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover rounded-4"
         />
       ) : (
         Icon && (
@@ -576,7 +592,10 @@ const ItemDate = React.forwardRef<
     <CardDescription
       ref={ref}
       data-slot="item-date"
-      className={cn('text-xs font-stashly text-muted-foreground', className)}
+      className={cn(
+        'text-xs font-stashly tabular-nums text-muted-foreground',
+        className
+      )}
       {...rest}
     >
       {formatMediaDate(createdAt)}
@@ -621,7 +640,10 @@ const ItemSizeStat = React.forwardRef<
     <div
       ref={ref}
       data-slot="item-size-stat"
-      className={cn('flex items-baseline gap-1 font-stashly', className)}
+      className={cn(
+        'flex items-baseline gap-1 font-stashly tabular-nums',
+        className
+      )}
       {...rest}
     >
       <span className="text-2xl font-bold leading-none text-card-foreground">

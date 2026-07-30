@@ -56,13 +56,16 @@ export function FolderCardTab({ className, children, ...item }: ItemCardProps) {
     <ItemCard
       {...item}
       className={cn(
-        'h-full rounded-md border-0! bg-transparent! p-0 gap-0 backdrop-blur-none!',
+        'h-full border-none! bg-card flex flex-col gap-0 rounded-3xl! ring ring-inset ring-sidebar-accent p-2 has-[[data-slot=item-checkbox][data-state=checked]]:ring-inset has-[[data-slot=item-checkbox][data-state=checked]]:ring-primary/50',
         className
       )}
     >
       {/* h-full stretches to match sibling ItemCards in the row; aspect-square
-          only kicks in as the intrinsic size when the row has no file cards. */}
-      <div className="relative aspect-square h-full w-full overflow-hidden rounded-md border border-input">
+          only kicks in as the intrinsic size when the row has no file cards.
+          rounded-2xl = the card's 24px minus its p-2 (8px) gutter, matching
+          FileCardDetail's hero. The ring lives here, on the square wrapper —
+          not on the <svg>, which only draws the folder path. */}
+      <div className="relative aspect-square h-full w-full overflow-hidden rounded-2xl border-none! ring ring-muted">
         {/* Accent cover strip. Only the area above the folder body (y < 100/300)
             is ever exposed — keep the bright layer out of the lower card so
             sub-pixel seams from the non-uniformly scaled SVG can't bleed white
