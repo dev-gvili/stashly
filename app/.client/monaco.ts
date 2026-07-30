@@ -19,8 +19,11 @@ import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
 import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import TypeScriptWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
+import { applyAliasPaths } from './cross-file-types'
+import { watchOutline } from './monaco-outline'
 import { canFormatLanguage, formatDocument } from './prettier'
 import type { SourceContext } from './cross-file-types'
+import type { OutlineSymbol, OutlineTarget } from './monaco-outline'
 
 /**
  * Language services, keyed by worker label. Each workerManager passes its own
@@ -343,9 +346,6 @@ function boldParagraphs(text: string): string {
     .join('\n\n')
 }
 
-/** Injected once — covers hover tables and embedded-SQL token colors. */
-let viewerStylesInjected = false
-
 /**
  * App-level CSS the viewer needs that Monaco doesn't ship:
  *  - hover tables (Monaco renders GFM tables border-less, columns collapsing)
@@ -357,10 +357,14 @@ let viewerStylesInjected = false
  * `prefers-color-scheme` override, matching how the rest of the shell themes.
  * SQL classes are scoped under `.view-lines` (specificity 0,3,0) so they win
  * over Monaco's generated `.monaco-editor .mtkN` token colors (0,2,0).
+ *
+ * Guarded on the tag itself rather than a module flag: a hot update of this
+ * module resets the flag but not the DOM, and a second copy of these rules
+ * would just stack.
  */
 function injectViewerStyles() {
-  if (viewerStylesInjected || typeof document === 'undefined') return
-  viewerStylesInjected = true
+  if (typeof document === 'undefined') return
+  if (document.querySelector('style[data-stashly-monaco]')) return
   const style = document.createElement('style')
   style.dataset.stashlyMonaco = 'true'
   style.textContent = `
@@ -444,24 +448,47 @@ function injectViewerStyles() {
   document.head.appendChild(style)
 }
 
-/** Registered once — hover providers are global to the monaco instance. */
-let tsHoverRegistered = false
+/**
+ * Registrations parked on the Monaco instance rather than in module scope.
+ *
+ * `monaco-editor` is its own chunk and survives a hot update of *this* module,
+ * so a module-scope "registered once" flag resets while the registration it
+ * was guarding lives on. Monaco merges every provider's answer into one hover
+ * card, so a second stacked provider renders the same signature twice. Keeping
+ * the handle next to the thing it was registered against makes re-evaluation a
+ * swap instead of a stack.
+ */
+const REGISTRY_KEY = '__stashlyMonacoRegistry'
+
+type ViewerRegistry = { tsHover?: monaco.IDisposable }
+
+function viewerRegistry(): ViewerRegistry {
+  const store = globalThis as unknown as Record<
+    string,
+    ViewerRegistry | undefined
+  >
+  return (store[REGISTRY_KEY] ??= {})
+}
 
 /**
  * Replace Monaco's TS/JS hover with the VSCode-style formatter. The two
  * languages sync to two separate workers, so each provider must reach for its
  * own accessor; the quick-info shape is otherwise identical.
+ *
+ * Any previous registration is disposed first — see `viewerRegistry`.
  */
 function registerTsHover() {
-  if (tsHoverRegistered) return
-  tsHoverRegistered = true
+  const registry = viewerRegistry()
+  registry.tsHover?.dispose()
   injectViewerStyles()
+
+  const registered: monaco.IDisposable[] = []
 
   // Backs the `{@link}` / `@see` command links. The arg is the target's own
   // span; we find the editor showing that model and reveal it. Same-file only
   // — the link is only ever built when the target lives in the hovered model
   // (see `linkToMarkdown`), so a missing editor just means the tab was closed.
-  monaco.editor.registerCommand(
+  const command = monaco.editor.registerCommand(
     REVEAL_TARGET_COMMAND,
     (_accessor, arg?: { uri: string; start: number; length: number }) => {
       if (!arg) return
@@ -491,8 +518,10 @@ function registerTsHover() {
       ? monaco.typescript.getJavaScriptWorker()
       : monaco.typescript.getTypeScriptWorker()
 
+  registered.push(command)
+
   for (const languageId of ['typescript', 'javascript']) {
-    monaco.languages.registerHoverProvider(languageId, {
+    const hover = monaco.languages.registerHoverProvider(languageId, {
       provideHover: async (model, position) => {
         const getWorker = await accessorFor(languageId)
         if (model.isDisposed()) return null
@@ -531,6 +560,13 @@ function registerTsHover() {
         }
       },
     })
+    registered.push(hover)
+  }
+
+  registry.tsHover = {
+    dispose: () => {
+      for (const registration of registered) registration.dispose()
+    },
   }
 }
 
@@ -919,6 +955,7 @@ type InkPalette = {
   input: string
   /** the single syntax hue (strings) — hand-picked, not a design token */
   hue: string
+  string: string
 }
 
 /** Fallbacks approximating globals.css if token resolution ever fails. */
@@ -930,6 +967,7 @@ const INK_FALLBACK: Record<'light' | 'dark', Omit<InkPalette, 'hue'>> = {
     surface: '#e2e2e2',
     border: '#d7d7d7',
     input: '#c8c8c8',
+    string: '#616161',
   },
   dark: {
     card: '#1f1f1f',
@@ -938,6 +976,7 @@ const INK_FALLBACK: Record<'light' | 'dark', Omit<InkPalette, 'hue'>> = {
     surface: '#393939',
     border: '#3e3e3e',
     input: '#373737',
+    string: '#a1a1a1'
   },
 }
 
@@ -985,6 +1024,7 @@ function resolveInkPalette(dark: boolean): InkPalette {
     surface: token('--accent', fallback.surface),
     border: token('--border', fallback.border),
     input: token('--input', fallback.input),
+    string: token('--card-foreground', fallback.muted),
     hue,
   }
 }
@@ -997,10 +1037,10 @@ function inkRules(p: InkPalette): monaco.editor.ITokenThemeRule[] {
   const c = (hex: string) => hex.slice(1)
   return [
     { token: '', foreground: c(p.fg) },
-    { token: 'comment', foreground: c(p.muted), fontStyle: 'italic' },
+    { token: 'comment', foreground: c(p.input), fontStyle: 'italic' },
     { token: 'keyword', foreground: c(p.muted), fontStyle: 'bold' },
     { token: 'identifier', foreground: c(p.hue), fontStyle: 'bold' },
-    { token: 'string', foreground: c(p.fg) },
+    { token: 'string', foreground: c(p.muted) },
     { token: 'string.escape', foreground: c(p.hue), fontStyle: 'bold' },
     { token: 'regexp', foreground: c(p.hue) },
     { token: 'attribute.value', foreground: c(p.muted) },
@@ -1195,6 +1235,50 @@ function addFormatActions(
 }
 
 /**
+ * Report the model's line count, at mount and after every content change.
+ *
+ * Format Document (and Revert Formatting) replaces the whole buffer, so the
+ * count can't be derived from the text React handed us — a formatted file
+ * routinely gains or loses hundreds of lines. The model is the only source
+ * that tracks it. Returns a disposer.
+ */
+function watchLineCount(
+  model: monaco.editor.ITextModel,
+  report: (count: number) => void
+): { dispose: () => void } {
+  report(model.getLineCount())
+  const change = model.onDidChangeContent(() => report(model.getLineCount()))
+  return { dispose: () => change.dispose() }
+}
+
+/**
+ * Alt+Z — VSCode's own binding for word wrap, plus a context-menu entry.
+ *
+ * Wrapping is the default here (see `createCodeViewer`), so this is the way
+ * back to one-line-per-line: minified files, wide tables in a CSV, and
+ * anything column-aligned read better unwrapped, and the horizontal scrollbar
+ * is the right tool for those.
+ *
+ * The flag is a closure rather than a read of `getOption`, which reports the
+ * *computed* wrapping mode and would need unpicking before it could be
+ * flipped.
+ */
+function addWordWrapAction(editor: monaco.editor.IStandaloneCodeEditor) {
+  let wrapping = true
+  editor.addAction({
+    id: 'stashly.toggleWordWrap',
+    label: 'Toggle Word Wrap',
+    contextMenuGroupId: '2_view',
+    contextMenuOrder: 1,
+    keybindings: [monaco.KeyMod.Alt | monaco.KeyCode.KeyZ],
+    run: (target) => {
+      wrapping = !wrapping
+      target.updateOptions({ wordWrap: wrapping ? 'on' : 'off' })
+    },
+  })
+}
+
+/**
  * Prettier's parse errors carry the offending line and a caret diagram; only
  * the first line ("Unexpected token (3:12)") fits a one-line notice.
  */
@@ -1203,9 +1287,17 @@ function firstLine(err: unknown): string {
   return message.split('\n')[0].trim() || 'unknown error'
 }
 
+/** What React holds onto after mounting a viewer. */
+export type CodeViewerHandle = {
+  dispose: () => void
+  /** Scroll a symbol into view and select its name — the outline rail's click. */
+  reveal: (target: OutlineTarget) => void
+}
+
 /**
- * Mount a read-only Monaco viewer into `container`. Returns a disposer that
- * tears down the editor, its model, and the theme listeners.
+ * Mount a read-only Monaco viewer into `container`. Returns a handle that can
+ * reveal a symbol, and a disposer that tears down the editor, its model, and
+ * the theme listeners.
  */
 export function createCodeViewer(
   container: HTMLElement,
@@ -1215,13 +1307,27 @@ export function createCodeViewer(
     /** Surfaces one-line results (formatting outcomes) back to React. */
     onNotice?: (message: string) => void
     /**
+     * Surfaces the model's live line count back to React — fired at mount and
+     * again whenever the buffer changes (Format Document / Revert Formatting).
+     */
+    onLineCount?: (count: number) => void
+    /**
+     * Surfaces the document's symbol tree back to React, rebuilt whenever the
+     * language service or the buffer changes. Powers the outline rail.
+     */
+    onOutline?: (symbols: OutlineSymbol[]) => void
+    /**
+     * Surfaces the cursor's line, so the rail can mark the symbol it sits in.
+     */
+    onCursorLine?: (line: number) => void
+    /**
      * The file's project context (root, alias paths, real path). When present,
      * the model is mounted at its real path so relative imports resolve, and
      * cross-file type acquisition runs. Fetched in the React layer.
      */
     sourceContext?: SourceContext | null
   } = {}
-): { dispose: () => void } {
+): CodeViewerHandle {
   // Web fonts load lazily — nothing else on the page uses JetBrains Mono, and
   // Monaco measures glyph widths at create time, so without this it sticks
   // with fallback-mono metrics forever. Kick the face into loading and
@@ -1234,11 +1340,25 @@ export function createCodeViewer(
   applyInkTheme()
   const language = languageForFile(fileName)
   configureLanguageService(language)
+
+  // Alias resolution has to be configured *before* anything asks the worker a
+  // question: `setCompilerOptions` destroys the TypeScript worker, so applying
+  // it once cross-file acquisition got going (as it used to) killed the
+  // outline's first request — the rail only appeared once every type had
+  // resolved. `acquireCrossFileTypes` calls this again with the same paths
+  // further down; that call is a no-op.
+  if (options.sourceContext?.paths) {
+    applyAliasPaths(options.sourceContext.paths)
+  }
+
   const model = monaco.editor.createModel(
     text,
     language,
     modelUriForContext(fileName, options.sourceContext)
   )
+  const lineCount = options.onLineCount
+    ? watchLineCount(model, options.onLineCount)
+    : null
   const editor = monaco.editor.create(container, {
     model,
     readOnly: true,
@@ -1252,16 +1372,44 @@ export function createCodeViewer(
     minimap: { enabled: true },
     stickyScroll: { enabled: true },
     scrollBeyondLastLine: false,
-    renderLineHighlight: 'none',
+    // renderLineHighlight: 'none',
+    wordWrapColumn: 80,
+    // Wrap rather than scroll sideways. A viewer is for *reading*, and the
+    // lines that overflow are the ones worth reading — a long Tailwind
+    // `className`, a URL, a stringified payload. Prettier can't help with
+    // those: it breaks JSX attributes onto their own lines but never inside a
+    // string literal, so the line stays long however it is formatted.
+    // Alt+Z turns it off (see `addWordWrapAction`).
+    wordWrap: 'wordWrapColumn',
+    // Continuation lines sit one level in from the line they belong to, so a
+    // wrap is never mistaken for a new statement.
+    wrappingIndent: 'indent',
+    // The layout pass that measures real glyph widths — ligatures and the
+    // variable font make the fast monospace estimate wrong.
+    wrappingStrategy: 'advanced',
     // Bottom padding keeps the last lines clear of the floating stage toolbar.
     padding: { top: 12, bottom: 56 },
   })
+
+  addWordWrapAction(editor)
 
   if (canFormatLanguage(language)) {
     addFormatActions(editor, model, language, (message) =>
       options.onNotice?.(message)
     )
   }
+
+  const outline = options.onOutline
+    ? watchOutline(model, options.onOutline)
+    : null
+
+  // The viewer is read-only, but the cursor still moves on click and with the
+  // arrow keys, so the rail can follow along the way VSCode's outline does.
+  const cursor = options.onCursorLine
+    ? editor.onDidChangeCursorPosition((e) =>
+        options.onCursorLine?.(e.position.lineNumber)
+      )
+    : null
 
   // Colorize SQL embedded in `sql`…`` template literals (TS/JS only).
   const embeddedSql =
@@ -1299,9 +1447,23 @@ export function createCodeViewer(
   media.addEventListener('change', applyInkTheme)
 
   return {
+    // Selection without focus: the rail's filter box stays typeable, and the
+    // theme already styles an inactive selection legibly.
+    reveal: ({ line, column, endColumn }) => {
+      if (model.isDisposed()) return
+      const range = new monaco.Range(line, column, line, endColumn)
+      editor.setSelection(range)
+      editor.revealRangeInCenterIfOutsideViewport(
+        range,
+        monaco.editor.ScrollType.Smooth
+      )
+    },
     dispose: () => {
       observer.disconnect()
       media.removeEventListener('change', applyInkTheme)
+      lineCount?.dispose()
+      outline?.dispose()
+      cursor?.dispose()
       embeddedSql?.dispose()
       editor.dispose()
       model.dispose()

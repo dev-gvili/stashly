@@ -115,15 +115,29 @@ export async function acquireCrossFileTypes(
  * the `file:///` root the libs live under (verified: `.`/`/` don't match the
  * scheme); `paths` come straight from tsconfig, since their values are
  * baseUrl-relative (`app/*` → `file:///app/*`).
+ *
+ * **Call this before the editor mounts.** `setCompilerOptions` fires the
+ * defaults' `onDidChange`, and Monaco's worker manager answers that by
+ * *destroying* the TypeScript worker — taking every request in flight with it.
+ * Run after mount, it throws away the worker the viewer just warmed up, which
+ * is why `createCodeViewer` applies the paths up front.
+ *
+ * Idempotent for the same reason: re-applying a set of paths the service
+ * already has would cost a worker restart for no change at all.
  */
-function applyAliasPaths(paths: Record<string, string[]>): void {
+export function applyAliasPaths(paths: Record<string, string[]>): void {
   const ts = monaco.typescript
   for (const defaults of [ts.typescriptDefaults, ts.javascriptDefaults]) {
     const current = defaults.getCompilerOptions()
+    const merged = { ...(current.paths ?? {}), ...paths }
+    const unchanged =
+      current.baseUrl === VIRTUAL_ROOT &&
+      JSON.stringify(merged) === JSON.stringify(current.paths ?? {})
+    if (unchanged) continue
     defaults.setCompilerOptions({
       ...current,
       baseUrl: VIRTUAL_ROOT,
-      paths: { ...(current.paths ?? {}), ...paths },
+      paths: merged,
     })
   }
 }

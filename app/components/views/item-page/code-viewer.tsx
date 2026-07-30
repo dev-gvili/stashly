@@ -1,8 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react'
+import type { Ref } from 'react'
 import { LoaderIcon } from '@/components/icons'
+import { useStableCallback } from '@/hooks/useStableCallback'
+import type { CodeViewerHandle } from '@/.client/monaco'
+import type { OutlineSymbol } from '@/.client/monaco-outline'
 
 /** How long a formatting result stays on screen. */
 const NOTICE_MS = 4000
+
+/** What a mounted viewer exposes to the stage around it. */
+export type CodeViewerRef = Pick<CodeViewerHandle, 'reveal'>
 
 /**
  * CodeViewer — mounts Monaco (VS Code's editor) as a read-only viewer.
@@ -15,15 +28,45 @@ export function CodeViewer({
   text,
   fileName,
   itemId,
+  onLineCount,
+  onOutline,
+  onCursorLine,
+  ref,
 }: {
   text: string
   fileName: string
   itemId?: string
+  /**
+   * Receives the editor's live line count — at mount, and again after Format
+   * Document / Revert Formatting rewrite the buffer.
+   */
+  onLineCount?: (count: number) => void
+  /** Receives the document's symbol tree, rebuilt as the language service answers. */
+  onOutline?: (symbols: OutlineSymbol[]) => void
+  /** Receives the cursor's line, so an outline can mark the symbol it sits in. */
+  onCursorLine?: (line: number) => void
+  /** Exposes `reveal`, so the outline rail can jump the editor to a symbol. */
+  ref?: Ref<CodeViewerRef>
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const viewerRef = useRef<CodeViewerHandle | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [notice, setNotice] = useState<string | null>(null)
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // The handle is stable while the live viewer behind it is swapped on every
+  // remount, so the rail never holds a disposed editor.
+  useImperativeHandle(
+    ref,
+    () => ({ reveal: (target) => viewerRef.current?.reveal(target) }),
+    []
+  )
+
+  // Stable wrappers: these land in the mount effect's dependencies, so an
+  // inline callback from the parent would otherwise rebuild Monaco every render.
+  const reportLineCount = useStableCallback(onLineCount)
+  const reportOutline = useStableCallback(onOutline)
+  const reportCursorLine = useStableCallback(onCursorLine)
 
   // Stable identity ([] deps): the mount effect takes this as a dependency, so
   // a fresh callback per render would tear down and rebuild Monaco on every
@@ -40,9 +83,12 @@ export function CodeViewer({
 
   useEffect(() => {
     let cancelled = false
-    let viewer: { dispose: () => void } | null = null
+    let viewer: CodeViewerHandle | null = null
     setState('loading')
     setNotice(null)
+    // A new document starts with no outline until its language service answers.
+    reportOutline([])
+    reportCursorLine(1)
     ;(async () => {
       try {
         // Fetch the file's project context (root, alias paths, real path) in
@@ -61,8 +107,12 @@ export function CodeViewer({
         if (cancelled || !containerRef.current) return
         viewer = createCodeViewer(containerRef.current, text, fileName, {
           onNotice: showNotice,
+          onLineCount: reportLineCount,
+          onOutline: reportOutline,
+          onCursorLine: reportCursorLine,
           sourceContext,
         })
+        viewerRef.current = viewer
         setState('ready')
       } catch (err) {
         console.error('[code-viewer] failed to load Monaco', err)
@@ -71,9 +121,18 @@ export function CodeViewer({
     })()
     return () => {
       cancelled = true
+      viewerRef.current = null
       viewer?.dispose()
     }
-  }, [text, fileName, itemId, showNotice])
+  }, [
+    text,
+    fileName,
+    itemId,
+    showNotice,
+    reportLineCount,
+    reportOutline,
+    reportCursorLine,
+  ])
 
   if (state === 'error') {
     return (
