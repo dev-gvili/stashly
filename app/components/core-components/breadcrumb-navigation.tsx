@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import {
   Breadcrumb,
   BreadcrumbEllipsis,
@@ -35,6 +36,9 @@ export interface StashBreadcrumbsProps {
 
 const BreadcrumbDropdown = ({ crumbs, me }: StashBreadcrumbsProps) => {
   let [searchParams] = useSearchParams()
+  if(!searchParams.has('layout')){
+    searchParams.set('layout', 'grid')
+  }
   return (
     <BreadcrumbItem>
       <DropdownMenu>
@@ -90,18 +94,15 @@ function CrumbLink({
 
   let to = href('/:me/stash/folders/:folderId', { me, folderId: crumb.id })
   return (
-    <>
-      <BreadcrumbLink asChild>
-        <Link to={`${to}?${searchParams.toString()}`} className="font-stashly">
-          {crumb.name === 'root' ? null : crumb.type === 'folder' ? (
-            <span className="flex items-center gap-2">{crumb.name}</span>
-          ) : (
-            crumb.name
-          )}
-        </Link>
-      </BreadcrumbLink>
-      <BreadcrumbSeparator>/</BreadcrumbSeparator>
-    </>
+    <BreadcrumbLink asChild>
+      <Link to={`${to}?${searchParams.toString()}`} className="font-stashly">
+        {crumb.name === 'root' ? null : crumb.type === 'folder' ? (
+          <span className="flex items-center gap-2">{crumb.name}</span>
+        ) : (
+          crumb.name
+        )}
+      </Link>
+    </BreadcrumbLink>
   )
 }
 
@@ -121,19 +122,27 @@ export function Breadcrumbs() {
   return (
     <Breadcrumb className="w-full flex-1 max-w-max">
       <BreadcrumbList>
-        {/* Root — always first */}
+        {/* Root — always first. Separators are siblings of the items, never
+            nested inside them: BreadcrumbSeparator renders an <li>, so it has
+            to stay a direct child of the <ol>. */}
         {root.id !== last.id ? (
-          <BreadcrumbItem key={root.id}>
-            <CrumbLink crumb={root} me={me} searchParams={searchParams} />
-          </BreadcrumbItem>
+          <Fragment key={root.id}>
+            <BreadcrumbItem>
+              <CrumbLink crumb={root} me={me} searchParams={searchParams} />
+            </BreadcrumbItem>
+            <BreadcrumbSeparator>/</BreadcrumbSeparator>
+          </Fragment>
         ) : null}
 
         {showAll ? (
           // ≤ 3 items: render all middle items (between root and last)
           crumbs.slice(1, -1).map((crumb) => (
-            <BreadcrumbItem key={crumb.id}>
-              <CrumbLink crumb={crumb} me={me} searchParams={searchParams} />
-            </BreadcrumbItem>
+            <Fragment key={crumb.id}>
+              <BreadcrumbItem>
+                <CrumbLink crumb={crumb} me={me} searchParams={searchParams} />
+              </BreadcrumbItem>
+              <BreadcrumbSeparator>/</BreadcrumbSeparator>
+            </Fragment>
           ))
         ) : (
           // > 3 items: collapse middle into dropdown
@@ -141,13 +150,16 @@ export function Breadcrumbs() {
             <BreadcrumbDropdown crumbs={collapsed!} me={me} />
             <BreadcrumbSeparator>/</BreadcrumbSeparator>
             {secondToLast && (
-              <BreadcrumbItem key={secondToLast.id}>
-                <CrumbLink
-                  crumb={secondToLast}
-                  me={me}
-                  searchParams={searchParams}
-                />
-              </BreadcrumbItem>
+              <Fragment key={secondToLast.id}>
+                <BreadcrumbItem>
+                  <CrumbLink
+                    crumb={secondToLast}
+                    me={me}
+                    searchParams={searchParams}
+                  />
+                </BreadcrumbItem>
+                <BreadcrumbSeparator>/</BreadcrumbSeparator>
+              </Fragment>
             )}
           </>
         )}
