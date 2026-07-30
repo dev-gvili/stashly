@@ -25,19 +25,26 @@ export const AppToolbar = ({
   route,
   ...props
 }: AppToolbarProps) => {
+  // Every hook runs before the route guard below — bailing out early would
+  // change the hook count between routes and trip the rules of hooks.
   let { me, folderId } = useParams()
   let location = useLocation()
-  if (
-    location.pathname.includes('/videos') ||
-    location.pathname.includes('/images') || 
-    location.pathname.includes('/storage') || 
-    location.pathname.includes('/files') 
-  ) {
-    return null
-  }
   let [searchParams] = useSearchParams()
   let selectedCount = getQueryParamArray(searchParams, 'selectedItems').length
   let breadcrumbs = useBreadcrumbs()
+
+  if (
+    location.pathname.includes('/videos') ||
+    location.pathname.includes('/images') ||
+    location.pathname.includes('/storage') ||
+    location.pathname.includes('/files') ||
+    // /all and /folders/:id render their own <StashPageToolbar>, which covers
+    // the same ground (title/path, select-all, bulk actions) in one sticky row.
+    location.pathname.endsWith('/all') ||
+    location.pathname.includes('/folders')
+  ) {
+    return null
+  }
 
   // todo: create a function to detarmaind the title
   title = title ?? location.state?.name ?? breadcrumbs?.at(-1)?.name ?? location.pathname.split('/').filter(Boolean).at(-1)?.replace(/-/g, ' ') ?? ''

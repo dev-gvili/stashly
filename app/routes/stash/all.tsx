@@ -1,14 +1,17 @@
 import type { Route } from './+types/all'
 import { auth } from '@/.server/auth'
 import { redirect } from 'react-router'
-import { getFolderContent } from '@/services/item-actions'
+import { getFolderContent, getLibraryStats } from '@/services/item-actions'
+import { formatSize } from '@/utils/formaters'
+import { StashPageToolbar } from '@/components/views/stash-page-toolbar'
+import type { LibraryStats } from '@/components/core-components/page-toolbar'
 import {
   buildItemFilters,
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
 import { parseSearchParams } from '@/utils/parsers'
 import { GridLayout } from '@/components/views/grid-view'
-import { FileCard } from '@/components/core-components/file-card'
+import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { Button } from '@/components/ui/button'
 import { usePagination } from '@/hooks/usePagination'
@@ -101,15 +104,36 @@ export async function loader({ request, params }: Route.ActionArgs) {
 
   let filters = buildItemFilters(parsedParams)
 
-  return await getFolderContent({
-    cursor: parsedParams.cursor,
-    limit: parsedParams.take,
-    where: { ...filters, parentId: session.user.rootId },
-    orderBy: parsedParams.orderBy,
-  })
+  let [folderContent, stats] = await Promise.all([
+    getFolderContent({
+      cursor: parsedParams.cursor,
+      limit: parsedParams.take,
+      where: { ...filters, parentId: session.user.rootId },
+      orderBy: parsedParams.orderBy,
+    }),
+    getLibraryStats(session.user.id),
+  ])
+
+  // Format on the server: `LibraryStats` is all strings/numbers, which keeps
+  // the BigInt byte counts out of the serialized loader payload.
+  return {
+    ...folderContent,
+    stats: {
+      folders: stats.folders,
+      files: stats.files,
+      favorites: stats.favorites,
+      trashed: stats.trashed,
+      size: formatSize('byte', 'unit', Number(stats.usedBytes)),
+      quota: formatSize('byte', 'unit', Number(stats.quotaBytes)),
+      usedPercent:
+        stats.quotaBytes > 0n
+          ? Math.round(Number((stats.usedBytes * 100n) / stats.quotaBytes))
+          : 0,
+    } satisfies LibraryStats,
+  }
 }
 
-export default function Index() {
+export default function Index({ loaderData }: Route.ComponentProps) {
   let id = useId()
   let { items, loadMore, isLoading, hasMore } = usePagination<
     Route.ComponentProps['loaderData']['items'][number]
@@ -118,14 +142,18 @@ export default function Index() {
 
   return (
     <Fragment key={id}>
+      {/* SelectionProvider must wrap the toolbar too — PageToolbarMorph reads
+          the shared selection actor and only enters bulk mode when this route's
+          ids are registered. */}
       <SelectionProvider items={items.map((i) => i.id)}>
+        <StashPageToolbar stats={loaderData.stats} items={items} />
         <ListLayout items={items} />
         <GridLayout>
           {items?.map((item) =>
             item.type === 'folder' ? (
               <FolderCardTab key={item.id} {...item} />
             ) : (
-              <FileCard key={item.id} item={item} />
+              <FileCardDetail key={item.id} item={item} />
             )
           )}
         </GridLayout>

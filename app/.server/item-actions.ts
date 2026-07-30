@@ -3173,6 +3173,74 @@ export async function countItems(args: Prisma.ItemCountArgs): Promise<number> {
 }
 
 /**
+ * Drive-wide counters for the page toolbar's stat run and storage meter.
+ *
+ * Five cheap aggregates in one round trip — deliberately *not*
+ * `getStorageOverview`, which also runs a category groupBy, a top-10 scan, and
+ * a duplicate-detection pass. This one is light enough to sit in a list
+ * route's loader on every navigation.
+ *
+ * @param userId - Owner whose drive is being summarised.
+ * @returns Raw counts and BigInt byte totals; format them at the edge with
+ *   `formatSize('byte', 'unit', bytes)`.
+ *
+ * @example
+ * const stats = await getLibraryStats(session.user.id)
+ * // { folders: 34, files: 1286, favorites: 52, trashed: 19,
+ * //   usedBytes: 19783246929n, quotaBytes: 42949672960n }
+ */
+export async function getLibraryStats(userId: string) {
+  const active = { ownerId: userId, status: { not: 'trashed' as const } }
+
+  const [folders, files, favorites, trashed, quota] = await Promise.all([
+    prisma.item.count({ where: { ...active, type: 'folder' } }),
+    prisma.item.count({ where: { ...active, type: 'file' } }),
+    prisma.favorite.count({ where: { favoritedById: userId } }),
+    prisma.item.count({ where: { ownerId: userId, status: 'trashed' } }),
+    prisma.quota.findFirst({
+      where: { drive: { ownerId: userId } },
+      select: { used: true, total: true },
+    }),
+  ])
+
+  return {
+    folders,
+    files,
+    favorites,
+    trashed,
+    usedBytes: quota?.used ?? 0n,
+    quotaBytes: quota?.total ?? 0n,
+  }
+}
+
+/**
+ * Counts scoped to a single folder's direct children, for the toolbar's
+ * "in this folder" stat line. The size is the folder's rollup
+ * (`inclusiveSize`), which the Postgres triggers keep current — so it covers
+ * the whole subtree, not just the direct children counted here.
+ *
+ * @param folderId - The folder being viewed.
+ *
+ * @example
+ * const scope = await getFolderScopeStats(params.folderId)
+ * // { folders: 6, files: 214, sizeBytes: 4080218931n }
+ */
+export async function getFolderScopeStats(folderId: string) {
+  const active = { parentId: folderId, status: { not: 'trashed' as const } }
+
+  const [folders, files, folder] = await Promise.all([
+    prisma.item.count({ where: { ...active, type: 'folder' } }),
+    prisma.item.count({ where: { ...active, type: 'file' } }),
+    prisma.item.findUnique({
+      where: { id: folderId },
+      select: { inclusiveSize: true },
+    }),
+  ])
+
+  return { folders, files, sizeBytes: folder?.inclusiveSize ?? 0n }
+}
+
+/**
  * Creates the root folder item for a drive.
  * Used during user/workspace provisioning to establish the top-level folder anchor.
  *

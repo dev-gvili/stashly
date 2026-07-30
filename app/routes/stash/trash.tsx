@@ -133,7 +133,6 @@ export default () => {
 
   return (
     <Fragment>
-        <AppToolbar />
       <SelectionProvider items={items.map((i) => i.id)}>
         <GridLayout>
           {items.map((item) =>

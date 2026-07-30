@@ -1,12 +1,20 @@
 import { LoadMoreItems } from '@/components/core-components/buttons'
-import { FileCard } from '@/components/core-components/file-card'
+import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { GridLayout } from '@/components/views/grid-view'
 import { usePagination } from '@/hooks/usePagination'
 import { auth } from '@/services/auth'
 import { breadcrumbs } from '@/services/breadcrumbs'
 import { prisma } from '@/services/db'
-import { getFolderContent, touchOpenedAt } from '@/services/item-actions'
+import {
+  getFolderContent,
+  getFolderScopeStats,
+  getLibraryStats,
+  touchOpenedAt,
+} from '@/services/item-actions'
+import { formatSize } from '@/utils/formaters'
+import { StashPageToolbar } from '@/components/views/stash-page-toolbar'
+import type { LibraryStats } from '@/components/core-components/page-toolbar'
 import {
   buildItemFilters,
   itemFilterSchema,
@@ -37,7 +45,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   let filters = buildItemFilters(parsedParams)
 
-  const [folderContent, allCrumbs, folder] = await Promise.all([
+  const [folderContent, allCrumbs, folder, stats, scope] = await Promise.all([
     getFolderContent({
       cursor: parsedParams.cursor,
       limit: parsedParams.take,
@@ -47,8 +55,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     breadcrumbs(params.folderId),
     prisma.item.findUnique({
       where: { id: params.folderId },
-      select: { ownerId: true },
+      select: { ownerId: true, name: true, driveId: true },
     }),
+    getLibraryStats(session.user.id),
+    getFolderScopeStats(params.folderId),
   ])
 
   Promise.resolve()
@@ -57,7 +67,28 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   const crumbs =
     folder?.ownerId === session.user.id ? allCrumbs : allCrumbs.slice(-1)
-  return { ...folderContent, crumbs, me: params.me }
+
+  return {
+    ...folderContent,
+    crumbs,
+    me: params.me,
+    folderName: folder?.name ?? null,
+    driveId: folder?.driveId ?? '',
+    // Formatted server-side so the BigInt byte counts stay out of the payload.
+    // Counts are folder-scoped; the storage meter stays drive-wide.
+    stats: {
+      folders: scope.folders,
+      files: scope.files,
+      favorites: stats.favorites,
+      trashed: stats.trashed,
+      size: formatSize('byte', 'unit', Number(scope.sizeBytes)),
+      quota: formatSize('byte', 'unit', Number(stats.quotaBytes)),
+      usedPercent:
+        stats.quotaBytes > 0n
+          ? Math.round(Number((stats.usedBytes * 100n) / stats.quotaBytes))
+          : 0,
+    } satisfies LibraryStats,
+  }
 }
 
 export const shouldRevalidate: ShouldRevalidateFunction = ({
@@ -101,19 +132,29 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   return defaultShouldRevalidate
 }
 
-export default () => {
+export default ({ loaderData, params }: Route.ComponentProps) => {
   let { items, loadMore, isLoading, hasMore } = usePagination<
     Route.ComponentProps['loaderData']['items'][number]
   >(50, '')
   return (
     <div className="w-full h-full relative space-y-4">
+      {/* SelectionProvider must wrap the toolbar too — it reads the shared
+          selection actor and only enters bulk mode once this route's ids are
+          registered. */}
       <SelectionProvider items={items.map((i) => i.id)}>
+        <StashPageToolbar
+          stats={loaderData.stats}
+          items={items}
+          parentId={params.folderId}
+          parentName={loaderData.folderName}
+          driveId={loaderData.driveId}
+        />
         <GridLayout>
           {items.map((item) =>
             item.type === 'folder' ? (
               <FolderCardTab key={item.id} {...item} />
             ) : (
-              <FileCard key={item.id} item={item} />
+              <FileCardDetail key={item.id} item={item} />
             )
           )}
         </GridLayout>
