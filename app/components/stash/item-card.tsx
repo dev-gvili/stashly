@@ -33,6 +33,30 @@ import { useItemDragDrop, DRAG_ITEM_KEY } from '@/hooks/useItemDragDrop'
 import { FolderIcon } from '@/components/icons'
 import { Actions as ItemCardActions } from './item-card-actions'
 import { useLiveThumbnail } from '@/hooks/thumbnail-signal'
+import { useThumbnailBackfill } from '@/hooks/useThumbnailBackfill'
+
+/**
+ * Merges a forwarded ref with a hook-owned callback ref (React 19 cleanup
+ * aware). Memoize the result — a fresh callback each render would detach and
+ * re-attach the backfill observer on every re-render.
+ */
+function composeRefs<T>(
+  ...refs: Array<React.Ref<T> | undefined>
+): React.RefCallback<T> {
+  return (node: T | null) => {
+    const cleanups = refs.map((r) => {
+      if (typeof r === 'function') return r(node)
+      if (r) (r as React.RefObject<T | null>).current = node
+      return undefined
+    })
+    return () => {
+      for (const c of cleanups) if (typeof c === 'function') c()
+      for (const r of refs) {
+        if (r && typeof r !== 'function') (r as React.RefObject<T | null>).current = null
+      }
+    }
+  }
+}
 
 export interface ItemCardProps extends StashItem {
   asChild?: boolean
@@ -168,9 +192,16 @@ const ItemThumbnail = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
 >((props, ref) => {
   const { className, children, ...rest } = props
+  // Items that never got a thumbnail generate one here, once, when scrolled
+  // into view — otherwise they'd show the category icon forever.
+  const backfillRef = useThumbnailBackfill()
+  const setRef = React.useMemo(
+    () => composeRefs<React.ComponentRef<typeof AvatarPrimitive.Root>>(ref, backfillRef),
+    [ref, backfillRef]
+  )
   return (
     <AvatarPrimitive.Root
-      ref={ref}
+      ref={setRef}
       data-slot="item-thumbnail"
       className={cn(
         'relative flex w-full shrink-0 overflow-hidden rounded-md aspect-video',
@@ -528,6 +559,11 @@ const ItemCover = React.forwardRef<
   const live = useLiveThumbnail(id)
   const persisted = thumbnails?.find((t) => t.stage === 2)
   const { className, ...rest } = props
+  const backfillRef = useThumbnailBackfill()
+  const setRef = React.useMemo(
+    () => composeRefs<HTMLDivElement>(ref, backfillRef),
+    [ref, backfillRef]
+  )
 
   const src = live?.src ?? persisted?.url ?? undefined
   const Icon = type === 'folder' ? FolderIcon : toIcon(category)
@@ -537,7 +573,7 @@ const ItemCover = React.forwardRef<
 
   return (
     <div
-      ref={ref}
+      ref={setRef}
       data-slot="item-cover"
       className={cn(
         'relative basis-[48%] shrink-0 overflow-hidden bg-muted',

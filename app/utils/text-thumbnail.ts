@@ -21,6 +21,7 @@
 const MONO_EXTENSIONS = new Set([
   // web
   'html', 'htm', 'css', 'scss', 'less', 'js', 'jsx', 'ts', 'tsx', 'json', 'xml',
+  'mjs', 'cjs', 'mts', 'cts', 'vue', 'svelte', 'astro', 'prisma',
   // backend / system
   'java', 'c', 'cpp', 'h', 'cs', 'php', 'py', 'rb', 'go', 'rs', 'swift', 'kt', 'dart',
   // scripts

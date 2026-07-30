@@ -13,6 +13,7 @@ import { useLocation, useNavigate } from 'react-router'
 import { shallowEqual, useSelector } from '@xstate/react'
 import { upload, useUploadFile } from '@/hooks/useUpload'
 import { useThumbnailV2 } from '@/hooks/useThumbnailV2'
+import { pauseBackfill, resumeBackfill } from '@/hooks/useThumbnailBackfill'
 
 const thumbnailedIds = new Set<string>()
 
@@ -92,6 +93,16 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
   const navigate = useNavigate()
   const location = useLocation()
   const lastRevalidated = useRef(0)
+
+  // Fresh uploads own the compute worker and the bandwidth. On-demand backfill
+  // of older items is strictly background work, so it stands down until the
+  // queue drains — otherwise a big upload competes with itself for slots.
+  const uploading = fileIds.length > 0
+  useEffect(() => {
+    if (uploading) pauseBackfill()
+    else resumeBackfill()
+    return () => resumeBackfill()
+  }, [uploading])
 
   useEffect(() => {
     if (createdCount === lastRevalidated.current) return
