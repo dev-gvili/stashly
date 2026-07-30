@@ -11,6 +11,27 @@ Client-side 3-stage progressive generation. All output is **WebP**. Entry point:
 
 **Gate**: pipeline starts only after `status === 'itemCreated'` (not `'done'`). `upload-thumbnail-runner.tsx` watches for `itemCreated` and calls `runThumbnail(file)`. A module-level `thumbnailedIds = new Set<string>()` (shared across hook instances) ensures the pipeline fires exactly once per file.
 
+## On-demand backfill (items that never got a thumbnail)
+
+Upload-time generation only ever runs from the upload queue, where the original `File` is in memory. When it fails (compute timeout, tab closed mid-run, a deeply-nested file in a huge batch), the item shows the category icon forever. `app/hooks/useThumbnailBackfill.ts` closes that gap: it re-downloads the original and runs **stage 2 only** (stage 3's ViT crop is the most expensive stage and buys the least here).
+
+Wired into `ItemCard.Thumbnail` and `ItemCard.Cover` roots via a callback ref — every grid view gets it for free. **Memoize any composed ref** (`composeRefs` in `item-card.tsx`): a fresh callback each render detaches and re-attaches the observer every re-render.
+
+The guards *are* the feature — a backfill costs a full download, so:
+
+| Guard | Where |
+|-------|-------|
+| Viewport-gated (one shared `IntersectionObserver`, `rootMargin: 300px`) | `useThumbnailBackfill.ts` |
+| LIFO queue — newest request runs first, so fast scrolling favours where you stopped | `queue.pop()` in `drain()` |
+| `MAX_CONCURRENT = 2`, jobs started inside `requestIdleCallback` | `drain()` / `whenIdle()` |
+| Yields to uploads — `pauseBackfill()`/`resumeBackfill()` called by `upload-thumbnail-runner.tsx` | exported from the hook |
+| Attempted once — in-memory `Set` + `sessionStorage` skip list for permanent failures | `rememberFailure()` |
+| Type/size eligibility, Data-Saver and 2g opt-out | `app/utils/thumbnail-backfill.ts` (pure, unit-tested) |
+
+`GET /api/thumbnails/:itemId/source` (→ `getThumbnailSource` in `thumbnail-actions.ts`) presigns a 5-minute GET on the original. It re-checks read permission and the 16 MB `BACKFILL_MAX_BYTES` cap server-side, and returns `{ status: 'exists', url }` when another client already backfilled the item — the client paints that instead of downloading again. **Keep the client and server caps in sync** or the client burns a round trip discovering the server said no.
+
+A card that unmounts mid-job (route change) lets the in-flight job finish and persists via a plain `fetch` PATCH rather than the keyed fetcher; only *queued* jobs are dropped.
+
 ## Signal architecture
 
 `app/hooks/thumbnail-signal/`: three interchangeable implementations behind a single `ACTIVE_SIGNAL` constant in `index.ts`. Both producer (`useThumbnailPublisher`) and consumer (`useLiveThumbnail`) import from the index, so flipping the constant changes both sides atomically. Implementations: `signal-store.ts` (module-store + `useSyncExternalStore`), `signal-fetcher.ts` (keyed `useFetcher`), `signal-xstate.ts` (actor).

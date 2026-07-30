@@ -2,7 +2,9 @@
 
 ## Active
 
-- [ ] Migrate flat item API routes — `routes.ts` still registers both a flat top-level path and a nested `items/:itemId/...` path for the same resource: `shares`, `favorites`, `versions`, `invitations`, `comments/*` (invitations added a nested route this session too). Move remaining flat callers to nested and remove the flat registrations after. Note: `pins` and `locks` are flat-only (no nested counterpart) — not part of this migration. *(re-confirmed still open 2026-07-18: flat at routes.ts:45-58, nested at routes.ts:103-116)*
+- [ ] Migrate flat item API routes — `routes.ts` still registers both a flat top-level path and a nested `items/:itemId/...` path for the same resource: `shares`, `favorites`, `versions`, `invitations`, `comments/*` (invitations added a nested route this session too). Move remaining flat callers to nested and remove the flat registrations after. Note: `pins` and `locks` are flat-only (no nested counterpart) — not part of this migration. *(re-confirmed still open 2026-07-30: flat at routes.ts:50-65, nested at routes.ts:111-123)*
+
+- [ ] Finish or revert the favorites revalidation WIP — uncommitted changes in `app/routes/api/favorites.ts` + `app/routes/stash/favorites.tsx` are mid-debug: a commented-out `return data({ favorited: false })`, `removeQueryParam` imported but no longer called, and `favorite_items` no longer strips `selectedItems` from the redirect (drops the toolbar-selection reset its own comment describes). The new `shouldRevalidate` in `favorites.tsx` looks intentional and worth keeping. *(spotted 2026-07-30 while shipping the thumbnail backfill; deliberately left out of that push)*
 
 ## Someday / Low Priority
 
@@ -10,11 +12,13 @@
 
 - [ ] **URL model** — central `Url` table for short-link routing, analytics, and expiry. Approach settled: Url owns nullable FKs to each resource (facet pattern, matching `Item`). 1:1 per resource with `@unique` FK cols for now; workspace slug aliasing (1:many) deferred. Path prefixes from `StashlyPrefixMap` (`/ws/:slug`, `/sl/:slug`, `/inv/:slug`). Each resource type gets its own redirect route. Brainstormed 2026-05-16.
 
-- [ ] Fix `app/routes/api/shares.ts` — replace `@/services/share-actions` import with relative `../../.server/share-actions` to resolve dot-server plugin build failure *(deferred; import still present at shares.ts:17, re-confirmed 2026-07-18)*
-- [ ] Review and clean 7 stale git stashes (2 have alarming names: "after im fucked…", "fuck") *(all 7 still present 2026-07-18)*
-- [ ] Delete leftover worktree branches: `copilot-worktree-*` × 4, `copilot/push-commits-to-gh`, `elderly-monkey`, `tasteless-muskox`, `main1`; plus shipped branches not yet deleted: `feat/pinned-items`, `feature/sharing-items`, `feat/concurrent-multipart-upload`, `fix/concurrent-upload-hardening`, `feature/invitations`, `e2e-tests`, `blue`, `list`, `split-language-detection`, `refactor/collection-self-relation` *(all still present 2026-07-18; also spotted `claude/friendly-einstein-c30497` which has a live worktree under `.claude/worktrees/` — check before deleting)*
+- [ ] Fix `app/routes/api/shares.ts` — replace `@/services/share-actions` import with relative `../../.server/share-actions` to resolve dot-server plugin build failure *(deferred; import still present at shares.ts:17, re-confirmed 2026-07-30)*
+- [ ] Delete leftover worktree branches: `copilot-worktree-*` × 4, `copilot/push-commits-to-gh`, `elderly-monkey`, `tasteless-muskox`, `main1`; plus shipped branches not yet deleted: `feat/pinned-items`, `feature/sharing-items`, `feat/concurrent-multipart-upload`, `fix/concurrent-upload-hardening`, `feature/invitations`, `e2e-tests`, `blue`, `list`, `split-language-detection`, `refactor/collection-self-relation` *(all 19 non-main branches still present 2026-07-30; also `claude/friendly-einstein-c30497` which has a live worktree under `.claude/worktrees/` — check before deleting)*
 
 ## Done
+
+- [x] On-demand thumbnail backfill — items with an empty `thumbnails` array now regenerate one from the stored original instead of showing a category icon forever. `useThumbnailBackfill` (viewport-gated shared IntersectionObserver, LIFO queue, 2 concurrent, `requestIdleCallback`-started, pauses during uploads, once-per-item with a sessionStorage failure memo), pure predicates in `utils/thumbnail-backfill.ts` (12 unit tests), `GET /api/thumbnails/:itemId/source` → `getThumbnailSource`. Stage 2 only; stage 3 skipped. Also added `mjs/cjs/mts/cts/vue/svelte/astro/prisma` to the text-thumbnail extension list. Shipped to `main` `2662f56` + `3a0a527` (2026-07-30).
+- [x] Stale git stashes cleared — all 7 gone, `git stash list` is empty (confirmed 2026-07-30).
 
 - [x] Server-side Markdown loading — `MarkdownStage` renders from React Router deferred data (`markdownDoc` promise streamed via `<Suspense>`/`<Await>`); added `getObjectText` (s3) + `loadMarkdownDocument` (item-actions); dropped `useMarkdownDocument` hook + `loadMarkdownText`. Shipped to `main` `4695f84` (2026-07-15).
 - [x] Enriched invitations feature — received/sent views, status pill, empty state, detail panels; `invitation-actions.ts` + `/api/invitations`; Prisma `invitation.message` + `user.title` (migration `20260712000000`). Shipped to `main` `9ac8714` (2026-07-15).
