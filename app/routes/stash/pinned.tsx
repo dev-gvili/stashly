@@ -1,5 +1,5 @@
 import { LoadMoreItems } from '@/components/core-components/buttons'
-import { FileCard } from '@/components/core-components/file-card'
+import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { GridLayout } from '@/components/views/grid-view'
 import { itemVariants } from '@/components/views/variants'
@@ -42,7 +42,7 @@ export default function Pinned() {
               {item.type === 'folder' ? (
                 <FolderCardTab {...item} />
               ) : (
-                <FileCard item={item} />
+                <FileCardDetail item={item} />
               )}
             </motion.div>
           ))}

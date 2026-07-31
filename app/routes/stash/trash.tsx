@@ -1,5 +1,5 @@
 import { AppToolbar } from '@/components/app-toolbar'
-import { FileCard } from '@/components/core-components/file-card'
+import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { SelectionProvider } from '@/components/stash/selection'
 import { TrashEmptyState } from '@/components/states/trash-empty-state'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
@@ -80,6 +80,7 @@ export async function loader({ request }: Route.LoaderArgs) {
               size: true,
               view: true,
               id: true,
+              stage: true,
             },
           },
         },
@@ -112,6 +113,7 @@ export async function loader({ request }: Route.LoaderArgs) {
           size: true,
           view: true,
           id: true,
+          stage: true,
         },
       },
     },
@@ -139,7 +141,7 @@ export default () => {
             item.type === 'folder' ? (
               <FolderCardTab key={item.id} {...item} />
             ) : (
-              <FileCard key={item.id} item={item} />
+              <FileCardDetail key={item.id} item={item} />
             )
           )}
         </GridLayout>

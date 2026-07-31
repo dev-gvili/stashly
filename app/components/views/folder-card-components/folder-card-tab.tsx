@@ -56,7 +56,7 @@ export function FolderCardTab({ className, children, ...item }: ItemCardProps) {
     <ItemCard
       {...item}
       className={cn(
-        'h-full border-none! bg-card flex flex-col gap-0 rounded-3xl! ring ring-inset ring-sidebar-accent p-2 has-[[data-slot=item-checkbox][data-state=checked]]:ring-inset has-[[data-slot=item-checkbox][data-state=checked]]:ring-primary/50',
+        'h-full border-none! bg-card flex flex-col gap-0 rounded-3xl!  p-2 has-[[data-slot=item-checkbox][data-state=checked]]:ring-inset has-[[data-slot=item-checkbox][data-state=checked]]:ring-primary/50',
         className
       )}
     >
@@ -65,18 +65,17 @@ export function FolderCardTab({ className, children, ...item }: ItemCardProps) {
           rounded-2xl = the card's 24px minus its p-2 (8px) gutter, matching
           FileCardDetail's hero. The ring lives here, on the square wrapper —
           not on the <svg>, which only draws the folder path. */}
-      <div className="relative aspect-square h-full w-full overflow-hidden rounded-2xl border-none! ring ring-muted">
+      <div className="relative aspect-square h-full w-full overflow-hidden rounded-2xl border-none! bg-card">
         {/* Accent cover strip. Only the area above the folder body (y < 100/300)
             is ever exposed — keep the bright layer out of the lower card so
             sub-pixel seams from the non-uniformly scaled SVG can't bleed white
             through the bottom edge. h-2/5 overlaps the body top with margin. */}
-        <div className="absolute inset-x-0 top-0 h-2/5 bg-primary" />
         <svg
           viewBox={`0 0 ${VIEW} ${VIEW}`}
           width="100%"
           height="100%"
           preserveAspectRatio="none"
-          className="absolute inset-0 block fill-background"
+          className="absolute inset-0 block fill-muted stroke-muted stroke-[1.5]"
         >
           <path d={FOLDER_PATH} />
         </svg>
