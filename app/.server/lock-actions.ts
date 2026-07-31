@@ -21,7 +21,7 @@ const itemListSelect = {
   thumbnails: {
     take: 1,
     where: { NOT: { url: { startsWith: '#' } } },
-    select: { id: true, url: true, width: true, height: true, size: true, view: true },
+    select: { id: true, url: true, width: true, height: true, size: true, view: true, stage: true },
   },
   favorites: {
     select: {
