@@ -131,6 +131,7 @@ const mediaItems: SidebarItemProps[] = [
     tooltip: 'All Files',
     prefetch: 'intent',
     state: {
+      name: 'All Files',
       reset: true,
     },
   },

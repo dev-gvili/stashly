@@ -1,6 +1,6 @@
 import type { Route } from './+types/all'
 import { auth } from '@/.server/auth'
-import { redirect } from 'react-router'
+import { redirect, useLocation } from 'react-router'
 import { getFolderContent, getLibraryStats } from '@/services/item-actions'
 import { formatSize } from '@/utils/formaters'
 import { StashPageToolbar } from '@/components/views/stash-page-toolbar'
@@ -26,6 +26,7 @@ import { SelectionProvider } from '../../components/stash/selection'
 import { LoadMoreItems } from '../../components/core-components/buttons'
 import { getQueryParamArray } from '../../utils/query-params'
 import { FilesEmptyState } from '../../components/states/files-empty-state'
+import { breadcrumbs } from '@/.server/breadcrumbs';
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
@@ -104,20 +105,23 @@ export async function loader({ request, params }: Route.ActionArgs) {
 
   let filters = buildItemFilters(parsedParams)
 
-  let [folderContent, stats] = await Promise.all([
+  let [folderContent, stats, crumbs] = await Promise.all([
     getFolderContent({
       cursor: parsedParams.cursor,
       limit: parsedParams.take,
       where: { ...filters, parentId: session.user.rootId },
       orderBy: parsedParams.orderBy,
+      foldersFirst: true,
     }),
     getLibraryStats(session.user.id),
+    breadcrumbs(session.user.rootId),
   ])
 
   // Format on the server: `LibraryStats` is all strings/numbers, which keeps
   // the BigInt byte counts out of the serialized loader payload.
   return {
     ...folderContent,
+    crumbs,
     stats: {
       folders: stats.folders,
       files: stats.files,
@@ -135,6 +139,7 @@ export async function loader({ request, params }: Route.ActionArgs) {
 
 export default function Index({ loaderData }: Route.ComponentProps) {
   let id = useId()
+  let location = useLocation()
   let { items, loadMore, isLoading, hasMore } = usePagination<
     Route.ComponentProps['loaderData']['items'][number]
   >(25, '?index')
@@ -146,7 +151,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
           the shared selection actor and only enters bulk mode when this route's
           ids are registered. */}
       <SelectionProvider items={items.map((i) => i.id)}>
-        <StashPageToolbar stats={loaderData.stats} items={items} />
+        <StashPageToolbar stats={loaderData.stats} items={items} parentName={location.state?.name ?? location.pathname.split('/').pop()} />
         <ListLayout items={items} />
         <GridLayout>
           {items?.map((item) =>

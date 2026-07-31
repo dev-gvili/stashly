@@ -28,6 +28,7 @@ import { StatCards } from './toolbar-stats'
 import { useSelection } from '@/components/stash/selection'
 import type { BulkActions, LibraryStats, ToolbarContext } from './types'
 import { cn } from '@/utils/styles'
+import { Breadcrumbs } from '../breadcrumb-navigation';
 
 interface Props extends BulkActions {
   stats: LibraryStats
@@ -78,7 +79,7 @@ export function PageToolbarStacked({
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
         <div className="min-w-0">
           <h1 className="font-stashly text-base font-semibold leading-tight">
-            {isTrash ? 'Trash' : 'All files'}
+            <Breadcrumbs />
           </h1>
           <p className="mt-0.5 font-stashly text-xs text-muted-foreground">
             {isTrash

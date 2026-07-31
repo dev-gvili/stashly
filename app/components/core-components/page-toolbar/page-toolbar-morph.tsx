@@ -23,8 +23,7 @@ import {
   SortAscIcon,
   FolderIcon,
 } from '@/components/icons'
-import { SelectAllCheckbox, InlineStats } from './toolbar-stats'
-import { LayoutToggle } from './layout-toggle'
+import { SelectAllCheckbox, InlineStats, StorageMeter } from './toolbar-stats'
 import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
 import { useSelection } from '@/components/stash/selection'
 import { useBreadcrumbs } from '@/hooks'
@@ -32,7 +31,6 @@ import type {
   BulkActions,
   LibraryStats,
   ToolbarContext,
-  ToolbarLayout,
 } from './types'
 import { cn } from '@/utils/styles'
 
@@ -41,8 +39,6 @@ interface Props extends BulkActions {
   context?: ToolbarContext
   /** formatted size of the current selection — the toolbar can't derive it */
   selectedSize?: string
-  layout?: ToolbarLayout
-  onLayoutChange?: (layout: ToolbarLayout) => void
   className?: string
 }
 
@@ -59,7 +55,6 @@ export function PageToolbarMorph({
   stats,
   context = 'files',
   selectedSize,
-  layout = 'grid',
   className,
   ...actions
 }: Props) {
@@ -73,7 +68,7 @@ export function PageToolbarMorph({
   return (
     <header
       className={cn(
-        'sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-input bg-sidebar px-3',
+        'sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 bg-sidebar',
         className
       )}
     >
@@ -239,36 +234,11 @@ export function PageToolbarMorph({
               {isTrash ? 'Trash' : 'All files'}
             </h1>
           )}
-          <Badge variant="outline" className="tabular-nums">
+          {/* <Badge variant="outline" className="tabular-nums">
             {isTrash ? stats.trashed : stats.files + stats.folders}
-          </Badge>
+          </Badge> */}
           <InlineStats stats={stats} className="ml-2 hidden lg:flex" />
-          <div className="ml-auto flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="icon-sm"
-              className="bg-card! border-input text-muted-foreground"
-              aria-label="Search"
-            >
-              <SearchIcon className="size-5" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              className="bg-card! border-input text-muted-foreground"
-              aria-label="Filter"
-            >
-              <FilterIcon className="size-5" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              className="bg-card! border-input text-muted-foreground"
-              aria-label="Sort"
-            >
-              <SortAscIcon className="size-5" />
-            </Button>
-          </div>
+          <StorageMeter stats={stats} className="ml-2 hidden lg:flex" />
         </>
       )}
     </header>
