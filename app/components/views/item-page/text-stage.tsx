@@ -1,6 +1,12 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Await } from 'react-router'
+import {
+  Await,
+  href,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router'
 import {
   CheckIcon,
   CopyIcon,
@@ -138,6 +144,15 @@ function CodeReader({
 
   const hasOutline = symbols.length > 0
 
+  // Go to Definition across files is a real navigation: the target file has a
+  // page, so routing to it keeps the URL, breadcrumbs and item panel in step
+  // with the source on screen. The symbol's position rides along in the query
+  // string, which is also what makes the landing spot survive a refresh or a
+  // pasted link.
+  const navigate = useNavigate()
+  const params = useParams()
+  const [searchParams] = useSearchParams()
+
   return (
     <div className="relative flex h-full min-h-0 w-full min-w-0 gap-2 overflow-hidden">
       <CodeOutline
@@ -154,7 +169,18 @@ function CodeReader({
           itemId={itemId}
           onCursorLine={setCursorLine}
           onLineCount={setLineCount}
+          onNavigate={({ itemId: fileId, folderId, line, column }) =>
+            navigate(
+              `${href('/:me/stash/folders/:folderId/files/:fileId', {
+                me: params.me ?? '',
+                folderId,
+                fileId,
+              })}?line=${line}&col=${column}`
+            )
+          }
           onOutline={setSymbols}
+          revealColumn={numberParam(searchParams.get('col'))}
+          revealLine={numberParam(searchParams.get('line'))}
           text={text}
         />
         <StageToolbar
@@ -180,6 +206,16 @@ function CodeReader({
       </div>
     </div>
   )
+}
+
+/**
+ * A positive integer from the query string, or `undefined`. Anything else —
+ * absent, `0`, a word someone typed over the URL — means "no target", which
+ * leaves the viewer at the top of the file.
+ */
+function numberParam(raw: string | null): number | undefined {
+  const value = Number(raw)
+  return Number.isInteger(value) && value > 0 ? value : undefined
 }
 
 /** Raw file text → its lines, BOM dropped and line endings normalized to LF. */

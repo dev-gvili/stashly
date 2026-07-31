@@ -40,7 +40,17 @@ export type ProjectConfig = {
   filePath: string
 }
 
-export type SourceFile = { path: string; text: string }
+export type SourceFile = {
+  path: string
+  text: string
+  /** The file's item id — what Go to Definition navigates to. */
+  id: string
+  /**
+   * Its folder, since the file page is addressed by both
+   * (`/:me/stash/folders/:folderId/files/:fileId`).
+   */
+  parentId: string | null
+}
 
 /**
  * Describe a file's place in its uploaded project: the project root, the
@@ -232,7 +242,14 @@ async function resolveUnderRoot(
     const file = await findFileByPath(rootId, candidate)
     if (file) {
       const text = await getObjectText(file.bucket, file.key).catch(() => null)
-      if (text != null) return { path: candidate, text }
+      if (text != null) {
+        return {
+          path: candidate,
+          text,
+          id: file.id,
+          parentId: file.parentId,
+        }
+      }
     }
   }
   return null
@@ -242,7 +259,12 @@ async function resolveUnderRoot(
 async function findFileByPath(
   rootId: string,
   relPath: string
-): Promise<{ bucket: string; key: string } | null> {
+): Promise<{
+  id: string
+  parentId: string | null
+  bucket: string
+  key: string
+} | null> {
   const segments = relPath.split('/').filter(Boolean)
   let parentId = rootId
   for (let i = 0; i < segments.length; i++) {
@@ -251,11 +273,24 @@ async function findFileByPath(
       where: { parentId, name: segments[i] },
       select: {
         id: true,
+        parentId: true,
         file: last ? { select: { bucket: true, key: true } } : false,
       },
     })
     if (!item) return null
-    if (last) return item.file ?? null
+    if (last) {
+      // Spelled out rather than spread: `file` is selected behind a ternary,
+      // so its type widens to the whole File model — whose own `id` would
+      // silently overwrite the item's, which is the id we navigate by.
+      return item.file
+        ? {
+            id: item.id,
+            parentId: item.parentId,
+            bucket: item.file.bucket,
+            key: item.file.key,
+          }
+        : null
+    }
     parentId = item.id
   }
   return null

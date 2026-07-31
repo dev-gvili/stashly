@@ -6,7 +6,12 @@ import {
   useState,
 } from 'react'
 import type { Ref } from 'react'
-import { LoaderIcon } from '@/components/icons'
+import {
+  ArrowLeftFillIcon,
+  InfoFillIcon,
+  LoaderIcon,
+} from '@/components/icons'
+import { Button } from '@/components/ui'
 import { useStableCallback } from '@/hooks/useStableCallback'
 import type { CodeViewerHandle } from '@/.client/monaco'
 import type { OutlineSymbol } from '@/.client/monaco-outline'
@@ -28,14 +33,23 @@ export function CodeViewer({
   text,
   fileName,
   itemId,
+  revealLine,
+  revealColumn,
   onLineCount,
   onOutline,
   onCursorLine,
+  onNavigate,
   ref,
 }: {
   text: string
   fileName: string
   itemId?: string
+  /**
+   * Line to scroll to once the editor is up — how a Go to Definition jump
+   * lands on its symbol instead of at the top of the file it navigated to.
+   */
+  revealLine?: number
+  revealColumn?: number
   /**
    * Receives the editor's live line count — at mount, and again after Format
    * Document / Revert Formatting rewrite the buffer.
@@ -45,6 +59,16 @@ export function CodeViewer({
   onOutline?: (symbols: OutlineSymbol[]) => void
   /** Receives the cursor's line, so an outline can mark the symbol it sits in. */
   onCursorLine?: (line: number) => void
+  /**
+   * Go to Definition resolved to another uploaded file: the stage routes to
+   * that file's page. See `CodeViewerOptions.onNavigate`.
+   */
+  onNavigate?: (target: {
+    itemId: string
+    folderId: string
+    line: number
+    column: number
+  }) => void
   /** Exposes `reveal`, so the outline rail can jump the editor to a symbol. */
   ref?: Ref<CodeViewerRef>
 }) {
@@ -52,6 +76,13 @@ export function CodeViewer({
   const viewerRef = useRef<CodeViewerHandle | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [notice, setNotice] = useState<string | null>(null)
+  /**
+   * Set while the editor is showing a definition from a file that has no page
+   * of its own (`lib.es5.d.ts`, an `@types` package). The page around it —
+   * URL, breadcrumbs, item panel — still describes `fileName`, so the banner
+   * is what stops that from reading as a lie.
+   */
+  const [detour, setDetour] = useState<string | null>(null)
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // The handle is stable while the live viewer behind it is swapped on every
@@ -67,6 +98,7 @@ export function CodeViewer({
   const reportLineCount = useStableCallback(onLineCount)
   const reportOutline = useStableCallback(onOutline)
   const reportCursorLine = useStableCallback(onCursorLine)
+  const requestNavigate = useStableCallback(onNavigate)
 
   // Stable identity ([] deps): the mount effect takes this as a dependency, so
   // a fresh callback per render would tear down and rebuild Monaco on every
@@ -86,6 +118,8 @@ export function CodeViewer({
     let viewer: CodeViewerHandle | null = null
     setState('loading')
     setNotice(null)
+    // A fresh editor always opens on the page's own file.
+    setDetour(null)
     // A new document starts with no outline until its language service answers.
     reportOutline([])
     reportCursorLine(1)
@@ -110,9 +144,18 @@ export function CodeViewer({
           onLineCount: reportLineCount,
           onOutline: reportOutline,
           onCursorLine: reportCursorLine,
+          onNavigate: requestNavigate,
+          onDetour: setDetour,
           sourceContext,
         })
         viewerRef.current = viewer
+        // Arriving from a definition jump: put its line on screen. Done here
+        // rather than in the editor options because the target is a property of
+        // *this navigation*, not of the document.
+        if (revealLine) {
+          const column = revealColumn ?? 1
+          viewer.reveal({ line: revealLine, column, endColumn: column })
+        }
         setState('ready')
       } catch (err) {
         console.error('[code-viewer] failed to load Monaco', err)
@@ -128,10 +171,13 @@ export function CodeViewer({
     text,
     fileName,
     itemId,
+    revealLine,
+    revealColumn,
     showNotice,
     reportLineCount,
     reportOutline,
     reportCursorLine,
+    requestNavigate,
   ])
 
   if (state === 'error') {
@@ -143,8 +189,18 @@ export function CodeViewer({
   }
 
   return (
-    <div className="relative h-full w-full">
-      <div ref={containerRef} className="h-full w-full font-mono!" />
+    // Column rather than an overlay: the banner claims its own height instead
+    // of covering the first lines of the file it is announcing. Monaco runs
+    // with `automaticLayout`, so it re-measures when the strip appears.
+    <div className="relative flex h-full w-full flex-col">
+      {detour && (
+        <DetourBanner
+          fileName={fileName}
+          onBack={() => viewerRef.current?.goBack()}
+          path={detour}
+        />
+      )}
+      <div ref={containerRef} className="min-h-0 w-full flex-1 font-mono!" />
       {notice && (
         <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
           <p className="max-w-[90%] truncate rounded-md border border-input bg-card px-3 py-1.5 font-stashly text-xs text-muted-foreground shadow-lg">
@@ -157,6 +213,43 @@ export function CodeViewer({
           <LoaderIcon className="size-6 animate-spin" />
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Says out loud that the editor and the page have come apart: Go to Definition
+ * landed in a file that lives only inside the language service — a `lib.d.ts`,
+ * an `@types` package — so there was no page to navigate to and the source was
+ * opened in place. Everything else on screen still describes `fileName`.
+ */
+function DetourBanner({
+  path,
+  fileName,
+  onBack,
+}: {
+  /** The file on screen, e.g. `node_modules/@types/react/index.d.ts`. */
+  path: string
+  /** The file the page is actually about. */
+  fileName: string
+  onBack: () => void
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-2 border-b border-input bg-sidebar px-3 py-2 font-stashly text-xs">
+      <InfoFillIcon className="size-5 shrink-0 text-muted-foreground" />
+      <p className="min-w-0 flex-1 truncate text-muted-foreground">
+        Showing <span className="text-foreground">{path}</span> — a definition
+        outside this file. The page still describes {fileName}.
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="shrink-0 bg-card!"
+        onClick={onBack}
+      >
+        <ArrowLeftFillIcon className="size-5" />
+        Back to {fileName}
+      </Button>
     </div>
   )
 }

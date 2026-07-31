@@ -19,7 +19,7 @@ import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
 import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import TypeScriptWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
-import { applyAliasPaths } from './cross-file-types'
+import { applyAliasPaths, sourceItemFor } from './cross-file-types'
 import { watchOutline } from './monaco-outline'
 import { canFormatLanguage, formatDocument } from './prettier'
 import type { SourceContext } from './cross-file-types'
@@ -896,8 +896,22 @@ function modelUriFor(fileName: string): monaco.Uri {
 /**
  * Prefer the file's real project path (`file:///app/.server/x.ts`) when we know
  * it — that's what lets the file's own `./relative` imports resolve against its
- * uploaded siblings. Without a project context (or on a URI collision from the
- * same file being open twice) fall back to the synthetic counter URI.
+ * uploaded siblings. Without a project context (or on a URI collision with a
+ * file genuinely open elsewhere) fall back to the synthetic counter URI.
+ *
+ * The path is usually already taken, and by a model nobody is looking at.
+ * Monaco's own `LibFiles.getOrCreateModel` materializes one at a file's real
+ * URI every time a definition resolves *into* that file — built from the extra
+ * lib, and never disposed. So the moment Go to Definition sends you to
+ * `app/utils/confirm.ts`, its page finds the path occupied, mounts at
+ * `file:///stashly/N/confirm.ts` instead, and every `../utils/x` in it resolves
+ * against a directory that holds nothing. (Aliases keep working — they resolve
+ * from `baseUrl`, not from the model — which is what makes the breakage look
+ * like it is about relative paths specifically.)
+ *
+ * A model with no editor attached is exactly that leftover, so take the path
+ * back from it. The extra lib it was built from is untouched, and Monaco will
+ * rebuild the throwaway on demand if some later jump wants one again.
  */
 function modelUriForContext(
   fileName: string,
@@ -906,7 +920,12 @@ function modelUriForContext(
   if (context?.filePath) {
     const safe = context.filePath.replace(/[^\w./-]+/g, '_')
     const uri = monaco.Uri.parse(`file:///${safe}`)
-    if (!monaco.editor.getModel(uri)) return uri
+    const existing = monaco.editor.getModel(uri)
+    if (!existing) return uri
+    if (!existing.isAttachedToEditor()) {
+      existing.dispose()
+      return uri
+    }
   }
   return modelUriFor(fileName)
 }
@@ -945,7 +964,7 @@ type InkPalette = {
   card: string
   /** default text — `--foreground` */
   fg: string
-  /** comments, punctuation, line numbers — `--muted-foreground` */
+  /** punctuation, keywords, line numbers — `--muted-foreground` */
   muted: string
   /** selection / hover surfaces — `--accent` (a grey in the Ink system) */
   surface: string
@@ -956,10 +975,15 @@ type InkPalette = {
   /** the single syntax hue (strings) — hand-picked, not a design token */
   hue: string
   string: string
+  /** comments — hand-picked slate-indigo, never a design token */
+  comment: string
 }
 
 /** Fallbacks approximating globals.css if token resolution ever fails. */
-const INK_FALLBACK: Record<'light' | 'dark', Omit<InkPalette, 'hue'>> = {
+const INK_FALLBACK: Record<
+  'light' | 'dark',
+  Omit<InkPalette, 'hue' | 'comment'>
+> = {
   light: {
     card: '#ffffff',
     fg: '#232323',
@@ -976,12 +1000,20 @@ const INK_FALLBACK: Record<'light' | 'dark', Omit<InkPalette, 'hue'>> = {
     surface: '#393939',
     border: '#3e3e3e',
     input: '#373737',
-    string: '#a1a1a1'
+    string: '#a1a1a1',
   },
 }
 
 /** Dusty indigo — desaturated enough to sit inside a monochrome shell. */
 const INK_HUE = { light: '#5e6ad2', dark: '#96a0e8' }
+
+/**
+ * Slate-indigo for comments: kin to the hue but desaturated, so prose reads as
+ * prose without competing with the greys used for strings and keywords. Lifted
+ * well clear of the chrome greys in dark mode — ~5.3:1 on `--card`, where the
+ * old `--input` border grey sat at ~1.5:1 and was effectively invisible.
+ */
+const INK_COMMENT = { light: '#6a7189', dark: '#8b93ad' }
 
 /**
  * Resolve one CSS color value (any syntax the browser knows, incl. oklch) to
@@ -1008,10 +1040,11 @@ function cssColorToHex(
 function resolveInkPalette(dark: boolean): InkPalette {
   const fallback = INK_FALLBACK[dark ? 'dark' : 'light']
   const hue = INK_HUE[dark ? 'dark' : 'light']
+  const comment = INK_COMMENT[dark ? 'dark' : 'light']
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = 1
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
-  if (!ctx) return { ...fallback, hue }
+  if (!ctx) return { ...fallback, hue, comment }
 
   const style = getComputedStyle(document.documentElement)
   const token = (name: string, fb: string) =>
@@ -1026,6 +1059,7 @@ function resolveInkPalette(dark: boolean): InkPalette {
     input: token('--input', fallback.input),
     string: token('--card-foreground', fallback.muted),
     hue,
+    comment,
   }
 }
 
@@ -1037,7 +1071,7 @@ function inkRules(p: InkPalette): monaco.editor.ITokenThemeRule[] {
   const c = (hex: string) => hex.slice(1)
   return [
     { token: '', foreground: c(p.fg) },
-    { token: 'comment', foreground: c(p.input), fontStyle: 'italic' },
+    { token: 'comment', foreground: c(p.comment), fontStyle: 'italic' },
     { token: 'keyword', foreground: c(p.muted), fontStyle: 'bold' },
     { token: 'identifier', foreground: c(p.hue), fontStyle: 'bold' },
     { token: 'string', foreground: c(p.muted) },
@@ -1069,6 +1103,13 @@ function inkColors(p: InkPalette): monaco.editor.IColors {
     'editorCursor.foreground': p.fg,
     'editor.selectionBackground': p.surface,
     'editor.inactiveSelectionBackground': `${p.surface}80`,
+    // The cursor's line reads as a selection of that whole line — same token,
+    // so arriving on a definition and clicking a line look like one gesture.
+    // Both keys are needed: left unset, `lineHighlightBackground` falls through
+    // to the base vs/vs-dark theme, and the *border* is what vs-dark actually
+    // draws — a box outline that reads as a stray rectangle over the Ink shell.
+    'editor.lineHighlightBackground': p.surface,
+    'editor.lineHighlightBorder': '#00000000',
     'editor.selectionHighlightBackground': `${p.surface}99`,
     'editor.wordHighlightBackground': `${p.surface}80`,
     'editor.findMatchBackground': `${p.hue}55`,
@@ -1153,13 +1194,16 @@ const EDITOR_FONT_SIZE = 13
  *
  * Edits go through the *model*, not `editor.executeEdits`: the latter is a
  * no-op while `readOnly` is set, whereas the model has no such gate.
+ *
+ * Returns a disposer: both actions close over one model, and Go to Definition
+ * swaps the model out from under them (see `bindModel`).
  */
 function addFormatActions(
   editor: monaco.editor.IStandaloneCodeEditor,
   model: monaco.editor.ITextModel,
   language: string,
   notify: (message: string) => void
-) {
+): { dispose: () => void } {
   // Compare and format on LF. A model created from CRLF text keeps CRLF and
   // re-normalizes anything pushed into it, so a raw comparison against
   // Prettier's LF output reports "changed" for a document that will render
@@ -1184,7 +1228,7 @@ function addFormatActions(
     editor.setScrollTop(scrollTop)
   }
 
-  editor.addAction({
+  const formatAction = editor.addAction({
     id: 'stashly.formatDocument',
     label: 'Format Document',
     contextMenuGroupId: '1_modification',
@@ -1219,7 +1263,7 @@ function addFormatActions(
     },
   })
 
-  editor.addAction({
+  const revertAction = editor.addAction({
     id: 'stashly.revertFormatting',
     label: 'Revert Formatting',
     contextMenuGroupId: '1_modification',
@@ -1232,6 +1276,13 @@ function addFormatActions(
       notify('Reverted to the original file')
     },
   })
+
+  return {
+    dispose: () => {
+      formatAction.dispose()
+      revertAction.dispose()
+    },
+  }
 }
 
 /**
@@ -1287,11 +1338,176 @@ function firstLine(err: unknown): string {
   return message.split('\n')[0].trim() || 'unknown error'
 }
 
+// ---------------------------------------------------------------------------
+// Go to Definition across files
+//
+// The TypeScript mode already answers `provideDefinition` for anything the
+// service resolves, and it materializes a model for the target on the way out
+// — including files that only ever existed as extra libs: the sibling sources
+// `cross-file-types.ts` fetches, the `@types` ATA pulls, and `lib.*.d.ts`.
+//
+// What the *standalone* editor can't do is open one. Its editor service is a
+// single-document affair: `StandaloneCodeEditorService.findModel` hands back
+// the editor's own model or nothing at all, so a definition in another file
+// resolves, finds no editor to open, and silently goes nowhere — which is why
+// F12 has been working on same-file symbols and dying on imported ones.
+//
+// `registerEditorOpener` is the supported hook for exactly that case. One
+// opener is registered for the page; each viewer registers a navigator for its
+// own editor, and the opener routes the request to whichever editor raised it.
+// ---------------------------------------------------------------------------
+
+/** Handles a cross-file open for one editor; `true` means it was handled. */
+type EditorNavigator = (
+  resource: monaco.Uri,
+  selectionOrPosition: monaco.IRange | monaco.IPosition | undefined
+) => boolean
+
+const navigators = new WeakMap<monaco.editor.ICodeEditor, EditorNavigator>()
+
+/** Where the editor was sitting before a jump, so Alt+← can restore it. */
+type HistoryEntry = {
+  uri: monaco.Uri
+  selection: monaco.Selection | null
+  scrollTop: number
+}
+
+let openerRegistered = false
+
+/**
+ * Route "open this other file" requests to the viewer that raised them.
+ * Registered once per page — openers are global, editors are not.
+ */
+function registerDefinitionOpener() {
+  if (openerRegistered) return
+  openerRegistered = true
+  monaco.editor.registerEditorOpener({
+    openCodeEditor: (source, resource, selectionOrPosition) => {
+      // A jump inside the open file needs no help — `false` hands it back to
+      // Monaco's built-in handler, which just moves the cursor. Peek's embedded
+      // editors have no navigator registered and fall through the same way.
+      if (source.getModel()?.uri.toString() === resource.toString()) return false
+      return navigators.get(source)?.(resource, selectionOrPosition) ?? false
+    },
+  })
+}
+
+/** `file:///app/.server/x.ts` → `app/.server/x.ts`, for a one-line notice. */
+function displayPath(uri: monaco.Uri): string {
+  return uri.path.replace(/^\//, '')
+}
+
+/**
+ * Where in the target file the definition sits. Monaco hands over a range for
+ * a definition and a bare position for a plain jump; both collapse to the one
+ * caret the destination has to scroll to.
+ */
+function caretOf(
+  selectionOrPosition: monaco.IRange | monaco.IPosition | undefined
+): { line: number; column: number } {
+  if (!selectionOrPosition) return { line: 1, column: 1 }
+  return 'startLineNumber' in selectionOrPosition
+    ? {
+        line: selectionOrPosition.startLineNumber,
+        column: selectionOrPosition.startColumn,
+      }
+    : {
+        line: selectionOrPosition.lineNumber,
+        column: selectionOrPosition.column,
+      }
+}
+
+/**
+ * Wire up everything that belongs to *the model on screen* rather than to the
+ * editor around it, and return a disposer for the lot.
+ *
+ * Go to Definition swaps the editor's model, so each of these has to follow:
+ * the outline rail would otherwise list the file you came from, the line count
+ * would report its length, and Format Document would rewrite it.
+ */
+function bindModel(
+  editor: monaco.editor.IStandaloneCodeEditor,
+  model: monaco.editor.ITextModel,
+  options: CodeViewerOptions
+): { dispose: () => void } {
+  const language = model.getLanguageId()
+  const parts = [
+    options.onLineCount ? watchLineCount(model, options.onLineCount) : null,
+    options.onOutline ? watchOutline(model, options.onOutline) : null,
+    // Colorize SQL embedded in `sql`…`` template literals (TS/JS only).
+    language === 'typescript' || language === 'javascript'
+      ? highlightEmbeddedSql(editor, model)
+      : null,
+    canFormatLanguage(language)
+      ? addFormatActions(editor, model, language, (message) =>
+          options.onNotice?.(message)
+        )
+      : null,
+  ]
+  return {
+    dispose: () => {
+      for (const part of parts) part?.dispose()
+    },
+  }
+}
+
 /** What React holds onto after mounting a viewer. */
 export type CodeViewerHandle = {
   dispose: () => void
   /** Scroll a symbol into view and select its name — the outline rail's click. */
   reveal: (target: OutlineTarget) => void
+  /**
+   * Return from a definition detour to the file the page is about. No-op when
+   * there was none. Same thing Alt+← does, for a button to hang off.
+   */
+  goBack: () => void
+}
+
+/** What the stage hooks into a mounted viewer. */
+export type CodeViewerOptions = {
+  /** Surfaces one-line results (formatting outcomes, jumps) back to React. */
+  onNotice?: (message: string) => void
+  /**
+   * Surfaces the model's live line count back to React — fired at mount and
+   * again whenever the buffer changes (Format Document / Revert Formatting).
+   */
+  onLineCount?: (count: number) => void
+  /**
+   * Surfaces the document's symbol tree back to React, rebuilt whenever the
+   * language service or the buffer changes. Powers the outline rail.
+   */
+  onOutline?: (symbols: OutlineSymbol[]) => void
+  /**
+   * Surfaces the cursor's line, so the rail can mark the symbol it sits in.
+   */
+  onCursorLine?: (line: number) => void
+  /**
+   * The file's project context (root, alias paths, real path). When present,
+   * the model is mounted at its real path so relative imports resolve, and
+   * cross-file type acquisition runs. Fetched in the React layer.
+   */
+  sourceContext?: SourceContext | null
+  /**
+   * Go to Definition landed in another *uploaded* file: open its page. Routing
+   * rather than swapping the buffer is what keeps the URL, breadcrumbs and item
+   * panel describing what's actually on screen. Definitions in files that have
+   * no page — `lib.es5.d.ts`, an ATA-fetched `@types` package — never reach
+   * this and open in place instead.
+   */
+  onNavigate?: (target: {
+    itemId: string
+    folderId: string
+    line: number
+    column: number
+  }) => void
+  /**
+   * The editor is showing a file other than the one this page is about — the
+   * `lib.d.ts` / `@types` case, which has no page to navigate to. Reports that
+   * file's path, and `null` on the way back. Everything around the editor (URL,
+   * breadcrumbs, item panel) still describes the page's own file while this is
+   * set, so the stage is expected to say so.
+   */
+  onDetour?: (path: string | null) => void
 }
 
 /**
@@ -1303,30 +1519,7 @@ export function createCodeViewer(
   container: HTMLElement,
   text: string,
   fileName: string,
-  options: {
-    /** Surfaces one-line results (formatting outcomes) back to React. */
-    onNotice?: (message: string) => void
-    /**
-     * Surfaces the model's live line count back to React — fired at mount and
-     * again whenever the buffer changes (Format Document / Revert Formatting).
-     */
-    onLineCount?: (count: number) => void
-    /**
-     * Surfaces the document's symbol tree back to React, rebuilt whenever the
-     * language service or the buffer changes. Powers the outline rail.
-     */
-    onOutline?: (symbols: OutlineSymbol[]) => void
-    /**
-     * Surfaces the cursor's line, so the rail can mark the symbol it sits in.
-     */
-    onCursorLine?: (line: number) => void
-    /**
-     * The file's project context (root, alias paths, real path). When present,
-     * the model is mounted at its real path so relative imports resolve, and
-     * cross-file type acquisition runs. Fetched in the React layer.
-     */
-    sourceContext?: SourceContext | null
-  } = {}
+  options: CodeViewerOptions = {}
 ): CodeViewerHandle {
   // Web fonts load lazily — nothing else on the page uses JetBrains Mono, and
   // Monaco measures glyph widths at create time, so without this it sticks
@@ -1356,9 +1549,6 @@ export function createCodeViewer(
     language,
     modelUriForContext(fileName, options.sourceContext)
   )
-  const lineCount = options.onLineCount
-    ? watchLineCount(model, options.onLineCount)
-    : null
   const editor = monaco.editor.create(container, {
     model,
     readOnly: true,
@@ -1393,15 +1583,10 @@ export function createCodeViewer(
 
   addWordWrapAction(editor)
 
-  if (canFormatLanguage(language)) {
-    addFormatActions(editor, model, language, (message) =>
-      options.onNotice?.(message)
-    )
-  }
-
-  const outline = options.onOutline
-    ? watchOutline(model, options.onOutline)
-    : null
+  // Outline, line count, embedded SQL and the Prettier actions all belong to
+  // the model rather than the editor, so Go to Definition rebuilds them
+  // against whatever file it jumped to.
+  let bindings = bindModel(editor, model, options)
 
   // The viewer is read-only, but the cursor still moves on click and with the
   // arrow keys, so the rail can follow along the way VSCode's outline does.
@@ -1411,11 +1596,120 @@ export function createCodeViewer(
       )
     : null
 
-  // Colorize SQL embedded in `sql`…`` template literals (TS/JS only).
-  const embeddedSql =
-    language === 'typescript' || language === 'javascript'
-      ? highlightEmbeddedSql(editor, model)
-      : null
+  // -------------------------------------------------------------------------
+  // Go to Definition (F12, Ctrl+Click, Alt+F12 to peek)
+  // -------------------------------------------------------------------------
+
+  const history: HistoryEntry[] = []
+  const canGoBack = editor.createContextKey<boolean>('stashlyCanGoBack', false)
+
+  /**
+   * Put `target` on screen. The editor is reused rather than replaced, so the
+   * theme listeners, the word-wrap toggle and the cursor watcher all survive
+   * the jump; only the model-bound half is rebuilt.
+   */
+  const showModel = (
+    target: monaco.editor.ITextModel,
+    selection?: monaco.IRange | monaco.IPosition,
+    scrollTop?: number
+  ) => {
+    bindings.dispose()
+    editor.setModel(target)
+    bindings = bindModel(editor, target, options)
+    if (selection) {
+      const range =
+        'startLineNumber' in selection
+          ? monaco.Range.lift(selection)
+          : new monaco.Range(
+              selection.lineNumber,
+              selection.column,
+              selection.lineNumber,
+              selection.column
+            )
+      editor.setSelection(range)
+      editor.revealRangeInCenterIfOutsideViewport(
+        range,
+        monaco.editor.ScrollType.Immediate
+      )
+    }
+    // Restoring a remembered position: the exact offset beats re-centering on
+    // the selection, which lands the line somewhere it never was.
+    if (scrollTop !== undefined) editor.setScrollTop(scrollTop)
+    // Focus so Alt+← works on the keystroke after the jump, not the one after.
+    editor.focus()
+    // Derived from what's on screen rather than from the direction of travel,
+    // so leaving and returning can't drift out of step with each other.
+    const shown = editor.getModel()
+    options.onDetour?.(
+      shown && shown.uri.toString() !== model.uri.toString()
+        ? displayPath(shown.uri)
+        : null
+    )
+  }
+
+  /** Back to wherever the last jump came from; no-op with nothing to undo. */
+  const goBack = () => {
+    const previous = history.pop()
+    canGoBack.set(history.length > 0)
+    if (!previous) return
+    const target = monaco.editor.getModel(previous.uri)
+    // The file we came from is gone only if the viewer was torn down, in which
+    // case this is unreachable — but a disposed model would throw, so it stays
+    // guarded.
+    if (!target || target.isDisposed()) return
+    showModel(target, previous.selection ?? undefined, previous.scrollTop)
+  }
+
+  registerDefinitionOpener()
+  navigators.set(editor, (resource, selectionOrPosition) => {
+    // An uploaded file has a page of its own — hand the jump to the router so
+    // the whole shell moves with it, rather than quietly repainting the buffer
+    // under a URL and a breadcrumb trail that still describe the file we left.
+    const item = sourceItemFor(resource.toString())
+    if (item && options.onNavigate) {
+      const at = caretOf(selectionOrPosition)
+      options.onNavigate({ ...item, line: at.line, column: at.column })
+      return true
+    }
+
+    // Everything else — `lib.*.d.ts`, an ATA-fetched `@types` package — exists
+    // only inside the language service, so there is nowhere to navigate to.
+    // Show it in place and let Alt+← come back.
+    const target = monaco.editor.getModel(resource)
+    // Reachable when the service resolved a file we never fetched the text of
+    // — say an import that only the *declaration* map knows about. Say so
+    // rather than swallowing the keystroke.
+    if (!target || target.isDisposed()) {
+      options.onNotice?.(`${displayPath(resource)} isn't loaded in the viewer`)
+      return true
+    }
+    const current = editor.getModel()
+    if (current && !current.isDisposed()) {
+      history.push({
+        uri: current.uri,
+        selection: editor.getSelection(),
+        scrollTop: editor.getScrollTop(),
+      })
+      canGoBack.set(true)
+    }
+    showModel(target, selectionOrPosition)
+    return true
+  })
+
+  editor.addAction({
+    id: 'stashly.goBack',
+    label: 'Go Back',
+    contextMenuGroupId: 'navigation',
+    contextMenuOrder: 1.5,
+    precondition: 'stashlyCanGoBack',
+    // VSCode's own pair for Go Back. Alt+← is the browser's Back too, but only
+    // while the page owns focus — Monaco consumes the key when it handles it.
+    keybindings: [
+      monaco.KeyMod.Alt | monaco.KeyCode.LeftArrow,
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.Minus,
+    ],
+    run: goBack,
+  })
 
   // Automatic type acquisition: fetch @types for imported packages so
   // `import … from 'react'` hovers with real types instead of `any`. Loaded on
@@ -1448,9 +1742,12 @@ export function createCodeViewer(
 
   return {
     // Selection without focus: the rail's filter box stays typeable, and the
-    // theme already styles an inactive selection legibly.
+    // theme already styles an inactive selection legibly. Reads the *live*
+    // model, so the rail keeps working after a jump to another file — by then
+    // it is listing that file's symbols.
     reveal: ({ line, column, endColumn }) => {
-      if (model.isDisposed()) return
+      const current = editor.getModel()
+      if (!current || current.isDisposed()) return
       const range = new monaco.Range(line, column, line, endColumn)
       editor.setSelection(range)
       editor.revealRangeInCenterIfOutsideViewport(
@@ -1458,14 +1755,16 @@ export function createCodeViewer(
         monaco.editor.ScrollType.Smooth
       )
     },
+    goBack,
     dispose: () => {
+      navigators.delete(editor)
       observer.disconnect()
       media.removeEventListener('change', applyInkTheme)
-      lineCount?.dispose()
-      outline?.dispose()
+      bindings.dispose()
       cursor?.dispose()
-      embeddedSql?.dispose()
       editor.dispose()
+      // Only ours: the models behind jumped-to files are Monaco's, created
+      // from the extra libs and shared with every other viewer on the page.
       model.dispose()
     },
   }
