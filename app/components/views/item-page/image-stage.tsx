@@ -80,7 +80,7 @@ export function ImageStage({
 
   return (
     <div
-      className="relative flex h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] min-h-0 w-full items-center justify-center min-w-0 overflow-hidden gap-2 pb-16"
+      className="relative flex h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] min-h-0 w-full items-center justify-center min-w-0 overflow-hidden gap-2 px-2 pb-16"
       onWheel={zoom.onWheel}
       onMouseDown={zoom.onMouseDown}
       onMouseMove={zoom.onMouseMove}
@@ -100,7 +100,7 @@ export function ImageStage({
           src={src}
           alt={item.name}
           draggable={false}
-          className="max-h-full max-w-full select-none rounded-xl border border-input object-contain shadow-2xl shadow-stashly transition-transform duration-150"
+          className="max-h-full max-w-full select-none rounded-xl ring-2 ring-accent border-none object-contain shadow-2xl shadow-stashly transition-transform duration-150"
           style={{
             viewTransitionName: `img-${item.id}`,
             transform: `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.scale})`,

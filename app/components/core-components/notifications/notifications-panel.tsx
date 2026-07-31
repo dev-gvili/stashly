@@ -156,7 +156,7 @@ export function NotificationsPanel({
         <Button
           variant="outline"
           size="icon"
-          className="relative border rounded-md! items-center justify-center font-stashly bg-card! border-accent active:scale-[0.96] data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground"
+          className="relative border rounded-md! items-center justify-center font-stashly bg-card! border-none active:scale-[0.96] data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground ring-2 ring-accent "
           aria-label={
             unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'
           }
@@ -183,7 +183,7 @@ export function NotificationsPanel({
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="relative w-md rounded-md shadow-xl overflow-hidden font-stashly border border-sidebar-border p-2 bg-card"
+        className="relative w-md rounded-md shadow-xl overflow-hidden font-stashly border-none ring-2 ring-accent p-2 bg-card"
       >
         {/* ── header ── */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">

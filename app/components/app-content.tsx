@@ -10,7 +10,7 @@ const AppContent = ({ children }: { children: React.ReactNode }) => {
       <AppHeader />
       <SidebarInset id={id} className="bg-transparent">
         <main className="h-screen w-full overflow-hidden pb-16 pr-2">
-          <ScrollArea className="h-full w-full">{children}</ScrollArea>
+          <ScrollArea className="h-full w-full" type="hidden">{children}</ScrollArea>
         </main>
       </SidebarInset>
     </div>

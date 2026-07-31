@@ -15,7 +15,7 @@ export function buildSrcSet(src: string, widths: number[]) {
 // row's height is solved so its items fill the full container width edge-to-edge.
 const ASPECT_CYCLE = [1, 2, 3 / 4, 2, 16 / 9, 4 / 3, 1, 1] as const
 
-const ROW_GAP = 16 // gap-4
+const ROW_GAP = 8 // gap-4
 const TARGET_ROW_HEIGHT = 150
 const MAX_PER_ROW = 7
 
@@ -135,9 +135,9 @@ export const RiverView: React.FC<{
     containerWidth > 0 ? buildJustifiedRows(images, containerWidth) : []
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-4 pr-4">
+    <div ref={containerRef} className="flex flex-col gap-2">
       {rows.map((row, i) => (
-        <div key={i} className="flex gap-4 h-32" >
+        <div key={i} className="flex gap-2 h-32" >
           {row.items.map((item) => (
             <RiverItem key={item.img.id} item={item} grow={row.justified} />
           ))}

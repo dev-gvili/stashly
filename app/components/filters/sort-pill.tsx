@@ -141,11 +141,11 @@ export function SortPill() {
     <div className="flex items-stretch gap-px">
       <Popover>
         <PopoverTrigger asChild>
-          <ButtonGroup orientation="horizontal" className="h-auto gap-1">
+          <ButtonGroup orientation="horizontal" className="h-auto gap-2">
             <Button
               variant="outline"
               size="default"
-              className="max-w-max w-full border rounded-md! items-center justify-between font-stashly bg-card! border-accent data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground"
+              className="max-w-max w-full border-none ring-2 ring-accent rounded-md! items-center justify-between font-stashly bg-card! border-accent data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground"
               title={`Sort by ${field.label.toLowerCase()} · ${dirHint}`}
             >
               <span className="flex items-center gap-1">
@@ -156,7 +156,7 @@ export function SortPill() {
             <Button
               variant="outline"
               size="icon"
-              className="font-stashly bg-card! border-accent data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground rounded-md!"
+              className="font-stashly bg-card! border-none ring-2 ring-accent data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground rounded-md!"
               onClick={toggleDir}
               title={`Direction: ${dirHint} (click to flip)`}
               aria-label={`Toggle sort direction (currently ${dirHint})`}
@@ -167,7 +167,8 @@ export function SortPill() {
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="w-52 rounded-md shadow-xl overflow-hidden font-stashly border border-sidebar-border p-2 bg-sidebar"
+          sideOffset={8}
+          className="w-52 rounded-md shadow-xl overflow-hidden font-stashly border-none ring-2 ring-accent p-2 bg-card"
         >
           <div className="text-xs uppercase text-muted-foreground px-2 pt-1 pb-1 font-stashly">
             Sort by
