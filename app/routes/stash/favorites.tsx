@@ -1,5 +1,4 @@
 import { LoadMoreItems } from '@/components/core-components/buttons'
-import { FileCard } from '@/components/core-components/file-card'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { GridLayout } from '@/components/views/grid-view'
 import { itemVariants } from '@/components/views/variants'
@@ -8,9 +7,37 @@ import { auth } from '@/services/auth'
 import { getFavoritedItems } from '@/services/item-actions'
 import { getQueryParam } from '@/utils/query-params'
 import { motion } from 'framer-motion'
-import { redirect } from 'react-router'
+import { redirect, type ShouldRevalidateFunction } from 'react-router'
 import type { Route } from './+types/favorites'
 import { SelectionProvider } from '../../components/stash/selection'
+import { FileCardDetail } from '@/components/core-components/file-card-variants';
+
+
+
+export const shouldRevalidate: ShouldRevalidateFunction = ({
+  formData,
+  formAction,
+  defaultShouldRevalidate,
+}) => {
+  if (
+    formAction &&
+    ['sidebar', 'theme'].some((action) => formAction.includes(action))
+  ) {
+    return false
+  }
+  
+  if (
+    formData?.get('intent') === 'move_item' ||
+    formData?.get('intent') === 'favorite' ||
+    formData?.get('intent') === 'unfavorite' ||
+    formData?.get('intent') === 'trash_item' ||
+    formData?.get('intent') === 'rename_item'
+  ) {
+    return true
+  }
+
+  return defaultShouldRevalidate
+}
 
 export async function loader({ request }: Route.LoaderArgs) {
     const session = await auth.api.getSession({
@@ -42,7 +69,7 @@ export default function Favorites() {
               {item.type === 'folder' ? (
                 <FolderCardTab {...item} />
               ) : (
-                <FileCard item={item} />
+                <FileCardDetail item={item} />
               )}
             </motion.div>
           ))}

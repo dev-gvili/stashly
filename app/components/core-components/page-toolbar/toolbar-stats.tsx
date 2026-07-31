@@ -5,6 +5,8 @@ import {
   FolderIcon,
   FileIcon,
   StorageFillIcon,
+  FolderFillIcon,
+  FileFillIcon,
 } from '@/components/icons'
 import { Checkbox } from '@/ui/checkbox'
 import { Progress } from '@/ui/progress'
@@ -74,22 +76,21 @@ export function InlineStats({
   return (
     <div
       className={cn(
-        'flex items-center gap-3 font-stashly text-xs text-muted-foreground',
+        'inline-flex items-center gap-3 font-stashly text-sm text-muted-foreground h-full',
         className
       )}
     >
-      <span className="flex items-center gap-1.5">
-        <FolderIcon className="size-5" />
-        <span className="tabular-nums">{stats.folders}</span> folders
+      <span className="flex items-center gap-1.5 justify-center">
+        <FolderFillIcon className="size-5" />
+        <span className="tabular-nums mt-0.5">{stats.folders} folders</span> 
       </span>
       <span className="flex items-center gap-1.5">
-        <FileIcon className="size-5" />
-        <span className="tabular-nums">{stats.files.toLocaleString()}</span>{' '}
-        files
+        <FileFillIcon className="size-5" />
+        <span className="tabular-nums mt-0.5">{stats.files.toLocaleString()} files</span>
       </span>
       <span className="flex items-center gap-1.5">
         <StorageFillIcon className="size-5" />
-        <span className="tabular-nums">{stats.size}</span>
+        <span className="tabular-nums mt-0.5">{stats.size}</span>
       </span>
     </div>
   )
@@ -154,8 +155,8 @@ export function StatCards({
   const s = scope ?? stats
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <StatCard icon={FolderIcon} value={s.folders} label="folders" />
-      <StatCard icon={FileIcon} value={s.files.toLocaleString()} label="files" />
+      <StatCard icon={FolderFillIcon} value={s.folders} label="folders" />
+      <StatCard icon={FileFillIcon} value={s.files.toLocaleString()} label="files" />
       <StatCard
         icon={StorageFillIcon}
         value={s.size}

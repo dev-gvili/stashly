@@ -1829,6 +1829,7 @@ export async function getFolderContent(params: GetFolderContentParams) {
             view: true,
             size: true,
             id: true,
+            stage: true,
           },
         },
         tags: true,
@@ -1872,6 +1873,7 @@ export async function getFolderContent(params: GetFolderContentParams) {
                 view: true,
                 size: true,
                 id: true,
+                stage: true,
               },
             },
             tags: true,
@@ -2924,6 +2926,7 @@ export async function getFavoritedItems({
           view: true,
           size: true,
           id: true,
+          stage: true,
         },
       },
       pins: {
@@ -2969,6 +2972,7 @@ export async function getFavoritedItems({
               view: true,
               size: true,
               id: true,
+              stage: true,
             },
           },
           locked: {

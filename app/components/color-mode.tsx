@@ -21,7 +21,7 @@ export function ModeToggle() {
         <Button
           variant="outline"
           size="icon"
-          className="font-stashly bg-card! ring ring-input border-none data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground rounded-md!"
+          className="font-stashly bg-card! ring-2 ring-accent border-none data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground rounded-md!"
         >
           {data?.colorScheme === 'dark' && <DarkModeFillIcon className="size-5!" />}
           {data?.colorScheme === 'light' && <LightModeFillIcon className="size-5!" />}
@@ -32,7 +32,8 @@ export function ModeToggle() {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="flex-col flex rounded-md shadow-xl overflow-hidden font-stashly ring-2 ring-input border-none p-0 bg-card max-w-max"
+        sideOffset={8}
+        className="flex-col flex rounded-md shadow-xl overflow-hidden font-stashly ring-2 ring-accent border-none p-0 bg-card max-w-max"
       >
         <Button
           className={cn(

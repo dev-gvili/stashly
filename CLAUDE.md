@@ -4,11 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > **Deep-dive reference lives in skills, not here.** This file holds the always-relevant essentials. Detailed conventions for specific subsystems are extracted into project skills that load on demand — see [Subsystem Skills](#subsystem-skills) below. When a task touches one of those areas, invoke the matching skill before writing code.
 
+## Scope Discipline
+
+- Do exactly what was asked, nothing more. If a fix touches only one component (e.g. image-stage), do NOT add panel/facet plumbing, refactor unrelated wrappers, or migrate other call sites.
+- Never add or install a new dependency (npm/pnpm packages like prom-client, vite-tsconfig-paths, radix-*) without asking first. Prefer built-in capabilities of Vite/Vitest/existing libs.
+- Never run destructive git commands (`git checkout -- <file>`, `git reset --hard`, `git clean`) on files with uncommitted changes. Ask first.
+- Never run DB mutations or migrations unless explicitly requested.
+
 ## Working Style
 
 - **Act first, explain second** — execute commits, edits, and PRs immediately; never describe what you'd do instead of doing it.
+- **Act fast, explore minimally** — use Grep/Glob with targeted patterns instead of reading entire files; read only the ranges you need.
+- **Plan before breadth** — for any change touching 3+ files, present a short numbered plan and wait for approval before editing.
 - **Stop on interrupt** — if interrupted, stop and wait; resume from where you left off unless told otherwise.
 - **Simplest approach** — no recursive CTEs, sub-agents, or abstractions when a direct edit works. Don't modify files outside `app/` unless asked.
+- **Edit the real component** — when editing a React component that was prototyped in HTML, edit the real `.tsx` component (e.g. `invitations-view.tsx`) — never the prototype HTML file.
 - **Surface blockers** — if `gh` auth fails, ask the user to run `gh auth login` interactively; don't retry with env vars.
 
 ## Git Workflow
@@ -18,6 +28,12 @@ When committing, actually run `git add` and `git commit` — don't just generate
 ## Development
 
 TypeScript (strict) project. Always use TypeScript for new files. When moving/reorganizing files, update all import paths and verify with the build command. Use path aliases for cross-directory imports; relative imports only within the same directory.
+
+## Environment
+
+- The dev server runs on port 80, not 3000. Do not start a second dev server — check if one is already running first.
+- **Never restart or kill the dev server** — the user manages it. If a change requires a restart, say so and wait.
+- Shell is PowerShell: avoid bash here-strings in commit messages; use `git commit -F <tmpfile>` or single-line `-m` flags for multi-line messages.
 
 ## Commands
 
@@ -71,6 +87,8 @@ const collection = await getCollectionForUser(session.user.id, collectionId)
 **Never mutate in a `loader`**: mutations belong in `action` functions, submitted via `fetcher.submit(..., { method: 'POST' })`. A `GET` `loader` that writes data breaks caching/prefetching assumptions.
 
 **Stream large/slow loader payloads**: return an *unawaited* promise from the `loader` and consume it with React Router's `<Suspense>` + `<Await>` so the shell paints while data streams (canonical example: the Markdown body read server-side in `routes/stash/file.tsx` → `MarkdownStage`).
+
+**SSE / stream safety**: Never write to a stream controller without first checking it's still open (closed/aborted guard), and always wrap `enqueue` in `try/catch`. A disconnected client must not be able to take the server down — this has crashed the dev server before. Applies to heartbeats and keep-alives too, which fire on a timer after the client is long gone.
 
 **API errors**: Use `StashlyError` and `StashlyErrorCode` from `app/utils/api.errors.ts` in action files. Route action handlers don't import it directly — duck-type: `const err = e as { statusCode?: number; message?: string }`.
 
@@ -146,6 +164,8 @@ Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind s
 
 ## Verification & Commits
 
+- Fix type errors additively — do not delete or weaken existing types to make errors disappear.
+- For UI changes, verify in the browser via the Claude_Browser MCP before declaring done.
 - Only run typecheck at the END of a task, not mid-edit, unless explicitly asked.
 - After Prisma schema changes, remind the user to restart the dev server (cached client issues observed).
 - `pnpm typecheck` currently has ~250 pre-existing, unrelated errors — don't expect a clean run. Pipe to a file and grep for your touched files by name, and compare total error counts before/after, to confirm you introduced no regressions.

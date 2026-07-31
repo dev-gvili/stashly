@@ -34,8 +34,8 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.16 0 0);
   /* the signal is contrast, not hue: ink on paper (light), paper on ink (dark) */
-  --primary: oklch(0.16 0 0);
-  --primary-foreground: oklch(0.99 0 0);
+  --primary: oklch(56.738% 0.15853 275.206);
+  --primary-foreground: oklch(0.99 0.01 275.206);
   /* fill ramp, one step apart: muted < secondary < accent < border < input */
   --secondary: oklch(0.93 0 0);
   --secondary-foreground: oklch(0.24 0 0);
@@ -106,8 +106,8 @@
     --card-foreground: oklch(0.16 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.16 0 0);
-    --primary: oklch(0.16 0 0);
-    --primary-foreground: oklch(0.99 0 0);
+    --primary: oklch(56.738% 0.15853 275.206);
+    --primary-foreground: oklch(0.99 0.01 275.206);
     /* fill ramp, one step apart: muted < secondary < accent < border < input */
     --secondary: oklch(0.93 0 0);
     --secondary-foreground: oklch(0.24 0 0);
@@ -177,8 +177,9 @@
   --card-foreground: oklch(0.97 0 0);
   --popover: oklch(0.21 0 0);
   --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.97 0 0);
-  --primary-foreground: oklch(0.15 0 0);
+  --primary: oklch(72.574% 0.10516 277.373);
+  /* --primary: oklch(0.97 0 0); */
+  --primary-foreground: oklch(0.15 0.02 277.373);
   /* secondary sits above popover; border/input rise above all surfaces so edges read */
   --secondary: oklch(0.26 0 0);
   --secondary-foreground: oklch(0.97 0 0);
@@ -248,8 +249,8 @@
     --card-foreground: oklch(0.97 0 0);
     --popover: oklch(0.21 0 0);
     --popover-foreground: oklch(0.97 0 0);
-    --primary: oklch(0.97 0 0);
-    --primary-foreground: oklch(0.15 0 0);
+    --primary: oklch(72.574% 0.10516 277.373);
+    --primary-foreground: oklch(0.15 0.02 277.373);
     /* secondary sits above popover; border/input rise above all surfaces so edges read */
     --secondary: oklch(0.26 0 0);
     --secondary-foreground: oklch(0.97 0 0);

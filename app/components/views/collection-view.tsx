@@ -318,12 +318,17 @@ function CollectionItemCard({ item }: { item: StashPickerItem }) {
             height: null,
             size: 'medium' as const,
             view: 'grid' as const,
+            // The picker only ever carries a finished thumbnail URL, so this
+            // stands in as a stage-2 row — what `ItemCard.Cover` looks for.
+            stage: 2,
           },
         ]
       : [],
     favorites: [],
     file: null,
     folder: null,
+    parent: null,
+    locked: null,
   }
 
   const { collectionId } = useParams()

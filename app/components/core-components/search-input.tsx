@@ -65,7 +65,7 @@ export function SearchInput({
   }
 
   return (
-    <InputGroup className={cn('bg-card! shrink-0 max-w-xs', className)}>
+    <InputGroup className={cn('bg-card! shrink-0 max-w-xs ring-2 ring-accent border-none', className)}>
       <InputGroupAddon align="inline-start">
         <SearchFillIcon className="size-4 text-current" />
       </InputGroupAddon>

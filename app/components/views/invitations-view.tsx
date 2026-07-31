@@ -1,4 +1,3 @@
-import { InvitationStatusDot } from '@/components/core-components/invitation-status'
 import {
   AddIcon,
   InboxReciveFillIcon,
@@ -23,12 +22,11 @@ import { Button } from '@/ui/button'
 import { Input } from '@/ui/input'
 import { ScrollArea } from '@/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/tabs'
+import { formatMediaDate } from '@/utils'
 import { toUserInitial } from '@/utils/converters'
 import { cn } from '@/utils/styles'
 import { useState } from 'react'
 import { useRevalidator } from 'react-router'
-import { ToggleGroup, ToggleGroupItem } from '../ui'
-import { formatMediaDate } from '@/utils';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -100,7 +98,13 @@ function ReceivedListRow({
           </span>
         </div>
         <p className="flex items-center justify-start gap-1 min-w-0 w-full truncate ">
-          <KindIcon invitation={invitation} className={cn('size-5', invitation.item?.type === "folder" && 'text-current!')} />
+          <KindIcon
+            invitation={invitation}
+            className={cn(
+              'size-5',
+              invitation.item?.type === 'folder' && 'text-current!'
+            )}
+          />
           <span className="truncate">{getContextName(invitation)}</span>
         </p>
       </div>
@@ -232,18 +236,24 @@ export function InvitationsView({
         >
           <TabsList className="w-full">
             <TabsTrigger value="received" className="flex-1 rounded-md" asChild>
-              <Button variant="ghost" className="flex items-center gap-1.5 data-[state=active]:bg-accent! data-[state=active]:text-primary">
-              <InboxReciveFillIcon className="size-4" />
-              Received
-              {pendingCount > 0 && (
-                <span className="rounded bg-primary/15 px-1.5 py-0.5 text-xs font-semibold text-accent-foreground">
-                  {pendingCount}
-                </span>
-              )}
+              <Button
+                variant="ghost"
+                className="flex items-center gap-1.5 data-[state=active]:bg-accent! data-[state=active]:text-primary"
+              >
+                <InboxReciveFillIcon className="size-4" />
+                Received
+                {pendingCount > 0 && (
+                  <span className="rounded bg-primary/15 px-1.5 py-0.5 text-xs font-semibold text-accent-foreground">
+                    {pendingCount}
+                  </span>
+                )}
               </Button>
             </TabsTrigger>
             <TabsTrigger value="sent" className="flex-1" asChild>
-              <Button variant="ghost" className="flex items-center gap-1.5 data-[state=active]:bg-accent data-[state=active]:text-primary">
+              <Button
+                variant="ghost"
+                className="flex items-center gap-1.5 data-[state=active]:bg-accent data-[state=active]:text-primary"
+              >
                 <InboxSentFillIcon className="size-5" />
                 Sent
               </Button>

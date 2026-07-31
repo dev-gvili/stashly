@@ -13,7 +13,6 @@ export interface LibraryStats {
 
 export type ToolbarContext = 'files' | 'trash' | 'favorites' | 'shared'
 
-export type ToolbarLayout = 'grid' | 'list'
 
 export interface BulkActions {
   onMove?: () => void

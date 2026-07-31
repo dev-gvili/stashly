@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { href, useFetcher } from 'react-router'
-import { PageToolbarMorph, PageToolbarDock, PageToolbarPathRail } from '@/components/core-components/page-toolbar'
+import { href, useFetcher, useNavigate } from 'react-router'
+import { PageToolbarMorph, PageToolbarDock, PageToolbarPathRail, PageToolbarStacked } from '@/components/core-components/page-toolbar'
 import type {
   LibraryStats,
   ToolbarContext,
@@ -45,10 +45,9 @@ export function StashPageToolbar({
   parentId = null,
   parentName = null,
   driveId = '',
-  layout,
-  onLayoutChange,
 }: StashPageToolbarProps) {
   const fetcher = useFetcher()
+  const navigate = useNavigate()
   const { selectedIds } = useSelection()
   const [moveOpen, setMoveOpen] = useState(false)
 
@@ -69,10 +68,10 @@ export function StashPageToolbar({
 
   return (
     <>
-      <PageToolbarMorph
+      <PageToolbarPathRail
         context={context}
-        stats={stats}
-        layout={layout}
+        itemCount={stats.files + stats.folders}
+        onBack={() => navigate(-1)}
         onMove={() => setMoveOpen(true)}
         onFavorite={() => submit('favorite_items', href('/api/favorites'))}
         onTrash={() => submit('trash_items', href('/api/items'))}

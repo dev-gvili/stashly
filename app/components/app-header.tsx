@@ -58,7 +58,7 @@ export function AppHeader() {
       >
         <ArrowLeftFillIcon className="size-5" />
       </Button>
-      <Breadcrumbs />
+      {fileId && <Breadcrumbs />}
       <div className="flex flex-1 gap-2 items-center">
         <StashlyUpload folderId={folderId} rootId={rootId} />
         <HeaderFilters />
@@ -93,7 +93,7 @@ function StashlyUpload({
   }
 
   return (
-    <ButtonGroup className="border border-sidebar-border rounded-md bg-card">
+    <ButtonGroup className="border-none ring-2 ring-accent rounded-md bg-card">
       <Button onClick={toggleView} variant="ghost" size="icon">
         <UploadFillIcon className="size-5! text-muted-foreground" />
       </Button>
@@ -109,7 +109,7 @@ function StashlyUpload({
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="flex-col flex rounded-md shadow-xl overflow-hidden font-stashly border border-sidebar-border p-2 bg-card max-w-max"
+          className="flex-col flex rounded-md shadow-xl overflow-hidden font-stashly border-none ring-2 ring-accent p-2 bg-card max-w-max"
         >
           <Button
             variant="ghost"

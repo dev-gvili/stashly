@@ -59,6 +59,7 @@ const itemListSelect = {
       height: true,
       size: true,
       view: true,
+      stage: true,
     },
   },
   favorites: {
@@ -115,6 +116,7 @@ const itemListSelect = {
           view: true,
           size: true,
           id: true,
+          stage: true,
         },
       },
       locked: {

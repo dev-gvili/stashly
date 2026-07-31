@@ -25,21 +25,28 @@ import {
   SortAscIcon,
   FolderIcon,
   ArrowLeftFillIcon,
+  MoveFillIcon,
+  FavoritesFillIcon,
+  DownloadFillIcon,
 } from '@/components/icons'
 import { SelectAllCheckbox } from './toolbar-stats'
 import { LayoutToggle } from './layout-toggle'
 import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
 import { useSelection } from '@/components/stash/selection'
 import { useBreadcrumbs } from '@/hooks'
-import type { BulkActions, ToolbarContext, ToolbarLayout } from './types'
+import type { BulkActions, ToolbarContext } from './types'
 import { cn } from '@/utils/styles'
+import { useLocation } from 'react-router'
+import {
+  ButtonGroup,
+  ButtonGroupSeparator,
+  ButtonGroupText,
+} from '@/components/ui'
 
 interface Props extends BulkActions {
   itemCount: number
   context?: ToolbarContext
   onBack?: () => void
-  layout?: ToolbarLayout
-  onLayoutChange?: (layout: ToolbarLayout) => void
   className?: string
 }
 
@@ -57,17 +64,15 @@ export function PageToolbarPathRail({
   itemCount,
   context = 'files',
   onBack,
-  layout = 'grid',
-  onLayoutChange,
   className,
   ...actions
 }: Props) {
-  const { selectedIds, unselectAll } = useSelection()
+  const location = useLocation()
+  const { selectedIds, unselectAll, selectAll } = useSelection()
   const crumbs = useBreadcrumbs()
   const selectedCount = selectedIds.length
   const active = selectedCount > 0
   const isTrash = context === 'trash'
-  const nested = (crumbs?.length ?? 0) > 1
 
   const rail = (
     label: string,
@@ -78,13 +83,13 @@ export function PageToolbarPathRail({
     <Tooltip key={label} content={label} asChild>
       <Button
         variant="ghost"
-        size="icon-sm"
+        size="icon"
         onClick={onClick}
         aria-label={label}
         className={cn(
           danger
-            ? 'text-destructive hover:bg-destructive/10 hover:text-destructive'
-            : 'text-muted-foreground'
+            ? 'hover:text-destructive'
+            : ''
         )}
       >
         <Icon className="size-5" />
@@ -93,49 +98,50 @@ export function PageToolbarPathRail({
   )
 
   return (
-    <header
+    <nav
       className={cn(
-        'sticky top-0 z-10 flex h-14 shrink-0 items-center gap-1.5 border-b border-input bg-sidebar px-2.5',
+        'sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 bg-background py-2 px-0.5',
         className
       )}
     >
       <Button
-        variant="ghost"
-        size="icon-sm"
-        onClick={onBack}
-        aria-label="Back"
+        variant="outline"
+        size="icon"
         className={cn(
-          'shrink-0 text-muted-foreground',
-          !nested && 'invisible'
+          'font-stashly bg-card! border-none ring-2 ring-accent rounded-md!',
+          !crumbs && 'hidden'
         )}
+        onClick={onBack}
       >
         <ArrowLeftFillIcon className="size-5" />
       </Button>
-      <SelectAllCheckbox />
 
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         {isTrash ? (
           <h1 className="font-stashly text-sm font-semibold">Trash</h1>
         ) : (
-          <Breadcrumbs />
+          <>
+            {!crumbs && (
+              <span className="text-sm font-stashly text-muted-foreground">
+                {location.state?.name ??
+                  location.pathname
+                    .split('/')
+                    .filter(Boolean)
+                    .at(-1)
+                    ?.replace(/-/g, ' ') ??
+                  ''}
+              </span>
+            )}
+            <Breadcrumbs />
+          </>
         )}
-        <Badge
-          variant="outline"
-          className="hidden tabular-nums md:inline-flex"
-        >
+        <Badge variant="outline" className="hidden tabular-nums md:inline-flex">
           {itemCount.toLocaleString()} items
         </Badge>
       </div>
 
       {active ? (
-        <div className="flex shrink-0 items-center gap-1 rounded-md border border-input bg-primary/5 p-1 pl-2">
-          <span className="whitespace-nowrap font-stashly text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground tabular-nums">
-              {selectedCount}
-            </span>{' '}
-            selected
-          </span>
-          <Separator orientation="vertical" className="mx-1 h-5" />
+        <div className="flex shrink-0 items-center gap-1 rounded-md ring-2 ring-accent bg-card pl-2">
           {isTrash ? (
             <>
               {rail('Restore', RestoreIcon, actions.onRestore)}
@@ -147,83 +153,35 @@ export function PageToolbarPathRail({
               )}
             </>
           ) : (
-            <>
-              {rail('Move to…', MoveToFolder, actions.onMove)}
-              {rail('Favorite', FavoriteIcon, actions.onFavorite)}
-              {rail('Download', DownloadIcon, actions.onDownload)}
+            <ButtonGroup>
+              <ButtonGroupText className="text-muted-foreground border-none bg-card">
+                {selectedCount} selected
+              </ButtonGroupText>
+              <ButtonGroupSeparator className="bg-accent w-2" />
+              {rail('Move to…', MoveFillIcon, actions.onMove)}
+              {rail('Favorite', FavoritesFillIcon, actions.onFavorite)}
+              {rail('Download', DownloadFillIcon, actions.onDownload)}
               {rail('Share', ShareItemFillIcon, actions.onShare)}
-              <Separator orientation="vertical" className="mx-1 h-5" />
-              {rail('Move to trash', TrashIcon, actions.onTrash, true)}
-            </>
-          )}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
+              <ButtonGroupSeparator className="bg-accent w-2" />
+              {rail('Move to trash', TrashFillIcon, actions.onTrash, true)}
+              <ButtonGroupSeparator className="bg-accent w-2" />
               <Button
                 variant="ghost"
-                size="icon-sm"
+                size="icon"
+                onClick={() => unselectAll()}
+                aria-label="Clear selection"
                 className="text-muted-foreground"
-                aria-label="More actions"
               >
-                <MenuDotsIcon className="size-5" />
+                <RemoveIcon className="size-5" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {isTrash ? (
-                <>
-                  <DropdownMenuItem onClick={actions.onMove}>
-                    <FolderIcon className="size-5" />
-                    Restore to…
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={actions.onDeleteForever}
-                  >
-                    <TrashFillIcon className="size-5" />
-                    Delete forever
-                  </DropdownMenuItem>
-                </>
-              ) : (
-                <>
-                  <DropdownMenuItem onClick={actions.onCopyTo}>
-                    <FolderIcon className="size-5" />
-                    Copy to…
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={actions.onCopyLink}>
-                    <ShareItemFillIcon className="size-5" />
-                    Copy link
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={actions.onTrash}
-                  >
-                    <TrashIcon className="size-5" />
-                    Move to trash
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => unselectAll()}
-            aria-label="Clear selection"
-            className="text-muted-foreground"
-          >
-            <RemoveIcon className="size-5" />
-          </Button>
+            </ButtonGroup>
+          )}
         </div>
       ) : (
         <div className="flex shrink-0 items-center gap-1">
-          {rail('Search', SearchIcon)}
-          {rail('Filter', FilterIcon)}
-          {rail('Sort', SortAscIcon)}
           <Separator orientation="vertical" className="mx-1 h-5" />
-          <LayoutToggle layout={layout} onLayoutChange={onLayoutChange} />
         </div>
       )}
-    </header>
+    </nav>
   )
 }

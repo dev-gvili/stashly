@@ -1,13 +1,13 @@
-import { auth } from '@/.server/auth'
-import { redirect } from 'react-router'
-import type { Route } from './+types/invitations'
+import { InvitationsView } from '@/components/views/invitations-view';
+import { auth } from '@/services/auth';
 import {
-  listReceivedInvitations,
-  listSentInvitations,
-  listShareTargets,
-} from '../../.server/invitation-actions'
-import { InvitationsView } from '@/components/views/invitations-view'
-import type { StashInvitation } from '@/types/stash.types'
+    listReceivedInvitations,
+    listSentInvitations,
+    listShareTargets,
+} from '@/services/invitation-actions';
+import type { StashInvitation } from '@/types/stash.types';
+import { redirect } from 'react-router';
+import type { Route } from './+types/invitations';
 
 // ---------------------------------------------------------------------------
 // Loader

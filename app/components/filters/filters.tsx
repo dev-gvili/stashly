@@ -200,7 +200,7 @@ function FiltersTrigger({ children, className }: FiltersTriggerProps) {
       <Button
         variant="outline"
         className={cn(
-          'max-w-md items-center justify-between font-stashly bg-card! ring ring-input data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground',
+          'max-w-md items-center justify-between font-stashly bg-card! border-none ring-2 ring-accent data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground',
           className
         )}
       >

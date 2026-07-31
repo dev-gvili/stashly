@@ -1,6 +1,6 @@
 import { auth } from '@/.server/auth'
 import { GridLayout } from '@/components/views/grid-view'
-import { FileCard } from '@/components/core-components/file-card'
+import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { prisma } from '@/services/db'
 import type { Route } from './+types/shares'
@@ -118,6 +118,7 @@ export async function loader({ request }: Route.LoaderArgs) {
               size: true,
               view: true,
               id: true,
+              stage: true,
             },
           },
         },
@@ -168,7 +169,7 @@ export default ({ loaderData }: Route.ComponentProps) => {
               {item.type === 'folder' ? (
                 <FolderCardTab {...item} />
               ) : (
-                <FileCard item={item} showActions={false} />
+                <FileCardDetail item={item} showActions={false} />
               )}
             </motion.div>
           ))}
