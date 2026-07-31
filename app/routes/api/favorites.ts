@@ -23,6 +23,9 @@ export const action = async ({ request }: Route.ActionArgs) => {
   if (!session) throw redirect('/auth/sign-in')
 
   const parsedData = await parseFormData({ request, schema: ApiFavoriteSchema })
+  let referer = request.headers.get('referer')
+  let url = new URL(referer || request.url)
+  let searchParams = url.searchParams
 
   try {
     switch (parsedData.intent) {
@@ -32,15 +35,13 @@ export const action = async ({ request }: Route.ActionArgs) => {
       }
       case 'unfavorite': {
         await removeFavorite(parsedData.itemId, session.user.id)
-        return data({ favorited: false })
+        // return data({ favorited: false })
+        return redirect(`${url.pathname}?${searchParams.toString()}`)
       }
       case 'favorite_items': {
         await addFavorites(parsedData.selectedItems, session.user.id)
         // Clear the multi-select query param so the toolbar selection resets,
         // mirroring the bulk actions on /api/items.
-        const referer = request.headers.get('referer')
-        const url = new URL(referer || request.url)
-        const searchParams = removeQueryParam(url.searchParams, 'selectedItems')
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       }
     }
