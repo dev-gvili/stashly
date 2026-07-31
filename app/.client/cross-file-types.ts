@@ -25,6 +25,21 @@ const BATCH_SIZE = 25
 const requested = new Set<string>()
 /** Virtual lib paths already registered with Monaco. */
 const addedLibs = new Set<string>()
+/**
+ * Virtual lib URI → the uploaded file behind it. The import walk is the only
+ * place both are known at once: the language service deals in `file:///…`
+ * paths and knows nothing about items, while the app routes by item id. Go to
+ * Definition joins them here (see `sourceItemFor`).
+ */
+const sourceItems = new Map<string, SourceItemRef>()
+
+/** Enough to address a file's page: `/:me/stash/folders/:folderId/files/:fileId`. */
+export type SourceItemRef = { itemId: string; folderId: string }
+
+/** The uploaded file a virtual lib URI came from, if it came from one at all. */
+export function sourceItemFor(uri: string): SourceItemRef | null {
+  return sourceItems.get(uri) ?? null
+}
 
 export type SourceContext = {
   rootId: string
@@ -88,11 +103,17 @@ export async function acquireCrossFileTypes(
         rootId,
         logicalPaths: batch,
       })
-      for (const { path, text } of files as {
+      for (const { path, text, id, parentId } of files as {
         path: string
         text: string
+        id: string
+        parentId: string | null
       }[]) {
-        addExtraLib(text, `${VIRTUAL_ROOT}${path}`)
+        const uri = `${VIRTUAL_ROOT}${path}`
+        addExtraLib(text, uri)
+        // A file directly in the drive root has no folder to route through;
+        // it resolves for types, it just can't be navigated to.
+        if (id && parentId) sourceItems.set(uri, { itemId: id, folderId: parentId })
         fetched++
         // A fetched file sits at its real path, so its own relative imports
         // resolve against that directory — follow them too.
