@@ -155,7 +155,7 @@ export default ({ loaderData, params }: Route.ComponentProps) => {
             item.type === 'folder' ? (
               <FolderCardTab key={item.id} {...item} />
             ) : (
-              <FileCardDetail key={item.id} item={item} />
+              <FileCardDetail key={item.id} item={item} showActions/>
             )
           )}
         </GridLayout>

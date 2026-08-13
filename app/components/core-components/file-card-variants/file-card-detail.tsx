@@ -45,7 +45,7 @@ export function FileCardDetail({
 
         {/* Stays visible while the actions menu is open — otherwise moving the
             pointer off the card hides the row out from under the open menu. */}
-        <ItemCard.Header className="absolute inset-x-0 top-0 z-20 p-2! hidden group-hover:flex has-[[data-slot=dropdown-menu-trigger][data-state=open]]:flex has-[[data-slot=item-checkbox][data-state=checked]]:flex">
+        <ItemCard.Header className="absolute inset-x-0 top-0 z-20 p-2! hidden group-hover/card:flex! has-[[data-slot=dropdown-menu-trigger][data-state=open]]:flex! has-[[data-slot=item-checkbox][data-state=checked]]:flex!">
           <ItemCard.Checkbox
             name="selectedItems"
             value={item.id}
@@ -53,7 +53,7 @@ export function FileCardDetail({
           />
           {showActions && (
             // rounded-lg (8px) = the hero's 16px radius minus this row's p-2 inset.
-            <ItemCard.Actions className="place-self-end rounded-lg bg-background/40 p-1 text-foreground backdrop-blur-sm hover:bg-background/80 hidden group-hover:flex has-[[data-slot=dropdown-menu-trigger][data-state=open]]:flex data-[state=open]:flex">
+            <ItemCard.Actions className="place-self-end hidden group-hover/card:flex! has-[[data-slot=dropdown-menu-trigger][data-state=open]]:flex! has-[[data-slot=dropdown-menu-trigger][data-state=open]]:bg-primary data-[state=open]:flex!">
               {actions}
             </ItemCard.Actions>
           )}
