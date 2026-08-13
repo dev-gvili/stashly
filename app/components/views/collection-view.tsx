@@ -44,7 +44,7 @@ import type { StashItem, StashPickerItem } from '@/types/stash.types'
 import { GridLayout } from './grid-view'
 import { ListLayout } from './list-view'
 import { ItemCard } from '@/components/stash/item-card'
-import { FileCard } from '@/components/core-components/file-card'
+import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from './folder-card-components/folder-card-tab'
 import { ButtonGroup } from '../ui'
 
@@ -370,7 +370,7 @@ function CollectionItemCard({ item }: { item: StashPickerItem }) {
   }
 
   return (
-    <FileCard
+    <FileCardDetail
       item={stashItem}
       className="border! border-input"
       actions={removeFromCollectionActions}

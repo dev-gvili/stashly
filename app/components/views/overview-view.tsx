@@ -4,7 +4,7 @@ import {
   PinFillIcon,
   RecentFillIcon,
 } from '@/components/icons'
-import { FileCard } from '@/components/core-components/file-card'
+import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FilesEmptyState } from '@/components/states/files-empty-state'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import type {
@@ -198,7 +198,7 @@ function OverviewCard({ item }: { item: StashItem }) {
     return <FolderCardTab {...item} />
   }
 
-  return <FileCard item={item} />
+  return <FileCardDetail item={item} />
 }
 
 function ActivityRow({ activity }: { activity: OverviewActivity }) {
