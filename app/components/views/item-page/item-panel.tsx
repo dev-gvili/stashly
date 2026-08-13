@@ -526,7 +526,7 @@ export function ItemPanel({
       collapsible="offcanvas"
       variant="inset"
       width="18rem"
-      className="p-0 bg-card rounded-md h-[calc(100vh-4rem)] right-2 shadow-stashly"
+      className="p-0 bg-card rounded-md h-[calc(100vh-4rem)] right-2 ring-input shadow-stashly z-50"
     >
       <Tabs
         defaultValue="details"
