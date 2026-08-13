@@ -3,6 +3,7 @@ import type { LoaderData } from '@/hooks/usePagination'
 import type { StashItem } from '@/types/stash.types'
 import { DataTable, type DataTableColumn } from '@/components/core-components/data-table'
 import { formatSize } from '@/utils/formaters'
+import { getQueryParamArray } from '@/utils/query-params'
 import { toIcon, toItemUrl } from '@/utils/converters'
 import { FolderIcon } from '@/components/icons'
 import { ItemCard } from '@/components/stash/item-card'
@@ -32,7 +33,11 @@ export const ListLayout = <T extends StashItem>({ items }: ListViewProps<T>) => 
   if (!isLayoutTypeList) return null
 
   const layout = searchParams.get('layout')
-  const selectedItems = searchParams.getAll('selectedItems')
+  // One comma-joined param, matching `getQueryParamArray` and the rest of the
+  // app. Repeated params would read back as a single id through
+  // `searchParams.get`, so the toolbar count and its bulk actions would only
+  // ever see the first selected item.
+  const selectedItems = getQueryParamArray(searchParams, 'selectedItems')
   const selectedIds = new Set(selectedItems)
 
   const columns: DataTableColumn<T>[] = [
@@ -93,10 +98,11 @@ export const ListLayout = <T extends StashItem>({ items }: ListViewProps<T>) => 
       selectedIds={selectedIds}
       onSelectChange={(id, checked) => {
         const next = new URLSearchParams(searchParams)
-        next.delete('selectedItems')
-        const updated = selectedItems.filter((i) => i !== id)
-        if (checked) updated.push(id)
-        updated.forEach((i) => next.append('selectedItems', i))
+        const updated = checked
+          ? Array.from(new Set([...selectedItems, id]))
+          : selectedItems.filter((i) => i !== id)
+        if (updated.length) next.set('selectedItems', updated.join(','))
+        else next.delete('selectedItems')
         setSearchParams(next, { replace: true })
       }}
       actions={(item) => <ListRowActions item={item as StashItem} />}
