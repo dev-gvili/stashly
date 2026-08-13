@@ -6,15 +6,12 @@ import {
   useState,
 } from 'react'
 import type { Ref } from 'react'
-import {
-  ArrowLeftFillIcon,
-  InfoFillIcon,
-  LoaderIcon,
-} from '@/components/icons'
+import { ArrowLeftFillIcon, InfoFillIcon } from '@/components/icons'
 import { Button } from '@/components/ui'
 import { useStableCallback } from '@/hooks/useStableCallback'
 import type { CodeViewerHandle } from '@/.client/monaco'
 import type { OutlineSymbol } from '@/.client/monaco-outline'
+import { StageSkeletonLoader } from './stage-skeleton-loader'
 
 /** How long a formatting result stays on screen. */
 const NOTICE_MS = 4000
@@ -109,9 +106,12 @@ export function CodeViewer({
     noticeTimer.current = setTimeout(() => setNotice(null), NOTICE_MS)
   }, [])
 
-  useEffect(() => () => {
-    if (noticeTimer.current) clearTimeout(noticeTimer.current)
-  }, [])
+  useEffect(
+    () => () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current)
+    },
+    []
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -200,7 +200,7 @@ export function CodeViewer({
           path={detour}
         />
       )}
-      <div ref={containerRef} className="min-h-0 w-full flex-1 font-mono!" />
+      <div ref={containerRef} className="min-h-0 w-full flex-1 font-stashly!" />
       {notice && (
         <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
           <p className="max-w-[90%] truncate rounded-md border border-input bg-card px-3 py-1.5 font-stashly text-xs text-muted-foreground shadow-lg">
@@ -209,9 +209,7 @@ export function CodeViewer({
         </div>
       )}
       {state === 'loading' && (
-        <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-          <LoaderIcon className="size-6 animate-spin" />
-        </div>
+        <StageSkeletonLoader variant="code" className="absolute inset-0" />
       )}
     </div>
   )

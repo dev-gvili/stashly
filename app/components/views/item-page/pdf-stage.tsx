@@ -5,7 +5,6 @@ import {
   MinusFillIcon,
   ChevronRightIcon,
   Pdf2Icon,
-  LoaderIcon,
   ZoomOutFillIcon,
   ZoomInFillIcon,
   DropdownIcon,
@@ -21,6 +20,7 @@ import { usePdfDocument } from '@/hooks/usePdfDocument'
 import { useLazyPageCanvas } from '@/hooks/useLazyPageCanvas'
 import { ZOOM_LEVELS, toSteppedZoom } from '@/utils/converters'
 import type { StashItemPdf } from '@/types/stash.types'
+import { StageSkeletonLoader } from './stage-skeleton-loader'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -77,10 +77,13 @@ function PdfThumb({
         active
           ? 'ring-2 ring-primary'
           : 'hover:ring-2 hover:ring-muted-foreground/40',
-          rendered && `h-[${Math.floor(estimate.height * scale)}px]`
+        rendered && `h-[${Math.floor(estimate.height * scale)}px]`
       )}
     >
-      <canvas ref={canvasRef} className="flex-1 flex rounded-md overflow-hidden min-w-0 min-h-0" />
+      <canvas
+        ref={canvasRef}
+        className="flex-1 flex rounded-md overflow-hidden min-w-0 min-h-0"
+      />
       <span
         className={cn(
           'absolute bottom-0 left-0 flex size-6 items-center justify-center rounded-tr-sm font-stashly text-sm tabular-nums',
@@ -310,11 +313,7 @@ export function PdfStage({ item, src }: { item: StashItemPdf; src: string }) {
   }
 
   if (!doc || !baseSize) {
-    return (
-      <div className="flex h-full min-h-0 w-full items-center justify-center bg-background text-muted-foreground">
-        <LoaderIcon className="size-6 animate-spin" />
-      </div>
-    )
+    return <StageSkeletonLoader variant="pdf" />
   }
 
   return (
@@ -331,7 +330,11 @@ export function PdfStage({ item, src }: { item: StashItemPdf; src: string }) {
       >
         {/* Fixed inner width so thumbnails slide out (overflow-hidden) rather
             than squish during the collapse animation. */}
-        <ScrollArea className={cn('h-full')} style={{ width: THUMBNAIL_PANEL_WIDTH }} type='hidden'>
+        <ScrollArea
+          className={cn('h-full')}
+          style={{ width: THUMBNAIL_PANEL_WIDTH }}
+          type="hidden"
+        >
           {/* pb-20: lets the last thumbnail scroll fully clear of the viewer's
             bottom edge / overlaying chrome */}
           <div className="flex flex-col gap-4 px-4 pt-4 pb-20">
@@ -352,7 +355,10 @@ export function PdfStage({ item, src }: { item: StashItemPdf; src: string }) {
 
       {/* Main viewer. overflow-hidden: the wrapper's width is the fit-width
           measurement basis, so content width must never influence it. */}
-      <div ref={scrollRef} className="relative flex-1 overflow-hidden h-[calc(100vh-4rem)] rounded-lg">
+      <div
+        ref={scrollRef}
+        className="relative flex-1 overflow-hidden h-[calc(100vh-4rem)] rounded-lg"
+      >
         <ScrollArea type="hover" className="h-full">
           {/* w-max + min-w-full: when a zoomed page is wider than the viewport
               the container grows with it, so the scrollable width includes the
