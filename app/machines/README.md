@@ -2,20 +2,36 @@
 
 This folder contains the XState machines that model complex client-side flows in Stashly. The project uses an actor model pattern; there are manager/parent machines that spawn child machines (actors) for fine-grained control and parallelism.
 
-Key machines and their responsibilities:
+This folder also holds several abandoned prototypes. Before editing anything here, check who imports it — several files that *look* canonical are dead, and two of them shadow the live implementation by name.
+
+## Active machines
 
 - `upload/upload.machine.ts`
-  - Manager for overall upload lifecycle. Spawns `file.machine` actors and controls concurrency.
-  - Maintains a `mediaFiles` map and a `queues` structure; handles `upload.start`, `upload.add`, `upload.abort`, etc.
+  - Manager for overall upload lifecycle. Spawns per-file actors and controls concurrency (`maxConcurrentUploads`).
+  - Maintains a `mediaFiles` map and a `queues` structure; handles `upload.config`, `upload.add`, `upload.spawn`, `upload.start`, `upload.abort`, `upload.pause`/`resume`, `upload.done`, `upload.dismiss`, etc.
+  - Also owns the `createDbItem` actor: on `upload.done` it POSTs to `/api/items` and, on `upload.createItem.success`, flips the file's status to `itemCreated`.
+  - Instantiated once in `app/hooks/useUpload.ts` (`createActor(uploadMachine, { id: 'uploadManager' })`).
 
-- `upload/file.machine.ts`
-  - Per-file actor machine. Handles chunked upload, retries, progress, and aborting.
+- `reviset/file.machine.ts` — **the per-file actor.** This is the one `upload.machine.ts` imports (`import { fileMachine } from '../reviset/file.machine'`). Handles quota check, multipart create, chunked upload with pause/resume/abort, completion, and the quota update.
 
-- `queue/*`, `actors/*`
-  - Queue management and actor utility helpers for scheduling uploads and other background processes.
+- `quota/quota.machine.ts` + `quota/quota.actors.ts` + `quota/quota.utils.ts`
+  - Quota machine registered as an actor of the upload manager; the actors (`checkQuota`, `updateQuota`, `findQuota`, `verifyQuota`) are also invoked directly by `reviset/file.machine.ts`.
 
-- `quota/*`
-  - Quota machine for tracking workspace/user quota and enforcing limits while uploading.
+- `multipart/*` — not a machine: the S3 multipart actors (`s3.mulipart.utils.ts`) and the worker-pool chunk uploader (`s3.multipart.stream.ts`, `s3.multipart.concurrent.ts`).
+
+- `pipeline/pipeline.machine.ts` + `pipeline.actors.ts` — runs inside `app/workers/stash.worker.ts`; the only machine with unit tests today.
+
+- `confirm.machine.ts` (via `app/utils/confirm.ts`), `onboard/onboard.machine.ts` (via `app/.server/onboard.ts`), `selection/selection.machine.ts` (via `app/components/stash/selection.tsx`), `session/sessionStorage.machine.ts` (`sessionService`, via `app/hooks/usePagination.ts`).
+
+## Abandoned / unimported
+
+Nothing imports these. They are kept in-tree but are not the code that runs:
+
+- `upload/file.machine.ts` — **unused sibling of the active `reviset/file.machine.ts`.** Its import in `upload.machine.ts` sits commented out (line 15). Referenced only by the equally-dead `queue/queue.machine.1.ts`.
+- `actors/multipart.machine.ts`, `actors/queue.machine.ts`, `actors/quota.machine.ts` — early prototypes; the live paths are `multipart/*` and `quota/*`.
+- `actors/Uploader.tsx` — imports `@/machines/actors/system.machine.1`, a file that does not exist.
+- `queue/queue.machine.1.ts`, `reviset/queue.machine.ts` — concurrency-queue experiments; queueing lives in `upload.machine.ts`'s `queues` context instead.
+- `ai/ai.machine.ts`, `ai/caption.machine.ts`, `subscription/subscription.machine.ts`, `sidebar/sidebar.machine.ts`, `pagination/infinite-scroll.machine.ts` — defined but not currently wired into any component or route.
 
 Design notes and best practices:
 

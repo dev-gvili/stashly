@@ -1,15 +1,25 @@
 ---
 name: stashly-prisma-data
-description: Stashly Prisma and data-layer conventions — schema location, migrate vs db push, orderBy rules, relation filtering and count sorts, sort URL convention, ItemCard select shapes, the Favorite no-unique-constraint rule, Zod conventions, and SQL simplicity. Load when writing Prisma queries, migrations, schema changes, or Zod schemas in the Stashly repo.
+description: Stashly Prisma and data-layer conventions — schema location, DB-level triggers (size/child-count rollups, collection size, notification pg_notify), migrate vs db push, orderBy rules, relation filtering and count sorts, sort URL convention, ItemCard select shapes, the Favorite no-unique-constraint rule, Zod conventions, and SQL simplicity. Load when writing Prisma queries, migrations, schema changes, or Zod schemas in the Stashly repo.
 ---
 
 # Stashly Prisma & Data Layer
 
 ## Prisma Schema
 
-Models are split across `prisma/models/*.prisma` files and merged. Generated client outputs to `app/prisma/`. Core models: `User`, `Workspace`, `Item`, `Collection`, `Permission`, `Comment`.
+Models are split across `prisma/models/*.prisma` files and merged. Generated client outputs to `app/prisma/`. Core models: `User`, `Workspace`, `Item`, `CollectionMember`, `Permission`, `Comment`. There is no `Collection` model — a collection **is** an `Item` with `type='collection'`, and membership is a self-M:N through `CollectionMember`.
 
-**Collection size is DB-managed**: Two Postgres triggers (`collection_size_trigger` on `CollectionMember`, `item_size_collection_sync_trigger` on `Item`) automatically maintain `Item.size` for collections. Never add manual size arithmetic back to `collection-actions.ts` — `addItemToCollection`, `removeItemFromCollection`, etc. do NOT need to update size.
+**Collection size is DB-managed**: Three Postgres triggers (`collection_size_trigger` on `CollectionMember`, `item_size_collection_sync_trigger` and `item_delete_collection_sync_trigger` on `Item`) automatically maintain `Item.size` for collections. Never add manual size arithmetic back to `collection-actions.ts` — `addItemToCollection`, `removeItemFromCollection`, etc. do NOT need to update size.
+
+**Other DB-level triggers** — assume these fire and never duplicate their work in app code:
+
+| Trigger(s) | Table | Maintains |
+| --- | --- | --- |
+| `item_size_update` / `item_size_update_on_update` / `item_size_decrement` | `Item` | `Item.size` + `Item.inclusiveSize` on the parent |
+| `item_child_count_insert` / `_update` / `_delete` | `Item` | `Folder.childCount` + `Folder.inclusiveChildCount` on the parent |
+| `notification_change_notify` | `Notification` | `pg_notify('notifications', …)` on every INSERT/UPDATE/DELETE — this is what drives the live SSE feed, so a plain `prisma.notification.create()` already pushes to connected clients |
+
+The size/collection functions are guarded by `stashly_is_wiping_user()`, so a full user wipe (`emptyUserBucket()`) must set both `stashly.delete_all_data_for_user` and `stashly.delete_all_data_for_user_consent` session flags. Full reference: `docs/data_profile_stashly _prisma_schema.md` → *Custom PostgreSQL Functions & Triggers*.
 
 **Nullable relation filtering**: To filter on fields inside a nullable relation, use `relation: { is: { field: value } }` — **not** `relation: { isNot: null, field: value }`. Prisma's TS types reject field filters alongside `isNot`.
 
@@ -21,7 +31,7 @@ Models are split across `prisma/models/*.prisma` files and merged. Generated cli
 
 **`ItemCard`-feeding selects need the full `StashAncestor`/`StashPin` shape**: any loader whose items render through `<ItemCard>` must select `parent` as the full `StashAncestor` shape (all item scalars + `file`/`folder`/`favorites`/`thumbnails`/`locked` + a shallow `parent`), not just `{ id, name }` — and the `pins` select needs `pinnedById` (`StashPin` requires it), not just `pinnedBy`. Mirror `trash.tsx`'s `parent: { include: {...} } }` pattern. A narrow select typechecks fine on its own and only fails where `<ItemCard {...item}>` is spread — easy to miss.
 
-**`Favorite` has no unique constraint**: `@@unique([favoritedById, itemId])` was intentionally removed in favor of plain indexes — the DB allows duplicate favorite rows. `addFavorite`/`addFavorites` must check-then-insert at the app level; don't rely on a DB constraint to catch double-favoriting.
+**`Favorite` has no unique constraint**: `@@unique([favoritedById, itemId])` was intentionally removed in favor of four plain indexes (migration `20260812030000_sync_favorite_indexes` drops `Favorite_favoritedById_itemId_key`) — the DB allows duplicate favorite rows. `addFavorite`/`addFavorites` must check-then-insert at the app level; don't rely on a DB constraint to catch double-favoriting.
 
 ## Prisma Client
 

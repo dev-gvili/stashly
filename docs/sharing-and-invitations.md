@@ -15,9 +15,10 @@ This document covers the two mechanisms by which users can grant others access t
    - [Revoking Links](#revoking-links)
    - [Share Link Flows](#share-link-flows)
 3. [Invitations](#3-invitations)
+   - [Multi-Recipient Model](#multi-recipient-model)
    - [Invitation Types](#invitation-types)
    - [Sending Invitations](#sending-invitations)
-   - [Invitation Lifecycle](#invitation-lifecycle)
+   - [Recipient Lifecycle](#recipient-lifecycle)
    - [Invitation Flows](#invitation-flows)
 4. [Data Model](#4-data-model)
 5. [API Reference](#5-api-reference)
@@ -93,6 +94,7 @@ type ShareLinkOptions = {
 | `expire_link`              | `expireShareLink(linkId, expiresAt)`                    | Sets a future expiry                                                                                    |
 | `remove_link_expiry`       | `updateShareLink({ where, data: { expiresAt: null } })` | Removes the expiry                                                                                      |
 | `update_link_downloadable` | `updateShareLink(...)`                                  | Toggles download permission                                                                             |
+| `update_link_password`     | `updateShareLink(...)`                                  | Sets, changes, or clears the link password (omit `password` to clear)                                   |
 
 ### Revoking Links
 
@@ -116,7 +118,11 @@ Owner
   │         └─ Permission { roles: 'read', itemId, linkId }
   │
   └─ Any user with the URL can view the item (no login required)
-       └─ URL: /s/<link-id>  or  share-dialog copies link to clipboard
+       └─ URL: /s/<link-id>  — built client-side by `buildShareUrl` in
+          share-dialog.tsx and copied to the clipboard (falls back to
+          `ShareLink.url` when the record carries one).
+          ⚠ No route currently serves `/s/:linkId` — the link is issued
+            and stored, but consuming it is not wired up yet.
 ```
 
 #### Flow B — Create a users-scoped edit link (invite specific people)
@@ -131,6 +137,10 @@ Owner
   ├─ Owner adds specific users to the permission:
   │    addUserToShareLink(linkId, userId)
   │         → Permission.users.connect(userId)
+  │    ⚠ Server-side helper only — no `/api/shares` intent exposes it yet.
+  │      The share dialog grants per-user access through
+  │      POST /api/permissions { intent: 'grant_permission', userId, itemId, role }
+  │      instead.
   │
   └─ Only those connected users can use the link
 ```
@@ -173,7 +183,9 @@ Owner
   └─ After expiry:
        findActiveShareLink(id) returns null
        isShareLinkActive(id) returns false
-       /:share/:linkId route denies access
+       (both live in share-actions.ts — no public share route consumes
+        them yet, so expiry is currently enforced only where a caller
+        checks it)
 ```
 
 #### Flow F — Revoke a single link
@@ -214,7 +226,9 @@ Owner
   │
   └─ Embed snippet:  <iframe src="/s/<linkId>" />
        Scope is always anonymous — embed links cannot be scoped to org/users.
-       downloadable is forced false — cannot be toggled.
+       downloadable is forced false at creation (createEmbedLink omits it
+       from its options type); `update_link_downloadable` can still flip it
+       on any link afterwards.
 ```
 
 ---
@@ -247,16 +261,25 @@ Both types are handled in `app/.server/invitation-actions.ts` and exposed via `P
 - No email is already a workspace member
 - No existing `pending` recipient for the same `email + workspaceId` across any invitation
 
+Both senders may attach an optional `message` — a personal note stored on the `Invitation` and surfaced in the invitation detail panel.
+
+**Notification fan-out** runs *after* the invitation transaction commits, using the shared `prisma` client so a notification failure can never roll back the invitation. `notifyInvitationSent` creates a `kind: 'invitation'` Notification for every recipient email that maps to an existing user (invitees without an account see the invitation once they sign up); `notifyInvitationAccepted` notifies the sender (`kind: 'member'` for workspaces, `'invitation'` for items). Inserting the row pushes it live via the DB `NOTIFY` → SSE stream — see `docs/notifications-sse.md`.
+
 ### Recipient Lifecycle
 
 ```
 pending ──accept──→ accepted   (connects user to Permission / creates WorkspaceMember)
         ──reject──→ rejected
-        ──cancel──→ canceled   (sender cancels entire invitation; soft-deletes Permissions)
+        ──cancel──→ canceled   (sender cancels; soft-deletes the Permission)
         ──expire──→ expired    (checked on accept when invitation.expiresAt < now)
+
+accepted ─┐
+rejected ─┴─undo──→ pending    (recipient reverses their own response)
 ```
 
-States are terminal per recipient — once resolved, a recipient entry cannot be re-opened. The sender can cancel all pending recipients in a batch with `cancel_invitation`.
+`accepted` and `rejected` are **not** terminal: the recipient can call `undo_invitation_response` to return the entry to `pending`. Undoing an acceptance also revokes what it granted — the user is disconnected from the item Permission, or their `WorkspaceMember` row is deleted. Undo is refused once the invitation has expired. `canceled` and `expired` are terminal.
+
+The sender can cancel one pending recipient with `cancel_recipient`, or all pending recipients in a batch with `cancel_invitation` (which throws `GONE` if none are pending).
 
 ### Invitation Flows
 
@@ -317,7 +340,13 @@ Sender
   │                └─ recipient.update({ status: 'canceled' })
   │
   └─ All pending recipients are canceled. Already accepted/rejected
-       recipients are not affected.
+       recipients are not affected. If no recipient is pending, the whole
+       call throws GONE (410).
+
+To cancel one person instead of the whole batch:
+  POST { intent: 'cancel_recipient', recipientId }
+       → same sender check, same soft-delete + status: 'canceled',
+         scoped to a single InvitationRecipient.
 ```
 
 #### Flow L — Item invitation: expired
@@ -375,6 +404,24 @@ Sender tries to invite the same email to the same item twice:
        Other emails in the batch are also rejected (atomic operation).
 ```
 
+#### Flow O — Recipient undoes their own response
+
+```
+Recipient (already accepted or rejected)
+  │
+  ├─ POST /api/invitations { intent: 'undo_invitation_response', recipientId }
+  │         → verifies email match
+  │         → refuses if status is pending/canceled/expired  → GONE (410)
+  │         → refuses if invitation.expiresAt < now          → GONE (410)
+  │         → $transaction (only if status was 'accepted'):
+  │              ├─ item:      permission.update({ users: { disconnect } })
+  │              ├─ workspace: workspaceMember.deleteMany({ workspaceId, memberId })
+  │              └─ recipient.update({ status: 'pending' })
+  │
+  └─ Access granted by the acceptance is revoked; the invitation is
+       actionable again from the Received tab.
+```
+
 ---
 
 ## 4. Data Model
@@ -382,6 +429,7 @@ Sender tries to invite the same email to the same item twice:
 ```
 Invitation (batch envelope)
   ├─ id, createdAt, expiresAt
+  ├─ message?      (optional personal note shown in the detail panel)
   ├─ senderId → User
   ├─ itemId? → Item            (for item invitations)
   ├─ workspaceId? → Workspace  (for workspace invitations)
@@ -397,6 +445,7 @@ InvitationRecipient (per-person)
        └─ Permission
             ├─ id, roles, recipientId, itemId
             ├─ users[]    (empty until accepted)
+            ├─ expiresAt  (mirrors the invitation's expiresAt)
             └─ deletedAt  (set when invitation is canceled)
 
 ShareLink
@@ -460,6 +509,7 @@ erDiagram
         string id PK
         datetime createdAt
         datetime expiresAt
+        string message "optional personal note"
         string senderId FK
         string itemId FK "null for workspace invitations"
         string workspaceId FK "null for item invitations"
@@ -479,6 +529,7 @@ erDiagram
         string recipientId FK "set for invitation permissions"
         string linkId FK "set for share link permissions"
         string itemId FK
+        datetime expiresAt
         datetime deletedAt "soft-delete on cancel"
     }
 
@@ -486,8 +537,7 @@ erDiagram
         string id PK
         string memberId FK
         string workspaceId FK
-        string role
-        string role
+        WorkspaceMemberRole role "viewer | member | admin | owner"
     }
 ```
 
@@ -521,6 +571,7 @@ Returns all share links for an item with their permission details.
 | `expire_link`              | `linkId`, `expiresAt`    |                                         |
 | `remove_link_expiry`       | `linkId`                 |                                         |
 | `update_link_downloadable` | `linkId`, `downloadable` |                                         |
+| `update_link_password`     | `linkId`                 | `password` (omit to clear)              |
 | `revoke_link`              | `linkId`                 |                                         |
 | `revoke_all_links`         | `itemId`                 |                                         |
 
@@ -528,22 +579,26 @@ Returns all share links for an item with their permission details.
 
 ### `GET /api/invitations?type=sent|received[&itemId=<id>]`
 
-Returns invitations with nested `recipients[]`. `type` defaults to `received` (only invitations with pending recipients matching the user's email). `itemId` overrides `type` and returns all invitations for that item regardless of status.
+Returns invitations with nested `recipients[]`. `type` defaults to `received` — every invitation with a recipient matching the user's email whose status is not `canceled`, so the view can show resolved (accepted/rejected) history and offer undo, not just pending ones. `itemId` overrides `type` and returns all invitations for that item regardless of status.
+
+Every finder returns the **enriched** `InvitationWithDetails` shape, not the raw row: the sender's `title`, the invitation `message`, single-item meta (`mimeType` / `fileCount` / `thumbnailUrl`), workspace roll-ups (`size` / `fileCount` / `memberCount`), and a `previews[]` array of thumbnail-backed children that render through the standard `ItemCard`.
 
 **Response:**
 
 ```json
-{ "invitations": [ Invitation & { sender, recipients: InvitationRecipient[], item?, workspace? } ] }
+{ "invitations": [ Invitation & { sender, recipients: InvitationRecipient[], previews: [], item?, workspace? } ] }
 ```
 
 ---
 
 ### `POST /api/invitations`
 
-| Intent                      | Required fields                              | Optional fields | Who can call                                 |
-| --------------------------- | -------------------------------------------- | --------------- | -------------------------------------------- |
-| `send_item_invitation`      | `itemId`, `recipients: [{email, role}]`      | `expiresAt`     | Item owner or write-access user              |
-| `send_workspace_invitation` | `workspaceId`, `recipients: [{email, role}]` | `expiresAt`     | Workspace admin/owner                        |
-| `accept_invitation`         | `recipientId`                                |                 | Recipient (email must match)                 |
-| `reject_invitation`         | `recipientId`                                |                 | Recipient (email must match)                 |
-| `cancel_invitation`         | `invitationId`                               |                 | Sender only (cancels all pending recipients) |
+| Intent                      | Required fields                              | Optional fields          | Who can call                                 |
+| --------------------------- | -------------------------------------------- | ------------------------ | -------------------------------------------- |
+| `send_item_invitation`      | `itemId`, `recipients: [{email, role}]`      | `expiresAt`, `message`   | Item owner or write-access user              |
+| `send_workspace_invitation` | `workspaceId`, `recipients: [{email, role}]` | `expiresAt`, `message`   | Workspace admin/owner                        |
+| `accept_invitation`         | `recipientId`                                |                          | Recipient (email must match)                 |
+| `reject_invitation`         | `recipientId`                                |                          | Recipient (email must match)                 |
+| `undo_invitation_response`  | `recipientId`                                |                          | Recipient (email must match), accepted/rejected only |
+| `cancel_recipient`          | `recipientId`                                |                          | Sender only (cancels one pending recipient)  |
+| `cancel_invitation`         | `invitationId`                               |                          | Sender only (cancels all pending recipients) |

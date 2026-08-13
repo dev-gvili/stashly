@@ -19,12 +19,16 @@ Route handles are optional metadata objects exported from route modules. In Stas
 ### Defining Handles
 
 ```typescript
-// app/routes/examples/handle-example.tsx
+// app/routes/stash/favorites.tsx
 export const handle: Stashly.RouteHandle = {
   dashboardHandle: true,
-  mainNavigation: true,
+  favoritesHandle: true,
 }
 ```
+
+The flag names are not free-form — `Stashly.RouteHandle` (and its narrower
+descendants `DashboardHandle`, `WorkspaceHandle`, `GalleryHandle`, …) enumerate
+them explicitly in `app/stashly.d.ts`. Adding a flag means adding it there first.
 
 ### Consuming Handles in Layout Components
 
@@ -56,7 +60,12 @@ function Layout() {
 
 If `HydrateFunction` or `StructuredDataFunction` types are missing, ensure the appropriate types from React Router are available globally or imported and re-declared in TypeScript type declarations.
 
-**See also:** `app/components/app-sidebar.tsx` and `app/routes/examples/handle-example.tsx` for usage examples.
+**Status:** the type surface is in place, but nothing uses it yet — no route
+under `app/routes/` currently exports a `handle`, and no layout component calls
+`useMatches()` to read one. `app/components/app-sidebar.tsx` and
+`app/routes/layout.tsx` branch on `useParams()` / `useLocation()` instead. Treat
+the above as the intended pattern for new layout-feature flags, not as a
+description of shipped wiring.
 
 ---
 
@@ -146,7 +155,7 @@ Useful when the UI shows both global controls and inline controls:
 
 **Backwards compatibility:** Any existing code using a single provider with no `id` continues to work — `default` is the implicit id.
 
-**Persistence:** The provider writes cookies per-id (e.g., `sidebar_state_left`) to preserve open state across page loads. For full SSR consistency, read those cookies in your loader and hydrate the provider's initial state.
+**Persistence:** The provider keeps open state in a `Record<id, boolean>` map and, on `useBeforeUnload`, submits `{ id, state }` for every entry to `POST /api/sidebar` with a `useFetcher({ key: 'sidebar' })`. That route sets one cookie per sidebar, named `stashly-sidebar-<id>` (e.g. `stashly-sidebar-left`). For full SSR consistency, read those cookies in your loader and hydrate the provider's initial state.
 
 ---
 
@@ -183,7 +192,9 @@ const data = await getCollectionContents({
   where: { workspaceId: 'ws_123' },
   include: { file: true },
 })
-// data → PaginationData<any> (typed broadly for the generic helper)
+// data → PaginationCursorData<Prisma.ItemGetPayload<{ include: TInclude }>>
+// (the `model: 'item'` overloads map strategy → concrete result type; the
+//  implementation signature falls back to PaginationData<TModel> for other models)
 ```
 
 ### `paginateWithOffset` — Mock Delegate for Unit Tests
@@ -203,65 +214,87 @@ const result = await paginateWithOffset(mockDelegate, {
 // result.metadata.count === 2
 ```
 
-### `runSearch` — Overloaded Generic Search Function
+### `paginate` — Overloaded Generic Pagination Function
 
-Supports four pagination strategies with correct return type inference per overload:
+The helper both `getFolderContents` and `getCollectionContents` delegate to.
+Three strategies, with the return type inferred per overload from the
+`strategy` discriminant:
 
 ```typescript
-// Page-based → PageBasedResult<TModel>
-const result = await runSearch(prisma.item, {
+// Offset → PaginationOffsetData<TModel>
+const result = await paginate(prisma.item, {
+  strategy: 'offset',
   where, orderBy,
   page: 1,
-  pageSize: 20,
+  take: 20,
 })
-// result.data, result.total, result.page, result.pageSize
+// result.data, result.metadata.{count, pages, page, take, isComplete, strategy}
 
-// Cursor-based → CursorBasedResult<TModel>
-const result = await runSearch(prisma.item, {
+// Cursor → PaginationCursorData<TModel>
+const result = await paginate(prisma.item, {
+  strategy: 'cursor',
   where, orderBy,
   cursor: 'last-seen-id',
-  limit: 20,
+  take: 20,
 })
-// result.data, result.nextCursor
+// result.data, result.metadata.{count, nextCursor, previousCursor, take, isComplete, strategy}
 
-// Streaming → StreamResult<TModel> (AsyncGenerator)
-const stream = await runSearch(prisma.item, {
+// Stream → PaginationStreamData<TModel> (AsyncGenerator)
+const stream = await paginate(prisma.item, {
+  strategy: 'stream',
   where, orderBy,
-  stream: true,
   batchSize: 100,
 })
-for await (const { data } of stream) { ... }
-
-// No pagination → AllResults<TModel>
-const result = await runSearch(prisma.item, { where, orderBy })
-// result.data, result.warning (if close to limit)
+for await (const { data, metadata } of stream) { ... }
 ```
 
+The three strategy-specific entry points — `paginateWithOffset`,
+`paginateWithCursor`, `paginateWithStream` — are also exported directly; the
+`paginate` implementation is just a `switch` over `options.strategy` onto them.
+
 **Key design decisions:**
-- `RunSearchOptions` is a **union type** (not merged interfaces) — required for correct overload resolution
+- `PaginationOptions` is a **discriminated union** on `strategy` (not merged interfaces) — required for correct overload resolution
 - `TModel extends { id: string }` constraint — cursor-based and streaming require an `.id` field
-- Type guard approach: `'cursor' in options`, `'stream' in options`, `'page' in options` for narrowing
+- Narrowing is by the `strategy` literal, not by `'cursor' in options`-style key probes
 - `DbDelegate<TModel, ...>` abstracts the Prisma model delegate for testability
 
 ### Pagination Result Types
 
+Every strategy returns `{ data, metadata }` — the metadata shape is what differs.
+
 ```typescript
-type PageBasedResult<TModel> = {
+type PaginationOffsetData<TModel> = {
   data: TModel[]
-  total: number
-  page: number
-  pageSize: number
+  metadata: {
+    count: number
+    pages: number
+    page: number
+    take: number
+    isComplete: boolean
+    strategy: 'offset'
+  }
 }
 
-type CursorBasedResult<TModel> = {
+type PaginationCursorData<TModel> = {
   data: TModel[]
-  nextCursor?: string
+  metadata: {
+    count: number
+    previousCursor?: string
+    nextCursor?: string
+    take: number
+    isComplete: boolean
+    strategy: 'cursor'
+  }
 }
 
-type AllResults<TModel> = {
-  data: TModel[]
-  warning?: string
-}
+type PaginationStreamData<TModel> = AsyncGenerator<
+  { data: TModel[]; metadata: { take: number; count: number; nextCursor?: string; previousCursor?: string; isComplete: boolean; strategy: 'stream' } },
+  void,
+  unknown
+>
 
-type StreamResult<TModel> = AsyncGenerator<{ data: TModel[] }, void, unknown>
+type PaginationData<TModel> =
+  | PaginationOffsetData<TModel>
+  | PaginationCursorData<TModel>
+  | PaginationStreamData<TModel>
 ```

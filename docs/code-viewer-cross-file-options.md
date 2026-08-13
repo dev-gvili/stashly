@@ -5,16 +5,48 @@ files* — so `import { StashItemAudio } from '@/types/stash.types'` inside a
 viewed `.ts` file hovers with real types instead of `any`, the same way
 npm-package imports now do via ATA.
 
-**Status:** npm ATA shipped (`80a23e6`). This doc compares the two ways to add
-*cross-file* (uploaded-file) resolution, for a decision.
+**Status: decided and shipped — Option 1.** This doc is kept as the record of
+the decision; Option 2 below is history, not a pending alternative.
+
+| | |
+|---|---|
+| npm ATA (the precursor) | `80a23e6` |
+| **Option 1 shipped** — extra libs + `compilerOptions.paths` | `9e72d51` |
+| Relative-import resolution + longest-prefix alias matching (cross-file v2) | `f1829e0` |
+| Go to Definition across uploaded files (PR #20) | `f78e533` |
+
+What landed lives in `app/.client/cross-file-types.ts`
+(`fetchSourceContext` / `acquireCrossFileTypes` / `applyAliasPaths`, feeding
+`typescriptDefaults.addExtraLib`), backed by
+`app/.server/source-resolution-actions.ts` + `app/routes/api/source-types.ts`.
+See [`code-viewer.md`](code-viewer.md) for how it behaves now.
+
+Two things the shipped version does that neither option below anticipated:
+
+- The viewed model is **mounted at its real project path**
+  (`file:///app/.server/x.ts`), so a file's own `./relative` imports resolve
+  natively without any `paths` entry. The project root falls back to the
+  topmost uploaded folder when there's no `tsconfig.json`.
+- Go to Definition into another *uploaded* file **routes to that file's page**
+  rather than swapping the buffer, so the URL, breadcrumbs and item panel keep
+  describing what's on screen. Definitions with no page of their own
+  (`lib.es5.d.ts`, an ATA-fetched `@types` package) open in place as a detour,
+  with `goBack()`/Alt+← to return. So Option 1's "find-refs / rename" ❌ in the
+  table below still holds, but its cross-file *navigation* went further than
+  "hover only".
 
 ---
 
 ## What both options require (shared cost)
 
-Neither option is free of backend work — there is **no endpoint today** that
-returns a source file's text by path (`getMediaSiblings` only lists media for
-prev/next nav). Both need:
+*(Written before the build. This has since been built —
+`app/.server/source-resolution-actions.ts` + `app/routes/api/source-types.ts`
+now return the project root, the file's real path, the tsconfig `paths`, and
+sibling source by logical path.)*
+
+Neither option is free of backend work — there was **no endpoint** at the time
+that returned a source file's text by path (`getMediaSiblings` only lists media
+for prev/next nav). Both need:
 
 1. **A backend endpoint** — an action + API route that, given the viewed file,
    returns sibling **source** files as `{ path, text }`. Open scope questions:
@@ -130,7 +162,7 @@ Build a real in-browser TypeScript project and query it directly.
 
 ---
 
-## Recommendation
+## Recommendation — adopted
 
 **Option 1**, unless you specifically want project-wide tooling (find-all-refs,
 rename across files) inside a *read-only viewer*.

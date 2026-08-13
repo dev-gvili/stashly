@@ -1,6 +1,6 @@
 # Stashly Project Roadmap
 
-Last updated: **2026-05-16**
+Last updated: **2026-08-13**
 
 Stashly is a secure, intuitive, and powerful file storage and collaboration platform. This roadmap tracks shipped phases and remaining work.
 
@@ -22,7 +22,7 @@ For developer conventions and the actual project structure, see [`CLAUDE.md`](..
 
 ## Phase 2: File Management & Upload — ✅ Shipped
 
-- [x] **Multipart upload** — `app/machines/upload/upload.machine.ts` parent + `file.machine.ts` per file, `actors/queue.machine.ts` (5-slot concurrency), `actors/quota.machine.ts`
+- [x] **Multipart upload** — `app/machines/upload/upload.machine.ts` parent spawns `app/machines/reviset/file.machine.ts` per file (the sibling `app/machines/upload/file.machine.ts` is dead code) plus `app/machines/quota/quota.machine.ts`. Concurrency is gated inside `upload.machine.ts` itself via `maxConcurrentUploads` (schema default 100) — the standalone queue-machine copies under `machines/actors/`, `machines/queue/`, and `machines/reviset/` have no importers.
 - [x] **Concurrent multipart** — parallel chunk uploads with ETag tracking ([spec](superpowers/specs/2026-04-02-concurrent-multipart-upload-design.md))
 - [x] **Multipart contract tests** — Vitest suite over the streaming layer
 - [x] **Post-upload DB chain** — `createDbItem` actor → `POST /api/items` → `createUploadedItem()`
@@ -44,25 +44,25 @@ For developer conventions and the actual project structure, see [`CLAUDE.md`](..
 - [x] **Link Permissions** — read/write scopes
 - [x] **Activity Feed** — full activity timeline (create/rename/move/trash/restore/delete/copy/share/comment/version), `ItemActivityDrawer`, `ActivityFeed` component on the gallery image sidebar
 - [x] **Permission model** — `Permission` table; per-item access grants enforced in action functions
+- [x] **Notifications** — live SSE feed: `/api/notifications/stream` fed by Postgres LISTEN/NOTIFY (`app/.server/notification-events.ts`), `NotificationsPanel` bell in the app header, `useNotificationStream` hook ([notifications-sse.md](notifications-sse.md)). Shipped with Prometheus instrumentation for the pool / SSE / NOTIFY path — `app/.server/metrics.ts` exposed at `/api/metrics`. The `/settings/notifications` preferences page is still a 17-line TODO stub.
+- [x] **Invitations (item + workspace)** — `invitation-actions.ts` + `/api/invitations`; received/sent views (`invitations-view.tsx` + `views/invitations/` detail panels), `NewInvitationDialog` invite flow covering files, folders, and workspaces; `/:me/stash/invitations` page
 
 ### Backend Only — Awaiting UI
 
-These all have working `*-actions.ts` files and API routes wired, but **no UI consumers** exist yet. The settings/notifications route is a 17-line stub returning `<div>Notifications Route</div>`.
+These have working `*-actions.ts` files and API routes wired, but **no UI consumers** exist yet.
 
-- [ ] **Comments** — `comment-actions.ts` + `/api/comments` exist; `CommentsThreadPanel.tsx` component file is present but not mounted from any route or item view
-- [ ] **Versions** — `version-actions.ts` + `/api/versions` exist; no `VersionList` / `VersionHistory` UI; no UI to trigger version creation or restore
-- [ ] **Notifications** — `notification-actions.ts` + `/api/notifications` exist; settings route is a TODO stub; no notification feed UI, no toast/inbox surface
-- [ ] **Workspace Invitations** — `invitation-actions.ts` exists; no invite-flow UI
-- [ ] **Item Invitations** — backend wiring present; no invite-flow UI
+- [ ] **Comments** — `comment-actions.ts` + `/api/comments` exist; `app/components/CommentsThreadPanel.tsx` is present but has zero importers — not mounted from any route or item view
+- [ ] **Versions** — `version-actions.ts` + `/api/versions` (flat + `items/:itemId/versions/:versionId?`) exist; no `VersionList` / `VersionHistory` component exists anywhere; no UI to trigger version creation or restore
 
 ### Workspaces — Routes Stubbed, Views Missing
 
-The workspace URL space is registered in `app/routes.ts` and routes exist for index/create/folder/file/collection/members/settings/shares/favorites/recent — but every route file is a 13–30-line skeleton. **Only `workspaces/trash.tsx` (~149 lines) has any real UI.**
+The workspace URL space is registered in `app/routes.ts` for index/workspace/folder/file/collections/collection/members/settings/shares/favorites/recent/trash/gallery — but most route files are 13–22-line skeletons. **Only `workspaces/trash.tsx` (149 lines) and `workspaces/workspace.tsx` (141 lines, workspace detail rendering `WorkspaceOverview`) have any real UI**; `:workspaceId/gallery` borrows `routes/stash/gallery.tsx` outright. `workspaces/create.tsx` exists on disk but is not registered in `app/routes.ts` — there is no reachable creation URL.
 
 - [x] Schema — `Workspace`, `WorkspaceMember`, role enum (Owner / Admin / Member / Viewer)
 - [x] `workspace-actions.ts` — backend membership management
 - [x] Routing structure — `/:me/workspaces/:workspaceId/*` registered
-- [ ] Workspace views — index, create, folder, file, collection, members, settings, shares, favorites, recent are all stub files
+- [x] Workspace detail page — `workspace.tsx` loader + `WorkspaceOverview` view
+- [ ] Workspace views — index, create, folder, file, collections, collection, members, settings, shares, favorites, recent are all stub files
 - [ ] Member management UI
 - [ ] Workspace creation flow
 - [ ] Role change UI
@@ -76,31 +76,37 @@ See: [`docs/sharing-and-invitations.md`](sharing-and-invitations.md) for the sha
 ### Shipped
 
 - [x] **Full-text search** — PostgreSQL `search` field with filters (type, date, workspace)
-- [x] **Semantic search infrastructure** — pgvector extension installed; `sentence-transformers/all-MiniLM-L6-v2` (384-dim embeddings, cosine distance) wired into the embed worker; query path can search by vector
+- [x] **Semantic search infrastructure** — pgvector extension installed; `Xenova/all-mpnet-base-v2` (768-dim embeddings, mean-pooled + L2-normalized for cosine/dot-product) runs on WebGPU in `app/workers/embedding.ai.ts`; `Search.vector` / `SearchChunk.vector` are both `Unsupported("vector(768)")` columns with dedicated indexes; query path can search by vector
 - [x] **Living thumbnails** — 5-stage progressive WebP pipeline ([thumbnail-pipeline.md](thumbnail-pipeline.md))
   - Stage 0: hash → color placeholder
   - Stage 1: 8×8 blur preview
   - Stage 2: 512px resize
   - Stage 3: ViT saliency crop with face-aware crop via native `FaceDetector` API
   - Stage 4: Florence-2 caption overlay (currently hidden from gallery — capped at stage 3)
+- [x] **On-demand thumbnail backfill** — items that never got a thumbnail (upload interrupted, tab closed mid-pipeline) are regenerated lazily when they scroll into view: `app/utils/thumbnail-backfill.ts` + `useThumbnailBackfill`, re-fetching the source through `/api/thumbnails/:itemId/source` (`BACKFILL_MAX_BYTES` = 16 MB cap), with `upload-thumbnail-runner.tsx` owning the fetchers so the runner isn't duplicated per card
 - [x] **Browser-side AI inference** — Transformers.js + ONNX Runtime (WebGPU with WASM fallback)
   - Whisper transcription (120+ languages)
   - Image captioning
   - Multilingual embeddings
 - [x] **Gallery views** — Grid / River / Waterfall layouts with View Transition API morph between gallery and detail overlay
+- [x] **In-browser code viewer** — `app/components/views/item-page/code-viewer.tsx` with a document outline rail (`code-outline.tsx`), embedded-SQL highlighting, JSDoc hover, automatic type acquisition for imported npm packages, and go-to-definition that resolves across the user's other uploaded files (PR #20) ([code-viewer.md](code-viewer.md))
+- [x] **Item-page stage loading** — `text-stage`, `markdown-stage`, `pdf-stage`, and `code-viewer` share one `StageSkeletonLoader` with a closed 2px frame while the streamed body resolves
+- [x] **Stash UI pass** — path-rail toolbar, `FileCardDetail` card variant, indigo primary (PR #21)
 - [x] **Filters system** — compound `Filters` (`app/components/filters/`), standalone `SearchInput`, `useFilters` hook; replaced old `FilterList` (commit `205ef51`)
-- [x] **AI Studio (prototype)** — `app/routes/stash/ai-studio.tsx` — UI mockup for transcription / language detect / summarization / keyword extraction / tag generation pipeline (uncommitted, not wired to real workers yet)
+- [x] **AI Studio (prototype)** — `app/routes/stash/ai-studio.tsx`, committed and routed at `/:me/stash/ai-studio`. Still a static mockup of the transcription / language detect / summarization / keyword extraction / tag generation pipeline — it renders hardcoded `TRANSCRIPT` / `SUMMARY` constants and imports no worker or machine.
 - [x] **Pipeline machine extraction** — `pipeline.machine.ts` split into 6 dedicated sub-machines (`languageDetectionMachine`, `transcriptionMachine`, `textCorrectionMachine`, `summarizationMachine`, `keywordExtractionMachine`, `tagGenerationMachine`); pipelineMachine is now a pure orchestrator. Plus GPU resilience, long-audio content hints, and GPU load balancer for correction. ([plan](superpowers/plans/2026-03-21-pipeline-machine-extraction.md), commits `b617d76`, `6846882`, `2f1aba2`, `b6e896c`, `ec5275d`, `946f50f`)
 
 ### In Progress
 
 - [ ] **Semantic search — end-to-end wiring**
-  - [x] PDF: client-side text extraction (`extractPdfText` in `app/utils/pdf.ts`) → `documentText` field on `save_media_metadata` → `upsertSearchContent(itemId, content)` writes `Search.content` (vector left null pending embedding). Schema migration: `Search.vector` made nullable.
-  - [ ] Apply the same pattern to other text formats (`.txt`, `.md`, `.docx`, etc.)
+  - [x] PDF: client-side text extraction (`extractPdfText` in `app/utils/pdf.ts`, run in the compute worker as `pdfText`) → `documentText` field on `save_media_metadata` → `upsertSearchContent(itemId, content)` writes `Search.content`. Schema migration: `Search.vector` made nullable.
+  - [x] Markdown: `mdMeta` compute-worker job feeds body text into the same `documentText` path (`isMarkdownFile` covers `.md/.markdown/.mdown/.mkd`)
+  - [x] Chunked indexing + client-side embedding: the server is authoritative for chunk boundaries (`chunkText` → `upsertSearchChunks` returns `{id, content}` pairs), the browser embeds them on WebGPU (`embedTexts`) and posts them back via the `save_search_chunk_embeddings` intent → `setSearchChunkVectors` (raw SQL, pgvector text-cast)
+  - [ ] Apply the same pattern to the remaining text formats (`.txt`, `.docx`, source files, etc.)
   - [ ] OCR for images, transcript for audio/video, EXIF/captions for photos — gather and persist
-  - [ ] Hook embedding generation into the upload completion path — backfill `Search.vector` after `Search.content` is written. Decide: server-side embedding (env-aware, slower) vs client-side worker.
+  - [ ] Server-side embedding backfill — chunk embedding is fire-and-forget in the browser, so closing the tab early leaves `SearchChunk.vector` (and the document-level `Search.vector`, which nothing writes yet) NULL. Needs a server-side or resumable pass.
   - [ ] Re-embed on relevant content changes (rename, description edit)
-  - [ ] Backfill embeddings for existing items once the pipeline is live
+  - [ ] Backfill embeddings for items uploaded before the chunk pipeline landed
 
 ### Not Started
 
@@ -134,23 +140,25 @@ See: [`docs/sharing-and-invitations.md`](sharing-and-invitations.md) for the sha
 
 ## Active Cleanup / Tech Debt
 
-Some are blocking the OSS-quality bar (see [`user_project_vision.md`](../C:/Users/PoshI/.claude/projects/x--stashly/memory/user_project_vision.md) — Stashly is positioned as a reference implementation; pre-existing rot is not minor).
+Some are blocking the OSS-quality bar — Stashly is positioned as a reference implementation, so pre-existing rot is not minor.
 
 ### Done
 
 - [x] **Temp schema consolidation** — `_temp_a/b/c.schemas.ts` no longer present (verified 2026-05-10).
 - [x] **Search infra decision** — `app/.server/search/` directory deleted (2026-05-10). Pure utilities salvaged to `app/utils/search-text.ts` (`cleanText`, `buildSearchTextFromItem`); server adapter `mapItemToSearch` moved to `app/.server/search-actions.ts`. The old `searchFactory`/`buildItemFilters` from that dir were duplicates of the canonical `@/utils/search` and `@/utils/filters/item.filters` — `item-actions.ts` migrated.
 - [x] **Empty stub modules** — `app/routes/api/ai.ts` and `app/routes/api/images.ts` had bulk-commented bodies causing cascading typegen errors. Replaced with valid 501-returning loader/action stubs (2026-05-10).
+- [x] **Directory drops** — dropping a folder now preserves its nested hierarchy: `createUploadedItem()` calls `findOrCreateFolderPath()` (`app/.server/item-actions.ts`) to walk/create the intermediate folders and returns the resolved `parentId` instead of flattening to `rootId`. Follow-ups shipped: duplicate-folder race fix (`271aff0`) and path preservation when normalizing ambiguous `.ts` files (`4611702`).
+- [x] **Flat UI item routes** — the UI route space no longer registers flat item/file routes; `app/routes.ts` only has the nested `stash/folders/:folderId/files/:fileId` (and the workspace equivalent).
 
 ### Open
 
-- [ ] **Flat item routes** — flat versions still registered alongside nested; migrate callers and remove flat
-- [ ] **Orphaned UI components** — `dropbox ui/`, `Gemini3Dashboard*.tsx`, `FileManagementDashboard.tsx`, `file-uploader.tsx`, `Gallery.tsx` legacy etc. — substantial component dust. Many cause typecheck errors due to references to nonexistent modules / removed icon names.
-- [ ] **Models without action files** — `Favorite`, `AuditLog`, `Thumbnail` (read), `Trash`/`TrashItem`, `View`
-- [ ] **Package update type errors** — `workspaceItem.service.ts`, `stripe.ts`, `subscription.ts`, `subscription.machine.ts`, `upload/file.machine.ts`, `permission-actions.ts`
-- [ ] **Directory drops** — nested intermediate folders are not currently created (files drop to `rootId`)
-- [ ] **`app/routes/api/shares.ts`** — dot-server import fix deferred
-- [ ] **Test runner globals** — `app/.server/__tests__/collection-actions.test.ts` references `describe`/`it`/`expect` without `vitest/globals` types in scope
+- [ ] **Flat API routes** — `routes.ts` still registers a flat top-level path *and* a nested `items/:itemId/...` path for `shares`, `favorites`, `versions`, `invitations`, and `comments/*`; migrate callers to the nested form and drop the flat registrations (`pins`/`locks` are flat-only and out of scope) — see [`TASKS.md`](../TASKS.md)
+- [ ] **Orphaned UI components** — `Gemini3Dashboard*.tsx`, `FileManagementDashboard.tsx`, `file-uploader.tsx`, `Gallery.tsx` legacy etc. — substantial component dust. Many cause typecheck errors due to references to nonexistent modules / removed icon names. (The old `dropbox ui/` folder is gone.) Running inventory: [`orphaned.md`](orphaned.md).
+- [ ] **Dead upload machines** — `app/machines/upload/file.machine.ts` (superseded by `machines/reviset/file.machine.ts`) plus the three unreferenced queue machines (`machines/actors/queue.machine.ts`, `machines/queue/queue.machine.1.ts`, `machines/reviset/queue.machine.ts`)
+- [ ] **Models without action files** — `Favorite`, `AuditLog`, `Trash`/`TrashItem`, `View` (`Thumbnail` now has reads — `getThumbnailByItemId` / `getThumbnailSource` in `thumbnail-actions.ts`)
+- [ ] **Package update type errors** — `stripe.ts`, `subscription.ts`, `subscription.machine.ts`, `permission-actions.ts` (`workspaceItem.service.ts` no longer exists)
+- [ ] **`@/services/*` imports inside route files** — `CLAUDE.md` bans the alias in `app/routes/` (dot-server plugin), but 42 route files still use it (25 under `routes/api/`, 13 under `routes/stash/`, incl. the long-deferred `app/routes/api/shares.ts`). Either finish the migration or re-confirm the constraint still holds for the current plugin version.
+- [ ] **Test runner globals** — `vitest.config.ts` sets `globals: true`, but `tsconfig.json` has no `types: ["vitest/globals"]`, so `app/.server/__tests__/collection-actions.test.ts` still references `describe`/`it`/`expect` with no types in scope
 
 ---
 

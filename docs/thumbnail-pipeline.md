@@ -1,8 +1,10 @@
 # Thumbnail Pipeline — Living Thumbnails
 
-A 5-stage progressive thumbnail generation system. Each stage upgrades the thumbnail asynchronously after upload completes — from an instant color hash placeholder to a Florence-2-captioned image. All output is **WebP**.
+A 3-stage progressive thumbnail generation system. Each stage upgrades the thumbnail asynchronously after upload completes — from an instant local blur preview to a saliency-cropped image. All output is **WebP**.
 
-Driven primarily client-side from `app/hooks/useThumbnail.ts`, with AI stages running in `app/workers/thumbnail.ai.ts`.
+Driven client-side from `app/hooks/useThumbnailV2.ts` — a thin orchestrator over the pure helpers in `app/utils/thumbnail-pipeline.ts`, spawned per file by `app/components/upload/upload-thumbnail-runner.tsx`. Stage 3's AI runs in `app/workers/thumbnail.ai.ts`.
+
+> **V1 → V2.** The original pipeline had five stages. **Stage 0** (a hex color hash written to the DB) was removed — every consumer already filtered `url.startsWith('#')`, so persisting it was pure waste. **Stage 4** (Florence-2 caption overlay) was removed too; the Florence-2 code survives only in `app/.client/stashly-ai.ts` for captioning outside the thumbnail path. `app/hooks/useThumbnail.ts` is the V1 hook — still exported from `app/hooks/index.ts`, but **no component calls it**. Sections below describe V2 unless marked historical.
 
 ---
 
@@ -16,8 +18,10 @@ Driven primarily client-side from `app/hooks/useThumbnail.ts`, with AI stages ru
 6. [Prisma Model](#6-prisma-model)
 7. [Gallery Query — Hex Placeholder Filter](#7-gallery-query--hex-placeholder-filter)
 8. [Utilities](#8-utilities)
-9. [Hide Stage 4 from Gallery (Caption Cap)](#9-hide-stage-4-from-gallery-caption-cap)
-10. [Concurrency Notes — AI Stages](#10-concurrency-notes--ai-stages)
+9. [Stage 4 (Caption Overlay) — Removed](#9-stage-4-caption-overlay--removed-historical)
+10. [Concurrency Notes — AI Stage](#10-concurrency-notes--ai-stage)
+11. [Compute Worker — Off-main-thread Pipeline](#11-compute-worker--off-main-thread-pipeline)
+12. [On-demand Backfill](#12-on-demand-backfill)
 
 ---
 
@@ -25,22 +29,21 @@ Driven primarily client-side from `app/hooks/useThumbnail.ts`, with AI stages ru
 
 | Stage | What it produces | Where it lives | Mechanism | Latency |
 |-------|------------------|---------------|-----------|---------|
-| 0 | Deterministic hex color from file name + MIME (e.g. `#a3b5c7`) | `Thumbnail.url` in DB | `hashToColor()` — no S3 | Instant |
-| 1 | 8×8 WebP blur preview | **Local-session `URL.createObjectURL` only — never persisted to S3 or DB** | Image: `extractTinyThumbnail(file)` · Video: `generateVideoThumbnail(file)` · PDF: `generatePdfThumbnail(file)` | <1s |
-| 2 | 512px-max WebP resize | S3 + DB | Image: `canvasResize(file, 512)` · Video: re-encode tiny frame · PDF: `renderPdfPageToBlob(file, 512)` | 1–3s |
-| 3 | Saliency-cropped WebP with face-aware crop via native `FaceDetector` API | ViT saliency model in AI worker — **images only** | 2–5s |
-| 4 | Caption overlay (Florence-2 VLM) | Florence-2 in AI worker, drawn onto stage-3 image — **images only** | 5–15s |
+| 1 | 8×8 WebP blur preview | **Local-session `URL.createObjectURL` only — never persisted to S3 or DB** | Image: `extractTinyThumbnail(file)` · Video: `generateVideoThumbnail(file)` · PDF: `generatePdfThumbnail(file)` · Text: `generateTextThumbnail(file)` | <1s |
+| 2 | 512px-max WebP resize | S3 + DB | Image: `canvasResize(file, 512)` · Video: re-encode tiny frame · PDF: `renderPdfPageToBlob(file, 512)` · Text: `renderTextPageToBlob(file, 512)` | 1–3s |
+| 3 | Saliency-cropped WebP | S3 + DB | `generateSalientCrop()` in the AI module — native `FaceDetector` crops on the largest face, else a ViT-informed geometric center crop — **images only** | 2–5s |
 
-Stages 1+ are not blocking — the gallery shows whatever the latest non-hex thumbnail is. PDFs stop after stage 2 (saliency/caption don't apply to documents).
+No stage blocks — the gallery shows whatever the highest persisted stage is, and stage 1 paints locally in the meantime. PDFs and text files stop after stage 2 (saliency doesn't apply to documents).
 
 ### File-Type Coverage
 
 | File type | Stages produced |
 |-----------|-----------------|
-| `image/*` | 0 → 1 → 2 → 3 → 4 |
-| `video/*` | 0 → 1 → 2 |
-| `application/pdf` | 0 → 1 → 2 |
-| Other | 0 only (color hash) |
+| `image/*` | 1 → 2 → 3 |
+| `video/*` | 1 → 2 |
+| `application/pdf` | 1 → 2 |
+| Text-renderable (plain text, markdown, code, config — see `isTextRenderableFile`) | 1 → 2 |
+| Other | none — the card falls back to its category icon |
 
 ---
 
@@ -59,26 +62,42 @@ pending → validating → queued → uploading → done → itemCreated
 
 Only `'itemCreated'` is safe for thumbnail writes.
 
-`useUpload.ts` watches for the transition:
+`app/components/upload/upload-thumbnail-runner.tsx` watches for the transition. It mounts one `<FileThumbnailWatcher>` per file in the upload queue, so each in-flight pipeline gets its own `useThumbnailV2()` instance and therefore its own fetchers (presign, patch, metadata, embedding):
 
 ```typescript
-useEffect(() => {
-  for (const mediaFile of files) {
-    if (mediaFile.status === 'itemCreated' && !thumbnailedIds.has(mediaFile.id)) {
-      thumbnailedIds.add(mediaFile.id)
-      navigate(location.pathname + location.search, {
-        replace: true,
-        state: { reset: true },
-      })
-      runThumbnail(mediaFile.id, mediaFile.file).catch(console.error)
-    }
-  }
-}, [files])
+function FileThumbnailWatcher({ mediaFileId }: { mediaFileId: string }) {
+  const mediaFile = useUploadFile(mediaFileId)
+  const { run: runThumbnail } = useThumbnailV2(mediaFileId)
+
+  useEffect(() => {
+    if (!mediaFile) return
+    if (mediaFile.status !== 'itemCreated') return
+    if (thumbnailedIds.has(mediaFile.id)) return
+    thumbnailedIds.add(mediaFile.id)
+
+    void (async () => {
+      const release = await acquireThumbnailSlot()
+      try { await runThumbnail(mediaFile.file) }
+      catch (err) { console.error(`Thumbnail failed for ${mediaFile.id}:`, err) }
+      finally { release() }
+    })()
+  }, [mediaFile?.status, mediaFile?.id])
+
+  return null
+}
 ```
 
-**`thumbnailedIds`** is a **module-level `Set<string>`** shared across hook instances. This guarantees the pipeline runs exactly once per file even if `useUpload` is mounted in multiple components.
+**`thumbnailedIds`** is a **module-level `Set<string>`** shared across hook instances. This guarantees the pipeline runs exactly once per file even if the runner is mounted in multiple components.
 
-The `navigate(..., { state: { reset: true } })` triggers `usePagination`'s reset detection. **Do NOT use `useRevalidator`** — it doesn't update `usePagination`.
+**`MAX_CONCURRENT_THUMBNAILS = 4`** — a module-level slot gate (`acquireThumbnailSlot`). Without it a 534-file upload fires 534 pipelines at once, each doing presign + compute + patch + metadata + embedding, which buried the server.
+
+### Revalidation is debounced, not per-file
+
+The runner fires **one** `navigate(..., { state: { reset: true } })` per burst, on a `REVALIDATE_DEBOUNCE_MS = 700` timer keyed off the count of files at `itemCreated`/`done`. Previously each file navigated on its own, so a 534-file upload meant 534 loader runs pounding the DB.
+
+`state: { reset: true }` triggers `usePagination`'s reset detection. **Do NOT use `useRevalidator`** — it doesn't update `usePagination`.
+
+The runner also calls `pauseBackfill()` while any upload is in flight and `resumeBackfill()` when the queue drains — fresh uploads own the compute worker (see [§12](#12-on-demand-backfill)).
 
 See: [`docs/upload-multipart.md`](upload-multipart.md#post-upload-chain--db-item-creation) for the full upload → DB chain.
 
@@ -86,7 +105,7 @@ See: [`docs/upload-multipart.md`](upload-multipart.md#post-upload-chain--db-item
 
 ## 3. Presign → PUT → PATCH Pattern
 
-Stages 1–4 all follow the same three-step write pattern:
+Stage 1 never leaves the browser, so only **stages 2 and 3** write. Both follow the same three-step pattern:
 
 ```typescript
 // 1. Get a presigned URL for this item's thumbnail key
@@ -94,30 +113,21 @@ const { uploadUrl, publicUrl } = await fetcher.load(
   `/api/thumbnails/${itemId}/presign`
 ).data
 
-// 2. PUT the WebP blob directly to S3
+// 2. PUT the WebP blob directly to S3 — `putThumbnailToS3` in thumbnail-pipeline.ts
 await fetch(uploadUrl, {
   method: 'PUT',
   body: blob,
-  headers: { 'Content-Type': 'image/webp' },
+  headers: { 'Content-Type': 'image/webp', 'x-amz-acl': 'public-read' },
 })
 
 // 3. PATCH the Thumbnail record with the new URL + dimensions + stage
 await fetcher.submit(
-  { stage, url: publicUrl, width, height },
+  { stage, url: makeStageUrl(publicUrl, stage), width, height },
   { method: 'patch', action: `/api/thumbnails/${itemId}` },
 )
 ```
 
-Stage 0 skips S3 entirely — the hex color is stored directly:
-
-```typescript
-// Stage 0
-const color = hashToColor(file.name, file.type)
-await fetcher.submit(
-  { itemId, url: color },
-  { method: 'post', action: `/api/thumbnails/${itemId}` },
-)
-```
+The PATCH echoes `{ ok, stage, url, width, height }` back, which is what the fetcher-based thumbnail signal reads as `fetcher.data` on the consuming card (see the `stashly-thumbnail-pipeline` skill for the signal architecture).
 
 ---
 
@@ -131,16 +141,15 @@ thumbnails/{itemId}.webp
 
 Public URL: `https://{bucket}.t3.tigrisfiles.io/thumbnails/{itemId}.webp`
 
-Each successful stage (2+) **overwrites** the same S3 object. Stage 1 is **not** persisted to S3 — it lives only as an in-session `objectURL` to avoid the cache collision described below.
+Each successful stage (2 and 3) **overwrites** the same S3 object. Stage 1 is **not** persisted to S3 — it lives only as an in-session `objectURL` to avoid the cache collision described below.
 
 ### Cache-busting via `?v={stage}`
 
-Because stages 2/3/4 share the same S3 key, a naive write would mean: browser fetches stage 2, caches it under `Cache-Control: public, max-age=3600`, then stage 3 overwrites the S3 object — but the browser keeps showing stage 2 from cache. The fix: the URL written to `Thumbnail.url` includes a stage version query param:
+Because stages 2 and 3 share the same S3 key, a naive write would mean: browser fetches stage 2, caches it under `Cache-Control: public, max-age=3600`, then stage 3 overwrites the S3 object — but the browser keeps showing stage 2 from cache. The fix: `makeStageUrl(publicUrl, stage)` appends a stage version query param to the URL written to `Thumbnail.url`:
 
 ```
 https://{bucket}.t3.tigrisfiles.io/thumbnails/{itemId}.webp?v=2
 https://{bucket}.t3.tigrisfiles.io/thumbnails/{itemId}.webp?v=3
-https://{bucket}.t3.tigrisfiles.io/thumbnails/{itemId}.webp?v=4
 ```
 
 Each stage produces a distinct URL → browser refetches → `<AvatarImage>` re-runs its load lifecycle and the DOM updates.
@@ -157,12 +166,14 @@ There are no per-view (`grid` / `river` / `waterfall`) or per-size (`small` / `m
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| `GET` | `/api/thumbnails/:itemId/presign` | Returns `{ uploadUrl, publicUrl }` for the next thumbnail write |
-| `POST` | `/api/thumbnails/:itemId` | Creates the initial thumbnail record (stage 0 with hex color) |
-| `PATCH` | `/api/thumbnails/:itemId` | Updates `url`, `stage`, `width`, `height` for stages 1–4 |
-| `GET` | `/api/thumbnails/:itemId` | Redirects to the S3 presigned URL (1h expiry) — used by `useThumbnail` for displaying thumbnails |
+| `GET` | `/api/thumbnails/:itemId/presign` | Returns `{ uploadUrl, publicUrl }` for the next thumbnail write — a 5-minute `put` presign with `acl: 'public-read'` |
+| `GET` | `/api/thumbnails/:itemId/source` | Backfill only: 5-minute `get` presign on the **original** file, or `{ status: 'exists', url }` if someone already made a thumbnail. See [§12](#12-on-demand-backfill) |
+| `POST` | `/api/thumbnails/:itemId` | Creates a thumbnail record (`thumbnailCreateSchema`) |
+| `PATCH` | `/api/thumbnails/:itemId` | Updates `url`, `stage`, `width`, `height` (`thumbnailUpdateSchema`) |
 
-The presign route is registered with `id: 'thumbnail-presign'` to disambiguate from the detail route. See `app/routes.ts`.
+`app/routes/api/thumbnails.ts` exports **only an `action`** — POST, PATCH, and a 405 for anything else. There is no `GET` loader on the detail route; cards read `Thumbnail.url` (a public Tigris URL) straight from the loader payload.
+
+The presign and source routes are registered with `id: 'thumbnail-presign'` / `id: 'thumbnail-source'` to disambiguate from the detail route (`id: 'thumbnail-detail'`). See `app/routes.ts`.
 
 ---
 
@@ -172,20 +183,25 @@ The presign route is registered with `id: 'thumbnail-presign'` to disambiguate f
 
 ```prisma
 model Thumbnail {
-  id      String  @id
-  itemId  String?       // nullable for stage-0 cases pre-itemCreated, but the gate now prevents this
-  url     String?       // null = not yet stored; "#abc123" = hex placeholder; otherwise S3 URL
-  stage   Int     @default(0)
-  size    String?       // legacy: 'small' | 'medium' | 'large' | 'custom'
-  view    String?       // legacy: 'grid' | 'river' | 'waterfall'
-  width   Int?
-  height  Int?
+  id        String        @id
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  width     Int?
+  height    Int?
+  url       String?       // null = not yet stored; "#abc123" = legacy hex placeholder; otherwise S3 URL
+  content   Bytes?        @db.ByteA   // unused by the pipeline
+  view      ViewType      @default(grid)      // legacy: grid | river | waterfall
+  size      ThumbnailSize @default(small)     // legacy: small | medium | large | original | custom
+  stage     Int           @default(0)
+  itemId    String?
+  item      Item?         @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 ```
 
-- `url` starting with `#` indicates a hex-color stage-0 placeholder
+- `url` starting with `#` indicates a hex-color stage-0 placeholder. V2 no longer writes these, but **rows from before the V2 cutover still carry them**, which is why every consumer still filters on the prefix.
 - `url = null` means "not yet stored"
 - Real WebP URLs do not start with `#`
+- `view` and `size` are non-null enums with defaults, so the PATCH route passes `grid`/`medium` from query params rather than leaving them off
 
 ---
 
@@ -203,14 +219,16 @@ thumbnails: {
 },
 // select (best thumbnail per item)
 thumbnails: {
+  orderBy: { stage: 'desc' },
   take: 1,
   where: { NOT: { url: { startsWith: '#' } } },
-  // orderBy: { stage: 'desc' }   // optional, see §9 for current cap
-  select: { url: true, width: true, height: true, stage: true, size: true, view: true, id: true },
+  select: { url: true, width: true, height: true, stage: true, size: true, id: true },
 },
 ```
 
-Used in `app/routes/stash/gallery.tsx` and any other route that lists items by thumbnail.
+`orderBy: { stage: 'desc' }` is what makes `take: 1` mean "highest stage" rather than "whichever row comes back first".
+
+Used in `app/routes/stash/gallery.tsx` and any other route that lists items by thumbnail. `ItemCard.Cover` is the exception — it picks `thumbnails.find(t => t.stage === 2)` directly, because a stage-3 salient crop is the wrong shape for a cover strip.
 
 ---
 
@@ -220,12 +238,17 @@ All output is **WebP**. Located in `app/utils/thumbnail.ts`:
 
 | Function | Purpose |
 |----------|---------|
-| `hashToColor(name, type)` | Deterministic hex color from HSL — same input always produces same color |
-| `extractTinyThumbnail(file)` | 8×8 WebP data-URL via canvas (stage 1) |
+| `hashToColor(name, type)` | Deterministic hex color from HSL — **legacy stage 0**, only `useThumbnail.ts` (V1) still calls it |
+| `extractTinyThumbnail(file)` | 8×8 WebP `Blob` via canvas (stage 1) |
 | `canvasResize(file, maxSize?)` | WebP `Blob`, max 512×512 preserving aspect ratio (stage 2) |
+| `blurImageBlob(blob, radius)` | Gaussian blur pass over a WebP blob |
 | `dataUrlToBlob(dataUrl)` | Convert data-URL to `Blob`, fallback MIME `image/webp` |
 
+The stage functions themselves live in `app/utils/thumbnail-pipeline.ts` — `generateStage1Preview`, `generateStage2Resize`, `generateStage3Salient`, `putThumbnailToS3`, `makeStageUrl`, plus `compute()` (the compute-worker RPC helper), `extractMediaMetadata`, and `buildMediaMetadataFormData`. `useThumbnailV2` only sequences them and owns the HTTP/React state.
+
 For video thumbnails, use `generateVideoThumbnail(file)` from `app/utils/video.ts` (extracts a frame, then runs through the WebP pipeline).
+
+For text-renderable files (plain text, markdown, code, config), `app/utils/text-thumbnail.ts` "screenshots" the first ~32 KB onto an A4-proportioned white page via `OffscreenCanvas` — sans-serif for prose extensions, monospace for code/config (extension wins over MIME, because code files often arrive as `text/plain` or `application/octet-stream`). Entry points are `generateTextThumbnail` (stage 1) and `renderTextPageToBlob` (stage 2); eligibility is `isTextRenderableFile`. Empty files return `null` — no thumbnail beats a blank page. The pure line-layout function `layoutTextLines` is unit-tested in `app/utils/__tests__/text-thumbnail.test.ts`.
 
 For PDF thumbnails, use `generatePdfThumbnail(file)` (stage 1) and `renderPdfPageToBlob(file, maxSize)` (stage 2) from `app/utils/pdf.ts`. Both call into PDF.js (`pdfjs-dist`), render the first page to canvas with a white background, and return WebP. The Vite worker URL is set globally on import:
 
@@ -235,27 +258,31 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 ```
 
-`getPdfMetadata(file)` returns `{ pageCount, width, height }` from page 1 — useful when extending document metadata persistence in `saveMediaMetadata`.
+`getPdfMetadata(file)` returns `{ pageCount, width, height }` from page 1; `extractPdfMetadata(file)` returns the fuller `PdfDocumentMetadata` — both feed document metadata persistence.
 
-`extractPdfText(file, { maxPages = 5, maxChars = 20_000 })` returns `{ text, pageCount, pagesRead }` for indexing. `useThumbnail.ts` calls this for `application/pdf` uploads inside `saveMediaMetadata` and POSTs the result via the existing `save_media_metadata` intent (new fields: `documentText`, `documentPageCount`). The server stores it in `Search.content` (document-level fallback) and chunks it into `SearchChunk` rows (passage-level retrieval) via `upsertSearchChunks`. The chunked indexing flow is described in `## Semantic Search` below.
-
----
-
-## 9. Hide Stage 4 from Gallery (Caption Cap)
-
-Stage 4 (Florence-2 caption overlay) is currently produced and stored, but **hidden from gallery views**. The gallery query treats stage 3 as the highest visible stage. This was an explicit product decision (commit `1201c3c`: "keep stage-4 pipeline but hide captioned thumbnails from gallery (cap at stage 3)") — captions are useful for accessibility/search but were visually noisy as default thumbnails.
-
-If reactivating stage-4 visibility, add `orderBy: { stage: 'desc' }` to the gallery thumbnail select.
+`extractPdfText(file, { maxPages = 5, maxChars = 20_000 })` returns `{ text, pageCount, pagesRead }` for indexing. `extractMediaMetadata` in `thumbnail-pipeline.ts` dispatches the `pdfText` compute kind for `application/pdf` (and `mdMeta` for markdown), then POSTs the result to `/api/items` under the `save_media_metadata` intent as `documentText` + `documentPageCount`. Server-side (`app/routes/api/items.ts`) that text goes to `upsertSearchContent` for the document-level `Search.content` fallback, and through `chunkText` → `upsertSearchChunks` for passage-level `SearchChunk` rows. See [`docs/semantic-search.md`](semantic-search.md) for the chunked indexing and embedding flow.
 
 ---
 
-## 10. Concurrency Notes — AI Stages
+## 9. Stage 4 (Caption Overlay) — Removed (historical)
 
-The AI stages share a single WebGPU context. Running multiple AI stages concurrently causes WebGPU conflicts.
+Stage 4 drew a Florence-2 VLM caption onto the stage-3 image. It was first hidden from gallery views by capping the gallery select at stage 3 (commit `1201c3c`: "keep stage-4 pipeline but hide captioned thumbnails from gallery (cap at stage 3)") — captions were useful for accessibility/search but visually noisy as default thumbnails — and then dropped entirely in V2. The gallery select now carries `orderBy: { stage: 'desc' }` again, because 3 is the top stage.
 
-The pipeline **serializes** stages 3 and 4 per file (commit `67e2830`: "serialize AI stages to prevent concurrent WebGPU conflicts + log errors"). Within stages 1 and 2 (pure canvas work, no GPU model), files can pipeline freely.
+Florence-2 itself still lives in `app/.client/stashly-ai.ts` for captioning outside the thumbnail path. Nothing in the thumbnail pipeline calls it.
 
-If extending the AI portion, respect this serialization — wrap each stage in an awaited block, and surface errors via `console.error` rather than swallowing them.
+---
+
+## 10. Concurrency Notes — AI Stage
+
+The AI work shares a single WebGPU context, and concurrent inference conflicts.
+
+Serialization now lives in `app/workers/ai-queue.ts`, a shared queue that `thumbnail.ai.ts` and the embedding worker both go through — so a saliency crop can't collide with an embedding run either. (Originally this was an in-pipeline serialization of stages 3 and 4 per file; commit `67e2830`: "serialize AI stages to prevent concurrent WebGPU conflicts + log errors".) Stages 1 and 2 are pure canvas work with no GPU model, so files pipeline freely there, bounded only by the compute worker's own cap.
+
+If extending the AI portion, go through `ai-queue.ts` rather than adding a second serialization scheme.
+
+### Error handling — no telemetry
+
+Every stage swallows its own failure: `generateStage3Salient` catches and returns `null`, `putThumbnailToS3` catches network errors and returns `false`, and the runner logs `Thumbnail failed for <id>`. Failures are reported by **`console.error` only** — there is no telemetry, error reporting, or server-side record of a stage that didn't land. A file that fails simply keeps whatever lower stage it reached, and (for stage 2 failures) becomes a candidate for on-demand backfill.
 
 ---
 
@@ -269,29 +296,32 @@ If extending the AI portion, respect this serialization — wrap each stage in a
 |--------------|------------|
 | `tinyImage` | `extractTinyThumbnail` |
 | `tinyPdf` | `generatePdfThumbnail` |
+| `tinyText` | `generateTextThumbnail` |
 | `resizeImage` | `canvasResize` |
 | `resizePdf` | `renderPdfPageToBlob` |
+| `resizeText` | `renderTextPageToBlob` |
 | `pdfText` | `extractPdfText` |
+| `pdfMeta` | `extractPdfMetadata` |
+| `mdMeta` | markdown metadata + text extraction |
 | `imageDimensions` | `createImageBitmap` |
 
 ### What stays on main
 
-- **Stage 0** — single fetcher.submit (instant)
 - **Video thumbnailing** — uses `<video>` DOM element, not available in workers
-- **EXIF parsing** — `exifr` runs from main alongside the rest of `saveMediaMetadata`
+- **EXIF parsing** — `exifr` runs from main alongside the rest of `extractMediaMetadata`
 - **HTTP + React state** — presigns, PUTs, PATCHes, setState; these don't block
-- **Stages 3 and 4** — image-only AI in `app/workers/thumbnail.ai.ts` (which despite the path is a regular module, not a Worker; runs on main with WebGPU)
+- **Stage 3** — image-only AI in `app/workers/thumbnail.ai.ts` (which despite the path is a regular module, not a Worker; runs on main with WebGPU, serialized by `ai-queue.ts`)
 
 ### RPC protocol
 
 Main → worker: `{ id: number, kind: ..., file, ...args }`
 Worker → main: `{ id, kind, blob | result | message }` correlated by `id`.
 
-`useThumbnail.ts` exposes a typed `compute({ kind, file })` helper that returns the matching response variant — narrow on `res.kind` to access the result.
+`app/utils/thumbnail-pipeline.ts` exposes a typed `compute({ kind, file })` helper that returns the matching response variant — narrow on `res.kind` to access the result. (V1's `useThumbnail.ts` still carries its own private copy of the same singleton.)
 
 ### Concurrency cap
 
-The worker enforces `MAX_CONCURRENT = 1`. Additional requests queue and dispatch as slots free. This is the global cap — doesn't matter how many `useThumbnail` hooks fire in parallel from how many `useUpload` instances; the worker is a singleton.
+The worker enforces `MAX_CONCURRENT = 1`. Additional requests queue and dispatch as slots free. This is the global cap — doesn't matter how many `useThumbnailV2` hooks fire in parallel from how many watchers; the worker is a singleton.
 
 The cap is 1 (not 2 or higher) because PDF.js inside a dedicated worker falls back to **fake worker mode** — it can't spawn nested workers reliably across browsers, so `getDocument`/`getPage`/`render` run synchronously inside our compute worker. Multiple parallel PDF operations in fake-worker mode terminate each other's tasks ("Worker task was terminated" warnings). Serializing avoids the conflict; throughput cost is acceptable since each PDF op is fast.
 
@@ -347,10 +377,34 @@ The worker is created lazily on first `compute()` call (guarded by `typeof windo
 
 ---
 
+## 12. On-demand Backfill
+
+Upload-time generation only ever runs from the upload queue, where the original `File` is still in memory. When it fails — compute timeout, tab closed mid-run, a deeply-nested file in a huge batch — the item shows its category icon forever. `app/hooks/useThumbnailBackfill.ts` closes that gap: when a card without a real thumbnail scrolls into view, it re-downloads the original and runs **stage 2 only** (stage 3's salient crop is the most expensive and buys the least here). Video is the one exception: its stage 2 needs a frame, so `generateStage1Preview` runs first and feeds `generateStage2Resize`.
+
+The hook returns a callback ref, wired into the `ItemCard.Thumbnail` and `ItemCard.Cover` roots, so every grid view gets it for free. **Memoize any composed ref** (`composeRefs` in `item-card.tsx`) — a fresh callback each render detaches and re-attaches the observer on every re-render.
+
+A backfill costs a full download of the original, so the guards *are* the feature:
+
+| Guard | Where |
+|-------|-------|
+| Viewport-gated — one shared `IntersectionObserver`, `rootMargin: '300px 0px'` | `useThumbnailBackfill.ts` |
+| LIFO queue — newest request runs first, so fast scrolling favours where you stopped | `queue.pop()` in `drain()` |
+| `MAX_CONCURRENT = 2`, jobs started inside `requestIdleCallback` (2s timeout) | `drain()` / `whenIdle()` |
+| Yields to uploads — `pauseBackfill()` / `resumeBackfill()`, called by `upload-thumbnail-runner.tsx` | exported from the hook |
+| Attempted once — in-memory `Set` plus a capped `sessionStorage` skip list (`stashly:thumb-backfill-failed`) for permanent failures | `rememberFailure()` |
+| Type/size eligibility, Data-Saver and 2g opt-out | `app/utils/thumbnail-backfill.ts` (pure, unit-tested) |
+
+`GET /api/thumbnails/:itemId/source` → `getThumbnailSource` in `app/.server/thumbnail-actions.ts` presigns a 5-minute GET on the original. It re-checks read permission and the 16 MB `BACKFILL_MAX_BYTES` cap server-side, and returns `{ status: 'exists', url }` when another client already backfilled the item — the client paints that instead of downloading again. `{ status: 'unsupported' }` covers folders, missing keys, and oversize files. **Keep the client and server caps in sync** (both read `BACKFILL_MAX_BYTES` from `app/utils/thumbnail-backfill.ts`) or the client burns a round trip discovering the server said no.
+
+A card that unmounts mid-job (route change) lets the in-flight job finish and persists via a plain `fetch` PATCH (`patchDetached`) rather than the keyed fetcher; only *queued* jobs are dropped.
+
+---
+
 ## Related Documentation
 
 - [`docs/upload-multipart.md`](upload-multipart.md) — Upload flow + post-upload DB item creation chain
 - [`docs/ai-pipeline.md`](ai-pipeline.md) — AI worker architecture, WebGPU detection
 - [`docs/superpowers/specs/2026-04-24-living-thumbnails-design.md`](superpowers/specs/2026-04-24-living-thumbnails-design.md) — Original design spec
-- [`docs/superpowers/plans/2026-04-24-living-thumbnails.md`](superpowers/plans/2026-04-24-living-thumbnails.md) — Implementation plan
-- [`CLAUDE.md`](../CLAUDE.md) — `## Thumbnail Pipeline` section
+- [`docs/superpowers/plans/2026-04-24-living-thumbnails.md`](superpowers/plans/2026-04-24-living-thumbnails.md) — Implementation plan (V1, 5 stages)
+- [`docs/semantic-search.md`](semantic-search.md) — Chunked document indexing fed by `pdfText` / `mdMeta`
+- [`.agents/skills/stashly-thumbnail-pipeline/SKILL.md`](../.agents/skills/stashly-thumbnail-pipeline/SKILL.md) — Condensed working reference, including the swappable thumbnail-signal architecture

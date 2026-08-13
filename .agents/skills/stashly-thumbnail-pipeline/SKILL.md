@@ -13,7 +13,7 @@ Client-side 3-stage progressive generation. All output is **WebP**. Entry point:
 
 ## On-demand backfill (items that never got a thumbnail)
 
-Upload-time generation only ever runs from the upload queue, where the original `File` is in memory. When it fails (compute timeout, tab closed mid-run, a deeply-nested file in a huge batch), the item shows the category icon forever. `app/hooks/useThumbnailBackfill.ts` closes that gap: it re-downloads the original and runs **stage 2 only** (stage 3's ViT crop is the most expensive stage and buys the least here).
+Upload-time generation only ever runs from the upload queue, where the original `File` is in memory. When it fails (compute timeout, tab closed mid-run, a deeply-nested file in a huge batch), the item shows the category icon forever. `app/hooks/useThumbnailBackfill.ts` closes that gap: it re-downloads the original and runs **stage 2 only** (stage 3's salient crop is the most expensive stage and buys the least here). Video is the one exception — its stage 2 needs a frame, so `generateStage1Preview` runs first and is fed into `generateStage2Resize`.
 
 Wired into `ItemCard.Thumbnail` and `ItemCard.Cover` roots via a callback ref — every grid view gets it for free. **Memoize any composed ref** (`composeRefs` in `item-card.tsx`): a fresh callback each render detaches and re-attaches the observer every re-render.
 
@@ -44,7 +44,7 @@ A card that unmounts mid-job (route change) lets the in-flight job finish and pe
 |-------|------|-----------|
 | 1 | 8×8 blur preview | Image: `extractTinyThumbnail` · Video: `generateVideoThumbnail` · PDF: `generatePdfThumbnail` (from `@/utils/pdf`) · Text: `generateTextThumbnail` (from `@/utils/text-thumbnail`) — **local `URL.createObjectURL` only, NOT persisted to S3 or DB** |
 | 2 | 512px resize | Image: `canvasResize(file, 512)` · Video: re-encode frame · PDF: `renderPdfPageToBlob(file, 512)` · Text: `renderTextPageToBlob(file, 512)` → presign → PUT to S3, URL written as `${publicUrl}?v=2` |
-| 3 | ViT saliency crop | AI worker (`thumbnail.ai.ts`) — **images only**, URL written as `${publicUrl}?v=3` |
+| 3 | Salient crop | `generateSalientCrop` in `thumbnail.ai.ts` — **images only**, URL written as `${publicUrl}?v=3`. Native `FaceDetector` (Chrome) crops on the largest face; otherwise a ViT-informed geometric center crop. Serialized through `app/workers/ai-queue.ts`, shared with the embedding worker, because WebGPU can't take concurrent inference |
 
 **Cache-bust query param**: stages 2/3 share the same S3 key, so the URL written to `Thumbnail.url` includes `?v={stage}`. Without this, browser cache (`Cache-Control: max-age=3600` on the S3 object) keeps showing the prior stage even after the object is overwritten.
 
@@ -56,7 +56,7 @@ PDFs and text-based files stop after stage 2. The PDF.js worker URL is set globa
 
 ## Compute worker
 
-Heavy thumbnail compute (PDF.js parsing, canvas resize, image decoding, PDF text extraction) runs in a singleton dedicated worker at `app/workers/thumbnail.compute.worker.ts` with an internal concurrency cap of **1** and a 30-second per-op timeout. The pipeline helpers in `@/utils/thumbnail-pipeline` dispatch RPC requests via `compute({ kind, file })`; `useThumbnailV2` handles HTTP + React state on main. Video thumbnails stay on main because they require `<video>` DOM access. Stage 3 (image AI) also stays on main — it calls into `app/workers/thumbnail.ai.ts`, which is a regular module using WebGPU (not a Worker — the file location is historical).
+Heavy thumbnail compute runs in a singleton dedicated worker at `app/workers/thumbnail.compute.worker.ts` with an internal concurrency cap of **1** and a 30-second per-op timeout. RPC kinds: `tinyImage` / `tinyPdf` / `tinyText`, `resizeImage` / `resizePdf` / `resizeText`, `pdfText`, `pdfMeta`, `mdMeta`, `imageDimensions`. The pipeline helpers in `@/utils/thumbnail-pipeline` dispatch RPC requests via `compute({ kind, file })`; `useThumbnailV2` handles HTTP + React state on main. Video thumbnails stay on main because they require `<video>` DOM access. Stage 3 (image AI) also stays on main — it calls into `app/workers/thumbnail.ai.ts`, which is a regular module using WebGPU (not a Worker — the file location is historical).
 
 The cap is 1 because PDF.js inside a dedicated worker falls back to **fake worker mode** (it can't spawn a sub-worker reliably from inside another worker). In fake-worker mode, multiple concurrent PDF operations terminate each other's tasks ("Worker task was terminated" warnings) — serializing is safer than the throughput win.
 
@@ -66,11 +66,15 @@ The cap is 1 because PDF.js inside a dedicated worker falls back to **fake worke
 
 **PDF.js verbosity**: `pdfjs.getDocument(...)` calls pass `verbosity: 0` (errors only) to silence the high-frequency `"Worker task was terminated"` warnings PDF.js emits on every `doc.destroy()` in fake-worker mode. They are non-fatal (PDF.js logs them with "ignoring errors") but spam the console.
 
-## Presign → PUT → PATCH pattern (stages 1–4)
+## Presign → PUT → PATCH pattern (stages 2–3)
 
-1. `GET /api/thumbnails/:itemId/presign` → `{ uploadUrl, publicUrl }`
-2. `PUT blob` to S3 `uploadUrl` with `Content-Type: image/webp`
-3. `PATCH /api/thumbnails/:itemId` with `{ stage, url, width, height }`
+Stage 1 never leaves the browser, so only stages 2 and 3 run this:
+
+1. `GET /api/thumbnails/:itemId/presign` → `{ uploadUrl, publicUrl }` (5-minute PUT, `acl: 'public-read'`)
+2. `PUT blob` to S3 `uploadUrl` with `Content-Type: image/webp` (`putThumbnailToS3`)
+3. `PATCH /api/thumbnails/:itemId` with `{ stage, url, width, height }` → echoes `{ ok, stage, url, width, height }` back, which is what the fetcher-signal consumer reads as `fetcher.data`
+
+`app/routes/api/thumbnails.ts` exports **only an `action`** (POST creates, PATCH updates, anything else 405) — there is no `GET` loader on the detail route.
 
 **S3 key**: `thumbnails/{itemId}.webp` — one file per item, overwritten as stages improve. `publicUrl = https://{bucket}.t3.tigrisfiles.io/thumbnails/{itemId}.webp`.
 
@@ -81,16 +85,22 @@ Always exclude hex-color stage-0 placeholders from both the item filter and the 
 // where (items must have a real thumbnail)
 thumbnails: { some: { url: { not: null }, NOT: { url: { startsWith: '#' } } } }
 // select (best thumbnail per item)
-thumbnails: { take: 1, where: { NOT: { url: { startsWith: '#' } } } }
+thumbnails: { orderBy: { stage: 'desc' }, take: 1, where: { NOT: { url: { startsWith: '#' } } } }
 ```
+`orderBy: { stage: 'desc' }` is what makes `take: 1` mean "highest stage" rather than "whichever row comes back first" — see `app/routes/stash/gallery.tsx`. `ItemCard.Cover` instead picks `thumbnails.find(t => t.stage === 2)` directly, since stage 3 crops are the wrong shape for a cover strip.
 
-**Thumbnail utils** (`app/utils/thumbnail.ts`): `hashToColor`, `extractTinyThumbnail`, `canvasResize`, `dataUrlToBlob`. For video thumbnails: `generateVideoThumbnail(file)` from `app/utils/video.ts`.
+**Thumbnail utils** (`app/utils/thumbnail.ts`): `hashToColor` (stage 0 only — legacy, kept for `useThumbnail.ts`), `extractTinyThumbnail`, `canvasResize`, `blurImageBlob`, `dataUrlToBlob`. For video thumbnails: `generateVideoThumbnail(file)` from `app/utils/video.ts`.
+
+**Legacy V1**: `app/hooks/useThumbnail.ts` is the pre-V2 hook (stage 0 hex colors, its own inline compute-worker singleton). It is still exported from `app/hooks/index.ts` but **no component calls it** — don't extend it, and don't mistake it for the live pipeline.
 
 ## Web Workers (general)
 
 CPU-intensive work runs off the main thread in `app/workers/`:
-- `stash.worker.ts` — language detection and tokenization for stash items
+- `thumbnail.compute.worker.ts` — the only real thumbnail `Worker` (see above)
+- `stash.worker.ts` / `stash.worker.helpers.ts` — language detection and tokenization for stash items
 - `stash.ai.ts` — AI inference helpers for the stash worker
-- `thumbnail.ai.ts` — thumbnail generation AI worker
+- `embedding.ai.ts` — embedding inference
+- `thumbnail.ai.ts` — saliency crop; a regular module on main, not a `Worker`
+- `ai-queue.ts` — shared serialization queue so saliency and embedding never hit WebGPU at once
 
 Workers are loaded via `new Worker(new URL('./workers/...', import.meta.url))`. Type augmentations for third-party worker APIs live in `app/types/tokenizers-augment.d.ts`.

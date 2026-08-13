@@ -106,6 +106,23 @@ DIRECT_DATABASE_URL="postgres://stashly:<password>@stashly-postgres.flycast:5432
 Run this from somewhere on the Fly private network (e.g. `fly ssh console` on
 the main app, or a `fly proxy` tunnel) so `.flycast` resolves.
 
+## 6. Connection budget
+
+Check the cluster's ceiling with `SHOW max_connections;` and size everything
+under it:
+
+- **PgBouncer** opens up to `DEFAULT_POOL_SIZE` (`25` in `../pgbouncer/fly.toml`)
+  server connections **per machine, per user/db pair**.
+- The **`LISTEN` client** holds one long-lived direct session per app machine.
+  It is what consumes the `pg_notify('notifications', …)` emitted by the
+  `notification_change_notify` trigger on `Notification`, so it must reach
+  Postgres directly — never through the pooler.
+- **Migrations** take a further direct session plus an advisory lock.
+
+Watch `stashly_db_pool_waiting` on `/api/metrics` (see [`../README.md`](../README.md)
+→ Observability) — a non-zero value means the app side is queueing for
+connections.
+
 ---
 
 ## pgvector not in the image

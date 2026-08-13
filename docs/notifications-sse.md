@@ -220,8 +220,9 @@ Design decisions:
 - **`setMaxListeners(0)`** — there is one listener per open SSE connection, so
   the default Node warning at 10 is disabled deliberately.
 - **Self-healing.** `ensureListener()` is safe to call on every SSE request
-  (only the first connects). On `error`/`end` the slot is cleared and a
-  reconnect is scheduled after 1s.
+  (only the first connects). On `end` (or a failed connect) the slot is cleared
+  and a reconnect is scheduled after 1s; `error` events are logged (a fatal
+  error is followed by `end`).
 
 Public API:
 
@@ -280,8 +281,10 @@ Guarantees:
 
 ### Compression carve-out (`server.js`)
 
-Express `compression` buffers responses, which would stall an SSE stream. The
-filter excludes `text/event-stream`:
+Express `compression` buffers responses, which would stall an SSE stream.
+Compression runs in **production only** (dev skips it entirely — brotli on
+Vite's hundreds of uncached module responses is CPU-heavy), and its filter
+excludes `text/event-stream`:
 
 ```js
 app.use(
@@ -497,7 +500,7 @@ flowchart LR
 | --- | --- |
 | Server crash on client disconnect | `safeSend` guards every write; first throw runs `cleanup()`. |
 | Duplicate connections under HMR | Emitter + LISTEN client pinned to `globalThis`. |
-| Dropped `LISTEN` connection | `ensureListener()` self-heals on `error`/`end` (reconnect after 1s). |
+| Dropped `LISTEN` connection | `ensureListener()` self-heals on `end`/failed connect (reconnect after 1s). |
 | Events missed while disconnected | `reconcile()` on reconnect + tab-visible → full `reset`. |
 | Bursts (mark-all) collapsed | Native `EventSource` + reducer processes every event (not `useEventSource`). |
 | Idle proxy timeouts | 25s `ping` heartbeat + `X-Accel-Buffering: no`. |
@@ -534,6 +537,7 @@ otherwise served only outside production.
 | `stashly_eventloop_lag_seconds_{mean,p99,max}` | gauge | The single-funnel ceiling — LISTEN processing and request handling share one loop. |
 | `stashly_notify_events_total` | counter | NOTIFY throughput through the LISTEN bridge. |
 | `stashly_sse_connections` | gauge | Open EventSource streams (each holds a heartbeat timer). |
+| `stashly_sse_connections_opened_total` | counter | Cumulative stream opens — churn vs. the steady-state gauge above. |
 | `stashly_mark_all_read_total` | counter | The burst trigger itself. |
 | `stashly_db_pool_errors_total` | counter | pg pool errors. |
 
@@ -592,5 +596,3 @@ escalate on signal.
 | `app/routes/api/metrics.ts` | `GET /api/metrics` scrape endpoint |
 | `app/.server/db.ts` | Owns the `pg.Pool` (exposes saturation gauges) |
 | `deploy/pgbouncer/*` | PgBouncer Fly app (transaction pooling) |
-</content>
-</invoke>

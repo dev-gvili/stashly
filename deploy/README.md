@@ -28,8 +28,11 @@ main app ──DATABASE_URL──────▶ stashly-pgbouncer.flycast:6432 
 ## Observability
 
 The app exposes `GET /api/metrics` (Prometheus text; `app/.server/metrics.ts`),
-guarded by `METRICS_TOKEN`. To scrape with Fly's managed Prometheus, add to the
-main app's `fly.toml`:
+guarded by `METRICS_TOKEN` — with the token unset the route **404s in
+production**, so set it before scraping. Gauges include `stashly_db_pool_total`
+/ `_idle` / `_waiting` (sampled from the owned `pg.Pool` in `app/.server/db.ts`),
+`stashly_sse_connections`, and `stashly_eventloop_lag_seconds_*`. To scrape with
+Fly's managed Prometheus, add to the main app's `fly.toml`:
 
 ```toml
 [metrics]

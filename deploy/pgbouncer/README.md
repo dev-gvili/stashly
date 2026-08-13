@@ -50,10 +50,11 @@ fly secrets set \
 fly deploy
 ```
 
-`DB_PORT`, `POOL_MODE`, pool sizes, and `AUTH_TYPE` are set in `fly.toml`; tune
-`DEFAULT_POOL_SIZE` to stay comfortably under Postgres `max_connections`
-(remember: **every** PgBouncer machine opens up to `DEFAULT_POOL_SIZE` server
-connections).
+`DB_PORT`, `POOL_MODE`, pool sizes, `AUTH_TYPE`, and `SERVER_TLS_SSLMODE` are set
+in `fly.toml` (currently `transaction` / `MAX_CLIENT_CONN=5000` /
+`DEFAULT_POOL_SIZE=25` / `scram-sha-256` / `disable`); tune `DEFAULT_POOL_SIZE`
+to stay comfortably under Postgres `max_connections` (remember: **every**
+PgBouncer machine opens up to `DEFAULT_POOL_SIZE` server connections).
 
 ## Point the main app at it
 
@@ -76,7 +77,7 @@ Optional app-side tuning (defaults shown):
 | --- | --- | --- |
 | `DATABASE_POOL_MAX` | `10` | Max app→PgBouncer connections per instance. Can stay small — PgBouncer does the fan-out. |
 | `DATABASE_POOL_TIMEOUT_MS` | `10000` | Fail fast instead of hanging when the pool is exhausted. |
-| `METRICS_TOKEN` | _(unset)_ | If set, required to scrape `/api/metrics`. |
+| `METRICS_TOKEN` | _(unset)_ | Required to scrape `/api/metrics` when set (`?token=` or `Authorization: Bearer`). Leaving it unset **404s the endpoint in production** — set it on any deployed app you want to scrape. |
 
 ## Notes & caveats
 
@@ -87,8 +88,10 @@ Optional app-side tuning (defaults shown):
 - **Migrations:** run against `DIRECT_DATABASE_URL`. `prisma.config.ts` already
   prefers it, so `pnpm prisma migrate deploy` works as long as the env var is
   set in the migration environment.
-- **Health:** Fly's TCP checks on `:6432` confirm the listener is up. For a
-  deeper check, exec in and run `psql -p 6432 -U <user> pgbouncer -c 'SHOW POOLS;'`.
+- **Health:** `fly.toml` defines the `:6432` TCP service but **no health checks**
+  — add a `[[services.tcp_checks]]` block if you want Fly to probe the listener.
+  For a deeper check, exec in and run
+  `psql -p 6432 -U <user> pgbouncer -c 'SHOW POOLS;'`.
 - **Redundancy:** this removes the connection-pool cliff. The `pg_notify` +
   single-`LISTEN` funnel ceiling is separate — see the doc's scaling notes for
   when to graduate to a broker.

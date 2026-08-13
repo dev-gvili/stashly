@@ -31,6 +31,10 @@ description: Stashly activity recording — the fire-and-forget createActivity p
 
 When adding a new kind: add the model + enum, add a prefix to `StashlyPrefixMap`, extend `defaultInclude` and `OverviewActivityKind` in `activity-actions.ts`, extend `formatActivity` in `app/utils/activity.ts`, and add a verb to `ACTIVITY_VERB` in `overview-view.tsx`.
 
+## Where activity surfaces
+
+`ActivityFeed` (`app/components/core-components/activity-feed.tsx`, rows rendered by `activity-entry.tsx`) is the single render surface. Two callers: `item-activity-drawer.tsx` and the item page's side panel (`app/components/views/item-page/item-panel.tsx`). The old gallery-image sidebar is gone — the item page replaced it.
+
 ## `openedAt` tracking
 
-Any route loader that opens a file, folder, collection, or image must call `touchOpenedAt(itemId)` from `@/services/item-actions` fire-and-forget — `Promise.resolve().then(() => touchOpenedAt(id)).catch(() => {})`. This keeps `openedAt` current for recency/suggested-items features. Current callers: `folder.tsx`, `file.tsx`, `collection.tsx`, `gallery-image.tsx`.
+Any route loader that opens a file, folder, collection, or image must call `touchOpenedAt(itemId)` from `@/services/item-actions` fire-and-forget — `Promise.resolve().then(() => touchOpenedAt(id)).catch(() => {})`. This keeps `openedAt` current for recency/suggested-items features. Current callers: `routes/stash/folder.tsx`, `routes/stash/file.tsx`, `routes/stash/collection.tsx`. There is no longer a `gallery-image.tsx` route — images open through the shared item page at `stash/folders/:folderId/files/:fileId` (`file.tsx`), so its `touchOpenedAt` call covers them too.

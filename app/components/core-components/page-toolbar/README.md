@@ -5,15 +5,33 @@ primitives in `@/ui/*`, icons from `@/components/icons`, and `globals.css`
 design tokens. No inline styles and no arbitrary Tailwind values — token scale
 classes only, so light/dark mode comes free from the `.dark` class on `<html>`.
 
+## What actually ships
+
+**`PageToolbarPathRail` won** (stash UI pass, PR #21). It is wired into the app
+through `StashPageToolbar` in
+[`@/components/views/stash-page-toolbar.tsx`](../../views/stash-page-toolbar.tsx),
+which totals the selected bytes, opens `MoveToFolderDialog`, and connects the
+bulk actions to the `/api/items` and `/api/favorites` intents. Routes using it:
+`routes/stash/all.tsx` and `routes/stash/folder.tsx` — `app-toolbar.tsx` bails
+out on those paths so the two don't stack.
+
+The other four variants are unwired: still exported, still compile, but nothing
+in `app/routes/` renders them. Treat them as the concept set the decision was
+made from.
+
 ## Variants
 
 | File | Direction | Best for |
 | --- | --- | --- |
-| `page-toolbar-morph.tsx` | **Morphing single row** — the `h-14` header swaps content in place when a selection exists. No height change, no layout shift. | Default. Matches the current `AppHeader` height and rhythm. |
+| `page-toolbar-path-rail.tsx` | **Path-led rail** — breadcrumb is the title; a right-hand rail swaps to bulk mode in place. **Shipped.** | Deeply nested browsing where the path matters most. |
+| `page-toolbar-morph.tsx` | **Morphing single row** — the `h-14` header swaps content in place when a selection exists. No height change, no layout shift. | Matches the `AppHeader` height and rhythm. |
 | `page-toolbar-dock.tsx` | **Persistent header + floating dock** — header never changes; icon-only actions ride a floating pill above the list. | Long scrolling lists; keeps stats always visible. |
 | `page-toolbar-stacked.tsx` | **Stacked** — stat cards row + labelled bulk-action row that tints when active, with All / Invert / None. | Data-dense list views, power users. |
-| `page-toolbar-path-rail.tsx` | **Path-led rail** — breadcrumb is the title; a right-hand rail of icon actions swaps to bulk mode in place. | Deeply nested browsing where the path matters most. |
 | `page-toolbar-command-bar.tsx` | **Slide-over command bar** — permanent path row; an inverted full-width bar slides in beneath it on selection. | Unmistakable bulk mode; touch-friendly labelled targets. |
+
+`toolbar-stats.tsx` holds the shared display pieces the variants compose —
+`SelectAllCheckbox`, `InlineStats`, `StorageMeter`, `StatCard`, `StatCards` —
+and `layout-toggle.tsx` the grid/list switch. All re-exported from `index.ts`.
 
 ## Bulk operations covered
 
@@ -22,6 +40,12 @@ select (tri-state all/none/invert) · move · favorite · download · share · t
 
 Trash context (`context="trash"`) swaps the destructive set for **Restore /
 Restore to… / Delete forever**.
+
+Path-rail carries the subset it needs: move · favorite · download · share ·
+trash (and restore / delete-forever under `context="trash"`), with a
+clear-selection button in place of the tri-state `SelectAllCheckbox` and no
+overflow menu. Its non-selection state is currently bare — just a separator; the
+neutral search / filter / sort / view rail its JSDoc describes is not rendered.
 
 ## Nested folders
 
@@ -32,9 +56,11 @@ itself, collapses the middle of a deep path behind a "…" dropdown, and strips
 `cursor`/`selectedItems` from the href so navigating up doesn't carry a stale
 selection.
 
-Variants 4 and 5 always show it; variants 1 and 2 swap their `<h1>` for it once
-`useBreadcrumbs()` reports more than one crumb. Your route loader must return
-`crumbs` for any of this to appear:
+Path-rail, stacked and command-bar always show it; morph and dock swap their
+`<h1>` for it once `useBreadcrumbs()` reports more than one crumb. (Path-rail
+inverts the test: with **no** crumbs it falls back to a plain label derived from
+`location.state?.name` or the last URL segment, and hides its Back button.) Your
+route loader must return `crumbs` for any of this to appear:
 
 ```tsx
 export async function loader({ params }: Route.LoaderArgs) {
@@ -49,7 +75,27 @@ trashed count, and per-selection summary (count, folders/files split, selected
 size). Format sizes with `formatSize('byte', 'unit', bytes)` from
 `@/utils/formaters` before passing them in — `LibraryStats.size` is a string.
 
+Morph, dock and stacked take the whole `stats: LibraryStats`; command-bar takes
+a pre-rendered `statsLine: string`. **Path-rail takes neither** — its only
+counter prop is `itemCount: number`, rendered as an `{n} items` badge, plus an
+`onBack` callback for the Back button. `StashPageToolbar` still accepts
+`LibraryStats` at the route boundary and passes `stats.files + stats.folders`
+down, so loaders don't have to change if a different variant is swapped in.
+
 ## Usage
+
+In a route, don't reach for a variant directly — render `StashPageToolbar`,
+which already owns the selected-byte total, the move dialog and the fetcher
+intents:
+
+```tsx
+<SelectionProvider items={items.map((i) => i.id)}>
+  <StashPageToolbar stats={loaderData.stats} items={items} parentId={folderId} />
+  {/* item grid */}
+</SelectionProvider>
+```
+
+Wiring a variant by hand looks like this:
 
 ```tsx
 import { PageToolbarMorph, type LibraryStats } from '@/components/core-components/page-toolbar'
@@ -131,6 +177,14 @@ These deviate from the raw design export on purpose — repo conventions win:
 - **Structural borders**: `border-input`, never the default `border` token.
 - **z-index**: sticky headers cap at `z-10` — anything higher covers tooltip
   portals, which sit at `z-9999`.
+
+The shipped path-rail departs from the first and third of those, in step with
+the rest of the main column after PR #21: it sits on `bg-background` (like
+`app-header.tsx`, which is `bg-background z-40`) and uses `sticky top-0 z-30`.
+Both are still under the tooltip layer. Its groupings are drawn with
+`ring-2 ring-accent` over `bg-card` rather than `border-input`, and the bulk
+cluster is a real `ButtonGroup` with `ButtonGroupText`/`ButtonGroupSeparator`
+holding the "{n} selected" count.
 - **Type scale**: `text-xs` is the floor; the export's `text-[11px]`,
   `text-[12.5px]`, `text-[13px]`, `text-[15px]` map to `text-xs` / `text-sm`.
 - **Icons**: `size-5` inline (`size-4` for the meter's inline glyph); the

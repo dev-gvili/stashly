@@ -2,6 +2,45 @@
 
 This document covers the AI pipeline architecture for Stashly, including production-ready Transformers.js integration, the auto-detect language transcription pipeline (Node-AV + Whisper), and the summarizer recommendation.
 
+> ⚠️ **Status (2026-08-13): §2 and §3 are reference notes, not shipped code.** All AI inference in Stashly runs **in the browser** on WebGPU via `@huggingface/transformers` — there is no server-side inference, no Node-AV/Whisper transcription service, and no Gemini integration anywhere in the codebase. `/api/ai/*` routes are registered but `app/routes/api/ai.ts` is a placeholder that returns `501 AI API not implemented yet`. See [As built](#as-built) below for the real architecture.
+
+---
+
+## Table of Contents
+
+0. [As built](#as-built) — what actually ships today
+1. [Production AI Pipeline with Transformers.js (Browser/React)](#1-production-ai-pipeline-with-transformersjs-browserreact)
+2. [AI Transcription Pipeline with Auto-Detect Language (Node.js)](#2-ai-transcription-pipeline-with-auto-detect-language-nodejs)
+3. [Summarizer Recommendation](#3-summarizer-recommendation)
+
+---
+
+## As built
+
+| Piece | Location | Notes |
+|-------|----------|-------|
+| Worker entry | `app/workers/stash.worker.ts` | Real module Worker (`new Worker(new URL('../../workers/stash.worker.ts', import.meta.url), { type: 'module' })`), not a Blob Worker. Boots an XState actor and posts serialized snapshots to the main thread, throttled to ~one per 16ms for progress-only updates. |
+| State machine | `app/machines/pipeline/pipeline.machine.ts` + `pipeline.actors.ts` | Stages: detect language → transcribe → correct transcript → summarize → extract keywords → generate tags, plus a `detectHardwareActor`. |
+| Inference | `app/workers/stash.ai.ts` | `detectLanguage`, `transcribeAudio`, `summarizeText`, `generateTagsFromText`, `extractKeywordsFromText`. A `PipelineManager` singleton caches pipelines per `task-model` key with per-model dtype overrides. |
+| Multimodal client | `app/.client/stashly-ai.ts` | `transcribe()` (chat-template prompt over an audio input), `StashlyAI.caption()`, `StashlyAI.processImage()`. |
+| Text embedding | `app/workers/embedding.ai.ts` | Search embeddings — see [`docs/semantic-search.md`](./semantic-search.md). |
+| WebGPU serialization | `app/workers/ai-queue.ts` | One inference job at a time; concurrent jobs cause device-lost errors. |
+| Consumer | `app/routes/stash/demo.tsx` | The only route that spawns `stash.worker.ts` today. |
+
+**Models actually loaded** (all ONNX, in-browser):
+
+| Purpose | Model | dtype |
+|---------|-------|-------|
+| Language ID | `Xenova/mms-lid-126` | `q4` |
+| Transcription | `onnx-community/gemma-4-E4B-it-ONNX` (via `.client/stashly-ai.ts` `getMoE`) | — |
+| Summarize / tags | `onnx-community/tiny-aya-global-ONNX` | `q4` |
+| Keywords | `Xenova/paraphrase-multilingual-MiniLM-L12-v2` | default |
+| Image classify | `Xenova/vit-base-patch16-224` | `fp32` |
+| Captioning | `onnx-community/Florence-2-base-ft` | — |
+| Search embedding | `Xenova/all-mpnet-base-v2` | `q4` |
+
+`onnx-community/whisper-large-v3-turbo` still has a dtype entry in `MODEL_DTYPE`, but every call site that used it is commented out — Whisper is not on a live path.
+
 ---
 
 ## Table of Contents
@@ -13,6 +52,8 @@ This document covers the AI pipeline architecture for Stashly, including product
 ---
 
 ## 1. Production AI Pipeline with Transformers.js (Browser/React)
+
+> **Partly built.** The WebGPU-in-a-Worker shape is real (see [As built](#as-built)) but the specifics below diverge: Stashly uses `@huggingface/transformers` **4.2.0** (not `@xenova/transformers` from a CDN), a **URL-based module Worker** (not a Blob Worker), an XState machine (not a `useAIWorker` hook — no such hook exists), and **no Gemini API** — there is no `callGemini`, no `generativelanguage.googleapis.com` call, and no Gemini key anywhere in the repo. `HuggingFaceTB/SmolLM2-135M-Instruct` is not among the loaded models.
 
 ### Overview
 
@@ -129,6 +170,8 @@ export async function clientLoader() {
 ---
 
 ## 2. AI Transcription Pipeline with Auto-Detect Language (Node.js)
+
+> ⚠️ **Not implemented.** `node-av` is in `package.json` (`^6.0.0`), but nothing under `app/` imports it — there is no `Demuxer`, `AsyncQueue`, `streamingBatcher`, `floatToAudioFrame`, or `getPresignedGetUrl` for transcription, and `@alexanderolsen/libsamplerate-js` is not a dependency (resampling happens client-side in `resampleAudio` inside `stash.ai.ts`). Transcription today is **in-browser**: `transcribeAudio` in `app/workers/stash.ai.ts` delegates to `transcribe()` in `app/.client/stashly-ai.ts`, which prompts `onnx-community/gemma-4-E4B-it-ONNX` with a chat template over a 16 kHz `Float32Array`. Keep this section as the reference design for a future server-side path.
 
 This section documents the production-ready Node.js pipeline for transcribing audio/video files, including fixes for common FFmpeg/Whisper issues, frame batching, parallel decoding, and real-time S3 streaming.
 
@@ -398,6 +441,8 @@ async function* streamingBatcher(
 ---
 
 ## 3. Summarizer Recommendation
+
+> ⚠️ **Not implemented as described.** There is no `POST /api/summarize` route and none of the env vars below (`HF_TOKEN`, `SUMMARIZER_MODEL`, `SUMMARIZER_CHUNK_SIZE`, `SUMMARIZER_OVERLAP`) are read anywhere. `/api/ai/summarize` *is* registered in `app/routes.ts` but maps to the placeholder `app/routes/api/ai.ts`, which returns `501` for both `loader` and `action` — so `summarizeMachine` in `app/machines/ai/ai.machine.ts` (which POSTs `intent=summarize-text` there) currently fails. The working summarizer is client-side: `summarizeText` in `app/workers/stash.ai.ts` using **`onnx-community/tiny-aya-global-ONNX`** (`q4`), driven by `summarizeActor` in the pipeline machine. No Hugging Face Inference API calls are made. None of the models below (`distilbart-cnn-12-6`, `bart-large-cnn`, `led-base-16384`, `long-t5`) are used.
 
 ### Model Recommendations
 

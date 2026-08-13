@@ -36,6 +36,12 @@ erDiagram
   String versionActionId FK,UK "nullable"
   String activityId FK,UK "nullable"
   String copyActionId FK,UK "nullable"
+  String permissionActionId FK,UK "nullable"
+  String pinActionId FK,UK "nullable"
+  String uploadActionId FK,UK "nullable"
+  String collectionActionId FK,UK "nullable"
+  String favoriteActionId FK,UK "nullable"
+  String bucketActionId FK,UK "nullable"
 }
 "AccessAction" {
   String id PK
@@ -60,13 +66,17 @@ erDiagram
 }
 "MoveAction" {
   String id PK
-  String from
-  String to
+  String fromParentId
+  String fromParentName
+  String toParentId
+  String toParentName
 }
 "CopyAction" {
   String id PK
-  String from
-  String to
+  String fromParentId
+  String fromParentName
+  String toParentId
+  String toParentName
 }
 "RenameAction" {
   String id PK
@@ -83,6 +93,35 @@ erDiagram
 "VersionAction" {
   String id PK
   String newVersion
+}
+"PermissionAction" {
+  String id PK
+  String type
+  String userId
+  String role
+}
+"UploadAction" {
+  String id PK
+  String uploadId
+}
+"PinAction" {
+  String id PK
+  PinKind kind
+}
+"CollectionAction" {
+  String id PK
+  CollectionActionKind kind
+  String collectionId "nullable"
+  String itemId "nullable"
+  Int count "nullable"
+}
+"FavoriteAction" {
+  String id PK
+  FavoriteKind kind
+}
+"BucketAction" {
+  String id PK
+  BucketKind kind
 }
 "Activity" {
   String id PK
@@ -101,12 +140,7 @@ erDiagram
   String itemId FK "nullable"
   Json metadata "nullable"
 }
-"Collection" {
-  String id PK,FK
-  String name
-  BigInt size
-}
-"CollectionItem" {
+"CollectionMember" {
   String id PK
   String collectionId FK
   String itemId FK
@@ -127,9 +161,9 @@ erDiagram
   DriveType type
   DateTime createdAt
   DateTime updatedAt
-  Int workspaceLimit
-  Int memberLimit
-  BigInt storageLimit
+  Int workspaceLimit "nullable"
+  Int memberLimit "nullable"
+  BigInt storageLimit "nullable"
   String ownerId FK,UK
 }
 "File" {
@@ -145,6 +179,7 @@ erDiagram
 "Folder" {
   String id PK
   Int childCount "nullable"
+  Int inclusiveChildCount
   String itemId FK,UK
 }
 "Image" {
@@ -153,6 +188,7 @@ erDiagram
   Int width "nullable"
   Int horizontalResolution "nullable"
   Int verticalResolution "nullable"
+  Int bitDepth "nullable"
   String cameraMake "nullable"
   String cameraModel "nullable"
   Float exposureTime "nullable"
@@ -201,6 +237,45 @@ erDiagram
   Int year "nullable"
   String itemId FK,UK
 }
+"Pdf" {
+  String id PK
+  Int pageCount "nullable"
+  String title "nullable"
+  String author "nullable"
+  String subject "nullable"
+  String keywords "nullable"
+  String creator "nullable"
+  String producer "nullable"
+  String pdfVersion "nullable"
+  String language "nullable"
+  Boolean isEncrypted "nullable"
+  Boolean hasFormFields "nullable"
+  Boolean hasAnnotations "nullable"
+  Boolean hasSignatures "nullable"
+  Float pageWidth "nullable"
+  Float pageHeight "nullable"
+  DateTime docCreatedAt "nullable"
+  DateTime docModifiedAt "nullable"
+  String itemId FK,UK
+}
+"Markdown" {
+  String id PK
+  String title "nullable"
+  String author "nullable"
+  String description "nullable"
+  String tags "nullable"
+  Int wordCount "nullable"
+  Int readingTime "nullable"
+  Int headingCount "nullable"
+  Int linkCount "nullable"
+  Int imageCount "nullable"
+  Int codeBlockCount "nullable"
+  Int taskCount "nullable"
+  Boolean hasFrontmatter "nullable"
+  DateTime docCreatedAt "nullable"
+  DateTime docModifiedAt "nullable"
+  String itemId FK,UK
+}
 "Favorite" {
   String id PK
   String favoritedById FK
@@ -212,23 +287,31 @@ erDiagram
   String id PK
   DateTime createdAt
   DateTime expiresAt "nullable"
+  String message "nullable"
+  String senderId FK
+  String itemId FK "nullable"
+  String workspaceId FK "nullable"
+}
+"InvitationRecipient" {
+  String id PK
+  DateTime createdAt
   String email
   InvitationStatus status
-  String senderId FK
-  String workspaceId FK "nullable"
-  WorkspaceMemberRole role "nullable"
+  String role
+  String invitationId FK
 }
 "Item" {
   String id PK
-  String(50) name
+  String name
   BigInt size
-  String path UK
+  BigInt inclusiveSize
   ItemType type
   ItemCategory category
   ItemStatus status
   String uploadId "nullable"
   DateTime createdAt
   DateTime updatedAt
+  DateTime openedAt "nullable"
   String ownerId FK
   String workspaceId FK "nullable"
   String driveId FK
@@ -246,6 +329,7 @@ erDiagram
   String id PK
   String message
   NotificationType type
+  NotificationKind kind
   NotificationStatus status
   DateTime createdAt
   DateTime updatedAt
@@ -258,7 +342,7 @@ erDiagram
   DateTime expiresAt "nullable"
   DateTime deletedAt "nullable"
   PermissionRole roles
-  String invitationId FK,UK "nullable"
+  String recipientId FK,UK "nullable"
   String linkId FK "nullable"
   String itemId FK "nullable"
 }
@@ -275,9 +359,22 @@ erDiagram
 "Search" {
   String id PK
   String content "nullable"
+  vector(768) vector "nullable"
   DateTime createdAt
   DateTime updatedAt
   String itemId FK,UK
+}
+"SearchChunk" {
+  String id PK
+  String itemId FK
+  Int ord
+  String content
+  Int pageNum "nullable"
+  Int charStart
+  Int charEnd
+  vector(768) vector "nullable"
+  DateTime createdAt
+  DateTime updatedAt
 }
 "session" {
   String id PK
@@ -288,6 +385,8 @@ erDiagram
   String ipAddress "nullable"
   String userAgent "nullable"
   String userId FK
+  String rootId "nullable"
+  String driveId "nullable"
   String impersonatedBy "nullable"
   String activeWorkspaceId "nullable"
 }
@@ -305,6 +404,7 @@ erDiagram
 "StoragePlan" {
   String id PK
   String name
+  String tag UK
   String description "nullable"
   StoragePlanType type
   BigInt storageLimit
@@ -334,7 +434,9 @@ erDiagram
   Int height "nullable"
   String url "nullable"
   Bytes content "nullable"
+  ViewType view
   ThumbnailSize size
+  Int stage
   String itemId FK "nullable"
 }
 "Trash" {
@@ -427,9 +529,8 @@ erDiagram
 "Activity" |o--o| "ActivityTime" : time
 "Activity" }o--o| "Item" : item
 "AuditLog" }o--o| "Item" : item
-"Collection" |o--|| "Item" : item
-"CollectionItem" }o--|| "Collection" : collection
-"CollectionItem" }o--|| "Item" : item
+"CollectionMember" }o--|| "Item" : collection
+"CollectionMember" }o--|| "Item" : item
 "Comment" }o--|| "Item" : item
 "Comment" }o--|| "user" : owner
 "Drive" |o--|| "user" : owner
@@ -610,23 +711,11 @@ Properties as follows:
 - `itemId`:
 - `metadata`:
 
-### `Collection`
+### `CollectionMember`
 
-- - Represents a collection of items, linked to a specific item by its ID.
-  - Each collection has a unique name and tracks the total size of its items.
-  - The relationship with items is managed through the CollectionItem junction table.
-  - Index on name for efficient querying.
-
-Properties as follows:
-
-- `id`:
-- `name`:
-- `size`:
-
-### `CollectionItem`
-
-- - Junction table for many-to-many relationship between Collection and Item
-  - Each entry represents an association of an Item with a Collection
+- - Junction table for the many-to-many self-relation on Item that represents collection membership.
+  - A collection is simply an `Item` with `type='collection'` — there is no separate `Collection` model. `collectionId` points to that host Item; `itemId` points to any Item that is a member of it.
+  - Replaces the former `Collection` facet model and `CollectionItem` junction table.
   - Includes timestamps for tracking when the association was created and last updated
   - Enforces uniqueness on the combination of collectionId and itemId to prevent duplicate associations
   - Indexes on collectionId, itemId, and createdAt for efficient querying and sorting.

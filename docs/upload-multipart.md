@@ -8,44 +8,50 @@ This document covers the full architecture and implementation of the S3 multipar
 
 The multipart upload system is composed of:
 
-1. **Parent machine** (`app/machines/upload/upload.machine.ts`) — orchestrates the queue, spawns one file actor per file, runs the post-upload `createDbItem` actor
-2. **File machine** (`app/machines/upload/file.machine.ts`) — the active per-file actor: creates multipart upload, uploads chunks in parallel, verifies ETags, emits `upload.done`
+1. **Parent machine** (`app/machines/upload/upload.machine.ts`) — orchestrates the queue and concurrency (`maxConcurrentUploads`), spawns one file actor per file, runs the post-upload `createDbItem` actor
+2. **File machine** (`app/machines/reviset/file.machine.ts`) — the active per-file actor: checks quota, creates the multipart upload, uploads chunks in parallel (with pause/resume), completes the upload, updates quota, emits `upload.done`
 3. **Multipart utils** (`app/machines/multipart/s3.mulipart.utils.ts`, `s3.multipart.stream.ts`, `s3.multipart.concurrent.ts`) — side-effect handlers + streaming
-4. **Queue / quota** (`app/machines/actors/queue.machine.ts`, `actors/quota.machine.ts`, `actors/multipart.machine.ts`) — concurrency, quota enforcement, multipart coordination
+4. **Quota** (`app/machines/quota/quota.machine.ts`, `quota/quota.actors.ts`) — quota machine spawned by the parent, plus `checkQuota`/`updateQuota` fetch actors invoked by the file machine
 5. **Backend endpoint** (`app/routes/api/upload.ts`, registered as both `/api/s3/upload` and `/api/s3/multipart`) — handles multipart actions
 
-> The `app/machines/reviset/` directory contains a legacy file actor. `upload/file.machine.ts` is the current active path.
+> `upload/file.machine.ts` is an unused sibling — `upload.machine.ts` imports the file actor from `app/machines/reviset/file.machine.ts`. The machines in `app/machines/actors/` (`multipart.machine.ts`, `queue.machine.ts`, `quota.machine.ts`) are abandoned prototypes that nothing imports.
 
 ---
 
 ## State Machine
 
-The XState machine in `s3.multipart.ts` orchestrates the full lifecycle:
+There is no standalone `multipart` machine — the lifecycle lives in the per-file machine (`app/machines/reviset/file.machine.ts`, id `fileUpload`), which invokes the multipart actors:
 
 ```typescript
-export const multipart = setup({ ... }).createMachine({
-  id: 'multipart',
-  on: { '@multipart.upload.abort': 'abort' },
-  initial: 'create',
+export const fileMachine = setup({ ... }).createMachine({
+  id: 'fileUpload',
+  initial: 'pending',
   states: {
-    create:     // POST to backend → obtain uploadId from S3
-    upload:     // Stream parts; fires progress/done/error events
-    abort:      // POST abort-multipart-upload → clean up S3 parts
-    complete:   // POST complete-multipart-upload → reassemble file in S3
-    cancelled:  // Final state — upload stopped (error or user action)
-    done:       // Final state — upload successfully completed
+    pending:          // waits for `start` from the manager (respects concurrency limit)
+    checkingQuota:    // invoke checkQuota → guard isQuotaCheckPassed
+    creatingUpload:   // invoke createMultipartUpload → obtain uploadId from S3
+    uploading:        // invoke `multipart` (uploadParts); substates: active | paused
+    completingUpload: // invoke completeMultipartUpload → reassemble file in S3
+    updatingQuota:    // invoke updateQuota, then sendUploadDoneToParent
+    aborted:          // final — upload cancelled by the user
+    success:          // final — upload + quota update complete
+    error:            // final — failure at any phase
   },
 })
 ```
 
 **State transitions:**
-- `create → upload` (on createUpload success)
-- `create → abort` (on createUpload error)
-- `upload → complete` (on all parts uploaded)
-- `upload → cancelled` (on upload error)
-- `complete → done` (on completion success)
-- `complete → abort` (on completion error)
-- Any state `→ abort` (on `@multipart.upload.abort` event)
+- `pending → creatingUpload` (on `start` when `skipQuotaCheck === true` — batch/folder uploads pre-check quota for the whole batch)
+- `pending → checkingQuota` (on `start` otherwise)
+- `checkingQuota → creatingUpload` (guard `isQuotaCheckPassed`, i.e. `quotaCheckResult.result === 'allowed'`) / `→ error`
+- `creatingUpload → uploading` (on createMultipartUpload success) / `→ error`
+- `uploading.active ↔ uploading.paused` (on `pause` / `resume`, forwarded to the multipart actor as `@multipart.upload.pause` / `@multipart.upload.resume`)
+- `uploading → completingUpload` (on `@multipart.upload.done`)
+- `uploading → aborted` (on `abort` / `@multipart.upload.aborted`)
+- `completingUpload → updatingQuota` (on completion success) / `→ error`
+- `updatingQuota → success` (entry-side `sendUploadDoneToParent`) / `→ error`
+
+Progress is not held in this machine: `@multipart.upload.progress` from the multipart actor is forwarded straight to the manager as `progress.change`.
 
 ---
 
@@ -77,20 +83,34 @@ export const completeUpload = fromPromise(async ({ input }) =>
 // Callback actor that streams parts and reports progress
 export const uploadParts = fromCallback(({ sendBack, receive, input }) => {
   const abortController = new AbortController()
+  const pauseController = new PauseController()
   streamParts({
     ...input,
     abortController,
+    pauseController,
     onDone: (parts) => sendBack({ type: '@multipart.upload.done', parts }),
-    onProgress: (progress) => sendBack({ type: '@multipart.upload.progress.change', progress }),
+    onProgress: (progress) => sendBack({ type: '@multipart.upload.progress', progress }),
+  }).catch((error) => {
+    // An abort is not a true error, so don't forward it as one.
+    if (error.name !== 'AbortError') sendBack({ type: '@multipart.upload.error', error })
   })
   receive(({ type }) => {
     if (type === '@multipart.upload.abort') {
+      pauseController.resume() // unblock any waiting worker before aborting
       abortController.abort()
       sendBack({ type: '@multipart.upload.aborted' })
+    } else if (type === '@multipart.upload.pause') {
+      pauseController.pause()
+      sendBack({ type: '@multipart.upload.paused' })
+    } else if (type === '@multipart.upload.resume') {
+      pauseController.resume()
+      sendBack({ type: '@multipart.upload.resumed' })
     }
   })
 })
 ```
+
+`file.machine.ts` invokes only three of these: `createUpload` (as `createMultipartUpload`), `uploadParts` (as `multipart`), and `completeUpload` (as `completeMultipartUpload`). `presignedPartUrl` and `abortUpload` are referenced only by the unused `upload/file.machine.ts` — on the live path presigning happens inside `streamParts`, and aborting is done by tripping the `AbortController`.
 
 All API calls go to `POST /api/s3/upload` with an `action` discriminator field. **The route accepts JSON body (`request.json()`), not form-encoded data** — this is the only API route in the project that does so. Every other mutating route uses `parseFormData` + an `intent` discriminator.
 
@@ -98,40 +118,37 @@ All API calls go to `POST /api/s3/upload` with an `action` discriminator field. 
 
 ## Streaming Implementation
 
-The `streamParts` function in `s3.multipart.stream.ts` uses the **Web Streams API** for flow-controlled, memory-efficient file chunking:
+The `streamParts` function in `s3.multipart.stream.ts` runs a **worker pool** over `File.slice()` ranges — memory-efficient without ever materialising the whole file:
 
 ```
 File
-  → createChunkedFileStream(file, CHUNK_SIZE)   [ReadableStream<Blob>]
-  → .pipeThrough(ProgressReportingTransformStream)
-  → .pipeTo(uploadWritableStream)
+  → totalParts = ceil(file.size / CHUNK_SIZE)
+  → N workers pull part indices off a shared cursor (taskIndex++)
+      → POST /api/s3/upload { action: 'get-presigned-url', partNumber }
+      → PUT blob directly to S3 (retryFetch)
+      → results[i] = { ETag, PartNumber }
+  → await Promise.all(workers) → onDone(results)
 ```
 
 **Chunk size:** `5 * 1024 * 1024` (5 MB — S3 minimum part size)
+**Concurrency:** `DEFAULT_CONCURRENCY = 10` (overridable via the `concurrency` input)
 
-### `createChunkedFileStream`
-Uses `File.slice()` to yield fixed-size `Blob` chunks without loading the full file into memory.
+### Part slicing
+`file.slice(offset, offset + CHUNK_SIZE)` per part index; `partNumber = i + 1`. `results` is a pre-sized array indexed by part, so parts stay ordered regardless of which worker finishes first.
 
-### `ProgressReportingTransformStream`
-A `TransformStream<Blob, Blob>` that:
-- Accumulates total bytes processed
-- Calculates percentage, speed (KB/s or MB/s), and time remaining
-- Passes chunks through unchanged
+### Why a `Blob` body, not a stream
+S3 requires `Content-Length` on every PUT. Browsers treat `Content-Length` as a forbidden header and won't set it for a `ReadableStream` body — that returns 411. Passing a `Blob` lets the browser derive it from `blob.size`. Consequently there is **no in-flight byte progress**: `sharedState.bytesUploaded` is incremented after each chunk completes and `onProgress` reports percentage, speed, and time remaining at chunk granularity. `createChunkedFileStream` and `ProgressReportingTransformStream` still exist in the module but are not on this path.
 
-### `uploadWritableStream`
-A `WritableStream` that for each chunk:
-1. Fetches a presigned URL from the backend (`POST /api/s3/upload`, action: `get-presigned-url`)
-2. PUTs the chunk directly to S3 via that URL
-3. Collects the ETag from the S3 response
-4. On stream close, calls `onDone(uploadedParts)`
+### Retry
+`retryFetch` wraps both the presign POST and the S3 PUT (5 attempts, 2500 ms base delay, exponential backoff factor 3 for presign / 2 for the PUT), and every call carries the `AbortController` signal.
 
-**Abort support:** `AbortController` signal is passed to every `fetch` call.
+**Pause support:** a `PauseController` is awaited at the top of each worker loop (`waitIfPaused()`), so a pause takes effect at the next chunk boundary rather than mid-PUT.
 
 ---
 
-## Alternative: XHR-based Streaming
+## Alternative: XHR-based Streaming (not implemented)
 
-The `upload chunks using web stream.md` document describes an alternative `uploadFileInPartsStream` using `XMLHttpRequest` for per-chunk upload progress events (the `fetch` API doesn't natively expose upload progress):
+No code in the repo uses `XMLHttpRequest` for uploads today — the sketch below is kept as the design note for the one thing the current `fetch` + `Blob` path cannot do: report bytes *within* a chunk. `XMLHttpRequest` is the only browser API that natively exposes upload progress:
 
 ```typescript
 // XHR provides reliable upload progress events
@@ -151,63 +168,66 @@ The XHR approach tracks per-part progress in a `partProgress[]` array, enabling 
 
 ## UI Components
 
-The `file-upload.tsx` module exports a compound component system connected to the singleton `uploadManagerActor`:
+The `app/components/upload/index.tsx` module exports a compound component system. The singleton actor lives in `app/hooks/useUpload.ts`, not in the component module:
 
 ```typescript
-// Singleton actor (created once at module level)
-export const uploadManagerActor = createActor(uploadMachine, {
-  systemId: 'uploadManager',
-  id: 'uploadManager',
-})
-uploadManagerActor.start()
+// app/hooks/useUpload.ts — created once at module level
+export const upload = createActor(uploadMachine, { id: 'uploadManager' })
+upload.start()
 ```
 
 **Exported components:**
-- `MediaUploadRoot` — configures the actor with bucketName/ownerId/user
-- `DropArea` — drag-and-drop zone; sends `upload.add` event on drop
-- `Trigger` — file input label; sends `upload.add` event on file selection
-- `FileList` — renders all queued files from actor state
-- `Total` — displays total file count
+- `Upload` — root; calls `configure({ user })` from `useUpload()` on mount
+- `DropArea` — drag-and-drop zone; spreads `dragHandlers`, or `makeDropHandler(folderId)` for a folder-targeted drop
+- `Trigger` — file input label; calls `add` / `addBatch` on file selection
+- `FileList` — renders queued files from `useUploadFileIds()`
+- `Total` — displays total file count (`useUploadCounts()`)
 - `CountDown` — shows time remaining per file
 - `StatusText` — shows upload status per file
-- `Cancel` — sends `upload.cancel` event per file
+- `Description`, `EmptyOutline`, `UploadPanel` — panel chrome
 
-State is read via `useSelector(uploadManagerActor, ...)` with `shallowEqual` for performance.
+Per-file row internals (`Item`, `Progress`, `FileIcon`, `FileName`, `FileSize`, `Cancel`, `Dismiss`, `PauseResume`) are module-private.
+
+State is read via `useSelector(upload, ...)` with `shallowEqual` for performance. Crucially, no component subscribes to the whole `mediaFiles` map: those objects get a fresh identity on every progress tick, and a broad selector re-rendered every consumer — with 20+ concurrent uploads that render storm re-fired Radix's Popper anchor effect until React threw "Maximum update depth exceeded". Subscribe through the narrow hooks (`useUploadFileIds`, `useUploadCounts`, `useUploadFileMeta`, `useUploadProgress`, `useUploadStatus`) instead.
 
 ---
 
 ## Backend Endpoint
 
-`api/upload.ts` — a Remix resource route that handles all multipart actions:
+`app/routes/api/upload.ts` — a React Router resource route that handles all multipart actions:
 
 ```typescript
-const uploadFormData = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('create-multipart-upload'), key: z.string(), metadata: z.record(z.string()) }),
-  z.object({ action: z.literal('get-presigned-url'), key: z.string(), uploadId: z.string(), partNumber: z.number() }),
-  z.object({ action: z.literal('complete-multipart-upload'), key: z.string(), uploadId: z.string(), parts: z.array(...) }),
-  z.object({ action: z.literal('abort-multipart-upload'), key: z.string(), uploadId: z.string() }),
-  z.object({ action: z.literal('upload-file'), file: z.instanceof(File), workspaceId: z.string().optional() }),
+const defaults = z.object({ key: z.string(), uploadId: z.string() })
+
+const uploadSchema = z.discriminatedUnion('action', [
+  z.object({ ...defaults.pick({ key: true }).shape, action: z.literal('create-multipart-upload'),
+             metadata: z.record(z.string(), z.string()).optional(), contentType: z.string().optional() }),
+  z.object({ ...defaults.shape, action: z.literal('complete-multipart-upload'),
+             parts: z.array(z.object({ ETag: z.string(), PartNumber: z.number() })) }),
+  z.object({ ...defaults.shape, action: z.literal('get-presigned-url'), partNumber: z.number() }),
+  z.object({ ...defaults.shape, action: z.literal('abort-multipart-upload') }),
 ])
 
 export async function action({ request }: Route.ActionArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
+  const session = await auth.api.getSession({ headers: request.headers })
   if (!session) throw redirect('/auth/sign-in')
+  const { user } = session
+  const { bucket } = user
 
-  const data = await request.json()
-  const values = uploadFormData.parse(data)
-  const s3 = new UploadService({ s3Service: new S3Service(user.bucket), user })
-  await s3.fixCors()
+  const values = uploadSchema.parse(await request.json())
 
   switch (values.action) {
     case 'create-multipart-upload': ...  // returns { uploadId }
     case 'get-presigned-url':       ...  // returns { url }
-    case 'complete-multipart-upload': ... // returns { key, bucket, etag, versionId }
+    case 'complete-multipart-upload': ... // { key, bucket, etag, version, location, metadata, verifiedKind, verifiedContentType }
     case 'abort-multipart-upload':  ...  // returns { success: true }
   }
 }
 ```
+
+The bucket comes off the session user; there is no `UploadService` / `fixCors()` call and no `upload-file` (single-shot) action.
+
+**`.ts` content verification:** on `complete-multipart-upload`, if `isAmbiguousTsFile(key)` the route does a ranged `getObjectHead` (1 KB) and runs `sniffTsBytes` to distinguish TypeScript source from MPEG transport stream, returning `verifiedKind` / `verifiedContentType`. The client's `contentType` is only a claim; this server-side sniff is the trust boundary. It is best-effort — a failure is logged, never fails a completed upload. Note the in-code `TODO`: the verified MIME is **not yet persisted** onto the `Item` record.
 
 ---
 
@@ -311,18 +331,24 @@ Completing the S3 upload only writes the binary. The DB row is created by the pa
 ### Event Flow
 
 ```
-upload/file.machine.ts
+reviset/file.machine.ts
   → sendUploadDoneToParent → upload.done event
 upload/upload.machine.ts
   → markAsDone, removeFromActiveQueue, removeFromUploads, uploadPendingFiles
-  → triggerItemCreation → spawnChild('createDbItem', { input: { mediaFile, user } })
+  → triggerItemCreation → spawnChild('createDbItem', {
+        id: `create-item-${mediaFile.id}`,
+        input: { mediaFile, user, parent: self },
+      })
 createDbItem (fromPromise actor in upload.machine.ts)
-  → POST /api/items (URLSearchParams body, intent=create_upload_item)
+  → POST /api/items (FormData body, intent=create_upload_item)
+  → on success: parent.send('upload.createItem.success')
+  → on failure: parent.send('upload.createItem.error') and rethrow
 app/routes/api/items.ts
   → parseFormData + itemsApiRouteInput schema
   → case 'create_upload_item' → createUploadedItem(data)
 app/.server/item-actions.ts → createUploadedItem()
-  → prisma.item.create({ ...item, file: { create: { ...fileFacet } } })
+  → prisma.$transaction: findOrCreateFolderPath → item.create (nested file + permissions)
+    → onItemsUploaded (quota delta, same tx) → createActivity (upload action)
 ```
 
 ### Available on `upload.done`
@@ -332,10 +358,11 @@ app/.server/item-actions.ts → createUploadedItem()
 | Field | Source |
 |-------|--------|
 | `id` | Pre-generated as `item_xxx` by `toMediaFile()` in `app/utils/converters.ts` |
-| `key` | S3 object path: `${parentFolderId}/${filename}` (or `${folderId}/${relPath}` for directory drops) |
+| `key` | S3 object path from `toUploadFileKey()`: `${rootId}/${filename}`, or `${rootId}/${webkitRelativePath}` for directory drops (a `workspaceId` prefixes both when present) |
 | `file` | Browser `File` object |
 | `etag` | Returned from `complete-multipart-upload` |
 | `ownerId` | Set by upload manager from config |
+| `uploadId` | S3 multipart upload id, carried through to `Item.uploadId` |
 | `status` | `'done'` at this point |
 
 ### Key Derivations
@@ -343,12 +370,14 @@ app/.server/item-actions.ts → createUploadedItem()
 | Field | Source |
 |-------|--------|
 | `Item.id` | `mediaFile.id` (already `item_xxx` format) |
-| `Item.parentId` | **`mediaFile.key.split('/')[0]`** — first key segment is always the destination folder ID |
+| `Item.parentId` | Posted as `mediaFile.key.split('/')[0]`, but the **server re-resolves it**: `createUploadedItem` splits the key and walks the intermediate segments through `findOrCreateFolderPath`, so the row is parented at the leaf folder (see below) |
 | `Item.driveId` | `context.config.user.driveId` |
 | `Item.ownerId` | `mediaFile.ownerId ?? user.id` |
 | `Item.category` | `toCategory(mediaFile.file)` from `app/utils/converters.ts` |
+| `Item.uploadId` | `mediaFile.uploadId ?? ''` |
 | `File.id` | Generated server-side: `toObjectId(getPrefixForModel('File'))` |
 | `File.bucket` | `context.config.user.bucket` |
+| `File.extension` | Derived server-side from the name (`name.split('.').pop()`) |
 
 ### `createUploadedItem` signature
 
@@ -357,20 +386,25 @@ app/.server/item-actions.ts → createUploadedItem()
 export async function createUploadedItem(data: {
   id: string; name: string; key: string; size: bigint
   mimeType?: string; etag?: string; bucket: string
-  driveId: string; parentId: string; ownerId: string; category?: string
+  driveId: string; parentId: string; ownerId: string
+  uploadId: string; category?: string
 })
 ```
 
-Creates `Item` (type=file, status=normal) + nested `File` facet in one Prisma transaction. Returns with `defaultItemSelect`.
+In one Prisma transaction it resolves the folder path, creates `Item` (type=file, status=normal) + nested `File` facet + owner `Permission`, and applies the quota delta via `onItemsUploaded(..., { client: tx })`. Returns with `defaultItemSelect`. Activity records (for the file and for each folder created along the way) are written fire-and-forget via `createActivity`.
 
-Schema lives in `app/schemas/api.schemas.ts` under `itemsApiRouteInput` (discriminated union on `intent`, includes `create_upload_item` with `z.coerce.bigint()` for size).
+Schema lives in `app/schemas/api.schemas.ts` under `itemsApiRouteInput` (discriminated union on `intent`, includes `create_upload_item` with `z.coerce.bigint()` for size and a required `uploadId`).
 
-### Scope Limitation — Directory Drops
+### Directory Drops — Hierarchy Is Preserved
+
+The nested folder structure **is** reconstructed. `createUploadedItem` splits the key into `[rootId, ...pathParts, filename]` and, when `pathParts` is non-empty, calls `findOrCreateFolderPath(pathParts, rootId, ownerId, driveId, tx)` to find-or-create each intermediate folder, then parents the file at the leaf.
 
 | Drop type | Behavior |
 |-----------|----------|
-| Single file or batch into a folder | Correct — `parentId = key.split('/')[0]` |
-| Directory drop (folder tree) | Files get `parentId = rootId` — **nested intermediate folders are NOT created** (known gap) |
+| Single file or batch into a folder | Key is `rootId/name` — no path parts, `parentId = rootId` |
+| Directory drop (folder tree) | Key is `rootId/a/b/name` — folders `a` and `b` are found-or-created and the file lands in `b` |
+
+**Concurrency guard:** every file under one directory uploads in its own transaction, so naive check-then-create let their `findFirst`s all miss and each create a duplicate folder (same name, different id, contents split across the copies). `findOrCreateFolderPath` therefore takes a transaction-scoped advisory lock keyed on `folder:{ownerId}:{parentId}:{name}` (`pg_advisory_xact_lock(hashtextextended(...))`, issued via `$executeRaw` because the function returns `void`) before the lookup, so a waiter sees the committed folder and reuses it. Files in unrelated folders don't contend.
 
 ### `itemCreated` Gate — Critical for Thumbnails
 
@@ -384,11 +418,12 @@ export const status = z.enum([
 ])
 ```
 
-### `useUpload.ts` — Post-Upload Effects
+### `UploadThumbnailRunner` — Post-Upload Effects
 
-`app/hooks/useUpload.ts` watches for `status === 'itemCreated'` and:
+These effects no longer live in `useUpload.ts`. They are in `app/components/upload/upload-thumbnail-runner.tsx`, mounted once from `app/routes/layout.tsx`:
 
-1. Triggers a **route rerender** so the new item appears in the current view: `navigate(location.pathname + location.search, { replace: true, state: { reset: true } })`. The `state: { reset: true }` is detected by `usePagination` to reset its cursor. **Do NOT use `useRevalidator` here — it doesn't update `usePagination`.**
-2. Starts the thumbnail pipeline via `runThumbnail(id, file)`. A module-level `thumbnailedIds = new Set<string>()` ensures the pipeline runs exactly once per file across all hook instances.
+1. **Thumbnails.** `UploadThumbnailRunner` mounts one `<FileThumbnailWatcher>` per media file in the queue, so each in-flight pipeline gets its own `useThumbnailV2()` instance — and therefore its own React Router fetchers (presign, patch, metadata, embedding) and its own broadcast channel keyed by itemId. Each watcher fires when its file reaches `status === 'itemCreated'`; a module-level `thumbnailedIds = new Set<string>()` guarantees once-per-file. A semaphore caps `MAX_CONCURRENT_THUMBNAILS = 4` — a 534-file upload would otherwise start 534 pipelines at once and bury the server.
+2. **Route rerender**, so new items appear in the current view: `navigate(location.pathname + location.search, { replace: true, state: { reset: true } })`. The `state: { reset: true }` is detected by `usePagination` to reset its cursor. **Do NOT use `useRevalidator` here — it doesn't update `usePagination`.** This is now **debounced to one revalidation per burst** (`REVALIDATE_DEBOUNCE_MS = 700`, keyed on the count of files at `itemCreated`/`done`); previously each file navigated on its own, so a 534-file upload meant 534 loader runs pounding the DB.
+3. **Backfill standoff.** While the queue is non-empty the runner calls `pauseBackfill()` (and `resumeBackfill()` when it drains) so on-demand thumbnail backfill of older items doesn't compete with fresh uploads for compute-worker slots and bandwidth.
 
 See: [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md) for the full thumbnail flow.

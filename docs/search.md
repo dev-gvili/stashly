@@ -2,6 +2,8 @@
 
 This document covers the full search system: semantic vector search with pgvector, integration with the existing pagination system, S3 content extraction for embeddings, and the `searchItems` service implementation.
 
+> ⚠️ **Status (2026-08-13): mostly design notes, not shipped code.** Sections 1–7 and 10 describe a *server-side* embedding architecture (`app/.server/search/`, `s3-extractors.ts`, `searchService.ts`) that was never built — none of those files exist. What actually ships is client-side chunked embedding; see **[`docs/semantic-search.md`](./semantic-search.md)** for the real pipeline, and `app/.server/search-actions.ts` for the real code. Sections 8–9 describe filters and `searchItems`, which *are* real but live at different paths than documented — corrected inline below. Per-section status callouts follow.
+
 ---
 
 ## Table of Contents
@@ -21,18 +23,23 @@ This document covers the full search system: semantic vector search with pgvecto
 
 ## 1. Semantic Search Overview
 
+> **As built:** the model choice below was superseded. Stashly embeds with `Xenova/all-mpnet-base-v2` (768-dim) in the **browser** on WebGPU via `app/workers/embedding.ai.ts` — no server-side inference and no Node model download. The vector store row below is accurate.
+
 **Stack:** Free-for-commercial-use, self-hosted solution.
 
 | Component | Choice | Notes |
 |-----------|--------|-------|
-| Embedding model | `sentence-transformers/all-MiniLM-L6-v2` | 384-dim, Apache-2.0, ~33M params, <1GB RAM, fast on CPU |
+| Embedding model (*as built*) | `Xenova/all-mpnet-base-v2` | 768-dim, client-side WebGPU, `dtype: 'q4'`, mean-pooled + L2-normalized |
+| Embedding model (*original plan*) | `sentence-transformers/all-MiniLM-L6-v2` | 384-dim, Apache-2.0, ~33M params, <1GB RAM, fast on CPU |
 | Vector store | `pgvector` PostgreSQL extension | `<=>` cosine distance operator |
-| ORM | Prisma | `$queryRaw` for vector queries |
+| ORM | Prisma | `$queryRaw` for vector queries — `Unsupported("vector(768)")` columns can't be written through the client |
 | Alternative (higher accuracy) | `intfloat/e5-large-v2` | 1024-dim, Apache-2.0, more RAM |
 
 ---
 
 ## 2. Setup: Model, Dependencies, Embedding
+
+> **Not installed.** Of the packages below, only `@aws-sdk/client-s3`, `pdfjs-dist`, `prisma`, and `@prisma/client` are in `package.json`. `@xenova/transformers` was replaced by **`@huggingface/transformers` 4.2.0**; `pg`, `pgvector`, `pdf-parse`, and `textract` were never added. The `src/embeddings.ts` module below does not exist — see `app/workers/embedding.ai.ts` instead.
 
 ### Install Dependencies
 
@@ -83,24 +90,35 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 ### Prisma Schema
 
+> **As built** (`prisma/models/search.prisma`) — vectors live on `Search` / `SearchChunk`, not on `Item`, and are 768-dim:
+
 ```prisma
-model Item {
-  embedding   Unsupported("vector")?  @db.Vector(384)
-  @@index([embedding], type: Gist)   // GIST index for cosine similarity
+model Search {
+  vector Unsupported("vector(768)")?
+  @@index([vector], map: "Search_vector_idx")
+}
+
+model SearchChunk {
+  vector Unsupported("vector(768)")?
+  @@index([vector], map: "SearchChunk_vector_idx")
 }
 ```
 
-The `@db.Vector(384)` tells Prisma the column is a `vector(384)` in Postgres. The GIST index enables fast `<=>` (cosine distance) queries.
+`Unsupported("vector(768)")` tells Prisma the column is a `vector(768)` in Postgres but is not readable/writable through the generated client — writes go through `$executeRaw` with a `'[…]'::vector` cast (see `setSearchChunkVectors` in `app/.server/search-actions.ts`).
 
 ### Run Migration
 
+The vector columns and `SearchChunk` table are already migrated (`prisma/migrations/20260526182115_add_on_delete_cascade_on_search_item_field`). For future schema edits:
+
 ```shell
-pnpm exec prisma migrate dev --name init
+pnpm prisma migrate dev
 ```
 
 ---
 
 ## 4. S3 Content Extraction
+
+> **Not built.** `app/.server/s3-extractors.ts`, `src/extractFromS3.ts`, and `src/s3PdfExtractor.ts` do not exist, and no server-side extraction of S3 objects happens anywhere. Text extraction is **client-side, pre-upload**: `extractMediaMetadata` in `app/utils/thumbnail-pipeline.ts` reads the local `File` and produces `documentText` for PDFs (via `app/workers/thumbnail.compute.worker.ts` → `app/utils/pdf.ts`) and Markdown (via `app/utils/markdown.ts`). There are no BLIP captions or Whisper transcripts in the search-indexing path. The rest of this section is unimplemented design.
 
 ### Dispatcher Pattern
 
@@ -156,6 +174,8 @@ export async function extractPdfTextFromS3(params: {
 
 ## 5. Upsert File + Embedding
 
+> **Not built.** There is no `upsertFile`, no `prisma.file.create` with an `embedding` field, and no server-side `encodeText`. The shipped equivalent is `upsertSearchContent` + `chunkText` + `upsertSearchChunks` in `app/.server/search-actions.ts`, called from the `save_media_metadata` intent in `app/routes/api/items.ts`; the client then posts vectors back via `save_search_chunk_embeddings`.
+
 ```typescript
 export async function upsertFile(params: {
   id?: string
@@ -192,7 +212,7 @@ For batch uploads, use `encodeText([txt1, txt2, ...])` and `prisma.file.createMa
 
 ## 6. Semantic Search Function
 
-**Location:** `app/.server/searchService.ts`
+> **Not built.** `app/.server/searchService.ts` does not exist and no `semanticSearch` function ships. The query path is entirely unimplemented — `app/routes/api/search.ts` is a stub whose `loader` and `action` both `return null`. The SQL sketch below remains a reasonable starting point, but the target table is `SearchChunk` (rolled up to items), not `File`.
 
 ```typescript
 export async function semanticSearch(query: string, topK = 10): Promise<SearchResult[]> {
@@ -220,6 +240,8 @@ export async function semanticSearch(query: string, topK = 10): Promise<SearchRe
 ---
 
 ## 7. Integrating Semantic Search with Existing Pagination
+
+> **Not built.** `searchFactory` is real (it backs `searchItems`, see §8) but it has no `semanticQuery` support — `itemFilterSchema` in `app/utils/filters/item.filters.ts` has no such key, and `app/.server/search/{search.repository,search.service}.ts` and `ss.ts` do not exist. This section is the plan for wiring the query path once it exists.
 
 The `searchFactory` in `ss.ts` (combined from `search.ts` and `pagination.ts`) integrates semantic search by pre-filtering item IDs before applying standard pagination.
 
@@ -289,13 +311,15 @@ const fn = async (options: any = {}) => {
 
 ## 8. searchItems Service (Postgres)
 
-`app/.server/search/searchItems.ts` is the unified search function. It builds a `where` clause from filters and delegates to the `paginate` utility with support for cursor, offset, and stream strategies.
+**Location:** `app/.server/item-actions.ts` — `export const searchItems = searchFactory({ ..., buildFilters: buildItemFilters })`. (There is no `app/.server/search/` directory.)
+
+It builds a `where` clause from `buildItemFilters` and delegates to the shared pagination helper with support for cursor, offset, and stream strategies.
 
 ---
 
 ## 9. Item Filters
 
-**Location:** `.server/filters/item.filters.ts`
+**Location:** `app/utils/filters/item.filters.ts` (one file per model — `activity`, `collection`, `comment`, `permission`, `workspaceMember`, … all live alongside it). The generic machinery is in `app/utils/filters.ts`.
 
 The filter system uses a typed factory pattern for composable, type-safe Prisma `WhereInput` construction.
 
@@ -304,15 +328,15 @@ The filter system uses a typed factory pattern for composable, type-safe Prisma 
 | Filter | Type | Description |
 |--------|------|-------------|
 | `id` | `string` | Filter by item ID |
-| `query` | `string` | Full-text search on name (+ workspace fields if no workspace scoping) |
+| `query` | `string` | `contains` match on name; also matches workspace name/description when `workspaceId` is absent |
 | `category` | `ItemCategory[]` | Filter by category enum |
-| `type` | `ItemType[]` | Filter by type enum |
+| `type` | `ItemType[]` | Filter by type enum (schema default `['file', 'folder']`) |
 | `extension` | `string[]` | Filter by file extension |
-| `status` | `ItemStatus` | Filter by status |
-| `parent` | `string` | Filter by parentId |
+| `status` | `ItemStatus[]` | Filter by status (schema default `['normal']`) |
+| `parentId` | `string \| null` | Filter by parentId |
 | `workspace` | `string` | Filter by workspaceId |
 | `tags` | `string[]` | `hasSome` tags match |
-| `favorited` | `boolean` | Has favorites (`some: {}`) or none (`none: {}`) |
+| `favorited` | `boolean` | Favorited by `currentUserId` (`some`) or not (`none`) |
 | `locked` | `boolean` | Has/lacks a LockedItem relation |
 | `trashed` | `boolean` | Has/lacks a TrashItem relation |
 | `owner` | `string` | Filter by ownerId |
@@ -320,12 +344,17 @@ The filter system uses a typed factory pattern for composable, type-safe Prisma 
 | `roles` | `PermissionRole[] \| WorkspaceMemberRole[]` | Filter by roles (scoped to workspace if provided) |
 | `date` | `{ before?: Date, after?: Date }` | Filter by createdAt range |
 | `hasChildren` | `boolean` | Folder has children (`childCount > 0`) |
+| `_count` | `number` | Folder `childCount >= n` |
 | `collection` | `string` | Filter by collection ID |
+
+`currentUserId` is also accepted by `itemFilterSchema`; it isn't a filter of its own but is read by `favorited` and `permission`.
+
+> ⚠️ **Known mismatch:** `itemFilterSchema` declares the key `workspaceId`, but `itemFilters` registers the filter under `workspace`. `buildFiltersFactory` only applies a filter when `key in filters`, so passing `workspaceId` silently applies no workspace scoping. (`query` reads `params.workspaceId` directly, so it *does* see it.)
 
 ### Usage
 
 ```typescript
-import { buildItemFilters } from '.server/filters/item.filters'
+import { buildItemFilters } from '@/utils/filters/item.filters'
 
 const where = buildItemFilters({
   workspace: 'ws_123',
@@ -368,10 +397,17 @@ export const buildFiltersFactory = ({ filters, schema }) => (params) => {
 
 ## 10. S3 Extraction & Embedding — Operational Notes
 
-**Key files:**
+> **Not built.** None of the three files below exist, nor does `embedItemForSearch` / `upsertSearchEmbedding`. There is no server-side reindexer and no `scripts/reindex-search.ts`; `p-limit` is not a dependency. The reindex skeleton and tips below are still the reference for the eventual backfill, which is tracked in [`docs/semantic-search.md` § Roadmap](./semantic-search.md#roadmap).
+
+**Files as documented (planned):**
 - `app/.server/s3-extractors.ts` — streaming extractors and local-model wrappers
 - `app/.server/search/embeddings.ts` — `buildSearchTextFromItem`, `embedItemForSearch`, `embedItemForSearchString`
 - `app/.server/search/search.repository.ts` — `upsertSearchEmbedding(...)` raw-SQL helper
+
+**Files as built:**
+- `app/utils/search-text.ts` — `cleanText`, `buildSearchTextFromItem`, `ItemForSearchEmbedding`
+- `app/.server/search-actions.ts` — `mapItemToSearch`, `upsertSearchContent`, `chunkText`, `upsertSearchChunks`, `setSearchChunkVectors`
+- `app/workers/embedding.ai.ts` — `embedTexts` / `embedText` (browser, WebGPU)
 
 ### Typical Flow (extract → embed → upsert)
 
@@ -431,11 +467,12 @@ Run: `pnpm exec tsx ./scripts/reindex-search.ts`
 - **Batch sizes:** Fetch item metadata in batches of 100–500
 - **Model memory:** Use quantization (`quantize: 'q8'`) to reduce RAM usage
 - **Temp files:** Office/audio/video extraction writes temp files — ensure sufficient disk and cleanup
-- **Vector dim:** Confirm `Search.vector` dimension equals the embedding model output (384 vs 768 mismatch causes runtime errors)
+- **Vector dim:** `Search.vector` / `SearchChunk.vector` are `vector(768)`, matching MPNet's output. `setSearchChunkVectors` throws before the write if a vector isn't 768-long.
 
 ### Troubleshooting
 
-- `expected 768 dimensions, not 384` — mismatch between model and DB vector dimension; fix by aligning model in `app/.server/search/embeddings.ts` or changing DB
+- `Expected 768-dim vector, got N` — thrown by `setSearchChunkVectors`; the client sent vectors from a different model. Align `MODEL_ID` / `EMBEDDING_DIM` in `app/workers/embedding.ai.ts` with `SEARCH_VECTOR_DIM` in `app/.server/search-actions.ts` and the schema.
+- Chunks exist but `vector IS NULL` — the tab closed before the `save_search_chunk_embeddings` POST. Embedding is client-side and there is no backfill; the rows stay unembedded.
 - Out of memory — reduce concurrency and/or switch to quantized model
 
 ### Security & Privacy
@@ -448,9 +485,9 @@ Run: `pnpm exec tsx ./scripts/reindex-search.ts`
 
 ## 11. Type-Safe Filter Definitions
 
-> ⚠️ **Note:** This content was captured from an earlier AI conversation and may not reflect the current codebase. Review and verify against actual code before using.
+> ⚠️ **Note:** This content was captured from an earlier AI conversation and may not reflect the current codebase. Review and verify against actual code before using. In particular the factory is exported as **`createFilter`**, not `createFilterFactory`, and the real `itemFilterSchema` (see §9) has a much larger key set than the six shown here.
 
-Refactoring `workspaceMember.filters.ts` and `item.filters.ts` to use the type-safe `buildFiltersFactory` so every filter's `apply` gets strongly typed `params` from its schema.
+Refactoring `workspaceMember.filters.ts` and `item.filters.ts` (both under `app/utils/filters/`) to use the type-safe `buildFiltersFactory` so every filter's `apply` gets strongly typed `params` from its schema.
 
 ### workspaceMember.filters.ts
 

@@ -2,7 +2,8 @@
 
 A read-only, IDE-grade viewer for text/code files in the item page. It mounts
 Monaco (VS Code's editor) lazily in the browser and layers on the pieces VS
-Code users expect — syntax highlighting, type-aware hovers, Format Document,
+Code users expect — syntax highlighting, type-aware hovers, a document outline
+rail, Go to Definition across the user's other uploaded files, Format Document,
 and embedded-SQL highlighting — while staying in lock-step with Stashly's Ink
 design tokens and never writing a byte back to storage.
 
@@ -18,18 +19,22 @@ design tokens and never writing a byte back to storage.
 
 | File | Role |
 |------|------|
-| `app/components/views/item-page/text-stage.tsx` | Stage host. Streams the file body (Suspense/Await), chooses **code** (Monaco) vs **prose** (`<pre>`) via `isMonoFile`, renders the floating toolbar. |
-| `app/components/views/item-page/code-viewer.tsx` | Thin React wrapper. Dynamic-imports the Monaco module from an effect, renders a loading spinner, a notice pill, and a `<pre>` fallback if Monaco fails to load. |
-| `app/.client/monaco.ts` | Everything Monaco. Editor creation, theming, worker routing, language services, the JSDoc hover, and embedded-SQL highlighting. Lives in `.client/` so the server bundle never evaluates it. |
+| `app/components/views/item-page/text-stage.tsx` | Stage host. Streams the file body (Suspense/Await), chooses **code** (Monaco) vs **prose** (`<pre>`) via `isMonoFile`, lays the outline rail beside the editor card, renders the floating toolbar. |
+| `app/components/views/item-page/code-viewer.tsx` | Thin React wrapper. Dynamic-imports the Monaco module from an effect, fetches the file's source context, renders a notice pill, a detour banner, and a `<pre>` fallback if Monaco fails to load. |
+| `app/components/views/item-page/code-outline.tsx` | The document outline rail (`CodeOutline`, `CODE_OUTLINE_SIDEBAR_ID`) — clicking a symbol calls the viewer handle's `reveal`. |
+| `app/components/views/item-page/stage-skeleton-loader.tsx` | `StageSkeletonLoader` — the one skeleton shared by every stage; `variant="code"` while Monaco's chunks download, `variant="document"` for prose. |
+| `app/.client/monaco.ts` | Everything Monaco. Editor creation, theming, worker routing, language services, the JSDoc hover, embedded-SQL highlighting, and Go to Definition. Lives in `.client/` so the server bundle never evaluates it. |
+| `app/.client/monaco-outline.ts` | Symbol-tree extraction (`OutlineSymbol` / `OutlineTarget`), rebuilt whenever the language service or the buffer changes. |
 | `app/.client/prettier.ts` | Browser Prettier. `prettier/standalone` + per-language parser chunks, behind `canFormatLanguage` / `formatDocument`. |
 | `app/.client/type-acquisition.ts` | npm ATA — `@typescript/ata` → jsdelivr → `addExtraLib`. |
-| `app/.client/cross-file-types.ts` | Cross-file resolution — walks the import graph, fetches sibling source via the API, registers it as extra libs. |
+| `app/.client/cross-file-types.ts` | Cross-file resolution — `fetchSourceContext` / `acquireCrossFileTypes` / `applyAliasPaths`: walks the import graph, fetches sibling source via the API, registers it as extra libs, and records which extra-lib URI belongs to which uploaded item (`sourceItemFor`) so Go to Definition can route to its page. |
 | `app/.server/source-resolution-actions.ts` + `app/routes/api/source-types.ts` | Backend for cross-file: project-root/alias config + reading sibling source by logical path. |
 | `app/utils/text-thumbnail.ts` | `isMonoFile` / `isTextRenderableFile` — decides code vs prose and which files are text at all. |
 
-Both `.client/*` modules are dynamic-imported from a browser-only effect, so
+Every `.client/*` module here is dynamic-imported from a browser-only effect, so
 their multi-MB chunks (Monaco, TypeScript, Prettier) download only when a code
-file is actually opened.
+file is actually opened — and `type-acquisition.ts` / `cross-file-types.ts` load
+later still, only for TS/JS files.
 
 ---
 
@@ -47,25 +52,39 @@ sequenceDiagram
     TS->>TS: Suspense + Await stream the body
     TS->>TS: isMonoFile(item)?  code : prose
     alt code file
-        TS->>CV: <CodeViewer text fileName onNotice>
-        CV->>M: dynamic import('@/.client/monaco')
-        CV->>M: createCodeViewer(container, text, fileName, {onNotice})
+        TS->>CV: <CodeViewer text fileName itemId onNotice onOutline …>
+        CV->>M: dynamic import('@/.client/monaco') ‖ fetchSourceContext(itemId)
+        CV->>M: createCodeViewer(container, text, fileName, options)
         M->>M: languageForFile(fileName)
         M->>M: configureLanguageService(language)   %% once per family
-        M->>M: createModel(text, lang, inmemory://stashly/N/name.ext)
-        M->>M: create(editor, { readOnly, Ink theme, … })
-        M->>M: addFormatActions()          %% if canFormatLanguage
-        M->>M: highlightEmbeddedSql()       %% if ts/js
+        M->>M: applyAliasPaths(sourceContext.paths) %% before any worker query
+        M->>M: createModel(text, lang, file:///<real path>)
+        M->>M: create(editor, { readOnly, Ink theme, wordWrap, minimap, … })
+        M->>M: bindModel() → outline, line count, SQL, Format actions
+        M->>M: registerDefinitionOpener() + acquireCrossFileTypes()
         M-->>W: getWorker(label) spins up ts/json/css/html/sql
-        M-->>CV: { dispose }
+        M-->>CV: { dispose, reveal, goBack }
     else prose file
         TS->>TS: ProseReader (<pre>, 10k-line cap)
     end
 ```
 
-`createCodeViewer(container, text, fileName, { onNotice? }) => { dispose }` is
-the single entry point. `dispose` tears down the editor, model, theme
-listeners, format actions, and SQL decorations.
+`createCodeViewer(container, text, fileName, options) => CodeViewerHandle` is
+the single entry point. The handle carries `dispose` (tears down the editor,
+model, theme listeners, format actions, SQL decorations and the cursor watcher),
+`reveal(target)` (the outline rail's click) and `goBack()` (undo a
+Go-to-Definition detour — same as Alt+←).
+
+`CodeViewerOptions` is the whole surface the React layer hooks into:
+`onNotice` (one-line results), `onLineCount`, `onOutline`, `onCursorLine`,
+`sourceContext` (project root / real path / tsconfig `paths`, fetched in React),
+`onNavigate` (definition landed in another uploaded file → route to its page)
+and `onDetour` (definition landed in a file with no page, e.g. `lib.es5.d.ts`).
+
+Everything that belongs to *the model* rather than the editor — the outline, the
+line count, embedded-SQL decorations and the Prettier actions — is wired by
+`bindModel` and rebuilt on every Go-to-Definition jump, so the rail never lists
+the file you came from.
 
 ---
 
@@ -107,16 +126,28 @@ no sibling sources — opened by an arbitrary uploader.
 | CSS / SCSS / LESS | `configureCss` | structural ON, style-lint OFF | Silences vendor-prefix/duplicate/unknown-property/empty-rule noise (fires constantly on minified/3rd-party CSS); keeps real errors (bad hex, bad color args). `data.useDefaultDataProvider` kept so property-doc hovers work. |
 | HTML / Handlebars / Razor | *(none)* | defaults | Defaults already suit a viewer. |
 
-### The model-URI trick (why `.tsx` parses as `.tsx`)
+### The model URI (why `.tsx` parses as `.tsx`, and where the file "lives")
 
 The TS worker derives `ScriptKind` from the model URI's **suffix alone**.
 Monaco's default `inmemory://model/N` has none, and with `allowJs` set the
 fallback is JavaScript — so every `.ts`/`.tsx` file was parsed as JS and its
 TypeScript syntax flagged wholesale (*"'interface' declarations can only be
 used in TypeScript files"*). `modelUriFor` therefore builds
-`inmemory://stashly/N/<name>.<ext>`, carrying the real extension. Measured: 2
+`file:///stashly/N/<name>.<ext>`, carrying the real extension. Measured: 2
 syntax errors under the default URI → 0 under the suffixed one for identical
-source.
+source. (The `file:///stashly/…` root — rather than `inmemory:` — is also what
+lets ATA's `file:///node_modules` libs resolve; see *Extension points* below.)
+
+`modelUriForContext` prefers the file's **real project path**
+(`file:///app/.server/x.ts`) whenever a `sourceContext` is known, which is what
+makes the file's own `./relative` imports resolve against its uploaded siblings
+with no tsconfig involved. One wrinkle it has to handle: Monaco's
+`LibFiles.getOrCreateModel` materializes a model at a file's real URI every time
+a definition resolves *into* it, and never disposes it — so a page opened after
+such a jump would find its own path occupied and silently fall back to the
+counter URI, breaking relative resolution. If the squatter has no editor
+attached it is disposed and the path reclaimed; otherwise `modelUriFor` takes
+over.
 
 ---
 
@@ -175,6 +206,41 @@ injected once:
 - **`@example`** — each code block gets vertical breathing room; sibling-scoped
   so the lone signature block isn't pushed.
 - **Links** — `textLink.foreground` set to the Ink hue in the theme colors.
+
+---
+
+## Go to Definition (F12 / Ctrl+Click / Alt+F12 to peek)
+
+Shipped in `f78e533` (PR #20), on top of the cross-file extra libs. Monaco
+resolves the definition as usual; the interesting part is *where it opens*.
+
+```mermaid
+flowchart TD
+    J["definition resolved → resource URI"] --> S{same model?}
+    S -->|yes| BUILTIN["false → Monaco moves the cursor"]
+    S -->|no| I{"sourceItemFor(uri)?"}
+    I -->|uploaded file| NAV["onNavigate({itemId, folderId, line, column})<br/>→ router opens that file's page"]
+    I -->|lib.d.ts / @types| M{model loaded?}
+    M -->|no| N["notice: “… isn't loaded in the viewer”"]
+    M -->|yes| DET["push history → showModel() → onDetour(path)"]
+    DET --> BACK["Alt+← / Ctrl+Alt+− / Go Back → goBack()"]
+```
+
+- `registerEditorOpener` is **global** but editors are not, so openers are
+  registered once per page and dispatch through a `navigators` map keyed by the
+  source editor. Returning `false` hands the jump back to Monaco's built-in
+  handler — which is what same-file jumps and Peek's embedded editors want.
+- A jump into another *uploaded* file routes rather than swapping the buffer:
+  quietly repainting the model would leave the URL, breadcrumbs and item panel
+  describing the file you left. `text-stage.tsx` turns the callback into a
+  navigation carrying `?line=`/`?col=`, which the destination reads back to
+  reveal the right caret.
+- A jump into a file with **no page** (`lib.es5.d.ts`, an ATA-fetched `@types`
+  package) opens in place as a *detour*: the previous URI, selection and
+  scrollTop go on a history stack, `onDetour(path)` tells the stage to say which
+  file is on screen, and `goBack()` restores the exact offset (re-centering on
+  the selection would land the line somewhere it never was). The `Go Back`
+  action is gated on the `stashlyCanGoBack` context key.
 
 ---
 
@@ -326,6 +392,14 @@ hue rather than screaming red — it's a read-only viewer).
 | `907a357` | fix: match SQL tags that carry a generic type argument |
 | `00f4018` | style: color embedded-SQL keywords with the syntax hue |
 | `da345f6` | fix: keep embedded-SQL highlighting aligned after Format Document |
+| `80a23e6` | feat: automatic type acquisition for imported npm packages |
+| `9e72d51` | feat: resolve types from other uploaded files (cross-file, option 1) |
+| `f1829e0` | feat: resolve relative imports + fix alias specificity (cross-file v2) |
+| `0f51ed4` | fix: read TS defaults via `monaco.typescript` in ATA |
+| `f053987` | feat: document outline rail (#19) |
+| `682b890` | fix: show `const` bindings as variables in the outline |
+| `f78e533` | feat: go to definition across uploaded files (#20) |
+| `166253f` | feat(item-page): share one `StageSkeletonLoader` across the stages |
 
 ---
 
@@ -336,14 +410,16 @@ hue rather than screaming red — it's a read-only viewer).
 - **More Prettier languages** — add an entry to the `LANGUAGES` map in
   `prettier.ts` (parser + plugin chunks).
 - **More SQL tags** — add to the `SQL_TAGS` set (final-segment match).
-- **Automatic type acquisition** — imports from npm packages resolve to real
+- **Automatic type acquisition** *(shipped, `80a23e6`)* — imports from npm packages resolve to real
   types via `@typescript/ata` (see `type-acquisition.ts`): it fetches `@types`
   from jsdelivr and feeds them to `addExtraLib`. Requires the model to live in
   the same virtual root as the libs (`file:///stashly/…`, so node resolution
   reaches `file:///node_modules`). App path aliases (`@/…`) are filtered out of
   ATA — resolving those is cross-file's job. Trade-off: outbound jsdelivr
   requests derived from a file's import statements (package names only).
-- **Cross-file types** — imports of *other uploaded files* resolve via
+- **Cross-file types** *(shipped, `9e72d51` + `f1829e0`; see
+  [`code-viewer-cross-file-options.md`](code-viewer-cross-file-options.md) for
+  why Option 1 won)* — imports of *other uploaded files* resolve via
   `cross-file-types.ts` + the `source-types` API. The loader-adjacent
   `getProjectConfig` returns the file's project root, its real path, and the
   tsconfig `paths`; the viewer **mounts the model at that real path**
@@ -354,8 +430,11 @@ hue rather than screaming red — it's a read-only viewer).
   referenced file's source and registering it as an extra lib at its real path.
   The project root falls back to the topmost uploaded folder when there's no
   tsconfig, so relative resolution works project-wide regardless.
-- **Cross-file `{@link}`** — navigation only works for same-file targets; the
-  viewer holds one file, so cross-module links render as plain text.
+- **Cross-file `{@link}`** — still same-file only. `linkToMarkdown` compares
+  `target.fileName` against the hovered model's URI and falls through to plain
+  text otherwise. Go to Definition now *does* cross files, so this is a gap in
+  the hover rather than a limit of the viewer: routing a `{@link}` through the
+  same `navigators` path would close it.
 - **SQL generic nesting** — the tag regex balances 3 levels of `<…>`; deeper
   generics degrade to no highlight (never a mismatch).
 - **SQL interpolation scanner** — a `}` inside a string literal *within* `${…}`

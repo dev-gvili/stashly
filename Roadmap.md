@@ -1,5 +1,7 @@
 # Stashly Roadmap
 
+> **Superseded — kept for history. The canonical roadmap is [`docs/roadmap.md`](docs/roadmap.md).** The phase statuses and the directory tree below are stale (there is no root-level `components/` or `hooks/`, no `docs/api|architecture|workflows`, and `tests/` holds only `e2e/`); sharing, invitations, workspaces schema, and semantic-search infrastructure have all shipped since this file was written.
+
 ## Project Structure Overview
 
 ```
