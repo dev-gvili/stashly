@@ -198,3 +198,35 @@ export async function setSearchChunkVectors(
   const results = await prisma.$transaction(updates)
   return results.reduce((sum, n) => sum + n, 0)
 }
+
+/**
+ * Chunks that were written but never embedded, for a single owner.
+ *
+ * Embeddings are generated in the browser *after* the chunk rows are saved, so
+ * anything that ends the run early — closing the tab, navigating away, a
+ * WebGPU fault — leaves `vector` NULL and that passage invisible to semantic
+ * search, permanently. There is no server-side embedding pass, so the client
+ * re-runs these on a later visit (see `useEmbeddingBackfill`).
+ *
+ * Raw SQL because `vector` is an `Unsupported` column: Prisma can neither
+ * select nor filter on it, so `vector IS NULL` is not expressible in the
+ * query builder.
+ *
+ * Ordered newest-first: a document the user just uploaded is the one they are
+ * most likely to search for next.
+ */
+export async function findUnembeddedChunks(
+  ownerId: string,
+  limit = 32,
+): Promise<{ id: string; content: string }[]> {
+  return prisma.$queryRaw<{ id: string; content: string }[]>`
+    SELECT c."id", c."content"
+    FROM "SearchChunk" c
+    JOIN "Item" i ON i."id" = c."itemId"
+    WHERE c."vector" IS NULL
+      AND i."ownerId" = ${ownerId}
+      AND i.status = 'normal'
+    ORDER BY c."createdAt" DESC
+    LIMIT ${limit}
+  `
+}

@@ -22,6 +22,7 @@ import {
 } from '@/services/item-actions';
 import {
     chunkText,
+    findUnembeddedChunks,
     setSearchChunkVectors,
     upsertSearchChunks,
     upsertSearchContent,
@@ -30,6 +31,7 @@ import { parseFormData } from '@/utils/parsers';
 import { removeQueryParam, removeQueryParamValue } from '@/utils/query-params';
 import { data, redirect } from 'react-router';
 import { z } from 'zod';
+import { clampPendingLimit } from '@/utils/embedding-backfill';
 import type { Route } from './+types/items';
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -58,6 +60,15 @@ export async function loader({ request }: Route.LoaderArgs) {
         childFolderCount: f._count.children,
       })),
     })
+  }
+
+  // Feeds the client-side embedding backfill: chunks whose text was saved but
+  // whose vector never got written because the tab closed mid-run. Scoped to
+  // the session owner, so one user can never read another's passages.
+  if (intent === 'pending_search_embeddings') {
+    const limit = clampPendingLimit(url.searchParams.get('limit'))
+    const chunks = await findUnembeddedChunks(user.id, limit)
+    return data({ chunks })
   }
 
   if (intent === 'search_folders') {

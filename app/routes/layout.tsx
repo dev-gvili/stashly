@@ -16,6 +16,7 @@ import type { Route } from './+types/layout'
 import { sidebarCookie } from '@/.server/sidebar'
 import z from 'zod'
 import { Confirm } from '@/components/confirm-renderer'
+import { useEmbeddingBackfill } from '@/hooks/useEmbeddingBackfill'
 import { AppToolbar } from '@/components/app-toolbar'
 
 export { ErrorBoundary } from '@/components/error-boundary'
@@ -73,11 +74,14 @@ export const shouldRevalidate: ShouldRevalidateFunction = () => false
 
 export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
   const { user, sidebarState, workspaces } = loaderData
+  // Re-embeds chunks whose vectors never got written because a previous
+  // session ended mid-run. Idle-scheduled and once per tab.
+  useEmbeddingBackfill()
   return (
     <SidebarProvider defaultOpen={sidebarState}>
       <AppSidebar user={user} workspaces={workspaces} />
       <AppContent>
-        <AppToolbar />
+        {/* <AppToolbar /> */}
         <Outlet />
         <UploadPanel user={user} />
         <UploadThumbnailRunner />
