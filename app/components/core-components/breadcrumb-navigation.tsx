@@ -1,4 +1,11 @@
-import { Fragment } from 'react'
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui'
 import {
   Breadcrumb,
   BreadcrumbEllipsis,
@@ -8,26 +15,11 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import type { Breadcrumb as BreadcrumbData } from '@/services/breadcrumbs'
-import { href, useSearchParams } from 'react-router'
-import { Link } from 'react-router'
-import {
-  BreadcrumbSeparatorIcon,
-  FolderFillIcon,
-  FolderOpenIcon,
-  HomeFillIcon,
-} from '@/components/icons'
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui'
 import { useBreadcrumbs } from '@/hooks'
-import { useParams } from 'react-router'
+import type { Breadcrumb as BreadcrumbData } from '@/services/breadcrumbs'
 import { removeQueryParam } from '@/utils'
+import { Fragment } from 'react'
+import { href, Link, useParams, useSearchParams } from 'react-router'
 
 export interface StashBreadcrumbsProps {
   crumbs: BreadcrumbData[]
@@ -36,7 +28,7 @@ export interface StashBreadcrumbsProps {
 
 const BreadcrumbDropdown = ({ crumbs, me }: StashBreadcrumbsProps) => {
   let [searchParams] = useSearchParams()
-  if(!searchParams.has('layout')){
+  if (!searchParams.has('layout')) {
     searchParams.set('layout', 'grid')
   }
   return (
@@ -46,7 +38,7 @@ const BreadcrumbDropdown = ({ crumbs, me }: StashBreadcrumbsProps) => {
           <Button
             size="icon"
             variant="ghost"
-            className="[&_svg]:size-6! hover:text-foreground transition-colors hover:bg-transparent! hover:cursor-pointer p-0! size-5! rounded-xs appearance-none border-none ring-0 focus:ring-0 focus-visible:border-none focus-visible:ring-0 "
+            className="[&_svg]:size-6! hover:text-foreground transition-colors hover:bg-transparent! hover:cursor-pointer p-0! size-5! rounded-xs appearance-none border-none ring-0 focus:ring-0 focus-visible:border-none focus-visible:ring-0"
           >
             <BreadcrumbEllipsis />
             <span className="sr-only">Toggle menu</span>
@@ -54,7 +46,8 @@ const BreadcrumbDropdown = ({ crumbs, me }: StashBreadcrumbsProps) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
-          className="min-w-40 bg-card text-card-foreground font-stashly"
+          sideOffset={8}
+          className="rounded-md shadow-xl overflow-hidden font-stashly ring-2 ring-input border-none p-0 bg-card"
         >
           <DropdownMenuGroup>
             {crumbs.map((crumb) => (
@@ -92,6 +85,9 @@ function CrumbLink({
   removeQueryParam(searchParams, 'cursor') // Clear cursor when navigating via breadcrumbs, to prevent confusion when the selected item(s) disappear from the new page. Note: this mutates searchParams in-place, which is fine because we're only using it to build the href for the Link component below.
   removeQueryParam(searchParams, 'selectedItems') // Clear selected items for same reason as cursor. If we kept selectedItems in the URL, then when the user clicks a breadcrumb to navigate to a parent folder, the selectedItems that were relevant in the child folder would still be in the URL, which could cause unexpected behavior (e.g. bulk actions appearing for items that aren't actually selected in the new folder).
 
+  if (!searchParams.has('layout')) {
+    searchParams.set('layout', 'grid')
+  }
   let to = href('/:me/stash/folders/:folderId', { me, folderId: crumb.id })
   return (
     <BreadcrumbLink asChild>
