@@ -1,4 +1,3 @@
-
 import {
   Suspense,
   useEffect,
@@ -15,14 +14,14 @@ import { Await } from 'react-router'
 import {
   DocumentFillIcon,
   ItemPanelFillIcon,
-  LoaderIcon,
-  OutlineFillIcon
+  OutlineFillIcon,
 } from '@/components/icons'
 import { Button, SidebarTrigger, useSidebar } from '@/components/ui'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import type { StashItemMarkdown } from '@/types/stash.types'
 import type { MarkdownHeading } from '@/utils/markdown'
 import { cn } from '@/utils/styles'
+import { StageSkeletonLoader } from './stage-skeleton-loader'
 
 const RAIL_WIDTH = '18rem' // expanded outline rail width
 
@@ -46,10 +45,6 @@ const sanitizeSchema = {
 const REMARK_PLUGINS = [remarkGfm]
 // rehype-sanitize first (cleans the tree), then rehype-slug (adds heading ids).
 const REHYPE_PLUGINS = [[rehypeSanitize, sanitizeSchema], rehypeSlug] as never
-
-
-
-
 
 // ---------------------------------------------------------------------------
 // MarkdownStage — exported main component
@@ -76,21 +71,13 @@ export function MarkdownStage({
   void item // received via loaderData spread; the reader needs no item fields
   if (!markdownDoc) return <MarkdownError message="No file URL" />
   return (
-    <Suspense fallback={<MarkdownLoading />}>
+    <Suspense fallback={<StageSkeletonLoader variant="document" />}>
       <Await resolve={markdownDoc} errorElement={<MarkdownError />}>
         {(doc: MarkdownDoc) => (
           <MarkdownReader headings={doc.headings} text={doc.text} />
         )}
       </Await>
     </Suspense>
-  )
-}
-
-function MarkdownLoading() {
-  return (
-    <div className="flex h-full min-h-0 w-full items-center justify-center bg-background text-muted-foreground">
-      <LoaderIcon className="size-6 animate-spin" />
-    </div>
   )
 }
 
@@ -151,7 +138,10 @@ function MarkdownReader({ text, headings }: MarkdownDoc) {
       {/* Main reader */}
       <div
         ref={scrollRef}
-        className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-card! rounded-md p-0 border border-input shadow-stashly h-[calc(100vh-4rem)]"
+        // border-2 rather than ring-2: a ring paints outside the box, and the
+        // stage is flush against `main`'s overflow-hidden clip, which shears the
+        // line off the top, left and bottom edges. Matches the text/code stage.
+        className="relative h-[calc(100vh-4rem)] min-h-0 min-w-0 flex-1 overflow-hidden rounded-md border-2 border-input bg-card! p-0 shadow-stashly"
       >
         <ScrollArea key="markdown" type="hover" className="h-full">
           {/* pb-24: the floating toolbar overlays the bottom — extra padding so

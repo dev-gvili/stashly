@@ -12,7 +12,6 @@ import {
   CopyIcon,
   DocumentFillIcon,
   ItemPanelFillIcon,
-  LoaderIcon,
   OutlineFillIcon,
   SymbleOutlineFillIcon,
 } from '@/components/icons'
@@ -25,6 +24,7 @@ import type { OutlineSymbol } from '@/.client/monaco-outline'
 import { CodeOutline, CODE_OUTLINE_SIDEBAR_ID } from './code-outline'
 import { CodeViewer } from './code-viewer'
 import type { CodeViewerRef } from './code-viewer'
+import { StageSkeletonLoader } from './stage-skeleton-loader'
 
 /**
  * DOM guard for the prose path only — past this many lines the tail is
@@ -58,7 +58,9 @@ export function TextStage({
     type: item.file?.mimeType ?? undefined,
   })
   return (
-    <Suspense fallback={<TextLoading />}>
+    <Suspense
+      fallback={<StageSkeletonLoader variant={mono ? 'code' : 'document'} />}
+    >
       <Await resolve={textDoc} errorElement={<TextError />}>
         {(doc: TextDoc) => (
           <TextReader
@@ -70,14 +72,6 @@ export function TextStage({
         )}
       </Await>
     </Suspense>
-  )
-}
-
-function TextLoading() {
-  return (
-    <div className="flex h-full min-h-0 w-full items-center justify-center bg-background text-muted-foreground">
-      <LoaderIcon className="size-6 animate-spin" />
-    </div>
   )
 }
 
@@ -162,7 +156,11 @@ function CodeReader({
         symbols={symbols}
       />
 
-      <div className="relative h-[calc(100vh-4rem)] min-h-0 min-w-0 flex-1 overflow-hidden rounded-md border border-input bg-card! shadow-stashly">
+      {/* border-2 rather than ring-2: a ring paints *outside* the box, and the
+          stage is flush against `main`'s overflow-hidden clip, which sheared the
+          line off the top, left and bottom edges. Same 2px of `border-input`,
+          drawn inside, so the frame closes on all four sides. */}
+      <div className="relative h-[calc(100vh-4rem)] min-h-0 min-w-0 flex-1 overflow-hidden rounded-md border-2 border-input bg-card! shadow-stashly">
         <CodeViewer
           ref={viewerRef}
           fileName={fileName}
@@ -220,10 +218,7 @@ function numberParam(raw: string | null): number | undefined {
 
 /** Raw file text → its lines, BOM dropped and line endings normalized to LF. */
 function splitLines(text: string): string[] {
-  return text
-    .replace(/^﻿/, '')
-    .replace(/\r\n?/g, '\n')
-    .split('\n')
+  return text.replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n')
 }
 
 /** Line count of raw file text, matching how Monaco counts a model. */
@@ -240,7 +235,7 @@ function ProseReader({ text }: { text: string }) {
     : `${lines.length.toLocaleString()} ${lines.length === 1 ? 'line' : 'lines'}`
 
   return (
-    <div className="relative h-full min-h-0 w-full min-w-0 overflow-hidden rounded-md border border-input bg-card! shadow-stashly">
+    <div className="relative h-full min-h-0 w-full min-w-0 overflow-hidden rounded-md border-2 border-input bg-card! shadow-stashly">
       <ScrollArea key="text" type="hover" className="h-[calc(100vh-4rem)]">
         <pre className="mx-auto w-full max-w-3xl whitespace-pre-wrap wrap-break-word px-4 py-8 font-stashly text-sm leading-7">
           {shown.join('\n')}
