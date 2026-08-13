@@ -9,10 +9,10 @@ import {
   fromPromise,
   type AnyActorRef,
 } from 'xstate'
+// The per-file actor lives in `reviset/`, not in this folder — the
+// `upload/file.machine.ts` sibling was an unused draft and has been deleted.
 import { fileMachine } from '../reviset/file.machine'
 import { toCategory } from '@/utils/converters'
-// import { fileMachine } from './file.v2.machine'
-// import { fileMachine } from './file.machine'
 import { quotaMachine } from '@/machines/quota/quota.machine'
 import type {
   MediaFile,

@@ -2,6 +2,7 @@
 
 > Generated: 2026-04-02
 > **Re-verified: 2026-08-13**
+> **Purged: 2026-08-14** — the 21 non-`ui/` orphans below were deleted (see [Purge](#purge-2026-08-14)). The 14 unused `app/components/ui/` components were deliberately kept.
 > Scope: `app/**/*.ts` and `app/**/*.tsx`
 > Method (2026-04-02): 7 parallel agents scanned each major folder, checking every file against import statements and route registrations across the entire repo (`app/`, `server.js`).
 > Method (2026-08-13 re-verification): **targeted, not exhaustive.** Every file named in the 2026-04-02 tables was re-checked for existence, then hunted for importers by filename stem, path-alias form (`@/components/…`, `@/ui/…`, `@/machines/…`, `@/utils/…`, `@/services/…`), and relative-import form, plus barrel re-exports, dynamic `import()`, `new Worker`/`new URL`, `app/routes.ts` registrations, and `tests/` + `__tests__/` references. A short list of named suspects outside the tables was also spot-checked (see [Newly found orphans](#newly-found-orphans-2026-08-13)). **The rest of the `app/` tree was NOT rescanned** — files absent from both this report and that spot-check list are simply unverified, not certified live.
@@ -17,6 +18,8 @@
 | Previously listed, **still orphaned** | 27 |
 | **Newly found** orphans (targeted spot-check only) | 8 |
 | **New total orphaned** | **35** |
+| Of those, **deleted 2026-08-14** | 21 |
+| **Remaining orphaned** (all unused `app/components/ui/`) | **14** |
 
 > Arithmetic note on the original report: its summary claimed **60** orphans, but the tables enumerate **59** rows — the `app/components/ui/` section is headed "24 files" while listing 23. The 2026-08-13 accounting above is against the 59 enumerated rows.
 
@@ -290,3 +293,46 @@ Found by a **targeted spot-check of named suspects only**, not an exhaustive res
 - **`.d.ts` declaration files** (`react.d.ts`, `tokenizers-augment.d.ts`, `stashly.d.ts`) are ambient and intentionally not imported — excluded from orphan counts.
 - **Test files** in `__tests__/` directories are run by Vitest directly — excluded from orphan counts. Conversely, a file imported *only* by a test still counts as used here (none in this revision rest on that alone).
 - **Scope honesty:** the 2026-08-13 pass verified the 59 previously-listed files plus 9 named suspects. It did **not** rescan `app/` exhaustively, so the true orphan count is a floor, not a ceiling.
+
+---
+
+## Purge (2026-08-14)
+
+The 21 non-`ui/` orphans above were deleted in one commit. Every one was
+re-verified immediately before removal rather than trusted from the table: each
+path was checked for importers by exact path suffix (not filename stem) and by
+exported symbol, ignoring commented-out lines and imports arriving only from
+other files in the same delete batch.
+
+**Result:** `pnpm typecheck` fell from **248 errors to 209** — the 39 that
+disappeared were the cascading errors the roadmap attributed to these stubs. The
+unit suite was unchanged (same 11 pre-existing failures in `activity.test.ts` and
+`collection-actions.test.ts`, both untouched by the purge).
+
+### Why the stem-matched check was not enough
+
+The first verification pass flagged three files as still-imported. All three were
+false positives caused by matching on filename stem, and each is a live example
+of the naming trap this report warns about:
+
+| Flagged | Actually imported | Deleted |
+|---|---|---|
+| `machines/actors/quota.machine.ts` | `machines/quota/quota.machine.ts` (`upload.machine.ts:16`) | yes |
+| `machines/upload/file.machine.ts` | `machines/reviset/file.machine.ts` (`upload.machine.ts:12`) | yes |
+| `app/auth/permissions.ts` | `@/services/permission-actions` (`api/permissions.ts:14`) | yes |
+
+Deleting by filename stem instead of exact path would have removed the **live**
+upload file actor and the **live** quota machine. Anyone repeating this exercise
+should verify by full path.
+
+`upload.machine.ts` also carried two commented-out imports of the deleted draft
+(`./file.machine`, and `./file.v2.machine`, which had not existed for some time).
+Both were replaced with a note recording where the per-file actor actually lives.
+
+### Kept deliberately
+
+The 14 unused `app/components/ui/` components remain. They are source-owned
+shadcn primitives that cost nothing at runtime (never imported, so never
+bundled), and re-adding one is a single `pnpm dlx shadcn@latest add <component>`
+either way — so deleting them buys little and risks churn against a component
+someone is about to use.
