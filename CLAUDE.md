@@ -136,7 +136,7 @@ Detailed conventions for these areas live in on-demand project skills (`.agents/
 | `stashly-prisma-data` | Prisma queries, migrations, schema changes, `orderBy`/relation filters, ItemCard select shapes, Zod schemas, SQL |
 | `stashly-upload-xstate` | The upload flow — upload/file machines, S3 multipart, item-creation gate, `parentId` derivation, AI machines |
 | `stashly-thumbnail-pipeline` | Thumbnails/previews — `useThumbnailV2`, thumbnail-signal, compute worker, PDF.js, presign/PUT/PATCH, gallery thumbnail queries, Web Workers |
-| `stashly-gallery-views` | Gallery layouts (grid/river/waterfall), view transitions, gallery-image overlay, theme blocks |
+| `stashly-gallery-views` | Gallery layouts (grid/river/waterfall), view transitions into the item page, scroll restoration, theme blocks |
 | `stashly-activity-recording` | Activity tracking, new action kinds, pins/favorites, `openedAt`, `StashlyPrefixMap` |
 | `stashly-e2e-testing` | Writing/debugging Playwright E2E tests in `tests/e2e/` |
 
