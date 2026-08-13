@@ -1,5 +1,6 @@
 import { monitorEventLoopDelay } from 'node:perf_hooks'
 import type { Pool } from 'pg'
+import type { DegradedReason, DegradedStage } from '@/schemas/api.schemas'
 
 // ---------------------------------------------------------------------------
 // Lightweight, dependency-free metrics registry.
@@ -33,6 +34,17 @@ type CounterName = keyof typeof counters
 let sseActive = 0
 let poolRef: Pool | undefined
 
+// Client-reported degradation, keyed `stage|reason`. Kept apart from the flat
+// counters above because this is the one series carrying labels.
+//
+// These stages fail *on the user's machine*, inside a catch block that used to
+// only reach their console — so a browser update breaking WebGPU showed up as
+// zero server errors and a quiet drop in feature usage. Counting them here is
+// what makes that visible. Both label values are validated against a closed
+// enum before they arrive (see `clientDegradedReport`), so no escaping is
+// needed and cardinality stays bounded.
+const degraded = new Map<string, number>()
+
 // Event-loop delay histogram in nanoseconds, sampled every 20ms. Reset on each
 // scrape so mean/p99/max describe the last scrape window rather than uptime.
 const loopDelay = monitorEventLoopDelay({ resolution: 20 })
@@ -40,6 +52,15 @@ loopDelay.enable()
 
 export function inc(name: CounterName, by = 1) {
   counters[name] += by
+}
+
+/**
+ * Record one client-side degraded stage. Callers must pass values already
+ * validated against `clientDegradedReport`.
+ */
+export function recordDegraded(stage: DegradedStage, reason: DegradedReason) {
+  const key = `${stage}|${reason}`
+  degraded.set(key, (degraded.get(key) ?? 0) + 1)
 }
 
 export function sseOpened() {
@@ -129,6 +150,16 @@ export function renderPrometheus(): string {
       'Requests queued waiting for a pg connection (saturation)',
       'gauge'
     )
+  }
+
+  // Labelled series: emitted with HELP/TYPE even when empty so the metric is
+  // discoverable in the scraper before the first degradation is ever reported.
+  out +=
+    '# HELP stashly_client_degraded_total Optional client pipeline stages skipped, by stage and reason\n' +
+    '# TYPE stashly_client_degraded_total counter\n'
+  for (const [key, value] of degraded) {
+    const [stage, reason] = key.split('|')
+    out += `stashly_client_degraded_total{stage="${stage}",reason="${reason}"} ${value}\n`
   }
 
   out += metric(

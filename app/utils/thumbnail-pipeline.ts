@@ -5,6 +5,7 @@
  * The orchestrator hook composes these with route-fetcher calls.
  */
 import { dataUrlToBlob } from '@/utils/thumbnail'
+import { classifyDegradation, reportDegraded } from '@/utils/report-degraded'
 import { generateVideoThumbnail, getVideoMetadata } from '@/utils/video'
 import { isMarkdownFile } from '@/utils/markdown'
 import { isTextRenderableFile } from '@/utils/text-thumbnail'
@@ -167,6 +168,9 @@ export async function generateStage3Salient(file: File): Promise<Blob | null> {
   const { generateSalientCrop } = await import('@/workers/thumbnail.ai')
   return generateSalientCrop(file).catch((e) => {
     console.error('[generateSalientCrop]', e)
+    // Reported here rather than at the call site: this function also returns
+    // null for non-images above, which is expected and not a degradation.
+    reportDegraded('thumbnail_stage3', classifyDegradation(e))
     return null
   })
 }

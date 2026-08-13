@@ -27,6 +27,7 @@ import {
   buildMediaMetadataFormData,
 } from '@/utils/thumbnail-pipeline'
 import { useThumbnailPublisher } from '@/hooks/thumbnail-signal'
+import { classifyDegradation, reportDegraded } from '@/utils/report-degraded'
 
 const POLL_MS = 16
 
@@ -76,6 +77,7 @@ export function useThumbnailV2(itemId: string) {
         tinyBlob = await generateStage1Preview(file)
       } catch (err) {
         console.error('[thumb stage 1]', err)
+        reportDegraded('thumbnail_stage1', classifyDegradation(err))
       }
 
       let stage1ObjectUrl: string | null = null
@@ -87,6 +89,7 @@ export function useThumbnailV2(itemId: string) {
       // ── Stage 2: resize + persist ───────────────────────────────────────
       const resized = await generateStage2Resize(file, tinyBlob).catch((e) => {
         console.error('[thumb stage 2 compute]', e)
+        reportDegraded('thumbnail_stage2', classifyDegradation(e))
         return null
       })
 
@@ -173,5 +176,8 @@ async function runMetadataPipeline(
     await waitForIdle(embeddingRef).catch(() => null)
   } catch (e) {
     console.error('[runMetadataPipeline]', e)
+    // Covers the embedding leg too: a failure here is why a document can end
+    // up with chunk text but no vector, so it must not stay invisible.
+    reportDegraded('metadata_pipeline', classifyDegradation(e))
   }
 }

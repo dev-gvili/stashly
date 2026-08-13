@@ -17,6 +17,7 @@ import { sidebarCookie } from '@/.server/sidebar'
 import z from 'zod'
 import { Confirm } from '@/components/confirm-renderer'
 import { useEmbeddingBackfill } from '@/hooks/useEmbeddingBackfill'
+import { DegradedNotice } from '@/components/core-components/degraded-notice'
 import { AppToolbar } from '@/components/app-toolbar'
 
 export { ErrorBoundary } from '@/components/error-boundary'
@@ -82,6 +83,7 @@ export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
       <AppSidebar user={user} workspaces={workspaces} />
       <AppContent>
         {/* <AppToolbar /> */}
+        <DegradedNotice />
         <Outlet />
         <UploadPanel user={user} />
         <UploadThumbnailRunner />

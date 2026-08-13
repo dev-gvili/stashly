@@ -2,6 +2,50 @@ import { z } from 'zod'
 import { toZodArraySchema } from '@/utils/converters'
 
 // ====================================================== //
+// ============= Client Degradation Reports ============= //
+// ====================================================== //
+
+/**
+ * Optional pipeline steps that can be skipped without failing the upload:
+ * the browser-side thumbnail stages and the metadata/embedding chain. Each
+ * one sits behind a `catch` that used to return silently.
+ */
+export const DEGRADED_STAGES = [
+  'thumbnail_stage1',
+  'thumbnail_stage2',
+  'thumbnail_stage3',
+  'metadata_pipeline',
+  'embedding',
+] as const
+
+/** Why the step was skipped. Coarse on purpose — see the note below. */
+export const DEGRADED_REASONS = [
+  'webgpu_unavailable',
+  'model_load_failed',
+  'render_failed',
+  'unsupported_input',
+  'unknown',
+] as const
+
+export type DegradedStage = (typeof DEGRADED_STAGES)[number]
+export type DegradedReason = (typeof DEGRADED_REASONS)[number]
+
+/**
+ * Body of `POST /api/metrics`, sent by the browser when an optional stage
+ * degrades. Both fields are closed enums rather than free strings: they become
+ * Prometheus label values, so an open vocabulary would let a caller explode
+ * series cardinality and inject characters into the exposition format. It also
+ * keeps the report free of anything identifying — no item ids, no filenames,
+ * no stack traces.
+ */
+export const clientDegradedReport = z.object({
+  stage: z.enum(DEGRADED_STAGES),
+  reason: z.enum(DEGRADED_REASONS),
+})
+
+export type ClientDegradedReport = z.infer<typeof clientDegradedReport>
+
+// ====================================================== //
 // =================== Quota Api Route ================== //
 // ====================================================== //
 

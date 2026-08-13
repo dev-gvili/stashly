@@ -1,4 +1,7 @@
-import { renderPrometheus } from '@/services/metrics'
+import { recordDegraded, renderPrometheus } from '@/services/metrics'
+import { clientDegradedReport } from '@/schemas/api.schemas'
+import { auth } from '@/services/auth'
+import { parseFormData } from '@/utils/parsers'
 import type { Route } from './+types/metrics'
 
 // ---------------------------------------------------------------------------
@@ -30,4 +33,37 @@ export async function loader({ request }: Route.LoaderArgs) {
   return new Response(renderPrometheus(), {
     headers: { 'content-type': 'text/plain; version=0.0.4; charset=utf-8' },
   })
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/metrics — a browser reporting that an optional pipeline stage was
+// skipped (no WebGPU, a PDF that wouldn't render, a model that wouldn't load).
+//
+// Deliberately *not* behind METRICS_TOKEN: that token gates scraping, and the
+// browsers doing the reporting don't have it. A session is required instead,
+// so the counters can't be inflated by anonymous callers. Sent via
+// `navigator.sendBeacon`, so the response is ignored and must stay cheap —
+// always 204, never an error the client would retry.
+// ---------------------------------------------------------------------------
+
+export async function action({ request }: Route.ActionArgs) {
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 })
+  }
+
+  const session = await auth.api.getSession({ headers: request.headers })
+  if (!session) return new Response(null, { status: 204 })
+
+  try {
+    const report = await parseFormData({
+      request,
+      schema: clientDegradedReport,
+    })
+    recordDegraded(report.stage, report.reason)
+  } catch {
+    // Malformed or unknown enum value — drop it. Telemetry must never turn
+    // into a second failure on a client that is already degraded.
+  }
+
+  return new Response(null, { status: 204 })
 }
