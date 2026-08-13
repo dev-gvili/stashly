@@ -57,7 +57,18 @@ Components use shadcn/ui (source-owned, in `app/components/ui/`) built on Radix 
 
 **`ItemStatus` values**: `'normal' | 'archived' | 'trashed' | 'locked' | 'shared'` — there is no `'active'`.
 
-**Item card dropdown**: Actions live in the internal `ItemCardActions` component inside `app/components/stash/item-card.tsx`.
+**Item card dropdown**: Actions are a **compound component** in their own file, `app/components/stash/item-card-actions.tsx`, attached to the card as `ItemCard.Actions`. Bare `<ItemCard.Actions />` renders the default menu; to customise, compose the sub-components explicitly:
+
+```tsx
+<ItemCard.Actions>
+  <ItemCard.Actions.Group label="Quick actions">
+    <ItemCard.Actions.Favorite />
+    <ItemCard.Actions.Pin />
+  </ItemCard.Actions.Group>
+</ItemCard.Actions>
+```
+
+Available sub-components: `Group`, `Item`, `Preview`, `Download`, `Copy`, `Move`, `Rename`, `Details`, `Favorite`, `Pin`, `Lock`, `Share`, `Invite`, `Activity`, `Trash`, `Restore`, `Delete`, `RemoveFromCollection`. They read the current item from `useItemCard()`, so they only work inside an `ItemCard`. Menu contents render inside a Radix `DropdownMenuContent` (not force-mounted), so a closed menu costs no DOM.
 
 ## Layout, surface & z-index
 

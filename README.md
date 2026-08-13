@@ -1,6 +1,6 @@
 # Stashly
 
-A full-stack file management platform for personal stashes and collaborative workspaces, built with React Router 7 and Express 5.
+A full-stack file management platform for personal stashes and collaborative workspaces, built with React Router 8 and Express 5.
 
 ## Features
 
@@ -17,7 +17,7 @@ A full-stack file management platform for personal stashes and collaborative wor
 
 | Category   | Technologies |
 |------------|-------------|
-| Frontend   | React 19, React Router 7 (SSR), TailwindCSS 4, shadcn/ui, Radix UI, XState 5 |
+| Frontend   | React 19, React Router 8 (SSR), TailwindCSS 4, shadcn/ui, Radix UI, XState 5 |
 | Backend    | Express 5, TypeScript strict, better-auth |
 | Database   | PostgreSQL, Prisma ORM, pgvector |
 | Storage    | AWS S3-compatible (Tigris on Fly.io), multipart upload |
@@ -72,7 +72,7 @@ app/
 │   ├── search/           # pgvector semantic search and embeddings
 │   └── s3.ts             # S3-compatible storage client (Tigris)
 ├── .client/              # Client-only — browser APIs, client AI helpers
-├── routes/               # React Router 7 pages + loaders/actions
+├── routes/               # React Router 8 pages + loaders/actions
 │   ├── layout.tsx        # Authenticated app shell
 │   ├── api/              # REST resource routes (/api/items, /api/ai, …)
 │   ├── stash/            # Personal stash views (home, file, folder, trash, shares)

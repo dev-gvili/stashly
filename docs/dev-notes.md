@@ -341,6 +341,19 @@ Folder table:
   "folder-123" | childCount: 2  ← automatically maintained by trigger
 ```
 
+### Other triggers in the schema
+
+`childCount` is not the only one. The full set of DB-level triggers, all defined in `prisma/migrations/`:
+
+| Trigger family | Table | What it maintains |
+|---|---|---|
+| `item_child_count_*` | `Item` | `Folder.childCount` (insert / update / delete) |
+| `item_size_*` | `Item` | Rolled-up folder sizes (insert / update / decrement) |
+| `collection_size_trigger`, `item_size_collection_sync_trigger`, `item_delete_collection_sync_trigger` | `Item`, membership | Collection size totals |
+| `notification_change_notify` | `Notification` | Fires `pg_notify('notifications', …)` on every insert/update/delete, which drives the live SSE feed — see [notifications-sse.md](notifications-sse.md) |
+
+The notification trigger is `FOR EACH ROW`, so a bulk update emits one NOTIFY per row. That is the burst path the SSE metrics in `app/.server/metrics.ts` watch.
+
 ---
 
 ## 7. `searchFactory` — One-Liner Repository Search Binding

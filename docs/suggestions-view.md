@@ -12,9 +12,9 @@ The Suggestions View is a split-page layout component for the Stashly home page 
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `app/components/views/suggestions-view.tsx` | ~160 | React component (split-page layout) |
-| `app/utils/suggestions.server.ts` | ~70 | Server utility (optimized SQL query) |
-| `app/routes/stash/home.tsx` | ~40 | Home page route |
+| `app/components/views/suggestions-view.tsx` | ~105 | React component (split-page layout) |
+| `app/.server/item-actions.ts` → `getSuggestedItems()` | — | Server query (was the standalone `app/utils/suggestions.server.ts`, since folded into the item actions file) |
+| `app/routes/stash/home.tsx` | ~115 | Home page route — loads suggestions alongside pinned, favorites and recent activity in one `Promise.all` |
 
 ---
 
@@ -22,7 +22,7 @@ The Suggestions View is a split-page layout component for the Stashly home page 
 
 ### Split-Page Design
 - **Top section:** Grid of suggested folders (max 6 items by default)
-- **Bottom section:** Grid of suggested files (max 50 items by default)
+- **Bottom section:** Grid of suggested files (`maxFiles` defaults to 50, but the home route passes 10)
 - Clear visual separation with section headers and descriptions
 
 ### Smart Suggestions

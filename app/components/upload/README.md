@@ -27,7 +27,7 @@ Files to explore:
 
 - `app/components/upload/index.tsx`
 - `app/machines/upload/upload.machine.ts`
-- `app/machines/upload/file.machine.ts`
+- `app/machines/reviset/file.machine.ts` — the active per-file actor (`upload.machine.ts` imports it from here; the `upload/file.machine.ts` sibling is unused)
 - `app/components/upload` (component folder)
 
 Potential improvements:

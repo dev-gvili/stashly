@@ -5,7 +5,7 @@ description: Stashly E2E testing with Playwright — the tests/e2e structure, gl
 
 # Stashly E2E Tests (Playwright)
 
-Tests live in `tests/e2e/`. Run against `http://localhost:3000` (the dev server is auto-started via `webServer` in `playwright.config.ts`).
+Tests live in `tests/e2e/`. Run against `http://localhost` — **port 80, not 3000** (`baseURL` in `playwright.config.ts`). The dev server is auto-started via `webServer`, which runs `pnpm dev` with `reuseExistingServer: true`, so an already-running dev server is reused rather than replaced.
 
 Commands: `pnpm test:e2e` (requires dev server) and `pnpm test:e2e:ui` (Playwright UI).
 
@@ -17,8 +17,12 @@ Commands: `pnpm test:e2e` (requires dev server) and `pnpm test:e2e:ui` (Playwrig
 | `global-teardown.ts` | Cleanup after all tests |
 | `fixtures.ts` | Exports an authenticated `test` fixture (loads session cookie from `.auth/`) |
 | `pages/*.page.ts` | Page Object Models: `AuthPage`, `LayoutPage`, `StashPage` |
+| `constants.ts` | Shared test constants |
 | `auth.spec.ts` | Unauthenticated flows (sign-in, redirects) |
 | `navigation.spec.ts` | Authenticated navigation flows |
+| `upload.spec.ts` | Upload flow |
+| `favorites.spec.ts` | Favorites flow (plus `favorites-debug.spec.ts`, a debugging scratch spec) |
+| `pinned.spec.ts` | Pinned items flow |
 
 ## Prerequisites
 

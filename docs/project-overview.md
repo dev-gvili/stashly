@@ -18,7 +18,7 @@ tags:
 
 Stashly is a full-stack file management platform for personal stashes and collaborative workspaces. Users upload, organize, search, and share files — with AI-powered features like transcription, captioning, and semantic search running directly in the browser via WebGPU.
 
-Built with React Router 7 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatible storage.
+Built with React Router 8 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatible storage.
 
 ---
 
@@ -44,7 +44,7 @@ Built with React Router 7 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatib
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Browser                                 │
 │                                                                 │
-│  React 19 + React Router 7 (SSR)                               │
+│  React 19 + React Router 8 (SSR)                               │
 │  ┌──────────┐  ┌──────────┐  ┌──────────────┐  ┌───────────┐  │
 │  │  Routes   │  │ XState   │  │ Web Workers  │  │ Direct S3 │  │
 │  │ (loaders/ │  │ Machines │  │ (AI/ML via   │  │ Upload    │  │
@@ -90,7 +90,7 @@ Built with React Router 7 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatib
 
 | Layer | Technologies |
 |-------|-------------|
-| **Frontend** | React 19, React Router 7 (SSR), TailwindCSS 4, shadcn/ui (Radix), XState 5, Framer Motion |
+| **Frontend** | React 19, React Router 8 (SSR), TailwindCSS 4, shadcn/ui (Radix), XState 5, Framer Motion |
 | **Backend** | Express 5, TypeScript (strict mode) |
 | **Database** | PostgreSQL, Prisma ORM 7, pgvector extension (semantic search), pg_trgm (full-text) |
 | **Storage** | AWS S3-compatible (Tigris on Fly.io), multipart upload via presigned URLs |
@@ -183,7 +183,7 @@ User ──┬── Workspace ──── WorkspaceMember (role-based)
 
 ### Key Models (55 total)
 
-The schema spans 55 models and 23 enums. A collection is **not** a separate model — it is an `Item` with `type='collection'`, with membership tracked by the `CollectionMember` self-relation. The legacy `Collection`, `CollectionItem`, `Metadata`, and `Tag` models were removed.
+The schema spans 56 models and 24 enums. A collection is **not** a separate model — it is an `Item` with `type='collection'`, with membership tracked by the `CollectionMember` self-relation. The legacy `Collection`, `CollectionItem`, `Metadata`, and `Tag` models were removed.
 
 | Model | Purpose |
 |-------|---------|
@@ -396,12 +396,12 @@ Complex async workflows are modeled as XState 5 state machines in `app/machines/
 | `upload.machine` | `upload/` | Parent orchestrator — spawns file actors, manages queue, runs `createDbItem` actor on upload done |
 | `file.machine` | `reviset/` | Individual file upload lifecycle (**active** — imported by `upload.machine`) |
 | `file.machine` | `upload/` | Unused sibling, kept for reference |
-| `queue.machine` | `actors/` | Concurrent upload slot management |
-| `quota.machine` | `actors/` / `quota/` | Storage quota state tracking |
-| `multipart.machine` | `actors/` | Multipart S3 coordination |
+| `queue.machine` | `actors/`, `queue/`, `reviset/` | **Dead** — no importers. Concurrency is gated inside `upload.machine` via `maxConcurrentUploads` (default 100) |
+| `quota.machine` | `quota/` | Storage quota state tracking (**active** — spawned by `upload.machine`). The `actors/quota.machine.ts` copy is dead |
+| `multipart.machine` | `actors/` | **Dead** — no importers |
 | `s3.multipart.concurrent` / `.stream` | `multipart/` | Concurrent + streaming multipart utilities |
-| `ai.machine` | `ai/` | AI task orchestration (caption, transcribe, summarize) |
-| `caption.machine` | `ai/` | Focused image captioning pipeline |
+| `ai.machine` | `ai/` | **Dead** — no importers; the live AI path is `pipeline/` + `app/workers/` |
+| `caption.machine` | `ai/` | **Dead** — no importers |
 | `pipeline.machine` | `pipeline/` | Full audio pipeline (detect → transcribe → summarize → tag) |
 | `subscription.machine` | `subscription/` | Stripe subscription state |
 | `onboard.machine` | `onboard/` | New user setup flow |
