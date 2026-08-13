@@ -116,7 +116,9 @@ Kicked off (unawaited) from `useThumbnailV2().run` right after the stage-2 resiz
 
 Fire-and-forget — the file is usable in the gallery before the embedding completes.
 
-**Failure mode:** the whole pipeline is wrapped in one `try/catch` that only `console.error`s — no telemetry, no retry. A vector-count mismatch likewise logs and bails. And because embedding is client-side, closing the tab before step 4 leaves the chunk rows with `vector` NULL permanently; there is no server-side backfill (see [Roadmap](#roadmap)).
+**Failure mode:** the whole pipeline is wrapped in one `try/catch` that logs to `console.error` and reports a `metadata_pipeline` counter to `/api/metrics` (see `app/utils/report-degraded.ts`) — but it does not retry inline. A vector-count mismatch likewise logs and bails. Because embedding is client-side, closing the tab before step 4 leaves the chunk rows with `vector` NULL.
+
+**Recovery:** those rows are healed on a later visit by `useEmbeddingBackfill` (mounted in the authenticated layout), which fetches the user's NULL-vector chunks via the `pending_search_embeddings` intent and re-runs them through the same model. It only fires when that owner returns — a document whose owner never comes back stays unembedded, which is what the remaining server-side pass in the [Roadmap](#roadmap) would cover.
 
 ---
 
@@ -173,4 +175,4 @@ Three forcing functions:
 
 The `SearchChunk` table already exists — it landed in `prisma/migrations/20260526182115_add_on_delete_cascade_on_search_item_field/migration.sql` alongside its `itemId`, `vector`, and `(itemId, ord)` indexes. No migration needs to be run.
 
-The schema change was additive — no risk to existing data. New uploads index automatically; existing items will need the backfill script (TBD).
+The schema change was additive — no risk to existing data. New uploads index automatically. Items whose chunks were written but never embedded are picked up by `useEmbeddingBackfill` the next time their owner opens the app; items that were never chunked at all still need a re-index pass (TBD).

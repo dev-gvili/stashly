@@ -104,7 +104,8 @@ See: [`docs/sharing-and-invitations.md`](sharing-and-invitations.md) for the sha
   - [x] Chunked indexing + client-side embedding: the server is authoritative for chunk boundaries (`chunkText` → `upsertSearchChunks` returns `{id, content}` pairs), the browser embeds them on WebGPU (`embedTexts`) and posts them back via the `save_search_chunk_embeddings` intent → `setSearchChunkVectors` (raw SQL, pgvector text-cast)
   - [ ] Apply the same pattern to the remaining text formats (`.txt`, `.docx`, source files, etc.)
   - [ ] OCR for images, transcript for audio/video, EXIF/captions for photos — gather and persist
-  - [ ] Server-side embedding backfill — chunk embedding is fire-and-forget in the browser, so closing the tab early leaves `SearchChunk.vector` (and the document-level `Search.vector`, which nothing writes yet) NULL. Needs a server-side or resumable pass.
+  - [x] Client-side embedding backfill — on a later visit the browser asks for its own chunks with a NULL vector (`pending_search_embeddings` intent → `findUnembeddedChunks`) and re-runs them through the same model: `app/hooks/useEmbeddingBackfill.ts` + policy in `app/utils/embedding-backfill.ts`, mounted once in the authenticated layout. Idle-scheduled, batched and capped so a large backlog spreads across visits. Keeps embedding cost on the client.
+  - [ ] Server-side embedding backfill — the client heal above only fires when the owner returns, so a document whose owner never comes back stays unembedded. Also still true of the document-level `Search.vector`, which nothing writes yet. Needs a server-side or resumable pass.
   - [ ] Re-embed on relevant content changes (rename, description edit)
   - [ ] Backfill embeddings for items uploaded before the chunk pipeline landed
 
