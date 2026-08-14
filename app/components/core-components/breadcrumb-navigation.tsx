@@ -32,7 +32,7 @@ const BreadcrumbDropdown = ({ crumbs, me }: StashBreadcrumbsProps) => {
     searchParams.set('layout', 'grid')
   }
   return (
-    <BreadcrumbItem>
+    <BreadcrumbItem className="shrink-0">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -91,9 +91,16 @@ function CrumbLink({
   let to = href('/:me/stash/folders/:folderId', { me, folderId: crumb.id })
   return (
     <BreadcrumbLink asChild>
-      <Link to={`${to}?${searchParams.toString()}`} className="font-stashly">
+      {/* Ancestor crumbs are capped and ellipsised: folder names come straight
+          from uploads and can be arbitrarily long (a bulk drive export easily
+          blows past the header width). `title` keeps the full name reachable. */}
+      <Link
+        to={`${to}?${searchParams.toString()}`}
+        title={crumb.name}
+        className="font-stashly block max-w-40 truncate"
+      >
         {crumb.name === 'root' ? null : crumb.type === 'folder' ? (
-          <span className="flex items-center gap-2">{crumb.name}</span>
+          <span className="flex items-center gap-2 truncate">{crumb.name}</span>
         ) : (
           crumb.name
         )}
@@ -116,17 +123,21 @@ export function Breadcrumbs() {
   const showAll = crumbs.length <= 3
 
   return (
-    <Breadcrumb className="w-full flex-1 max-w-max">
-      <BreadcrumbList>
+    // min-w-0 lets the trail shrink below its content width inside the header
+    // flex row; without it the nav keeps its intrinsic width and pushes the
+    // right-hand controls out (or wraps onto a second line, breaking h-14).
+    <Breadcrumb className="min-w-0 flex-1">
+      {/* flex-nowrap: a long trail must ellipsise, never wrap. */}
+      <BreadcrumbList className="flex-nowrap">
         {/* Root — always first. Separators are siblings of the items, never
             nested inside them: BreadcrumbSeparator renders an <li>, so it has
             to stay a direct child of the <ol>. */}
         {root.id !== last.id ? (
           <Fragment key={root.id}>
-            <BreadcrumbItem>
+            <BreadcrumbItem className="min-w-0">
               <CrumbLink crumb={root} me={me} searchParams={searchParams} />
             </BreadcrumbItem>
-            <BreadcrumbSeparator>/</BreadcrumbSeparator>
+            <BreadcrumbSeparator className="shrink-0">/</BreadcrumbSeparator>
           </Fragment>
         ) : null}
 
@@ -134,35 +145,42 @@ export function Breadcrumbs() {
           // ≤ 3 items: render all middle items (between root and last)
           crumbs.slice(1, -1).map((crumb) => (
             <Fragment key={crumb.id}>
-              <BreadcrumbItem>
+              <BreadcrumbItem className="min-w-0">
                 <CrumbLink crumb={crumb} me={me} searchParams={searchParams} />
               </BreadcrumbItem>
-              <BreadcrumbSeparator>/</BreadcrumbSeparator>
+              <BreadcrumbSeparator className="shrink-0">/</BreadcrumbSeparator>
             </Fragment>
           ))
         ) : (
           // > 3 items: collapse middle into dropdown
           <>
             <BreadcrumbDropdown crumbs={collapsed!} me={me} />
-            <BreadcrumbSeparator>/</BreadcrumbSeparator>
+            <BreadcrumbSeparator className="shrink-0">/</BreadcrumbSeparator>
             {secondToLast && (
               <Fragment key={secondToLast.id}>
-                <BreadcrumbItem>
+                <BreadcrumbItem className="min-w-0">
                   <CrumbLink
                     crumb={secondToLast}
                     me={me}
                     searchParams={searchParams}
                   />
                 </BreadcrumbItem>
-                <BreadcrumbSeparator>/</BreadcrumbSeparator>
+                <BreadcrumbSeparator className="shrink-0">
+                  /
+                </BreadcrumbSeparator>
               </Fragment>
             )}
           </>
         )}
 
         {/* Last item — always current page */}
-        <BreadcrumbItem key={last?.id}>
-          <BreadcrumbPage className="font-stashly">{last?.name}</BreadcrumbPage>
+        <BreadcrumbItem key={last?.id} className="min-w-0">
+          <BreadcrumbPage
+            className="font-stashly block truncate"
+            title={last?.name}
+          >
+            {last?.name}
+          </BreadcrumbPage>
         </BreadcrumbItem>
       </BreadcrumbList>
     </Breadcrumb>

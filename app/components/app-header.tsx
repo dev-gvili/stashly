@@ -6,7 +6,7 @@ import {
   UploadFillIcon,
   UploadFolderFillIcon,
   NotificationEmptyFillIcon,
-  NotificationFullFillIcon
+  NotificationFullFillIcon,
 } from '@/components/icons'
 import { useUpload } from '@/hooks/useUpload'
 import { cn } from '@/utils'
@@ -51,19 +51,26 @@ export function AppHeader() {
         variant="outline"
         size="icon"
         className={cn(
-          'font-stashly bg-card! border-input rounded-md!',
+          'font-stashly bg-card! border-input rounded-md! shrink-0',
           !fileId && 'hidden'
         )}
         onClick={() => navigate(-1)}
       >
         <ArrowLeftFillIcon className="size-5" />
       </Button>
-      {fileId && <Breadcrumbs />}
-      <div className="flex flex-1 gap-2 items-center">
-        <StashlyUpload folderId={folderId} rootId={rootId} />
-        <HeaderFilters />
-      </div>
-      <div className="flex items-center space-x-2">
+      {/* On a file page both the upload group and the filters render nothing,
+          so the breadcrumb trail takes that slot outright — sharing the row
+          with an empty flex-1 sibling would halve the width it can truncate
+          against. */}
+      {fileId ? (
+        <Breadcrumbs />
+      ) : (
+        <div className="flex flex-1 gap-2 items-center">
+          <StashlyUpload folderId={folderId} rootId={rootId} />
+          <HeaderFilters />
+        </div>
+      )}
+      <div className="flex items-center space-x-2 shrink-0">
         <LayoutToggle>
           <River />
           <Waterfall />
