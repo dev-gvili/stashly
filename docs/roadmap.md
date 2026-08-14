@@ -1,6 +1,6 @@
 # Stashly Project Roadmap
 
-Last updated: **2026-08-13**
+Last updated: **2026-08-14**
 
 Stashly is a secure, intuitive, and powerful file storage and collaboration platform. This roadmap tracks shipped phases and remaining work.
 
@@ -22,7 +22,7 @@ For developer conventions and the actual project structure, see [`CLAUDE.md`](..
 
 ## Phase 2: File Management & Upload — ✅ Shipped
 
-- [x] **Multipart upload** — `app/machines/upload/upload.machine.ts` parent spawns `app/machines/reviset/file.machine.ts` per file (the sibling `app/machines/upload/file.machine.ts` is dead code) plus `app/machines/quota/quota.machine.ts`. Concurrency is gated inside `upload.machine.ts` itself via `maxConcurrentUploads` (schema default 100) — the standalone queue-machine copies under `machines/actors/`, `machines/queue/`, and `machines/reviset/` have no importers.
+- [x] **Multipart upload** — `app/machines/upload/upload.machine.ts` parent spawns `app/machines/reviset/file.machine.ts` per file (the sibling `app/machines/upload/file.machine.ts` is dead code) plus `app/machines/quota/quota.machine.ts`. Concurrency is gated inside `upload.machine.ts` itself via `maxConcurrentUploads` (schema default 100); the standalone queue-machine copies that used to shadow this were deleted on 2026-08-14.
 - [x] **Concurrent multipart** — parallel chunk uploads with ETag tracking ([spec](superpowers/specs/2026-04-02-concurrent-multipart-upload-design.md))
 - [x] **Multipart contract tests** — Vitest suite over the streaming layer
 - [x] **Post-upload DB chain** — `createDbItem` actor → `POST /api/items` → `createUploadedItem()`
@@ -45,13 +45,14 @@ For developer conventions and the actual project structure, see [`CLAUDE.md`](..
 - [x] **Activity Feed** — full activity timeline (create/rename/move/trash/restore/delete/copy/share/comment/version), `ItemActivityDrawer`, `ActivityFeed` component on the gallery image sidebar
 - [x] **Permission model** — `Permission` table; per-item access grants enforced in action functions
 - [x] **Notifications** — live SSE feed: `/api/notifications/stream` fed by Postgres LISTEN/NOTIFY (`app/.server/notification-events.ts`), `NotificationsPanel` bell in the app header, `useNotificationStream` hook ([notifications-sse.md](notifications-sse.md)). Shipped with Prometheus instrumentation for the pool / SSE / NOTIFY path — `app/.server/metrics.ts` exposed at `/api/metrics`. The `/settings/notifications` preferences page is still a 17-line TODO stub.
+- [x] **Client degradation telemetry** — the browser-side thumbnail and metadata/embedding stages fall back silently by design, which made a WebGPU or PDF.js regression invisible server-side. They now increment `stashly_client_degraded_total{stage,reason}` on the existing registry via `sendBeacon` to `POST /api/metrics` (closed enums, session-gated, no ids or stack traces), with a quiet dismissible notice shown only for capability-level failures. `app/utils/report-degraded.ts` + `core-components/degraded-notice.tsx`.
 - [x] **Invitations (item + workspace)** — `invitation-actions.ts` + `/api/invitations`; received/sent views (`invitations-view.tsx` + `views/invitations/` detail panels), `NewInvitationDialog` invite flow covering files, folders, and workspaces; `/:me/stash/invitations` page
 
 ### Backend Only — Awaiting UI
 
 These have working `*-actions.ts` files and API routes wired, but **no UI consumers** exist yet.
 
-- [ ] **Comments** — `comment-actions.ts` + `/api/comments` exist; `app/components/CommentsThreadPanel.tsx` is present but has zero importers — not mounted from any route or item view
+- [ ] **Comments** — `comment-actions.ts` + `/api/comments` exist; no UI. The unmounted `CommentsThreadPanel.tsx` was deleted in the 2026-08-14 purge, so the panel needs rebuilding (recover it from git history if the old markup is useful)
 - [ ] **Versions** — `version-actions.ts` + `/api/versions` (flat + `items/:itemId/versions/:versionId?`) exist; no `VersionList` / `VersionHistory` component exists anywhere; no UI to trigger version creation or restore
 
 ### Workspaces — Routes Stubbed, Views Missing
@@ -154,10 +155,9 @@ Some are blocking the OSS-quality bar — Stashly is positioned as a reference i
 ### Open
 
 - [ ] **Flat API routes** — `routes.ts` still registers a flat top-level path *and* a nested `items/:itemId/...` path for `shares`, `favorites`, `versions`, `invitations`, and `comments/*`; migrate callers to the nested form and drop the flat registrations (`pins`/`locks` are flat-only and out of scope) — see [`TASKS.md`](../TASKS.md)
-- [ ] **Orphaned UI components** — `Gemini3Dashboard*.tsx`, `FileManagementDashboard.tsx`, `file-uploader.tsx`, `Gallery.tsx` legacy etc. — substantial component dust. Many cause typecheck errors due to references to nonexistent modules / removed icon names. (The old `dropbox ui/` folder is gone.) Running inventory: [`orphaned.md`](orphaned.md).
-- [ ] **Dead upload machines** — `app/machines/upload/file.machine.ts` (superseded by `machines/reviset/file.machine.ts`) plus the three unreferenced queue machines (`machines/actors/queue.machine.ts`, `machines/queue/queue.machine.1.ts`, `machines/reviset/queue.machine.ts`)
+- [ ] **Unused shadcn components** — 14 remain in `app/components/ui/` with no importer reaching outside `ui/`. Kept deliberately in the 2026-08-14 purge (never imported means never bundled, and re-adding is one `shadcn add`). Running inventory: [`orphaned.md`](orphaned.md).
 - [ ] **Models without action files** — `Favorite`, `AuditLog`, `Trash`/`TrashItem`, `View` (`Thumbnail` now has reads — `getThumbnailByItemId` / `getThumbnailSource` in `thumbnail-actions.ts`)
-- [ ] **Package update type errors** — `stripe.ts`, `subscription.ts`, `subscription.machine.ts`, `permission-actions.ts` (`workspaceItem.service.ts` no longer exists)
+- [ ] **Package update type errors** — `stripe.ts`, `subscription.ts`, `permission-actions.ts` (`workspaceItem.service.ts` and `subscription.machine.ts` no longer exist). Baseline after the 2026-08-14 purge is 209 `tsc` errors, down from 248
 - [ ] **`@/services/*` imports inside route files** — `CLAUDE.md` bans the alias in `app/routes/` (dot-server plugin), but 42 route files still use it (25 under `routes/api/`, 13 under `routes/stash/`, incl. the long-deferred `app/routes/api/shares.ts`). Either finish the migration or re-confirm the constraint still holds for the current plugin version.
 - [ ] **Test runner globals** — `vitest.config.ts` sets `globals: true`, but `tsconfig.json` has no `types: ["vitest/globals"]`, so `app/.server/__tests__/collection-actions.test.ts` still references `describe`/`it`/`expect` with no types in scope
 

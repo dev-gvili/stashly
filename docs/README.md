@@ -22,14 +22,14 @@ Architecture and design documentation for the Stashly codebase.
 | [code-viewer.md](code-viewer.md) | Monaco-based code viewer — language support, go-to-definition across uploaded files |
 | [code-viewer-cross-file-options.md](code-viewer-cross-file-options.md) | Decision record for cross-file navigation — the options weighed and the one that shipped |
 | [roadmap.md](roadmap.md) | Product roadmap — shipped phases, current status, future work |
-| [orphaned.md](orphaned.md) | Dead-code report — unimported files, re-verified 2026-08-13 (re-verify before deleting) |
+| [orphaned.md](orphaned.md) | Dead-code report — 21 orphans purged 2026-08-14; 14 unused `ui/` components remain by choice. Re-verify before deleting anything: it has gone stale in both directions before |
 
 ## Reference
 
 | File | Description |
 |------|-------------|
 | [data_profile_stashly _prisma_schema.md](data_profile_stashly%20_prisma_schema.md) | Prisma schema deep-dive — 56 models, 24 enums, entity relationships, index analysis |
-| [stashly_structure_2026-04-01.txt](stashly_structure_2026-04-01.txt) | Full project file tree snapshot (generated 2026-04-01) |
+| [stashly_structure_2026-04-01.txt](stashly_structure_2026-04-01.txt) | Full project file tree snapshot, generated 2026-04-01 — a historical artifact, not current. For today's layout see [README.md](../README.md#project-structure) |
 
 ## Superpowers Plans & Specs
 

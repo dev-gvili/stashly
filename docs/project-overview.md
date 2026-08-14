@@ -181,7 +181,7 @@ User ──┬── Workspace ──── WorkspaceMember (role-based)
        └── Session / Account / Verification (auth)
 ```
 
-### Key Models (55 total)
+### Key Models (56 total)
 
 The schema spans 56 models and 24 enums. A collection is **not** a separate model — it is an `Item` with `type='collection'`, with membership tracked by the `CollectionMember` self-relation. The legacy `Collection`, `CollectionItem`, `Metadata`, and `Tag` models were removed.
 
@@ -293,12 +293,12 @@ The upload pipeline uses XState state machines in a parent-child actor pattern:
 1. **User drops files** → `upload/upload.machine.ts` (parent) spawns one `reviset/file.machine.ts` per file
 2. **File machine** requests presigned URLs from `/api/s3/upload` (action: `get-presigned-url`)
 3. **File machine** uploads chunks in parallel directly to S3, verifies ETags
-4. **`actors/queue.machine.ts`** limits concurrent uploads (default: 5 slots)
-5. **`actors/quota.machine.ts`** checks storage limits before each upload
-6. On `upload.done`, the parent spawns a `createDbItem` actor → `POST /api/items` (intent: `create_upload_item`) → `createUploadedItem()` writes the row
+4. **Concurrency** is gated inside `upload.machine.ts` itself via `maxConcurrentUploads` (default 100) — there is no separate queue actor
+5. **`quota/quota.machine.ts`** is spawned by the parent, and the file machine invokes `checkQuota`/`updateQuota` from `quota/quota.actors.ts`
+6. On `upload.done`, the parent spawns a `createDbItem` actor → `POST /api/items` (intent: `create_upload_item`) → `createUploadedItem()` writes the row, resolving any intermediate folders from the S3 key so dropped hierarchies survive
 7. After DB write, status flips to `'itemCreated'` — this is the gate that triggers the thumbnail pipeline (prevents FK violations on `Thumbnail.itemId`)
 
-Key files: `app/machines/upload/`, `app/machines/reviset/`, `app/machines/actors/`, `app/machines/multipart/`. The **active** per-file actor is `reviset/file.machine.ts` (imported by `upload.machine.ts`); `upload/file.machine.ts` is an unused sibling kept for reference.
+Key files: `app/machines/upload/`, `app/machines/reviset/`, `app/machines/quota/`, `app/machines/multipart/`. The **active** per-file actor is `reviset/file.machine.ts` (imported by `upload.machine.ts:12`) — the folder name is misleading, and the `upload/file.machine.ts` sibling that looked authoritative was deleted in the 2026-08-14 purge along with the standalone queue/quota/multipart prototypes under `machines/actors/`.
 
 See: [`docs/upload-multipart.md`](upload-multipart.md), [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md)
 
@@ -323,6 +323,36 @@ See: [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md)
 `activity-actions.ts` records create / upload / rename / move / copy / trash / restore / delete / share / comment / version / permission / **pin / collection (add·remove·empty) / favorite / bucket-empty** events on items — each backed by a dedicated action model (17 in total) joined to `ItemAction`. Activities fire-and-forget via `Promise.resolve().then(() => createActivity({...})).catch(() => {})` (so synchronous throws inside `createActivity` are caught). Rendered as a vertical timeline in `ActivityFeed` and the `ItemActivityDrawer`.
 
 Routes: `GET /api/activities` (resource route).
+
+### Notifications (SSE)
+
+A Postgres trigger fires `pg_notify('notifications', …)` on every `Notification`
+insert/update/delete. A single `LISTEN` connection per instance — pinned to
+`globalThis` so dev HMR doesn't multiply it — receives those and fans them out
+to that user's open `EventSource` streams at `GET /api/notifications/stream`.
+Firing at the DB level means every writer works, including seeds, raw SQL and
+other instances.
+
+Every stream write is guarded: a disconnected client must not be able to take
+the server down, so `send` is wrapped and the first throw tears the connection
+down. A 25s heartbeat keeps intermediaries from dropping idle connections, and
+compression is configured to skip `text/event-stream`.
+
+See: [`docs/notifications-sse.md`](notifications-sse.md)
+
+### Observability
+
+`app/.server/metrics.ts` is a dependency-free Prometheus registry exposed at
+`/api/metrics` (token-gated for scraping). It tracks the signals that break
+first under a synchronized notification burst: event-loop lag, NOTIFY volume,
+open SSE connections, `mark_all_read` count, and pg pool saturation.
+
+Browsers also report *client-side* degradation there over `POST`: when an
+optional stage falls back — no WebGPU, a PDF that won't render, a model that
+won't load — it increments `stashly_client_degraded_total{stage,reason}` via
+`sendBeacon`. Those stages fail inside a `catch` on the user's machine, so
+without this the server sees nothing at all. Both labels are closed enums, so
+an untrusted client can't inflate series cardinality.
 
 ### AI Pipeline
 
@@ -393,23 +423,23 @@ Complex async workflows are modeled as XState 5 state machines in `app/machines/
 
 | Machine | Location | Purpose |
 |---------|----------|---------|
-| `upload.machine` | `upload/` | Parent orchestrator — spawns file actors, manages queue, runs `createDbItem` actor on upload done |
-| `file.machine` | `reviset/` | Individual file upload lifecycle (**active** — imported by `upload.machine`) |
-| `file.machine` | `upload/` | Unused sibling, kept for reference |
-| `queue.machine` | `actors/`, `queue/`, `reviset/` | **Dead** — no importers. Concurrency is gated inside `upload.machine` via `maxConcurrentUploads` (default 100) |
-| `quota.machine` | `quota/` | Storage quota state tracking (**active** — spawned by `upload.machine`). The `actors/quota.machine.ts` copy is dead |
-| `multipart.machine` | `actors/` | **Dead** — no importers |
+| `upload.machine` | `upload/` | Parent orchestrator — spawns file actors, gates concurrency via `maxConcurrentUploads` (default 100), runs `createDbItem` on upload done |
+| `file.machine` | `reviset/` | Individual file upload lifecycle — **the active per-file actor**, imported by `upload.machine:12` despite the folder name |
+| `quota.machine` | `quota/` | Storage quota state tracking, spawned by `upload.machine`; `quota.actors.ts` holds the `checkQuota`/`updateQuota` fetch actors |
 | `s3.multipart.concurrent` / `.stream` | `multipart/` | Concurrent + streaming multipart utilities |
-| `ai.machine` | `ai/` | **Dead** — no importers; the live AI path is `pipeline/` + `app/workers/` |
-| `caption.machine` | `ai/` | **Dead** — no importers |
 | `pipeline.machine` | `pipeline/` | Full audio pipeline (detect → transcribe → summarize → tag) |
 | `subscription.machine` | `subscription/` | Stripe subscription state |
 | `onboard.machine` | `onboard/` | New user setup flow |
 | `selection.machine` | `selection/` | Multi-select UI state |
-| `sidebar.machine` | `sidebar/` | Navigation panel state |
-| `infinite-scroll.machine` | `pagination/` | Lazy-loading pagination |
 | `confirm.machine` | top-level | Confirmation dialog state |
 | `sessionStorage.machine` | `session/` | Auth/session helpers |
+
+Every machine listed above is live. The dead ones this table used to carry —
+the `ai/` pair, the three `queue.machine` copies, `actors/quota.machine.ts`,
+`actors/multipart.machine.ts`, `upload/file.machine.ts`, `sidebar.machine` and
+`infinite-scroll.machine` — were deleted on 2026-08-14; see
+[`orphaned.md`](orphaned.md). The live AI path is `pipeline/` plus the modules
+in `app/workers/`.
 
 Machines are connected to React via `@xstate/react`. Parent machines spawn child actors for per-item or per-task state.
 
@@ -455,6 +485,7 @@ All API routes live in `app/routes/api/` and are resource routes (no UI componen
 | GET | `/api/images` | Image listing for gallery |
 | GET | `/api/thumbnails/:itemId/presign` | Get presigned URL for thumbnail upload |
 | POST/PATCH | `/api/thumbnails/:itemId` | Create / update thumbnail record |
+| GET | `/api/thumbnails/:itemId/source` | Original download URL, for the on-demand thumbnail backfill |
 
 ### AI
 | Method | Endpoint | Purpose |
@@ -474,6 +505,9 @@ All API routes live in `app/routes/api/` and are resource routes (no UI componen
 | POST | `/api/stripe` | Stripe webhook handler |
 | GET | `/api/subscription` | Subscription status |
 | GET | `/api/notifications` | Notification feed |
+| GET | `/api/notifications/stream` | SSE feed of live notification changes, fed by Postgres `LISTEN`/`NOTIFY` |
+| GET/POST | `/api/metrics` | Prometheus exposition (GET, token-gated); browsers `sendBeacon` degraded-stage reports (POST, session-gated) |
+| GET | `/api/source-types` | Source-type lookup |
 | GET | `/api/activities` | Item activity timeline |
 | GET/POST | `/api/versions` | List / create file versions |
 | GET | `/api/sidebar` | Sidebar tree data |
