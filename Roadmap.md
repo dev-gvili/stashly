@@ -1,68 +1,14 @@
 # Stashly Roadmap
 
-> **Superseded — kept for history. The canonical roadmap is [`docs/roadmap.md`](docs/roadmap.md).** The phase statuses and the directory tree below are stale (there is no root-level `components/` or `hooks/`, no `docs/api|architecture|workflows`, and `tests/` holds only `e2e/`); sharing, invitations, workspaces schema, and semantic-search infrastructure have all shipped since this file was written.
-
-## Project Structure Overview
-
-```
-.
-├── app/                     # Main application folder
-│   ├── .client/             # Client-side specific logic
-│   ├── .server/             # Server-side logic (API, auth, etc.)
-│   ├── assets/              # Static assets like images and icons
-│   ├── auth/                # Authentication related components and logic
-│   ├── components/          # UI components specific to the main app
-│   ├── hooks/               # Custom React hooks
-│   ├── machines/            # XState state machines for complex UI logic
-│   ├── prisma/              # Prisma client generation for browser
-│   ├── routes/              # Application routes/pages
-│   ├── styles/              # Global and shared styles
-│   ├── types/               # TypeScript type definitions
-│   └── utils/               # Utility functions
-├── components/              # Shared, reusable UI components across the app
-│   ├── comments-panel.tsx   # Component for displaying comments
-│   ├── file-card.tsx        # Component for a single file card
-│   ├── file-grid.tsx        # Component for a grid of files
-│   ├── file-list-item.tsx   # Component for a file in a list view
-│   ├── file-manager.tsx     # Main file manager component
-│   ├── file-preview.tsx     # Component for previewing a file
-│   ├── folder-card.tsx      # Component for a single folder card
-│   ├── settings-page.tsx    # Component for the settings page
-│   ├── share-folder-modal.tsx # Modal for sharing folders
-│   ├── sidebar.tsx          # Sidebar component
-│   └── storage-panel.tsx    # Component for showing storage info
-├── docs/                    # Project documentation
-│   ├── api/                 # API documentation
-│   ├── architecture/        # Architecture documents
-│   └── workflows/           # Workflow documentation
-├── hooks/                   # Global custom React hooks
-│   └── use-mobile.ts        # Hook to detect mobile viewport
-├── prisma/                  # Database configuration
-│   ├── migrations/          # Database migration history
-│   ├── models/              # Data models (likely generated)
-│   ├── seedData/            # Data for seeding the database
-│   └── schema.prisma        # The single source of truth for your database schema
-├── public/                  # Publicly accessible files
-│   ├── .well-known/         # Standard well-known URIs
-│   └── favicon.ico          # Application favicon
-├── scripts/                 # Automation and utility scripts
-│   ├── gen.ts               # General purpose generation script
-│   └── generate.ts          # Data generation script
-├── server/                  # Backend server (likely Express.js)
-│   ├── adapters/            # Adapters for external services
-│   ├── middleware/          # Server middleware
-│   └── plugins/             # Server plugins
-├── tests/                   # Test files
-│   ├── e2e/                 # End-to-end tests
-│   ├── integration/         # Integration tests
-│   └── unit/                # Unit tests
-├── .github/                 # GitHub specific configuration
-│   ├── instructions/        # Copilot instructions
-│   └── prompts/             # Prompts for code generation
-├── package.json             # Defines project dependencies and scripts
-├── vite.config.ts           # Configuration file for Vite bundler
-└── server.js                # Main entry point for the server
-```
+> **This is the *product* roadmap — the feature phases, in rough priority order.**
+> For engineering status (what has actually shipped, what is stubbed, what is
+> mid-flight) see [`docs/roadmap.md`](docs/roadmap.md), which is the source of
+> truth whenever the two disagree. For the real directory layout see
+> [`README.md`](README.md#project-structure).
+>
+> Phase statuses below were re-checked against the code on 2026-08-14. Items
+> marked partial have a working backend with no UI yet — those are tracked in
+> detail in the engineering roadmap.
 
 This document outlines the development roadmap for Stashly. Our goal is to build a secure, intuitive, and powerful file storage and collaboration platform.
 
@@ -80,21 +26,23 @@ This phase focuses on establishing the basic features for a functional file stor
 
 ## Phase 2: Collaboration & Sharing
 
-This phase introduces features that allow users to collaborate and share their files with others.
+This phase introduces features that allow users to collaborate and share their files with others. `[~]` marks a feature whose backend is done but which has no UI yet.
 
-- [ ] **File & Folder Sharing:** Generate shareable links for files and folders.
-- [ ] **Link Permissions:** Set permissions for shared links (e.g., view-only, with password, expiration dates).
-- [ ] **Team Workspaces:** Create shared workspaces for teams to collaborate on files.
-- [ ] **User Invitations:** Invite users to collaborate in a workspace via email.
-- [ ] **Commenting:** Add comments to files for feedback and discussion.
-- [ ] **Version History:** Keep track of file versions and allow users to restore previous versions.
+- [x] **File & Folder Sharing:** Generate shareable links for files and folders. *(`share-actions.ts`, `/api/shares`, `ShareDialog`, shared-with-me view)*
+- [x] **Link Permissions:** Set permissions for shared links. *(read/write scopes; password and expiry are not implemented)*
+- [x] **User Invitations:** Invite users to collaborate via email. *(`invitation-actions.ts`, `/api/invitations`, received/sent views, invite flow covering files, folders and workspaces)*
+- [~] **Team Workspaces:** Create shared workspaces for teams. *(schema, membership backend and the `/:me/workspaces/:workspaceId/*` route space exist; the detail page renders, but most workspace views are still stubs)*
+- [~] **Commenting:** Add comments to files for feedback. *(backend only — `comment-actions.ts` + `/api/comments`; no UI is mounted)*
+- [~] **Version History:** Track file versions and restore previous ones. *(backend only — `version-actions.ts` + `/api/versions`; no UI to view, create or restore)*
+- [x] **Activity History:** Timeline of item events. *(not originally planned here — `/api/activities`, `ActivityFeed`, `ItemActivityDrawer`)*
+- [x] **Live Notifications:** Real-time in-app notification feed. *(SSE over Postgres LISTEN/NOTIFY; the `/settings/notifications` preferences page is still a stub)*
 
 ## Phase 3: Advanced Features & Intelligence
 
 This phase aims to enhance the user experience with intelligent features and better integrations.
 
-- [ ] **Advanced Search:** Implement semantic search using pgvector to search within file content (for supported formats like .txt, .md, .pdf).
-- [ ] **AI-powered Organization:** Automatically categorize and tag files based on their content.
+- [x] **Advanced Search:** Semantic search over file content using pgvector. *(text extracted server-side, chunked ~300 tokens with overlap, embedded in the browser on WebGPU; unembedded chunks are healed on a later visit. See [semantic-search.md](docs/semantic-search.md))*
+- [~] **AI-powered Organization:** Automatically categorize and tag files by content. *(the pipeline produces captions, transcripts, keywords and tags; nothing yet files or organizes items automatically off the back of them)*
 - [ ] **Desktop Sync Client:** Develop a desktop application to sync files between the user's computer and Stashly.
 - [ ] **Mobile App (iOS & Android):** Native mobile applications for accessing files on the go.
 - [ ] **Third-party Integrations:** Integrate with popular services like Google Drive, Dropbox, Slack, and Zapier.
@@ -116,7 +64,7 @@ This phase introduces features tailored for enterprise customers and larger team
 
 - [ ] **Single Sign-On (SSO):** Support for SSO providers like Okta, Auth0, and SAML.
 - [ ] **Advanced Admin Controls:** Granular control over team members, permissions, and security settings.
-- [ ] **Audit Logs:** Detailed logs of all activities within the workspace for security and compliance.
+- [~] **Audit Logs:** Detailed logs of all activity for security and compliance. *(an `AuditLog` model exists in the schema but has no action file and nothing writes to it; the user-facing activity timeline is a separate feature)*
 - [ ] **Data Residency Options:** Allow enterprise customers to choose the geographic region where their data is stored.
 - [ ] **Service Level Agreements (SLAs):** Offer SLAs for uptime and support for enterprise customers.
 
