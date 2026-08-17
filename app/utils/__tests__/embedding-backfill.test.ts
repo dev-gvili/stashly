@@ -1,10 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   MAX_BACKFILL_BATCHES,
   PENDING_EMBEDDING_BATCH,
   PENDING_EMBEDDING_MAX,
   clampPendingLimit,
   shouldRequestAnotherBatch,
+  getBackfillState,
+  reportBackfill,
+  resetBackfillState,
+  subscribeBackfill,
 } from '../embedding-backfill'
 
 describe('clampPendingLimit', () => {
@@ -76,5 +80,56 @@ describe('shouldRequestAnotherBatch', () => {
         maxBatches: 2,
       })
     ).toBe(false)
+  })
+})
+
+describe('backfill progress store', () => {
+  beforeEach(() => resetBackfillState())
+
+  it('starts idle with nothing recorded', () => {
+    const state = getBackfillState()
+    expect(state.phase).toBe('idle')
+    expect(state.embedded).toBe(0)
+    expect(state.error).toBeNull()
+  })
+
+  it('returns a stable snapshot identity between updates', () => {
+    // useSyncExternalStore compares snapshots by identity and re-renders
+    // forever if getSnapshot builds a fresh object per call.
+    expect(getBackfillState()).toBe(getBackfillState())
+    reportBackfill({ phase: 'fetching' })
+    expect(getBackfillState()).toBe(getBackfillState())
+  })
+
+  it('replaces the snapshot on update so React sees a change', () => {
+    const before = getBackfillState()
+    reportBackfill({ phase: 'embedding' })
+    expect(getBackfillState()).not.toBe(before)
+    expect(getBackfillState().phase).toBe('embedding')
+  })
+
+  it('merges patches rather than clobbering the snapshot', () => {
+    reportBackfill({ embedded: 32, batches: 1 })
+    reportBackfill({ phase: 'saving' })
+    const state = getBackfillState()
+    expect(state.embedded).toBe(32)
+    expect(state.batches).toBe(1)
+    expect(state.phase).toBe('saving')
+  })
+
+  it('notifies subscribers and stops after unsubscribe', () => {
+    let calls = 0
+    const unsubscribe = subscribeBackfill(() => calls++)
+    reportBackfill({ phase: 'fetching' })
+    expect(calls).toBe(1)
+    unsubscribe()
+    reportBackfill({ phase: 'done' })
+    expect(calls).toBe(1)
+  })
+
+  it('records a failure reason for the status panel', () => {
+    reportBackfill({ phase: 'failed', error: 'no WebGPU adapter' })
+    expect(getBackfillState().phase).toBe('failed')
+    expect(getBackfillState().error).toBe('no WebGPU adapter')
   })
 })

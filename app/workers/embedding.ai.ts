@@ -16,7 +16,7 @@ import {
   type FeatureExtractionPipeline,
   type ProgressCallback,
 } from '@huggingface/transformers'
-import { enqueue } from './ai-queue'
+import { enqueue, type AiPriority } from './ai-queue'
 
 const MODEL_ID = 'Xenova/all-mpnet-base-v2'
 export const EMBEDDING_DIM = 768
@@ -46,6 +46,12 @@ async function getPipeline(
 export function embedTexts(
   texts: string[],
   onProgress?: ProgressCallback,
+  /**
+   * Queue priority. Index-time work leaves this at `'default'`; a search query
+   * passes `'interactive'` so it isn't stuck behind a long background job like
+   * OCR on a scanned document.
+   */
+  priority: AiPriority = 'default',
 ): Promise<number[][]> {
   return enqueue(async () => {
     if (texts.length === 0) return []
@@ -66,14 +72,21 @@ export function embedTexts(
       result.push(Array.from(data.subarray(start, start + vecSize)))
     }
     return result
-  })
+  }, priority)
 }
 
-/** Embed a single string. Convenience wrapper around `embedTexts([text])`. */
+/**
+ * Embed a single string. Convenience wrapper around `embedTexts([text])`.
+ *
+ * Defaults to `'interactive'`: the only single-string caller is the search
+ * query path, where someone is watching a spinner. Batch callers (indexing,
+ * backfill) go through `embedTexts` and stay at `'default'`.
+ */
 export async function embedText(
   text: string,
   onProgress?: ProgressCallback,
+  priority: AiPriority = 'interactive',
 ): Promise<number[]> {
-  const [vec] = await embedTexts([text], onProgress)
+  const [vec] = await embedTexts([text], onProgress, priority)
   return vec
 }
