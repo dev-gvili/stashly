@@ -2,7 +2,14 @@
 
 This document covers the full search system: semantic vector search with pgvector, integration with the existing pagination system, S3 content extraction for embeddings, and the `searchItems` service implementation.
 
-> ⚠️ **Status (2026-08-13): mostly design notes, not shipped code.** Sections 1–7 and 10 describe a *server-side* embedding architecture (`app/.server/search/`, `s3-extractors.ts`, `searchService.ts`) that was never built — none of those files exist. What actually ships is client-side chunked embedding; see **[`docs/semantic-search.md`](./semantic-search.md)** for the real pipeline, and `app/.server/search-actions.ts` for the real code. Sections 8–9 describe filters and `searchItems`, which *are* real but live at different paths than documented — corrected inline below. Per-section status callouts follow.
+> ⚠️ **Status (2026-08-15): mostly design notes, not shipped code.** Sections 1–7 and 10 describe a *server-side* embedding architecture (`app/.server/search/`, `s3-extractors.ts`, `searchService.ts`) that was never built — none of those files exist. What actually ships is client-side chunked embedding **and** a client-embedded query path; see **[`docs/semantic-search.md`](./semantic-search.md)** for the real pipeline, and `app/.server/search-actions.ts` for the real code. Sections 8–9 describe filters and `searchItems`, which *are* real but live at different paths than documented — corrected inline below.
+>
+> ℹ️ **Two different search entry points.** This document's `searchItems` (§8)
+> is the generic paginated item lister built from `searchFactory` in
+> `item-actions.ts` — a `where`-clause query with no ranking. The query path's
+> entry point is `searchItemsHybrid` in `search-actions.ts`, which fuses
+> trigram and vector ranks. Named apart on purpose so an auto-import can't
+> silently pick the wrong one.
 
 ---
 
@@ -212,7 +219,7 @@ For batch uploads, use `encodeText([txt1, txt2, ...])` and `prisma.file.createMa
 
 ## 6. Semantic Search Function
 
-> **Not built.** `app/.server/searchService.ts` does not exist and no `semanticSearch` function ships. The query path is entirely unimplemented — `app/routes/api/search.ts` is a stub whose `loader` and `action` both `return null`. The SQL sketch below remains a reasonable starting point, but the target table is `SearchChunk` (rolled up to items), not `File`.
+> **Superseded — the query path ships, but not like this.** `app/.server/searchService.ts` does not exist and there is no `semanticSearch` function. What ships is `rankByVector` in `app/.server/search-actions.ts`: it targets `SearchChunk` (rolled up to one best passage per item), takes the query vector as a parameter rather than embedding server-side, scopes to `ownerId` inside the SQL, and is fused with a trigram ranker via RRF. See [`docs/semantic-search.md` § Query pipeline](./semantic-search.md#query-pipeline-today).
 
 ```typescript
 export async function semanticSearch(query: string, topK = 10): Promise<SearchResult[]> {
@@ -241,7 +248,7 @@ export async function semanticSearch(query: string, topK = 10): Promise<SearchRe
 
 ## 7. Integrating Semantic Search with Existing Pagination
 
-> **Not built.** `searchFactory` is real (it backs `searchItems`, see §8) but it has no `semanticQuery` support — `itemFilterSchema` in `app/utils/filters/item.filters.ts` has no such key, and `app/.server/search/{search.repository,search.service}.ts` and `ss.ts` do not exist. This section is the plan for wiring the query path once it exists.
+> **Not built, and superseded.** `searchFactory` is real (it backs `searchItems`, see §8) but it has no `semanticQuery` support, and `app/.server/search/{search.repository,search.service}.ts` and `ss.ts` do not exist. The shipped query path deliberately does *not* inject ranked ids into `searchFactory`'s `WHERE id IN (…)`: cursor pagination cannot express relevance order, so `searchItemsHybrid` ranks first and hydrates second, paginating by offset into the fused list. Structured filters are applied at hydration.
 
 The `searchFactory` in `ss.ts` (combined from `search.ts` and `pagination.ts`) integrates semantic search by pre-filtering item IDs before applying standard pagination.
 
@@ -472,7 +479,9 @@ Run: `pnpm exec tsx ./scripts/reindex-search.ts`
 ### Troubleshooting
 
 - `Expected 768-dim vector, got N` — thrown by `setSearchChunkVectors`; the client sent vectors from a different model. Align `MODEL_ID` / `EMBEDDING_DIM` in `app/workers/embedding.ai.ts` with `SEARCH_VECTOR_DIM` in `app/.server/search-actions.ts` and the schema.
-- Chunks exist but `vector IS NULL` — the tab closed before the `save_search_chunk_embeddings` POST. Embedding is client-side and there is no backfill; the rows stay unembedded.
+- Chunks exist but `vector IS NULL` — the tab closed before the `save_search_chunk_embeddings` POST. `useEmbeddingBackfill` re-runs them the next time that owner opens the app; `getSearchIndexStats` reports the outstanding count.
+- Semantic mode returns nothing while keyword works — usually an empty dense half rather than a query problem. Check `getSearchIndexStats`: a drive whose documents predate chunked indexing has no embedded passages to match. The UI surfaces this as `SearchNotIndexedNotice`.
+- Semantic results are slow — confirm migration `20260815000000_search_query_indexes` ran. Without its HNSW index the dense ranker sequentially scans every chunk the owner has.
 - Out of memory — reduce concurrency and/or switch to quantized model
 
 ### Security & Privacy

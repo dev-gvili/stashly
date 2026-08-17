@@ -10,6 +10,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Never add or install a new dependency (npm/pnpm packages like prom-client, vite-tsconfig-paths, radix-*) without asking first. Prefer built-in capabilities of Vite/Vitest/existing libs.
 - Never run destructive git commands (`git checkout -- <file>`, `git reset --hard`, `git clean`) on files with uncommitted changes. Ask first.
 - Never run DB mutations or migrations unless explicitly requested.
+- Stay strictly within the requested scope. Do not explore unrelated models, schemas, or subsystems mid-task. If you believe adjacent work is needed, stop and ask first with a one-line rationale.
+- Prefer extending existing components (e.g. `FileCardDetail`) over creating parallel new ones. Search for an existing component before writing a new one.
+
+## Data Honesty
+
+- Never display or return fabricated/placeholder values in user-facing output (e.g. `line 1` locators, rank-derived percentage scores). If a real value isn't available, omit the field or label it explicitly as unavailable.
+- When measuring performance, report real measurements only; never emit `unknown` placeholder telemetry — instrument a real throughput test instead.
 
 ## Working Style
 
@@ -30,6 +37,11 @@ When committing, actually run `git add` and `git commit` — don't just generate
 TypeScript (strict) project. Always use TypeScript for new files. When moving/reorganizing files, update all import paths and verify with the build command. Use path aliases for cross-directory imports; relative imports only within the same directory.
 
 - `$queryRaw` traps: a `BigInt` column (`Item.size`) compared against a fractional param fails — Postgres types the param bigint, so use integer arithmetic; and backticks inside the SQL string close the template literal.
+
+## Migrations
+
+- After any Prisma schema change: write the migration and run `pnpm prisma generate`. **Scope Discipline still applies** — don't run `pnpm prisma migrate dev` yourself unless the user asked you to; otherwise hand it to them. When they have asked, the order is `migrate dev` → `generate` → report.
+- Always close with an explicit list of what the user must still run: typically `pnpm prisma migrate dev`, a dev-server restart, and any re-index. The running server caches the old Prisma client and throws `Unknown argument` errors until it restarts, so the restart is not optional.
 
 ## Environment
 
@@ -159,7 +171,6 @@ Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind s
 - For UI changes, verify in the browser via the chrome-devtools MCP (or playwright MCP) before declaring done — both require Chrome installed.
 - Browser verification doesn't need a session: chrome-devtools MCP opens a fresh unauthenticated Chrome, but `http://localhost/auth/sign-in` loads the same stylesheet. Append a throwaway `div` with the classes and read `getComputedStyle` to prove a Tailwind class resolves, or inject a mock grid there to measure geometry (column widths, row count, card sizes) before and after a layout change.
 - Only run typecheck at the END of a task, not mid-edit, unless explicitly asked — and skip it entirely for className/copy-only edits, which touch no type surface.
-- After Prisma schema changes: run `pnpm prisma generate`, then ask the user to run `pnpm prisma migrate dev` and restart the dev server — the running server caches the old client (`Unknown argument` errors otherwise).
 - `$queryRaw` SQL is invisible to `tsc` — verify by running the action against the dev DB: `npx tsx --env-file=.env <script.ts>` (absolute imports; no top-level await).
 - `pnpm typecheck` has **209** pre-existing, unrelated errors — don't expect a clean run. Pipe to a file, count `error TS`, and grep your touched files by name to confirm no regressions.
 - `pnpm test` has 11 pre-existing failures (`activity.test.ts` ×4, `collection-actions.test.ts` ×7) — don't chase them.

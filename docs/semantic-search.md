@@ -2,7 +2,7 @@
 
 Stashly is built toward **chunked, hybrid retrieval** — the same architecture every serious file-search product runs (Drive, OneDrive, M365 Copilot, Confluence). Documents are split into ~300-token passages and each is embedded independently; the eventual query path combines sparse keyword (`pg_trgm`) with dense vector (`pgvector`) signals at retrieval time.
 
-**Status:** the index side ships today. The query side does not — `/api/search` is a stub and the `pg_trgm` index on `Search.content` is still commented out in `prisma/models/search.prisma`.
+**Status:** both sides ship. The index side writes chunks and vectors on upload; the query side fuses `pg_trgm` and `pgvector` ranks with Reciprocal Rank Fusion at `/api/search/:type`, surfaced at `/:me/stash/search`.
 
 Single-vector-per-document was deliberately rejected. See [§ Why chunk?](#why-chunk) for the rationale.
 
@@ -30,12 +30,18 @@ Single-vector-per-document was deliberately rejected. See [§ Why chunk?](#why-c
 └───────────────────────────────────────────────────────┘
 
 ┌─────────────── QUERY TIME (per search) ───────────────┐
-│  not yet wired — see § Roadmap below                  │
 │                                                       │
-│  Query string ──► sparse rank (pg_trgm)              │
-│              ──► dense rank  (pgvector cosine)       │
-│              ──► RRF fusion                           │
-│              ──► top-k items + best chunk per item   │
+│  Query string                                         │
+│    │                                                  │
+│    ├─► GET /api/search/items  (pass 1, no model)     │
+│    │      └─► rankByKeyword (pg_trgm)                │
+│    │                                                  │
+│    └─► embedText (WebGPU, browser)                   │
+│           └─► POST /api/search/items + vector        │
+│                 ├─► rankByKeyword  (sparse)          │
+│                 ├─► rankByVector   (pgvector cosine) │
+│                 └─► RRF fusion ──► hydrate items     │
+│                       + best chunk per item          │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -72,6 +78,111 @@ model SearchChunk {
 ---
 
 ## Index pipeline (today)
+
+### 0. Client: OCR fallback for PDFs with no text layer
+
+A scanned PDF — or an export whose pages are images — extracts to **zero
+characters**. It uploads fine, thumbnails fine, and is silently unfindable by
+content, because `save_media_metadata` only indexes `if (documentText)`.
+
+When `extractPdfText` returns empty, `extractMediaMetadata` renders the pages
+and reads them with a vision model instead:
+
+```
+pdfText → '' ──► compute({ kind: 'pdfPages' })   // rasterize, in the worker
+                   └─► ocrPages()                 // GLM-OCR, main thread + WebGPU
+                         └─► documentText ──► normal chunk + embed path
+```
+
+**Model:** `onnx-community/GLM-OCR-ONNX` at q4f16 (~623MB: decoder 322MB,
+vision encoder 251MB, embeddings 50MB). Purpose-built for document
+transcription, 0.9B parameters, 94.62 on OmniDocBench v1.5.
+
+It replaced `onnx-community/Qwen3-VL-2B-Instruct-ONNX`, and the reason is
+worth recording. Qwen was picked for the one thing GLM-OCR doesn't document:
+**Hebrew**. Qwen names it among 32 OCR languages; Z.ai publishes only "8
+languages" without listing them. That choice was reversed on measurement —
+Qwen3-VL ran at **~4 tok/s on integrated graphics** (Intel Gen12LP, WebGPU
+confirmed active), about three minutes for a dense page. Generation is one
+forward pass per token, so decoder size is the lever: 322MB against 949MB at
+the same quantization.
+
+**Hebrew quality is therefore an open, empirical question.** If RTL
+transcription comes back wrong, `MODEL_ID` in `ocr.ai.ts` is a one-constant
+revert — the surrounding plumbing is model-agnostic.
+
+### Model comparison — measured, not argued
+
+Three models were run over the same 15-page image-only PDF on the same
+integrated GPU (Intel Gen12LP). Decoder size predicts speed almost exactly —
+and speed turned out not to be the deciding factor.
+
+| Model | Decoder | s/page | chars/page | Usable output? |
+|---|---|---|---|---|
+| Qwen3-VL-2B | 949 MB | ~200 | — | Correct, unusably slow |
+| **GLM-OCR 0.9B** | **322 MB** | **31.8** | **453** | **Yes — clean prose, correct reading order** |
+| Florence-2 base-ft | 61 MB | 9.1 | 476 | **No — see below** |
+
+Florence-2 is 3.5× faster than GLM-OCR and extracts *the same volume* of text.
+It is still the wrong choice, and only the raw output shows why:
+
+```
+GLM-OCR:    "...browser-side WebGPU AI inference, XState 5 orchestration,
+             and real-time PostgreSQL reactivity."
+
+Florence-2: "...Browser-side Side PU ATinference, Xstate 5 ororch"
+```
+
+Florence-2 produces no word separation (`Architecture ofCLIENT:BROWSER`),
+interleaves diagram labels into body text because it has no reading-order
+model, and garbles technical terms (`PINTURE`, `Fidge Functions`,
+`REAL 1.6BOSE CAKING`). `WebGPU AI inference` becomes `PU ATinference` — a
+phrase search that succeeds against GLM-OCR's text returns nothing against
+Florence-2's.
+
+It is a 0.23B general vision model with an `<OCR>` task token, built for scene
+text; GLM-OCR is purpose-built for document transcription. **`chars/page` is a
+worthless quality metric on its own** — the two models scored within 5% of each
+other while producing text of completely different value. Always read the
+sample.
+
+The Florence-2 implementation is kept at `app/workers/ocr-florence.ai.ts` and
+selectable via `ocr-engine.ts`, so this can be re-measured rather than
+re-argued.
+
+### Other measured findings that shaped the config:
+
+- **Per-component dtype barely matters here.** Moving Qwen's vision encoder
+  and embeddings from q4f16 to fp16 cost ~900MB of download and left
+  throughput unchanged (4.6 tok/s before, 3.3–4.5 after). Decoding dominates.
+- **Greedy decoding loops on sparse pages.** A diagram page with ~1,700
+  characters of real text still burned the full 768-token budget. Hence
+  `repetition_penalty` and `no_repeat_ngram_size`, so the model reaches EOS
+  when it genuinely runs out of text.
+
+No new dependency: `GlmOcrForConditionalGeneration` ships in
+`@huggingface/transformers` 4.2.0 and `glm_ocr` is registered in
+`MODEL_FOR_IMAGE_TEXT_TO_TEXT_MAPPING`. GLM-OCR is task-tuned rather than
+instruction-tuned, so the prompt is the terse `Text Recognition:` label rather
+than a conversational request.
+
+Cost control, since this is the most expensive thing in the pipeline:
+
+| Guard | Value | Why |
+|---|---|---|
+| Trigger | only on zero extracted chars | a PDF with a text layer never loads the model |
+| Import | lazy `import('@/workers/ocr.ai')` | a session that meets no scanned PDF never downloads weights |
+| `OCR_MAX_PAGES` | 6 | each page is a full autoregressive generation; 12 was 35+ min per upload on integrated graphics |
+| `MAX_NEW_TOKENS` | 768 | decoding dominates page latency, ahead of image size |
+| Render budget | `OCR_MAX_PIXELS` | the processor's `smart_resize` downscales to ~1.0M px regardless, so rendering above it is wasted rasterization |
+| `do_sample` | false | sampling invents text that was never on the page — worse than a gap |
+| Queue | `enqueue` **per page**, `'background'` | one job per document starved interactive search for minutes; per-page yields let a query jump the queue |
+
+Rasterization runs in the compute worker (`pdfPages`, 180s budget vs. the 30s
+used for thumbnail ops); inference runs on the main thread through
+`ai-queue.ts`, like every other model in the app. Failures report to
+`/api/metrics` under the `ocr` stage and leave the document indexed by name
+and tags — exactly what it would have been anyway.
 
 ### 1. Server: chunking — `app/.server/search-actions.ts`
 
@@ -122,6 +233,83 @@ Fire-and-forget — the file is usable in the gallery before the embedding compl
 
 ---
 
+## Query pipeline (today)
+
+### 1. Two passes, not one
+
+Query embedding runs in the browser on the same WebGPU model the index side
+uses, so the first search of a session pays for model download and warm-up.
+Blocking results on that would make search feel broken, so `useItemSearch`
+issues two requests per query:
+
+| Pass | Request | Needs the model? | Purpose |
+|------|---------|------------------|---------|
+| 1 | `GET /api/search/items?q=…` | No | Paints immediately. The permanent path in fuzzy mode and on browsers without WebGPU. |
+| 2 | `POST /api/search/items` + `vector` | Yes | Replaces the list with the fused hybrid ranking. |
+
+Pass 2 is a `POST` purely because a 768-float embedding is ~10KB as text and
+will not fit in a URL — nothing is mutated.
+
+### 2. Sparse ranker — `rankByKeyword`
+
+`similarity()` is length-normalized across the whole string, so a one-word
+query against a 20,000-char document body scores near zero. `word_similarity()`
+compares the query against the best-matching *extent* instead, which is the
+correct operator here. Matches on `Item.name` (trigram + `ILIKE`), `tags`, and
+`Search.content`.
+
+### 3. Dense ranker — `rankByVector`
+
+Takes the `CHUNK_SCAN_DEPTH` nearest chunks by cosine distance, then rolls them
+up to one best passage per item with `DISTINCT ON`. The roll-up is in the
+*outer* query on purpose: the inner `ORDER BY vector <=> $1 LIMIT n` is the
+shape an HNSW index can answer, and moving `DISTINCT ON` inside would force a
+scan of every chunk the user owns.
+
+### 4. Fusion — `reciprocalRankFusion`
+
+The two rankers produce incomparable scores (trigram similarity vs. cosine
+distance), so they are combined by *rank*: each list contributes
+`1 / (k + rank)` per document, `k = 60`. Fusion happens in TypeScript rather
+than SQL — it keeps each query readable and puts the ranking maths somewhere
+unit tests can reach (`app/utils/__tests__/search-query.test.ts`).
+
+### 5. Hydration
+
+Fused ids are hydrated in one Prisma `findMany` using the same select shape as
+`getFolderContent`, then re-sorted into fused order. Structured filters
+(category, type, …) are applied during hydration, which means they narrow the
+top `RANK_DEPTH` matches rather than searching the whole drive with the filter
+pre-applied — see the note on `searchItems`.
+
+### Scope and permissions
+
+Every ranking query is scoped to `ownerId = session.user.id AND status =
+'normal'` **inside the SQL**, not layered on afterwards. Items shared with the
+user are not searchable yet.
+
+### Fallbacks
+
+Semantic ranking is best-effort. Each of these leaves pass 1's results on
+screen and sets `degradedReason`, which the view renders as a one-line
+explanation rather than silently ranking worse:
+
+| Reason | Trigger |
+|--------|---------|
+| `query_too_short` | Under `SEMANTIC_MIN_LENGTH` (4 chars) — trigrams do better on fragments |
+| `no_webgpu` | Browser can't run the model at all |
+| `embedding_failed` | Model loaded but inference threw |
+| `request_failed` | The `POST` itself failed |
+
+A separate case is a drive with **nothing indexed**: semantic mode returns no
+dense hits because there are no embedded chunks, not because nothing matched.
+`getSearchIndexStats` feeds `SearchNotIndexedNotice` so the UI says so.
+
+Query-time embedding failures report to `/api/metrics` under the
+`search_query` stage, distinct from the index-time `embedding` stage.
+
+---
+
 ## Why chunk?
 
 Three forcing functions:
@@ -140,9 +328,17 @@ Three forcing functions:
 |----------|----------|---------|-------|
 | `CHUNK_CHARS` | `search-actions.ts` | 1500 | Higher = more context per chunk, but truncated by tokenizer past ~2000 |
 | `OVERLAP_CHARS` | `search-actions.ts` | 250 | ~17% overlap. Raise if cross-passage queries underperform |
+| `RANK_DEPTH` | `search-query.ts` | 100 | Items per ranker before fusion. Also caps how deep filtered results can go |
+| `RRF_K` | `search-query.ts` | 60 | RRF smoothing. Lower = top ranks dominate more |
+| `CHUNK_SCAN_DEPTH` | `search-actions.ts` | 400 | Chunks pulled before roll-up. Raise if long docs crowd out other items |
+| `SEMANTIC_MIN_LENGTH` | `search-query.ts` | 4 | Below this, skip embedding and stay keyword-only |
+| `DEBOUNCE_MS` | `useItemSearch.ts` | 250 | Keystroke settle time before a request goes out |
 | `EMBEDDING_DIM` | `embedding.ai.ts` | 768 | Tied to MPNet; changing model also requires schema migration |
-| `extractPdfText.maxPages` | `pdf.ts` | 5 | **Currently caps PDFs to first 5 pages** — see roadmap |
-| `extractPdfText.maxChars` | `pdf.ts` | 20_000 | After per-page concat, total cap |
+| `extractPdfText.maxPages` | `pdf.ts` | 50 | Raised from 5 once chunked indexing shipped |
+| `extractPdfText.maxChars` | `pdf.ts` | 200_000 | After per-page concat, total cap |
+| `OCR_MAX_PAGES` | `ocr.ai.ts` | 6 | Pages sent to the vision model; each is a full generation pass |
+| `OCR_MAX_PIXELS` | `ocr.ai.ts` | 14·14·4·1280 | Pixel budget for OCR renders; matches the processor’s `smart_resize` default |
+| `MAX_NEW_TOKENS` | `ocr.ai.ts` | 768 | Generation ceiling per page — the dominant latency lever |
 
 ---
 
@@ -154,12 +350,14 @@ Three forcing functions:
 - Client-side WebGPU embedding module, shared AI queue
 - Wire-up from PDF upload completion
 - **Markdown indexing.** `.md` body text flows through the same `documentText` path as PDFs (`extractMediaMetadata` → `mdMeta`), so `.md` uploads are chunked and embedded too.
+- **Query path.** Hybrid retrieval — `pg_trgm` (sparse) + `pgvector` cosine (dense) fused with RRF, rolled up to items with the best-matching passage highlighted. `rankByKeyword` / `rankByVector` / `rankSearchResults` / `searchItems` in `search-actions.ts`, served by `app/routes/api/search.ts` and surfaced by `app/components/views/search-view.tsx`.
+- **Query embedding location.** Resolved: client-side, matching the index side. No server-side inference and no new dependency; browsers without WebGPU degrade to keyword-only rather than losing search.
+- **Query-path indexes.** `search_content_trgm_idx` (GIN trigram on `Search.content`) and an HNSW replacement for the useless btree on `SearchChunk.vector` — migration `20260815000000_search_query_indexes`.
+- **Lifted the `maxPages` cap** to 50 pages / 200,000 chars, now that chunked indexing makes extra pages into extra searchable passages rather than tokenizer-truncated waste.
+- **OCR fallback** for PDFs with no text layer — `app/workers/ocr.ai.ts`, triggered from `extractMediaMetadata` only when extraction yields zero characters. See [§ OCR fallback](#0-client-ocr-fallback-for-pdfs-with-no-text-layer).
 
 ### Next slices
-- **Query path.** Still unbuilt — `app/routes/api/search.ts` is a stub whose `loader`/`action` both `return null`, and `search-actions.ts` exports no query-side function. Hybrid retrieval: `pg_trgm` (sparse) + `pgvector` cosine (dense), combined via Reciprocal Rank Fusion. Rolls chunk results up to items, returns top-N with the best-matching chunk highlighted. Probably ~120 lines of SQL + a route handler.
-- **Server-side query embedding** decision. The client embedding worker can also embed query strings (round-trip cost) — vs. running an embedding service server-side. Trade-off: latency vs. server stateless-ness.
 - **Per-page metadata for chunks.** Today `extractPdfText` joins pages with `\n\n` and discards page numbers. To populate `SearchChunk.pageNum`, extend `extractPdfText` to return `[{ pageNum, text }]` and pipe per-page chunking through.
-- **Lift `maxPages` cap to ~50 pages / 200,000 chars** once chunked indexing is wired (the cap was sized for the prior single-vector approach).
 - **Other text formats.** `.txt` and code files are trivial extensions of the same `documentText` flow (`.md` already ships). `.docx` via `mammoth`. Spreadsheets and presentations are larger feature work.
 - **Backfill.** Existing items have no chunks, and any upload whose tab closed before the embedding POST has chunks with `vector` NULL. Nothing recovers either case today. One-shot script: select items where `Search.content IS NOT NULL`, chunk + embed.
 - **Re-embedding.** Rename / description-edit / version replacement should invalidate chunks. Today they don't — chunks become stale.
@@ -173,6 +371,30 @@ Three forcing functions:
 
 ## Migration
 
-The `SearchChunk` table already exists — it landed in `prisma/migrations/20260526182115_add_on_delete_cascade_on_search_item_field/migration.sql` alongside its `itemId`, `vector`, and `(itemId, ord)` indexes. No migration needs to be run.
+The `SearchChunk` table already exists — it landed in `prisma/migrations/20260526182115_add_on_delete_cascade_on_search_item_field/migration.sql` alongside its `itemId`, `vector`, and `(itemId, ord)` indexes.
 
-The schema change was additive — no risk to existing data. New uploads index automatically. Items whose chunks were written but never embedded are picked up by `useEmbeddingBackfill` the next time their owner opens the app; items that were never chunked at all still need a re-index pass (TBD).
+The query path adds one migration, `20260815000000_search_query_indexes`:
+
+```shell
+pnpm prisma migrate dev
+```
+
+It is a **performance** change, not a correctness one — search returns the same
+results before and after, just with sequential scans. Two statements:
+
+- `search_content_trgm_idx` — GIN trigram on `Search.content`, so the sparse
+  ranker's `word_similarity()` / `ILIKE` are indexed. `Item.name` already had
+  the equivalent (`item_name_trgm_idx`).
+- `SearchChunk_vector_idx` — dropped and recreated as **HNSW** with
+  `vector_cosine_ops`. It was created as a plain btree, which cannot answer an
+  `ORDER BY vector <=> $1` nearest-neighbour query, so the dense ranker was
+  scanning every chunk the owner has. The name is kept so it still lines up
+  with the `@@index([vector], map: "SearchChunk_vector_idx")` declaration in
+  `prisma/models/search.prisma` — Prisma cannot express an HNSW index with an
+  operator class, so the DDL lives in the migration while the schema keeps the
+  name.
+
+Both schema changes are additive — no risk to existing data. New uploads index
+automatically. Items whose chunks were written but never embedded are picked up
+by `useEmbeddingBackfill` the next time their owner opens the app; items that
+were never chunked at all still need a re-index pass (TBD).
