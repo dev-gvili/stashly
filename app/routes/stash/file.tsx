@@ -1,4 +1,5 @@
 // Loaded only when this stage renders (React 19 hoists & dedupes the link to
+import { isSearchIndexSubmission } from '@/utils/revalidation'
 // <head> via `precedence`), so the ligature font never ships on non-markdown
 // pages. Code blocks use 'JetBrains Mono Variable' — see `.markdown-stage code`.
 import { searchActivities } from '@/.server/activity-actions'
@@ -40,6 +41,11 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   formAction,
   defaultShouldRevalidate,
 }) => {
+  // Background search-index writes (OCR pages, chunk embeddings) change no
+  // rendered data. Without this, a 15-page OCR run re-ran this loader ~30
+  // times for nothing.
+  if (isSearchIndexSubmission(formData)) return false
+
   if (
     formAction &&
     ['favorites','sidebar', 'theme'].some((action) => formAction.includes(action))

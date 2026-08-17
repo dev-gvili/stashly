@@ -1,4 +1,5 @@
 import { auth } from '@/.server/auth'
+import { isSearchIndexSubmission } from '@/utils/revalidation'
 import {
   getCollectionForUser,
   getCollectionItems,
@@ -97,6 +98,11 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   formData,
   defaultShouldRevalidate,
 }) => {
+  // Background search-index writes (OCR pages, chunk embeddings) change no
+  // rendered data. Without this, a 15-page OCR run re-ran this loader ~30
+  // times for nothing.
+  if (isSearchIndexSubmission(formData)) return false
+
   ;['sidebar', 'theme'].forEach((action) => {
     if (formAction?.includes(action)) {
       return false

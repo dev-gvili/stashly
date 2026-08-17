@@ -1,4 +1,5 @@
 import type { Route } from './+types/all'
+import { isSearchIndexSubmission } from '@/utils/revalidation'
 import { auth } from '@/.server/auth'
 import { redirect, useLocation } from 'react-router'
 import { getFolderContent, getLibraryStats } from '@/services/item-actions'
@@ -53,6 +54,11 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   formData,
   defaultShouldRevalidate,
 }) => {
+  // Background search-index writes (OCR pages, chunk embeddings) change no
+  // rendered data. Without this, a 15-page OCR run re-ran this loader ~30
+  // times for nothing.
+  if (isSearchIndexSubmission(formData)) return false
+
   let currentSelectedItems = getQueryParamArray(
     currentUrl.searchParams,
     'selectedItems'

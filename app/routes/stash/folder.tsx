@@ -1,4 +1,5 @@
 import { LoadMoreItems } from '@/components/core-components/buttons'
+import { isSearchIndexSubmission } from '@/utils/revalidation'
 import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { GridLayout } from '@/components/views/grid-view'
@@ -99,6 +100,11 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   formData,
   defaultShouldRevalidate,
 }) => {
+  // Background search-index writes (OCR pages, chunk embeddings) change no
+  // rendered data. Without this, a 15-page OCR run re-ran this loader ~30
+  // times for nothing.
+  if (isSearchIndexSubmission(formData)) return false
+
   let currentSelectedItems = getQueryParamArray(
     currentUrl.searchParams,
     'selectedItems'
