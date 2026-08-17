@@ -362,3 +362,95 @@ export type StashItemPanel = {
   collections: Array<{ id: string; name: string }>
   activities: Array<ActivityWithRelations>
 }
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * The passage a result quotes as its evidence.
+ *
+ * Two sources, one shape. When the query appears literally in the document the
+ * server cuts the window around that occurrence, because the vector-nearest
+ * chunk is routinely a *different* passage — quoting it under a "2 hits" label
+ * shows text containing none of the words the user typed. Only when there is no
+ * literal hit does the dense chunk stand in, and then `similarity` is set and
+ * `chunkId` names the row it came from.
+ *
+ * `pageNum` / `charStart` / `charEnd` are captured at index time (see
+ * `docs/semantic-search.md`) so a result can be linked straight to its
+ * location in the source document without re-chunking.
+ */
+export type SearchPassage = {
+  /** Null when the window was cut from the document body rather than a chunk. */
+  chunkId: string | null
+  content: string
+  /** Null for formats without pages (`.md`, `.txt`). */
+  pageNum: number | null
+  /**
+   * 1-based line in the document body. Null for anything indexed before line
+   * breaks were preserved, until that item is re-indexed.
+   */
+  lineNum: number | null
+  /**
+   * Nearest preceding heading — how a document with structure but no pages
+   * says where a passage came from. Null for formats without headings, and for
+   * anything indexed before sections were recorded.
+   */
+  section: string | null
+  charStart: number
+  charEnd: number
+  /** Cosine similarity in `[0, 1]`. Null when the passage was located literally. */
+  similarity: number | null
+}
+
+/**
+ * Why a result is in the list, strongest evidence first.
+ *
+ * The search page groups by this rather than showing one flat ranking, because
+ * a filename hit and a distant semantic neighbour are different kinds of
+ * answer: the first is what the user asked for, the second is a suggestion.
+ * Sorting them together leaves a 9% result sitting next to a 96% one with
+ * nothing to explain why it is there.
+ */
+export type MatchKind = 'name' | 'content' | 'semantic'
+
+/** One search hit: a normal item card plus what matched inside it. */
+export type SearchResult = StashItem & {
+  /** Null for a keyword-only hit — nothing inside the document matched. */
+  passage: SearchPassage | null
+  /**
+   * Relevance in `[0, 100]`, on a scale that depends on `matchKind`.
+   *
+   * For `semantic` results it is the true cosine similarity — absolute, and
+   * comparable across searches, so a low number means a genuinely distant
+   * match. For `name` and `content` it is fused rank normalized against this
+   * result set's best hit, so the leader always reads 100 and the number is
+   * only meaningful within one search.
+   *
+   * The page groups by `matchKind`, so the two scales are never shown side by
+   * side. Don't sort across groups on this field.
+   */
+  score: number
+  /** The grouping key. Server-derived; see `MatchKind`. */
+  matchKind: MatchKind
+  /** Literal query-term occurrences in the document body; 0 for pure neighbours. */
+  hitCount: number
+}
+
+/**
+ * Serialized payload of both `/api/search/:type` halves.
+ *
+ * `semantic` reports what actually ran, not what was requested: a request
+ * that carried a vector still comes back `semantic: false` when the drive has
+ * no embedded chunks to match against, which is what lets the view explain an
+ * empty dense half instead of showing a bare "no results".
+ */
+export type SearchResponse = {
+  items: SearchResult[]
+  total: number
+  hasMore: boolean
+  semantic: boolean
+  keywordCount: number
+  semanticCount: number
+}

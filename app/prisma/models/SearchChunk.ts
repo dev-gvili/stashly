@@ -51,6 +51,7 @@ export type SearchChunkMinAggregateOutputType = {
   ord: number | null
   content: string | null
   pageNum: number | null
+  section: string | null
   charStart: number | null
   charEnd: number | null
   createdAt: Date | null
@@ -63,6 +64,7 @@ export type SearchChunkMaxAggregateOutputType = {
   ord: number | null
   content: string | null
   pageNum: number | null
+  section: string | null
   charStart: number | null
   charEnd: number | null
   createdAt: Date | null
@@ -75,6 +77,7 @@ export type SearchChunkCountAggregateOutputType = {
   ord: number
   content: number
   pageNum: number
+  section: number
   charStart: number
   charEnd: number
   createdAt: number
@@ -103,6 +106,7 @@ export type SearchChunkMinAggregateInputType = {
   ord?: true
   content?: true
   pageNum?: true
+  section?: true
   charStart?: true
   charEnd?: true
   createdAt?: true
@@ -115,6 +119,7 @@ export type SearchChunkMaxAggregateInputType = {
   ord?: true
   content?: true
   pageNum?: true
+  section?: true
   charStart?: true
   charEnd?: true
   createdAt?: true
@@ -127,6 +132,7 @@ export type SearchChunkCountAggregateInputType = {
   ord?: true
   content?: true
   pageNum?: true
+  section?: true
   charStart?: true
   charEnd?: true
   createdAt?: true
@@ -226,6 +232,7 @@ export type SearchChunkGroupByOutputType = {
   ord: number
   content: string
   pageNum: number | null
+  section: string | null
   charStart: number
   charEnd: number
   createdAt: Date
@@ -261,6 +268,7 @@ export type SearchChunkWhereInput = {
   ord?: Prisma.IntFilter<"SearchChunk"> | number
   content?: Prisma.StringFilter<"SearchChunk"> | string
   pageNum?: Prisma.IntNullableFilter<"SearchChunk"> | number | null
+  section?: Prisma.StringNullableFilter<"SearchChunk"> | string | null
   charStart?: Prisma.IntFilter<"SearchChunk"> | number
   charEnd?: Prisma.IntFilter<"SearchChunk"> | number
   createdAt?: Prisma.DateTimeFilter<"SearchChunk"> | Date | string
@@ -274,6 +282,7 @@ export type SearchChunkOrderByWithRelationInput = {
   ord?: Prisma.SortOrder
   content?: Prisma.SortOrder
   pageNum?: Prisma.SortOrderInput | Prisma.SortOrder
+  section?: Prisma.SortOrderInput | Prisma.SortOrder
   charStart?: Prisma.SortOrder
   charEnd?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -291,6 +300,7 @@ export type SearchChunkWhereUniqueInput = Prisma.AtLeast<{
   ord?: Prisma.IntFilter<"SearchChunk"> | number
   content?: Prisma.StringFilter<"SearchChunk"> | string
   pageNum?: Prisma.IntNullableFilter<"SearchChunk"> | number | null
+  section?: Prisma.StringNullableFilter<"SearchChunk"> | string | null
   charStart?: Prisma.IntFilter<"SearchChunk"> | number
   charEnd?: Prisma.IntFilter<"SearchChunk"> | number
   createdAt?: Prisma.DateTimeFilter<"SearchChunk"> | Date | string
@@ -304,6 +314,7 @@ export type SearchChunkOrderByWithAggregationInput = {
   ord?: Prisma.SortOrder
   content?: Prisma.SortOrder
   pageNum?: Prisma.SortOrderInput | Prisma.SortOrder
+  section?: Prisma.SortOrderInput | Prisma.SortOrder
   charStart?: Prisma.SortOrder
   charEnd?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -324,6 +335,7 @@ export type SearchChunkScalarWhereWithAggregatesInput = {
   ord?: Prisma.IntWithAggregatesFilter<"SearchChunk"> | number
   content?: Prisma.StringWithAggregatesFilter<"SearchChunk"> | string
   pageNum?: Prisma.IntNullableWithAggregatesFilter<"SearchChunk"> | number | null
+  section?: Prisma.StringNullableWithAggregatesFilter<"SearchChunk"> | string | null
   charStart?: Prisma.IntWithAggregatesFilter<"SearchChunk"> | number
   charEnd?: Prisma.IntWithAggregatesFilter<"SearchChunk"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"SearchChunk"> | Date | string
@@ -335,6 +347,7 @@ export type SearchChunkCreateInput = {
   ord: number
   content: string
   pageNum?: number | null
+  section?: string | null
   charStart: number
   charEnd: number
   createdAt?: Date | string
@@ -348,6 +361,7 @@ export type SearchChunkUncheckedCreateInput = {
   ord: number
   content: string
   pageNum?: number | null
+  section?: string | null
   charStart: number
   charEnd: number
   createdAt?: Date | string
@@ -359,6 +373,7 @@ export type SearchChunkUpdateInput = {
   ord?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   pageNum?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   charStart?: Prisma.IntFieldUpdateOperationsInput | number
   charEnd?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -372,6 +387,7 @@ export type SearchChunkUncheckedUpdateInput = {
   ord?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   pageNum?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   charStart?: Prisma.IntFieldUpdateOperationsInput | number
   charEnd?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -384,6 +400,7 @@ export type SearchChunkCreateManyInput = {
   ord: number
   content: string
   pageNum?: number | null
+  section?: string | null
   charStart: number
   charEnd: number
   createdAt?: Date | string
@@ -395,6 +412,7 @@ export type SearchChunkUpdateManyMutationInput = {
   ord?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   pageNum?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   charStart?: Prisma.IntFieldUpdateOperationsInput | number
   charEnd?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -407,6 +425,7 @@ export type SearchChunkUncheckedUpdateManyInput = {
   ord?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   pageNum?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   charStart?: Prisma.IntFieldUpdateOperationsInput | number
   charEnd?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -434,6 +453,7 @@ export type SearchChunkCountOrderByAggregateInput = {
   ord?: Prisma.SortOrder
   content?: Prisma.SortOrder
   pageNum?: Prisma.SortOrder
+  section?: Prisma.SortOrder
   charStart?: Prisma.SortOrder
   charEnd?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -453,6 +473,7 @@ export type SearchChunkMaxOrderByAggregateInput = {
   ord?: Prisma.SortOrder
   content?: Prisma.SortOrder
   pageNum?: Prisma.SortOrder
+  section?: Prisma.SortOrder
   charStart?: Prisma.SortOrder
   charEnd?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -465,6 +486,7 @@ export type SearchChunkMinOrderByAggregateInput = {
   ord?: Prisma.SortOrder
   content?: Prisma.SortOrder
   pageNum?: Prisma.SortOrder
+  section?: Prisma.SortOrder
   charStart?: Prisma.SortOrder
   charEnd?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -525,6 +547,7 @@ export type SearchChunkCreateWithoutItemInput = {
   ord: number
   content: string
   pageNum?: number | null
+  section?: string | null
   charStart: number
   charEnd: number
   createdAt?: Date | string
@@ -536,6 +559,7 @@ export type SearchChunkUncheckedCreateWithoutItemInput = {
   ord: number
   content: string
   pageNum?: number | null
+  section?: string | null
   charStart: number
   charEnd: number
   createdAt?: Date | string
@@ -577,6 +601,7 @@ export type SearchChunkScalarWhereInput = {
   ord?: Prisma.IntFilter<"SearchChunk"> | number
   content?: Prisma.StringFilter<"SearchChunk"> | string
   pageNum?: Prisma.IntNullableFilter<"SearchChunk"> | number | null
+  section?: Prisma.StringNullableFilter<"SearchChunk"> | string | null
   charStart?: Prisma.IntFilter<"SearchChunk"> | number
   charEnd?: Prisma.IntFilter<"SearchChunk"> | number
   createdAt?: Prisma.DateTimeFilter<"SearchChunk"> | Date | string
@@ -588,6 +613,7 @@ export type SearchChunkCreateManyItemInput = {
   ord: number
   content: string
   pageNum?: number | null
+  section?: string | null
   charStart: number
   charEnd: number
   createdAt?: Date | string
@@ -599,6 +625,7 @@ export type SearchChunkUpdateWithoutItemInput = {
   ord?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   pageNum?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   charStart?: Prisma.IntFieldUpdateOperationsInput | number
   charEnd?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -610,6 +637,7 @@ export type SearchChunkUncheckedUpdateWithoutItemInput = {
   ord?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   pageNum?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   charStart?: Prisma.IntFieldUpdateOperationsInput | number
   charEnd?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -621,6 +649,7 @@ export type SearchChunkUncheckedUpdateManyWithoutItemInput = {
   ord?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   pageNum?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   charStart?: Prisma.IntFieldUpdateOperationsInput | number
   charEnd?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -635,6 +664,7 @@ export type SearchChunkSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   ord?: boolean
   content?: boolean
   pageNum?: boolean
+  section?: boolean
   charStart?: boolean
   charEnd?: boolean
   createdAt?: boolean
@@ -648,6 +678,7 @@ export type SearchChunkSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   ord?: boolean
   content?: boolean
   pageNum?: boolean
+  section?: boolean
   charStart?: boolean
   charEnd?: boolean
   createdAt?: boolean
@@ -661,6 +692,7 @@ export type SearchChunkSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   ord?: boolean
   content?: boolean
   pageNum?: boolean
+  section?: boolean
   charStart?: boolean
   charEnd?: boolean
   createdAt?: boolean
@@ -674,13 +706,14 @@ export type SearchChunkSelectScalar = {
   ord?: boolean
   content?: boolean
   pageNum?: boolean
+  section?: boolean
   charStart?: boolean
   charEnd?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type SearchChunkOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "itemId" | "ord" | "content" | "pageNum" | "charStart" | "charEnd" | "createdAt" | "updatedAt", ExtArgs["result"]["searchChunk"]>
+export type SearchChunkOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "itemId" | "ord" | "content" | "pageNum" | "section" | "charStart" | "charEnd" | "createdAt" | "updatedAt", ExtArgs["result"]["searchChunk"]>
 export type SearchChunkInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   item?: boolean | Prisma.ItemDefaultArgs<ExtArgs>
 }
@@ -702,6 +735,12 @@ export type $SearchChunkPayload<ExtArgs extends runtime.Types.Extensions.Interna
     ord: number
     content: string
     pageNum: number | null
+    /**
+     * Nearest preceding heading. Formats with structure but no pagination
+     * (.md) locate a passage by section — "§ Why chunk?" where a PDF says
+     * "page 5". Without it those results had no locator to show at all.
+     */
+    section: string | null
     charStart: number
     charEnd: number
     createdAt: Date
@@ -1135,6 +1174,7 @@ export interface SearchChunkFieldRefs {
   readonly ord: Prisma.FieldRef<"SearchChunk", 'Int'>
   readonly content: Prisma.FieldRef<"SearchChunk", 'String'>
   readonly pageNum: Prisma.FieldRef<"SearchChunk", 'Int'>
+  readonly section: Prisma.FieldRef<"SearchChunk", 'String'>
   readonly charStart: Prisma.FieldRef<"SearchChunk", 'Int'>
   readonly charEnd: Prisma.FieldRef<"SearchChunk", 'Int'>
   readonly createdAt: Prisma.FieldRef<"SearchChunk", 'DateTime'>

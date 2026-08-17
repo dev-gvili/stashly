@@ -21,8 +21,11 @@ import {
     upsertVideoFacet,
 } from '@/services/item-actions';
 import {
+    appendSearchPage,
     chunkText,
+    findReindexCandidates,
     findUnembeddedChunks,
+    reindexTextItems,
     setSearchChunkVectors,
     upsertSearchChunks,
     upsertSearchContent,
@@ -69,6 +72,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     const limit = clampPendingLimit(url.searchParams.get('limit'))
     const chunks = await findUnembeddedChunks(user.id, limit)
     return data({ chunks })
+  }
+
+  // Text documents whose index is missing or was truncated by an older
+  // extractor. Read-only — the rebuild itself is a POST, since it writes.
+  if (intent === 'reindex_candidates') {
+    const limit = clampPendingLimit(url.searchParams.get('limit'))
+    const candidates = await findReindexCandidates(user.id, limit)
+    return data({ candidates })
   }
 
   if (intent === 'search_folders') {
@@ -444,6 +455,19 @@ export async function action({ request, params }: Route.ActionArgs) {
         return { success: false, error: err.message }
       }
     }
+    case 'save_ocr_page': {
+      try {
+        const chunks = await appendSearchPage({
+          itemId: parsedData.itemId,
+          pageNum: parsedData.pageNum,
+          text: parsedData.text,
+        })
+        return data({ success: true, chunks })
+      } catch (e) {
+        const err = e as { message?: string }
+        return { success: false, error: err.message }
+      }
+    }
     case 'save_search_chunk_embeddings': {
       try {
         const parsed: { chunkId: string; vector: number[] }[] = JSON.parse(
@@ -454,6 +478,18 @@ export async function action({ request, params }: Route.ActionArgs) {
         }
         const written = await setSearchChunkVectors(parsed)
         return data({ success: true, written })
+      } catch (e) {
+        const err = e as { message?: string }
+        return { success: false, error: err.message }
+      }
+    }
+    case 'reindex_text': {
+      try {
+        // Chunks come back with a NULL vector, which is exactly what
+        // `pending_search_embeddings` looks for — so the existing embedding
+        // backfill picks them up without being told about this at all.
+        const result = await reindexTextItems(user.id, parsedData.limit)
+        return data({ success: true, ...result })
       } catch (e) {
         const err = e as { message?: string }
         return { success: false, error: err.message }

@@ -1,0 +1,11 @@
+-- Nearest preceding heading for a passage.
+--
+-- Documents with structure but no pagination (.md, .txt) had no way to say
+-- where a match came from: `pageNum` is only ever written by the OCR path, and
+-- the stored body had its newlines collapsed, so a line number was not
+-- recoverable either. Every markdown result therefore showed a snippet with no
+-- locator at all.
+--
+-- Nullable and additive: existing rows keep NULL until the item is re-indexed,
+-- and a NULL section simply falls through to the page/line locators.
+ALTER TABLE "SearchChunk" ADD COLUMN IF NOT EXISTS "section" TEXT;

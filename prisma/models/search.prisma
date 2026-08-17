@@ -11,7 +11,10 @@ model Search {
 
   // Creating an index on the vector field for fast similarity searches.
   @@index([vector], map: "Search_vector_idx")
-  // @@index([content(ops: raw("gin_trgm_ops"))], type: Gin) // Full-text search index
+  /// Sparse half of hybrid retrieval: `rankByKeyword` runs `word_similarity()`
+  /// and `ILIKE` against this column, both of which a trigram GIN index can
+  /// answer. `Item.name` already has the equivalent (`item_name_trgm_idx`).
+  @@index([content(ops: raw("gin_trgm_ops"))], type: Gin, map: "search_content_trgm_idx")
   @@index([createdAt])
   @@index([updatedAt])
 }
@@ -29,6 +32,10 @@ model SearchChunk {
   content String @db.Text
 
   pageNum   Int? // null for non-paginated formats (.txt, .md)
+  /// Nearest preceding heading. Formats with structure but no pagination
+  /// (.md) locate a passage by section — "§ Why chunk?" where a PDF says
+  /// "page 5". Without it those results had no locator to show at all.
+  section   String?
   charStart Int // offset into the cleaned full text
   charEnd   Int
 

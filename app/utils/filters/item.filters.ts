@@ -11,7 +11,7 @@ export const itemFilterSchema = z.object({
   date: z.optional(date),
   favorited: z.boolean().optional(),
   parentId: z.string().optional(),
-  query: z.string().min(1).optional(),
+  query: z.string().min(1).optional().default(''),
   status: toZodArraySchema(z.enum(ItemStatus)).optional().default(['normal']),
   tags: toZodArraySchema(z.string().trim().min(1)).optional(),
   type: toZodArraySchema(z.enum(ItemType)).default(['file', 'folder']),

@@ -121,11 +121,32 @@ export interface MarkdownDocumentMetadata {
   /** GitHub task-list items (`- [ ]` / `- [x]`). */
   taskCount: number
   hasFrontmatter: boolean
-  /** Plain-text body with markdown syntax stripped — feeds search indexing. */
+  /**
+   * Plain-text body with markdown syntax stripped — feeds search indexing.
+   *
+   * Line breaks are preserved. They used to be collapsed along with every
+   * other whitespace run, which cost search two locators at once: a hit could
+   * report neither a line number (no lines survived to count) nor a section
+   * (no heading boundaries survived to find), leaving every markdown result
+   * unable to say where its match came from.
+   */
   text: string
+  /**
+   * Heading boundaries as offsets into `text`, so a passage can name the
+   * section it was cut from. Ordered by position.
+   */
+  sections: MarkdownSection[]
   /** ISO-8601 — kept as string so it serializes through FormData/postMessage. */
   docCreatedAt?: string
   docModifiedAt?: string
+}
+
+/** A heading and where its section starts in the stripped plain text. */
+export interface MarkdownSection {
+  title: string
+  level: number
+  /** Character offset into `MarkdownDocumentMetadata.text`. */
+  start: number
 }
 
 /**
@@ -156,7 +177,7 @@ export function parseMarkdownMetadata(raw: string): MarkdownDocumentMetadata {
   const imageCount = countMatches(withoutFences, /!\[[^\]]*\]\([^)]+\)/g)
   const taskCount = countMatches(withoutFences, /^\s*[-*+]\s+\[[ xX]\]\s+/gm)
 
-  const text = toPlainText(withoutFences)
+  const { text, sections } = toPlainText(withoutFences)
   const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0
 
   const fmTitle = firstString(data.title)
@@ -178,6 +199,7 @@ export function parseMarkdownMetadata(raw: string): MarkdownDocumentMetadata {
     taskCount,
     hasFrontmatter,
     text,
+    sections,
     docCreatedAt: toIsoDate(data.date ?? data.created ?? data.createdat),
     docModifiedAt: toIsoDate(data.updated ?? data.modified ?? data.lastmod),
   }
@@ -212,21 +234,71 @@ function stripFencedCode(body: string): {
   return { withoutFences: out.join('\n'), codeBlockCount }
 }
 
-/** Strip remaining markdown syntax to readable plain text (for search). */
-function toPlainText(body: string): string {
-  return body
-    .replace(/^#{1,6}\s+/gm, '') // headings
+/** Strip markdown syntax from a single line, leaving readable prose. */
+function stripLineSyntax(line: string): string {
+  return line
+    .replace(/^#{1,6}\s+/, '') // heading marker (the text itself is kept)
     .replace(/!\[[^\]]*\]\([^)]+\)/g, '') // images
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links → label
     .replace(/`([^`]+)`/g, '$1') // inline code
     .replace(/[*_~]{1,3}([^*_~]+)[*_~]{1,3}/g, '$1') // emphasis
-    .replace(/^\s{0,3}>\s?/gm, '') // blockquote markers
-    .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/gm, '') // task markers
-    .replace(/^\s*[-*+]\s+/gm, '') // list bullets
-    .replace(/^\s*\d+\.\s+/gm, '') // ordered list
-    .replace(/^\s*(?:---|\*\*\*|___)\s*$/gm, '') // hr
-    .replace(/\s+/g, ' ')
+    .replace(/^\s{0,3}>\s?/, '') // blockquote marker
+    .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/, '') // task marker
+    .replace(/^\s*[-*+]\s+/, '') // list bullet
+    .replace(/^\s*\d+\.\s+/, '') // ordered list
+    .replace(/^\s*(?:---|\*\*\*|___)\s*$/, '') // horizontal rule
+    .replace(/[ \t]+/g, ' ') // runs of spaces, but never newlines
     .trim()
+}
+
+/**
+ * Strip markdown to readable plain text, keeping line structure and recording
+ * where each heading's section begins.
+ *
+ * Done line by line rather than with whole-string regexes so the two outputs
+ * stay in one coordinate space: `sections[i].start` is an offset into the
+ * returned `text`, which is the same string that gets stored as
+ * `Search.content` and split by `chunkText`. Computing headings separately
+ * against the raw markdown would put them in a different coordinate space —
+ * off by every character the stripping removes.
+ */
+function toPlainText(body: string): { text: string; sections: MarkdownSection[] } {
+  const lines = body.split(/\r?\n/)
+  const out: string[] = []
+  const sections: MarkdownSection[] = []
+  let offset = 0
+
+  for (const line of lines) {
+    const heading = line.match(/^(#{1,6})\s+(.*)$/)
+    const clean = stripLineSyntax(line)
+    if (heading) {
+      const title = stripLineSyntax(heading[2])
+      if (title) {
+        sections.push({ title, level: heading[1].length, start: offset })
+      }
+    }
+    out.push(clean)
+    offset += clean.length + 1 // +1 for the newline `join` puts back
+  }
+
+  // Collapse runs of blank lines so the stored body isn't mostly whitespace,
+  // without touching the single breaks that make line numbers meaningful.
+  const text = out.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+
+  // The blank-line collapse shifts everything after it, so offsets are remapped
+  // by locating each heading in the final text rather than trusting the running
+  // count. Searching from the previous match keeps duplicate headings
+  // ("## Notes" twice) in document order.
+  let cursor = 0
+  const remapped: MarkdownSection[] = []
+  for (const section of sections) {
+    const at = text.indexOf(section.title, cursor)
+    if (at === -1) continue
+    remapped.push({ ...section, start: at })
+    cursor = at + section.title.length
+  }
+
+  return { text, sections: remapped }
 }
 
 // ---------------------------------------------------------------------------

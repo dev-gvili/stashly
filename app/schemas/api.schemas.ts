@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { toZodArraySchema } from '@/utils/converters'
+import { ItemCategory, ItemType } from '@/prisma/browser'
 
 // ====================================================== //
 // ============= Client Degradation Reports ============= //
@@ -16,6 +17,14 @@ export const DEGRADED_STAGES = [
   'thumbnail_stage3',
   'metadata_pipeline',
   'embedding',
+  // Query-time embedding, as opposed to `embedding` at index time. A client
+  // that can't embed a *query* still searches by keyword, so this degrades
+  // the ranking rather than the result set — worth its own series.
+  'search_query',
+  // Vision-model fallback for PDFs with no text layer. Failing here means a
+  // scanned document stays unsearchable by content — the one stage whose
+  // failure produces no partial result at all.
+  'ocr',
 ] as const
 
 /** Why the step was skipped. Coarse on purpose — see the note below. */
@@ -243,12 +252,30 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
     audioDiscCount: z.coerce.number().int().optional(),
   }),
   z.object({
+    // One OCR'd page, saved as it is transcribed rather than after the whole
+    // document. Appends: `ord` continues from the item's existing chunks and
+    // `pageNum` is recorded, unlike `save_media_metadata` which replaces the
+    // entire index for the item.
+    intent: z.literal('save_ocr_page'),
+    itemId: z.string().nonempty(),
+    pageNum: z.coerce.number().int().positive(),
+    text: z.string().min(1),
+  }),
+  z.object({
     intent: z.literal('save_search_chunk_embeddings'),
     // JSON-encoded `[{ chunkId, vector: number[] }]`. Vectors are 768-dim
     // (validated server-side in setSearchChunkVectors). Using a JSON-encoded
     // string field keeps the request shape consistent with the rest of the
     // form-data API; acceptable for typical batch sizes (<50 chunks).
     embeddings: z.string().min(2),
+  }),
+  z.object({
+    // Rebuild the search index for text documents whose extraction never ran
+    // or was truncated by an older parser. Batched rather than all-at-once:
+    // each item is an S3 read plus a re-chunk, so a large backlog would
+    // otherwise hold one request open for minutes.
+    intent: z.literal('reindex_text'),
+    limit: z.coerce.number().int().positive().max(50).default(10),
   }),
 ])
 
@@ -845,6 +872,109 @@ export const lockApiRouteQuery = z.object({
   itemId: z.string().optional(),
   cursor: z.string().optional(),
 })
+
+// ====================================================== //
+// =================== Search Api Route ================= //
+// ====================================================== //
+
+/**
+ * Scopes addressable at `/api/search/:type`. Only `items` is implemented;
+ * declaring the enum here means an unknown scope fails validation at the
+ * route boundary instead of silently returning an empty result set.
+ */
+export const searchScope = z.enum(['items'])
+
+/** Shared filter/pagination fields for both halves of the search API. */
+const searchCommonFields = {
+  query: z.string().min(1).max(512),
+  take: z.coerce.number().int().positive().max(100).default(25),
+  skip: z.coerce.number().int().min(0).default(0),
+  category: toZodArraySchema(z.enum(ItemCategory)).optional(),
+  type: toZodArraySchema(z.enum(ItemType)).optional(),
+  extension: toZodArraySchema(z.string().nonempty()).optional(),
+  tags: toZodArraySchema(z.string().trim().min(1)).optional(),
+}
+
+/**
+ * `GET /api/search/:type` — keyword-only retrieval.
+ *
+ * The fast path: it needs no embedding, so it answers while the client's
+ * model is still warming up, and it is the permanent path for browsers
+ * without WebGPU.
+ */
+export const searchApiRouteQuery = z.object(searchCommonFields)
+
+/**
+ * `POST /api/search/:type` — hybrid retrieval.
+ *
+ * A POST for a read because the query embedding is 768 floats (~10KB as text)
+ * and will not fit in a URL. Nothing is mutated.
+ */
+export const searchApiRouteInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('semantic_search'),
+    ...searchCommonFields,
+    // JSON-encoded `number[]`, 768-dim — validated by `toVectorLiteral`
+    // before it reaches the `::vector` cast. Matches the JSON-in-a-form-field
+    // convention already used by `save_search_chunk_embeddings`.
+    vector: z.string().min(2),
+  }),
+])
+
+export type SearchApiRouteQuery = z.infer<typeof searchApiRouteQuery>
+export type SearchApiRouteInput = z.infer<typeof searchApiRouteInput>
+
+/** `Item.size` / `Item.inclusiveSize` are `BigInt` in Prisma. */
+const serializableSizes = {
+  size: z.coerce.number(),
+  inclusiveSize: z.coerce.number(),
+}
+
+/**
+ * This schema is for transforming the output before it's sent to the client.
+ * It uses z.coerce.number() to safely convert bigint to number.
+ *
+ * `/api/search/:type` is a **resource route**, so its response goes out through
+ * `Response.json()` rather than the turbo-stream encoder page loaders use —
+ * and `JSON.stringify` throws on the first `BigInt` it meets. Sizes are
+ * declared at every level they appear (`item`, `item.parent`,
+ * `item.parent.parent`), since the card select carries the ancestor chain.
+ *
+ * `.loose()` throughout: only the fields needing coercion are declared, and
+ * everything else on the payload — `passage`, thumbnails, dates, facets —
+ * passes through untouched.
+ *
+ * `score` / `matchKind` / `hitCount` are the exception: they need no coercion
+ * but are declared anyway, because they are what the results page groups by.
+ * Dropping one silently collapses every result into the `semantic` group with
+ * no error anywhere, so the boundary is the right place to catch it.
+ */
+export const searchApiRouteOutput = z
+  .object({
+    items: z.array(
+      z
+        .object({
+          ...serializableSizes,
+          score: z.number(),
+          matchKind: z.enum(['name', 'content', 'semantic']),
+          hitCount: z.number(),
+          parent: z
+            .object({
+              ...serializableSizes,
+              parent: z.object(serializableSizes).loose().nullish(),
+            })
+            .loose()
+            .nullish(),
+        })
+        .loose()
+    ),
+    total: z.number(),
+    hasMore: z.boolean(),
+    semantic: z.boolean(),
+    keywordCount: z.number(),
+    semanticCount: z.number(),
+  })
+  .loose()
 
 // ====================================================== //
 // ============ Source Types (cross-file) Route ========= //

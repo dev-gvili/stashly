@@ -5187,6 +5187,7 @@ export const SearchChunkScalarFieldEnum = {
   ord: 'ord',
   content: 'content',
   pageNum: 'pageNum',
+  section: 'section',
   charStart: 'charStart',
   charEnd: 'charEnd',
   createdAt: 'createdAt',
