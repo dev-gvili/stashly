@@ -53,6 +53,102 @@ export interface DuplicateCandidate {
   items: { id: string; parentId: string | null; createdAt: Date }[]
 }
 
+/** The five tints the overview's storage meter can draw. */
+type StorageTone = 'images' | 'video' | 'documents' | 'code' | 'other'
+
+/** Meter tone each `ItemCategory` rolls up into on the overview page. */
+const CATEGORY_TONE: Record<ItemCategory, StorageTone> = {
+  image: 'images',
+  graphic: 'images',
+  video: 'video',
+  document: 'documents',
+  spreadsheet: 'documents',
+  presentation: 'documents',
+  text: 'documents',
+  pdf: 'documents',
+  code: 'code',
+  script: 'code',
+  audio: 'other',
+  archive: 'other',
+  binaries: 'other',
+  unknown: 'other',
+}
+
+const TONE_LABEL: Record<StorageTone, string> = {
+  images: 'Images',
+  video: 'Video',
+  documents: 'Documents',
+  code: 'Code',
+  other: 'Other',
+}
+
+const TONE_ORDER: StorageTone[] = [
+  'images',
+  'video',
+  'documents',
+  'code',
+  'other',
+]
+
+export interface StorageSummary {
+  usedBytes: number
+  totalBytes: number
+  segments: { label: string; bytes: number; tone: StorageTone }[]
+}
+
+/**
+ * Quota plus a five-way byte breakdown, sized for the overview page's meter.
+ *
+ * Deliberately lighter than `getStorageOverview` — no largest-item or
+ * duplicate scans — and it returns `null` instead of throwing when the account
+ * has no quota row, so the home loader can just leave the section out.
+ *
+ * @param userId - The owner whose active files are measured.
+ *
+ * @example
+ * const storage = await getStorageSummary(session.user.id)
+ * // { usedBytes: 4080218931, totalBytes: 17179869184, segments: [...] }
+ */
+export async function getStorageSummary(
+  userId: string
+): Promise<StorageSummary | null> {
+  const [quota, categoryGroups] = await Promise.all([
+    prisma.quota.findFirst({
+      where: { drive: { ownerId: userId } },
+      select: { used: true, total: true },
+    }),
+    prisma.item.groupBy({
+      by: ['category'],
+      where: {
+        ownerId: userId,
+        type: 'file' as const,
+        status: { not: 'trashed' as const },
+      },
+      _sum: { size: true },
+    }),
+  ])
+
+  if (!quota || quota.total <= 0n) return null
+
+  const byTone = new Map<StorageTone, number>()
+  for (const group of categoryGroups) {
+    const tone = CATEGORY_TONE[group.category]
+    const bytes = Number(group._sum.size ?? 0n)
+    if (bytes <= 0) continue
+    byTone.set(tone, (byTone.get(tone) ?? 0) + bytes)
+  }
+
+  return {
+    usedBytes: Number(quota.used),
+    totalBytes: Number(quota.total),
+    segments: TONE_ORDER.filter((tone) => byTone.has(tone)).map((tone) => ({
+      label: TONE_LABEL[tone],
+      bytes: byTone.get(tone)!,
+      tone,
+    })),
+  }
+}
+
 export async function getStorageOverview(userId: string) {
   const quota = await findQuotaByUserId(userId)
 
