@@ -3,6 +3,10 @@
 !.claude/settings.json
 !.claude/hooks/
 !.claude/tsc-baseline.json
+# Subsystem skills are shared project guidance, not personal config. They must
+# live here (not .agents/) — this is the only directory Claude Code loads
+# skills from, and they never loaded while they sat outside it.
+!.claude/skills/
 
 # Dependencies
 node_modules
