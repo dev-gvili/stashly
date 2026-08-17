@@ -339,11 +339,191 @@ export function renderPdfPageToBlob(
   })
 }
 
+/**
+ * Render the first `maxPages` pages to WebP Blobs, for OCR.
+ *
+ * Separate from {@link renderPdfPageToBlob} rather than a parameter on it:
+ * that one goes through `withFirstPage`, which opens the document, renders
+ * page 1 and tears down. OCR needs every page from one document handle —
+ * reopening the file per page would re-parse a 14MB PDF fifteen times.
+ *
+ * Rendered larger than a thumbnail (`maxSize` 1400 vs 512) because the output
+ * is fed to a vision model that has to resolve individual glyphs; downscaling
+ * to thumbnail size destroys small body text.
+ *
+ * Worker-compatible (OffscreenCanvas), and used from the compute worker so a
+ * multi-page rasterize never blocks the main thread.
+ */
+export async function renderPdfPagesToBlobs(
+  file: File,
+  options: { maxPages?: number; maxSize?: number; maxPixels?: number } = {},
+): Promise<{ pages: { blob: Blob; pageNum: number }[]; pageCount: number } | null> {
+  const { maxPages = 20, maxSize = 2000, maxPixels } = options
+  let doc: pdfjs.PDFDocumentProxy | null = null
+  try {
+    const buffer = await file.arrayBuffer()
+    doc = await pdfjs.getDocument({
+      data: buffer,
+      verbosity: PDFJS_VERBOSITY_ERRORS,
+      ...workerSafeDocOptions,
+      ...pdfjsOptions,
+    }).promise
+
+    const pageCount = doc.numPages
+    if (pageCount === 0) return null
+
+    const pages: { blob: Blob; pageNum: number }[] = []
+    const limit = Math.min(maxPages, pageCount)
+
+    for (let i = 1; i <= limit; i++) {
+      const page = await doc.getPage(i)
+      try {
+        const baseViewport = page.getViewport({ scale: 1 })
+        let scale = Math.min(
+          maxSize / baseViewport.width,
+          maxSize / baseViewport.height,
+          2,
+        )
+        // Respect a total-pixel budget as well as a longest-edge one. A vision
+        // model downscales its input to a fixed pixel count regardless of what
+        // we hand it, so rendering above that budget costs rasterization time
+        // and buys no additional detail.
+        if (maxPixels) {
+          const area = baseViewport.width * baseViewport.height * scale * scale
+          if (area > maxPixels) {
+            scale *= Math.sqrt(maxPixels / area)
+          }
+        }
+        const viewport = page.getViewport({ scale })
+        const w = Math.max(1, Math.round(viewport.width))
+        const h = Math.max(1, Math.round(viewport.height))
+        const canvas = new OffscreenCanvas(w, h)
+        const ctx = canvas.getContext('2d')
+        if (!ctx) continue
+
+        // Scanned pages are often transparent-backed; without this the model
+        // sees dark-on-transparent and recognition collapses.
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, w, h)
+        await page.render({
+          canvasContext: ctx as unknown as CanvasRenderingContext2D,
+          viewport,
+          canvas: canvas as unknown as HTMLCanvasElement,
+        }).promise
+
+        const blob = await canvas.convertToBlob({
+          type: 'image/webp',
+          quality: 0.9,
+        })
+        if (blob) pages.push({ blob, pageNum: i })
+      } catch (err) {
+        // One unrenderable page shouldn't lose the other fourteen.
+        console.error(`[pdf] renderPdfPagesToBlobs: page ${i} failed`, err)
+      } finally {
+        page.cleanup()
+      }
+    }
+
+    return { pages, pageCount }
+  } catch (err) {
+    console.error('[pdf] renderPdfPagesToBlobs failed:', err)
+    return null
+  } finally {
+    destroyPdfDocument(doc)
+  }
+}
+
+/**
+ * Render a single page by number, for streaming OCR.
+ *
+ * {@link renderPdfPagesToBlobs} materialises every page before OCR starts, so
+ * a 50-page scan holds fifty decoded bitmaps at once while the model works
+ * through them one at a time. This renders exactly the page about to be
+ * transcribed, keeping peak memory at one page regardless of document length.
+ *
+ * The cost is reopening the document per page. That is deliberate: pdf.js
+ * parsing is cheap next to a ~30s inference pass, and the alternative — holding
+ * a `PDFDocumentProxy` open across minutes of GPU work — pins its internal
+ * caches for the whole run.
+ *
+ * @returns The rendered page plus the document's total page count, so a caller
+ *   can drive a loop without a separate metadata pass.
+ */
+export async function renderPdfPageAt(
+  file: File,
+  pageNum: number,
+  options: { maxSize?: number; maxPixels?: number } = {},
+): Promise<{ blob: Blob; pageNum: number; pageCount: number } | null> {
+  const { maxSize = 2000, maxPixels } = options
+  let doc: pdfjs.PDFDocumentProxy | null = null
+  try {
+    const buffer = await file.arrayBuffer()
+    doc = await pdfjs.getDocument({
+      data: buffer,
+      verbosity: PDFJS_VERBOSITY_ERRORS,
+      ...workerSafeDocOptions,
+      ...pdfjsOptions,
+    }).promise
+
+    const pageCount = doc.numPages
+    if (pageNum < 1 || pageNum > pageCount) return null
+
+    const page = await doc.getPage(pageNum)
+    try {
+      const baseViewport = page.getViewport({ scale: 1 })
+      let scale = Math.min(
+        maxSize / baseViewport.width,
+        maxSize / baseViewport.height,
+        2,
+      )
+      if (maxPixels) {
+        const area = baseViewport.width * baseViewport.height * scale * scale
+        if (area > maxPixels) scale *= Math.sqrt(maxPixels / area)
+      }
+      const viewport = page.getViewport({ scale })
+      const w = Math.max(1, Math.round(viewport.width))
+      const h = Math.max(1, Math.round(viewport.height))
+      const canvas = new OffscreenCanvas(w, h)
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return null
+
+      // Scanned pages are often transparent-backed; without this the model
+      // sees dark-on-transparent and recognition collapses.
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, w, h)
+      await page.render({
+        canvasContext: ctx as unknown as CanvasRenderingContext2D,
+        viewport,
+        canvas: canvas as unknown as HTMLCanvasElement,
+      }).promise
+
+      const blob = await canvas.convertToBlob({
+        type: 'image/webp',
+        quality: 0.9,
+      })
+      return blob ? { blob, pageNum, pageCount } : null
+    } finally {
+      page.cleanup()
+    }
+  } catch (err) {
+    console.error(`[pdf] renderPdfPageAt: page ${pageNum} failed`, err)
+    return null
+  } finally {
+    destroyPdfDocument(doc)
+  }
+}
+
 export function extractPdfText(
   file: File,
   options: { maxPages?: number; maxChars?: number } = {},
 ): Promise<{ text: string; pageCount: number; pagesRead: number } | null> {
-  const { maxPages = 5, maxChars = 20_000 } = options
+  // Raised from 5 / 20k once chunked indexing shipped. The old cap was sized
+  // for single-vector-per-document search, where text past the first couple of
+  // pages was truncated by the tokenizer anyway and so cost nothing to drop.
+  // Chunked indexing splits this into ~1500-char passages, each embedded
+  // independently, so extra pages become extra searchable passages rather
+  // than waste. See docs/semantic-search.md § Tunable parameters.
+  const { maxPages = 50, maxChars = 200_000 } = options
   return (async () => {
     let doc: pdfjs.PDFDocumentProxy | null = null
     try {

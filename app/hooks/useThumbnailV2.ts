@@ -159,25 +159,77 @@ async function runMetadataPipeline(
     const data = metadataRef.current.data as
       | { chunks?: { id: string; content: string }[] }
       | undefined
-    const chunks = data?.chunks ?? []
-    if (chunks.length === 0) return
+    await embedAndSaveChunks(data?.chunks ?? [], embeddingFetcher, embeddingRef)
 
-    const { embedTexts } = await import('@/workers/embedding.ai')
-    const vectors = await embedTexts(chunks.map((c) => c.content))
-    if (vectors.length !== chunks.length) {
-      console.error('[embed chunks] vector count mismatch', vectors.length, chunks.length)
-      return
+    // ── OCR second pass ────────────────────────────────────────────────────
+    // Deliberately after the metadata POST, not inside `extractMediaMetadata`.
+    // OCR is minutes of work; running it inline would hold the facet, page
+    // count and search content hostage for the whole run and lose everything
+    // if the tab closed. Now the item is fully saved first and the recovered
+    // text is a strict improvement layered on top.
+    if (meta.needsOcr) {
+      const { streamOcrPdf } = await import('@/utils/thumbnail-pipeline')
+
+      // Each page is persisted and embedded the moment it is transcribed, so
+      // closing the tab mid-run keeps every page finished so far instead of
+      // discarding the whole document. Nothing accumulates across pages.
+      const totalChars = await streamOcrPdf(file, async (page) => {
+        const ofd = new FormData()
+        ofd.append('intent', 'save_ocr_page')
+        ofd.append('itemId', itemId)
+        ofd.append('pageNum', String(page.pageNum))
+        ofd.append('text', page.text)
+        metadataFetcher.submit(ofd, { method: 'post', action: '/api/items' })
+        await waitForIdle(metadataRef).catch(() => null)
+
+        const pageData = metadataRef.current.data as
+          | { chunks?: { id: string; content: string }[] }
+          | undefined
+        await embedAndSaveChunks(
+          pageData?.chunks ?? [],
+          embeddingFetcher,
+          embeddingRef,
+        )
+      })
+
+      if (totalChars > 0) {
+        console.info(`[ocr] indexed ${totalChars} recovered chars for ${itemId}`)
+      }
     }
-    const payload = chunks.map((c, i) => ({ chunkId: c.id, vector: vectors[i] }))
-    const efd = new FormData()
-    efd.append('intent', 'save_search_chunk_embeddings')
-    efd.append('embeddings', JSON.stringify(payload))
-    embeddingFetcher.submit(efd, { method: 'post', action: '/api/items' })
-    await waitForIdle(embeddingRef).catch(() => null)
   } catch (e) {
     console.error('[runMetadataPipeline]', e)
     // Covers the embedding leg too: a failure here is why a document can end
     // up with chunk text but no vector, so it must not stay invisible.
     reportDegraded('metadata_pipeline', classifyDegradation(e))
   }
+}
+
+/**
+ * Embed freshly-created chunks and write the vectors back.
+ *
+ * Shared by the initial metadata pass and the OCR second pass — both produce
+ * the same `{ id, content }[]` and need identical handling, and duplicating it
+ * is how the two paths drift.
+ */
+async function embedAndSaveChunks(
+  chunks: { id: string; content: string }[],
+  embeddingFetcher: {
+    submit: (data: FormData, opts: { method: 'post'; action: string }) => void
+  },
+  embeddingRef: { current: { state: 'idle' | 'loading' | 'submitting'; data: unknown } },
+) {
+  if (chunks.length === 0) return
+
+  const { embedTexts } = await import('@/workers/embedding.ai')
+  const vectors = await embedTexts(chunks.map((c) => c.content))
+  if (vectors.length !== chunks.length) {
+    console.error('[embed chunks] vector count mismatch', vectors.length, chunks.length)
+    return
+  }
+  const payload = chunks.map((c, i) => ({ chunkId: c.id, vector: vectors[i] }))
+  const efd = new FormData()
+  efd.append('intent', 'save_search_chunk_embeddings')
+  efd.append('embeddings', JSON.stringify(payload))
+  embeddingFetcher.submit(efd, { method: 'post', action: '/api/items' })
+  await waitForIdle(embeddingRef).catch(() => null)
 }

@@ -25,6 +25,10 @@ export type ComputeRequest =
   | { id: number; kind: 'resizePdf'; file: File; maxSize?: number; blur?: number }
   | { id: number; kind: 'resizeText'; file: File; maxSize?: number }
   | { id: number; kind: 'pdfText'; file: File; maxPages?: number; maxChars?: number }
+  /** Rasterize pages for OCR — only requested when `pdfText` came back empty. */
+  | { id: number; kind: 'pdfPages'; file: File; maxPages?: number; maxSize?: number; maxPixels?: number }
+  /** Rasterize one page, for streaming OCR that holds a single page at a time. */
+  | { id: number; kind: 'pdfPageAt'; file: File; pageNum: number; maxSize?: number; maxPixels?: number }
   | { id: number; kind: 'pdfMeta'; file: File }
   | { id: number; kind: 'mdMeta'; file: File }
   | { id: number; kind: 'imageDimensions'; file: File }
@@ -33,6 +37,8 @@ export type ComputeResponse =
   | { id: number; kind: 'tinyImage' | 'tinyPdf' | 'tinyText'; blob: Blob | null }
   | { id: number; kind: 'resizeImage' | 'resizePdf' | 'resizeText'; result: { blob: Blob; width: number; height: number } | null }
   | { id: number; kind: 'pdfText'; result: { text: string; pageCount: number; pagesRead: number } | null }
+  | { id: number; kind: 'pdfPages'; result: { pages: { blob: Blob; pageNum: number }[]; pageCount: number } | null }
+  | { id: number; kind: 'pdfPageAt'; result: { blob: Blob; pageNum: number; pageCount: number } | null }
   | { id: number; kind: 'pdfMeta'; result: PdfDocumentMetadata | null }
   | { id: number; kind: 'mdMeta'; result: MarkdownDocumentMetadata | null }
   | { id: number; kind: 'imageDimensions'; result: { width: number; height: number } | null }
@@ -44,6 +50,17 @@ export type ComputeResponse =
 // warnings). Serialize through the queue: one compute op at a time.
 const MAX_CONCURRENT = 1
 const PER_OP_TIMEOUT_MS = 30_000
+
+/**
+ * Rasterizing many pages at OCR resolution is minutes of work on a large
+ * scanned PDF, so it can't live under the 30s budget sized for single-page
+ * thumbnail ops.
+ */
+const PDF_PAGES_TIMEOUT_MS = 180_000
+
+function timeoutFor(kind: ComputeRequest['kind']): number {
+  return kind === 'pdfPages' ? PDF_PAGES_TIMEOUT_MS : PER_OP_TIMEOUT_MS
+}
 
 let active = 0
 const queue: ComputeRequest[] = []
@@ -85,13 +102,14 @@ function pump() {
 function runWithTimeout(req: ComputeRequest): Promise<void> {
   return new Promise<void>((resolve) => {
     let settled = false
+    const budget = timeoutFor(req.kind)
     const timer = setTimeout(() => {
       if (settled) return
       settled = true
-      console.error(`[thumbnail.compute.worker] timeout ${req.kind} (id=${req.id}) after ${PER_OP_TIMEOUT_MS}ms`)
+      console.error(`[thumbnail.compute.worker] timeout ${req.kind} (id=${req.id}) after ${budget}ms`)
       post({ id: req.id, kind: 'error', message: `worker timeout: ${req.kind}` })
       resolve()
-    }, PER_OP_TIMEOUT_MS)
+    }, budget)
 
     handle(req)
       .catch((err) => {
@@ -196,6 +214,35 @@ async function handle(req: ComputeRequest): Promise<void> {
       } catch (err) {
         console.error('[thumbnail.compute.worker] pdfText failed', err)
         post({ id: req.id, kind: 'pdfText', result: null })
+      }
+      return
+    }
+    case 'pdfPages': {
+      try {
+        const { renderPdfPagesToBlobs } = await import('../utils/pdf')
+        const result = await renderPdfPagesToBlobs(req.file, {
+          maxPages: req.maxPages,
+          maxSize: req.maxSize,
+          maxPixels: req.maxPixels,
+        })
+        post({ id: req.id, kind: 'pdfPages', result })
+      } catch (err) {
+        console.error('[thumbnail.compute.worker] pdfPages failed', err)
+        post({ id: req.id, kind: 'pdfPages', result: null })
+      }
+      return
+    }
+    case 'pdfPageAt': {
+      try {
+        const { renderPdfPageAt } = await import('../utils/pdf')
+        const result = await renderPdfPageAt(req.file, req.pageNum, {
+          maxSize: req.maxSize,
+          maxPixels: req.maxPixels,
+        })
+        post({ id: req.id, kind: 'pdfPageAt', result })
+      } catch (err) {
+        console.error('[thumbnail.compute.worker] pdfPageAt failed', err)
+        post({ id: req.id, kind: 'pdfPageAt', result: null })
       }
       return
     }
