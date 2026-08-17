@@ -53,6 +53,8 @@ Components use shadcn/ui (source-owned, in `app/components/ui/`) built on Radix 
 
 **`ItemCard.Thumbnail` is Avatar-style**: Wraps Radix `AvatarPrimitive`. Self-closing `<ItemCard.Thumbnail />` defaults to `ThumbnailImage` + `ThumbnailFallback`. For explicit control compose them: `<ItemCard.Thumbnail><ItemCard.ThumbnailImage /><ItemCard.ThumbnailFallback className="…" /></ItemCard.Thumbnail>`. Real thumbnails have URLs **not** starting with `#` — stage-0 color hashes are placeholders.
 
+**`ItemCard.Thumbnail` carries its own `aspect-video`**: to make it fill a flex parent instead of holding a ratio, pass `aspect-auto` alongside `flex-1` — otherwise the base aspect ratio fights the flex height.
+
 **`StashPickerItem` → `ItemCard` adapter**: To render a picker shape through `ItemCard`, fill defaults: `status: 'normal'`, `inclusiveSize: item.size`, `parentId: null`, `ownerId: ''`, `workspaceId: null`, `driveId: ''`, `updatedAt: null`, `tags: []`, `favorites: []`, `file: null`, `folder: null`. Map `thumbnailUrl` → `thumbnails: [{ id, url, width: null, height: null, size: 'medium', view: 'grid' }]`.
 
 **`ItemStatus` values**: `'normal' | 'archived' | 'trashed' | 'locked' | 'shared'` — there is no `'active'`.

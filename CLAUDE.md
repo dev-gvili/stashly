@@ -29,10 +29,13 @@ When committing, actually run `git add` and `git commit` — don't just generate
 
 TypeScript (strict) project. Always use TypeScript for new files. When moving/reorganizing files, update all import paths and verify with the build command. Use path aliases for cross-directory imports; relative imports only within the same directory.
 
+- `$queryRaw` traps: a `BigInt` column (`Item.size`) compared against a fractional param fails — Postgres types the param bigint, so use integer arithmetic; and backticks inside the SQL string close the template literal.
+
 ## Environment
 
 - The dev server runs on port 80, not 3000. Do not start a second dev server — check if one is already running first.
 - **Never restart or kill the dev server** — the user manages it. If a change requires a restart, say so and wait.
+- **Tailwind v4 + Vite stale CSS**: a *newly introduced* class string (`lg:grid-cols-7`, `md:col-span-2`) can HMR into the DOM before the regenerated stylesheet lands, so the page renders as if the class doesn't exist — a `col-span-N` child then manufactures implicit auto-width columns and the layout looks broken. Confirm the class actually resolves before rewriting working markup; the fix is a hard reload (Ctrl+Shift+R), not a code change.
 - Shell is PowerShell: avoid bash here-strings in commit messages; use `git commit -F <tmpfile>` or single-line `-m` flags for multi-line messages.
 
 ## Commands
@@ -54,16 +57,9 @@ pnpm test:e2e:ui  # Run E2E tests with Playwright UI
 
 Stashly is a **full-stack file management platform** using React Router 8 in framework mode (SSR). Server is Express 5, database is PostgreSQL via Prisma ORM, complex UI state is managed with XState 5.
 
-| Layer | Location | Purpose |
-|-------|----------|---------|
-| Routes | `app/routes/` | UI components + loaders/actions (data fetching and mutations) |
-| API Routes | `app/routes/api/` | Resource routes acting as REST endpoints |
-| Actions | `app/.server/*-actions.ts` | Business logic + direct Prisma access, permission enforcement (e.g. `item-actions.ts`, `collection-actions.ts`) |
-| Machines | `app/machines/` | XState state machines for complex async workflows |
-| Workers | `app/workers/` | Web Workers for CPU-intensive tasks (AI inference, tokenization) |
-| Client-only | `app/.client/` | Browser-only code excluded from SSR (auth client, AI client) |
-| Schemas | `app/schemas/` | Zod validation schemas shared across client and server |
-| Types | `app/types/` | Shared TypeScript type definitions (API types, machine types) |
+The layout under `app/` is self-describing (`routes/`, `routes/api/`, `.server/`,
+`.client/`, `machines/`, `workers/`, `schemas/`, `types/`) — read the tree. What
+the tree does *not* tell you is below.
 
 ### Key Conventions
 
@@ -104,15 +100,10 @@ Routes are defined centrally in `app/routes.ts` using `prefix`, `layout`, and `r
 - `app/types/` — Shared TS types for API contracts (`api.types.ts`), machine payloads (`machine.types.ts`, `upload-actors.types.ts`), global augmentations (`react.d.ts`). Import with `@/types/*`.
 - Keep Zod schemas and derived types co-located — don't scatter them across feature files.
 
-### Path Aliases (tsconfig)
+### Path Aliases
 
-```
-@/*            → app/*              @/hooks/*     → app/hooks/
-@/prisma/*     → app/prisma/*       @/services/*  → app/.server/
-@/utils/*      → app/utils/*        @/machines/*  → app/machines/
-@/components/* → app/components/*    @/schemas/*   → app/schemas/
-@/ui/*         → app/components/ui/  @/workers/*   → app/workers/
-```
+Defined in `tsconfig.json` under `compilerOptions.paths` — read it there. Note
+`@/services/*` maps to `app/.server/`, which is not guessable from the name.
 
 ### Integrations
 
@@ -128,7 +119,7 @@ shadcn/ui (source-owned, in `app/components/ui/`) built on Radix UI, styled with
 
 ## Subsystem Skills
 
-Detailed conventions for these areas live in on-demand project skills (`.agents/skills/`). Invoke the matching skill **before** touching the area:
+Detailed conventions for these areas live in on-demand project skills (`.claude/skills/`). Invoke the matching skill **before** touching the area:
 
 | Skill | Load when working on… |
 |-------|-----------------------|
@@ -165,7 +156,10 @@ Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind s
 ## Verification & Commits
 
 - Fix type errors additively — do not delete or weaken existing types to make errors disappear.
-- For UI changes, verify in the browser via the Claude_Browser MCP before declaring done.
-- Only run typecheck at the END of a task, not mid-edit, unless explicitly asked.
-- After Prisma schema changes, remind the user to restart the dev server (cached client issues observed).
-- `pnpm typecheck` currently has ~250 pre-existing, unrelated errors — don't expect a clean run. Pipe to a file and grep for your touched files by name, and compare total error counts before/after, to confirm you introduced no regressions.
+- For UI changes, verify in the browser via the chrome-devtools MCP (or playwright MCP) before declaring done — both require Chrome installed.
+- Browser verification doesn't need a session: chrome-devtools MCP opens a fresh unauthenticated Chrome, but `http://localhost/auth/sign-in` loads the same stylesheet. Append a throwaway `div` with the classes and read `getComputedStyle` to prove a Tailwind class resolves, or inject a mock grid there to measure geometry (column widths, row count, card sizes) before and after a layout change.
+- Only run typecheck at the END of a task, not mid-edit, unless explicitly asked — and skip it entirely for className/copy-only edits, which touch no type surface.
+- After Prisma schema changes: run `pnpm prisma generate`, then ask the user to run `pnpm prisma migrate dev` and restart the dev server — the running server caches the old client (`Unknown argument` errors otherwise).
+- `$queryRaw` SQL is invisible to `tsc` — verify by running the action against the dev DB: `npx tsx --env-file=.env <script.ts>` (absolute imports; no top-level await).
+- `pnpm typecheck` has **209** pre-existing, unrelated errors — don't expect a clean run. Pipe to a file, count `error TS`, and grep your touched files by name to confirm no regressions.
+- `pnpm test` has 11 pre-existing failures (`activity.test.ts` ×4, `collection-actions.test.ts` ×7) — don't chase them.
