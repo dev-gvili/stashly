@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { ItemCard } from '@/components/stash/item-card'
 import { Button } from '@/ui/button'
 import { OpenWithIcon } from '@/components/icons'
@@ -5,18 +6,45 @@ import { cn } from '@/utils/styles'
 import { splitSize, type FileCardVariantProps } from './types'
 import { formatSize } from '@/utils/formaters';
 
+export interface FileCardDetailProps extends FileCardVariantProps {
+  /**
+   * Replaces the name line. For callers that must render the name themselves —
+   * search highlights query terms and clips the middle to keep the extension —
+   * while everything else about the card stays put.
+   */
+  name?: ReactNode
+  /** Extra content on the spec line, right of the size. */
+  meta?: ReactNode
+  /** Pinned onto the hero, above the thumbnail. Position it yourself. */
+  overlay?: ReactNode
+  /**
+   * A third concentric block welded below the spec line, inside the card's own
+   * gutter — search puts the matching passage here so the evidence can never
+   * drift away from the file it belongs to.
+   */
+  children?: ReactNode
+}
+
 /**
  * Variant 4 — Detail.
  * A trail-card reading: a dark hero carrying the name, kind and the primary
  * action together on the scrim, then a single quiet spec line on card ground —
  * size on the left, modified date on the right. Wide cells suit it best.
+ *
+ * The `name` / `meta` / `overlay` / `children` slots exist so a caller can add
+ * to the anatomy without forking it. They are all optional and the card is
+ * unchanged when none are passed.
  */
 export function FileCardDetail({
   item,
   className,
   showActions = true,
   actions,
-}: FileCardVariantProps) {
+  name,
+  meta,
+  overlay,
+  children,
+}: FileCardDetailProps) {
   const size = formatSize('byte', 'unit', item.size)
 
   return (
@@ -36,6 +64,8 @@ export function FileCardDetail({
           <ItemCard.ThumbnailImage className="rounded-2xl transition-transform duration-700 ease-out group-hover/card:scale-125" />
           <ItemCard.ThumbnailFallback className="rounded-2xl text-muted-foreground" />
         </ItemCard.Thumbnail>
+
+        {overlay}
         {/* Scrim: the name/kind/Open row sits on a fixed dark ground, so the
             text below uses literal white rather than theme tokens. */}
         <div
@@ -75,13 +105,18 @@ export function FileCardDetail({
 
       <div className="flex items-end justify-between gap-3 px-1 pb-1 pt-3">
         <div className="min-w-0">
-          <ItemCard.Name className="h-auto w-full max-w-full truncate text-left font-stashly text-sm font-semibold text-foreground" />
-          <p className="truncate font-stashly text-xs text-muted-foreground tabular-nums">
+          {name ?? (
+            <ItemCard.Name className="h-auto w-full max-w-full truncate text-left font-stashly text-sm font-semibold text-foreground" />
+          )}
+          <p className="flex items-center gap-2 truncate font-stashly text-xs text-muted-foreground tabular-nums">
             {size}
+            {meta}
           </p>
         </div>
         <ItemCard.Date className="shrink-0 truncate text-xs text-muted-foreground" />
       </div>
+
+      {children}
     </ItemCard>
   )
 }

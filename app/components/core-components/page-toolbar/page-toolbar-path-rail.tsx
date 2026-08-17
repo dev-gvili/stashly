@@ -36,7 +36,7 @@ import { useSelection } from '@/components/stash/selection'
 import { useBreadcrumbs } from '@/hooks'
 import type { BulkActions, ToolbarContext } from './types'
 import { cn } from '@/utils/styles'
-import { useLocation } from 'react-router'
+import { href, Link, useLocation, useParams } from 'react-router'
 import {
   ButtonGroup,
   ButtonGroupSeparator,
@@ -68,6 +68,7 @@ export function PageToolbarPathRail({
   ...actions
 }: Props) {
   const location = useLocation()
+  const { me } = useParams()
   const { selectedIds, unselectAll, selectAll } = useSelection()
   const crumbs = useBreadcrumbs()
   const selectedCount = selectedIds.length
@@ -179,6 +180,17 @@ export function PageToolbarPathRail({
         </div>
       ) : (
         <div className="flex shrink-0 items-center gap-1">
+          {/* The rail's neutral action. Search is a route rather than an
+              in-place filter, so it navigates instead of toggling state. */}
+          {me && (
+            <Tooltip content="Search" asChild>
+              <Button variant="ghost" size="icon" aria-label="Search" asChild>
+                <Link to={href('/:me/stash/search', { me })}>
+                  <SearchIcon className="size-5" />
+                </Link>
+              </Button>
+            </Tooltip>
+          )}
           <Separator orientation="vertical" className="mx-1 h-5" />
         </div>
       )}
