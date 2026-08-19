@@ -4,7 +4,8 @@ import type { EvidenceSnippet } from '@/types/stash.types'
 
 /**
  * The evidence, welded to the card that owns it: locator and hit count on a
- * rule, then the matching text with the query marked. Sits concentrically
+ * rule, then the matching text with the query marked. The header row never
+ * wraps or overflows — the locator gives up width first, the hit count last. Sits concentrically
  * inside the card's `rounded-3xl` shell at `rounded-2xl`.
  *
  * A semantic neighbour has neither locator nor hits, so the whole header rule
@@ -32,11 +33,17 @@ export function SnippetBlock({
       {(snippet.locator || hitCount > 0) && (
         <div className="flex items-center gap-2">
           {snippet.locator && (
-            <span className="text-accent-foreground font-stashly text-[11px] tracking-wider whitespace-nowrap uppercase">
+            // A markdown `section` locator is a whole heading and can be longer
+            // than the card — it truncates so the rule and the hit count, which
+            // are the parts that don't fit anywhere else, always survive.
+            <span
+              className="text-accent-foreground font-stashly min-w-0 truncate text-[11px] tracking-wider uppercase"
+              title={snippet.locator}
+            >
               {snippet.locator}
             </span>
           )}
-          <span className="bg-border h-px flex-1" />
+          <span className="bg-border h-px min-w-3 flex-1" />
           {hitCount > 0 && (
             <span className="text-muted-foreground font-stashly shrink-0 text-[11px] tabular-nums">
               {hitCount} {hitCount === 1 ? 'hit' : 'hits'}
