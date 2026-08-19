@@ -1,13 +1,9 @@
 import { useState } from 'react'
 import { href, useFetcher, useNavigate } from 'react-router'
-import { PageToolbarMorph, PageToolbarDock, PageToolbarPathRail, PageToolbarStacked } from '@/components/core-components/page-toolbar'
-import type {
-  LibraryStats,
-  ToolbarContext,
-  ToolbarLayout,
-} from '@/components/core-components/page-toolbar'
+import { PageToolbarPathRail } from '@/components/core-components/page-toolbar'
+import type { LibraryStats, ToolbarContext } from '@/types/stash.types'
 import { MoveToFolderDialog } from '@/components/core-components/move-to-folder-dialog'
-import { useSelection } from '@/components/stash/selection'
+import { useSelection } from '@/hooks/useSelection'
 import useConfirm from '@/hooks/useConfirm'
 import { formatSize } from '@/utils/formaters'
 import type { StashItem } from '@/types/stash.types'
@@ -22,12 +18,10 @@ export interface StashPageToolbarProps {
   parentId?: string | null
   parentName?: string | null
   driveId?: string
-  layout?: ToolbarLayout
-  onLayoutChange?: (layout: ToolbarLayout) => void
 }
 
 /**
- * Route-level wiring for `PageToolbarMorph`: totals the selected bytes and
+ * Route-level wiring for `PageToolbarPathRail`: totals the selected bytes and
  * connects the bulk actions to the existing `/api/items` and `/api/favorites`
  * intents. Must render inside a `<SelectionProvider>` — it reads the shared
  * selection actor, same as the item grid it sits above.
