@@ -1,11 +1,5 @@
 export { PageToolbarPathRail } from './page-toolbar-path-rail'
-export {
-  SelectAllCheckbox,
-  InlineStats,
-  StorageMeter,
-  StatCard,
-  StatCards,
-} from './toolbar-stats'
+export { SelectAllCheckbox } from './toolbar-stats'
 export type {
   LibraryStats,
   ToolbarContext,

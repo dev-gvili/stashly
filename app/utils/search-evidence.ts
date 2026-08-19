@@ -83,7 +83,7 @@ export function highlightSegments(
  * is; a page beats a line because that is how a PDF reader is addressed; a line
  * is the universal fallback, meaningful for any text document.
  */
-export function passageLocator(passage: SearchPassage): string | undefined {
+function passageLocator(passage: SearchPassage): string | undefined {
   if (passage.section) return `§ ${passage.section}`
   if (passage.pageNum != null) return `page ${passage.pageNum}`
   if (passage.lineNum != null) return `line ${passage.lineNum}`

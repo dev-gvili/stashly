@@ -3,13 +3,12 @@ export { MatchGroup } from './match-group'
 export { ResultsSummary } from './results-summary'
 export { SnippetBlock } from './snippet-block'
 export { MatchBadge } from './match-badge'
-export { ScoreBadge, ScoreMeter } from './score-badge'
+export { ScoreBadge } from './score-badge'
 export { HighlightedText, HighlightedFileName } from './highlighted-text'
 export {
   tokenizeQuery,
   highlightSegments,
   toEvidenceSnippet,
-  passageLocator,
   scoreBand,
   MATCH_KIND_LABEL,
   MATCH_KIND_NOTE,
