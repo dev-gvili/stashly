@@ -279,11 +279,4 @@ export default [
   route('test', 'routes/stash/recent.tsx', {
     id: 'test-route',
   }), // Public share route
-
-  // Design option demos (standalone layouts, no auth required)
-  ...prefix('options', [
-    route('a', 'routes/options/option-a.tsx'),
-    route('b', 'routes/options/option-b.tsx'),
-    route('c', 'routes/options/option-c.tsx'),
-  ]),
 ] satisfies RouteConfig
