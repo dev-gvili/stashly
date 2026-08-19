@@ -23,7 +23,7 @@ app/utils/aimodel.test.ts
 # Production
 build
 dist
-# .react-router
+.react-router
 
 # Build artifacts
 *.tsbuildinfo
