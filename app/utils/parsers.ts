@@ -163,3 +163,13 @@ export function parseEtag(etag: string) {
 export function parsePresignedUrl(url: string) {
    return presignedUrl.safeParse(url) 
 }
+
+/**
+ * A positive integer from the query string, or `undefined`. Anything else —
+ * absent, `0`, a word someone typed over the URL — means "no target", which
+ * leaves a viewer at the top of the file.
+ */
+export function parseNumberParam(raw: string | null): number | undefined {
+  const value = Number(raw)
+  return Number.isInteger(value) && value > 0 ? value : undefined
+}

@@ -25,10 +25,8 @@ import {
   TrashFillIcon,
 } from '@/components/icons'
 import { NavMedia } from '@/components/navigation/nav-media'
-import {
-  NavWorkspaces,
-  type WorkspacesSidebarItem,
-} from '@/components/navigation/nav-workspaces'
+import { NavWorkspaces } from '@/components/navigation/nav-workspaces'
+import type { WorkspacesSidebarItem } from '@/types/stash.types'
 import { ScrollArea } from '@/ui/scroll-area'
 import { cn } from '@/utils/styles'
 import {

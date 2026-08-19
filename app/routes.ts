@@ -219,9 +219,6 @@ export default [
         route('ai-studio', 'routes/stash/ai-studio.tsx', {
           id: 'stash-ai-studio',
         }),
-        route('examples', 'routes/stash/examples.tsx', {
-          id: 'stash-examples',
-        }),
       ]),
 
       // Workspaces UI Routes
@@ -279,11 +276,4 @@ export default [
   route('test', 'routes/stash/recent.tsx', {
     id: 'test-route',
   }), // Public share route
-
-  // Design option demos (standalone layouts, no auth required)
-  ...prefix('options', [
-    route('a', 'routes/options/option-a.tsx'),
-    route('b', 'routes/options/option-b.tsx'),
-    route('c', 'routes/options/option-c.tsx'),
-  ]),
 ] satisfies RouteConfig

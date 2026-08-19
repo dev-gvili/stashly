@@ -35,6 +35,7 @@ import {
   VideoFillIcon,
   WorkspaceFillIcon,
 } from '@/components/icons'
+import type { LinkState, SharedLink } from '@/types/stash.types'
 import type {
   MediaFile,
   Status,
@@ -998,4 +999,17 @@ export function toSteppedZoom(zoom: number, dir: 1 | -1): number {
       : ([...ZOOM_LEVELS].reverse().find((z) => z < zoom) ?? ZOOM_LEVELS[0])
   }
   return ZOOM_LEVELS[Math.max(0, Math.min(ZOOM_LEVELS.length - 1, idx + dir))]
+}
+
+/**
+ * Share-link lifecycle. `expired` is trusted from the server when present so
+ * the client never disagrees with it; otherwise it is derived from `expiresAt`,
+ * with a 7-day warning window.
+ */
+export function toLinkState(link: SharedLink): LinkState {
+  if (link.expired) return 'expired'
+  if (!link.expiresAt) return 'live'
+  const days = (new Date(link.expiresAt).getTime() - Date.now()) / 86_400_000
+  if (days <= 0) return 'expired'
+  return days <= 7 ? 'expiring' : 'live'
 }

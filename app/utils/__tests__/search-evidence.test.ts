@@ -10,8 +10,8 @@ import {
   scoreBand,
   toEvidenceSnippet,
   tokenizeQuery,
-  widthForPercent,
-} from '@/components/views/search-components/search-helpers'
+} from '@/utils/search-evidence'
+import { widthForPercent } from '@/utils/styles'
 import type { SearchPassage } from '@/types/stash.types'
 
 describe('tokenizeQuery', () => {

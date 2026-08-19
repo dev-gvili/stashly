@@ -1,33 +1,5 @@
-export { ActivityTimeline } from './activity-timeline'
-export { OverviewDetailCard } from './detail-card'
-export { OverviewFirstRun } from './first-run'
-export { MemoriesRow } from './memories-row'
-export {
-  avatarTint,
-  basisForPercent,
-  itemMeta,
-  toGreeting,
-  toRelativeTime,
-  widthForPercent,
-} from './overview-helpers'
+// Public surface of the overview. `routes/stash/home.tsx` renders `OverviewView`;
+// everything it composes is reached by relative import from `overview-view.tsx`,
+// so re-exporting the parts here only created a second, unused path to them.
 export { OverviewView } from './overview-view'
-export { PanelCard } from './panel-card'
-export { PeopleStrip } from './people-strip'
-export { PersonAvatar } from './person-avatar'
-export { PinnedTile } from './pinned-tile'
-export { SectionLabel } from './section-label'
-export { SharedLinksPanel } from './shared-links-panel'
-export { SharedWithYouPanel } from './shared-with-you-panel'
-export { StorageStrip } from './storage-strip'
-export { SuggestionReason } from './suggestion-reason'
-export { TrashRescue } from './trash-rescue'
-export type {
-  MemoryCluster,
-  OverviewPerson,
-  OverviewViewProps,
-  SharedLink,
-  SharedWithYouEntry,
-  StorageSegment,
-  StorageUsage,
-  TrashRescueSummary,
-} from './types'
+export type { OverviewViewProps } from './types'

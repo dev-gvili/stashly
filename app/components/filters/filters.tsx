@@ -26,8 +26,8 @@ import type {
   FilterState,
   GlyphItem,
   UseFilters,
-} from './filter.types'
-import { CATEGORIES, STATUSES, TYPES, FLAGS } from './filter.data'
+} from '@/types/filter.types'
+import { CATEGORIES, STATUSES, TYPES, FLAGS } from '@/utils/filter-data'
 import { useFilters } from '@/hooks/useFilters'
 import { Chip, DashedDiv } from './filter-primitives'
 import { SortPill } from './sort-pill'

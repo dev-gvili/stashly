@@ -1,5 +1,5 @@
 import { href, useParams } from 'react-router'
-import type { ImageData } from '@/components/views/buildRows'
+import type { GalleryImage } from '@/types/stash.types'
 
 /**
  * Builds the file-page href for a gallery item. The gallery route is reused for
@@ -7,7 +7,7 @@ import type { ImageData } from '@/components/views/buildRows'
  * (`/:me/workspaces/:workspaceId/gallery`), so the target file route depends on
  * which context we're rendering in.
  */
-export function useFileHref(img: ImageData): string | null {
+export function useFileHref(img: GalleryImage): string | null {
   const { me, workspaceId } = useParams()
   if (!me || !img.parentId) return null
   if (workspaceId) {

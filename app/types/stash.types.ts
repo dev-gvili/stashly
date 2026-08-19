@@ -14,9 +14,13 @@ import type {
 import type {
   InvitationStatus,
   PermissionRole,
+  ShareLinkType,
+  ShareScope,
   WorkspaceMemberRole,
 } from '@/prisma/enums'
 import type { ActivityWithRelations } from '@/utils/activity'
+import type { MarkdownHeading } from '@/utils/markdown'
+import type { SearchMode } from './filter.types'
 
 // ---------------------------------------------------------------------------
 // Sub-types
@@ -453,4 +457,282 @@ export type SearchResponse = {
   semantic: boolean
   keywordCount: number
   semanticCount: number
+}
+
+// ---------------------------------------------------------------------------
+// Gallery
+// ---------------------------------------------------------------------------
+
+/**
+ * One image as the gallery layouts consume it.
+ *
+ * Named `GalleryImage` rather than `ImageData` (its name back in
+ * `views/buildRows.ts`) because this module is re-exported through
+ * `app/types/index.ts` — `ImageData` there would shadow the DOM lib global for
+ * every `@/types` consumer.
+ */
+export type GalleryImage = {
+  id: string
+  src: string | null
+  alt: string
+  width: number
+  height: number
+  sizes: string
+  srcSet: string
+  parentId: string | null
+}
+
+// ---------------------------------------------------------------------------
+// Search results presentation
+// ---------------------------------------------------------------------------
+
+/** The matching text as a card renders it, already windowed for reading. */
+export interface EvidenceSnippet {
+  /** The excerpt, trimmed to a readable window around the match. */
+  text: string
+  /** Where it sits in the document — `page 5`. Absent when the source has no pagination. */
+  locator?: string
+  /** Ellipsis hints for text dropped either side of the window. */
+  truncatedStart?: boolean
+  truncatedEnd?: boolean
+}
+
+/** What the results header needs to describe the search that produced them. */
+export interface SearchQueryState {
+  query: string
+  mode: SearchMode
+  /**
+   * Terms the vector index added by meaning. No server field feeds this yet —
+   * while it is absent the dotted highlight tier and its legend never render,
+   * which is the correct degradation rather than a gap.
+   */
+  expandedTerms?: string[]
+}
+
+// ---------------------------------------------------------------------------
+// Item page — loader payload contracts
+// ---------------------------------------------------------------------------
+
+/** Markdown body streamed from `routes/stash/file.tsx` into `MarkdownStage`. */
+export type MarkdownDoc = { text: string; headings: MarkdownHeading[] }
+
+/** Plain-text body streamed from `routes/stash/file.tsx` into `TextStage`. */
+export type TextDoc = { text: string }
+
+// ---------------------------------------------------------------------------
+// Overview
+// ---------------------------------------------------------------------------
+
+export interface OverviewPerson {
+  id: string
+  name: string
+  /** Short role or team label, e.g. `design`. */
+  role?: string
+  avatarUrl?: string | null
+  /** How many items you have exchanged with this person. */
+  exchangedCount?: number
+  lastExchangeAt?: Date | string | null
+}
+
+/** One item somebody shared with you. */
+export interface SharedWithYouEntry {
+  item: StashItem
+  by: OverviewPerson
+  sharedAt: Date | string
+}
+
+/** One outbound share link you own. */
+export interface SharedLink {
+  item: StashItem
+  /** Absolute link the Copy action puts on the clipboard. */
+  url?: string | null
+  /** Human summary of the audience, e.g. `Anyone with link` or `2 people`. */
+  audience: string
+  permission: 'View' | 'Edit'
+  expiresAt?: Date | string | null
+  /** True once `expiresAt` has passed; kept explicit so the server can decide. */
+  expired?: boolean
+  viewCount: number
+}
+
+/** Lifecycle of a `SharedLink`, derived by `toLinkState` in `@/utils/converters`. */
+export type LinkState = 'live' | 'expiring' | 'expired'
+
+export interface StorageSegment {
+  /** Display label, e.g. `Images`. */
+  label: string
+  bytes: number
+  /** Which literal tint class the meter should use for this segment. */
+  tone: 'images' | 'video' | 'documents' | 'code' | 'other'
+}
+
+export interface StorageUsage {
+  usedBytes: number
+  totalBytes: number
+  segments: StorageSegment[]
+  planName?: string
+  renewsAt?: Date | string | null
+}
+
+/** A day-grouped photo cluster: "On this day". */
+export interface MemoryCluster {
+  /** Date the cluster is anchored to. */
+  date: Date | string
+  items: StashItem[]
+  totalCount: number
+}
+
+/**
+ * Restorable items sitting in the trash. `retentionDays` is optional because
+ * this app has no purge policy yet — without one the line must not claim a
+ * window it cannot honour, so it degrades to the bare count.
+ */
+export interface TrashRescueSummary {
+  count: number
+  retentionDays?: number
+}
+
+// ---------------------------------------------------------------------------
+// Workspace overview — `routes/workspaces/workspace.tsx` loader payload
+// ---------------------------------------------------------------------------
+
+export interface WorkspaceOverviewMember {
+  id: string
+  name: string
+  email: string
+  image: string | null
+  role: WorkspaceMemberRole
+  storageBytes: bigint
+  status: 'online' | 'idle' | 'offline'
+}
+
+export interface WorkspaceOverviewItem {
+  id: string
+  name: string
+  category: string
+  size: bigint
+  updatedAt: Date | null
+  ownerName: string
+}
+
+export interface WorkspaceOverviewPinnedItem {
+  id: string
+  name: string
+  type: 'collection' | 'folder'
+  itemCount: number
+}
+
+export interface WorkspaceOverviewInvite {
+  id: string
+  email: string
+  role: string
+  sentAt: Date
+  senderName: string
+}
+
+// ---------------------------------------------------------------------------
+// Invitations
+// ---------------------------------------------------------------------------
+
+/**
+ * Optional presentation fields the detail panel *can* surface when the loader
+ * provides them. Everything here is optional — the UI degrades gracefully when
+ * a field is absent, so no schema change is required to ship the panel.
+ *
+ * To light up the richer sections (personal message, file peek, mutual
+ * connection), extend the loader / `StashInvitation` with:
+ *   - message?: string
+ *   - mutualConnection?: string
+ *   - sender.title
+ *   - item.mimeType / item.fileCount
+ *   - workspace.size / workspace.fileCount / workspace.memberCount
+ *   - previews?: StashPickerItem[]
+ */
+export type InvitationExtras = StashInvitation & {
+  message?: string | null
+  mutualConnection?: string | null
+  sender: StashInvitation['sender'] & {
+    title?: string | null
+  }
+  item:
+    | (NonNullable<StashInvitation['item']> & {
+        mimeType?: string | null
+        fileCount?: number | null
+      })
+    | null
+  workspace:
+    | (NonNullable<StashInvitation['workspace']> & {
+        size?: string | null
+        fileCount?: number | null
+        memberCount?: number | null
+      })
+    | null
+}
+
+/** One editable row in the invite forms (NewInvitation / AddRecipients). */
+export type InviteRow = { id: string; email: string; role: string }
+
+// ---------------------------------------------------------------------------
+// Sharing
+// ---------------------------------------------------------------------------
+
+export interface ShareLinkWithPermissions {
+  id: string
+  type: ShareLinkType
+  scope: ShareScope
+  url: string | null
+  downloadable: boolean | null
+  password: string | null
+  expiresAt: Date | string | null
+  createdAt: Date | string
+  permission: {
+    id: string
+    roles: string
+    users: { id: string; name: string | null; image: string | null }[]
+  }[]
+}
+
+// ---------------------------------------------------------------------------
+// Toolbar
+// ---------------------------------------------------------------------------
+
+export interface LibraryStats {
+  folders: number
+  files: number
+  favorites: number
+  trashed: number
+  /** formatted used size, e.g. "18.4 GB" — build with `formatSize('byte', 'unit', bytes)` */
+  size: string
+  /** formatted quota, e.g. "40 GB" */
+  quota: string
+  /** 0–100 */
+  usedPercent: number
+}
+
+export type ToolbarContext = 'files' | 'trash' | 'favorites' | 'shared'
+
+/** Bulk-selection callbacks every page-toolbar variant spreads into its props. */
+export interface BulkActions {
+  onMove?: () => void
+  onFavorite?: () => void
+  onDownload?: () => void
+  onShare?: () => void
+  onTrash?: () => void
+  onDeleteForever?: () => void
+  onRestore?: () => void
+  onCopyTo?: () => void
+  onCopyLink?: () => void
+}
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+
+/** Shape of an individual workspace entry displayed in the sidebar. */
+export interface WorkspacesSidebarItem {
+  id: string
+  name: string
+  slug: string
+  icon?: React.ReactNode
+  action?: React.ReactNode
 }

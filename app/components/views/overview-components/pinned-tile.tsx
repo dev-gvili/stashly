@@ -1,6 +1,6 @@
 import { ItemCard, type ItemCardProps } from '@/components/stash/item-card'
+import { itemMeta } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
-import { itemMeta } from './overview-helpers'
 
 /**
  * Quick-access tile for a pinned item. Landscape (aspect-video) so a row of

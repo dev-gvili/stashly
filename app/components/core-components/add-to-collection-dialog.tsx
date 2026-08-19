@@ -15,7 +15,7 @@ import {
 import { cn } from '@/utils/styles'
 import { formatSize } from '@/utils/formaters'
 import type { StashItem, StashPickerItem } from '@/types/stash.types'
-import { CATEGORIES } from '@/components/filters/filter.data'
+import { CATEGORIES } from '@/utils/filter-data'
 import { ItemCard } from '@/components/stash/item-card'
 import { ItemCardContext } from '@/hooks/useItemCard'
 import type { Route } from '../../routes/+types/layout'

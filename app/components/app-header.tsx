@@ -20,7 +20,7 @@ import {
 import { ModeToggle } from '@/components/color-mode'
 import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
 import { NotificationsPanel } from '@/components/core-components/notifications/notifications-panel'
-import type { Notification } from '@/components/core-components/notifications/notification-model'
+import type { Notification } from '@/types/notification.types'
 import { NewFolderDialog } from '@/components/core-components/new-folder-dialog'
 import { HeaderFilters } from '@/components/filters/filters'
 import {

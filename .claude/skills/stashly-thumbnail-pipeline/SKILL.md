@@ -44,13 +44,15 @@ A card that unmounts mid-job (route change) lets the in-flight job finish and pe
 |-------|------|-----------|
 | 1 | 8×8 blur preview | Image: `extractTinyThumbnail` · Video: `generateVideoThumbnail` · PDF: `generatePdfThumbnail` (from `@/utils/pdf`) · Text: `generateTextThumbnail` (from `@/utils/text-thumbnail`) — **local `URL.createObjectURL` only, NOT persisted to S3 or DB** |
 | 2 | 512px resize | Image: `canvasResize(file, 512)` · Video: re-encode frame · PDF: `renderPdfPageToBlob(file, 512)` · Text: `renderTextPageToBlob(file, 512)` → presign → PUT to S3, URL written as `${publicUrl}?v=2` |
-| 3 | Salient crop | `generateSalientCrop` in `thumbnail.ai.ts` — **images only**, URL written as `${publicUrl}?v=3`. Native `FaceDetector` (Chrome) crops on the largest face; otherwise a ViT-informed geometric center crop. Serialized through `app/workers/ai-queue.ts`, shared with the embedding worker, because WebGPU can't take concurrent inference |
+| 3 | Salient crop | `generateSalientCrop` in `thumbnail.ai.ts` — **images only**, URL written as `${publicUrl}?v=3`. Native `FaceDetector` (Chrome) crops on the largest face; otherwise a ViT-informed geometric center crop. Serialized through `app/workers/ai-queue.ts` at `'default'` priority, shared with embedding and OCR, because WebGPU can't take concurrent inference |
 
 **Cache-bust query param**: stages 2/3 share the same S3 key, so the URL written to `Thumbnail.url` includes `?v={stage}`. Without this, browser cache (`Cache-Control: max-age=3600` on the S3 object) keeps showing the prior stage even after the object is overwritten.
 
 **S3 client config**: `app/.server/s3.ts` sets `requestChecksumCalculation: 'WHEN_REQUIRED'` on `S3Client`. Without this, AWS SDK v3 signs a CRC32 checksum requirement (`x-amz-checksum-crc32=AAAAAA==`, CRC32 of empty body) into presigned `PutObject` URLs, causing browser PUTs to fail with a checksum mismatch.
 
 PDFs and text-based files stop after stage 2. The PDF.js worker URL is set globally on import in `app/utils/pdf.ts` via `pdfjs-dist/build/pdf.worker.min.mjs?url`.
+
+**PDF text extraction is part of this run**: `useThumbnailV2` dispatches the `pdfText` compute RPC, and when it comes back empty (a scan with no text layer) it falls through to `streamOcrPdf` — page-by-page vision-model OCR, persisted per page. That path is documented in the `stashly-ai-inference` skill; don't add OCR logic here.
 
 **Text thumbnails**: `app/utils/text-thumbnail.ts` "screenshots" the first ~32 KB of a text-based file (plain text, markdown, code, config) onto an A4-proportioned white page via OffscreenCanvas — sans-serif for prose extensions, monospace for code/config (extension wins over mime because code files often arrive as `text/plain`/`application/octet-stream`). Detection is `isTextRenderableFile`; compute-worker RPC kinds are `tinyText`/`resizeText`. Empty files return null — no thumbnail beats a blank page. Line layout (`layoutTextLines`) is pure and unit-tested in `app/utils/__tests__/text-thumbnail.test.ts`.
 
@@ -101,6 +103,7 @@ CPU-intensive work runs off the main thread in `app/workers/`:
 - `stash.ai.ts` — AI inference helpers for the stash worker
 - `embedding.ai.ts` — embedding inference
 - `thumbnail.ai.ts` — saliency crop; a regular module on main, not a `Worker`
-- `ai-queue.ts` — shared serialization queue so saliency and embedding never hit WebGPU at once
+- `ocr.ai.ts` / `ocr-florence.ai.ts` — PDF OCR engines (see the `stashly-ai-inference` skill)
+- `ai-queue.ts` — shared **priority** queue so saliency, embedding and OCR never hit WebGPU at once
 
 Workers are loaded via `new Worker(new URL('./workers/...', import.meta.url))`. Type augmentations for third-party worker APIs live in `app/types/tokenizers-augment.d.ts`.

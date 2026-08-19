@@ -21,7 +21,10 @@ import {
 import { useClipboard } from '@/hooks/useClipboard'
 import type { ShareLinkType, ShareScope } from '@/prisma/client'
 import type { PermissionRole } from '@/prisma/enums'
-import type { StashInvitation } from '@/types/stash.types'
+import type {
+  ShareLinkWithPermissions,
+  StashInvitation,
+} from '@/types/stash.types'
 import { Badge } from '@/ui/badge'
 import { Button } from '@/ui/button'
 import {
@@ -60,22 +63,6 @@ import {
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-export interface ShareLinkWithPermissions {
-  id: string
-  type: ShareLinkType
-  scope: ShareScope
-  url: string | null
-  downloadable: boolean | null
-  password: string | null
-  expiresAt: Date | string | null
-  createdAt: Date | string
-  permission: {
-    id: string
-    roles: string
-    users: { id: string; name: string | null; image: string | null }[]
-  }[]
-}
 
 interface PermissionWithUsers {
   id: string

@@ -18,7 +18,7 @@ import {
 } from '@/components/icons'
 import { Button, SidebarTrigger, useSidebar } from '@/components/ui'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import type { StashItemMarkdown } from '@/types/stash.types'
+import type { MarkdownDoc, StashItemMarkdown } from '@/types/stash.types'
 import type { MarkdownHeading } from '@/utils/markdown'
 import { cn } from '@/utils/styles'
 import { StageSkeletonLoader } from './stage-skeleton-loader'
@@ -49,8 +49,6 @@ const REHYPE_PLUGINS = [[rehypeSanitize, sanitizeSchema], rehypeSlug] as never
 // ---------------------------------------------------------------------------
 // MarkdownStage — exported main component
 // ---------------------------------------------------------------------------
-
-type MarkdownDoc = { text: string; headings: MarkdownHeading[] }
 
 /**
  * MarkdownStage — Suspense/Await boundary around the server-loaded document.

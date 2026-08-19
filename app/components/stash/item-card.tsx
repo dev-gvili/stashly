@@ -26,7 +26,7 @@ import {
   removeQueryParamValue,
 } from '@/utils/query-params'
 import { Checkbox } from '@/ui/checkbox'
-import { useSelection } from './selection'
+import { useSelection } from '@/hooks/useSelection'
 import type { Route } from '../../routes/+types/layout'
 import { ItemCardContext, useItemCard } from '@/hooks/useItemCard'
 import { useItemDragDrop, DRAG_ITEM_KEY } from '@/hooks/useItemDragDrop'

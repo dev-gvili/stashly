@@ -1,44 +1,21 @@
 import { cn } from '@/utils/styles'
 import { WorkspaceFillIcon, ActivityFillIcon, UserIcon, FavoriteIcon, AddIcon, MoreIcon } from '@/components/icons'
 import type { WorkspaceMemberRole } from '@/prisma/enums'
-import { formatSize, timeAgo } from '@/utils/formaters'
+import {
+  formatSize,
+  formatStorageBytes,
+  storagePct,
+  timeAgo,
+} from '@/utils/formaters'
+import type {
+  WorkspaceOverviewInvite,
+  WorkspaceOverviewItem,
+  WorkspaceOverviewMember,
+  WorkspaceOverviewPinnedItem,
+} from '@/types/stash.types'
 import { href, Link } from 'react-router'
 
 // ── Types ────────────────────────────────────────────────────────────
-
-export interface WorkspaceOverviewMember {
-  id: string
-  name: string
-  email: string
-  image: string | null
-  role: WorkspaceMemberRole
-  storageBytes: bigint
-  status: 'online' | 'idle' | 'offline'
-}
-
-export interface WorkspaceOverviewItem {
-  id: string
-  name: string
-  category: string
-  size: bigint
-  updatedAt: Date | null
-  ownerName: string
-}
-
-export interface WorkspaceOverviewPinnedItem {
-  id: string
-  name: string
-  type: 'collection' | 'folder'
-  itemCount: number
-}
-
-export interface WorkspaceOverviewInvite {
-  id: string
-  email: string
-  role: string
-  sentAt: Date
-  senderName: string
-}
 
 export interface WorkspaceOverviewProps {
   workspace: {
@@ -76,19 +53,6 @@ const CAT_GLYPH: Record<string, string> = {
 
 function initials(name: string) {
   return name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
-}
-
-function fmtStorage(bytes: bigint): string {
-  const n = Number(bytes)
-  if (n === 0) return '0 B'
-  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
-  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`
-  return `${(n / (1024 * 1024 * 1024)).toFixed(1)} GB`
-}
-
-function storagePct(used: bigint, total: bigint): number {
-  if (total === 0n) return 0
-  return Math.min(100, Number((used * 100n) / total))
 }
 
 // ── Atoms ────────────────────────────────────────────────────────────
@@ -214,8 +178,8 @@ function OverviewOps({ workspace, members, pendingInvites, recentItems, pinnedIt
         <StatTile label="Members" value={members.length} sub={`${adminCount} admins · ${viewerCount} viewer${viewerCount !== 1 ? 's' : ''}`} />
         <StatTile
           label="Storage"
-          value={fmtStorage(workspace.storageUsedBytes)}
-          sub={`of ${fmtStorage(workspace.storageLimitBytes)} · ${pct}%`}
+          value={formatStorageBytes(workspace.storageUsedBytes)}
+          sub={`of ${formatStorageBytes(workspace.storageLimitBytes)} · ${pct}%`}
           dot="oklch(0.62 0.15 39)"
         />
         <StatTile label="Activity" value={recentItems.length} sub="items updated recently" />
@@ -255,7 +219,7 @@ function OverviewOps({ workspace, members, pendingInvites, recentItems, pinnedIt
               </div>
               <span className="flex-1 truncate">{m.name}</span>
               <RoleBadge role={m.role} />
-              <span className="text-[10px] text-muted-foreground tabular-nums w-14 text-right">{fmtStorage(m.storageBytes)}</span>
+              <span className="text-[10px] text-muted-foreground tabular-nums w-14 text-right">{formatStorageBytes(m.storageBytes)}</span>
             </div>
           ))}
         </div>
@@ -333,7 +297,7 @@ function OverviewOps({ workspace, members, pendingInvites, recentItems, pinnedIt
                 <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground mt-0.5">
                   <MemberAvatar name={f.ownerName} size={12} />
                   <span className="truncate">{f.ownerName.split(' ')[0]}</span>
-                  <span className="ml-auto tabular-nums">{fmtStorage(f.size)}</span>
+                  <span className="ml-auto tabular-nums">{formatStorageBytes(f.size)}</span>
                 </div>
               </div>
             ))}
@@ -392,8 +356,8 @@ function OverviewDossier({ workspace, members, recentItems, pinnedItems, pending
           <div className="col-span-5 space-y-2">
             <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Storage</div>
             <div className="text-[28px] font-stashly leading-none">
-              {fmtStorage(workspace.storageUsedBytes)}{' '}
-              <span className="text-sm text-muted-foreground">of {fmtStorage(workspace.storageLimitBytes)}</span>
+              {formatStorageBytes(workspace.storageUsedBytes)}{' '}
+              <span className="text-sm text-muted-foreground">of {formatStorageBytes(workspace.storageLimitBytes)}</span>
             </div>
             <MiniBar pct={pct} color="oklch(0.62 0.15 39)" />
             <div className="grid grid-cols-3 gap-3 mt-3 text-[10px]">
@@ -517,12 +481,12 @@ function OverviewSplit({ workspace, members, recentItems, pinnedItems, pendingIn
             <div className="mt-3 space-y-1.5">
               <div className="flex justify-between text-[10px]">
                 <span className="text-muted-foreground uppercase tracking-wider">Storage</span>
-                <span>{fmtStorage(workspace.storageUsedBytes)}</span>
+                <span>{formatStorageBytes(workspace.storageUsedBytes)}</span>
               </div>
               <MiniBar pct={pct} color={workspace.color ?? 'oklch(0.62 0.15 39)'} />
               <div className="flex justify-between text-[9px] text-muted-foreground uppercase tracking-wider">
                 <span>{pct}% used</span>
-                <span>{fmtStorage(workspace.storageLimitBytes - workspace.storageUsedBytes)} free</span>
+                <span>{formatStorageBytes(workspace.storageLimitBytes - workspace.storageUsedBytes)} free</span>
               </div>
             </div>
           </div>
@@ -612,7 +576,7 @@ function OverviewSplit({ workspace, members, recentItems, pinnedItems, pendingIn
                   <div key={f.id} className="grid grid-cols-[28px_1fr_auto_auto] items-center gap-3 py-1.5 px-2 -mx-2 rounded-sm hover:bg-muted/40 cursor-pointer">
                     <Glyph g={CAT_GLYPH[f.category] ?? 'FIL'} />
                     <div className="text-[11px] truncate">{f.name}</div>
-                    <span className="text-[10px] text-muted-foreground tabular-nums">{fmtStorage(f.size)}</span>
+                    <span className="text-[10px] text-muted-foreground tabular-nums">{formatStorageBytes(f.size)}</span>
                     <MemberAvatar name={f.ownerName} size={16} />
                   </div>
                 ))}

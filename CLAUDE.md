@@ -94,6 +94,8 @@ const collection = await getCollectionForUser(session.user.id, collectionId)
 
 **Never mutate in a `loader`**: mutations belong in `action` functions, submitted via `fetcher.submit(..., { method: 'POST' })`. A `GET` `loader` that writes data breaks caching/prefetching assumptions.
 
+**Don't revalidate on background index writes**: React Router re-runs every active loader after any fetcher submission. Submissions that only feed the search index (OCR pages, chunk embeddings) can't change a pixel, and a 15-page OCR submits ~30 times. Routes compose `isSearchIndexSubmission` from `app/utils/revalidation.ts` into their `shouldRevalidate`. Add a new background-only intent to `SEARCH_INDEX_INTENTS` there — but *not* one that also writes displayable facets (`save_media_metadata` writes page count/dimensions/EXIF, so it must still revalidate).
+
 **Stream large/slow loader payloads**: return an *unawaited* promise from the `loader` and consume it with React Router's `<Suspense>` + `<Await>` so the shell paints while data streams (canonical example: the Markdown body read server-side in `routes/stash/file.tsx` → `MarkdownStage`).
 
 **SSE / stream safety**: Never write to a stream controller without first checking it's still open (closed/aborted guard), and always wrap `enqueue` in `try/catch`. A disconnected client must not be able to take the server down — this has crashed the dev server before. Applies to heartbeats and keep-alives too, which fire on a timer after the client is long gone.
@@ -120,8 +122,8 @@ Defined in `tsconfig.json` under `compilerOptions.paths` — read it there. Note
 ### Integrations
 
 - **Auth**: `better-auth` in `app/.server/auth.ts`, OAuth via GitHub/Google/Microsoft
-- **Search**: pgvector + embeddings for full-text and semantic search (`app/.server/search-actions.ts`)
-- **AI features**: Hugging Face transformers, ONNX Runtime, Whisper (speech-to-text)
+- **Search**: hybrid sparse (trigram) + dense (pgvector) retrieval fused with RRF (`app/.server/search-actions.ts`); passages live in `SearchChunk`. Deep dive: `docs/search.md`, `docs/semantic-search.md`
+- **AI features**: all inference runs **client-side on WebGPU** (Hugging Face transformers, ONNX Runtime) — query/chunk embeddings, PDF OCR, saliency crops, Whisper. Everything funnels through the priority queue in `app/workers/ai-queue.ts`
 - **Payments**: Stripe, webhooks at `/api/stripe`
 - **Storage**: AWS S3-compatible (Tigris on Fly.io), configured in `app/.server/s3.ts`
 
@@ -139,6 +141,8 @@ Detailed conventions for these areas live in on-demand project skills (`.claude/
 | `stashly-prisma-data` | Prisma queries, migrations, schema changes, `orderBy`/relation filters, ItemCard select shapes, Zod schemas, SQL |
 | `stashly-upload-xstate` | The upload flow — upload/file machines, S3 multipart, item-creation gate, `parentId` derivation, AI machines |
 | `stashly-thumbnail-pipeline` | Thumbnails/previews — `useThumbnailV2`, thumbnail-signal, compute worker, PDF.js, presign/PUT/PATCH, gallery thumbnail queries, Web Workers |
+| `stashly-search` | Search — hybrid ranking, `SearchChunk`, the keyword→semantic client flow, query expansion, evidence cards, reindex intents |
+| `stashly-ai-inference` | Browser AI — the WebGPU `ai-queue` and its priorities, PDF OCR engines, the search-embedding backfill |
 | `stashly-gallery-views` | Gallery layouts (grid/river/waterfall), view transitions into the item page, scroll restoration, theme blocks |
 | `stashly-activity-recording` | Activity tracking, new action kinds, pins/favorites, `openedAt`, `StashlyPrefixMap` |
 | `stashly-e2e-testing` | Writing/debugging Playwright E2E tests in `tests/e2e/` |
@@ -172,5 +176,5 @@ Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind s
 - Browser verification doesn't need a session: chrome-devtools MCP opens a fresh unauthenticated Chrome, but `http://localhost/auth/sign-in` loads the same stylesheet. Append a throwaway `div` with the classes and read `getComputedStyle` to prove a Tailwind class resolves, or inject a mock grid there to measure geometry (column widths, row count, card sizes) before and after a layout change.
 - Only run typecheck at the END of a task, not mid-edit, unless explicitly asked — and skip it entirely for className/copy-only edits, which touch no type surface.
 - `$queryRaw` SQL is invisible to `tsc` — verify by running the action against the dev DB: `npx tsx --env-file=.env <script.ts>` (absolute imports; no top-level await).
-- `pnpm typecheck` has **209** pre-existing, unrelated errors — don't expect a clean run. Pipe to a file, count `error TS`, and grep your touched files by name to confirm no regressions.
-- `pnpm test` has 11 pre-existing failures (`activity.test.ts` ×4, `collection-actions.test.ts` ×7) — don't chase them.
+- `pnpm typecheck` has **209** pre-existing, unrelated errors (verified 2026-08-18) — don't expect a clean run. Pipe to a file, count `error TS`, and grep your touched files by name to confirm no regressions.
+- `pnpm test` is **406 passing / 11 failing (417 in 25 files)**; the 11 are pre-existing (`activity.test.ts` ×4, `collection-actions.test.ts` ×7) — don't chase them. Verified 2026-08-18.

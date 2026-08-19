@@ -1,4 +1,6 @@
 import type { ZodFormattedError } from 'zod'
+import type { InvitationStatus } from '@/prisma/enums'
+import type { LinkState, SharedLink, StashItem } from '@/types/stash.types'
 
 type DateStyle = Intl.DateTimeFormatOptions['dateStyle']
 
@@ -238,4 +240,130 @@ export function formatTime(ms: number) {
   const paddedSeconds = String(seconds).padStart(2, '0')
 
   return `${paddedHours}:${paddedMinutes}:${paddedSeconds}`
+}
+
+// ---------------------------------------------------------------------------
+// Relative time
+// ---------------------------------------------------------------------------
+
+/**
+ * Short relative age used across the overview: `2m ago`, `3h ago`, `Yesterday`.
+ *
+ * Deliberately *not* merged with `timeAgo` above — that one returns `—` for a
+ * null input and `Nd ago` forever, while this one says `Just now` and falls
+ * back to a month/day date past a week. Two call sites, two contracts.
+ */
+export function toRelativeTime(value: Date | string | null | undefined) {
+  if (!value) return null
+  const date = typeof value === 'string' ? new Date(value) : value
+  const minutes = Math.floor((Date.now() - date.getTime()) / 60_000)
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `${days}d ago`
+  return date.toLocaleDateString('en', { month: 'short', day: 'numeric' })
+}
+
+type DayPart = 'morning' | 'afternoon' | 'evening' | 'night'
+
+const GREETINGS: Record<DayPart, string> = {
+  morning: 'Good morning',
+  afternoon: 'Good afternoon',
+  evening: 'Good evening',
+  night: 'Good night',
+}
+
+export function toGreeting(date = new Date()) {
+  const hour = date.getHours()
+  const part: DayPart =
+    hour < 12
+      ? 'morning'
+      : hour < 18
+        ? 'afternoon'
+        : hour < 21
+          ? 'evening'
+          : 'night'
+  return GREETINGS[part]
+}
+
+// ---------------------------------------------------------------------------
+// Item / storage display
+// ---------------------------------------------------------------------------
+
+/** Folders read as a child count, files as their own size. */
+export function itemMeta(item: Pick<StashItem, 'type' | 'size' | 'folder'>) {
+  return item.type === 'folder'
+    ? `${item.folder?.inclusiveChildCount ?? item.folder?.childCount ?? 0} items`
+    : formatSize('byte', 'unit', item.size)
+}
+
+/**
+ * Splits a formatted byte count into its numeric part and its unit, so a card
+ * can set them at different type sizes.
+ *
+ * @param size Raw byte count — `StashItem.size` is a `bigint`.
+ * @returns `[value, unit]`, e.g. `['4.2', 'MB']`. The unit is `''` when
+ *   `formatSize` returns no suffix.
+ *
+ * @example
+ * const [value, unit] = splitSize(item.size)
+ * <p>{value}<span className="text-xs">{unit}</span></p>
+ */
+export function splitSize(size: bigint | number): [string, string] {
+  const [value, ...unitParts] = formatSize('byte', 'unit', size).split(' ')
+  return [value, unitParts.join(' ')]
+}
+
+/**
+ * Coarse `bigint` byte count → `18.4 MB`, for the workspace storage tiles.
+ *
+ * Kept separate from `formatSize`: this one is hand-rolled and rounds KB to a
+ * whole number, so collapsing the two would visibly change what those tiles
+ * render.
+ */
+export function formatStorageBytes(bytes: bigint): string {
+  const n = Number(bytes)
+  if (n === 0) return '0 B'
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`
+  return `${(n / (1024 * 1024 * 1024)).toFixed(1)} GB`
+}
+
+/** Used/total as a 0–100 percentage, in integer arithmetic to stay bigint-safe. */
+export function storagePct(used: bigint, total: bigint): number {
+  if (total === 0n) return 0
+  return Math.min(100, Number((used * 100n) / total))
+}
+
+// ---------------------------------------------------------------------------
+// Invitations / share links
+// ---------------------------------------------------------------------------
+
+export function invitationStatusLabel(status: InvitationStatus) {
+  return status === 'rejected' ? 'declined' : status
+}
+
+/** Relative "expires in" string, or null when there is no future expiry. */
+export function formatExpiry(
+  expiresAt: string | number | Date | null | undefined
+): string | null {
+  if (!expiresAt) return null
+  const ms = new Date(expiresAt).getTime() - Date.now()
+  if (Number.isNaN(ms)) return null
+  if (ms <= 0) return 'Expired'
+  const days = Math.ceil(ms / 86_400_000)
+  if (days <= 1) return 'in 1 day'
+  if (days < 30) return `in ${days} days`
+  const months = Math.round(days / 30)
+  return `in ${months} month${months === 1 ? '' : 's'}`
+}
+
+/** Trailing line under a share link: `no expiry`, `expired`, `expires in 3 days`. */
+export function expiryLabel(link: SharedLink, state: LinkState) {
+  if (state === 'expired') return 'expired'
+  if (!link.expiresAt) return 'no expiry'
+  return `expires ${toRelativeTime(link.expiresAt) ?? ''}`.trim()
 }

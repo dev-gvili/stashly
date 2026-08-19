@@ -12,14 +12,6 @@ import {
   useUploadStatus,
 } from '@/hooks/useUpload'
 import { Button } from '@/components/ui/button'
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty'
-import { Logo } from '../logo'
 import { toCategory, toIcon } from '@/utils/converters'
 import { formatSize } from '@/utils/formaters'
 import { callAll } from '@/utils/misc'
@@ -637,21 +629,6 @@ const PauseResume = React.forwardRef<
   )
 })
 PauseResume.displayName = 'PauseResumeButton'
-
-export function EmptyOutline() {
-  return (
-    <Empty className="p-3">
-      <EmptyHeader className="font-stashly">
-        <EmptyMedia variant="default">
-          <Logo className="size-16" />
-        </EmptyMedia>
-        <EmptyTitle>Stashly Storage</EmptyTitle>
-        <EmptyDescription>Drag and Drop files here to upload.</EmptyDescription>
-      </EmptyHeader>
-    </Empty>
-  )
-}
-EmptyOutline.displayName = 'EmptyOutline'
 
 export const UploadPanel = ({ user }: { user: User }) => {
   const [isCollapsed, setIsCollapsed] = useState(false)

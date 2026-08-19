@@ -1,4 +1,5 @@
 import { cn } from '@/utils/styles'
+import { invitationStatusLabel } from '@/utils/formaters'
 import type { InvitationStatus } from '@/prisma/enums'
 import { Badge } from '../ui';
 
@@ -23,10 +24,6 @@ const dotColors: Record<InvitationStatus, string> = {
   rejected: 'bg-rose-400',
   canceled: 'bg-gray-400',
   expired: 'bg-stone-400',
-}
-
-export function invitationStatusLabel(status: InvitationStatus) {
-  return status === 'rejected' ? 'declined' : status
 }
 
 export function InvitationStatusPill({

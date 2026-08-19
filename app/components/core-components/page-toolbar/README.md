@@ -1,9 +1,9 @@
 # Page header toolbar — bulk operations
 
-Five variants of the storage page header, all built on the app's shadcn/ui
-primitives in `@/ui/*`, icons from `@/components/icons`, and `globals.css`
-design tokens. No inline styles and no arbitrary Tailwind values — token scale
-classes only, so light/dark mode comes free from the `.dark` class on `<html>`.
+The storage page header, built on the app's shadcn/ui primitives in `@/ui/*`,
+icons from `@/components/icons`, and `globals.css` design tokens. No inline
+styles and no arbitrary Tailwind values — token scale classes only, so
+light/dark mode comes free from the `.dark` class on `<html>`.
 
 ## What actually ships
 
@@ -15,23 +15,26 @@ bulk actions to the `/api/items` and `/api/favorites` intents. Routes using it:
 `routes/stash/all.tsx` and `routes/stash/folder.tsx` — `app-toolbar.tsx` bails
 out on those paths so the two don't stack.
 
-The other four variants are unwired: still exported, still compile, but nothing
-in `app/routes/` renders them. Treat them as the concept set the decision was
-made from.
+The four losing variants — morph, dock, stacked and command-bar — were
+**deleted on 19 Aug 2026**. They had sat unwired since the decision: exported and
+compiling, but never rendered by anything in `app/routes/`. The concept set had
+served its purpose, so it is gone rather than left to rot. Recover any of them
+from git history if a future page wants a different interaction model.
 
-## Variants
+## The variant
 
 | File | Direction | Best for |
 | --- | --- | --- |
-| `page-toolbar-path-rail.tsx` | **Path-led rail** — breadcrumb is the title; a right-hand rail swaps to bulk mode in place. **Shipped.** | Deeply nested browsing where the path matters most. |
-| `page-toolbar-morph.tsx` | **Morphing single row** — the `h-14` header swaps content in place when a selection exists. No height change, no layout shift. | Matches the `AppHeader` height and rhythm. |
-| `page-toolbar-dock.tsx` | **Persistent header + floating dock** — header never changes; icon-only actions ride a floating pill above the list. | Long scrolling lists; keeps stats always visible. |
-| `page-toolbar-stacked.tsx` | **Stacked** — stat cards row + labelled bulk-action row that tints when active, with All / Invert / None. | Data-dense list views, power users. |
-| `page-toolbar-command-bar.tsx` | **Slide-over command bar** — permanent path row; an inverted full-width bar slides in beneath it on selection. | Unmistakable bulk mode; touch-friendly labelled targets. |
+| `page-toolbar-path-rail.tsx` | **Path-led rail** — breadcrumb is the title; a right-hand rail swaps to bulk mode in place. | Deeply nested browsing where the path matters most. |
 
 `toolbar-stats.tsx` holds the shared display pieces the variants compose —
 `SelectAllCheckbox`, `InlineStats`, `StorageMeter`, `StatCard`, `StatCards` —
-and `layout-toggle.tsx` the grid/list switch. All re-exported from `index.ts`.
+all re-exported from `index.ts`.
+
+The layout switcher is **not** a toolbar concern. `<LayoutToggle>` lives at
+`@/components/layout-toggle` and is rendered once, by `AppHeader`. The toolbars
+previously carried a local copy plus `layout` / `onLayoutChange` props; both are
+gone, and no route ever passed them.
 
 ## Bulk operations covered
 
@@ -56,7 +59,7 @@ itself, collapses the middle of a deep path behind a "…" dropdown, and strips
 `cursor`/`selectedItems` from the href so navigating up doesn't carry a stale
 selection.
 
-Path-rail, stacked and command-bar always show it; morph and dock swap their
+Path-rail always shows it; the removed variants swapped their
 `<h1>` for it once `useBreadcrumbs()` reports more than one crumb. (Path-rail
 inverts the test: with **no** crumbs it falls back to a plain label derived from
 `location.state?.name` or the last URL segment, and hides its Back button.) Your
@@ -75,7 +78,7 @@ trashed count, and per-selection summary (count, folders/files split, selected
 size). Format sizes with `formatSize('byte', 'unit', bytes)` from
 `@/utils/formaters` before passing them in — `LibraryStats.size` is a string.
 
-Morph, dock and stacked take the whole `stats: LibraryStats`; command-bar takes
+The removed variants took the whole `stats: LibraryStats`; command-bar took
 a pre-rendered `statsLine: string`. **Path-rail takes neither** — its only
 counter prop is `itemCount: number`, rendered as an `{n} items` badge, plus an
 `onBack` callback for the Back button. `StashPageToolbar` still accepts
@@ -98,7 +101,7 @@ intents:
 Wiring a variant by hand looks like this:
 
 ```tsx
-import { PageToolbarMorph, type LibraryStats } from '@/components/core-components/page-toolbar'
+import { PageToolbarPathRail, type LibraryStats } from '@/components/core-components/page-toolbar'
 import { SelectionProvider, useSelection } from '@/components/stash/selection'
 
 const stats: LibraryStats = {
@@ -122,7 +125,7 @@ function StorageToolbar() {
   const fetcher = useFetcher()
 
   return (
-    <PageToolbarMorph
+    <PageToolbarPathRail
       stats={stats}
       context="files"
       selectedSize={formatSize('byte', 'unit', selectedBytes)}
@@ -144,7 +147,7 @@ function StorageToolbar() {
 }
 ```
 
-`PageToolbarDock` must sit inside a `relative` container — the dock is
+(Historical, for anyone restoring a variant from git.) `PageToolbarDock` had to sit inside a `relative` container — the dock was
 absolutely positioned at `bottom-5`.
 
 ## Selection
@@ -164,7 +167,7 @@ Two things the toolbar still can't know, so they remain props: `selectedSize`
 (and `selectedFolders`/`selectedFiles` on the dock), which need the item records,
 not just ids.
 
-`PageToolbarStacked`'s **Invert** button is opt-in via `onInvert` — the shared
+(Historical.) `PageToolbarStacked`'s **Invert** button was opt-in via `onInvert` — the shared
 selection machine only has `SELECT_ALL` / `UNSELECT_ALL` / `TOGGLE`, no invert
 event. Omit the prop and the button is hidden; pass one and wire it however the
 route prefers (or add an `INVERT` event to `selection.machine.ts`).
@@ -212,10 +215,11 @@ in-repo equivalents used instead:
 `HomeIcon` and `ChevronRightIcon` are moot — the design's own breadcrumb
 component was dropped in favour of the app's `<Breadcrumbs />`.
 
-The grid/list toggle uses `LayoutMenu`/`LayoutMenuItem` (via `layout-toggle.tsx`)
-rather than a hand-styled `ButtonGroup`, matching every other layout switcher in
-the app — note that it also writes `?layout=` to the URL.
+The grid/list toggle is not part of these variants — see above. The app-wide
+`<LayoutToggle>` in `AppHeader` uses `LayoutMenu`/`LayoutMenuItem` rather than a
+hand-styled `ButtonGroup`, and reads/writes `?layout=` on the URL itself, so it
+needs no props from a toolbar.
 
-Preview: `Bulk Toolbar Concepts.html` in the Claude Design project — all five
+Preview: `Bulk Toolbar Concepts.html` in the Claude Design project — all five original
 variants, light + dark, selection / Trash states, and a folder-depth switch
 (root → 4 levels deep).

@@ -1,10 +1,10 @@
 import { AddIcon } from '@/components/icons'
+import type { OverviewPerson } from '@/types/stash.types'
+import { toRelativeTime } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
 import { Link } from 'react-router'
-import { toRelativeTime } from './overview-helpers'
 import { PersonAvatar } from './person-avatar'
 import { SectionLabel } from './section-label'
-import type { OverviewPerson } from './types'
 
 const CARD_SHELL = 'bg-muted flex flex-col rounded-3xl p-4'
 

@@ -1,6 +1,6 @@
 import { cn } from '@/utils/styles'
-import { SCORE_BAND_METER, scoreBand, widthForPercent } from './search-helpers'
-import type { MatchKind } from './types'
+import { scoreBand } from '@/utils/search-evidence'
+import type { MatchKind } from '@/types/stash.types'
 
 /**
  * The number means a different thing per group, so the tooltip has to say
@@ -37,41 +37,6 @@ export function ScoreBadge({
       )}
     >
       {Math.round(score)}%
-    </span>
-  )
-}
-
-/** Meter form, for rows and footers where there is room for the comparison. */
-export function ScoreMeter({
-  score,
-  kind,
-  className,
-  showValue = true,
-}: {
-  score: number
-  kind?: MatchKind
-  className?: string
-  showValue?: boolean
-}) {
-  return (
-    <span
-      title={scoreTitle(kind)}
-      className={cn('inline-flex items-center gap-2 whitespace-nowrap', className)}
-    >
-      <span className="bg-background h-[3px] w-16 overflow-hidden rounded-full">
-        <span
-          className={cn(
-            'block h-full rounded-full',
-            SCORE_BAND_METER[scoreBand(score)],
-            widthForPercent(score)
-          )}
-        />
-      </span>
-      {showValue && (
-        <span className="text-muted-foreground font-stashly text-xs tabular-nums">
-          {Math.round(score)}%
-        </span>
-      )}
     </span>
   )
 }

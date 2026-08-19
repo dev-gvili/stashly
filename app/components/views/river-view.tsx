@@ -1,65 +1,12 @@
 import React from 'react'
-import type { ImageData } from './buildRows'
 import { Link, useSearchParams, useViewTransitionState } from 'react-router'
+import {
+  buildJustifiedRows,
+  TARGET_ROW_HEIGHT,
+  type JustifiedItem,
+} from '@/utils/gallery-layout'
+import type { GalleryImage } from '@/types/stash.types'
 import { useFileHref } from '../../hooks/useFileHref'
-
-export function buildSrcSet(src: string, widths: number[]) {
-  const hasQuery = src?.indexOf('?') !== -1
-  return widths
-    .map((w) => `${src}${hasQuery ? '&' : '?'}w=${w} ${w}w`)
-    .join(', ')
-}
-
-// Preset aspect ratios (width / height), picked deterministically from the item
-// id so a given item always lands on the same shape. Rows are justified: each
-// row's height is solved so its items fill the full container width edge-to-edge.
-const ASPECT_CYCLE = [1, 2, 3 / 4, 2, 16 / 9, 4 / 3, 1, 1] as const
-
-const ROW_GAP = 8 // gap-4
-const TARGET_ROW_HEIGHT = 150
-const MAX_PER_ROW = 7
-
-function aspectFromId(id: string): number {
-  const sum = id.split('').reduceRight((acc, c) => acc + c.charCodeAt(0), 0)
-  return ASPECT_CYCLE[sum % ASPECT_CYCLE.length]
-}
-
-type JustifiedItem = { img: ImageData; aspect: number }
-type JustifiedRow = { items: JustifiedItem[]; height: number; justified: boolean }
-
-// Greedy justified layout: accumulate items until they'd overflow the container
-// at the target height (or hit the per-row cap), then solve the row height that
-// makes them fill the width exactly. The trailing leftover row keeps the target
-// height (left-aligned) so a lone item never balloons to full width.
-function buildJustifiedRows(
-  images: ImageData[],
-  containerWidth: number
-): JustifiedRow[] {
-  const rows: JustifiedRow[] = []
-  let current: JustifiedItem[] = []
-  let aspectSum = 0
-
-  for (const img of images) {
-    const aspect = aspectFromId(img.id)
-    current.push({ img, aspect })
-    aspectSum += aspect
-
-    const gaps = ROW_GAP * (current.length - 1)
-    const widthAtTarget = aspectSum * TARGET_ROW_HEIGHT + gaps
-    if (widthAtTarget >= containerWidth || current.length >= MAX_PER_ROW) {
-      const height = (containerWidth - gaps) / aspectSum
-      rows.push({ items: current, height, justified: true })
-      current = []
-      aspectSum = 0
-    }
-  }
-
-  if (current.length > 0) {
-    rows.push({ items: current, height: TARGET_ROW_HEIGHT, justified: false })
-  }
-
-  return rows
-}
 
 function RiverItem({
   item,
@@ -107,7 +54,7 @@ function RiverItem({
 }
 
 export const RiverView: React.FC<{
-  images: ImageData[]
+  images: GalleryImage[]
 }> = ({ images }) => {
   const [searchParams] = useSearchParams()
   const isRiverLayout = searchParams.has('layout', 'river')
@@ -145,55 +92,4 @@ export const RiverView: React.FC<{
       ))}
     </div>
   )
-}
-
-export function imagePrefetchObserver(root: HTMLElement | null) {
-  if (typeof window === 'undefined' || !root) return () => {}
-
-  const prefetched = new Set<string>()
-  const obs = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue
-        const img = entry.target as HTMLImageElement
-        const src = img.getAttribute('src')
-        const srcset = img.getAttribute('srcset')
-
-        let best = null
-        if (srcset) {
-          const last = srcset.split(',').pop()
-          if (last) best = last.trim().split(' ')[0]
-        }
-
-        const toLoad = (best || src) as string | null
-        if (!toLoad || prefetched.has(toLoad)) continue
-
-        const prefetch = () => {
-          try {
-            const pre = new Image()
-            pre.decoding = 'async'
-            if (srcset) pre.srcset = srcset
-            pre.src = toLoad
-            prefetched.add(toLoad)
-          } catch (e) {
-            // ignore
-          }
-        }
-
-        if ('requestIdleCallback' in window) {
-          window.requestIdleCallback(prefetch)
-        } else {
-          setTimeout(prefetch, 200)
-        }
-      }
-    },
-    { root, threshold: 0.3, rootMargin: '20% 0% 20% 0%' }
-  )
-
-  const imgs = Array.from(
-    root.querySelectorAll('img[data-prefetch]')
-  ) as HTMLImageElement[]
-  imgs.forEach((i) => obs.observe(i))
-
-  return () => obs.disconnect()
 }

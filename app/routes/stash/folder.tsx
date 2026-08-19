@@ -15,7 +15,7 @@ import {
 } from '@/services/item-actions'
 import { formatSize } from '@/utils/formaters'
 import { StashPageToolbar } from '@/components/views/stash-page-toolbar'
-import type { LibraryStats } from '@/components/core-components/page-toolbar'
+import type { LibraryStats } from '@/types/stash.types'
 import {
   buildItemFilters,
   itemFilterSchema,

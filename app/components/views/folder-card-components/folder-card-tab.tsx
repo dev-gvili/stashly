@@ -2,7 +2,7 @@ import { ItemCard, type ItemCardProps } from '@/components/stash/item-card'
 import { useItemCard } from '@/hooks/useItemCard'
 import { formatMediaDate, formatSize } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
-import { folderPathLeft } from './folder-shape'
+import { folderPathLeft } from '@/utils/folder-shape'
 
 // 1:1 viewBox; tab notch top-left, cover strip showing above the folder body.
 const VIEW = 300

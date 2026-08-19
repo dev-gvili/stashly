@@ -1,29 +1,15 @@
 import React from 'react'
-import type { ImageData } from './buildRows'
 import { Link, useSearchParams, useViewTransitionState } from 'react-router'
 import { cn } from '@/utils'
+import { aspectClassFromId } from '@/utils/gallery-layout'
+import type { GalleryImage } from '@/types/stash.types'
 import { useFileHref } from '../../hooks/useFileHref'
-
-const ASPECT_CYCLE = [
-  'aspect-[2/2.5]',
-  'aspect-square',
-  'aspect-[1/2.5]',
-  'aspect-[3/2.5]',
-  // 'aspect-[4/3]',
-  // 'aspect-[2/1]',
-  // 'aspect-[3/4]',
-] as const
-
-function aspectFromId(id: string): string {
-  const sum = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  return ASPECT_CYCLE[sum % ASPECT_CYCLE.length]
-}
 
 function WaterfallItem({
   img,
   aspectClass,
 }: {
-  img: ImageData
+  img: GalleryImage
   aspectClass: string
 }) {
   const to = useFileHref(img) ?? '.'
@@ -64,7 +50,7 @@ function WaterfallItem({
 }
 
 export const WaterfallLayout: React.FC<{
-  images: ImageData[]
+  images: GalleryImage[]
 }> = ({ images }) => {
   const [searchParams] = useSearchParams()
   const isWaterfallLayout = searchParams.has('layout', 'waterfall')
@@ -76,7 +62,7 @@ export const WaterfallLayout: React.FC<{
         <WaterfallItem
           key={img.id}
           img={img}
-          aspectClass={aspectFromId(img.id)}
+          aspectClass={aspectClassFromId(img.id)}
         />
       ))}
     </div>

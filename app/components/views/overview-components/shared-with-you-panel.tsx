@@ -1,10 +1,10 @@
+import type { SharedWithYouEntry } from '@/types/stash.types'
+import { toRelativeTime } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
 import type { ReactNode } from 'react'
 import { OverviewDetailCard } from './detail-card'
-import { toRelativeTime } from './overview-helpers'
 import { PanelCard } from './panel-card'
 import { PersonAvatar } from './person-avatar'
-import type { SharedWithYouEntry } from './types'
 
 /**
  * One inbound share. Uses the page's `OverviewDetailCard` so it is literally

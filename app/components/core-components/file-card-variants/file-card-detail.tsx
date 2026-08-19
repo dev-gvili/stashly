@@ -3,7 +3,7 @@ import { ItemCard } from '@/components/stash/item-card'
 import { Button } from '@/ui/button'
 import { OpenWithIcon } from '@/components/icons'
 import { cn } from '@/utils/styles'
-import { splitSize, type FileCardVariantProps } from './types'
+import type { FileCardVariantProps } from './types'
 import { formatSize } from '@/utils/formaters';
 
 export interface FileCardDetailProps extends FileCardVariantProps {

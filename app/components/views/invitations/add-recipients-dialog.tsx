@@ -1,4 +1,5 @@
 import { AddIcon, LoaderIcon } from '@/components/icons'
+import { useRecipientRows } from '@/hooks/useRecipientRows'
 import { Button } from '@/ui/button'
 import {
   Dialog,
@@ -11,18 +12,14 @@ import {
 import { ScrollArea } from '@/ui/scroll-area'
 import { useEffect, useState } from 'react'
 import { useFetcher } from 'react-router'
+import type { InvitationExtras } from '@/types/stash.types'
 import {
   getContextIcon,
   getContextKind,
   getContextLabel,
   getContextName,
-  type InvitationExtras,
-} from './invitation-model'
-import {
-  MessageField,
-  RecipientsField,
-  useRecipientRows,
-} from './invite-form-fields'
+} from '@/utils/invitations'
+import { MessageField, RecipientsField } from './invite-form-fields'
 
 export interface AddRecipientsDialogProps {
   open: boolean

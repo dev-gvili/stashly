@@ -7,8 +7,8 @@ import { HighlightedFileName } from './highlighted-text'
 import { MatchBadge } from './match-badge'
 import { ScoreBadge } from './score-badge'
 import { SnippetBlock } from './snippet-block'
-import { toEvidenceSnippet } from './search-helpers'
-import type { SearchResult } from './types'
+import { toEvidenceSnippet } from '@/utils/search-evidence'
+import type { SearchResult } from '@/types/stash.types'
 
 /**
  * One result, one card.

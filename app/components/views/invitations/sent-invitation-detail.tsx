@@ -1,8 +1,8 @@
 import {
   InvitationStatusDot,
   InvitationStatusPill,
-  invitationStatusLabel,
 } from '@/components/core-components/invitation-status'
+import { invitationStatusLabel } from '@/utils/formaters'
 import {
   AddIcon,
   CalendarFillIcon,
@@ -21,6 +21,7 @@ import type { StashInvitationRecipient } from '@/types/stash.types'
 import { Button } from '@/ui/button'
 import { ScrollArea } from '@/ui/scroll-area'
 import { useFetcher } from 'react-router'
+import type { InvitationExtras } from '@/types/stash.types'
 import {
   countByStatus,
   getContextIcon,
@@ -29,8 +30,7 @@ import {
   getContextMeta,
   getContextName,
   roleLabel,
-  type InvitationExtras,
-} from './invitation-model'
+} from '@/utils/invitations'
 import {
   ContextThumbnail,
   ContextThumbnailFooter,
