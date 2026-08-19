@@ -219,9 +219,6 @@ export default [
         route('ai-studio', 'routes/stash/ai-studio.tsx', {
           id: 'stash-ai-studio',
         }),
-        route('examples', 'routes/stash/examples.tsx', {
-          id: 'stash-examples',
-        }),
       ]),
 
       // Workspaces UI Routes
