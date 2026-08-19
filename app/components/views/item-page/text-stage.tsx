@@ -18,8 +18,9 @@ import {
 import { Button, SidebarTrigger } from '@/components/ui'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useClipboard } from '@/hooks/useClipboard'
-import type { StashItemText } from '@/types/stash.types'
-import { isMonoFile } from '@/utils/text-thumbnail'
+import type { StashItemText, TextDoc } from '@/types/stash.types'
+import { parseNumberParam } from '@/utils/parsers'
+import { countLines, isMonoFile, splitLines } from '@/utils/text-thumbnail'
 import type { OutlineSymbol } from '@/.client/monaco-outline'
 import { CodeOutline, CODE_OUTLINE_SIDEBAR_ID } from './code-outline'
 import { CodeViewer } from './code-viewer'
@@ -33,7 +34,6 @@ import { StageSkeletonLoader } from './stage-skeleton-loader'
  */
 const MAX_RENDER_LINES = 10_000
 
-type TextDoc = { text: string }
 
 /**
  * TextStage — read-only viewer for text-based files. Suspense/Await boundary
@@ -177,8 +177,8 @@ function CodeReader({
             )
           }
           onOutline={setSymbols}
-          revealColumn={numberParam(searchParams.get('col'))}
-          revealLine={numberParam(searchParams.get('line'))}
+          revealColumn={parseNumberParam(searchParams.get('col'))}
+          revealLine={parseNumberParam(searchParams.get('line'))}
           text={text}
         />
         <StageToolbar
@@ -204,26 +204,6 @@ function CodeReader({
       </div>
     </div>
   )
-}
-
-/**
- * A positive integer from the query string, or `undefined`. Anything else —
- * absent, `0`, a word someone typed over the URL — means "no target", which
- * leaves the viewer at the top of the file.
- */
-function numberParam(raw: string | null): number | undefined {
-  const value = Number(raw)
-  return Number.isInteger(value) && value > 0 ? value : undefined
-}
-
-/** Raw file text → its lines, BOM dropped and line endings normalized to LF. */
-function splitLines(text: string): string[] {
-  return text.replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n')
-}
-
-/** Line count of raw file text, matching how Monaco counts a model. */
-function countLines(text: string): number {
-  return splitLines(text).length
 }
 
 function ProseReader({ text }: { text: string }) {

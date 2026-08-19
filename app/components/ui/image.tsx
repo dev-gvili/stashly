@@ -4,7 +4,7 @@ import type { FitEnum } from 'sharp'
 import { Avatar, AvatarFallback, AvatarImage } from './avatar'
 import { Skeleton } from './skeleton'
 import { AnimatePresence, motion } from 'framer-motion'
-import { buildSrcSet } from '../views/river-view'
+import { buildSrcSet } from '@/utils/gallery-layout'
 
 const IMAGE_SRCSET_CONFIG = {
   sm: {

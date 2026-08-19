@@ -2,7 +2,7 @@ import type { Route } from './+types/gallery'
 import { Gallery } from '@/components/Gallery'
 import { parseSearchParams } from '@/utils/parsers'
 import { ItemCategory, ItemType } from '@/prisma/enums'
-import { buildSrcSet } from '@/components/views/river-view'
+import { buildSrcSet } from '@/utils/gallery-layout'
 import { prisma } from '@/services/db'
 import {
   buildItemFilters,

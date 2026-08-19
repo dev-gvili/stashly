@@ -15,7 +15,7 @@ import {
   CATEGORIES,
   STATUSES,
   TYPES,
-} from '@/components/filters/filter.data'
+} from '@/utils/filter-data'
 import type {
   ActiveChip,
   FilterSourceKey,
@@ -24,7 +24,7 @@ import type {
   FlagKey,
   SearchMode,
   UseFilters,
-} from '@/components/filters/filter.types'
+} from '@/types/filter.types'
 
 const SOURCE_LOOKUP: Record<FilterSourceKey, typeof CATEGORIES> = {
   category: CATEGORIES,

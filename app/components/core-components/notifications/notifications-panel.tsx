@@ -17,9 +17,11 @@ import {
   applyFilter,
   countUnread,
   groupByDay,
-  type Notification,
-  type NotificationFilter,
-} from './notification-model'
+} from '@/utils/notifications'
+import type {
+  Notification,
+  NotificationFilter,
+} from '@/types/notification.types'
 import { GenericEmptyState } from '@/components/states/generic-empty-state'
 
 // ---------------------------------------------------------------------------

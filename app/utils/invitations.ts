@@ -1,78 +1,30 @@
 import {
-    DownloadFillIcon,
-  DownloadIcon,
+  DownloadFillIcon,
   EditFillIcon,
-  EditIcon,
-  FileFillIcon,
-  FolderFillIcon,
   GroupFillIcon,
-  GroupIcon,
-  ImagesFillIcon,
   InfoFillIcon,
-  InfoIcon,
   ViewFillIcon,
-  ViewIcon,
-  WorkspaceFillIcon,
-  WorkspaceIcon,
 } from '@/components/icons'
 import type { InvitationStatus } from '@/prisma/enums'
 import type {
-  StashInvitation,
+  InvitationExtras,
   StashInvitationRecipient,
 } from '@/types/stash.types'
-import { toIcon, type IconKey } from '@/utils';
+import { toIcon, type IconKey } from '@/utils/converters'
 import { formatSize } from '@/utils/formaters'
-
-// ---------------------------------------------------------------------------
-// Optional presentation fields the detail panel *can* surface when the loader
-// provides them. Everything here is optional — the UI degrades gracefully when
-// a field is absent, so no schema change is required to ship the panel.
-//
-// To light up the richer sections (personal message, file peek, mutual
-// connection), extend the loader / `StashInvitation` with:
-//   - message?: string
-//   - mutualConnection?: string
-//   - sender.title
-//   - item.mimeType / item.fileCount
-//   - workspace.size / workspace.fileCount / workspace.memberCount
-//   - previews?: StashPickerItem[]
-// ---------------------------------------------------------------------------
-
-export type InvitationExtras = StashInvitation & {
-  message?: string | null
-  mutualConnection?: string | null
-  sender: StashInvitation['sender'] & {
-    title?: string | null
-  }
-  item:
-    | (NonNullable<StashInvitation['item']> & {
-        mimeType?: string | null
-        fileCount?: number | null
-      })
-    | null
-  workspace:
-    | (NonNullable<StashInvitation['workspace']> & {
-        size?: string | null
-        fileCount?: number | null
-        memberCount?: number | null
-      })
-    | null
-}
 
 // ---------------------------------------------------------------------------
 // Context (what is being shared)
 // ---------------------------------------------------------------------------
 
-export type ContextKind = IconKey 
-
-
+export type ContextKind = IconKey
 
 export function getContextKind(invitation: InvitationExtras): ContextKind {
   if (invitation.workspace) return 'workspace'
   const item = invitation.item
   const type = (item?.type ?? '').toLowerCase()
   const mime = (item?.mimeType ?? '').toLowerCase()
-  if (type === 'folder') return 'folder'  
+  if (type === 'folder') return 'folder'
   return item?.category ?? (mime.startsWith('image/') ? 'image' : 'file')
 }
 
@@ -116,9 +68,7 @@ export function getContextMeta(invitation: InvitationExtras): string | null {
   }
   const size =
     invitation.workspace?.size ??
-    (invitation.item
-      ? formatSize('byte', 'unit', invitation.item.size)
-      : null)
+    (invitation.item ? formatSize('byte', 'unit', invitation.item.size) : null)
   if (size) parts.push(size)
   return parts.length ? parts.join(' · ') : null
 }
@@ -181,24 +131,4 @@ export function countByStatus(
     if (recipient.status in counts) counts[recipient.status] += 1
   }
   return counts
-}
-
-// ---------------------------------------------------------------------------
-// Formatting
-// ---------------------------------------------------------------------------
-
-
-/** Relative "expires in" string, or null when there is no future expiry. */
-export function formatExpiry(
-  expiresAt: string | number | Date | null | undefined
-): string | null {
-  if (!expiresAt) return null
-  const ms = new Date(expiresAt).getTime() - Date.now()
-  if (Number.isNaN(ms)) return null
-  if (ms <= 0) return 'Expired'
-  const days = Math.ceil(ms / 86_400_000)
-  if (days <= 1) return 'in 1 day'
-  if (days < 30) return `in ${days} days`
-  const months = Math.round(days / 30)
-  return `in ${months} month${months === 1 ? '' : 's'}`
 }

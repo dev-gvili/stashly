@@ -10,9 +10,9 @@ import {
 } from '@/components/icons'
 import { Checkbox } from '@/ui/checkbox'
 import { Progress } from '@/ui/progress'
-import { useSelection } from '@/components/stash/selection'
+import { useSelection } from '@/hooks/useSelection'
 import { cn } from '@/utils/styles'
-import type { LibraryStats } from './types'
+import type { LibraryStats } from '@/types/stash.types'
 
 /**
  * Tri-state select-all control shared by every toolbar variant. Reads the

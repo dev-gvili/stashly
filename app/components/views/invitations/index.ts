@@ -1,4 +1,3 @@
-export * from './invitation-model'
 export * from './invitation-parts'
 export * from './invite-form-fields'
 export { ReceivedInvitationDetail } from './received-invitation-detail'

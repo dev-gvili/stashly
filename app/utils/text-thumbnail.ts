@@ -204,3 +204,17 @@ export async function generateTextThumbnail(file: File): Promise<Blob | null> {
     return null
   }
 }
+
+// ---------------------------------------------------------------------------
+// Line handling
+// ---------------------------------------------------------------------------
+
+/** Raw file text → its lines, BOM dropped and line endings normalized to LF. */
+export function splitLines(text: string): string[] {
+  return text.replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n')
+}
+
+/** Line count of raw file text, matching how Monaco counts a model. */
+export function countLines(text: string): number {
+  return splitLines(text).length
+}

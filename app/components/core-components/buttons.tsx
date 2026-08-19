@@ -7,7 +7,7 @@ import {
   LoadMoreFillIcon,
   RestoreIcon,
 } from '@/components/icons'
-import { useSelection } from '@/components/stash/selection'
+import { useSelection } from '@/hooks/useSelection'
 import useConfirm from '@/hooks/useConfirm'
 import { Button } from '@/ui/button'
 import { getQueryParam } from '@/utils/query-params'

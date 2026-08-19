@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useSearchParams, Link, useViewTransitionState } from 'react-router'
 import { RiverView } from './views/river-view'
 import { WaterfallLayout } from './views/waterfall-view'
-import type { ImageData } from './views/buildRows'
+import type { GalleryImage } from '@/types/stash.types'
 import { GridLayout } from './views/grid-view'
 import { itemVariants } from './views/variants'
 import { useFileHref } from '../hooks/useFileHref'
@@ -68,7 +68,7 @@ function VideoItem({ src, className }: { src: string; className?: string }) {
   )
 }
 
-function GridItem({ item, showVideo }: { item: ImageData; showVideo: boolean }) {
+function GridItem({ item, showVideo }: { item: GalleryImage; showVideo: boolean }) {
   const to = useFileHref(item) ?? '.'
   const isTransitioning = useViewTransitionState(to)
   return (
@@ -105,7 +105,7 @@ function GridItem({ item, showVideo }: { item: ImageData; showVideo: boolean }) 
   )
 }
 
-export const Gallery = ({ images }: { images: ImageData[] }) => {
+export const Gallery = ({ images }: { images: GalleryImage[] }) => {
   const [searchParams] = useSearchParams()
   const layoutType = searchParams.get('layout') ?? 'grid'
   const location = useLocation()

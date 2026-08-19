@@ -1,21 +1,9 @@
-import type { ItemCategory, ItemStatus, ItemType } from '@/prisma/enums'
-import type { JSX, ReactNode, SVGProps } from 'react'
-
-export type FilterSourceKey = 'category' | 'status' | 'type'
-export type FlagKey = 'locked' | 'favorited'
-export type FilterToggleKey = FilterSourceKey | 'flags'
-
-export type GlyphItem = {
-  id: ItemCategory | ItemStatus | ItemType
-  label: string
-  glyph: string
-  icon?: (props: SVGProps<SVGSVGElement>) => JSX.Element
-}
-
-export type FlagItem = {
-  id: FlagKey
-  label: string
-}
+import type { ReactNode } from 'react'
+import type {
+  FilterSourceKey,
+  FilterToggleKey,
+  GlyphItem,
+} from '@/types/filter.types'
 
 export type GroupItem = {
   key: FilterSourceKey
@@ -39,40 +27,6 @@ export type ChipInfo = {
   group: FilterToggleKey
   val: string
   label: string
-}
-
-export type SearchMode = 'fuzzy' | 'semantic'
-
-export type FilterState = {
-  category: string[]
-  status: string[]
-  type: string[]
-  flags: FlagKey[]
-  query: string
-  searchMode: SearchMode
-}
-
-export type ActiveChip = {
-  key: string
-  group: FilterSourceKey
-  value: string
-  icon?: (props: SVGProps<SVGSVGElement>) => JSX.Element
-  label: string
-}
-
-export type UseFilters = {
-  state: FilterState
-  toggleMulti: (key: FilterToggleKey, val: string) => void
-  setMulti: (key: FilterToggleKey, vals: string[]) => void
-  applyDraft: (draft: Pick<FilterState, FilterSourceKey>) => void
-  clear: (key: FilterToggleKey) => void
-  clearAll: () => void
-  setQuery: (query: string) => void
-  setSearchMode: (mode: SearchMode) => void
-  /** Active filter chips derived from state for `<Filters.Chips />`. */
-  chips: ActiveChip[]
-  total: number
-  searchParams: URLSearchParams
 }
 
 export type PopoverProps = {

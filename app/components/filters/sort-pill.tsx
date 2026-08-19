@@ -18,7 +18,7 @@ import type { Prisma } from '@/prisma/browser'
 import { cn } from '@/utils/styles'
 import type { JSX, SVGProps } from 'react'
 import { useSearchParams } from 'react-router'
-import { CURSOR_KEY } from './filter.data'
+import { CURSOR_KEY } from '@/utils/filter-data'
 
 type SortDir = Prisma.SortOrder
 

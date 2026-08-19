@@ -1,5 +1,5 @@
 import { Cover } from './cover'
-import { folderPathRight } from './folder-shape'
+import { folderPathRight } from '@/utils/folder-shape'
 import { useLift } from './use-lift'
 import type { FolderCardProps } from './types'
 

@@ -1,6 +1,7 @@
 import { cn } from '@/utils/styles'
-import { SCORE_BAND_METER, scoreBand, widthForPercent } from './search-helpers'
-import type { MatchKind } from './types'
+import { SCORE_BAND_METER, scoreBand } from '@/utils/search-evidence'
+import { widthForPercent } from '@/utils/styles'
+import type { MatchKind } from '@/types/stash.types'
 
 /**
  * The number means a different thing per group, so the tooltip has to say

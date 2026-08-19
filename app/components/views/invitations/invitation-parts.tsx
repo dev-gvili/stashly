@@ -23,7 +23,7 @@ import {
   getContextLabel,
   type AccessPermission,
   type ContextKind,
-} from './invitation-model'
+} from '@/utils/invitations'
 import {
   Button,
   Card,

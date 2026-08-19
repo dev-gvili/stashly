@@ -1,5 +1,5 @@
 import { cn } from '@/utils/styles'
-import { highlightSegments } from './search-helpers'
+import { highlightSegments } from '@/utils/search-evidence'
 
 /**
  * Query terms get the accent mark; terms the engine expanded by meaning get a

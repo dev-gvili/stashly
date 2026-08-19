@@ -11,11 +11,20 @@ export {
   toEvidenceSnippet,
   passageLocator,
   scoreBand,
-  widthForPercent,
   MATCH_KIND_LABEL,
   MATCH_KIND_NOTE,
   MATCH_KIND_ORDER,
   SEARCH_MODE_META,
-} from './search-helpers'
-export type { HighlightKind, HighlightSegment, ScoreBand } from './search-helpers'
-export type { MatchKind, SearchResult, EvidenceSnippet, SearchQueryState } from './types'
+} from '@/utils/search-evidence'
+export type {
+  HighlightKind,
+  HighlightSegment,
+  ScoreBand,
+} from '@/utils/search-evidence'
+export { widthForPercent } from '@/utils/styles'
+export type {
+  MatchKind,
+  SearchResult,
+  EvidenceSnippet,
+  SearchQueryState,
+} from '@/types/stash.types'

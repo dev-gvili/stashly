@@ -4,9 +4,9 @@ import type {
   OverviewActivityKind,
 } from '@/services/activity-actions'
 import { toIcon, toItemUrl } from '@/utils/converters'
+import { toRelativeTime } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
 import { Link } from 'react-router'
-import { toRelativeTime } from './overview-helpers'
 
 const ACTIVITY_VERB: Record<OverviewActivityKind, string> = {
   viewed: 'viewed',

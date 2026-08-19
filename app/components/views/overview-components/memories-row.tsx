@@ -1,8 +1,8 @@
 import { ItemCard } from '@/components/stash/item-card'
+import type { MemoryCluster } from '@/types/stash.types'
 import { cn } from '@/utils/styles'
 import { Link } from 'react-router'
 import { SectionLabel } from './section-label'
-import type { MemoryCluster } from './types'
 
 /**
  * "On this day" — a single row of square photo tiles from the same date in a

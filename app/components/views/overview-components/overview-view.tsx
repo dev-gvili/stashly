@@ -4,13 +4,14 @@ import {
   ShareFillIcon,
 } from '@/components/icons'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
+import { toGreeting } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
 import { href, Link, useLocation } from 'react-router'
+import type { OverviewViewProps } from './types'
 import { ActivityTimeline } from './activity-timeline'
 import { OverviewDetailCard } from './detail-card'
 import { OverviewFirstRun } from './first-run'
 import { MemoriesRow } from './memories-row'
-import { toGreeting } from './overview-helpers'
 import { PanelCard } from './panel-card'
 import { PeopleStrip } from './people-strip'
 import { PinnedTile } from './pinned-tile'
@@ -20,7 +21,6 @@ import { SharedWithYouPanel } from './shared-with-you-panel'
 import { StorageStrip } from './storage-strip'
 import { SuggestionReason } from './suggestion-reason'
 import { TrashRescue } from './trash-rescue'
-import type { OverviewViewProps } from './types'
 
 function Greeting({ name, subline }: { name: string; subline?: string }) {
   const first = name.split(/\s+/)[0]

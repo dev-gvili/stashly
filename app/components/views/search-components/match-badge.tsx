@@ -1,6 +1,6 @@
 import { cn } from '@/utils/styles'
-import { MATCH_KIND_LABEL, MATCH_KIND_NOTE } from './search-helpers'
-import type { MatchKind } from './types'
+import { MATCH_KIND_LABEL, MATCH_KIND_NOTE } from '@/utils/search-evidence'
+import type { MatchKind } from '@/types/stash.types'
 
 /** Filename hits are the strongest evidence, so only they take the accent. */
 export function MatchBadge({

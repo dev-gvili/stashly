@@ -30,11 +30,10 @@ import {
   DownloadFillIcon,
 } from '@/components/icons'
 import { SelectAllCheckbox } from './toolbar-stats'
-import { LayoutToggle } from './layout-toggle'
 import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
-import { useSelection } from '@/components/stash/selection'
+import { useSelection } from '@/hooks/useSelection'
 import { useBreadcrumbs } from '@/hooks'
-import type { BulkActions, ToolbarContext } from './types'
+import type { BulkActions, ToolbarContext } from '@/types/stash.types'
 import { cn } from '@/utils/styles'
 import { href, Link, useLocation, useParams } from 'react-router'
 import {

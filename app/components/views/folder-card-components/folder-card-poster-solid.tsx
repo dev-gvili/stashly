@@ -2,7 +2,7 @@ import { ItemCard, type ItemCardProps } from '@/components/stash/item-card'
 import { useItemCard } from '@/hooks/useItemCard'
 import { formatSize, timeAgo } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
-import { folderPathRight } from './folder-shape'
+import { folderPathRight } from '@/utils/folder-shape'
 
 // 16:9 viewBox for the folder-tab silhouette; tab occupies the left ~51%.
 const VIEW_W = 480

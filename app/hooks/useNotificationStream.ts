@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef } from 'react'
-import type { Notification } from '@/components/core-components/notifications/notification-model'
+import type { Notification } from '@/types/notification.types'
 
 // ---------------------------------------------------------------------------
 // Live notification list, fed by the SSE route (GET /api/notifications/stream).

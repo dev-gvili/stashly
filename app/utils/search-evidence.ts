@@ -3,9 +3,12 @@
  * group, and the literal class maps Tailwind needs to see.
  */
 import { buildSnippet } from '@/utils/search-query'
-import type { SearchMode } from '@/components/filters/filter.types'
-import type { MatchKind, SearchPassage } from '@/types/stash.types'
-import type { EvidenceSnippet } from './types'
+import type { SearchMode } from '@/types/filter.types'
+import type {
+  EvidenceSnippet,
+  MatchKind,
+  SearchPassage,
+} from '@/types/stash.types'
 
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'and', 'or', 'of', 'in', 'on', 'for', 'to', 'with',
@@ -137,23 +140,12 @@ export const SCORE_BAND_METER: Record<ScoreBand, string> = {
   distant: 'bg-muted-foreground',
 }
 
-const WIDTH_STEPS = [
-  'w-[0%]', 'w-[5%]', 'w-[10%]', 'w-[15%]', 'w-[20%]', 'w-[25%]', 'w-[30%]',
-  'w-[35%]', 'w-[40%]', 'w-[45%]', 'w-[50%]', 'w-[55%]', 'w-[60%]', 'w-[65%]',
-  'w-[70%]', 'w-[75%]', 'w-[80%]', 'w-[85%]', 'w-[90%]', 'w-[95%]', 'w-[100%]',
-] as const
-
-/** Same technique as `overview-helpers.widthForPercent`: pick, never interpolate. */
-export function widthForPercent(percent: number): string {
-  const clamped = Math.min(100, Math.max(0, percent))
-  return WIDTH_STEPS[Math.round(clamped / 5)]
-}
-
 /**
  * Copy for the mode badge in `ResultsSummary`.
  *
- * Two modes, not three — `SearchMode` in `filter.types` is `fuzzy | semantic`,
- * and the header's own toggle is the only thing that writes it.
+ * Two modes, not three — `SearchMode` in `@/types/filter.types` is
+ * `fuzzy | semantic`, and the header's own toggle is the only thing that
+ * writes it.
  */
 export const SEARCH_MODE_META: Record<
   SearchMode,

@@ -8,7 +8,7 @@ Variants A2 and B have since been **migrated onto `ItemCard`**: they take `ItemC
 - `folder-card-poster.tsx` — Variant A: 16:9 light card, folder tab on the right holding the cover image. **Prototype API** — `{ folder, onOpen }` with inline styles.
 - `folder-card-poster-solid.tsx` — Variant A2: same 16:9 silhouette, solid `bg-primary` block instead of a cover image. Takes `ItemCardProps`; shows name, item count · size, and `updated <timeAgo>`.
 - `folder-card-tab.tsx` — Variant B: square (`aspect-square`) `bg-card` card, accent cover strip above the folder body, tab notch top-left carrying the name + created date, size + item count footer. Takes `ItemCardProps`; `children` render inside `ItemCard.Actions`.
-- `cover.tsx`, `folder-shape.ts`, `use-lift.ts`, `types.ts`, `index.ts` — shared pieces (`folder-shape.ts` exports `folderPathLeft` / `folderPathRight`; `types.ts` holds `FolderCardData` / `FolderCardProps`, used only by Variant A).
+- `cover.tsx`, `use-lift.ts`, `types.ts`, `index.ts` — shared pieces (the SVG path math lives in `@/utils/folder-shape`, which exports `folderPathLeft` / `folderPathRight`; `types.ts` holds `FolderCardData` / `FolderCardProps`, used only by Variant A).
 
 ## Usage
 

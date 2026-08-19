@@ -7,6 +7,7 @@ import {
   SubmitIcon,
 } from '@/components/icons'
 import { useClipboard } from '@/hooks/useClipboard'
+import { useRecipientRows } from '@/hooks/useRecipientRows'
 import { Button } from '@/ui/button'
 import {
   Dialog,
@@ -28,12 +29,8 @@ import {
 import { cn } from '@/utils/styles'
 import { useEffect, useMemo, useState } from 'react'
 import { useFetcher } from 'react-router'
-import { getContextIcon, type ContextKind } from './invitation-model'
-import {
-  MessageField,
-  RecipientsField,
-  useRecipientRows,
-} from './invite-form-fields'
+import { getContextIcon, type ContextKind } from '@/utils/invitations'
+import { MessageField, RecipientsField } from './invite-form-fields'
 
 // ---------------------------------------------------------------------------
 // A thing the user can share. The invitations route loader supplies the list

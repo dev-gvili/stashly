@@ -1,33 +1,9 @@
-import type { NotificationType, NotificationKind } from '@/prisma/enums'
-import {
-  InfoIcon,
-  ShareFillIcon,
-  UploadFillIcon,
-  FileFillIcon,
-  StorageFillIcon,
-  SendInvitationIcon,
-  WorkspaceMembersFillIcon,
-  WorkspaceFillIcon,
-  CollectionFillIcon,
-  FavoritesFillIcon,
-  PinItemFillIcon,
-  DetailsFillIcon,
-  LockFillIcon,
-} from '@/components/icons'
-
-// ---------------------------------------------------------------------------
-// Notification model — mirrors the Prisma `Notification` record
-// ---------------------------------------------------------------------------
-
-export type Notification = {
-  id: string
-  message: string
-  type: NotificationType
-  kind: NotificationKind
-  status: 'read' | 'unread'
-  createdAt: string | Date
-  updatedAt: string | Date
-}
+import type { NotificationType } from '@/prisma/enums'
+import type {
+  Notification,
+  NotificationFilter,
+  NotificationGroup,
+} from '@/types/notification.types'
 
 // ---------------------------------------------------------------------------
 // Two orthogonal axes:
@@ -35,24 +11,10 @@ export type Notification = {
 //     greyscale ("the signal is contrast, not hue"), so `error` is the single
 //     chromatic exception — --destructive is spent here, once.
 //   • `kind`  → the subject/event, which owns the *glyph*. A share, an upload,
-//     and a quota warning each read at a glance from real app icons.
+//     and a quota warning each read at a glance from real app icons. The glyph
+//     map lives with the components, in
+//     `@/components/core-components/notifications/notification-icons`.
 // ---------------------------------------------------------------------------
-
-const KIND_ICON: Record<NotificationKind, typeof InfoIcon> = {
-  system: InfoIcon,
-  share: ShareFillIcon,
-  upload: UploadFillIcon,
-  file: FileFillIcon,
-  storage: StorageFillIcon,
-  invitation: SendInvitationIcon,
-  member: WorkspaceMembersFillIcon,
-  workspace: WorkspaceFillIcon,
-  collection: CollectionFillIcon,
-  favorite: FavoritesFillIcon,
-  pin: PinItemFillIcon,
-  comment: DetailsFillIcon,
-  lock: LockFillIcon,
-}
 
 const TYPE_LABEL: Record<NotificationType, string> = {
   info: 'Info',
@@ -67,10 +29,6 @@ const TYPE_TILE: Record<NotificationType, string> = {
   success: 'bg-primary text-primary-foreground',
   warning: 'bg-secondary text-secondary-foreground ring-1 ring-input',
   error: 'bg-destructive/10 text-destructive ring-1 ring-destructive/30',
-}
-
-export function getKindIcon(kind: NotificationKind) {
-  return KIND_ICON[kind] ?? KIND_ICON.system
 }
 
 export function typeLabel(type: NotificationType) {
@@ -88,8 +46,6 @@ export function isAlert(type: NotificationType) {
 // ---------------------------------------------------------------------------
 // Filtering
 // ---------------------------------------------------------------------------
-
-export type NotificationFilter = 'all' | 'unread' | 'alerts'
 
 export const NOTIFICATION_FILTERS: {
   key: NotificationFilter
@@ -118,11 +74,6 @@ export function countUnread(notifications: Notification[]) {
 // Grouping by day — buckets are derived, not stored, so an empty bucket
 // simply never renders.
 // ---------------------------------------------------------------------------
-
-export type NotificationGroup = {
-  label: string
-  items: Notification[]
-}
 
 function startOfDay(d: Date) {
   const copy = new Date(d)
@@ -160,7 +111,11 @@ export function groupByDay(notifications: Notification[]): NotificationGroup[] {
 }
 
 // ---------------------------------------------------------------------------
-// Relative time — short, mono-friendly, no library
+// Relative time — short, mono-friendly, no library.
+//
+// Near-duplicate of `timeAgo` in `@/utils/formaters`, kept separate on purpose:
+// the fallbacks differ ('just now' under a minute, a localised short date past
+// a week) and the notification panel depends on exactly these.
 // ---------------------------------------------------------------------------
 
 export function formatRelativeTime(value: string | Date): string {

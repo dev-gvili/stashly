@@ -1,6 +1,5 @@
-import { cn } from '@/utils/styles'
-import { avatarTint } from './overview-helpers'
-import type { OverviewPerson } from './types'
+import type { OverviewPerson } from '@/types/stash.types'
+import { avatarTint, cn } from '@/utils/styles'
 
 /**
  * Initial-or-photo avatar. Tint is derived from the person id so the same

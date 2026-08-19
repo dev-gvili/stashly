@@ -5,9 +5,6 @@ import {
   SearchIcon,
 } from '@/components/icons'
 import {
-  getContextIcon,
-  getContextKind,
-  getContextName,
   InvitationDetailEmpty,
   InvitationDetailPanel,
   NewInvitationDialog,
@@ -24,6 +21,11 @@ import { ScrollArea } from '@/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/tabs'
 import { formatMediaDate } from '@/utils'
 import { toUserInitial } from '@/utils/converters'
+import {
+  getContextIcon,
+  getContextKind,
+  getContextName,
+} from '@/utils/invitations'
 import { cn } from '@/utils/styles'
 import { useState } from 'react'
 import { useRevalidator } from 'react-router'

@@ -1,6 +1,6 @@
 import { SendInvitationIcon } from '@/components/icons'
 import type { StashInvitationRecipient } from '@/types/stash.types'
-import type { InvitationExtras } from './invitation-model'
+import type { InvitationExtras } from '@/types/stash.types'
 import { ReceivedInvitationDetail } from './received-invitation-detail'
 import { SentInvitationDetail } from './sent-invitation-detail'
 

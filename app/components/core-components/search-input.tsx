@@ -12,7 +12,7 @@ import {
   ShareFillIcon,
 } from '@/components/icons'
 import { cn } from '@/utils/styles'
-import type { SearchMode } from '@/components/filters/filter.types'
+import type { SearchMode } from '@/types/filter.types'
 
 export interface SearchInputProps {
   value: string

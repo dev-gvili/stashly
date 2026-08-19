@@ -1,34 +1,19 @@
 import { ItemCard } from '@/components/stash/item-card'
 import useConfirm from '@/hooks/useConfirm'
 import { useClipboard } from '@/hooks/useClipboard'
+import type { LinkState, SharedLink } from '@/types/stash.types'
 import { Button } from '@/ui/button'
+import { toLinkState } from '@/utils/converters'
+import { expiryLabel } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
 import type { ReactNode } from 'react'
-import { toRelativeTime } from './overview-helpers'
 import { PanelCard } from './panel-card'
-import type { SharedLink } from './types'
-
-type LinkState = 'live' | 'expiring' | 'expired'
 
 /** Literal tints — Tailwind only compiles class names it can see in source. */
 const STATE_DOT: Record<LinkState, string> = {
   live: 'bg-emerald-500',
   expiring: 'bg-amber-500',
   expired: 'bg-muted-foreground',
-}
-
-function toLinkState(link: SharedLink): LinkState {
-  if (link.expired) return 'expired'
-  if (!link.expiresAt) return 'live'
-  const days = (new Date(link.expiresAt).getTime() - Date.now()) / 86_400_000
-  if (days <= 0) return 'expired'
-  return days <= 7 ? 'expiring' : 'live'
-}
-
-function expiryLabel(link: SharedLink, state: LinkState) {
-  if (state === 'expired') return 'expired'
-  if (!link.expiresAt) return 'no expiry'
-  return `expires ${toRelativeTime(link.expiresAt) ?? ''}`.trim()
 }
 
 /** One outbound link: status dot, audience, permission, views, row actions. */

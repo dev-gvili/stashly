@@ -19,7 +19,7 @@
  * of silently ranking worse.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { SearchMode } from '@/components/filters/filter.types'
+import type { SearchMode } from '@/types/filter.types'
 import type { SearchResponse } from '@/types/stash.types'
 import {
   SEARCH_PAGE_SIZE,

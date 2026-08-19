@@ -1,5 +1,5 @@
-import { toIcon } from '@/utils'
-import type { GlyphItem, FlagItem } from './filter.types'
+import { toIcon } from '@/utils/converters'
+import type { GlyphItem, FlagItem } from '@/types/filter.types'
 
 export const MULTI_KEYS = ['category', 'status', 'type'] as const
 export const FLAG_KEYS = ['locked', 'favorited'] as const

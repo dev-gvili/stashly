@@ -10,14 +10,15 @@ import {
   SendInvitationIcon,
   UndoIcon,
 } from '@/components/icons'
-import { invitationStatusLabel } from '@/components/core-components/invitation-status'
+import { invitationStatusLabel } from '@/utils/formaters'
 import type { StashInvitationRecipient } from '@/types/stash.types'
 import { Button } from '@/ui/button'
 import { ScrollArea } from '@/ui/scroll-area'
 import { cn } from '@/utils/styles'
 import { useFetcher } from 'react-router'
+import type { InvitationExtras } from '@/types/stash.types'
+import { formatExpiry } from '@/utils/formaters'
 import {
-  formatExpiry,
   getAccessPermissions,
   getContextKind,
   getContextLabel,
@@ -25,8 +26,7 @@ import {
   getContextName,
   getMemberCount,
   roleLabel,
-  type InvitationExtras,
-} from './invitation-model'
+} from '@/utils/invitations'
 import {
   AccessPermissions,
   ContextThumbnail,

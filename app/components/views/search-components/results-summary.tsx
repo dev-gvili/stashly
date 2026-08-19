@@ -1,9 +1,9 @@
 import { FuzzySearchIcon, SemanticSearchIcon } from '@/components/icons'
 import { cn } from '@/utils/styles'
-import type { SearchMode } from '@/components/filters/filter.types'
+import type { SearchMode } from '@/types/filter.types'
 import { HighlightedText } from './highlighted-text'
-import { SEARCH_MODE_META } from './search-helpers'
-import type { SearchQueryState } from './types'
+import { SEARCH_MODE_META } from '@/utils/search-evidence'
+import type { SearchQueryState } from '@/types/stash.types'
 
 const MODE_ICON: Record<SearchMode, typeof FuzzySearchIcon> = {
   fuzzy: FuzzySearchIcon,

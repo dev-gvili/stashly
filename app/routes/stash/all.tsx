@@ -5,7 +5,7 @@ import { redirect, useLocation } from 'react-router'
 import { getFolderContent, getLibraryStats } from '@/services/item-actions'
 import { formatSize } from '@/utils/formaters'
 import { StashPageToolbar } from '@/components/views/stash-page-toolbar'
-import type { LibraryStats } from '@/components/core-components/page-toolbar'
+import type { LibraryStats } from '@/types/stash.types'
 import {
   buildItemFilters,
   itemFilterSchema,
@@ -153,7 +153,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 
   return (
     <Fragment key={id}>
-      {/* SelectionProvider must wrap the toolbar too — PageToolbarMorph reads
+      {/* SelectionProvider must wrap the toolbar too — PageToolbarPathRail reads
           the shared selection actor and only enters bulk mode when this route's
           ids are registered. */}
       <SelectionProvider items={items.map((i) => i.id)}>

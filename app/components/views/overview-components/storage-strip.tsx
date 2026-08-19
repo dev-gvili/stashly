@@ -1,10 +1,9 @@
-import { formatSize } from '@/utils/formaters'
-import { cn } from '@/utils/styles'
+import type { StorageSegment, StorageUsage } from '@/types/stash.types'
+import { formatSize, toRelativeTime } from '@/utils/formaters'
+import { basisForPercent, cn } from '@/utils/styles'
 import { Link } from 'react-router'
-import { basisForPercent, toRelativeTime } from './overview-helpers'
-import type { StorageSegment, StorageUsage } from './types'
 
-/** Literal tint per segment kind — see overview-helpers for why. */
+/** Literal tint per segment kind — see `@/utils/styles` for why. */
 const SEGMENT_TONE: Record<StorageSegment['tone'], string> = {
   images: 'bg-emerald-500',
   video: 'bg-sky-500',

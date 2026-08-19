@@ -5,11 +5,11 @@ import { motion } from 'framer-motion'
 import { useFetcher } from 'react-router'
 import {
   formatRelativeTime,
-  getKindIcon,
   typeLabel,
   typeTileClass,
-  type Notification,
-} from './notification-model'
+} from '@/utils/notifications'
+import type { Notification } from '@/types/notification.types'
+import { getKindIcon } from './notification-icons'
 
 // ---------------------------------------------------------------------------
 // Notification row

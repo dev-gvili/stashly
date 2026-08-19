@@ -25,20 +25,7 @@ import {
 import { useParams } from 'react-router'
 import { useId, useState } from 'react'
 import { CreateWorkspaceDialog } from '@/components/core-components/create-workspace-dialog'
-
-/**
- * WorkspacesSidebarItem
- *
- * Shape of an individual workspace entry displayed in the
- * Workspaces group of the sidebar.
- */
-export interface WorkspacesSidebarItem {
-  id: string
-  name: string
-  slug: string
-  icon?: React.ReactNode
-  action?: React.ReactNode
-}
+import type { WorkspacesSidebarItem } from '@/types/stash.types'
 
 /**
  * NavWorkspaces

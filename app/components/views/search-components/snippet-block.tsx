@@ -1,6 +1,6 @@
 import { cn } from '@/utils/styles'
 import { HighlightedText } from './highlighted-text'
-import type { EvidenceSnippet } from './types'
+import type { EvidenceSnippet } from '@/types/stash.types'
 
 /**
  * The evidence, welded to the card that owns it: locator and hit count on a
