@@ -75,8 +75,19 @@ describe('searchApiRouteOutput', () => {
     ).toThrow()
   })
 
-  it('rejects a matchKind outside the three groups', () => {
-    const bad = { ...payload.items[0], matchKind: 'fuzzy' }
+  // `fuzzy` is a real group — the trigram half's typo matches, which carry no
+  // literal evidence and no vector either. It used to be an invalid value here.
+  it('accepts every group the page renders', () => {
+    for (const kind of ['name', 'content', 'fuzzy', 'semantic']) {
+      const item = { ...payload.items[0], matchKind: kind }
+      expect(() =>
+        searchApiRouteOutput.parse({ ...payload, items: [item] })
+      ).not.toThrow()
+    }
+  })
+
+  it('rejects a matchKind outside the four groups', () => {
+    const bad = { ...payload.items[0], matchKind: 'vibes' }
     expect(() =>
       searchApiRouteOutput.parse({ ...payload, items: [bad] })
     ).toThrow()

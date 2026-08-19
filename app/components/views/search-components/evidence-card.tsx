@@ -20,7 +20,8 @@ import type { SearchResult } from '@/types/stash.types'
  * in column 5 could belong to a file that had already scrolled away.
  *
  * Folders keep `FolderCardTab` untouched: a folder has no indexed body, so a
- * folder hit is a filename hit with nothing to quote.
+ * folder hit is a filename hit with nothing to quote. Filename hits on files are
+ * quiet for the same reason: the evidence is the highlighted name, not a passage.
  */
 export function EvidenceCard({
   result,
@@ -41,9 +42,17 @@ export function EvidenceCard({
 }) {
   const { passage, score, hitCount, matchKind, ...item } = result
 
+  // A filename hit is fully explained by the highlighted name above it. Quoting
+  // a passage there implies the body is what matched, which it isn't — the body
+  // hits, if any, are what the `content` group is for. A `fuzzy` hit carries no
+  // passage at all (that absence is what identifies it server-side), so the
+  // guard is belt-and-braces there.
   const snippet = useMemo(
-    () => (passage ? toEvidenceSnippet(passage, query) : null),
-    [passage, query]
+    () =>
+      passage && matchKind !== 'name' && matchKind !== 'fuzzy'
+        ? toEvidenceSnippet(passage, query)
+        : null,
+    [passage, query, matchKind]
   )
 
   if (item.type === 'folder') {
@@ -56,11 +65,18 @@ export function EvidenceCard({
       actions={actions}
       className={cn('gap-2 bg-card', className)}
       overlay={
-        <ScoreBadge
-          score={score}
-          kind={matchKind}
-          className="absolute bottom-2 left-2 z-20 rounded bg-primary text-primary-foreground font-stashly text-sm font-semibold"
-        />
+        // No score on a name hit: the ranking that produced it is a string
+        // match on the name, so a relevance percentage says nothing the
+        // highlighted name doesn't already say. None on a `fuzzy` hit either —
+        // that number is fused rank, not a similarity, so it would read as a
+        // confidence the server never measured.
+        matchKind === 'name' || matchKind === 'fuzzy' ? undefined : (
+          <ScoreBadge
+            score={score}
+            kind={matchKind}
+            className="absolute bottom-2 left-2 z-20 rounded bg-primary text-primary-foreground font-stashly text-sm font-semibold"
+          />
+        )
       }
       name={
         <HighlightedFileName

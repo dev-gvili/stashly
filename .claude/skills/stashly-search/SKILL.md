@@ -39,7 +39,9 @@ Two tables, both in `prisma/models/search.prisma`:
 - `CHUNK_SCAN_DEPTH = 400` is deeper than `RANK_DEPTH = 100` because one long document can occupy many nearest chunks; `DISTINCT ON` collapses them back to items before fusing.
 - `splitQueryTerms` is shared by the sparse ranker and the match-detail query **on purpose**. If they disagree, an item ranks on a word the hit counter never looks for and comes back `hitCount: 0` while sitting in the `content` group.
 
-**`MatchKind`** (`'name' | 'content' | 'semantic'`) is derived **server-side**, ordered by how much the user can trust it. Only the server sees `Search.content`; the client has a single passage and would mislabel any document whose literal hits fall outside it.
+**`MatchKind`** (`'name' | 'content' | 'fuzzy' | 'semantic'`) is derived **server-side**, ordered by how much the user can trust it. Only the server sees `Search.content`; the client has a single passage and would mislabel any document whose literal hits fall outside it.
+
+`fuzzy` and `semantic` are the two *no literal evidence* kinds and are told apart by **which ranker produced the id**: `rankByVector` builds `ids` and `passages` from the same array, so an id with no detail row and no entry in `ranking.passages` can only have come from the trigram half (`similarity(name, query) > NAME_SIMILARITY_FLOOR`) — a typo match, with no embedding involved. Merging the two labelled every typo "closest by meaning", which in fuzzy mode is a claim about a model that never ran. Neither kind renders a score or a snippet: `name` and `fuzzy` have nothing to quote, and a fused-rank number on a trigram match is not a similarity.
 
 The vector-nearest chunk and the chunk containing the typed words are routinely different passages — that is semantic retrieval working. Don't quote the dense passage under a "2 hits" label.
 

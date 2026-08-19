@@ -956,7 +956,7 @@ export const searchApiRouteOutput = z
         .object({
           ...serializableSizes,
           score: z.number(),
-          matchKind: z.enum(['name', 'content', 'semantic']),
+          matchKind: z.enum(['name', 'content', 'fuzzy', 'semantic']),
           hitCount: z.number(),
           parent: z
             .object({

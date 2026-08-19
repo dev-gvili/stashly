@@ -683,13 +683,18 @@ export function splitQueryTerms(query: string): string[] {
  * Why an item is in the result list — the grouping key for the search page.
  *
  * Ordered by how much the user can trust it: a filename hit is the query
- * itself, a content hit is the query inside the document, and a semantic hit
- * is a neighbour the vector index proposed with no literal evidence at all.
- * Derived on the server because only the server can see `Search.content`; the
- * client has a single passage and would mislabel any document whose literal
- * hits live outside it.
+ * itself, a content hit is the query inside the document, a fuzzy hit is an
+ * approximate name the trigram ranker admitted, and a semantic hit is a
+ * neighbour the vector index proposed. Derived on the server because only the
+ * server can see `Search.content`; the client has a single passage and would
+ * mislabel any document whose literal hits live outside it.
+ *
+ * `fuzzy` and `semantic` both mean "no literal evidence" and used to share the
+ * `semantic` label, which was a lie in fuzzy mode: the sparse ranker admits a
+ * typo'd name through `similarity()` without any embedding being loaded, so a
+ * card read "closest by meaning" about a match no model ever saw.
  */
-export type MatchKind = 'name' | 'content' | 'semantic'
+export type MatchKind = 'name' | 'content' | 'fuzzy' | 'semantic'
 
 /** Literal-match evidence per item, resolved after ranking. */
 export interface SearchMatchDetail {
@@ -1298,11 +1303,16 @@ export async function searchItemsHybrid(
 
   return {
     items: page.map((item) => {
-      // An id that ranked but has no row in the detail query can only have got
-      // there through the vector index, which is exactly `semantic`.
+      // An id that ranked but has no row in the detail query has no literal
+      // evidence anywhere in it. Which ranker put it there is what separates
+      // the two ways that can happen: a dense passage means the vector index
+      // proposed it, and no passage means the trigram half admitted it on
+      // approximate name similarity alone — the typo case, which in fuzzy
+      // mode never touches an embedding at all.
       const detail = details.get(item.id)
+      const dense = ranking.passages.get(item.id)
       const { hit, ...match } = detail ?? {
-        matchKind: 'semantic' as const,
+        matchKind: dense ? ('semantic' as const) : ('fuzzy' as const),
         hitCount: 0,
         hit: null,
       }
@@ -1315,7 +1325,9 @@ export async function searchItemsHybrid(
       // exists to show: RRF is `1/(k + rank)`, so the fourth-nearest chunk
       // scores ~47% of the leader whether it is a close match or unrelated
       // noise. An icon glyph sheet read 50% against "deep dive" that way.
-      const dense = ranking.passages.get(item.id)
+      //
+      // A `fuzzy` result keeps the fused-rank number, which the card doesn't
+      // render: a trigram distance isn't a relevance figure worth showing.
       const score =
         match.matchKind === 'semantic' && dense?.similarity != null
           ? Math.round(dense.similarity * 100)

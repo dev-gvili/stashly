@@ -5,6 +5,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
+  MATCH_KIND_LABEL,
+  MATCH_KIND_NOTE,
   MATCH_KIND_ORDER,
   highlightSegments,
   scoreBand,
@@ -204,6 +206,16 @@ describe('toEvidenceSnippet', () => {
 
 describe('MATCH_KIND_ORDER', () => {
   it('runs strongest evidence first', () => {
-    expect(MATCH_KIND_ORDER).toEqual(['name', 'content', 'semantic'])
+    expect(MATCH_KIND_ORDER).toEqual(['name', 'content', 'fuzzy', 'semantic'])
+  })
+
+  // The two no-literal-evidence kinds are distinct on purpose: `fuzzy` is an
+  // approximate name from the trigram ranker, `semantic` a vector neighbour.
+  // Their copy has to say different things or the split buys nothing.
+  it('gives every kind its own label and note', () => {
+    const labels = MATCH_KIND_ORDER.map((kind) => MATCH_KIND_LABEL[kind])
+    const notes = MATCH_KIND_ORDER.map((kind) => MATCH_KIND_NOTE[kind])
+    expect(new Set(labels).size).toBe(MATCH_KIND_ORDER.length)
+    expect(new Set(notes).size).toBe(MATCH_KIND_ORDER.length)
   })
 })

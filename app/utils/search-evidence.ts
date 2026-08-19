@@ -113,17 +113,30 @@ export function toEvidenceSnippet(
 export const MATCH_KIND_LABEL: Record<MatchKind, string> = {
   name: 'Filename',
   content: 'In content',
+  fuzzy: 'Similar name',
   semantic: 'Semantic',
 }
 
 export const MATCH_KIND_NOTE: Record<MatchKind, string> = {
   name: 'The query is in the filename.',
   content: 'Literal term hits inside the document.',
+  fuzzy: 'Approximate name — no exact occurrence.',
   semantic: 'No literal hit — closest by meaning.',
 }
 
-/** Groups render in this order: strongest evidence first. */
-export const MATCH_KIND_ORDER: MatchKind[] = ['name', 'content', 'semantic']
+/**
+ * Groups render in this order: strongest evidence first.
+ *
+ * `fuzzy` sits above `semantic` because an approximate filename is still an
+ * answer about the name the user typed, where a vector neighbour is a
+ * suggestion about something they didn't.
+ */
+export const MATCH_KIND_ORDER: MatchKind[] = [
+  'name',
+  'content',
+  'fuzzy',
+  'semantic',
+]
 
 export type ScoreBand = 'strong' | 'related' | 'distant'
 

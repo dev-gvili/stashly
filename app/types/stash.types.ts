@@ -416,8 +416,13 @@ export type SearchPassage = {
  * answer: the first is what the user asked for, the second is a suggestion.
  * Sorting them together leaves a 9% result sitting next to a 96% one with
  * nothing to explain why it is there.
+ *
+ * `fuzzy` and `semantic` are the two no-literal-evidence kinds, kept apart
+ * because they are reached by different rankers: `fuzzy` is an approximate
+ * name from the trigram half (no model involved), `semantic` is a vector
+ * neighbour. Collapsing them labelled every typo match "closest by meaning".
  */
-export type MatchKind = 'name' | 'content' | 'semantic'
+export type MatchKind = 'name' | 'content' | 'fuzzy' | 'semantic'
 
 /** One search hit: a normal item card plus what matched inside it. */
 export type SearchResult = StashItem & {
