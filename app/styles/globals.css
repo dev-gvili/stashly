@@ -563,6 +563,30 @@
   border-left: 3px solid var(--input);
   color: var(--muted-foreground);
 }
+/* ── Code — the Monaco "Ink" theme, transplanted ───────────────────────────
+   Fenced blocks are a slice of the code stage, so they take the same colours
+   `applyInkTheme` hands Monaco in app/.client/monaco.ts: `--card` is
+   `editor.background`, `--foreground` is `editor.foreground`, `--input` is
+   `editorWidget.border`, and the type is 13px JetBrains Mono (EDITOR_FONT_SIZE).
+   The one syntax hue has no design token there — it's hand-picked so the
+   greyscale palette stays greyscale — so it's mirrored here as `--md-ink-hue`
+   with the same `prefers-color-scheme` + `data-theme` overrides the Monaco
+   viewer styles use. Inline code takes it because a backticked span is almost
+   always an identifier, and identifiers carry the hue in the Ink rules. */
+.markdown-stage {
+  --md-ink-hue: #5e6ad2;
+}
+@media (prefers-color-scheme: dark) {
+  .markdown-stage {
+    --md-ink-hue: #96a0e8;
+  }
+}
+:root[data-theme='light'] .markdown-stage {
+  --md-ink-hue: #5e6ad2;
+}
+:root[data-theme='dark'] .markdown-stage {
+  --md-ink-hue: #96a0e8;
+}
 .markdown-stage code {
   /* JetBrains Mono ships coding ligatures; calt/liga turn them on (=>, !==,
      >=, ->). Falls back to the app mono if the webfont hasn't loaded. */
@@ -571,10 +595,9 @@
     'liga' 1,
     'calt' 1;
   font-variant-ligatures: normal;
-  font-size: var(--text-base--line-height, 0.95em);
+  font-size: 0.9em;
   background: var(--muted);
-  color: var(--muted-foreground);
-  /* background: oklch(from var(--muted) l c h / 0.6); */
+  color: var(--md-ink-hue);
   padding: 0.15em 0.4em;
   border-radius: var(--radius-xs);
 }
@@ -583,14 +606,20 @@
   margin: 1em 0;
   padding: 1rem;
   overflow-x: auto;
-  background: var(--color-muted);
+  /* The editor surface itself; the widget border is what separates it from
+     the card the reader sits on, exactly as in the code stage. */
+  background: var(--card);
+  color: var(--foreground);
   border: 1px solid var(--input);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
 }
 .markdown-stage pre code {
   background: transparent;
+  /* Inherit rather than the hue: a whole block isn't one identifier. */
+  color: inherit;
   padding: 0;
-  font-size: var(--font-size, 0.95em);
+  font-size: 0.8125rem;
   line-height: 1.6;
 }
 
@@ -611,8 +640,8 @@
   font-size: 0.7rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--foreground);
-  background: var(--background);
+  color: var(--muted-foreground);
+  background: var(--muted);
   border-bottom-left-radius: var(--radius-md);
   font-family: var(--font-stashly);
 }
