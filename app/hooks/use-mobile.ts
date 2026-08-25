@@ -9,6 +9,20 @@ const DEFAULT_MOBILE_BREAKPOINT = 768
  *
  * @param breakpoint pixel width to consider "mobile" (default 768)
  * @param fallback value to return during SSR (default false)
+ *
+ * @example
+ * // Swap a sidebar for a bottom sheet on small screens
+ * const isMobile = useIsMobile()
+ * return isMobile ? <BottomSheet {...props} /> : <Sidebar {...props} />
+ *
+ * @example
+ * // Custom breakpoint — treat tablets as mobile too
+ * const isCompact = useIsMobile(1024)
+ * <DataTable density={isCompact ? 'compact' : 'comfortable'} />
+ *
+ * @example
+ * // Assume mobile during SSR so the first paint matches the common case
+ * const isMobile = useIsMobile(768, true)
  */
 export function useIsMobile(
   breakpoint: number = DEFAULT_MOBILE_BREAKPOINT,

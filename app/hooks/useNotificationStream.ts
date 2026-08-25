@@ -19,7 +19,22 @@ type Action =
   | { kind: 'reset'; items: Notification[] }
   | { kind: 'event'; event: StreamEvent }
 
-/** Replace in place if present (keeps order); prepend if new (newest first). */
+/**
+ * Replaces a notification in place if present (keeping its position), or
+ * prepends it when new so the list stays newest-first. Position matters: a
+ * mark-as-read update must not jump a week-old row back to the top.
+ *
+ * @param list - Current notification list.
+ * @param n - The created or updated notification from the stream.
+ *
+ * @example
+ * // A new notification lands at the top
+ * upsert([b, c], a) // → [a, b, c]
+ *
+ * @example
+ * // An update to an existing row keeps its slot
+ * upsert([a, b], { ...b, readAt: new Date() }) // → [a, b']
+ */
 function upsert(list: Notification[], n: Notification): Notification[] {
   const idx = list.findIndex((x) => x.id === n.id)
   if (idx === -1) return [n, ...list]
@@ -28,6 +43,22 @@ function upsert(list: Notification[], n: Notification): Notification[] {
   return next
 }
 
+/**
+ * Folds stream events into the notification list. A reducer rather than a
+ * `useState` setter because every SSE event must be applied — bursts (one
+ * UPDATE per row on mark-all-read) would otherwise collapse to the last one.
+ *
+ * @param state - Current notification list.
+ * @param action - Either a full `reset` from a reconcile, or a single stream `event`.
+ *
+ * @example
+ * // Apply one server-sent event
+ * dispatch({ kind: 'event', event: JSON.parse(e.data) })
+ *
+ * @example
+ * // Replace the whole list after a reconnect
+ * dispatch({ kind: 'reset', items: data.notifications })
+ */
 function reducer(state: Notification[], action: Action): Notification[] {
   if (action.kind === 'reset') return action.items
   const event = action.event
@@ -42,6 +73,26 @@ function reducer(state: Notification[], action: Action): Notification[] {
   }
 }
 
+/**
+ * Live notification list: seeded from the layout loader, then kept current by a
+ * single `EventSource` on `/api/notifications/stream`. Reconciles against the
+ * canonical list after a reconnect or when the tab becomes visible again, since
+ * events missed while disconnected are never replayed. Degrades to the seed list
+ * where `EventSource` doesn't exist (SSR).
+ *
+ * @param initial - The SSR/loader seed, used for the first paint.
+ *
+ * @example
+ * // Bell badge in the app layout
+ * const notifications = useNotificationStream(loaderData.notifications)
+ * const unread = notifications.filter((n) => !n.readAt).length
+ * <Bell badge={unread || undefined} />
+ *
+ * @example
+ * // The list re-renders per event, so render it directly
+ * const notifications = useNotificationStream(seed)
+ * {notifications.map((n) => <NotificationRow key={n.id} {...n} />)}
+ */
 export function useNotificationStream(initial: Notification[]): Notification[] {
   const [items, dispatch] = useReducer(reducer, initial)
   const connectedRef = useRef(false)

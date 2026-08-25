@@ -60,6 +60,19 @@ const attempted = new Set<string>()
 
 let failedCache: Set<string> | null = null
 
+/**
+ * The persisted skip list of items that can never produce a thumbnail, read
+ * once from `sessionStorage` and cached in memory afterwards. Corrupt or
+ * unavailable storage degrades to an empty set rather than throwing.
+ *
+ * @example
+ * // Skip anything already known to fail
+ * if (failedIds().has(item.id)) return
+ *
+ * @example
+ * // Cheap on repeat calls — the parse happens once per tab
+ * const skipped = failedIds().size
+ */
 function failedIds(): Set<string> {
   if (failedCache) return failedCache
   failedCache = new Set()
@@ -73,6 +86,24 @@ function failedIds(): Set<string> {
   return failedCache
 }
 
+/**
+ * Records a permanent failure so the item is never re-downloaded, trimming the
+ * list to {@link MAX_REMEMBERED_FAILURES} so `sessionStorage` can't grow
+ * unbounded. A quota or private-mode write failure still leaves the in-memory
+ * set correct for this tab.
+ *
+ * @param itemId - Item whose backfill attempt failed for good.
+ *
+ * @example
+ * // Called from the job body when a backfill yields nothing
+ * const result = await backfill(id)
+ * if (!result) rememberFailure(id)
+ *
+ * @example
+ * // Effect is visible immediately through the skip list
+ * rememberFailure('itm_123')
+ * failedIds().has('itm_123') // → true
+ */
 function rememberFailure(itemId: string) {
   const set = failedIds()
   set.add(itemId)
@@ -97,6 +128,22 @@ const queue: Job[] = []
 let active = 0
 let paused = false
 
+/**
+ * Runs `fn` on the next idle frame so a backfill never starts on a frame the
+ * user is scrolling or typing in. Falls back to a near-immediate `setTimeout`
+ * where `requestIdleCallback` is missing (Safari), and is bounded by
+ * {@link IDLE_TIMEOUT_MS} so a permanently busy tab still makes progress.
+ *
+ * @param fn - Work to schedule.
+ *
+ * @example
+ * // Start a queued job off the critical path
+ * whenIdle(() => job.run().finally(next))
+ *
+ * @example
+ * // Any deferrable side effect works
+ * whenIdle(() => console.debug('[thumb backfill] queue drained'))
+ */
 function whenIdle(fn: () => void) {
   if (typeof requestIdleCallback === 'function') {
     requestIdleCallback(() => fn(), { timeout: IDLE_TIMEOUT_MS })
@@ -105,6 +152,21 @@ function whenIdle(fn: () => void) {
   setTimeout(fn, 1)
 }
 
+/**
+ * Fills the free concurrency slots from the queue, newest request first (LIFO)
+ * so the cards the user actually stopped on win. Does nothing while paused, and
+ * re-enters itself as each job settles.
+ *
+ * @example
+ * // Kick the queue after enqueuing
+ * queue.push(job)
+ * drain()
+ *
+ * @example
+ * // Also how a resume restarts stalled work
+ * paused = false
+ * drain()
+ */
 function drain() {
   while (!paused && active < MAX_CONCURRENT && queue.length > 0) {
     // Pop, not shift: the most recently requested card is the one most likely
@@ -120,13 +182,43 @@ function drain() {
   }
 }
 
+/**
+ * Adds a job to the queue and immediately tries to start it. Enqueuing the same
+ * item twice is a no-op, so a card that re-enters the observer margin while its
+ * job is still waiting doesn't stack duplicates.
+ *
+ * @param job - The item id plus the async body to run for it.
+ *
+ * @example
+ * // Queue a card's backfill when it scrolls into range
+ * enqueue({ itemId: id, run: async () => { … } })
+ *
+ * @example
+ * // Second call for the same id is ignored
+ * enqueue({ itemId: id, run })
+ * enqueue({ itemId: id, run }) // no-op
+ */
 function enqueue(job: Job) {
   if (queue.some((q) => q.itemId === job.itemId)) return
   queue.push(job)
   drain()
 }
 
-/** Drops a not-yet-started job. In-flight jobs are left to finish and persist. */
+/**
+ * Drops a not-yet-started job. In-flight jobs are left to finish and persist —
+ * the download is already paid for, so throwing the result away would be worse
+ * than keeping it.
+ *
+ * @param itemId - Item whose queued job should be dropped.
+ *
+ * @example
+ * // Card scrolled back out of range before its slot opened
+ * if (!entry.isIntersecting) cancel(watch.itemId)
+ *
+ * @example
+ * // Also runs on unmount, from the callback ref's cleanup
+ * return () => { io.unobserve(node); cancel(id) }
+ */
 function cancel(itemId: string) {
   const i = queue.findIndex((q) => q.itemId === itemId)
   if (i !== -1) queue.splice(i, 1)
@@ -135,12 +227,34 @@ function cancel(itemId: string) {
 /**
  * Suspends backfill while higher-priority work runs. Uploads call this so a
  * batch of fresh files owns the compute worker and the network.
+ *
+ * @example
+ * // Yield the pipeline while an upload runs
+ * pauseBackfill()
+ * await uploadAll(files)
+ * resumeBackfill()
+ *
+ * @example
+ * // Safe to call when already paused — it just stays paused
+ * pauseBackfill()
+ * pauseBackfill()
  */
 export function pauseBackfill() {
   paused = true
 }
 
-/** Resumes backfill and immediately refills the concurrency slots. */
+/**
+ * Resumes backfill and immediately refills the concurrency slots. A no-op when
+ * nothing paused it, so uploads finishing out of order can't over-resume.
+ *
+ * @example
+ * // Hand the pipeline back once the upload queue drains
+ * upload.subscribe((s) => { if (s.context.queues.active.size === 0) resumeBackfill() })
+ *
+ * @example
+ * // Nothing happens if backfill was never paused
+ * resumeBackfill() // no-op
+ */
 export function resumeBackfill() {
   if (!paused) return
   paused = false
@@ -157,6 +271,20 @@ interface Watch {
 const watched = new WeakMap<Element, Watch>()
 let observer: IntersectionObserver | null = null
 
+/**
+ * The single shared `IntersectionObserver` every card registers with — one
+ * observer for a whole gallery instead of one per card. Created on first use and
+ * null during SSR, where the API doesn't exist.
+ *
+ * @example
+ * // Observe a card's thumbnail area
+ * const io = getObserver()
+ * if (io) io.observe(node)
+ *
+ * @example
+ * // Same instance on every call — safe to grab per card
+ * getObserver() === getObserver() // → true
+ */
 function getObserver(): IntersectionObserver | null {
   if (typeof IntersectionObserver === 'undefined') return null
   if (observer) return observer
@@ -192,9 +320,23 @@ interface Stage2Result {
 }
 
 /**
- * Downloads the original, renders a 512px thumbnail, and uploads it.
- * Returns the persisted stage-2 descriptor, an already-existing URL another
- * client produced, or null when this item can never be thumbnailed.
+ * Downloads the original, renders a 512px thumbnail, and uploads it — stage 2
+ * of the upload-time pipeline, run after the fact. Yields the persisted stage-2
+ * descriptor, an already-existing URL another client produced, or null when this
+ * item can never be thumbnailed. Stage 3 (the ViT saliency crop) is skipped: it
+ * costs the most and buys the least on a backfill.
+ *
+ * @param itemId - Item to generate a thumbnail for.
+ *
+ * @example
+ * // Job body — null means "never try this one again"
+ * const result = await backfill(id)
+ * if (!result) rememberFailure(id)
+ *
+ * @example
+ * // Another client may have won the race while this one was downloading
+ * const result = await backfill(id)
+ * if (result && 'existing' in result) publisher.publishLocal({ src: result.existing })
  */
 async function backfill(
   itemId: string
@@ -245,7 +387,23 @@ async function backfill(
   }
 }
 
-/** PATCH used when the card unmounted mid-job — persists without a fetcher. */
+/**
+ * PATCH used when the card unmounted mid-job — persists without a fetcher.
+ * A React Router fetcher belongs to a mounted component, so once the card is
+ * gone the only way to save the work already done is a plain `fetch`.
+ *
+ * @param itemId - Item the thumbnail belongs to.
+ * @param result - The stage-2 descriptor produced by {@link backfill}.
+ *
+ * @example
+ * // Persist from a job whose card scrolled away mid-flight
+ * if (mounted.current) publisher.publishPersisted(result)
+ * else await patchDetached(id, result)
+ *
+ * @example
+ * // Failures are logged, never thrown — a lost backfill must not break the page
+ * await patchDetached(id, result) // resolves even if the PATCH fails
+ */
 async function patchDetached(itemId: string, result: Stage2Result) {
   const fd = new FormData()
   fd.append('stage', String(result.stage))
@@ -259,7 +417,19 @@ async function patchDetached(itemId: string, result: Stage2Result) {
 
 // ── Hook ───────────────────────────────────────────────────────────────────
 
-/** SSR-safe read of the Network Information API. */
+/**
+ * SSR-safe read of the Network Information API — true on a metered or slow
+ * connection, where spending a full download on a nicer thumbnail isn't worth
+ * it. False on the server and in browsers without the API.
+ *
+ * @example
+ * // Part of the eligibility test for a card
+ * const eligible = canBackfillThumbnail(item) && !onSlowConnection()
+ *
+ * @example
+ * // Respects Data Saver, not just link speed
+ * onSlowConnection() // → true when navigator.connection.saveData is set
+ */
 function onSlowConnection(): boolean {
   if (typeof navigator === 'undefined') return false
   const nav = navigator as Navigator & {

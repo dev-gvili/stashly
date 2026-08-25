@@ -8,7 +8,6 @@ import type { ConfirmDialogProps } from '@/components/confirm-dialog'
  * per `open()` call.
  *
  * @param handlerOrOptions - Default confirm handler or partial `ConfirmDialogProps`.
- * @returns `{ open, openAsync }` — fire-and-forget or promise-based variants.
  *
  * @example
  * // Inline handler

@@ -7,6 +7,22 @@ import { useEffect, useState } from 'react'
  * embeds anything, which is exactly when the "not indexed" notice should stop
  * showing. Polling only while the notice is on screen keeps this to zero extra
  * requests in the normal case.
+ *
+ * @param enabled - Poll only while true; when false the loader snapshot is kept
+ *   as-is and no request is made.
+ * @param initial - The loader's snapshot, used until the first poll lands.
+ * @param revalidateKey - Bump to re-read immediately — pass the backfill runner's
+ *   `updatedAt` so every phase change forces a fresh read.
+ *
+ * @example
+ * // Poll only while the "not indexed" notice is visible
+ * const { phase, updatedAt } = useEmbeddingBackfillState()
+ * const stats = useIndexStats(showNotice, loaderStats, updatedAt)
+ * <p>{stats.pendingChunks} passages left to index</p>
+ *
+ * @example
+ * // Disabled: the hook just echoes the loader snapshot back
+ * const stats = useIndexStats(false, loaderStats)
  */
 export function useIndexStats(
   enabled: boolean,

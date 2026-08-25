@@ -37,9 +37,20 @@ const SOURCE_LOOKUP: Record<FilterSourceKey, typeof CATEGORIES> = {
  * Multi-select keys (`category`, `status`, `type`) are comma-separated single params.
  * Flag keys (`locked`, `favorited`) are presence-based (`?favorited=true`).
  *
+ * @param searchParams - The URL search params to read the filter state out of.
+ *
  * @example
  * readState(new URLSearchParams('category=image,pdf&favorited=true'))
  * // → { category: ['image', 'pdf'], status: [], type: [], flags: ['favorited'], query: '', searchMode: 'fuzzy' }
+ *
+ * @example
+ * // Anything unrecognised is ignored; missing keys come back empty
+ * readState(new URLSearchParams('cursor=abc'))
+ * // → { category: [], status: [], type: [], flags: [], query: '', searchMode: 'fuzzy' }
+ *
+ * @example
+ * // Read filters server-side in a loader, without the hook
+ * const state = readState(new URL(request.url).searchParams)
  */
 export function readState(searchParams: URLSearchParams): FilterState {
   const state: FilterState = {
@@ -67,8 +78,7 @@ export function readState(searchParams: URLSearchParams): FilterState {
  * URL-driven filter state hook for the stash item list.
  * All state lives in the URL — shareable and survives page refreshes.
  * Every mutation automatically drops the `cursor` param to reset pagination.
- *
- * @returns A `UseFilters` object with state + mutation helpers + derived `chips`.
+ * Exposes the parsed `state`, mutation helpers, and the derived `chips` list.
  *
  * @example
  * // Toggle a category filter on/off

@@ -13,10 +13,6 @@ type FavoriteResponse = { favorited?: boolean; error?: string }
  *
  * @param itemId - The ID of the item to favorite or unfavorite.
  * @param initiallyFavorited - Favorited state from the server at render time (default `false`).
- * @returns An object with:
- *   - `favorited` — current optimistic favorited state
- *   - `toggle` — fires the favorite/unfavorite mutation
- *   - `isPending` — `true` while the request is in-flight
  *
  * @example
  * // Basic toggle button inside an item card

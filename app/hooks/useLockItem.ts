@@ -13,11 +13,23 @@ type LockResponse = { locked?: boolean; error?: string }
  *
  * @param itemId - The ID of the item to lock or unlock.
  * @param initiallyLocked - Locked state from the server at render time (default `false`).
- * @returns An object with:
- *   - `locked` — current optimistic locked state
- *   - `toggle` — fires the lock/unlock mutation
- *   - `isPending` — `true` while the request is in-flight
- *   - `error` — error message from the server, if any
+ *
+ * @example
+ * // Lock toggle in an item's actions menu
+ * const { locked, toggle, isPending } = useLockItem(item.id, item.locked)
+ * <DropdownMenuItem onSelect={toggle} disabled={isPending}>
+ *   {locked ? 'Unlock' : 'Lock'}
+ * </DropdownMenuItem>
+ *
+ * @example
+ * // Gate destructive actions on the optimistic locked state
+ * const { locked } = useLockItem(item.id, item.locked)
+ * <Button variant="destructive" disabled={locked}>Delete</Button>
+ *
+ * @example
+ * // Surface a server-side rejection (e.g. missing permission)
+ * const { toggle, error } = useLockItem(item.id, item.locked)
+ * {error && <p className="text-destructive text-sm">{error}</p>}
  */
 export function useLockItem(itemId: string, initiallyLocked = false) {
   const fetcher = useFetcher<LockResponse>()

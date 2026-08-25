@@ -58,6 +58,18 @@ interface PendingChunk {
  * must not compete with interaction. It is wrong for "Run now": a button that
  * answers with "Queued — waiting for the browser to go idle" and then sits
  * there reads as broken, whatever it does five seconds later.
+ *
+ * @param fn - Work to schedule.
+ * @param immediate - Skip idle scheduling and run synchronously; pass true for
+ *   anything the user explicitly asked for.
+ *
+ * @example
+ * // Automatic pass — waits for an idle frame, cancellable
+ * const cancelIdle = whenIdle(() => drainBacklog(signal))
+ *
+ * @example
+ * // "Run now" button — runs on the spot, cancel is a no-op
+ * whenIdle(() => drainBacklog(signal), true)
  */
 function whenIdle(fn: () => void, immediate = false): () => void {
   if (immediate) {
@@ -72,7 +84,21 @@ function whenIdle(fn: () => void, immediate = false): () => void {
   return () => clearTimeout(handle)
 }
 
-/** SSR-safe read of the Network Information API. */
+/**
+ * SSR-safe read of the Network Information API — true on a metered or slow
+ * connection, where an unrequested backfill shouldn't spend the user's data.
+ * False on the server and in browsers without the API.
+ *
+ * @example
+ * // Decline the automatic run on a metered connection
+ * if (!force && onSlowConnection()) {
+ *   reportBackfill({ phase: 'skipped', reason: 'Connection is metered or too slow' })
+ * }
+ *
+ * @example
+ * // Respects Data Saver, not just link speed
+ * onSlowConnection() // → true when navigator.connection.saveData is set
+ */
 function onSlowConnection(): boolean {
   if (typeof navigator === 'undefined') return false
   const nav = navigator as Navigator & {
@@ -81,6 +107,24 @@ function onSlowConnection(): boolean {
   return isConnectionTooSlow(nav.connection)
 }
 
+/**
+ * Asks the server for one batch of the caller's own chunks that were saved
+ * without a vector, capped at {@link PENDING_EMBEDDING_BATCH}. A failed or
+ * non-OK response yields an empty batch, which ends the drain quietly.
+ *
+ * @param signal - Abort signal tying the request to the current run.
+ *
+ * @example
+ * // One batch per loop iteration; empty means the backlog is clear
+ * const chunks = await fetchPending(signal)
+ * if (chunks.length === 0) break
+ *
+ * @example
+ * // Aborting the controller cancels the in-flight request
+ * const controller = new AbortController()
+ * void fetchPending(controller.signal)
+ * controller.abort()
+ */
 async function fetchPending(signal: AbortSignal): Promise<PendingChunk[]> {
   const res = await fetch(
     `/api/items?intent=pending_search_embeddings&limit=${PENDING_EMBEDDING_BATCH}`,
@@ -93,6 +137,25 @@ async function fetchPending(signal: AbortSignal): Promise<PendingChunk[]> {
   return body?.chunks ?? []
 }
 
+/**
+ * Writes a batch of freshly computed vectors back to their chunks via the
+ * `save_search_chunk_embeddings` intent. Pairs by index, so `vectors[i]` must
+ * belong to `chunks[i]` — the caller checks the lengths match first.
+ *
+ * @param chunks - The chunks that were embedded, in the order they were sent.
+ * @param vectors - One vector per chunk, index-aligned with `chunks`.
+ * @param signal - Abort signal tying the request to the current run.
+ *
+ * @example
+ * // Stop the drain when the server rejects a batch
+ * if (!(await saveVectors(chunks, vectors, signal))) {
+ *   reportBackfill({ phase: 'failed', error: 'Server rejected the vectors' })
+ * }
+ *
+ * @example
+ * // Only call it once the counts line up
+ * if (vectors.length === chunks.length) await saveVectors(chunks, vectors, signal)
+ */
 async function saveVectors(
   chunks: PendingChunk[],
   vectors: number[][],
@@ -111,8 +174,22 @@ async function saveVectors(
 }
 
 /**
- * Runs batches until the backlog is empty, the cap is hit, or anything fails.
- * Returns the number of chunks embedded, for the caller's logs and tests.
+ * Runs batches until the backlog is empty, the cap is hit, or anything fails,
+ * reporting each phase so status UI can follow along. The count of chunks
+ * embedded comes back out for the caller's logs and tests.
+ *
+ * @param signal - Abort signal; checked between phases so a cancelled run stops
+ *   without writing a partial batch.
+ *
+ * @example
+ * // The automatic pass, with failures surfaced rather than swallowed
+ * drainBacklog(controller.signal).catch((e) => {
+ *   reportBackfill({ phase: 'failed', error: String(e) })
+ * })
+ *
+ * @example
+ * // In a test — assert how much a run actually healed
+ * const embedded = await drainBacklog(new AbortController().signal)
  */
 async function drainBacklog(signal: AbortSignal): Promise<number> {
   let embedded = 0
@@ -183,8 +260,21 @@ async function drainBacklog(signal: AbortSignal): Promise<number> {
  *
  * @param force Bypass the once-per-tab latch. The latch means a run that
  *   failed — no WebGPU, a flaky model download — never retries for the life of
- *   the tab, which is exactly when a user wants to retry.
- * @returns An abort function, or null when the run was declined.
+ *   the tab, which is exactly when a user wants to retry. Forcing also skips the
+ *   idle wait and the slow-connection check.
+ *
+ * @example
+ * // Automatic arming — declines on a repeat call within the same tab
+ * startEmbeddingBackfill()
+ *
+ * @example
+ * // "Run now" from a status panel, bypassing the latch
+ * startEmbeddingBackfill(true)
+ *
+ * @example
+ * // Abort a run that is still scheduled or draining
+ * const abort = startEmbeddingBackfill()
+ * abort?.()
  */
 export function startEmbeddingBackfill(force = false): (() => void) | null {
   if (typeof window === 'undefined') return null
@@ -235,10 +325,16 @@ export function startEmbeddingBackfill(force = false): (() => void) | null {
 }
 
 /**
- * Live view of the runner, for status UI.
+ * Live view of the runner, for status UI. Backed by `useSyncExternalStore`, so
+ * it is SSR-safe and every mounted panel sees the same phase.
  *
  * @example
  * const { phase, embedded, error } = useEmbeddingBackfillState()
+ *
+ * @example
+ * // Drive a status line from the phase
+ * const { phase, embedded } = useEmbeddingBackfillState()
+ * {phase === 'embedding' && <p>Indexing… {embedded} passages done</p>}
  */
 export function useEmbeddingBackfillState(): BackfillState {
   return useSyncExternalStore(
@@ -251,6 +347,17 @@ export function useEmbeddingBackfillState(): BackfillState {
 /**
  * Imperative retry for a status panel's "Run now" button. Always forces, since
  * a user clicking retry has already seen that the automatic run didn't work.
+ *
+ * @example
+ * // "Run now" button in the index-status panel
+ * const retry = useRetryEmbeddingBackfill()
+ * <Button onClick={retry}>Run now</Button>
+ *
+ * @example
+ * // Disable it only while a run is genuinely active
+ * const { phase } = useEmbeddingBackfillState()
+ * const retry = useRetryEmbeddingBackfill()
+ * <Button onClick={retry} disabled={phase === 'embedding' || phase === 'saving'}>Retry</Button>
  */
 export function useRetryEmbeddingBackfill(): () => void {
   return useCallback(() => {

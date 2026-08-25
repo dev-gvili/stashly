@@ -13,10 +13,50 @@ import { getQueryParamArray, hasQueryParamValue } from '@/utils/query-params'
 // that barrel is eagerly imported, which would start the actor during SSR.
 export const selectionActor = createActor(selectionMachine).start()
 
+/**
+ * Selector handed to `useSelector` — pulls the whole machine context out of a
+ * snapshot. Declared at module scope so its identity is stable across renders;
+ * an inline arrow would resubscribe every time.
+ *
+ * @param s - Snapshot of the module-scope selection actor.
+ *
+ * @example
+ * // Subscribe to the full selection context
+ * const context = useSelector(selectionActor, selectContext)
+ *
+ * @example
+ * // Also works against a one-off read
+ * selectContext(selectionActor.getSnapshot()).selectedIds
+ */
 const selectContext = (s: ReturnType<typeof selectionActor.getSnapshot>) =>
   s.context
 
-// Public hook — works from any component, no provider required.
+/**
+ * Multi-select state for item lists, backed by the module-scope selection actor.
+ * Works from any component — no provider required — and falls back to reading
+ * the `?selectedItems=` URL param for callers rendered outside a
+ * `<SelectionProvider>`, where URL sync isn't running. Tracks the shift key on
+ * mouse-down so the machine can extend a range from the last checked row.
+ *
+ * @example
+ * // Checkbox on an item card
+ * const { isChecked, onCheckedChange, onMouseDown } = useSelection()
+ * <Checkbox checked={isChecked(item.id)} onMouseDown={onMouseDown}
+ *           onCheckedChange={(c) => onCheckedChange(item.id, c)} />
+ *
+ * @example
+ * // Header "select all" tri-state checkbox
+ * const { allSelected, someSelected, toggleAll } = useSelection()
+ * <Checkbox checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+ *           onCheckedChange={() => toggleAll()} />
+ *
+ * @example
+ * // Bulk action toolbar driven by the current selection
+ * const { selectedIds, unselectAll } = useSelection()
+ * {selectedIds.length > 0 && (
+ *   <Toolbar count={selectedIds.length} onClear={() => unselectAll()} />
+ * )}
+ */
 export const useSelection = () => {
   const context = useSelector(selectionActor, selectContext)
   const [searchParams] = useSearchParams()
@@ -105,18 +145,52 @@ export const useSelection = () => {
   }
 }
 
-// Hook to register the current route's item IDs into the actor.
-// Call from any route that owns a list of items.
+/**
+ * Registers the current route's item IDs with the selection actor. Call it from
+ * any route that owns a list — without it the machine has no universe to select
+ * from, so `selectAll` and shift-range selection have nothing to work against.
+ *
+ * @param items - Item IDs in the order they're rendered; shift-range selection
+ *   uses this order.
+ *
+ * @example
+ * // In a folder route that renders a paginated list
+ * const { items } = usePagination<StashItem>()
+ * useRegisterSelectionItems(items.map((i) => i.id))
+ *
+ * @example
+ * // Memoize the array so the effect doesn't re-fire every render
+ * const ids = useMemo(() => items.map((i) => i.id), [items])
+ * useRegisterSelectionItems(ids)
+ */
 export const useRegisterSelectionItems = (items: string[]) => {
   useEffect(() => {
     selectionActor.send({ type: 'SET_ITEMS', items })
   }, [items])
 }
 
-// URL <-> actor sync. Internal: the only intended caller is
-// `<SelectionProvider>` in `@/components/stash/selection`, because each route
-// owns its own ?selectedItems= param and remounts on navigation. Exported only
-// so that component can reach it across the module boundary.
+/**
+ * Two-way sync between the `?selectedItems=` URL param and the selection actor:
+ * seeds the actor on mount, writes changes back to the URL, and clears the
+ * selection when the route changes.
+ *
+ * Internal — the only intended caller is `<SelectionProvider>` in
+ * `@/components/stash/selection`, because each route owns its own param and
+ * remounts on navigation. Exported only so that component can reach it across
+ * the module boundary. Never writes the URL mid-navigation, which would
+ * interrupt the pending transition and race `usePagination`'s submit.
+ *
+ * @example
+ * // The one intended call site
+ * export function SelectionProvider({ children }: PropsWithChildren) {
+ *   useSelectionURLSync()
+ *   return <>{children}</>
+ * }
+ *
+ * @example
+ * // Wrap a route's list so its selection survives a refresh and is shareable
+ * <SelectionProvider><FolderGrid items={items} /></SelectionProvider>
+ */
 export const useSelectionURLSync = () => {
   let navigation = useNavigation()
   const location = useLocation()

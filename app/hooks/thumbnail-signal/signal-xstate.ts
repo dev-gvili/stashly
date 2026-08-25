@@ -39,6 +39,22 @@ const thumbnailMachine = setup({
 const thumbnailActor = createActor(thumbnailMachine)
 thumbnailActor.start()
 
+/**
+ * Producer side of the XState signal — sends `set` events into the module-scope
+ * thumbnail actor. Kept separate from the upload machine on purpose, so progress
+ * survives the file being removed from the upload queue.
+ *
+ * @param itemId - Item whose thumbnail progress this publisher broadcasts.
+ *
+ * @example
+ * // Stage 1 — actor event only, no HTTP
+ * const publisher = useThumbnailPublisher(itemId)
+ * publisher.publishLocal({ src: objectUrl })
+ *
+ * @example
+ * // Stage 3 — the salient crop, PATCHed and broadcast together
+ * publisher.publishPersisted({ stage: 3, src: stage3Url, width: 512, height: 512 })
+ */
 export function useThumbnailPublisher(itemId: string): ThumbnailPublisher {
   const patchFetcher = useFetcher()
 
@@ -69,6 +85,23 @@ export function useThumbnailPublisher(itemId: string): ThumbnailPublisher {
   return { publishLocal, publishPersisted }
 }
 
+/**
+ * Consumer side of the XState signal — subscribes to one item's entry in the
+ * actor's map, comparing by reference so unrelated items advancing don't
+ * re-render this card.
+ *
+ * @param itemId - Item to watch.
+ *
+ * @example
+ * // Paint the freshest stage available
+ * const live = useLiveThumbnail(item.id)
+ * <img src={live?.src ?? fallbackUrl} />
+ *
+ * @example
+ * // Show a shimmer until the first stage arrives
+ * const live = useLiveThumbnail(item.id)
+ * {live === null ? <Skeleton /> : <img src={live.src} />}
+ */
 export function useLiveThumbnail(itemId: string): ThumbProgress | null {
   return useSelector(
     thumbnailActor,

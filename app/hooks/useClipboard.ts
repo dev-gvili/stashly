@@ -24,6 +24,27 @@ interface UseClipboardReturn {
  * `execCommand` path when the Clipboard API rejects due to a permissions issue.
  *
  * `copied` resets automatically after `resetDelay` ms (default 2000).
+ *
+ * @param options - Hook options.
+ * @param options.resetDelay - How long (ms) the `copied` flag stays true before
+ *   resetting (default `2000`).
+ *
+ * @example
+ * // "Copy link" button with transient confirmation
+ * const { copy, copied } = useClipboard()
+ * <Button onClick={() => copy(shareUrl)}>{copied ? 'Copied!' : 'Copy link'}</Button>
+ *
+ * @example
+ * // Keep the confirmation up longer
+ * const { copy, copied } = useClipboard({ resetDelay: 5000 })
+ *
+ * @example
+ * // Surface a failure (e.g. a non-HTTPS origin with no execCommand support)
+ * const { copy, error } = useClipboard()
+ * const onCopy = async () => {
+ *   const ok = await copy(text)
+ *   if (!ok) toast.error(error?.message ?? 'Copy failed')
+ * }
  */
 export function useClipboard({ resetDelay = 2000 }: UseClipboardOptions = {}): UseClipboardReturn {
   const [copied, setCopied] = React.useState(false)
@@ -89,6 +110,16 @@ export function useClipboard({ resetDelay = 2000 }: UseClipboardOptions = {}): U
  *  - `setSelectionRange(0, text.length)` is needed on iOS to actually select text
  *    before the copy command fires.
  *  - Position it off-screen (not `display:none` — that prevents selection on iOS).
+ *
+ * @param text - The string to place on the clipboard.
+ *
+ * @example
+ * // Fallback path when the async Clipboard API is unavailable or rejects
+ * if (!execCommandCopy(text)) throw new Error('execCommand copy returned false')
+ *
+ * @example
+ * // Works inside a synchronous click handler, which is what iOS requires
+ * button.addEventListener('click', () => execCommandCopy(shareUrl))
  */
 function execCommandCopy(text: string): boolean {
   const el = document.createElement('textarea')

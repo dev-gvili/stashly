@@ -17,7 +17,6 @@ type SlotElements<Type extends SlotConfig> = {
  *
  * @param children - The component's `children` prop.
  * @param config - Map of slot name → component type (e.g. `{ header: Header, footer: Footer }`).
- * @returns `[slots, rest]` — matched slot elements keyed by name, and unmatched children.
  *
  * @example
  * // Define slot components and extract them
@@ -85,7 +84,23 @@ export function useSlots<T extends SlotConfig>(
   return [slots, rest]
 }
 
-/** Map the values of an object */
+/**
+ * Maps every value of an object through `fn`, keeping the original keys.
+ * Used here to seed the slots object with `undefined` for each configured
+ * slot name, so callers can destructure a slot that was never provided.
+ *
+ * @param obj - Source object whose keys are preserved.
+ * @param fn - Called once per value; its result becomes the new value.
+ *
+ * @example
+ * // Seed a slot record with undefined placeholders
+ * mapValues({ header: Header, footer: Footer }, () => undefined)
+ * // → { header: undefined, footer: undefined }
+ *
+ * @example
+ * // Any value transform works — keys stay put
+ * mapValues({ a: 1, b: 2 }, (n) => (n as number) * 10) // → { a: 10, b: 20 }
+ */
 function mapValues<T extends Record<string, unknown>, V>(
   obj: T,
   fn: (value: T[keyof T]) => V

@@ -36,7 +36,8 @@ export interface LoaderData<T> {
  *
  * @param take - Items per page (default 100).
  * @param action - Loader URL to submit to (default: current route).
- * @returns `{ items, nextCursor, loadMore, isLoading, hasMore, error }`.
+ * @param initData - Optional seed list used instead of the loader's first page,
+ *   for callers that already hold the items (and for sharper type inference).
  *
  * @example
  * // Basic usage in a route component

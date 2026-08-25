@@ -11,6 +11,22 @@ upload.start()
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Drains a directory reader completely. `readEntries` returns at most ~100
+ * entries per call by design, so a single call silently truncates large
+ * folders — it must be looped until it yields an empty batch.
+ *
+ * @param reader - Reader created from a `FileSystemDirectoryEntry`.
+ *
+ * @example
+ * // Read every child of a dropped directory
+ * const reader = (entry as FileSystemDirectoryEntry).createReader()
+ * const children = await readAllEntries(reader)
+ *
+ * @example
+ * // An empty directory resolves to an empty array, never hangs
+ * await readAllEntries(emptyDirReader) // → []
+ */
 async function readAllEntries(
   reader: FileSystemDirectoryReader
 ): Promise<FileSystemEntry[]> {
@@ -25,6 +41,21 @@ async function readAllEntries(
   return entries
 }
 
+/**
+ * Flattens a dropped entry into a list of `File`s, recursing through
+ * directories. Folder structure is not preserved here — the upload machine
+ * derives `parentId` separately.
+ *
+ * @param entry - A `FileSystemEntry` from `DataTransferItem.webkitGetAsEntry()`.
+ *
+ * @example
+ * // Flatten everything the user dropped, files and folders alike
+ * const files = (await Promise.all(entries.map(collectFiles))).flat()
+ *
+ * @example
+ * // A single file entry resolves to a one-element array
+ * await collectFiles(fileEntry) // → [File]
+ */
 async function collectFiles(entry: FileSystemEntry): Promise<File[]> {
   if (entry.isFile) {
     return new Promise<File[]>((res, rej) =>
@@ -39,6 +70,22 @@ async function collectFiles(entry: FileSystemEntry): Promise<File[]> {
   return []
 }
 
+/**
+ * Asks the server once whether a whole batch fits in the user's free quota.
+ * Checking the batch up front avoids a per-file round trip for a folder drop,
+ * which is why `addBatch` then sends each file with `skipQuotaCheck: true`.
+ *
+ * @param totalSize - Combined byte size of every file in the batch.
+ *
+ * @example
+ * // Gate a folder drop on one quota call
+ * const totalSize = files.reduce((sum, f) => sum + f.size, 0)
+ * if (!(await verifyBatchQuota(totalSize))) return false
+ *
+ * @example
+ * // Check a single large file before queueing it
+ * await verifyBatchQuota(file.size)
+ */
 async function verifyBatchQuota(totalSize: number): Promise<boolean> {
   const res = await fetch('/api/quota', {
     method: 'POST',
@@ -51,6 +98,23 @@ async function verifyBatchQuota(totalSize: number): Promise<boolean> {
 // ── Per-file hooks ────────────────────────────────────────────────────────────
 // These are standalone hooks — call them in child components, not inside loops.
 
+/**
+ * The whole queued-file record for one upload, straight from the machine.
+ * Re-renders on every progress tick because the object gets a fresh identity
+ * each event — prefer `useUploadFileMeta` + `useUploadProgress` in list rows.
+ *
+ * @param mediaFileId - Id of the queued file (`MediaFile.id`).
+ *
+ * @example
+ * // Detail panel that genuinely needs every field
+ * const mediaFile = useUploadFile(id)
+ * if (!mediaFile) return null
+ * return <pre>{JSON.stringify(mediaFile, null, 2)}</pre>
+ *
+ * @example
+ * // Undefined once the file is dropped from the queue
+ * const mediaFile = useUploadFile(removedId) // → undefined
+ */
 export function useUploadFile(mediaFileId: string) {
   return useSelector(upload, (s) => s.context.mediaFiles.get(mediaFileId))
 }
@@ -60,6 +124,18 @@ export function useUploadFile(mediaFileId: string) {
  * bytes fly, plus `status`. Deliberately excludes `progress` so a component
  * rendering a row doesn't re-render on every progress tick; subscribe to
  * `useUploadProgress` from a leaf instead.
+ *
+ * @param mediaFileId - Id of the queued file (`MediaFile.id`).
+ *
+ * @example
+ * // Row header — name, thumbnail and status, no progress churn
+ * const { file, thumbnail, status } = useUploadFileMeta(id)
+ * <Row icon={thumbnail} title={file?.name} badge={status} />
+ *
+ * @example
+ * // Pair with the progress hook in a leaf so only the bar re-renders
+ * const { status } = useUploadFileMeta(id)
+ * {status === 'uploading' && <UploadProgressBar id={id} />}
  */
 export function useUploadFileMeta(mediaFileId: string) {
   return useSelector(
@@ -80,6 +156,16 @@ export function useUploadFileMeta(mediaFileId: string) {
  * Ids of the non-dismissed queue, newest first. Stable across progress ticks —
  * list containers should subscribe to this rather than to the file objects,
  * which get a fresh identity on every progress event.
+ *
+ * @example
+ * // Render the queue without re-rendering the list on every progress tick
+ * const ids = useUploadFileIds()
+ * return ids.map((id) => <UploadRow key={id} id={id} />)
+ *
+ * @example
+ * // Empty once everything has been dismissed — handy for hiding the panel
+ * const ids = useUploadFileIds()
+ * if (ids.length === 0) return null
  */
 export function useUploadFileIds() {
   return useSelector(
@@ -93,7 +179,20 @@ export function useUploadFileIds() {
   )
 }
 
-/** Per-status counts. Numbers only, so no churn between status transitions. */
+/**
+ * Per-status counts across the non-dismissed queue. Numbers only, so the
+ * subscriber re-renders on status transitions and nothing else.
+ *
+ * @example
+ * // Panel header summary
+ * const { total, done, uploading } = useUploadCounts()
+ * <h3>Uploading {done}/{total}{uploading > 0 && ` · ${uploading} in flight`}</h3>
+ *
+ * @example
+ * // Show a "all done" state without touching per-file data
+ * const { total, done } = useUploadCounts()
+ * {total > 0 && done === total && <CheckCircle2 />}
+ */
 export function useUploadCounts() {
   return useSelector(
     upload,
@@ -118,6 +217,23 @@ export function useUploadCounts() {
   )
 }
 
+/**
+ * Upload progress (0–100) for one queued file. This is the churny subscription
+ * — call it from the leaf that draws the bar, never from a list container.
+ *
+ * @param mediaFileId - Id of the queued file (`MediaFile.id`).
+ *
+ * @example
+ * // Leaf component: the only thing that re-renders per progress event
+ * function UploadProgressBar({ id }: { id: string }) {
+ *   const progress = useUploadProgress(id)
+ *   return <Progress value={progress ?? 0} />
+ * }
+ *
+ * @example
+ * // Undefined before the first byte moves — fall back to zero
+ * const progress = useUploadProgress(id) ?? 0
+ */
 export function useUploadProgress(mediaFileId: string) {
   return useSelector(
     upload,
@@ -125,6 +241,22 @@ export function useUploadProgress(mediaFileId: string) {
   )
 }
 
+/**
+ * Lifecycle status of one queued file (`pending` / `uploading` / `done` /
+ * `aborted`). Narrow on purpose, so a status change re-renders only the badge.
+ *
+ * @param mediaFileId - Id of the queued file (`MediaFile.id`).
+ *
+ * @example
+ * // Status badge for a queue row
+ * const status = useUploadStatus(id)
+ * <Badge variant={status === 'aborted' ? 'destructive' : 'secondary'}>{status}</Badge>
+ *
+ * @example
+ * // Only offer retry once the upload has actually failed
+ * const status = useUploadStatus(id)
+ * {status === 'aborted' && <Button onClick={() => resume(id)}>Retry</Button>}
+ */
 export function useUploadStatus(mediaFileId: string) {
   return useSelector(
     upload,
@@ -141,8 +273,7 @@ export function useUploadStatus(mediaFileId: string) {
  *
  * The `upload` actor is module-level and shared across all hook instances —
  * state is consistent regardless of which component calls this hook.
- *
- * @returns Upload state, action functions, and drag event handlers.
+ * Exposes upload state, action functions, and drag event handlers.
  *
  * @example
  * // Add a single file to the queue

@@ -47,7 +47,23 @@ const DEBOUNCE_MS = 250
  */
 const SEMANTIC_TIMEOUT_MS = 45_000
 
-/** Reject after `ms`, leaving the underlying promise to settle unobserved. */
+/**
+ * Rejects after `ms`, leaving the underlying promise to settle unobserved.
+ * There is no cancellation here on purpose: the embedding job it wraps runs on
+ * a shared queue and can't be pulled back, so the timeout only frees the *view*
+ * from waiting on it.
+ *
+ * @param promise - The work to bound.
+ * @param ms - How long to wait before rejecting.
+ *
+ * @example
+ * // Cap the semantic upgrade so the view never spins forever
+ * const semantic = await withTimeout(fetchSemantic(q, 0, signal), SEMANTIC_TIMEOUT_MS)
+ *
+ * @example
+ * // The rejection is distinguishable from a real failure
+ * catch (e) { if (e instanceof Error && /timed out/.test(e.message)) … }
+ */
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(
@@ -107,7 +123,24 @@ export interface UseItemSearch extends SearchResponse {
   expandedTerms: string[]
 }
 
-/** Serialize filters into the repeated-param form both handlers parse. */
+/**
+ * Serializes filters into the comma-joined form both search handlers parse,
+ * writing into either a `URLSearchParams` (the keyword GET) or a `FormData`
+ * (the semantic POST). Empty and missing groups are skipped entirely.
+ *
+ * @param target - The params or form data to append onto, mutated in place.
+ * @param filters - Structured filters; each present group becomes one param.
+ *
+ * @example
+ * // Keyword pass — goes on the query string
+ * const params = new URLSearchParams({ query: q })
+ * appendFilters(params, { category: ['image', 'pdf'] }) // → …&category=image,pdf
+ *
+ * @example
+ * // Semantic pass — same call, different container
+ * const fd = new FormData()
+ * appendFilters(fd, filters)
+ */
 function appendFilters(
   target: URLSearchParams | FormData,
   filters: UseItemSearchParams['filters'],
@@ -122,7 +155,19 @@ function appendFilters(
 }
 
 /**
- * Search the signed-in user's items.
+ * Search the signed-in user's items. Debounces the query, runs the keyword pass
+ * immediately, and upgrades to semantic ranking when the mode asks for it —
+ * falling back to keyword results with a `degradedReason` if the upgrade can't
+ * run.
+ *
+ * @param params - Search inputs.
+ * @param params.query - The raw query text; normalized and debounced internally.
+ * @param params.mode - `'fuzzy'` for keyword only, `'semantic'` to attempt the
+ *   embedding upgrade.
+ * @param params.filters - Structured filters forwarded to both passes.
+ * @param params.take - Page size (default `SEARCH_PAGE_SIZE`).
+ * @param params.initialData - Server-rendered first page, so a shared `?q=` URL
+ *   paints without a fetch.
  *
  * @example
  * const { state } = useFilters()
@@ -130,6 +175,17 @@ function appendFilters(
  *   query: state.query,
  *   mode: state.searchMode,
  * })
+ *
+ * @example
+ * // Filtered search seeded from the loader
+ * const { items, loadMore, hasMore, isLoadingMore } = useItemSearch({
+ *   query, mode: 'fuzzy', filters: { category: ['pdf'] }, initialData: loaderData.search,
+ * })
+ *
+ * @example
+ * // Explain a downgrade instead of silently ranking worse
+ * const { degradedReason } = useItemSearch({ query, mode: 'semantic' })
+ * {degradedReason === 'no_webgpu' && <Notice>Meaning-based ranking needs WebGPU.</Notice>}
  */
 export function useItemSearch({
   query,

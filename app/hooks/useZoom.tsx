@@ -36,14 +36,19 @@ import * as React from 'react';
  * }
  * ```
  *
- * @returns
- * - `scale` — current zoom level (1–5)
- * - `tx` / `ty` — current pan offset in pixels
- * - `reset()` — restores scale=1 and clears translation
- * - `zoomIn()` — increments scale by 0.5
- * - `zoomOut()` — decrements scale by 0.5
- * - `onWheel` — scroll-to-zoom handler (attach to the container)
- * - `onMouseDown` / `onMouseMove` / `onMouseUp` — drag-to-pan handlers (no-op at scale=1)
+ * @example
+ * // Zoom controls in a media toolbar — `zoomIn`/`zoomOut` step by 0.5
+ * const zoom = useZoom();
+ * <Toolbar>
+ *   <IconButton icon={ZoomOut} onClick={zoom.zoomOut} disabled={zoom.scale === 1} />
+ *   <span>{Math.round(zoom.scale * 100)}%</span>
+ *   <IconButton icon={ZoomIn} onClick={zoom.zoomIn} disabled={zoom.scale === 5} />
+ * </Toolbar>
+ *
+ * @example
+ * // Reset the view whenever the previewed file changes
+ * const zoom = useZoom();
+ * React.useEffect(() => zoom.reset(), [fileId]);
  */
 export function useZoom() {
   const [scale, setScale] = React.useState(1);

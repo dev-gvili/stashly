@@ -14,9 +14,8 @@ export const ItemCardContext = createContext<ItemCartContextProps | null>(null)
 /**
  * Reads the nearest `ItemCardContext` — must be called inside an `ItemCard` tree
  * or a component that manually provides `ItemCardContext.Provider`.
- * Throws if called outside a provider.
- *
- * @returns The full item context: all `StashItem` fields + `user`, `searchParams`, `setSearchParams`.
+ * Throws if called outside a provider. Exposes the full item context: all
+ * `StashItem` fields plus `user`, `searchParams`, and `setSearchParams`.
  *
  * @example
  * // Use inside an ItemCard compound component

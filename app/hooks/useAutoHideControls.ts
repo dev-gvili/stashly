@@ -8,7 +8,7 @@ import { useState, useRef, useCallback } from 'react'
  * state directly (e.g. pin controls open while a menu is open).
  *
  * @param delay - Idle time in ms before the controls hide after the last `ping()`
- *   (default `2200`).
+ *   (default `0`, i.e. hide on the next tick unless a caller passes a real delay).
  *
  * @example
  * // Reveal controls on mouse move, hide after the idle delay

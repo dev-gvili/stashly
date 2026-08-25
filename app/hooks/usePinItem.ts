@@ -13,10 +13,6 @@ type PinResponse = { pinned?: boolean; error?: string }
  *
  * @param itemId - The ID of the item to pin or unpin.
  * @param initiallyPinned - Pinned state from the server at render time (default `false`).
- * @returns An object with:
- *   - `pinned` — current optimistic pinned state
- *   - `toggle` — fires the pin/unpin mutation
- *   - `isPending` — `true` while the request is in-flight
  *
  * @example
  * // Basic toggle button inside an item card

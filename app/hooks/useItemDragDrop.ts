@@ -16,7 +16,6 @@ export const DRAG_ITEM_KEY = 'application/stashly-item-id'
  *
  * @param params.id - The item's ID.
  * @param params.type - Item type — only `'folder'` accepts drops.
- * @returns Drag state + event handlers to spread onto the item element.
  *
  * @example
  * // Spread onto an ItemCard to make it draggable + a folder drop target
