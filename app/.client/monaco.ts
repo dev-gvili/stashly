@@ -1181,6 +1181,63 @@ function applyInkTheme() {
   monaco.editor.setTheme('stashly-ink')
 }
 
+/**
+ * Tokenize a standalone snippet with the *editor's* tokenizer and theme, and
+ * hand back HTML (`<span class="mtkN">`). Monaco publishes the token colours as
+ * global `.mtkN` rules when a theme is set, so the returned markup lands in the
+ * Ink palette wherever it is inserted — no second theme to keep in sync.
+ *
+ * Used by the Markdown reader's fenced blocks: applying the theme here means a
+ * page with no editor on it still gets the rules injected, and re-colorizing
+ * after a theme flip re-resolves both the palette and the colour-map indices.
+ *
+ * `lang` is a fence info-string (`ts`, `bash`); it becomes a Monaco language id
+ * through the same extension registry the viewer uses, so aliases resolve for
+ * free and anything unknown falls back to `plaintext` (escaped, uncoloured).
+ */
+export async function colorizeCode(
+  code: string,
+  lang: string
+): Promise<string> {
+  applyInkTheme()
+  ensureTokenStyles()
+  const language = languageForFile(`snippet.${lang}`)
+  return monaco.editor.colorize(code, language, { tabSize: 2 })
+}
+
+let tokenStylesEnsured = false
+
+/**
+ * Force Monaco to publish its `.mtkN` colour rules into the document.
+ *
+ * `colorize` returns spans classed `mtk1…mtkN`, but the stylesheet that gives
+ * those classes their colours is written by the standalone theme service only
+ * for *registered editor containers* — `setTheme` alone updates the CSS it has
+ * already emitted and emits none if no editor was ever created. On a page with
+ * an editor that's invisible; on the Markdown reader it means every token comes
+ * out unstyled, which reads as a flat, uncoloured block.
+ *
+ * So mount one throwaway editor to trigger the registration. The global style
+ * element it creates is deliberately never disposed by Monaco (its registration
+ * returns `Disposable.None`), so it outlives the editor and keeps tracking
+ * later theme flips — one editor, once per page, then torn down.
+ */
+function ensureTokenStyles() {
+  if (tokenStylesEnsured) return
+  tokenStylesEnsured = true
+  const host = document.createElement('div')
+  host.style.cssText =
+    'position:fixed;top:0;left:0;width:0;height:0;overflow:hidden;visibility:hidden'
+  document.body.appendChild(host)
+  try {
+    monaco.editor.create(host, { value: '', automaticLayout: false }).dispose()
+  } catch {
+    tokenStylesEnsured = false // let a later block try again
+  } finally {
+    host.remove()
+  }
+}
+
 const EDITOR_FONT = "'JetBrains Mono Variable'"
 const EDITOR_FONT_SIZE = 13
 

@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type ComponentProps,
+  type ReactNode,
   type RefObject,
 } from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -103,6 +104,79 @@ function MarkdownLink({
     <Link to={to} {...props}>
       {children}
     </Link>
+  )
+}
+
+/** Fence text arrives as a single text node, but join defensively. */
+function fenceText(children: ReactNode): string {
+  if (typeof children === 'string') return children
+  if (Array.isArray(children)) return children.map(fenceText).join('')
+  return children == null || children === false ? '' : String(children)
+}
+
+/**
+ * Fenced code blocks, tokenized by Monaco itself.
+ *
+ * Inline code keeps the CSS treatment in globals.css — a backticked span is an
+ * identifier, and identifiers carry the one Ink hue. A *block* is a program, so
+ * it goes through `colorizeCode`, which runs the editor's own tokenizer and
+ * returns markup coloured by the same global `.mtkN` rules the code stage uses.
+ * That's what makes the block match the editor rather than merely quote its
+ * background: same tokenizer, same theme object, one source of truth.
+ *
+ * Progressive: the raw text renders immediately in `--foreground` (SSR, and
+ * before the dynamic import lands), then swaps to the coloured markup. Monaco
+ * escapes its own output, so the `dangerouslySetInnerHTML` carries no user HTML.
+ */
+function MarkdownCode({
+  className,
+  children,
+  node: _node,
+  ...props
+}: ComponentProps<'code'> & { node?: unknown }) {
+  const lang = /language-([\w-]+)/.exec(className ?? '')?.[1]
+  const code = fenceText(children)
+  const [html, setHtml] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!lang) return
+    let live = true
+    const colorize = () => {
+      void import('@/.client/monaco')
+        .then((m) => m.colorizeCode(code, lang))
+        .then((out) => live && setHtml(out))
+        .catch(() => {}) // stays plain text; never break the reader over colour
+    }
+    colorize()
+    // A theme flip rebuilds Monaco's colour map, so the `mtkN` indices already
+    // in the DOM point at the wrong colours — re-tokenize instead of restyling.
+    const observer = new MutationObserver(colorize)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    })
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    media.addEventListener('change', colorize)
+    return () => {
+      live = false
+      observer.disconnect()
+      media.removeEventListener('change', colorize)
+    }
+  }, [code, lang])
+
+  if (lang && html !== null) {
+    return (
+      <code
+        className={className}
+        {...props}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    )
+  }
+  return (
+    <code className={className} {...props}>
+      {children}
+    </code>
   )
 }
 
@@ -215,10 +289,12 @@ function MarkdownReader({ text, headings }: MarkdownDoc) {
               components={{
                 a: MarkdownLink,
                 img: (props) => <img {...props} loading="lazy" />,
-                // `code` / `pre` are deliberately not overridden: their colours
-                // come from `.markdown-stage` in globals.css, which mirrors the
-                // Monaco Ink theme. Utility overrides here would win over that
-                // and pull the blocks back out of the editor palette.
+                // `code` is overridden only to *tokenize* fenced blocks with
+                // Monaco; every colour still comes from the Ink theme (globals
+                // .css for inline code, Monaco's own `.mtkN` rules for blocks).
+                // `pre` stays untouched — utility overrides there would win
+                // over the stylesheet and pull the block out of the palette.
+                code: MarkdownCode,
               }}
             >
               {text}
