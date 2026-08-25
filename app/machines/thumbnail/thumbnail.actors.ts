@@ -1,0 +1,292 @@
+/**
+ * Actors for the thumbnail item machine.
+ *
+ * Every one of these is a thin wrapper around a helper that already exists in
+ * `@/utils/thumbnail-pipeline` or `@/utils/thumbnail-backfill`. No compute
+ * logic lives here — this file is the seam between "what the pipeline does"
+ * (unchanged, pure, unit-tested) and "when it does it" (the machine).
+ *
+ * **Plain `fetch`, not `useFetcher`.** A module-scope actor has no component to
+ * own a React Router fetcher, so every HTTP call here is a raw `fetch`. That is
+ * what deletes the 16 ms `waitForIdle` poll the hook needed to await a fetcher.
+ * It also means these calls no longer trigger route revalidation: desirable for
+ * the search-index writes (`save_ocr_page`, `save_search_chunk_embeddings` are
+ * exactly what `SEARCH_INDEX_INTENTS` exists to suppress), but something the
+ * metadata POST has to make up for — hence the `metadataSaved` emission.
+ *
+ * **Failure convention.** An actor *throws* when the step could plausibly
+ * succeed on a retry (network blip, S3 5xx) and *resolves with null* when the
+ * answer is a legitimate "there is nothing here" (a zip file has no thumbnail).
+ * The machine's guards read that difference: throw → retry budget, null → done.
+ */
+import { fromPromise } from 'xstate'
+import {
+  generateStage1Preview,
+  generateStage2Resize,
+  generateStage3Salient,
+  putThumbnailToS3,
+  extractMediaMetadata,
+  buildMediaMetadataFormData,
+  type ResizedThumbnail,
+} from '@/utils/thumbnail-pipeline'
+
+// ── Source acquisition (backfill only) ─────────────────────────────────────
+
+interface SourceResponse {
+  status: 'ready' | 'exists' | 'unsupported'
+  downloadUrl?: string
+  mimeType?: string | null
+  name?: string
+  url?: string
+}
+
+export type AcquireResult =
+  /** Downloaded and ready to run the stages over. */
+  | { kind: 'file'; file: File }
+  /** Another client already backfilled this item — paint theirs, do no work. */
+  | { kind: 'existing'; url: string }
+  /** Server declined (permission, size cap, unsupported type). Never retry. */
+  | { kind: 'unavailable' }
+
+/**
+ * Re-downloads an item's original so a backfill has something to render.
+ *
+ * The server re-checks read permission and the 16 MB cap, and answers
+ * `exists` when someone else won the race — which is why this returns a
+ * three-way result rather than a `File | null`.
+ */
+export const acquireSourceActor = fromPromise<
+  AcquireResult,
+  { itemId: string }
+>(async ({ input, signal }) => {
+  const sourceRes = await fetch(`/api/thumbnails/${input.itemId}/source`, {
+    signal,
+  })
+  if (!sourceRes.ok) return { kind: 'unavailable' }
+
+  const source = (await sourceRes
+    .json()
+    .catch(() => null)) as SourceResponse | null
+  if (!source) return { kind: 'unavailable' }
+  if (source.status === 'exists' && source.url) {
+    return { kind: 'existing', url: source.url }
+  }
+  if (source.status !== 'ready' || !source.downloadUrl) {
+    return { kind: 'unavailable' }
+  }
+
+  const blobRes = await fetch(source.downloadUrl, { signal })
+  if (!blobRes.ok) return { kind: 'unavailable' }
+  const blob = await blobRes.blob()
+
+  return {
+    kind: 'file',
+    file: new File([blob], source.name ?? input.itemId, {
+      // The stored mime is authoritative; S3 often serves octet-stream for code.
+      type: source.mimeType || blob.type,
+    }),
+  }
+})
+
+// ── Compute stages ─────────────────────────────────────────────────────────
+
+/**
+ * Stage 1 — the 8×8 blur preview, local only. Resolves null for types with no
+ * tiny producer; a *throw* here is non-fatal and the machine walks on to stage 2,
+ * because a missing blur costs the user nothing but a slightly later first paint.
+ */
+export const stage1Actor = fromPromise<Blob | null, { file: File }>(
+  ({ input }) => generateStage1Preview(input.file)
+)
+
+/**
+ * Stage 2 — the 512 px resize that becomes the real thumbnail.
+ *
+ * `videoFrame` is stage 1's output: video is the one type whose stage 2 needs a
+ * decoded frame rather than the original bytes.
+ */
+export const stage2Actor = fromPromise<
+  ResizedThumbnail | null,
+  { file: File; videoFrame: Blob | null }
+>(({ input }) => generateStage2Resize(input.file, input.videoFrame))
+
+/**
+ * Stage 3 — the saliency crop. Images only; already serialized behind the
+ * shared WebGPU queue in `ai-queue.ts`, and already reports its own degradation.
+ */
+export const stage3Actor = fromPromise<Blob | null, { file: File }>(
+  ({ input }) => generateStage3Salient(input.file)
+)
+
+// ── Persistence ────────────────────────────────────────────────────────────
+
+export interface Presign {
+  uploadUrl: string
+  publicUrl: string
+}
+
+/** Five-minute presigned PUT plus the public URL the DB will point at. */
+export const presignActor = fromPromise<Presign, { itemId: string }>(
+  async ({ input, signal }) => {
+    const res = await fetch(`/api/thumbnails/${input.itemId}/presign`, {
+      signal,
+    })
+    if (!res.ok) throw new Error(`presign failed: ${res.status}`)
+    const data = (await res.json()) as Partial<Presign>
+    if (!data.uploadUrl || !data.publicUrl) {
+      throw new Error('presign missing uploadUrl/publicUrl')
+    }
+    return { uploadUrl: data.uploadUrl, publicUrl: data.publicUrl }
+  }
+)
+
+/**
+ * Uploads one stage's bytes to S3. Throws on failure so the machine's retry
+ * budget applies — `putThumbnailToS3` itself only ever returns a boolean.
+ */
+export const putStageActor = fromPromise<
+  void,
+  { uploadUrl: string; blob: Blob; itemId: string; stage: 2 | 3 }
+>(async ({ input }) => {
+  const ok = await putThumbnailToS3(
+    input.uploadUrl,
+    input.blob,
+    input.itemId,
+    input.stage
+  )
+  if (!ok) throw new Error(`stage ${input.stage} PUT failed`)
+})
+
+/**
+ * Points the item's `Thumbnail` row at the freshly uploaded object.
+ *
+ * Stages 2 and 3 share one S3 key, so the persisted URL carries a `?v={stage}`
+ * cache-buster — without it the browser keeps showing the previous stage from
+ * cache even though the object was overwritten.
+ */
+export const patchThumbnailActor = fromPromise<
+  void,
+  { itemId: string; stage: 2 | 3; url: string; width: number; height: number }
+>(async ({ input, signal }) => {
+  const fd = new FormData()
+  fd.append('stage', String(input.stage))
+  fd.append('url', input.url)
+  fd.append('width', String(input.width))
+  fd.append('height', String(input.height))
+  const res = await fetch(`/api/thumbnails/${input.itemId}`, {
+    method: 'PATCH',
+    body: fd,
+    signal,
+  })
+  if (!res.ok) throw new Error(`thumbnail PATCH failed: ${res.status}`)
+})
+
+// ── Indexing leg ───────────────────────────────────────────────────────────
+
+export interface MetadataResult {
+  chunks: { id: string; content: string }[]
+  /** A PDF with no text layer — worth an OCR pass once this has landed. */
+  needsOcr: boolean
+}
+
+/**
+ * Extracts media metadata and persists it, returning the search chunks the
+ * server created so the next state can embed them.
+ *
+ * Runs for *every* file type, thumbnail or not: a `.zip` has no preview but a
+ * `.pdf` with no preview still has a page count and searchable text.
+ *
+ * `needsOcr` never reaches the server — `buildMediaMetadataFormData` strips it
+ * as a client-only signal. It is read here to decide whether an OCR pass
+ * follows.
+ */
+export const saveMetadataActor = fromPromise<
+  MetadataResult,
+  { itemId: string; file: File }
+>(async ({ input, signal }) => {
+  const meta = await extractMediaMetadata(input.file)
+  const fd = buildMediaMetadataFormData(input.itemId, meta)
+  const res = await fetch('/api/items', { method: 'POST', body: fd, signal })
+  if (!res.ok) throw new Error(`save_media_metadata failed: ${res.status}`)
+  const data = (await res.json().catch(() => null)) as {
+    chunks?: { id: string; content: string }[]
+  } | null
+  return { chunks: data?.chunks ?? [], needsOcr: meta.needsOcr === true }
+})
+
+/**
+ * Embeds chunks and writes the vectors back. Shared by the metadata pass and
+ * every OCR page, because both produce the same `{ id, content }[]` and letting
+ * the two paths diverge is how one of them silently stops vectorizing.
+ *
+ * Vectors are matched to chunks by index, so a count mismatch aborts the write
+ * rather than saving misaligned vectors.
+ */
+async function embedAndSave(
+  chunks: { id: string; content: string }[],
+  signal?: AbortSignal
+): Promise<void> {
+  if (chunks.length === 0) return
+
+  const { embedTexts } = await import('@/workers/embedding.ai')
+  const vectors = await embedTexts(chunks.map((c) => c.content))
+  if (vectors.length !== chunks.length) {
+    console.error(
+      '[embed chunks] vector count mismatch',
+      vectors.length,
+      chunks.length
+    )
+    return
+  }
+  const payload = chunks.map((c, i) => ({ chunkId: c.id, vector: vectors[i] }))
+  const fd = new FormData()
+  fd.append('intent', 'save_search_chunk_embeddings')
+  fd.append('embeddings', JSON.stringify(payload))
+  const res = await fetch('/api/items', { method: 'POST', body: fd, signal })
+  if (!res.ok) throw new Error(`save embeddings failed: ${res.status}`)
+}
+
+export const embedChunksActor = fromPromise<
+  void,
+  { chunks: { id: string; content: string }[] }
+>(({ input, signal }) => embedAndSave(input.chunks, signal))
+
+/**
+ * OCRs a scanned PDF page by page, persisting and embedding each page the
+ * moment it is transcribed.
+ *
+ * **Why this stays one actor rather than a state per page.** `streamOcrPdf`
+ * awaits `onPage`, so persistence back-pressures rendering — exactly one page
+ * is alive at a time instead of N decoded bitmaps queued behind a slow save.
+ * Routing each page through a machine transition would mean re-creating that
+ * back-pressure by hand to get a property `await` already gives. What the
+ * machine contributes is the part that was missing: this whole minutes-long
+ * run is now a cancellable state instead of a `void` promise nobody holds.
+ */
+export const ocrStreamActor = fromPromise<
+  number,
+  { itemId: string; file: File }
+>(async ({ input, signal }) => {
+  const { streamOcrPdf } = await import('@/utils/thumbnail-pipeline')
+
+  return streamOcrPdf(input.file, async (page) => {
+    if (signal.aborted) return
+
+    const fd = new FormData()
+    fd.append('intent', 'save_ocr_page')
+    fd.append('itemId', input.itemId)
+    fd.append('pageNum', String(page.pageNum))
+    fd.append('text', page.text)
+    const res = await fetch('/api/items', { method: 'POST', body: fd, signal })
+    if (!res.ok) return
+
+    const data = (await res.json().catch(() => null)) as {
+      chunks?: { id: string; content: string }[]
+    } | null
+    // One unreadable page must not discard the pages already saved — which,
+    // unlike a batch run, are already durable on the server.
+    await embedAndSave(data?.chunks ?? [], signal).catch((e) =>
+      console.error('[ocr page embed]', input.itemId, page.pageNum, e)
+    )
+  })
+})

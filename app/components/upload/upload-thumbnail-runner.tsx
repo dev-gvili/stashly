@@ -12,8 +12,14 @@ import { memo, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { shallowEqual, useSelector } from '@xstate/react'
 import { upload, useUploadFile } from '@/hooks/useUpload'
-import { useThumbnailV2 } from '@/hooks/useThumbnailV2'
-import { pauseBackfill, resumeBackfill } from '@/hooks/useThumbnailBackfill'
+// Implementation switch — see `app/machines/thumbnail/index.ts`. Points at
+// either the original hooks or the XState scheduler without changing shape.
+import {
+  useThumbnail,
+  useThumbnailRevalidation,
+  pauseBackfill,
+  resumeBackfill,
+} from '@/machines/thumbnail'
 
 const thumbnailedIds = new Set<string>()
 
@@ -44,7 +50,7 @@ function acquireThumbnailSlot(): Promise<() => void> {
 
 function FileThumbnailWatcher({ mediaFileId }: { mediaFileId: string }) {
   const mediaFile = useUploadFile(mediaFileId)
-  const { run: runThumbnail } = useThumbnailV2(mediaFileId)
+  const { run: runThumbnail } = useThumbnail(mediaFileId)
 
   useEffect(() => {
     if (!mediaFile) return
@@ -93,6 +99,12 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
   const navigate = useNavigate()
   const location = useLocation()
   const lastRevalidated = useRef(0)
+
+  // Facets written by `save_media_metadata` (page count, dimensions, EXIF) need
+  // their own debounced revalidation on the machine path, where persistence is a
+  // plain `fetch` and no longer revalidates the route for free. A no-op on the
+  // legacy path, whose fetchers still do.
+  useThumbnailRevalidation()
 
   // Fresh uploads own the compute worker and the bandwidth. On-demand backfill
   // of older items is strictly background work, so it stands down until the

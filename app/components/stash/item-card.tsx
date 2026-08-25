@@ -32,8 +32,9 @@ import { ItemCardContext, useItemCard } from '@/hooks/useItemCard'
 import { useItemDragDrop, DRAG_ITEM_KEY } from '@/hooks/useItemDragDrop'
 import { FolderIcon } from '@/components/icons'
 import { Actions as ItemCardActions } from './item-card-actions'
-import { useLiveThumbnail } from '@/hooks/thumbnail-signal'
-import { useThumbnailBackfill } from '@/hooks/useThumbnailBackfill'
+// Implementation switch — see `app/machines/thumbnail/index.ts`. Points at
+// either the original hooks or the XState scheduler without changing shape.
+import { useLiveThumbnail, useThumbnailBackfill } from '@/machines/thumbnail'
 
 /**
  * Merges a forwarded ref with a hook-owned callback ref (React 19 cleanup
