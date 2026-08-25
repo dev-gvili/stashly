@@ -4,13 +4,14 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentProps,
   type RefObject,
 } from 'react'
 import ReactMarkdown from 'react-markdown'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import rehypeSlug from 'rehype-slug'
 import remarkGfm from 'remark-gfm'
-import { Await } from 'react-router'
+import { Await, Link, useLocation } from 'react-router'
 import {
   DocumentFillIcon,
   ItemPanelFillIcon,
@@ -40,6 +41,69 @@ const sanitizeSchema = {
     td: [...(defaultSchema.attributes?.td ?? []), 'style'],
     th: [...(defaultSchema.attributes?.th ?? []), 'style'],
   },
+}
+
+/**
+ * Renders one Markdown link.
+ *
+ * Three cases, because a Markdown doc mixes them freely:
+ * - `#heading` — in-document anchor. Plain `<a>`; rehype-slug already put the
+ *   matching id on the heading, and a router navigation would lose the scroll.
+ * - `https://…`, `mailto:…`, `//host` — leaves the app. Plain `<a>` in a new
+ *   tab, as before.
+ * - anything relative (`upload-multipart.md`, `../notes/spec.md`) — points at
+ *   another *uploaded* file, so it becomes a router `<Link>`: the file route
+ *   re-renders in place instead of hard-loading a new tab.
+ *
+ * Relative hrefs are resolved through `new URL(href, base)` rather than handed
+ * to `<Link relative="path">`: React Router treats the current pathname as a
+ * directory, so `other.md` would land on `/…/files/current/other.md`, while a
+ * browser treats the last segment as a file and yields `/…/files/other.md` —
+ * which is what a doc author writing `[x](other.md)` means. The dummy origin
+ * keeps this working during SSR, where there's no `window.location`.
+ *
+ * The resulting `:fileId` is a *file name*, not an item id — the file loader
+ * resolves it against the folder before anything else runs.
+ */
+function MarkdownLink({
+  href,
+  children,
+  node: _node,
+  ...props
+}: ComponentProps<'a'> & { node?: unknown }) {
+  const { pathname } = useLocation()
+
+  const to = useMemo(() => {
+    if (href == null) return null
+    // In-document anchor, or anything with a scheme / protocol-relative host.
+    if (href.startsWith('#') || /^([a-z][a-z\d+.-]*:|\/\/)/i.test(href))
+      return null
+    try {
+      const url = new URL(href, `http://stash${pathname}`)
+      return `${url.pathname}${url.search}${url.hash}`
+    } catch {
+      return null
+    }
+  }, [href, pathname])
+
+  if (to == null) {
+    const isExternal = href != null && !href.startsWith('#')
+    return (
+      <a
+        href={href}
+        {...(isExternal && { target: '_blank', rel: 'noopener noreferrer' })}
+        {...props}
+      >
+        {children}
+      </a>
+    )
+  }
+
+  return (
+    <Link to={to} {...props}>
+      {children}
+    </Link>
+  )
 }
 
 const REMARK_PLUGINS = [remarkGfm]
@@ -149,28 +213,12 @@ function MarkdownReader({ text, headings }: MarkdownDoc) {
               remarkPlugins={REMARK_PLUGINS}
               rehypePlugins={REHYPE_PLUGINS}
               components={{
-                a: (props) => (
-                  <a {...props} target="_blank" rel="noopener noreferrer" />
-                ),
+                a: MarkdownLink,
                 img: (props) => <img {...props} loading="lazy" />,
-                code: (props) => (
-                  <code
-                    {...props}
-                    className={cn(
-                      'bg-foreground! text-background! rounded! font-semibold! text-xs!',
-                      props.className
-                    )}
-                  />
-                ),
-                pre: (props) => (
-                  <pre
-                    {...props}
-                    className={cn(
-                      'bg-accent! [&_code]:font-mono! [&_code]:bg-accent! [&_code]:text-accent-foreground!',
-                      props.className
-                    )}
-                  />
-                ),
+                // `code` / `pre` are deliberately not overridden: their colours
+                // come from `.markdown-stage` in globals.css, which mirrors the
+                // Monaco Ink theme. Utility overrides here would win over that
+                // and pull the blocks back out of the editor palette.
               }}
             >
               {text}

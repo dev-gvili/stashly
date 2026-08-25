@@ -6,7 +6,7 @@ import type { ShouldRevalidateFunction } from 'react-router'
 import { getQueryParamArray } from '@/utils/query-params'
 import { OverviewView } from '@/components/views/overview-components'
 import type { StashItem } from '@/types/stash.types'
-import { getSuggestedItems, getLibraryStats } from '@/services/item-actions'
+import { getSuggestedItems, retrieveUserUsageMetrics } from '@/services/item-actions'
 import { getPinnedItems } from '@/services/pin-actions'
 import { getFavoritedItems } from '@/services/item-actions'
 import { getRecentActivityForUser } from '@/services/activity-actions'
@@ -100,7 +100,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       getPinnedItems({ userId: session.user.id, limit: 4 }),
       getFavoritedItems({ userId: session.user.id, limit: 8 }),
       getRecentActivityForUser({ userId: session.user.id, limit: 12 }),
-      getLibraryStats(session.user.id),
+      retrieveUserUsageMetrics(session.user.id),
       getStorageSummary(session.user.id),
     ])
 

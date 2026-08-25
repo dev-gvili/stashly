@@ -3193,7 +3193,7 @@ export async function countItems(args: Prisma.ItemCountArgs): Promise<number> {
  * // { folders: 34, files: 1286, favorites: 52, trashed: 19,
  * //   usedBytes: 19783246929n, quotaBytes: 42949672960n }
  */
-export async function getLibraryStats(userId: string) {
+export async function retrieveUserUsageMetrics(userId: string) {
   const active = { ownerId: userId, status: { not: 'trashed' as const } }
 
   const [folders, files, favorites, trashed, quota] = await Promise.all([
@@ -3229,7 +3229,7 @@ export async function getLibraryStats(userId: string) {
  * const scope = await getFolderScopeStats(params.folderId)
  * // { folders: 6, files: 214, sizeBytes: 4080218931n }
  */
-export async function getFolderScopeStats(folderId: string) {
+export async function retrieveFolderStats(folderId: string) {
   const active = { parentId: folderId, status: { not: 'trashed' as const } }
 
   const [folders, files, folder] = await Promise.all([
@@ -3272,6 +3272,37 @@ export async function createRootFolder(
       owner: { connect: { id: userId } },
     },
   })
+}
+
+/**
+ * Resolves a file *name* to its item id within a folder.
+ *
+ * Relative links inside a Markdown document (`[spec](./upload-multipart.md)`)
+ * resolve against the current URL, so they land on the file route with
+ * `:fileId` set to `upload-multipart.md` instead of an `item_…` id. The file
+ * loader calls this to recover the real id before any id-keyed query runs.
+ *
+ * Deliberately not permission-scoped — it only maps a name to an id inside a
+ * folder the caller already navigated to; `getFileItem` still enforces read
+ * permission on whatever comes back.
+ *
+ * @param folderId - The parent folder to look in.
+ * @param name - The file name as it appears in the URL (already decoded).
+ * @returns The item id, or `null` when the folder holds no file by that name.
+ *
+ * @example
+ * // '/…/folders/item_abc/files/spec.md' → 'item_def'
+ * const id = await findFolderChildIdByName('item_abc', 'spec.md');
+ */
+export async function getChildIdByName(
+  folderId: string,
+  name: string
+): Promise<string | null> {
+  const match = await prisma.item.findFirst({
+    where: { parentId: folderId, name },
+    select: { id: true },
+  })
+  return match?.id ?? null
 }
 
 /**
@@ -3411,9 +3442,9 @@ export async function getMediaSiblings(userId: string, folderId: string) {
  *
  * @example
  * // Record that the user opened an item
- * await touchOpenedAt('item_123');
+ * await updateItemOpenedAt('item_123');
  */
-export async function touchOpenedAt(itemId: string) {
+export async function updateItemOpenedAt(itemId: string) {
   await prisma.item.update({
     where: { id: itemId },
     data: { openedAt: new Date() },

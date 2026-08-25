@@ -2,7 +2,7 @@ import type { Route } from './+types/all'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
 import { auth } from '@/.server/auth'
 import { redirect, useLocation } from 'react-router'
-import { getFolderContent, getLibraryStats } from '@/services/item-actions'
+import { getFolderContent, retrieveUserUsageMetrics } from '@/services/item-actions'
 import { formatSize } from '@/utils/formaters'
 import { StashPageToolbar } from '@/components/views/stash-page-toolbar'
 import type { LibraryStats } from '@/types/stash.types'
@@ -119,7 +119,7 @@ export async function loader({ request, params }: Route.ActionArgs) {
       orderBy: parsedParams.orderBy,
       foldersFirst: true,
     }),
-    getLibraryStats(session.user.id),
+    retrieveUserUsageMetrics(session.user.id),
     breadcrumbs(session.user.rootId),
   ])
 

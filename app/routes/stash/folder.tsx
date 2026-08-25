@@ -9,9 +9,9 @@ import { breadcrumbs } from '@/services/breadcrumbs'
 import { prisma } from '@/services/db'
 import {
   getFolderContent,
-  getFolderScopeStats,
-  getLibraryStats,
-  touchOpenedAt,
+  retrieveFolderStats,
+  retrieveUserUsageMetrics,
+  updateItemOpenedAt,
 } from '@/services/item-actions'
 import { formatSize } from '@/utils/formaters'
 import { StashPageToolbar } from '@/components/views/stash-page-toolbar'
@@ -59,12 +59,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       where: { id: params.folderId },
       select: { ownerId: true, name: true, driveId: true },
     }),
-    getLibraryStats(session.user.id),
-    getFolderScopeStats(params.folderId),
+    retrieveUserUsageMetrics(session.user.id),
+    retrieveFolderStats(params.folderId),
   ])
 
   Promise.resolve()
-    .then(() => touchOpenedAt(params.folderId))
+    .then(() => updateItemOpenedAt(params.folderId))
     .catch(() => {})
 
   const crumbs =

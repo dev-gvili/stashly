@@ -14,14 +14,16 @@ import { VideoStage } from '@/components/views/item-page/video-stage'
 import { auth } from '@/services/auth'
 import { breadcrumbs } from '@/services/breadcrumbs'
 import {
+  getChildIdByName,
   getFileItem,
   getMediaSiblings,
   loadMarkdownDocument,
   loadTextDocument,
-  touchOpenedAt,
+  updateItemOpenedAt,
 } from '@/services/item-actions'
 import { getPresignedUrl } from '@/services/s3'
 import type { StashItemPanel } from '@/types/stash.types'
+import { StashlyPrefixMap } from '@/utils/converters'
 import { isMarkdownName } from '@/utils/markdown'
 import { isTextRenderableFile } from '@/utils/text-thumbnail'
 import { cn } from '@/utils/styles'
@@ -99,12 +101,26 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   })
   if (!session) throw redirect('/auth/sign-in')
 
+  // A relative link inside a Markdown document (`[spec](./upload-multipart.md)`)
+  // resolves against the current URL, so `:fileId` arrives as a *file name*
+  // rather than an `item_…` id. Every query below is id-keyed, so map the name
+  // back to its id first. The URL is left as-is (no redirect), so use `fileId`
+  // — never `params.fileId` — for anything id-keyed from here down. A name that
+  // resolves to nothing keeps its original value and falls through to
+  // `getFileItem`, which throws the proper not-found.
+  const fileId = params.fileId.startsWith(`${StashlyPrefixMap.Item}_`)
+    ? params.fileId
+    : ((await getChildIdByName(
+        params.folderId,
+        decodeURIComponent(params.fileId)
+      )) ?? params.fileId)
+
   const [, allCrumbs, acts, item, siblings] = await Promise.all([
-    touchOpenedAt(params.fileId),
-    breadcrumbs(params.fileId),
+    updateItemOpenedAt(fileId),
+    breadcrumbs(fileId),
     searchActivities({
       ownerId: { equals: session.user.id },
-      itemId: { equals: params.fileId },
+      itemId: { equals: fileId },
       take: 20,
       include: {
         time: true,
@@ -135,7 +151,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       orderBy: { time: { observedAt: 'desc' } },
       strategy: 'cursor',
     }),
-    getFileItem(session.user.id, params.fileId, params.folderId),
+    getFileItem(session.user.id, fileId, params.folderId),
     // Media items in the same folder, for the prev/next stage navigation. For
     // non-media files (or folders the user doesn't own) the current item just
     // won't be in the list and the nav stays hidden.

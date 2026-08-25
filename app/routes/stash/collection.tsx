@@ -4,7 +4,7 @@ import {
   getCollectionForUser,
   getCollectionItems,
 } from '@/services/collection-actions'
-import { paginateItems, touchOpenedAt } from '@/services/item-actions'
+import { paginateItems, updateItemOpenedAt } from '@/services/item-actions'
 import { CollectionView } from '@/components/views/collection-view'
 import {
   redirect,
@@ -70,7 +70,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }))
 
   Promise.resolve()
-    .then(() => touchOpenedAt(collectionId))
+    .then(() => updateItemOpenedAt(collectionId))
     .catch(() => {})
 
   // IDs already in this collection
