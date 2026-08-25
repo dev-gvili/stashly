@@ -101,7 +101,15 @@ function StashlyUpload({
 
   return (
     <ButtonGroup className="border-none ring-2 ring-accent rounded-md bg-card">
-      <Button onClick={toggleView} variant="ghost" size="icon">
+      <Button
+        onClick={toggleView}
+        variant="ghost"
+        size="icon"
+        // The upload panel starts hidden and this is its only opener, so E2E
+        // needs a stable handle on it — the button is icon-only and otherwise
+        // has no accessible name to target.
+        data-testid="upload-toggle"
+      >
         <UploadFillIcon className="size-5! text-muted-foreground" />
       </Button>
       <Popover modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
