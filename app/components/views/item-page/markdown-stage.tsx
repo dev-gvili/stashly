@@ -23,6 +23,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import type { MarkdownDoc, StashItemMarkdown } from '@/types/stash.types'
 import type { MarkdownHeading } from '@/utils/markdown'
 import { cn } from '@/utils/styles'
+import { MermaidBlock } from './mermaid-block'
 import { StageSkeletonLoader } from './stage-skeleton-loader'
 
 const RAIL_WIDTH = '18rem' // expanded outline rail width
@@ -180,6 +181,60 @@ function MarkdownCode({
   )
 }
 
+/**
+ * The fence a `<pre>` wraps, read off the hast node.
+ *
+ * The info-string is only recoverable here as the `language-*` class remark put
+ * on the inner `<code>`; by the time React renders, the `<pre>`'s own props say
+ * nothing about the language. Reading the raw node also sidesteps walking React
+ * children to recover the text.
+ */
+function fenceInfo(node: unknown): { lang: string; code: string } | null {
+  const el = node as { children?: unknown[] } | undefined
+  const code = el?.children?.[0] as
+    | {
+        type?: string
+        tagName?: string
+        properties?: { className?: unknown }
+        children?: { value?: string }[]
+      }
+    | undefined
+  if (code?.type !== 'element' || code.tagName !== 'code') return null
+  const raw = code.properties?.className
+  const classes = Array.isArray(raw)
+    ? raw.map(String)
+    : typeof raw === 'string'
+      ? raw.split(' ')
+      : []
+  const lang = classes
+    .find((c) => c.startsWith('language-'))
+    ?.slice('language-'.length)
+  if (!lang) return null
+  return {
+    lang,
+    code: (code.children ?? []).map((c) => c.value ?? '').join(''),
+  }
+}
+
+/**
+ * Code blocks at the `<pre>` level, which is where a *diagram* has to be
+ * intercepted: a mermaid fence becomes an SVG figure, and an SVG has no
+ * business inside a `white-space: pre` monospace box. Every other fence falls
+ * through untouched and is coloured by `MarkdownCode` one level down.
+ */
+function MarkdownPre({
+  children,
+  node,
+  ...props
+}: ComponentProps<'pre'> & { node?: unknown }) {
+  const block = <pre {...props}>{children}</pre>
+  const fence = fenceInfo(node)
+  if (fence?.lang !== 'mermaid') return block
+  // The plain block is handed down as the fallback: it is what shows while
+  // mermaid loads, and what stays if the diagram doesn't parse.
+  return <MermaidBlock code={fence.code} fallback={block} />
+}
+
 const REMARK_PLUGINS = [remarkGfm]
 // rehype-sanitize first (cleans the tree), then rehype-slug (adds heading ids).
 const REHYPE_PLUGINS = [[rehypeSanitize, sanitizeSchema], rehypeSlug] as never
@@ -295,6 +350,10 @@ function MarkdownReader({ text, headings }: MarkdownDoc) {
                 // `pre` stays untouched — utility overrides there would win
                 // over the stylesheet and pull the block out of the palette.
                 code: MarkdownCode,
+                // `pre` intercepts mermaid fences only (see MarkdownPre); it
+                // re-renders the identical <pre> for every other language, so
+                // the stylesheet still owns the block's look.
+                pre: MarkdownPre,
               }}
             >
               {text}
