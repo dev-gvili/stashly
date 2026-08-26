@@ -83,7 +83,16 @@ function configureTypeScript() {
     // Preserve keeps JSX as written — the viewer shows source, never emit.
     jsx: ts.JsxEmit.Preserve,
     module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.NodeJs,
+    // `Bundler` (TS 5.0+), not Monaco's `NodeJs` — that's node10, which finds a
+    // package's types through `main`/`types`/`typings` only. A modern
+    // exports-only package (react-router 8 declares no `types` field at all,
+    // just `exports['.'].types`) is invisible to it: node10 falls through to a
+    // root `index.d.ts` that doesn't exist, and every one of its imports hovers
+    // as `any` even though ATA downloaded the `.d.ts` correctly. Monaco's
+    // `ModuleResolutionKind` enum stops at `NodeJs = 2` and never got the newer
+    // members, so the value is written out — the worker hands it to the real
+    // TypeScript (5.9.3), which reads 100 as `Bundler`.
+    moduleResolution: 100 as monaco.typescript.ModuleResolutionKind,
     noEmit: true,
     skipLibCheck: true,
     // Widest lib the worker ships (esnext + DOM), so `document`, `Promise`,
