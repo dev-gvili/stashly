@@ -23,6 +23,14 @@ const BATCH_SIZE = 25
 
 /** Logical paths already requested — dedups across the walk (and re-runs). */
 const requested = new Set<string>()
+/**
+ * Logical path -> the alias specifier that produced it (`ui/button` ->
+ * `@/ui/button`). Only alias imports are recorded; a relative import already
+ * names where it lives. Kept because the *compiler* still resolves the alias
+ * through `paths`, so when the server answers a guessed path with the file's
+ * real one, this specifier is what has to be re-pointed.
+ */
+const aliasFor = new Map<string, string>()
 /** Virtual lib paths already registered with Monaco. */
 const addedLibs = new Set<string>()
 /**
@@ -64,6 +72,11 @@ export function fetchSourceContext(
   return postSource({ intent: 'project-config', fileId })
 }
 
+/** A real path back to the logical path that would resolve to it. */
+function logicalOf(path: string): string {
+  return path.replace(/\.(d\.ts|[mc]?[jt]sx?)$/, '').replace(/\/index$/, '')
+}
+
 /** Directory of a project-relative path (`app/.server/x.ts` → `app/.server`). */
 function dirOf(path: string): string {
   return path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
@@ -103,8 +116,10 @@ export async function acquireCrossFileTypes(
         rootId,
         logicalPaths: batch,
       })
-      for (const { path, text, id, parentId } of files as {
+      const corrections: Record<string, string[]> = {}
+      for (const { path, requested: asked, text, id, parentId } of files as {
         path: string
+        requested: string
         text: string
         id: string
         parentId: string | null
@@ -115,12 +130,26 @@ export async function acquireCrossFileTypes(
         // it resolves for types, it just can't be navigated to.
         if (id && parentId) sourceItems.set(uri, { itemId: id, folderId: parentId })
         fetched++
+        // Fetching the file is only half of it. A project with no tsconfig gets
+        // a *synthesized* alias map, which assumes an alias names the folder it
+        // points at — true for `@/utils/*`, false for `@/ui/*`
+        // (`components/ui`) and `@/services/*` (`.server`). The server finds
+        // those anyway, but the compiler still resolves the specifier through
+        // `paths` and would land on the folder that was guessed. So whenever
+        // the answer isn't where the alias said to look, pin that specifier to
+        // the real path — an exact (star-less) entry, which TypeScript matches
+        // only against that one specifier.
+        const specifier = aliasFor.get(asked)
+        if (specifier && logicalOf(path) !== asked) corrections[specifier] = [path]
         // A fetched file sits at its real path, so its own relative imports
         // resolve against that directory — follow them too.
         for (const next of mapSpecifiers(importsOf(text), dirOf(path), matchers)) {
           if (!requested.has(next)) queue.push(next)
         }
       }
+      // Batched deliberately: every `setCompilerOptions` restarts the
+      // TypeScript worker, so this is once per round-trip, not once per file.
+      if (Object.keys(corrections).length) applyAliasPaths(corrections)
     }
   } catch (err) {
     console.error('[cross-file] type resolution failed', err)
@@ -235,6 +264,7 @@ function mapSpecifiers(
       const star = spec.slice(m.prefix.length, spec.length - m.suffix.length)
       for (const target of m.targets) {
         const mapped = target.includes('*') ? target.replace('*', star) : target
+        aliasFor.set(mapped.replace(/^\.\//, ''), spec)
         // tsconfig targets are baseUrl-relative (`./app/.server/*`); strip the
         // leading `./` so the logical path lines up with the file paths the
         // server returns and registers (`app/.server/x.ts`).

@@ -28,6 +28,10 @@ const RESOLVE_EXTS = ['.ts', '.tsx', '.d.ts', '.js', '.jsx', '.mjs', '.cjs']
 const MAX_ANCESTOR_WALK = 40
 /** Cap the files one `getSourceFiles` call will read. */
 const MAX_FILES_PER_REQUEST = 60
+/** Cap the *misses* one call will re-try through the suffix fallback. */
+const MAX_SUFFIX_LOOKUPS = 25
+/** Cap the same-name files one suffix lookup will consider. */
+const MAX_NAME_HITS = 8
 
 export type ProjectConfig = {
   /** Item id of the folder that is the project root. */
@@ -42,6 +46,12 @@ export type ProjectConfig = {
 
 export type SourceFile = {
   path: string
+  /**
+   * The logical path the client asked for. Usually `path` minus its extension,
+   * but the suffix fallback can answer `services/db` with `.server/db.ts` — and
+   * the client needs the pairing to point the alias at where the file *is*.
+   */
+  requested: string
   text: string
   /** The file's item id — what Go to Definition navigates to. */
   id: string
@@ -206,16 +216,97 @@ export async function getSourceFiles(
     throw new StashlyError(StashlyErrorCode.FORBIDDEN)
   }
 
+  // Exact resolution is authoritative when the project told us its aliases.
+  // Without a tsconfig the alias map was *synthesized* (see
+  // `synthesizeAliasPaths`), so a miss is as likely to be a wrong guess as a
+  // missing file — that's the only case the suffix fallback is allowed to run.
+  const guessing = !(await rootHasProjectFile(rootId))
+  let suffixLookups = 0
+
   const out: SourceFile[] = []
   const seen = new Set<string>()
+  /** Paths nothing could resolve on the first pass, retried against `hints`. */
+  const pending: string[] = []
+  const hints = new Map<string, string | null>()
+
   for (const logical of logicalPaths.slice(0, MAX_FILES_PER_REQUEST)) {
     const normalized = normalize(logical)
     if (!normalized || seen.has(normalized)) continue
     seen.add(normalized)
-    const resolved = await resolveUnderRoot(rootId, normalized)
-    if (resolved) out.push(resolved)
+    let resolved = await resolveUnderRoot(rootId, normalized)
+    if (!resolved && guessing && suffixLookups < MAX_SUFFIX_LOOKUPS) {
+      suffixLookups++
+      resolved = await resolveByNameSuffix(rootId, normalized)
+    }
+    if (!resolved) {
+      if (guessing) pending.push(normalized)
+      continue
+    }
+    if (guessing) learnPrefix(hints, normalized, resolved.path)
+    out.push({ ...resolved, requested: normalized })
+  }
+
+  // Second pass. A name that appears in several folders is undecidable on its
+  // own — `services/auth` matches `.server/auth.ts`, `.client/auth.ts` and two
+  // more — but it isn't undecidable in context: if `services/db` already
+  // resolved to `.server/db.ts` in this same request, then `services` demonstrably
+  // means `.server` here, and the ambiguity collapses to one exact lookup. Only
+  // prefixes proven by an unambiguous hit are used, so this widens what
+  // resolves without widening what we're willing to guess.
+  for (const normalized of pending) {
+    const hinted = applyPrefixHint(hints, normalized)
+    if (!hinted) continue
+    const resolved = await resolveUnderRoot(rootId, hinted)
+    if (resolved) out.push({ ...resolved, requested: normalized })
   }
   return out
+}
+
+/**
+ * Record what an alias segment turned out to mean: `services/db` answered by
+ * `.server/db.ts` proves `services` → `.server`. A segment that resolves two
+ * different ways is poisoned (`null`) rather than picked between.
+ */
+function learnPrefix(
+  hints: Map<string, string | null>,
+  requested: string,
+  realPath: string
+): void {
+  const asked = requested.split('/')
+  if (asked.length < 2) return
+  const real = logicalOfPath(realPath).split('/')
+  // Everything above the part of the path the request actually named.
+  const keep = real.length - (asked.length - 1)
+  if (keep < 1) return
+  const prefix = real.slice(0, keep).join('/')
+  if (prefix === asked[0]) return // the guess was right; nothing to learn
+  const known = hints.get(asked[0])
+  hints.set(asked[0], known === undefined || known === prefix ? prefix : null)
+}
+
+/** Rewrite a logical path's first segment through a proven prefix, if any. */
+function applyPrefixHint(
+  hints: Map<string, string | null>,
+  requested: string
+): string | null {
+  const [head, ...rest] = requested.split('/')
+  const prefix = hints.get(head)
+  if (!prefix || !rest.length) return null
+  return [prefix, ...rest].join('/')
+}
+
+/** A real path back to the logical path that resolves to it. */
+function logicalOfPath(path: string): string {
+  return path.replace(/\.(d\.ts|[mc]?[jt]sx?)$/, '').replace(/\/index$/, '')
+}
+
+/** Does this root hold a `tsconfig.json`/`jsconfig.json` of its own? */
+async function rootHasProjectFile(rootId: string): Promise<boolean> {
+  const config = await prisma.item.findFirst({
+    where: { parentId: rootId, type: 'file', name: { in: PROJECT_FILES } },
+    select: { id: true },
+  })
+  return config !== null
 }
 
 // ---------------------------------------------------------------------------
@@ -224,7 +315,19 @@ export async function getSourceFiles(
 
 /** Candidate real paths for a logical path, mirroring TS's extension search. */
 function candidatesFor(logical: string): string[] {
-  if (/\.[mc]?[jt]sx?$/.test(logical) || logical.endsWith('.d.ts')) {
+  // An ESM-style `./x.js` specifier standing for a `./x.ts` source. TypeScript
+  // rewrites the extension when it resolves, and generated code leans on that
+  // hard — the Prisma client reaches its own `PrismaClient` through
+  // `import * as $Class from './internal/class.js'`. Taking `.js` literally
+  // meant that import found nothing and every type behind it collapsed to
+  // `any`. Try the literal file first (it may really be JavaScript), then the
+  // sources it stands in for.
+  const js = logical.match(/\.([mc]?)js(x?)$/)
+  if (js) {
+    const stem = logical.slice(0, logical.length - js[0].length)
+    return [logical, `${stem}.${js[1]}ts${js[2]}`, `${stem}.d.${js[1]}ts`]
+  }
+  if (/\.[mc]?tsx?$/.test(logical) || logical.endsWith('.d.ts')) {
     return [logical]
   }
   return [
@@ -237,7 +340,7 @@ function candidatesFor(logical: string): string[] {
 async function resolveUnderRoot(
   rootId: string,
   logical: string
-): Promise<SourceFile | null> {
+): Promise<Omit<SourceFile, 'requested'> | null> {
   for (const candidate of candidatesFor(logical)) {
     const file = await findFileByPath(rootId, candidate)
     if (file) {
@@ -253,6 +356,150 @@ async function resolveUnderRoot(
     }
   }
   return null
+}
+
+/**
+ * Last-resort resolution for a project that shipped no tsconfig: find the file
+ * by the *tail* of its logical path instead of its full path.
+ *
+ * Without a tsconfig the alias map is synthesized, and a synthesized map can
+ * only assume an alias names the folder it points at. That holds for
+ * `@/utils/*` → `utils/*` and breaks for every alias that was renamed on the
+ * way — `@/ui/button` is really `components/ui/button`, `@/services/db` is
+ * really `.server/db`. The tail is still right in both cases, so we search for
+ * a file whose *name* matches and whose enclosing folders end with the logical
+ * path's own directories, anywhere under the root.
+ *
+ * The risk is ambiguity, not cost: two folders both ending in `ui/` make the
+ * alias genuinely undecidable, so a split verdict resolves nothing rather than
+ * hand the viewer a plausible-looking wrong file. Only the extension is allowed
+ * to be ambiguous, and TypeScript's own order breaks that tie.
+ */
+async function resolveByNameSuffix(
+  rootId: string,
+  logical: string
+): Promise<Omit<SourceFile, 'requested'> | null> {
+  const segments = logical.split('/').filter(Boolean)
+  const base = segments[segments.length - 1]
+  if (!base) return null
+
+  // The two shapes `candidatesFor` tries, as (folders, filenames) pairs:
+  // `…/<base>.<ext>`, then `…/<base>/index.<ext>`.
+  const shapes = [
+    {
+      dirs: segments.slice(0, -1),
+      names: RESOLVE_EXTS.map((ext) => `${base}${ext}`),
+    },
+    { dirs: segments, names: RESOLVE_EXTS.map((ext) => `index${ext}`) },
+    // Last resort: the filename alone, anywhere under the root. This is what
+    // catches an alias whose folder was *renamed* rather than nested —
+    // `@/services/db` is `.server/db.ts`, so even the tail folder is wrong.
+    // Only a drive-wide unique match survives the ambiguity check below, which
+    // is what keeps it honest: a second `db.ts` anywhere and we resolve nothing.
+    ...(segments.length > 1
+      ? [
+          {
+            dirs: [] as string[],
+            names: RESOLVE_EXTS.map((ext) => `${base}${ext}`),
+          },
+        ]
+      : []),
+  ]
+
+  for (const shape of shapes) {
+    const parentName = shape.dirs[shape.dirs.length - 1]
+    const hits = await prisma.item.findMany({
+      where: {
+        type: 'file',
+        name: { in: shape.names },
+        // Pin the immediate folder when the logical path names one. Without it
+        // a bare `index.ts` search sweeps the whole drive.
+        ...(parentName ? { parent: { name: parentName } } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        parentId: true,
+        file: { select: { bucket: true, key: true } },
+      },
+      take: MAX_NAME_HITS,
+    })
+
+    // Flattened rather than kept as the row: `file` is optional on the select,
+    // and narrowing it here keeps the storage keys non-null downstream.
+    const matches: Array<{
+      id: string
+      parentId: string | null
+      name: string
+      bucket: string
+      key: string
+      path: string
+    }> = []
+    for (const hit of hits) {
+      if (!hit.file) continue
+      const path = await pathUnderRoot(
+        rootId,
+        hit.parentId,
+        shape.dirs,
+        hit.name
+      )
+      if (!path) continue
+      matches.push({
+        id: hit.id,
+        parentId: hit.parentId,
+        name: hit.name,
+        bucket: hit.file.bucket,
+        key: hit.file.key,
+        path,
+      })
+    }
+    const folders = new Set(matches.map((m) => dirOfPath(m.path)))
+    if (folders.size !== 1) continue
+
+    // Same folder, several extensions — TypeScript's own order breaks the tie.
+    matches.sort(
+      (a, b) => shape.names.indexOf(a.name) - shape.names.indexOf(b.name)
+    )
+    const best = matches[0]
+    const text = await getObjectText(best.bucket, best.key).catch(() => null)
+    if (text == null) continue
+    return { path: best.path, text, id: best.id, parentId: best.parentId }
+  }
+  return null
+}
+
+/**
+ * Path of `<parentId>/<fileName>` relative to `rootId`, but only if the folders
+ * directly above the file end with `dirs` — otherwise the name matched in an
+ * unrelated part of the tree and this is not the file the import meant.
+ * Returns `null` for anything outside the root.
+ */
+async function pathUnderRoot(
+  rootId: string,
+  parentId: string | null,
+  dirs: string[],
+  fileName: string
+): Promise<string | null> {
+  const above: string[] = []
+  let current = parentId
+  for (let i = 0; i < MAX_ANCESTOR_WALK && current && current !== rootId; i++) {
+    const folder = await prisma.item.findUnique({
+      where: { id: current },
+      select: { name: true, parentId: true },
+    })
+    if (!folder) return null
+    above.unshift(folder.name)
+    current = folder.parentId
+  }
+  if (current !== rootId) return null
+  const tail = above.slice(above.length - dirs.length)
+  if (dirs.length && tail.join('/') !== dirs.join('/')) return null
+  return [...above, fileName].join('/')
+}
+
+/** Folder part of a `/`-separated path (`a/b/c.ts` → `a/b`). */
+function dirOfPath(path: string): string {
+  return path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
 }
 
 /** Walk the folder tree from `rootId` down a `/`-separated path to a File. */
