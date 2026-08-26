@@ -14,6 +14,8 @@ the decision; Option 2 below is history, not a pending alternative.
 | **Option 1 shipped** — extra libs + `compilerOptions.paths` | `9e72d51` |
 | Relative-import resolution + longest-prefix alias matching (cross-file v2) | `f1829e0` |
 | Go to Definition across uploaded files (PR #20) | `f78e533` |
+| Bundler module resolution (exports-only npm packages) | `4d15316` |
+| Alias resolution with no tsconfig — suffix search + prefix learning | `86a73aa` |
 
 What landed lives in `app/.client/cross-file-types.ts`
 (`fetchSourceContext` / `acquireCrossFileTypes` / `applyAliasPaths`, feeding
@@ -27,6 +29,12 @@ Two things the shipped version does that neither option below anticipated:
   (`file:///app/.server/x.ts`), so a file's own `./relative` imports resolve
   natively without any `paths` entry. The project root falls back to the
   topmost uploaded folder when there's no `tsconfig.json`.
+- Alias resolution **survives a missing tsconfig**. Option 1 assumed the
+  `paths` map would be read from the project; an upload that didn't carry its
+  tsconfig gets a synthesized one instead, and where that guess is wrong the
+  server finds the file by the tail of its path and the client pins the
+  specifier to where it actually landed. See *Aliases without a tsconfig* in
+  [`code-viewer.md`](code-viewer.md).
 - Go to Definition into another *uploaded* file **routes to that file's page**
   rather than swapping the buffer, so the URL, breadcrumbs and item panel keep
   describing what's on screen. Definitions with no page of their own

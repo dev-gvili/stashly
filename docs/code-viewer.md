@@ -417,6 +417,11 @@ hue rather than screaming red — it's a read-only viewer).
   reaches `file:///node_modules`). App path aliases (`@/…`) are filtered out of
   ATA — resolving those is cross-file's job. Trade-off: outbound jsdelivr
   requests derived from a file's import statements (package names only).
+  Also requires **`moduleResolution: Bundler`** (`4d15316`): Monaco's `NodeJs`
+  is node10, which reads only `main`/`types`/`typings`, so an exports-only
+  package (react-router 8 declares its types solely as `exports['.'].types`)
+  resolved to nothing however correctly ATA fetched it. Monaco's enum stops at
+  `NodeJs = 2`, so the value is written out and handed to the real compiler.
 - **Cross-file types** *(shipped, `9e72d51` + `f1829e0`; see
   [`code-viewer-cross-file-options.md`](code-viewer-cross-file-options.md) for
   why Option 1 won)* — imports of *other uploaded files* resolve via
@@ -430,6 +435,30 @@ hue rather than screaming red — it's a read-only viewer).
   referenced file's source and registering it as an extra lib at its real path.
   The project root falls back to the topmost uploaded folder when there's no
   tsconfig, so relative resolution works project-wide regardless.
+- **Aliases without a tsconfig** *(shipped, `86a73aa`)* — an upload that didn't
+  carry its tsconfig gets a *synthesized* alias map, which can only assume an
+  alias names the folder it points at. True for `@/utils/*`; false for
+  `@/ui/*` (`components/ui`) and `@/services/*` (`.server`). On a miss, and
+  **only** when the map was synthesized, `getSourceFiles` searches by the
+  *tail* of the logical path — `<dirs>/<base>.<ext>`, then
+  `<dirs>/<base>/index.<ext>`, then the filename alone anywhere under the root
+  — verifying each hit by walking its parent chain. Matches in more than one
+  folder resolve to **nothing**: a plausible wrong file is worse than `any`,
+  because it looks right. A second pass then re-tries the leftovers through
+  prefixes the first pass *proved* (`services/db` → `.server/db.ts` establishes
+  `services` → `.server`), which is what resolves an otherwise undecidable name
+  like `services/auth` — four `auth.ts` live under the root. Fetching is only
+  half of it: the compiler still resolves the specifier through `paths`, so an
+  answer that isn't where the alias pointed is pinned back as an exact,
+  star-less `paths` entry, batched one `setCompilerOptions` per round-trip
+  because each restarts the TypeScript worker.
+- **`.js` specifiers for `.ts` sources** *(shipped, `86a73aa`)* — TypeScript
+  rewrites an ESM-style `./x.js` import to the `./x.ts` source; `candidatesFor`
+  took the extension literally. Generated code leans on this hard — the Prisma
+  client reaches `PrismaClient` through `./internal/class.js` — so one
+  unfetched file collapsed `prisma` to `any` three hops from the viewed file,
+  with nothing pointing at where it broke. `.js→.ts`, `.jsx→.tsx`,
+  `.mjs→.mts`, `.cjs→.cts`, literal file tried first.
 - **Cross-file `{@link}`** — still same-file only. `linkToMarkdown` compares
   `target.fileName` against the hovered model's URI and falls through to plain
   text otherwise. Go to Definition now *does* cross files, so this is a gap in
