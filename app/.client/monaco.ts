@@ -947,6 +947,27 @@ export function languageForFile(name: string): string {
   return 'plaintext'
 }
 
+/**
+ * Resolve a Monaco language id from a Markdown fence info-string.
+ *
+ * Fences are labelled by *language*, not by filename — `typescript`, `python`,
+ * `shell`. Feeding those to `languageForFile` as `snippet.<lang>` only works
+ * when the label happens to also be a registered extension (`tsx`, `json`,
+ * `bash`) — which is why a `tsx` fence came out coloured while a `typescript`
+ * one came out flat plaintext. So match the label against each language's own
+ * id and declared aliases first, and keep the extension lookup as the fallback
+ * that still catches the `tsx`/`yml`-shaped labels.
+ */
+export function languageForFence(info: string): string {
+  const label = info.trim().toLowerCase()
+  if (!label) return 'plaintext'
+  for (const lang of monaco.languages.getLanguages()) {
+    if (lang.id.toLowerCase() === label) return lang.id
+    if (lang.aliases?.some((a) => a.toLowerCase() === label)) return lang.id
+  }
+  return languageForFile(`snippet.${label}`)
+}
+
 /** App theme → dark flag. `data-theme` on <html> is the source of truth. */
 function isDarkTheme(): boolean {
   const t = document.documentElement.dataset.theme
@@ -1191,9 +1212,9 @@ function applyInkTheme() {
  * page with no editor on it still gets the rules injected, and re-colorizing
  * after a theme flip re-resolves both the palette and the colour-map indices.
  *
- * `lang` is a fence info-string (`ts`, `bash`); it becomes a Monaco language id
- * through the same extension registry the viewer uses, so aliases resolve for
- * free and anything unknown falls back to `plaintext` (escaped, uncoloured).
+ * `lang` is a fence info-string (`typescript`, `ts`, `bash`); `languageForFence`
+ * turns it into a Monaco language id, and anything unknown falls back to
+ * `plaintext` (escaped, uncoloured).
  */
 export async function colorizeCode(
   code: string,
@@ -1201,7 +1222,7 @@ export async function colorizeCode(
 ): Promise<string> {
   applyInkTheme()
   ensureTokenStyles()
-  const language = languageForFile(`snippet.${lang}`)
+  const language = languageForFence(lang)
   return monaco.editor.colorize(code, language, { tabSize: 2 })
 }
 
