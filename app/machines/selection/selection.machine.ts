@@ -36,7 +36,24 @@ export const selectionMachine = setup({
     ready: {
       on: {
         SET_ITEMS: {
-          actions: assign({ items: ({ event }) => event.items }),
+          // Registering a new universe also drops selections that are no longer
+          // in it. After a permanent delete the server strips the ids from
+          // `?selectedItems=`, but the actor still held them, so the URL-sync
+          // effect wrote them straight back — a ping-pong that re-ran the route
+          // loader on every lap. An id that left the list can't be acted on
+          // anyway. Guarded on a non-empty list so the mount-time seed (which
+          // registers before the URL is read) isn't wiped.
+          actions: assign(({ context, event }) => {
+            const selected = context.selectedIds ?? []
+            if (event.items.length === 0 || selected.length === 0) {
+              return { items: event.items }
+            }
+            const live = new Set(event.items)
+            const pruned = selected.filter((id) => live.has(id))
+            return pruned.length === selected.length
+              ? { items: event.items }
+              : { items: event.items, selectedIds: pruned, lastChecked: null }
+          }),
         },
         SET_SELECTED: {
           actions: assign(({ event }) => ({

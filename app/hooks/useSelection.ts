@@ -164,9 +164,17 @@ export const useSelection = () => {
  * useRegisterSelectionItems(ids)
  */
 export const useRegisterSelectionItems = (items: string[]) => {
+  // Keyed on the *contents*, not the array identity. Every call site passes an
+  // inline `items.map((i) => i.id)`, which is a fresh array on every render —
+  // with `[items]` as the dep this effect re-sent SET_ITEMS each render, the
+  // machine's `assign` handed back a new context object, `useSelector` saw a
+  // changed snapshot and re-rendered, and the cycle repeated forever. On the
+  // trash route that spun `useSelectionURLSync` below into writing the URL over
+  // and over, which is what produced hundreds of loader GETs.
+  const key = items.join(',')
   useEffect(() => {
-    selectionActor.send({ type: 'SET_ITEMS', items })
-  }, [items])
+    selectionActor.send({ type: 'SET_ITEMS', items: key ? key.split(',') : [] })
+  }, [key])
 }
 
 /**
