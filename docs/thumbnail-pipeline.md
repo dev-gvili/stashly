@@ -2,9 +2,9 @@
 
 A 3-stage progressive thumbnail generation system. Each stage upgrades the thumbnail asynchronously after upload completes — from an instant local blur preview to a saliency-cropped image. All output is **WebP**.
 
-Driven client-side from `app/hooks/useThumbnailV2.ts` — a thin orchestrator over the pure helpers in `app/utils/thumbnail-pipeline.ts`, spawned per file by `app/components/upload/upload-thumbnail-runner.tsx`. Stage 3's AI runs in `app/workers/thumbnail.ai.ts`.
+Driven client-side. Scheduling lives in the XState manager under `app/machines/thumbnail/` (see [section 13](#13-xstate-scheduler)); the stage work itself is the pure helpers in `app/utils/thumbnail-pipeline.ts`, and stage 3's AI runs in `app/workers/thumbnail.ai.ts`. Jobs enter from `app/components/upload/upload-thumbnail-runner.tsx` on upload and from the viewport observer on backfill.
 
-> **V1 → V2.** The original pipeline had five stages. **Stage 0** (a hex color hash written to the DB) was removed — every consumer already filtered `url.startsWith('#')`, so persisting it was pure waste. **Stage 4** (Florence-2 caption overlay) was removed too; the Florence-2 code survives only in `app/.client/stashly-ai.ts` for captioning outside the thumbnail path. `app/hooks/useThumbnail.ts` is the V1 hook — still exported from `app/hooks/index.ts`, but **no component calls it**. Sections below describe V2 unless marked historical.
+> **V1 → V2.** The original pipeline had five stages. **Stage 0** (a hex color hash written to the DB) was removed — every consumer already filtered `url.startsWith('#')`, so persisting it was pure waste. **Stage 4** (Florence-2 caption overlay) was removed too; the Florence-2 code survives only in `app/.client/stashly-ai.ts` for captioning outside the thumbnail path. `app/hooks/useThumbnail.ts` is now the V2 orchestrator — `useThumbnailV2.ts` was folded back into it (45dbcee), so the V1 hook no longer exists under any name. That hook is the *legacy* orchestration path today: reachable only when `USE_THUMBNAIL_MACHINE` is flipped off. Sections below describe V2 unless marked historical.
 
 ---
 
@@ -22,6 +22,7 @@ Driven client-side from `app/hooks/useThumbnailV2.ts` — a thin orchestrator ov
 10. [Concurrency Notes — AI Stage](#10-concurrency-notes--ai-stage)
 11. [Compute Worker — Off-main-thread Pipeline](#11-compute-worker--off-main-thread-pipeline)
 12. [On-demand Backfill](#12-on-demand-backfill)
+13. [XState Scheduler](#13-xstate-scheduler)
 
 ---
 
@@ -62,12 +63,12 @@ pending → validating → queued → uploading → done → itemCreated
 
 Only `'itemCreated'` is safe for thumbnail writes.
 
-`app/components/upload/upload-thumbnail-runner.tsx` watches for the transition. It mounts one `<FileThumbnailWatcher>` per file in the upload queue, so each in-flight pipeline gets its own `useThumbnailV2()` instance and therefore its own fetchers (presign, patch, metadata, embedding):
+`app/components/upload/upload-thumbnail-runner.tsx` watches for the transition. It mounts one `<FileThumbnailWatcher>` per file in the upload queue, so each file's arrival is noticed independently. Under the machine path the watcher only *enqueues* — the manager owns concurrency and the HTTP calls (section 13). Under the legacy path each watcher gets its own `useThumbnail()` instance and therefore its own fetchers (presign, patch, metadata, embedding):
 
 ```typescript
 function FileThumbnailWatcher({ mediaFileId }: { mediaFileId: string }) {
   const mediaFile = useUploadFile(mediaFileId)
-  const { run: runThumbnail } = useThumbnailV2(mediaFileId)
+  const { run: runThumbnail } = useThumbnail(mediaFileId)
 
   useEffect(() => {
     if (!mediaFile) return
@@ -244,7 +245,7 @@ All output is **WebP**. Located in `app/utils/thumbnail.ts`:
 | `blurImageBlob(blob, radius)` | Gaussian blur pass over a WebP blob |
 | `dataUrlToBlob(dataUrl)` | Convert data-URL to `Blob`, fallback MIME `image/webp` |
 
-The stage functions themselves live in `app/utils/thumbnail-pipeline.ts` — `generateStage1Preview`, `generateStage2Resize`, `generateStage3Salient`, `putThumbnailToS3`, `makeStageUrl`, plus `compute()` (the compute-worker RPC helper), `extractMediaMetadata`, and `buildMediaMetadataFormData`. `useThumbnailV2` only sequences them and owns the HTTP/React state.
+The stage functions themselves live in `app/utils/thumbnail-pipeline.ts` — `generateStage1Preview`, `generateStage2Resize`, `generateStage3Salient`, `putThumbnailToS3`, `makeStageUrl`, plus `compute()` (the compute-worker RPC helper), `extractMediaMetadata`, and `buildMediaMetadataFormData`. The orchestration layer — the machine's actors in `app/machines/thumbnail/thumbnail.actors.ts`, or `useThumbnail` on the legacy path — only sequences them and owns the HTTP state.
 
 For video thumbnails, use `generateVideoThumbnail(file)` from `app/utils/video.ts` (extracts a frame, then runs through the WebP pipeline).
 
@@ -317,11 +318,11 @@ Every stage swallows its own failure: `generateStage3Salient` catches and return
 Main → worker: `{ id: number, kind: ..., file, ...args }`
 Worker → main: `{ id, kind, blob | result | message }` correlated by `id`.
 
-`app/utils/thumbnail-pipeline.ts` exposes a typed `compute({ kind, file })` helper that returns the matching response variant — narrow on `res.kind` to access the result. (V1's `useThumbnail.ts` still carries its own private copy of the same singleton.)
+`app/utils/thumbnail-pipeline.ts` exposes a typed `compute({ kind, file })` helper that returns the matching response variant — narrow on `res.kind` to access the result.
 
 ### Concurrency cap
 
-The worker enforces `MAX_CONCURRENT = 1`. Additional requests queue and dispatch as slots free. This is the global cap — doesn't matter how many `useThumbnailV2` hooks fire in parallel from how many watchers; the worker is a singleton.
+The worker enforces `MAX_CONCURRENT = 1`. Additional requests queue and dispatch as slots free. This is the global cap — doesn't matter how many jobs the manager runs in parallel across its two lanes; the worker is a singleton.
 
 The cap is 1 (not 2 or higher) because PDF.js inside a dedicated worker falls back to **fake worker mode** — it can't spawn nested workers reliably across browsers, so `getDocument`/`getPage`/`render` run synchronously inside our compute worker. Multiple parallel PDF operations in fake-worker mode terminate each other's tasks ("Worker task was terminated" warnings). Serializing avoids the conflict; throughput cost is acceptable since each PDF op is fast.
 
@@ -400,6 +401,64 @@ A card that unmounts mid-job (route change) lets the in-flight job finish and pe
 
 ---
 
+## 13. XState Scheduler
+
+`app/machines/thumbnail/` — the orchestration layer that runs today. `USE_THUMBNAIL_MACHINE = true` in `app/machines/thumbnail/index.ts` picks it; flipping that one constant moves every call site back to the original hooks atomically, because both sides export the same three hooks plus the same pause/resume pair. The switch is temporary — see the merge-back checklist in [`app/machines/thumbnail/README.md`](../app/machines/thumbnail/README.md).
+
+### Why it exists
+
+Compute was never the bottleneck. **Scheduling** was, and it was spread across four limiters that knew nothing about each other:
+
+| Gate | Where | Cap |
+|---|---|---|
+| Upload thumbnails | `upload-thumbnail-runner.tsx` | 4, FIFO, promise semaphore |
+| Backfill | `useThumbnailBackfill.ts` | 2, LIFO, `paused` boolean |
+| Compute worker | `thumbnail.compute.worker.ts` | 1 (PDF.js fake-worker constraint) |
+| WebGPU (stage 3) | `ai-queue.ts` | 1, priority-aware |
+
+Effective concurrency was nobody's decision. Alongside that: `waitForIdle()` polled a React Router fetcher ref every 16 ms because a long-lived async callback had no other way to await one; there was no cancellation; there was no retry, so a stage-2 timeout meant waiting for a *full re-download* via backfill to redo work that had been seconds from done; and the whole indexing leg (metadata → embeddings → minutes of OCR) ran as a `void` promise nobody held.
+
+Those are all scheduler problems. The stages themselves are a straight line and gain little from being modelled — they are in the machine mainly so cancellation and retry have somewhere to live.
+
+### Shape
+
+```
+thumbnailManager (module scope — outlives every component)
+├── uploadLane    cap 4, FIFO
+├── backfillLane  cap 2, LIFO · states: active | paused
+└── spawn(thumbnailItemMachine, { itemId, mode, file })
+     ├── stages    acquiring? → stage1 → stage2 → presign → put2 → patch2 → stage3 → put3 → patch3
+     │              ↳ retrying (after 800 ms, budget 2)
+     └── indexing  metadata → embeddings → OCR?          [upload mode only]
+```
+
+| File | Role |
+|---|---|
+| `thumbnail.types.ts` | Context, events, emitted events, job shape |
+| `thumbnail.actors.ts` | `fromPromise` wrappers around the **existing** helpers in `@/utils/thumbnail-pipeline` — no compute logic lives here |
+| `thumbnail-item.machine.ts` | One actor per file: `stages` ∥ `indexing` |
+| `thumbnail-manager.machine.ts` | The scheduler: two lanes, spawn/settle, pause as a state |
+| `attempt-store.ts` | Attempted-once bookkeeping + `sessionStorage` skip list |
+| `client.ts` | The module-scope singleton and its imperative API |
+| `hooks.ts` | React surface, signature-compatible with the hooks it replaces |
+| `index.ts` | `USE_THUMBNAIL_MACHINE` — the switch. **Temporary.** |
+
+### Consequences worth knowing
+
+- **Plain `fetch`, not `useFetcher`.** A module-scope actor has no component to own a fetcher, which is what deletes `waitForIdle`. It also means these calls no longer revalidate the route for free — desirable for the search-index writes (precisely what `SEARCH_INDEX_INTENTS` suppresses), but `save_media_metadata` writes *visible* facets, so the machine emits `metadataSaved` and `useThumbnailRevalidation()` folds a burst into one navigation.
+- **The retry budget resets on success, never on state entry.** A retry re-enters the failing state, so `entry: 'resetAttempts'` would wipe the counter guarding it and loop forever. That was a real bug, caught by `thumbnail-item.machine.test.ts`.
+- **Pause is a state, not a flag.** `drainBackfillNow` is only handled inside `backfillLane.active`, so a paused lane cannot start work even if a caller forgets to check.
+- **Cancel drops queued jobs only.** A running job's download is already paid for, and because the manager outlives every card its result still persists after the card is gone — which is why the machine path has no equivalent of the legacy `patchDetached`.
+- **Only backfill failures reach the skip list.** An upload-time failure is often transient, and remembering it would block the very backfill that exists to recover from it.
+- **`attempt-store.ts` shares its `sessionStorage` key with `useThumbnailBackfill.ts` on purpose**, so flipping the switch inherits the other path's skip list.
+
+### Tests
+
+- **Unit** — `app/machines/thumbnail/__tests__/thumbnail-item.machine.test.ts` and `thumbnail-manager.machine.test.ts`, run by `pnpm test`.
+- **E2E** — `tests/e2e/thumbnail-machine.spec.ts` (11 cases) with helpers in `tests/e2e/helpers/thumbnail-machine.ts`. They inspect the live actor through `window.__thumbMgr`, the debug handle `client.ts` attaches, and assert against the real DOM rather than the machine's own account of itself. When the suite last ran (2026-08-25) the scheduler-boot, backfill-lane and pause/cancel cases were green; the upload-pipeline cases were failing on a pre-existing problem in the shared upload fixture, not in the machine.
+
+---
+
 ## Related Documentation
 
 - [`docs/upload-multipart.md`](upload-multipart.md) — Upload flow + post-upload DB item creation chain
@@ -407,4 +466,4 @@ A card that unmounts mid-job (route change) lets the in-flight job finish and pe
 - [`docs/superpowers/specs/2026-04-24-living-thumbnails-design.md`](superpowers/specs/2026-04-24-living-thumbnails-design.md) — Original design spec
 - [`docs/superpowers/plans/2026-04-24-living-thumbnails.md`](superpowers/plans/2026-04-24-living-thumbnails.md) — Implementation plan (V1, 5 stages)
 - [`docs/semantic-search.md`](semantic-search.md) — Chunked document indexing fed by `pdfText` / `mdMeta`
-- [`.agents/skills/stashly-thumbnail-pipeline/SKILL.md`](../.agents/skills/stashly-thumbnail-pipeline/SKILL.md) — Condensed working reference, including the swappable thumbnail-signal architecture
+- [`.claude/skills/stashly-thumbnail-pipeline/SKILL.md`](../.claude/skills/stashly-thumbnail-pipeline/SKILL.md) — Condensed working reference, including the swappable thumbnail-signal architecture

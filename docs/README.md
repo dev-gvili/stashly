@@ -9,7 +9,8 @@ Architecture and design documentation for the Stashly codebase.
 | [project-overview.md](project-overview.md) | Full-stack architecture overview — tech stack, layer responsibilities, API surface, data model, key subsystems |
 | [ai-pipeline.md](ai-pipeline.md) | AI inference pipeline — Transformers.js, WebGPU, Whisper transcription, language detection, Web Worker architecture |
 | [upload-multipart.md](upload-multipart.md) | S3 multipart upload + post-upload DB item creation chain (`itemCreated` gate, `parentId` derivation) |
-| [thumbnail-pipeline.md](thumbnail-pipeline.md) | 3-stage progressive WebP thumbnail pipeline — local blur preview, 512px resize, saliency crop — plus the compute worker and on-demand backfill |
+| [thumbnail-pipeline.md](thumbnail-pipeline.md) | 3-stage progressive WebP thumbnail pipeline — local blur preview, 512px resize, saliency crop — plus the compute worker, on-demand backfill, and the XState scheduler that now drives all of it |
+| [markdown-reader.md](markdown-reader.md) | Markdown stage — streamed body, sanitize pipeline, relative link resolution, Monaco-tokenized code blocks, mermaid diagrams |
 | [semantic-search.md](semantic-search.md) | Chunked + hybrid (pg_trgm + pgvector) retrieval over document text — index pipeline, schema, tuning, roadmap |
 | [quota-and-machines.md](quota-and-machines.md) | Storage quota — QuotaService singleton, `toUpdatedQuota` transformer, quota state machine, backend endpoint |
 | [search.md](search.md) | Search architecture — pgvector semantic search, SearchFactory pattern, filter system |

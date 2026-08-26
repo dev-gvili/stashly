@@ -304,7 +304,7 @@ See: [`docs/upload-multipart.md`](upload-multipart.md), [`docs/thumbnail-pipelin
 
 ### Thumbnail Pipeline
 
-Client-side, progressive WebP generation orchestrated by `useThumbnailV2`. Gated on `status === 'itemCreated'` (not `'done'`). All output is one WebP per item at `thumbnails/{itemId}.webp` in S3, overwritten as later stages complete; the URL written to `Thumbnail.url` carries a `?v={stage}` cache-buster.
+Client-side, progressive WebP generation. Scheduling is the XState manager in `app/machines/thumbnail/` (`USE_THUMBNAIL_MACHINE = true`); the legacy hook orchestrator `useThumbnail` survives behind that switch. Gated on `status === 'itemCreated'` (not `'done'`). All output is one WebP per item at `thumbnails/{itemId}.webp` in S3, overwritten as later stages complete; the URL written to `Thumbnail.url` carries a `?v={stage}` cache-buster.
 
 | Stage | Output |
 |-------|--------|
@@ -317,6 +317,14 @@ Client-side, progressive WebP generation orchestrated by `useThumbnailV2`. Gated
 Pattern: `GET /api/thumbnails/:itemId/presign` → PUT to S3 → `PATCH /api/thumbnails/:itemId`. Any hex-color (`#…`) placeholder is filtered out of gallery queries.
 
 See: [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md)
+
+### Markdown Reader
+
+`app/components/views/item-page/markdown-stage.tsx` renders uploaded `.md` files. The body streams from S3 as an unawaited loader promise consumed by `<Suspense>` + `<Await>`, so the shell paints first; headings are extracted server-side into an outline rail.
+
+Fenced code is tokenized by **Monaco's own tokenizer** (`colorizeCode` in `app/.client/monaco.ts`), so a code block in a document and the same file in the code viewer share one theme object rather than two palettes. ```mermaid fences render as SVG diagrams via a lazily imported `app/.client/mermaid.ts` — client-side deliberately, since mermaid needs real text metrics, bakes hex into its output, and would become an SSRF surface if it rendered uploaded diagrams server-side.
+
+See: [`docs/markdown-reader.md`](markdown-reader.md)
 
 ### Activity Feed
 

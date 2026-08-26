@@ -216,9 +216,9 @@ chunkText(fullText, { chunkChars = 1500, overlapChars = 250 })
 - All updates in one `prisma.$transaction` so partial writes don't leave the index half-populated
 - Validates `vector.length === 768` before each update
 
-### 5. Wire-up — `app/hooks/useThumbnailV2.ts` `runMetadataPipeline`
+### 5. Wire-up — the indexing leg
 
-Kicked off (unawaited) from `useThumbnailV2().run` right after the stage-2 resize, for every file type regardless of whether a thumbnail was produced:
+Runs right after the stage-2 resize, for every file type regardless of whether a thumbnail was produced. Under the XState path this is the item machine's `indexing` region (`metadata → embeddings → OCR?`), which runs in parallel with `stages` and — unlike the `void` promise it replaced — is a held actor that can be cancelled and awaited. Under the legacy path it is `runMetadataPipeline`, kicked off unawaited from `useThumbnail().run` in `app/hooks/useThumbnail.ts`. Either way the steps are the same:
 
 1. `extractMediaMetadata(file)` → `documentText` for PDF / Markdown
 2. POST `save_media_metadata` to `/api/items`; the handler calls `upsertSearchContent` + `chunkText` + `upsertSearchChunks` and returns `chunks: [{id, ord, content}]`
