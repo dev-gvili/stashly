@@ -79,7 +79,7 @@ export function FileCardDetail({
           <ItemCard.Checkbox
             name="selectedItems"
             value={item.id}
-            className="border-primary/40 bg-input! rounded-sm backdrop-blur-sm data-[state=checked]:border-primary "
+            className="bg-input! rounded-sm backdrop-blur-sm aria-checked:border-none! aria-checked:ring-accent/50 ring-2 aria-checked:bg-foreground! aria-checked:text-background! "
           />
           {showActions && (
             // rounded-lg (8px) = the hero's 16px radius minus this row's p-2 inset.
