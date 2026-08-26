@@ -1,11 +1,17 @@
 ---
 name: stashly-thumbnail-pipeline
-description: Stashly client-side 3-stage WebP thumbnail pipeline — useThumbnailV2, thumbnail-signal architecture, the compute worker, PDF.js OffscreenCanvas handling, presign/PUT/PATCH flow, and gallery thumbnail queries. Load when working on thumbnails, previews, the upload thumbnail runner, or Web Workers.
+description: Stashly client-side 3-stage WebP thumbnail pipeline — the XState scheduler in app/machines/thumbnail, the legacy useThumbnail orchestrator, thumbnail-signal architecture, the compute worker, PDF.js OffscreenCanvas handling, presign/PUT/PATCH flow, and gallery thumbnail queries. Load when working on thumbnails, previews, the upload thumbnail runner, or Web Workers.
 ---
 
 # Stashly Thumbnail Pipeline
 
-Client-side 3-stage progressive generation. All output is **WebP**. Entry point: `app/hooks/useThumbnailV2.ts` — a thin orchestrator that composes pure helpers from `@/utils/thumbnail-pipeline` (`generateStage1Preview`, `generateStage2Resize`, `generateStage3Salient`, `putThumbnailToS3`, `makeStageUrl`) and a swappable broadcast channel from `@/hooks/thumbnail-signal`. Spawned per-file by `app/components/upload/upload-thumbnail-runner.tsx`, which keys the component on `mediaFile.id` so each upload gets its own hook instance.
+Client-side 3-stage progressive generation. All output is **WebP**.
+
+**Orchestration is the XState manager in `app/machines/thumbnail/`** — `USE_THUMBNAIL_MACHINE = true` in its `index.ts` selects it, and every call site imports the hooks from there. One module-scope manager owns two lanes (upload: cap 4, FIFO · backfill: cap 2, LIFO, pause is a state), spawns one item machine per file (`stages ∥ indexing`), and gives the pipeline retry (800 ms, budget 2) and real cancellation. It calls plain `fetch`, not `useFetcher`, so it does **not** revalidate the route — `useThumbnailRevalidation()` folds `metadataSaved` bursts into one navigation. Read `app/machines/thumbnail/README.md` before editing it.
+
+The legacy orchestrator, reachable only by flipping that constant off, is `app/hooks/useThumbnail.ts` (`useThumbnailV2.ts` was folded into it) — a thin orchestrator over the same pure helpers in `@/utils/thumbnail-pipeline` (`generateStage1Preview`, `generateStage2Resize`, `generateStage3Salient`, `putThumbnailToS3`, `makeStageUrl`) plus a swappable broadcast channel from `@/hooks/thumbnail-signal`, spawned per-file by `app/components/upload/upload-thumbnail-runner.tsx`.
+
+**Both paths share the stage helpers.** Compute logic lives in `@/utils/thumbnail-pipeline` and nowhere else — the machine's actors are `fromPromise` wrappers around it.
 
 **Stage 0 (hex color) was removed in V2** — every consumer already filters `url.startsWith('#')`, so writing it to the DB was pure waste. The pipeline now starts at stage 1.
 
@@ -52,13 +58,13 @@ A card that unmounts mid-job (route change) lets the in-flight job finish and pe
 
 PDFs and text-based files stop after stage 2. The PDF.js worker URL is set globally on import in `app/utils/pdf.ts` via `pdfjs-dist/build/pdf.worker.min.mjs?url`.
 
-**PDF text extraction is part of this run**: `useThumbnailV2` dispatches the `pdfText` compute RPC, and when it comes back empty (a scan with no text layer) it falls through to `streamOcrPdf` — page-by-page vision-model OCR, persisted per page. That path is documented in the `stashly-ai-inference` skill; don't add OCR logic here.
+**PDF text extraction is part of this run**: the indexing leg dispatches the `pdfText` compute RPC, and when it comes back empty (a scan with no text layer) it falls through to `streamOcrPdf` — page-by-page vision-model OCR, persisted per page. That path is documented in the `stashly-ai-inference` skill; don't add OCR logic here.
 
 **Text thumbnails**: `app/utils/text-thumbnail.ts` "screenshots" the first ~32 KB of a text-based file (plain text, markdown, code, config) onto an A4-proportioned white page via OffscreenCanvas — sans-serif for prose extensions, monospace for code/config (extension wins over mime because code files often arrive as `text/plain`/`application/octet-stream`). Detection is `isTextRenderableFile`; compute-worker RPC kinds are `tinyText`/`resizeText`. Empty files return null — no thumbnail beats a blank page. Line layout (`layoutTextLines`) is pure and unit-tested in `app/utils/__tests__/text-thumbnail.test.ts`.
 
 ## Compute worker
 
-Heavy thumbnail compute runs in a singleton dedicated worker at `app/workers/thumbnail.compute.worker.ts` with an internal concurrency cap of **1** and a 30-second per-op timeout. RPC kinds: `tinyImage` / `tinyPdf` / `tinyText`, `resizeImage` / `resizePdf` / `resizeText`, `pdfText`, `pdfMeta`, `mdMeta`, `imageDimensions`. The pipeline helpers in `@/utils/thumbnail-pipeline` dispatch RPC requests via `compute({ kind, file })`; `useThumbnailV2` handles HTTP + React state on main. Video thumbnails stay on main because they require `<video>` DOM access. Stage 3 (image AI) also stays on main — it calls into `app/workers/thumbnail.ai.ts`, which is a regular module using WebGPU (not a Worker — the file location is historical).
+Heavy thumbnail compute runs in a singleton dedicated worker at `app/workers/thumbnail.compute.worker.ts` with an internal concurrency cap of **1** and a 30-second per-op timeout. RPC kinds: `tinyImage` / `tinyPdf` / `tinyText`, `resizeImage` / `resizePdf` / `resizeText`, `pdfText`, `pdfMeta`, `mdMeta`, `imageDimensions`. The pipeline helpers in `@/utils/thumbnail-pipeline` dispatch RPC requests via `compute({ kind, file })`; The orchestration layer handles HTTP on main. Video thumbnails stay on main because they require `<video>` DOM access. Stage 3 (image AI) also stays on main — it calls into `app/workers/thumbnail.ai.ts`, which is a regular module using WebGPU (not a Worker — the file location is historical).
 
 The cap is 1 because PDF.js inside a dedicated worker falls back to **fake worker mode** (it can't spawn a sub-worker reliably from inside another worker). In fake-worker mode, multiple concurrent PDF operations terminate each other's tasks ("Worker task was terminated" warnings) — serializing is safer than the throughput win.
 

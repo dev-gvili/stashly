@@ -29,7 +29,7 @@ A failure settles the caller *and* frees the queue (`.finally`), because an unre
 
 ## PDF OCR
 
-Recovers text from PDFs that have **no text layer**. Entry: `useThumbnailV2` calls `streamOcrPdf` (in `@/utils/thumbnail-pipeline`) after `pdfText` compute comes back empty.
+Recovers text from PDFs that have **no text layer**. Entry: the thumbnail pipeline's indexing leg calls `streamOcrPdf` (in `@/utils/thumbnail-pipeline`) after `pdfText` compute comes back empty — the item machine's `indexing` region under `app/machines/thumbnail/`, or `useThumbnail` on the legacy path.
 
 - **Rasterization** goes through the compute worker (off main thread); **inference** runs on the main thread through the shared queue, matching every other model.
 - **Per-page streaming.** `streamOcrPdf(file, onPage)` renders → transcribes → hands over → drops, one page at a time. Two reasons: a closed tab at page 12 of 15 no longer throws away twelve pages of work (~30s/page), and exactly one decoded bitmap is alive at a time. `onPage` is awaited so persistence back-pressures rendering.

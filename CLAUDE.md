@@ -142,7 +142,7 @@ Detailed conventions for these areas live in on-demand project skills (`.claude/
 | `stashly-ui-conventions` | Any `app/components` UI — icons, ItemCard, DataTable, dialogs, dropdowns, cards, filters, pagination, surface/z-index layering, Tailwind styling |
 | `stashly-prisma-data` | Prisma queries, migrations, schema changes, `orderBy`/relation filters, ItemCard select shapes, Zod schemas, SQL |
 | `stashly-upload-xstate` | The upload flow — upload/file machines, S3 multipart, item-creation gate, `parentId` derivation, AI machines |
-| `stashly-thumbnail-pipeline` | Thumbnails/previews — `useThumbnailV2`, thumbnail-signal, compute worker, PDF.js, presign/PUT/PATCH, gallery thumbnail queries, Web Workers |
+| `stashly-thumbnail-pipeline` | Thumbnails/previews — the XState scheduler in `app/machines/thumbnail/`, `useThumbnail`, thumbnail-signal, compute worker, PDF.js, presign/PUT/PATCH, gallery thumbnail queries, Web Workers |
 | `stashly-search` | Search — hybrid ranking, `SearchChunk`, the keyword→semantic client flow, query expansion, evidence cards, reindex intents |
 | `stashly-ai-inference` | Browser AI — the WebGPU `ai-queue` and its priorities, PDF OCR engines, the search-embedding backfill |
 | `stashly-gallery-views` | Gallery layouts (grid/river/waterfall), view transitions into the item page, scroll restoration, theme blocks |
