@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Scope Discipline
 
+- **Start where the user pointed.** When a specific file or route is named, open that first — do NOT run broad exploration before it. Read at most **3 files** before proposing a fix. If the fix genuinely needs more, stop and ask rather than widening on your own.
+- Never open unrelated schema files (`prisma/models/*.prisma`) or adjacent feature code unless the user asks or the fix demonstrably requires it. A claim of "one-line fix" followed by a file tour is the pattern to avoid.
 - Do exactly what was asked, nothing more. If a fix touches only one component (e.g. image-stage), do NOT add panel/facet plumbing, refactor unrelated wrappers, or migrate other call sites.
 - Never add or install a new dependency (npm/pnpm packages like prom-client, vite-tsconfig-paths, radix-*) without asking first. Prefer built-in capabilities of Vite/Vitest/existing libs.
 - Never run destructive git commands (`git checkout -- <file>`, `git reset --hard`, `git clean`) on files with uncommitted changes. Ask first.
@@ -177,6 +179,7 @@ Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind s
 - For UI changes, verify in the browser via the chrome-devtools MCP (or playwright MCP) before declaring done — both require Chrome installed.
 - Browser verification doesn't need a session: chrome-devtools MCP opens a fresh unauthenticated Chrome, but `http://localhost/auth/sign-in` loads the same stylesheet. Append a throwaway `div` with the classes and read `getComputedStyle` to prove a Tailwind class resolves, or inject a mock grid there to measure geometry (column widths, row count, card sizes) before and after a layout change.
 - Only run typecheck at the END of a task, not mid-edit, unless explicitly asked — and skip it entirely for className/copy-only edits, which touch no type surface.
-- `$queryRaw` SQL is invisible to `tsc` — verify by running the action against the dev DB: `npx tsx --env-file=.env <script.ts>` (absolute imports; no top-level await).
-- `pnpm typecheck` has **209** pre-existing, unrelated errors (verified 2026-08-18) — don't expect a clean run. Pipe to a file, count `error TS`, and grep your touched files by name to confirm no regressions.
+- `$queryRaw` SQL is invisible to `tsc` — verify by running the action against the dev DB: `npx tsx --env-file=.env <script.ts>`. The script must sit **in the repo root** (from a temp dir, module resolution fails), use absolute imports, and no top-level await. Import the client as `import { prisma } from '@/services/db'` — `new PrismaClient()` throws under Prisma 7 without an adapter.
+- `pnpm typecheck` has **202** pre-existing, unrelated errors (verified 2026-08-26) — don't expect a clean run. Pipe to a file, count `error TS`, and grep your touched files by name to confirm no regressions.
+- `npx prettier --write <file>` reflows *pre-existing* long lines, so a 10-line edit can land as a 47-line diff. Format only files you created; on a file you edited, check `git diff` afterwards and revert the hunks you didn't cause.
 - `pnpm test` is **406 passing / 11 failing (417 in 25 files)**; the 11 are pre-existing (`activity.test.ts` ×4, `collection-actions.test.ts` ×7) — don't chase them. Verified 2026-08-18.
