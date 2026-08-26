@@ -64,7 +64,11 @@ export function StashPageToolbar({
     <>
       <PageToolbarPathRail
         context={context}
-        itemCount={stats.files + stats.folders}
+        stats={stats}
+        // Trash counts what the bin holds, not what the live drive holds.
+        itemCount={
+          context === 'trash' ? stats.trashed : stats.files + stats.folders
+        }
         onBack={() => navigate(-1)}
         onMove={() => setMoveOpen(true)}
         onFavorite={() => submit('favorite_items', href('/api/favorites'))}

@@ -28,7 +28,7 @@ export function SelectAllCheckbox({
   return (
     <span
       className={cn(
-        'inline-grid size-8 shrink-0 place-items-center rounded-md transition-colors hover:bg-accent',
+        'inline-grid size-9 shrink-0 place-items-center rounded-md bg-card! border-none ring-2 ring-accent ',
         className
       )}
     >
@@ -38,14 +38,14 @@ export function SelectAllCheckbox({
         }
         onCheckedChange={() => toggleAll(paramName)}
         aria-label={state === 'on' ? 'Clear selection' : 'Select all'}
-        className={cn('size-5 hover:cursor-pointer', checkboxClassName)}
+        className={cn('size-6 rounded-sm hover:cursor-pointer data-[state=checked]:bg-foreground! data-[state=checked]:text-background border-none', checkboxClassName)}
       >
         {state === 'off' ? null : (
           <span className="flex items-center justify-center text-current">
             {state === 'mixed' ? (
-              <MinusFillIcon className="size-4" />
+              <MinusFillIcon className="size-5" />
             ) : (
-              <DoubleCheckIcon className="size-5" />
+              <DoubleCheckIcon className="size-5 text-current" />
             )}
           </span>
         )}

@@ -28,12 +28,17 @@ import {
   MoveFillIcon,
   FavoritesFillIcon,
   DownloadFillIcon,
+  RestoreFillIcon,
 } from '@/components/icons'
 import { SelectAllCheckbox } from './toolbar-stats'
 import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
 import { useSelection } from '@/hooks/useSelection'
 import { useBreadcrumbs } from '@/hooks'
-import type { BulkActions, ToolbarContext } from '@/types/stash.types'
+import type {
+  BulkActions,
+  ToolbarContext,
+  LibraryStats,
+} from '@/types/stash.types'
 import { cn } from '@/utils/styles'
 import { href, Link, useLocation, useParams } from 'react-router'
 import {
@@ -47,6 +52,8 @@ interface Props extends BulkActions {
   context?: ToolbarContext
   onBack?: () => void
   className?: string
+
+  stats: LibraryStats
 }
 
 /**
@@ -64,11 +71,12 @@ export function PageToolbarPathRail({
   context = 'files',
   onBack,
   className,
+  stats,
   ...actions
 }: Props) {
   const location = useLocation()
   const { me } = useParams()
-  const { selectedIds, unselectAll, selectAll } = useSelection()
+  const { selectedIds, unselectAll } = useSelection()
   const crumbs = useBreadcrumbs()
   const selectedCount = selectedIds.length
   const active = selectedCount > 0
@@ -86,11 +94,7 @@ export function PageToolbarPathRail({
         size="icon"
         onClick={onClick}
         aria-label={label}
-        className={cn(
-          danger
-            ? 'hover:text-destructive'
-            : ''
-        )}
+        className={cn(danger ? 'text-destructive hover:text-destructive!' : '')}
       >
         <Icon className="size-5" />
       </Button>
@@ -116,11 +120,13 @@ export function PageToolbarPathRail({
         <ArrowLeftFillIcon className="size-5" />
       </Button>
 
+      <SelectAllCheckbox className="shrink-0" />
+
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         {isTrash ? (
           <h1 className="font-stashly text-sm font-semibold">Trash</h1>
         ) : (
-          <>
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             {!crumbs && (
               <span className="text-sm font-stashly text-muted-foreground">
                 {location.state?.name ??
@@ -132,39 +138,56 @@ export function PageToolbarPathRail({
                   ''}
               </span>
             )}
-            <Breadcrumbs />
-          </>
+            <div className="flex min-w-0 items-start gap-2 overflow-hidden">
+              <Breadcrumbs />
+              <div className="flex min-w-0 items-start gap-2 ">
+                <Badge
+                  variant="outline"
+                  className="tabular-nums rounded border-none bg-card! px-2 text-sm font-medium ring-2 ring-accent"
+                >
+                  {stats.size}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="tabular-nums rounded border-none bg-card! px-2 text-sm font-medium ring-2 ring-accent"
+                >
+                  {stats.files} files
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="tabular-nums rounded border-none bg-card! px-2 text-sm font-medium ring-2 ring-accent"
+                >
+                  {stats.folders} folders
+                </Badge>
+              </div>
+            </div>
+          </div>
         )}
-        <Badge variant="outline" className="hidden tabular-nums md:inline-flex">
-          {itemCount.toLocaleString()} items
-        </Badge>
       </div>
+
+      {/* Trash keeps select-all reachable with an empty selection — it is how
+          you arm "empty the bin" in one click. Elsewhere the neutral rail owns
+          that space. */}
+      {/* {isTrash && <SelectAllCheckbox className="shrink-0" />} */}
 
       {active ? (
         <div className="flex shrink-0 items-center gap-1 rounded-md ring-2 ring-accent bg-card pl-2">
           {isTrash ? (
-            <>
-              {rail('Restore', RestoreIcon, actions.onRestore)}
-              {rail(
-                'Delete forever',
-                TrashFillIcon,
-                actions.onDeleteForever,
-                true
-              )}
-            </>
-          ) : (
             <ButtonGroup>
               <ButtonGroupText className="text-muted-foreground border-none bg-card">
                 {selectedCount} selected
               </ButtonGroupText>
-              <ButtonGroupSeparator className="bg-accent w-2" />
-              {rail('Move to…', MoveFillIcon, actions.onMove)}
-              {rail('Favorite', FavoritesFillIcon, actions.onFavorite)}
-              {rail('Download', DownloadFillIcon, actions.onDownload)}
-              {rail('Share', ShareItemFillIcon, actions.onShare)}
-              <ButtonGroupSeparator className="bg-accent w-2" />
-              {rail('Move to trash', TrashFillIcon, actions.onTrash, true)}
-              <ButtonGroupSeparator className="bg-accent w-2" />
+              <ButtonGroupSeparator className="bg-accent h-5! my-auto!" />
+              {rail('Restore', RestoreFillIcon, actions.onRestore)}
+              {rail(
+                'Delete forever',
+                () => (
+                  <TrashFillIcon className="text-destructive" />
+                ),
+                actions.onDeleteForever,
+                true
+              )}
+              {/* <ButtonGroupSeparator className="bg-accent h-5! my-auto!" />
               <Button
                 variant="ghost"
                 size="icon"
@@ -173,7 +196,38 @@ export function PageToolbarPathRail({
                 className="text-muted-foreground"
               >
                 <RemoveIcon className="size-5" />
-              </Button>
+              </Button> */}
+            </ButtonGroup>
+          ) : (
+            <ButtonGroup>
+              <ButtonGroupText className="text-muted-foreground border-none bg-card">
+                {selectedCount} selected
+              </ButtonGroupText>
+              {/* <ButtonGroupSeparator className="bg-accent h-5! my-auto!" /> */}
+
+              {rail('Move to…', MoveFillIcon, actions.onMove)}
+              {/* {rail('Favorite', FavoritesFillIcon, actions.onFavorite)} */}
+              {rail('Download', DownloadFillIcon, actions.onDownload)}
+              {rail('Share', ShareItemFillIcon, actions.onShare)}
+              {/* <ButtonGroupSeparator className="bg-accent h-5! my-auto!" /> */}
+              {/* <ButtonGroupSeparator className="bg-accent h-5! my-auto!" /> */}
+              {rail(
+                'Trash',
+                () => (
+                  <TrashFillIcon />
+                ),
+                actions.onTrash,
+                true
+              )}
+              {/* <Button
+                variant="outline"
+                size="icon"
+                onClick={() => unselectAll()}
+                aria-label="Clear selection"
+                className="text-current border-none"
+                >
+                <RemoveIcon className="size-6" />
+              </Button> */}
             </ButtonGroup>
           )}
         </div>
@@ -190,7 +244,7 @@ export function PageToolbarPathRail({
               </Button>
             </Tooltip>
           )}
-          <Separator orientation="vertical" className="mx-1 h-5" />
+          <Separator orientation="vertical" className="h-5" />
         </div>
       )}
     </nav>
