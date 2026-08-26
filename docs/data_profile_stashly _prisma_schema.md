@@ -220,6 +220,10 @@ Keeps `Folder.childCount` (active items only) and `Folder.inclusiveChildCount` (
 
 > Note: `update_child_count()` does **not** carry the user-wipe bypass guard — only the three size functions were patched in `20260526000000`.
 
+> **⚠️ `Folder_itemId_fkey` is `DEFERRABLE INITIALLY DEFERRED` and Prisma cannot express that.** The flag lives *only* in `20260826000000_defer_folder_item_fk`. **Reshaping the `Folder.item` relation — renaming the field or model, changing `onDelete`, or running `prisma db push` — makes Prisma `DROP` and re-`ADD` the constraint as an immediate check, silently deleting this fix.** If you touch that relation, re-apply the `ALTER CONSTRAINT` in the same migration.
+>
+> **Why it's deferred:** deleting a set of items containing both a folder and something nested inside it raised `23503` / Prisma `P2003` — *"insert or update on table `Folder` violates foreign key constraint"*. The "insert or update" is this trigger: its DELETE branch runs `UPDATE "Folder" … WHERE "itemId" = OLD."parentId"`, which queues an immediate FK check on the parent's facet row, while `ON DELETE CASCADE` has queued the removal of that same row because the parent `Item` is in the delete set. Row order inside one statement is Postgres's choice, so the check could run first and find the `Item` already gone. Deferring to `COMMIT` lets the cascade land first; a check on a row that no longer exists is skipped. The constraint is not weakened — a real orphan still fails, at `COMMIT` instead of at the statement. Same family as the `27000` user-wipe problem below: rollup triggers writing to rows the same outer command is deleting. Revert with `down.sql` in that migration's directory.
+
 #### `update_collection_size()` — Collection membership size sync
 
 Fires on `CollectionMember` INSERT/DELETE (the explicit "add to / remove from collection" path) and adds or subtracts the member item's `size` from the collection `Item.size`.
@@ -276,7 +280,8 @@ Firing at the DB level means *every* writer pushes live — `createNotification(
 | `20251214024737_update_triggers_for_inclusive_counts` | Rewrote `update_size()` + `update_child_count()` to maintain `inclusiveSize` / `inclusiveChildCount` alongside the active-only columns |
 | `20260416000000_add_collection_size_trigger` | Added `update_collection_size()` + `sync_item_size_to_collections()` and their three triggers (`collection_size_trigger`, `item_size_collection_sync_trigger`, `item_delete_collection_sync_trigger`) |
 | `20260526000000_user_wipe_trigger_bypass` | Added `stashly_is_wiping_user()`; re-issued `update_size()`, `update_collection_size()`, `sync_item_size_to_collections()` with the wipe-bypass `WHERE` guard |
-| `20260724000000_notification_notify` | **Current** — added `notify_notification_change()` + the `notification_change_notify` trigger on `Notification` |
+| `20260724000000_notification_notify` | Added `notify_notification_change()` + the `notification_change_notify` trigger on `Notification` |
+| `20260826000000_defer_folder_item_fk` | **Current** — made `Folder_itemId_fkey` `DEFERRABLE INITIALLY DEFERRED` so `update_child_count()`'s DELETE branch can't race the `ON DELETE CASCADE` on the same facet row (see the ⚠️ note under `update_child_count()`). No function or trigger changed |
 
 ### Recommended Explorations
 

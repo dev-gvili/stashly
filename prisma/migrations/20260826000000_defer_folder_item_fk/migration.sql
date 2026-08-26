@@ -1,0 +1,45 @@
+-- Defer the Folder facet's foreign-key check to COMMIT.
+--
+-- WHY
+-- Deleting a set of items that contains both a folder and something nested
+-- inside it fails with 23503 / Prisma P2003:
+--
+--   insert or update on table "Folder" violates foreign key constraint
+--   "Folder_itemId_fkey"
+--
+-- Note the wording: "insert or update". Nothing inserts into Folder here —
+-- update_child_count() does, from its DELETE branch:
+--
+--   UPDATE "Folder" SET "inclusiveChildCount" = "inclusiveChildCount" - 1, ...
+--   WHERE "itemId" = OLD."parentId";
+--
+-- Within one DELETE statement Postgres picks its own row order. When a child
+-- row is removed, that trigger UPDATEs the parent's Folder row, which queues an
+-- immediate referential-integrity check ("does Folder.itemId still point at a
+-- live Item?"). The parent Item is in the same delete set, so ON DELETE CASCADE
+-- has queued the removal of that very Folder row. The check runs first, finds
+-- the Item already gone, and raises. The Folder row was doomed either way — the
+-- check just asked a moment too early.
+--
+-- Deferring moves the check to COMMIT, by which point the cascade has deleted
+-- the Folder row and a check on a non-existent row is skipped. The constraint
+-- is NOT weakened: a genuine orphan still fails, just at COMMIT rather than at
+-- the statement.
+--
+-- Same family as the 27000 problem handled by 20260526000000_user_wipe_trigger_bypass:
+-- rollup triggers writing to rows the same outer command is deleting.
+--
+-- Catalog-only change: no table rewrite, no data touched, brief ACCESS
+-- EXCLUSIVE lock on "Folder".
+--
+-- REVERT: see down.sql in this directory.
+--
+-- MAINTENANCE HAZARD
+-- Prisma's schema language cannot express deferrability, so this lives only
+-- here. If the Folder.item relation is ever reshaped (renamed field/model,
+-- changed onDelete) or `prisma db push` is run, Prisma will DROP and re-ADD
+-- Folder_itemId_fkey as an immediate constraint and this fix silently
+-- disappears. prisma/models/facet.prisma carries a pointer to this migration.
+
+ALTER TABLE "Folder"
+  ALTER CONSTRAINT "Folder_itemId_fkey" DEFERRABLE INITIALLY DEFERRED;

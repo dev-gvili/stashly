@@ -541,6 +541,14 @@ export type $FolderPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
   name: "Folder"
   objects: {
     view: Prisma.$ViewPayload<ExtArgs> | null
+    /**
+     * DO NOT reshape this relation without re-reading
+     * prisma/migrations/20260826000000_defer_folder_item_fk. That migration makes
+     * Folder_itemId_fkey DEFERRABLE INITIALLY DEFERRED — Prisma cannot express
+     * that here, so any change that makes Prisma DROP and re-ADD this constraint
+     * (renaming the field/model, changing onDelete, `prisma db push`) silently
+     * restores the immediate check and brings back the P2003 bulk-delete failure.
+     */
     item: Prisma.$ItemPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
