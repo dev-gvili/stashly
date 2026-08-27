@@ -377,6 +377,60 @@ hue rather than screaming red — it's a read-only viewer).
 
 ---
 
+## Worker lifecycle — why corrections are extra libs
+
+Monaco's TypeScript defaults expose **two** update channels, and only one of
+them keeps the worker alive:
+
+```mermaid
+flowchart LR
+    SCO["setCompilerOptions()<br/>setDiagnosticsOptions()<br/>setEagerModelSync()"] --> ODC[onDidChange]
+    AEL["addExtraLib()"] --> OEL[onDidExtraLibsChange]
+    ODC --> STOP["_stopWorker()<br/>worker.dispose()"]
+    OEL --> UPD["_updateExtraLibs()<br/>proxy.updateExtraLibs()"]
+    STOP --> BOOT["new Worker(ts.worker.js)<br/>re-imports typescriptServices<br/>re-parses every lib acquired so far"]
+    UPD --> LIVE["live worker patched in place"]
+```
+
+`workerManager.js` wires `onDidChange → _stopWorker()` with no diffing, and
+`setCompilerOptions` fires it unconditionally. The replacement worker re-imports
+`typescriptServices.js` — **43.5MB unbundled in dev**, and over Chrome's
+per-entry disk-cache ceiling, so `Cache-Control: immutable` buys nothing and it
+re-downloads in full every time. (`lib.js` at 16.4MB with identical headers
+caches fine; size is the only difference.)
+
+Opening one 27-line file used to boot the worker **nine times**: 1,024 requests,
+470MB, 391MB of it that one bundle. Every rule below comes out of that.
+
+- **Never call `setCompilerOptions` after the editor mounts.** `createCodeViewer`
+  applies alias paths before `createModel`, and `applyAliasPaths` is idempotent,
+  so the later call from `acquireCrossFileTypes` is a no-op.
+- **Express "make this resolve" as an extra lib**, never as compiler options. A
+  `.d.ts` shim at the guessed path re-exporting the real one resolves
+  identically and rides the non-destructive channel. Safe because the viewer
+  sets both `skipLibCheck: true` and `noSemanticValidation: true`, so the shim's
+  `export { default }` raises nothing when the target has no default export.
+- **Batch server work rather than serialising it.** `getSourceFiles` places
+  every directory a batch needs breadth-first (one query per tree level),
+  fetches every candidate file in one more query, then reads texts in parallel
+  behind a per-request cache. The shape it replaced walked the tree per segment
+  *per candidate extension* — over a thousand sequential queries for a batch of
+  25, ~6.5s each.
+- **Dedupe the walk queue at push time.** `requested` only fills in once a path
+  is spliced into a batch, so a path imported by thirty files was queued thirty
+  times and the copies ate slots in the batch they shipped with.
+
+Measured before → after: **1,024 → 582 requests, 470MB → 49.5MB, 9 → 1 worker
+boot, 82.4s → 12.0s of server time.** In production the whole worker payload is
+a single 6.9MB file rather than 270 dev requests.
+
+To measure it again: patch `window.Worker` in an `initScript` to count boots —
+network counting is inference, constructions are fact — and call
+`performance.setResourceTimingBufferSize()` first, because the resource timeline
+caps at 250 entries and drops the rest silently.
+
+---
+
 ## Commit history
 
 | Commit | Change |
@@ -400,6 +454,9 @@ hue rather than screaming red — it's a read-only viewer).
 | `682b890` | fix: show `const` bindings as variables in the outline |
 | `f78e533` | feat: go to definition across uploaded files (#20) |
 | `166253f` | feat(item-page): share one `StageSkeletonLoader` across the stages |
+| `4f41353` | perf: batch source-file resolution server-side (>1,000 sequential queries per batch → a handful) |
+| `555de50` | perf: alias corrections as extra-lib shims — TS worker boots 9 → 1, 470MB → 49.5MB |
+| `f6a2a64` | fix: dedupe the project-config lookup across the viewer's double mount |
 
 ---
 
@@ -448,10 +505,13 @@ hue rather than screaming red — it's a read-only viewer).
   prefixes the first pass *proved* (`services/db` → `.server/db.ts` establishes
   `services` → `.server`), which is what resolves an otherwise undecidable name
   like `services/auth` — four `auth.ts` live under the root. Fetching is only
-  half of it: the compiler still resolves the specifier through `paths`, so an
-  answer that isn't where the alias pointed is pinned back as an exact,
-  star-less `paths` entry, batched one `setCompilerOptions` per round-trip
-  because each restarts the TypeScript worker.
+  half of it: the compiler still resolves the specifier through `paths` and
+  lands where the alias pointed, which is empty. So an answer that came back
+  from somewhere else gets a **declaration-file shim** written at the guessed
+  path, re-exporting the real one (`555de50`). Corrections used to be pinned
+  into `compilerOptions.paths` instead — see
+  [Worker lifecycle](#worker-lifecycle--why-corrections-are-extra-libs) for what
+  that cost.
 - **`.js` specifiers for `.ts` sources** *(shipped, `86a73aa`)* — TypeScript
   rewrites an ESM-style `./x.js` import to the `./x.ts` source; `candidatesFor`
   took the extension literally. Generated code leans on this hard — the Prisma
