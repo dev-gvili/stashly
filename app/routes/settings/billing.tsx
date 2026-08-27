@@ -1,29 +1,20 @@
-import type { Route } from './+types/billing'
-import { auth } from '@/services/auth'
-import { Form, Link, redirect } from 'react-router'
-import { findUserById, updateUser } from '../../.server/user-actions'
-import { findAllStoragePlans, findStoragePlanById } from '../../.server/storagePlan-actions'
-import { createQuota, updateTotalQuota } from '../../.server/quota-actions'
-import { findActiveSubscriptionByOwner, updateSubscriptionRecord } from '../../.server/subscription-actions'
-import { updateDrive } from '../../.server/drive-actions'
-import { prisma } from '@/.server/db'
-import { toObjectId, getPrefixForModel } from '@/utils/converters'
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/utils/styles'
 import {
-  TooltipRoot,
   TooltipProvider,
+  TooltipRoot,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { RiCheckboxCircleFill, RiStarFill } from '@remixicon/react'
-import { Separator } from '@/components/ui/separator'
+import { auth } from '@/services/auth'
+import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import { cn } from '@/utils/styles'
+import { RiCheckboxCircleFill } from '@remixicon/react'
+import { Form, redirect } from 'react-router'
+import { updateDrive } from '@/services/drive-actions'
+import { createQuota, updateTotalQuota } from '@/services/quota-actions'
+import { findAllStoragePlans, findStoragePlanById } from '@/services/storagePlan-actions'
+import { findActiveSubscriptionByOwner, updateSubscriptionRecord } from '@/services/subscription-actions'
+import { findUserById, updateUser } from '@/services/user-actions'
+import type { Route } from './+types/billing'
 
 function formatBytes(b: bigint | number) {
   const bytes = typeof b === 'bigint' ? Number(b) : b
