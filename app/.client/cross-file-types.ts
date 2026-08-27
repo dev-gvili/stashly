@@ -23,14 +23,6 @@ const BATCH_SIZE = 25
 
 /** Logical paths already requested — dedups across the walk (and re-runs). */
 const requested = new Set<string>()
-/**
- * Logical path -> the alias specifier that produced it (`ui/button` ->
- * `@/ui/button`). Only alias imports are recorded; a relative import already
- * names where it lives. Kept because the *compiler* still resolves the alias
- * through `paths`, so when the server answers a guessed path with the file's
- * real one, this specifier is what has to be re-pointed.
- */
-const aliasFor = new Map<string, string>()
 /** Virtual lib paths already registered with Monaco. */
 const addedLibs = new Set<string>()
 /**
@@ -101,6 +93,12 @@ export async function acquireCrossFileTypes(
     // Seed from the viewed file's imports — relative ones resolve against its
     // real directory (the model is mounted there), aliases via the matchers.
     const queue = mapSpecifiers(importsOf(source), dirOf(context.filePath), matchers)
+    // Paths already sitting in `queue`. `requested` only fills in once a path
+    // has been spliced into a batch, so on its own it can't stop the same path
+    // — pushed once per file that imports it — from being queued many times
+    // over. Those copies then eat slots in the batch they're spliced with,
+    // which costs a round-trip nobody needed.
+    const queued = new Set(queue)
     const rootId = context.rootId
     let fetched = 0
 
@@ -116,7 +114,6 @@ export async function acquireCrossFileTypes(
         rootId,
         logicalPaths: batch,
       })
-      const corrections: Record<string, string[]> = {}
       for (const { path, requested: asked, text, id, parentId } of files as {
         path: string
         requested: string
@@ -134,22 +131,18 @@ export async function acquireCrossFileTypes(
         // a *synthesized* alias map, which assumes an alias names the folder it
         // points at — true for `@/utils/*`, false for `@/ui/*`
         // (`components/ui`) and `@/services/*` (`.server`). The server finds
-        // those anyway, but the compiler still resolves the specifier through
-        // `paths` and would land on the folder that was guessed. So whenever
-        // the answer isn't where the alias said to look, pin that specifier to
-        // the real path — an exact (star-less) entry, which TypeScript matches
-        // only against that one specifier.
-        const specifier = aliasFor.get(asked)
-        if (specifier && logicalOf(path) !== asked) corrections[specifier] = [path]
+        // those anyway, but the compiler resolves the import through `paths`
+        // and lands on the folder that was guessed, where nothing is. So put
+        // something there.
+        if (logicalOf(path) !== asked) addAliasShim(asked, path, id, parentId)
         // A fetched file sits at its real path, so its own relative imports
         // resolve against that directory — follow them too.
         for (const next of mapSpecifiers(importsOf(text), dirOf(path), matchers)) {
-          if (!requested.has(next)) queue.push(next)
+          if (requested.has(next) || queued.has(next)) continue
+          queued.add(next)
+          queue.push(next)
         }
       }
-      // Batched deliberately: every `setCompilerOptions` restarts the
-      // TypeScript worker, so this is once per round-trip, not once per file.
-      if (Object.keys(corrections).length) applyAliasPaths(corrections)
     }
   } catch (err) {
     console.error('[cross-file] type resolution failed', err)
@@ -198,6 +191,57 @@ function addExtraLib(code: string, uri: string): void {
   const ts = monaco.typescript
   ts.typescriptDefaults.addExtraLib(code, uri)
   ts.javascriptDefaults.addExtraLib(code, uri)
+}
+
+/**
+ * Make an import resolve where the compiler *looks*, for a file that turned out
+ * not to be there — a declaration file at the guessed path, re-exporting the
+ * real one.
+ *
+ * The obvious alternative is to re-point the specifier through `paths`, and
+ * that is what this used to do. It cost far more than it looks: every
+ * `setCompilerOptions` fires the defaults' `onDidChange`, and Monaco's worker
+ * manager answers that by *destroying* the TypeScript worker. The replacement
+ * re-imports Monaco's `typescriptServices` bundle — 45MB unbundled in dev, over
+ * Chrome's per-entry cache ceiling so it re-downloads in full — and re-parses
+ * every lib acquired so far. One mis-guessed alias bought a 45MB reload, and a
+ * 250-file walk did it nine times over.
+ *
+ * `addExtraLib` goes down the other channel (`onDidExtraLibsChange`), which
+ * patches the *live* worker in place. Same resolution, no restart, and it works
+ * for a mis-resolved relative import too — `paths` could only ever fix aliases.
+ *
+ * Semantic validation is off for the viewer (`configureLanguageService`), so
+ * re-exporting `default` costs nothing when the target hasn't got one, and
+ * carries the common `export default` component when it has.
+ */
+function addAliasShim(
+  asked: string,
+  realPath: string,
+  id: string,
+  parentId: string | null
+): void {
+  const target = relativeFrom(dirOf(asked), logicalOf(realPath))
+  const uri = `${VIRTUAL_ROOT}${asked}.d.ts`
+  addExtraLib(
+    `export * from '${target}'\nexport { default } from '${target}'\n`,
+    uri
+  )
+  // Go to Definition on the *specifier* lands on the shim rather than the file
+  // behind it, so the shim has to route to the same item the real lib does.
+  if (id && parentId) sourceItems.set(uri, { itemId: id, folderId: parentId })
+}
+
+/** Relative specifier from `fromDir` to `toPath` (`services` → `.server/db` = `../.server/db`). */
+function relativeFrom(fromDir: string, toPath: string): string {
+  const from = fromDir ? fromDir.split('/') : []
+  const to = toPath.split('/')
+  let shared = 0
+  while (shared < from.length && shared < to.length && from[shared] === to[shared]) {
+    shared++
+  }
+  const up = from.length - shared
+  return (up ? '../'.repeat(up) : './') + to.slice(shared).join('/')
 }
 
 // ---------------------------------------------------------------------------
@@ -264,7 +308,6 @@ function mapSpecifiers(
       const star = spec.slice(m.prefix.length, spec.length - m.suffix.length)
       for (const target of m.targets) {
         const mapped = target.includes('*') ? target.replace('*', star) : target
-        aliasFor.set(mapped.replace(/^\.\//, ''), spec)
         // tsconfig targets are baseUrl-relative (`./app/.server/*`); strip the
         // leading `./` so the logical path lines up with the file paths the
         // server returns and registers (`app/.server/x.ts`).
