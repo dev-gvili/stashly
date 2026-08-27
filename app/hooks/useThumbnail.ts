@@ -269,7 +269,7 @@ async function runMetadataPipeline(
     // if the tab closed. Now the item is fully saved first and the recovered
     // text is a strict improvement layered on top.
     if (meta.needsOcr) {
-      const { streamOcrPdf } = await import('@/utils/thumbnail-pipeline')
+      const { streamOcrPdf } = await import('@/utils/thumbnail-ocr')
 
       // Each page is persisted and embedded the moment it is transcribed, so
       // closing the tab mid-run keeps every page finished so far instead of

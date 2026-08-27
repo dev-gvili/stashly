@@ -267,7 +267,7 @@ export const ocrStreamActor = fromPromise<
   number,
   { itemId: string; file: File }
 >(async ({ input, signal }) => {
-  const { streamOcrPdf } = await import('@/utils/thumbnail-pipeline')
+  const { streamOcrPdf } = await import('@/utils/thumbnail-ocr')
 
   return streamOcrPdf(input.file, async (page) => {
     if (signal.aborted) return
