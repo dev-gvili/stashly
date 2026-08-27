@@ -52,16 +52,32 @@ export type SourceContext = {
 /** A compiled `paths` entry: literal prefix/suffix around the `*`, → targets. */
 type AliasMatcher = { prefix: string; suffix: string; targets: string[] }
 
+/** Project-config lookups in flight or already answered, by file id. */
+const contexts = new Map<string, Promise<SourceContext | null>>()
+
 /**
  * Fetch a file's project context (root, alias config, real path). Called from
  * the React layer in parallel with the Monaco chunk so it adds no latency, and
  * the result is used both to mount the model at its real path and to drive
  * cross-file acquisition. Returns `null` for files with no project around them.
+ *
+ * Deduped by file id, because the viewer's mount effect runs twice: measured
+ * in the browser, both calls come off the same `Promise.all` in `code-viewer`
+ * 4ms apart with identical stacks. Its `cancelled` flag stops the second
+ * *editor* from being built but not the second request, which was already in
+ * flight by then. Reopening a file later reuses the answer too — the walk's
+ * `requested` and `addedLibs` already live this long for the same reason.
  */
 export function fetchSourceContext(
   fileId: string
 ): Promise<SourceContext | null> {
-  return postSource({ intent: 'project-config', fileId })
+  const cached = contexts.get(fileId)
+  if (cached) return cached
+  const request = postSource({ intent: 'project-config', fileId })
+  contexts.set(fileId, request)
+  // A failed lookup isn't an answer — drop it so the next open can retry.
+  request.catch(() => contexts.delete(fileId))
+  return request
 }
 
 /** A real path back to the logical path that would resolve to it. */
