@@ -221,29 +221,50 @@ export async function getSourceFiles(
   // `synthesizeAliasPaths`), so a miss is as likely to be a wrong guess as a
   // missing file — that's the only case the suffix fallback is allowed to run.
   const guessing = !(await rootHasProjectFile(rootId))
-  let suffixLookups = 0
+  const readText = createTextReader()
+  const readFolder = createFolderReader()
 
-  const out: SourceFile[] = []
+  // Normalized and deduped up front, so every pass below works on distinct
+  // paths and the batch resolver sees the whole set at once.
+  const wanted: string[] = []
   const seen = new Set<string>()
-  /** Paths nothing could resolve on the first pass, retried against `hints`. */
-  const pending: string[] = []
-  const hints = new Map<string, string | null>()
-
   for (const logical of logicalPaths.slice(0, MAX_FILES_PER_REQUEST)) {
     const normalized = normalize(logical)
     if (!normalized || seen.has(normalized)) continue
     seen.add(normalized)
-    let resolved = await resolveUnderRoot(rootId, normalized)
-    if (!resolved && guessing && suffixLookups < MAX_SUFFIX_LOOKUPS) {
-      suffixLookups++
-      resolved = await resolveByNameSuffix(rootId, normalized)
-    }
-    if (!resolved) {
-      if (guessing) pending.push(normalized)
+    wanted.push(normalized)
+  }
+
+  const exact = await resolveBatch(rootId, wanted, readText)
+
+  const out: SourceFile[] = []
+  /** Paths nothing could resolve on the first pass, retried against `hints`. */
+  const pending: string[] = []
+  const hints = new Map<string, string | null>()
+  let suffixLookups = 0
+
+  for (const normalized of wanted) {
+    const resolved = exact.get(normalized)
+    if (resolved) {
+      out.push({ ...resolved, requested: normalized })
       continue
     }
-    if (guessing) learnPrefix(hints, normalized, resolved.path)
-    out.push({ ...resolved, requested: normalized })
+    if (!guessing) continue
+    if (suffixLookups < MAX_SUFFIX_LOOKUPS) {
+      suffixLookups++
+      const fallback = await resolveByNameSuffix(
+        rootId,
+        normalized,
+        readText,
+        readFolder
+      )
+      if (fallback) {
+        learnPrefix(hints, normalized, fallback.path)
+        out.push({ ...fallback, requested: normalized })
+        continue
+      }
+    }
+    pending.push(normalized)
   }
 
   // Second pass. A name that appears in several folders is undecidable on its
@@ -253,11 +274,231 @@ export async function getSourceFiles(
   // means `.server` here, and the ambiguity collapses to one exact lookup. Only
   // prefixes proven by an unambiguous hit are used, so this widens what
   // resolves without widening what we're willing to guess.
+  const retries: Array<{ requested: string; hinted: string }> = []
   for (const normalized of pending) {
     const hinted = applyPrefixHint(hints, normalized)
-    if (!hinted) continue
-    const resolved = await resolveUnderRoot(rootId, hinted)
-    if (resolved) out.push({ ...resolved, requested: normalized })
+    if (hinted) retries.push({ requested: normalized, hinted })
+  }
+  if (retries.length) {
+    const rehomed = await resolveBatch(
+      rootId,
+      retries.map((r) => r.hinted),
+      readText
+    )
+    for (const { requested, hinted } of retries) {
+      const resolved = rehomed.get(hinted)
+      if (resolved) out.push({ ...resolved, requested })
+    }
+  }
+  return out
+}
+
+// ---------------------------------------------------------------------------
+// Batched resolution
+//
+// Everything below answers a whole set of logical paths at once. The shape it
+// replaced resolved one path at a time: `candidatesFor` yields up to fourteen
+// candidates (seven extensions × the `x.ts` and `x/index.ts` shapes), and each
+// was walked segment by segment with a `findFirst` per folder. A four-segment
+// path was up to fifty-six sequential round-trips, a batch of twenty-five well
+// over a thousand — which is what made a single batch take ~6.5s, with the
+// S3 reads serialized behind it on top.
+// ---------------------------------------------------------------------------
+
+/** Reads a file's text, at most once per storage object per request. */
+type TextReader = (bucket: string, key: string) => Promise<string | null>
+/** Reads a folder row, at most once per id per request. */
+type FolderReader = (
+  id: string
+) => Promise<{ name: string; parentId: string | null } | null>
+
+/** A file that exists at a candidate path, before its text has been read. */
+type CandidateFile = {
+  path: string
+  id: string
+  parentId: string | null
+  bucket: string
+  key: string
+}
+
+/**
+ * Two logical paths can land on the same file — `services/quota-actions` and a
+ * relative import both resolving to `.server/quota-actions.ts` — and a single
+ * path offers the same candidate to several shapes. Reading through this makes
+ * each storage object one GET no matter how many times it's asked for.
+ */
+function createTextReader(): TextReader {
+  const cache = new Map<string, Promise<string | null>>()
+  return (bucket, key) => {
+    const cacheKey = `${bucket} ${key}`
+    let text = cache.get(cacheKey)
+    if (!text) {
+      text = getObjectText(bucket, key).catch(() => null)
+      cache.set(cacheKey, text)
+    }
+    return text
+  }
+}
+
+/** Same idea for the ancestor walks in `pathUnderRoot`, which retread folders. */
+function createFolderReader(): FolderReader {
+  const cache = new Map<
+    string,
+    Promise<{ name: string; parentId: string | null } | null>
+  >()
+  return (id) => {
+    let folder = cache.get(id)
+    if (!folder) {
+      folder = prisma.item.findUnique({
+        where: { id },
+        select: { name: true, parentId: true },
+      })
+      cache.set(id, folder)
+    }
+    return folder
+  }
+}
+
+/**
+ * Resolve logical paths to files, TypeScript's extension/`index` order deciding
+ * between candidates. One query per tree level to place the directories, one
+ * more for every candidate file in them, then the texts in parallel.
+ */
+async function resolveBatch(
+  rootId: string,
+  logicalPaths: string[],
+  readText: TextReader
+): Promise<Map<string, Omit<SourceFile, 'requested'>>> {
+  const out = new Map<string, Omit<SourceFile, 'requested'>>()
+  if (!logicalPaths.length) return out
+
+  const dirIds = await resolveDirs(rootId, logicalPaths)
+  const candidates = await findCandidateFiles(dirIds, logicalPaths)
+
+  await Promise.all(
+    logicalPaths.map(async (logical) => {
+      for (const candidate of candidatesFor(logical)) {
+        const hit = candidates.get(candidate)
+        if (!hit) continue
+        // A candidate whose object can't be read falls through to the next one,
+        // the way the per-candidate loop this replaced did.
+        const text = await readText(hit.bucket, hit.key)
+        if (text == null) continue
+        out.set(logical, {
+          path: hit.path,
+          text,
+          id: hit.id,
+          parentId: hit.parentId,
+        })
+        return
+      }
+    })
+  )
+  return out
+}
+
+/**
+ * Map every directory the batch needs onto its folder id, a level at a time.
+ * Paths share prefixes heavily (`app/components/ui`, `app/components/views`),
+ * so a breadth-first descent visits each folder once for the whole batch
+ * instead of once per candidate per path.
+ */
+async function resolveDirs(
+  rootId: string,
+  logicalPaths: string[]
+): Promise<Map<string, string>> {
+  const ids = new Map<string, string>([['', rootId]])
+  /** Every directory prefix the batch needs, grouped by depth. */
+  const byDepth: Array<Set<string>> = []
+  for (const logical of logicalPaths) {
+    // Candidates live either beside the path (`x/y.ts`) or under it
+    // (`x/y/index.ts`), so both directories have to be placed.
+    for (const dir of [dirOfPath(logical), logical]) {
+      if (!dir) continue
+      const segments = dir.split('/')
+      for (let depth = 0; depth < segments.length; depth++) {
+        const at = (byDepth[depth] ??= new Set<string>())
+        at.add(segments.slice(0, depth + 1).join('/'))
+      }
+    }
+  }
+
+  for (const level of byDepth) {
+    // A directory whose parent didn't resolve can't resolve either.
+    const paths = [...(level ?? [])].filter((p) => ids.has(dirOfPath(p)))
+    if (!paths.length) continue
+    const folders = await prisma.item.findMany({
+      where: {
+        type: 'folder',
+        parentId: { in: [...new Set(paths.map((p) => ids.get(dirOfPath(p))!))] },
+        name: { in: [...new Set(paths.map(baseOfPath))] },
+      },
+      select: { id: true, name: true, parentId: true },
+    })
+    // The two `in`s match a superset — the same folder name under an unrelated
+    // parent — so pair them back up by (parent, name) rather than by name.
+    const byParent = new Map<string, Map<string, string>>()
+    for (const folder of folders) {
+      if (!folder.parentId) continue
+      const named = byParent.get(folder.parentId) ?? new Map<string, string>()
+      named.set(folder.name, folder.id)
+      byParent.set(folder.parentId, named)
+    }
+    for (const path of paths) {
+      const parentId = ids.get(dirOfPath(path))!
+      const id = byParent.get(parentId)?.get(baseOfPath(path))
+      if (id) ids.set(path, id)
+    }
+  }
+  return ids
+}
+
+/**
+ * Every candidate file the batch could want, in one query, keyed by the
+ * candidate path that would name it.
+ */
+async function findCandidateFiles(
+  dirIds: Map<string, string>,
+  logicalPaths: string[]
+): Promise<Map<string, CandidateFile>> {
+  const out = new Map<string, CandidateFile>()
+  /** Folder id → the candidate directory it stands for, to rebuild paths. */
+  const dirOfId = new Map<string, string>()
+  const names = new Set<string>()
+  for (const logical of logicalPaths) {
+    for (const candidate of candidatesFor(logical)) {
+      const id = dirIds.get(dirOfPath(candidate))
+      if (!id) continue
+      dirOfId.set(id, dirOfPath(candidate))
+      names.add(baseOfPath(candidate))
+    }
+  }
+  if (!dirOfId.size) return out
+
+  const files = await prisma.item.findMany({
+    where: {
+      type: 'file',
+      parentId: { in: [...dirOfId.keys()] },
+      name: { in: [...names] },
+    },
+    select: {
+      id: true,
+      name: true,
+      parentId: true,
+      file: { select: { bucket: true, key: true } },
+    },
+  })
+  for (const item of files) {
+    if (!item.file || !item.parentId) continue
+    const dir = dirOfId.get(item.parentId)
+    if (dir === undefined) continue
+    out.set(dir ? `${dir}/${item.name}` : item.name, {
+      path: dir ? `${dir}/${item.name}` : item.name,
+      id: item.id,
+      parentId: item.parentId,
+      bucket: item.file.bucket,
+      key: item.file.key,
+    })
   }
   return out
 }
@@ -336,28 +577,6 @@ function candidatesFor(logical: string): string[] {
   ]
 }
 
-/** First candidate that exists as a file under `rootId`, with its text. */
-async function resolveUnderRoot(
-  rootId: string,
-  logical: string
-): Promise<Omit<SourceFile, 'requested'> | null> {
-  for (const candidate of candidatesFor(logical)) {
-    const file = await findFileByPath(rootId, candidate)
-    if (file) {
-      const text = await getObjectText(file.bucket, file.key).catch(() => null)
-      if (text != null) {
-        return {
-          path: candidate,
-          text,
-          id: file.id,
-          parentId: file.parentId,
-        }
-      }
-    }
-  }
-  return null
-}
-
 /**
  * Last-resort resolution for a project that shipped no tsconfig: find the file
  * by the *tail* of its logical path instead of its full path.
@@ -377,7 +596,9 @@ async function resolveUnderRoot(
  */
 async function resolveByNameSuffix(
   rootId: string,
-  logical: string
+  logical: string,
+  readText: TextReader,
+  readFolder: FolderReader
 ): Promise<Omit<SourceFile, 'requested'> | null> {
   const segments = logical.split('/').filter(Boolean)
   const base = segments[segments.length - 1]
@@ -441,7 +662,8 @@ async function resolveByNameSuffix(
         rootId,
         hit.parentId,
         shape.dirs,
-        hit.name
+        hit.name,
+        readFolder
       )
       if (!path) continue
       matches.push({
@@ -461,7 +683,7 @@ async function resolveByNameSuffix(
       (a, b) => shape.names.indexOf(a.name) - shape.names.indexOf(b.name)
     )
     const best = matches[0]
-    const text = await getObjectText(best.bucket, best.key).catch(() => null)
+    const text = await readText(best.bucket, best.key)
     if (text == null) continue
     return { path: best.path, text, id: best.id, parentId: best.parentId }
   }
@@ -478,15 +700,13 @@ async function pathUnderRoot(
   rootId: string,
   parentId: string | null,
   dirs: string[],
-  fileName: string
+  fileName: string,
+  readFolder: FolderReader
 ): Promise<string | null> {
   const above: string[] = []
   let current = parentId
   for (let i = 0; i < MAX_ANCESTOR_WALK && current && current !== rootId; i++) {
-    const folder = await prisma.item.findUnique({
-      where: { id: current },
-      select: { name: true, parentId: true },
-    })
+    const folder = await readFolder(current)
     if (!folder) return null
     above.unshift(folder.name)
     current = folder.parentId
@@ -502,45 +722,9 @@ function dirOfPath(path: string): string {
   return path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
 }
 
-/** Walk the folder tree from `rootId` down a `/`-separated path to a File. */
-async function findFileByPath(
-  rootId: string,
-  relPath: string
-): Promise<{
-  id: string
-  parentId: string | null
-  bucket: string
-  key: string
-} | null> {
-  const segments = relPath.split('/').filter(Boolean)
-  let parentId = rootId
-  for (let i = 0; i < segments.length; i++) {
-    const last = i === segments.length - 1
-    const item = await prisma.item.findFirst({
-      where: { parentId, name: segments[i] },
-      select: {
-        id: true,
-        parentId: true,
-        file: last ? { select: { bucket: true, key: true } } : false,
-      },
-    })
-    if (!item) return null
-    if (last) {
-      // Spelled out rather than spread: `file` is selected behind a ternary,
-      // so its type widens to the whole File model — whose own `id` would
-      // silently overwrite the item's, which is the id we navigate by.
-      return item.file
-        ? {
-            id: item.id,
-            parentId: item.parentId,
-            bucket: item.file.bucket,
-            key: item.file.key,
-          }
-        : null
-    }
-    parentId = item.id
-  }
-  return null
+/** Last segment of a `/`-separated path (`a/b/c.ts` → `c.ts`). */
+function baseOfPath(path: string): string {
+  return path.slice(path.lastIndexOf('/') + 1)
 }
 
 /** Collapse `./` and `../` segments; drop a leading slash. */
