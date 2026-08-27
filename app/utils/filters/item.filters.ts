@@ -11,7 +11,10 @@ export const itemFilterSchema = z.object({
   date: z.optional(date),
   favorited: z.boolean().optional(),
   parentId: z.string().optional(),
-  query: z.string().min(1).optional().default(''),
+  // No `.default('')` here: Zod applies a default without re-validating it, so
+  // an absent `query` used to arrive as `''` — a value `.min(1)` rejects — and
+  // every loader that built item filters logged a ZodError for it.
+  query: z.string().min(1).optional(),
   status: toZodArraySchema(z.enum(ItemStatus)).optional().default(['normal']),
   tags: toZodArraySchema(z.string().trim().min(1)).optional(),
   type: toZodArraySchema(z.enum(ItemType)).default(['file', 'folder']),
