@@ -1548,6 +1548,8 @@ export async function createUploadedItem(data: {
   size: bigint
   mimeType?: string
   etag?: string
+  /** Client-computed content hash (see `app/workers/hash.worker.ts`). */
+  hash?: string
   bucket: string
   driveId: string
   parentId: string
@@ -1592,6 +1594,10 @@ export async function createUploadedItem(data: {
             key: data.key,
             mimeType: data.mimeType,
             etag: data.etag,
+            // Empty string means the browser could not hash the file; store
+            // null so duplicate grouping reads it as "unknown", not "matches
+            // every other file that also failed".
+            hash: data.hash || null,
             extension: data.name.split('.').pop() ?? '',
           },
         },

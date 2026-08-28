@@ -1,41 +1,41 @@
-import { itemsApiRouteInput } from '@/schemas/api.schemas';
-import { auth } from '@/services/auth';
+import { itemsApiRouteInput } from '@/schemas/api.schemas'
+import { auth } from '@/services/auth'
 import {
-    createFolder,
-    createUploadedItem,
-    deleteItem,
-    deleteItems,
-    getChildFolders,
-    moveItem,
-    moveItems,
-    renameItem,
-    restoreItem,
-    restoreItems,
-    searchFolders,
-    trashItem,
-    trashItems,
-    upsertAudioFacet,
-    upsertImageFacet,
-    upsertMarkdownFacet,
-    upsertPdfFacet,
-    upsertVideoFacet,
-} from '@/services/item-actions';
+  createFolder,
+  createUploadedItem,
+  deleteItem,
+  deleteItems,
+  getChildFolders,
+  moveItem,
+  moveItems,
+  renameItem,
+  restoreItem,
+  restoreItems,
+  searchFolders,
+  trashItem,
+  trashItems,
+  upsertAudioFacet,
+  upsertImageFacet,
+  upsertMarkdownFacet,
+  upsertPdfFacet,
+  upsertVideoFacet,
+} from '@/services/item-actions'
 import {
-    appendSearchPage,
-    chunkText,
-    findReindexCandidates,
-    findUnembeddedChunks,
-    reindexTextItems,
-    setSearchChunkVectors,
-    upsertSearchChunks,
-    upsertSearchContent,
-} from '@/services/search-actions';
-import { parseFormData } from '@/utils/parsers';
-import { removeQueryParam, removeQueryParamValue } from '@/utils/query-params';
-import { data, redirect } from 'react-router';
-import { z } from 'zod';
-import { clampPendingLimit } from '@/utils/embedding-backfill';
-import type { Route } from './+types/items';
+  appendSearchPage,
+  chunkText,
+  findReindexCandidates,
+  findUnembeddedChunks,
+  reindexTextItems,
+  setSearchChunkVectors,
+  upsertSearchChunks,
+  upsertSearchContent,
+} from '@/services/search-actions'
+import { clampPendingLimit } from '@/utils/embedding-backfill'
+import { parseFormData } from '@/utils/parsers'
+import { removeQueryParam, removeQueryParamValue } from '@/utils/query-params'
+import { data, redirect } from 'react-router'
+import { z } from 'zod'
+import type { Route } from './+types/items'
 
 export async function loader({ request }: Route.LoaderArgs) {
   const session = await auth.api.getSession({
@@ -260,6 +260,7 @@ export async function action({ request, params }: Route.ActionArgs) {
           size: parsedData.size,
           mimeType: parsedData.mimeType,
           etag: parsedData.etag,
+          hash: parsedData.hash,
           bucket: parsedData.bucket,
           driveId: parsedData.driveId,
           parentId: parsedData.parentId,

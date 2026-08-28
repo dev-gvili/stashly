@@ -21,6 +21,7 @@ import type {
 } from '@/types/machine.types'
 import { config, mediafile, uploadProgress } from '@/schemas/machine.schemas'
 import type { User } from '@/services/auth.types'
+import { takeFileHash } from '@/utils/file-hash'
 
 let initialData: UploadManagerData = {
   config: {
@@ -31,7 +32,7 @@ let initialData: UploadManagerData = {
       driveId: string
       rootId: string
     },
-    maxConcurrentUploads: 100,
+    maxConcurrentUploads: 10,
     maxFileSize: 10000000000,
   },
   quotaActor: undefined,
@@ -73,14 +74,19 @@ const uploadMachine = setup({
           formData.append('intent', 'create_upload_item')
           formData.append('id', mediaFile.id)
           formData.append('name', mediaFile.file.name)
+          formData.append('ownerId', mediaFile.ownerId ?? user.id)
           formData.append('key', mediaFile.key)
           formData.append('size', String(mediaFile.file.size))
           formData.append('mimeType', mediaFile.file.type ?? '')
           formData.append('etag', mediaFile.etag ?? '')
+          // Started when the file was queued, so it has had the whole upload to
+          // finish. `takeFileHash` gives up after a short grace rather than
+          // holding item creation open — an absent hash is stored as null and
+          // only costs that duplicate group its `exact` verdict.
+          formData.append('hash', (await takeFileHash(mediaFile.id)) ?? '')
           formData.append('bucket', user.bucket)
           formData.append('driveId', user.driveId)
           formData.append('parentId', mediaFile.key.split('/')[0])
-          formData.append('ownerId', mediaFile.ownerId ?? user.id)
           formData.append('category', category)
           formData.append('uploadId', mediaFile.uploadId ?? '')
 

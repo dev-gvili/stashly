@@ -1,6 +1,7 @@
 import { uploadMachine } from '@/machines/upload/upload.machine'
 import type { Config } from '@/types/machine.types'
 import { toMediaFile } from '@/utils/converters'
+import { startFileHash } from '@/utils/file-hash'
 import { normalizeFile } from '@/utils/sniff'
 import { shallowEqual, useSelector } from '@xstate/react'
 import { useCallback, useRef, useState } from 'react'
@@ -321,12 +322,16 @@ export function useUpload() {
 
   const add = useCallback(
     async (file: File, overrideRootId?: string, skipQuotaCheck?: boolean) => {
-      const id = overrideRootId ?? rootId
-      if (!id) return
+      const rid = overrideRootId ?? rootId
+      if (!rid) return
       // Correct browser-misreported MIME (.ts → video/vnd.dlna.mpeg-tts)
       // before the file is snapshotted into the machine.
       file = await normalizeFile(file)
-      const mediaFile = toMediaFile(file, id)
+      const mediaFile = toMediaFile(file, rid)
+      // Fire-and-forget, off the main thread. Never awaited here — hashing a
+      // file means reading all of it, and doing that before `upload.add` is
+      // what used to strand a whole batch in `pending`.
+      startFileHash(mediaFile.id, file)
       upload.send({ type: 'upload.add', mediaFile, skipQuotaCheck })
     },
     [rootId]
@@ -334,15 +339,18 @@ export function useUpload() {
 
   const addBatch = useCallback(
     async (files: File[], overrideRootId?: string): Promise<boolean> => {
-      const id = overrideRootId ?? rootId
-      if (!id) return false
+      const rid = overrideRootId ?? rootId
+      if (!rid) return false
       const totalSize = files.reduce((sum, f) => sum + f.size, 0)
       const allowed = await verifyBatchQuota(totalSize)
       if (!allowed) return false
       for (const file of files) {
+        const normalized = await normalizeFile(file)
+        const mediaFile = toMediaFile(normalized, rid)
+        startFileHash(mediaFile.id, normalized)
         upload.send({
           type: 'upload.add',
-          mediaFile: toMediaFile(await normalizeFile(file), id),
+          mediaFile,
           skipQuotaCheck: true,
         })
       }
