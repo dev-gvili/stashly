@@ -65,8 +65,9 @@ for prev/next nav). Both need:
    - *How addressed?* By stash path relative to a project root.
 2. **Path-alias config** — `@/* → app/*` comes from the uploaded
    `tsconfig.json` `compilerOptions.paths` (read it if present, else infer).
-3. **Fetching** — presigned S3 reads (like `loadTextDocument`), bounded so a
-   large project doesn't pull everything at once.
+3. **Fetching** — S3 reads (like `loadTextDocument`), bounded so a large
+   project doesn't pull everything at once. Numbers in
+   [As shipped](#as-shipped--the-actual-bounds).
 
 The two options differ in **what consumes those files** once fetched.
 
@@ -85,8 +86,8 @@ Reuse Monaco's existing TypeScript worker (the one already backing our hovers).
   lib. Hovers, diagnostics, and go-to-definition flow through the **same worker
   and the same VS Code-parity formatter we already built** — no new plumbing.
 - Resolve transitively and on-demand: parse the viewed file's imports, fetch
-  those files, parse *their* imports, repeat — bounded by depth/count. Only
-  what's actually referenced gets loaded.
+  those files, parse *their* imports, repeat. Only what's actually referenced
+  gets loaded, and the walk is bounded — see [As shipped](#as-shipped--the-actual-bounds).
 
 **Pros**
 - **Reuses the entire shipped stack** — worker, custom hover, ATA, SQL,
@@ -189,3 +190,62 @@ backend endpoint built for Option 1 carries straight over.
 
 *(Either way, the backend sibling-source endpoint is the first build step and is
 identical for both.)*
+
+---
+
+## As shipped — the actual bounds
+
+The design above says "bounded by depth/count" without saying by what. Here is
+what the implementation settled on. Client-side caps live in
+[`cross-file-types.ts`](../app/.client/cross-file-types.ts); server-side caps in
+[`source-resolution-actions.ts`](../app/.server/source-resolution-actions.ts).
+
+| Cap | Value | What it bounds |
+|---|---|---|
+| `MAX_FILES` | 250 | Files pulled for one viewed document — the walk stops here |
+| `BATCH_SIZE` | 25 | Logical paths per `source-files` round-trip |
+| `MAX_FILES_PER_REQUEST` | 60 | Paths the server will answer in one call (client asks for 25) |
+| `MAX_SUFFIX_LOOKUPS` | 25 | Misses per call retried through the no-tsconfig suffix fallback |
+| `MAX_NAME_HITS` | 8 | Same-name files one suffix lookup will consider |
+| `MAX_ANCESTOR_WALK` | 40 | Folder hops when finding a project root or verifying containment |
+
+**There is no explicit depth cap, and deliberately so.** The walk is
+breadth-first — batches are spliced off the front of the queue and newly
+discovered imports pushed to the back — so a count cap over BFS already gives
+the property a depth cap would: the viewed file's own imports are resolved
+first, and the graph is abandoned at its frontier rather than down one deep
+branch. A barrel file that re-exports fifty modules enqueues fifty paths; they
+are answered two round-trips later, not in fifty parallel reads.
+
+**Concurrency is bounded at the batch, not the graph.** The client `await`s each
+round-trip before starting the next, and within a request `resolveBatch` reads
+texts through a per-request cache, so one storage object is one GET however many
+paths land on it. Peak in-flight reads is a batch, not a subtree.
+
+### What is *not* bounded, and what it costs
+
+- **Acquired libs accumulate for the session.** `dispose()` tears down the
+  editor and its own model but not the extra libs, which are shared with every
+  other viewer on the page — that is the cache that makes revisiting a file
+  free. It is cleared only when the viewer moves to a *different project root*
+  (`resetForRoot`), which is also what stops two uploads holding the same
+  project-relative path from answering each other's imports. The real cost of
+  letting it grow is not memory: it is that the next alias-map change restarts
+  the TS worker, and the restart re-parses everything still registered.
+- **Truncation is silent.** The viewer runs with `noSemanticValidation`, and
+  `acquireCrossFileTypes` swallows failures into a `console.error`. Hitting
+  `MAX_FILES`, an unreadable object, and a file that genuinely isn't there are
+  indistinguishable to the reader — all three render as `any` with no marker.
+  Surfacing a "types truncated" notice through the existing `onNotice` pill is
+  the obvious next step and is **not** implemented.
+
+### Containment
+
+Logical paths never become storage keys. `normalize` collapses `..` (popping an
+empty array is a no-op, so `../../x` is just `x`), resolution *descends* from
+the root through `parentId` links, and `bucket`/`key` come off the matched
+`Item` row — so there is no string an import could contain that would address an
+object outside the tree. Reads are authorized once, on the root
+(`hasItemPermission(userId, rootId, 'read')`), and the no-tsconfig suffix
+fallback — the one query shaped by name rather than by path — is scoped to the
+root's owner and then verified by `pathUnderRoot` walking back up to the root.

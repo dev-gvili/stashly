@@ -26,6 +26,13 @@ const requested = new Set<string>()
 /** Virtual lib paths already registered with Monaco. */
 const addedLibs = new Set<string>()
 /**
+ * Each registered lib's disposables, so a project switch can take them back
+ * down. Both defaults get their own — `addExtraLib` is called once per.
+ */
+const libs = new Map<string, monaco.IDisposable[]>()
+/** The project root everything above currently describes. */
+let currentRootId: string | null = null
+/**
  * Virtual lib URI → the uploaded file behind it. The import walk is the only
  * place both are known at once: the language service deals in `file:///…`
  * paths and knows nothing about items, while the app routes by item id. Go to
@@ -119,6 +126,11 @@ export async function acquireCrossFileTypes(
     let fetched = 0
 
     while (queue.length && fetched < MAX_FILES) {
+      // The walk is fire-and-forget, so it can still be mid-batch when the
+      // viewer moves to another project and `resetForRoot` clears the sets
+      // underneath it. Registering the rest would put the old project's files
+      // back at paths the new one now owns.
+      if (currentRootId !== null && currentRootId !== rootId) return
       const batch = queue
         .splice(0, BATCH_SIZE)
         .filter((p) => !requested.has(p))
@@ -205,8 +217,43 @@ function addExtraLib(code: string, uri: string): void {
   if (addedLibs.has(uri)) return
   addedLibs.add(uri)
   const ts = monaco.typescript
-  ts.typescriptDefaults.addExtraLib(code, uri)
-  ts.javascriptDefaults.addExtraLib(code, uri)
+  libs.set(uri, [
+    ts.typescriptDefaults.addExtraLib(code, uri),
+    ts.javascriptDefaults.addExtraLib(code, uri),
+  ])
+}
+
+/**
+ * Drop everything acquired for the *previous* project, when the viewer moves to
+ * a file under a different root.
+ *
+ * Libs are registered at their project-relative path (`file:///app/utils/x.ts`)
+ * because that's what makes the compiler resolve them like on disk — which also
+ * means the path carries no trace of *which* project it came from. Two uploads
+ * that both contain `app/utils/x.ts` collide: `addedLibs` and `requested` would
+ * report the second one as already handled, and project A's source would keep
+ * answering project B's imports with no error anywhere to show for it.
+ *
+ * Disposing rides `onDidExtraLibsChange`, which patches the live worker — the
+ * non-destructive channel (see `addAliasShim`). **Call it before the editor
+ * mounts**, though: the new project's alias map usually differs, so
+ * `applyAliasPaths` will restart the worker on the way in, and the restart
+ * re-parses whatever is still registered. Clearing first is the difference
+ * between re-parsing one project's libs and re-parsing every project the
+ * session has opened.
+ *
+ * `contexts` is deliberately kept — it's keyed by file id, so it can't collide.
+ */
+export function resetForRoot(rootId: string): void {
+  if (currentRootId === rootId) return
+  currentRootId = rootId
+  for (const disposables of libs.values()) {
+    for (const disposable of disposables) disposable.dispose()
+  }
+  libs.clear()
+  addedLibs.clear()
+  requested.clear()
+  sourceItems.clear()
 }
 
 /**
@@ -218,7 +265,7 @@ function addExtraLib(code: string, uri: string): void {
  * that is what this used to do. It cost far more than it looks: every
  * `setCompilerOptions` fires the defaults' `onDidChange`, and Monaco's worker
  * manager answers that by *destroying* the TypeScript worker. The replacement
- * re-imports Monaco's `typescriptServices` bundle — 45MB unbundled in dev, over
+ * re-imports Monaco's `typescriptServices` bundle — 43.5MB unbundled in dev, over
  * Chrome's per-entry cache ceiling so it re-downloads in full — and re-parses
  * every lib acquired so far. One mis-guessed alias bought a 45MB reload, and a
  * 250-file walk did it nine times over.

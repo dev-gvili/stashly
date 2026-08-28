@@ -519,6 +519,25 @@ caps at 250 entries and drops the rest silently.
   unfetched file collapsed `prisma` to `any` three hops from the viewed file,
   with nothing pointing at where it broke. `.js→.ts`, `.jsx→.tsx`,
   `.mjs→.mts`, `.cjs→.cts`, literal file tried first.
+- **Cross-file acquisition is bounded, and silently so** — the walk stops at 250
+  files per document, 25 per round-trip, and the server answers at most 60 paths
+  and 25 suffix lookups per call (full table in
+  [`code-viewer-cross-file-options.md`](code-viewer-cross-file-options.md#as-shipped--the-actual-bounds)).
+  There's no depth cap because the walk is breadth-first, so the count cap
+  already resolves the viewed file's own imports first. What's missing is the
+  *signal*: with `noSemanticValidation` on and acquisition failures logged to
+  the console, hitting the cap looks exactly like a file that doesn't exist —
+  both render as `any`. A "types truncated" pill through `onNotice` would close
+  it.
+- **Acquired libs are session-scoped, cleared per project** — `dispose()` leaves
+  the extra libs standing (they're shared with every viewer on the page, and are
+  what make revisiting a file free). `resetForRoot` drops them when the viewer
+  opens a file under a *different* project root, which is required for
+  correctness rather than memory: libs are registered at project-relative paths
+  (`file:///app/utils/x.ts`), so two uploads holding the same path would
+  otherwise answer each other's imports with no error to show for it. It runs
+  before `createCodeViewer`, because the new project's alias map restarts the
+  worker on the way in and the restart re-parses whatever is still registered.
 - **Cross-file `{@link}`** — still same-file only. `linkToMarkdown` compares
   `target.fileName` against the hovered model's URI and falls through to plain
   text otherwise. Go to Definition now *does* cross files, so this is a gap in

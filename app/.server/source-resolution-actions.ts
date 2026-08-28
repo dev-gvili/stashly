@@ -220,7 +220,19 @@ export async function getSourceFiles(
   // Without a tsconfig the alias map was *synthesized* (see
   // `synthesizeAliasPaths`), so a miss is as likely to be a wrong guess as a
   // missing file — that's the only case the suffix fallback is allowed to run.
-  const guessing = !(await rootHasProjectFile(rootId))
+  // The suffix fallback searches by file *name*, which needs an owner to scope
+  // against: unscoped, the query sweeps every item in the database and its
+  // `take` window fills with other users' identically-named files before
+  // `pathUnderRoot` ever gets to reject them — so the caller's own file falls
+  // outside the window and silently fails to resolve. Nothing leaked either
+  // way; the containment check is what makes it safe, this is what makes it
+  // work on a populated database.
+  const [guessing, rootOwnerId] = await Promise.all([
+    rootHasProjectFile(rootId).then((has) => !has),
+    prisma.item
+      .findUnique({ where: { id: rootId }, select: { ownerId: true } })
+      .then((root) => root?.ownerId ?? null),
+  ])
   const readText = createTextReader()
   const readFolder = createFolderReader()
 
@@ -249,11 +261,14 @@ export async function getSourceFiles(
       out.push({ ...resolved, requested: normalized })
       continue
     }
-    if (!guessing) continue
+    // No owner on the root means the row vanished under us; searching by name
+    // with nothing to scope it is the one thing worse than not resolving.
+    if (!guessing || !rootOwnerId) continue
     if (suffixLookups < MAX_SUFFIX_LOOKUPS) {
       suffixLookups++
       const fallback = await resolveByNameSuffix(
         rootId,
+        rootOwnerId,
         normalized,
         readText,
         readFolder
@@ -596,6 +611,7 @@ function candidatesFor(logical: string): string[] {
  */
 async function resolveByNameSuffix(
   rootId: string,
+  rootOwnerId: string,
   logical: string,
   readText: TextReader,
   readFolder: FolderReader
@@ -633,6 +649,11 @@ async function resolveByNameSuffix(
       where: {
         type: 'file',
         name: { in: shape.names },
+        // Scoped to the root's owner so `take` is spent on files that could
+        // plausibly be under this root. `pathUnderRoot` below is what actually
+        // enforces containment — this keeps the window from being consumed by
+        // rows that were never going to survive it.
+        ownerId: rootOwnerId,
         // Pin the immediate folder when the logical path names one. Without it
         // a bare `index.ts` search sweeps the whole drive.
         ...(parentName ? { parent: { name: parentName } } : {}),

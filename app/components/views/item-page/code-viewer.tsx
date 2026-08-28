@@ -134,7 +134,17 @@ export function CodeViewer({
           import('@/.client/monaco'),
           itemId && wantsTypes
             ? import('@/.client/cross-file-types')
-                .then((m) => m.fetchSourceContext(itemId))
+                .then(async (m) => {
+                  const context = await m.fetchSourceContext(itemId)
+                  // Acquired libs are registered at project-relative paths, so
+                  // a different upload holding the same path would silently
+                  // reuse this one's source. Drop the previous project's libs
+                  // here, before `createCodeViewer` applies the new alias map —
+                  // that call restarts the TS worker, which re-parses whatever
+                  // is still registered.
+                  if (context) m.resetForRoot(context.rootId)
+                  return context
+                })
                 .catch(() => null)
             : Promise.resolve(null),
         ])
