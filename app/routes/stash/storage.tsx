@@ -35,7 +35,7 @@ import { toIcon } from '@/utils'
 import { formatSize } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
 import type { JSX, SVGProps } from 'react'
-import { redirect, useFetcher } from 'react-router'
+import { href, redirect, useFetcher, useNavigate } from 'react-router'
 import type { Route } from './+types/storage'
 
 export { ErrorBoundary } from '@/components/error-boundary'
@@ -377,6 +377,7 @@ function HealthActions({
   videoCount,
   imageCount,
   onEmptyBucket,
+  onResolveDuplicates,
   emptying,
 }: {
   trashBytes: number
@@ -386,6 +387,7 @@ function HealthActions({
   videoCount: number
   imageCount: number
   onEmptyBucket: () => void
+  onResolveDuplicates: () => void
   emptying: boolean
 }) {
   return (
@@ -411,7 +413,8 @@ function HealthActions({
             detail={`${duplicateGroups} groups · save ${fmt(reclaimBytes)}`}
             cta="Resolve"
             tone="accent"
-            disabled
+            onClick={onResolveDuplicates}
+            disabled={duplicateGroups === 0}
           />
           <ActionRow
             label="Archive large videos"
@@ -557,9 +560,13 @@ function DuplicatesList({ duplicates }: { duplicates: Duplicate[] }) {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function StoragePage({ loaderData }: Route.ComponentProps) {
+export default function StoragePage({
+  loaderData,
+  params,
+}: Route.ComponentProps) {
   const { quota, breakdown, largestItems, duplicates, bucket } = loaderData
   const fetcher = useFetcher()
+  const navigate = useNavigate()
   const { open: confirmEmpty } = useConfirm()
 
   // Derived KPIs
@@ -678,6 +685,9 @@ export default function StoragePage({ loaderData }: Route.ComponentProps) {
             videoCount={videoBucket?.count ?? 0}
             imageCount={imageBucket?.count ?? 0}
             onEmptyBucket={handleEmptyBucket}
+            onResolveDuplicates={() =>
+              navigate(href('/:me/stash/storage/duplicates', { me: params.me }))
+            }
             emptying={fetcher.state === 'submitting'}
           />
         </div>

@@ -1,3 +1,4 @@
+import { Prisma } from '@/prisma/client'
 import { prisma } from '@/services/db'
 import { findQuotaByUserId, toQuotaStatus } from './quota-actions'
 import { emptyBucket } from './s3'
@@ -51,6 +52,41 @@ export interface DuplicateCandidate {
   size: bigint
   count: number
   items: { id: string; parentId: string | null; createdAt: Date }[]
+}
+
+/**
+ * How sure we are that the copies in a group really are the same bytes.
+ *
+ * Grouping is by name + size, which is only a *candidate* signal, so the verdict
+ * comes from `File.hash`: identical non-null hashes prove `exact`, differing
+ * hashes prove `conflict`, and a missing hash on any copy leaves the group at
+ * `near` — never claim `exact` from a name match alone.
+ */
+export type DuplicateRisk = 'exact' | 'near' | 'conflict'
+
+export interface DuplicateGroupCopy {
+  id: string
+  name: string
+  size: bigint
+  extension: string | null
+  /** `File.hash`; null when the file was stored before hashing, or is a folder. */
+  hash: string | null
+  thumbnails: { url: string | null }[]
+  /** Display path of the containing folder, root excluded: `Photos/2026/August`. */
+  folderPath: string
+  /** When the copy entered the stash. Drives the "keep original" rule. */
+  addedAt: Date
+  /** Last modification. Drives the "keep newest" rule — deliberately distinct. */
+  modifiedAt: Date
+}
+
+export interface DuplicateGroupDetail {
+  id: string
+  name: string
+  risk: DuplicateRisk
+  copies: DuplicateGroupCopy[]
+  /** Bytes freed if every copy but one goes to Trash. */
+  reclaimableBytes: bigint
 }
 
 /** The five tints the overview's storage meter can draw. */
@@ -219,6 +255,138 @@ export async function getStorageOverview(userId: string) {
   )
 
   return { quota, breakdown, largestItems, duplicates }
+}
+
+/**
+ * Resolves the display folder path for many items in a single recursive walk.
+ *
+ * `breadcrumbs()` answers this for one item; calling it per copy would be one
+ * query per card. This is the same CTE widened to carry a `leaf` column, so
+ * fifteen groups of five copies cost one round trip instead of seventy-five.
+ *
+ * The item's own name (depth 0) and the drive root (the only node with a null
+ * `parentId`) are both dropped, so a copy in the root reads as the root's name
+ * and `Downloads/...` starts with `Downloads` — which is what the "keep filed
+ * copy" rule inspects.
+ */
+async function folderPathsFor(itemIds: string[]) {
+  if (itemIds.length === 0) return new Map<string, string>()
+
+  const rows = await prisma.$queryRaw<{ itemId: string; path: string | null }[]>`
+    WITH RECURSIVE trail AS (
+      SELECT i."id" AS leaf, i."id", i."name", i."parentId", 0 AS depth
+      FROM "Item" i
+      WHERE i."id" IN (${Prisma.join(itemIds)})
+      UNION ALL
+      SELECT t.leaf, p."id", p."name", p."parentId", t.depth + 1
+      FROM "Item" p
+      INNER JOIN trail t ON t."parentId" = p."id"
+    )
+    SELECT
+      leaf AS "itemId",
+      COALESCE(
+        string_agg("name", '/' ORDER BY depth DESC)
+          FILTER (WHERE depth > 0 AND "parentId" IS NOT NULL),
+        max("name") FILTER (WHERE "parentId" IS NULL)
+      ) AS path
+    FROM trail
+    GROUP BY leaf
+  `
+
+  return new Map(
+    rows.flatMap((row) => (row.path ? [[row.itemId, row.path] as const] : []))
+  )
+}
+
+/** Every copy in a group must carry the same non-null hash to claim `exact`. */
+function riskFor(hashes: (string | null)[]): DuplicateRisk {
+  if (hashes.some((hash) => !hash)) return 'near'
+  return new Set(hashes).size === 1 ? 'exact' : 'conflict'
+}
+
+/**
+ * The duplicate groups behind the storage page's `Resolve duplicates` action,
+ * with everything the triage screen renders: folder path, thumbnails, and both
+ * timestamps.
+ *
+ * Kept separate from `getStorageOverview` on purpose — the overview only draws
+ * a name/count/wasted-bytes summary, and making every visit to the storage page
+ * pay for thumbnails and ancestor walks would be a regression for a list nobody
+ * asked to resolve yet.
+ */
+export async function getDuplicateGroups(
+  userId: string
+): Promise<DuplicateGroupDetail[]> {
+  const activeFileWhere = {
+    ownerId: userId,
+    type: 'file' as const,
+    status: { not: 'trashed' as const },
+  }
+
+  // Same name + same non-zero size = likely duplicate. Proof comes from the
+  // hashes below; this only narrows the candidates.
+  const groups = await prisma.item.groupBy({
+    by: ['name', 'size'],
+    where: { ...activeFileWhere, size: { gt: 0n } },
+    _count: { id: true },
+    having: { id: { _count: { gt: 1 } } },
+    orderBy: { _sum: { size: 'desc' } },
+    _sum: { size: true },
+    take: 50,
+  })
+
+  if (groups.length === 0) return []
+
+  const items = await prisma.item.findMany({
+    where: {
+      ...activeFileWhere,
+      OR: groups.map((group) => ({ name: group.name, size: group.size })),
+    },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      id: true,
+      name: true,
+      size: true,
+      createdAt: true,
+      updatedAt: true,
+      file: { select: { hash: true, extension: true } },
+      thumbnails: { select: { url: true } },
+    },
+  })
+
+  const paths = await folderPathsFor(items.map((item) => item.id))
+
+  const byKey = new Map<string, DuplicateGroupCopy[]>()
+  for (const item of items) {
+    const key = `${item.name}::${item.size}`
+    const copies = byKey.get(key) ?? []
+    copies.push({
+      id: item.id,
+      name: item.name,
+      size: item.size,
+      extension: item.file?.extension ?? null,
+      hash: item.file?.hash ?? null,
+      thumbnails: item.thumbnails,
+      folderPath: paths.get(item.id) ?? '',
+      addedAt: item.createdAt,
+      modifiedAt: item.updatedAt,
+    })
+    byKey.set(key, copies)
+  }
+
+  return groups.flatMap((group) => {
+    const copies = byKey.get(`${group.name}::${group.size}`) ?? []
+    if (copies.length < 2) return []
+    return [
+      {
+        id: copies[0].id,
+        name: group.name,
+        risk: riskFor(copies.map((copy) => copy.hash)),
+        copies,
+        reclaimableBytes: group.size * BigInt(copies.length - 1),
+      },
+    ]
+  })
 }
 
 export async function emptyUserBucket(userId: string) {

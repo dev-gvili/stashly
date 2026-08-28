@@ -151,6 +151,9 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
     size: z.coerce.bigint(),
     mimeType: z.string().optional(),
     etag: z.string().optional(),
+    // Client-computed content hash; empty string when the browser could not
+    // hash the file, so it is normalised away rather than stored as ''.
+    hash: z.string().optional(),
     bucket: z.string(),
     driveId: z.string(),
     parentId: z.string(),
@@ -998,4 +1001,19 @@ const sourceFilesSchema = z.object({
 export const sourceTypesApiRouteInput = z.discriminatedUnion('intent', [
   projectConfigSchema,
   sourceFilesSchema,
+])
+
+
+// ====================================================== //
+// ============= Resolve Duplicates Route =============== //
+// ====================================================== //
+
+// The triage screen commits one group at a time. `itemIds` is the *drop* list —
+// every copy the user did not keep — and it is always non-empty, because a
+// group where nothing was dropped never submits at all.
+export const resolveDuplicatesApiRouteInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('resolve_group'),
+    itemIds: z.array(z.string().nonempty()).min(1).max(200),
+  }),
 ])
