@@ -77,6 +77,12 @@ export function toQuotaStatus({
  * Apply a delta to quota fields and return the recalculated values.
  * `used` and `deleted` are clamped to 0 to prevent negative values.
  *
+ * Pure projection, for previewing a change or sizing one up. **Not a write
+ * path.** Persisting its output means reading a counter, adding to it in
+ * JavaScript, and storing an absolute result — two concurrent callers read the
+ * same figure and the second erases the first. `applyQuotaDelta` increments in
+ * the database for exactly that reason; do not route writes back through here.
+ *
  * @param current - The current quota snapshot (used, deleted, total).
  * @param data - Partial delta to apply. Omitted fields default to `0n`.
  * @returns Updated quota fields including `remaining` and `status`.
@@ -387,24 +393,69 @@ async function applyQuotaDelta({
   id,
   client = prisma,
   ...data
-}: Pick<Prisma.QuotaUncheckedUpdateInput, 'used' | 'deleted' | 'total'> & {
+}: {
+  /** Delta applied to `used`. May be negative; the result is clamped at 0. */
+  used?: bigint
+  /** Delta applied to `deleted`. May be negative; the result is clamped at 0. */
+  deleted?: bigint
+  /** Absolute replacement for `total` — a plan change, not a delta. */
+  total?: bigint
   userId?: string
   driveId?: string
   id?: string
   client?: Prisma.TransactionClient
 }) {
+  // This lookup resolves *which* row to write. It no longer supplies the value
+  // written, which is the entire point: the previous implementation read
+  // `used`, added the delta in JavaScript, and wrote the result back as an
+  // absolute figure. Two uploads that read the same starting value each wrote
+  // `start + own size`, so whichever committed second silently erased the
+  // other's bytes from the quota — a lost update, on every concurrent batch.
   let current: QuotaOutput | null = null
   if (id) current = await findQuotaById(id, client)
   else if (driveId) current = await findQuotaByDriveId(driveId, client)
   else if (userId) current = await findQuotaByUserId(userId, client)
   if (!current) throw new StashlyError(StashlyErrorCode.QUOTA_NOT_FOUND)
-  const { remaining, ...quota } = calculateQuota(current, data as PrismaQuota)
-  return toQuota(
-    await client.quota.update({
-      where: { id: current.id },
-      data: { ...data, ...quota },
+
+  // `increment` compiles to `used = used + $delta`, which Postgres evaluates
+  // against the row *after* taking its lock. Concurrent deltas therefore queue
+  // and accumulate instead of overwriting each other.
+  const row = await client.quota.update({
+    where: { id: current.id },
+    data: {
+      ...(data.used !== undefined ? { used: { increment: data.used } } : {}),
+      ...(data.deleted !== undefined
+        ? { deleted: { increment: data.deleted } }
+        : {}),
+      ...(data.total !== undefined ? { total: data.total } : {}),
+    },
+  })
+
+  // Two corrections the atomic write cannot make itself: an increment can carry
+  // a counter below zero, and `status` is a cached function of the new
+  // `(used, total)` that only Postgres knew until this row came back.
+  //
+  // They go in one guarded write. The `where` pins the exact figures this call
+  // observed, so if a concurrent delta has already moved the row, this update
+  // matches nothing and that call's correction — computed from the newer
+  // figures — is the one that stands. Never widen it to `where: { id }`.
+  const used = row.used < 0n ? 0n : row.used
+  const deleted = row.deleted < 0n ? 0n : row.deleted
+  const status = toQuotaStatus({ used, total: row.total })
+
+  if (used !== row.used || deleted !== row.deleted || status !== row.status) {
+    await client.quota.updateMany({
+      where: {
+        id: row.id,
+        used: row.used,
+        deleted: row.deleted,
+        total: row.total,
+      },
+      data: { used, deleted, status },
     })
-  )
+  }
+
+  return toQuota({ ...row, used, deleted, status })
 }
 
 // ─── After-action helpers ─────────────────────────────────────────────────────
