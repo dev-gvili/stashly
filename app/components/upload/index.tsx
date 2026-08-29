@@ -27,11 +27,7 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from '../ui/tooltip'
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '../ui/hover-card'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '../ui/hover-card'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   DoubleCheckIcon,
@@ -42,6 +38,7 @@ import {
   RemoveSquareIcon,
   ResumeFillIcon,
 } from '../icons'
+import { useParams } from 'react-router'
 
 // ====================================================== //
 // Styles                                                 //
@@ -182,7 +179,7 @@ export const DropArea = React.forwardRef<
           onDragLeave
         )}
         onDragOver={callAll(dragHandlers.onDragOver, _onDragOver, onDragOver)}
-        onDrop={callAll(targetedOnDrop, _onDrop, onDrop)}
+        onDrop={callAll(_onDrop, targetedOnDrop, onDrop)}
         {...props}
       >
         {children}
@@ -297,76 +294,80 @@ export const FileList = React.forwardRef<
 })
 FileList.displayName = 'Items'
 
-const Item = React.memo(React.forwardRef<
-  React.ComponentRef<'li'>,
-  React.ComponentPropsWithoutRef<'li'> & { mediaFileId: string }
->(({ children, className, id, mediaFileId, ...props }, forwardRef) => {
-  id = id || React.useId()
-  // Identity + status only. The percentage is read inside `Progress`/`CountDown`
-  // so a progress tick never re-renders this row — and therefore never re-runs
-  // the HoverCard anchor effect below.
-  const mediafile = useUploadFileMeta(mediaFileId)
-  if (!mediafile.file) return null
+const Item = React.memo(
+  React.forwardRef<
+    React.ComponentRef<'li'>,
+    React.ComponentPropsWithoutRef<'li'> & { mediaFileId: string }
+  >(({ children, className, id, mediaFileId, ...props }, forwardRef) => {
+    id = id || React.useId()
+    // Identity + status only. The percentage is read inside `Progress`/`CountDown`
+    // so a progress tick never re-renders this row — and therefore never re-runs
+    // the HoverCard anchor effect below.
+    const mediafile = useUploadFileMeta(mediaFileId)
+    if (!mediafile.file) return null
 
-  return (
-    <li
-      id={id}
-      ref={forwardRef}
-      className={cn(Styles.Item, className)}
-      tabIndex={0}
-      data-state={mediafile.status}
-      {...props}
-    >
-      <FileIcon file={mediafile.file} thumbnail={mediafile.thumbnail} />
-      <div className={Styles.ItemBody}>
-        <FileName>{mediafile.file.name}</FileName>
-        <div className={Styles.ItemContent}>
-          <FileSize>{formatSize('byte', 'unit', mediafile.file.size)}</FileSize>
-          <CountDown mediafileId={mediaFileId} />
-          <StatusText status={mediafile.status!} mediaFileId={mediaFileId}>
-            {mediafile.status}
-          </StatusText>
+    return (
+      <li
+        id={id}
+        ref={forwardRef}
+        className={cn(Styles.Item, className)}
+        tabIndex={0}
+        data-state={mediafile.status}
+        {...props}
+      >
+        <FileIcon file={mediafile.file} thumbnail={mediafile.thumbnail} />
+        <div className={Styles.ItemBody}>
+          <FileName>{mediafile.file.name}</FileName>
+          <div className={Styles.ItemContent}>
+            <FileSize>
+              {formatSize('byte', 'unit', mediafile.file.size)}
+            </FileSize>
+            <CountDown mediafileId={mediaFileId} />
+            <StatusText status={mediafile.status!} mediaFileId={mediaFileId}>
+              {mediafile.status}
+            </StatusText>
+          </div>
         </div>
-      </div>
-      {mediafile.status === 'uploading' || mediafile.status === 'paused' ? (
-        <HoverCard openDelay={50} closeDelay={150}>
-          <HoverCardTrigger asChild>
-            <Progress
-              mediafileId={mediaFileId}
-              className="relative hover:**:data-[slot='double-check']:hidden"
+        {mediafile.status === 'uploading' || mediafile.status === 'paused' ? (
+          <HoverCard openDelay={50} closeDelay={150}>
+            <HoverCardTrigger asChild>
+              <Progress
+                mediafileId={mediaFileId}
+                className="relative hover:**:data-[slot='double-check']:hidden"
+              >
+                <DoubleCheckIcon
+                  data-slot="double-check"
+                  className="size-14 group-data-[state=done]:block group-data-[state=uploading]:hidden group-data-[state=aborted]:hidden group-data-[state=paused]:hidden"
+                />
+                <Dismiss mediaFileId={mediaFileId} />
+              </Progress>
+            </HoverCardTrigger>
+            <HoverCardContent
+              side="left"
+              align="center"
+              sideOffset={-4}
+              className="w-auto p-2 flex items-center gap-2 border-none rounded-md bg-background shadow-none"
             >
-              <DoubleCheckIcon
-                data-slot="double-check"
-                className="size-14 group-data-[state=done]:block group-data-[state=uploading]:hidden group-data-[state=aborted]:hidden group-data-[state=paused]:hidden"
-              />
-              <Dismiss mediaFileId={mediaFileId} />
-            </Progress>
-          </HoverCardTrigger>
-          <HoverCardContent
-            side="left"
-            align="center"
-            sideOffset={-4}
-            className="w-auto p-2 flex items-center gap-2 border-none rounded-md bg-background shadow-none"
+              <PauseResume mediaFileId={mediaFileId} />
+              <Cancel mediaFileId={mediaFileId} />
+            </HoverCardContent>
+          </HoverCard>
+        ) : (
+          <Progress
+            mediafileId={mediaFileId}
+            className="relative hover:[&_[data-slot='double-check']]:hidden"
           >
-            <PauseResume mediaFileId={mediaFileId} />
-            <Cancel mediaFileId={mediaFileId} />
-          </HoverCardContent>
-        </HoverCard>
-      ) : (
-        <Progress
-          mediafileId={mediaFileId}
-          className="relative hover:[&_[data-slot='double-check']]:hidden"
-        >
-          <DoubleCheckIcon
-            data-slot="double-check"
-            className="size-14 group-data-[state=done]:block group-data-[state=uploading]:hidden group-data-[state=aborted]:hidden group-data-[state=paused]:hidden"
-          />
-          <Dismiss mediaFileId={mediaFileId} />
-        </Progress>
-      )}
-    </li>
-  )
-}))
+            <DoubleCheckIcon
+              data-slot="double-check"
+              className="size-14 group-data-[state=done]:block group-data-[state=uploading]:hidden group-data-[state=aborted]:hidden group-data-[state=paused]:hidden"
+            />
+            <Dismiss mediaFileId={mediaFileId} />
+          </Progress>
+        )}
+      </li>
+    )
+  })
+)
 Item.displayName = 'Item'
 
 const Progress = React.forwardRef<
@@ -634,6 +635,7 @@ export const UploadPanel = ({ user }: { user: User }) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { isVisible, toggleView } = useUpload()
   const { uploading } = useUploadCounts()
+  const params = useParams()
 
   return (
     <motion.div
@@ -676,7 +678,11 @@ export const UploadPanel = ({ user }: { user: User }) => {
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <DropArea className="h-auto p-0" data-testid="upload-drop-area">
+              <DropArea
+                folderId={params.folderId}
+                className="h-auto p-0"
+                data-testid="upload-drop-area"
+              >
                 <FileList className="px-2 pt-2 h-full" />
               </DropArea>
             </motion.div>
