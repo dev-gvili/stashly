@@ -54,12 +54,7 @@ export default [
     route('versions', 'routes/api/versions.ts'),
     route('thumbnails', 'routes/api/thumbnails.ts'),
     ...prefix('thumbnails', [
-      route(':itemId/presign', 'routes/api/thumbnails-presign.ts', {
-        id: 'thumbnail-presign',
-      }),
-      route(':itemId/source', 'routes/api/thumbnails-source.ts', {
-        id: 'thumbnail-source',
-      }),
+      // GET reads discriminate on `?intent=presign|source`; POST/PATCH on method.
       route(':itemId', 'routes/api/thumbnails.ts', { id: 'thumbnail-detail' }),
     ]),
     route('invitations', 'routes/api/invitations.ts'),

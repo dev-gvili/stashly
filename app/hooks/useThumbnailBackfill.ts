@@ -341,7 +341,7 @@ interface Stage2Result {
 async function backfill(
   itemId: string
 ): Promise<Stage2Result | { existing: string } | null> {
-  const sourceRes = await fetch(`/api/thumbnails/${itemId}/source`).catch(() => null)
+  const sourceRes = await fetch(`/api/thumbnails/${itemId}?intent=source`).catch(() => null)
   if (!sourceRes?.ok) return null
 
   const source = (await sourceRes.json().catch(() => null)) as SourceResponse | null
@@ -367,7 +367,7 @@ async function backfill(
   const resized = await generateStage2Resize(file, frame).catch(() => null)
   if (!resized) return null
 
-  const presignRes = await fetch(`/api/thumbnails/${itemId}/presign`).catch(() => null)
+  const presignRes = await fetch(`/api/thumbnails/${itemId}?intent=presign`).catch(() => null)
   const presign = presignRes?.ok
     ? ((await presignRes.json().catch(() => null)) as {
         uploadUrl?: string

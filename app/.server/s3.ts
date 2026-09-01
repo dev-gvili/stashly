@@ -248,8 +248,8 @@ export async function createUserBucket(user: User): Promise<string> {
  * Public-read access for thumbnails is NOT handled here. Tigris returns 501
  * `NotImplemented` for `PutBucketPolicy`, so per-prefix bucket policies are
  * unavailable. Instead, thumbnail uploads are signed with object-level
- * `ACL: 'public-read'` (see `getPresignedUrl` and the thumbnails-presign
- * route) — each thumbnail object is individually made public on PUT.
+ * `ACL: 'public-read'` (see `getPresignedUrl` and the `?intent=presign` read on
+ * the thumbnails route) — each thumbnail object is individually made public on PUT.
  *
  * @example
  * await applyDefaultBucketPolicy('stashly-johndoe-a1b2c3d4')

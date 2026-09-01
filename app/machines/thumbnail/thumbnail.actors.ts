@@ -59,7 +59,7 @@ export const acquireSourceActor = fromPromise<
   AcquireResult,
   { itemId: string }
 >(async ({ input, signal }) => {
-  const sourceRes = await fetch(`/api/thumbnails/${input.itemId}/source`, {
+  const sourceRes = await fetch(`/api/thumbnails/${input.itemId}?intent=source`, {
     signal,
   })
   if (!sourceRes.ok) return { kind: 'unavailable' }
@@ -128,7 +128,7 @@ export interface Presign {
 /** Five-minute presigned PUT plus the public URL the DB will point at. */
 export const presignActor = fromPromise<Presign, { itemId: string }>(
   async ({ input, signal }) => {
-    const res = await fetch(`/api/thumbnails/${input.itemId}/presign`, {
+    const res = await fetch(`/api/thumbnails/${input.itemId}?intent=presign`, {
       signal,
     })
     if (!res.ok) throw new Error(`presign failed: ${res.status}`)

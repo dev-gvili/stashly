@@ -43,7 +43,7 @@ const POLL_MS = 16
  *
  * @example
  * // Wait for a presign GET before reading its data
- * presignRef.current.load(`/api/thumbnails/${itemId}/presign`)
+ * presignRef.current.load(`/api/thumbnails/${itemId}?intent=presign`)
  * await waitForIdle(presignRef).catch(() => null)
  *
  * @example
@@ -153,7 +153,7 @@ export function useThumbnail(itemId: string) {
 
       if (!resized) return
 
-      presignRef.current.load(`/api/thumbnails/${itemId}/presign`)
+      presignRef.current.load(`/api/thumbnails/${itemId}?intent=presign`)
       await waitForIdle(presignRef).catch(() => null)
       const presign = presignRef.current.data
       if (!presign?.uploadUrl || !presign?.publicUrl) {

@@ -803,6 +803,17 @@ export const permissionsApiRouteInput = z.discriminatedUnion('intent', [
 // ================ Thumbnails Api Route ================ //
 // ====================================================== //
 
+/**
+ * GET discriminator for `/api/thumbnails/:itemId`.
+ *
+ * `presign` mints a short-lived PUT for the thumbnail key; `source` hands back
+ * a GET on the original file so the client can regenerate a missing thumbnail.
+ * Both are reads keyed on the same item, so they share one loader.
+ */
+export const thumbnailApiRouteQuery = z.object({
+  intent: z.enum(['presign', 'source']),
+})
+
 export const thumbnailCreateSchema = z.object({
   itemId: z.string().nonempty(),
   url: z.string().nonempty(), 
