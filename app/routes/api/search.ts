@@ -21,6 +21,7 @@ import {
   searchApiRouteQuery,
   searchScope,
 } from '@/schemas/api.schemas'
+import { toErrorInfo } from '@/utils/api.errors'
 import { buildItemFilters } from '@/utils/filters/item.filters'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { isSearchableQuery, normalizeQuery } from '@/utils/search-query'
@@ -134,12 +135,12 @@ export async function action({ request, params }: Route.ActionArgs) {
     })
     return data(searchApiRouteOutput.parse(results))
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
+    const err = toErrorInfo(e)
     // A bad vector is the client's fault (400); anything else is ours (500).
     const isVectorError = /vector|dim/i.test(err.message ?? '')
     return data(
       { error: err.message ?? 'Search failed' },
-      { status: err.statusCode ?? (isVectorError ? 400 : 500) },
+      { status: err.status ?? (isVectorError ? 400 : 500) },
     )
   }
 }

@@ -5,6 +5,7 @@ import {
   getProjectConfig,
   getSourceFiles,
 } from '@/services/source-resolution-actions'
+import { toErrorInfo } from '@/utils/api.errors'
 import { sourceTypesApiRouteInput } from '@/schemas/api.schemas'
 
 /**
@@ -30,10 +31,10 @@ export async function action({ request }: Route.ActionArgs) {
         }
     }
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
+    const err = toErrorInfo(e)
     return Response.json(
       { error: err.message ?? 'Failed to resolve source types' },
-      { status: err.statusCode ?? 500 }
+      { status: err.status ?? 500 }
     )
   }
 }

@@ -6,6 +6,7 @@ import {
   versionsLoaderInput,
   versionsApiRouteInput,
 } from '@/schemas/api.schemas'
+import { toErrorInfo } from '@/utils/api.errors'
 import {
   listVersions,
   getVersion,
@@ -33,10 +34,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       const version = await getVersion(versionId)
       return data({ version })
     } catch (e) {
-      const err = e as { statusCode?: number; message?: string }
+      const err = toErrorInfo(e)
       return data(
         { error: err.message ?? 'Version not found' },
-        { status: err.statusCode ?? 404 }
+        { status: err.status ?? 404 }
       )
     }
   }
@@ -95,10 +96,10 @@ export async function action({ request, params, unstable_url, context, unstable_
 
     return data({ error: 'Invalid intent' }, { status: 400 })
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
+    const err = toErrorInfo(e)
     return data(
       { error: err.message ?? 'An error occurred' },
-      { status: err.statusCode ?? 500 }
+      { status: err.status ?? 500 }
     )
   }
 }

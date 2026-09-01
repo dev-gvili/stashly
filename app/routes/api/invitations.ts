@@ -2,6 +2,7 @@ import {
     invitationsApiRouteInput,
     invitationsLoaderInput,
 } from '@/schemas/api.schemas';
+import { toErrorInfo } from '@/utils/api.errors'
 import { auth } from '@/services/auth';
 import {
     acceptInvitation,
@@ -140,11 +141,11 @@ export async function action({ request }: Route.ActionArgs) {
       }
     }
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
-    if (err?.statusCode) {
+    const err = toErrorInfo(e)
+    if (err.status) {
       return data(
         { success: false, error: err.message ?? 'Error' },
-        { status: err.statusCode }
+        { status: err.status }
       )
     }
     console.error('[invitations action]', e)

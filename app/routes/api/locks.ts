@@ -9,6 +9,7 @@ import {
   isLockedByUser,
   getLockedItems,
 } from '@/services/lock-actions'
+import { toErrorInfo } from '@/utils/api.errors'
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
     const session = await auth.api.getSession({
@@ -48,10 +49,10 @@ export const action = async ({ request }: Route.ActionArgs) => {
       }
     }
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
+    const err = toErrorInfo(e)
     return Response.json(
       { error: err.message ?? 'Lock action failed' },
-      { status: err.statusCode ?? 500 }
+      { status: err.status ?? 500 }
     )
   }
 }

@@ -10,6 +10,7 @@ import {
   searchUsersByQuery,
   deleteUser,
 } from '@/services/user-actions'
+import { toErrorInfo } from '@/utils/api.errors'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
     const session = await auth.api.getSession({
@@ -23,10 +24,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       const user = await findUserById(params.userId)
       return data({ user })
     } catch (e) {
-      const err = e as { statusCode?: number; message?: string }
+      const err = toErrorInfo(e)
       return data(
         { error: err.message ?? 'User not found' },
-        { status: err.statusCode ?? 404 }
+        { status: err.status ?? 404 }
       )
     }
   }
@@ -45,10 +46,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     })
     return data(result)
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
+    const err = toErrorInfo(e)
     return data(
       { error: err.message ?? 'Failed to list users' },
-      { status: err.statusCode ?? 500 }
+      { status: err.status ?? 500 }
     )
   }
 }
@@ -85,10 +86,10 @@ export async function action({ request, params }: Route.ActionArgs) {
 
     return data({ error: 'Invalid intent' }, { status: 400 })
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
+    const err = toErrorInfo(e)
     return data(
       { error: err.message ?? 'An error occurred' },
-      { status: err.statusCode ?? 500 }
+      { status: err.status ?? 500 }
     )
   }
 }

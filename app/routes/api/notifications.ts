@@ -6,6 +6,7 @@ import {
   notificationsLoaderInput,
   notificationsApiRouteInput,
 } from '@/schemas/api.schemas'
+import { toErrorInfo } from '@/utils/api.errors'
 import {
   listNotifications,
   markNotificationRead,
@@ -35,10 +36,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     })
     return data(result)
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
+    const err = toErrorInfo(e)
     return data(
       { error: err.message ?? 'Failed to list notifications' },
-      { status: err.statusCode ?? 500 }
+      { status: err.status ?? 500 }
     )
   }
 }
@@ -93,10 +94,10 @@ export async function action({ request }: Route.ActionArgs) {
 
     return data({ error: 'Invalid intent' }, { status: 400 })
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
+    const err = toErrorInfo(e)
     return data(
       { error: err.message ?? 'An error occurred' },
-      { status: err.statusCode ?? 500 }
+      { status: err.status ?? 500 }
     )
   }
 }

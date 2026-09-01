@@ -6,6 +6,7 @@ import {
   commentsLoaderInput,
   commentsApiRouteInput,
 } from '@/schemas/api.schemas'
+import { toErrorInfo } from '@/utils/api.errors'
 import {
   listComments,
   createComment,
@@ -78,10 +79,10 @@ export async function action({ request, params }: Route.ActionArgs) {
 
     return data({ error: 'Invalid intent' }, { status: 400 })
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
+    const err = toErrorInfo(e)
     return data(
       { error: err.message ?? 'An error occurred' },
-      { status: err.statusCode ?? 500 }
+      { status: err.status ?? 500 }
     )
   }
 }

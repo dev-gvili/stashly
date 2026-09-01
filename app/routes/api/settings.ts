@@ -7,6 +7,7 @@ import {
   getUserSettings,
   updateUserSettings,
 } from '@/services/settings-actions'
+import { toErrorInfo } from '@/utils/api.errors'
 
 export async function loader({ request }: Route.LoaderArgs) {
     const session = await auth.api.getSession({
@@ -18,10 +19,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     const settings = await getUserSettings(session.user.id)
     return data({ settings })
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
+    const err = toErrorInfo(e)
     return data(
       { error: err.message ?? 'Failed to load settings' },
-      { status: err.statusCode ?? 500 }
+      { status: err.status ?? 500 }
     )
   }
 }
@@ -49,10 +50,10 @@ export async function action({ request }: Route.ActionArgs) {
 
     return data({ error: 'Invalid intent' }, { status: 400 })
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
+    const err = toErrorInfo(e)
     return data(
       { error: err.message ?? 'An error occurred' },
-      { status: err.statusCode ?? 500 }
+      { status: err.status ?? 500 }
     )
   }
 }

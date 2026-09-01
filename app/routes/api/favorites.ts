@@ -6,6 +6,7 @@ import { toZodArraySchema } from '@/utils/converters'
 import { removeQueryParam } from '@/utils/query-params'
 import z from 'zod'
 import { addFavorite, addFavorites, removeFavorite } from '@/services/item-actions'
+import { toErrorInfo } from '@/utils/api.errors'
 
 const ApiFavoriteSchema = z.discriminatedUnion('intent', [
   z.object({ intent: z.literal('favorite'), itemId: z.string() }),
@@ -46,10 +47,10 @@ export const action = async ({ request }: Route.ActionArgs) => {
       }
     }
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
+    const err = toErrorInfo(e)
     return data(
       { error: err.message ?? 'Favorite action failed' },
-      { status: err.statusCode ?? 500 }
+      { status: err.status ?? 500 }
     )
   }
 }

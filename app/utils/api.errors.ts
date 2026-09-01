@@ -554,3 +554,40 @@ export class StashlyError extends Error {
     }
   }
 }
+
+/**
+ * Normalises anything thrown by an action file into `{ status, message }`.
+ *
+ * Two error shapes reach route handlers and they disagree on the field name:
+ * `StashlyError` exposes the HTTP status as `status`, while the ad-hoc guard
+ * errors from `throwGuardError` in `workspace-actions.ts` set `statusCode`.
+ * Reading only one of them drops the other's status on the floor — a typed
+ * 404/403 would surface as a 500.
+ *
+ * Route handlers can't `instanceof StashlyError` cheaply (the dot-server plugin
+ * makes importing server modules into a route a build-graph question), so this
+ * duck-types both and ignores anything that isn't a plausible HTTP status.
+ *
+ * @param error - The caught value, of unknown type.
+ * @returns The resolved status (omitted when the error carried none) and message.
+ *
+ * @example
+ * } catch (e) {
+ *   const err = toErrorInfo(e)
+ *   return Response.json({ error: err.message }, { status: err.status ?? 500 })
+ * }
+ */
+export function toErrorInfo(error: unknown): {
+  status?: number
+  message?: string
+} {
+  const e = error as { status?: unknown; statusCode?: unknown; message?: unknown }
+  const raw = typeof e?.status === 'number' ? e.status : e?.statusCode
+  const status =
+    typeof raw === 'number' && raw >= 400 && raw <= 599 ? raw : undefined
+
+  return {
+    status,
+    message: typeof e?.message === 'string' ? e.message : undefined,
+  }
+}

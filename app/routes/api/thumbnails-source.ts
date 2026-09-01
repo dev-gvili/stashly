@@ -9,6 +9,7 @@ import type { Route } from './+types/thumbnails-source'
 import { auth } from '@/services/auth'
 import { data, redirect } from 'react-router'
 import { getThumbnailSource } from '@/services/thumbnail-actions'
+import { toErrorInfo } from '@/utils/api.errors'
 
 export async function loader({ params, request }: Route.LoaderArgs) {
   const session = await auth.api.getSession({ headers: request.headers })
@@ -20,10 +21,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   try {
     return data(await getThumbnailSource(session.user.id, itemId))
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
+    const err = toErrorInfo(e)
     return data(
       { status: 'unsupported' as const, message: err.message },
-      { status: err.statusCode ?? 500 }
+      { status: err.status ?? 500 }
     )
   }
 }

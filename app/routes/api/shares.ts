@@ -15,6 +15,7 @@ import {
   revokeAllShareLinksForItem,
   updateShareLink,
 } from '@/services/share-actions'
+import { toErrorInfo } from '@/utils/api.errors'
 import { prisma } from '@/services/db'
 
 // ---------------------------------------------------------------------------
@@ -203,11 +204,11 @@ export async function action({ request }: Route.ActionArgs) {
       }
     }
   } catch (e) {
-    const err = e as { statusCode?: number; message?: string }
-    if (err?.statusCode) {
+    const err = toErrorInfo(e)
+    if (err.status) {
       return data(
         { success: false, error: err.message ?? 'Error' },
-        { status: err.statusCode }
+        { status: err.status }
       )
     }
     console.error('[shares action]', e)
