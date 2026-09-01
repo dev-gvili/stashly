@@ -2,7 +2,7 @@
 title: "Stashly — Project Overview"
 description: "Comprehensive overview of Stashly's architecture, tech stack, features, data model, and key subsystems."
 author: "@AlonGvili"
-date: 2024-06-15
+date: 2026-08-30
 tags:
   - "architecture"
   - "overview"
@@ -129,8 +129,13 @@ Built with React Router 8 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatib
 - **Summarization** — extract key points from audio/text content
 - **Translation** — multi-language text translation
 - **Embeddings** — vector embeddings for semantic search indexing
+- **PDF OCR** — per-page text extraction (GLM-OCR / Florence-2), streamed into the search index
 - **Chat** — conversational AI interface
-- All inference runs in Web Workers via ONNX Runtime (WebGPU with WASM fallback)
+- All inference runs in Web Workers via ONNX Runtime (WebGPU with WASM fallback), serialized through the shared priority queue in `app/workers/ai-queue.ts`
+
+### Document Reading
+- **Markdown reader** — streamed body, server-extracted outline, Monaco-tokenized code fences, mermaid diagrams
+- **Code viewer** — Monaco with cross-file type acquisition resolved from other uploaded files
 
 ### Sharing & Collaboration
 - Share links with granular permissions (read / write)
@@ -160,7 +165,7 @@ User ──┬── Workspace ──── WorkspaceMember (role-based)
        │        │
        │        ├── Item (file / folder / collection) ── Permission
        │        │        │
-       │        │        ├── File / Folder / Image / Video / Audio / Pdf (1:1 facets)
+       │        │        ├── File / Folder / Image / Video / Audio / Pdf / Markdown (1:1 facets)
        │        │        ├── CollectionMember (self M:N — collection = Item type='collection')
        │        │        ├── Comment
        │        │        ├── ItemVersion
@@ -188,7 +193,7 @@ The schema spans 56 models and 24 enums. A collection is **not** a separate mode
 | Model | Purpose |
 |-------|---------|
 | `User` | Account, profile, linked OAuth accounts |
-| `Item` | File, folder, or collection — the central entity (faceted by `File`/`Folder`/`Image`/`Video`/`Audio`/`Pdf`) |
+| `Item` | File, folder, or collection — the central entity (faceted by `File`/`Folder`/`Image`/`Video`/`Audio`/`Pdf`/`Markdown`) |
 | `CollectionMember` | Item ↔ collection membership (self M:N) |
 | `Workspace` / `WorkspaceMember` | Collaborative space + role-based membership |
 | `Permission` | Per-item or per-share access grants |
@@ -213,21 +218,25 @@ The repository/service split has been collapsed into a single **actions layer**.
 
 ```
 app/routes/              Route loaders/actions (data fetching, mutations) — call action functions
-        │
+        │                imported as `@/services/*`
         ▼
 app/.server/*-actions.ts Plain exported functions — business logic + permission enforcement + Prisma
-        │
+        │                `@/services/*` → app/.server/*  (see tsconfig.json paths)
         ▼
-app/prisma/              Generated Prisma client → PostgreSQL
+app/.server/db.ts        Prisma client singleton (generated client in app/prisma/) → PostgreSQL
 ```
 
 ### Routes (`app/routes/`)
 
-Route modules export `loader` (GET) and `action` (POST/PUT/DELETE) functions plus a default React component. Loaders check sessions and redirect unauthenticated users. **Routes never call Prisma directly** — they import action functions via relative paths from `app/.server/`.
+Route modules export `loader` (GET) and `action` (POST/PUT/DELETE) functions plus a default React component. Loaders check sessions and redirect unauthenticated users. **Routes never call Prisma directly** — they import action functions from `app/.server/` via the `@/services/*` alias.
 
 ```typescript
+import { redirect } from 'react-router'
+import { auth } from '@/services/auth'
+import type { Route } from './+types/route'
+
 export async function loader({ request }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
+  const session = await auth.api.getSession({
     headers: request.headers,
   })
   if (!session) throw redirect('/auth/sign-in')
@@ -235,7 +244,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 ```
 
-> Note: The dot-server plugin blocks `@/services/*` path-alias imports inside `app/routes/` files. Use relative imports from `.server/` instead.
+> **Dot-server plugin:** React Router's build rejects a route whose *client-bundled* exports can reach a server module. It strips server code from `loader`, `action`, `middleware` and `headers` only — so a `@/services/*` import is fine when just those touch it (`app/routes/settings/billing.tsx` imports from `@/services/*` in five places and builds clean), and fails when anything else does. It reads the **import graph, not usage**: an import nothing references still fails. Dev never surfaces this — `pnpm build` is the only check.
 
 ### Actions (`app/.server/*-actions.ts`)
 
@@ -243,13 +252,13 @@ No classes — every action file exports plain functions. Permissions are enforc
 
 ```typescript
 // In a route loader/action:
-import { getCollectionForUser } from '../../.server/collection-actions'
+import { getCollectionForUser } from '@/services/collection-actions'
 const collection = await getCollectionForUser(session.user.id, collectionId)
 ```
 
 | Action file | Responsibility |
 |---------|---------------|
-| `item-actions.ts` | Item CRUD, `paginateItems`, `defaultItemSelect`, `createUploadedItem`, `touchOpenedAt`, `getFileItem` |
+| `item-actions.ts` | Item CRUD, `paginateItems`, `defaultItemSelect`, `createUploadedItem`, `updateItemOpenedAt`, `getFileItem`, `upsert*Facet` |
 | `collection-actions.ts` | Collection CRUD, member add/remove (size is DB-trigger maintained) |
 | `workspace-actions.ts` | Workspace + membership |
 | `permission-actions.ts` | Per-item access grants |
@@ -269,18 +278,50 @@ const collection = await getCollectionForUser(session.user.id, collectionId)
 | `lock-actions.ts` | Item edit locks (`LockedItem`) |
 | `search-actions.ts` | Semantic/full-text search — `mapItemToSearch`, chunked embeddings (`SEARCH_VECTOR_DIM = 768`), raw-SQL vector writes |
 | `activity-actions.ts` | Activity feed (uses `createActivity` fire-and-forget) |
+| `source-resolution-actions.ts` | Code viewer cross-file type acquisition — `getProjectConfig`, `getSourceFiles` (permission-gated) |
 
 Models still without dedicated action files: `Favorite`, `AuditLog`, `Trash/TrashItem`, `View`.
 
+Non-action server modules alongside them: `db.ts` (the Prisma client), `auth.ts`, `s3.ts`, `stripe.ts`, `email.ts`, `onboard.ts`, `sidebar.ts`, `breadcrumbs.ts`, `theme.ts`, `metrics.ts`, `notification-events.ts`.
+
 ### Search Helper
 
-All action files use `searchFactory` from `app/utils/search.ts` for consistent paginated, filterable list operations. Filter builders live in `app/.server/filters/`.
+All action files use `searchFactory` from `@/utils/search` for consistent paginated, filterable list operations. Filter builders live in `app/utils/filters/` (one file per entity, e.g. `item.filters.ts`), with the Zod shapes in `@/schemas/filters.schemas`.
 
 > ⚠️ `searchFactory` does NOT auto-apply `defaultInclude`. Pass `include` explicitly on every `searchActivities` / `searchItems` call or relations will be omitted.
 
+```typescript
+import { searchFactory } from '@/utils/search'
+import { buildItemFilters } from '@/utils/filters/item.filters'
+```
+
 ### Error Handling
 
-All action functions use `ApiError` and `ApiErrorCode` from `app/.server/api.errors.ts` for consistent typed errors. **Do not import `ApiError` in route files** — the dot-server plugin rejects `@/services/*` imports in `app/routes/`. Inside route action handlers, duck-type the error: `const err = e as { statusCode?: number; message?: string }`.
+All action functions use `StashlyError` and `StashlyErrorCode` from `@/utils/api.errors` for consistent typed errors.
+
+```typescript
+import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+
+if (!item) {
+  throw new StashlyError(StashlyErrorCode.ITEM_NOT_FOUND)
+}
+```
+
+Two error shapes reach route handlers and they disagree on the field name: `StashlyError` exposes the HTTP status as `status`, while the ad-hoc guard errors from `throwGuardError` in `workspace-actions.ts` set `statusCode`. Route handlers normalise both through `toErrorInfo` rather than duck-typing one of them:
+
+```typescript
+import { toErrorInfo } from '@/utils/api.errors'
+
+} catch (e) {
+  const err = toErrorInfo(e)
+  return data(
+    { error: err.message ?? 'An error occurred' },
+    { status: err.status ?? 500 }
+  )
+}
+```
+
+> `toErrorInfo` returns `status: undefined` for anything that isn't a plausible HTTP error code (400–599), so each call site keeps its own fallback — `?? 500` for most, `?? 404` for detail lookups.
 
 ---
 
@@ -293,7 +334,7 @@ The upload pipeline uses XState state machines in a parent-child actor pattern:
 1. **User drops files** → `upload/upload.machine.ts` (parent) spawns one `reviset/file.machine.ts` per file
 2. **File machine** requests presigned URLs from `/api/s3/upload` (action: `get-presigned-url`)
 3. **File machine** uploads chunks in parallel directly to S3, verifies ETags
-4. **Concurrency** is gated inside `upload.machine.ts` itself via `maxConcurrentUploads` (default 100) — there is no separate queue actor
+4. **Concurrency** is gated inside `upload.machine.ts` itself via `maxConcurrentUploads` (default 10) — there is no separate queue actor
 5. **`quota/quota.machine.ts`** is spawned by the parent, and the file machine invokes `checkQuota`/`updateQuota` from `quota/quota.actors.ts`
 6. On `upload.done`, the parent spawns a `createDbItem` actor → `POST /api/items` (intent: `create_upload_item`) → `createUploadedItem()` writes the row, resolving any intermediate folders from the S3 key so dropped hierarchies survive
 7. After DB write, status flips to `'itemCreated'` — this is the gate that triggers the thumbnail pipeline (prevents FK violations on `Thumbnail.itemId`)
@@ -325,6 +366,12 @@ See: [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md)
 Fenced code is tokenized by **Monaco's own tokenizer** (`colorizeCode` in `app/.client/monaco.ts`), so a code block in a document and the same file in the code viewer share one theme object rather than two palettes. ```mermaid fences render as SVG diagrams via a lazily imported `app/.client/mermaid.ts` — client-side deliberately, since mermaid needs real text metrics, bakes hex into its output, and would become an SSRF surface if it rendered uploaded diagrams server-side.
 
 See: [`docs/markdown-reader.md`](markdown-reader.md)
+
+### Code Viewer
+
+Uploaded source files open in Monaco (`app/.client/monaco.ts`, "Ink" theme). For `.ts`/`.tsx`, types are acquired **across uploaded files**: the client alias-maps imports, then `source-resolution-actions.ts` walks up to the nearest `tsconfig.json`/`jsconfig.json` to establish a project root (`getProjectConfig`) and returns the referenced files' text (`getSourceFiles`), resolving extensions and `index` files the way TypeScript would. Every read re-checks the same `read` permission the viewer enforces, and resolution is scoped to the owner so a project switch drops stale extra-libs.
+
+See: [`docs/code-viewer.md`](code-viewer.md), [`docs/code-viewer-cross-file-options.md`](code-viewer-cross-file-options.md)
 
 ### Activity Feed
 
@@ -370,17 +417,20 @@ All AI inference runs **in the browser** via Web Workers, keeping the server sta
 Main Thread → Web Worker → ONNX Runtime (WebGPU or WASM fallback)
                               │
                               ├── Xenova/mms-lid-126 (language detection)
-                              ├── Whisper (speech-to-text)
+                              ├── onnx-community/whisper-large-v3-turbo (speech-to-text)
+                              ├── Xenova/nllb-200-distilled-600M (translation)
                               ├── Xenova/paraphrase-multilingual-MiniLM-L12-v2 (pipeline tagging)
                               ├── Xenova/all-mpnet-base-v2 (search embeddings, 768-dim)
-                              └── Xenova/vit-base-patch16-224 (thumbnail saliency)
+                              ├── Xenova/vit-base-patch16-224 (thumbnail saliency)
+                              └── onnx-community/GLM-OCR-ONNX · Florence-2-*-ft (PDF OCR)
 ```
 
 - Hardware auto-detection: uses GPU if available, falls back to CPU/WASM
 - Chunked processing for long audio files
-- All inference funnels through a single WebGPU context (`app/workers/ai-queue.ts`)
+- All inference funnels through a single WebGPU context via the priority queue in `app/workers/ai-queue.ts`
+- When an optional stage falls back (no WebGPU, a model that won't load), the client reports it to `/api/metrics` — see [Observability](#observability)
 
-Key files: `app/workers/` (`stash.ai.ts`, `embedding.ai.ts`, `thumbnail.ai.ts`), `app/machines/ai/`, `app/machines/pipeline/`, `app/.client/stashly-ai.ts`
+Key files: `app/workers/` (`ai-queue.ts`, `stash.ai.ts`, `embedding.ai.ts`, `thumbnail.ai.ts`, `ocr.ai.ts`, `ocr-florence.ai.ts`), `app/machines/pipeline/`, `app/.client/stashly-ai.ts`
 
 See: [`docs/ai-pipeline.md`](ai-pipeline.md)
 
@@ -395,7 +445,7 @@ Search is powered entirely by PostgreSQL + pgvector:
 
 Embeddings are generated in-browser with `Xenova/all-mpnet-base-v2` (**768-dim** vectors). The document-level `Search.vector` is indexed HNSW with `vector_cosine_ops`; long documents are split into ~300-token passages stored in `SearchChunk` (one embedding per chunk) so matches can be highlighted.
 
-Key files: `app/.server/search-actions.ts`, `app/.server/filters/`, `app/workers/embedding.ai.ts`
+Key files: `app/.server/search-actions.ts`, `app/utils/filters/`, `app/utils/search-query.ts` (`SEARCH_VECTOR_DIM`), `app/workers/embedding.ai.ts`
 
 See: [`docs/search.md`](search.md)
 
@@ -431,9 +481,11 @@ Complex async workflows are modeled as XState 5 state machines in `app/machines/
 
 | Machine | Location | Purpose |
 |---------|----------|---------|
-| `upload.machine` | `upload/` | Parent orchestrator — spawns file actors, gates concurrency via `maxConcurrentUploads` (default 100), runs `createDbItem` on upload done |
+| `upload.machine` | `upload/` | Parent orchestrator — spawns file actors, gates concurrency via `maxConcurrentUploads` (default 10), runs `createDbItem` on upload done |
 | `file.machine` | `reviset/` | Individual file upload lifecycle — **the active per-file actor**, imported by `upload.machine:12` despite the folder name |
 | `quota.machine` | `quota/` | Storage quota state tracking, spawned by `upload.machine`; `quota.actors.ts` holds the `checkQuota`/`updateQuota` fetch actors |
+| `thumbnail-manager.machine` | `thumbnail/` | Thumbnail scheduler — admits work, caps concurrency, spawns one item actor per item |
+| `thumbnail-item.machine` | `thumbnail/` | Per-item stage 1→3 lifecycle with retry/attempt tracking (`attempt-store.ts`) |
 | `s3.multipart.concurrent` / `.stream` | `multipart/` | Concurrent + streaming multipart utilities |
 | `pipeline.machine` | `pipeline/` | Full audio pipeline (detect → transcribe → summarize → tag) |
 | `subscription.machine` | `subscription/` | Stripe subscription state |
@@ -445,9 +497,9 @@ Complex async workflows are modeled as XState 5 state machines in `app/machines/
 Every machine listed above is live. The dead ones this table used to carry —
 the `ai/` pair, the three `queue.machine` copies, `actors/quota.machine.ts`,
 `actors/multipart.machine.ts`, `upload/file.machine.ts`, `sidebar.machine` and
-`infinite-scroll.machine` — were deleted on 2026-08-14; see
-[`orphaned.md`](orphaned.md). The live AI path is `pipeline/` plus the modules
-in `app/workers/`.
+`infinite-scroll.machine` — were deleted on 2026-08-14. `app/machines/actors/`
+survives only as a shared `types.ts`; there is no `app/machines/ai/`. The live
+AI path is `pipeline/` plus the modules in `app/workers/`.
 
 Machines are connected to React via `@xstate/react`. Parent machines spawn child actors for per-item or per-task state.
 
@@ -523,6 +575,7 @@ All API routes live in `app/routes/api/` and are resource routes (no UI componen
 | GET/POST | `/api/theme` | Theme preference |
 | GET/POST | `/api/view` | Layout/view preference |
 | GET | `/api/health` | Health check |
+| ALL | `/api/auth/*` | better-auth catch-all handler (OAuth callbacks, session endpoints) |
 
 ---
 
@@ -579,7 +632,7 @@ Stage 4: Runtime (node:20-alpine) — copy prod deps + build output, run npm sta
 ### Commands
 
 ```bash
-pnpm dev                  # Dev server (Express + Vite HMR) at http://localhost:3000
+pnpm dev                  # Dev server (Express + Vite HMR) at http://localhost (PORT env, default 80)
 pnpm build                # Production build
 pnpm start                # Production server
 pnpm typecheck            # Type-check (typegen + tsc)
@@ -604,6 +657,9 @@ pnpm test:e2e:ui          # E2E tests with Playwright UI
 | [`docs/thumbnail-pipeline.md`](thumbnail-pipeline.md) | Progressive WebP thumbnail pipeline (V2, stages 1–3) |
 | [`docs/quota-and-machines.md`](quota-and-machines.md) | Quota system, XState integration |
 | [`docs/routing-and-ui.md`](routing-and-ui.md) | Route handles, sidebars, pagination patterns |
+| [`docs/markdown-reader.md`](markdown-reader.md) | Markdown stage — streaming body, outline rail, Monaco-tokenized fences, mermaid |
+| [`docs/code-viewer.md`](code-viewer.md) / [`docs/code-viewer-cross-file-options.md`](code-viewer-cross-file-options.md) | Monaco code viewer and cross-file type acquisition |
+| [`docs/notifications-sse.md`](notifications-sse.md) | Postgres `LISTEN`/`NOTIFY` → SSE notification stream |
 | [`docs/suggestions-view.md`](suggestions-view.md) | Suggested-items / recency surface |
 | [`docs/sharing-and-invitations.md`](sharing-and-invitations.md) | Share links, invitations, permission model |
 | [`docs/roadmap.md`](roadmap.md) | Product roadmap and shipped phases |
