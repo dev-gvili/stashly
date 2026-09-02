@@ -1,28 +1,27 @@
-import { data, redirect } from 'react-router'
 import {
+  collectionsApiRouteInput
+} from '@/schemas/api.schemas'
+import { auth } from '@/services/auth'
+import {
+  addItemsToCollection,
+  clearCollection,
   createCollection,
   createWorkspaceCollection,
-  renameCollection,
-  trashCollection,
-  clearCollection,
   deleteCollection,
-  restoreCollection,
-  addItemsToCollection,
   removeItemFromCollection,
   removeItemsFromCollection,
-} from '../../.server/collection-actions'
-import { auth } from '@/services/auth'
-import type { Route } from './+types/collections'
-import { parseFormData, parseSearchParams } from '../../utils/parsers'
-import {
-  addItemsToCollectionInput,
-  collectionsApiRouteInput,
-} from '../../schemas'
-import { paginateItems } from '@/.server/item-actions'
+  renameCollection,
+  restoreCollection,
+  trashCollection,
+} from '@/services/collection-actions'
+import { paginateItems } from '@/services/item-actions'
 import {
   buildItemFilters,
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
+import { parseFormData, parseSearchParams } from '@/utils/parsers'
+import { data, redirect } from 'react-router'
+import type { Route } from './+types/collections'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
     const session = await auth.api.getSession({
@@ -121,7 +120,6 @@ export async function action({ request, params }: Route.ActionArgs) {
     let res = await renameCollection({ ...rest, userId: session.user.id })
     console.log('rename', res)
     return redirect(`${url.pathname}${url.search}`)
-    // return null
   }
 
   if (formData.intent === 'trash_collection') {
