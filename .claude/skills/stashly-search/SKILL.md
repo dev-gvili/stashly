@@ -53,6 +53,19 @@ The vector-nearest chunk and the chunk containing the typed words are routinely 
 
 `app/components/views/search-components/` — barrel-exported. `EvidenceCard` is the unit: a result is a claim plus the evidence for it (`MatchBadge`, `ScoreBadge`/`ScoreMeter`, `SnippetBlock`, `HighlightedText`). `MatchGroup` groups by `MatchKind`, `ResultsSummary` heads the list. Pure helpers (`tokenizeQuery`, `highlightSegments`, `toEvidenceSnippet`, `passageLocator`, `scoreBand`) live in `search-helpers.ts` and are unit-tested — put new display logic there, not in a component.
 
+## What has a body to index
+
+`Search.content` is only ever written from text something produced. Three
+producers, all in `extractMediaMetadata` (`app/utils/thumbnail-pipeline.ts`):
+the PDF text layer, the markdown `mdMeta` worker, and — for every other text
+format (source, config, data, `.txt`) — a direct `File.text()` read gated on
+`isIndexableTextFile` from `app/utils/text-files.ts`, capped at
+`MAX_INDEXED_TEXT_CHARS`. A format none of the three claim gets **no `Search`
+row at all** and is then findable by name only; that was the state of every code
+file before the text branch existed. Lockfiles and minified bundles are excluded
+by name — the same exclusion has to appear in the re-index candidate SQL, or a
+refused candidate sits at the head of the queue forever.
+
 ## Index writes
 
 All through `POST /api/items` intents:
@@ -61,7 +74,7 @@ All through `POST /api/items` intents:
 |--------|--------|
 | `save_ocr_page` | one OCR'd page into `Search.content` (`appendSearchPage`) |
 | `save_search_chunk_embeddings` | vectors onto existing `SearchChunk` rows |
-| `reindex_text` | re-chunks text items (`reindexTextItems`) |
+| `reindex_text` | re-chunks text items (`reindexTextItems`) — markdown through `parseMarkdownMetadata`, everything else raw; the only route for files uploaded before their type was indexable |
 | `reindex_candidates` (GET) | items whose index is thin or missing |
 
 **These two must not trigger revalidation** — see `app/utils/revalidation.ts` and the `isSearchIndexSubmission` predicate. A 15-page OCR submits ~30 times; before the guard each submission re-ran the route loader *and* the thumbnail presign loader. Any new background index-write intent belongs in `SEARCH_INDEX_INTENTS`. An intent that also writes displayable facets (like `save_media_metadata`) does **not** — it must still revalidate.

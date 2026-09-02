@@ -8,12 +8,24 @@ import { dataUrlToBlob } from '@/utils/thumbnail'
 import { classifyDegradation, reportDegraded } from '@/utils/report-degraded'
 import { generateVideoThumbnail, getVideoMetadata } from '@/utils/video'
 import { isMarkdownFile } from '@/utils/markdown'
-import { isTextRenderableFile } from '@/utils/text-thumbnail'
+import {
+  MAX_INDEXED_TEXT_CHARS,
+  isIndexableTextFile,
+  isTextRenderableFile,
+} from '@/utils/text-files'
 import exifr from 'exifr'
 import type {
   ComputeRequest,
   ComputeResponse,
 } from '@/workers/thumbnail.compute.worker'
+
+/**
+ * Bytes read before decoding, sized so the char cap is reachable even for
+ * fully multi-byte content (UTF-8 tops out at 4 bytes/char). Slicing the File
+ * first keeps a 50 MB stray artifact from being decoded in full just to throw
+ * 99% of the string away.
+ */
+const MAX_TEXT_READ_BYTES = MAX_INDEXED_TEXT_CHARS * 4
 
 // ── Compute worker singleton ─────────────────────────────────────────────
 
@@ -752,6 +764,27 @@ export async function extractMediaMetadata(file: File): Promise<MediaMetadata> {
       meta.mdHasFrontmatter = m.hasFrontmatter
       meta.mdDocCreatedAt = m.docCreatedAt
       meta.mdDocModifiedAt = m.docModifiedAt
+    }
+  } else if (isIndexableTextFile(file)) {
+    // Everything else made of text — source, config, data, plain .txt. No
+    // worker hop: markdown goes through `mdMeta` because it *parses*
+    // (frontmatter, headings, counts), while these have no structure to
+    // extract and only need their bytes decoded, which `File.text()` does off
+    // the main thread already.
+    //
+    // Without this branch the chain fell through to the audio/image/video
+    // cases, none of which match, so `documentText` stayed undefined and
+    // `save_media_metadata` wrote no `Search` row at all — the whole reason
+    // code files were unfindable by content.
+    try {
+      const raw = await file.slice(0, MAX_TEXT_READ_BYTES).text()
+      const body =
+        raw.length > MAX_INDEXED_TEXT_CHARS ? raw.slice(0, MAX_INDEXED_TEXT_CHARS) : raw
+      if (body.trim()) meta.documentText = body
+    } catch (err) {
+      // An unreadable body must not sink the rest of the metadata POST — the
+      // item still gets its facets, size and thumbnail, just no index entry.
+      console.error('[thumbnail-pipeline] text body read failed', err)
     }
   } else if (file.type.startsWith('audio/')) {
     const audioMetadata = await extractAudioMetadata(file)

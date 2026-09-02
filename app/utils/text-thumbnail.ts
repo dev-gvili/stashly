@@ -6,57 +6,14 @@
  * dependency-free, returns WebP Blobs. Dispatched from the compute worker via
  * the `tinyText` / `resizeText` RPC kinds; text items stop after stage 2 like
  * PDFs.
+ *
+ * File-type detection moved to `@/utils/text-files` so the server can ask "is
+ * this text?" without importing a canvas renderer; both predicates are re-
+ * exported here because this is where every existing caller looks for them.
  */
+import { isMonoFile } from '@/utils/text-files'
 
-// ---------------------------------------------------------------------------
-// File-type detection
-// ---------------------------------------------------------------------------
-
-/**
- * Extensions rendered in a monospace face (code, scripts, config, data).
- * Everything else that passes `isTextRenderableFile` renders sans-serif
- * (prose: .txt, markdown, …). Many of these arrive as `text/plain` or
- * `application/octet-stream`, so extension wins over mime for font choice.
- */
-const MONO_EXTENSIONS = new Set([
-  // web
-  'html', 'htm', 'css', 'scss', 'less', 'js', 'jsx', 'ts', 'tsx', 'json', 'xml',
-  'mjs', 'cjs', 'mts', 'cts', 'vue', 'svelte', 'astro', 'prisma',
-  // backend / system
-  'java', 'c', 'cpp', 'h', 'cs', 'php', 'py', 'rb', 'go', 'rs', 'swift', 'kt', 'dart',
-  // scripts
-  'ps1', 'psm1', 'psd1', 'sh', 'bat', 'cmd', 'zsh', 'bash',
-  // config / data
-  'yaml', 'yml', 'toml', 'ini', 'sql', 'graphql', 'env', 'gitignore',
-  'csv', 'tsv', 'log', 'dockerfile', 'makefile',
-])
-
-const PROSE_EXTENSIONS = new Set(['txt', 'md', 'markdown', 'mdown', 'mkd', 'text'])
-
-function fileExtension(name: string): string {
-  const dot = name.lastIndexOf('.')
-  // No dot → the whole name may be a known bare filename (Dockerfile, Makefile).
-  return (dot === -1 ? name : name.slice(dot + 1)).toLowerCase()
-}
-
-/** True for files whose content is text we can screenshot into a thumbnail. */
-export function isTextRenderableFile(file: { name: string; type?: string }): boolean {
-  const ext = fileExtension(file.name)
-  if (MONO_EXTENSIONS.has(ext) || PROSE_EXTENSIONS.has(ext)) return true
-  const type = file.type ?? ''
-  if (type.startsWith('text/')) return true
-  return /\b(json|xml|javascript|typescript|yaml|sql)\b/.test(type)
-}
-
-/** True when the file renders monospaced (code/config/data vs prose). */
-export function isMonoFile(file: { name: string; type?: string }): boolean {
-  const ext = fileExtension(file.name)
-  if (MONO_EXTENSIONS.has(ext)) return true
-  if (PROSE_EXTENSIONS.has(ext)) return false
-  // Unknown extension with a code-ish mime → monospace; plain text → prose.
-  const type = file.type ?? ''
-  return /\b(json|xml|javascript|typescript|yaml|sql|html|css)\b/.test(type)
-}
+export { isMonoFile, isTextRenderableFile } from '@/utils/text-files'
 
 // ---------------------------------------------------------------------------
 // Line layout (pure — unit-testable with a fake measure function)

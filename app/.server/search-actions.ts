@@ -2,9 +2,16 @@ import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma } from '@/prisma/client'
 import type { ItemForSearchEmbedding } from '@/utils/search-text'
-import { getObjectText } from './s3'
+import { getObjectHead } from './s3'
 import { upsertMarkdownFacet } from './item-actions'
 import { isMarkdownName, parseMarkdownMetadata } from '@/utils/markdown'
+import {
+  MAX_INDEXED_TEXT_CHARS,
+  TEXT_EXTENSIONS,
+  TEXT_NOISE_NAMES,
+  TEXT_NOISE_SUFFIXES,
+  isIndexableTextName,
+} from '@/utils/text-files'
 import {
   RANK_DEPTH,
   SEARCH_VECTOR_DIM,
@@ -175,18 +182,45 @@ export async function appendSearchPage(params: {
 // embedding backfill, which only fills in vectors for chunks that already
 // exist.
 //
-// Markdown and plain text need no browser to re-extract — `getObjectText` can
-// read the object and `parseMarkdownMetadata` is a pure function — so the
-// whole rebuild runs server-side. The chunks it writes land with `vector` NULL,
-// which is exactly what `findUnembeddedChunks` already looks for, so the
-// existing embedding backfill picks them up with no new machinery.
+// Anything made of text needs no browser to re-extract — markdown, source,
+// config, data, plain `.txt`: `getObjectHead` reads the object and
+// `parseMarkdownMetadata` is a pure function — so the whole rebuild runs
+// server-side. The chunks it writes land with `vector` NULL, which is exactly
+// what `findUnembeddedChunks` already looks for, so the existing embedding
+// backfill picks them up with no new machinery.
+//
+// This is also the only route for code files uploaded before they were indexed
+// at all: extraction skipped every non-PDF, non-markdown type, so they have no
+// `Search` row and could be found by name alone.
 //
 // PDFs are deliberately excluded: PDF.js and the OCR fallback are browser-side,
 // so those still have to go through the upload pipeline.
 // ──────────────────────────────────────────────────────────────────────────
 
-/** Extensions `parseMarkdownMetadata` can handle, mirroring `isMarkdownName`. */
-const MARKDOWN_EXTENSIONS = ['.md', '.markdown', '.mdown', '.mkd']
+/**
+ * Name patterns for every file whose body this rebuild can read: markdown, but
+ * also source, config and data files.
+ *
+ * `TEXT_EXTENSIONS` carries bare filenames (`dockerfile`, `makefile`) alongside
+ * real extensions, so the pattern is a plain `%suffix` rather than `%.suffix` —
+ * `%dockerfile` has to match a file called exactly that.
+ */
+const TEXT_NAME_PATTERNS = TEXT_EXTENSIONS.map((ext) => `%${ext}`)
+
+/** The subset `parseMarkdownMetadata` can handle, mirroring `isMarkdownName`. */
+const MARKDOWN_NAME_PATTERNS = ['%.md', '%.markdown', '%.mdown', '%.mkd']
+
+/**
+ * Generated text excluded from the queue, mirroring `isIndexableTextFile`.
+ *
+ * The exclusion has to happen here and not only in `reindexTextItem`: a
+ * candidate the rebuild then refuses is never repaired and never leaves the
+ * list, so 25 lockfiles would occupy every batch and starve the real backlog.
+ */
+const NOISE_SUFFIX_PATTERNS = [
+  ...TEXT_NOISE_NAMES,
+  ...TEXT_NOISE_SUFFIXES.map((suffix) => `%${suffix}`),
+]
 
 /**
  * Indexed content must be at least `1/STALE_INDEX_DIVISOR` of the file's bytes,
@@ -266,22 +300,34 @@ export async function findReindexCandidates(
     WHERE i."ownerId" = ${ownerId}
       AND i."status" = 'normal'
       AND i."type" = 'file'
-      AND lower(i."name") LIKE ANY (${MARKDOWN_EXTENSIONS.map((e) => `%${e}`)}::text[])
+      AND lower(i."name") LIKE ANY (${TEXT_NAME_PATTERNS}::text[])
+      AND lower(i."name") NOT LIKE ALL (${NOISE_SUFFIX_PATTERNS}::text[])
       AND (
         s."content" IS NULL
         OR length(s."content") = 0
+        -- Compared against the *indexable* size, not the file size: a body is
+        -- capped at MAX_INDEXED_TEXT_CHARS, so a 10 MB artifact stores its
+        -- first 512 KB and would otherwise read as permanently truncated —
+        -- re-fetched from S3 on every run, forever, to produce the same bytes.
         OR (
           i."size" > ${STALE_MIN_BYTES}
-          AND length(s."content")::bigint * ${STALE_INDEX_DIVISOR} < i."size"
+          AND length(s."content")::bigint * ${STALE_INDEX_DIVISOR}
+              < LEAST(i."size", ${MAX_INDEXED_TEXT_CHARS})
         )
         -- No line break in a document long enough to have had several is the
         -- fingerprint of the parser that collapsed all whitespace. Its body is
         -- intact, so nothing else here catches it — but it can resolve neither
         -- a line number nor a section, which is every locator a markdown
         -- result has.
+        --
+        -- Markdown only: a single-line file is pathological for prose and
+        -- perfectly normal for data (an exported .json is routinely one line),
+        -- and a rebuild cannot add newlines that were never in the source. Left
+        -- unscoped, every such file would re-queue itself after every repair.
         OR (
           i."size" > ${STALE_MIN_BYTES}
           AND position(E'\n' IN s."content") = 0
+          AND lower(i."name") LIKE ANY (${MARKDOWN_NAME_PATTERNS}::text[])
         )
         OR s."updatedAt" > COALESCE(
           (SELECT MAX(c."updatedAt") FROM "SearchChunk" c WHERE c."itemId" = i."id"),
@@ -331,13 +377,45 @@ export async function reindexTextItem(
     select: {
       id: true,
       name: true,
-      file: { select: { bucket: true, key: true } },
+      file: { select: { bucket: true, key: true, mimeType: true } },
     },
   })
   if (!item?.file) return null
-  if (!isMarkdownName(item.name)) return null
 
-  const raw = await getObjectText(item.file.bucket, item.file.key)
+  const isMarkdown = isMarkdownName(item.name, item.file.mimeType)
+  if (!isMarkdown && !isIndexableTextName(item.name, item.file.mimeType)) return null
+
+  // Ranged read rather than a full-body GET: a stray 50 MB log would otherwise
+  // be buffered in the server process in its entirety just to keep the first
+  // 512 KB. A range past the end of an object is not an error — S3 returns
+  // what it has — so small files are unaffected. Four bytes per char is UTF-8's
+  // worst case, which is what makes the char cap reachable for any encoding.
+  const bytes = await getObjectHead(
+    item.file.bucket,
+    item.file.key,
+    MAX_INDEXED_TEXT_CHARS * 4,
+  )
+  const raw = new TextDecoder('utf-8').decode(bytes).slice(0, MAX_INDEXED_TEXT_CHARS)
+
+  // Source, config and data files have no frontmatter to strip and no headings
+  // to name a section with, so they skip the markdown parser entirely: their
+  // body *is* the file. Running `parseMarkdownMetadata` over a .ts file would
+  // read a leading `---` in a comment as frontmatter and silently eat the top
+  // of the document.
+  if (!isMarkdown) {
+    const body = raw.trim()
+    if (!body) return { itemId: item.id, name: item.name, chars: 0, chunks: 0 }
+
+    const chunks = await upsertSearchChunks(item.id, chunkText(body))
+    await upsertSearchContent(item.id, body)
+    return {
+      itemId: item.id,
+      name: item.name,
+      chars: body.length,
+      chunks: chunks.length,
+    }
+  }
+
   const meta = parseMarkdownMetadata(raw)
   if (!meta.text) return { itemId: item.id, name: item.name, chars: 0, chunks: 0 }
 

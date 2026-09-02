@@ -29,7 +29,7 @@ design tokens and never writing a byte back to storage.
 | `app/.client/type-acquisition.ts` | npm ATA — `@typescript/ata` → jsdelivr → `addExtraLib`. |
 | `app/.client/cross-file-types.ts` | Cross-file resolution — `fetchSourceContext` / `acquireCrossFileTypes` / `applyAliasPaths`: walks the import graph, fetches sibling source via the API, registers it as extra libs, and records which extra-lib URI belongs to which uploaded item (`sourceItemFor`) so Go to Definition can route to its page. |
 | `app/.server/source-resolution-actions.ts` + `app/routes/api/source-types.ts` | Backend for cross-file: project-root/alias config + reading sibling source by logical path. |
-| `app/utils/text-thumbnail.ts` | `isMonoFile` / `isTextRenderableFile` — decides code vs prose and which files are text at all. |
+| `app/utils/text-files.ts` | `isMonoFile` / `isTextRenderableFile` — decides code vs prose and which files are text at all; `isIndexableTextFile` adds the search index's extra exclusions (lockfiles, minified bundles). Re-exported from `app/utils/text-thumbnail.ts`, which is where callers used to find the first two. |
 
 Every `.client/*` module here is dynamic-imported from a browser-only effect, so
 their multi-MB chunks (Monaco, TypeScript, Prettier) download only when a code
