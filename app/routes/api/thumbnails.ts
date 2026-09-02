@@ -8,23 +8,23 @@
  * POST                 — create the Thumbnail row
  * PATCH                — record a completed stage
  */
-import { auth } from '@/services/auth'
-import { data, redirect, type ShouldRevalidateFunction } from 'react-router'
-import {
-  createThumbnail,
-  updateThumbnail,
-  getThumbnailSource,
-} from '@/services/thumbnail-actions'
-import { getPresignedUrl } from '@/services/s3'
-import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import {
   thumbnailApiRouteQuery,
   thumbnailCreateSchema,
   thumbnailUpdateSchema,
 } from '@/schemas/api.schemas'
-import { isSearchIndexSubmission } from '@/utils/revalidation'
+import { auth } from '@/services/auth'
+import { getPresignedUrl } from '@/services/s3'
+import {
+  createThumbnail,
+  getThumbnailSource,
+  updateThumbnail,
+} from '@/services/thumbnail-actions'
 import { toErrorInfo } from '@/utils/api.errors'
-import type { AuthSession } from '@/.server/auth.types'
+import { toS3PublicUrl } from '@/utils/converters'
+import { parseFormData, parseSearchParams } from '@/utils/parsers'
+import { isSearchIndexSubmission } from '@/utils/revalidation'
+import { data, redirect, type ShouldRevalidateFunction } from 'react-router'
 import type { Route } from './+types/thumbnails'
 
 /**
@@ -145,6 +145,4 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 }
 
-function toS3PublicUrl(session: AuthSession, key: string) {
-  return `https://${session.user.bucket}.t3.tigrisfiles.io/${key}`
-}
+

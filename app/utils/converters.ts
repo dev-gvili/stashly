@@ -46,6 +46,7 @@ import crypto from 'crypto-js'
 import { href } from 'react-router'
 import { z } from 'zod'
 import type { ItemCardProps } from '../components/stash/item-card'
+import type { AuthSession } from '@/.server/auth.types'
 
 /**
  * Convert an AsyncIterable of Uint8Array to buffer
@@ -1012,4 +1013,7 @@ export function toLinkState(link: SharedLink): LinkState {
   const days = (new Date(link.expiresAt).getTime() - Date.now()) / 86_400_000
   if (days <= 0) return 'expired'
   return days <= 7 ? 'expiring' : 'live'
+}export function toS3PublicUrl(session: AuthSession, key: string) {
+  return `https://${session.user.bucket}.t3.tigrisfiles.io/${key}`
 }
+
