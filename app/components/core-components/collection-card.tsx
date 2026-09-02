@@ -1,6 +1,12 @@
-import React from 'react'
-import { href, useFetcher, useNavigate, useParams } from 'react-router'
-import { motion } from 'framer-motion'
+import { RenameDialog } from '@/components/core-components/rename-dialog'
+import {
+  CollectionFillIcon,
+  MoreMenuFillIcon,
+  RenameFillIcon,
+  TrashFillIcon,
+} from '@/components/icons'
+import useConfirm from '@/hooks/useConfirm'
+import type { StashCollection } from '@/types/stash.types'
 import {
   Card,
   CardAction,
@@ -18,17 +24,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu'
-import {
-  CollectionFillIcon,
-  MoreMenuFillIcon,
-  RenameFillIcon,
-  TrashFillIcon,
-} from '@/components/icons'
-import { RenameDialog } from '@/components/core-components/rename-dialog'
-import { formatSize } from '@/utils/formaters'
-import useConfirm from '@/hooks/useConfirm'
 import { cn } from '@/utils'
-import type { StashCollection } from '@/types/stash.types'
+import { formatSize } from '@/utils/formaters'
+import React from 'react'
+import { href, useFetcher, useNavigate, useParams } from 'react-router'
 
 export type CollectionCardItem = StashCollection
 
@@ -61,7 +60,7 @@ export function CollectionCard({
 
   return (
     <Card
-      className="group relative bg-card rounded p-4 gap-3 justify-evenly transition-colors cursor-pointer border-none hover:bg-muted aspect-video w-full max-w-xs"
+      className="group relative bg-card rounded-md p-4 gap-3 justify-evenly transition-colors cursor-pointer border-none ring-2 ring-accent hover:bg-muted aspect-video w-full max-w-xs"
       onClick={() =>
         navigate(
           `${href('/:me/stash/collections/:collectionId', {

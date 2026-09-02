@@ -114,6 +114,7 @@ export function CollectionsView({ collections }: CollectionsViewProps) {
               initial="hidden"
               animate="visible"
               exit="exit"
+              className='px-1'
               transition={{ duration: 0.15 }}
             >
               <CollectionCard collection={col} />

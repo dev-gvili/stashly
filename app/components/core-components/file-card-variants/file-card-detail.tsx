@@ -51,7 +51,7 @@ export function FileCardDetail({
     <ItemCard
       {...item}
       className={cn(
-        'flex flex-col gap-0 rounded-3xl! border-none p-2 bg-muted group',
+        'flex flex-col gap-0 rounded-3xl! border-none p-2 bg-muted group ring-2 ring-accent',
         className
       )}
     >
