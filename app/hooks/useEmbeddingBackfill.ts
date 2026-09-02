@@ -30,6 +30,8 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import { isConnectionTooSlow } from '@/utils/thumbnail-backfill'
 import {
+  DRAIN_ALL_BATCHES,
+  EMBED_SUB_BATCH,
   MAX_BACKFILL_BATCHES,
   PENDING_EMBEDDING_BATCH,
   getBackfillServerState,
@@ -191,10 +193,14 @@ async function saveVectors(
  * // In a test — assert how much a run actually healed
  * const embedded = await drainBacklog(new AbortController().signal)
  */
-async function drainBacklog(signal: AbortSignal): Promise<number> {
+async function drainBacklog(
+  signal: AbortSignal,
+  maxBatches = MAX_BACKFILL_BATCHES
+): Promise<number> {
   let embedded = 0
+  let batchesRun = 0
 
-  for (let batch = 0; batch < MAX_BACKFILL_BATCHES; batch++) {
+  for (let batch = 0; batch < maxBatches; batch++) {
     if (signal.aborted) break
 
     reportBackfill({ phase: 'fetching' })
@@ -206,44 +212,88 @@ async function drainBacklog(signal: AbortSignal): Promise<number> {
 
     // Imported lazily so a session with no backlog never pulls in the model
     // wrapper — and never triggers its multi-megabyte weight download.
-    reportBackfill({ phase: 'embedding', batchSize: chunks.length })
     const { embedTexts } = await import('@/workers/embedding.ai')
-    // Explicitly background: nobody is waiting on a backfill batch, and a
-    // search query issued mid-drain must not queue behind it.
-    const vectors = await embedTexts(
-      chunks.map((chunk) => chunk.content),
-      undefined,
-      'background'
-    )
 
-    if (vectors.length !== chunks.length) {
-      console.error(
-        '[embedding backfill] vector count mismatch',
-        vectors.length,
-        chunks.length
+    // One fetched batch is embedded in {@link EMBED_SUB_BATCH}-sized passes,
+    // and the save of one pass overlaps the inference of the next. That is safe
+    // precisely because the chunk ids are already in hand: nothing inside this
+    // loop consults the server's view of what is still unembedded. The *fetch*
+    // does, which is why the next one waits for the last save to settle — and
+    // why the fetch batch is large, so that ordering point is paid rarely.
+    let inFlight: { save: Promise<boolean>; count: number } | null = null
+    let failure: string | null = null
+
+    for (let offset = 0; offset < chunks.length; offset += EMBED_SUB_BATCH) {
+      if (signal.aborted) break
+      const slice = chunks.slice(offset, offset + EMBED_SUB_BATCH)
+
+      reportBackfill({ phase: 'embedding', batchSize: slice.length })
+      // Explicitly background: nobody is waiting on a backfill batch, and a
+      // search query issued mid-drain must not queue behind it.
+      const vectors = await embedTexts(
+        slice.map((chunk) => chunk.content),
+        undefined,
+        'background'
       )
-      reportBackfill({
-        phase: 'failed',
-        error: `Vector count mismatch: got ${vectors.length} for ${chunks.length} chunks`,
-      })
-      break
+
+      if (vectors.length !== slice.length) {
+        console.error(
+          '[embedding backfill] vector count mismatch',
+          vectors.length,
+          slice.length
+        )
+        failure = `Vector count mismatch: got ${vectors.length} for ${slice.length} chunks`
+        break
+      }
+
+      // Settle the previous write before queueing another. Two writes in flight
+      // would let a rejected one be overtaken by its successor, and the run
+      // would report progress the server never accepted.
+      if (inFlight) {
+        if (!(await inFlight.save)) {
+          failure = 'Server rejected the vectors'
+          inFlight = null
+          break
+        }
+        embedded += inFlight.count
+        reportBackfill({ embedded })
+        inFlight = null
+      }
+
+      if (signal.aborted) break
+
+      reportBackfill({ phase: 'saving' })
+      inFlight = {
+        save: saveVectors(slice, vectors, signal),
+        count: slice.length,
+      }
     }
 
+    // `embedded` only ever counts vectors the server confirmed, so the last
+    // write has to land before the tally is final.
+    if (inFlight) {
+      if (await inFlight.save) {
+        embedded += inFlight.count
+        reportBackfill({ embedded })
+      } else {
+        failure ??= 'Server rejected the vectors'
+      }
+    }
+
+    if (failure) {
+      reportBackfill({ phase: 'failed', error: failure })
+      break
+    }
     if (signal.aborted) break
 
-    reportBackfill({ phase: 'saving' })
-    if (!(await saveVectors(chunks, vectors, signal))) {
-      reportBackfill({ phase: 'failed', error: 'Server rejected the vectors' })
-      break
-    }
-
-    embedded += chunks.length
-    reportBackfill({ embedded, batches: batch + 1, batchSize: 0 })
+    batchesRun++
+    reportBackfill({ batches: batchesRun, batchSize: 0 })
 
     const more = shouldRequestAnotherBatch({
       received: chunks.length,
       limit: PENDING_EMBEDDING_BATCH,
-      batchesRun: batch + 1,
+      batchesRun,
+      maxBatches,
     })
     if (!more) {
       reportBackfill({ phase: 'done' })
@@ -262,6 +312,9 @@ async function drainBacklog(signal: AbortSignal): Promise<number> {
  *   failed — no WebGPU, a flaky model download — never retries for the life of
  *   the tab, which is exactly when a user wants to retry. Forcing also skips the
  *   idle wait and the slow-connection check.
+ * @param maxBatches How many fetch batches this run may process before
+ *   stopping. Defaults to the polite per-load cap; a user-requested drain
+ *   passes {@link DRAIN_ALL_BATCHES}.
  *
  * @example
  * // Automatic arming — declines on a repeat call within the same tab
@@ -276,7 +329,10 @@ async function drainBacklog(signal: AbortSignal): Promise<number> {
  * const abort = startEmbeddingBackfill()
  * abort?.()
  */
-export function startEmbeddingBackfill(force = false): (() => void) | null {
+export function startEmbeddingBackfill(
+  force = false,
+  maxBatches = MAX_BACKFILL_BATCHES
+): (() => void) | null {
   if (typeof window === 'undefined') return null
   if (started && !force) return null
 
@@ -299,7 +355,7 @@ export function startEmbeddingBackfill(force = false): (() => void) | null {
   })
 
   const cancelIdle = whenIdle(() => {
-    drainBacklog(controller.signal)
+    drainBacklog(controller.signal, maxBatches)
       .catch((e) => {
         if (controller.signal.aborted) return
         // A browser without WebGPU lands here. Search still works — this only
@@ -362,6 +418,26 @@ export function useEmbeddingBackfillState(): BackfillState {
 export function useRetryEmbeddingBackfill(): () => void {
   return useCallback(() => {
     startEmbeddingBackfill(true)
+  }, [])
+}
+
+/**
+ * "Embed all" — drains the whole backlog instead of stopping at the per-load
+ * cap.
+ *
+ * The cap is a courtesy to a user who never asked for the backfill; it is the
+ * wrong answer for one who is watching a coverage bar and wants it to reach
+ * 100%. Before this, clearing a few thousand passages meant reloading the page
+ * once per {@link MAX_BACKFILL_BATCHES}-batch run, which is what made a job of
+ * minutes feel like an afternoon.
+ *
+ * @example
+ * const drainAll = useDrainEmbeddingBacklog()
+ * <Button onClick={drainAll}>Embed all</Button>
+ */
+export function useDrainEmbeddingBacklog(): () => void {
+  return useCallback(() => {
+    startEmbeddingBackfill(true, DRAIN_ALL_BATCHES)
   }, [])
 }
 

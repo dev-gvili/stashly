@@ -13,10 +13,16 @@ import { Badge } from '@/ui/badge'
 import { Button } from '@/ui/button'
 import { InfoIcon, LoaderIcon } from '@/components/icons'
 import {
+  useDrainEmbeddingBacklog,
   useEmbeddingBackfillState,
   useRetryEmbeddingBackfill,
 } from '@/hooks/useEmbeddingBackfill'
-import { hasWebGpu, type BackfillPhase } from '@/utils/embedding-backfill'
+import {
+  hasWebGpu,
+  isBackfillActive,
+  PENDING_EMBEDDING_BATCH,
+  type BackfillPhase,
+} from '@/utils/embedding-backfill'
 import { cn } from '@/utils/styles'
 
 /** One line per phase, written to answer "what is it doing right now". */
@@ -31,13 +37,6 @@ const PHASE_COPY: Record<BackfillPhase, string> = {
   skipped: 'Skipped.',
   failed: 'Stopped with an error.',
 }
-
-const ACTIVE_PHASES: ReadonlySet<BackfillPhase> = new Set([
-  'scheduled',
-  'fetching',
-  'embedding',
-  'saving',
-])
 
 /**
  * Phases during which "Run now" stays pressable.
@@ -73,8 +72,9 @@ export function EmbeddingBackfillStatus({
 }: EmbeddingBackfillStatusProps) {
   const state = useEmbeddingBackfillState()
   const retry = useRetryEmbeddingBackfill()
+  const drainAll = useDrainEmbeddingBacklog()
   const webgpu = hasWebGpu()
-  const active = ACTIVE_PHASES.has(state.phase)
+  const active = isBackfillActive(state.phase)
   const busy = BUSY_PHASES.has(state.phase)
 
   const total = pendingChunks + indexedChunks
@@ -118,6 +118,20 @@ export function EmbeddingBackfillStatus({
           >
             {busy ? 'Running…' : 'Run now'}
           </Button>
+          {/* Only offered when it differs from "Run now": below one batch the
+              capped run already clears the backlog, so a second button
+              promising the same thing would be noise. */}
+          {pendingChunks > PENDING_EMBEDDING_BATCH && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-stashly"
+              onClick={drainAll}
+              disabled={busy}
+            >
+              Embed all
+            </Button>
+          )}
         </div>
       </div>
 
