@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useLocation } from 'react-router'
 import {
@@ -29,6 +29,7 @@ import type {
 } from '@/types/filter.types'
 import { CATEGORIES, STATUSES, TYPES, FLAGS } from '@/utils/filter-data'
 import { useFilters } from '@/hooks/useFilters'
+import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
 import { Chip, DashedDiv } from './filter-primitives'
 import { SortPill } from './sort-pill'
 import { SearchInput } from '@/components/core-components/search-input'
@@ -98,16 +99,6 @@ function FiltersRoot({ filters, children, className }: FiltersRootProps) {
 // ─── Search ──────────────────────────────────────────────────────────────
 
 /**
- * How long typing pauses before the query reaches the URL.
- *
- * Short enough to feel immediate, long enough that a burst of typing is one
- * navigation instead of one per character. It does not need to match
- * `useItemSearch`'s own debounce — that one throttles the client fetch, which
- * happens after and independently of this.
- */
-const URL_WRITE_DEBOUNCE_MS = 200
-
-/**
  * The search field.
  *
  * The typed text is local state, deliberately, and the URL is written behind a
@@ -131,33 +122,15 @@ function FiltersSearch(
 ) {
   const { filters } = useFiltersContext()
   const [text, setText] = useState(filters.state.query)
+  const { markCommitted } = useDebouncedCommit(text, filters.setQuery)
 
-  // What we last pushed to the URL. Since the URL lags what has been typed,
-  // this is the only way to tell our own echo coming back (ignore it) from a
-  // genuine external change — back/forward, a removed chip, "Clear all" —
-  // which has to win and replace what is in the field.
-  const lastPushed = useRef(filters.state.query)
-
-  // Held in a ref because `useFilters()` returns a fresh object every render:
-  // depending on `filters` below would restart the timer on every render, and
-  // it would never fire.
-  const setQuery = useRef(filters.setQuery)
-  setQuery.current = filters.setQuery
-
+  // An external change — back/forward, a removed chip, "Clear all" — has to
+  // replace what is in the field. `markCommitted` first, so adopting it does
+  // not immediately schedule a write of the value we just received.
   useEffect(() => {
-    if (filters.state.query === lastPushed.current) return
-    lastPushed.current = filters.state.query
+    markCommitted(filters.state.query)
     setText(filters.state.query)
-  }, [filters.state.query])
-
-  useEffect(() => {
-    if (text === lastPushed.current) return
-    const timer = setTimeout(() => {
-      lastPushed.current = text
-      setQuery.current(text)
-    }, URL_WRITE_DEBOUNCE_MS)
-    return () => clearTimeout(timer)
-  }, [text])
+  }, [filters.state.query, markCommitted])
 
   return (
     <SearchInput
