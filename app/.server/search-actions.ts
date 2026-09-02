@@ -244,6 +244,27 @@ const STALE_MIN_BYTES = 1024
 /** Ceiling when counting what is left after a batch, purely for the UI's tally. */
 const REMAINING_PROBE = 500
 
+/**
+ * Grace period before passages older than their body count as stale.
+ *
+ * `reindexTextItem` writes chunks first and the body second — deliberately, so
+ * a failure between the two changes nothing. The consequence is that *every
+ * successful rebuild* leaves the body a few milliseconds newer than its
+ * passages, which a bare `Search.updatedAt > MAX(chunk.updatedAt)` reads as
+ * staleness. Each repaired document immediately re-qualified, so the queue
+ * could not drain at any batch size: a drain of 100 passes rebuilt 2,500
+ * documents and still reported the same 477 remaining.
+ *
+ * Measured across the 25 stuck documents the gap was 12–17 ms and never more
+ * than a second. Real staleness — OCR appending a page later, a body rewritten
+ * by a newer extractor — is separated from a rebuild's own write gap by orders
+ * of magnitude, so a minute splits them with room to spare.
+ *
+ * Same failure mode the markdown scoping below already guards against: a
+ * predicate a repair cannot satisfy makes an item queue itself forever.
+ */
+const CHUNK_STALENESS_GRACE_SECONDS = 60
+
 export interface ReindexCandidate {
   id: string
   name: string
@@ -284,16 +305,19 @@ export async function findReindexCandidates(
       COALESCE(length(s."content"), 0)::int AS "indexedChars",
       COALESCE(i."size", 0)::int AS "fileBytes",
       position(E'\n' IN COALESCE(s."content", '')) > 0 AS "hasLines",
-      -- Body rewritten more recently than its passages. A re-index writes the
-      -- content first, so a failure between the two steps leaves exactly this:
-      -- a healthy-looking body whose chunks still came from the old parser.
-      -- Without this the item passes every other check and becomes invisible
-      -- to the very tool meant to repair it.
+      -- Body rewritten more recently than its passages: a healthy-looking body
+      -- whose chunks still came from the old parser. Without this the item
+      -- passes every other check and becomes invisible to the very tool meant
+      -- to repair it.
+      --
+      -- The grace period is not a fudge factor — see
+      -- CHUNK_STALENESS_GRACE_SECONDS. Without it a rebuild's own two writes
+      -- satisfy this condition, and no document ever leaves the queue.
       (
         s."updatedAt" > COALESCE(
           (SELECT MAX(c."updatedAt") FROM "SearchChunk" c WHERE c."itemId" = i."id"),
           'epoch'::timestamp
-        )
+        ) + (${CHUNK_STALENESS_GRACE_SECONDS} * INTERVAL '1 second')
       ) AS "chunksBehind"
     FROM "Item" i
     LEFT JOIN "Search" s ON s."itemId" = i."id"
@@ -332,7 +356,7 @@ export async function findReindexCandidates(
         OR s."updatedAt" > COALESCE(
           (SELECT MAX(c."updatedAt") FROM "SearchChunk" c WHERE c."itemId" = i."id"),
           'epoch'::timestamp
-        )
+        ) + (${CHUNK_STALENESS_GRACE_SECONDS} * INTERVAL '1 second')
       )
     ORDER BY i."size" DESC
     LIMIT ${limit}
@@ -459,6 +483,21 @@ export async function reindexTextItem(
 }
 
 /**
+ * Rebuilds run this many at a time.
+ *
+ * A rebuild is dominated by its ranged S3 read, not by anything local: measured
+ * against the dev bucket, 12 objects took 2,674 ms read one after another
+ * (~223 ms each) and 840 ms with the reads overlapped — 3.2x, and the gap only
+ * widens on a backlog of hundreds. The reads are independent, so serialising
+ * them was stacking pure network latency.
+ *
+ * Six rather than "all of them": the pool also gates `upsertSearchChunks`, and
+ * one user's rebuild must not drain the DB connection pool out from under
+ * everything else on the server.
+ */
+const REINDEX_CONCURRENCY = 6
+
+/**
  * Rebuild a batch of stale/missing text indexes.
  *
  * One failure doesn't abort the run — a single unreadable object would
@@ -477,19 +516,32 @@ export async function reindexTextItems(
   const done: ReindexResult[] = []
   const failed: { itemId: string; name: string; error: string }[] = []
 
-  for (const candidate of candidates) {
-    try {
-      const result = await reindexTextItem(ownerId, candidate.id)
-      if (result) done.push(result)
-    } catch (e) {
-      const err = e as { message?: string }
-      failed.push({
-        itemId: candidate.id,
-        name: candidate.name,
-        error: err.message ?? 'Re-index failed',
-      })
+  // Workers pull from a shared cursor rather than taking a fixed slice each:
+  // candidates range from a few hundred bytes to the 512 KB cap, so fixed
+  // slices would leave five workers idle behind the one large file.
+  let cursor = 0
+  const worker = async () => {
+    for (let i = cursor++; i < candidates.length; i = cursor++) {
+      const candidate = candidates[i]
+      try {
+        const result = await reindexTextItem(ownerId, candidate.id)
+        if (result) done.push(result)
+      } catch (e) {
+        const err = e as { message?: string }
+        failed.push({
+          itemId: candidate.id,
+          name: candidate.name,
+          error: err.message ?? 'Re-index failed',
+        })
+      }
     }
   }
+
+  await Promise.all(
+    Array.from({ length: Math.min(REINDEX_CONCURRENCY, candidates.length) }, () =>
+      worker(),
+    ),
+  )
 
   // Re-probed with a generous ceiling rather than `limit`, so the UI can say
   // "18 still queued" instead of a number capped at the batch size. Reuses the
@@ -650,22 +702,30 @@ export async function setSearchChunkVectors(
 ): Promise<number> {
   if (entries.length === 0) return 0
 
-  const updates = entries.map(({ chunkId, vector }) => {
+  // One statement, not one per chunk. This used to build an `$executeRaw` per
+  // entry and hand the array to `$transaction`, which is a sequential round
+  // trip per chunk — at a batch of 128 that is 128 round trips, each carrying a
+  // ~12 KB vector literal, with the browser's GPU idle for all of them. The
+  // set-returning `unnest` pair zips ids to literals server-side so the whole
+  // batch lands in a single UPDATE, and is still implicitly atomic.
+  const ids: string[] = []
+  const literals: string[] = []
+  for (const { chunkId, vector } of entries) {
     if (vector.length !== SEARCH_VECTOR_DIM) {
       throw new Error(
         `Expected ${SEARCH_VECTOR_DIM}-dim vector, got ${vector.length}`,
       )
     }
-    const literal = `[${vector.join(',')}]`
-    return prisma.$executeRaw`
-      UPDATE "SearchChunk"
-      SET vector = ${literal}::vector, "updatedAt" = NOW()
-      WHERE id = ${chunkId}
-    `
-  })
+    ids.push(chunkId)
+    literals.push(`[${vector.join(',')}]`)
+  }
 
-  const results = await prisma.$transaction(updates)
-  return results.reduce((sum, n) => sum + n, 0)
+  return prisma.$executeRaw`
+    UPDATE "SearchChunk" c
+    SET vector = v.vec::vector, "updatedAt" = NOW()
+    FROM unnest(${ids}::text[], ${literals}::text[]) AS v(id, vec)
+    WHERE c."id" = v.id
+  `
 }
 
 /**
@@ -683,6 +743,16 @@ export async function setSearchChunkVectors(
  *
  * Ordered newest-first: a document the user just uploaded is the one they are
  * most likely to search for next.
+ *
+ * No index answers this: `SearchChunk` carries `itemId` and `vector` indexes,
+ * and neither covers `vector IS NULL` ordered by `createdAt`. It is a sequential
+ * scan plus a sort, run once per batch. Measured at 4,264 rows that costs ~1 ms,
+ * which is why it is left alone — but the shape degrades as the backlog drains,
+ * since Postgres still reads every row to find the shrinking set of NULLs. If
+ * this ever shows up in a profile, the fix is a partial index
+ * (`ON "SearchChunk" ("createdAt" DESC) WHERE vector IS NULL`), which has to be
+ * a raw migration: Prisma cannot express a partial index and would generate a
+ * DROP for it on the next `migrate dev`.
  */
 export async function findUnembeddedChunks(
   ownerId: string,
