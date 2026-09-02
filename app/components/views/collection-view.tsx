@@ -59,9 +59,16 @@ interface CollectionHeader {
   itemCount: number
 }
 
+/**
+ * A collection row. `getCollectionItems` selects whole `Item` rows, so unlike
+ * the slim picker shape these carry the parent folder — which the file page
+ * (`/:me/stash/folders/:folderId/files/:fileId`) needs as its folder segment.
+ */
+type CollectionItem = StashPickerItem & { parentId?: string | null }
+
 interface CollectionViewProps {
   collection: CollectionHeader
-  items: StashPickerItem[]
+  items: CollectionItem[]
   availableItems: AddToCollectionItem[]
   existingItemIds: string[]
   hasMore: boolean
@@ -298,13 +305,16 @@ function CollectionPageHeader({
 // Grid card
 // ---------------------------------------------------------------------------
 
-function CollectionItemCard({ item }: { item: StashPickerItem }) {
+function CollectionItemCard({ item }: { item: CollectionItem }) {
   const stashItem: StashItem = {
     ...item,
     status: 'normal',
     inclusiveSize: item.size,
     updatedAt: null,
-    parentId: null,
+    // Keep the real parent: `ItemCard` routes files through
+    // `/…/folders/:folderId/files/:fileId`, so a null here collapsed the URL to
+    // `/…/folders/files/:fileId` and the file page lost its folder context.
+    parentId: item.parentId ?? null,
     ownerId: '',
     workspaceId: null,
     driveId: '',
@@ -372,7 +382,7 @@ function CollectionItemCard({ item }: { item: StashPickerItem }) {
   return (
     <FileCardDetail
       item={stashItem}
-      className="border! border-input"
+      className="ring-2! ring-accent"
       actions={removeFromCollectionActions}
     />
   )
@@ -473,7 +483,7 @@ export function CollectionView({
   const isGrid = searchParams.get('layout') === 'grid'
 
   return (
-    <div className="flex flex-col gap-4 pb-8">
+    <div className="flex flex-col gap-4 pb-8 px-1">
       <CollectionPageHeader
         collection={collection}
         collectionsHref={collectionsHref}
