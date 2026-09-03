@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useFetcher, href } from 'react-router'
 import { useMoveToFolder } from '@/hooks/useMoveToFolder'
+import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
 import { cn } from '@/utils/styles'
 import {
   Dialog,
@@ -175,17 +176,15 @@ export function MoveToFolderDialog({
   }, [createFetcher.data])
 
   // ── debounced search ──
-  useEffect(() => {
-    const q = query.trim()
+  // The trimmed query is what gets committed, so leading or trailing
+  // whitespace does not count as a change and re-run the search.
+  useDebouncedCommit(query.trim(), (q) => {
     if (!q) return
-    const timer = setTimeout(() => {
-      fetcherModeRef.current = 'search'
-      folderFetcher.load(
-        `/api/items?intent=search_folders&q=${encodeURIComponent(q)}`
-      )
-    }, 200)
-    return () => clearTimeout(timer)
-  }, [query])
+    fetcherModeRef.current = 'search'
+    folderFetcher.load(
+      `/api/items?intent=search_folders&q=${encodeURIComponent(q)}`
+    )
+  })
 
   // ── focus new folder input ──
   useEffect(() => {
