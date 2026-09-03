@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useLocation } from 'react-router'
 import {
@@ -29,6 +29,7 @@ import type {
 } from '@/types/filter.types'
 import { CATEGORIES, STATUSES, TYPES, FLAGS } from '@/utils/filter-data'
 import { useFilters } from '@/hooks/useFilters'
+import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
 import { Chip, DashedDiv } from './filter-primitives'
 import { SortPill } from './sort-pill'
 import { SearchInput } from '@/components/core-components/search-input'
@@ -97,6 +98,22 @@ function FiltersRoot({ filters, children, className }: FiltersRootProps) {
 
 // ─── Search ──────────────────────────────────────────────────────────────
 
+/**
+ * The search field.
+ *
+ * The typed text is local state, deliberately, and the URL is written behind a
+ * debounce. Binding `value` straight to `filters.state.query` looked correct
+ * and was not: `setQuery` writes a search param, React Router will not commit
+ * the new location until the route's loader resolves, and the search loader
+ * runs `searchItemsHybrid` — measured at 1.2–3.1 s on the dev drive. For that
+ * whole window `useSearchParams()` still returns the *previous* params, so the
+ * input rendered the previous text.
+ *
+ * That does not merely lag. The next keystroke's value is derived from what the
+ * input currently shows, so typing "t" then "h" inside the window produced "h",
+ * not "th" — characters overwrote each other. An input must never depend on a
+ * round trip to display what was just typed into it.
+ */
 function FiltersSearch(
   props: Omit<
     React.ComponentProps<typeof SearchInput>,
@@ -104,10 +121,21 @@ function FiltersSearch(
   >
 ) {
   const { filters } = useFiltersContext()
+  const [text, setText] = useState(filters.state.query)
+  const { markCommitted } = useDebouncedCommit(text, filters.setQuery)
+
+  // An external change — back/forward, a removed chip, "Clear all" — has to
+  // replace what is in the field. `markCommitted` first, so adopting it does
+  // not immediately schedule a write of the value we just received.
+  useEffect(() => {
+    markCommitted(filters.state.query)
+    setText(filters.state.query)
+  }, [filters.state.query, markCommitted])
+
   return (
     <SearchInput
-      value={filters.state.query}
-      onValueChange={filters.setQuery}
+      value={text}
+      onValueChange={setText}
       mode={filters.state.searchMode}
       onModeChange={filters.setSearchMode}
       {...props}

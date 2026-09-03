@@ -8,10 +8,11 @@
  * and an isolated broadcast channel keyed by itemId. Cards subscribe via
  * `useLiveThumbnail(id)` and re-render independently of route revalidation.
  */
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { shallowEqual, useSelector } from '@xstate/react'
 import { upload, useUploadFile } from '@/hooks/useUpload'
+import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
 // Implementation switch — see `app/machines/thumbnail/index.ts`. Points at
 // either the original hooks or the XState scheduler without changing shape.
 import {
@@ -98,7 +99,6 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
   )
   const navigate = useNavigate()
   const location = useLocation()
-  const lastRevalidated = useRef(0)
 
   // Facets written by `save_media_metadata` (page count, dimensions, EXIF) need
   // their own debounced revalidation on the machine path, where persistence is a
@@ -116,18 +116,18 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
     return () => resumeBackfill()
   }, [uploading])
 
-  useEffect(() => {
-    if (createdCount === lastRevalidated.current) return
-    const timer = setTimeout(() => {
-      lastRevalidated.current = createdCount
+  // The hook's committed guard replaces the `lastRevalidated` ref this used to
+  // keep, and holding `navigate` in a ref means the pathname and search read at
+  // commit time are the current ones rather than the ones captured on schedule.
+  useDebouncedCommit(
+    createdCount,
+    () =>
       navigate(`${location.pathname}${location.search}`, {
         replace: true,
         state: { reset: true },
-      })
-    }, REVALIDATE_DEBOUNCE_MS)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [createdCount])
+      }),
+    { delayMs: REVALIDATE_DEBOUNCE_MS }
+  )
 
   return (
     <>

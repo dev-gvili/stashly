@@ -31,6 +31,7 @@ import { useEmbeddingBackfillState } from '@/hooks/useEmbeddingBackfill'
 import { useFilters } from '@/hooks/useFilters'
 import { useIndexStats } from '@/hooks/useIndexStats'
 import { useItemSearch } from '@/hooks/useItemSearch'
+import { isBackfillActive } from '@/utils/embedding-backfill'
 import { isSearchableQuery } from '@/utils/search-query'
 import type { SearchDegradedReason } from '@/utils/search-query'
 import { cn } from '@/utils/styles'
@@ -108,13 +109,30 @@ export function SearchView({ me, initialResults, indexStats }: SearchViewProps) 
     searchMode === 'semantic' && searchable && !semantic && !degradedReason
 
   // Re-read coverage live rather than trusting the page-load snapshot: the
-  // whole point of the status panel is watching the numbers move. Polls while
-  // there is a backlog to watch, or while the runner is mid-flight.
+  // whole point of the status panel is watching the numbers move.
+  //
+  // Gated on the runner *working*, and nothing else. A backlog that no runner
+  // is processing cannot change, so reading it repeatedly only asks the same
+  // question again — and the previous condition also OR'd in the loader's
+  // `pendingChunks`, a value frozen at page load that stayed true for the life
+  // of the tab. With the runner idle this now issues zero requests.
+  //
+  // `isBackfillActive`, not `phase !== 'idle'`: the latter is also true for
+  // `done`/`failed`/`skipped`, so a finished run left this reading every five
+  // seconds until the tab closed.
+  //
+  // The key is `batches:active`, not `updatedAt`. `updatedAt` bumps on every
+  // progress report, which meant one request every few seconds for the whole
+  // run; this changes only when a batch lands or the runner starts or stops.
+  // `backfill.embedded` fills the gap between those with the runner's own
+  // confirmed count, so the bar moves per save without asking the server.
   const backfill = useEmbeddingBackfillState()
+  const backfillActive = isBackfillActive(backfill.phase)
   const liveStats = useIndexStats(
-    indexStats.pendingChunks > 0 || backfill.phase !== 'idle',
+    backfillActive,
     indexStats,
-    backfill.updatedAt
+    `${backfill.batches}:${backfillActive}`,
+    backfill.embedded
   )
   const hasBacklog = liveStats.pendingChunks > 0
 

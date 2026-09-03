@@ -202,7 +202,7 @@ export function useItemSearch({
     useState<SearchDegradedReason | null>(null)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [expandedTerms, setExpandedTerms] = useState<string[]>([])
-
+  
   // One controller per query generation. A new keystroke aborts the previous
   // generation's *both* passes — without this, a slow semantic response for
   // "rep" could land after the keyword response for "report" and overwrite it.
