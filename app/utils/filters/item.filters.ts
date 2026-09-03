@@ -11,10 +11,17 @@ export const itemFilterSchema = z.object({
   date: z.optional(date),
   favorited: z.boolean().optional(),
   parentId: z.string().optional(),
+  // claude wrote:
   // No `.default('')` here: Zod applies a default without re-validating it, so
   // an absent `query` used to arrive as `''` — a value `.min(1)` rejects — and
   // every loader that built item filters logged a ZodError for it.
-  query: z.string().min(1).optional(),
+  // dev wrote:
+  // The `query` param is optional, but if present it must be a non-empty string.
+  // The `loader` function in `app/routes/stash/search.tsx` ensures that if
+  // `query` is absent, it is replaced with `''` before calling `buildItemFilters`.
+  // This way, `query` is always a string when passed to `buildItemFilters`, and
+  // Zod can validate it correctly, if we don't set a default here. The `loader` function also checks if the query is searchable before proceeding with the search, and if not, we get this error: 'Cannot read properties of undefined (reading 'replace')' from `normalizeQuery`
+  query: z.string().min(1).optional().default(''),
   status: toZodArraySchema(z.enum(ItemStatus)).optional().default(['normal']),
   tags: toZodArraySchema(z.string().trim().min(1)).optional(),
   type: toZodArraySchema(z.enum(ItemType)).default(['file', 'folder']),
