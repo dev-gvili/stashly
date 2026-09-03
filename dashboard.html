@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tasks</title>
+<style>
+  :root {
+    --paper: #eef0f1;
+    --panel: #f7f8f8;
+    --ink: #16181b;
+    --ink-soft: #5c6469;
+    --ink-faint: #8b9398;
+    --rule: #cdd2d5;
+    --rule-strong: #adb5ba;
+    --accent: #23506e;
+    --accent-soft: #dbe6ee;
+    --signal: #8a6212;
+    --danger: #8c2f2a;
+    --radius: 3px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #15171a;
+      --panel: #1c1f23;
+      --ink: #e4e7e9;
+      --ink-soft: #a3abb0;
+      --ink-faint: #6f787d;
+      --rule: #2c3137;
+      --rule-strong: #414951;
+      --accent: #8fbcdc;
+      --accent-soft: #22303a;
+      --signal: #d0a44e;
+      --danger: #d98078;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- masthead ---------- */
+  header {
+    border-bottom: 1px solid var(--rule-strong);
+    padding: 18px 24px 14px;
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .count {
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .count small {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: var(--ink-soft);
+    margin-top: 4px;
+  }
+  .where {
+    flex: 1;
+    min-width: 220px;
+    color: var(--ink-soft);
+    font-size: 13px;
+    font-family: var(--mono);
+    overflow-wrap: anywhere;
+  }
+  .where b { color: var(--ink); font-weight: 500; }
+  .tools { display: flex; gap: 8px; align-items: center; }
+  .btn {
+    background: transparent;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius);
+    padding: 6px 11px;
+    font-size: 13px;
+  }
+  .btn:hover { border-color: var(--ink-soft); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+  @media (prefers-color-scheme: dark) { .btn-primary { color: #10141a; } }
+  .tabs { display: flex; gap: 2px; margin-left: auto; }
+  .tab {
+    background: transparent; border: 0; border-bottom: 2px solid transparent;
+    padding: 4px 10px; font-size: 13px; color: var(--ink-soft);
+  }
+  .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+
+  /* ---------- board ---------- */
+  main { padding: 0 24px 80px; max-width: 1180px; }
+  .board { display: grid; gap: 34px; margin-top: 26px; }
+  @media (min-width: 900px) { .board { grid-template-columns: 1fr 1fr; column-gap: 44px; } }
+
+  .section { min-width: 0; }
+  .section.drag-section { opacity: 0.45; }
+  .sec-head {
+    display: flex; align-items: baseline; gap: 10px;
+    border-bottom: 1px solid var(--rule-strong);
+    padding-bottom: 6px;
+  }
+  .sec-name {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: none;
+    margin: 0;
+  }
+  .sec-count { font-size: 12px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .grip {
+    margin-left: auto; border: 0; background: transparent; color: var(--ink-faint);
+    padding: 0 4px; cursor: grab; font-size: 14px; line-height: 1;
+  }
+  .grip:active { cursor: grabbing; }
+
+  ul.items { list-style: none; margin: 0; padding: 0; min-height: 18px; }
+  li.item {
+    display: grid;
+    grid-template-columns: 22px 1fr auto;
+    align-items: start;
+    gap: 4px;
+    padding: 9px 2px 9px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  li.item.dragging { opacity: 0.4; }
+  li.item.drop-before { box-shadow: inset 0 2px 0 var(--accent); }
+  li.item.drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
+  .box {
+    appearance: none; -webkit-appearance: none;
+    width: 15px; height: 15px; margin: 3px 0 0;
+    border: 1px solid var(--rule-strong); border-radius: 2px;
+    background: var(--panel); display: grid; place-content: center;
+  }
+  .box:checked { background: var(--accent); border-color: var(--accent); }
+  .box:checked::after {
+    content: ""; width: 7px; height: 4px;
+    border-left: 2px solid var(--paper); border-bottom: 2px solid var(--paper);
+    transform: rotate(-45deg) translate(1px, -1px);
+  }
+  @media (prefers-color-scheme: dark) { .box:checked::after { border-color: #10141a; } }
+  .body { min-width: 0; }
+  .text { cursor: text; overflow-wrap: anywhere; }
+  .text code { font-family: var(--mono); font-size: 0.9em; background: var(--accent-soft); padding: 0 3px; border-radius: 2px; }
+  .text del { color: var(--ink-faint); }
+  .text a { color: var(--accent); }
+  .notes { margin: 3px 0 0; padding: 0; list-style: none; }
+  .notes li { color: var(--ink-soft); font-size: 13px; padding-left: 12px; position: relative; }
+  .notes li::before { content: "\2013"; position: absolute; left: 0; color: var(--ink-faint); }
+  .edit {
+    width: 100%; border: 1px solid var(--accent); border-radius: var(--radius);
+    background: var(--panel); padding: 4px 6px; font-family: var(--mono); font-size: 13px;
+    resize: vertical;
+  }
+  .kill {
+    border: 0; background: transparent; color: var(--ink-faint);
+    font-size: 15px; line-height: 1; padding: 3px 4px; opacity: 0;
+  }
+  li.item:hover .kill, li.item:focus-within .kill { opacity: 1; }
+  .kill:hover { color: var(--danger); }
+  .add {
+    width: 100%; border: 0; border-bottom: 1px dashed var(--rule-strong);
+    background: transparent; padding: 9px 2px; font-size: 14px; color: var(--ink);
+  }
+  .add::placeholder { color: var(--ink-faint); }
+  .add:focus { outline: none; border-bottom-color: var(--accent); }
+  .empty { color: var(--ink-faint); font-size: 13px; padding: 9px 0; }
+
+  /* ---------- memory pane ---------- */
+  #memory { margin-top: 26px; }
+  #memory textarea {
+    width: 100%; min-height: 60vh; background: var(--panel);
+    border: 1px solid var(--rule); border-radius: var(--radius);
+    padding: 14px; font-family: var(--mono); font-size: 13px; line-height: 1.6;
+  }
+  .hint { color: var(--ink-soft); font-size: 13px; max-width: 62ch; }
+  .hint code { font-family: var(--mono); background: var(--accent-soft); padding: 0 4px; border-radius: 2px; }
+
+  /* ---------- status ---------- */
+  #status {
+    position: fixed; left: 24px; bottom: 18px;
+    font-size: 12px; color: var(--ink-soft); font-family: var(--mono);
+    background: var(--panel); border: 1px solid var(--rule);
+    border-radius: var(--radius); padding: 5px 10px;
+    opacity: 0; transition: opacity 160ms ease;
+  }
+  #status.on { opacity: 1; }
+  #conflict {
+    border: 1px solid var(--signal); border-radius: var(--radius);
+    background: var(--panel); padding: 10px 14px; margin-top: 20px;
+    display: none; gap: 12px; align-items: center; font-size: 13px; flex-wrap: wrap;
+  }
+  #conflict.on { display: flex; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="count"><span id="openCount">0</span><small id="openLabel">open</small></div>
+  <div class="where" id="where">No folder connected</div>
+  <div class="tools">
+    <button class="btn btn-primary" id="connect">Connect folder</button>
+    <button class="btn" id="save" hidden>Save now</button>
+    <button class="btn" id="download" hidden>Download TASKS.md</button>
+    <input type="file" id="picker" accept=".md,text/markdown" hidden>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tabTasks" aria-selected="true">Tasks</button>
+    <button class="tab" role="tab" id="tabMemory" aria-selected="false">Memory</button>
+  </div>
+</header>
+
+<main>
+  <div id="conflict">
+    <span><b>TASKS.md changed on disk</b> while you had unsaved edits.</span>
+    <button class="btn" id="takeDisk">Use the file on disk</button>
+    <button class="btn" id="takeMine">Keep my edits</button>
+  </div>
+
+  <section id="tasks">
+    <div class="board" id="board"></div>
+  </section>
+
+  <section id="memory" hidden>
+    <p class="hint" id="memHint"></p>
+    <textarea id="memText" spellcheck="false" hidden></textarea>
+  </section>
+</main>
+
+<div id="status"></div>
+
+<script>
+"use strict";
+
+/* ============================ state ============================ */
+
+const FS_OK = typeof window.showDirectoryPicker === "function";
+const SECTION_ORDER = ["Active", "Waiting On", "Someday", "Done"];
+
+const state = {
+  dirHandle: null,
+  tasksHandle: null,
+  memoryHandle: null,
+  doc: { title: "Tasks", sections: [] },
+  lastDiskText: "",
+  lastMod: 0,
+  dirty: false,
+  pendingDisk: null,
+  saving: false,
+  fallbackName: "",
+};
+
+let saveTimer = null;
+let pollTimer = null;
+
+/* ============================ markdown ============================ */
+
+function parseTasks(md) {
+  const lines = md.replace(/\r\n/g, "\n").split("\n");
+  const doc = { title: "Tasks", sections: [] };
+  let section = null;
+  let item = null;
+
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, "");
+    if (!line.trim()) { continue; }
+
+    let m;
+    if ((m = line.match(/^#\s+(.*)$/))) { doc.title = m[1].trim() || "Tasks"; continue; }
+    if ((m = line.match(/^##\s+(.*)$/))) {
+      section = { name: m[1].trim(), items: [] };
+      doc.sections.push(section);
+      item = null;
+      continue;
+    }
+    if (!section) { section = { name: "Active", items: [] }; doc.sections.push(section); }
+
+    if ((m = line.match(/^-\s*\[([ xX])\]\s?(.*)$/))) {
+      item = { checked: m[1].toLowerCase() === "x", text: m[2].trim(), notes: [] };
+      section.items.push(item);
+      continue;
+    }
+    if (item && /^\s+/.test(raw)) {
+      item.notes.push(line.trim().replace(/^-\s?/, ""));
+      continue;
+    }
+    if (item) { item.notes.push(line.trim()); }
+  }
+
+  if (!doc.sections.length) {
+    doc.sections = SECTION_ORDER.map((name) => ({ name, items: [] }));
+  }
+  return doc;
+}
+
+function serialize(doc) {
+  const out = ["# " + doc.title, ""];
+  for (const sec of doc.sections) {
+    out.push("## " + sec.name, "");
+    for (const it of sec.items) {
+      out.push("- [" + (it.checked ? "x" : " ") + "] " + it.text);
+      for (const n of it.notes) { out.push("  - " + n); }
+    }
+    out.push("");
+  }
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").replace(/\s*$/, "\n");
+}
+
+function esc(s) {
+  return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function inline(src) {
+  let s = esc(src);
+  s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
+  s = s.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  s = s.replace(/(^|\s)(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+  return s;
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+function markDone(item) {
+  const bare = item.text.replace(/^~~|~~$/g, "").trim();
+  item.text = "~~" + bare + "~~ (" + today() + ")";
+  item.checked = true;
+}
+
+function markOpen(item) {
+  let t = item.text.replace(/\s*\(\d{4}-\d{2}-\d{2}\)\s*$/, "");
+  const m = t.match(/^~~([\s\S]*)~~$/);
+  item.text = (m ? m[1] : t).trim();
+  item.checked = false;
+}
+
+/* ============================ rendering ============================ */
+
+const board = document.getElementById("board");
+
+function sectionByName(name) {
+  return state.doc.sections.find((s) => s.name.toLowerCase() === name.toLowerCase());
+}
+
+function ensureSection(name) {
+  let s = sectionByName(name);
+  if (!s) { s = { name, items: [] }; state.doc.sections.push(s); }
+  return s;
+}
+
+function render() {
+  board.innerHTML = "";
+  state.doc.sections.forEach((sec, si) => board.appendChild(renderSection(sec, si)));
+
+  const open = state.doc.sections
+    .filter((s) => !/^done$/i.test(s.name))
+    .reduce((n, s) => n + s.items.filter((i) => !i.checked).length, 0);
+  document.getElementById("openCount").textContent = String(open);
+  document.getElementById("openLabel").textContent = open === 1 ? "open item" : "open items";
+  document.title = open ? open + " open \u2014 Tasks" : "Tasks";
+}
+
+function renderSection(sec, si) {
+  const wrap = document.createElement("div");
+  wrap.className = "section";
+  wrap.dataset.si = String(si);
+
+  const head = document.createElement("div");
+  head.className = "sec-head";
+  const h = document.createElement("h2");
+  h.className = "sec-name";
+  h.textContent = sec.name;
+  const count = document.createElement("span");
+  count.className = "sec-count";
+  const openN = sec.items.filter((i) => !i.checked).length;
+  count.textContent = /^done$/i.test(sec.name) ? String(sec.items.length) : String(openN);
+  const grip = document.createElement("button");
+  grip.className = "grip";
+  grip.type = "button";
+  grip.title = "Drag to reorder this section";
+  grip.textContent = "\u2261";
+  grip.draggable = true;
+  grip.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/plain", JSON.stringify({ kind: "section", si }));
+    e.dataTransfer.effectAllowed = "move";
+    wrap.classList.add("drag-section");
+  });
+  grip.addEventListener("dragend", () => wrap.classList.remove("drag-section"));
+  head.append(h, count, grip);
+
+  wrap.addEventListener("dragover", (e) => {
+    const kind = dragKind(e);
+    if (kind === "section") { e.preventDefault(); }
+  });
+  wrap.addEventListener("drop", (e) => {
+    const data = readDrag(e);
+    if (!data || data.kind !== "section") { return; }
+    e.preventDefault();
+    e.stopPropagation();
+    if (data.si === si) { return; }
+    const moved = state.doc.sections.splice(data.si, 1)[0];
+    state.doc.sections.splice(si, 0, moved);
+    touch();
+  });
+
+  const ul = document.createElement("ul");
+  ul.className = "items";
+  ul.dataset.si = String(si);
+  sec.items.forEach((item, ii) => ul.appendChild(renderItem(item, si, ii)));
+
+  if (!sec.items.length) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = "Nothing here.";
+    ul.appendChild(li);
+  }
+
+  ul.addEventListener("dragover", (e) => {
+    if (dragKind(e) === "item" && !e.target.closest("li.item")) { e.preventDefault(); }
+  });
+  ul.addEventListener("drop", (e) => {
+    const data = readDrag(e);
+    if (!data || data.kind !== "item") { return; }
+    if (e.target.closest("li.item")) { return; }
+    e.preventDefault();
+    moveItem(data, si, sec.items.length);
+  });
+
+  const add = document.createElement("input");
+  add.className = "add";
+  add.type = "text";
+  add.placeholder = "Add to " + sec.name + "\u2026";
+  add.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || !add.value.trim()) { return; }
+    const text = add.value.trim();
+    sec.items.push({ checked: false, text: /\*\*/.test(text) ? text : "**" + text + "**", notes: [] });
+    add.value = "";
+    touch({ focus: { si, add: true } });
+  });
+
+  wrap.append(head, ul, add);
+  return wrap;
+}
+
+function renderItem(item, si, ii) {
+  const li = document.createElement("li");
+  li.className = "item";
+  li.draggable = true;
+  li.dataset.si = String(si);
+  li.dataset.ii = String(ii);
+
+  const box = document.createElement("input");
+  box.type = "checkbox";
+  box.className = "box";
+  box.checked = item.checked;
+  box.setAttribute("aria-label", item.checked ? "Reopen task" : "Complete task");
+  box.addEventListener("change", () => toggle(si, ii));
+
+  const body = document.createElement("div");
+  body.className = "body";
+  const text = document.createElement("div");
+  text.className = "text";
+  text.innerHTML = inline(item.text);
+  text.title = "Click to edit";
+  text.addEventListener("click", (e) => {
+    if (e.target.tagName === "A") { return; }
+    editItem(li, item, si, ii);
+  });
+  body.appendChild(text);
+
+  if (item.notes.length) {
+    const notes = document.createElement("ul");
+    notes.className = "notes";
+    for (const n of item.notes) {
+      const nli = document.createElement("li");
+      nli.innerHTML = inline(n);
+      notes.appendChild(nli);
+    }
+    body.appendChild(notes);
+  }
+
+  const kill = document.createElement("button");
+  kill.className = "kill";
+  kill.type = "button";
+  kill.title = "Delete";
+  kill.setAttribute("aria-label", "Delete task");
+  kill.textContent = "\u00d7";
+  kill.addEventListener("click", () => {
+    state.doc.sections[si].items.splice(ii, 1);
+    touch();
+  });
+
+  li.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/plain", JSON.stringify({ kind: "item", si, ii }));
+    e.dataTransfer.effectAllowed = "move";
+    li.classList.add("dragging");
+  });
+  li.addEventListener("dragend", () => {
+    li.classList.remove("dragging");
+    clearDropMarks();
+  });
+  li.addEventListener("dragover", (e) => {
+    if (dragKind(e) !== "item") { return; }
+    e.preventDefault();
+    const r = li.getBoundingClientRect();
+    const after = e.clientY > r.top + r.height / 2;
+    clearDropMarks();
+    li.classList.add(after ? "drop-after" : "drop-before");
+  });
+  li.addEventListener("drop", (e) => {
+    const data = readDrag(e);
+    if (!data || data.kind !== "item") { return; }
+    e.preventDefault();
+    e.stopPropagation();
+    const r = li.getBoundingClientRect();
+    const after = e.clientY > r.top + r.height / 2;
+    moveItem(data, si, ii + (after ? 1 : 0));
+  });
+
+  li.append(box, body, kill);
+  return li;
+}
+
+function clearDropMarks() {
+  for (const el of board.querySelectorAll(".drop-before, .drop-after")) {
+    el.classList.remove("drop-before", "drop-after");
+  }
+}
+
+function dragKind(e) {
+  const t = e.dataTransfer.types;
+  return t && t.includes("text/plain") ? (window.__dragKind || "item") : null;
+}
+
+function readDrag(e) {
+  try { return JSON.parse(e.dataTransfer.getData("text/plain")); } catch (_) { return null; }
+}
+
+document.addEventListener("dragstart", (e) => {
+  const raw = e.target.closest("li.item") ? "item" : (e.target.classList && e.target.classList.contains("grip") ? "section" : null);
+  window.__dragKind = raw;
+});
+document.addEventListener("dragend", () => { window.__dragKind = null; });
+
+function moveItem(from, toSi, toIndex) {
+  const src = state.doc.sections[from.si];
+  const dst = state.doc.sections[toSi];
+  if (!src || !dst) { return; }
+  const [item] = src.items.splice(from.ii, 1);
+  if (!item) { return; }
+  let idx = toIndex;
+  if (src === dst && from.ii < toIndex) { idx -= 1; }
+  const done = /^done$/i.test(dst.name);
+  if (done && !item.checked) { markDone(item); }
+  if (!done && item.checked) { markOpen(item); }
+  dst.items.splice(Math.max(0, Math.min(idx, dst.items.length)), 0, item);
+  touch();
+}
+
+function toggle(si, ii) {
+  const sec = state.doc.sections[si];
+  const item = sec.items[ii];
+  if (!item) { return; }
+  if (!item.checked) {
+    markDone(item);
+    const done = ensureSection("Done");
+    if (done !== sec) { sec.items.splice(ii, 1); done.items.unshift(item); }
+  } else {
+    markOpen(item);
+    const active = ensureSection("Active");
+    if (active !== sec) { sec.items.splice(ii, 1); active.items.push(item); }
+  }
+  touch();
+}
+
+function editItem(li, item, si, ii) {
+  const body = li.querySelector(".body");
+  const box = document.createElement("textarea");
+  box.className = "edit";
+  box.rows = Math.max(1, Math.ceil(item.text.length / 60));
+  box.value = [item.text].concat(item.notes.map((n) => "  - " + n)).join("\n");
+  body.innerHTML = "";
+  body.appendChild(box);
+  box.focus();
+  box.setSelectionRange(box.value.length, box.value.length);
+
+  const commit = () => {
+    const lines = box.value.split("\n").map((l) => l.replace(/\s+$/, "")).filter((l) => l.trim());
+    if (!lines.length) {
+      state.doc.sections[si].items.splice(ii, 1);
+      touch();
+      return;
+    }
+    item.text = lines[0].replace(/^-\s*\[[ xX]\]\s*/, "").trim();
+    item.notes = lines.slice(1).map((l) => l.trim().replace(/^-\s?/, ""));
+    touch();
+  };
+  box.addEventListener("blur", commit, { once: true });
+  box.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); box.blur(); }
+    if (e.key === "Escape") { box.removeEventListener("blur", commit); render(); }
+  });
+}
+
+function touch() {
+  state.dirty = true;
+  render();
+  scheduleSave();
+}
+
+/* ============================ persistence ============================ */
+
+function status(msg, sticky) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.classList.add("on");
+  clearTimeout(status._t);
+  if (!sticky) { status._t = setTimeout(() => el.classList.remove("on"), 2200); }
+}
+
+function scheduleSave() {
+  if (!state.tasksHandle) { return; }
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 600);
+}
+
+async function save() {
+  if (!state.tasksHandle || state.saving) { return; }
+  state.saving = true;
+  try {
+    const text = serialize(state.doc);
+    const w = await state.tasksHandle.createWritable();
+    await w.write(text);
+    await w.close();
+    const f = await state.tasksHandle.getFile();
+    state.lastDiskText = text;
+    state.lastMod = f.lastModified;
+    state.dirty = false;
+    status("Saved " + new Date().toLocaleTimeString());
+  } catch (err) {
+    status("Could not save: " + err.message, true);
+  } finally {
+    state.saving = false;
+  }
+}
+
+async function loadFromDisk() {
+  const f = await state.tasksHandle.getFile();
+  const text = await f.text();
+  state.doc = parseTasks(text);
+  state.lastDiskText = text;
+  state.lastMod = f.lastModified;
+  state.dirty = false;
+  render();
+}
+
+async function poll() {
+  if (!state.tasksHandle || state.saving) { return; }
+  try {
+    const f = await state.tasksHandle.getFile();
+    if (f.lastModified <= state.lastMod) { return; }
+    const text = await f.text();
+    if (text === state.lastDiskText) { state.lastMod = f.lastModified; return; }
+    if (state.dirty) {
+      state.pendingDisk = { text, mod: f.lastModified };
+      document.getElementById("conflict").classList.add("on");
+      return;
+    }
+    state.doc = parseTasks(text);
+    state.lastDiskText = text;
+    state.lastMod = f.lastModified;
+    render();
+    status("Updated from disk");
+  } catch (_) { /* file may be mid-write */ }
+}
+
+async function connect() {
+  if (!FS_OK) { document.getElementById("picker").click(); return; }
+  try {
+    const dir = await window.showDirectoryPicker({ mode: "readwrite", id: "productivity" });
+    await useDirectory(dir);
+    await idbSet("dir", dir);
+  } catch (err) {
+    if (err && err.name !== "AbortError") { status("Could not open folder: " + err.message, true); }
+  }
+}
+
+async function useDirectory(dir) {
+  state.dirHandle = dir;
+  state.tasksHandle = await dir.getFileHandle("TASKS.md", { create: true });
+  try {
+    state.memoryHandle = await dir.getFileHandle("CLAUDE.md", { create: false });
+  } catch (_) { state.memoryHandle = null; }
+
+  const f = await state.tasksHandle.getFile();
+  if (!(await f.text()).trim()) {
+    state.doc = { title: "Tasks", sections: SECTION_ORDER.map((name) => ({ name, items: [] })) };
+    await save();
+  } else {
+    await loadFromDisk();
+  }
+
+  document.getElementById("where").innerHTML =
+    "<b>" + esc(dir.name) + "</b>/TASKS.md" + (state.memoryHandle ? " \u00b7 CLAUDE.md" : "");
+  document.getElementById("connect").textContent = "Change folder";
+  document.getElementById("save").hidden = false;
+  clearInterval(pollTimer);
+  pollTimer = setInterval(poll, 2500);
+  await loadMemory();
+}
+
+/* fallback for browsers without the File System Access API */
+document.getElementById("picker").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) { return; }
+  state.doc = parseTasks(await file.text());
+  state.fallbackName = file.name;
+  document.getElementById("where").innerHTML =
+    "<b>" + esc(file.name) + "</b> \u2014 read-only browser, use Download to save";
+  document.getElementById("download").hidden = false;
+  render();
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([serialize(state.doc)], { type: "text/markdown" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = state.fallbackName || "TASKS.md";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+/* tiny IndexedDB store so the folder reconnects between visits */
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("productivity-dashboard", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("handles");
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbSet(k, v) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction("handles", "readwrite");
+    tx.objectStore("handles").put(v, k);
+    tx.oncomplete = res;
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbGet(k) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction("handles", "readonly");
+    const q = tx.objectStore("handles").get(k);
+    q.onsuccess = () => res(q.result);
+    q.onerror = () => rej(q.error);
+  });
+}
+
+/* ============================ memory pane ============================ */
+
+async function loadMemory() {
+  const hint = document.getElementById("memHint");
+  const area = document.getElementById("memText");
+  if (!state.memoryHandle) {
+    area.hidden = true;
+    hint.innerHTML = "No <code>CLAUDE.md</code> in this folder yet. Run <code>/productivity:start</code> in Claude Code to build it.";
+    return;
+  }
+  const f = await state.memoryHandle.getFile();
+  area.value = await f.text();
+  area.hidden = false;
+  hint.innerHTML = "Working memory \u2014 the hot cache Claude reads first. Keep it under ~100 lines; everything else lives in <code>memory/</code>. Edits save automatically.";
+}
+
+let memTimer = null;
+document.getElementById("memText").addEventListener("input", () => {
+  clearTimeout(memTimer);
+  memTimer = setTimeout(async () => {
+    if (!state.memoryHandle) { return; }
+    try {
+      const w = await state.memoryHandle.createWritable();
+      await w.write(document.getElementById("memText").value);
+      await w.close();
+      status("Memory saved");
+    } catch (err) { status("Could not save memory: " + err.message, true); }
+  }, 800);
+});
+
+/* ============================ wiring ============================ */
+
+document.getElementById("connect").addEventListener("click", connect);
+document.getElementById("save").addEventListener("click", save);
+
+document.getElementById("takeDisk").addEventListener("click", () => {
+  if (!state.pendingDisk) { return; }
+  state.doc = parseTasks(state.pendingDisk.text);
+  state.lastDiskText = state.pendingDisk.text;
+  state.lastMod = state.pendingDisk.mod;
+  state.dirty = false;
+  state.pendingDisk = null;
+  document.getElementById("conflict").classList.remove("on");
+  render();
+});
+
+document.getElementById("takeMine").addEventListener("click", () => {
+  state.pendingDisk = null;
+  document.getElementById("conflict").classList.remove("on");
+  save();
+});
+
+const tabTasks = document.getElementById("tabTasks");
+const tabMemory = document.getElementById("tabMemory");
+function showTab(which) {
+  const isTasks = which === "tasks";
+  document.getElementById("tasks").hidden = !isTasks;
+  document.getElementById("memory").hidden = isTasks;
+  tabTasks.setAttribute("aria-selected", String(isTasks));
+  tabMemory.setAttribute("aria-selected", String(!isTasks));
+}
+tabTasks.addEventListener("click", () => showTab("tasks"));
+tabMemory.addEventListener("click", () => showTab("memory"));
+
+window.addEventListener("beforeunload", (e) => {
+  if (state.dirty) { e.preventDefault(); e.returnValue = ""; }
+});
+
+(async function boot() {
+  if (!FS_OK) {
+    document.getElementById("connect").textContent = "Open TASKS.md";
+    document.getElementById("where").textContent =
+      "This browser can't write files directly \u2014 open TASKS.md, then download your edits. Chrome or Edge gives you live sync.";
+  }
+  state.doc = { title: "Tasks", sections: SECTION_ORDER.map((name) => ({ name, items: [] })) };
+  render();
+
+  if (!FS_OK) { return; }
+  try {
+    const dir = await idbGet("dir");
+    if (!dir) { return; }
+    const perm = await dir.queryPermission({ mode: "readwrite" });
+    if (perm === "granted") { await useDirectory(dir); }
+    else {
+      document.getElementById("where").textContent = "Reconnect to " + dir.name + " to pick up where you left off.";
+      document.getElementById("connect").addEventListener("click", async function once() {
+        const p = await dir.requestPermission({ mode: "readwrite" });
+        if (p === "granted") { await useDirectory(dir); }
+      }, { once: true });
+    }
+  } catch (_) { /* first run */ }
+})();
+</script>
+</body>
+</html>
