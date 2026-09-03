@@ -41,6 +41,7 @@ When committing, actually run `git add` and `git commit` — don't just generate
 TypeScript (strict) project. Always use TypeScript for new files. When moving/reorganizing files, update all import paths and verify with the build command. Use path aliases for cross-directory imports; relative imports only within the same directory.
 
 - `$queryRaw` traps: a `BigInt` column (`Item.size`) compared against a fractional param fails — Postgres types the param bigint, so use integer arithmetic; and backticks inside the SQL string close the template literal.
+- **Debouncing**: use `createDebouncer` (`app/utils/debounce.ts`) or the `useDebouncedCommit` hook (`app/hooks/useDebouncedCommit.ts`) rather than a new `setTimeout`-based debounce. The hook handles two easy-to-miss details on its own: a "committed" guard so a value arriving from outside (URL, route) isn't immediately echoed back and looped, and a callback ref so an inline `commit` closure doesn't silently restart the timer every render. Current adopters: filters search, move-dialog folder search, post-upload revalidate, design-canvas viewport saves.
 
 ## Migrations
 
@@ -181,6 +182,6 @@ Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind s
 - Measuring in the browser: `performance.getEntriesByType('resource')` caps at **250 entries** and drops the rest with no warning — call `performance.setResourceTimingBufferSize()` in `navigate_page`'s `initScript` first. To count Web Worker boots, patch `window.Worker` there too; counting network requests is inference, counting constructions is fact.
 - Only run typecheck at the END of a task, not mid-edit, unless explicitly asked — and skip it entirely for className/copy-only edits, which touch no type surface.
 - `$queryRaw` SQL is invisible to `tsc` — verify by running the action against the dev DB: `npx tsx --env-file=.env <script.ts>`. The script must sit **in the repo root** (from a temp dir, module resolution fails), use absolute imports, and no top-level await. Import the client as `import { prisma } from '@/services/db'` — `new PrismaClient()` throws under Prisma 7 without an adapter.
-- `pnpm typecheck` has **204** pre-existing, unrelated errors (verified 2026-08-27; 150 in `collection-actions.test.ts`, 34 in `pin-actions.test.ts`) — don't expect a clean run. Pipe to a file, count `error TS`, and grep your touched files by name to confirm no regressions.
+- `pnpm typecheck` has **202** pre-existing, unrelated errors (verified 2026-09-03; 150 in `collection-actions.test.ts`, 34 in `pin-actions.test.ts`) — don't expect a clean run. Pipe to a file, count `error TS`, and grep your touched files by name to confirm no regressions.
 - `npx prettier --write <file>` reflows *pre-existing* long lines, so a 10-line edit can land as a 47-line diff. Format only files you created; on a file you edited, check `git diff` afterwards and revert the hunks you didn't cause.
-- `pnpm test` is **459 passing / 11 failing (470 in 29 files)**; the 11 are pre-existing (`activity.test.ts` ×4, `collection-actions.test.ts` ×7 — the latter needs a live DB) — don't chase them. Verified 2026-09-02.
+- `pnpm test` is **468 passing / 11 failing (479 in 30 files)**; the 11 are pre-existing (`activity.test.ts` ×4, `collection-actions.test.ts` ×7 — the latter needs a live DB) — don't chase them. Verified 2026-09-03.
