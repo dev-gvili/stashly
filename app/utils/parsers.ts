@@ -120,8 +120,6 @@ export async function parseFormData<T extends z.ZodTypeAny>({
 
   // Validate with schema
   const result = schema.safeParse(parsed)
-  console.log('Parsed form data:', parsed)
-  console.log('Validation result:', result)
 
   if (!result.success) {
     throw new Error(`Validation failed: ${result.error.message}`)
