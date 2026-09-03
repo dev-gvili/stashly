@@ -22,9 +22,13 @@ import React, {
   createContext, useCallback, useContext, useEffect, useId,
   useLayoutEffect, useMemo, useRef, useState,
 } from 'react'
+import { createDebouncer, type Debouncer } from '@/utils/debounce'
 import ReactDOM from 'react-dom'
 
 // ── Tokens ───────────────────────────────────────────────────────────
+
+/** Quiet period before a pan or zoom is written to localStorage. */
+const VIEWPORT_SAVE_DEBOUNCE_MS = 200
 
 const DC = {
   bg:        '#f0eee9',
@@ -270,7 +274,8 @@ function DCViewport({ children, minScale = 0.1, maxScale = 8, style = {} }: DCVi
   const worldRef = useRef<HTMLDivElement>(null)
   const tf = useRef({ x: 0, y: 0, scale: 1 })
   const tfKey = typeof window !== 'undefined' ? 'dc-viewport:' + window.location.pathname : 'dc-viewport'
-  const saveT = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const saves = useRef<Debouncer | null>(null)
+  if (saves.current === null) saves.current = createDebouncer()
   const lastPostedScale = useRef<number | undefined>(undefined)
 
   const apply = useCallback(() => {
@@ -283,17 +288,16 @@ function DCViewport({ children, minScale = 0.1, maxScale = 8, style = {} }: DCVi
       lastPostedScale.current = scale
       window.parent?.postMessage({ type: '__dc_zoom', scale }, '*')
     }
-    clearTimeout(saveT.current)
-    saveT.current = setTimeout(() => {
+    saves.current?.call(() => {
       try { localStorage.setItem(tfKey, JSON.stringify(tf.current)) } catch {}
-    }, 200)
+    }, VIEWPORT_SAVE_DEBOUNCE_MS)
   }, [tfKey])
 
   useLayoutEffect(() => {
-    const flush = () => {
-      clearTimeout(saveT.current)
-      try { localStorage.setItem(tfKey, JSON.stringify(tf.current)) } catch {}
-    }
+    // Only writes when a save is actually pending. The previous version wrote
+    // unconditionally, which on an untouched viewport rewrote the value it had
+    // just read back — same stored result, one less write.
+    const flush = () => saves.current?.flush()
     try {
       const s = JSON.parse(localStorage.getItem(tfKey) ?? 'null')
       if (s && Number.isFinite(s.x) && Number.isFinite(s.y) && Number.isFinite(s.scale)) {
