@@ -21,7 +21,7 @@ export const itemFilterSchema = z.object({
   // `query` is absent, it is replaced with `''` before calling `buildItemFilters`.
   // This way, `query` is always a string when passed to `buildItemFilters`, and
   // Zod can validate it correctly, if we don't set a default here. The `loader` function also checks if the query is searchable before proceeding with the search, and if not, we get this error: 'Cannot read properties of undefined (reading 'replace')' from `normalizeQuery`
-  query: z.string().min(1).optional().default(''),
+  query: z.string().optional().default(''),
   status: toZodArraySchema(z.enum(ItemStatus)).optional().default(['normal']),
   tags: toZodArraySchema(z.string().trim().min(1)).optional(),
   type: toZodArraySchema(z.enum(ItemType)).default(['file', 'folder']),
