@@ -20,7 +20,7 @@ import {
 } from 'vite'
 import svgr from 'vite-plugin-svgr'
 
-export default defineConfig(({ isSsrBuild, mode }) => ({
+export default defineConfig(() => ({
   envDir: '.',
   resolve: {
     tsconfigPaths: true,
@@ -30,12 +30,20 @@ export default defineConfig(({ isSsrBuild, mode }) => ({
     allowedHosts: ['*', 'localhost:80', '.ngrok-free.app', '.ngrok-free.dev'],
     host: true,
   },
-  build: {
-    rollupOptions: isSsrBuild
-      ? {
+  // React Router 8 builds through Vite's Environment API, so the `isSsrBuild`
+  // flag is never set and a top-level `build.rollupOptions.input` is ignored for
+  // the server bundle. The plugin reads the custom server entry from
+  // `environments.ssr` instead; without it, build/server/index.js is the React
+  // Router server manifest (no `app` export) and `pnpm start` dies on
+  // `app.use(undefined)`.
+  environments: {
+    ssr: {
+      build: {
+        rollupOptions: {
           input: './server/app.ts',
-        }
-      : undefined,
+        },
+      },
+    },
   },
   optimizeDeps: {
     exclude: ['@huggingface/transformers', 'onnxruntime-web'],
