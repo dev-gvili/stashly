@@ -136,6 +136,12 @@ Defined in `tsconfig.json` under `compilerOptions.paths` — read it there. Note
 
 shadcn/ui (source-owned, in `app/components/ui/`) built on Radix UI, styled with TailwindCSS 4. Use `cn()` from `@/utils/styles` for conditional classNames. **Before writing or editing any component, load the `stashly-ui-conventions` skill** — it holds the full icon/ItemCard/DataTable/dialog/card/layering/styling rules.
 
+## Frontend Verification
+
+- After any CSS/Tailwind/layout change, hard-refresh and verify against the live DOM (chrome-devtools MCP) before declaring done — stale Tailwind stylesheets have caused false negatives.
+- Never display fabricated or placeholder data in UI (e.g. `line 1` locators, rank-derived percentage "scores"). If real data isn't available, omit the element.
+- Prefer extending existing components (e.g. `FileCardDetail`) over creating parallel new ones.
+
 ## Subsystem Skills
 
 Detailed conventions for these areas live in on-demand project skills (`.claude/skills/`). Invoke the matching skill **before** touching the area:
@@ -185,3 +191,9 @@ Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind s
 - `pnpm typecheck` has **202** pre-existing, unrelated errors (verified 2026-09-03; 150 in `collection-actions.test.ts`, 34 in `pin-actions.test.ts`) — don't expect a clean run. Pipe to a file, count `error TS`, and grep your touched files by name to confirm no regressions.
 - `npx prettier --write <file>` reflows *pre-existing* long lines, so a 10-line edit can land as a 47-line diff. Format only files you created; on a file you edited, check `git diff` afterwards and revert the hunks you didn't cause.
 - `pnpm test` is **468 passing / 11 failing (479 in 30 files)**; the 11 are pre-existing (`activity.test.ts` ×4, `collection-actions.test.ts` ×7 — the latter needs a live DB) — don't chase them. Verified 2026-09-03.
+
+## Debugging Rules
+
+- Measure before optimizing and re-measure after. Never claim a performance improvement (e.g. "14 requests → 1") without pasting the actual before/after numbers from the browser console, network panel, or a timing log.
+- Fix root causes, not symptoms. Deferring/debouncing a bad call is not a fix if the call shouldn't happen at all — say so explicitly if you're proposing a workaround.
+- If the user says "still not working" after a fix, assume your diagnosis was wrong and re-derive from evidence rather than patching the same theory.
