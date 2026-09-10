@@ -11,7 +11,13 @@ import {
 } from '@/.server/storagePlan-actions'
 import { listNotifications } from '@/.server/notification-actions'
 import { prisma } from '@/services/db'
-import { Outlet, redirect, type ShouldRevalidateFunction } from 'react-router'
+import {
+  createContext,
+  Outlet,
+  redirect,
+  type ShouldRevalidateFunction,
+} from 'react-router'
+import type { AuthSession } from '@/.server/auth.types'
 import type { Route } from './+types/layout'
 import { sidebarCookie } from '@/.server/sidebar'
 import z from 'zod'
@@ -22,10 +28,49 @@ import { AppToolbar } from '@/components/app-toolbar'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers
-  })
+/**
+ * The authenticated session for the current request, resolved once by the
+ * middleware below and read by loaders instead of calling `getSession` again.
+ *
+ * Defaults to `null` deliberately: `context.get()` **throws** on a context that
+ * was never set and has no default, and this layout renders for unauthenticated
+ * requests too (they are redirected before any loader runs).
+ */
+export const sessionContext = createContext<AuthSession | null>(null)
+
+/**
+ * Enforces that the `:me` segment names the signed-in user.
+ *
+ * This has to be middleware, not a loader check. React Router runs loaders in
+ * **parallel**, so a parent loader that throws cannot stop a child loader's
+ * query from executing — it only stops the data being returned. Middleware runs
+ * parent-to-child *before any loader*, so a failure here means the child query
+ * never happens at all.
+ *
+ * Every authenticated route hangs off this layout (`routes.ts`), so one check
+ * here covers all 37 of them, and a route added tomorrow inherits it. `params.me`
+ * is absent outside the `:me` prefix (`routes/index.tsx`, `auth/*`, `not-found`),
+ * hence the conditional.
+ */
+export const middleware: Route.MiddlewareFunction[] = [
+  async ({ request, params, context }) => {
+    const session = await auth.api.getSession({ headers: request.headers })
+    if (!session) throw redirect('/auth/sign-in')
+
+    if (params.me && params.me !== session.user.id) {
+      throw new Response('Forbidden', { status: 403 })
+    }
+
+    context.set(sessionContext, session)
+    // No explicit next(): React Router calls it when middleware neither throws
+    // nor returns a Response.
+  },
+]
+
+export async function loader({ request, context }: Route.LoaderArgs) {
+  // Resolved by the middleware above; the redirect there means this is only
+  // null in impossible states, but the type is nullable so we narrow.
+  const session = context.get(sessionContext)
   if (!session) throw redirect('/auth/sign-in')
   // Determine the storage plan: prefer active subscription, then user.storagePlanId, then default
   let plan = await findStoragePlanById(session.user.storagePlanId)
