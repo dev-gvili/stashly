@@ -4,6 +4,10 @@ import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { buildActivityFilters } from '@/utils/filters/activity.filters'
 import { searchFactory } from '@/utils/search'
+// See the note in permission-actions.ts: these .server modules form an import
+// cycle. Safe for the same reason — hoisted function declarations, called at
+// request time, never read at module scope.
+import { requireMembership, hasAtLeastRole } from './workspace-actions'
 
 // ---------------------------------------------------------------------------
 // Search
@@ -234,18 +238,68 @@ export interface OverviewActivity {
 }
 
 /**
- * Activities recently observed on items owned by the user, projected into a
- * small UI-friendly shape for the Home overview feed.
+ * Resolves which items' activity a user is entitled to see.
+ *
+ * | context | who may see an item's activity |
+ * | --- | --- |
+ * | personal | the item owner only |
+ * | workspace | the item owner, or a workspace admin (or workspace owner) |
+ *
+ * Users an item is merely *shared with* see nothing in either context — sharing
+ * grants access to the file, not to the audit trail of who did what to it.
+ *
+ * @throws When `workspaceId` is given and the user is not a member.
+ */
+export async function activityScopeFor(
+  userId: string,
+  workspaceId?: string
+): Promise<Prisma.ItemWhereInput> {
+  if (!workspaceId) {
+    // `workspaceId: null` matters: without it a workspace item the user happens
+    // to own would surface in their personal feed, carrying workspace context
+    // into a personal view.
+    return { ownerId: userId, workspaceId: null }
+  }
+
+  await requireMembership(userId, workspaceId, {
+    statusCode: 403,
+    errorType: 'ForbiddenError',
+  })
+
+  // hasAtLeastRole ranks viewer < member < admin < owner, so 'admin' admits
+  // admins and owners and excludes the rest.
+  const elevated = await hasAtLeastRole(userId, workspaceId, 'admin')
+  return elevated ? { workspaceId } : { workspaceId, ownerId: userId }
+}
+
+/**
+ * Activities recently observed on items the user is entitled to see, projected
+ * into a small UI-friendly shape for the overview feed.
+ *
+ * @param workspaceId - When set, returns workspace activity instead of personal
+ *   activity, subject to membership and the admin rule in `activityScopeFor`.
+ *
+ * @example
+ * // Personal overview — the user's own, non-workspace items:
+ * await getRecentActivityForUser({ userId: session.user.id, limit: 12 })
+ *
+ * @example
+ * // Workspace overview — everything in the workspace for an admin:
+ * await getRecentActivityForUser({ userId: session.user.id, workspaceId })
  */
 export async function getRecentActivityForUser({
   userId,
+  workspaceId,
   limit = 8,
 }: {
   userId: string
+  workspaceId?: string
   limit?: number
 }): Promise<OverviewActivity[]> {
+  const item = await activityScopeFor(userId, workspaceId)
+
   const rows = await prisma.activity.findMany({
-    where: { item: { ownerId: userId } },
+    where: { item },
     orderBy: { time: { observedAt: 'desc' } },
     take: limit,
     select: {
