@@ -117,7 +117,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   const [, allCrumbs, acts, item, siblings] = await Promise.all([
     updateItemOpenedAt(fileId),
-    breadcrumbs(fileId),
+    breadcrumbs(fileId, session.user.id),
     searchActivities({
       ownerId: { equals: session.user.id },
       itemId: { equals: fileId },

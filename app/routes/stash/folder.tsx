@@ -52,7 +52,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   let filters = buildItemFilters(parsedParams)
 
-  const [_,folderContent, allCrumbs, folder, scope] = await Promise.all([
+  const [_, folderContent, crumbs, folder, scope] = await Promise.all([
     updateItemOpenedAt(params.folderId),
     getFolderContent({
       userId: session.user.id,
@@ -63,18 +63,18 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       orderBy: parsedParams.orderBy,
       foldersFirst: true
     }),
-    breadcrumbs(params.folderId),
+    breadcrumbs(params.folderId, session.user.id),
     prisma.item.findUnique({
       where: { id: params.folderId },
-      select: { ownerId: true, name: true, driveId: true },
+      select: { name: true, driveId: true },
     }),
     // retrieveUserUsageMetrics(session.user.id),
     retrieveFolderStats(params.folderId),
   ])
 
 
-  const crumbs =
-    folder?.ownerId === session.user.id ? allCrumbs : allCrumbs.slice(-1)
+  // The owner-vs-recipient trim now lives inside breadcrumbs(), so all three
+  // callers get it rather than only this one.
 
   return {
     ...folderContent,

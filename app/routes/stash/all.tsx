@@ -121,7 +121,7 @@ export async function loader({ request, params }: Route.ActionArgs) {
       foldersFirst: true,
     }),
     retrieveUserUsageMetrics(session.user.id),
-    breadcrumbs(session.user.rootId),
+    breadcrumbs(session.user.rootId, session.user.id),
   ])
 
   // Format on the server: `LibraryStats` is all strings/numbers, which keeps
