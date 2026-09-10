@@ -7,6 +7,7 @@ import { StashlyError, StashlyErrorCode } from '../utils/api.errors'
 import type { StashItem } from '@/types/stash.types'
 import {
   hasItemPermission,
+  assertItemAccess,
   getItemPermissions,
   grantItemPermission,
 } from '@/services/permission-actions'
@@ -1689,6 +1690,16 @@ export type SortDirection = 'asc' | 'desc'
  * Parameters for the `getFolderContent` function.
  */
 interface GetFolderContentParams {
+  /**
+   * The user making the request. Required: this function decides access, and
+   * it cannot do that without knowing who is asking.
+   */
+  userId: string
+  /**
+   * Set when the folder is being reached through a workspace URL. Adds a
+   * membership requirement on top of the item permission check.
+   */
+  workspaceId?: string
   /** Maximum number of items to return (default: 50). */
   limit?: number
   /** Cursor from previous page (ID of last item). */
@@ -1735,6 +1746,8 @@ interface GetFolderContentParams {
  */
 export async function getFolderContent(params: GetFolderContentParams) {
   const {
+    userId,
+    workspaceId,
     limit = 50,
     cursor,
     where,
@@ -1754,6 +1767,23 @@ export async function getFolderContent(params: GetFolderContentParams) {
   if (!where?.parentId) {
     throw new Error('Missing required "parentId" in where clause.')
   }
+
+  // --- 1b. Authorization ---
+  //
+  // This is the only layer that sees both the caller and the folder, so the
+  // check belongs here rather than in each route loader. Before this existed
+  // the query ran on `parentId` alone: any signed-in user who knew a folder id
+  // could list its children.
+  //
+  // `parentId` may legitimately be an object filter (e.g. `{ in: [...] }`);
+  // only a plain id identifies a single folder to authorize against.
+  const parentId = where.parentId
+  if (typeof parentId !== 'string') {
+    throw new Error(
+      'getFolderContent requires a single "parentId" string to authorize against.'
+    )
+  }
+  await assertItemAccess(userId, parentId, { workspaceId })
 
   // --- 2. Build Order By Clause Based on Indexes and Sort Options ---
 

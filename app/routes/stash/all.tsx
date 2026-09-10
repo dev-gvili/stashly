@@ -113,6 +113,7 @@ export async function loader({ request, params }: Route.ActionArgs) {
 
   let [folderContent, stats, crumbs] = await Promise.all([
     getFolderContent({
+      userId: session.user.id,
       cursor: parsedParams.cursor,
       limit: parsedParams.take,
       where: { ...filters, parentId: session.user.rootId },

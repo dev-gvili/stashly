@@ -10,7 +10,6 @@ import { prisma } from '@/services/db'
 import {
   getFolderContent,
   retrieveFolderStats,
-  retrieveUserUsageMetrics,
   updateItemOpenedAt,
 } from '@/services/item-actions'
 import { formatSize } from '@/utils/formaters'
@@ -34,6 +33,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   })
   if (!session) throw redirect('/auth/signin')
 
+  // This route serves two URL trees: /:me/stash/folders/:folderId and
+  // /:me/workspaces/:workspaceId/folders/:folderId. `workspaceId` is present
+  // only on the second, and is what decides the scope of everything below.
+  // The access check itself lives in getFolderContent — loaders forward scope,
+  // actions decide authority.
+  const workspaceId = params.workspaceId
+
   let url = new URL(request.url)
   let searchParams = url.searchParams
   searchParams.set('currentUserId', session.user.id)
@@ -46,11 +52,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   let filters = buildItemFilters(parsedParams)
 
-  const [folderContent, allCrumbs, folder, stats, scope] = await Promise.all([
+  const [_,folderContent, allCrumbs, folder, scope] = await Promise.all([
+    updateItemOpenedAt(params.folderId),
     getFolderContent({
+      userId: session.user.id,
+      workspaceId,
       cursor: parsedParams.cursor,
       limit: parsedParams.take,
-      where: { ...filters, parentId: params.folderId },
+      where: { ...filters, parentId: params.folderId, ...(workspaceId ? { workspaceId } : {}) },
       orderBy: parsedParams.orderBy,
       foldersFirst: true
     }),
@@ -59,13 +68,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       where: { id: params.folderId },
       select: { ownerId: true, name: true, driveId: true },
     }),
-    retrieveUserUsageMetrics(session.user.id),
+    // retrieveUserUsageMetrics(session.user.id),
     retrieveFolderStats(params.folderId),
   ])
 
-  Promise.resolve()
-    .then(() => updateItemOpenedAt(params.folderId))
-    .catch(() => {})
 
   const crumbs =
     folder?.ownerId === session.user.id ? allCrumbs : allCrumbs.slice(-1)
@@ -81,15 +87,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     stats: {
       folders: scope.folders,
       files: scope.files,
-      favorites: stats.favorites,
-      trashed: stats.trashed,
+      // favorites: stats.favorites,
+      // trashed: stats.trashed,
       size: formatSize('byte', 'unit', Number(scope.sizeBytes)),
-      quota: formatSize('byte', 'unit', Number(stats.quotaBytes)),
-      usedPercent:
-        stats.quotaBytes > 0n
-          ? Math.round(Number((stats.usedBytes * 100n) / stats.quotaBytes))
-          : 0,
-    } satisfies LibraryStats,
+      // quota: formatSize('byte', 'unit', Number(stats.quotaBytes)),
+      // usedPercent:
+      //   stats.quotaBytes > 0n
+      //     ? Math.round(Number((stats.usedBytes * 100n) / stats.quotaBytes))
+      //     : 0,
+    } 
   }
 }
 

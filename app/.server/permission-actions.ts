@@ -5,6 +5,11 @@ import type { Permission, PermissionRole, Prisma } from '@/prisma/client'
 import { buildPermissionFilters } from '@/utils/filters/permission.filters'
 import { searchFactory } from '@/utils/search'
 import { createActivity } from './activity-actions'
+// NOTE: workspace-actions imports from this module too, so this edge closes a
+// cycle. It is safe here because every binding involved is a hoisted `function`
+// declaration and the call happens at request time, long after both modules
+// have finished evaluating — nothing is read at module scope.
+import { requireMembership } from './workspace-actions'
 
 // ---------------------------------------------------------------------------
 // Search
@@ -485,9 +490,10 @@ export async function hasRecipientPermission(
 export async function assertItemPermission(
   userId: string,
   itemId: string,
-  role: PermissionRole = 'read'
+  role: PermissionRole = 'read',
+  tx?: PrismaTx
 ): Promise<void> {
-  const ok = await hasItemPermission(userId, itemId, role)
+  const ok = await hasItemPermission(userId, itemId, role, tx)
   if (!ok) {
     throw new StashlyError(
       StashlyErrorCode.FORBIDDEN,
@@ -512,6 +518,59 @@ export async function assertItemPermission(
  */
 export function assertCanUpdateItem(userId: string, itemId: string) {
   return assertItemPermission(userId, itemId, 'write')
+}
+
+/**
+ * The single entry point for "may this user touch this item, in this scope?".
+ *
+ * Item access and workspace membership are two independent axes, and checking
+ * only one of them is the mistake this function exists to prevent: a caller
+ * that verifies the item permission but forgets membership will happily serve
+ * a workspace item to a non-member, and a caller that verifies membership but
+ * forgets the item will serve any item to any member.
+ *
+ * Call this from **action functions**, never from a route loader — a loader
+ * that forgets the call fails open, whereas an action that owns the check
+ * cannot be bypassed by a new caller.
+ *
+ * @param userId - The user making the request.
+ * @param itemId - The item being read or mutated.
+ * @param opts.workspaceId - When set, the item is being reached through this
+ *   workspace and membership is required in addition to the item permission.
+ * @param opts.role - Required item role (default `'read'`).
+ * @param opts.tx - Optional transaction client, forwarded to the item check.
+ * @throws {StashlyError} `FORBIDDEN` when the item permission is missing.
+ * @throws When the user is not a member of `workspaceId` (statusCode 403).
+ *
+ * @example
+ * // Personal scope — item permission only:
+ * await assertItemAccess(userId, folderId)
+ *
+ * @example
+ * // Workspace scope — membership *and* item permission:
+ * await assertItemAccess(userId, folderId, { workspaceId, role: 'write' })
+ */
+export async function assertItemAccess(
+  userId: string,
+  itemId: string,
+  opts: {
+    workspaceId?: string
+    role?: PermissionRole
+    tx?: PrismaTx
+  } = {}
+): Promise<void> {
+  const { workspaceId, role = 'read', tx } = opts
+
+  // Membership first: it is the cheaper check, and a non-member should not be
+  // able to probe item existence through the error it gets back.
+  if (workspaceId) {
+    await requireMembership(userId, workspaceId, {
+      statusCode: 403,
+      errorType: 'ForbiddenError',
+    })
+  }
+
+  await assertItemPermission(userId, itemId, role, tx)
 }
 
 // ---------------------------------------------------------------------------
