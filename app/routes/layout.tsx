@@ -11,13 +11,8 @@ import {
 } from '@/.server/storagePlan-actions'
 import { listNotifications } from '@/.server/notification-actions'
 import { prisma } from '@/services/db'
-import {
-  createContext,
-  Outlet,
-  redirect,
-  type ShouldRevalidateFunction,
-} from 'react-router'
-import type { AuthSession } from '@/.server/auth.types'
+import { Outlet, redirect, type ShouldRevalidateFunction } from 'react-router'
+import { requireSession, sessionContext } from '@/.server/session-context'
 import type { Route } from './+types/layout'
 import { sidebarCookie } from '@/.server/sidebar'
 import z from 'zod'
@@ -28,15 +23,12 @@ import { AppToolbar } from '@/components/app-toolbar'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
-/**
- * The authenticated session for the current request, resolved once by the
- * middleware below and read by loaders instead of calling `getSession` again.
- *
- * Defaults to `null` deliberately: `context.get()` **throws** on a context that
- * was never set and has no default, and this layout renders for unauthenticated
- * requests too (they are redirected before any loader runs).
- */
-export const sessionContext = createContext<AuthSession | null>(null)
+// The session context lives in app/.server/session-context.ts. It is
+// deliberately NOT re-exported from here: a re-export is an ordinary route
+// export, and the dot-server plugin only strips server code from `loader`,
+// `action`, `middleware` and `headers` — so re-exporting it fails the build
+// with "Server-only module referenced by client". Consumers import it from
+// '@/.server/session-context' directly.
 
 /**
  * Enforces that the `:me` segment names the signed-in user.
@@ -68,10 +60,8 @@ export const middleware: Route.MiddlewareFunction[] = [
 ]
 
 export async function loader({ request, context }: Route.LoaderArgs) {
-  // Resolved by the middleware above; the redirect there means this is only
-  // null in impossible states, but the type is nullable so we narrow.
-  const session = context.get(sessionContext)
-  if (!session) throw redirect('/auth/sign-in')
+  // Resolved by the middleware above — no second getSession call.
+  const session = requireSession(context)
   // Determine the storage plan: prefer active subscription, then user.storagePlanId, then default
   let plan = await findStoragePlanById(session.user.storagePlanId)
   if (!plan) {

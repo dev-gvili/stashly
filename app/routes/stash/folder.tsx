@@ -4,7 +4,7 @@ import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { GridLayout } from '@/components/views/grid-view'
 import { usePagination } from '@/hooks/usePagination'
-import { auth } from '@/services/auth'
+import { requireSession } from '@/services/session-context'
 import { breadcrumbs } from '@/services/breadcrumbs'
 import { prisma } from '@/services/db'
 import {
@@ -21,17 +21,13 @@ import {
 } from '@/utils/filters/item.filters'
 import { parseSearchParams } from '@/utils/parsers'
 import { getQueryParamArray } from '@/utils/query-params'
-import {
-  redirect,
-  type ShouldRevalidateFunction
-} from 'react-router'
+import { type ShouldRevalidateFunction } from 'react-router'
 import { SelectionProvider } from '../../components/stash/selection'
 import type { Route } from './+types/folder'
-export async function loader({ request, params }: Route.LoaderArgs) {
-  let session = await auth.api.getSession({
-    headers: request.headers
-  })
-  if (!session) throw redirect('/auth/signin')
+export async function loader({ request, params, context }: Route.LoaderArgs) {
+  // Set by the layout middleware, which redirects anonymous requests before any
+  // loader runs — so there is nothing to re-check here.
+  const session = requireSession(context)
 
   // This route serves two URL trees: /:me/stash/folders/:folderId and
   // /:me/workspaces/:workspaceId/folders/:folderId. `workspaceId` is present
