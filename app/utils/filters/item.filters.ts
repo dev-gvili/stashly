@@ -5,6 +5,30 @@ import { toZodArraySchema } from '@/utils/converters'
 import { PermissionRole, WorkspaceMemberRole } from '@/prisma/browser'
 import { date } from '@/schemas/filters.schemas'
 
+/**
+ * ## What a `*.filters.ts` file is responsible for
+ *
+ * It turns validated URL params into a Prisma `where` clause. It validates
+ * **shape** — present / non-empty / valid enum — and never **authority**.
+ *
+ * Every authorization decision belongs in an action function under
+ * `app/.server/*-actions.ts`. A filter that builds a workspace-scoped clause
+ * does not verify membership; the action that runs the query does, and throws
+ * when the caller is not entitled to what the clause describes.
+ *
+ * ## The rule that makes this safe
+ *
+ * `buildFiltersFactory` applies a param only when `key in filters`
+ * (`app/utils/filters.ts:127-132`). A schema key with no matching filter entry,
+ * or a filter whose key drifts from the schema, therefore contributes **no
+ * constraint** — silently, with no error. That failure mode is *open*, not
+ * closed: the query returns more rows than intended rather than fewer.
+ *
+ * `app/utils/__tests__/item-filters-coverage.test.ts` fails the build if the two
+ * key sets diverge. Keep them in step; if a schema key is genuinely context for
+ * another filter rather than a filter itself, add it to `CONTEXT_ONLY_KEYS`
+ * there and say why here.
+ */
 export const itemFilterSchema = z.object({
   category: toZodArraySchema(z.enum(ItemCategory)).optional(),
   collection: z.string().nonempty().optional(),
@@ -36,7 +60,13 @@ export const itemFilterSchema = z.object({
   permission: toZodArraySchema(z.string().nonempty()).optional(),
   hasChildren: z.boolean().optional(),
   extension: toZodArraySchema(z.string().nonempty()).optional(),
+  /**
+   * Context only — consumed by the `favorited` filter, never a filter of its
+   * own. Use `accessibleBy` to scope a query to one user's reachable items.
+   */
   currentUserId: z.string().nonempty().optional(),
+  /** Scope to items this user owns or has been granted a permission on. */
+  accessibleBy: z.string().nonempty().optional(),
   _count: z.coerce.number().int().positive().optional(),
 
   // Pagination Params
@@ -115,8 +145,29 @@ export const itemFilters = {
   parentId: createItemFilter(z.string().or(z.null()), (parentId) => ({
     parentId,
   })),
-  workspace: createItemFilter(z.string(), (workspaceId) => ({
+  // Key must match the schema key exactly: `buildFiltersFactory` applies a
+  // filter only when `key in filters`, so a name that drifts from the schema
+  // (this was `workspace` against a `workspaceId` schema key) silently
+  // contributes no constraint. See item-filters-coverage.test.ts.
+  workspaceId: createItemFilter(z.string(), (workspaceId) => ({
     workspaceId,
+  })),
+  /**
+   * Scope items to what a given user may see in their personal stash: items
+   * they own, plus items explicitly shared with them.
+   *
+   * A bare `ownerId` equality would be wrong — it hides items shared *with* the
+   * user, which they are entitled to see. This filter shapes the query only;
+   * whether the caller may ask at all is decided by an action function.
+   *
+   * @example
+   * { accessibleBy: session.user.id }
+   */
+  accessibleBy: createItemFilter(z.string(), (userId) => ({
+    OR: [
+      { ownerId: userId },
+      { permissions: { some: { users: { some: { id: userId } } } } },
+    ],
   })),
   tags: createItemFilter(z.array(z.string()), (tags) => ({
     tags: {
@@ -208,19 +259,24 @@ export const itemFilters = {
     }
   ),
 
-  // currentUserId: createItemFilter(z.string(), (currentUserId) => ({
-
-  // })),
+  // NOTE: there is deliberately no `currentUserId` filter. The key stays in the
+  // schema because `favorited` reads `params.currentUserId` as *context* to
+  // build its own clause — it is not a scoping filter of its own. To scope a
+  // query to one user's reachable items, use `accessibleBy` above.
+  //
+  // A commented-out filter used to live here, which is how the folder route
+  // came to set `currentUserId` and be silently unscoped: the param was passed,
+  // matched nothing in this map, and was dropped without a warning.
 
   /**
    * Filter items by a search query.
-   * If `params.workspace` is provided, the search is scoped to item fields (name, description).
+   * If `params.workspaceId` is provided, the search is scoped to item fields (name, description).
    * Otherwise, the search is global, including item and workspace fields (name, description).
    * @param {string} query - The search string.
-   * @param {object} params - The full filter parameters, used to check for `workspace` context.
+   * @param {object} params - The full filter parameters, used to check for `workspaceId` context.
    * @example
    * // Filter items whose name or description contains 'document' within a specific workspace
-   * { query: 'document', workspace: 'workspace_id_123' }
+   * { query: 'document', workspaceId: 'workspace_id_123' }
    * @example
    * // Filter items whose name, description, or associated workspace's name/description contains 'report'
    * { query: 'report' }
