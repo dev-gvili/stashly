@@ -37,6 +37,10 @@ export function ErrorBoundary({
     status = error.status
     details = error.message
     stack = error.stack
+  } else if (import.meta.env.DEV && error instanceof Error) {
+    message = error.name
+    details = error.message
+    stack = error.stack
   }
 
   return (
