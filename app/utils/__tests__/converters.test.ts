@@ -3,6 +3,7 @@ import {
   toUserInitial,
   toChunkArray,
   toItemPath,
+  toItemUrl,
   toEnumKeys,
   toObjectId,
   getPrefixForModel,
@@ -11,6 +12,7 @@ import {
   toZodOrderBySchema,
   toTypedObjects,
 } from '../converters'
+import type { ItemType } from '@/prisma/browser'
 import { z } from 'zod'
 
 // ─── toUserInitial ────────────────────────────────────────────────────────────
@@ -297,5 +299,124 @@ describe('toTypedObjects', () => {
     })
 
     expect(result.data[0].name).toBe('FILE A')
+  })
+})
+
+// ─── toItemUrl ────────────────────────────────────────────────────────────────
+
+describe('toItemUrl', () => {
+  const ME = 'usr_viewer'
+  const WORKSPACE = 'wsp_team'
+
+  describe('personal stash (no workspaceId)', () => {
+    it('builds a folder URL', () => {
+      expect(
+        toItemUrl({ type: 'folder', id: 'fld_1', parentId: '', me: ME })
+      ).toBe('/usr_viewer/stash/folders/fld_1')
+    })
+
+    it('builds a file URL nested under its parent folder', () => {
+      expect(
+        toItemUrl({ type: 'file', id: 'itm_1', parentId: 'fld_1', me: ME })
+      ).toBe('/usr_viewer/stash/folders/fld_1/files/itm_1')
+    })
+
+    it('builds a collection URL', () => {
+      expect(
+        toItemUrl({ type: 'collection', id: 'col_1', parentId: '', me: ME })
+      ).toBe('/usr_viewer/stash/collections/col_1')
+    })
+
+    it('falls back to the stash root for an unrecognised type', () => {
+      // Not reachable through ItemType, but the switch has a runtime default
+      // and a bad value must not produce a broken href.
+      expect(
+        toItemUrl({
+          type: 'nonsense' as ItemType,
+          id: 'x',
+          parentId: '',
+          me: ME,
+        })
+      ).toBe('/usr_viewer/stash')
+    })
+  })
+
+  describe('workspace (workspaceId present)', () => {
+    it('builds a folder URL under the workspace prefix', () => {
+      expect(
+        toItemUrl({
+          type: 'folder',
+          id: 'fld_1',
+          parentId: '',
+          me: ME,
+          workspaceId: WORKSPACE,
+        })
+      ).toBe('/usr_viewer/workspaces/wsp_team/folders/fld_1')
+    })
+
+    it('builds a file URL under the workspace prefix', () => {
+      expect(
+        toItemUrl({
+          type: 'file',
+          id: 'itm_1',
+          parentId: 'fld_1',
+          me: ME,
+          workspaceId: WORKSPACE,
+        })
+      ).toBe('/usr_viewer/workspaces/wsp_team/folders/fld_1/files/itm_1')
+    })
+
+    it('builds a collection URL under the workspace prefix', () => {
+      expect(
+        toItemUrl({
+          type: 'collection',
+          id: 'col_1',
+          parentId: '',
+          me: ME,
+          workspaceId: WORKSPACE,
+        })
+      ).toBe('/usr_viewer/workspaces/wsp_team/collections/col_1')
+    })
+
+    it('falls back to the workspace root for an unrecognised type', () => {
+      expect(
+        toItemUrl({
+          type: 'nonsense' as ItemType,
+          id: 'x',
+          parentId: '',
+          me: ME,
+          workspaceId: WORKSPACE,
+        })
+      ).toBe('/usr_viewer/workspaces/wsp_team')
+    })
+  })
+
+  it('treats an empty workspaceId as the personal stash', () => {
+    // `useParams()` yields undefined for an absent segment, but an empty string
+    // must not produce `/usr_viewer/workspaces//folders/fld_1`.
+    expect(
+      toItemUrl({
+        type: 'folder',
+        id: 'fld_1',
+        parentId: '',
+        me: ME,
+        workspaceId: '',
+      })
+    ).toBe('/usr_viewer/stash/folders/fld_1')
+  })
+
+  it('puts the viewer in the :me segment, never the item owner', () => {
+    // The regression this guards: passing an item's ownerId as `me` is
+    // invisible in the personal stash (owner === viewer) and wrong in a
+    // workspace, where the owner is whichever teammate uploaded the item.
+    const url = toItemUrl({
+      type: 'file',
+      id: 'itm_1',
+      parentId: 'fld_1',
+      me: ME,
+      workspaceId: WORKSPACE,
+    })
+    expect(url.startsWith(`/${ME}/`)).toBe(true)
+    expect(url).not.toContain('usr_uploader')
   })
 })

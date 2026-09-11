@@ -8,7 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/ui/card'
-import { toIcon, toItemUrl } from '@/utils/converters'
+import { toIcon } from '@/utils/converters'
+import { useItemUrl } from '@/hooks/useItemUrl'
 import { capitalize, formatMediaDate, formatSize } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
 import React from 'react'
@@ -382,8 +383,9 @@ const ItemLink = React.forwardRef<
   const { parentId, type, id, user, searchParams } = useItemCard()
   const layout = searchParams.get('layout')
   const { className, ...rest } = props
+  const itemUrl = useItemUrl()
 
-  const to = toItemUrl({
+  const to = itemUrl({
     parentId: parentId || '',
     type: type,
     id: id,
@@ -413,6 +415,7 @@ const ItemCardRoot = ({
   let user =
     useRouteLoaderData<Route.ComponentProps['loaderData']>('layout')!.user
   let navigate = useNavigate()
+  const itemUrl = useItemUrl()
 
   let [searchParams, setSearchParams] = useSearchParams()
   const layout = searchParams.get('layout') ?? 'grid'
@@ -439,7 +442,7 @@ const ItemCardRoot = ({
     [props, user, searchParams]
   )
 
-  let to = toItemUrl({
+  let to = itemUrl({
     parentId: rest.parentId || '',
     type: rest.type,
     id: rest.id,

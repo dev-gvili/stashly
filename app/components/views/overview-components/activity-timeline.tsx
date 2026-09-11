@@ -3,7 +3,8 @@ import type {
   OverviewActivity,
   OverviewActivityKind,
 } from '@/services/activity-actions'
-import { toIcon, toItemUrl } from '@/utils/converters'
+import { toIcon } from '@/utils/converters'
+import { useItemUrl } from '@/hooks/useItemUrl'
 import { toRelativeTime } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
 import { Link } from 'react-router'
@@ -56,10 +57,12 @@ function toBucket(value: Date | string | null): Bucket {
 
 /** A single event on the rail: thumbnail, verb, item, age. */
 function ActivityEvent({ activity }: { activity: OverviewActivity }) {
+  // Above the early return: hooks can't sit behind a conditional.
+  const itemUrl = useItemUrl()
   if (!activity.item) return null
   const item = activity.item
   const Icon = item.type === 'folder' ? FolderIcon : toIcon(item.category)
-  const url = toItemUrl({
+  const url = itemUrl({
     type: item.type,
     id: item.id,
     parentId: item.parentId ?? '',

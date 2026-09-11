@@ -4,7 +4,8 @@ import type { StashItem } from '@/types/stash.types'
 import { DataTable, type DataTableColumn } from '@/components/core-components/data-table'
 import { formatSize } from '@/utils/formaters'
 import { getQueryParamArray } from '@/utils/query-params'
-import { toIcon, toItemUrl } from '@/utils/converters'
+import { toIcon } from '@/utils/converters'
+import { useItemUrl } from '@/hooks/useItemUrl'
 import { FolderIcon } from '@/components/icons'
 import { ItemCard } from '@/components/stash/item-card'
 import { ItemCardContext } from '@/hooks/useItemCard'
@@ -28,6 +29,7 @@ export const ListLayout = <T extends StashItem>({ items }: ListViewProps<T>) => 
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const user = useRouteLoaderData<Route.ComponentProps['loaderData']>('layout')!.user
+  const itemUrl = useItemUrl()
 
   const isLayoutTypeList = searchParams.has('layout', 'list')
   if (!isLayoutTypeList) return null
@@ -86,7 +88,7 @@ export const ListLayout = <T extends StashItem>({ items }: ListViewProps<T>) => 
       data={items ?? []}
       getRowId={(item) => item.id}
       onRowClick={(item) => {
-        const to = toItemUrl({
+        const to = itemUrl({
           parentId: item.parentId || '',
           type: item.type,
           id: item.id,

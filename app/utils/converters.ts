@@ -907,40 +907,90 @@ type ToItemUrlProps = {
   type: ItemType
   id: string
   parentId: string
-  ownerId: string
+  /**
+   * Value for the `:me` URL segment — the *viewing* user, not the item's owner.
+   * In the personal stash the two are the same; in a workspace they are not, so
+   * passing an item's `ownerId` here would put a teammate's id in the URL.
+   */
+  me: string
+  /**
+   * When set, the item is addressed through its workspace
+   * (`/:me/workspaces/:workspaceId/...`) instead of the personal stash.
+   */
+  workspaceId?: string
 }
 
 /**
  * Generates a type-safe URL for different item types within the stash.
  *
+ * Personal-stash and workspace URLs are the same page reached through two route
+ * trees, so the only thing that varies is the prefix: pass `workspaceId` to get
+ * the workspace form. Prefer the `useItemUrl` hook inside components — it reads
+ * `:me` and `:workspaceId` off the current route so callers can't get them wrong.
+ *
  * @param props - The properties of the item.
  * @param props.type - The type of the item ('folder', 'file', 'collection').
  * @param props.id - The unique identifier of the item.
  * @param props.parentId - The ID of the parent folder (required for files).
- * @param props.ownerId - The ID of the user who owns the item.
+ * @param props.me - The viewing user's ID, for the `:me` segment.
+ * @param props.workspaceId - Workspace to address the item through, if any.
  * @returns A string representing the relative URL path.
  *
  * @example
- * toItemUrl({ type: 'folder', id: 'fld_123', parentId: 'root', ownerId: 'usr_456' });
+ * toItemUrl({ type: 'folder', id: 'fld_123', parentId: 'root', me: 'usr_456' });
  * // Returns "/usr_456/stash/folders/fld_123"
+ *
+ * @example
+ * toItemUrl({ type: 'folder', id: 'fld_123', parentId: 'root', me: 'usr_456', workspaceId: 'wsp_9' });
+ * // Returns "/usr_456/workspaces/wsp_9/folders/fld_123"
  */
-export const toItemUrl = ({ type, id, parentId, ownerId }: ToItemUrlProps) => {
+export const toItemUrl = ({
+  type,
+  id,
+  parentId,
+  me,
+  workspaceId,
+}: ToItemUrlProps) => {
+  if (workspaceId) {
+    switch (type) {
+      case 'folder':
+        return href('/:me/workspaces/:workspaceId/folders/:folderId', {
+          me,
+          workspaceId,
+          folderId: id,
+        })
+      case 'file':
+        return href(
+          '/:me/workspaces/:workspaceId/folders/:folderId/files/:fileId',
+          { me, workspaceId, folderId: parentId, fileId: id }
+        )
+      case 'collection':
+        return href('/:me/workspaces/:workspaceId/collections/:collectionId', {
+          me,
+          workspaceId,
+          collectionId: id,
+        })
+      default:
+        return href('/:me/workspaces/:workspaceId', { me, workspaceId })
+    }
+  }
+
   switch (type) {
     case 'folder':
-      return href('/:me/stash/folders/:folderId', { me: ownerId, folderId: id })
+      return href('/:me/stash/folders/:folderId', { me, folderId: id })
     case 'file':
       return href('/:me/stash/folders/:folderId/files/:fileId', {
-        me: ownerId,
+        me,
         folderId: parentId,
         fileId: id,
       })
     case 'collection':
       return href('/:me/stash/collections/:collectionId', {
-        me: ownerId,
+        me,
         collectionId: id,
       })
     default:
-      return href('/:me/stash', { me: ownerId })
+      return href('/:me/stash', { me })
   }
 }
 

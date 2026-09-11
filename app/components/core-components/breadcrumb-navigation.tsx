@@ -18,16 +18,34 @@ import {
 import { useBreadcrumbs } from '@/hooks'
 import type { Breadcrumb as BreadcrumbData } from '@/services/breadcrumbs'
 import { removeQueryParam } from '@/utils'
+import { toItemUrl } from '@/utils/converters'
 import { Fragment } from 'react'
-import { href, Link, useParams, useSearchParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
 
 export interface StashBreadcrumbsProps {
   crumbs: BreadcrumbData[]
   me: string
 }
 
+/**
+ * The folder page is reachable through two route trees — the personal stash and
+ * a workspace — and only the prefix differs. Both crumb variants below build
+ * links through this so they can't drift apart, and each reads `:workspaceId`
+ * off the current route rather than taking it as a prop, which keeps the five
+ * JSX call sites in `Breadcrumbs` unchanged.
+ *
+ * The prefix logic itself lives in `toItemUrl`, so breadcrumbs and item cards
+ * cannot disagree about where a folder lives.
+ */
+function useFolderHref(me: string) {
+  let { workspaceId } = useParams()
+  return (folderId: string) =>
+    toItemUrl({ type: 'folder', id: folderId, parentId: '', me, workspaceId })
+}
+
 const BreadcrumbDropdown = ({ crumbs, me }: StashBreadcrumbsProps) => {
   let [searchParams] = useSearchParams()
+  let folderHref = useFolderHref(me)
   if (!searchParams.has('layout')) {
     searchParams.set('layout', 'grid')
   }
@@ -57,10 +75,7 @@ const BreadcrumbDropdown = ({ crumbs, me }: StashBreadcrumbsProps) => {
                 className="hover:bg-transparent! hover:cursor-pointer"
               >
                 <Link
-                  to={`${href('/:me/stash/folders/:folderId', {
-                    me,
-                    folderId: crumb.id,
-                  })}?${searchParams.toString()}`}
+                  to={`${folderHref(crumb.id)}?${searchParams.toString()}`}
                 >
                   {crumb.name}
                 </Link>
@@ -82,13 +97,14 @@ function CrumbLink({
   me: string
   searchParams: URLSearchParams
 }) {
+  let folderHref = useFolderHref(me)
   removeQueryParam(searchParams, 'cursor') // Clear cursor when navigating via breadcrumbs, to prevent confusion when the selected item(s) disappear from the new page. Note: this mutates searchParams in-place, which is fine because we're only using it to build the href for the Link component below.
   removeQueryParam(searchParams, 'selectedItems') // Clear selected items for same reason as cursor. If we kept selectedItems in the URL, then when the user clicks a breadcrumb to navigate to a parent folder, the selectedItems that were relevant in the child folder would still be in the URL, which could cause unexpected behavior (e.g. bulk actions appearing for items that aren't actually selected in the new folder).
 
   if (!searchParams.has('layout')) {
     searchParams.set('layout', 'grid')
   }
-  let to = href('/:me/stash/folders/:folderId', { me, folderId: crumb.id })
+  let to = folderHref(crumb.id)
   return (
     <BreadcrumbLink asChild>
       {/* Ancestor crumbs are capped and ellipsised: folder names come straight
