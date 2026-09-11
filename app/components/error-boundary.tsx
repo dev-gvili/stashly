@@ -7,6 +7,7 @@ import { Button } from './ui/button'
 import { ScrollArea } from './ui/scroll-area'
 import { RiExpandUpDownLine } from '@remixicon/react'
 import { CopyFillIcon, ExpandCollapsedIcon, HomeFillIcon, RefreshIcon } from './icons'
+import { isStashlyError } from '@/utils/api.errors'
 
 export function ErrorBoundary({
   error,
@@ -22,6 +23,7 @@ export function ErrorBoundary({
   let message = 'Error!'
   let details = 'An unexpected error occurred.'
   let stack: string | undefined
+  let status: number | undefined
 
   console.error('ErrorBoundary caught an error:', error)
   if (isRouteErrorResponse(error)) {
@@ -30,7 +32,9 @@ export function ErrorBoundary({
       error.status === 404
         ? 'The requested page could not be found.'
         : error.statusText || details
-  } else if (import.meta.env.DEV && error instanceof Error) {
+  } else if (isStashlyError(error)) {
+    message = error.name
+    status = error.status
     details = error.message
     stack = error.stack
   }
