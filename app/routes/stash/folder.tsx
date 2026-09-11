@@ -63,7 +63,6 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
       where: { id: params.folderId },
       select: { name: true, driveId: true },
     }),
-    // retrieveUserUsageMetrics(session.user.id),
     retrieveFolderStats(params.folderId),
   ])
 

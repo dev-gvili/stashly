@@ -1,4 +1,4 @@
-import { auth } from '@/services/auth'
+import { sessionContext } from '@/context'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
 import {
   getCollectionForUser,
@@ -17,11 +17,8 @@ import { useEffect } from 'react'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/signin')
+export async function loader({ request, params, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const { collectionId } = params
   const url = new URL(request.url)

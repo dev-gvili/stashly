@@ -1,10 +1,10 @@
+import { sessionContext } from '@/context'
 import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { SelectionProvider } from '@/components/stash/selection'
 import { TrashEmptyState } from '@/components/states/trash-empty-state'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { GridLayout } from '@/components/views/grid-view'
 import { usePagination } from '@/hooks/usePagination'
-import { auth } from '@/services/auth'
 import {
   buildItemFilters,
   itemFilterSchema,
@@ -83,11 +83,8 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/signin')
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
   let searchParams = new URL(request.url).searchParams
   searchParams.set('currentUserId', session.user.id)
   searchParams.set('status', 'trashed')
@@ -205,7 +202,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
+export async function action({ request, params, context }: Route.ActionArgs) {
   // TODO: implement action logic
   return null
 }

@@ -1,12 +1,9 @@
-import { auth } from '@/services/auth'
+import { sessionContext } from '@/context'
 import { redirect } from 'react-router'
 import type { Route } from './+types'
 
-export const loader = async ({ request }: Route.LoaderArgs) => {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) return null
+export const loader = async ({ request, context }: Route.LoaderArgs) => {
+  const session = context.get(sessionContext)
   return redirect(`${session?.user?.id}/stash?layout=grid&take=100`)
 }
 

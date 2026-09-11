@@ -1,5 +1,5 @@
+import { sessionContext } from '@/context'
 import { redirect } from 'react-router'
-import { auth } from '@/services/auth'
 import {
   getSearchIndexStats,
   searchItemsHybrid,
@@ -39,9 +39,8 @@ const EMPTY: SearchResponse = {
  * embedding model runs in the browser — so `useItemSearch` layers it on after
  * hydration when the user is in semantic mode.
  */
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({ headers: request.headers })
-  if (!session) throw redirect('/auth/signin')
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const searchParams = new URL(request.url).searchParams
   searchParams.set('owner', session.user.id)

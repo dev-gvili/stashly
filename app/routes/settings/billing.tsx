@@ -1,10 +1,10 @@
+import { sessionContext } from '@/context'
 import { Button } from '@/components/ui/button'
 import {
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { auth } from '@/services/auth'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { cn } from '@/utils/styles'
 import { RiCheckboxCircleFill } from '@remixicon/react'
@@ -26,11 +26,8 @@ function formatBytes(b: bigint | number) {
   return `${bytes} B`
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const user = await findUserById(session.user.id)
   if (!user) throw redirect('/auth/sign-in')
@@ -45,11 +42,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { plans, currentPlanId }
 }
 
-export async function action({ request }: Route.ActionArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function action({ request, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
 
   const userId = session.user.id
   const formData = await request.formData()

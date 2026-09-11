@@ -1,3 +1,4 @@
+import { sessionContext } from '@/context'
 import {
   DataTable,
   type DataTableColumn,
@@ -28,7 +29,6 @@ import {
 } from '@/components/ui'
 import useConfirm from '@/hooks/useConfirm'
 import type { ItemCategory } from '@/prisma/enums'
-import { auth } from '@/services/auth'
 import { emptyUserBucket, getStorageOverview } from '@/services/storage-actions'
 import { Button } from '@/ui/button'
 import { toIcon } from '@/utils'
@@ -40,21 +40,15 @@ import type { Route } from './+types/storage'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
-export async function action({ request }: Route.ActionArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function action({ request, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
 
   await emptyUserBucket(session.user.id)
   return { ok: true }
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const { quota, breakdown, largestItems, duplicates } =
     await getStorageOverview(session.user.id)

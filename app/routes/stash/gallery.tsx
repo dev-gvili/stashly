@@ -1,3 +1,4 @@
+import { sessionContext } from '@/context'
 import type { Route } from './+types/gallery'
 import { Gallery } from '@/components/Gallery'
 import { parseSearchParams } from '@/utils/parsers'
@@ -9,7 +10,6 @@ import {
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
 import { redirect } from 'react-router'
-import { auth } from '@/services/auth'
 import type { View, ViewType } from '@/prisma/client'
 export function meta({ matches }: Route.MetaArgs) {
   return [
@@ -18,12 +18,9 @@ export function meta({ matches }: Route.MetaArgs) {
   ]
 }
 
-export async function loader({ request }: Route.ActionArgs) {
+export async function loader({ request, context }: Route.ActionArgs) {
   // TODO: implement action logic
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+  const session = context.get(sessionContext)
   const url = new URL(request.url)
   const searchParams = url.searchParams
   const layout = searchParams.get('layout')

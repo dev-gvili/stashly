@@ -1,6 +1,6 @@
+import { sessionContext } from '@/context'
 import type { Route } from './+types/all'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
-import { auth } from '@/services/auth'
 import { redirect, useLocation } from 'react-router'
 import { getFolderContent, retrieveUserUsageMetrics } from '@/services/item-actions'
 import { formatSize } from '@/utils/formaters'
@@ -93,13 +93,8 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   return defaultShouldRevalidate
 }
 
-export async function loader({ request, params }: Route.ActionArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) {
-    throw redirect('/auth/signin')
-  }
+export async function loader({ request, params, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
 
   let searchParams = new URL(request.url).searchParams
   searchParams.set('currentUserId', session.user.id)

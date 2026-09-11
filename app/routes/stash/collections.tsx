@@ -1,4 +1,4 @@
-import { auth } from '@/services/auth'
+import { sessionContext } from '@/context'
 import { findAllCollections } from '@/services/collection-actions'
 import { CollectionsView } from '@/components/views/collections-view'
 import { redirect, data } from 'react-router'
@@ -8,11 +8,8 @@ import { itemFilterSchema } from '@/utils/filters/item.filters'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
-export async function loader({ request }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/signin')
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const parsedParams = parseSearchParams({
     schema: itemFilterSchema,

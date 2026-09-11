@@ -1,10 +1,10 @@
+import { sessionContext } from '@/context'
 import { LoadMoreItems } from '@/components/core-components/buttons'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { GridLayout } from '@/components/views/grid-view'
 import { itemVariants } from '@/components/views/variants'
 import { usePagination } from '@/hooks/usePagination'
-import { auth } from '@/services/auth'
 import { getFavoritedItems } from '@/services/item-actions'
 import { getQueryParam } from '@/utils/query-params'
 import { motion } from 'framer-motion'
@@ -45,11 +45,8 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   return defaultShouldRevalidate
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/signin')
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const url = new URL(request.url)
   const cursor = getQueryParam(url.searchParams, 'cursor') ?? undefined

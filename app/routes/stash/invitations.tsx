@@ -1,5 +1,5 @@
+import { sessionContext } from '@/context'
 import { InvitationsView } from '@/components/views/invitations-view';
-import { auth } from '@/services/auth';
 import {
     listReceivedInvitations,
     listSentInvitations,
@@ -13,11 +13,8 @@ import type { Route } from './+types/invitations';
 // Loader
 // ---------------------------------------------------------------------------
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const [received, sent, targets] = await Promise.all([
     listReceivedInvitations(session.user.email),

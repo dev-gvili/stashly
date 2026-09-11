@@ -1,16 +1,14 @@
-import { auth } from '@/services/auth'
+import { sessionContext } from '@/context'
 import type { Route } from './+types/collections'
 
-export async function loader({ request, params }: Route.LoaderArgs) {
+export async function loader({ request, params, context }: Route.LoaderArgs) {
   // TODO: implement loader logic
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
+  const session = context.get(sessionContext)
   // if (!session) throw new Error('Unauthorized')
   return { session }
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
+export async function action({ request, params, context }: Route.ActionArgs) {
   // TODO: implement action logic
   return null
 }

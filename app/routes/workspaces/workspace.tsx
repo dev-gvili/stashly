@@ -1,5 +1,5 @@
+import { sessionContext } from '@/context'
 import type { Route } from './+types/workspace'
-import { auth } from '@/services/auth'
 import { redirect } from 'react-router'
 import { prisma } from '@/services/db'
 import { requireAtLeastRole } from '@/services/workspace-actions'
@@ -15,11 +15,8 @@ export function meta({ data }: Route.MetaArgs) {
   ]
 }
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function loader({ request, params, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const { workspaceId, me } = params
 

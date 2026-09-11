@@ -1,4 +1,4 @@
-import { auth } from '@/services/auth'
+import { sessionContext } from '@/context'
 import { GridLayout } from '@/components/views/grid-view'
 import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
@@ -19,11 +19,8 @@ import { GenericEmptyState } from '@/components/states/generic-empty-state'
 // Loader — fetch items accessible to the current user via share permissions
 // ---------------------------------------------------------------------------
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/signin')
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const userId = session.user.id
   const url = new URL(request.url)

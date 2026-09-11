@@ -1,6 +1,6 @@
+import { sessionContext } from '@/context'
 import type { Route } from './+types/home'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
-import { auth } from '@/services/auth'
 import { redirect } from 'react-router'
 import type { ShouldRevalidateFunction } from 'react-router'
 import { getQueryParamArray } from '@/utils/query-params'
@@ -76,13 +76,8 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   return true
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) {
-    throw redirect('/auth/signin')
-  }
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   // The overview asks for eleven cards under "Recently opened" (the first is
   // the hero, two columns wide and two rows tall, with ten filling the five

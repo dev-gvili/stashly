@@ -1,7 +1,7 @@
+import { sessionContext } from '@/context'
 import type { DuplicateGroup } from '@/components/views/duplicates-components'
 import { DuplicateTriageView } from '@/components/views/duplicates-components'
 import { resolveDuplicatesApiRouteInput } from '@/schemas/api.schemas'
-import { auth } from '@/services/auth'
 import { trashItems } from '@/services/item-actions'
 import { getDuplicateGroups } from '@/services/storage-actions'
 import { parseFormData } from '@/utils/parsers'
@@ -18,11 +18,8 @@ import type { Route } from './+types/duplicates'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const groups = await getDuplicateGroups(session.user.id)
 
@@ -51,11 +48,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 }
 
-export async function action({ request }: Route.ActionArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function action({ request, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
 
   const input = await parseFormData({
     request,
