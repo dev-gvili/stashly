@@ -7,7 +7,7 @@ export const workspaceMemberFilterSchema = z
   .object({
     workspaceId: z.string().nonempty(),
     memberId: z.string().nonempty(),
-    roles: toZodArraySchema(z.nativeEnum(WorkspaceMemberRole)),
+    roles: toZodArraySchema(z.enum(WorkspaceMemberRole)),
     query: z.string().nonempty(),
 
     // Pagination Params
@@ -46,7 +46,7 @@ export const workspaceMemberFilters = {
    * @param {WorkspaceMemberRole[]} roles - An array of WorkspaceMemberRole enums.
    */
   roles: createWorkspaceMemberFilter(
-    z.array(z.nativeEnum(WorkspaceMemberRole)),
+    z.array(z.enum(WorkspaceMemberRole)),
     (roles) => ({ role: { in: roles } })
   ),
 
