@@ -236,7 +236,7 @@ export default [
         }),
         route(
           ':workspaceId/folders/:folderId',
-          'routes/workspaces/folder.tsx',
+          'routes/stash/folder.tsx',
           { id: 'stash-workspace-folder' }
         ),
         route(
