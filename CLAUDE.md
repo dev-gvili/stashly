@@ -82,20 +82,21 @@ the tree does *not* tell you is below.
 
 **Server-only code**: Anything in `app/.server/` is excluded from the client bundle. Use it for database access, secrets, and heavy server logic. Client-only code (browser APIs, client-side state) goes in `app/.client/`.
 
-**Authentication**: Route `loader` functions check sessions and redirect unauthenticated users:
+**Authentication**: `authMiddleware` (`app/.server/middleware/auth.ts`) resolves the session once per request on the app layout and redirects anonymous users; `meMiddleware` asserts `:me === session.user.id`. Loaders read it from context — never call `getSession` again:
 ```typescript
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({ headers: request.headers })
-  if (!session) throw redirect('/auth/sign-in')
-  return { user: session.user }
+export async function loader({ context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext) // `@/context` — guaranteed by the middleware
 }
 ```
+Middleware runs parent→child *before any loader*; loaders run in **parallel**, so a parent loader that throws cannot stop a child's query from executing. Shared middleware must be typed `MiddlewareFunction<Response>` — bare `MiddlewareFunction` defaults `Result` to `unknown` and isn't assignable to the route's type. ~36 loaders still use the old `getSession` pattern; converting them is tracked in TASKS.md.
 
 **Actions pattern**: Business logic lives in `app/.server/*-actions.ts` files. These export plain functions (no classes; pass context as params) that call Prisma directly and enforce permissions inline. Route loaders/actions call these functions — **never call `prisma` directly from routes**.
 ```typescript
 import { getCollectionForUser } from '@/services/collection-actions'
 const collection = await getCollectionForUser(session.user.id, collectionId)
 ```
+
+**Authorization lives in actions, never in loaders.** A loader forwards `userId` (and `workspaceId` when present) and the action throws — `assertItemAccess(userId, itemId, { workspaceId, role })` from `permission-actions.ts` composes the item-permission and workspace-membership checks. A loader that forgets the check fails *open*; an action that owns it can't be bypassed by a new caller.
 
 **Never mutate in a `loader`**: mutations belong in `action` functions, submitted via `fetcher.submit(..., { method: 'POST' })`. A `GET` `loader` that writes data breaks caching/prefetching assumptions.
 
@@ -107,7 +108,7 @@ const collection = await getCollectionForUser(session.user.id, collectionId)
 
 **API errors**: Use `StashlyError` and `StashlyErrorCode` from `app/utils/api.errors.ts` in action files. Two error shapes reach routes and disagree on the field name — `StashlyError` sets `status`, `throwGuardError` in `workspace-actions.ts` sets `statusCode` — so route handlers normalise with `toErrorInfo` from the same module: `const err = toErrorInfo(e)` then `err.status ?? 500`. Never duck-type one field directly; that silently turns typed 403/404s into 500s.
 
-**Dot-server plugin**: React Router's build rejects a route whose *client-bundled* exports can reach a server module. It strips server code from `loader`, `action`, `middleware` and `headers` only — so a `.server/` import is fine when just those touch it, and fails the build when anything else does (`app/routes/settings/billing.tsx` uses `@/services/*` in five places and builds clean). It reads the **import graph, not usage**: an import nothing references still fails. Dev never surfaces this — Vite serves modules per request with no tree-shaking, so the server/client split is only attempted at build time, and `pnpm build` is the only check.
+**Dot-server plugin**: React Router's build rejects a route whose *client-bundled* exports can reach a server module. It strips server code from `loader`, `action`, `middleware` and `headers` only — so a `.server/` import is fine when just those touch it, and fails the build when anything else does (`app/routes/settings/billing.tsx` uses `@/services/*` in five places and builds clean). It reads the **import graph, not usage**: an import nothing references still fails — so removing the last *use* of a `@/services/*` import breaks the build until you delete the import too. A **re-export** from a route (`export { x } from '@/.server/…'`) also fails: a re-export is an ordinary route export, not one of the four stripped ones. Dev never surfaces this — Vite serves modules per request with no tree-shaking, so the server/client split is only attempted at build time, and `pnpm build` is the only check.
 
 ### Routing Structure
 
@@ -118,6 +119,7 @@ Routes are defined centrally in `app/routes.ts` using `prefix`, `layout`, and `r
 - `app/schemas/` — Zod schemas for API payloads (`api.schemas.ts`), XState events (`machine.schemas.ts`), repository filters (`filters.schemas.ts`). Import with `@/schemas/*`.
 - `app/types/` — Shared TS types for API contracts (`api.types.ts`), machine payloads (`machine.types.ts`, `upload-actors.types.ts`), global augmentations (`react.d.ts`). Import with `@/types/*`.
 - Keep Zod schemas and derived types co-located — don't scatter them across feature files.
+- `buildFiltersFactory` applies a param only when `key in filters` (`app/utils/filters.ts:127`). A schema key with no filter, or a filter whose key drifted from the schema, contributes **no constraint** — no error, and the query returns *more* rows than intended. `app/utils/__tests__/item-filters-coverage.test.ts` fails the build if the two key sets diverge; extend that pattern rather than trusting a read.
 
 ### Path Aliases
 
@@ -190,7 +192,8 @@ Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind s
 - `$queryRaw` SQL is invisible to `tsc` — verify by running the action against the dev DB: `npx tsx --env-file=.env <script.ts>`. The script must sit **in the repo root** (from a temp dir, module resolution fails), use absolute imports, and no top-level await. Import the client as `import { prisma } from '@/services/db'` — `new PrismaClient()` throws under Prisma 7 without an adapter.
 - `pnpm typecheck` has **202** pre-existing, unrelated errors (verified 2026-09-03; 150 in `collection-actions.test.ts`, 34 in `pin-actions.test.ts`) — don't expect a clean run. Pipe to a file, count `error TS`, and grep your touched files by name to confirm no regressions.
 - `npx prettier --write <file>` reflows *pre-existing* long lines, so a 10-line edit can land as a 47-line diff. Format only files you created; on a file you edited, check `git diff` afterwards and revert the hunks you didn't cause.
-- `pnpm test` is **468 passing / 11 failing (479 in 30 files)**; the 11 are pre-existing (`activity.test.ts` ×4, `collection-actions.test.ts` ×7 — the latter needs a live DB) — don't chase them. Verified 2026-09-03.
+- A JSDoc block ending `**a**/**b**` contains `*/` and closes the comment early; `tsc` then bails on a parse error and the total error count **drops**. A falling `error TS` count is not automatically good news — check that your touched files are clean, not just that the number went down.
+- `pnpm test` is **503 passing / 11 failing (514 in 34 files)**; the 11 are pre-existing (`activity.test.ts` ×4, `collection-actions.test.ts` ×7 — the latter needs a live DB) — don't chase them. Verified 2026-09-11.
 
 ## Debugging Rules
 
