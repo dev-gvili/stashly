@@ -4,7 +4,6 @@ import { SidebarProvider } from '@/components/ui/sidebar'
 // import { UploadPanel } from '@/machines/upload-v2/ui'
 import { UploadPanel } from '@/components/upload'
 import { UploadThumbnailRunner } from '@/components/upload/upload-thumbnail-runner'
-import { auth } from '@/services/auth'
 import {
   findStoragePlanById,
   findDefaultStoragePlan,
@@ -12,7 +11,8 @@ import {
 import { listNotifications } from '@/.server/notification-actions'
 import { prisma } from '@/services/db'
 import { Outlet, redirect, type ShouldRevalidateFunction } from 'react-router'
-import { requireSession, sessionContext } from '@/.server/session-context'
+import { sessionContext } from '@/context'
+import { authMiddleware, meMiddleware } from '@/.server/middleware/auth'
 import type { Route } from './+types/layout'
 import { sidebarCookie } from '@/.server/sidebar'
 import z from 'zod'
@@ -23,45 +23,16 @@ import { AppToolbar } from '@/components/app-toolbar'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
-// The session context lives in app/.server/session-context.ts. It is
-// deliberately NOT re-exported from here: a re-export is an ordinary route
-// export, and the dot-server plugin only strips server code from `loader`,
-// `action`, `middleware` and `headers` — so re-exporting it fails the build
-// with "Server-only module referenced by client". Consumers import it from
-// '@/.server/session-context' directly.
-
-/**
- * Enforces that the `:me` segment names the signed-in user.
- *
- * This has to be middleware, not a loader check. React Router runs loaders in
- * **parallel**, so a parent loader that throws cannot stop a child loader's
- * query from executing — it only stops the data being returned. Middleware runs
- * parent-to-child *before any loader*, so a failure here means the child query
- * never happens at all.
- *
- * Every authenticated route hangs off this layout (`routes.ts`), so one check
- * here covers all 37 of them, and a route added tomorrow inherits it. `params.me`
- * is absent outside the `:me` prefix (`routes/index.tsx`, `auth/*`, `not-found`),
- * hence the conditional.
- */
+// Every authenticated route hangs off this layout (see routes.ts), so these
+// two cover all 37 of them and any route added later inherits them.
 export const middleware: Route.MiddlewareFunction[] = [
-  async ({ request, params, context }) => {
-    const session = await auth.api.getSession({ headers: request.headers })
-    if (!session) throw redirect('/auth/sign-in')
-
-    if (params.me && params.me !== session.user.id) {
-      throw new Response('Forbidden', { status: 403 })
-    }
-
-    context.set(sessionContext, session)
-    // No explicit next(): React Router calls it when middleware neither throws
-    // nor returns a Response.
-  },
+  authMiddleware,
+  meMiddleware,
 ]
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   // Resolved by the middleware above — no second getSession call.
-  const session = requireSession(context)
+  const session = context.get(sessionContext)
   // Determine the storage plan: prefer active subscription, then user.storagePlanId, then default
   let plan = await findStoragePlanById(session.user.storagePlanId)
   if (!plan) {

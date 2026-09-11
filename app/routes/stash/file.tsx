@@ -11,7 +11,6 @@ import { PdfStage } from '@/components/views/item-page/pdf-stage'
 import { SiblingNav } from '@/components/views/item-page/sibling-nav'
 import { TextStage } from '@/components/views/item-page/text-stage'
 import { VideoStage } from '@/components/views/item-page/video-stage'
-import { auth } from '@/services/auth'
 import { breadcrumbs } from '@/services/breadcrumbs'
 import {
   getChildIdByName,
@@ -31,6 +30,7 @@ import jetbrainsMonoFonts from '@fontsource-variable/jetbrains-mono/index.css?ur
 import type { LinksFunction } from 'react-router'
 import { href, redirect, type ShouldRevalidateFunction } from 'react-router'
 import type { Route } from './+types/file'
+import { sessionContext } from '@/context'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
@@ -95,11 +95,13 @@ function detectMediaKind(item: {
   return null
 }
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function loader({ request, params, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
+  console.log('File Route -> session', session)
+  // const session = await auth.api.getSession({
+  //   headers: request.headers,
+  // })
+  // if (!session) throw redirect('/auth/sign-in')
 
   // A relative link inside a Markdown document (`[spec](./upload-multipart.md)`)
   // resolves against the current URL, so `:fileId` arrives as a *file name*
