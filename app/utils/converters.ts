@@ -46,7 +46,7 @@ import crypto from 'crypto-js'
 import { href } from 'react-router'
 import { z } from 'zod'
 import type { ItemCardProps } from '../components/stash/item-card'
-import type { AuthSession } from '@/.server/auth.types'
+import type { AuthSession } from '@/services/auth.types'
 
 /**
  * Convert an AsyncIterable of Uint8Array to buffer

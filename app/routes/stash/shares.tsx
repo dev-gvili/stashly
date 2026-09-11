@@ -1,4 +1,4 @@
-import { auth } from '@/.server/auth'
+import { auth } from '@/services/auth'
 import { GridLayout } from '@/components/views/grid-view'
 import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'

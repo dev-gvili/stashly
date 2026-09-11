@@ -1,14 +1,14 @@
-import { createQuota } from '@/.server/quota-actions'
+import { createQuota } from '@/services/quota-actions'
 import { assign, fromPromise, setup } from 'xstate'
 import type { User as FullUser } from '@/services/auth.types'
 import type { User } from 'better-auth'
 import { prisma } from '@/services/db'
 import { createUserBucket } from '@/services/s3'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
-import { createSubscriptionRecord, findActiveSubscriptionByOwner, updateSubscriptionRecord } from '@/.server/subscription-actions'
-import { findDefaultStoragePlan } from '@/.server/storagePlan-actions'
-import { createDrive, findDriveByOwner } from '@/.server/drive-actions'
-import { updateUser } from '@/.server/user-actions'
+import { createSubscriptionRecord, findActiveSubscriptionByOwner, updateSubscriptionRecord } from '@/services/subscription-actions'
+import { findDefaultStoragePlan } from '@/services/storagePlan-actions'
+import { createDrive, findDriveByOwner } from '@/services/drive-actions'
+import { updateUser } from '@/services/user-actions'
 import type {
   Drive,
   Item,

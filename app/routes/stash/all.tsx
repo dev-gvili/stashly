@@ -1,6 +1,6 @@
 import type { Route } from './+types/all'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
-import { auth } from '@/.server/auth'
+import { auth } from '@/services/auth'
 import { redirect, useLocation } from 'react-router'
 import { getFolderContent, retrieveUserUsageMetrics } from '@/services/item-actions'
 import { formatSize } from '@/utils/formaters'
@@ -27,7 +27,7 @@ import { SelectionProvider } from '../../components/stash/selection'
 import { LoadMoreItems } from '../../components/core-components/buttons'
 import { getQueryParamArray } from '../../utils/query-params'
 import { FilesEmptyState } from '../../components/states/files-empty-state'
-import { breadcrumbs } from '@/.server/breadcrumbs';
+import { breadcrumbs } from '@/services/breadcrumbs';
 
 export { ErrorBoundary } from '@/components/error-boundary'
 

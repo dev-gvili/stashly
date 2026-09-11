@@ -2,7 +2,7 @@
 import { isSearchIndexSubmission } from '@/utils/revalidation'
 // <head> via `precedence`), so the ligature font never ships on non-markdown
 // pages. Code blocks use 'JetBrains Mono Variable' — see `.markdown-stage code`.
-import { searchActivities } from '@/.server/activity-actions'
+import { searchActivities } from '@/services/activity-actions'
 import { AudioStage } from '@/components/views/item-page/audio-stage'
 import { ImageStage } from '@/components/views/item-page/image-stage'
 import { ItemPanel } from '@/components/views/item-page/item-panel'

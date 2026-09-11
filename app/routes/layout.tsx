@@ -1,25 +1,23 @@
 import { AppContent } from '@/components/app-content'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarProvider } from '@/components/ui/sidebar'
-// import { UploadPanel } from '@/machines/upload-v2/ui'
+import { authMiddleware, meMiddleware } from '@/services/middleware/auth'
+import { listNotifications } from '@/services/notification-actions'
+import { sidebarCookie } from '@/services/sidebar'
+import {
+  findDefaultStoragePlan,
+  findStoragePlanById,
+} from '@/services/storagePlan-actions'
+import { Confirm } from '@/components/confirm-renderer'
+import { DegradedNotice } from '@/components/core-components/degraded-notice'
 import { UploadPanel } from '@/components/upload'
 import { UploadThumbnailRunner } from '@/components/upload/upload-thumbnail-runner'
-import {
-  findStoragePlanById,
-  findDefaultStoragePlan,
-} from '@/.server/storagePlan-actions'
-import { listNotifications } from '@/.server/notification-actions'
-import { prisma } from '@/services/db'
-import { Outlet, redirect, type ShouldRevalidateFunction } from 'react-router'
 import { sessionContext } from '@/context'
-import { authMiddleware, meMiddleware } from '@/.server/middleware/auth'
-import type { Route } from './+types/layout'
-import { sidebarCookie } from '@/.server/sidebar'
-import z from 'zod'
-import { Confirm } from '@/components/confirm-renderer'
 import { useEmbeddingBackfill } from '@/hooks/useEmbeddingBackfill'
-import { DegradedNotice } from '@/components/core-components/degraded-notice'
-import { AppToolbar } from '@/components/app-toolbar'
+import { prisma } from '@/services/db'
+import { Outlet, type ShouldRevalidateFunction } from 'react-router'
+import z from 'zod'
+import type { Route } from './+types/layout'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 

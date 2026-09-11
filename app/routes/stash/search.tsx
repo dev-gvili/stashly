@@ -1,9 +1,9 @@
 import { redirect } from 'react-router'
-import { auth } from '@/.server/auth'
+import { auth } from '@/services/auth'
 import {
   getSearchIndexStats,
   searchItemsHybrid,
-} from '@/.server/search-actions'
+} from '@/services/search-actions'
 import { SearchView } from '@/components/views/search-view'
 import {
   buildItemFilters,

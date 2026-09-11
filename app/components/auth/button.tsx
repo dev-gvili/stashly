@@ -8,7 +8,7 @@ import {
   RiGoogleFill,
   RiMicrosoftFill,
 } from '@remixicon/react'
-import type { auth } from '@/.server/auth'
+import type { auth } from '@/services/auth'
 
 type Providers = keyof typeof auth.options.socialProviders
 interface AuthButtonProps extends React.ComponentProps<typeof Button> {

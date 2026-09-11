@@ -1,4 +1,4 @@
-import { auth } from '@/.server/auth'
+import { auth } from '@/services/auth'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
 import {
   getCollectionForUser,

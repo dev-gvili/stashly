@@ -1,4 +1,4 @@
-import { auth } from '@/.server/auth'
+import { auth } from '@/services/auth'
 import { redirect } from 'react-router'
 import type { Route } from './+types'
 

@@ -9,7 +9,7 @@ import {
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
 import { redirect } from 'react-router'
-import { auth } from '@/.server/auth'
+import { auth } from '@/services/auth'
 import type { View, ViewType } from '@/prisma/client'
 export function meta({ matches }: Route.MetaArgs) {
   return [

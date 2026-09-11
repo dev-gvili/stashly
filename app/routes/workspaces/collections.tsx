@@ -1,4 +1,4 @@
-import { auth } from '@/.server/auth'
+import { auth } from '@/services/auth'
 import type { Route } from './+types/collections'
 
 export async function loader({ request, params }: Route.LoaderArgs) {

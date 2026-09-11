@@ -1,4 +1,4 @@
-import { auth } from '@/.server/auth'
+import { auth } from '@/services/auth'
 import { findAllCollections } from '@/services/collection-actions'
 import { CollectionsView } from '@/components/views/collections-view'
 import { redirect, data } from 'react-router'
