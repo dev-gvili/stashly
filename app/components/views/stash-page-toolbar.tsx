@@ -10,7 +10,7 @@ import type { StashItem } from '@/types/stash.types'
 
 export interface StashPageToolbarProps {
   /** Drive-wide counters from the route loader. */
-  stats: LibraryStats
+  stats: Pick<LibraryStats, 'size' | 'files' | 'folders'>
   /** The page's items — needed to total the bytes behind the selected ids. */
   items: StashItem[]
   context?: ToolbarContext
@@ -67,7 +67,7 @@ export function StashPageToolbar({
         stats={stats}
         // Trash counts what the bin holds, not what the live drive holds.
         itemCount={
-          context === 'trash' ? stats.trashed : stats.files + stats.folders
+          context === 'trash' ? 0 : stats.files + stats.folders
         }
         onBack={() => navigate(-1)}
         onMove={() => setMoveOpen(true)}

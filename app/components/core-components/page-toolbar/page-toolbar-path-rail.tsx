@@ -53,7 +53,7 @@ interface Props extends BulkActions {
   onBack?: () => void
   className?: string
 
-  stats: LibraryStats
+  stats: Pick<LibraryStats, 'size' | 'files' | 'folders'>
 }
 
 /**
