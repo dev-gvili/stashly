@@ -97,12 +97,6 @@ function detectMediaKind(item: {
 
 export async function loader({ request, params, context }: Route.LoaderArgs) {
   const session = context.get(sessionContext)
-  console.log('File Route -> session', session)
-  // const session = await auth.api.getSession({
-  //   headers: request.headers,
-  // })
-  // if (!session) throw redirect('/auth/sign-in')
-
   // A relative link inside a Markdown document (`[spec](./upload-multipart.md)`)
   // resolves against the current URL, so `:fileId` arrives as a *file name*
   // rather than an `item_…` id. Every query below is id-keyed, so map the name

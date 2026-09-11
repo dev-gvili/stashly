@@ -28,7 +28,6 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
   // Set by the layout middleware, which redirects anonymous requests before any
   // loader runs — so there is nothing to re-check here.
   const session = context.get(sessionContext)
-console.log('Folder Route -> session', session)
   // This route serves two URL trees: /:me/stash/folders/:folderId and
   // /:me/workspaces/:workspaceId/folders/:folderId. `workspaceId` is present
   // only on the second, and is what decides the scope of everything below.
