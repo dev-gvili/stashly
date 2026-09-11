@@ -564,10 +564,7 @@ export async function assertItemAccess(
   // Membership first: it is the cheaper check, and a non-member should not be
   // able to probe item existence through the error it gets back.
   if (workspaceId) {
-    await requireMembership(userId, workspaceId, {
-      statusCode: 403,
-      errorType: 'ForbiddenError',
-    })
+    await requireMembership(userId, workspaceId)
   }
 
   await assertItemPermission(userId, itemId, role, tx)

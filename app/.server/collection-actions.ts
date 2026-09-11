@@ -331,10 +331,7 @@ export async function createWorkspaceCollection({
   driveId: string
   workspaceId: string
 }) {
-  await requireAtLeastRole(ownerId, workspaceId, 'member', {
-    statusCode: 403,
-    message: 'You must be a workspace member to create collections',
-  })
+  await requireAtLeastRole(ownerId, workspaceId, 'member', 'You must be a workspace member to create collections')
 
   const created = await prisma.$transaction(async (tx) => {
     const newItem = await tx.item.create({

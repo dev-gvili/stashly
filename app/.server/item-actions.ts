@@ -95,9 +95,7 @@ export async function getItemWithPermissions(userId: string, itemId: string) {
 
   const canRead = await hasItemPermission(userId, itemId, 'read')
   if (!canRead && item.workspaceId) {
-    await requireMembership(userId, item.workspaceId, {
-      message: 'You do not have access to this item',
-    })
+    await requireMembership(userId, item.workspaceId, 'You do not have access to this item')
   }
 
   const permissions = await getItemPermissions(itemId)
@@ -897,9 +895,7 @@ export async function copyItem(
 
     // 3. check if user is a member in the source item workspace
     if (!targetWorkspaceId && source.workspaceId) {
-      await requireMembership(userId, source.workspaceId, {
-        message: 'You do not have access to this item',
-      })
+      await requireMembership(userId, source.workspaceId, 'You do not have access to this item')
 
       // 4. Check user's quota
       const userQuota = await ensureUserQuota(userId, tx)
@@ -961,9 +957,7 @@ export async function copyItem(
     // ~~~~~~~~~~ Same Workspace with Explicit ID ~~~~~~~~~ //
 
     if (targetWorkspaceId && source.workspaceId === targetWorkspaceId) {
-      await requireMembership(userId, source.workspaceId, {
-        message: 'You do not have access to this item',
-      })
+      await requireMembership(userId, source.workspaceId, 'You do not have access to this item')
 
       const userQuota = await ensureUserQuota(userId, tx)
 
@@ -1025,13 +1019,9 @@ export async function copyItem(
       source.workspaceId &&
       source.workspaceId !== targetWorkspaceId
     ) {
-      await requireMembership(userId, source.workspaceId, {
-        message: 'You do not have access to this item',
-      })
+      await requireMembership(userId, source.workspaceId, 'You do not have access to this item')
 
-      await requireAtLeastRole(userId, targetWorkspaceId, 'member', {
-        message: 'You must be a member of the target workspace to copy items.',
-      })
+      await requireAtLeastRole(userId, targetWorkspaceId, 'member', 'You must be a member of the target workspace to copy items.')
 
       const userQuota = await ensureUserQuota(userId, tx)
 

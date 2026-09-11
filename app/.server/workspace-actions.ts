@@ -40,22 +40,6 @@ type PrismaTx = Omit<
   '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
 >
 
-/**
- * Options for customising guard/assertion error shape.
- */
-export interface GuardErrorOptions {
-  message?: string
-  statusCode?: number
-  /** e.g. 'ForbiddenError', 'UnauthorizedError' */
-  errorType?: string
-}
-
-function throwGuardError(defaultMessage: string, opts?: GuardErrorOptions): never {
-  const err: any = new Error(opts?.message ?? defaultMessage)
-  if (opts?.statusCode) err.statusCode = opts.statusCode
-  if (opts?.errorType) err.name = opts.errorType
-  throw err
-}
 
 // ---------------------------------------------------------------------------
 // Search
@@ -358,13 +342,14 @@ export async function requireRole(
   userId: string,
   workspaceId: string,
   role: WorkspaceMemberRole,
-  opts?: GuardErrorOptions
+  message?: string
 ): Promise<void> {
   const has = await hasRole(userId, workspaceId, role)
   if (!has) {
-    throwGuardError(
+    throw new StashlyError(
+      StashlyErrorCode.FORBIDDEN,
+      message ??
       `Access denied: user ${userId} must have role "${role}" in workspace ${workspaceId}`,
-      opts
     )
   }
 }
@@ -376,19 +361,20 @@ export async function requireRole(
  * @throws When the user's role is below `role`.
  *
  * @example
- * await requireAtLeastRole(userId, workspaceId, 'member', { statusCode: 403 })
+ * await requireAtLeastRole(userId, workspaceId, 'member')
  */
 export async function requireAtLeastRole(
   userId: string,
   workspaceId: string,
   role: WorkspaceMemberRole,
-  opts?: GuardErrorOptions
+  message?: string
 ): Promise<void> {
   const has = await hasAtLeastRole(userId, workspaceId, role)
   if (!has) {
-    throwGuardError(
+    throw new StashlyError(
+      StashlyErrorCode.FORBIDDEN,
+      message ??
       `Access denied: user ${userId} must have at least role "${role}" in workspace ${workspaceId}`,
-      opts
     )
   }
 }
@@ -400,18 +386,19 @@ export async function requireAtLeastRole(
  * @throws When the user is not a member.
  *
  * @example
- * await requireMembership(userId, workspaceId, { statusCode: 403 })
+ * await requireMembership(userId, workspaceId)
  */
 export async function requireMembership(
   userId: string,
   workspaceId: string,
-  opts?: GuardErrorOptions
+  message?: string
 ): Promise<void> {
   const ok = await isMember(userId, workspaceId)
   if (!ok) {
-    throwGuardError(
+    throw new StashlyError(
+      StashlyErrorCode.FORBIDDEN,
+      message ??
       `Access denied: user ${userId} is not a member of workspace ${workspaceId}`,
-      opts
     )
   }
 }
@@ -429,13 +416,14 @@ export async function requireRoleAndFetch(
   userId: string,
   workspaceId: string,
   role: WorkspaceMemberRole,
-  opts?: GuardErrorOptions
+  message?: string
 ): Promise<WorkspaceMember> {
   const member = await findMemberByUserAndWorkspace(userId, workspaceId)
   if (!member || member.role !== role) {
-    throwGuardError(
+    throw new StashlyError(
+      StashlyErrorCode.FORBIDDEN,
+      message ??
       `Access denied: user ${userId} must have role "${role}" in workspace ${workspaceId}`,
-      opts
     )
   }
   return member
@@ -454,20 +442,22 @@ export async function requireAtLeastRoleAndFetch(
   userId: string,
   workspaceId: string,
   role: WorkspaceMemberRole,
-  opts?: GuardErrorOptions
+  message?: string
 ): Promise<WorkspaceMember> {
   const member = await findMemberByUserAndWorkspace(userId, workspaceId)
   if (!member) {
-    throwGuardError(
+    throw new StashlyError(
+      StashlyErrorCode.FORBIDDEN,
+      message ??
       `Access denied: user ${userId} is not a member of workspace ${workspaceId}`,
-      opts
     )
   }
   const order = ['viewer', 'member', 'admin', 'owner'] as const
   if (order.indexOf(member.role) < order.indexOf(role)) {
-    throwGuardError(
+    throw new StashlyError(
+      StashlyErrorCode.FORBIDDEN,
+      message ??
       `Access denied: user ${userId} must have at least role "${role}" in workspace ${workspaceId}`,
-      opts
     )
   }
   return member
@@ -485,13 +475,14 @@ export async function requireAtLeastRoleAndFetch(
 export async function requireMembershipAndFetch(
   userId: string,
   workspaceId: string,
-  opts?: GuardErrorOptions
+  message?: string
 ): Promise<WorkspaceMember> {
   const member = await findMemberByUserAndWorkspace(userId, workspaceId)
   if (!member) {
-    throwGuardError(
+    throw new StashlyError(
+      StashlyErrorCode.FORBIDDEN,
+      message ??
       `Access denied: user ${userId} is not a member of workspace ${workspaceId}`,
-      opts
     )
   }
   return member
@@ -580,10 +571,7 @@ export function getWorkspaceItems(workspaceId: string) {
  * const items = await listWorkspaceItems(userId, workspaceId)
  */
 export async function listWorkspaceItems(userId: string, workspaceId: string) {
-  await requireMembership(userId, workspaceId, {
-    statusCode: 403,
-    message: 'You are not a member of this workspace',
-  })
+  await requireMembership(userId, workspaceId, 'You are not a member of this workspace')
   return findWorkspaceItems(workspaceId)
 }
 
@@ -601,10 +589,7 @@ export async function createWorkspaceItem(
   workspaceId: string,
   data: Prisma.ItemUncheckedCreateInput
 ) {
-  await requireAtLeastRole(userId, workspaceId, 'member', {
-    statusCode: 403,
-    message: 'You must be a workspace member to create items',
-  })
+  await requireAtLeastRole(userId, workspaceId, 'member', 'You must be a workspace member to create items')
 
   if (data.parentId) {
     const parent = await findItem({ where: { id: data.parentId } })
@@ -645,10 +630,7 @@ export async function updateWorkspaceItem(
 
   const canEdit = await hasItemPermission(userId, itemId, 'write')
   if (!canEdit && item.workspaceId) {
-    await requireAtLeastRole(userId, item.workspaceId, 'admin', {
-      statusCode: 403,
-      message: 'You do not have permission to edit this item',
-    })
+    await requireAtLeastRole(userId, item.workspaceId, 'admin', 'You do not have permission to edit this item')
   }
 
   return updateItem({ where: { id: itemId }, data: updateData })
@@ -670,10 +652,7 @@ export async function deleteWorkspaceItem(userId: string, itemId: string) {
 
   const canDelete = await hasItemPermission(userId, itemId, 'write')
   if (!canDelete && item.workspaceId) {
-    await requireAtLeastRole(userId, item.workspaceId, 'admin', {
-      statusCode: 403,
-      message: 'Only admins or owners can delete items',
-    })
+    await requireAtLeastRole(userId, item.workspaceId, 'admin', 'Only admins or owners can delete items')
   }
 
   return deleteItem(itemId, userId)
@@ -695,10 +674,7 @@ export async function favoriteItem(userId: string, itemId: string) {
 
   const canRead = await hasItemPermission(userId, itemId, 'read')
   if (!canRead && item.workspaceId) {
-    await requireMembership(userId, item.workspaceId, {
-      statusCode: 403,
-      message: 'You do not have access to this item',
-    })
+    await requireMembership(userId, item.workspaceId, 'You do not have access to this item')
   }
 
   return addFavorite(itemId, userId)

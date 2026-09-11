@@ -261,10 +261,7 @@ export async function activityScopeFor(
     return { ownerId: userId, workspaceId: null }
   }
 
-  await requireMembership(userId, workspaceId, {
-    statusCode: 403,
-    errorType: 'ForbiddenError',
-  })
+  await requireMembership(userId, workspaceId)
 
   // hasAtLeastRole ranks viewer < member < admin < owner, so 'admin' admits
   // admins and owners and excludes the rest.
