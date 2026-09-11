@@ -63,7 +63,7 @@ pnpm build        # Build for production
 pnpm start        # Run production server
 pnpm typecheck    # Generate React Router types + run tsc
 pnpm format       # Format with Prettier
-pnpm test         # Run unit tests once (app/utils/__tests__/)
+pnpm test         # Run unit tests once (any app/**/__tests__/*.test.ts)
 pnpm test:watch   # Run unit tests in watch mode
 pnpm prisma migrate dev   # Run database migrations
 pnpm test:e2e     # Run E2E tests (requires dev server)
@@ -140,9 +140,7 @@ shadcn/ui (source-owned, in `app/components/ui/`) built on Radix UI, styled with
 
 ## Frontend Verification
 
-- After any CSS/Tailwind/layout change, hard-refresh and verify against the live DOM (chrome-devtools MCP) before declaring done — stale Tailwind stylesheets have caused false negatives.
-- Never display fabricated or placeholder data in UI (e.g. `line 1` locators, rank-derived percentage "scores"). If real data isn't available, omit the element.
-- Prefer extending existing components (e.g. `FileCardDetail`) over creating parallel new ones.
+- After any CSS/Tailwind/layout change, hard-refresh and verify against the live DOM (chrome-devtools MCP) before declaring done — stale Tailwind stylesheets have caused false negatives. (Data Honesty and the extend-don't-duplicate rule apply here too — see above.)
 
 ## Subsystem Skills
 
@@ -164,11 +162,9 @@ Detailed conventions for these areas live in on-demand project skills (`.claude/
 
 Apply for **significant changes** (new features, routes/services, behaviour changes, schema migrations). **Skip for small changes** (renaming a class, tweaking layout, fixing a type, adjusting a label) — those go straight to a single commit on main.
 
-1. **Tests** — Unit tests (Vitest, `app/utils/__tests__/`) for logic/utilities/services; E2E tests (Playwright, `tests/e2e/`) for user-facing flows/routes.
+1. **Tests** — Unit tests (Vitest) beside the code they cover, in that directory's `__tests__/`; E2E tests (Playwright, `tests/e2e/`) for user-facing flows/routes.
 2. **Docs** — Update `CLAUDE.md`/`README.md`/relevant subsystem skill if the change affects architecture, commands, conventions, or E2E setup.
-3. **Commit** — Detailed conventional-prefix message explaining the *why*.
-4. **PR** — Descriptive title + body (summary + test plan).
-5. **Merge** — Merge to `main` once clean.
+3. **Ship** — Commit with a conventional-prefix message explaining the *why*, and push to `main` (see Git Workflow; `/ship` does the whole flow). A PR is the exception, not the default — open one only for work you want reviewed before it lands.
 
 ### New Feature Checklist (mandatory, in order)
 
@@ -178,9 +174,9 @@ Apply for **significant changes** (new features, routes/services, behaviour chan
 4. **UI placement** — Reusable components in `app/components/core-components/`; route-level views in `app/components/views/`. Never scatter feature UI into ad-hoc locations.
 5. **Types** — Add shared types to `app/types/stash.types.ts`. Infer from Zod schemas where possible.
 6. **Custom hooks** — Name `use[Feature][Noun]` (e.g. `useShareLinks`). Place in `app/hooks/`.
-7. **Tests** — E2E tests in `tests/e2e/` for user-facing flows; unit tests in `app/utils/__tests__/` for service logic.
+7. **Tests** — E2E tests in `tests/e2e/` for user-facing flows; unit tests in the `__tests__/` beside the module under test.
 
-Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind sizes (`text-sm` not `text-[10px]`); check `app/utils/` before creating new utilities; use the `/shadcn-ui` skill when building new UI.
+Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind sizes (`text-sm` not `text-[10px]`); check `app/utils/` before creating new utilities; use the `shadcn-ui-component-builder` skill when building new UI.
 
 ## Verification & Commits
 
@@ -193,6 +189,7 @@ Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind s
 - `pnpm typecheck` has **202** pre-existing, unrelated errors (verified 2026-09-03; 150 in `collection-actions.test.ts`, 34 in `pin-actions.test.ts`) — don't expect a clean run. Pipe to a file, count `error TS`, and grep your touched files by name to confirm no regressions.
 - `npx prettier --write <file>` reflows *pre-existing* long lines, so a 10-line edit can land as a 47-line diff. Format only files you created; on a file you edited, check `git diff` afterwards and revert the hunks you didn't cause.
 - A JSDoc block ending `**a**/**b**` contains `*/` and closes the comment early; `tsc` then bails on a parse error and the total error count **drops**. A falling `error TS` count is not automatically good news — check that your touched files are clean, not just that the number went down.
+- Vitest runs `environment: 'node'` and only collects **`.test.ts`** (not `.tsx`); there is no jsdom and no `@testing-library/react`. A React component or hook therefore **cannot be rendered in a test** without new dependencies — which Scope Discipline forbids adding unasked. Keep hooks as thin glue over a pure function and test the function (`useItemUrl` → `itemUrlFor`, `breadcrumbs` → `trimBreadcrumbs`).
 - `pnpm test` is **503 passing / 11 failing (514 in 34 files)**; the 11 are pre-existing (`activity.test.ts` ×4, `collection-actions.test.ts` ×7 — the latter needs a live DB) — don't chase them. Verified 2026-09-11.
 
 ## Debugging Rules
