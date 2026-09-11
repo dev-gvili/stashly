@@ -88,7 +88,7 @@ export async function loader({ context }: Route.LoaderArgs) {
   const session = context.get(sessionContext) // `@/context` — guaranteed by the middleware
 }
 ```
-Middleware runs parent→child *before any loader*; loaders run in **parallel**, so a parent loader that throws cannot stop a child's query from executing. Shared middleware must be typed `MiddlewareFunction<Response>` — bare `MiddlewareFunction` defaults `Result` to `unknown` and isn't assignable to the route's type. ~36 loaders still use the old `getSession` pattern; converting them is tracked in TASKS.md.
+Middleware runs parent→child *before any loader*; loaders run in **parallel**, so a parent loader that throws cannot stop a child's query from executing. Shared middleware must be typed `MiddlewareFunction<Response>` — bare `MiddlewareFunction` defaults `Result` to `unknown` and isn't assignable to the route's type. **The boundary is `layout.tsx`**: routes under `api/` and `auth/` sit outside it, never run this middleware, and must keep their own `getSession` call.
 
 **Actions pattern**: Business logic lives in `app/.server/*-actions.ts` files. These export plain functions (no classes; pass context as params) that call Prisma directly and enforce permissions inline. Route loaders/actions call these functions — **never call `prisma` directly from routes**.
 ```typescript
