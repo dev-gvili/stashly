@@ -660,9 +660,42 @@ export function toErrorInfo(error: unknown): {
  * Note the message arrives as `error.data`, not `error.statusText` — the latter
  * defaults to `'Internal Server Error'` regardless of status.
  *
+ * ## Which errors should use this
+ *
+ * 4xx codes — the user caused it and needs to be told what. 5xx codes keep
+ * throwing `StashlyError` so React Router *does* sanitize them: a
+ * `MOVE_ITEM_FAILED` message can carry a folder id, a Prisma constraint name or
+ * an S3 key, none of which belongs in a browser.
+ *
+ * One deliberate exception: `INSUFFICIENT_QUOTA` is 507, but "you need 2.1 GB
+ * of free space" is exactly what the user must see, so those sites use this
+ * too. The status class is a good rule, not a law — judge by whether the
+ * message is *for* the user.
+ *
  * @example
  * throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You do not have read access')
  */
+/**
+ * Standard reason phrases for the statuses `ERROR_DETAILS` can produce.
+ *
+ * Only these eleven appear in the table; anything else falls back to 'Error'
+ * rather than guessing. Kept beside `toRouteError` because that is the only
+ * place an HTTP status line is written.
+ */
+const STATUS_TEXT: Record<number, string> = {
+  400: 'Bad Request',
+  401: 'Unauthorized',
+  402: 'Payment Required',
+  403: 'Forbidden',
+  404: 'Not Found',
+  409: 'Conflict',
+  410: 'Gone',
+  500: 'Internal Server Error',
+  502: 'Bad Gateway',
+  503: 'Service Unavailable',
+  507: 'Insufficient Storage',
+}
+
 export function toRouteError(errorCode: StashlyErrorCode, message?: string) {
   const err = new StashlyError(errorCode, message)
   // `errorCode` and `status` are attached on top of the DataWithResponseInit so
@@ -670,11 +703,22 @@ export function toRouteError(errorCode: StashlyErrorCode, message?: string) {
   // tests assert `toMatchObject({ errorCode })`, and `toErrorInfo` reads
   // `status`. React Router only checks `type`/`data`/`init` when recognising
   // this (`isDataWithResponseInit`), so the extra fields are inert to it.
-  return Object.assign(data(err.message, { status: err.status }), {
-    errorCode,
-    status: err.status,
-    message: err.message,
-  })
+  return Object.assign(
+    data(err.message, {
+      status: err.status,
+      // Without this, `data()` leaves statusText at 'Internal Server Error'
+      // regardless of status — so a 403 reads as a server error in a network
+      // tab. The reason phrase is used rather than the message: statusText goes
+      // into the HTTP status line, which must be ISO-8859-1 and single-line, and
+      // an error message is neither guaranteed.
+      statusText: STATUS_TEXT[err.status] ?? 'Error',
+    }),
+    {
+      errorCode,
+      status: err.status,
+      message: err.message,
+    }
+  )
 }
 
 export function isStashlyError(error: unknown): error is StashlyError {

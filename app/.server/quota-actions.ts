@@ -329,7 +329,7 @@ export function checkFreeQuota(
  */
 export function validateQuotaFreeSpace(quota: QuotaOutput, size: bigint): void {
   if (quota.total - quota.used < size)
-    throw new StashlyError(StashlyErrorCode.INSUFFICIENT_QUOTA)
+    throw toRouteError(StashlyErrorCode.INSUFFICIENT_QUOTA)
 }
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────

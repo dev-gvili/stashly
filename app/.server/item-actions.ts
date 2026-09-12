@@ -1,20 +1,12 @@
-import type { TransactionClient } from '@/prisma/internal/prismaNamespace'
-import { prisma } from '@/services/db'
-import { getPrefixForModel, toChunkArray, toObjectId } from '@/utils/converters'
-import { Prisma, type Item, type PrismaClient } from '@/prisma/client'
+import { Prisma } from '@/prisma/client'
 import { ItemCategory } from '@/prisma/enums'
-import { StashlyError, StashlyErrorCode, toRouteError } from '../utils/api.errors'
-import type { StashItem } from '@/types/stash.types'
+import { createActivity } from '@/services/activity-actions'
+import { prisma } from '@/services/db'
 import {
-  hasItemPermission,
   assertItemAccess,
   getItemPermissions,
-  grantItemPermission,
+  hasItemPermission,
 } from '@/services/permission-actions'
-import {
-  requireMembership,
-  requireAtLeastRole,
-} from '@/services/workspace-actions'
 import {
   ensureUserQuota,
   onActiveItemsDeleted,
@@ -23,16 +15,23 @@ import {
   onItemsRestored,
   onItemsTrashed,
   onItemsUploaded,
-} from '../.server/quota-actions'
-import { createActivity } from './activity-actions'
-import { formatSize } from '@/utils/formaters'
-import { searchFactory } from '@/utils/search'
-import { buildItemFilters } from '@/utils/filters/item.filters'
+} from '@/services/quota-actions'
 import { getObjectText } from '@/services/s3'
 import {
-  extractMarkdownHeadings,
-  type MarkdownHeading,
-} from '@/utils/markdown'
+  requireAtLeastRole,
+  requireMembership,
+} from '@/services/workspace-actions'
+import type { StashItem } from '@/types/stash.types'
+import {
+  StashlyError,
+  StashlyErrorCode,
+  toRouteError,
+} from '@/utils/api.errors'
+import { getPrefixForModel, toChunkArray, toObjectId } from '@/utils/converters'
+import { buildItemFilters } from '@/utils/filters/item.filters'
+import { formatSize } from '@/utils/formaters'
+import { extractMarkdownHeadings, type MarkdownHeading } from '@/utils/markdown'
+import { searchFactory } from '@/utils/search'
 
 /**
  * Fire-and-forget helper that records a favorite/unfavorite activity entry
@@ -95,7 +94,11 @@ export async function getItemWithPermissions(userId: string, itemId: string) {
 
   const canRead = await hasItemPermission(userId, itemId, 'read')
   if (!canRead && item.workspaceId) {
-    await requireMembership(userId, item.workspaceId, 'You do not have access to this item')
+    await requireMembership(
+      userId,
+      item.workspaceId,
+      'You do not have access to this item'
+    )
   }
 
   const permissions = await getItemPermissions(itemId)
@@ -237,10 +240,7 @@ export async function moveItems(
       const foundIds = new Set(items.map((i) => i.id))
       for (const id of ids) {
         if (!foundIds.has(id)) {
-          throw toRouteError(
-            StashlyErrorCode.NOT_FOUND,
-            `Item ${id} not found`
-          )
+          throw toRouteError(StashlyErrorCode.NOT_FOUND, `Item ${id} not found`)
         }
       }
 
@@ -845,7 +845,7 @@ export async function copyItem(
       const userQuota = await ensureUserQuota(userId, tx)
 
       if (userQuota.remaining < source.size) {
-        throw new StashlyError(
+        throw toRouteError(
           StashlyErrorCode.INSUFFICIENT_QUOTA,
           `Insufficient quota to copy the item. you need ${formatSize(
             'byte',
@@ -895,7 +895,11 @@ export async function copyItem(
 
     // 3. check if user is a member in the source item workspace
     if (!targetWorkspaceId && source.workspaceId) {
-      await requireMembership(userId, source.workspaceId, 'You do not have access to this item')
+      await requireMembership(
+        userId,
+        source.workspaceId,
+        'You do not have access to this item'
+      )
 
       // 4. Check user's quota
       const userQuota = await ensureUserQuota(userId, tx)
@@ -903,7 +907,7 @@ export async function copyItem(
       // quotaRepository.validateFreeSpace(userQuota, source.size)
 
       if (userQuota.remaining < source.size) {
-        throw new StashlyError(
+        throw toRouteError(
           StashlyErrorCode.INSUFFICIENT_QUOTA,
           `Insufficient quota to copy the item. you need ${formatSize(
             'byte',
@@ -957,12 +961,16 @@ export async function copyItem(
     // ~~~~~~~~~~ Same Workspace with Explicit ID ~~~~~~~~~ //
 
     if (targetWorkspaceId && source.workspaceId === targetWorkspaceId) {
-      await requireMembership(userId, source.workspaceId, 'You do not have access to this item')
+      await requireMembership(
+        userId,
+        source.workspaceId,
+        'You do not have access to this item'
+      )
 
       const userQuota = await ensureUserQuota(userId, tx)
 
       if (userQuota.remaining < source.size) {
-        throw new StashlyError(
+        throw toRouteError(
           StashlyErrorCode.INSUFFICIENT_QUOTA,
           `Insufficient quota to copy the item. you need ${formatSize(
             'byte',
@@ -1019,14 +1027,23 @@ export async function copyItem(
       source.workspaceId &&
       source.workspaceId !== targetWorkspaceId
     ) {
-      await requireMembership(userId, source.workspaceId, 'You do not have access to this item')
+      await requireMembership(
+        userId,
+        source.workspaceId,
+        'You do not have access to this item'
+      )
 
-      await requireAtLeastRole(userId, targetWorkspaceId, 'member', 'You must be a member of the target workspace to copy items.')
+      await requireAtLeastRole(
+        userId,
+        targetWorkspaceId,
+        'member',
+        'You must be a member of the target workspace to copy items.'
+      )
 
       const userQuota = await ensureUserQuota(userId, tx)
 
       if (userQuota.remaining < source.size) {
-        throw new StashlyError(
+        throw toRouteError(
           StashlyErrorCode.INSUFFICIENT_QUOTA,
           `Insufficient quota to copy the item. you need ${formatSize(
             'byte',
@@ -1235,7 +1252,7 @@ async function findOrCreateFolderPath(
   rootId: string,
   ownerId: string,
   driveId: string,
-  tx: TransactionClient
+  tx: Prisma.TransactionClient
 ): Promise<{ parentId: string; createdFolderIds: string[] }> {
   let currentParentId = rootId
   const createdFolderIds: string[] = []
@@ -2186,7 +2203,7 @@ export async function paginateItems<
  * await recursiveCopy(tx, sourceFolder, 'fld_root456', 'ws_other789');
  */
 async function recursiveCopy(
-  tx: TransactionClient = prisma, // Prisma Transaction Client
+  tx: Prisma.TransactionClient = prisma, // Prisma Transaction Client
   sourceItem: Prisma.ItemGetPayload<{
     include: { file: true; folder: true; video: true; image: true; pdf: true }
   }>, // Typed as Item & { file: File | null, folder: Folder | null }
@@ -2986,7 +3003,12 @@ export async function getFavoritedItems({
             select: {
               id: true,
               favoritedBy: {
-                select: { id: true, name: true, displayName: true, image: true },
+                select: {
+                  id: true,
+                  name: true,
+                  displayName: true,
+                  image: true,
+                },
               },
             },
           },
@@ -3353,23 +3375,20 @@ export async function getFileItem(
 ) {
   const canRead = await hasItemPermission(userId, fileId, 'read')
   if (!canRead) {
-    throw toRouteError(
-      StashlyErrorCode.FORBIDDEN,
-    )
+    throw toRouteError(StashlyErrorCode.FORBIDDEN)
   }
-
 
   const item = await prisma.item.findUnique({
     where: { id: fileId, parentId: folderId },
     include: {
-      owner:{
-        select:{
-          id:true,
+      owner: {
+        select: {
+          id: true,
           name: true,
-          email:true,
-          image:true,
-          bucket:true
-        }
+          email: true,
+          image: true,
+          bucket: true,
+        },
       },
       parent: {
         select: {
@@ -3387,7 +3406,9 @@ export async function getFileItem(
         select: {
           _count: { select: { users: true } },
           roles: true,
-          users: { select: { id: true, image: true, name: true, bucket: true } },
+          users: {
+            select: { id: true, image: true, name: true, bucket: true },
+          },
         },
       },
       locked: {
@@ -3400,7 +3421,13 @@ export async function getFileItem(
         },
       },
       file: {
-        select: { id: true, mimeType: true, extension: true, key: true, bucket: true },
+        select: {
+          id: true,
+          mimeType: true,
+          extension: true,
+          key: true,
+          bucket: true,
+        },
       },
       image: true,
       video: true,
