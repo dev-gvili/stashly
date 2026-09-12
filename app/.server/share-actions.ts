@@ -20,10 +20,11 @@ import type {
 } from '@/prisma/client'
 import { z } from 'zod'
 
-type PrismaTx = Omit<
-  typeof prisma,
-  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
->
+// Prisma's own transaction-client type rather than a hand-rolled Omit of the
+// full client. The two are not interchangeable: passing this to a function
+// typed `Prisma.TransactionClient` fails, which is what broke once
+// permission-actions moved over.
+type PrismaTx = Prisma.TransactionClient
 
 const defaultOrderBy = (
   _params: z.infer<typeof shareLinkFilterSchema>

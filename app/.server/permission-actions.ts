@@ -1,7 +1,10 @@
-import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
-import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Permission, PermissionRole, Prisma } from '@/prisma/client'
+import { prisma } from '@/services/db'
+import {
+  StashlyErrorCode,
+  toRouteError,
+} from '@/utils/api.errors'
+import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { buildPermissionFilters } from '@/utils/filters/permission.filters'
 import { searchFactory } from '@/utils/search'
 import { createActivity } from './activity-actions'
@@ -28,11 +31,6 @@ export const searchPermissions = searchFactory({
     createdAt: 'desc',
   }),
 })
-
-type PrismaTx = Omit<
-  typeof prisma,
-  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
->
 
 // ---------------------------------------------------------------------------
 // Core CRUD
@@ -65,7 +63,7 @@ type PrismaTx = Omit<
  */
 export async function createPermission(
   data: Prisma.PermissionUncheckedCreateInput,
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<Permission> {
   const db = tx ?? prisma
   if (!data.itemId) {
@@ -128,7 +126,7 @@ export async function createPermission(
  */
 export async function updatePermission(
   args: Prisma.PermissionUpdateInput,
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<Permission> {
   const db = tx ?? prisma
   const perm = await db.permission.update({
@@ -181,7 +179,7 @@ export async function updatePermission(
  */
 export function deletePermission(
   id: string,
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<Permission> {
   const client = tx ?? prisma
   return client.permission
@@ -235,7 +233,7 @@ export function deletePermission(
  */
 export function findPermissionById(
   id: string,
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<Permission | null> {
   const db = tx ?? prisma
   return db.permission.findUnique({ where: { id } })
@@ -261,7 +259,7 @@ export function findPermissionById(
  */
 export function findAllPermissions(
   args: Prisma.PermissionFindManyArgs,
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<Permission[]> {
   const db = tx ?? prisma
   return db.permission.findMany(args)
@@ -378,7 +376,7 @@ export async function hasItemPermission(
   userId: string,
   itemId: string,
   role: PermissionRole = 'read',
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<boolean> {
   const db = tx ?? prisma
   // Role hierarchy: owner ≥ write ≥ read.
@@ -426,7 +424,7 @@ export async function hasLinkPermission(
   userId: string,
   linkId: string,
   role: PermissionRole = 'read',
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<boolean> {
   const db = tx ?? prisma
   const perm = await db.permission.findFirst({
@@ -452,7 +450,7 @@ export async function hasRecipientPermission(
   userId: string,
   recipientId: string,
   role: PermissionRole = 'read',
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<boolean> {
   const db = tx ?? prisma
   const perm = await db.permission.findFirst({
@@ -491,7 +489,7 @@ export async function assertItemPermission(
   userId: string,
   itemId: string,
   role: PermissionRole = 'read',
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<void> {
   const ok = await hasItemPermission(userId, itemId, role, tx)
   if (!ok) {
@@ -561,7 +559,7 @@ export async function assertItemAccess(
   opts: {
     workspaceId?: string
     role?: PermissionRole
-    tx?: PrismaTx
+    tx?: Prisma.TransactionClient
   } = {}
 ): Promise<void> {
   const { workspaceId, role = 'read', tx } = opts
@@ -606,7 +604,7 @@ export async function grantItemPermission(
   userId: string,
   itemId: string,
   role: PermissionRole = 'read',
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<Permission> {
   const db = tx ?? prisma
   // If the user already has a permission on this item (e.g. granted directly or
@@ -655,7 +653,7 @@ export async function grantItemPermission(
 export async function revokeItemPermission(
   userId: string,
   itemId: string,
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<void> {
   const permissions = await getItemPermissions(itemId)
   const perm = permissions.find((p) => p.users.some((u) => u.id === userId))
@@ -696,7 +694,7 @@ export function createPermissionForLink(
   itemId: string,
   linkId: string,
   data: Omit<Prisma.PermissionCreateInput, 'item' | 'link' | 'id'>,
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<Permission> {
   return createPermission(
     {
@@ -728,7 +726,7 @@ export function createPermissionForLink(
 export async function grantLinkPermission(
   linkId: string,
   userId: string,
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<Permission> {
   const permissions = await getLinkPermissions(linkId)
   if (!permissions.length) {
@@ -770,7 +768,7 @@ export async function revokeLinkPermission(
   linkId: string,
   userId: string,
   actorId: string,
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<Permission> {
   const canWrite = await hasLinkPermission(actorId, linkId, 'write')
   if (!canWrite) {
@@ -817,7 +815,7 @@ export async function revokeLinkPermission(
 export function expirePermission(
   id: string,
   expiresAt: Date,
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<Permission> {
   const db = tx ?? prisma
   return db.permission.update({ where: { id }, data: { expiresAt } })
@@ -843,7 +841,7 @@ export function expirePermission(
  */
 export function revokePermission(
   id: string,
-  tx?: PrismaTx
+  tx?: Prisma.TransactionClient
 ): Promise<Permission> {
   const db = tx ?? prisma
   return db.permission.update({
