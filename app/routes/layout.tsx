@@ -2,6 +2,7 @@ import { AppContent } from '@/components/app-content'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { authMiddleware, meMiddleware } from '@/services/middleware/auth'
+import { workspaceMiddleware } from '@/services/middleware/workspace'
 import { listNotifications } from '@/services/notification-actions'
 import { sidebarCookie } from '@/services/sidebar'
 import {
@@ -12,9 +13,8 @@ import { Confirm } from '@/components/confirm-renderer'
 import { DegradedNotice } from '@/components/core-components/degraded-notice'
 import { UploadPanel } from '@/components/upload'
 import { UploadThumbnailRunner } from '@/components/upload/upload-thumbnail-runner'
-import { sessionContext } from '@/context'
+import { sessionContext, workspaceContext } from '@/.server/middleware/context'
 import { useEmbeddingBackfill } from '@/hooks/useEmbeddingBackfill'
-import { prisma } from '@/services/db'
 import { Outlet, type ShouldRevalidateFunction } from 'react-router'
 import z from 'zod'
 import type { Route } from './+types/layout'
@@ -22,43 +22,41 @@ import type { Route } from './+types/layout'
 export { ErrorBoundary } from '@/components/error-boundary'
 
 // Every authenticated route hangs off this layout (see routes.ts), so these
-// two cover all 37 of them and any route added later inherits them.
+// cover all of them and any route added later inherits them. Order matters:
+// `workspaceMiddleware` reads the session the first one resolves, and runs on
+// every branch — the sidebar lists workspaces on all pages, not just
+// `/:me/workspaces/*`.
 export const middleware: Route.MiddlewareFunction[] = [
   authMiddleware,
   meMiddleware,
+  workspaceMiddleware,
 ]
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   // Resolved by the middleware above — no second getSession call.
   const session = context.get(sessionContext)
+  const workspaces = context.get(workspaceContext)
   // Determine the storage plan: prefer active subscription, then user.storagePlanId, then default
   let plan = await findStoragePlanById(session.user.storagePlanId)
   if (!plan) {
     plan = await findDefaultStoragePlan()
   }
 
-  const [sidebarCookieValue, workspaceMemberships, notificationsPage] =
-    await Promise.all([
-      sidebarCookie.parse(request.headers.get('cookie')),
-      prisma.workspaceMember.findMany({
-        where: { memberId: session.user.id },
-        select: {
-          role: true,
-          workspace: { select: { id: true, name: true, slug: true } },
-        },
-        orderBy: { workspace: { name: 'asc' } },
-      }),
-      listNotifications({ userId: session.user.id, limit: 30 }),
-    ])
+  const [sidebarCookieValue, notificationsPage] = await Promise.all([
+    sidebarCookie.parse(request.headers.get('cookie')),
+    listNotifications({ userId: session.user.id, limit: 30 }),
+  ])
 
   return {
     user: session.user,
     notifications: notificationsPage.notifications,
-    workspaces: workspaceMemberships.map((m) => ({
-      id: m.workspace.id,
-      name: m.workspace.name,
-      slug: m.workspace.slug ?? m.workspace.id,
-      role: m.role,
+    workspaces: workspaces.map((member) => ({
+      id: member.id,
+      workspaceId: member.workspaceId,
+      name: member.workspace.name,
+      slug: member.workspace.slug || '',
+      role: member.role,
+      description: member.workspace.description,
     })),
     storagePlan: {
       id: plan.id,
