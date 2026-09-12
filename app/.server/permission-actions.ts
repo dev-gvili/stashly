@@ -1,5 +1,5 @@
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Permission, PermissionRole, Prisma } from '@/prisma/client'
 import { buildPermissionFilters } from '@/utils/filters/permission.filters'
@@ -69,7 +69,7 @@ export async function createPermission(
 ): Promise<Permission> {
   const db = tx ?? prisma
   if (!data.itemId) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.INVALID_INPUT,
       'Permission must be associated with an item'
     )
@@ -231,7 +231,7 @@ export function deletePermission(
  *
  * @example
  * const perm = await findPermissionById(permissionId)
- * if (!perm) throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Permission not found')
+ * if (!perm) throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Permission not found')
  */
 export function findPermissionById(
   id: string,
@@ -446,7 +446,7 @@ export async function hasLinkPermission(
  *
  * @example
  * const canAccept = await hasRecipientPermission(userId, recipientId)
- * if (!canAccept) throw new StashlyError(StashlyErrorCode.FORBIDDEN)
+ * if (!canAccept) throw toRouteError(StashlyErrorCode.FORBIDDEN)
  */
 export async function hasRecipientPermission(
   userId: string,
@@ -495,7 +495,10 @@ export async function assertItemPermission(
 ): Promise<void> {
   const ok = await hasItemPermission(userId, itemId, role, tx)
   if (!ok) {
-    throw new StashlyError(
+    // `toRouteError`, not `new StashlyError`: React Router sanitizes anything
+    // `instanceof Error` into a generic 500 before rendering, so a StashlyError
+    // thrown from a loader loses its status and message in production.
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       `You do not have ${role} access to this item`
     )
@@ -539,8 +542,10 @@ export function assertCanUpdateItem(userId: string, itemId: string) {
  *   workspace and membership is required in addition to the item permission.
  * @param opts.role - Required item role (default `'read'`).
  * @param opts.tx - Optional transaction client, forwarded to the item check.
- * @throws {StashlyError} `FORBIDDEN` when the item permission is missing.
- * @throws When the user is not a member of `workspaceId` (statusCode 403).
+ * @throws `FORBIDDEN` (403) when the item permission is missing, or when the
+ *   user is not a member of `workspaceId`. Both arrive via `toRouteError`, so
+ *   the status and message survive React Router's production sanitization —
+ *   see the note on that helper.
  *
  * @example
  * // Personal scope — item permission only:
@@ -727,7 +732,7 @@ export async function grantLinkPermission(
 ): Promise<Permission> {
   const permissions = await getLinkPermissions(linkId)
   if (!permissions.length) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.NOT_FOUND,
       'Permission for the given share link not found'
     )
@@ -769,7 +774,7 @@ export async function revokeLinkPermission(
 ): Promise<Permission> {
   const canWrite = await hasLinkPermission(actorId, linkId, 'write')
   if (!canWrite) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'You do not have permission to revoke link access'
     )
@@ -777,7 +782,7 @@ export async function revokeLinkPermission(
 
   const permissions = await getLinkPermissions(linkId)
   if (!permissions.length) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.NOT_FOUND,
       'Permission for the given share link not found'
     )

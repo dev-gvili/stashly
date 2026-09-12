@@ -1,5 +1,5 @@
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma, StoragePlan } from '@/prisma/client'
 import type { StoragePlanType } from '@/prisma/enums'
@@ -52,7 +52,7 @@ export async function getActiveSubscription(userId: string) {
 export async function getStoragePlan(planId?: string | null, planType?: string | null) {
   if (planId) return findStoragePlanById(planId)
   if (planType) return findStoragePlanByType(planType as StoragePlanType)
-  throw new StashlyError(StashlyErrorCode.INVALID_INPUT, 'planId or planType is required')
+  throw toRouteError(StashlyErrorCode.INVALID_INPUT, 'planId or planType is required')
 }
 
 // ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ export async function updateSubscriptionPlan({
 }) {
   const plan = await getStoragePlan(storagePlanId, storagePlanType)
   if (!plan) {
-    throw new StashlyError(StashlyErrorCode.STORAGE_PLAN_NOT_FOUND)
+    throw toRouteError(StashlyErrorCode.STORAGE_PLAN_NOT_FOUND)
   }
 
   // Update user's storage plan reference
@@ -131,7 +131,7 @@ export async function updateSubscriptionPlan({
 export async function cancelSubscription(userId: string) {
   const active = await findActiveSubscriptionByOwner(userId)
   if (!active) {
-    throw new StashlyError(StashlyErrorCode.SUBSCRIPTION_NOT_FOUND)
+    throw toRouteError(StashlyErrorCode.SUBSCRIPTION_NOT_FOUND)
   }
 
   return updateSubscriptionRecord({

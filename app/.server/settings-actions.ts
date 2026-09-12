@@ -1,5 +1,5 @@
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import type { Prisma } from '@/prisma/client'
 
 /**
@@ -22,7 +22,7 @@ export async function getUserSettings(userId: string) {
   })
 
   if (!user) {
-    throw new StashlyError(StashlyErrorCode.USER_NOT_FOUND, `User not found: ${userId}`)
+    throw toRouteError(StashlyErrorCode.USER_NOT_FOUND, `User not found: ${userId}`)
   }
 
   return user
@@ -45,7 +45,7 @@ export async function updateUserSettings({
 }) {
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) {
-    throw new StashlyError(StashlyErrorCode.USER_NOT_FOUND, `User not found: ${userId}`)
+    throw toRouteError(StashlyErrorCode.USER_NOT_FOUND, `User not found: ${userId}`)
   }
 
   const data: Prisma.UserUpdateInput = {}

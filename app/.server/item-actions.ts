@@ -3,7 +3,7 @@ import { prisma } from '@/services/db'
 import { getPrefixForModel, toChunkArray, toObjectId } from '@/utils/converters'
 import { Prisma, type Item, type PrismaClient } from '@/prisma/client'
 import { ItemCategory } from '@/prisma/enums'
-import { StashlyError, StashlyErrorCode } from '../utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '../utils/api.errors'
 import type { StashItem } from '@/types/stash.types'
 import {
   hasItemPermission,
@@ -90,7 +90,7 @@ function recordFavoriteActivity(
 export async function getItemWithPermissions(userId: string, itemId: string) {
   const item = await prisma.item.findUniqueOrThrow({ where: { id: itemId } })
   if (!item) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Item not found')
   }
 
   const canRead = await hasItemPermission(userId, itemId, 'read')
@@ -208,7 +208,7 @@ export async function moveItems(
       ])
 
       if (!targetFolder) {
-        throw new StashlyError(
+        throw toRouteError(
           StashlyErrorCode.NOT_FOUND,
           'Target folder not found'
         )
@@ -228,7 +228,7 @@ export async function moveItems(
         tx
       )
       if (!canWriteTarget) {
-        throw new StashlyError(
+        throw toRouteError(
           StashlyErrorCode.FORBIDDEN,
           'You do not have write access to the target folder'
         )
@@ -237,7 +237,7 @@ export async function moveItems(
       const foundIds = new Set(items.map((i) => i.id))
       for (const id of ids) {
         if (!foundIds.has(id)) {
-          throw new StashlyError(
+          throw toRouteError(
             StashlyErrorCode.NOT_FOUND,
             `Item ${id} not found`
           )
@@ -286,7 +286,7 @@ export async function moveItems(
 
         const canWrite = await hasItemPermission(userId, item.id, 'write', tx)
         if (!canWrite) {
-          throw new StashlyError(
+          throw toRouteError(
             StashlyErrorCode.FORBIDDEN,
             'You do not have write access to one or more items'
           )
@@ -832,7 +832,7 @@ export async function copyItem(
     const canRead = await hasItemPermission(userId, itemId, 'read', tx)
 
     if (!canRead) {
-      throw new StashlyError(
+      throw toRouteError(
         StashlyErrorCode.UNAUTHORIZED,
         'You do not have access to this item'
       )
@@ -2584,7 +2584,7 @@ export async function lockItem(itemId: string, userId: string, ttlMs = 60_000) {
         },
       })
     }
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.ITEM_LOCKED,
       'Item is currently locked by another operation'
     )
@@ -3353,7 +3353,7 @@ export async function getFileItem(
 ) {
   const canRead = await hasItemPermission(userId, fileId, 'read')
   if (!canRead) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
     )
   }
@@ -3427,7 +3427,7 @@ export async function getFileItem(
   })
 
   if (!item) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.ITEM_NOT_FOUND,
       `File item not found or does not belong to the specified folder`
     )

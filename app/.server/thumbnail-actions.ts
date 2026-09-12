@@ -2,7 +2,7 @@ import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { hasItemPermission } from '@/services/permission-actions'
 import { getPresignedUrl } from '@/services/s3'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 
 export async function createThumbnail(
   itemId: string,
@@ -133,7 +133,7 @@ export async function getThumbnailSource(
 ): Promise<ThumbnailSource> {
   const canRead = await hasItemPermission(userId, itemId, 'read')
   if (!canRead) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'You do not have access to this item'
     )
@@ -156,7 +156,7 @@ export async function getThumbnailSource(
   })
 
   if (!item) {
-    throw new StashlyError(StashlyErrorCode.ITEM_NOT_FOUND, 'Item not found')
+    throw toRouteError(StashlyErrorCode.ITEM_NOT_FOUND, 'Item not found')
   }
 
   const existing = item.thumbnails[0]?.url

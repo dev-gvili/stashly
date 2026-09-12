@@ -1,5 +1,5 @@
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma } from '@/prisma/client'
 import { buildUserFilters } from '@/utils/filters/user.filters'
@@ -28,7 +28,7 @@ export const searchUsers = searchFactory({
 export async function findUserById(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) {
-    throw new StashlyError(StashlyErrorCode.USER_NOT_FOUND, `User not found: ${userId}`)
+    throw toRouteError(StashlyErrorCode.USER_NOT_FOUND, `User not found: ${userId}`)
   }
   return user
 }
@@ -40,7 +40,7 @@ export async function findUserById(userId: string) {
 export async function findUserByEmail(email: string) {
   const user = await prisma.user.findUnique({ where: { email } })
   if (!user) {
-    throw new StashlyError(StashlyErrorCode.USER_NOT_FOUND, `User not found: ${email}`)
+    throw toRouteError(StashlyErrorCode.USER_NOT_FOUND, `User not found: ${email}`)
   }
   return user
 }
@@ -58,7 +58,7 @@ export async function updateUser({
 }) {
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) {
-    throw new StashlyError(StashlyErrorCode.USER_NOT_FOUND, `User not found: ${userId}`)
+    throw toRouteError(StashlyErrorCode.USER_NOT_FOUND, `User not found: ${userId}`)
   }
   return prisma.user.update({
     where: { id: userId },
@@ -116,7 +116,7 @@ export async function searchUsersByQuery({
 export async function deleteUser(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) {
-    throw new StashlyError(StashlyErrorCode.USER_NOT_FOUND, `User not found: ${userId}`)
+    throw toRouteError(StashlyErrorCode.USER_NOT_FOUND, `User not found: ${userId}`)
   }
   return prisma.user.delete({ where: { id: userId } })
 }

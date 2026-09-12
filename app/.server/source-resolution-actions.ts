@@ -18,7 +18,7 @@
 import { prisma } from '@/services/db'
 import { getObjectText } from './s3'
 import { hasItemPermission } from './permission-actions'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 
 /** Config filenames that mark a project root, in priority order. */
 const PROJECT_FILES = ['tsconfig.json', 'jsconfig.json']
@@ -79,7 +79,7 @@ export async function getProjectConfig(
   fileId: string
 ): Promise<ProjectConfig | null> {
   if (!(await hasItemPermission(userId, fileId, 'read'))) {
-    throw new StashlyError(StashlyErrorCode.FORBIDDEN)
+    throw toRouteError(StashlyErrorCode.FORBIDDEN)
   }
 
   const [user, file] = await Promise.all([
@@ -213,7 +213,7 @@ export async function getSourceFiles(
   logicalPaths: string[]
 ): Promise<SourceFile[]> {
   if (!(await hasItemPermission(userId, rootId, 'read'))) {
-    throw new StashlyError(StashlyErrorCode.FORBIDDEN)
+    throw toRouteError(StashlyErrorCode.FORBIDDEN)
   }
 
   // Exact resolution is authoritative when the project told us its aliases.

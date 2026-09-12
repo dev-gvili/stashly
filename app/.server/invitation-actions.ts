@@ -5,7 +5,7 @@ import type {
   StashItemAudio,
   StashItemImage,
 } from '@/types/stash.types'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import {
   getPrefixForModel,
   toCategory,
@@ -553,14 +553,14 @@ export async function sendItemInvitation(
     select: { id: true, ownerId: true },
   })
   if (!item) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Item not found')
   }
 
   const isOwner = item.ownerId === senderId
   if (!isOwner) {
     const canWrite = await hasItemPermission(senderId, itemId, 'write')
     if (!canWrite) {
-      throw new StashlyError(
+      throw toRouteError(
         StashlyErrorCode.FORBIDDEN,
         'You do not have permission to invite others to this item'
       )
@@ -577,7 +577,7 @@ export async function sendItemInvitation(
     },
   })
   if (existing) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.CONFLICT,
       `A pending invitation for ${existing.email} already exists`
     )
@@ -651,14 +651,14 @@ export async function sendWorkspaceInvitation(
     },
   })
   if (!workspace) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Workspace not found')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Workspace not found')
   }
 
   const senderMembership = workspace.members[0]
   const isAdmin =
     senderMembership?.role === 'admin' || senderMembership?.role === 'owner'
   if (!isAdmin) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'Only workspace admins can send invitations'
     )
@@ -683,7 +683,7 @@ export async function sendWorkspaceInvitation(
       const memberEmails = existingUsers
         .filter((u) => existingMembers.some((m) => m.memberId === u.id))
         .map((u) => u.email)
-      throw new StashlyError(
+      throw toRouteError(
         StashlyErrorCode.CONFLICT,
         `Already workspace members: ${memberEmails.join(', ')}`
       )
@@ -699,7 +699,7 @@ export async function sendWorkspaceInvitation(
     },
   })
   if (existingInvite) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.CONFLICT,
       `A pending invitation for ${existingInvite.email} already exists`
     )
@@ -860,19 +860,19 @@ export async function acceptInvitation(
     },
   })
   if (!recipient) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.NOT_FOUND,
       'Invitation recipient not found'
     )
   }
   if (recipient.email !== userEmail) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'This invitation was not sent to you'
     )
   }
   if (recipient.status !== 'pending') {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.GONE,
       `Invitation is already ${recipient.status}`
     )
@@ -884,7 +884,7 @@ export async function acceptInvitation(
       where: { id: recipientId },
       data: { status: 'expired' },
     })
-    throw new StashlyError(StashlyErrorCode.GONE, 'Invitation has expired')
+    throw toRouteError(StashlyErrorCode.GONE, 'Invitation has expired')
   }
 
   const result = await prisma.$transaction(async (tx) => {
@@ -940,19 +940,19 @@ export async function rejectInvitation(
     include: { invitation: true },
   })
   if (!recipient) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.NOT_FOUND,
       'Invitation recipient not found'
     )
   }
   if (recipient.email !== userEmail) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'This invitation was not sent to you'
     )
   }
   if (recipient.status !== 'pending') {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.GONE,
       `Invitation is already ${recipient.status}`
     )
@@ -987,26 +987,26 @@ export async function undoInvitationResponse(
     include: { invitation: true, permission: true },
   })
   if (!recipient) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.NOT_FOUND,
       'Invitation recipient not found'
     )
   }
   if (recipient.email !== userEmail) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'This invitation was not sent to you'
     )
   }
   if (recipient.status !== 'accepted' && recipient.status !== 'rejected') {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.GONE,
       `Cannot undo a ${recipient.status} invitation`
     )
   }
   const invitation = recipient.invitation
   if (invitation.expiresAt && invitation.expiresAt < new Date()) {
-    throw new StashlyError(StashlyErrorCode.GONE, 'Invitation has expired')
+    throw toRouteError(StashlyErrorCode.GONE, 'Invitation has expired')
   }
 
   return prisma.$transaction(async (tx) => {
@@ -1054,19 +1054,19 @@ export async function cancelInvitationRecipient(
     include: { invitation: true, permission: true },
   })
   if (!recipient) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.NOT_FOUND,
       'Invitation recipient not found'
     )
   }
   if (recipient.invitation.senderId !== senderId) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'Only the sender can cancel an invitation'
     )
   }
   if (recipient.status !== 'pending') {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.GONE,
       `Invitation is already ${recipient.status}`
     )
@@ -1106,10 +1106,10 @@ export async function cancelInvitation(
 ): Promise<InvitationWithDetails> {
   const invitation = await findInvitationById(invitationId)
   if (!invitation) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Invitation not found')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Invitation not found')
   }
   if (invitation.senderId !== senderId) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'Only the sender can cancel an invitation'
     )
@@ -1119,7 +1119,7 @@ export async function cancelInvitation(
     (r) => r.status === 'pending'
   )
   if (pendingRecipients.length === 0) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.GONE,
       'No pending recipients to cancel'
     )

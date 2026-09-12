@@ -10,7 +10,7 @@ import {
 } from '@/services/permission-actions'
 import { findFirstItem } from '@/services/item-actions'
 import { requireAtLeastRole } from '@/services/workspace-actions'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { buildCollectionFilters } from '@/utils/filters/collection.filters'
 import { searchFactory } from '@/utils/search'
 import { createActivity } from './activity-actions'
@@ -686,7 +686,7 @@ export async function getCollectionForUser(
 
   const collection = await findCollectionById(collectionId)
   if (!collection) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.COLLECTION_NOT_FOUND,
       'Collection not found'
     )
@@ -787,7 +787,7 @@ export async function listCollectionPermissions(
 ) {
   const item = await findFirstItem({ where: { id: collectionId } })
   if (!item) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.COLLECTION_NOT_FOUND,
       'Collection not found'
     )
@@ -797,7 +797,7 @@ export async function listCollectionPermissions(
   const canWrite =
     isOwner || (await hasItemPermission(userId, collectionId, 'write'))
   if (!canWrite) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'You do not have permission to view collection permissions'
     )
@@ -818,7 +818,7 @@ export async function grantCollectionPermission(
 ) {
   const item = await findFirstItem({ where: { id: collectionId } })
   if (!item) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.COLLECTION_NOT_FOUND,
       'Collection not found'
     )
@@ -828,7 +828,7 @@ export async function grantCollectionPermission(
   const canWrite =
     isOwner || (await hasItemPermission(actingUserId, collectionId, 'write'))
   if (!canWrite) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'You cannot grant permissions on this collection'
     )

@@ -28,10 +28,16 @@ export function ErrorBoundary({
   console.error('ErrorBoundary caught an error:', error)
   if (isRouteErrorResponse(error)) {
     message = error.status === 404 ? '404' : 'Error'
+    status = error.status
     details =
       error.status === 404
         ? 'The requested page could not be found.'
-        : error.statusText || details
+        : // `throw data(msg, { status })` puts the message on `error.data`;
+          // `statusText` defaults to 'Internal Server Error' whatever the
+          // status, so reading it first would label a 403 as a server error.
+          (typeof error.data === 'string' ? error.data : null) ||
+          error.statusText ||
+          details
   } else if (isStashlyError(error)) {
     message = error.name
     status = error.status

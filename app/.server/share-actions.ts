@@ -1,5 +1,5 @@
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import {
   createPermission,
@@ -62,7 +62,7 @@ export const searchShareLinks = searchFactory({
  *
  * @example
  * const link = await findShareLinkById(linkId)
- * if (!link) throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Share link not found')
+ * if (!link) throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Share link not found')
  */
 export function findShareLinkById(
   id: string,
@@ -158,7 +158,7 @@ export function deleteShareLink(id: string, tx?: PrismaTx): Promise<ShareLink> {
  *
  * @example
  * const link = await findShareLinkByUrl(url)
- * if (!link) throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Invalid share link')
+ * if (!link) throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Invalid share link')
  * const item = link.permission[0]?.item
  */
 export function findShareLinkByUrl(
@@ -234,7 +234,7 @@ export function findShareLinksForItem(
  *
  * @example
  * if (!await isShareLinkActive(linkId)) {
- *   throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Link expired')
+ *   throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Link expired')
  * }
  */
 export async function isShareLinkActive(id: string): Promise<boolean> {
@@ -377,7 +377,7 @@ export async function addUserToShareLink(
 ) {
   const permissions = await getLinkPermissions(linkId)
   if (!permissions.length) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.NOT_FOUND,
       'Permission for the given share link not found'
     )
@@ -409,7 +409,7 @@ export async function removeUserFromShareLink(
 ) {
   const canWrite = await hasLinkPermission(actorId, linkId, 'write')
   if (!canWrite) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'You do not have permission to revoke link access'
     )
@@ -417,7 +417,7 @@ export async function removeUserFromShareLink(
 
   const permissions = await getLinkPermissions(linkId)
   if (!permissions.length) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.NOT_FOUND,
       'Permission for the given share link not found'
     )

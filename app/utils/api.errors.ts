@@ -1,6 +1,7 @@
 /**
  * @file Defines a custom ApiError class and related utilities for consistent API error handling.
  */
+import { data } from 'react-router'
 
 /**
  * Enum for application-specific API error codes.
@@ -556,19 +557,33 @@ export class StashlyError extends Error {
 }
 
 /**
- * Normalises anything thrown by an action file into `{ status, message }`.
+ * Reads an **unknown caught value** and resolves `{ status, message }`.
  *
- * Historically two error shapes reached route handlers and disagreed on the
- * field name: `StashlyError` exposes the HTTP status as `status`, while the
- * ad-hoc guards in `workspace-actions.ts` set `statusCode`. Those guards now
- * throw `StashlyError` too, so `status` is the only shape actions produce —
- * but this still reads both, because third-party and framework errors reach
- * the same `catch` blocks and reading only one field drops the other's status
- * on the floor, turning a typed 404/403 into a 500.
+ * This is the consuming half of the pair — {@link toRouteError} builds what an
+ * action throws, this interprets what a `catch` receives. They are not
+ * alternatives: an API route catches plenty it never threw (Prisma validation
+ * errors, Zod failures, auth library errors, a bare `Error`), and those need to
+ * resolve to *no* status rather than to garbage, so the caller can fall back to
+ * 500.
  *
- * Route handlers can't `instanceof StashlyError` cheaply (the dot-server plugin
- * makes importing server modules into a route a build-graph question), so this
- * duck-types both and ignores anything that isn't a plausible HTTP status.
+ * Resolution order, and what each step is for:
+ *
+ * 1. `errorCode` → `ERROR_DETAILS`. The code is authoritative: `INVALID_INPUT`
+ *    is 400 whether or not the object also carries a `status`, so the two can
+ *    never disagree.
+ * 2. `init.status` — a plain `data(payload, { status })` not built by
+ *    `toRouteError`.
+ * 3. `status` — `StashlyError` and anything else exposing it directly.
+ * 4. `statusCode` — **nothing in this codebase emits this any more** (it came
+ *    from `throwGuardError`, since deleted). Kept only because some third-party
+ *    libraries use that spelling, and because `api-errors.test.ts` pins it.
+ *
+ * Anything outside 400–599 is discarded, so a rogue value cannot become a
+ * response status.
+ *
+ * Route handlers also can't `instanceof StashlyError` cheaply — the dot-server
+ * plugin makes importing a server module into a route a build-graph question —
+ * which is the other reason this duck-types rather than checking classes.
  *
  * @param error - The caught value, of unknown type.
  * @returns The resolved status (omitted when the error carried none) and message.
@@ -583,15 +598,83 @@ export function toErrorInfo(error: unknown): {
   status?: number
   message?: string
 } {
-  const e = error as { status?: unknown; statusCode?: unknown; message?: unknown }
-  const raw = typeof e?.status === 'number' ? e.status : e?.statusCode
+  const e = error as {
+    errorCode?: unknown
+    status?: unknown
+    statusCode?: unknown
+    message?: unknown
+    // React Router's `data(payload, { status })` — the status lives on `init`,
+    // and the payload, not `message`, carries the text. Actions throw this so
+    // the status survives into production: RR sanitizes thrown `Error`s but not
+    // `DataWithResponseInit`, which is not an Error subclass.
+    type?: unknown
+    data?: unknown
+    init?: { status?: unknown }
+  }
+
+  const isData = e?.type === 'DataWithResponseInit'
+
+  // `errorCode` wins. ERROR_DETAILS is the single source of truth for what a
+  // code means over HTTP, so INVALID_INPUT resolves to 400 whether or not the
+  // thrown object also carries a `status`. Reading an attached field first
+  // would let the two disagree — which is the class of bug this whole helper
+  // exists to prevent.
+  const code = e?.errorCode
+  const fromCode =
+    typeof code === 'string' && code in ERROR_DETAILS
+      ? ERROR_DETAILS[code as StashlyErrorCode].status
+      : undefined
+
+  const raw =
+    fromCode ??
+    (isData
+      ? e?.init?.status
+      : typeof e?.status === 'number'
+        ? e.status
+        : e?.statusCode)
   const status =
     typeof raw === 'number' && raw >= 400 && raw <= 599 ? raw : undefined
 
+  const text = isData ? e?.data : e?.message
+
   return {
     status,
-    message: typeof e?.message === 'string' ? e.message : undefined,
+    message: typeof text === 'string' ? text : undefined,
   }
+}
+
+/**
+ * Builds a throwable that carries a `StashlyError`'s status and message all the
+ * way to the browser, including in production.
+ *
+ * A thrown `StashlyError` does not survive: React Router's `sanitizeError`
+ * replaces anything `instanceof Error` with `new Error('Unexpected Server
+ * Error')` outside development, stripping status, errorCode and message. It
+ * does that *before* rendering, so even the server-side ErrorBoundary sees the
+ * flattened version — which is why this cannot be fixed in the boundary.
+ *
+ * `data()` returns a `DataWithResponseInit`, which is deliberately not an Error
+ * subclass, so it passes through untouched and becomes an `ErrorResponse` with
+ * the status intact (`dataWithResponseInitToErrorResponse`).
+ *
+ * Note the message arrives as `error.data`, not `error.statusText` — the latter
+ * defaults to `'Internal Server Error'` regardless of status.
+ *
+ * @example
+ * throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You do not have read access')
+ */
+export function toRouteError(errorCode: StashlyErrorCode, message?: string) {
+  const err = new StashlyError(errorCode, message)
+  // `errorCode` and `status` are attached on top of the DataWithResponseInit so
+  // callers that duck-type a StashlyError keep working — the collection action
+  // tests assert `toMatchObject({ errorCode })`, and `toErrorInfo` reads
+  // `status`. React Router only checks `type`/`data`/`init` when recognising
+  // this (`isDataWithResponseInit`), so the extra fields are inert to it.
+  return Object.assign(data(err.message, { status: err.status }), {
+    errorCode,
+    status: err.status,
+    message: err.message,
+  })
 }
 
 export function isStashlyError(error: unknown): error is StashlyError {

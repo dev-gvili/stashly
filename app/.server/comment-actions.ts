@@ -1,5 +1,5 @@
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma } from '@/prisma/client'
 import { buildCommentFilters } from '@/utils/filters/comment.filters'
@@ -79,10 +79,10 @@ export async function updateComment({
 }) {
   const comment = await prisma.comment.findUnique({ where: { id: commentId } })
   if (!comment) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Comment not found')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Comment not found')
   }
   if (comment.ownerId !== ownerId) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'You do not have permission to update this comment'
     )
@@ -105,10 +105,10 @@ export async function deleteComment({
 }) {
   const comment = await prisma.comment.findUnique({ where: { id: commentId } })
   if (!comment) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Comment not found')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Comment not found')
   }
   if (comment.ownerId !== ownerId) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'You do not have permission to delete this comment'
     )

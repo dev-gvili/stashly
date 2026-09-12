@@ -1,5 +1,5 @@
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { NotificationType, NotificationStatus, NotificationKind } from '@/prisma/enums'
 import type { Prisma } from '@/prisma/client'
@@ -67,10 +67,10 @@ export async function listNotifications({
 export async function markNotificationRead(id: string, userId: string) {
   const notification = await prisma.notification.findUnique({ where: { id } })
   if (!notification) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Notification not found')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Notification not found')
   }
   if (notification.userId !== userId) {
-    throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'Cannot update another user\'s notification')
+    throw toRouteError(StashlyErrorCode.FORBIDDEN, 'Cannot update another user\'s notification')
   }
   return prisma.notification.update({
     where: { id },
@@ -85,10 +85,10 @@ export async function markNotificationRead(id: string, userId: string) {
 export async function markNotificationUnread(id: string, userId: string) {
   const notification = await prisma.notification.findUnique({ where: { id } })
   if (!notification) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Notification not found')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Notification not found')
   }
   if (notification.userId !== userId) {
-    throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'Cannot update another user\'s notification')
+    throw toRouteError(StashlyErrorCode.FORBIDDEN, 'Cannot update another user\'s notification')
   }
   return prisma.notification.update({
     where: { id },
@@ -116,10 +116,10 @@ export async function markAllNotificationsRead(userId: string) {
 export async function deleteNotification(id: string, userId: string) {
   const notification = await prisma.notification.findUnique({ where: { id } })
   if (!notification) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Notification not found')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Notification not found')
   }
   if (notification.userId !== userId) {
-    throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'Cannot delete another user\'s notification')
+    throw toRouteError(StashlyErrorCode.FORBIDDEN, 'Cannot delete another user\'s notification')
   }
   return prisma.notification.delete({ where: { id } })
 }

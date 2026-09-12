@@ -1,5 +1,5 @@
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma } from '@/prisma/client'
 import { buildItemVersionFilters } from '@/utils/filters/itemVersion.filters'
@@ -40,7 +40,7 @@ export async function getVersion(versionId: string) {
     where: { id: versionId },
   })
   if (!version) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Version not found')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Version not found')
   }
   return version
 }
@@ -101,10 +101,10 @@ export async function restoreVersion({
     where: { id: versionId },
   })
   if (!version) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Version not found')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Version not found')
   }
   if (version.itemId !== itemId) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'Version does not belong to this item'
     )
@@ -114,7 +114,7 @@ export async function restoreVersion({
     // Snapshot the current item state as a new version before restoring
     const currentItem = await tx.item.findUnique({ where: { id: itemId } })
     if (!currentItem) {
-      throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
+      throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Item not found')
     }
 
     // Touch the item's updatedAt to signal a restore event
@@ -142,10 +142,10 @@ export async function deleteVersion({
     include: { item: { select: { ownerId: true } } },
   })
   if (!version) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Version not found')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Version not found')
   }
   if (version.item?.ownerId !== ownerId) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       'You do not have permission to delete this version'
     )

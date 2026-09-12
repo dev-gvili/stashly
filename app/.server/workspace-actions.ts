@@ -1,5 +1,5 @@
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import {
   grantItemPermission,
@@ -346,7 +346,7 @@ export async function requireRole(
 ): Promise<void> {
   const has = await hasRole(userId, workspaceId, role)
   if (!has) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
       `Access denied: user ${userId} must have role "${role}" in workspace ${workspaceId}`,
@@ -371,7 +371,7 @@ export async function requireAtLeastRole(
 ): Promise<void> {
   const has = await hasAtLeastRole(userId, workspaceId, role)
   if (!has) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
       `Access denied: user ${userId} must have at least role "${role}" in workspace ${workspaceId}`,
@@ -395,7 +395,7 @@ export async function requireMembership(
 ): Promise<void> {
   const ok = await isMember(userId, workspaceId)
   if (!ok) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
       `Access denied: user ${userId} is not a member of workspace ${workspaceId}`,
@@ -420,7 +420,7 @@ export async function requireRoleAndFetch(
 ): Promise<WorkspaceMember> {
   const member = await findMemberByUserAndWorkspace(userId, workspaceId)
   if (!member || member.role !== role) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
       `Access denied: user ${userId} must have role "${role}" in workspace ${workspaceId}`,
@@ -446,7 +446,7 @@ export async function requireAtLeastRoleAndFetch(
 ): Promise<WorkspaceMember> {
   const member = await findMemberByUserAndWorkspace(userId, workspaceId)
   if (!member) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
       `Access denied: user ${userId} is not a member of workspace ${workspaceId}`,
@@ -454,7 +454,7 @@ export async function requireAtLeastRoleAndFetch(
   }
   const order = ['viewer', 'member', 'admin', 'owner'] as const
   if (order.indexOf(member.role) < order.indexOf(role)) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
       `Access denied: user ${userId} must have at least role "${role}" in workspace ${workspaceId}`,
@@ -479,7 +479,7 @@ export async function requireMembershipAndFetch(
 ): Promise<WorkspaceMember> {
   const member = await findMemberByUserAndWorkspace(userId, workspaceId)
   if (!member) {
-    throw new StashlyError(
+    throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
       `Access denied: user ${userId} is not a member of workspace ${workspaceId}`,
@@ -626,7 +626,7 @@ export async function updateWorkspaceItem(
   updateData: Prisma.ItemUpdateInput
 ) {
   const item = await findItem({ where: { id: itemId } })
-  if (!item) throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
+  if (!item) throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Item not found')
 
   const canEdit = await hasItemPermission(userId, itemId, 'write')
   if (!canEdit && item.workspaceId) {
@@ -648,7 +648,7 @@ export async function updateWorkspaceItem(
  */
 export async function deleteWorkspaceItem(userId: string, itemId: string) {
   const item = await findItem({ where: { id: itemId } })
-  if (!item) throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
+  if (!item) throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Item not found')
 
   const canDelete = await hasItemPermission(userId, itemId, 'write')
   if (!canDelete && item.workspaceId) {
@@ -670,7 +670,7 @@ export async function deleteWorkspaceItem(userId: string, itemId: string) {
  */
 export async function favoriteItem(userId: string, itemId: string) {
   const item = await findItem({ where: { id: itemId } })
-  if (!item) throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
+  if (!item) throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Item not found')
 
   const canRead = await hasItemPermission(userId, itemId, 'read')
   if (!canRead && item.workspaceId) {
@@ -690,7 +690,7 @@ export async function favoriteItem(userId: string, itemId: string) {
  */
 export async function unfavoriteItem(userId: string, itemId: string) {
   const item = await findItem({ where: { id: itemId } })
-  if (!item) throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
+  if (!item) throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Item not found')
 
   return removeFavorite(itemId, userId)
 }
@@ -721,7 +721,7 @@ export async function grantItemPermissionToUser(
   role: PermissionRole
 ) {
   const item = await findItem({ where: { id: itemId } })
-  if (!item) throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
+  if (!item) throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Item not found')
 
   const isOwner = item.ownerId === actingUserId
   const isAdmin =
@@ -729,7 +729,7 @@ export async function grantItemPermissionToUser(
     (await hasAtLeastRole(actingUserId, item.workspaceId, 'admin'))
 
   if (!isOwner && !isAdmin) {
-    throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'You cannot grant permissions on this item')
+    throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You cannot grant permissions on this item')
   }
 
   return grantItemPermission(targetUserId, itemId, role)
@@ -755,7 +755,7 @@ export async function revokeItemPermissionFromUser(
   itemId: string
 ) {
   const item = await findItem({ where: { id: itemId } })
-  if (!item) throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
+  if (!item) throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Item not found')
 
   const isOwner = item.ownerId === actingUserId
   const isAdmin =
@@ -763,14 +763,14 @@ export async function revokeItemPermissionFromUser(
     (await hasAtLeastRole(actingUserId, item.workspaceId, 'admin'))
 
   if (!isOwner && !isAdmin) {
-    throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'You cannot revoke permissions on this item')
+    throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You cannot revoke permissions on this item')
   }
 
   const perms = await getItemPermissions(itemId)
   const perm = perms.find((p) => p.users.some((u) => u.id === targetUserId))
 
   if (!perm) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Permission not found for this user')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Permission not found for this user')
   }
 
   return deletePermission(perm.id)
@@ -791,7 +791,7 @@ export async function listItemPermissions(
   itemId: string
 ): Promise<Permission[]> {
   const item = await findItem({ where: { id: itemId } })
-  if (!item) throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'Item not found')
+  if (!item) throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Item not found')
 
   const isOwner = item.ownerId === actingUserId
   const isAdmin =
@@ -799,7 +799,7 @@ export async function listItemPermissions(
     (await hasAtLeastRole(actingUserId, item.workspaceId, 'admin'))
 
   if (!isOwner && !isAdmin) {
-    throw new StashlyError(StashlyErrorCode.FORBIDDEN, 'You cannot view permissions for this item')
+    throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You cannot view permissions for this item')
   }
 
   return getItemPermissions(itemId)
@@ -831,7 +831,7 @@ export async function syncMemberItemPermissions(
 ): Promise<void> {
   const member = await findMemberByUserAndWorkspace(userId, workspaceId)
   if (!member) {
-    throw new StashlyError(StashlyErrorCode.NOT_FOUND, 'User is not a member of this workspace')
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'User is not a member of this workspace')
   }
   await syncWorkspaceItemPermissions(userId, workspaceId, member.role, client)
 }

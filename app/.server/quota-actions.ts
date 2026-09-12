@@ -1,7 +1,7 @@
 import type { Prisma, Quota as PrismaQuota } from '@/prisma/client'
 import { QuotaStatus } from '@/prisma/enums'
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import {
   findDefaultStoragePlan,
   findStoragePlanById,
@@ -173,7 +173,7 @@ export async function findQuotaByUserId(
     where: { drive: { ownerId: userId } },
   })
   if (!quota) {
-    throw new StashlyError(StashlyErrorCode.QUOTA_NOT_DEFINED_FOR_USER)
+    throw toRouteError(StashlyErrorCode.QUOTA_NOT_DEFINED_FOR_USER)
   }
   return toQuota(quota)
 }
@@ -252,7 +252,7 @@ export async function assertQuotaExists(
   client: Prisma.TransactionClient = prisma
 ) {
   const quota = await client.quota.findUnique({ where: { id } })
-  if (!quota) throw new StashlyError(StashlyErrorCode.QUOTA_NOT_FOUND)
+  if (!quota) throw toRouteError(StashlyErrorCode.QUOTA_NOT_FOUND)
   return toQuota(quota)
 }
 
@@ -274,7 +274,7 @@ export async function ensureUserQuota(
 ) {
   const quota = await findQuotaByUserId(userId, client)
   if (!quota)
-    throw new StashlyError(StashlyErrorCode.QUOTA_NOT_DEFINED_FOR_USER)
+    throw toRouteError(StashlyErrorCode.QUOTA_NOT_DEFINED_FOR_USER)
   return quota
 }
 
@@ -415,7 +415,7 @@ async function applyQuotaDelta({
   if (id) current = await findQuotaById(id, client)
   else if (driveId) current = await findQuotaByDriveId(driveId, client)
   else if (userId) current = await findQuotaByUserId(userId, client)
-  if (!current) throw new StashlyError(StashlyErrorCode.QUOTA_NOT_FOUND)
+  if (!current) throw toRouteError(StashlyErrorCode.QUOTA_NOT_FOUND)
 
   // `increment` compiles to `used = used + $delta`, which Postgres evaluates
   // against the row *after* taking its lock. Concurrent deltas therefore queue
