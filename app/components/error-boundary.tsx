@@ -29,10 +29,8 @@ export function ErrorBoundary({
   if (isRouteErrorResponse(error)) {
     message = error.status === 404 ? '404' : 'Error'
     status = error.status
-    details =
-      error.status === 404
-        ? 'The requested page could not be found.'
-        : // `throw data(msg, { status })` puts the message on `error.data`;
+    details = 
+          // `throw data(msg, { status })` puts the message on `error.data`;
           // `statusText` defaults to 'Internal Server Error' whatever the
           // status, so reading it first would label a 403 as a server error.
           (typeof error.data === 'string' ? error.data : null) ||

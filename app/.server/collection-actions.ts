@@ -682,8 +682,6 @@ export async function getCollectionForUser(
   userId: string,
   collectionId: string
 ): Promise<CollectionWithMembers> {
-  await assertItemPermission(userId, collectionId, 'read')
-
   const collection = await findCollectionById(collectionId)
   if (!collection) {
     throw toRouteError(
@@ -691,6 +689,8 @@ export async function getCollectionForUser(
       'Collection not found'
     )
   }
+  await assertItemPermission(userId, collectionId, 'read')
+
   return collection
 }
 

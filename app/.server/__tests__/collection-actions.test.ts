@@ -606,9 +606,13 @@ describe('getCollectionForUser', () => {
     expect(result.type).toBe(ItemType.collection)
   })
 
-  it('throws FORBIDDEN for a non-existent collection ID', async () => {
+  it('throws COLLECTION_NOT_FOUND for a non-existent collection ID', async () => {
+    // Existence is checked before permission on purpose: when the collection is
+    // gone, a 403 is misleading — the caller is not being refused access, there
+    // is nothing to access. Reversing these two also means a deleted collection
+    // renders "not found" rather than "you do not have access".
     await expect(getCollectionForUser(ownerId, 'nonexistent')).rejects.toMatchObject({
-      errorCode: StashlyErrorCode.FORBIDDEN, // assertItemPermission fires first
+      errorCode: StashlyErrorCode.COLLECTION_NOT_FOUND,
     })
   })
 
