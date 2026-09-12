@@ -1,5 +1,9 @@
 import { prisma } from '@/services/db'
-import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
+import {
+  StashlyError,
+  StashlyErrorCode,
+  toRouteError,
+} from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import {
   grantItemPermission,
@@ -27,7 +31,12 @@ import {
   workspaceFilterSchema,
 } from '@/utils/filters/workspace.filters'
 import { searchFactory } from '@/utils/search'
-import type { Workspace, WorkspaceMember, Permission, Prisma } from '@/prisma/client'
+import type {
+  Workspace,
+  WorkspaceMember,
+  Permission,
+  Prisma,
+} from '@/prisma/client'
 import type { WorkspaceMemberRole, PermissionRole } from '@/prisma/enums'
 import { z } from 'zod'
 
@@ -40,7 +49,33 @@ type PrismaTx = Omit<
   '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
 >
 
+export type WorkspaceMemberData = Prisma.WorkspaceMemberGetPayload<{
+  select: {
+    id: true
+    role: true
+    workspaceId: true
+    workspace: {
+      select: {
+        name: true
+        slug: true
+        description: true
+      }
+    }
+  }
+}> 
 
+const defaultWorkspaceMemberSelect = {
+  id: true,
+  role: true,
+  workspaceId: true,
+  workspace: {
+    select: {
+      name: true,
+      slug: true,
+      description: true,
+    },
+  },
+} satisfies Prisma.WorkspaceMemberSelect 
 // ---------------------------------------------------------------------------
 // Search
 // ---------------------------------------------------------------------------
@@ -54,7 +89,8 @@ type PrismaTx = Omit<
 export const searchWorkspaces = searchFactory({
   dbDelegate: prisma.workspace,
   buildFilters: buildWorkspaceFilters,
-  defaultOrderBy: (_params: z.infer<typeof workspaceFilterSchema>) => ({} as Prisma.WorkspaceOrderByWithRelationInput),
+  defaultOrderBy: (_params: z.infer<typeof workspaceFilterSchema>) =>
+    ({}) as Prisma.WorkspaceOrderByWithRelationInput,
 })
 
 /**
@@ -69,7 +105,10 @@ export const searchWorkspaceMembers = searchFactory({
   defaultOrderBy: (params: z.infer<typeof workspaceMemberFilterSchema>) => ({
     ...(params.workspaceId
       ? { member: { name: 'asc' as const }, role: 'asc' as const }
-      : { workspace: { name: 'asc' as const }, member: { name: 'asc' as const } }),
+      : {
+          workspace: { name: 'asc' as const },
+          member: { name: 'asc' as const },
+        }),
   }),
 })
 
@@ -112,7 +151,9 @@ export function findWorkspaceBySlug(slug: string): Promise<Workspace | null> {
  * const all = await findAllWorkspaces()
  * const active = await findAllWorkspaces({ where: { default: false } })
  */
-export function findAllWorkspaces(args?: Prisma.WorkspaceFindManyArgs): Promise<Workspace[]> {
+export function findAllWorkspaces(
+  args?: Prisma.WorkspaceFindManyArgs
+): Promise<Workspace[]> {
   return prisma.workspace.findMany(args)
 }
 
@@ -125,7 +166,9 @@ export function findAllWorkspaces(args?: Prisma.WorkspaceFindManyArgs): Promise<
  * @example
  * const ws = await createWorkspace({ name: 'Design Team', slug: 'design-team' })
  */
-export function createWorkspace(data: Omit<Prisma.WorkspaceCreateInput, 'id'>): Promise<Workspace> {
+export function createWorkspace(
+  data: Omit<Prisma.WorkspaceCreateInput, 'id'>
+): Promise<Workspace> {
   return prisma.workspace.create({
     data: { ...data, id: toObjectId(getPrefixForModel('Workspace')) },
   })
@@ -140,7 +183,9 @@ export function createWorkspace(data: Omit<Prisma.WorkspaceCreateInput, 'id'>): 
  * @example
  * const ws = await updateWorkspace({ where: { id: 'ws_123' }, data: { name: 'New Name' } })
  */
-export function updateWorkspace(args: Prisma.WorkspaceUpdateArgs): Promise<Workspace> {
+export function updateWorkspace(
+  args: Prisma.WorkspaceUpdateArgs
+): Promise<Workspace> {
   return prisma.workspace.update(args)
 }
 
@@ -170,7 +215,10 @@ export function deleteWorkspace(id: string): Promise<Workspace> {
  * @example
  * const mem = await findMemberById('wm_abc')
  */
-export function findMemberById(id: string, tx?: PrismaTx): Promise<WorkspaceMember | null> {
+export function findMemberById(
+  id: string,
+  tx?: PrismaTx
+): Promise<WorkspaceMember | null> {
   const db = tx ?? prisma
   return db.workspaceMember.findUnique({ where: { id } })
 }
@@ -186,30 +234,62 @@ export function findMemberById(id: string, tx?: PrismaTx): Promise<WorkspaceMemb
  * @example
  * const mem = await findMemberByUserAndWorkspace(userId, workspaceId)
  */
-export function findMemberByUserAndWorkspace(
+export async function findMemberByUserAndWorkspace(
   userId: string,
   workspaceId: string,
-  tx?: PrismaTx
+  client: Prisma.TransactionClient = prisma
 ): Promise<WorkspaceMember | null> {
-  const db = tx ?? prisma
-  return db.workspaceMember.findFirst({ where: { memberId: userId, workspaceId } })
+  return await client.workspaceMember.findFirst({
+    where: { memberId: userId, workspaceId },
+  })
 }
 
 /**
  * Return all members of a workspace.
  *
  * @param workspaceId - The workspace ID.
- * @param tx - Optional transaction client.
+ * @param client - Optional transaction client.
  *
  * @example
  * const members = await getMembersForWorkspace('ws_123')
  */
 export function getMembersForWorkspace(
   workspaceId: string,
-  tx?: PrismaTx
+  client: Prisma.TransactionClient = prisma
 ): Promise<WorkspaceMember[]> {
-  const db = tx ?? prisma
-  return db.workspaceMember.findMany({ where: { workspaceId } })
+  return client.workspaceMember.findMany({ where: { workspaceId } })
+}
+
+/**
+ * Retrieve a workspace member record along with the workspace's name, slug, and description.
+ *
+ * @param workspaceId - The workspace ID.
+ * @param userId - The user ID.
+ * @param client - Optional transaction client.
+ * @returns The workspace member record or `null` if not found.
+ */
+export function getWorkspaceMemberWithWorkspace(
+  workspaceId: string,
+  userId: string,
+  client: Prisma.TransactionClient = prisma
+): Promise<WorkspaceMemberData | null> {
+  return client.workspaceMember.findFirst({
+    where: { workspaceId, memberId: userId },
+    select: defaultWorkspaceMemberSelect,
+  })
+}
+
+export function findAllMemberWorkspaces(
+  userId: string,
+  client: Prisma.TransactionClient = prisma
+): Promise<WorkspaceMemberData[]> {
+  return client.workspaceMember.findMany({
+    where: { memberId: userId },
+    select: defaultWorkspaceMemberSelect,
+    // The sidebar renders this list as-is, so order it here rather than at
+    // each call site.
+    orderBy: { workspace: { name: 'asc' } },
+  })
 }
 
 /**
@@ -228,10 +308,9 @@ export function addMember(
   userId: string,
   workspaceId: string,
   role: WorkspaceMemberRole = 'member',
-  tx?: PrismaTx
+  client: Prisma.TransactionClient = prisma
 ): Promise<WorkspaceMember> {
-  const db = tx ?? prisma
-  return db.workspaceMember.create({
+  return client.workspaceMember.create({
     data: {
       id: toObjectId(getPrefixForModel('WorkspaceMember')),
       member: { connect: { id: userId } },
@@ -253,10 +332,9 @@ export function addMember(
  */
 export function updateMember(
   args: Prisma.WorkspaceMemberUpdateArgs,
-  tx?: PrismaTx
+  client: Prisma.TransactionClient = prisma
 ): Promise<WorkspaceMember> {
-  const db = tx ?? prisma
-  return db.workspaceMember.update(args)
+  return client.workspaceMember.update(args)
 }
 
 // ---------------------------------------------------------------------------
@@ -272,10 +350,11 @@ export function updateMember(
 export async function isMember(
   userId: string,
   workspaceId: string,
-  tx?: PrismaTx
+  client: Prisma.TransactionClient = prisma
 ): Promise<boolean> {
-  const db = tx ?? prisma
-  const count = await db.workspaceMember.count({ where: { memberId: userId, workspaceId } })
+  const count = await client.workspaceMember.count({
+    where: { memberId: userId, workspaceId },
+  })
   return count > 0
 }
 
@@ -285,9 +364,11 @@ export async function isMember(
  * @example
  * const n = await countMembers('ws_123')
  */
-export async function countMembers(workspaceId: string, tx?: PrismaTx): Promise<number> {
-  const db = tx ?? prisma
-  return db.workspaceMember.count({ where: { workspaceId } })
+export async function countMembers(
+  workspaceId: string,
+  client: Prisma.TransactionClient = prisma
+): Promise<number> {
+  return client.workspaceMember.count({ where: { workspaceId } })
 }
 
 /**
@@ -300,9 +381,9 @@ export async function hasRole(
   userId: string,
   workspaceId: string,
   role: WorkspaceMemberRole,
-  tx?: PrismaTx
+  client: Prisma.TransactionClient = prisma
 ): Promise<boolean> {
-  const member = await findMemberByUserAndWorkspace(userId, workspaceId, tx)
+  const member = await findMemberByUserAndWorkspace(userId, workspaceId, client )
   return !!member && member.role === role
 }
 
@@ -317,9 +398,9 @@ export async function hasAtLeastRole(
   userId: string,
   workspaceId: string,
   role: WorkspaceMemberRole,
-  tx?: PrismaTx
+  client: Prisma.TransactionClient = prisma
 ): Promise<boolean> {
-  const member = await findMemberByUserAndWorkspace(userId, workspaceId, tx)
+  const member = await findMemberByUserAndWorkspace(userId, workspaceId, client)
   if (!member) return false
   const order = ['viewer', 'member', 'admin', 'owner'] as const
   return order.indexOf(member.role) >= order.indexOf(role)
@@ -349,7 +430,7 @@ export async function requireRole(
     throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
-      `Access denied: user ${userId} must have role "${role}" in workspace ${workspaceId}`,
+        `Access denied: user ${userId} must have role "${role}" in workspace ${workspaceId}`
     )
   }
 }
@@ -374,7 +455,7 @@ export async function requireAtLeastRole(
     throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
-      `Access denied: user ${userId} must have at least role "${role}" in workspace ${workspaceId}`,
+        `Access denied: user ${userId} must have at least role "${role}" in workspace ${workspaceId}`
     )
   }
 }
@@ -398,7 +479,7 @@ export async function requireMembership(
     throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
-      `Access denied: user ${userId} is not a member of workspace ${workspaceId}`,
+        `Access denied: user ${userId} is not a member of workspace ${workspaceId}`
     )
   }
 }
@@ -423,7 +504,7 @@ export async function requireRoleAndFetch(
     throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
-      `Access denied: user ${userId} must have role "${role}" in workspace ${workspaceId}`,
+        `Access denied: user ${userId} must have role "${role}" in workspace ${workspaceId}`
     )
   }
   return member
@@ -443,13 +524,13 @@ export async function requireAtLeastRoleAndFetch(
   workspaceId: string,
   role: WorkspaceMemberRole,
   message?: string
-): Promise<WorkspaceMember> {
+) {
   const member = await findMemberByUserAndWorkspace(userId, workspaceId)
   if (!member) {
     throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
-      `Access denied: user ${userId} is not a member of workspace ${workspaceId}`,
+        `Access denied: user ${userId} is not a member of workspace ${workspaceId}`
     )
   }
   const order = ['viewer', 'member', 'admin', 'owner'] as const
@@ -457,7 +538,7 @@ export async function requireAtLeastRoleAndFetch(
     throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
-      `Access denied: user ${userId} must have at least role "${role}" in workspace ${workspaceId}`,
+        `Access denied: user ${userId} must have at least role "${role}" in workspace ${workspaceId}`
     )
   }
   return member
@@ -482,7 +563,7 @@ export async function requireMembershipAndFetch(
     throw toRouteError(
       StashlyErrorCode.FORBIDDEN,
       message ??
-      `Access denied: user ${userId} is not a member of workspace ${workspaceId}`,
+        `Access denied: user ${userId} is not a member of workspace ${workspaceId}`
     )
   }
   return member
@@ -571,7 +652,11 @@ export function getWorkspaceItems(workspaceId: string) {
  * const items = await listWorkspaceItems(userId, workspaceId)
  */
 export async function listWorkspaceItems(userId: string, workspaceId: string) {
-  await requireMembership(userId, workspaceId, 'You are not a member of this workspace')
+  await requireMembership(
+    userId,
+    workspaceId,
+    'You are not a member of this workspace'
+  )
   return findWorkspaceItems(workspaceId)
 }
 
@@ -589,7 +674,12 @@ export async function createWorkspaceItem(
   workspaceId: string,
   data: Prisma.ItemUncheckedCreateInput
 ) {
-  await requireAtLeastRole(userId, workspaceId, 'member', 'You must be a workspace member to create items')
+  await requireAtLeastRole(
+    userId,
+    workspaceId,
+    'member',
+    'You must be a workspace member to create items'
+  )
 
   if (data.parentId) {
     const parent = await findItem({ where: { id: data.parentId } })
@@ -630,7 +720,12 @@ export async function updateWorkspaceItem(
 
   const canEdit = await hasItemPermission(userId, itemId, 'write')
   if (!canEdit && item.workspaceId) {
-    await requireAtLeastRole(userId, item.workspaceId, 'admin', 'You do not have permission to edit this item')
+    await requireAtLeastRole(
+      userId,
+      item.workspaceId,
+      'admin',
+      'You do not have permission to edit this item'
+    )
   }
 
   return updateItem({ where: { id: itemId }, data: updateData })
@@ -652,7 +747,12 @@ export async function deleteWorkspaceItem(userId: string, itemId: string) {
 
   const canDelete = await hasItemPermission(userId, itemId, 'write')
   if (!canDelete && item.workspaceId) {
-    await requireAtLeastRole(userId, item.workspaceId, 'admin', 'Only admins or owners can delete items')
+    await requireAtLeastRole(
+      userId,
+      item.workspaceId,
+      'admin',
+      'Only admins or owners can delete items'
+    )
   }
 
   return deleteItem(itemId, userId)
@@ -674,7 +774,11 @@ export async function favoriteItem(userId: string, itemId: string) {
 
   const canRead = await hasItemPermission(userId, itemId, 'read')
   if (!canRead && item.workspaceId) {
-    await requireMembership(userId, item.workspaceId, 'You do not have access to this item')
+    await requireMembership(
+      userId,
+      item.workspaceId,
+      'You do not have access to this item'
+    )
   }
 
   return addFavorite(itemId, userId)
@@ -729,7 +833,10 @@ export async function grantItemPermissionToUser(
     (await hasAtLeastRole(actingUserId, item.workspaceId, 'admin'))
 
   if (!isOwner && !isAdmin) {
-    throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You cannot grant permissions on this item')
+    throw toRouteError(
+      StashlyErrorCode.FORBIDDEN,
+      'You cannot grant permissions on this item'
+    )
   }
 
   return grantItemPermission(targetUserId, itemId, role)
@@ -763,14 +870,20 @@ export async function revokeItemPermissionFromUser(
     (await hasAtLeastRole(actingUserId, item.workspaceId, 'admin'))
 
   if (!isOwner && !isAdmin) {
-    throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You cannot revoke permissions on this item')
+    throw toRouteError(
+      StashlyErrorCode.FORBIDDEN,
+      'You cannot revoke permissions on this item'
+    )
   }
 
   const perms = await getItemPermissions(itemId)
   const perm = perms.find((p) => p.users.some((u) => u.id === targetUserId))
 
   if (!perm) {
-    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Permission not found for this user')
+    throw toRouteError(
+      StashlyErrorCode.NOT_FOUND,
+      'Permission not found for this user'
+    )
   }
 
   return deletePermission(perm.id)
@@ -799,7 +912,10 @@ export async function listItemPermissions(
     (await hasAtLeastRole(actingUserId, item.workspaceId, 'admin'))
 
   if (!isOwner && !isAdmin) {
-    throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You cannot view permissions for this item')
+    throw toRouteError(
+      StashlyErrorCode.FORBIDDEN,
+      'You cannot view permissions for this item'
+    )
   }
 
   return getItemPermissions(itemId)
@@ -831,7 +947,10 @@ export async function syncMemberItemPermissions(
 ): Promise<void> {
   const member = await findMemberByUserAndWorkspace(userId, workspaceId)
   if (!member) {
-    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'User is not a member of this workspace')
+    throw toRouteError(
+      StashlyErrorCode.NOT_FOUND,
+      'User is not a member of this workspace'
+    )
   }
   await syncWorkspaceItemPermissions(userId, workspaceId, member.role, client)
 }
