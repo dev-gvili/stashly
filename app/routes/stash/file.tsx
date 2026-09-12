@@ -30,7 +30,7 @@ import jetbrainsMonoFonts from '@fontsource-variable/jetbrains-mono/index.css?ur
 import type { LinksFunction } from 'react-router'
 import { href, redirect, type ShouldRevalidateFunction } from 'react-router'
 import type { Route } from './+types/file'
-import { sessionContext } from '@/context'
+import { sessionContext } from '@/.server/middleware/context'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 

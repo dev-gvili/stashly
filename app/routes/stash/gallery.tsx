@@ -1,4 +1,4 @@
-import { sessionContext } from '@/context'
+import { sessionContext } from '@/.server/middleware/context'
 import type { Route } from './+types/gallery'
 import { Gallery } from '@/components/Gallery'
 import { parseSearchParams } from '@/utils/parsers'

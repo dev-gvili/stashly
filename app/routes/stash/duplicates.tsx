@@ -1,4 +1,4 @@
-import { sessionContext } from '@/context'
+import { sessionContext } from '@/.server/middleware/context'
 import type { DuplicateGroup } from '@/components/views/duplicates-components'
 import { DuplicateTriageView } from '@/components/views/duplicates-components'
 import { resolveDuplicatesApiRouteInput } from '@/schemas/api.schemas'

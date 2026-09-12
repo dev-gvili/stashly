@@ -1,4 +1,4 @@
-import { sessionContext } from '@/context'
+import { sessionContext } from '@/.server/middleware/context'
 import type { Route } from './+types/favorites'
 export async function loader({ request, params, context }: Route.LoaderArgs) {
   const session = context.get(sessionContext)

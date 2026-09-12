@@ -1,4 +1,4 @@
-import { sessionContext } from '@/context'
+import { sessionContext } from '@/.server/middleware/context'
 import type { Route } from './+types/all'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
 import { redirect, useLocation } from 'react-router'

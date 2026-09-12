@@ -1,4 +1,4 @@
-import { sessionContext } from '@/context'
+import { sessionContext } from '@/.server/middleware/context'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
 import {
   getCollectionForUser,

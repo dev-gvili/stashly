@@ -1,6 +1,6 @@
 import { redirect, type MiddlewareFunction } from 'react-router'
 import { auth } from '@/services/auth'
-import { sessionContext } from '@/context'
+import { sessionContext } from '@/services/middleware/context'
 
 /**
  * Resolves the session once per request and puts it on the router context.

@@ -1,4 +1,4 @@
-import { sessionContext } from '@/context'
+import { sessionContext } from '@/.server/middleware/context'
 import { InvitationsView } from '@/components/views/invitations-view';
 import {
     listReceivedInvitations,

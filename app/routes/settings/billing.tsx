@@ -1,4 +1,4 @@
-import { sessionContext } from '@/context'
+import { sessionContext } from '@/.server/middleware/context'
 import { Button } from '@/components/ui/button'
 import {
   TooltipProvider,

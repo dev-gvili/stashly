@@ -1,4 +1,4 @@
-import { sessionContext } from '@/context'
+import { sessionContext } from '@/.server/middleware/context'
 import { findAllCollections } from '@/services/collection-actions'
 import { CollectionsView } from '@/components/views/collections-view'
 import { redirect, data } from 'react-router'

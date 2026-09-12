@@ -1,4 +1,4 @@
-import { sessionContext } from '@/context'
+import { sessionContext } from '@/.server/middleware/context'
 import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { SelectionProvider } from '@/components/stash/selection'
 import { TrashEmptyState } from '@/components/states/trash-empty-state'
