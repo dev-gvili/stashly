@@ -7,6 +7,7 @@ import { Link } from 'react-router'
 const SEGMENT_TONE: Record<StorageSegment['tone'], string> = {
   images: 'bg-emerald-500',
   video: 'bg-sky-500',
+  audio: 'bg-violet-500',
   documents: 'bg-amber-500',
   code: 'bg-rose-500',
   other: 'bg-muted-foreground',

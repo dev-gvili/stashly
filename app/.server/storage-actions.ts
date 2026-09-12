@@ -90,13 +90,14 @@ export interface DuplicateGroupDetail {
 }
 
 /** The five tints the overview's storage meter can draw. */
-type StorageTone = 'images' | 'video' | 'documents' | 'code' | 'other'
+type StorageTone = 'images' | 'video' | 'audio' | 'documents' | 'code' | 'other'
 
 /** Meter tone each `ItemCategory` rolls up into on the overview page. */
 const CATEGORY_TONE: Record<ItemCategory, StorageTone> = {
   image: 'images',
   graphic: 'images',
   video: 'video',
+  audio: 'audio',
   document: 'documents',
   spreadsheet: 'documents',
   presentation: 'documents',
@@ -104,7 +105,6 @@ const CATEGORY_TONE: Record<ItemCategory, StorageTone> = {
   pdf: 'documents',
   code: 'code',
   script: 'code',
-  audio: 'other',
   archive: 'other',
   binaries: 'other',
   unknown: 'other',
@@ -116,11 +116,13 @@ const TONE_LABEL: Record<StorageTone, string> = {
   documents: 'Documents',
   code: 'Code',
   other: 'Other',
+  audio: 'Audio',
 }
 
 const TONE_ORDER: StorageTone[] = [
   'images',
   'video',
+  'audio',
   'documents',
   'code',
   'other',

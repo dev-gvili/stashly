@@ -568,7 +568,7 @@ export interface StorageSegment {
   label: string
   bytes: number
   /** Which literal tint class the meter should use for this segment. */
-  tone: 'images' | 'video' | 'documents' | 'code' | 'other'
+  tone: 'images' | 'video' | 'audio' | 'documents' | 'code' | 'other'
 }
 
 export interface StorageUsage {
