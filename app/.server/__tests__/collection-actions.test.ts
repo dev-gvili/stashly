@@ -26,6 +26,7 @@ import {
   grantCollectionPermission,
 } from '@/services/collection-actions'
 import { grantItemPermission } from '@/services/permission-actions'
+import { wipeTestUsers } from './helpers/wipe-test-users'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -109,28 +110,32 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  // Permissions reference Items via nullable FK (SET NULL on item delete).
-  // Delete them first to avoid orphan accumulation across test runs.
-  await prisma.permission.deleteMany({
-    where: {
-      OR: [
-        { item: { ownerId: { in: [ownerId, otherId] } } },
-        { item: { workspaceId } },
-      ],
-    },
-  })
-  // WorkspaceMember must go before User (no cascade configured)
-  await prisma.workspaceMember.deleteMany({
-    where: { memberId: { in: [ownerId, otherId] } },
-  })
-  // Items cascade → CollectionMember links
-  await prisma.item.deleteMany({ where: { ownerId: { in: [ownerId, otherId] } } })
-  await prisma.item.deleteMany({ where: { workspaceId } })
-  await prisma.drive.deleteMany({ where: { ownerId: { in: [ownerId, otherId] } } })
-  await prisma.user.deleteMany({ where: { id: { in: [ownerId, otherId] } } })
-  await prisma.workspace.delete({ where: { id: workspaceId } })
-
-  await prisma.$disconnect()
+  try {
+    // Permissions reference Items via nullable FK (SET NULL on item delete).
+    // Delete them first to avoid orphan accumulation across test runs.
+    await prisma.permission.deleteMany({
+      where: {
+        OR: [
+          { item: { ownerId: { in: [ownerId, otherId] } } },
+          { item: { workspaceId } },
+        ],
+      },
+    })
+    // WorkspaceMember must go before Workspace (ON DELETE RESTRICT) and before
+    // User (no cascade configured).
+    await prisma.workspaceMember.deleteMany({
+      where: { memberId: { in: [ownerId, otherId] } },
+    })
+    // Items, drive and users in one trigger-bypassed pass. A plain deleteMany
+    // here used to abort on the rollup triggers and skip every statement
+    // below it — see wipeTestUsers for the mechanism.
+    await wipeTestUsers([ownerId, otherId])
+    // deleteMany, not delete: this must not throw when a failed run already
+    // removed the row, or the leak comes straight back.
+    await prisma.workspace.deleteMany({ where: { id: workspaceId } })
+  } finally {
+    await prisma.$disconnect()
+  }
 })
 
 // ---------------------------------------------------------------------------
