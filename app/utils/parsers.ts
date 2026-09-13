@@ -93,15 +93,11 @@ export async function parseFormData<T extends z.ZodTypeAny>({
 
     if (hasNestedSyntax) {
       // Convert FormData to qs-like structure
-      const qsData = entries.reduce(
-        (acc, [key, value]) => {
-          acc[key] = typeof value === 'string' ? value : String(value)
-          return acc
-        },
-        {} as Record<string, string>
-      )
-
-      parsed = parse(new URLSearchParams(qsData).toString())
+      const params = new URLSearchParams()
+      for (const [key, value] of entries) {
+        params.append(key, typeof value === 'string' ? value : String(value))
+      }
+      parsed = parse(params.toString())
     } else {
       // Handle flat structure
       const data: Record<string, unknown> = {}
@@ -145,12 +141,11 @@ export function parseEtag(etag: string) {
   return `"${cleaned}"`
 }
 
-
 /**
  * Parse presigned URL and validate it, using the zod schema
  * @see {@link presignedUrl} schema in app/machines/schema.zod.ts
- * @param url 
- * 
+ * @param url
+ *
  * @example
  * ```ts
  * const parsedUrl = parsePresignedUrl('https://example-bucket.s3.amazonaws.com/my-object.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIOSFODNN7EXAMPLE%2F20231101%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20231101T000000Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=EXAMPLESIGNATURE1234567890abcdef');
@@ -159,7 +154,7 @@ export function parseEtag(etag: string) {
  * ```
  */
 export function parsePresignedUrl(url: string) {
-   return presignedUrl.safeParse(url) 
+  return presignedUrl.safeParse(url)
 }
 
 /**
