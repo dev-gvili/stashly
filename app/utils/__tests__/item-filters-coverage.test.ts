@@ -4,6 +4,8 @@ import {
   itemFilterSchema,
   buildItemFilters,
 } from '../filters/item.filters'
+import { toSearchSchema } from '../converters'
+import type { Prisma } from '@/prisma/browser'
 
 /**
  * `buildFiltersFactory` applies a param only when `key in filters`
@@ -14,15 +16,15 @@ import {
  *
  * These keys are in the schema but intentionally build no clause of their own.
  * Adding to this list is a deliberate act: say why in item.filters.ts.
+ *
+ * Pagination and query shape (`cursor`, `take`, `orderBy`, `include`) are NOT
+ * here any more — they were removed from every `*.filters.ts` file and are now
+ * added by `toSearchSchema`, which the loaders wrap the filter schema in. The
+ * `toSearchSchema` block below keeps that boundary honest.
  */
 const CONTEXT_ONLY_KEYS = [
   // Read by the `favorited` filter as context, not a scoping filter itself.
   'currentUserId',
-  // Pagination and query shape — consumed by callers, never part of `where`.
-  'cursor',
-  'take',
-  'orderBy',
-  'include',
 ] as const
 
 const schemaKeys = Object.keys(itemFilterSchema.shape)
@@ -85,5 +87,55 @@ describe('item filters that must produce a constraint', () => {
     const where = buildItemFilters({ currentUserId: 'usr_1' } as never)
     const asText = JSON.stringify(where)
     expect(asText).not.toContain('usr_1')
+  })
+})
+
+/**
+ * The four keys a loader actually needs but a `where` clause never sees. They
+ * live in `toSearchSchema` so no filters file has to restate them — and so they
+ * can never be mistaken for a filter that silently drops out of the query.
+ */
+describe('toSearchSchema', () => {
+  const itemSearchSchema = toSearchSchema<
+    typeof itemFilterSchema,
+    Prisma.ItemOrderByWithRelationInput,
+    Prisma.ItemInclude
+  >({ schema: itemFilterSchema })
+
+  it('adds exactly the pagination and query-shape keys', () => {
+    const added = Object.keys(itemSearchSchema.shape).filter(
+      (key) => !schemaKeys.includes(key)
+    )
+    expect(added.sort()).toEqual(['cursor', 'include', 'orderBy', 'take'])
+  })
+
+  it('keeps every filter key from the source schema', () => {
+    // An `extend` that lost the shape would typecheck and silently strip every
+    // filter at parse time — the query would then return the whole table.
+    const searchKeys = Object.keys(itemSearchSchema.shape)
+    expect(schemaKeys.filter((key) => !searchKeys.includes(key))).toEqual([])
+  })
+
+  it('adds no key that collides with a filter', () => {
+    const added = Object.keys(itemSearchSchema.shape).filter(
+      (key) => !schemaKeys.includes(key)
+    )
+    expect(added.filter((key) => filterKeys.includes(key))).toEqual([])
+  })
+
+  it('defaults `take` instead of dropping it', () => {
+    // Before this, a loader parsed with the bare filter schema: `take` was an
+    // unknown key, z.object stripped it, and `limit` reached the query as
+    // undefined.
+    expect(itemSearchSchema.parse({}).take).toBe(25)
+  })
+
+  it('carries cursor and orderBy through the parse', () => {
+    const parsed = itemSearchSchema.parse({
+      cursor: 'itm_123',
+      orderBy: { name: 'asc' },
+    })
+    expect(parsed.cursor).toBe('itm_123')
+    expect(parsed.orderBy).toEqual({ name: 'asc' })
   })
 })

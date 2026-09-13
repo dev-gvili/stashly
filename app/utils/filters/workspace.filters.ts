@@ -12,12 +12,6 @@ export const workspaceFilterSchema = z
     default: z.coerce.boolean(),
     date,
     storagePlanId: z.string(),
-
-    // Pagination Params
-    cursor: z.string().optional(),
-    take: z.coerce.number().default(50),
-    orderBy: z.custom<Prisma.WorkspaceOrderByWithRelationInput>(),
-    include: z.custom<Prisma.WorkspaceInclude>(),
   })
   .partial()
 

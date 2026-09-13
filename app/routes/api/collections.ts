@@ -20,6 +20,8 @@ import {
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
+import { toSearchSchema } from '@/utils'
+import type { Prisma } from '@/prisma/client'
 import { data, redirect } from 'react-router'
 import type { Route } from './+types/collections'
 
@@ -36,7 +38,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }
 
   let parsedParams = parseSearchParams({
-    schema: itemFilterSchema,
+    schema: toSearchSchema<
+      typeof itemFilterSchema,
+      Prisma.ItemOrderByWithRelationInput,
+      Prisma.ItemInclude
+    >({ schema: itemFilterSchema }),
     searchParams,
   })
 

@@ -11,6 +11,8 @@ import {
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
 import { parseSearchParams } from '@/utils/parsers'
+import { toSearchSchema } from '@/utils'
+import type { Prisma } from '@/prisma/client'
 import { GridLayout } from '@/components/views/grid-view'
 import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
@@ -100,7 +102,11 @@ export async function loader({ request, params, context }: Route.ActionArgs) {
   searchParams.set('currentUserId', session.user.id)
   searchParams.set('parentId', session.user.rootId)
   let parsedParams = parseSearchParams({
-    schema: itemFilterSchema,
+    schema: toSearchSchema<
+      typeof itemFilterSchema,
+      Prisma.ItemOrderByWithRelationInput,
+      Prisma.ItemInclude
+    >({ schema: itemFilterSchema }),
     searchParams,
   })
 

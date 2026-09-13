@@ -68,12 +68,6 @@ export const itemFilterSchema = z.object({
   /** Scope to items this user owns or has been granted a permission on. */
   accessibleBy: z.string().nonempty().optional(),
   _count: z.coerce.number().int().positive().optional(),
-
-  // Pagination Params
-  cursor: z.string().optional(),
-  take: z.coerce.number().default(25),
-  orderBy: z.custom<Prisma.ItemOrderByWithRelationInput>().optional(),
-  include: z.custom<Prisma.ItemInclude>().optional(),
 })
 
 /**

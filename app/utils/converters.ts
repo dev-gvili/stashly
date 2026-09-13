@@ -44,9 +44,10 @@ import type {
 import { ItemCategory, type ItemType } from '@/prisma/browser'
 import crypto from 'crypto-js'
 import { href } from 'react-router'
-import { z } from 'zod'
+import { z, type Schema } from 'zod'
 import type { ItemCardProps } from '../components/stash/item-card'
 import type { AuthSession } from '@/services/auth.types'
+import { paginationOptions } from '@/schemas/filters.schemas'
 
 /**
  * Convert an AsyncIterable of Uint8Array to buffer
@@ -716,54 +717,75 @@ export const toZodOrderBySchema = <T extends object>() => {
   })
 }
 
+
+
 /**
- * Creates a flexible Zod schema for search queries, combining model-specific filters
- * with dynamic pagination and common search options.
+ * The query-shape keys every paginated search schema gains on top of its model
+ * filters.
  *
- * The resulting schema validates:
- * 1.  **Custom Filters**: Fields defined in the provided `filterSchema`.
- * 2.  **Common Options**: `orderBy` and `include` fields.
- * 3.  **Pagination**: A discriminated union based on the `strategy` field:
- *     - `strategy: 'offset'`: Requires `page` and `take`.
- *     - `strategy: 'cursor'`: Requires `cursor` and `take`.
- *     - `strategy: 'stream'`: Requires `take`.
- *
- * All fields in the final schema are marked as optional (`.partial()`) to accommodate
- * various search scenarios.
- *
- * @template TFilterSchema - A Zod object schema for the model-specific filters.
- * @template TOrderBy - The expected object type for the `orderBy` parameter.
- * @param {TFilterSchema} filterSchema - The Zod schema for custom filter fields.
- * @returns A comprehensive Zod schema for search parameters.
+ * `orderBy` / `include` are `z.custom`, i.e. deliberately **unvalidated** — they
+ * exist so a correctly-typed Prisma object survives the parse, not to police it.
+ * Authority still belongs in the action (`app/.server/*-actions.ts`), and
+ * `buildFiltersFactory` ignores these keys because they have no filter entry.
  */
-export const toSearchSchema = () =>
-  //   filterSchema: TFilterSchema
-  {
-    // Base options common to all search strategies
-    const cursorPagination = z.object({
-      strategy: z.literal('cursor'),
-      cursor: z.string().optional(),
-      take: z.coerce.number().default(5),
-    })
+type SearchExtras<TOrderBy, TInclude> = typeof paginationOptions.shape & {
+  orderBy: z.ZodOptional<z.ZodCustom<TOrderBy, TOrderBy>>
+  include: z.ZodOptional<z.ZodCustom<TInclude, TInclude>>
+}
 
-    const offsetPagination = z.object({
-      strategy: z.literal('offset'),
-      page: z.coerce.number().default(1),
-      take: z.coerce.number().default(5),
-    })
+/** A `[model]FilterSchema` widened with pagination + Prisma query shape. */
+export type SearchSchema<
+  S extends z.ZodObject,
+  TOrderBy,
+  TInclude,
+> = z.ZodObject<z.core.util.Extend<S['shape'], SearchExtras<TOrderBy, TInclude>>>
 
-    const streamPagination = z.object({
-      strategy: z.literal('stream'),
-    })
-
-    const pagination = z.discriminatedUnion('strategy', [
-      cursorPagination,
-      offsetPagination,
-      streamPagination,
-    ])
-
-    return pagination.optional()
-  }
+/**
+ * Widen a `[model]FilterSchema` into the schema a list loader actually needs:
+ * its own filters **plus** `cursor` / `take` (from {@link paginationOptions})
+ * plus a typed `orderBy` / `include` passthrough.
+ *
+ * Keeps the four pagination keys out of every `*.filters.ts` file — a filters
+ * file describes `where`, and nothing else.
+ *
+ * @example
+ * let parsedParams = parseSearchParams({
+ *   schema: toSearchSchema<
+ *     typeof itemFilterSchema,
+ *     Prisma.ItemOrderByWithRelationInput,
+ *     Prisma.ItemInclude
+ *   >({ schema: itemFilterSchema }),
+ *   searchParams,
+ * })
+ * // parsedParams.take   -> number   (defaulted, never undefined)
+ * // parsedParams.cursor -> string | undefined
+ * // parsedParams.orderBy -> Prisma.ItemOrderByWithRelationInput | undefined
+ *
+ * @remarks
+ * All three type arguments must be supplied: TypeScript has no partial type
+ * argument inference, so naming `TOrderBy`/`TInclude` forces `S` to be named too.
+ *
+ * The assertion is load-bearing. Calling `.extend()` on a value whose type is
+ * the *generic* `S` resolves against `S`'s constraint, so the concrete shape is
+ * erased and every filter key would disappear from the result. Re-stating the
+ * result with `S['shape']` — through Zod's own `util.Extend`, the exact helper
+ * `.extend()` uses — restores it. The runtime value is what the cast claims.
+ */
+export const toSearchSchema = <
+  S extends z.ZodObject,
+  TOrderBy = unknown,
+  TInclude = unknown,
+>({
+  schema,
+}: {
+  schema: S
+}): SearchSchema<S, TOrderBy, TInclude> => {
+  return schema.extend({
+    ...paginationOptions.shape,
+    orderBy: z.custom<TOrderBy>().optional(),
+    include: z.custom<TInclude>().optional(),
+  }) as unknown as SearchSchema<S, TOrderBy, TInclude>
+}
 
 /**
  * A mapping from the full model name to a short, unique prefix.

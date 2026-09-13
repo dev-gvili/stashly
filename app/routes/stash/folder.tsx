@@ -24,6 +24,8 @@ import { getQueryParamArray } from '@/utils/query-params'
 import { type ShouldRevalidateFunction } from 'react-router'
 import { SelectionProvider } from '../../components/stash/selection'
 import type { Route } from './+types/folder'
+import { toSearchSchema } from '@/utils'
+import type { Prisma } from '@/prisma/client'
 export async function loader({ request, params, context }: Route.LoaderArgs) {
   // Set by the layout middleware, which redirects anonymous requests before any
   // loader runs — so there is nothing to re-check here.
@@ -41,7 +43,11 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
   searchParams.set('parentId', params.folderId)
 
   let parsedParams = parseSearchParams({
-    schema: itemFilterSchema,
+    schema: toSearchSchema<
+      typeof itemFilterSchema,
+      Prisma.ItemOrderByWithRelationInput,
+      Prisma.ItemInclude
+    >({ schema: itemFilterSchema }),
     searchParams,
   })
 
@@ -53,10 +59,14 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
       userId: session.user.id,
       workspaceId,
       cursor: parsedParams.cursor,
-      limit: parsedParams.take,
-      where: { ...filters, parentId: params.folderId, ...(workspaceId ? { workspaceId } : {}) },
+      limit: 25,
+      where: {
+        ...filters,
+        parentId: params.folderId,
+        ...(workspaceId ? { workspaceId } : {}),
+      },
       orderBy: parsedParams.orderBy,
-      foldersFirst: true
+      foldersFirst: true,
     }),
     breadcrumbs(params.folderId, session.user.id),
     prisma.item.findUnique({
@@ -65,7 +75,6 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
     }),
     retrieveFolderStats(params.folderId),
   ])
-
 
   // The owner-vs-recipient trim now lives inside breadcrumbs(), so all three
   // callers get it rather than only this one.
@@ -89,7 +98,7 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
       //   stats.quotaBytes > 0n
       //     ? Math.round(Number((stats.usedBytes * 100n) / stats.quotaBytes))
       //     : 0,
-    } 
+    },
   }
 }
 
@@ -161,7 +170,7 @@ export default ({ loaderData, params }: Route.ComponentProps) => {
             item.type === 'folder' ? (
               <FolderCardTab key={item.id} {...item} />
             ) : (
-              <FileCardDetail key={item.id} item={item} showActions/>
+              <FileCardDetail key={item.id} item={item} showActions />
             )
           )}
         </GridLayout>

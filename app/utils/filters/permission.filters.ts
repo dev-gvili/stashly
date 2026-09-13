@@ -10,12 +10,6 @@ export const permissionFilterSchema = z
     itemId: z.string(),
     linkId: z.string(),
     recipientId: z.string(),
-
-    // Pagination Params
-    cursor: z.string().optional(),
-    take: z.coerce.number().default(50),
-    orderBy: z.custom<Prisma.PermissionOrderByWithRelationInput>(),
-    include: z.custom<Prisma.PermissionInclude>(),
   })
   .partial()
 

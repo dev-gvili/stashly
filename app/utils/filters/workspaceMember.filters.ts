@@ -9,12 +9,6 @@ export const workspaceMemberFilterSchema = z
     memberId: z.string().nonempty(),
     roles: toZodArraySchema(z.enum(WorkspaceMemberRole)),
     query: z.string().nonempty(),
-
-    // Pagination Params
-    cursor: z.string().optional(),
-    take: z.coerce.number().default(50),
-    orderBy: z.custom<Prisma.WorkspaceMemberOrderByWithRelationInput>(),
-    include: z.custom<Prisma.WorkspaceMemberInclude>(),
   })
   .partial()
 

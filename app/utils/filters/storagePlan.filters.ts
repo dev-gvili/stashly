@@ -13,12 +13,6 @@ export const storagePlanFilterSchema = z
     workspaceLimit: z.coerce.number().int(),
     memberLimit: z.coerce.number().int(),
     stripePriceId: z.string(),
-
-    // Pagination Params
-    cursor: z.string().optional(),
-    take: z.coerce.number().default(50),
-    orderBy: z.custom<Prisma.StoragePlanOrderByWithRelationInput>(),
-    include: z.custom<Prisma.StoragePlanInclude>(),
   })
   .partial()
 

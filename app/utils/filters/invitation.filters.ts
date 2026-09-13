@@ -10,12 +10,6 @@ export const invitationFilterSchema = z
     itemId: z.string(),
     workspaceId: z.string(),
     date,
-
-    // Pagination Params
-    cursor: z.string().optional(),
-    take: z.coerce.number().default(50),
-    orderBy: z.custom<Prisma.InvitationOrderByWithRelationInput>(),
-    include: z.custom<Prisma.InvitationInclude>(),
   })
   .partial()
 

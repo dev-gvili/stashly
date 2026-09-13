@@ -8,12 +8,6 @@ export const itemVersionFilterSchema = z
     label: z.string(),
     version: z.string(),
     itemId: z.string(),
-
-    // Pagination Params
-    cursor: z.string().optional(),
-    take: z.coerce.number().default(50),
-    orderBy: z.custom<Prisma.ItemVersionOrderByWithRelationInput>(),
-    include: z.custom<Prisma.ItemVersionInclude>(),
   })
   .partial()
 

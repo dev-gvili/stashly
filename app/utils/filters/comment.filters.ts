@@ -10,12 +10,6 @@ export const commentFilterSchema = z
     itemId: z.string(),
     ownerId: z.string(),
     date,
-
-    // Pagination Params
-    cursor: z.string().optional(),
-    take: z.coerce.number().default(50),
-    orderBy: z.custom<Prisma.CommentOrderByWithRelationInput>(),
-    include: z.custom<Prisma.CommentInclude>(),
   })
   .partial()
 

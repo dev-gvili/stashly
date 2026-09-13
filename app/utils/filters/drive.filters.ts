@@ -15,12 +15,6 @@ export const driveFilterSchema = z
     storageLimit: z.bigint(),
     ownerId: z.string(),
     workspaceId: z.string(),
-
-    // Pagination Params
-    cursor: z.string().optional(),
-    take: z.coerce.number().default(50),
-    orderBy: z.custom<Prisma.DriveOrderByWithRelationInput>(),
-    include: z.custom<Prisma.DriveInclude>(),
   })
   .partial() satisfies z.ZodType<Partial<Drive>>
 

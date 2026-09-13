@@ -22,6 +22,8 @@ import { redirect, type ShouldRevalidateFunction } from 'react-router'
 import { Fragment } from 'react/jsx-runtime'
 import type { Route } from './+types/trash'
 import { LoadMoreItems } from '@/components/core-components/buttons'
+import { toSearchSchema } from '@/utils'
+import type { Prisma } from '@/prisma/client'
 
 /** Intents that actually change what this page lists. */
 const TRASH_MUTATION_INTENTS: ReadonlySet<string> = new Set([
@@ -90,7 +92,11 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   searchParams.set('status', 'trashed')
   let layout = searchParams.get('layout')
   let parsedParams = parseSearchParams({
-    schema: itemFilterSchema,
+    schema: toSearchSchema<
+      typeof itemFilterSchema,
+      Prisma.ItemOrderByWithRelationInput,
+      Prisma.ItemInclude
+    >({ schema: itemFilterSchema }),
     searchParams,
   })
   let filters = buildItemFilters(parsedParams)

@@ -13,12 +13,6 @@ export const quotaFilterSchema = z
     used: z.coerce.bigint(),
     total: z.coerce.bigint(),
     deleted: z.coerce.boolean(),
-
-    // Pagination Params
-    cursor: z.string().optional(),
-    take: z.coerce.number().default(50),
-    orderBy: z.custom<Prisma.QuotaOrderByWithRelationInput>(),
-    include: z.custom<Prisma.QuotaInclude>(),
   })
   .partial()
 

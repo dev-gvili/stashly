@@ -2,6 +2,8 @@ import type { ActorRefFrom, AnyActorRef } from 'xstate'
 import { z } from 'zod'
 import { fileMachine } from '../machines/reviset/file.machine'
 import { itemFilterSchema } from '@/utils/filters/item.filters'
+import { toSearchSchema } from '@/utils/converters'
+import type { Prisma } from '@/prisma/browser'
 import type { quotaMachine } from '../machines/quota/quota.machine'
 
 const UPLOAD = 'upload'
@@ -777,23 +779,33 @@ export let subscriptionOutput = z.object({ subscription })
 // ===================== Pagination ===================== //
 // ====================================================== //
 
+/**
+ * The item search schema these machine inputs page over: `itemFilterSchema`
+ * widened with cursor/take plus a typed `orderBy`/`include`. The four keys used
+ * to be hand-written into `itemFilterSchema` itself; they are query shape, not
+ * `where` shape, so they live here now.
+ */
+const itemSearchSchema = toSearchSchema<
+  typeof itemFilterSchema,
+  Prisma.ItemOrderByWithRelationInput,
+  Prisma.ItemInclude
+>({ schema: itemFilterSchema })
+
 export let paginationCursorInput = z
   .object({
     strategy: z.literal('cursor'),
-    include: itemFilterSchema.shape.include,
-    orderBy: itemFilterSchema.shape.orderBy,
   })
-  .extend(itemFilterSchema.shape)
+  .extend(itemSearchSchema.shape)
 
 export let paginationOffsetInput = z
   .object({
     strategy: z.literal('offset'),
     page: z.number(),
     skip: z.number(),
-    include: itemFilterSchema.shape.include,
-    orderBy: itemFilterSchema.shape.orderBy.default({ name: 'asc' }),
+    include: itemSearchSchema.shape.include,
+    orderBy: itemSearchSchema.shape.orderBy.default({ name: 'asc' }),
   })
-  .extend(itemFilterSchema.omit({ cursor: true }).shape)
+  .extend(itemSearchSchema.omit({ cursor: true }).shape)
 
 export let paginationInput = z.discriminatedUnion('strategy', [
   paginationCursorInput,
@@ -808,6 +820,7 @@ export let paginationCursorData = z.object({
     nextCursor: z.string().optional(),
     take: z.number(),
     isComplete: z.boolean(),
+    strategy: z.literal('cursor'),
   }),
 })
 

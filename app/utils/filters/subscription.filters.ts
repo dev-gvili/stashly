@@ -12,12 +12,6 @@ export const subscriptionFilterSchema = z
     storagePlanId: z.string(),
     stripeSubscriptionId: z.string(),
     date,
-
-    // Pagination Params
-    cursor: z.string().optional(),
-    take: z.coerce.number().default(50),
-    orderBy: z.custom<Prisma.SubscriptionOrderByWithRelationInput>(),
-    include: z.custom<Prisma.SubscriptionInclude>(),
   })
   .partial()
 

@@ -2,6 +2,8 @@ import { sessionContext } from '@/.server/middleware/context'
 import type { Route } from './+types/gallery'
 import { Gallery } from '@/components/Gallery'
 import { parseSearchParams } from '@/utils/parsers'
+import { toSearchSchema } from '@/utils'
+import type { Prisma } from '@/prisma/client'
 import { ItemCategory, ItemType } from '@/prisma/enums'
 import { buildSrcSet } from '@/utils/gallery-layout'
 import { prisma } from '@/services/db'
@@ -27,7 +29,11 @@ export async function loader({ request, context }: Route.ActionArgs) {
   searchParams.append('take', '200')
 
   let params = parseSearchParams({
-    schema: itemFilterSchema,
+    schema: toSearchSchema<
+      typeof itemFilterSchema,
+      Prisma.ItemOrderByWithRelationInput,
+      Prisma.ItemInclude
+    >({ schema: itemFilterSchema }),
     searchParams,
   })
   let filters = buildItemFilters(params)
