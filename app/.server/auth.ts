@@ -45,6 +45,12 @@ import type { Session, User } from '@/types/machine.types'
 export const auth = betterAuth({
   appName: 'Stashly',
   secret: process.env.BETTER_AUTH_SECRET,
+  advanced:{
+    database:{
+      joins: true,
+      validateSchema: false
+    }
+  },
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),
