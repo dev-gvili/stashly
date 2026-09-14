@@ -177,15 +177,18 @@ export const itemFilters = {
    * // Filter items that have NOT been favorited
    * { favorited: false }
    */
-  favorited: createItemFilter(z.boolean(), (isFavorited, params) => ({
-    favorites: isFavorited
-      ? {
-          some: {
-            favoritedById: params.currentUserId,
-          },
-        } // If true, favorited by *some* user
-      : { none: {} }, // If false, favorited by *no* user
-  })),
+  favorited: createItemFilter(z.boolean(), (isFavorited, params) => {
+    if (!isFavorited) return { favorites: { none: {} } }
+
+    // No viewer means there is no "your favorites" set to filter to. Match
+    // nothing rather than everything: Prisma strips an `undefined` field, so
+    // `some: { favoritedById: undefined }` silently becomes `some: {}` —
+    // measured as 1 of 1 favorited items on the dev DB, not 0.
+    if (!params.currentUserId) return { id: { in: [] } }
+
+    return { favorites: { some: { favoritedById: params.currentUserId } } }
+  }),
+
   /** Filter items by their locked status.
    * If false, filters for items not locked.
    */
