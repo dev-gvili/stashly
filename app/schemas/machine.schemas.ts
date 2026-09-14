@@ -836,10 +836,6 @@ export let paginationOffsetData = z.object({
   }),
 })
 
-export let paginationData = z.discriminatedUnion('strategy', [
-  paginationCursorData,
-  paginationOffsetData,
-])
 
 // ====================================================== //
 // ============= Stash Pipeline Machine ================= //
