@@ -20,6 +20,7 @@ State the symptom and the single number that proves it, in the user's terms:
 | "boots N workers" | constructor calls | patched `window.Worker` in `initScript` |
 | "query is slow" | ms + plan | `EXPLAIN ANALYZE` via `npx tsx --env-file=.env` |
 | "wrong output" | the exact string/row | raw output, pasted |
+| "wrong result from a pure function" | a failing assertion | a Vitest case in that module's `__tests__/`, shown failing. Vitest runs `environment: 'node'` with no DOM, so components and hooks can't be rendered — test the pure function behind them, or fall back to raw output |
 
 One metric. If you can't name it, you can't verify the fix — go back and ask.
 
@@ -39,10 +40,10 @@ window.Worker = function (...a) { window.__workers++; return new RealWorker(...a
 Repo facts that make a "clean run" the wrong gate:
 
 - `pnpm typecheck` — **202** pre-existing errors. Baseline the count, compare the delta, grep your own files by name.
-- `pnpm test` — **468 passing / 11 failing**. The 11 are pre-existing. Don't chase them, don't count them as regressions.
+- `pnpm test` — **503 passing / 11 failing**. The 11 are pre-existing. Don't chase them, don't count them as regressions.
 - Dev server is already on port **80**. Don't start a second one; **never** restart or kill it — ask.
 
-Write the baseline down (scratchpad file or the conversation) before editing. It is the only thing that makes step 4 meaningful.
+Save the baseline to `.claude/evidence/<slug>-before.json` before editing: the raw numbers plus how they were captured (page, repro steps, `initScript`), so step 4 can repeat it exactly. Not the scratchpad — it is deleted when the session ends — and not only the conversation, which is summarized when it grows long. `.gitignore`'s `.claude/*` keeps the folder local. It is the only thing that makes step 4 meaningful.
 
 ## 3. Fix the cause
 
@@ -52,13 +53,13 @@ Write the baseline down (scratchpad file or the conversation) before editing. It
 
 ## 4. Re-measure identically
 
-Same page, same repro, same procedure, same `initScript`. A different capture path makes the comparison worthless.
+Same page, same repro, same procedure, same `initScript` — read them back from `<slug>-before.json`, don't recall them. Save the result to `.claude/evidence/<slug>-after.json`. A different capture path makes the comparison worthless.
 
 Then run the gates that apply to what you touched:
 
 ```bash
 pnpm typecheck    # delta vs 202, not zero — only at the END of the task
-pnpm test         # delta vs 468/11
+pnpm test         # delta vs 503/11
 pnpm build        # REQUIRED if you touched route imports — the .server/client split
                   # is only enforced at build time; dev never surfaces it
 ```
@@ -77,6 +78,8 @@ worker boots            14        1
 Then, in one line: root cause, the change, and anything you touched that wasn't asked for.
 
 **If the delta isn't visible in the raw output, the fix FAILED.** Say that word. Revert or move to the next hypothesis — do not report a failed fix as a partial win.
+
+**Three failed hypotheses is the limit.** After the third, stop editing and report each hypothesis, its before/after numbers, and what ruled it out — then ask. A fourth guess on the same evidence is how a session drifts.
 
 ## Red flags — stop
 
