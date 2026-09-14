@@ -1,4 +1,4 @@
-import type { Prisma, Quota as PrismaQuota } from '@/prisma/client'
+import { Prisma, type Quota as PrismaQuota } from '@/prisma/client'
 import { QuotaStatus } from '@/prisma/enums'
 import { prisma } from '@/services/db'
 import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
@@ -232,7 +232,7 @@ export async function findQuota({
   userId: string
 }): Promise<QuotaOutput> {
   const quota = await findQuotaByUserId(userId)
-  if (!quota) throw new Error(`Quota not found for user ${userId}`)
+  if (!quota) throw toRouteError(StashlyErrorCode.QUOTA_NOT_DEFINED_FOR_USER)
   return quota
 }
 
@@ -417,45 +417,64 @@ async function applyQuotaDelta({
   else if (userId) current = await findQuotaByUserId(userId, client)
   if (!current) throw toRouteError(StashlyErrorCode.QUOTA_NOT_FOUND)
 
-  // `increment` compiles to `used = used + $delta`, which Postgres evaluates
-  // against the row *after* taking its lock. Concurrent deltas therefore queue
-  // and accumulate instead of overwriting each other.
-  const row = await client.quota.update({
-    where: { id: current.id },
-    data: {
-      ...(data.used !== undefined ? { used: { increment: data.used } } : {}),
-      ...(data.deleted !== undefined
-        ? { deleted: { increment: data.deleted } }
-        : {}),
-      ...(data.total !== undefined ? { total: data.total } : {}),
-    },
-  })
-
-  // Two corrections the atomic write cannot make itself: an increment can carry
-  // a counter below zero, and `status` is a cached function of the new
-  // `(used, total)` that only Postgres knew until this row came back.
+  // Delta, clamp, and status must land in ONE statement — which is why this is
+  // raw SQL and not `quota.update`. Postgres evaluates every SET expression
+  // against the row after taking its lock, so concurrent deltas accumulate.
+  // The earlier `increment` + guarded `updateMany` pair split the clamp into a
+  // second write; when a concurrent delta moved the row in between, the guard
+  // missed and the clamp was dropped (-5 then +10 from 0 ended at 5, not 10).
   //
-  // They go in one guarded write. The `where` pins the exact figures this call
-  // observed, so if a concurrent delta has already moved the row, this update
-  // matches nothing and that call's correction — computed from the newer
-  // figures — is the one that stands. Never widen it to `where: { id }`.
-  const used = row.used < 0n ? 0n : row.used
-  const deleted = row.deleted < 0n ? 0n : row.deleted
-  const status = toQuotaStatus({ used, total: row.total })
+  // SET expressions all see the *old* row, so `status` interpolates the new
+  // `used`/`total` expressions rather than naming the columns. The integer
+  // thresholds mirror `toQuotaStatus`'s three-decimal truncation exactly.
+  const used =
+    data.used === undefined
+      ? Prisma.sql`"used"`
+      : Prisma.sql`GREATEST(0::bigint, "used" + ${data.used}::bigint)`
 
-  if (used !== row.used || deleted !== row.deleted || status !== row.status) {
-    await client.quota.updateMany({
-      where: {
-        id: row.id,
-        used: row.used,
-        deleted: row.deleted,
-        total: row.total,
-      },
-      data: { used, deleted, status },
-    })
-  }
+  const deleted =
+    data.deleted === undefined
+      ? Prisma.sql`"deleted"`
+      : Prisma.sql`GREATEST(0::bigint, "deleted" + ${data.deleted}::bigint)`
 
-  return toQuota({ ...row, used, deleted, status })
+  const total =
+    data.total === undefined
+      ? Prisma.sql`"total"`
+      : Prisma.sql`${data.total}::bigint`
+
+  const status = Prisma.sql`
+    CASE
+      WHEN ${total} = 0::bigint THEN
+        CASE
+          WHEN ${used} > 0::bigint THEN 'exceeded'
+          ELSE 'normal'
+        END
+      WHEN (${used} * 1000::bigint / ${total}) > 1000 THEN 'exceeded'
+      WHEN (${used} * 1000::bigint / ${total}) > 990 THEN 'critical'
+      WHEN (${used} * 1000::bigint / ${total}) > 900 THEN 'warning'
+      ELSE 'normal'
+    END::"QuotaStatus"
+  `
+
+  // Raw SQL bypasses Prisma's `@updatedAt`, so set it by hand. Not `now()`: the
+  // column is `timestamp without time zone` and the session runs in a local
+  // zone, so `now()` stores local time while Prisma writes UTC.
+  const rows = await client.$queryRaw<PrismaQuota[]>`
+    UPDATE "Quota"
+    SET
+      "used" = ${used},
+      "deleted" = ${deleted},
+      "total" = ${total},
+      "status" = ${status},
+      "updatedAt" = ${new Date()}
+    WHERE "id" = ${current.id}
+    RETURNING *
+  `
+
+  const row = rows[0]
+  if (!row) throw toRouteError(StashlyErrorCode.QUOTA_NOT_FOUND)
+
+  return toQuota(row)
 }
 
 // ─── After-action helpers ─────────────────────────────────────────────────────
