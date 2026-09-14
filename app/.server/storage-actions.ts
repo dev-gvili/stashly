@@ -89,7 +89,7 @@ export interface DuplicateGroupDetail {
   reclaimableBytes: bigint
 }
 
-/** The five tints the overview's storage meter can draw. */
+/** The six tints the overview's storage meter can draw. */
 type StorageTone = 'images' | 'video' | 'audio' | 'documents' | 'code' | 'other'
 
 /** Meter tone each `ItemCategory` rolls up into on the overview page. */
