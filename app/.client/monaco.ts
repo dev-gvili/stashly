@@ -14,11 +14,11 @@
  * inherit and Monaco's default rainbow fights the Ink shell.
  */
 import * as monaco from 'monaco-editor'
-import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
-import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
-import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
-import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
-import TypeScriptWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
+import EditorWorker from 'monaco-editor/editor/editor.worker?worker'
+import CssWorker from 'monaco-editor/language/css/css.worker?worker'
+import HtmlWorker from 'monaco-editor/language/html/html.worker?worker'
+import JsonWorker from 'monaco-editor/language/json/json.worker?worker'
+import TypeScriptWorker from 'monaco-editor/language/typescript/ts.worker?worker'
 import { applyAliasPaths, sourceItemFor } from './cross-file-types'
 import { watchOutline } from './monaco-outline'
 import { canFormatLanguage, formatDocument } from './prettier'
@@ -826,7 +826,7 @@ async function loadSqlGrammar(): Promise<void> {
     // `{ conf: LanguageConfiguration, language: IMonarchLanguage }`.
     const { conf, language } = await import(
       // @ts-expect-error - no type declarations for this module path
-      'monaco-editor/esm/vs/basic-languages/sql/sql.js'
+      'monaco-editor/languages/definitions/sql/sql.js'
     )
     monaco.languages.setMonarchTokensProvider('sql', language)
     monaco.languages.setLanguageConfiguration('sql', conf)

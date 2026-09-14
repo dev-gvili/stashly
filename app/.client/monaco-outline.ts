@@ -18,9 +18,10 @@
  */
 import * as monaco from 'monaco-editor'
 // @ts-expect-error - no type declarations for this module path
-import { ILanguageFeaturesService } from 'monaco-editor/esm/vs/editor/common/services/languageFeatures.js'
+import { ILanguageFeaturesService } from 'monaco-editor/editor/common/services/languageFeatures.js'
+// import { ILanguageFeaturesService } from 'monaco-editor/esm/vs/editor/common/services/languageFeatures.js'
 // @ts-expect-error - no type declarations for this module path
-import { StandaloneServices } from 'monaco-editor/esm/vs/editor/standalone/browser/standaloneServices.js'
+import { StandaloneServices } from 'monaco-editor/editor/standalone/browser/standaloneServices.js'
 
 /** Settle time after a content change before the tree is rebuilt. */
 const REBUILD_DEBOUNCE_MS = 250
