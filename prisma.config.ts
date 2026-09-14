@@ -1,6 +1,10 @@
 import '@dotenvx/dotenvx/config'
 import { defineConfig, env } from 'prisma/config'
 
+declare const process: {
+  env: Record<string, string | undefined>
+}
+
 export default defineConfig({
   schema: 'prisma/models/',
   migrations: {
