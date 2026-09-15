@@ -147,7 +147,7 @@ function PipelineRail({ phase }: { phase: Phase }) {
           ? 'border-border text-(--fg)'
           : 'border-border text-(--mut) opacity-50'
         return (
-          <span key={id} className={`px-1.5 py-0.5 border rounded-[2px] ${cls}`}>
+          <span key={id} className={`px-1.5 py-0.5 border rounded-xs ${cls}`}>
             {phaseDetails?.label}
           </span>
         )
@@ -367,8 +367,8 @@ function ChipsCard({ title, items, variant = 'outline' }: { title: string; items
             key={`${item}-${index}`}
             className={
               variant === 'solid'
-                ? 'px-2 py-0.5 rounded-[2px] bg-(--acc) text-(--acc-fg) text-[11px] border border-(--acc-border)'
-                : 'px-2 py-0.5 rounded-[2px] border border-border text-(--mut) text-[11px] hover:text-(--fg) hover:border-ring cursor-pointer'
+                ? 'px-2 py-0.5 rounded-xs bg-(--acc) text-(--acc-fg) text-[11px] border border-(--acc-border)'
+                : 'px-2 py-0.5 rounded-xs border border-border text-(--mut) text-[11px] hover:text-(--fg) hover:border-ring cursor-pointer'
             }
           >
             {item}
@@ -442,7 +442,7 @@ function VarLab({ phase, onUpload, onCancel }: { phase: Phase; onUpload: () => v
                       : 'hover:bg-(--bg)/50 text-(--mut)'
                   }`}
                 >
-                  <span className={`w-2.5 h-2.5 rounded-[2px] ${done ? 'bg-(--acc-fg)' : current ? 'border border-(--acc-fg) animate-pulse' : 'border border-border'}`} />
+                  <span className={`w-2.5 h-2.5 rounded-xs ${done ? 'bg-(--acc-fg)' : current ? 'border border-(--acc-fg) animate-pulse' : 'border border-border'}`} />
                   <div className="min-w-0">
                     <div className="text-[11px]">{step.label}</div>
                     <div className="text-[9px] text-(--mut) truncate uppercase tracking-[0.15em]">{step.status}</div>

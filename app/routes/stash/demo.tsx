@@ -343,10 +343,10 @@ function UploadZone({
   return (
     <div className="relative group">
       {/* Viewfinder corners */}
-      <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-primary z-10 pointer-events-none rounded-tl" />
-      <div className="absolute -top-px right-0 w-4 h-4 border-t-2 border-r-2 border-primary z-10 pointer-events-none rounded-tr" />
-      <div className="absolute -bottom-px left-0 w-4 h-4 border-b-2 border-l-2 border-primary z-10 pointer-events-none rounded-bl" />
-      <div className="absolute -bottom-px right-0 w-4 h-4 border-b-2 border-r-2 border-primary z-10 pointer-events-none rounded-br" />
+      <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-primary z-10 pointer-events-none rounded-tl-lg" />
+      <div className="absolute -top-px right-0 w-4 h-4 border-t-2 border-r-2 border-primary z-10 pointer-events-none rounded-tr-lg" />
+      <div className="absolute -bottom-px left-0 w-4 h-4 border-b-2 border-l-2 border-primary z-10 pointer-events-none rounded-bl-lg" />
+      <div className="absolute -bottom-px right-0 w-4 h-4 border-b-2 border-r-2 border-primary z-10 pointer-events-none rounded-br-lg" />
 
       <div
         className={`relative h-56 border-2 border-border flex items-center justify-center transition-all duration-300 overflow-hidden ${
