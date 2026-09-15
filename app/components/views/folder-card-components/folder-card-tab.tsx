@@ -80,7 +80,7 @@ export function FolderCardTab({ className, children, ...item }: ItemCardProps) {
           <path d={FOLDER_PATH} />
         </svg>
         <FolderTabText />
-        <ItemCard.Header className="absolute inset-x-0 top-0 flex items-start justify-between py-2.5 pr-1.5 pl-2 hidden group-hover/card:flex! has-[[data-slot=dropdown-menu-trigger][data-state=open]]:flex! has-[[data-slot=item-checkbox][data-state=checked]]:flex!">
+        <ItemCard.Header className="absolute inset-x-0 top-0 flex invisible items-start justify-between py-2.5 pr-1.5 pl-2 group-hover/card:visible has-[[data-slot=dropdown-menu-trigger][data-state=open]]:visible has-[[data-slot=item-checkbox][data-state=checked]]:visible">
           <ItemCard.Checkbox name="selectedItems" className="bg-input! rounded-sm backdrop-blur-sm aria-checked:border-input! aria-checked:bg-foreground! aria-checked:text-background!  group-hover/card:flex! "/>
           {/* Actions trigger sits on the accent cover strip — pair it with
               primary-foreground so it stays legible in both themes. */}
