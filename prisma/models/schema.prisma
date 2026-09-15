@@ -4,7 +4,7 @@ generator client {
 
   moduleFormat           = "esm"
   generatedFileExtension = "ts"
-  previewFeatures        = ["nativeDistinct", "relationJoins", "postgresqlExtensions"]
+  previewFeatures        = ["nativeDistinct", "relationJoins", "postgresqlExtensions", "partialIndexes"]
 }
 
 datasource db {
