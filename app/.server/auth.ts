@@ -2,7 +2,6 @@ import { betterAuth } from 'better-auth/minimal'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { prisma } from '@/services/db'
 import { customSession, openAPI } from 'better-auth/plugins'
-import { dash } from '@better-auth/infra'
 import { onboardNewUser } from './onboard'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Session, User } from '@/types/machine.types'
@@ -101,33 +100,33 @@ export const auth = betterAuth({
     additionalFields: {
       bucket: {
         type: 'string',
-        required: true,
-        input: false,
+        required: false,
+        input: true,
+        returned: true,
       },
       subscriptionId: {
         type: 'string',
-        required: true,
-        input: false,
+        required: false,
+        input: true,
+        returned: true,
       },
       storagePlanId: {
         type: 'string',
-        required: true,
-        input: false,
+        required: false,
+        input: true,
+        returned: true,
       },
       driveId: {
         type: 'string',
-        required: true,
-        input: false,
+        required: false,
+        input: true,
+        returned: true,
       },
       rootId: {
         type: 'string',
-        required: true,
-        input: false,
-      },
-      role: {
-        type: 'string',
         required: false,
-        input: false,
+        input: true,
+        returned: true,
       },
     },
   },
@@ -160,9 +159,6 @@ export const auth = betterAuth({
         user: extendedUser,
         session: extendedSession,
       }
-    }),
-    dash({
-      apiKey: process.env.BETTER_AUTH_API_KEY,
     }),
     openAPI(),
   ],
