@@ -821,10 +821,19 @@ export const thumbnailCreateSchema = z.object({
   size: z.enum(['small', 'medium', 'large', 'original', 'custom']).default('medium'),
 })
 
-// PATCH sends url-encoded or JSON — url is a data URL e.g. 'data:image/jpeg;base64,...'
+// PATCH records a persisted stage. Only stages 2 and 3 reach the server —
+// stage 1 is a local object URL that never leaves the browser.
+//
+// `url` is the client's optimistic src, kept so the fetcher-signal consumer can
+// read it from `formData` on submit. The server IGNORES it and derives the
+// stored locator itself: it signs whatever is stored, with credentials that
+// reach every bucket, so a client-supplied value would be a read primitive.
 export const thumbnailUpdateSchema = z.object({
-  stage: z.coerce.number().int().min(1).max(3),
-  url: z.string().min(1),
+  stage: z.coerce
+    .number()
+    .int()
+    .pipe(z.union([z.literal(2), z.literal(3)])),
+  url: z.string().min(1).optional(),
   width: z.coerce.number().int().optional(),
   height: z.coerce.number().int().optional(),
 })
