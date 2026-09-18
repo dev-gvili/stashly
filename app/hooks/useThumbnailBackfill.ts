@@ -31,7 +31,7 @@ import {
   generateStage1Preview,
   generateStage2Resize,
   putThumbnailToS3,
-  makeStageUrl,
+  stageViewUrl,
 } from '@/utils/thumbnail-pipeline'
 import { useThumbnailPublisher } from '@/hooks/thumbnail-signal'
 import { useItemCard } from '@/hooks/useItemCard'
@@ -371,17 +371,17 @@ async function backfill(
   const presign = presignRes?.ok
     ? ((await presignRes.json().catch(() => null)) as {
         uploadUrl?: string
-        publicUrl?: string
+        viewUrls?: Record<2 | 3, string>
       } | null)
     : null
-  if (!presign?.uploadUrl || !presign.publicUrl) return null
+  if (!presign?.uploadUrl || !presign.viewUrls?.[2]) return null
 
   const put = await putThumbnailToS3(presign.uploadUrl, resized.blob, itemId, 2)
   if (!put) return null
 
   return {
     stage: 2,
-    src: makeStageUrl(presign.publicUrl, 2),
+    src: stageViewUrl(presign.viewUrls, 2),
     width: resized.width,
     height: resized.height,
   }
