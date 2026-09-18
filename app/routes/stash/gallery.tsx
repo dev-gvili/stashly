@@ -5,8 +5,8 @@ import { parseSearchParams } from '@/utils/parsers'
 import { toSearchSchema } from '@/utils'
 import type { Prisma } from '@/prisma/client'
 import { ItemCategory, ItemType } from '@/prisma/enums'
-import { buildSrcSet } from '@/utils/gallery-layout'
 import { prisma } from '@/services/db'
+import { signThumbnails } from '@/services/thumbnail-actions'
 import {
   buildItemFilters,
   itemFilterSchema,
@@ -94,7 +94,7 @@ export async function loader({ request, context }: Route.ActionArgs) {
     },
   })
 
-  let images = res.map((item) => {
+  let images = (await signThumbnails(res)).map((item) => {
     let thumb = item.thumbnails[0]
     const storedW =
       thumb?.width ?? item.image?.width ?? item.video?.width ?? null
@@ -113,10 +113,8 @@ export async function loader({ request, context }: Route.ActionArgs) {
       h = 180
     }
 
-    // Use the public Tigris URL stored on the thumbnail row directly.
-    // Going through /api/thumbnails/:itemId hits a server-side redirect
-    // that signs a fresh presigned URL on every image request — that
-    // path defeats browser caching and floods the API with sign calls.
+    // Signed GET URL, produced once per loader run by `signThumbnails`. It is
+    // stable for the signing window, so re-renders hit the browser cache.
     const thumbSrc = thumb?.url ?? ''
     return {
       id: item.id,
@@ -126,7 +124,10 @@ export async function loader({ request, context }: Route.ActionArgs) {
       width: w,
       height: h,
       size: thumb?.size ?? 'original',
-      srcSet: buildSrcSet(thumbSrc, [w, w * 2]),
+      // One candidate only: every stage is a fixed-width WebP, so the old
+      // `?w=` variants fetched the same bytes twice — and a `w` param appended
+      // to a signed URL is outside its signature, which Tigris rejects with 403.
+      srcSet: thumbSrc,
       sizes: `${w}px`,
       name: item.name,
       type: item.type,

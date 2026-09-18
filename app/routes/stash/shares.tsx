@@ -3,6 +3,7 @@ import { GridLayout } from '@/components/views/grid-view'
 import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { prisma } from '@/services/db'
+import { signThumbnails } from '@/services/thumbnail-actions'
 import type { Route } from './+types/shares'
 import { redirect } from 'react-router'
 import { usePagination } from '@/hooks/usePagination'
@@ -127,7 +128,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   })
 
   const hasMore = items.length === take
-  const page = hasMore ? items.slice(0, limit) : items
+  const page = await signThumbnails(hasMore ? items.slice(0, limit) : items)
   const nextCursor = hasMore ? page[page.length - 1].id : null
 
   return { items: page, nextCursor, hasMore }
