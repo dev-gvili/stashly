@@ -27,28 +27,58 @@ const prisma = new PrismaClient({
   },
 })
 
+/**
+ * Wipes every application table in one statement.
+ *
+ * Replaces the hand-ordered `deleteMany` cascade, which was both slow (one
+ * round trip per model, plus a row-level trigger firing per deleted row) and
+ * quietly incomplete: the `*Action` tables hold the FK (`ItemAction.createActionId
+ * → CreateAction`) rather than being pointed at, and `ItemAction.activityId` is
+ * `SET NULL`, so nothing reachable from `Activity` ever deleted them. They
+ * accumulated across resets.
+ *
+ * `TRUNCATE ... CASCADE` sidesteps ordering entirely — Postgres resolves the FK
+ * graph itself — and the table list is derived from the catalog, so a new Prisma
+ * model is covered without touching this file.
+ *
+ * **Preserved on purpose:**
+ * - `_prisma_migrations` — excluded by name. Truncating it would make Prisma
+ *   believe the database is unmigrated and try to replay every migration.
+ * - Extension-owned tables — excluded via `pg_depend` (pgvector, pg_trgm).
+ * - **All triggers and functions.** `TRUNCATE` removes rows, never schema
+ *   objects, so the migration-added rollup/notify machinery survives untouched.
+ *   All 10 user triggers are `FOR EACH ROW`, and row-level triggers do **not**
+ *   fire on `TRUNCATE` — which is what makes this fast, and why the size/child
+ *   -count rollups don't thrash on the way out. If an `ON TRUNCATE` trigger is
+ *   ever added, it *will* fire here.
+ */
+const RESET_SQL = `
+DO $$
+DECLARE
+  target text;
+BEGIN
+  SELECT string_agg(format('%I.%I', n.nspname, c.relname), ', ')
+  INTO target
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE c.relkind = 'r'
+    AND n.nspname = 'public'
+    AND c.relname <> '_prisma_migrations'
+    AND NOT EXISTS (
+      SELECT 1 FROM pg_depend d
+      WHERE d.classid = 'pg_class'::regclass
+        AND d.objid = c.oid
+        AND d.deptype = 'e'
+    );
+
+  IF target IS NOT NULL THEN
+    EXECUTE 'TRUNCATE TABLE ' || target || ' RESTART IDENTITY CASCADE';
+  END IF;
+END $$;`
+
 async function main(): Promise<void> {
   try {
-    await prisma.$transaction([
-      prisma.folder.deleteMany(),
-      prisma.invitation.deleteMany(),
-      prisma.collectionMember.deleteMany(),
-      prisma.comment.deleteMany(),
-      prisma.permission.deleteMany(),
-      prisma.notification.deleteMany(),
-      prisma.activity.deleteMany(),
-      prisma.itemVersion.deleteMany(),
-      prisma.lockedItem.deleteMany(),
-      prisma.drive.deleteMany(),
-      prisma.subscription.deleteMany(),
-      prisma.storagePlan.deleteMany(),
-      prisma.favorite.deleteMany(),
-      prisma.file.deleteMany(),
-      prisma.thumbnail.deleteMany(),
-      prisma.item.deleteMany(),
-      prisma.account.deleteMany(),
-      prisma.user.deleteMany(),
-    ])
+    await prisma.$executeRawUnsafe(RESET_SQL)
 
     // Create storage plans
     const createdStoragePlans = await prisma.storagePlan.createManyAndReturn({
