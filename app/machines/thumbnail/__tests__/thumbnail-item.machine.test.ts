@@ -43,10 +43,7 @@ function happyActors(over: Record<string, unknown> = {}) {
     stage3: fromPromise(async () => tinyBlob),
     presign: fromPromise(async () => ({
       uploadUrl: 'https://s3.test/put',
-      viewUrls: {
-        2: 'https://s3.test/thumbnails/i.webp?sig=s2',
-        3: 'https://s3.test/thumbnails/i.webp?sig=s3',
-      },
+      publicUrl: 'https://s3.test/thumbnails/i.webp',
     })),
     putStage: fromPromise(async () => undefined),
     patchThumbnail: fromPromise(async () => undefined),
@@ -107,8 +104,8 @@ describe('thumbnailItemMachine — upload mode', () => {
       file: imageFile(),
     })
 
-    expect(progress[1].src).toBe('https://s3.test/thumbnails/i.webp?sig=s2')
-    expect(progress[2].src).toBe('https://s3.test/thumbnails/i.webp?sig=s3')
+    expect(progress[1].src).toBe('https://s3.test/thumbnails/i.webp?v=2')
+    expect(progress[2].src).toBe('https://s3.test/thumbnails/i.webp?v=3')
   })
 
   it('reports no thumbnail when the type has no stage-2 producer', async () => {
@@ -243,8 +240,7 @@ describe('thumbnailItemMachine — backfill mode', () => {
       {
         acquireSource: fromPromise(async () => ({
           kind: 'existing' as const,
-          url: 'https://s3.test/thumbnails/b2.webp?sig=s2',
-          stage: 2 as const,
+          url: 'https://s3.test/thumbnails/b2.webp?v=2',
         })),
         stage2: fromPromise(stage2),
       }
@@ -252,7 +248,7 @@ describe('thumbnailItemMachine — backfill mode', () => {
 
     expect(stage2).not.toHaveBeenCalled()
     expect(progress).toEqual([
-      { stage: 2, src: 'https://s3.test/thumbnails/b2.webp?sig=s2' },
+      { stage: 2, src: 'https://s3.test/thumbnails/b2.webp?v=2' },
     ])
     expect(output.thumbnailed).toBe(true)
   })
@@ -263,16 +259,14 @@ describe('thumbnailItemMachine — backfill mode', () => {
       {
         acquireSource: fromPromise(async () => ({
           kind: 'existing' as const,
-          url: 'https://s3.test/thumbnails/b4.webp?sig=s3',
-          stage: 3 as const,
+          url: 'https://s3.test/thumbnails/b4.webp?v=3',
         })),
       }
     )
 
-    // Stages 2 and 3 share one S3 key, and a signed URL carries no cache
-    // buster — the server reports the stage as its own field.
+    // Stages 2 and 3 share one S3 key; the cache buster is the only evidence.
     expect(progress).toEqual([
-      { stage: 3, src: 'https://s3.test/thumbnails/b4.webp?sig=s3' },
+      { stage: 3, src: 'https://s3.test/thumbnails/b4.webp?v=3' },
     ])
   })
 

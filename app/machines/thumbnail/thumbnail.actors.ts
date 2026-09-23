@@ -38,14 +38,13 @@ interface SourceResponse {
   mimeType?: string | null
   name?: string
   url?: string
-  stage?: 2 | 3
 }
 
 export type AcquireResult =
   /** Downloaded and ready to run the stages over. */
   | { kind: 'file'; file: File }
   /** Another client already backfilled this item — paint theirs, do no work. */
-  | { kind: 'existing'; url: string; stage: 2 | 3 }
+  | { kind: 'existing'; url: string }
   /** Server declined (permission, size cap, unsupported type). Never retry. */
   | { kind: 'unavailable' }
 
@@ -70,7 +69,7 @@ export const acquireSourceActor = fromPromise<
     .catch(() => null)) as SourceResponse | null
   if (!source) return { kind: 'unavailable' }
   if (source.status === 'exists' && source.url) {
-    return { kind: 'existing', url: source.url, stage: source.stage ?? 2 }
+    return { kind: 'existing', url: source.url }
   }
   if (source.status !== 'ready' || !source.downloadUrl) {
     return { kind: 'unavailable' }
@@ -123,11 +122,10 @@ export const stage3Actor = fromPromise<Blob | null, { file: File }>(
 
 export interface Presign {
   uploadUrl: string
-  /** Signed GET per persisted stage. The object is private; these expire. */
-  viewUrls: Record<2 | 3, string>
+  publicUrl: string
 }
 
-/** Five-minute presigned PUT plus a signed GET for each stage to paint. */
+/** Five-minute presigned PUT plus the public URL the DB will point at. */
 export const presignActor = fromPromise<Presign, { itemId: string }>(
   async ({ input, signal }) => {
     const res = await fetch(`/api/thumbnails/${input.itemId}?intent=presign`, {
@@ -135,10 +133,10 @@ export const presignActor = fromPromise<Presign, { itemId: string }>(
     })
     if (!res.ok) throw new Error(`presign failed: ${res.status}`)
     const data = (await res.json()) as Partial<Presign>
-    if (!data.uploadUrl || !data.viewUrls?.[2] || !data.viewUrls?.[3]) {
-      throw new Error('presign missing uploadUrl/viewUrls')
+    if (!data.uploadUrl || !data.publicUrl) {
+      throw new Error('presign missing uploadUrl/publicUrl')
     }
-    return { uploadUrl: data.uploadUrl, viewUrls: data.viewUrls }
+    return { uploadUrl: data.uploadUrl, publicUrl: data.publicUrl }
   }
 )
 
@@ -162,11 +160,9 @@ export const putStageActor = fromPromise<
 /**
  * Points the item's `Thumbnail` row at the freshly uploaded object.
  *
- * The server derives and stores the locator itself; `url` here is only the
- * optimistic src the fetcher-signal consumer reads back from `formData` while
- * the PATCH is in flight. Stages 2 and 3 share one S3 key, so each stage has
- * its own signed URL with `v` signed in — without that the browser would keep
- * showing the previous stage from cache after the object was overwritten.
+ * Stages 2 and 3 share one S3 key, so the persisted URL carries a `?v={stage}`
+ * cache-buster — without it the browser keeps showing the previous stage from
+ * cache even though the object was overwritten.
  */
 export const patchThumbnailActor = fromPromise<
   void,

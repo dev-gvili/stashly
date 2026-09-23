@@ -25,7 +25,6 @@ import { searchFactory } from '@/utils/search'
 import type { Folder, ItemCategory } from '@/prisma/browser'
 import { prisma } from '@/services/db'
 import { createNotification } from './notification-actions'
-import { signThumbnails } from './thumbnail-actions'
 
 // ---------------------------------------------------------------------------
 // Search
@@ -359,11 +358,7 @@ async function enrichInvitations(
     ),
   ]
   const sizes = await computeWorkspaceSizes(db, workspaceIds)
-  // Signed before enrichment, so `pickThumbnailUrl` selects an already-signed
-  // value and stays synchronous. The walk reaches the item, its children and
-  // the workspace's items in one pass.
-  const signed = await signThumbnails(invitations)
-  return signed.map((inv) =>
+  return invitations.map((inv) =>
     enrichInvitation(
       inv,
       inv.workspace ? (sizes.get(inv.workspace.id) ?? null) : null
@@ -389,7 +384,7 @@ export async function findInvitationById(
     ? await computeWorkspaceSizes(db, [inv.workspace.id])
     : null
   return enrichInvitation(
-    await signThumbnails(inv),
+    inv,
     inv.workspace ? (sizes?.get(inv.workspace.id) ?? null) : null
   )
 }

@@ -57,7 +57,7 @@ export interface ThumbItemContext {
   stage1ObjectUrl: string | null
   resized: ResizedThumbnail | null
   salient: Blob | null
-  presign: { uploadUrl: string; viewUrls: Record<2 | 3, string> } | null
+  presign: { uploadUrl: string; publicUrl: string } | null
   /**
    * True once bytes for this item are reachable on S3. Drives the machine's
    * output, which is what tells the manager whether to add the item to the

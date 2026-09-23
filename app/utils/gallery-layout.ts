@@ -8,47 +8,11 @@
  */
 import type { GalleryImage } from '@/types/stash.types'
 
-/**
- * Builds a `srcSet` of width candidates for an image URL.
- *
- * **A presigned URL is returned unchanged, as a single candidate.** Every query
- * param of a signed URL is covered by its signature, so appending `w=` puts the
- * request outside it and the object store answers 403 (verified on Tigris,
- * 2026-09-16). Silently serving one candidate is the right answer rather than a
- * throw: there is nothing to vary anyway, since a signed thumbnail is one
- * fixed-size WebP per stage, and the variants only ever re-fetched the same
- * bytes under a different URL.
- *
- * @param src - Image URL. Signed URLs are passed through.
- * @param widths - Candidate widths in pixels, used only for unsigned URLs.
- *
- * @example
- * buildSrcSet('/api/images?image=a.png', [256, 512])
- * // → '/api/images?image=a.png&w=256 256w, /api/images?image=a.png&w=512 512w'
- *
- * @example
- * buildSrcSet('https://b.example.com/t.webp?X-Amz-Signature=abc', [256, 512])
- * // → 'https://b.example.com/t.webp?X-Amz-Signature=abc'
- */
 export function buildSrcSet(src: string, widths: number[]) {
-  if (isSignedUrl(src)) return src
   const hasQuery = src?.indexOf('?') !== -1
   return widths
     .map((w) => `${src}${hasQuery ? '&' : '?'}w=${w} ${w}w`)
     .join(', ')
-}
-
-/**
- * True when a URL carries a SigV4 presigned signature, whose query string can
- * no longer be added to. Exported so other URL-rewriting helpers can make the
- * same check before appending anything.
- *
- * @example
- * isSignedUrl('https://b.example.com/t.webp?X-Amz-Signature=abc') // → true
- * isSignedUrl('/api/images?image=a.png') // → false
- */
-export function isSignedUrl(src: string | null | undefined): boolean {
-  return !!src && src.includes('X-Amz-Signature=')
 }
 
 // Preset aspect ratios (width / height), picked deterministically from the item

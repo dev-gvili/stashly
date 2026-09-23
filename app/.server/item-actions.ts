@@ -18,7 +18,6 @@ import {
   onItemsUploaded,
 } from '@/services/quota-actions'
 import { getObjectText } from '@/services/s3'
-import { signThumbnails } from '@/services/thumbnail-actions'
 import {
   requireAtLeastRole,
   requireMembership,
@@ -1934,7 +1933,7 @@ export async function getFolderContent(params: GetFolderContentParams) {
     // --- 4. Compute Pagination Metadata ---
 
     const hasMore = items.length > limit
-    const data = await signThumbnails(items.slice(0, limit))
+    const data = items.slice(0, limit)
     const nextCursor = hasMore ? (items[items.length - 1]?.id ?? null) : null
 
     return {
@@ -2024,7 +2023,7 @@ export async function getPaginatedItems<TInclude extends object>(params: {
   })
 
   let hasMore = items.length > take
-  let data = await signThumbnails(items.slice(0, take))
+  let data = items.slice(0, take)
   let nextCursor: string | null = null
 
   // If we got more items than the limit, we have a next page
@@ -2173,7 +2172,7 @@ export async function paginateItems<
   // --- 4. Return Paginated Results ---
 
   const hasMore = items.length > limit
-  const data = await signThumbnails(items.slice(0, limit))
+  const data = items.slice(0, limit)
   const nextCursor = hasMore ? (items[items.length - 1]?.id ?? null) : null
 
   return {
@@ -2545,12 +2544,10 @@ export async function getSuggestedItems(
       prisma.$queryRaw<ItemRow[]>(buildQuery('file', maxFiles)),
     ])
 
-    // Raw SQL bypasses every Prisma-level hook, so the aggregated thumbnail
-    // JSON is signed here like any other read.
-    return await signThumbnails({
+    return {
       suggestedFiles: files as any,
       suggestedFolders: folders as any,
-    })
+    }
   } catch (error) {
     console.error('Error fetching suggested items:', error)
     throw error
@@ -3063,7 +3060,7 @@ export async function getFavoritedItems({
   })
 
   const hasMore = items.length > limit
-  const data = await signThumbnails(items.slice(0, limit))
+  const data = items.slice(0, limit)
   const nextCursor = hasMore ? (data[data.length - 1]?.id ?? null) : null
   return { items: data, nextCursor, hasMore }
 }
@@ -3463,7 +3460,7 @@ export async function getFileItem(
     )
   }
 
-  return signThumbnails(item)
+  return item
 }
 
 /**

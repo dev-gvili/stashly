@@ -13,7 +13,6 @@ import { useItemUrl } from '@/hooks/useItemUrl'
 import { capitalize, formatMediaDate, formatSize } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
 import React from 'react'
-import { useRevalidator } from 'react-router'
 import {
   Link,
   useNavigate,
@@ -223,28 +222,6 @@ const ItemThumbnail = React.forwardRef<
 })
 ItemThumbnail.displayName = 'ItemThumbnail'
 
-/**
- * Thumbnail URLs are signed and expire, so a tab left open past the expiry
- * paints broken images until its loader data is refreshed. The first failed
- * load triggers one revalidation, which re-signs every URL on the page.
- *
- * Throttled per tab: an image can also fail for reasons a reload won't fix
- * (deleted object, offline), and a grid of those would otherwise revalidate
- * once per card.
- */
-const THUMBNAIL_RECOVERY_INTERVAL_MS = 10 * 60 * 1000
-let lastThumbnailRecoveryAt = 0
-
-function useThumbnailRecovery() {
-  const revalidator = useRevalidator()
-  return React.useCallback(() => {
-    const now = Date.now()
-    if (now - lastThumbnailRecoveryAt < THUMBNAIL_RECOVERY_INTERVAL_MS) return
-    lastThumbnailRecoveryAt = now
-    revalidator.revalidate()
-  }, [revalidator])
-}
-
 const ItemThumbnailImage = React.forwardRef<
   HTMLImageElement,
   Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'>
@@ -252,8 +229,7 @@ const ItemThumbnailImage = React.forwardRef<
   const { id, thumbnails, name } = useItemCard()
   const live = useLiveThumbnail(id)
   const persisted = thumbnails?.find((t) => t.url && !t.url.startsWith('#'))
-  const { className, alt, onError, ...rest } = props
-  const recoverExpired = useThumbnailRecovery()
+  const { className, alt, ...rest } = props
 
   const src = live?.src ?? persisted?.url
   const width = live?.width ?? persisted?.width ?? undefined
@@ -273,10 +249,6 @@ const ItemThumbnailImage = React.forwardRef<
       decoding="async"
       data-slot="item-thumbnail-image"
       data-stage={live?.stage}
-      onError={(event) => {
-        recoverExpired()
-        onError?.(event)
-      }}
       className={cn(
         'absolute inset-0 w-full h-full object-cover rounded-md',
         // Hairline separator so a light photo on a light card (or the reverse)

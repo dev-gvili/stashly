@@ -46,6 +46,7 @@ import crypto from 'crypto-js'
 import { href } from 'react-router'
 import { z, type Schema } from 'zod'
 import type { ItemCardProps } from '../components/stash/item-card'
+import type { AuthSession } from '@/services/auth.types'
 import { paginationOptions } from '@/schemas/filters.schemas'
 
 /**
@@ -1084,6 +1085,7 @@ export function toLinkState(link: SharedLink): LinkState {
   const days = (new Date(link.expiresAt).getTime() - Date.now()) / 86_400_000
   if (days <= 0) return 'expired'
   return days <= 7 ? 'expiring' : 'live'
+}export function toS3PublicUrl(session: AuthSession, key: string) {
+  return `https://${session.user.bucket}.t3.tigrisfiles.io/${key}`
 }
-
 

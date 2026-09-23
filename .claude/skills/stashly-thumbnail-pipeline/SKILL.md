@@ -49,10 +49,10 @@ A card that unmounts mid-job (route change) lets the in-flight job finish and pe
 | Stage | What | Mechanism |
 |-------|------|-----------|
 | 1 | 8×8 blur preview | Image: `extractTinyThumbnail` · Video: `generateVideoThumbnail` · PDF: `generatePdfThumbnail` (from `@/utils/pdf`) · Text: `generateTextThumbnail` (from `@/utils/text-thumbnail`) — **local `URL.createObjectURL` only, NOT persisted to S3 or DB** |
-| 2 | 512px resize | Image: `canvasResize(file, 512)` · Video: re-encode frame · PDF: `renderPdfPageToBlob(file, 512)` · Text: `renderTextPageToBlob(file, 512)` → presign → PUT to S3, stored as the `?v=2` locator |
-| 3 | Salient crop | `generateSalientCrop` in `thumbnail.ai.ts` — **images only**, stored as the `?v=3` locator. Native `FaceDetector` (Chrome) crops on the largest face; otherwise a ViT-informed geometric center crop. Serialized through `app/workers/ai-queue.ts` at `'default'` priority, shared with embedding and OCR, because WebGPU can't take concurrent inference |
+| 2 | 512px resize | Image: `canvasResize(file, 512)` · Video: re-encode frame · PDF: `renderPdfPageToBlob(file, 512)` · Text: `renderTextPageToBlob(file, 512)` → presign → PUT to S3, URL written as `${publicUrl}?v=2` |
+| 3 | Salient crop | `generateSalientCrop` in `thumbnail.ai.ts` — **images only**, URL written as `${publicUrl}?v=3`. Native `FaceDetector` (Chrome) crops on the largest face; otherwise a ViT-informed geometric center crop. Serialized through `app/workers/ai-queue.ts` at `'default'` priority, shared with embedding and OCR, because WebGPU can't take concurrent inference |
 
-**Cache-bust**: stages 2/3 share one S3 key, so the stored locator carries `?v={stage}` and the signed URL varies per stage — see the signed-read section below.
+**Cache-bust query param**: stages 2/3 share the same S3 key, so the URL written to `Thumbnail.url` includes `?v={stage}`. Without this, browser cache (`Cache-Control: max-age=3600` on the S3 object) keeps showing the prior stage even after the object is overwritten.
 
 **S3 client config**: `app/.server/s3.ts` sets `requestChecksumCalculation: 'WHEN_REQUIRED'` on `S3Client`. Without this, AWS SDK v3 signs a CRC32 checksum requirement (`x-amz-checksum-crc32=AAAAAA==`, CRC32 of empty body) into presigned `PutObject` URLs, causing browser PUTs to fail with a checksum mismatch.
 
@@ -78,28 +78,13 @@ The cap is 1 because PDF.js inside a dedicated worker falls back to **fake worke
 
 Stage 1 never leaves the browser, so only stages 2 and 3 run this:
 
-1. `GET /api/thumbnails/:itemId/presign` → `{ uploadUrl, viewUrls: { 2, 3 } }` (5-minute PUT with **no ACL**, plus one signed GET per persisted stage, from `presignThumbnailUpload`)
-2. `PUT blob` to S3 `uploadUrl` with `Content-Type: image/webp` only (`putThumbnailToS3`) — **never** an `x-amz-acl` header: Tigris applies that header even unsigned on a bucket that allows object ACLs, which would publish the thumbnail
-3. `PATCH /api/thumbnails/:itemId` with `{ stage, url, width, height }` → echoes `{ ok, stage, url, width, height }` with a freshly **signed** `url`, which is what the fetcher-signal consumer reads as `fetcher.data`. The submitted `url` is only the consumer's optimistic src — the server ignores it
+1. `GET /api/thumbnails/:itemId/presign` → `{ uploadUrl, publicUrl }` (5-minute PUT, `acl: 'public-read'`)
+2. `PUT blob` to S3 `uploadUrl` with `Content-Type: image/webp` (`putThumbnailToS3`)
+3. `PATCH /api/thumbnails/:itemId` with `{ stage, url, width, height }` → echoes `{ ok, stage, url, width, height }` back, which is what the fetcher-signal consumer reads as `fetcher.data`
 
 `app/routes/api/thumbnails.ts` exports **only an `action`** (POST creates, PATCH updates, anything else 405) — there is no `GET` loader on the detail route.
 
-**S3 key**: `thumbnails/{itemId}.webp` — one file per item, overwritten as stages improve.
-
-## Thumbnails are private — every read is signed
-
-Nothing in a user bucket is public. `Thumbnail.url` stores a **locator**, not a URL:
-`s3://{bucket}/thumbnails/{itemId}.webp?v={stage}`. It can't be loaded as-is, so a read path that forgets to sign it shows a broken image rather than a working public link. Rows written before this change keep the old `https://{bucket}.t3.tigrisfiles.io/...?v=N` form and `parseThumbnailLocator` still reads them, so there was no data migration.
-
-- **Read path**: wrap every query result in `signThumbnails` (`thumbnail-actions.ts`). It walks the result at any depth and signs each `thumbnails[].url`, using the nearest enclosing `id` as the expected item. `getPaginatedItems`, `paginateItems`, `getFolderContent`, `getFavoritedItems`, `getFileItem`, `getSuggestedItems`, pins, locks, search, duplicates, invitations and the two raw-SQL reads all call it, so most routes inherit it. **Authorization stays with the caller** — signing happens after the loader has already scoped the rows.
-- **The server derives what it stores.** `updateThumbnail` builds the locator from the session's bucket and requires read permission on the item. A client-supplied `url` would be a read primitive: the server signs whatever is stored, with credentials that reach every user's bucket. `parseThumbnailLocator` refuses anything but `thumbnails/<itemId>.webp`, and an item id that doesn't match the row.
-- **Signing is local HMAC work**, no network call: 1.2–1.9 ms per URL, so a page of them is cheap (verified 2026-09-18).
-
-**Cache-bust**: the signing date is rounded to the hour and the expiry is 2 h, so every render within the window produces a byte-identical URL the browser can cache — and a URL is always valid for at least an hour after it is handed out. The stage rides in the signed `response-content-disposition`, so stages 2 and 3 differ. **Never append a param to a signed URL** (`url + '&v=2'`, `buildSrcSet`): it falls outside the signature and Tigris returns 403 (verified 2026-09-16). Responses also carry `Cache-Control: private, max-age=3600` via `response-cache-control`, since the stored objects have none.
-
-**Expiry**: a tab open past the window paints broken images. The first `onError` in `ItemCard.Thumbnail` triggers one revalidation, throttled to once per 10 minutes per tab.
-
-**Per-object ACLs stay off.** `setObjectAclEnabled` (`app/.server/s3.ts`) exists only for the one-off `scripts/sweep-thumbnail-acls.ts`, which makes pre-existing thumbnails private again and turns the flag off. With the flag on, Tigris honours an `x-amz-acl` header from any presigned PUT, signed or not (verified 2026-09-16).
+**S3 key**: `thumbnails/{itemId}.webp` — one file per item, overwritten as stages improve. `publicUrl = https://{bucket}.t3.tigrisfiles.io/thumbnails/{itemId}.webp`.
 
 ## Gallery query
 

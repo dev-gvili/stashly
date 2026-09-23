@@ -208,10 +208,10 @@ export async function putThumbnailToS3(
   const res = await fetch(uploadUrl, {
     method: 'PUT',
     body: blob,
-    // No `x-amz-acl` — the object stays private and is read through a signed
-    // GET. Tigris applies that header even unsigned when a bucket allows
-    // object ACLs, which would silently make the thumbnail world-readable.
-    headers: { 'Content-Type': 'image/webp' },
+    headers: {
+      'Content-Type': 'image/webp',
+      'x-amz-acl': 'public-read',
+    },
   }).catch((err) => {
     console.error(`[stage ${stage} PUT] network error`, itemId, err)
     return null
@@ -223,18 +223,8 @@ export async function putThumbnailToS3(
   return true
 }
 
-/**
- * Picks the signed view URL for a stage out of the presign payload.
- *
- * Replaces the old `${publicUrl}?v=${stage}` concatenation: the server now
- * returns one signed URL per stage, with `v` signed *into* it. Appending a
- * param to a signed URL invalidates its signature and Tigris returns 403.
- */
-export function stageViewUrl(
-  viewUrls: Record<2 | 3, string>,
-  stage: 2 | 3
-): string {
-  return viewUrls[stage]
+export function makeStageUrl(publicUrl: string, stage: 2 | 3): string {
+  return `${publicUrl}?v=${stage}`
 }
 
 // ── Metadata extraction (pure, no fetcher) ───────────────────────────────

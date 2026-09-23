@@ -20,7 +20,6 @@ import {
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { Upload } from '@aws-sdk/lib-storage'
-import { createHash, createHmac, type BinaryLike } from 'node:crypto'
 import { customAlphabet } from 'nanoid'
 import type { User } from 'better-auth'
 import type { auth } from './auth'
@@ -210,9 +209,6 @@ export async function emptyBucket(bucketName: string) {
  * created, `applyDefaultBucketPolicy` is called so the bucket is ready for
  * direct browser PUTs from any origin.
  *
- * Per-object ACLs stay **off** (Tigris's default). Nothing in the bucket is
- * public: every read — thumbnails included — goes through a presigned GET.
- *
  * @returns The name of the newly created bucket.
  *
  * @example
@@ -237,158 +233,6 @@ export async function createUserBucket(user: User): Promise<string> {
 }
 
 /**
- * Sends a SigV4-signed request to Tigris's bucket-settings API.
- *
- * This is **not** part of the S3 API — it is Tigris's own bucket-configuration
- * endpoint, served from the same host and signed with the same credentials
- * (`service: 's3'`, `region: 'auto'`). The official `@tigrisdata/storage` SDK
- * talks to it the same way; we sign by hand so the SDK isn't a new dependency.
- *
- * @param method - `'GET'` to read bucket metadata, `'PATCH'` to update settings.
- * @param bucket - The bucket name, used as the request path.
- * @param options.query - Query params. Signed sorted by key, as SigV4 requires,
- *   and sent in that same order so the signature matches.
- * @param options.body - JSON request body for `PATCH`.
- */
-async function tigrisBucketRequest(
-  method: 'GET' | 'PATCH',
-  bucket: string,
-  options: { query?: Record<string, string>; body?: string } = {}
-) {
-  const { query = {}, body } = options
-  const endpoint = process.env.AWS_ENDPOINT_URL!.replace(/\/$/, '')
-  const accessKeyId = process.env.AWS_ACCESS_KEY!
-  const secretAccessKey = process.env.AWS_SECRET_KEY!
-  const region = process.env.AWS_REGION ?? 'auto'
-
-  const sha256Hex = (value: string) =>
-    createHash('sha256').update(value).digest('hex')
-  const hmac = (key: BinaryLike, value: string) =>
-    createHmac('sha256', key).update(value).digest()
-
-  const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '')
-  const date = amzDate.slice(0, 8)
-  const payloadHash = sha256Hex(body ?? '')
-
-  const headers: Record<string, string> = {
-    host: new URL(endpoint).host,
-    'x-amz-content-sha256': payloadHash,
-    'x-amz-date': amzDate,
-    ...(body
-      ? { 'content-type': 'application/json' }
-      : { accept: 'application/json' }),
-  }
-  const sortedHeaderKeys = Object.keys(headers).sort()
-  const signedHeaders = sortedHeaderKeys.join(';')
-  const canonicalHeaders = sortedHeaderKeys
-    .map((key) => `${key}:${headers[key]}\n`)
-    .join('')
-  const canonicalQuery = Object.keys(query)
-    .sort()
-    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(query[key])}`)
-    .join('&')
-
-  const path = `/${bucket}`
-  const canonicalRequest = [
-    method,
-    path,
-    canonicalQuery,
-    canonicalHeaders,
-    signedHeaders,
-    payloadHash,
-  ].join('\n')
-  const scope = `${date}/${region}/s3/aws4_request`
-  const signingKey = hmac(
-    hmac(hmac(hmac(`AWS4${secretAccessKey}`, date), region), 's3'),
-    'aws4_request'
-  )
-  const signature = createHmac('sha256', signingKey)
-    .update(
-      ['AWS4-HMAC-SHA256', amzDate, scope, sha256Hex(canonicalRequest)].join('\n')
-    )
-    .digest('hex')
-  headers.authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`
-
-  const response = await fetch(
-    `${endpoint}${path}${canonicalQuery ? `?${canonicalQuery}` : ''}`,
-    { method, headers, body }
-  )
-  return { ok: response.ok, status: response.status, text: await response.text() }
-}
-
-/**
- * Reports whether per-object ACLs are enabled on a bucket.
- *
- * Reads Tigris's bucket metadata and returns `acl_settings.allow_object_acl`.
- * A bucket that has never had the setting applied omits the field entirely,
- * which reads as `false`. Returns `false` on any transport or parse error —
- * callers use this to decide whether to (re-)apply the setting, and re-applying
- * it is harmless.
- *
- * @example
- * if (!(await isObjectAclEnabled(user.bucket))) await enableObjectAcl(user.bucket)
- */
-export async function isObjectAclEnabled(bucket: string): Promise<boolean> {
-  const response = await tigrisBucketRequest('GET', bucket, {
-    query: { metadata: '', 'with-size': 'false' },
-  })
-  if (!response.ok) return false
-  try {
-    return JSON.parse(response.text)?.acl_settings?.allow_object_acl === true
-  } catch {
-    return false
-  }
-}
-
-/**
- * Turns per-object ACLs on or off for a bucket.
- *
- * **Nothing in the app needs this on.** Every read is a presigned GET, so no
- * object is ever public. It exists for the one-off sweep that turns the flag
- * back *off* on buckets provisioned while thumbnails were public-read — and as
- * the documented lever, since the setting is invisible over the S3 API:
- * `GetBucketAcl` reports a bucket with it on and one with it off identically.
- *
- * With the flag on, Tigris applies an `x-amz-acl` header from *any* presigned
- * PUT, signed or not (verified 2026-09-16), so a client could make objects
- * anonymously readable on its own. With it off, the ACL is stored but never
- * served: the anonymous GET 403s.
- *
- * There is no S3-native equivalent on Tigris (verified 2026-09-16):
- * `PutBucketPolicy` returns 501 `NotImplemented`, `PutBucketOwnershipControls`
- * with `ObjectWriter` is accepted but has no effect, and `PutBucketAcl` with
- * `public-read` works but exposes the whole bucket. This is the same call the
- * dashboard toggle and `@tigrisdata/storage`'s `updateBucket` make.
- *
- * @param bucket - The bucket to update.
- * @param enabled - `true` allows per-object ACLs, `false` ignores them on read.
- *
- * @throws {StashlyError} `CREATE_BUCKET_FAILED` if Tigris rejects the update.
- *
- * @example
- * await setObjectAclEnabled('stashly-johndoe-a1b2c3d4', false)
- */
-export async function setObjectAclEnabled(
-  bucket: string,
-  enabled: boolean
-): Promise<void> {
-  const response = await tigrisBucketRequest('PATCH', bucket, {
-    body: JSON.stringify({ acl_settings: { allow_object_acl: enabled } }),
-  })
-  if (!response.ok) {
-    console.error(
-      `Error setting object ACL on ${bucket}:`,
-      response.status,
-      response.text
-    )
-    throw new StashlyError(
-      StashlyErrorCode.CREATE_BUCKET_FAILED,
-      'Failed to update object ACL setting on user bucket'
-    )
-  }
-}
-
-/**
  * Applies the default S3 bucket configuration used for newly-provisioned user
  * buckets during onboarding.
  *
@@ -401,11 +245,11 @@ export async function setObjectAclEnabled(
  * - `ExposeHeaders: ['*']`
  * - `MaxAgeSeconds: 80000`
  *
- * Nothing here grants public access, and nothing else does either: Tigris
- * returns 501 `NotImplemented` for `PutBucketPolicy`, and per-object ACLs stay
- * off. Thumbnails — the one prefix that used to be public — are read through
- * presigned GETs like every other object (see `signThumbnailUrl` in
- * `thumbnail-actions.ts`).
+ * Public-read access for thumbnails is NOT handled here. Tigris returns 501
+ * `NotImplemented` for `PutBucketPolicy`, so per-prefix bucket policies are
+ * unavailable. Instead, thumbnail uploads are signed with object-level
+ * `ACL: 'public-read'` (see `getPresignedUrl` and the `?intent=presign` read on
+ * the thumbnails route) — each thumbnail object is individually made public on PUT.
  *
  * @example
  * await applyDefaultBucketPolicy('stashly-johndoe-a1b2c3d4')
@@ -621,135 +465,32 @@ export async function uploadFile(
  * @param bucket - The S3 bucket containing the object.
  * @param type - `'get'` for a download URL, `'put'` for an upload URL.
  * @param key - The S3 object key.
- * @param expiresIn - URL lifetime in seconds, counted from `signingDate` (default: 3600).
- * @param options.responseCacheControl - **`get` only.** Sent as
- *   `response-cache-control`, which Tigris honours, so the response carries an
- *   explicit `Cache-Control`. Objects are stored without one of their own.
- * @param options.responseContentDisposition - **`get` only.** Sent as
- *   `response-content-disposition`. It is part of the signature, so it also
- *   serves as the only safe cache-bust for a key that gets overwritten:
- *   a param appended to a finished URL (`url + '&v=2'`) is outside the
- *   signature and Tigris returns 403 (verified 2026-09-16).
- * @param options.signingDate - Pins `X-Amz-Date` (default: now). Two calls with
- *   the same date, key and params return byte-identical URLs, so the browser's
- *   HTTP cache can hit across re-renders instead of downloading again.
+ * @param expiresIn - URL lifetime in seconds (default: 3600).
+ * @param options.acl - Optional canned ACL signed into a `put` URL. Set to
+ *   `'public-read'` for thumbnails so the uploaded object is anonymously
+ *   readable on a private bucket (Tigris doesn't support `PutBucketPolicy`,
+ *   so per-object ACL is the only way to expose individual prefixes).
+ *   Ignored for `get` URLs.
  * @returns A signed HTTPS URL string.
  *
  * @example
  * const downloadUrl = await getPresignedUrl(user.bucket, 'get', 'ws_abc/report.pdf')
  * const uploadUrl   = await getPresignedUrl(user.bucket, 'put', 'ws_abc/photo.jpg', 300)
- *
- * @example
- * // Stable, cacheable thumbnail read: identical for every render this hour,
- * // and distinct per stage because the disposition carries the stage.
- * const viewUrl = await getPresignedUrl(user.bucket, 'get', 'thumbnails/itm_123.webp', 7200, {
- *   responseContentDisposition: 'inline; filename="itm_123-s2.webp"',
- *   signingDate: new Date(Math.floor(Date.now() / 3_600_000) * 3_600_000),
- *   responseCacheControl: 'private, max-age=3600',
- * })
+ * const publicThumb = await getPresignedUrl(user.bucket, 'put', 'thumbnails/itm_123.webp', 300, { acl: 'public-read' })
  */
 export async function getPresignedUrl(
   bucket: string,
   type: 'get' | 'put',
   key: string,
   expiresIn = 3600,
-  options?: {
-    responseCacheControl?: string
-    responseContentDisposition?: string
-    signingDate?: Date
-  }
+  options?: { acl?: 'public-read' | 'private' }
 ) {
-  const signOptions = {
-    expiresIn,
-    ...(options?.signingDate ? { signingDate: options.signingDate } : {}),
-  }
-
-  if (type === 'put') {
-    return await getSignedUrl(
-      s3,
-      new PutObjectCommand({ Bucket: bucket, Key: key }),
-      signOptions
-    )
-  }
-
-  const command = new GetObjectCommand({
-    Bucket: bucket,
-    Key: key,
-    ResponseCacheControl: options?.responseCacheControl,
-    ResponseContentDisposition: options?.responseContentDisposition,
-  })
-
-  return await getSignedUrl(s3, command, signOptions)
+  const command =
+    type === 'get'
+      ? new GetObjectCommand({ Bucket: bucket, Key: key })
+      : new PutObjectCommand({ Bucket: bucket, Key: key, ACL: options?.acl })
+  return await getSignedUrl(s3, command, { expiresIn })
 }
-
-
-/**
- * Presigns a `GET` with extra signed query params and a fixed signing date.
- *
- * `getPresignedUrl` covers the plain case. This variant exists for thumbnails,
- * which need three things it can't do:
- *
- * - **`query`** params are added *before* signing, so they are part of the
- *   signature. A param appended afterwards (`url + '&v=2'`) makes Tigris
- *   return 403 (verified 2026-09-16), so a cache-bust has to be signed in.
- * - **`signingDate`** pins `X-Amz-Date`. Two calls with the same date, key and
- *   params return byte-identical URLs, so the browser's HTTP cache can hit
- *   across re-renders instead of downloading again.
- * - **`responseCacheControl`** is sent as `response-cache-control`. Tigris
- *   honours it, so the object is served with an explicit lifetime; objects are
- *   stored without a `Cache-Control` of their own.
- *
- * Signing is local HMAC work with no network call (0 requests across 1,000
- * signings; about 1.2–1.9 ms each).
- *
- * @param bucket - Bucket holding the object.
- * @param key - Object key.
- * @param options.expiresIn - Validity in seconds, counted from `signingDate`.
- * @param options.signingDate - Defaults to now.
- * @param options.query - Extra query params to sign into the URL.
- * @param options.responseCacheControl - `Cache-Control` value for the response.
- *
- * @example
- * await getPresignedGetUrl(bucket, 'thumbnails/itm_x.webp', {
- *   expiresIn: 7200,
- *   signingDate: new Date(Math.floor(Date.now() / 3_600_000) * 3_600_000),
- *   query: { v: '2' },
- *   responseCacheControl: 'private, max-age=3600',
- * })
- */
-export async function getPresignedGetUrl(
-  bucket: string,
-  key: string,
-  options: {
-    expiresIn: number
-    signingDate?: Date
-    queryParams?: Record<string, string>
-    responseCacheControl?: string
-  }
-): Promise<string> {
-  const { expiresIn, signingDate, queryParams, responseCacheControl } = options
-  const command = new GetObjectCommand({
-    Bucket: bucket,
-    Key: key,
-    ResponseCacheControl: responseCacheControl,
-  })
-
-  if (queryParams && Object.keys(queryParams).length > 0) {
-    // `build` runs before the presigner's signing step, so these params land
-    // in the canonical query string and are covered by the signature.
-    command.middlewareStack.add(
-      (next) => async (args) => {
-        const request = args.request as { query?: Record<string, string> }
-        request.query = { ...request.query, ...queryParams }
-        return next(args)
-      },
-      { step: 'build', name: 'stashlySignedQueryParams' }
-    )
-  }
-
-  return await getSignedUrl(s3, command, { expiresIn, signingDate })
-}
-
 
 /**
  * Permanently deletes a single object from a bucket.

@@ -1,7 +1,6 @@
 import type { Prisma } from '@/prisma/client'
 import { prisma } from '@/services/db'
 import { toObjectId, getPrefixForModel } from '@/utils/converters'
-import { signThumbnails } from './thumbnail-actions'
 
 const itemListSelect = {
   id: true,
@@ -114,6 +113,6 @@ export async function getLockedItems({
   const hasMore = rows.length > limit
   const sliced = hasMore ? rows.slice(0, limit) : rows
   const nextCursor = hasMore ? sliced[sliced.length - 1].id : null
-  const items = await signThumbnails(sliced.map((r) => r.item))
+  const items = sliced.map((r) => r.item)
   return { items, nextCursor, hasMore }
 }
