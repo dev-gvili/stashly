@@ -90,7 +90,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   let searchParams = new URL(request.url).searchParams
   searchParams.set('currentUserId', session.user.id)
   searchParams.set('status', 'trashed')
-  let layout = searchParams.get('layout')
+  // `Thumbnail.view` is non-nullable: a clean URL (no `?layout=`) must not
+  // reach Prisma as `view: null`. Same default the grid/card views use.
+  let layout = searchParams.get('layout') ?? 'grid'
   let parsedParams = parseSearchParams({
     schema: toSearchSchema<
       typeof itemFilterSchema,
