@@ -7,7 +7,7 @@ import {
 } from '@/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import { cn } from '@/utils/styles'
-import type { ComponentPropsWithoutRef } from 'react'
+import { useEffect, type ComponentPropsWithoutRef } from 'react'
 import { callAll } from '../../utils/misc'
 
 export interface LayoutMenuProps
@@ -31,6 +31,19 @@ export const LayoutMenu = ({
   ...props
 }: LayoutMenuProps) => {
   const [searchParams, setSearchParams] = useSearchParams()
+  const hasLayout = searchParams.has('layout')
+  // Views gate on `?layout=` (GridLayout renders nothing without it), so a
+  // clean URL must get the default written into it, not just highlighted.
+  useEffect(() => {
+    if (hasLayout) return
+    setSearchParams(
+      (prev) => {
+        prev.set('layout', 'grid')
+        return prev
+      },
+      { replace: true, preventScrollReset: true }
+    )
+  }, [hasLayout, setSearchParams])
   value = value || searchParams.get('layout') || 'river'
   const _onLayoutChange = (value: string) => {
     if (!value) {
