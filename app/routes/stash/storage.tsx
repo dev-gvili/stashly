@@ -351,7 +351,7 @@ function ActionRow({
         className={cn(
           'font-stashly text-xs uppercase tracking-wider',
           tone === 'danger' &&
-            'bg-transparent border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground',
+            'bg-transparent border-destructive text-destructive hover:bg-destructive hover:text-on-destructive',
           tone === 'default' && 'bg-card! border-input'
         )}
         onClick={onClick}
@@ -622,7 +622,7 @@ export default function StoragePage({
             size="sm"
             onClick={handleEmptyBucket}
             disabled={fetcher.state === 'submitting'}
-            className="font-stashly uppercase tracking-wider bg-transparent border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            className="font-stashly uppercase tracking-wider bg-transparent border-destructive text-destructive hover:bg-destructive hover:text-on-destructive"
           >
             <TrashFillIcon className="size-4" />
             Empty bucket

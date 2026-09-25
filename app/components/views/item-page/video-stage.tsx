@@ -245,7 +245,7 @@ export function VideoStage({
                   : 'pointer-events-none translate-y-3 opacity-0'
               )}
             >
-              <div className="grid w-[32rem] max-w-[calc(100vw-2rem)] grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-xl border border-border bg-popover/80 px-2 py-1 text-popover-foreground shadow-md backdrop-blur-md">
+              <div className="grid w-lg max-w-[calc(100vw-2rem)] grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-xl border border-border bg-popover/80 px-2 py-1 text-popover-foreground shadow-md backdrop-blur-md">
                 {/* left: time */}
                 <span className="justify-self-start pl-1.5 font-stashly text-xs tabular-nums text-muted-foreground">
                   {formatClock(v.currentTime)}{' '}
@@ -297,7 +297,7 @@ export function VideoStage({
                     </IconBtn>
                     {volOpen && (
                       <div className="absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-md border border-border bg-popover/90 p-2 shadow-md backdrop-blur-md">
-                        <div className="flex h-full max-h-max items-center w-6 flex-col items-center gap-1.5">
+                        <div className="flex h-full max-h-max items-center w-6 flex-col gap-1.5">
                           <Slider
                             orientation="vertical"
                             aria-label="Volume"

@@ -69,7 +69,7 @@ export const AppToolbar = ({
         <MoveToTrash
           variant="outline"
           size="icon-sm"
-          className="hover:text-destructive-foreground! bg-destructive! border-input"
+          className="hover:text-on-destructive! bg-destructive! border-input"
         />
       </ButtonGroup>
     </div>

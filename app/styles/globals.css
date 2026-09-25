@@ -34,7 +34,7 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.16 0 0);
   /* the signal is contrast, not hue: ink on paper (light), paper on ink (dark) */
-  --primary: oklch(56.738% 0.15853 275.206);
+  --primary: oklch(54.5% 0.15853 275.206);
   --primary-foreground: oklch(0.99 0.01 275.206);
   /* fill ramp, one step apart: muted < secondary < accent < border < input */
   --secondary: oklch(0.93 0 0);
@@ -45,6 +45,8 @@
   --accent-foreground: oklch(0.2 0 0);
   --destructive: oklch(0.55 0.225 27);
   --destructive-foreground: oklch(0.98 0.01 27);
+  /* text on a SOLID destructive fill; destructive-foreground serves the tints */
+  --on-destructive: oklch(0.98 0.01 27);
   --border: oklch(0.87 0 0);
   --input: oklch(0.82 0 0);
   --ring: oklch(0.16 0 0);
@@ -106,7 +108,7 @@
     --card-foreground: oklch(0.16 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.16 0 0);
-    --primary: oklch(56.738% 0.15853 275.206);
+    --primary: oklch(54.5% 0.15853 275.206);
     --primary-foreground: oklch(0.99 0.01 275.206);
     /* fill ramp, one step apart: muted < secondary < accent < border < input */
     --secondary: oklch(0.93 0 0);
@@ -117,6 +119,7 @@
     --accent-foreground: oklch(0.2 0 0);
     --destructive: oklch(0.55 0.225 27);
     --destructive-foreground: oklch(0.98 0.01 27);
+    --on-destructive: oklch(0.98 0.01 27);
     --border: oklch(0.87 0 0);
     --input: oklch(0.82 0 0);
     --ring: oklch(0.16 0 0);
@@ -189,6 +192,8 @@
   --accent-foreground: oklch(0.97 0 0);
   --destructive: oklch(0.62 0.2 25);
   --destructive-foreground: oklch(0.95 0.02 25);
+  /* white only reaches 4.01:1 on the dark red fill; ink reaches 4.92:1 */
+  --on-destructive: oklch(0.15 0.02 25);
   --border: oklch(0.32 0 0);
   --input: oklch(0.29 0 0);
   --ring: oklch(0.97 0 0);
@@ -260,6 +265,7 @@
     --accent-foreground: oklch(0.97 0 0);
     --destructive: oklch(0.62 0.2 25);
     --destructive-foreground: oklch(0.95 0.02 25);
+    --on-destructive: oklch(0.15 0.02 25);
     --border: oklch(0.32 0 0);
     --input: oklch(0.29 0 0);
     --ring: oklch(0.97 0 0);
@@ -330,6 +336,7 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-on-destructive: var(--on-destructive);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
