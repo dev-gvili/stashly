@@ -22,7 +22,7 @@ import {
   generateStage2Resize,
   generateStage3Salient,
   putThumbnailToS3,
-  makeStageUrl,
+  stageViewUrl,
   extractMediaMetadata,
   buildMediaMetadataFormData,
 } from '@/utils/thumbnail-pipeline'
@@ -102,7 +102,10 @@ function waitForIdle(
  * await run(file)
  */
 export function useThumbnail(itemId: string) {
-  const presignFetcher = useFetcher<{ uploadUrl: string; publicUrl: string }>()
+  const presignFetcher = useFetcher<{
+    uploadUrl: string
+    viewUrls: Record<2 | 3, string>
+  }>()
   const metadataFetcher = useFetcher<{
     chunks?: { id: string; ord: number; content: string }[]
   }>()
@@ -156,8 +159,8 @@ export function useThumbnail(itemId: string) {
       presignRef.current.load(`/api/thumbnails/${itemId}?intent=presign`)
       await waitForIdle(presignRef).catch(() => null)
       const presign = presignRef.current.data
-      if (!presign?.uploadUrl || !presign?.publicUrl) {
-        console.error('[thumbnail] presign missing uploadUrl/publicUrl', itemId)
+      if (!presign?.uploadUrl || !presign?.viewUrls?.[2]) {
+        console.error('[thumbnail] presign missing uploadUrl/viewUrls', itemId)
         return
       }
 
@@ -169,7 +172,7 @@ export function useThumbnail(itemId: string) {
       )
       if (!put2Ok) return
 
-      const stage2Url = makeStageUrl(presign.publicUrl, 2)
+      const stage2Url = stageViewUrl(presign.viewUrls, 2)
       publisher.publishPersisted({
         stage: 2,
         src: stage2Url,
@@ -194,7 +197,7 @@ export function useThumbnail(itemId: string) {
       )
       if (!put3Ok) return
 
-      const stage3Url = makeStageUrl(presign.publicUrl, 3)
+      const stage3Url = stageViewUrl(presign.viewUrls, 3)
       publisher.publishPersisted({
         stage: 3,
         src: stage3Url,

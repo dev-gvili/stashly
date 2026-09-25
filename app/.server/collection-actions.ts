@@ -14,6 +14,7 @@ import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors
 import { buildCollectionFilters } from '@/utils/filters/collection.filters'
 import { searchFactory } from '@/utils/search'
 import { createActivity } from './activity-actions'
+import { signThumbnailUrl } from './thumbnail-actions'
 
 function recordCollectionActivity(
   itemId: string,
@@ -752,10 +753,14 @@ export async function getCollectionItems(
   }
 
   return {
-    items: rows.map(({ linkId: _linkId, thumbnailUrl, ...item }) => ({
-      ...(item as Item),
-      thumbnailUrl,
-    })),
+    // `thumbnailUrl` is a flat column from the raw SELECT, not a `thumbnails`
+    // relation, so it is signed one row at a time.
+    items: await Promise.all(
+      rows.map(async ({ linkId: _linkId, thumbnailUrl, ...item }) => ({
+        ...(item as Item),
+        thumbnailUrl: await signThumbnailUrl(thumbnailUrl, item.id),
+      }))
+    ),
     nextCursor,
     hasMore: !!nextCursor,
   }

@@ -4,6 +4,7 @@ import { findQuotaByUserId, toQuotaStatus } from './quota-actions'
 import { emptyBucket } from './s3'
 import type { ItemCategory } from '@/prisma/enums'
 import { createActivity } from './activity-actions'
+import { signThumbnails } from './thumbnail-actions'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 
 function recordBucketEmptied(rootId: string) {
@@ -339,22 +340,24 @@ export async function getDuplicateGroups(
 
   if (groups.length === 0) return []
 
-  const items = await prisma.item.findMany({
-    where: {
-      ...activeFileWhere,
-      OR: groups.map((group) => ({ name: group.name, size: group.size })),
-    },
-    orderBy: { createdAt: 'asc' },
-    select: {
-      id: true,
-      name: true,
-      size: true,
-      createdAt: true,
-      updatedAt: true,
-      file: { select: { hash: true, extension: true } },
-      thumbnails: { select: { url: true } },
-    },
-  })
+  const items = await signThumbnails(
+    await prisma.item.findMany({
+      where: {
+        ...activeFileWhere,
+        OR: groups.map((group) => ({ name: group.name, size: group.size })),
+      },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        size: true,
+        createdAt: true,
+        updatedAt: true,
+        file: { select: { hash: true, extension: true } },
+        thumbnails: { select: { url: true } },
+      },
+    })
+  )
 
   const paths = await folderPathsFor(items.map((item) => item.id))
 

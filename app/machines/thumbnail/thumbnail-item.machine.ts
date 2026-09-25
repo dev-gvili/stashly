@@ -34,7 +34,7 @@ import {
   embedChunksActor,
   ocrStreamActor,
 } from './thumbnail.actors'
-import { makeStageUrl } from '@/utils/thumbnail-pipeline'
+import { stageViewUrl } from '@/utils/thumbnail-pipeline'
 import type {
   ThumbItemContext,
   ThumbItemInput,
@@ -58,18 +58,6 @@ const RETRY_DELAY_MS = 800
 
 /** Stage 3 crops to a square, so its dimensions are known without measuring. */
 const SALIENT_SIZE = 512
-
-/**
- * Recovers which stage a persisted thumbnail URL represents.
- *
- * Stages 2 and 3 share one S3 key and are told apart only by the `?v=` cache
- * buster, so when another client hands us a finished URL that param is the only
- * evidence of how far they got. Defaults to 2 — the stage every thumbnailed
- * item has reached — rather than over-claiming a crop that may not exist.
- */
-function stageFromUrl(url: string): 2 | 3 {
-  return /[?&]v=3(?:&|$)/.test(url) ? 3 : 2
-}
 
 export const thumbnailItemMachine = setup({
   types: {
@@ -126,7 +114,7 @@ export const thumbnailItemMachine = setup({
       itemId: context.itemId,
       progress: {
         stage: 2 as const,
-        src: makeStageUrl(context.presign!.publicUrl, 2),
+        src: stageViewUrl(context.presign!.viewUrls, 2),
         width: context.resized!.width,
         height: context.resized!.height,
       },
@@ -137,7 +125,7 @@ export const thumbnailItemMachine = setup({
       itemId: context.itemId,
       progress: {
         stage: 3 as const,
-        src: makeStageUrl(context.presign!.publicUrl, 3),
+        src: stageViewUrl(context.presign!.viewUrls, 3),
         width: SALIENT_SIZE,
         height: SALIENT_SIZE,
       },
@@ -209,15 +197,18 @@ export const thumbnailItemMachine = setup({
                 actions: [
                   assign({ thumbnailed: true }),
                   emit(({ context, event }) => {
-                    const url = (
-                      event.output as { kind: 'existing'; url: string }
-                    ).url
+                    const { url, stage } = event.output as {
+                      kind: 'existing'
+                      url: string
+                      stage: 2 | 3
+                    }
                     return {
                       type: 'progress' as const,
                       itemId: context.itemId,
-                      // Report the stage the other client actually reached,
-                      // read back off the cache-buster, rather than assuming 2.
-                      progress: { stage: stageFromUrl(url), src: url },
+                      // The stage the other client actually reached, reported
+                      // by the server. A signed URL carries no cache-buster to
+                      // read it off, and assuming 2 would under-report a crop.
+                      progress: { stage, src: url },
                     }
                   }),
                 ],
@@ -374,7 +365,7 @@ export const thumbnailItemMachine = setup({
             input: ({ context }) => ({
               itemId: context.itemId,
               stage: 2 as const,
-              url: makeStageUrl(context.presign!.publicUrl, 2),
+              url: stageViewUrl(context.presign!.viewUrls, 2),
               width: context.resized!.width,
               height: context.resized!.height,
             }),
@@ -442,7 +433,7 @@ export const thumbnailItemMachine = setup({
             input: ({ context }) => ({
               itemId: context.itemId,
               stage: 3 as const,
-              url: makeStageUrl(context.presign!.publicUrl, 3),
+              url: stageViewUrl(context.presign!.viewUrls, 3),
               width: SALIENT_SIZE,
               height: SALIENT_SIZE,
             }),

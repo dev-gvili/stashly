@@ -1,4 +1,5 @@
 import { prisma } from '@/services/db'
+import { signThumbnails } from '@/services/thumbnail-actions'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma } from '@/prisma/client'
 import type { ItemForSearchEmbedding } from '@/utils/search-text'
@@ -1440,7 +1441,7 @@ export async function searchItemsHybrid(
     (a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity),
   )
 
-  const page = ordered.slice(skip, skip + take)
+  const page = await signThumbnails(ordered.slice(skip, skip + take))
 
   // Only the page's ids — the ranking can hold 100 and the user sees 25.
   const details = await fetchMatchDetails(

@@ -1,7 +1,8 @@
 /**
  * Every thumbnail read and write for a single item.
  *
- * GET  ?intent=presign — short-lived PUT for `thumbnails/{itemId}.webp`
+ * GET  ?intent=presign — short-lived PUT for `thumbnails/{itemId}.webp`, plus a
+ *                        signed GET per persisted stage for the client to paint
  * GET  ?intent=source  — short-lived GET on the original, for on-the-fly
  *                        backfill of cards whose upload-time generation failed
  *                        or was skipped (see `useThumbnailBackfill`)
@@ -14,14 +15,13 @@ import {
   thumbnailUpdateSchema,
 } from '@/schemas/api.schemas'
 import { auth } from '@/services/auth'
-import { getPresignedUrl } from '@/services/s3'
 import {
   createThumbnail,
   getThumbnailSource,
+  presignThumbnailUpload,
   updateThumbnail,
 } from '@/services/thumbnail-actions'
 import { toErrorInfo } from '@/utils/api.errors'
-import { toS3PublicUrl } from '@/utils/converters'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
 import { data, redirect, type ShouldRevalidateFunction } from 'react-router'
@@ -60,17 +60,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   try {
     if (query.intent === 'presign') {
-      const key = `thumbnails/${itemId}.webp`
-      const uploadUrl = await getPresignedUrl(
-        session.user.bucket,
-        'put',
-        key,
-        300,
-        {
-          acl: 'public-read',
-        }
+      return data(
+        await presignThumbnailUpload(session.user.bucket, itemId)
       )
-      return data({ uploadUrl, publicUrl: toS3PublicUrl(session, key) })
     }
 
     return data(await getThumbnailSource(session.user.id, itemId))
@@ -117,10 +109,13 @@ export async function action({ request, params }: Route.ActionArgs) {
         request,
         schema: thumbnailUpdateSchema,
       })
-      await updateThumbnail(
+      // `parsedData.url` is the client's optimistic src — deliberately unused.
+      // The stored locator is derived server-side in `updateThumbnail`.
+      const signedUrl = await updateThumbnail(
+        session.user.id,
         itemId,
+        session.user.bucket,
         parsedData.stage,
-        parsedData.url,
         parsedData.width,
         parsedData.height,
         view,
@@ -129,7 +124,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       return data({
         ok: true,
         stage: parsedData.stage,
-        url: parsedData.url,
+        url: signedUrl,
         width: parsedData.width,
         height: parsedData.height,
       })
