@@ -39,6 +39,9 @@ export const links: LinksFunction = () => [
 ]
 
 export const shouldRevalidate: ShouldRevalidateFunction = ({
+  currentUrl,
+  nextUrl,
+  formMethod,
   formData,
   formAction,
   defaultShouldRevalidate,
@@ -47,6 +50,15 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   // rendered data. Without this, a 15-page OCR run re-ran this loader ~30
   // times for nothing.
   if (isSearchIndexSubmission(formData)) return false
+
+  // A navigation to the URL we are already on, with no submission behind it,
+  // is the post-upload refresh (`upload-thumbnail-runner`, `useThumbnailRevalidation`)
+  // — it exists to pull new items into listings, and this page is not one.
+  // Letting it through re-ran this loader after every finished upload, and the
+  // loader signs the media URL afresh each run, so `<video>`/`<audio>` got a
+  // new `src` every few seconds and aborted playback before it could start
+  // (HAR: 15 media requests, 13 distinct signed URLs, 14 loader runs in 66 s).
+  if (!formMethod && currentUrl.href === nextUrl.href) return false
 
   if (
     formAction &&
@@ -160,7 +172,15 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
   const kind = detectMediaKind(item)
   const src =
     kind && item.file?.key
-      ? await getPresignedUrl(item.file.bucket, 'get', item.file.key, 3600)
+      ? // `no-store` keeps the media out of Chrome's HTTP cache. Tigris sends
+        // no Cache-Control of its own, so Chrome cached the audio heuristically
+        // as a partial entry, and later range reads stalled inside the browser:
+        // a 304 answered in 86 ms, then 242 s of 0-byte `receive`, and a later
+        // disk-cache read that hung 497 s (HAR, 2026-09-24). The element keeps
+        // its own in-memory buffer either way.
+        await getPresignedUrl(item.file.bucket, 'get', item.file.key, 3600, {
+          responseCacheControl: 'no-store',
+        })
       : ''
 
   // Markdown body is loaded server-side and streamed via deferred data: the
