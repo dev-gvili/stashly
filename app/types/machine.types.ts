@@ -20,6 +20,13 @@ import {
   quotaContext,
   quotaEvents,
   quotaOutput,
+  dbContext,
+  dbEvents,
+  dbOutcomeEvents,
+  dbItemPayload,
+  dbHashInput,
+  dbHashOutput,
+  dbResponse,
   subscriptionEvents,
   subscriptionOutput,
   pipelineEvents,
@@ -83,6 +90,20 @@ export type UploadFile = z.infer<typeof uploadFile>
 export type QuotaEvents = z.infer<typeof quotaEvents>
 export type QuotaContext = z.infer<typeof quotaContext>
 export type QuotaOutput = z.infer<typeof quotaOutput>
+
+// ====================================================== //
+// ================== DB Machine Types ================== //
+// ====================================================== //
+
+export type DbEvents = z.infer<typeof dbEvents>
+/** Only the ways a run can end — what `toOutcome` is allowed to return. */
+export type DbOutcomeEvents = z.infer<typeof dbOutcomeEvents>
+export type DbContext = z.infer<typeof dbContext>
+export type DbResponse = z.infer<typeof dbResponse>
+/** The argument `createUploadedItem` takes — see `createUploadItemFields`. */
+export type DbItemPayload = z.infer<typeof dbItemPayload>
+export type DbHashInput = z.infer<typeof dbHashInput>
+export type DbHashOutput = z.infer<typeof dbHashOutput>
 
 // ====================================================== //
 // ================ OnBoard Machine Types =============== //

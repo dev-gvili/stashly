@@ -128,6 +128,32 @@ let moveItemSchema = z.object({
  * This schema is for validating and parsing the input from the client for item-related actions.
  * It uses a discriminated union based on the 'intent' field to handle single item or multiple items actions.
  */
+/**
+ * Exactly the argument `createUploadedItem` takes.
+ *
+ * Exported so the client that builds the payload and the route that parses it
+ * read from one schema — a field added on one side and forgotten on the other
+ * used to surface as a runtime parse failure at the end of an upload, after
+ * the bytes were already in S3.
+ */
+export const createUploadItemFields = z.object({
+  id: z.string(),
+  name: z.string(),
+  key: z.string(),
+  size: z.coerce.bigint(),
+  mimeType: z.string().optional(),
+  etag: z.string().optional(),
+  // Client-computed content hash; empty string when the browser could not
+  // hash the file, so it is normalised away rather than stored as ''.
+  hash: z.string().optional(),
+  bucket: z.string(),
+  driveId: z.string(),
+  parentId: z.string(),
+  ownerId: z.string(),
+  category: z.string().optional(),
+  uploadId: z.string(),
+})
+
 export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
   itemSchema,
   itemsSchema,
@@ -143,23 +169,8 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
     targetFolderId: z.string(),
     currentParentId: z.string().default(''),
   }),
-  z.object({
+  createUploadItemFields.extend({
     intent: z.literal('create_upload_item'),
-    id: z.string(),
-    name: z.string(),
-    key: z.string(),
-    size: z.coerce.bigint(),
-    mimeType: z.string().optional(),
-    etag: z.string().optional(),
-    // Client-computed content hash; empty string when the browser could not
-    // hash the file, so it is normalised away rather than stored as ''.
-    hash: z.string().optional(),
-    bucket: z.string(),
-    driveId: z.string(),
-    parentId: z.string(),
-    ownerId: z.string(),
-    category: z.string().optional(),
-    uploadId: z.string(),
   }),
   z.object({
     intent: z.literal('create_folder'),
@@ -821,10 +832,19 @@ export const thumbnailCreateSchema = z.object({
   size: z.enum(['small', 'medium', 'large', 'original', 'custom']).default('medium'),
 })
 
-// PATCH sends url-encoded or JSON — url is a data URL e.g. 'data:image/jpeg;base64,...'
+// PATCH records a persisted stage. Only stages 2 and 3 reach the server —
+// stage 1 is a local object URL that never leaves the browser.
+//
+// `url` is the client's optimistic src, kept so the fetcher-signal consumer can
+// read it from `formData` on submit. The server IGNORES it and derives the
+// stored locator itself: it signs whatever is stored, with credentials that
+// reach every bucket, so a client-supplied value would be a read primitive.
 export const thumbnailUpdateSchema = z.object({
-  stage: z.coerce.number().int().min(1).max(3),
-  url: z.string().min(1),
+  stage: z.coerce
+    .number()
+    .int()
+    .pipe(z.union([z.literal(2), z.literal(3)])),
+  url: z.string().min(1).optional(),
   width: z.coerce.number().int().optional(),
   height: z.coerce.number().int().optional(),
 })

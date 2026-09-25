@@ -16,8 +16,6 @@ import { toCategory, toIcon } from '@/utils/converters'
 import { formatSize } from '@/utils/formaters'
 import { callAll } from '@/utils/misc'
 import { cn } from '@/utils/styles'
-import { useAutoAnimate } from '@formkit/auto-animate/react'
-import { useComposedRefs } from '@radix-ui/react-compose-refs'
 import { Label as LabelPrimitive, VisuallyHidden } from 'radix-ui'
 import React, { useState } from 'react'
 import {
@@ -66,7 +64,7 @@ const Styles = {
   CountDown:
     'text-start font-stashly text-xs group-data-[state=aborted]:hidden text-nowrap',
   StatusText: (status: Status) =>
-    `text-start font-stashly text-xs group-data-[state=aborted]:block! group-data-[state=uploading]:hidden! text-nowrap capitalize`,
+    `text-start font-stashly text-xs group-data-[state=aborted]:block! group-data-[state=uploading]:hidden! text-nowrap capitalize group-data-[state=itemFailed]:block! group-data-[state=itemFailed]:text-destructive group-data-[state=itemFailed]:font-bold`,
   Description:
     'font-stashly text-xs text-muted-foreground group-data-[state=aborted]:opacity-20',
   Cancel:
@@ -76,6 +74,18 @@ const Styles = {
 // ====================================================== //
 // Helpers                                                //
 // ====================================================== //
+
+/**
+ * Status values whose raw name would read badly in the panel. Anything absent
+ * falls through to the status itself, which `capitalize` already handles.
+ *
+ * `itemFailed` in particular must not render as "ItemFailed" — it is the one
+ * status the user is expected to act on, since the bytes are in S3 but the
+ * item row is not in the database.
+ */
+const STATUS_LABEL: Partial<Record<MediaFileStatus, string>> = {
+  itemFailed: 'failed',
+}
 
 const formatCountdown = (value: any) => {
   let parsedProgress = uploadProgress.parse(value)
@@ -263,8 +273,7 @@ export const FileList = React.forwardRef<
   React.ComponentPropsWithoutRef<'ul'>
 >(({ children, className, id, ...props }, forwardRef) => {
   id = id || React.useId()
-  const [parent] = useAutoAnimate<HTMLUListElement>()
-  const refs = useComposedRefs(forwardRef, parent)
+
   // Ids only — subscribing to the file objects re-rendered every row on every
   // progress tick, which is what tripped React's update-depth limit at 20+ files.
   const fileIds = useUploadFileIds()
@@ -272,13 +281,13 @@ export const FileList = React.forwardRef<
   return (
     <ScrollArea className={cn('h-40 w-full rounded-lg')}>
       <div className="p-1.5">
-        <AnimatePresence mode="popLayout">
-          <ul
-            id={id}
-            ref={refs}
-            className={cn(Styles.FileList, className)}
-            {...props}
-          >
+        <ul
+          id={id}
+          ref={forwardRef}
+          className={cn(Styles.FileList, className)}
+          {...props}
+        >
+          <AnimatePresence mode="popLayout">
             {fileIds.map((mediaFileId) => (
               <Item
                 mediaFileId={mediaFileId}
@@ -286,8 +295,8 @@ export const FileList = React.forwardRef<
                 id={`media-file-${mediaFileId}`}
               />
             ))}
-          </ul>
-        </AnimatePresence>
+          </AnimatePresence>
+        </ul>
       </div>
     </ScrollArea>
   )
@@ -297,7 +306,7 @@ FileList.displayName = 'Items'
 const Item = React.memo(
   React.forwardRef<
     React.ComponentRef<'li'>,
-    React.ComponentPropsWithoutRef<'li'> & { mediaFileId: string }
+    React.ComponentPropsWithoutRef<typeof motion.li> & { mediaFileId: string }
   >(({ children, className, id, mediaFileId, ...props }, forwardRef) => {
     id = id || React.useId()
     // Identity + status only. The percentage is read inside `Progress`/`CountDown`
@@ -307,12 +316,17 @@ const Item = React.memo(
     if (!mediafile.file) return null
 
     return (
-      <li
+      <motion.li
         id={id}
         ref={forwardRef}
         className={cn(Styles.Item, className)}
         tabIndex={0}
         data-state={mediafile.status}
+        layout="position"
+        initial={{ opacity: 0, height: 0 }}
+        animate={{ opacity: 1, height: 'auto' }}
+        exit={{ opacity: 0, height: 0 }}
+        transition={{ duration: 0.2 }}
         {...props}
       >
         <FileIcon file={mediafile.file} thumbnail={mediafile.thumbnail} />
@@ -323,9 +337,28 @@ const Item = React.memo(
               {formatSize('byte', 'unit', mediafile.file.size)}
             </FileSize>
             <CountDown mediafileId={mediaFileId} />
-            <StatusText status={mediafile.status!} mediaFileId={mediaFileId}>
-              {mediafile.status}
-            </StatusText>
+            {mediafile.status === 'itemFailed' && mediafile.error ? (
+              // The reason is the only thing that tells the user whether to
+              // retry or sign in again, so it must be reachable — the machine
+              // records it on `error` and nothing used to read it.
+              <TooltipProvider>
+                <TooltipRoot>
+                  <TooltipTrigger asChild>
+                    <StatusText
+                      status={mediafile.status}
+                      mediaFileId={mediaFileId}
+                    >
+                      {STATUS_LABEL.itemFailed}
+                    </StatusText>
+                  </TooltipTrigger>
+                  <TooltipContent>{mediafile.error}</TooltipContent>
+                </TooltipRoot>
+              </TooltipProvider>
+            ) : (
+              <StatusText status={mediafile.status!} mediaFileId={mediaFileId}>
+                {STATUS_LABEL[mediafile.status!] ?? mediafile.status}
+              </StatusText>
+            )}
           </div>
         </div>
         {mediafile.status === 'uploading' || mediafile.status === 'paused' ? (
@@ -364,7 +397,7 @@ const Item = React.memo(
             <Dismiss mediaFileId={mediaFileId} />
           </Progress>
         )}
-      </li>
+      </motion.li>
     )
   })
 )
@@ -540,8 +573,12 @@ const Cancel = React.forwardRef<
           <Button
             variant="outline"
             size="icon-sm"
-            hidden={status === 'done'}
-            disabled={status === 'aborted' || status === 'done'}
+            hidden={status === 'done' || status === 'itemFailed'}
+            disabled={
+              status === 'aborted' ||
+              status === 'done' ||
+              status === 'itemFailed'
+            }
             ref={forwardRef}
             onClick={callAll(() => cancel(mediaFileId), onClick)}
             className={cn(
@@ -568,7 +605,9 @@ const Dismiss = React.forwardRef<
   const status = useUploadStatus(mediaFileId)
   const { dismiss } = useUpload()
 
-  if (status !== 'done' && status !== 'aborted') return null
+  // A failed creation is finished work the user needs to be able to clear.
+  if (status !== 'done' && status !== 'aborted' && status !== 'itemFailed')
+    return null
 
   return (
     <Button
@@ -596,8 +635,13 @@ const PauseResume = React.forwardRef<
   const { pause, resume } = useUpload()
   const isPaused = status === 'paused'
   const isUploading = status === 'uploading'
+  // A queued file can be paused too — the file machine now holds it in
+  // `pendingPaused` so a freed slot passes it over instead of starting it.
+  // Without this the control never rendered for a waiting file, which made
+  // that state unreachable from the panel.
+  const isQueued = status === 'pending'
 
-  if (!isPaused && !isUploading) return null
+  if (!isPaused && !isUploading && !isQueued) return null
 
   return (
     <TooltipProvider>

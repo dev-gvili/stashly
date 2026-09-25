@@ -63,7 +63,7 @@ export function isAmbiguousTsFile(nameOrKey: string): boolean {
  *
  * Call this at the choke point (useUpload `add` / `addBatch`) BEFORE
  * `toMediaFile`, so every downstream consumer of `mediaFile.file.type`
- * (toCategory, createDbItem, create-multipart-upload metadata) sees the
+ * (toCategory, toItemPayload, create-multipart-upload metadata) sees the
  * corrected value.
  */
 export async function normalizeFile(file: File): Promise<File> {

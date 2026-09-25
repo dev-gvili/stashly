@@ -12,6 +12,7 @@ import {
 import { Confirm } from '@/components/confirm-renderer'
 import { DegradedNotice } from '@/components/core-components/degraded-notice'
 import { UploadPanel } from '@/components/upload'
+import { UploadActorContext } from '@/machines/upload/upload.context'
 import { UploadThumbnailRunner } from '@/components/upload/upload-thumbnail-runner'
 import { sessionContext, workspaceContext } from '@/.server/middleware/context'
 import { useEmbeddingBackfill } from '@/hooks/useEmbeddingBackfill'
@@ -81,16 +82,22 @@ export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
   // session ended mid-run. Idle-scheduled and once per tab.
   useEmbeddingBackfill()
   return (
-    <SidebarProvider defaultOpen={sidebarState}>
-      <AppSidebar user={user} workspaces={workspaces} />
-      <AppContent>
-        {/* <AppToolbar /> */}
-        <DegradedNotice />
-        <Outlet />
-        <UploadPanel user={user} />
-        <UploadThumbnailRunner />
-        <Confirm />
-      </AppContent>
-    </SidebarProvider>
+    // The upload manager's life is scoped to this layout on purpose. `auth/*`
+    // sits under its own layout, so leaving the app for the sign-in page
+    // unmounts this Provider, which stops the actor, its file machines, and
+    // their in-flight requests.
+    <UploadActorContext.Provider>
+      <SidebarProvider defaultOpen={sidebarState}>
+        <AppSidebar user={user} workspaces={workspaces} />
+        <AppContent>
+          {/* <AppToolbar /> */}
+          <DegradedNotice />
+          <Outlet />
+          <UploadPanel user={user} />
+          <UploadThumbnailRunner />
+          <Confirm />
+        </AppContent>
+      </SidebarProvider>
+    </UploadActorContext.Provider>
   )
 }

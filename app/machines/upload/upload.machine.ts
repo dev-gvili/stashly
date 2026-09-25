@@ -6,22 +6,18 @@ import {
   and,
   not,
   sendTo,
-  fromPromise,
-  type AnyActorRef,
 } from 'xstate'
 // The per-file actor lives in `reviset/`, not in this folder — the
 // `upload/file.machine.ts` sibling was an unused draft and has been deleted.
 import { fileMachine } from '../reviset/file.machine'
-import { toCategory } from '@/utils/converters'
 import { quotaMachine } from '@/machines/quota/quota.machine'
+import { dbMachine } from '@/machines/db/db.machine'
 import type {
-  MediaFile,
   UploadManagerData,
   UploadManagerEvents,
 } from '@/types/machine.types'
 import { config, mediafile, uploadProgress } from '@/schemas/machine.schemas'
 import type { User } from '@/services/auth.types'
-import { takeFileHash } from '@/utils/file-hash'
 
 let initialData: UploadManagerData = {
   config: {
@@ -57,70 +53,7 @@ const uploadMachine = setup({
   actors: {
     fileMachine,
     quotaMachine,
-    createDbItem: fromPromise(
-      async ({
-        input,
-      }: {
-        input: {
-          mediaFile: MediaFile
-          user: UploadManagerData['config']['user']
-          parent: AnyActorRef
-        }
-      }) => {
-        const { mediaFile, user, parent } = input
-        try {
-          const category = toCategory(mediaFile.file)
-          let formData = new FormData()
-          formData.append('intent', 'create_upload_item')
-          formData.append('id', mediaFile.id)
-          formData.append('name', mediaFile.file.name)
-          formData.append('ownerId', mediaFile.ownerId ?? user.id)
-          formData.append('key', mediaFile.key)
-          formData.append('size', String(mediaFile.file.size))
-          formData.append('mimeType', mediaFile.file.type ?? '')
-          formData.append('etag', mediaFile.etag ?? '')
-          // Started when the file was queued, so it has had the whole upload to
-          // finish. `takeFileHash` gives up after a short grace rather than
-          // holding item creation open — an absent hash is stored as null and
-          // only costs that duplicate group its `exact` verdict.
-          formData.append('hash', (await takeFileHash(mediaFile.id)) ?? '')
-          formData.append('bucket', user.bucket)
-          formData.append('driveId', user.driveId)
-          formData.append('parentId', mediaFile.key.split('/')[0])
-          formData.append('category', category)
-          formData.append('uploadId', mediaFile.uploadId ?? '')
-
-          const res = await fetch('/api/items', {
-            method: 'POST',
-            body: formData,
-          })
-          if (res.type === 'opaqueredirect' && res.status === 302) {
-            // This is a redirect response, which we treat as a success case for item creation. The actual redirection will be handled by the client.
-            return
-          }
-          if (!res.ok && res.type !== 'opaqueredirect') {
-            throw new Error(`Item creation failed with status ${res.status}`)
-          }
-          if (res.ok) {
-            const data = await res.json()
-            if (!data.success) {
-              throw new Error(data.error ?? 'Item creation failed')
-            }
-            parent.send({
-              type: 'upload.createItem.success',
-              mediaFileId: mediaFile.id,
-            })
-          }
-        } catch (err) {
-          parent.send({
-            type: 'upload.createItem.error',
-            mediaFileId: mediaFile.id,
-            error: err instanceof Error ? err.message : 'Unknown error',
-          })
-          throw err
-        }
-      }
-    ),
+    dbMachine,
   },
   actions: {
     updateConfig: enqueueActions(({ enqueue, context, event }) => {
@@ -307,10 +240,23 @@ const uploadMachine = setup({
         mediaFiles,
       }
     }),
+    /**
+     * Pause and resume carry the file machine's own `mediaFile`, and that copy
+     * has never held real progress: `@multipart.upload.progress` is forwarded
+     * straight to this manager and stored only here, so the file machine's
+     * `context.mediaFile.progress` sits at its initial 0 for the whole upload.
+     * Replacing the record wholesale therefore snapped the bar back to 0 until
+     * the next progress event arrived — the flicker on resume. Merge instead,
+     * and keep the progress this manager already has.
+     */
     markAsPaused: assign(({ context, event }) => {
       assertEvent(event, 'upload.paused')
       let mediaFile = mediafile.parse(event.mediaFile)
-      let mediaFiles = context.mediaFiles.set(mediaFile.id, mediaFile)
+      let current = context.mediaFiles.get(mediaFile.id)
+      let mediaFiles = new Map(context.mediaFiles).set(mediaFile.id, {
+        ...mediaFile,
+        progress: current?.progress ?? mediaFile.progress,
+      })
       return {
         mediaFiles,
       }
@@ -318,7 +264,11 @@ const uploadMachine = setup({
     markAsResumed: assign(({ context, event }) => {
       assertEvent(event, 'upload.resumed')
       let mediaFile = mediafile.parse(event.mediaFile)
-      let mediaFiles = context.mediaFiles.set(mediaFile.id, mediaFile)
+      let current = context.mediaFiles.get(mediaFile.id)
+      let mediaFiles = new Map(context.mediaFiles).set(mediaFile.id, {
+        ...mediaFile,
+        progress: current?.progress ?? mediaFile.progress,
+      })
       return {
         mediaFiles,
       }
@@ -346,15 +296,26 @@ const uploadMachine = setup({
         isVisible: !context.isVisible,
       }
     }),
+    /**
+     * Hands the finished upload to a `dbMachine` of its own.
+     *
+     * Spawned rather than invoked, so that one file's failure cannot end the
+     * queue — which is exactly what the promise actor this replaces did. It
+     * ended its `catch` with `throw err`, and an unhandled rejection in a
+     * spawned actor stops the parent: measured on XState 5.33, this machine
+     * went from `active` to `error` and silently dropped every event after it,
+     * so the first file that could not get a row cost the whole batch theirs.
+     * `dbMachine` answers with an event on every path instead.
+     */
     triggerItemCreation: enqueueActions(({ context, event, enqueue, self }) => {
       assertEvent(event, 'upload.done')
-      enqueue.spawnChild('createDbItem', {
-        id: `create-item-${event.mediaFile.id}`,
-        input: {
-          mediaFile: event.mediaFile,
-          user: context.config.user,
-          parent: self,
-        },
+      const id = `create-item-${event.mediaFile.id}`
+
+      enqueue.spawnChild('dbMachine', { id, input: { replayTo: self } })
+      enqueue.sendTo(id, {
+        type: '@db.item.create',
+        mediaFile: event.mediaFile,
+        user: context.config.user,
       })
     }),
     markItemCreationError: assign(({ context, event }) => {
@@ -364,6 +325,10 @@ const uploadMachine = setup({
       return {
         mediaFiles: new Map(context.mediaFiles).set(event.mediaFileId, {
           ...mediaFile,
+          // Leaving `status` at `done` is what made this silent: nothing in
+          // the upload UI reads `error`, so a file with no row still rendered
+          // as finished and the user had no way to know it was lost.
+          status: 'itemFailed' as const,
           error: event.error,
         }),
       }
@@ -449,7 +414,10 @@ const uploadMachine = setup({
               actions: 'sendResumeUpload',
             },
             'upload.resumed': {
-              actions: 'markAsResumed',
+              // A file resumed from `pendingPaused` goes back to `pending`, so
+              // it needs a slot offered to it — otherwise it would sit there
+              // until some other file finished and triggered a fill.
+              actions: ['markAsResumed', 'uploadPendingFiles'],
             },
             'upload.paused': {
               actions: 'markAsPaused',

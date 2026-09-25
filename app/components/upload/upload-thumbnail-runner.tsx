@@ -11,7 +11,8 @@
 import { memo, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { shallowEqual, useSelector } from '@xstate/react'
-import { upload, useUploadFile } from '@/hooks/useUpload'
+import { useUploadFile } from '@/hooks/useUpload'
+import { UploadActorContext } from '@/machines/upload/upload.context'
 import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
 // Implementation switch — see `app/machines/thumbnail/index.ts`. Points at
 // either the original hooks or the XState scheduler without changing shape.
@@ -78,6 +79,7 @@ function FileThumbnailWatcher({ mediaFileId }: { mediaFileId: string }) {
 }
 
 export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
+  const upload = UploadActorContext.useActorRef()
   const fileIds = useSelector(
     upload,
     (s) => Array.from(s.context.mediaFiles.keys()),

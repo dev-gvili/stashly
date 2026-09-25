@@ -2,6 +2,7 @@ import type { ActorRefFrom, AnyActorRef } from 'xstate'
 import { z } from 'zod'
 import { fileMachine } from '../machines/reviset/file.machine'
 import { itemFilterSchema } from '@/utils/filters/item.filters'
+import { createUploadItemFields } from '@/schemas/api.schemas'
 import { toSearchSchema } from '@/utils/converters'
 import type { Prisma } from '@/prisma/browser'
 import type { quotaMachine } from '../machines/quota/quota.machine'
@@ -11,6 +12,7 @@ const QUEUE = 'queue'
 const PROGRESS = 'progress'
 const MULTIPART = '@multipart'
 const QUOTA = '@quota'
+const DB = '@db'
 const SUBSCRIPTION = '@subscription'
 
 // ====================================================== //
@@ -165,6 +167,11 @@ export const status = z.enum([
   'validating',
   'queued',
   'itemCreated',
+  // The bytes reached S3 but the row was never written. Distinct from `done`,
+  // which used to absorb this case: the upload panel reported "done" for a
+  // file that does not exist, and `upload-thumbnail-runner` treated it as
+  // eligible and fired the thumbnail pipeline at a missing `Item`.
+  'itemFailed',
 ])
 
 const storagePlanType = z.enum([
@@ -699,6 +706,118 @@ export let quotaContext = z.object({
 })
 
 export let quotaOutput = z.object({ quota })
+
+// ====================================================== //
+// ========================= DB ========================= //
+// ====================================================== //
+
+/**
+ * What the machine is asked to write. `mediaFile` and `user` are the whole
+ * subject of a run — everything else it needs is derived from them.
+ */
+let dbItemCreateEvent = z.object({
+  type: z.literal(`${DB}.item.create`),
+  mediaFile: mediafile,
+  user: user,
+})
+
+/**
+ * The built, validated payload on its way to the request. It travels as an
+ * event so it lives for exactly one transition — there is no reason for a
+ * body that is about to be sent to sit in context.
+ */
+let dbItemPostEvent = z.object({
+  type: z.literal(`${DB}.item.post`),
+  payload: createUploadItemFields,
+})
+
+/**
+ * How a run ends. These are events rather than a stored `outcome` field: the
+ * step that learns the verdict raises one in the same tick, and the machine's
+ * root handler routes it to its state. Nothing has to be remembered in
+ * between, and no path throws — an unhandled rejection in a spawned actor
+ * stops its parent, which is what took the upload manager down.
+ */
+let dbItemCreated = z.object({
+  type: z.literal(`${DB}.item.created`),
+  mediaFileId: z.string(),
+})
+
+/** 2xx JSON that reports `success: false` — the server declined the write. */
+let dbItemRefused = z.object({
+  type: z.literal(`${DB}.item.refused`),
+  mediaFileId: z.string(),
+  error: z.string(),
+})
+
+/** A non-2xx status. */
+let dbItemRejected = z.object({
+  type: z.literal(`${DB}.item.rejected`),
+  mediaFileId: z.string(),
+  error: z.string(),
+})
+
+/** The request was answered by the sign-in page instead of the API. */
+let dbSessionExpired = z.object({
+  type: z.literal(`${DB}.session.expired`),
+  mediaFileId: z.string(),
+  error: z.string(),
+})
+
+/** The hash, the network or the body could not be handled. */
+let dbItemFailed = z.object({
+  type: z.literal(`${DB}.item.failed`),
+  mediaFileId: z.string(),
+  error: z.string(),
+})
+
+const dbOutcomeMembers = [
+  dbItemCreated,
+  dbItemRefused,
+  dbItemRejected,
+  dbSessionExpired,
+  dbItemFailed,
+] as const
+
+/** Only the endings, so a helper that decides one cannot return anything else. */
+export let dbOutcomeEvents = z.discriminatedUnion('type', dbOutcomeMembers)
+
+export let dbEvents = z.discriminatedUnion('type', [
+  dbItemCreateEvent,
+  dbItemPostEvent,
+  ...dbOutcomeMembers,
+])
+
+/** The payload the API takes, and therefore what `postItem` sends. */
+export let dbItemPayload = createUploadItemFields
+
+export let dbHashInput = z.object({ mediaFileId: z.string() })
+export let dbHashOutput = z.object({ hash: z.string().optional() })
+
+/**
+ * A response flattened to plain data, body included. The body is read as text
+ * up front rather than parsed as JSON, so an HTML sign-in page is a value to
+ * classify instead of a `SyntaxError` thrown from inside `res.json()`.
+ */
+export let dbResponse = z.object({
+  status: z.number(),
+  ok: z.boolean(),
+  redirected: z.boolean(),
+  url: z.string(),
+  contentType: z.string(),
+  body: z.string(),
+})
+
+/**
+ * Only the subject of the run and who to answer. The payload, the response and
+ * the verdict each live for one transition and travel on the event that
+ * carries them, so none of them is stored here.
+ */
+export let dbContext = z.object({
+  replayTo: z.custom<AnyActorRef>().optional(),
+  mediaFile: mediafile.optional(),
+  user: user.optional(),
+})
 
 // ====================================================== //
 // ==================== Subscription ==================== //

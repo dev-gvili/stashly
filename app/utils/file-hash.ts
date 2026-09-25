@@ -100,7 +100,7 @@ const GRACE_MS = 1_500
  * Returns `undefined` when there is no hash yet — the caller should send no
  * hash rather than block.
  */
-export async function takeFileHash(key: string): Promise<string | undefined> {
+export async function toFileHash(key: string): Promise<string | undefined> {
   const job = jobs.get(key)
   if (!job) return undefined
 

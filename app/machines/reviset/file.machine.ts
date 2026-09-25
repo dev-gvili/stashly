@@ -151,6 +151,13 @@ export const fileMachine = setup({
         status: 'aborted' as MediaFileStatus,
       }),
     }),
+    // Returns a file to the queue after it was paused before ever starting.
+    markAsPending: assign({
+      mediaFile: ({ context }) => ({
+        ...context.mediaFile,
+        status: 'pending' as MediaFileStatus,
+      }),
+    }),
     // Marks the file status as 'paused'
     markAsPaused: assign({
       mediaFile: ({ context }) => ({
@@ -226,6 +233,25 @@ export const fileMachine = setup({
             target: 'checkingQuota',
           },
         ],
+        // A file can be paused before it ever gets a slot. `pause` used to be
+        // handled only inside `uploading.active`, so the event was dropped
+        // here and the file kept its `pending` status — which is exactly what
+        // the manager fills free slots from, so it started anyway.
+        pause: {
+          target: 'pendingPaused',
+          actions: ['markAsPaused', 'sendUploadPausedToParent'],
+        },
+      },
+    },
+    // Paused while still queued. Status is `paused`, not `pending`, so
+    // `uploadPendingFiles` passes it over when a slot frees up; resuming puts
+    // it back in the queue rather than starting it out of turn.
+    pendingPaused: {
+      on: {
+        resume: {
+          target: 'pending',
+          actions: ['markAsPending', 'sendUploadResumedToParent'],
+        },
       },
     },
     // CheckingQuota state: checks if the user has enough storage space

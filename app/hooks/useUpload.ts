@@ -1,14 +1,10 @@
-import { uploadMachine } from '@/machines/upload/upload.machine'
 import type { Config } from '@/types/machine.types'
 import { toMediaFile } from '@/utils/converters'
 import { startFileHash } from '@/utils/file-hash'
 import { normalizeFile } from '@/utils/sniff'
 import { shallowEqual, useSelector } from '@xstate/react'
 import { useCallback, useRef, useState } from 'react'
-import { createActor } from 'xstate'
-
-export const upload = createActor(uploadMachine, { id: 'uploadManager' })
-upload.start()
+import { UploadActorContext } from '@/machines/upload/upload.context'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -117,6 +113,7 @@ async function verifyBatchQuota(totalSize: number): Promise<boolean> {
  * const mediaFile = useUploadFile(removedId) // → undefined
  */
 export function useUploadFile(mediaFileId: string) {
+  const upload = UploadActorContext.useActorRef()
   return useSelector(upload, (s) => s.context.mediaFiles.get(mediaFileId))
 }
 
@@ -139,6 +136,7 @@ export function useUploadFile(mediaFileId: string) {
  * {status === 'uploading' && <UploadProgressBar id={id} />}
  */
 export function useUploadFileMeta(mediaFileId: string) {
+  const upload = UploadActorContext.useActorRef()
   return useSelector(
     upload,
     (s) => {
@@ -147,6 +145,11 @@ export function useUploadFileMeta(mediaFileId: string) {
         file: mediaFile?.file,
         thumbnail: mediaFile?.thumbnail,
         status: mediaFile?.status,
+        // Why a row needs this: `itemFailed` says the bytes are in S3 but the
+        // item row is not, and `error` is the only thing that says whether to
+        // retry or sign in again. It was written and never projected, so the
+        // panel could not have shown it even if it had tried.
+        error: mediaFile?.error,
       }
     },
     shallowEqual
@@ -169,6 +172,7 @@ export function useUploadFileMeta(mediaFileId: string) {
  * if (ids.length === 0) return null
  */
 export function useUploadFileIds() {
+  const upload = UploadActorContext.useActorRef()
   return useSelector(
     upload,
     (s) =>
@@ -195,6 +199,7 @@ export function useUploadFileIds() {
  * {total > 0 && done === total && <CheckCircle2 />}
  */
 export function useUploadCounts() {
+  const upload = UploadActorContext.useActorRef()
   return useSelector(
     upload,
     (s) => {
@@ -236,6 +241,7 @@ export function useUploadCounts() {
  * const progress = useUploadProgress(id) ?? 0
  */
 export function useUploadProgress(mediaFileId: string) {
+  const upload = UploadActorContext.useActorRef()
   return useSelector(
     upload,
     (s) => s.context.mediaFiles.get(mediaFileId)?.progress
@@ -259,6 +265,7 @@ export function useUploadProgress(mediaFileId: string) {
  * {status === 'aborted' && <Button onClick={() => resume(id)}>Retry</Button>}
  */
 export function useUploadStatus(mediaFileId: string) {
+  const upload = UploadActorContext.useActorRef()
   return useSelector(
     upload,
     (s) => s.context.mediaFiles.get(mediaFileId)?.status
@@ -272,7 +279,8 @@ export function useUploadStatus(mediaFileId: string) {
  * Manages file queue state, drag-and-drop, quota verification, thumbnail pipeline,
  * and per-file lifecycle (add / pause / resume / cancel / dismiss).
  *
- * The `upload` actor is module-level and shared across all hook instances —
+ * The `upload` actor is provided by `UploadActorContext` at the authenticated
+ * layout and shared across all hook instances —
  * state is consistent regardless of which component calls this hook.
  * Exposes upload state, action functions, and drag event handlers.
  *
@@ -300,6 +308,7 @@ export function useUploadStatus(mediaFileId: string) {
  * — so a progress tick re-renders one leaf instead of the whole panel.
  */
 export function useUpload() {
+  const upload = UploadActorContext.useActorRef()
   const [isDragging, setIsDragging] = useState(false)
   const dragCounter = useRef(0)
 
@@ -318,7 +327,7 @@ export function useUpload() {
 
   const configure = useCallback((config: Config) => {
     upload.send({ type: 'upload.config', config })
-  }, [])
+  }, [upload])
 
   const add = useCallback(
     async (file: File, overrideRootId?: string, skipQuotaCheck?: boolean) => {
@@ -334,7 +343,7 @@ export function useUpload() {
       startFileHash(mediaFile.id, file)
       upload.send({ type: 'upload.add', mediaFile, skipQuotaCheck })
     },
-    [rootId]
+    [rootId, upload]
   )
 
   const addBatch = useCallback(
@@ -356,28 +365,28 @@ export function useUpload() {
       }
       return true
     },
-    [rootId]
+    [rootId, upload]
   )
 
   const cancel = useCallback((mediaFileId: string) => {
     upload.send({ type: 'upload.abort', mediaFileId })
-  }, [])
+  }, [upload])
 
   const pause = useCallback((mediaFileId: string) => {
     upload.send({ type: 'upload.pause', mediaFileId })
-  }, [])
+  }, [upload])
 
   const resume = useCallback((mediaFileId: string) => {
     upload.send({ type: 'upload.resume', mediaFileId })
-  }, [])
+  }, [upload])
 
   const toggleView = useCallback(() => {
     upload.send({ type: 'upload.view.toggle' })
-  }, [])
+  }, [upload])
 
   const dismiss = useCallback((mediaFileId: string) => {
     upload.send({ type: 'upload.dismiss', mediaFileId })
-  }, [])
+  }, [upload])
 
   // ── Drag handlers ──
 

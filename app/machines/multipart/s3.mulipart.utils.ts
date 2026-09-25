@@ -49,10 +49,12 @@ const FetchInit: RequestInit = {
  * @returns A promise that resolves to the output of the create multipart upload operation, including the upload ID.
  */
 export async function createMultipartUpload(
-  params: CreateMultipartUploadInput
+  params: CreateMultipartUploadInput,
+  signal?: AbortSignal
 ): Promise<CreateMultipartUploadOutput> {
   const res = await fetch('/api/s3/upload', {
     ...FetchInit,
+    signal,
     body: JSON.stringify({
       ...params,
       action: 'create-multipart-upload',
@@ -67,10 +69,12 @@ export async function createMultipartUpload(
  * @returns A promise that resolves to the output of the get presigned URL for part operation, including the URL.
  */
 export async function getPresignedUrlForPart(
-  params: GetPresignedUrlForPartInput
+  params: GetPresignedUrlForPartInput,
+  signal?: AbortSignal
 ): Promise<GetPresignedUrlForPartOutput> {
   const res = await fetch('/api/s3/upload', {
     ...FetchInit,
+    signal,
     body: JSON.stringify({
       ...params,
       action: 'get-presigned-url',
@@ -86,10 +90,12 @@ export async function getPresignedUrlForPart(
  *   including the key, bucket, ETag, and version ID of the completed object.
  */
 export async function completeMultipartUpload(
-  params: CompleteMultipartUploadInput
+  params: CompleteMultipartUploadInput,
+  signal?: AbortSignal
 ): Promise<CompleteMultipartUploadOutput> {
   let res = await fetch('/api/s3/upload', {
     ...FetchInit,
+    signal,
     body: JSON.stringify({
       ...params,
       action: 'complete-multipart-upload',
@@ -104,10 +110,12 @@ export async function completeMultipartUpload(
  * @returns A promise that resolves to the output of the abort multipart upload operation.
  */
 export async function abortMultipartUpload(
-  params: AbortMultipartUploadInput
+  params: AbortMultipartUploadInput,
+  signal?: AbortSignal
 ): Promise<AbortMultipartUploadOutput> {
   let res = await fetch('/api/s3/upload', {
     ...FetchInit,
+    signal,
     body: JSON.stringify({
       ...params,
       action: 'abort-multipart-upload',
@@ -175,6 +183,16 @@ export const uploadParts = fromCallback<
       sendBack({ type: '@multipart.upload.resumed' })
     }
   })
+
+  // Stopping the actor must stop the upload. `fromCallback` treats the return
+  // value as its cleanup, and without one the AbortController above was only
+  // ever fired by an explicit `@multipart.upload.abort` event — so unmounting
+  // the app left every in-flight part running to completion, writing bytes to
+  // S3 that no longer had a machine waiting to record them.
+  return () => {
+    pauseController.resume() // a paused worker can never observe the abort
+    abortController.abort()
+  }
 })
 
 /**
@@ -184,7 +202,7 @@ export const uploadParts = fromCallback<
 export const createUpload = fromPromise<
   CreateMultipartUploadOutput,
   CreateMultipartUploadInput
->(async ({ input }) => await createMultipartUpload(input))
+>(async ({ input, signal }) => await createMultipartUpload(input, signal))
 
 /**
  * XState actor that gets a presigned URL for a specific part of a multipart upload.
@@ -193,7 +211,7 @@ export const createUpload = fromPromise<
 export const presignedPartUrl = fromPromise<
   GetPresignedUrlForPartOutput,
   GetPresignedUrlForPartInput
->(async ({ input }) => await getPresignedUrlForPart(input))
+>(async ({ input, signal }) => await getPresignedUrlForPart(input, signal))
 
 /**
  * XState actor that aborts a multipart upload on S3.
@@ -202,6 +220,10 @@ export const presignedPartUrl = fromPromise<
 export const abortUpload = fromPromise<
   AbortMultipartUploadOutput,
   AbortMultipartUploadInput
+// Deliberately unsignalled: this *is* the cleanup call. Cancelling it when the
+// actor stops would leave the multipart upload open in S3, and its uploaded
+// parts are billed until a lifecycle rule expires them. Abandoning an upload
+// has to outlive the machine that abandoned it.
 >(async ({ input }) => await abortMultipartUpload(input))
 
 /**
@@ -211,4 +233,4 @@ export const abortUpload = fromPromise<
 export const completeUpload = fromPromise<
   CompleteMultipartUploadOutput,
   CompleteMultipartUploadInput
->(async ({ input }) => await completeMultipartUpload(input))
+>(async ({ input, signal }) => await completeMultipartUpload(input, signal))

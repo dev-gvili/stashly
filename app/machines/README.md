@@ -9,8 +9,13 @@ This folder also holds several abandoned prototypes. Before editing anything her
 - `upload/upload.machine.ts`
   - Manager for overall upload lifecycle. Spawns per-file actors and controls concurrency (`maxConcurrentUploads`).
   - Maintains a `mediaFiles` map and a `queues` structure; handles `upload.config`, `upload.add`, `upload.spawn`, `upload.start`, `upload.abort`, `upload.pause`/`resume`, `upload.done`, `upload.dismiss`, etc.
-  - Also owns the `createDbItem` actor: on `upload.done` it POSTs to `/api/items` and, on `upload.createItem.success`, flips the file's status to `itemCreated`.
+  - On `upload.done` it spawns a `db/db.machine.ts` per file and sends it `@db.item.create`; on `upload.createItem.success` it flips the file's status to `itemCreated`, and on `upload.createItem.error` to `itemFailed`.
   - Instantiated once in `app/hooks/useUpload.ts` (`createActor(uploadMachine, { id: 'uploadManager' })`).
+
+- `db/db.machine.ts` + `db/db.actors.ts` + `db/db.utils.ts`
+  - Writes the `Item` row for a finished upload: `idle → hashing → building → posting → classifying`, ending in one of `created` / `refused` / `rejected` / `sessionExpired` / `failed`.
+  - **No path throws.** A spawned actor's unhandled rejection stops its parent, so the promise actor this replaced took the whole upload manager down when one file failed. Every ending is an event, and the machine returns to `idle`.
+  - `postItem` reads the response body as **text**, never JSON: `POST /api/items` answers an expired session with a redirect that `fetch` follows, so the client gets a 200 carrying the sign-in page. `toOutcome` tells that apart from a real failure.
 
 - `reviset/file.machine.ts` — **the per-file actor.** This is the one `upload.machine.ts` imports (`import { fileMachine } from '../reviset/file.machine'`). Handles quota check, multipart create, chunked upload with pause/resume/abort, completion, and the quota update.
 
