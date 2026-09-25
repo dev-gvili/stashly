@@ -13,6 +13,7 @@
  */
 import { useCallback, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router'
+import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
 import { useSelector } from '@xstate/react'
 import {
   thumbnailManager,
@@ -76,18 +77,33 @@ export function useThumbnailRevalidation() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  useEffect(() => {
-    if (savedCount === 0) return
-    const timer = setTimeout(() => {
+  // `useDebouncedCommit` holds the commit callback in a ref and calls the
+  // latest one when the timer fires. That is the whole fix: the hand-rolled
+  // `setTimeout` this replaces had `[savedCount]` deps with exhaustive-deps
+  // suppressed, so a pending timer kept the `location` from whenever
+  // `savedCount` last changed. Navigating mid-upload did not re-run the
+  // effect, so the timer fired `navigate(<the page you left>, { replace })`
+  // and bounced the user back — and if the count happened to tick while they
+  // were on some other route, that route was where they got sent once the
+  // queue drained.
+  const { markCommitted } = useDebouncedCommit(
+    savedCount,
+    () => {
       consumeRevalidation()
       navigate(`${location.pathname}${location.search}`, {
         replace: true,
         state: { reset: true },
       })
-    }, REVALIDATE_DEBOUNCE_MS)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedCount])
+    },
+    { delayMs: REVALIDATE_DEBOUNCE_MS, enabled: savedCount > 0 }
+  )
+
+  // `consumeRevalidation` empties the buffer, so the count drops back to 0
+  // right after a commit. Recording that as committed keeps the next burst
+  // firing even when it happens to reach the same count as the last one.
+  useEffect(() => {
+    if (savedCount === 0) markCommitted(0)
+  }, [savedCount, markCommitted])
 }
 
 // ── Consumer ───────────────────────────────────────────────────────────────
