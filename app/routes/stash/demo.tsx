@@ -3,13 +3,14 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import type { WorkerSnapshot } from '@/types/machine.types'
 import { initialWorkerSnapshot } from '@/types/machine.types'
-import { Loader2, X } from 'lucide-react'
 import { Button } from '@/ui/button'
 import { Badge } from '@/ui/badge'
 import { Progress } from '@/ui/progress'
 import { ScrollArea } from '@/ui/scroll-area'
 import { Separator } from '@/ui/separator'
 import {
+  RemoveIcon,
+  LoaderIcon,
   LanguageIcon,
   MediaIcon,
   SummarizeIcon,
@@ -180,7 +181,7 @@ function UploadLoadingState({
   return (
     <div className="flex flex-col items-center gap-5 animate-in fade-in duration-200 w-full max-w-xs">
       <div className="flex items-center gap-2.5">
-        <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+        <LoaderIcon className="w-3.5 h-3.5 text-primary animate-spin" />
         <span className="text-[9px] font-bold tracking-[0.25em] uppercase text-primary">
           {loadingPhases.length > 0
             ? loadingPhases[loadingPhases.length - 1]
@@ -705,7 +706,7 @@ export default function App() {
                 size="sm"
                 className="text-[9px] font-bold tracking-[0.25em] uppercase text-muted-foreground/50 hover:text-destructive-foreground gap-1.5 h-7"
               >
-                <X className="w-3 h-3" />
+                <RemoveIcon className="w-3 h-3" />
                 Cancel
               </Button>
             </div>

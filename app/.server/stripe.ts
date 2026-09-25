@@ -1,5 +1,7 @@
-import { config } from '@dotenvx/dotenvx'
+import pkg from '@dotenvx/dotenvx';
 import Stripe from 'stripe'
+
+const { config } = pkg;
 
 config({ logLevel: undefined, quiet: true })
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {

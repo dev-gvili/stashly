@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/tooltip'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { cn } from '@/utils/styles'
-import { RiCheckboxCircleFill } from '@remixicon/react'
+import { DoubleCheckIcon } from '@/components/icons'
 import { Form, redirect } from 'react-router'
 import { updateDrive } from '@/services/drive-actions'
 import { createQuota, updateTotalQuota } from '@/services/quota-actions'
@@ -155,7 +155,7 @@ export default function BillingRoute({ loaderData }: Route.ComponentProps) {
             >
               {plan.features.map((feature, index) => (
                 <div className="flex items-center gap-2" key={index}>
-                  <RiCheckboxCircleFill className="h-4 w-4 text-foreground" />
+                  <DoubleCheckIcon className="h-4 w-4 text-foreground" />
                   <TooltipProvider>
                     <TooltipRoot>
                       <TooltipTrigger asChild>

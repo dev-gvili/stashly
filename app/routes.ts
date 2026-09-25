@@ -194,10 +194,6 @@ export default [
 
         // videos route shows all videos in the user's stash, providing a dedicated space for users to access and manage their video content. This page could include features such as video previews. playback, and allowing users to easily find and enjoy their stored videos within their stash.
         route('videos', 'routes/stash/gallery.tsx', { id: 'stash-videos' }),
-        // route('videos', 'routes/stash/videos.tsx', { id: 'stash-videos' }),
-
-        // recent route shows the most recently added or modified items in the user's stash, providing a quick way for users to access their latest content. This page could display a chronological list of recent activity, including new files, updated collections, and recent shares, allowing users to easily stay up-to-date with their stash's activity and quickly find their most current items.
-        route('recent', 'routes/stash/recent.tsx', { id: 'stash-recent' }),
 
         // search route provides a search interface for users to find specific items within their stash. This page could include advanced search filters, such as file type, date range, and collection, allowing users to quickly locate the content they need from their stash using keywords, specific criteria or semantic search.
         route('search', 'routes/stash/search.tsx', { id: 'stash-search' }),
@@ -273,8 +269,4 @@ export default [
 
     route('*', 'routes/not-found.tsx', { id: 'not-found' }), // Catch-all route for 404
   ]),
-
-  route('test', 'routes/stash/recent.tsx', {
-    id: 'test-route',
-  }), // Public share route
 ] satisfies RouteConfig

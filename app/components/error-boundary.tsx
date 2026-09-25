@@ -5,7 +5,6 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { ButtonGroup } from './ui/button-group'
 import { Button } from './ui/button'
 import { ScrollArea } from './ui/scroll-area'
-import { RiExpandUpDownLine } from '@remixicon/react'
 import { CopyFillIcon, ExpandCollapsedIcon, HomeFillIcon, RefreshIcon } from './icons'
 import { isStashlyError } from '@/utils/api.errors'
 

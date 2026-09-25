@@ -1,4 +1,3 @@
-import { RiLayoutMasonryFill } from '@remixicon/react'
 import { LayoutMenu, LayoutMenuItem } from './ui/layout-menu'
 import { cn } from '@/utils/styles'
 import { useLocation, useSearchParams } from 'react-router'

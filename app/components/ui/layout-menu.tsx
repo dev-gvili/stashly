@@ -1,4 +1,3 @@
-import { RiLayoutMasonryFill, RiLayout2Fill } from '@remixicon/react'
 import { useSearchParams } from 'react-router'
 import {
   ToggleGroup,

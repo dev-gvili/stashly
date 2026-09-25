@@ -36,17 +36,11 @@ import {
   WorkspaceFillIcon,
 } from '@/components/icons'
 import type { LinkState, SharedLink } from '@/types/stash.types'
-import type {
-  MediaFile,
-  Status,
-  UploadProgress,
-} from '@/types/machine.types'
+import type { MediaFile, Status, UploadProgress } from '@/types/machine.types'
 import { ItemCategory, type ItemType } from '@/prisma/browser'
-import crypto from 'crypto-js'
 import { href } from 'react-router'
 import { z, type Schema } from 'zod'
 import type { ItemCardProps } from '../components/stash/item-card'
-import type { AuthSession } from '@/services/auth.types'
 import { paginationOptions } from '@/schemas/filters.schemas'
 
 /**
@@ -61,12 +55,16 @@ export async function toBuffer(data: AsyncIterable<Uint8Array>) {
 }
 
 /**
- * return base64 encoded string
+ * Converts a string to a SHA-256 hash.
+ * @param input - The input string to hash.
+ * @returns A promise resolving to the SHA-256 hash.
  */
-export const toBase64 = (input: string): string => {
-  return crypto
-    .MD5(input)
-    .toString(crypto.enc.Base64)
+export const toSHA256 = async (input: string): Promise<string> => {
+  const hash = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(input)
+  )
+  return btoa(String.fromCharCode(...new Uint8Array(hash)))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '')
@@ -102,10 +100,10 @@ export function toUserInitial(input: string): string {
 /**
  * Determines the `ItemCategory` of a file based on its MIME type and file extension.
  * It performs strong type checks first, followed by office productivity, technical types, and code fallbacks.
- * 
+ *
  * @param file - The browser File object to categorize.
  * @returns The matched `ItemCategory` or `ItemCategory.unknown` if no match is found.
- * 
+ *
  * @example
  * const file = new File([""], "resume.pdf", { type: "application/pdf" });
  * const category = toCategory(file); // returns ItemCategory.pdf
@@ -332,7 +330,7 @@ export function toIcon(value: IconKey) {
     case 'binaries':
       return BinariesFillIcon
     case 'graphic':
-      return GraphicIcon  
+      return GraphicIcon
     case 'file':
       return FileFillIcon
     case 'folder':
@@ -581,12 +579,12 @@ export let toUploadFile = (
 /**
  * Converts a browser File object into a standardized MediaFile object used by the upload machines.
  * This initializes the file with a unique ID, generated S3 key, and default progress/status values.
- * 
+ *
  * @param file - The native File object from the browser.
  * @param rootId - The ID of the root folder or directory where the file is being uploaded.
  * @param workspaceId - Optional ID of the workspace if the file belongs to one.
  * @returns A MediaFile object ready for processing by the XState upload manager.
- * 
+ *
  * @example
  * const file = new File(["content"], "hello.png", { type: "image/png" });
  * const mediaFile = toMediaFile(file, "item_root123");
@@ -717,8 +715,6 @@ export const toZodOrderBySchema = <T extends object>() => {
   })
 }
 
-
-
 /**
  * The query-shape keys every paginated search schema gains on top of its model
  * filters.
@@ -738,7 +734,9 @@ export type SearchSchema<
   S extends z.ZodObject,
   TOrderBy,
   TInclude,
-> = z.ZodObject<z.core.util.Extend<S['shape'], SearchExtras<TOrderBy, TInclude>>>
+> = z.ZodObject<
+  z.core.util.Extend<S['shape'], SearchExtras<TOrderBy, TInclude>>
+>
 
 /**
  * Widen a `[model]FilterSchema` into the schema a list loader actually needs:
@@ -897,23 +895,26 @@ export function toObjectId<TPrefix extends StashlyObjectPrefix>(
     )
   }
 
-  const randomString = crypto.lib.WordArray.random(16)
-    .toString(crypto.enc.Base64)
+  const randomString = crypto
+    .getRandomValues(new Uint8Array(16))
+    .reduce((acc, byte) => acc + String.fromCharCode(byte), '')
+
+  const base64String = btoa(randomString)
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '')
 
-  return `${prefix}_${randomString}` as `${TPrefix}_${string}`
+  return `${prefix}_${base64String}` as `${TPrefix}_${string}`
 }
 
 /**
  * Checks if a specific user has favorited an item.
- * 
+ *
  * @param props - The properties containing favorites list and user ID.
  * @param props.favorites - The list of favorite objects associated with an item.
  * @param props.userId - The ID of the user to check for.
  * @returns A boolean indicating whether the user is in the favorites list.
- * 
+ *
  * @example
  * const isFav = toFavorite({ favorites: item.favorites, userId: 'usr_123' });
  */
@@ -1085,7 +1086,4 @@ export function toLinkState(link: SharedLink): LinkState {
   const days = (new Date(link.expiresAt).getTime() - Date.now()) / 86_400_000
   if (days <= 0) return 'expired'
   return days <= 7 ? 'expiring' : 'live'
-}export function toS3PublicUrl(session: AuthSession, key: string) {
-  return `https://${session.user.bucket}.t3.tigrisfiles.io/${key}`
 }
-

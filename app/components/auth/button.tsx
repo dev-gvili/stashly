@@ -2,12 +2,11 @@ import { Button } from '@/ui/button'
 import { cn } from '@/utils/styles'
 import {authClient} from '@/.client/auth'
 import {
-  RiAppleFill,
-  RiCircleLine,
-  RiGithubFill,
-  RiGoogleFill,
-  RiMicrosoftFill,
-} from '@remixicon/react'
+  CircleIcon,
+  GithubFillIcon,
+  GoogleFillIcon,
+  MicrosoftFillIcon,
+} from '@/components/icons'
 import type { auth } from '@/services/auth'
 
 type Providers = keyof typeof auth.options.socialProviders
@@ -18,15 +17,13 @@ interface AuthButtonProps extends React.ComponentProps<typeof Button> {
 const toProviderIcon = (provider: Providers) => {
   switch (provider) {
     case 'github':
-      return <RiGithubFill className="size-6" />
+      return <GithubFillIcon className="size-6" />
     case 'google':
-      return <RiGoogleFill className="size-6" />
+      return <GoogleFillIcon className="size-6" />
     case 'microsoft':
-      return <RiMicrosoftFill className="size-6" />
-    // case "apple":
-    //   return <RiAppleFill className="size-6" />;
+      return <MicrosoftFillIcon className="size-6" />
     default:
-      return <RiCircleLine className="size-6" />
+      return <CircleIcon className="size-6" />
   }
 }
 const AuthButton = ({

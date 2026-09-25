@@ -1,9 +1,8 @@
 import * as React from 'react'
 import { Slot as SlotPrimitive } from 'radix-ui'
-import { ChevronRight, MoreHorizontal } from 'lucide-react'
 
 import { cn } from '@/utils/styles'
-import { MenuDotsIcon, MoreFillIcon } from '../icons'
+import { DropdownIcon, MenuDotsIcon, MoreFillIcon } from '../icons'
 
 function Breadcrumb({ ...props }: React.ComponentProps<'nav'>) {
   return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />
@@ -76,7 +75,7 @@ function BreadcrumbSeparator({
       className={cn('[&>svg]:size-3.5', className)}
       {...props}
     >
-      {children ?? <ChevronRight />}
+      {children ?? <DropdownIcon className="size-3.5 -rotate-45" />}
     </li>
   )
 }

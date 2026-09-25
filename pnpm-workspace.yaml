@@ -2,52 +2,35 @@ allowBuilds:
   '@prisma/engines': true
   esbuild: true
   msw: true
-  node-av: true
-  node-llama-cpp: true
   onnxruntime-node: true
   prisma: true
   protobufjs: true
   sharp: true
-  tesseract.js: true
   webgpu: true
 minimumReleaseAgeExclude:
-  - '@node-llama-cpp/linux-arm64@3.21.1'
-  - '@node-llama-cpp/linux-armv7l@3.21.1'
-  - '@node-llama-cpp/linux-riscv64@3.21.1'
-  - '@node-llama-cpp/linux-x64-cuda-ext@3.21.1'
-  - '@node-llama-cpp/linux-x64-cuda@3.21.1'
-  - '@node-llama-cpp/linux-x64-vulkan@3.21.1'
-  - '@node-llama-cpp/linux-x64@3.21.1'
-  - '@node-llama-cpp/mac-arm64-metal@3.21.1'
-  - '@node-llama-cpp/mac-x64@3.21.1'
-  - '@node-llama-cpp/win-arm64@3.21.1'
-  - '@node-llama-cpp/win-x64-cuda-ext@3.21.1'
-  - '@node-llama-cpp/win-x64-cuda@3.21.1'
-  - '@node-llama-cpp/win-x64-vulkan@3.21.1'
-  - '@node-llama-cpp/win-x64@3.21.1'
-  - baseline-browser-mapping@2.11.23
-  - node-llama-cpp@3.21.1
+  - baseline-browser-mapping@2.11.23 || 2.11.26
   - tailwind-merge@3.7.0
   - xstate@5.33.0
   - zod@4.6.4
+  - '@aws-sdk/client-s3@3.1140.0'
+  - '@aws-sdk/lib-storage@3.1140.0'
+  - '@aws-sdk/s3-request-presigner@3.1140.0'
+  - '@better-auth/core@1.7.6'
+  - '@better-auth/drizzle-adapter@1.7.6'
+  - '@better-auth/kysely-adapter@1.7.6'
+  - '@better-auth/memory-adapter@1.7.6'
+  - '@better-auth/mongo-adapter@1.7.6'
+  - '@better-auth/prisma-adapter@1.7.6'
+  - '@better-auth/telemetry@1.7.6'
+  - better-auth@1.7.6
+  - framer-motion@13.4.3
+  - vite@8.3.1
 onlyBuiltDependencies:
   - '@prisma/engines'
-  - '@seydx/node-av-darwin-arm64'
-  - '@seydx/node-av-darwin-x64'
-  - '@seydx/node-av-linux-arm64'
-  - '@seydx/node-av-linux-x64'
-  - '@seydx/node-av-win32-arm64-mingw'
-  - '@seydx/node-av-win32-arm64-msvc'
-  - '@seydx/node-av-win32-x64-mingw'
-  - '@seydx/node-av-win32-x64-msvc'
   - esbuild
   - msw
-  - node-av
-  - node-llama-cpp
   - onnxruntime-node
   - prisma
   - protobufjs
   - sharp
-  - tesseract
-  - tesseract.js
   - webgpu
