@@ -52,10 +52,11 @@ const itemListSelect = {
   folder: true,
   thumbnails: {
     take: 1,
-    where: { NOT: { url: { startsWith: '#' } } },
+    where: { bucket: { not: null } },
     select: {
       id: true,
-      url: true,
+      bucket: true,
+      color: true,
       width: true,
       height: true,
       size: true,
@@ -113,7 +114,8 @@ const itemListSelect = {
         select: {
           height: true,
           width: true,
-          url: true,
+          bucket: true,
+          color: true,
           view: true,
           size: true,
           id: true,

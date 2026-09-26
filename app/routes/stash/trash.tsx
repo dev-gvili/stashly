@@ -144,7 +144,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
                 view: layout,
               },
               select: {
-                url: true,
+                bucket: true,
+                color: true,
                 width: true,
                 height: true,
                 size: true,
@@ -177,7 +178,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
             view: layout,
           },
           select: {
-            url: true,
+            bucket: true,
+            color: true,
             width: true,
             height: true,
             size: true,

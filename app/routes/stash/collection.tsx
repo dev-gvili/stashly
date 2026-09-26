@@ -43,7 +43,8 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
           select: {
             height: true,
             width: true,
-            url: true,
+            bucket: true,
+            color: true,
             size: true,
             id: true,
             stage: true,

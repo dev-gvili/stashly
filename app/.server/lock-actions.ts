@@ -21,8 +21,8 @@ const itemListSelect = {
   folder: true,
   thumbnails: {
     take: 1,
-    where: { NOT: { url: { startsWith: '#' } } },
-    select: { id: true, url: true, width: true, height: true, size: true, view: true, stage: true },
+    where: { bucket: { not: null } },
+    select: { id: true, bucket: true, color: true, width: true, height: true, size: true, view: true, stage: true },
   },
   favorites: {
     select: {

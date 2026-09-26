@@ -14,7 +14,7 @@ import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors
 import { buildCollectionFilters } from '@/utils/filters/collection.filters'
 import { searchFactory } from '@/utils/search'
 import { createActivity } from './activity-actions'
-import { signThumbnailUrl } from './thumbnail-actions'
+import { signStoredThumbnail } from './thumbnail-actions'
 
 function recordCollectionActivity(
   itemId: string,
@@ -722,12 +722,22 @@ export async function getCollectionItems(
     : Prisma.sql``
 
   const rows = await prisma.$queryRaw<
-    (Item & { linkId: string; thumbnailUrl: string | null })[]
+    (Item & {
+      linkId: string
+      thumbnailBucket: string | null
+      thumbnailStage: number | null
+    })[]
   >`
     SELECT i.*, cm.id AS "linkId",
-           (SELECT t.url FROM "Thumbnail" t WHERE t."itemId" = i.id AND t.url IS NOT NULL AND t.url NOT LIKE '#%' LIMIT 1) AS "thumbnailUrl"
+           th.bucket AS "thumbnailBucket", th.stage AS "thumbnailStage"
     FROM "CollectionMember" cm
     JOIN "Item" i ON i.id = cm."itemId"
+    LEFT JOIN LATERAL (
+      SELECT t.bucket, t.stage FROM "Thumbnail" t
+      WHERE t."itemId" = i.id AND t.bucket IS NOT NULL
+      ORDER BY t.stage DESC
+      LIMIT 1
+    ) th ON true
     WHERE cm."collectionId" = ${collectionId}
       AND (
         i."ownerId" = ${userId}
@@ -753,13 +763,23 @@ export async function getCollectionItems(
   }
 
   return {
-    // `thumbnailUrl` is a flat column from the raw SELECT, not a `thumbnails`
-    // relation, so it is signed one row at a time.
+    // The best stored stage comes back as flat columns from the raw SELECT,
+    // not a `thumbnails` relation, so it is signed one row at a time.
     items: await Promise.all(
-      rows.map(async ({ linkId: _linkId, thumbnailUrl, ...item }) => ({
-        ...(item as Item),
-        thumbnailUrl: await signThumbnailUrl(thumbnailUrl, item.id),
-      }))
+      rows.map(
+        async ({
+          linkId: _linkId,
+          thumbnailBucket,
+          thumbnailStage,
+          ...item
+        }) => ({
+          ...(item as Item),
+          thumbnailUrl: await signStoredThumbnail(
+            { bucket: thumbnailBucket, stage: thumbnailStage },
+            item.id
+          ),
+        })
+      )
     ),
     nextCursor,
     hasMore: !!nextCursor,

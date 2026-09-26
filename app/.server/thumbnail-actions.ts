@@ -4,19 +4,29 @@ import { hasItemPermission } from '@/services/permission-actions'
 import { getPresignedUrl } from '@/services/s3'
 import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 
-// ====================================================== //
-// ================= Thumbnail locators ================= //
-// ====================================================== //
+// ===================================================== //
+// ================= Thumbnail storage ================= //
+// ===================================================== //
 
 /** Thumbnail stages that are persisted (stage 1 never leaves the browser). */
 export type ThumbnailStage = 2 | 3
 
-/** Where a stored thumbnail lives. Parsed from `Thumbnail.url`. */
+/** Everything needed to sign a read of one stored thumbnail. */
 export interface ThumbnailLocation {
   bucket: string
   key: string
   itemId: string
   stage: ThumbnailStage
+}
+
+/**
+ * The `Thumbnail` columns a read path has to select for signing. `url` is not
+ * among them: the payload's `url` is produced by signing, never stored.
+ */
+export interface StoredThumbnail {
+  bucket?: string | null
+  stage?: number | null
+  color?: string | null
 }
 
 /** Signed URLs are stable for this long, so re-renders hit the browser cache. */
@@ -29,113 +39,76 @@ const THUMBNAIL_URL_EXPIRES_IN_S = 2 * 60 * 60
 /** Browser cache lifetime. No longer than the minimum remaining validity. */
 const THUMBNAIL_CACHE_CONTROL = 'private, max-age=3600'
 
-const LOCATOR_PREFIX = 's3://'
-const LEGACY_PUBLIC_HOST_SUFFIX = '.t3.tigrisfiles.io'
 // S3 bucket naming rules: 3–63 chars, lowercase letters, digits, dots, hyphens.
 const BUCKET_RE = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/
 // `toObjectId` output: `<prefix>_<base64url>`.
 const ITEM_ID_RE = /^[a-z]+_[A-Za-z0-9_-]+$/
-// The only key shape a thumbnail may have. Anything else is refused.
-const THUMBNAIL_KEY_RE = /^thumbnails\/([a-z]+_[A-Za-z0-9_-]+)\.webp$/
+// Stage-0 placeholder. The POST route stores a client-supplied value here, so
+// nothing but a colour may come back out as an `<img src>`.
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{3,8}$/
 
 /**
- * Builds the value stored in `Thumbnail.url` for a persisted stage.
- *
- * This is a **locator, not a URL**: nothing can load it directly, so a read
- * path that forgets to sign it shows a broken image instead of a working
- * public link. Only the server builds it. Accepting a locator from the client
- * would let a caller have the server sign a read of any object in any bucket —
- * the credentials behind `getPresignedUrl` can read every user's bucket.
- *
- * @param bucket - Bucket the thumbnail was uploaded to.
- * @param itemId - Item the thumbnail belongs to.
- * @param stage - 2 (resize) or 3 (salient crop).
- *
- * @throws {StashlyError} `INVALID_INPUT` if the bucket or item id is malformed.
+ * The one S3 key an item's thumbnail may have. Stages overwrite it in place,
+ * so it is derived from the item id and never stored.
  *
  * @example
- * thumbnailLocator('stashly-jane-a1b2c3d4', 'itm_abc', 2)
- * // → 's3://stashly-jane-a1b2c3d4/thumbnails/itm_abc.webp?v=2'
+ * thumbnailKey('itm_abc') // → 'thumbnails/itm_abc.webp'
  */
-export function thumbnailLocator(
-  bucket: string,
-  itemId: string,
-  stage: ThumbnailStage
-): string {
-  if (!BUCKET_RE.test(bucket) || !ITEM_ID_RE.test(itemId)) {
-    throw new StashlyError(
-      StashlyErrorCode.INVALID_INPUT,
-      'Invalid thumbnail bucket or item id'
-    )
-  }
-  return `${LOCATOR_PREFIX}${bucket}/thumbnails/${itemId}.webp?v=${stage}`
+export function thumbnailKey(itemId: string): string {
+  return `thumbnails/${itemId}.webp`
 }
 
 /**
- * Parses a stored `Thumbnail.url` into its bucket, key, item and stage.
+ * Where a stored thumbnail lives, from its row's columns — or `null` when the
+ * row holds no persisted object (stage 0/1, or no bucket written yet).
  *
- * Accepts two forms:
- * - `s3://{bucket}/thumbnails/{itemId}.webp?v={stage}` — written from now on.
- * - `https://{bucket}.t3.tigrisfiles.io/thumbnails/{itemId}.webp?v={stage}` —
- *   the legacy public URL, so existing rows keep working with no migration.
+ * The bucket is written by the server from the item's file bucket, never taken
+ * from a request, so the credentials behind `getPresignedUrl` — which reach
+ * every user's bucket — can only be pointed at `thumbnails/<itemId>.webp` in
+ * the bucket that owns the item. The format checks are a second line behind
+ * that, so a corrupted row is refused rather than signed.
  *
- * Returns `null` for anything else, including stage-0 `#hex` placeholders, keys
- * outside `thumbnails/<itemId>.webp`, and path tricks. When `expectedItemId` is
- * given, a locator for a *different* item is refused too, so one item's row
- * can't be used to sign another item's thumbnail.
+ * @param row - The stored `bucket` and `stage`.
+ * @param itemId - Item the row belongs to (the caller's, not the row's say-so).
  *
  * @example
- * parseThumbnailLocator('s3://stashly-jane-a1b2c3d4/thumbnails/itm_abc.webp?v=3')
+ * thumbnailLocation({ bucket: 'stashly-jane-a1b2c3d4', stage: 3 }, 'itm_abc')
  * // → { bucket: 'stashly-jane-a1b2c3d4', key: 'thumbnails/itm_abc.webp', itemId: 'itm_abc', stage: 3 }
  *
  * @example
- * parseThumbnailLocator('s3://other-bucket/private/tax.pdf') // → null
+ * thumbnailLocation({ bucket: null, stage: 0 }, 'itm_abc') // → null
  */
-export function parseThumbnailLocator(
-  stored: string | null | undefined,
-  expectedItemId?: string
+export function thumbnailLocation(
+  row: StoredThumbnail,
+  itemId: string | undefined
 ): ThumbnailLocation | null {
-  if (!stored || stored.startsWith('#')) return null
+  const { bucket, stage } = row
+  if (!bucket || !itemId) return null
+  if (stage !== 2 && stage !== 3) return null
+  if (!BUCKET_RE.test(bucket) || !ITEM_ID_RE.test(itemId)) return null
+  return { bucket, key: thumbnailKey(itemId), itemId, stage }
+}
 
-  let bucket: string
-  let path: string
-  let search: URLSearchParams
-
-  if (stored.startsWith(LOCATOR_PREFIX)) {
-    const rest = stored.slice(LOCATOR_PREFIX.length)
-    const [pathPart, queryPart = ''] = rest.split('?', 2)
-    const slash = pathPart.indexOf('/')
-    if (slash <= 0) return null
-    bucket = pathPart.slice(0, slash)
-    path = pathPart.slice(slash + 1)
-    search = new URLSearchParams(queryPart)
-  } else {
-    let url: URL
-    try {
-      url = new URL(stored)
-    } catch {
-      return null
-    }
-    if (url.protocol !== 'https:') return null
-    if (!url.hostname.endsWith(LEGACY_PUBLIC_HOST_SUFFIX)) return null
-    bucket = url.hostname.slice(0, -LEGACY_PUBLIC_HOST_SUFFIX.length)
-    // `URL` has already resolved `..` segments; the key regex rejects the rest.
-    path = url.pathname.slice(1)
-    search = url.searchParams
+/**
+ * The bucket an item's thumbnail is written to: the bucket holding the item's
+ * file. Resolved server-side so a collaborator backfilling a shared item writes
+ * next to the owner's file instead of into their own bucket.
+ *
+ * @throws {StashlyError} `ITEM_NOT_FOUND` when the item has no file bucket.
+ */
+async function resolveThumbnailBucket(itemId: string): Promise<string> {
+  const item = await prisma.item.findUnique({
+    where: { id: itemId },
+    select: { file: { select: { bucket: true } } },
+  })
+  const bucket = item?.file?.bucket
+  if (!bucket || !BUCKET_RE.test(bucket) || !ITEM_ID_RE.test(itemId)) {
+    throw new StashlyError(
+      StashlyErrorCode.ITEM_NOT_FOUND,
+      'Item has no file to attach a thumbnail to'
+    )
   }
-
-  if (!BUCKET_RE.test(bucket)) return null
-
-  const keyMatch = THUMBNAIL_KEY_RE.exec(path)
-  if (!keyMatch) return null
-  const itemId = keyMatch[1]
-  if (expectedItemId !== undefined && itemId !== expectedItemId) return null
-
-  const v = search.get('v')
-  const stage = v === '2' ? 2 : v === '3' ? 3 : null
-  if (stage === null) return null
-
-  return { bucket, key: path, itemId, stage }
+  return bucket
 }
 
 /**
@@ -211,50 +184,81 @@ let signedWindow = 0
 const SIGNED_CACHE_MAX = 50_000
 
 /**
- * Turns a stored `Thumbnail.url` into a URL the browser can load.
+ * Turns one stored thumbnail row into the `url` the browser loads.
  *
- * - `null` / `undefined` → `null`
- * - `#hex` stage-0 placeholder → returned unchanged, since every consumer
- *   already filters those and expects to keep seeing them
- * - a valid locator (either form) → a signed GET URL
- * - anything else → `null`, with a warning
+ * - a persisted stage (2/3) with a bucket → a signed GET URL
+ * - otherwise the stage-0 `#hex` placeholder colour, or `null` — every
+ *   consumer already filters `#` values. Anything in `color` that is not a hex
+ *   colour is dropped: it is client-supplied, and it lands in an `<img src>`
+ * - a bucket that fails the format checks → `null`, with a warning
  *
  * **Authorization is the caller's job.** Call this only on rows a loader or
  * action has already scoped to what the viewer is allowed to see.
  *
- * @param stored - The raw `Thumbnail.url` value.
- * @param expectedItemId - Item the row belongs to, when the caller knows it.
+ * @param row - The stored `bucket`, `stage` and `color`.
+ * @param itemId - Item the row belongs to.
  *
  * @example
- * const thumbnailUrl = await signThumbnailUrl(row.thumbnailUrl, row.id)
+ * const thumbnailUrl = await signStoredThumbnail(row, row.id)
  */
-export async function signThumbnailUrl(
-  stored: string | null | undefined,
-  expectedItemId?: string
+export async function signStoredThumbnail(
+  row: StoredThumbnail,
+  itemId: string | undefined
 ): Promise<string | null> {
-  if (stored == null) return null
-  if (stored.startsWith('#')) return stored
-
-  const location = parseThumbnailLocator(stored, expectedItemId)
-  if (!location) {
-    console.warn('[thumbnails] refusing to sign unrecognised url', {
-      expectedItemId,
-      stored: stored.slice(0, 120),
+  const location = thumbnailLocation(row, itemId)
+  if (location) return signThumbnailLocation(location)
+  if (row.bucket) {
+    console.warn('[thumbnails] refusing to sign unrecognised row', {
+      itemId,
+      bucket: row.bucket.slice(0, 80),
+      stage: row.stage,
     })
     return null
   }
-  return signThumbnailLocation(location)
+  return row.color && HEX_COLOR_RE.test(row.color) ? row.color : null
 }
 
+/** A thumbnail as the client receives it: `url` signed, storage columns gone. */
+export type SignedThumbnail<E> = Omit<E, 'bucket' | 'color' | 'url'> & {
+  url: string | null
+}
+
+/** Distributes over `X[] | null | undefined`, signing only the array member. */
+type SignThumbnailList<V> =
+  V extends ReadonlyArray<infer E> ? SignedThumbnail<E>[] : V
+
 /**
- * Signs every `thumbnails[].url` in a query result, at any depth, and returns
- * a copy with the same shape. Wrap a query result with it on the way out:
+ * The type {@link signThumbnails} returns: `T` with every `thumbnails` array,
+ * at any depth, replaced by its signed shape. Class instances (`Date`,
+ * `Uint8Array`, Prisma's `Decimal`) pass through, as they do at runtime.
+ */
+export type WithSignedThumbnails<T> = T extends
+  | Date
+  | Uint8Array
+  | { toFixed: (...args: never[]) => unknown }
+  ? T
+  : T extends ReadonlyArray<infer U>
+    ? WithSignedThumbnails<U>[]
+    : T extends object
+      ? {
+          [K in keyof T]: K extends 'thumbnails'
+            ? SignThumbnailList<T[K]>
+            : WithSignedThumbnails<T[K]>
+        }
+      : T
+
+/**
+ * Signs every `thumbnails[]` row in a query result, at any depth, and returns
+ * a copy with the same shape — each row gains a loadable `url` and loses its
+ * `bucket`/`color` storage columns. Wrap a query result with it on the way out.
+ * Select `bucket`, `stage` and `color` on every `thumbnails` relation; a row
+ * without them signs to `null`.
  *
  * Item payloads nest — a row carries `parent`, `children`, `copies`, and each
  * of those can carry its own thumbnails. Signing each nesting level by hand at
  * every read site is how one gets missed, so this walks the result instead.
- * The **nearest enclosing object's `id`** is used as the expected item id, so a
- * thumbnail row pointing at a different item is dropped rather than signed.
+ * The **nearest enclosing object's `id`** is the item the key is built from,
+ * so a row can only ever sign its own item's thumbnail.
  *
  * Only plain objects and arrays are traversed. `Date`, `Buffer`, `Decimal` and
  * other class instances are passed through untouched, so a selected
@@ -265,7 +269,7 @@ export async function signThumbnailUrl(
  * @example
  * const items = await signThumbnails(
  *   await prisma.item.findMany({
- *     select: { id: true, thumbnails: { select: { url: true } } },
+ *     select: { id: true, thumbnails: { select: { bucket: true, stage: true, color: true } } },
  *   })
  * )
  *
@@ -273,8 +277,10 @@ export async function signThumbnailUrl(
  * // Works on a single row, or any wrapper around rows
  * return signThumbnails({ items, nextCursor })
  */
-export async function signThumbnails<T>(input: T): Promise<T> {
-  return (await signWalk(input, undefined)) as T
+export async function signThumbnails<T>(
+  input: T
+): Promise<WithSignedThumbnails<T>> {
+  return (await signWalk(input, undefined)) as WithSignedThumbnails<T>
 }
 
 /** Recursive worker for {@link signThumbnails}. */
@@ -299,11 +305,12 @@ async function signWalk(
     if (key === 'thumbnails' && Array.isArray(value)) {
       out[key] = await Promise.all(
         value.map(async (thumb) => {
-          if (!thumb || typeof thumb !== 'object' || !('url' in thumb)) {
-            return thumb
+          if (!thumb || typeof thumb !== 'object') return thumb
+          const { bucket, color, url: _stale, ...rest } = thumb as StoredThumbnail & {
+            url?: unknown
           }
-          const url = (thumb as { url?: string | null }).url
-          return { ...thumb, url: await signThumbnailUrl(url, itemId) }
+          const url = await signStoredThumbnail({ bucket, color, stage: rest.stage }, itemId)
+          return { ...rest, url }
         })
       )
       continue
@@ -318,27 +325,38 @@ async function signWalk(
  * URLs for both persisted stages, so the client can paint each stage right
  * after its PUT without another round trip.
  *
- * The PUT carries no ACL — the object stays private and is only ever read
- * through `signThumbnailUrl`.
+ * The object goes into the bucket holding the item's file — not the caller's
+ * own — so a collaborator backfilling a shared item writes next to the owner's
+ * file. That is a write into another user's bucket, so it requires read access
+ * to the item, the same bar {@link updateThumbnail} sets. The PUT carries no
+ * ACL — the object stays private and is only ever read signed.
  *
- * @param bucket - Bucket to upload into (the uploader's own bucket).
+ * @param userId - Viewer requesting the upload.
  * @param itemId - Item the thumbnail belongs to.
  *
+ * @throws {StashlyError} `FORBIDDEN` when the viewer can't read the item.
+ *
  * @example
- * return data(await presignThumbnailUpload(session.user.bucket, itemId))
+ * return data(await presignThumbnailUpload(session.user.id, itemId))
  */
 export async function presignThumbnailUpload(
-  bucket: string,
+  userId: string,
   itemId: string
 ): Promise<{ uploadUrl: string; viewUrls: Record<ThumbnailStage, string> }> {
-  // Round-trips through the parser so the key and bucket checks run on the
-  // write path too, not only on reads.
-  const stage2 = parseThumbnailLocator(thumbnailLocator(bucket, itemId, 2))
-  if (!stage2) {
-    throw new StashlyError(
-      StashlyErrorCode.INVALID_INPUT,
-      'Invalid thumbnail bucket or item id'
+  const canRead = await hasItemPermission(userId, itemId, 'read')
+  if (!canRead) {
+    throw toRouteError(
+      StashlyErrorCode.FORBIDDEN,
+      'You do not have access to this item'
     )
+  }
+
+  const bucket = await resolveThumbnailBucket(itemId)
+  const stage2: ThumbnailLocation = {
+    bucket,
+    key: thumbnailKey(itemId),
+    itemId,
+    stage: 2,
   }
 
   const [uploadUrl, view2, view3] = await Promise.all([
@@ -377,7 +395,7 @@ export async function createThumbnail(
         view: view as any,
         size: size as any,
         stage: 0,
-        url: hexColor,
+        color: hexColor,
       },
     })
   } catch (e: unknown) {
@@ -394,10 +412,10 @@ export async function createThumbnail(
 /**
  * Records a finished thumbnail stage and returns a signed URL for it.
  *
- * The stored value is **derived here**, never taken from the request: the
- * caller supplies the bucket it uploaded to, and this builds the locator. A
- * client-supplied value would be a read primitive — the server signs whatever
- * is stored, and its credentials reach every user's bucket.
+ * What is stored is **derived here**, never taken from the request: the bucket
+ * comes from the item's file and the key from its id. A client-supplied value
+ * would be a read primitive — the server signs whatever is stored, and its
+ * credentials reach every user's bucket.
  *
  * Requires read access to the item. Read, not write, because backfill lets a
  * viewer of a shared item generate the thumbnail that was never produced at
@@ -405,7 +423,6 @@ export async function createThumbnail(
  *
  * @param userId - Viewer recording the thumbnail.
  * @param itemId - Item the thumbnail belongs to.
- * @param bucket - Bucket the object was PUT into (the uploader's own bucket).
  * @param stage - 2 (resize) or 3 (salient crop).
  * @param width - Rendered width in pixels.
  * @param height - Rendered height in pixels.
@@ -417,12 +434,11 @@ export async function createThumbnail(
  * @returns The signed URL to paint, echoed back to the client.
  *
  * @example
- * const url = await updateThumbnail(session.user.id, itemId, session.user.bucket, 2, 512, 384)
+ * const url = await updateThumbnail(session.user.id, itemId, 2, 512, 384)
  */
 export async function updateThumbnail(
   userId: string,
   itemId: string,
-  bucket: string,
   stage: ThumbnailStage,
   width?: number,
   height?: number,
@@ -437,29 +453,35 @@ export async function updateThumbnail(
     )
   }
 
-  const url = thumbnailLocator(bucket, itemId, stage)
-  await persistThumbnailStage(itemId, stage, url, width, height, view, size)
+  const bucket = await resolveThumbnailBucket(itemId)
+  await persistThumbnailStage(itemId, stage, bucket, width, height, view, size)
   return signThumbnailLocation({
     bucket,
-    key: `thumbnails/${itemId}.webp`,
+    key: thumbnailKey(itemId),
     itemId,
     stage,
   })
 }
 
-/** Upserts the `Thumbnail` row for one (item, view, size) at a given stage. */
+/**
+ * Upserts the `Thumbnail` row for one (item, view, size) at a given stage.
+ * `url` is written `null`: it is the retired locator column, and leaving an
+ * old locator beside a newer `bucket`/`stage` would be two answers to one
+ * question.
+ */
 async function persistThumbnailStage(
   itemId: string,
   stage: number,
-  url: string,
+  bucket: string,
   width?: number,
   height?: number,
   view: string = 'grid',
   size: string = 'medium'
 ) {
+  const data = { stage, bucket, url: null, width, height }
   const result = await prisma.thumbnail.updateMany({
     where: { itemId, view: view as any, size: size as any },
-    data: { stage, url, width, height },
+    data,
   })
   if (result.count > 0) return result
 
@@ -471,10 +493,7 @@ async function persistThumbnailStage(
         itemId,
         view: view as any,
         size: size as any,
-        stage,
-        url,
-        width,
-        height,
+        ...data,
       },
     })
   } catch (e: unknown) {
@@ -483,7 +502,7 @@ async function persistThumbnailStage(
     if ((e as { code?: string })?.code === 'P2002') {
       return prisma.thumbnail.updateMany({
         where: { itemId, view: view as any, size: size as any },
-        data: { stage, url, width, height },
+        data,
       })
     }
     throw e
@@ -550,8 +569,9 @@ export async function getThumbnailSource(
       type: true,
       file: { select: { bucket: true, key: true, mimeType: true } },
       thumbnails: {
-        where: { url: { not: null }, NOT: { url: { startsWith: '#' } } },
-        select: { url: true },
+        where: { bucket: { not: null }, stage: { in: [2, 3] } },
+        orderBy: { stage: 'desc' },
+        select: { bucket: true, stage: true },
         take: 1,
       },
     },
@@ -563,7 +583,9 @@ export async function getThumbnailSource(
 
   // The stage travels as its own field: a signed URL carries no `?v=`, so the
   // client can no longer read it off the URL.
-  const stored = parseThumbnailLocator(item.thumbnails[0]?.url, itemId)
+  const stored = item.thumbnails[0]
+    ? thumbnailLocation(item.thumbnails[0], itemId)
+    : null
   if (stored) {
     return {
       status: 'exists',
@@ -600,6 +622,6 @@ export async function getThumbnailByItemId(
 ) {
   return prisma.thumbnail.findFirst({
     where: { itemId, view: view as any, size: size as any },
-    select: { stage: true, content: true, url: true },
+    select: { stage: true, content: true, bucket: true, color: true },
   })
 }

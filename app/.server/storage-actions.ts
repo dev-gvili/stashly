@@ -354,7 +354,7 @@ export async function getDuplicateGroups(
         createdAt: true,
         updatedAt: true,
         file: { select: { hash: true, extension: true } },
-        thumbnails: { select: { url: true } },
+        thumbnails: { select: { bucket: true, color: true, stage: true } },
       },
     })
   )

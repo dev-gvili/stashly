@@ -18,7 +18,10 @@ import {
   onItemsUploaded,
 } from '@/services/quota-actions'
 import { getObjectText } from '@/services/s3'
-import { signThumbnails } from '@/services/thumbnail-actions'
+import {
+  signThumbnails,
+  type WithSignedThumbnails,
+} from '@/services/thumbnail-actions'
 import {
   requireAtLeastRole,
   requireMembership,
@@ -1873,7 +1876,8 @@ export async function getFolderContent(params: GetFolderContentParams) {
           select: {
             height: true,
             width: true,
-            url: true,
+            bucket: true,
+            color: true,
             view: true,
             size: true,
             id: true,
@@ -1917,7 +1921,8 @@ export async function getFolderContent(params: GetFolderContentParams) {
               select: {
                 height: true,
                 width: true,
-                url: true,
+                bucket: true,
+                color: true,
                 view: true,
                 size: true,
                 id: true,
@@ -1991,8 +1996,8 @@ export async function getPaginatedItems<TInclude extends object>(params: {
   include?: TInclude
 }): Promise<{
   items: TInclude extends undefined
-    ? Prisma.ItemGetPayload<Prisma.ItemDefaultArgs>[]
-    : Prisma.ItemGetPayload<{ include: TInclude }>[]
+    ? WithSignedThumbnails<Prisma.ItemGetPayload<Prisma.ItemDefaultArgs>>[]
+    : WithSignedThumbnails<Prisma.ItemGetPayload<{ include: TInclude }>>[]
   nextCursor: string | null
   hasMore?: boolean
 }> {
@@ -2040,8 +2045,8 @@ export async function getPaginatedItems<TInclude extends object>(params: {
     hasMore,
   } as {
     items: TInclude extends undefined
-      ? Prisma.ItemGetPayload<Prisma.ItemDefaultArgs>[]
-      : Prisma.ItemGetPayload<{ include: TInclude }>[]
+      ? WithSignedThumbnails<Prisma.ItemGetPayload<Prisma.ItemDefaultArgs>>[]
+      : WithSignedThumbnails<Prisma.ItemGetPayload<{ include: TInclude }>>[]
     nextCursor: string | null
     hasMore: boolean
   }
@@ -2182,8 +2187,8 @@ export async function paginateItems<
     hasMore,
   } as {
     items: TInclude extends undefined
-      ? Prisma.ItemGetPayload<Prisma.ItemDefaultArgs>[]
-      : Prisma.ItemGetPayload<{ include: TInclude }>[]
+      ? WithSignedThumbnails<Prisma.ItemGetPayload<Prisma.ItemDefaultArgs>>[]
+      : WithSignedThumbnails<Prisma.ItemGetPayload<{ include: TInclude }>>[]
     nextCursor: string | null
     hasMore?: boolean
   }
@@ -2486,7 +2491,9 @@ export async function getSuggestedItems(
             'id', t.id,
             'height', t.height,
             'width', t.width,
-            'url', t.url,
+            'bucket', t.bucket,
+            'color', t.color,
+            'stage', t.stage,
             'view', t.view,
             'size', t.size
           )
@@ -2971,7 +2978,8 @@ export async function getFavoritedItems({
         select: {
           height: true,
           width: true,
-          url: true,
+          bucket: true,
+          color: true,
           view: true,
           size: true,
           id: true,
@@ -3022,7 +3030,8 @@ export async function getFavoritedItems({
             select: {
               height: true,
               width: true,
-              url: true,
+              bucket: true,
+              color: true,
               view: true,
               size: true,
               id: true,
@@ -3444,7 +3453,8 @@ export async function getFileItem(
       },
       thumbnails: {
         select: {
-          url: true,
+          bucket: true,
+          color: true,
           size: true,
           stage: true,
           view: true,

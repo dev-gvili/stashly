@@ -47,12 +47,7 @@ export async function loader({ request, context }: Route.ActionArgs) {
       },
       ownerId: session.user.id,
       thumbnails: {
-        some: {
-          url: {
-            not: null,
-          },
-          NOT: { url: { startsWith: '#' } },
-        },
+        some: { bucket: { not: null } },
       },
       ...filters,
     },
@@ -71,11 +66,12 @@ export async function loader({ request, context }: Route.ActionArgs) {
       thumbnails: {
         orderBy: { stage: 'desc' },
         take: 1,
-        where: { NOT: { url: { startsWith: '#' } } },
+        where: { bucket: { not: null } },
         select: {
           height: true,
           width: true,
-          url: true,
+          bucket: true,
+          color: true,
           size: true,
           id: true,
           stage: true,

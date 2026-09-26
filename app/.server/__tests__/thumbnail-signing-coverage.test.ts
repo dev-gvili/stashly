@@ -3,11 +3,11 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 /**
- * `Thumbnail.url` holds a locator (`s3://{bucket}/thumbnails/{id}.webp?v=N`),
- * not a URL. Nothing can load it, so a read path that selects thumbnails and
- * forgets to sign them renders broken images — at runtime, on whichever screen
- * happens to use that query. Nothing in the type system catches it, because a
- * locator and a signed URL are both `string`.
+ * A stored thumbnail is a `bucket` + `stage`, not a URL — the loadable `url` in
+ * a payload only exists once `signThumbnails` has produced it. A read path that
+ * selects thumbnails and forgets to sign them sends rows with no `url` at all,
+ * which renders as a missing image at runtime, on whichever screen happens to
+ * use that query.
  *
  * So: any server file that selects a `thumbnails` relation must either sign
  * what it returns, or be listed below with the reason it doesn't have to.
@@ -15,7 +15,7 @@ import { join, relative } from 'node:path'
  */
 const SIGNS_ELSEWHERE: Record<string, string> = {
   'app/.server/thumbnail-actions.ts':
-    'defines signThumbnails / signThumbnailUrl / signThumbnailLocation',
+    'defines signThumbnails / signStoredThumbnail / signThumbnailLocation',
   'app/routes/stash/trash.tsx': 'getPaginatedItems signs the page it returns',
   'app/routes/stash/collection.tsx':
     'getCollectionItems and paginateItems both sign',
@@ -32,7 +32,7 @@ const SELECTS_THUMBNAILS = /^\s*thumbnails\s*:/m
  * `\b` matters: it keeps `presignThumbnailUpload` from counting as signing,
  * since that only presigns an upload and signs nothing that is read back.
  */
-const SIGNS = /\bsignThumbnails\b|\bsignThumbnailUrl\b|\bsignThumbnailLocation\b/
+const SIGNS = /\bsignThumbnails\b|\bsignStoredThumbnail\b|\bsignThumbnailLocation\b/
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = []

@@ -61,7 +61,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   try {
     if (query.intent === 'presign') {
       return data(
-        await presignThumbnailUpload(session.user.bucket, itemId)
+        await presignThumbnailUpload(session.user.id, itemId)
       )
     }
 
@@ -110,11 +110,10 @@ export async function action({ request, params }: Route.ActionArgs) {
         schema: thumbnailUpdateSchema,
       })
       // `parsedData.url` is the client's optimistic src — deliberately unused.
-      // The stored locator is derived server-side in `updateThumbnail`.
+      // The bucket and key are derived server-side in `updateThumbnail`.
       const signedUrl = await updateThumbnail(
         session.user.id,
         itemId,
-        session.user.bucket,
         parsedData.stage,
         parsedData.width,
         parsedData.height,

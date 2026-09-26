@@ -404,7 +404,7 @@ export async function setObjectAclEnabled(
  * Nothing here grants public access, and nothing else does either: Tigris
  * returns 501 `NotImplemented` for `PutBucketPolicy`, and per-object ACLs stay
  * off. Thumbnails — the one prefix that used to be public — are read through
- * presigned GETs like every other object (see `signThumbnailUrl` in
+ * presigned GETs like every other object (see `signThumbnails` in
  * `thumbnail-actions.ts`).
  *
  * @example

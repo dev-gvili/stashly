@@ -25,7 +25,7 @@ import { searchFactory } from '@/utils/search'
 import type { Folder, ItemCategory } from '@/prisma/browser'
 import { prisma } from '@/services/db'
 import { createNotification } from './notification-actions'
-import { signThumbnails } from './thumbnail-actions'
+import { signThumbnails, type WithSignedThumbnails } from './thumbnail-actions'
 
 // ---------------------------------------------------------------------------
 // Search
@@ -193,7 +193,7 @@ const invitationInclude = {
       pdf: true,
       markdown: true,
       // Real generated thumbnail for the shared item's hero preview.
-      thumbnails: { select: { url: true } },
+      thumbnails: { select: { bucket: true, color: true, stage: true } },
       // Number of children — surfaced as `fileCount` for shared folders.
       _count: { select: { children: true } },
       // Thumbnail-backed peek at a shared folder's contents.
@@ -207,7 +207,7 @@ const invitationInclude = {
           category: true,
           size: true,
           createdAt: true,
-          thumbnails: { select: { url: true } },
+          thumbnails: { select: { bucket: true, color: true, stage: true } },
         },
       },
     },
@@ -238,7 +238,7 @@ const invitationInclude = {
           category: true,
           size: true,
           createdAt: true,
-          thumbnails: { select: { url: true } },
+          thumbnails: { select: { bucket: true, color: true, stage: true } },
         },
       },
     },
@@ -249,6 +249,9 @@ const invitationInclude = {
 type InvitationRaw = Prisma.InvitationGetPayload<{
   include: typeof invitationInclude
 }>
+
+/** {@link InvitationRaw} after `signThumbnails` — what enrichment reads. */
+type InvitationSigned = WithSignedThumbnails<InvitationRaw>
 
 type PreviewChild = {
   id: string
@@ -309,7 +312,7 @@ async function computeWorkspaceSizes(
 
 /** Map a raw invitation record into the enriched detail shape. */
 function enrichInvitation(
-  inv: InvitationRaw,
+  inv: InvitationSigned,
   workspaceSize: string | null
 ): InvitationWithDetails {
   const previews: InvitationPreview[] = inv.workspace

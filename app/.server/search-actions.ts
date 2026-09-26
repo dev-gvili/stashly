@@ -1,5 +1,8 @@
 import { prisma } from '@/services/db'
-import { signThumbnails } from '@/services/thumbnail-actions'
+import {
+  signThumbnails,
+  type WithSignedThumbnails,
+} from '@/services/thumbnail-actions'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma } from '@/prisma/client'
 import type { ItemForSearchEmbedding } from '@/utils/search-text'
@@ -1307,7 +1310,8 @@ const searchResultSelect = {
     select: {
       height: true,
       width: true,
-      url: true,
+      bucket: true,
+      color: true,
       view: true,
       size: true,
       id: true,
@@ -1346,7 +1350,8 @@ const searchResultSelect = {
         select: {
           height: true,
           width: true,
-          url: true,
+          bucket: true,
+          color: true,
           view: true,
           size: true,
           id: true,
@@ -1358,9 +1363,12 @@ const searchResultSelect = {
   },
 } satisfies Prisma.ItemSelect
 
-export type SearchResultRow = Prisma.ItemGetPayload<{
-  select: typeof searchResultSelect
-}>
+/** A result row as returned: thumbnails signed, storage columns stripped. */
+export type SearchResultRow = WithSignedThumbnails<
+  Prisma.ItemGetPayload<{
+    select: typeof searchResultSelect
+  }>
+>
 
 export interface SearchItemsParams {
   ownerId: string
