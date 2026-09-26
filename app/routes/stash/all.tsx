@@ -150,7 +150,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
   let location = useLocation()
   let { items, loadMore, isLoading, hasMore } = usePagination<
     Route.ComponentProps['loaderData']['items'][number]
-  >(25, '?index')
+  >(50, '?index')
   if (items.length === 0) return <FilesEmptyState />
 
   return (

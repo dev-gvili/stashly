@@ -8,7 +8,7 @@ export let date = z.object({
 
 export let paginationOptions = z.object({
   cursor: z.string().optional(),
-  take: z.coerce.number().default(25),
+  take: z.coerce.number().default(50),
   // orderBy: z.custom<Prisma.ItemOrderByWithRelationInput>().optional(),
   // include: z.custom<Prisma.ItemInclude>().optional(),
 })
