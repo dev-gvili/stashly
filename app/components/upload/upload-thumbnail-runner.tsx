@@ -14,6 +14,7 @@ import { shallowEqual, useSelector } from '@xstate/react'
 import { useUploadFile } from '@/hooks/useUpload'
 import { UploadActorContext } from '@/machines/upload/upload.context'
 import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
+import type { MediaFileStatus } from '@/types/machine.types'
 // Implementation switch — see `app/machines/thumbnail/index.ts`. Points at
 // either the original hooks or the XState scheduler without changing shape.
 import {
@@ -27,6 +28,19 @@ const thumbnailedIds = new Set<string>()
 
 /** Debounce window for pulling newly-created items into the list. */
 const REVALIDATE_DEBOUNCE_MS = 700
+
+/**
+ * Upload statuses that still hold bandwidth. Anything else (`itemCreated`,
+ * `done`, `aborted`, `itemFailed`, `skipped`) is finished work that merely
+ * stays listed in the panel.
+ */
+const IN_FLIGHT: ReadonlySet<MediaFileStatus> = new Set<MediaFileStatus>([
+  'pending',
+  'queued',
+  'validating',
+  'uploading',
+  'paused',
+])
 
 // Concurrency gate for the thumbnail pipeline. Each in-flight upload mounts its
 // own watcher, so a 534-file upload would otherwise fire 534 pipelines at once
@@ -111,7 +125,15 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
   // Fresh uploads own the compute worker and the bandwidth. On-demand backfill
   // of older items is strictly background work, so it stands down until the
   // queue drains — otherwise a big upload competes with itself for slots.
-  const uploading = fileIds.length > 0
+  //
+  // "Drains" means no file is still in flight. Finished files stay listed in
+  // the panel until the user clears it, and counting them kept the backfill
+  // lane paused indefinitely after every upload.
+  const uploading = useSelector(upload, (s) =>
+    Array.from(s.context.mediaFiles.values()).some((f) =>
+      IN_FLIGHT.has(f.status)
+    )
+  )
   useEffect(() => {
     if (uploading) pauseBackfill()
     else resumeBackfill()

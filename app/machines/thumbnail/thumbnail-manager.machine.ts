@@ -89,12 +89,28 @@ export const thumbnailManagerMachine = setup({
      * Queues a job unless the item is already queued or running. The dedup is
      * what replaces the module-level `thumbnailedIds` Set the old runner used.
      */
+    /**
+     * Queues a job, one per item.
+     *
+     * An upload job **replaces** a queued backfill for the same item. The two
+     * race on every upload: the item is created, the route revalidates, and the
+     * new card's viewport backfill queues a file-less job before the runner's
+     * upload job lands. Keeping the first one threw away the only in-memory
+     * copy of the file and left a job that re-downloads it and stops at stage
+     * 2. A job that is already running is left alone either way.
+     */
     addJob: assign(({ context, event }) => {
       if (event.type !== 'enqueue') return {}
       const { job } = event
       if (context.running.has(job.itemId)) return {}
-      if (context.queue.some((q) => q.itemId === job.itemId)) return {}
-      return { queue: [...context.queue, job] }
+      const queued = context.queue.findIndex((q) => q.itemId === job.itemId)
+      if (queued === -1) return { queue: [...context.queue, job] }
+      if (job.mode === 'upload' && context.queue[queued].mode === 'backfill') {
+        const queue = [...context.queue]
+        queue[queued] = job
+        return { queue }
+      }
+      return {}
     }),
 
     /**

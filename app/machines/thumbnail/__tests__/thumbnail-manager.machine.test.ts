@@ -159,6 +159,43 @@ describe('thumbnailManager — upload lane', () => {
 
     expect(queuedIds(m)).toEqual(['u5'])
   })
+
+  // The race every upload runs: the item is created, the route revalidates,
+  // and the new card's viewport backfill queues a file-less job — while the
+  // lane is paused for the upload — before the runner's upload job lands.
+  it('lets an upload replace a queued backfill for the same item', async () => {
+    const m = startManager()
+    m.send({ type: 'pauseBackfill' })
+    m.send({ type: 'enqueue', job: job('x', 'backfill') })
+    m.send({ type: 'enqueue', job: job('x', 'upload') })
+    await tick()
+
+    expect(runningIds(m)).toEqual(['x'])
+    expect(m.getSnapshot().context.running.get('x')?.mode).toBe('upload')
+    expect(queuedIds(m)).toEqual([])
+  })
+
+  it('never lets a backfill replace a queued upload', () => {
+    const m = startManager()
+    for (const id of ['u1', 'u2', 'u3', 'u4', 'u5']) {
+      m.send({ type: 'enqueue', job: job(id, 'upload') })
+    }
+    m.send({ type: 'enqueue', job: job('u5', 'backfill') })
+
+    const queue = m.getSnapshot().context.queue
+    expect(queue.map((j) => [j.itemId, j.mode])).toEqual([['u5', 'upload']])
+    expect(queue[0].file).not.toBeNull()
+  })
+
+  it('leaves a running backfill alone when its upload arrives', async () => {
+    const m = startManager()
+    m.send({ type: 'enqueue', job: job('x', 'backfill') })
+    await tick()
+    m.send({ type: 'enqueue', job: job('x', 'upload') })
+
+    expect(m.getSnapshot().context.running.get('x')?.mode).toBe('backfill')
+    expect(queuedIds(m)).toEqual([])
+  })
 })
 
 describe('thumbnailManager — backfill lane', () => {
