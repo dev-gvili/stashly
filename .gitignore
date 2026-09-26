@@ -75,3 +75,6 @@ storybook-static
 # Agents
 .agents/*
 /.superpowers
+
+# Generated Prisma client — `postinstall` runs `prisma generate`
+/app/prisma/

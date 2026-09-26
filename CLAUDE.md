@@ -47,6 +47,7 @@ TypeScript (strict) project. Always use TypeScript for new files. When moving/re
 ## Migrations
 
 - After any Prisma schema change: write the migration and run `pnpm prisma generate`. **Scope Discipline still applies** — don't run `pnpm prisma migrate dev` yourself unless the user asked you to; otherwise hand it to them. When they have asked, the order is `migrate dev` → `generate` → report.
+- The Prisma client in `app/prisma/` is **generated, not tracked** — `postinstall` runs `prisma generate`, so a fresh clone gets it from `pnpm install`. A schema change therefore produces no `app/prisma` diff to commit; the migration and `.prisma` files are the whole change.
 - Always close with an explicit list of what the user must still run: typically `pnpm prisma migrate dev`, a dev-server restart, and any re-index. The running server caches the old Prisma client and throws `Unknown argument` errors until it restarts, so the restart is not optional.
 
 ## Environment
