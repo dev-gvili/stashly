@@ -753,6 +753,8 @@ export const ThumbnailScalarFieldEnum = {
   width: 'width',
   height: 'height',
   url: 'url',
+  bucket: 'bucket',
+  color: 'color',
   content: 'content',
   view: 'view',
   size: 'size',

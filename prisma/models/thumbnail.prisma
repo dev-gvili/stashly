@@ -4,13 +4,24 @@ model Thumbnail {
   updatedAt DateTime      @updatedAt
   width     Int?
   height    Int?
+  /// Deprecated: `s3://` locator / legacy public URL / `#hex` placeholder in one
+  /// column. Superseded by `bucket` + `stage` + `color`; dropped once reads move.
   url       String?
+  /// Bucket holding `thumbnails/{itemId}.webp`. Server-set from the item's file
+  /// bucket, never the writer's session. Null until a stage >= 2 is written.
+  bucket    String?
+  /// Stage-0 placeholder colour (`#hex`), formerly stored in `url`.
+  color     String?
   content   Bytes?        @db.ByteA
   view      ViewType      @default(grid)
   size      ThumbnailSize @default(small)
   stage     Int           @default(0)
   itemId    String?
   item      Item?         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  // Restored: added in 20260424160000, dropped as an unintended side effect of
+  // 20260526182115. `createThumbnail`/`persistThumbnailStage` rely on it (P2002).
+  @@unique([itemId, view, size])
 }
 
 enum ThumbnailSize {
