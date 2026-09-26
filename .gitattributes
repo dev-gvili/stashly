@@ -1,0 +1,3 @@
+# Store text as LF in the repo and check it out as LF everywhere, overriding a
+# per-machine core.autocrlf. Binary detection is automatic.
+* text=auto eol=lf
