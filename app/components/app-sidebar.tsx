@@ -101,7 +101,7 @@ const manageItems: SidebarItemProps[] = [
   {
     icon: (isActive) => <TrashFillIcon />,
     label: 'Trash',
-    to: 'trash?status=trashed&layout=grid&take=25',
+    to: 'trash?status=trashed&layout=grid&take=50',
     tooltip: 'Trash',
   },
   // {
@@ -125,7 +125,7 @@ const mediaItems: SidebarItemProps[] = [
   {
     icon: (isActive) => <FolderFillIcon />,
     label: 'All',
-    to: 'all?layout=grid&take=25',
+    to: 'all?layout=grid&take=50',
     tooltip: 'All Files',
     prefetch: 'intent',
     state: {

@@ -59,7 +59,7 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
       userId: session.user.id,
       workspaceId,
       cursor: parsedParams.cursor,
-      limit: 25,
+      limit: 50,
       where: {
         ...filters,
         parentId: params.folderId,

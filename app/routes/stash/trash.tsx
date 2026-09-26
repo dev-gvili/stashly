@@ -219,7 +219,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
 
 export default ({ loaderData }: Route.ComponentProps) => {
   let { hasMore, items, loadMore, isLoading } =
-    usePagination<Route.ComponentProps['loaderData']['items'][number]>(25)
+    usePagination<Route.ComponentProps['loaderData']['items'][number]>(50)
 
   if (items.length === 0) {
     return <TrashEmptyState />
