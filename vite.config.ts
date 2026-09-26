@@ -29,6 +29,10 @@ export default defineConfig(() => ({
     cors: true,
     allowedHosts: ['*', 'localhost:80', '.ngrok-free.app', '.ngrok-free.dev'],
     host: true,
+    // React Router typegen rm -rf's and rewrites these; on Windows a scandir
+    // mid-delete yields UNKNOWN (not ENOENT), which chokidar re-emits and
+    // Vite doesn't handle — the dev server exits. Types-only, nothing to HMR.
+    watch: { ignored: ['**/.react-router/**'] },
   },
   // React Router 8 builds through Vite's Environment API, so the `isSsrBuild`
   // flag is never set and a top-level `build.rollupOptions.input` is ignored for
