@@ -7,8 +7,8 @@
  *
  * Dry-run by default — pass --commit to actually delete.
  *
- *   npx tsx --env-file=.env wipe-test-data.ts            # report only
- *   npx tsx --env-file=.env wipe-test-data.ts --commit   # delete
+ *   npx tsx --env-file=.env scripts/wipe-test-data.ts            # report only
+ *   npx tsx --env-file=.env scripts/wipe-test-data.ts --commit   # delete
  *
  * Lives in the repo root because module resolution fails from a temp dir.
  */
