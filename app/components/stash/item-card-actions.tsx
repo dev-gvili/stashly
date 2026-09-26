@@ -35,12 +35,12 @@ import {
   MoveFillIcon,
   PinFillIcon,
   PreviewIcon,
-  RemoveIcon,
   RenameFillIcon,
   RestoreIcon,
   TrashFillIcon,
   UnlockFillIcon,
 } from '@/components/icons'
+import { RenameDialog } from '@/components/core-components/rename-dialog'
 
 // -- Group primitive ---------------------------------------------------------
 
@@ -151,11 +151,28 @@ function Move(props: ItemProps) {
 }
 
 function Rename(props: ItemProps) {
+  let { id, name } = useItemCard()
   return (
-    <Item {...props}>
-      <RenameFillIcon className="text-current" />
-      Rename
-    </Item>
+    <RenameDialog
+      defaultName={name}
+      intent="rename_item"
+      extraData={{ itemId: id }}
+      action="/api/items"
+      title="Rename item"
+    >
+      <Item
+        {...props}
+        onSelect={(e) => {
+          e.preventDefault()
+        }}
+        onClick={(e) => {
+          e.stopPropagation()
+        }}
+      >
+        <RenameFillIcon className="text-current" />
+        Rename
+      </Item>
+    </RenameDialog>
   )
 }
 
@@ -521,7 +538,11 @@ function ActionsRoot({ children, ...triggerProps }: ActionsRootProps) {
         asChild
         {...triggerProps}
       >
-        <Button size="icon-sm" variant="outline" className="border-none! ring-2 ring-input p-1 size-6! rounded-sm">
+        <Button
+          size="icon-sm"
+          variant="outline"
+          className="border-none! ring-2 ring-input p-1 size-6! rounded-sm"
+        >
           <MoreMenuFillIcon className="size-4! has-[data-state=open]:text-primary" />
         </Button>
       </DropdownMenuTrigger>
@@ -532,7 +553,7 @@ function ActionsRoot({ children, ...triggerProps }: ActionsRootProps) {
         onCloseAutoFocus={(e) => e.preventDefault()}
         sideOffset={8}
       >
-        <ScrollArea className="h-full pr-2" type="hidden" >
+        <ScrollArea className="h-full pr-2" type="hidden">
           <section className="max-h-80 space-y-2">
             {hasChildren ? children : <DefaultMenu status={status} />}
           </section>

@@ -1,5 +1,10 @@
 // ItemCard.tsx
-import {Avatar as AvatarPrimitive} from 'radix-ui'
+import { Favorite } from '@/components/favorite'
+import { FolderIcon } from '@/components/icons'
+import { ItemCardContext, useItemCard } from '@/hooks/useItemCard'
+import { useItemDragDrop } from '@/hooks/useItemDragDrop'
+import { useItemUrl } from '@/hooks/useItemUrl'
+import { useSelection } from '@/hooks/useSelection'
 import type { StashItem } from '@/types/stash.types'
 import {
   CardContent,
@@ -8,31 +13,24 @@ import {
   CardHeader,
   CardTitle,
 } from '@/ui/card'
+import { Checkbox } from '@/ui/checkbox'
 import { toIcon } from '@/utils/converters'
-import { useItemUrl } from '@/hooks/useItemUrl'
 import { capitalize, formatMediaDate, formatSize } from '@/utils/formaters'
-import { cn } from '@/utils/styles'
-import React from 'react'
-import { useRevalidator } from 'react-router'
-import {
-  Link,
-  useNavigate,
-  useRouteLoaderData,
-  useSearchParams,
-} from 'react-router'
-import { Favorite } from '@/components/favorite'
-import { Slot } from '@radix-ui/react-slot'
 import {
   addQueryParamValue,
   hasQueryParamValue,
   removeQueryParamValue,
 } from '@/utils/query-params'
-import { Checkbox } from '@/ui/checkbox'
-import { useSelection } from '@/hooks/useSelection'
+import { cn } from '@/utils/styles'
+import { Slot } from '@radix-ui/react-slot'
+import { Avatar as AvatarPrimitive } from 'radix-ui'
+import React from 'react'
+import {
+  Link,
+  useNavigate, useRevalidator, useRouteLoaderData,
+  useSearchParams
+} from 'react-router'
 import type { Route } from '../../routes/+types/layout'
-import { ItemCardContext, useItemCard } from '@/hooks/useItemCard'
-import { useItemDragDrop, DRAG_ITEM_KEY } from '@/hooks/useItemDragDrop'
-import { FolderIcon } from '@/components/icons'
 import { Actions as ItemCardActions } from './item-card-actions'
 // Implementation switch — see `app/machines/thumbnail/index.ts`. Points at
 // either the original hooks or the XState scheduler without changing shape.
