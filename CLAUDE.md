@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Never open unrelated schema files (`prisma/models/*.prisma`) or adjacent feature code unless the user asks or the fix demonstrably requires it. A claim of "one-line fix" followed by a file tour is the pattern to avoid.
 - Do exactly what was asked, nothing more. If a fix touches only one component (e.g. image-stage), do NOT add panel/facet plumbing, refactor unrelated wrappers, or migrate other call sites.
 - Never add or install a new dependency (npm/pnpm packages like prom-client, vite-tsconfig-paths, radix-*) without asking first. Prefer built-in capabilities of Vite/Vitest/existing libs.
+- Before removing a dependency, grep **all of `app/`** for `from '<pkg>` — including source-owned `app/components/ui/`. An "unused" audit that skipped it listed lucide-react/@remixicon/react as removable.
 - Never run destructive git commands (`git checkout -- <file>`, `git reset --hard`, `git clean`) on files with uncommitted changes. Ask first.
 - Never run DB mutations or migrations unless explicitly requested.
 - Stay strictly within the requested scope. Do not explore unrelated models, schemas, or subsystems mid-task. If you believe adjacent work is needed, stop and ask first with a one-line rationale.
@@ -54,6 +55,8 @@ TypeScript (strict) project. Always use TypeScript for new files. When moving/re
 - **Never restart or kill the dev server** — the user manages it. If a change requires a restart, say so and wait.
 - **Tailwind v4 + Vite stale CSS**: a *newly introduced* class string (`lg:grid-cols-7`, `md:col-span-2`) can HMR into the DOM before the regenerated stylesheet lands, so the page renders as if the class doesn't exist — a `col-span-N` child then manufactures implicit auto-width columns and the layout looks broken. Confirm the class actually resolves before rewriting working markup; the fix is a hard reload (Ctrl+Shift+R), not a code change.
 - Shell is PowerShell: avoid bash here-strings in commit messages; use `git commit -F <tmpfile>` or single-line `-m` flags for multi-line messages.
+- Prod logs `MaxListenersExceededWarning … drain listeners added to [BrotliCompress]` on large document responses. **Measured not a leak** (heap flat across 500 responses, all streams GC'd): `compression` forwards `res.on('drain')` to its stream but not `off`, so `@react-router/node`'s `waitForDrain` strands one listener per backpressure wait. Don't chase it.
+- `pnpm build` runs a dependency install step first; on 2026-09-25 that step failed with `Access is denied (os error 5)` renaming a `node_modules/.pnpm` staging dir while the prod server was running — an install failure, not a build failure.
 
 ## Commands
 
@@ -184,13 +187,15 @@ Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind s
 - For UI changes, verify in the browser via the chrome-devtools MCP (or playwright MCP) before declaring done — both require Chrome installed.
 - Browser verification doesn't need a session: chrome-devtools MCP opens a fresh unauthenticated Chrome, but `http://localhost/auth/sign-in` loads the same stylesheet. Append a throwaway `div` with the classes and read `getComputedStyle` to prove a Tailwind class resolves, or inject a mock grid there to measure geometry (column widths, row count, card sizes) before and after a layout change. **To verify a real authenticated page, ask the user to sign in to the MCP Chrome** — they can, and it turns inference into measurement.
 - Measuring in the browser: `performance.getEntriesByType('resource')` caps at **250 entries** and drops the rest with no warning — call `performance.setResourceTimingBufferSize()` in `navigate_page`'s `initScript` first. To count Web Worker boots, patch `window.Worker` there too; counting network requests is inference, counting constructions is fact.
+- MCP Chrome may be signed in as a **different account** than the URL's `:me` — `meMiddleware` then answers 403, which looks like a bug. Check `fetch('/api/auth/get-session')` → `user.id` before debugging a 403.
+- Detecting a hung tab: in `initScript`, write `Date.now()` to `localStorage` every 250 ms (plus a rolling log of long tasks/errors); read it from a **second same-origin tab** — a stale heartbeat is a frozen main thread. Note the second tab arms its own once-per-tab background work (embedding backfill).
 - Only run typecheck at the END of a task, not mid-edit, unless explicitly asked — and skip it entirely for className/copy-only edits, which touch no type surface.
 - `$queryRaw` SQL is invisible to `tsc` — verify by running the action against the dev DB: `npx tsx --env-file=.env <script.ts>`. The script must sit **in the repo root** (from a temp dir, module resolution fails), use absolute imports, and no top-level await. Import the client as `import { prisma } from '@/services/db'` — `new PrismaClient()` throws under Prisma 7 without an adapter.
 - `pnpm typecheck` has **202** pre-existing, unrelated errors (verified 2026-09-03; 150 in `collection-actions.test.ts`, 34 in `pin-actions.test.ts`) — don't expect a clean run. Pipe to a file, count `error TS`, and grep your touched files by name to confirm no regressions.
 - `npx prettier --write <file>` reflows *pre-existing* long lines, so a 10-line edit can land as a 47-line diff. Format only files you created; on a file you edited, check `git diff` afterwards and revert the hunks you didn't cause.
 - A JSDoc block ending `**a**/**b**` contains `*/` and closes the comment early; `tsc` then bails on a parse error and the total error count **drops**. A falling `error TS` count is not automatically good news — check that your touched files are clean, not just that the number went down.
 - Vitest runs `environment: 'node'` and only collects **`.test.ts`** (not `.tsx`); there is no jsdom and no `@testing-library/react`. A React component or hook therefore **cannot be rendered in a test** without new dependencies — which Scope Discipline forbids adding unasked. Keep hooks as thin glue over a pure function and test the function (`useItemUrl` → `itemUrlFor`, `breadcrumbs` → `trimBreadcrumbs`).
-- `pnpm test` is **503 passing / 11 failing (514 in 34 files)**; the 11 are pre-existing (`activity.test.ts` ×4, `collection-actions.test.ts` ×7 — the latter needs a live DB) — don't chase them. Verified 2026-09-11.
+- `pnpm test` is **570 passing / 11 failing (581 in 40 files; 2 files fail)**; the 11 are pre-existing (`activity.test.ts` ×4, `collection-actions.test.ts` ×7 — the latter needs a live DB) — don't chase them. Verified 2026-09-25.
 
 ## Debugging Rules
 
