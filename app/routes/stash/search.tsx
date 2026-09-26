@@ -60,14 +60,17 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
   const filters = buildItemFilters(parsedParams)
 
+  const query = parsedParams.query ?? ''
+
   const indexStats = await getSearchIndexStats(session.user.id)
 
-  if (!isSearchableQuery(parsedParams.query)) {
+  if (!isSearchableQuery(query)) {
     return { me: session.user.id, results: EMPTY, indexStats }
   }
 
   const results = await searchItemsHybrid({
     ...parsedParams,
+    query,
     ownerId: session.user.id,
     where: filters,
   })
