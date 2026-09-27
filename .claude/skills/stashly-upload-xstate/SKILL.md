@@ -9,7 +9,9 @@ The upload system uses a parent-child actor pattern:
 - `upload/upload.machine.ts` — parent, spawns one `file.machine` per file, manages the queue
 - `reviset/file.machine.ts` — active upload actor: creates multipart upload, uploads chunks in parallel, verifies ETags
 - `upload/file.machine.ts` — unused sibling (present but not imported by `upload.machine.ts`)
-- `quota/quota.machine.ts` — spawned by the parent; tracks and enforces storage quota. `reviset/file.machine.ts` also invokes `checkQuota`/`updateQuota` from `quota/quota.actors.ts`.
+- `quota/quota.machine.ts` — spawned by the parent; tracks and enforces storage quota. `reviset/file.machine.ts` also invokes `checkQuota` from `quota/quota.actors.ts` as the pre-upload gate.
+
+**Quota is charged in `dbMachine`, nowhere else**: its `chargingQuota` state (with `retryingQuota` backoff) runs `updateQuota` (`items-uploaded`) only after the POST returned a row. Every other ending (refused/rejected/sessionExpired/failed) skips it, so an `itemFailed` file is never billed. Do not add a charge back to `file.machine.ts` or to `createUploadedItem` — both existed until 2026-09-27 and billed every upload twice.
 
 Concurrency is gated **inside `upload.machine.ts` itself** via `maxConcurrentUploads` (default 100, see `schemas/machine.schemas.ts`) — there is no separate queue actor in the live path.
 
