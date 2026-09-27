@@ -817,6 +817,8 @@ export let dbContext = z.object({
   replayTo: z.custom<AnyActorRef>().optional(),
   mediaFile: mediafile.optional(),
   user: user.optional(),
+  /** Failed `items-uploaded` charges this run; reset by every `@db.item.create`. */
+  quotaAttempts: z.number(),
 })
 
 // ====================================================== //

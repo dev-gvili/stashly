@@ -55,16 +55,20 @@ const recorder = setup({
   },
 })
 
+/** The machine under test, with the quota backoff taken out of the clock. */
+const testDbMachine = dbMachine.provide({ delays: { quotaBackoff: 0 } })
+
 /** Runs one creation against a stubbed `fetch` and returns what the parent saw. */
 async function create(
   fetchImpl: typeof fetch,
   file = mediaFile(),
   existing?: { db: AnyActorRef; parent: ReturnType<typeof createActor> }
 ) {
-  vi.stubGlobal('fetch', fetchImpl)
+  vi.stubGlobal('fetch', withQuota(fetchImpl))
   const parent = existing?.parent ?? createActor(recorder).start()
   const db =
-    existing?.db ?? createActor(dbMachine, { input: { replayTo: parent } }).start()
+    existing?.db ??
+    createActor(testDbMachine, { input: { replayTo: parent } }).start()
 
   db.send({ type: '@db.item.create', mediaFile: file, user })
   await vi.waitFor(() =>
@@ -96,7 +100,39 @@ const respondWith = (over: Partial<DbResponse> = {}) =>
     }
   }) as unknown as typeof fetch
 
-afterEach(() => vi.unstubAllGlobals())
+const quotaBody = {
+  id: 'qta_1',
+  driveId: 'drv_1',
+  deleted: 0,
+  total: 100,
+  used: 1,
+  remaining: 99,
+  status: 'normal',
+}
+
+/** Every `/api/quota` request this test made, as the JSON body it sent. */
+let quotaCalls: { action: string; dataSize: number; userId: string }[] = []
+
+/**
+ * Serves `/api/quota` from `quota` and everything else from `items`. The
+ * default answers with a valid quota, so a test that is not about quota never
+ * notices the charge happening.
+ */
+function withQuota(
+  items: typeof fetch,
+  quota: () => Promise<unknown> = async () => ({ json: async () => quotaBody })
+) {
+  return (async (url: string, init?: RequestInit) => {
+    if (url !== '/api/quota') return items(url, init)
+    quotaCalls.push(JSON.parse(String(init?.body)))
+    return quota()
+  }) as unknown as typeof fetch
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+  quotaCalls = []
+})
 
 describe('toOutcome', () => {
   it('reads a followed redirect as an expired session', () => {
@@ -249,11 +285,103 @@ describe('dbMachine', () => {
   })
 
   it('does not fail when nothing is listening', async () => {
-    vi.stubGlobal('fetch', respondWith())
-    const db = createActor(dbMachine, { input: {} }).start()
+    vi.stubGlobal('fetch', withQuota(respondWith()))
+    const db = createActor(testDbMachine, { input: {} }).start()
     db.send({ type: '@db.item.create', mediaFile: mediaFile(), user })
 
     await vi.waitFor(() => expect(String(db.getSnapshot().value)).toBe('idle'))
     expect(db.getSnapshot().status).toBe('active')
+  })
+})
+
+/**
+ * Quota is charged by this machine, after the row exists — never by the file
+ * machine before it. Charging before the row billed every `itemFailed` upload
+ * for bytes with no `Item`.
+ */
+describe('dbMachine quota charge', () => {
+  it('charges once, for the file size, after the row is created', async () => {
+    const { reply } = await create(respondWith())
+
+    expect(reply.type).toBe('upload.createItem.success')
+    expect(quotaCalls).toEqual([
+      { userId: 'usr_1', action: 'items-uploaded', dataSize: 1 },
+    ])
+  })
+
+  it.each([
+    ['an expired session', { redirected: true, contentType: 'text/html' }],
+    ['a 500', { ok: false, status: 500 }],
+    ['a refusal', { body: JSON.stringify({ success: false, error: 'nope' }) }],
+  ])('never charges when creation ends in %s', async (_l, over) => {
+    const { reply } = await create(respondWith(over as Partial<DbResponse>))
+
+    expect(reply.type).toBe('upload.createItem.error')
+    expect(quotaCalls).toEqual([])
+  })
+
+  it('never charges when the create request cannot reach the server', async () => {
+    const { reply } = await create((async () => {
+      throw new Error('Failed to fetch')
+    }) as unknown as typeof fetch)
+
+    expect(reply.type).toBe('upload.createItem.error')
+    expect(quotaCalls).toEqual([])
+  })
+
+  /** Runs one creation whose quota requests are answered by `quota`. */
+  async function createWithQuota(quota: () => Promise<unknown>) {
+    vi.stubGlobal('fetch', withQuota(respondWith(), quota))
+    const parent = createActor(recorder).start()
+    const db = createActor(testDbMachine, { input: { replayTo: parent } }).start()
+    db.send({ type: '@db.item.create', mediaFile: mediaFile(), user })
+    await vi.waitFor(() =>
+      expect(parent.getSnapshot().context.replies.length).toBe(1)
+    )
+    return { db, parent, reply: parent.getSnapshot().context.replies[0] }
+  }
+
+  it('retries a failed charge and reports success once it lands', async () => {
+    let calls = 0
+    const { reply, db } = await createWithQuota(async () => {
+      if (++calls <= 2) throw new Error('Failed to fetch')
+      return { json: async () => quotaBody }
+    })
+
+    expect(reply.type).toBe('upload.createItem.success')
+    expect(quotaCalls).toHaveLength(3)
+    expect(String(db.getSnapshot().value)).toBe('idle')
+  })
+
+  it('reports success after the last retry fails, because the row exists', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { reply, parent } = await createWithQuota(async () => {
+      throw new Error('Failed to fetch')
+    })
+
+    expect(reply.type).toBe('upload.createItem.success')
+    // One first attempt plus five retries.
+    expect(quotaCalls).toHaveLength(6)
+    expect(error).toHaveBeenCalledOnce()
+    expect(parent.getSnapshot().status).toBe('active')
+    error.mockRestore()
+  })
+
+  it('starts every run with a fresh retry budget', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    let failing = true
+    const { db, parent } = await createWithQuota(async () => {
+      if (failing) throw new Error('Failed to fetch')
+      return { json: async () => quotaBody }
+    })
+    expect(db.getSnapshot().context.quotaAttempts).toBe(5)
+
+    failing = false
+    db.send({ type: '@db.item.create', mediaFile: mediaFile({ id: 'mf_2' }), user })
+    await vi.waitFor(() =>
+      expect(parent.getSnapshot().context.replies.length).toBe(2)
+    )
+    expect(db.getSnapshot().context.quotaAttempts).toBe(0)
+    vi.restoreAllMocks()
   })
 })

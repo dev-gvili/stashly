@@ -21,7 +21,7 @@ import {
   createUpload,
   uploadParts as multipartActor,
 } from '../multipart/s3.mulipart.utils'
-import { checkQuota, updateQuota } from '../quota/quota.actors'
+import { checkQuota } from '../quota/quota.actors'
 import { toCategory } from '../../utils'
 
 // ====================================================== //
@@ -188,8 +188,6 @@ export const fileMachine = setup({
     multipart: multipartActor,
     // Invokes the check quota service
     checkQuota,
-    // Invokes the update quota service
-    updateQuota,
     // Invokes the create multipart upload service
     createMultipartUpload: createUpload,
     // Invokes the complete multipart upload service
@@ -202,7 +200,7 @@ export const fileMachine = setup({
     },
   },
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5QDMCWAbMBVADug9gIYQB0OYAdhKhVAMSwAuhATowNoAMAuoqDvlipGqfBT4gAHogCMANhkkATEoCscuaoAsSrTIAcAZjkAaEAE9EcgOycSATi3Wl+6zOtb9nGVoC+vszRMXAJiMkpqWgZmNnYZXiQQASERMQlpBHlFFXVNHT0jUwtELXtrEkNPOU45Qw8tBXtVf0CMbDwiUgBjAAswLoBrGigARQBXfGY6CDEwEhoAN3wBud7+gfHJwi4E-kFhUXFEjI0tByVDH1VDexlOXTNLBE9FQ1Uyw313OX1VfV+WiAgu1Qt0+oNhpspmAWCx8CwyOhCIxkPCALYkNaDKHbHgSZIHNLHKxyM72C5XG53B7FBBfCoaGxKGSGe6cDxyQHAkKdTEsMDI4Y84jTWbzChLFZ8gWMMAAWTG6BEOFYjGFEB2+P2qSOoAyMhcqhI+hUNSaSjcRi0jysKmUtn+ZRkqms1n0fgCQLa6ulgto6roMLhCLwyNRLAxXX5yPliuVqvVmsSBJ16VkhuNprk5stlRtCAuchIekqSgU5by+i53o6YTGtciUBIhC6IgWYDoAAE0XHUCq2CR66CyHCoPzYLAk3sUoc05l9KSSHJdH99PZ7JpVFv8yzVHZrPYvIYLvYbpxbtXgg3Bw3hs3W6h212e0q+6qb8OZhQwFOktrZ8SBYyLcJA1Ncp7HrUSg7lodQOJwWjvEonDGLcjiXiCvJDp0d4tm2HaEAARvCHB4sm-5EnqsiOEoyinoayHyAh0G0gaLgkLYWicH8dTeKSMgYT62HELhD5Pt2vb9owH68kRJGQL+KYAVRQEgWBNyGJBx47pcRpfDUBjeJcHjNJ63LXsJjb3vhz6Se+lkkEG8KKRRupSIgzL0upEFltprHAYYHHyKSNxrrBgkWbetDWY+HYqmMsA-mR06Em5+o0XRx6-Ix1Q6DudxFgonCcO6lT8eSEXDpZok2eOYxoklux-jOlHuZkp72MWC6XAufwIR4+aHmcqjOrcFywYep6VVhUVNnhsW2a+UkyWE8WJRqyXNalc4GNmDgbtoZRgbYqj5kYenfAaV2-B6rRXlVs0xeJL7xgODl1Q1G1NUprX6r1oEyN8iFlG6aj5j85SA0dbouiV9jTXWj1rZAdAfY1WotWlsgQ8oXEHtmB56ChOmOMWx40e6eOaAjpDVdFyMQHQcmxJtP1Y5kLrDdYy48eyninaxlx2Ncxi-ChChfDTK1WQzi2vdJDnM7KX0Y9tgGeYo3mab5LFPNcwvOM4JWIcyNhS10+BongYAiP6Dait+4qSqslvW7KCpLQmDYuZjc6qLrHkGvoS7WKyLp3KyiGGObruYLbUABk5IZIii6KYrHNuxp7bCJqzrlzsuO6uIFxuePYKFONcpl3ZhiMQH6owTFMX5zIsyxzPW9eyjiPtqypy60aHLhuq49T6PmzJOMoujWCNBpjbPUudw3OKBrC8KImGafL93Te4t9+eAQPHFZSPrpaJ4E-3MHLIGrBNTLoDpmehQ+AQHAEjmaCqupoBAC0RQngANAsVUBYDQFuCluQKgwwf7KTanlWkpwOKHmqM4c0CFbpenuryLEQxaA4jgb9RAdRaLyB6m6Y8F9AbWHzA0RQwFy5uFKC8bMnIzI1mHFGGUQoGxEPZo6Y0Nhy58TcCZcGyFQI2CggYEa2Zo4cJwYjUEsDyK+0As6SR3gRq6S3CoH4dCPAOGqBaW4JoGjvCXo9ea7Z+E7VPEaIezpKannoTBEayh-jsgUNzWodQrEqPpoQBKkA7EaPUMHbRt8tz+zLOPVisFyjLm5u8bi64ywxytnHXh381F9zaiuOw1RaiaKoSoGCPh9qV3PAVUGViu6Qj3mElSxkKhmi8FxMCBgJ4GnKDUWCBgmizxGtYKWStQl5N-ipQpS4ai6QuLocp-luZLmZCoQGC5-j-ClrAMYXQuhwHgJM+BGRfiBQtKHbiyEnAXFobSZkfxZnZmZK6YCodRmKNrqQJOzS2r6SEa4Z0kERrniLrPMmnwND3EcI6fw-ggA */
+  /** @xstate-layout N4IgpgJg5mDOIC5QDMCWAbMBVADug9gIYQB0OYAdhKhVAMSwAuhATowNoAMAuoqDvlipGqfBT4gAHogCMADgBsJAEycZAZjnqZAFh0BWfZ3UAaEAE9ZOuQE4S+hcpvPltmaoUBfT2bSZcBMRklNS0DMxs7DK8SCACQiJiEtIIMgpKqhpaugZGphayaQDsJEU6CurOCnqcNgr63r4Y2HhEpORUNPQ4hACusGBcMfyCwqLisSnyGWqa2nqGxmaWqeqVpcrqRek7yg7qjSB+LYHtIV0ACn0DEHQscL0AtoM8EvFjSZOy2yqz2Qt5ZayZQyEqGORFCEyGxaGx6Q7HAJtEgAYwAFmAUQBrLoARV6+GYdAgYjAJBoADd8FiyejMVj8YTCEM3qNEhNQCkipsVDpnEUipoijZNvogakZPoZPZBcYiroNJxjAjmkignTsXiCUSwCwWPgWGR0IRGMgDY9URjsYzmCzYu92clENz1Lz+YKISL1GKCgg5NLOAZdDZKvobJx9OovD4jqrWur7iaumrbiSKGTKdTaYnGGAALK9dAiHpsFN2kYJcZO1Y6V02YXQ5SQmRpGzi8pKUH1hTy-SuPkHGOI+OkFE55Mjui6-WGvAms0sC1jsAm-OF4usRhl172tlVr41usNkXN1vi3T6HQkCOcOR3hRyPatlX+EckXojrokQgokQUsB0AAAo866oCWjDvm+OD6lA9ywLA5ZxHunycrIIrKCQ6g6L2jY2PoWhyOe0L6CQcg6MoejQmkTbpC+JzIh+pxfj+f4AcBoHgZBpwkGmLzDEhlYoVIiDKBRcgyjCticKorgCuergYWRaSKNsUpGDodEplxbTMb+qD-nQhAAEYGhwO4Vh8HLCQgqhKte7gaJsjjyMo56cIKJA9mUjh6Ep5SaW+jE6bQ356QZ7FFmBm7aUExmmZAiEOvuqE2WJEl3uGMkQkUREKJwnkCoGt63vWawBdxQXELprFASBkWcZVpDTgaiXIVZKSiZo6VSVlcm+jIxjiVKHgaDoLYtoOTSvhVn4hSx+kAT0-R8aygntSJSr5WoILqE5IKPuKeHSsN1hOHIEZ9kU5UMbNUChTVcFPCtu5rdW0L1r8j4KJKA0Cpo4qPnYWFFHkw0KOGcjXUEjXVQttUcdFjVkNcCXmQJllvSeGzYd9RVkfh4oPvlrgaOk8rWEGUOkDDc1hWxdUbmwMWkI9zwQK1r0Ho2GGCsDrjuT2jjipG0ogpeai1tycLRlN9HQ7dyPLbcrPPRZjpc2UJHKWsDgQuRQv9ZsdjuWoRiXthkqTbG003UxIVLTchkmZEaNJUJUwVBh30+dUgp8q5-WSiRTaA1KCpwlTzNfg7kDw-ViNvnFbCo-xbvralXX6MKGXSdJ2XilsV6ezYLZFMYUZYQ0Q5xtxKL4I8eBgCItApsSpLkhQVI0qi9eN7mBbx6WI4cxjB59uKILyKRcgOC2j63qJkPVzb6q95gzdQK3zWzsaprmj3Dfr2ug9bsPrttdWBsrNMroaPh99jY+VvDjNEBJrQNqEG36Yd13ZIfm-XMn8R7qxSo4DCkZ-RNl0ApMoE8NAlEqO4L651HAVEjgA9+UBP5Tj1AaI08596YKAdqZk59OZgNEvYTQ7hyawJ0BPNQ4lRK1GcCKGB5FvAxgoPgCAcAJAvzaKtUeKUAC0ChxSiJImwmRsjISRw6KEKAwjQHWXIuebCJRQQgyMKJLOYZlAKPOLQK4SsVHJTUeofK1hby2BFAYL0Ej+pbGscKPC6Q+Rh0McvOWo4rQ4g-qQ8x7tEC1msedDK9iDFRiItoTyUZajiybN42WWllxYJTME9OcISgwjqFY4w7k8I+mvrWcSAo9iqDKJoAcGDbpZLelnXJ6QQxYRnpweo+QVjaDsBUaS4YBSLA8XUu2d15r-gaVzZwroowkxDIKHRAdr5OE7B0vKZcckGBSdbXxUd7YowgJMlK1FpEtLWNYIwnT5KPhIHoXamt54OEjnXQ+TcJynCOdZPY7kSAl10J6ZsTYunAjDL8qUAyQQdKXqkwKOBAFaiZJ8lI2gtGBklMoPKvs+orEniUAw5FDDyHkDCGWOytJJ1zIcl6IivlGFyS2awwpAWCjciCew-pIyXXqGNDSPitKwF6CiFEcB4DUtUSkGeiltjgwqaJEEOVfQgmsGCu83J5TaKwpHbeSLED+nCbeCo+NazqMVbnUokqZ50s2PCLhQA */
   id: 'fileUpload',
   initial: 'pending',
   context: ({ input }) => ({
@@ -334,6 +332,7 @@ export const fileMachine = setup({
       exit: ['removeWorker'],
       states: {
         active: {
+          // All event in this state are forwarded to the multipart actor or send back to the parent manager. we only leave this state if we receive a `@multipart.upload.done / aborted / error` events from the multipart actor.
           on: {
             // Forward progress events from the multipart actor to the parent manager
             '@multipart.upload.progress': {
@@ -351,7 +350,7 @@ export const fileMachine = setup({
               target: '#fileUpload.completingUpload',
               actions: log('Multipart upload done. Completing...'),
             },
-            // Handle an abort event from the parent
+            // Forward an abort event from the parent to the multipart actor.
             abort: {
               actions: [
                 sendTo(({ context }) => context.worker!, {
@@ -360,7 +359,7 @@ export const fileMachine = setup({
                 log('Aborting upload...'),
               ],
             },
-            // When the multipart actor has been aborted, move to the aborted state
+            // Incoming event from the multipart actor after being aborted, move to the aborted state
             '@multipart.upload.aborted': {
               target: '#fileUpload.aborted',
               actions: ['markAsAborted', log('Upload aborted by user.')],
@@ -378,7 +377,7 @@ export const fileMachine = setup({
                 ),
               ],
             },
-            // Pause the upload — no new chunks will start until resumed
+            // Forward pause events from the parent to the multipart actor
             pause: {
               actions: [
                 sendTo(({ context }) => context.worker!, {
@@ -387,7 +386,7 @@ export const fileMachine = setup({
                 log('Upload paused.'),
               ],
             },
-
+            // Forward resume event from the parent to the multipart actor.
             resume: {
               actions: [
                 sendTo(({ context }) => context.worker!, {
@@ -396,7 +395,7 @@ export const fileMachine = setup({
                 log('Upload resumed.'),
               ],
             },
-            // Resume the paused upload
+            // The multipart actor sends this event when it has successfully paused.
             '@multipart.upload.paused': {
               actions: [
                 'markAsPaused',
@@ -459,40 +458,19 @@ export const fileMachine = setup({
             parts: event.parts,
           }
         },
+        // Quota is not charged here: the bytes are in S3 but the Item is not
+        // yet written. `dbMachine` charges it once the row exists.
         onDone: {
-          target: 'updatingQuota',
-          actions: ['markAsDone', log('Multipart upload completed.')],
+          target: 'success',
+          actions: [
+            'markAsDone',
+            'sendUploadDoneToParent',
+            log('Multipart upload completed.'),
+          ],
         },
         onError: {
           target: 'error',
           actions: ['assignError', log('Failed to complete multipart upload.')],
-        },
-      },
-    },
-    // UpdatingQuota state: updates the user's storage quota in the database
-    updatingQuota: {
-      entry: log('Updating quota...'),
-      invoke: {
-        id: 'updateQuota',
-        src: 'updateQuota',
-        input: ({ context }) => ({
-          userId: context.user.id,
-          action: 'items-uploaded',
-          dataSize: context.mediaFile.file.size,
-        }),
-        onDone: {
-          target: 'success',
-          actions: [
-            'sendUploadDoneToParent',
-            log('Quota updated successfully.'),
-          ],
-        },
-        onError: {
-          target: 'error',
-          actions: [
-            'assignError',
-            log(({ event }) => event, 'Failed to update quota.'),
-          ],
         },
       },
     },

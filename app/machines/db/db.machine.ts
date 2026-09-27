@@ -6,8 +6,16 @@ import {
   type AnyActorRef,
 } from 'xstate'
 import type { DbContext, DbEvents, DbResponse } from '@/types/machine.types'
+import { updateQuota } from '@/machines/quota/quota.actors'
 import { resolveHash, postItem } from './db.actors'
 import { toItemPayload, toOutcome } from './db.utils'
+
+/**
+ * Backoff between quota attempts — about 31s in total. What should happen once
+ * they are all spent is an open decision (TASKS.md); until it is made, the run
+ * reports success, because the row exists and the file is fine.
+ */
+const QUOTA_RETRY_DELAYS = [1000, 2000, 4000, 8000, 16000]
 
 /**
  * Writes rows on behalf of an upload, one request per run.
@@ -17,8 +25,9 @@ import { toItemPayload, toOutcome } from './db.utils'
  * fate of an upload:
  *
  * ```
- *                                                    ┌ @db.item.created    → created
- * idle → hashing → building → posting → classifying ─┼ @db.item.refused    → refused     ┐
+ *                                                    ┌ @db.item.created    → chargingQuota ⇄ retryingQuota
+ *                                                    │                            └→ created ┐
+ * idle → hashing → building → posting → classifying ─┼ @db.item.refused    → refused     ┤
  *   ▲                                                ├ @db.item.rejected   → rejected    ├→ idle
  *   │                                                ├ @db.session.expired → sessionExpired
  *   └────────────────────────────────────────────────┴ @db.item.failed     → failed      ┘
@@ -37,6 +46,11 @@ import { toItemPayload, toOutcome } from './db.utils'
  * each travel on the event that carries them into the next step, so context
  * holds only the subject of the run and who to answer.
  *
+ * **Quota is charged here, and only here** — after the row exists, so an
+ * upload that never got its `Item` is never billed. None of the other endings
+ * pass through `chargingQuota`. The charge used to run in the file machine
+ * before this machine was even spawned, which billed every `itemFailed` file.
+ *
  * The parent contract is unchanged: `upload.createItem.success` on `created`,
  * `upload.createItem.error` on every other ending.
  *
@@ -53,13 +67,36 @@ export const dbMachine = setup({
   actors: {
     hash: resolveHash,
     post: postItem,
+    chargeQuota: updateQuota,
+  },
+  guards: {
+    canRetryQuota: ({ context }) =>
+      context.quotaAttempts < QUOTA_RETRY_DELAYS.length,
+  },
+  delays: {
+    quotaBackoff: ({ context }) => QUOTA_RETRY_DELAYS[context.quotaAttempts - 1],
   },
   actions: {
-    /** The subject of the run — the only thing worth keeping across steps. */
+    /**
+     * The subject of the run — the only thing worth keeping across steps. The
+     * attempt count resets here because one machine serves many runs.
+     */
     startRun: assign(({ event }) => {
       assertEvent(event, '@db.item.create')
-      return { mediaFile: event.mediaFile, user: event.user }
+      return { mediaFile: event.mediaFile, user: event.user, quotaAttempts: 0 }
     }),
+
+    countQuotaAttempt: assign(({ context }) => ({
+      quotaAttempts: context.quotaAttempts + 1,
+    })),
+
+    /** Provisional — see `QUOTA_RETRY_DELAYS`. The upload goes unbilled. */
+    logQuotaGaveUp: ({ context, event }) => {
+      console.error(
+        `Quota not charged for ${context.mediaFile!.id} after ${context.quotaAttempts + 1} attempts`,
+        (event as { error?: unknown }).error
+      )
+    },
 
     /**
      * Assembles and validates the payload, then hands it on as an event.
@@ -125,27 +162,34 @@ export const dbMachine = setup({
     report: enqueueActions(({ context, event, enqueue }) => {
       if (!context.replayTo) return
 
-      enqueue.sendTo(context.replayTo, () =>
-        event.type === '@db.item.created'
-          ? {
-              type: 'upload.createItem.success' as const,
-              mediaFileId: event.mediaFileId,
-            }
-          : {
-              type: 'upload.createItem.error' as const,
-              mediaFileId: (event as { mediaFileId: string }).mediaFileId,
-              error:
-                (event as { error?: string }).error ?? 'Item creation failed',
-            }
-      )
+      enqueue.sendTo(context.replayTo, () => ({
+        type: 'upload.createItem.error' as const,
+        mediaFileId: (event as { mediaFileId: string }).mediaFileId,
+        error: (event as { error?: string }).error ?? 'Item creation failed',
+      }))
+    }),
+
+    /**
+     * Success reads the subject from context, not the event: `created` is
+     * entered from the quota invoke's done event, which carries no file id.
+     */
+    reportCreated: enqueueActions(({ context, enqueue }) => {
+      if (!context.replayTo) return
+
+      enqueue.sendTo(context.replayTo, {
+        type: 'upload.createItem.success' as const,
+        mediaFileId: context.mediaFile!.id,
+      })
     }),
   },
 }).createMachine({
+  /** @xstate-layout N4IgpgJg5mDOIC5QQEYGIACqB0BLALmALbYDGATmAIaEQDaADALqKgAOA9rAbhwHasQAD0QAWAEwAaEAE8xAZlHZxEgJwB2AIwMAHJvUA2TZoC+J6akw4CxbJQBmAV1iRGLJCE7d8vAR5EIEtJygTpKDACsEaKiegbi4hG6EWYW6FgoeIQklABWYKS0boJePPyCAUGyiBE6qtgMqgz6uoniqvKqqSCWGdgusNz82GBCbLiU9MwlXGV+oJVS1QgGqkqaKuqqibERmmHdvdbZ2PZUuAA2rtMepT7l-mJLIdrrEfEM8eqGu4eZuBArlZ-icKNRCMVbrN7vNhIh9OIDNhVhFVDowu99joDMExEZsPJ2uoklp5JF1PIDH9sAALKiwGm4PhQNAQfhgPB8ABuHAA1hyMLB8PSaRcZNgcHSGZD2NDfBVEOJNNtsJpRBTIqJmgZvrjAt9sDpCaoSdoDHpTOYepkpYzmWgwORyBxyNg2BcaPYXSRBcKGWKJTaRTLPHKHgt4WsIthapFjCpdmE9fJ1DpkTpGmi0ZSdqJqShHJcIEyWX0bCQvPgQ3d5Y8EG00zEGFpRPpvvJNBE9aJVPVPhsIuJGgZ+5a0m6uD57Wy+BymTz+dhfSKAzhK9Ww7CAkTozFamFtt9VqJuyqjTp1EPe6mdHsqVa15OSw6nS63R78F7yD6hSvxY+hQ3bxawjesKXEAlNAMCJDG0RFohPZZOnkdNzXUBglU+WIx2tMg6XIKASwARUcDhhVZdlOQXAVf39f9MgAR1I4UgLmBUEBNcJoNvb5PgYVtVGTeQUKSToTURVQPhwnBSHwwjmRIsiqBfZ1XXdT1vSXWjRXo7AmKU1iYXYtoGlTXQMwYBgyR7dQ9QSJR3gTbDUw6eQdGpWSqAI4jmOUx1VPfDTvy0v0dMDPTfLoTR3FlYDwzhDjogabiYPQkcBLs1tlEUVRO1bI10PkalKHwcgZB8pS0CEX9CGwKh7EIcgAAp9OFAAhKhSF5Dh7HsABKVlMhKsqKpYm5YrYusTObDN0Usqz+I0ZMoMNDtB1EAxVjVDt73HMEaEgNBDJAhLOyshoOiiAwyVvKoQg7Rs0Xsp7W123CHGcQ7jvigIzpQxp5Cum7omeMRbxjQcwgkREsMUYqwHyQovvG0M4q3eFRIuwH3mBu6aiaGML3ec06m0dQ8wfTIBiGPgAFExgmZGYtRybQL+rGgeSPGVhNZEEixIxxGE5VqTOS4mZmNH2PZgHOdu0GEG0aNoMpDDFDVIxtjMK0+A4CA4EEVBJdZhKAFocWWU3o17G3bdtlJKbwQEwGNoy6yg5tsB7URUVqHUYPkbswmUKDbuVMlNDJIrHdtEtXZO36mnqQx0WxDsmg2RCQnVa2khmo1YmJaPxwLIs46hKWpq1eohY6JValyqDTxrhItEstzL17YvcMrcuJrd0CJPUZESS2D50I6U8GGwE1fcsow6i2DyPUGXB7HK5l45+xB0+nlQPkk5UNuxPU9iUBIwgzQlUThx3PO8hTfK39GVk7bByY2PLhMMXK7LWd+Eiz0UK2UQbl4alQ3lARSwpn7sVyl7fYbloIjnWmqZMntWxiQjtECk0lMj7VoLA924g6gILJCoFQxhOx-xQuiDQ7xUSXkBpHeGTgXAQCIWzDsmgYxNl7MqTazYFYbWnmsCQ5MM6fAduOPIBRCEVxNr9bhvDq65UkiOS8p9oIzy2I0W8VltjQWpNTXw9NxiTE4adZRsRhLCQkLUWotllg6h4c0FMQ5W6djwacc4VwOEKIHlY4wKjMwCI0QrPQDQfaR06I5C04htYmCAA */
   id: 'db',
   context: ({ input }) => ({
     replayTo: input?.replayTo,
     mediaFile: undefined,
     user: undefined,
+    quotaAttempts: 0,
   }),
   initial: 'idle',
 
@@ -155,7 +199,7 @@ export const dbMachine = setup({
    * that has no transition for it.
    */
   on: {
-    '@db.item.created': '.created',
+    '@db.item.created': '.chargingQuota',
     '@db.item.refused': '.refused',
     '@db.item.rejected': '.rejected',
     '@db.session.expired': '.sessionExpired',
@@ -240,7 +284,33 @@ export const dbMachine = setup({
      */
     classifying: {},
 
-    created: { entry: 'report', always: { target: 'idle' } },
+    /** The row exists, so this is the first moment the upload is billable. */
+    chargingQuota: {
+      invoke: {
+        id: '@stashly.db.quota',
+        src: 'chargeQuota',
+        input: ({ context }) => ({
+          userId: context.user!.id,
+          action: 'items-uploaded',
+          dataSize: context.mediaFile!.file.size,
+        }),
+        onDone: { target: 'created' },
+        onError: [
+          {
+            guard: 'canRetryQuota',
+            target: 'retryingQuota',
+            actions: 'countQuotaAttempt',
+          },
+          { target: 'created', actions: 'logQuotaGaveUp' },
+        ],
+      },
+    },
+
+    retryingQuota: {
+      after: { quotaBackoff: { target: 'chargingQuota' } },
+    },
+
+    created: { entry: 'reportCreated', always: { target: 'idle' } },
     refused: { entry: 'report', always: { target: 'idle' } },
     rejected: { entry: 'report', always: { target: 'idle' } },
     sessionExpired: { entry: 'report', always: { target: 'idle' } },
