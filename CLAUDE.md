@@ -102,7 +102,7 @@ const collection = await getCollectionForUser(session.user.id, collectionId)
 
 **Authorization lives in actions, never in loaders.** A loader forwards `userId` (and `workspaceId` when present) and the action throws — `assertItemAccess(userId, itemId, { workspaceId, role })` from `permission-actions.ts` composes the item-permission and workspace-membership checks. A loader that forgets the check fails *open*; an action that owns it can't be bypassed by a new caller.
 
-**Never mutate in a `loader`**: mutations belong in `action` functions, submitted via `fetcher.submit(..., { method: 'POST' })`. A `GET` `loader` that writes data breaks caching/prefetching assumptions.
+**Never mutate in a `loader`**: mutations belong in `action` functions, submitted via `fetcher.submit(..., { method: 'POST' })`. A `GET` `loader` that writes data breaks caching/prefetching assumptions. **One accepted exception:** `updateItemOpenedAt`, called inside `getFolder`/`getFileItem`/`getCollectionForUser` — a separate submit just to stamp a timestamp isn't worth it. Don't flag it; don't add others without asking.
 
 **Don't revalidate on background index writes**: React Router re-runs every active loader after any fetcher submission. Submissions that only feed the search index (OCR pages, chunk embeddings) can't change a pixel, and a 15-page OCR submits ~30 times. Routes compose `isSearchIndexSubmission` from `app/utils/revalidation.ts` into their `shouldRevalidate`. Add a new background-only intent to `SEARCH_INDEX_INTENTS` there — but *not* one that also writes displayable facets (`save_media_metadata` writes page count/dimensions/EXIF, so it must still revalidate).
 
