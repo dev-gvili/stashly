@@ -10,8 +10,9 @@ model Permission {
   linkId      String?
   link        ShareLink?           @relation(fields: [linkId], references: [id])
   itemId      String?
-  item        Item?                @relation(fields: [itemId], references: [id])
-  users       User[]
+  item        Item?                @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  users User[]
 
   @@index([createdAt(sort: Desc)])
   @@index([updatedAt(sort: Desc)])
