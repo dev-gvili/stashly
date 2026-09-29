@@ -6,11 +6,10 @@ import { GridLayout } from '@/components/views/grid-view'
 import { usePagination } from '@/hooks/usePagination'
 import { sessionContext } from '@/.server/middleware/context'
 import { breadcrumbs } from '@/services/breadcrumbs'
-import { prisma } from '@/services/db'
 import {
+  getFolder,
   getFolderContent,
   retrieveFolderStats,
-  updateItemOpenedAt,
 } from '@/services/item-actions'
 import { formatSize } from '@/utils/formaters'
 import { StashPageToolbar } from '@/components/views/stash-page-toolbar'
@@ -53,8 +52,8 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
 
   let filters = buildItemFilters(parsedParams)
 
-  const [_, folderContent, crumbs, folder, scope] = await Promise.all([
-    updateItemOpenedAt(params.folderId),
+  const [folder, folderContent, crumbs, stats] = await Promise.all([
+    getFolder(params.folderId, session.user.id, workspaceId),
     getFolderContent({
       userId: session.user.id,
       workspaceId,
@@ -69,10 +68,6 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
       foldersFirst: true,
     }),
     breadcrumbs(params.folderId, session.user.id),
-    prisma.item.findUnique({
-      where: { id: params.folderId },
-      select: { name: true, driveId: true },
-    }),
     retrieveFolderStats(params.folderId),
   ])
 
@@ -88,16 +83,8 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
     // Formatted server-side so the BigInt byte counts stay out of the payload.
     // Counts are folder-scoped; the storage meter stays drive-wide.
     stats: {
-      folders: scope.folders,
-      files: scope.files,
-      // favorites: stats.favorites,
-      // trashed: stats.trashed,
-      size: formatSize('byte', 'unit', Number(scope.sizeBytes)),
-      // quota: formatSize('byte', 'unit', Number(stats.quotaBytes)),
-      // usedPercent:
-      //   stats.quotaBytes > 0n
-      //     ? Math.round(Number((stats.usedBytes * 100n) / stats.quotaBytes))
-      //     : 0,
+      ...stats,
+      size: formatSize('byte', 'unit', Number(stats.sizeBytes)),
     },
   }
 }

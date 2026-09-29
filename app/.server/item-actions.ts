@@ -1686,6 +1686,82 @@ export async function createUploadedItem(data: {
   return result
 }
 
+export async function getFolder(
+  folderId: string,
+  userId: string,
+  workspaceId?: string,
+  client: Prisma.TransactionClient = prisma
+) {
+  // personal branch: if the folder is personal, we only check for item permission.
+  if (!workspaceId) {
+    try {
+      await assertItemAccess(userId, folderId, { tx: client })
+
+      const folder = await client.item.findUniqueOrThrow({
+        where: { id: folderId },
+        include: {
+          folder: true,
+          parent: true,
+          activities: {
+            include: {
+              time: true,
+              action: true,
+            },
+            orderBy: {
+              time: {
+                observedAt: 'desc',
+              },
+            },
+            take: 50,
+          },
+        },
+      })
+
+      await updateItemOpenedAt(folderId)
+      return folder
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw toRouteError(
+            StashlyErrorCode.ITEM_NOT_FOUND,
+            `Folder with ID ${folderId} not found.`
+          )
+        }
+      }
+      throw error
+    }
+  } else {
+    // workspace branch: if the folder is in a workspace, we check for both item permission and membership.
+    await assertItemAccess(userId, folderId, {
+      workspaceId,
+      role: 'read',
+      tx: client,
+    })
+
+    const folder = await client.item.findUniqueOrThrow({
+      where: { id: folderId },
+      include: {
+        folder: true,
+        parent: true,
+        activities: {
+          include: {
+            time: true,
+            action: true,
+          },
+          orderBy: {
+            time: {
+              observedAt: 'desc',
+            },
+          },
+          take: 50,
+        },
+      },
+    })
+
+    await updateItemOpenedAt(folderId)
+    return folder
+  }
+}
 // --- 6. GET FOLDER CONTENT (PAGINATED) ---
 
 /**
@@ -1726,8 +1802,7 @@ interface GetFolderContentParams {
   foldersFirst?: boolean
   /** Custom order-by clause (overrides sortBy/sortDirection when provided). */
   orderBy?:
-    | Prisma.ItemOrderByWithRelationInput
-    | Prisma.ItemOrderByWithRelationInput[]
+    Prisma.ItemOrderByWithRelationInput | Prisma.ItemOrderByWithRelationInput[]
 }
 
 /**
@@ -1986,8 +2061,7 @@ export async function getFolderContent(params: GetFolderContentParams) {
 export async function getPaginatedItems<TInclude extends object>(params: {
   where?: Prisma.ItemWhereInput
   orderBy?:
-    | Prisma.ItemOrderByWithRelationInput
-    | Prisma.ItemOrderByWithRelationInput[]
+    Prisma.ItemOrderByWithRelationInput | Prisma.ItemOrderByWithRelationInput[]
   cursor?: string | null
   take?: number
   include?: TInclude
@@ -2077,8 +2151,7 @@ interface PaginateItemsParams<
 
   /** Custom order-by clause (overrides sortBy/sortDirection if provided) */
   orderBy?:
-    | Prisma.ItemOrderByWithRelationInput
-    | Prisma.ItemOrderByWithRelationInput[]
+    Prisma.ItemOrderByWithRelationInput | Prisma.ItemOrderByWithRelationInput[]
 
   /** Relations to include in the result set */
   include?: TInclude
@@ -2648,7 +2721,6 @@ export async function unlockItem(itemId: string, userId: string) {
   }
 }
 
-
 export const defaultItemSelect = {
   id: true,
   name: true,
@@ -2746,7 +2818,10 @@ export const searchItems = searchFactory({
  * // Find an item by ID with the default select shape
  * const item = await findItem({ where: { id: 'item_123' } });
  */
-export async function findItem(args: Prisma.ItemFindUniqueArgs, client: Prisma.TransactionClient = prisma) {
+export async function findItem(
+  args: Prisma.ItemFindUniqueArgs,
+  client: Prisma.TransactionClient = prisma
+) {
   return client.item.findUniqueOrThrow({
     ...args,
     select: args.select || defaultItemSelect,
@@ -2771,7 +2846,10 @@ export async function findItem(args: Prisma.ItemFindUniqueArgs, client: Prisma.T
  *   },
  * });
  */
-export async function createItem(args: Prisma.ItemCreateArgs, client: Prisma.TransactionClient = prisma) {
+export async function createItem(
+  args: Prisma.ItemCreateArgs,
+  client: Prisma.TransactionClient = prisma
+) {
   return client.item.create({
     ...args,
     select: args.select || defaultItemSelect,
@@ -2793,7 +2871,10 @@ export async function createItem(args: Prisma.ItemCreateArgs, client: Prisma.Tra
  *   ],
  * });
  */
-export async function createManyItems(args: Prisma.ItemCreateManyArgs, client: Prisma.TransactionClient = prisma) {
+export async function createManyItems(
+  args: Prisma.ItemCreateManyArgs,
+  client: Prisma.TransactionClient = prisma
+) {
   return client.item.createMany(args)
 }
 
@@ -2872,7 +2953,10 @@ export async function createManyItemsBatched(
  *   data: { tags: { push: 'important' } },
  * });
  */
-export async function updateItem(args: Prisma.ItemUpdateArgs, client: Prisma.TransactionClient = prisma) {
+export async function updateItem(
+  args: Prisma.ItemUpdateArgs,
+  client: Prisma.TransactionClient = prisma
+) {
   return client.item.update({
     ...args,
     select: args.select || defaultItemSelect,
@@ -2889,7 +2973,10 @@ export async function updateItem(args: Prisma.ItemUpdateArgs, client: Prisma.Tra
  * // Fetch the latest items added to a workspace
  * const items = await findWorkspaceItems('ws_123');
  */
-export async function findWorkspaceItems(workspaceId: string, client: Prisma.TransactionClient = prisma) {
+export async function findWorkspaceItems(
+  workspaceId: string,
+  client: Prisma.TransactionClient = prisma
+) {
   return client.item.findMany({
     where: { workspaceId },
     select: defaultItemSelect,
@@ -2906,7 +2993,10 @@ export async function findWorkspaceItems(workspaceId: string, client: Prisma.Tra
  * @example
  * const favorites = await findFavoritesForUser('usr_123');
  */
-export async function findFavoritesForUser(userId: string, client: Prisma.TransactionClient = prisma) {
+export async function findFavoritesForUser(
+  userId: string,
+  client: Prisma.TransactionClient = prisma
+) {
   return client.item.findMany({
     where: {
       ownerId: userId,
@@ -2932,15 +3022,18 @@ export async function findFavoritesForUser(userId: string, client: Prisma.Transa
  *   limit: 20,
  * });
  */
-export async function getFavoritedItems({
-  userId,
-  cursor,
-  limit = 50,
-}: {
-  userId: string
-  cursor?: string
-  limit?: number
-}, client: Prisma.TransactionClient = prisma) {
+export async function getFavoritedItems(
+  {
+    userId,
+    cursor,
+    limit = 50,
+  }: {
+    userId: string
+    cursor?: string
+    limit?: number
+  },
+  client: Prisma.TransactionClient = prisma
+) {
   const items = await client.item.findMany({
     where: { favorites: { some: { favoritedById: userId } } },
     take: limit + 1,
@@ -3084,7 +3177,11 @@ export async function getFavoritedItems({
  * const favorite = await findFavoriteItem('item_123', 'usr_456');
  * if (favorite) console.log('Already favorited');
  */
-export async function findFavoriteItem(itemId: string, favoritedById: string, client: Prisma.TransactionClient = prisma) {
+export async function findFavoriteItem(
+  itemId: string,
+  favoritedById: string,
+  client: Prisma.TransactionClient = prisma
+) {
   return client.item.findFirst({
     where: {
       favorites: { some: { favoritedById, itemId } },
@@ -3232,7 +3329,10 @@ export async function findFirstItem(args: Prisma.ItemFindFirstArgs) {
  *   where: { parentId: 'fld_123', status: 'normal' },
  * });
  */
-export async function countItems(args: Prisma.ItemCountArgs, client: Prisma.TransactionClient = prisma): Promise<number> {
+export async function countItems(
+  args: Prisma.ItemCountArgs,
+  client: Prisma.TransactionClient = prisma
+): Promise<number> {
   return client.item.count(args)
 }
 
@@ -3253,7 +3353,10 @@ export async function countItems(args: Prisma.ItemCountArgs, client: Prisma.Tran
  * // { folders: 34, files: 1286, favorites: 52, trashed: 19,
  * //   usedBytes: 19783246929n, quotaBytes: 42949672960n }
  */
-export async function retrieveUserUsageMetrics(userId: string, client: Prisma.TransactionClient = prisma) {
+export async function retrieveUserUsageMetrics(
+  userId: string,
+  client: Prisma.TransactionClient = prisma
+) {
   const active = { ownerId: userId, status: { not: 'trashed' as const } }
 
   const [folders, files, favorites, trashed, quota] = await Promise.all([
@@ -3261,7 +3364,7 @@ export async function retrieveUserUsageMetrics(userId: string, client: Prisma.Tr
     countItems({ where: { ...active, type: 'file' } }, client),
     client.favorite.count({ where: { favoritedById: userId } }),
     countItems({ where: { ownerId: userId, status: 'trashed' } }, client),
-    findQuotaByUserId(userId)
+    findQuotaByUserId(userId),
   ])
 
   return {
@@ -3286,7 +3389,10 @@ export async function retrieveUserUsageMetrics(userId: string, client: Prisma.Tr
  * const scope = await getFolderScopeStats(params.folderId)
  * // { folders: 6, files: 214, sizeBytes: 4080218931n }
  */
-export async function retrieveFolderStats(folderId: string, client: Prisma.TransactionClient = prisma) {
+export async function retrieveFolderStats(
+  folderId: string,
+  client: Prisma.TransactionClient = prisma
+) {
   const active = { parentId: folderId, status: { not: 'trashed' as const } }
 
   const [folders, files, folder] = await Promise.all([
@@ -3317,16 +3423,19 @@ export async function createRootFolder(
   client: Prisma.TransactionClient = prisma
 ) {
   const id = toObjectId(getPrefixForModel('Item'))
-  return createItem({
-    data: {
-      id,
-      name: 'root',
-      type: 'folder',
-      drive: { connect: { id: driveId } },
-      workspace: { connect: { id: workspaceId } },
-      owner: { connect: { id: userId } },
+  return createItem(
+    {
+      data: {
+        id,
+        name: 'root',
+        type: 'folder',
+        drive: { connect: { id: driveId } },
+        workspace: { connect: { id: workspaceId } },
+        owner: { connect: { id: userId } },
+      },
     },
-  }, client)
+    client
+  )
 }
 
 /**
@@ -3470,6 +3579,7 @@ export async function getFileItem(
     )
   }
 
+  await updateItemOpenedAt(fileId) // record that the user opened this file
   return signThumbnails(item)
 }
 
@@ -3485,7 +3595,11 @@ export async function getFileItem(
  * const siblings = await getMediaSiblings('usr_123', 'fld_456');
  * const index = siblings.findIndex((s) => s.id === currentFileId);
  */
-export async function getMediaSiblings(userId: string, folderId: string, client: Prisma.TransactionClient = prisma) {
+export async function getMediaSiblings(
+  userId: string,
+  folderId: string,
+  client: Prisma.TransactionClient = prisma
+) {
   return client.item.findMany({
     where: {
       parentId: folderId,
@@ -3507,7 +3621,10 @@ export async function getMediaSiblings(userId: string, folderId: string, client:
  * // Record that the user opened an item
  * await updateItemOpenedAt('item_123');
  */
-export async function updateItemOpenedAt(itemId: string, client: Prisma.TransactionClient = prisma) {
+export async function updateItemOpenedAt(
+  itemId: string,
+  client: Prisma.TransactionClient = prisma
+) {
   await client.item.update({
     where: { id: itemId },
     data: { openedAt: new Date() },

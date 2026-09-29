@@ -8,9 +8,13 @@ import {
   getItemPermissions,
   assertItemPermission,
 } from '@/services/permission-actions'
-import { findFirstItem } from '@/services/item-actions'
+import { findFirstItem, updateItemOpenedAt } from '@/services/item-actions'
 import { requireAtLeastRole } from '@/services/workspace-actions'
-import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
+import {
+  StashlyError,
+  StashlyErrorCode,
+  toRouteError,
+} from '@/utils/api.errors'
 import { buildCollectionFilters } from '@/utils/filters/collection.filters'
 import { searchFactory } from '@/utils/search'
 import { createActivity } from './activity-actions'
@@ -332,7 +336,12 @@ export async function createWorkspaceCollection({
   driveId: string
   workspaceId: string
 }) {
-  await requireAtLeastRole(ownerId, workspaceId, 'member', 'You must be a workspace member to create collections')
+  await requireAtLeastRole(
+    ownerId,
+    workspaceId,
+    'member',
+    'You must be a workspace member to create collections'
+  )
 
   const created = await prisma.$transaction(async (tx) => {
     const newItem = await tx.item.create({
@@ -683,14 +692,17 @@ export async function getCollectionForUser(
   userId: string,
   collectionId: string
 ): Promise<CollectionWithMembers> {
-  const collection = await findCollectionById(collectionId)
+  let collection = await prisma.$transaction(async (tx) => {
+    await assertItemPermission(userId, collectionId, 'read', tx)
+    await updateItemOpenedAt(collectionId, tx)
+    return await findCollectionById(collectionId)
+  })
   if (!collection) {
     throw toRouteError(
       StashlyErrorCode.COLLECTION_NOT_FOUND,
       'Collection not found'
     )
   }
-  await assertItemPermission(userId, collectionId, 'read')
 
   return collection
 }

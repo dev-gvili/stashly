@@ -18,7 +18,6 @@ import {
   getMediaSiblings,
   loadMarkdownDocument,
   loadTextDocument,
-  updateItemOpenedAt,
 } from '@/services/item-actions'
 import { getPresignedUrl } from '@/services/s3'
 import type { StashItemPanel } from '@/types/stash.types'
@@ -28,7 +27,7 @@ import { isTextRenderableFile } from '@/utils/text-thumbnail'
 import { cn } from '@/utils/styles'
 import jetbrainsMonoFonts from '@fontsource-variable/jetbrains-mono/index.css?url'
 import type { LinksFunction } from 'react-router'
-import { href, redirect, type ShouldRevalidateFunction } from 'react-router'
+import { href, type ShouldRevalidateFunction } from 'react-router'
 import type { Route } from './+types/file'
 import { sessionContext } from '@/.server/middleware/context'
 
@@ -123,8 +122,7 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
         decodeURIComponent(params.fileId)
       )) ?? params.fileId)
 
-  const [, allCrumbs, acts, item, siblings] = await Promise.all([
-    updateItemOpenedAt(fileId),
+  const [allCrumbs, acts, item, siblings] = await Promise.all([
     breadcrumbs(fileId, session.user.id),
     searchActivities({
       ownerId: { equals: session.user.id },
