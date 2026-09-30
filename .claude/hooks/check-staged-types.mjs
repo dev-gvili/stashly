@@ -10,12 +10,16 @@
  *
  * Regenerate the baseline after intentionally fixing/accepting errors:
  *   node .claude/hooks/check-staged-types.mjs --update-baseline
+ *
+ * CI gates the whole repo instead of the staged files:
+ *   node .claude/hooks/check-staged-types.mjs --all
  */
 import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 
 const BASELINE_PATH = '.claude/tsc-baseline.json'
 const updateBaseline = process.argv.includes('--update-baseline')
+const checkAll = process.argv.includes('--all')
 
 function run(cmd, args) {
   try {
@@ -35,7 +39,7 @@ const staged = run('git', ['diff', '--cached', '--name-only', '--diff-filter=ACM
   .map((s) => s.trim())
   .filter((f) => /\.(ts|tsx)$/.test(f))
 
-if (!updateBaseline && staged.length === 0) process.exit(0)
+if (!updateBaseline && !checkAll && staged.length === 0) process.exit(0)
 
 run('pnpm', ['exec', 'react-router', 'typegen'])
 const tsc = run('pnpm', ['exec', 'tsc', '-b', '--pretty', 'false'])
@@ -50,6 +54,14 @@ for (const line of tsc.out.split(/\r?\n/)) {
   counts.set(file, (counts.get(file) ?? 0) + 1)
   if (!errorLines.has(file)) errorLines.set(file, [])
   errorLines.get(file).push(line)
+}
+
+// tsc failed without a single parseable diagnostic (missing binary, crashed
+// config): nothing was checked, so an empty tally must not read as clean.
+if (tsc.code !== 0 && counts.size === 0) {
+  console.error('BLOCK: tsc failed without reporting any diagnostics:')
+  console.error(tsc.out)
+  process.exit(2)
 }
 
 if (updateBaseline) {
@@ -69,12 +81,18 @@ try {
   console.error(`warning: ${BASELINE_PATH} missing/unreadable — treating all baselines as 0`)
 }
 
-const regressions = staged
+// Only a file that has errors now can exceed its baseline, so --all needs
+// just the files tsc reported.
+const checked = checkAll ? [...counts.keys()] : staged
+
+const regressions = checked
   .map((f) => ({ f, cur: counts.get(f) ?? 0, base: baseline[f] ?? 0 }))
   .filter((r) => r.cur > r.base)
 
 if (regressions.length > 0) {
-  console.error('BLOCK: new type errors in staged files (count exceeds baseline):')
+  console.error(
+    `BLOCK: new type errors in ${checkAll ? 'the repo' : 'staged files'} (count exceeds baseline):`
+  )
   for (const r of regressions) {
     console.error(`\n${r.f}: ${r.cur} error(s), baseline ${r.base}`)
     for (const l of errorLines.get(r.f) ?? []) console.error(`  ${l}`)
@@ -85,7 +103,7 @@ if (regressions.length > 0) {
   process.exit(2)
 }
 
-const improved = staged.filter((f) => (counts.get(f) ?? 0) < (baseline[f] ?? 0))
+const improved = checked.filter((f) => (counts.get(f) ?? 0) < (baseline[f] ?? 0))
 if (improved.length > 0) {
   console.log(
     `type errors reduced in: ${improved.join(', ')} — consider refreshing the baseline`
