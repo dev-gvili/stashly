@@ -40,7 +40,7 @@ Built from the repo-root `Dockerfile` and deployed with the repo-root
    | `BETTER_AUTH_SECRET`, `COOKIE_SECRET` | Sessions |
    | `GITHUB_CLIENT_ID`/`_SECRET`, `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET` | OAuth sign-in |
    | `AWS_ACCESS_KEY`, `AWS_SECRET_KEY`, `AWS_REGION`, `AWS_ENDPOINT_URL` | Tigris object storage |
-   | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Billing and the `/api/stripe` webhook |
+   | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Billing and the `/api/stripe` webhook. **The server can't boot without `STRIPE_SECRET_KEY`:** `app/.server/stripe.ts` creates the client when the module loads, and every request 500s |
    | `EMAIL_SERVICE_URL`, `EMAIL_SERVICE_TOKEN` | Outgoing email |
    | `METRICS_TOKEN` | `/api/metrics`, which 404s without it |
    | `DATABASE_POOL_MAX`, `DATABASE_POOL_TIMEOUT_MS` | Optional pool tuning |

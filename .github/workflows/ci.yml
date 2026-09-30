@@ -83,6 +83,7 @@ jobs:
             -e COOKIE_SECRET=ci-placeholder-cookie-0123456789abcdef \
             -e AWS_ACCESS_KEY=ci -e AWS_SECRET_KEY=ci -e AWS_REGION=auto \
             -e AWS_ENDPOINT_URL=http://127.0.0.1:9000 \
+            -e STRIPE_SECRET_KEY=sk_test_ci_placeholder \
             stashly:ci
           for i in $(seq 1 30); do
             if curl -fsS -o /dev/null -w '%{http_code}\n' http://localhost:8080/api/health; then
