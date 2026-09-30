@@ -7,6 +7,8 @@
 # live here (not .agents/) — this is the only directory Claude Code loads
 # skills from, and they never loaded while they sat outside it.
 !.claude/skills/
+# claude-ease generated project maps
+.claude-ease/
 
 # Dependencies
 node_modules
