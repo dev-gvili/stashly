@@ -65,7 +65,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - **CI `docker` job:** builds the image, runs `prisma validate` in it, and boots it until `/api/health` answers 200. The first run found two bugs that would have broken the deployed app:
     - `clsx` and `tailwind-merge` were devDependencies the server loads at runtime, so every request returned 500. They're now dependencies (`326c317`).
     - `app/.server/stripe.ts` throws when the module loads if `STRIPE_SECRET_KEY` is unset, which also broke every request. CI now sets a placeholder, and the deploy README flags the secret as required.
-  - **`deploy/README.md` step 3:** lists all 24 secrets. `BETTER_AUTH_URL` isn't in our code's `process.env` reads; it was found through Better Auth's boot warning.
+  - **`deploy/README.md` step 3:** lists the 22 secrets (20 required, plus 2 optional pool settings). `BETTER_AUTH_URL` isn't in our code's `process.env` reads; it was found through Better Auth's boot warning.
   - **Not verified:** a real `fly deploy`, and whether the release command works against prod.
   - **Not done:** pinning Node with `engines` and pnpm with `packageManager` in `package.json`.
 
