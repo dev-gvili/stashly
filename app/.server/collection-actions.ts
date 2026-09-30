@@ -692,19 +692,19 @@ export async function getCollectionForUser(
   userId: string,
   collectionId: string
 ): Promise<CollectionWithMembers> {
-  let collection = await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
+    // Existence before permission: a missing collection is a 404, not a 403.
+    const collection = await findCollectionById(collectionId)
+    if (!collection) {
+      throw toRouteError(
+        StashlyErrorCode.COLLECTION_NOT_FOUND,
+        'Collection not found'
+      )
+    }
     await assertItemPermission(userId, collectionId, 'read', tx)
     await updateItemOpenedAt(collectionId, tx)
-    return await findCollectionById(collectionId)
+    return collection
   })
-  if (!collection) {
-    throw toRouteError(
-      StashlyErrorCode.COLLECTION_NOT_FOUND,
-      'Collection not found'
-    )
-  }
-
-  return collection
 }
 
 /**
