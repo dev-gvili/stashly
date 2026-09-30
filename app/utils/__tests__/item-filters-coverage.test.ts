@@ -127,7 +127,7 @@ describe('toSearchSchema', () => {
     // Before this, a loader parsed with the bare filter schema: `take` was an
     // unknown key, z.object stripped it, and `limit` reached the query as
     // undefined.
-    expect(itemSearchSchema.parse({}).take).toBe(25)
+    expect(itemSearchSchema.parse({}).take).toBe(50)
   })
 
   it('carries cursor and orderBy through the parse', () => {
