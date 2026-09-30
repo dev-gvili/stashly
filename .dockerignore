@@ -1,4 +1,27 @@
+# Build outputs and installs — the image produces its own.
 .react-router
 build
 node_modules
+app/prisma
+
+# Secrets and history must never reach a (remote) build context.
+.env
+.env.*
+.git
+.chat-history
+copilot_exports
+
+# Tooling, tests and docs the image doesn't run.
+.github
+.claude
+.claude-ease
+.remember
+.vscode
+tests
+playwright-report
+test-results
+models
+docs
+deploy
 README.md
+*.log

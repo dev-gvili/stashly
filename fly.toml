@@ -1,0 +1,46 @@
+# Main Stashly app on Fly.io. Stand up Postgres and PgBouncer first and set the
+# secrets listed in deploy/README.md (step 3), then `fly deploy` from here.
+
+app = "stashly"
+primary_region = "iad" # same region as stashly-postgres and stashly-pgbouncer
+
+[build]
+  dockerfile = "Dockerfile"
+
+# Runs in a temporary machine from the new image before any app machine is
+# replaced; a failing migration aborts the deploy. Uses DIRECT_DATABASE_URL
+# (prisma.config.ts): migrations break under PgBouncer's transaction pooling.
+[deploy]
+  release_command = "node_modules/.bin/prisma migrate deploy"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # Keep one machine up: notification SSE streams are long-lived.
+  min_machines_running = 1
+
+  # Every open SSE stream counts against these, so Fly's defaults (25 hard)
+  # would cap the app at ~25 open tabs. Unmeasured starting point; tune from
+  # the stashly_sse_connections gauge.
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/api/health"
+    grace_period = "20s"
+    interval = "30s"
+    timeout = "5s"
+
+# A starting guess, not a measurement — resize after the first deploy.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

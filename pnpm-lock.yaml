@@ -122,6 +122,9 @@ importers:
       pg:
         specifier: ^8.23.0
         version: 8.23.0
+      prisma:
+        specifier: ^7.10.0
+        version: 7.10.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.3.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3)
       qs:
         specifier: ^6.16.0
         version: 6.16.0
@@ -255,9 +258,6 @@ importers:
       prettier:
         specifier: ^3.9.9
         version: 3.9.9
-      prisma:
-        specifier: ^7.10.0
-        version: 7.10.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.3.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3)
       shadcn:
         specifier: ^4.21.0
         version: 4.21.0(typescript@6.0.3)

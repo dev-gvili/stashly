@@ -59,3 +59,37 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  # The production image: builds, carries a working Prisma CLI for fly.toml's
+  # release_command, and serves /api/health. No database — the check only
+  # proves the server boots, so the env values are placeholders.
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build image
+        run: docker build -t stashly:ci .
+
+      - name: Prisma CLI loads the schema
+        run: docker run --rm stashly:ci node_modules/.bin/prisma validate
+
+      - name: Server answers /api/health
+        run: |
+          docker run -d --name app -p 8080:8080 \
+            -e DATABASE_URL=postgresql://ci:ci@127.0.0.1:5432/ci \
+            -e BETTER_AUTH_SECRET=ci-placeholder-secret-0123456789abcdef \
+            -e COOKIE_SECRET=ci-placeholder-cookie-0123456789abcdef \
+            -e AWS_ACCESS_KEY=ci -e AWS_SECRET_KEY=ci -e AWS_REGION=auto \
+            -e AWS_ENDPOINT_URL=http://127.0.0.1:9000 \
+            stashly:ci
+          for i in $(seq 1 30); do
+            if curl -fsS -o /dev/null -w '%{http_code}\n' http://localhost:8080/api/health; then
+              docker logs app
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs app
+          exit 1
