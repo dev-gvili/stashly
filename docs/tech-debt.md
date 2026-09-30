@@ -8,7 +8,7 @@ Stashly already has good habits: subsystem docs and skills, bugs root-caused in 
 
 **17 items** · 6 high priority · categories: Code 7, Architecture 4, Infrastructure 3, Dependency 1, Documentation 1, Test 1
 
-**Status at 29 Sep 2026:** 2 resolved · 1 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 9 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 30 Sep 2026:** 3 resolved · 1 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 8 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -16,7 +16,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 
 | # | Item | Type | I | R | E | Priority | Effort | Status |
 |---|------|------|---|---|---|----------|--------|--------|
-| 1 | No CI: nothing runs typecheck, tests or build automatically | Infrastructure | 4 | 4 | 2 | **32** (High) | 0.5–1 day | Open |
+| 1 | ~~No CI: nothing runs typecheck, tests or build automatically~~ | Infrastructure | 4 | 4 | 2 | **32** (High) | 0.5–1 day | Resolved |
 | 2 | Deploy path is broken and runs an end-of-life Node | Infrastructure | 3 | 5 | 2 | **32** (High) | 1–2 days | Open |
 | 3 | ~~Two known 500s on ordinary requests~~ | Code | 3 | 3 | 1 | **30** (High) | 0.5 day | Resolved |
 | 4 | No error tracking or structured logging | Infrastructure | 3 | 4 | 2 | **28** (High) | 1 day | Open |
@@ -43,7 +43,12 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** `.github/` holds only Copilot instructions and prompts, with no `workflows/`. The only guard is `.claude/hooks/check-staged-types.mjs`, which fires on `git commit` only when the commit goes through Claude Code. A commit from a terminal or the IDE skips it. 2 of 305 commits since June are `test:` commits.
 - **Fix:** Add one GitHub Actions workflow on push/PR: `pnpm install --frozen-lockfile`, `pnpm typecheck` (against the tsc baseline), `pnpm test`, `pnpm build`. Add Playwright e2e later as a separate job.
 - **Why it matters:** Every other fix on this list is only as durable as the check that stops it regressing. This one is cheap and protects all the others.
-- **Status 2026-09-29: open.** There's still no `.github/workflows/`.
+- **Resolved 2026-09-30** (`b95cdd5`). `.github/workflows/ci.yml` runs on every push to `main` and every PR. It installs with `--frozen-lockfile`, then runs the typecheck, the unit tests and `pnpm build`. The first run passed on GitHub in 1m53s.
+  - **Typecheck:** reuses `check-staged-types.mjs` with a new `--all` flag, which checks every file against `.claude/tsc-baseline.json` rather than only the staged ones. It also fails if tsc dies without reporting any errors, so an empty result can't pass as clean.
+  - **Tests excluded:** `collection-actions` and `pin-actions` need a live Postgres, which CI doesn't have. `activity.test.ts` is also excluded because of 4 failures that predate CI; take it off the list once they're fixed.
+  - **What turning it on found:** before the first push, it caught two regressions already on `main`. One was a type error from the dead `/recent` link, fixed in `1f030cf`; the commit hook missed it because the file wasn't staged. The other was a page-size test left at 25 after `3798c2c` raised the default to 50, fixed in `14f2ca9`.
+  - **Actions:** bumped to `checkout@v7`, `setup-node@v7` and `cache@v6` to clear GitHub's warning that Node 20 is deprecated.
+  - **Follow-up:** a Postgres service in CI would let the two DB test files run.
 
 ### 2. Deploy path is broken and runs an end-of-life Node
 
@@ -96,7 +101,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Status 2026-09-29: partly done** (`d8bf186`, 2026-09-25).
   - **Done:** the native packages are gone and `radix-ui` is pinned to `^1.6.7`. `crypto-js` is replaced by Web Crypto, and `toBase64` became `toSHA256`, since Web Crypto has no MD5.
   - **Still in `package.json`:** `webgpu`, `@statelyai/inspect`, `@huggingface/tokenizers` and `@stripe/stripe-js`. None of them has an import in `app/`, `server*`, `scripts/` or `vite.config.ts`. `tsconfig` references `@webgpu/types`, which is a different package from `webgpu`.
-  - **Gap `d8bf186` introduced:** `overview-view.tsx:155` still links to `/:me/stash/recent`, and that route is no longer in `routes.ts`.
+  - **Gap `d8bf186` introduced, since fixed:** `overview-view.tsx` linked "All files" to the deleted `/:me/stash/recent` route. It now points to `/:me/stash/all` (`1f030cf`, 2026-09-30).
 
 ### 7. The type baseline is stale, and escape hatches are growing
 
@@ -116,7 +121,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Why it matters:** Wrong quota numbers and stale permission rows are the kind of bug that surfaces as a billing or access dispute.
 - **Status 2026-09-29: partly done.**
   - **Permission rows: done** (`b7ec938`). `Permission_itemId_fkey` is now `ON DELETE CASCADE`. The first migration also deletes the rows already orphaned: those with no item, no share link and no invitation recipient. The 2026-09-27 diagnosis counted 956 of them on the dev DB. Prod runs that `DELETE` on its next migration.
-  - **`openedAt`: resolved** (`62ddd1c`). The three loaders no longer write it themselves. `getFolder`, `getFileItem` and `getCollectionForUser` record it inside the action, next to the access check; the collection's check and write share one transaction. Accepted as the fix: the write still runs during the `GET`, but it's owned by the action rather than the loader, and no fire-and-forget or `clientLoader` ping is planned. The same commit added an access check to the folder loader, which had read the folder straight from `prisma` without one.
+  - **`openedAt`: resolved** (`62ddd1c`). The three loaders no longer write it themselves. `getFolder`, `getFileItem` and `getCollectionForUser` record it inside the action, next to the access check; the collection's check and write share one transaction. `62ddd1c` first put the permission check *before* the existence check, so a missing collection answered 403; `0c1db6d` (2026-09-30) restored 404. Accepted as the fix: the write still runs during the `GET`, but it's owned by the action rather than the loader, and no fire-and-forget or `clientLoader` ping is planned. The same commit added an access check to the folder loader, which had read the folder straight from `prisma` without one.
   - **Quota client: open.** `retrieveUserUsageMetrics` still calls `findQuotaByUserId(userId)` without its `client` (`item-actions.ts:3367`).
   - **Filter maps:** not re-checked. `item-filters-coverage.test.ts` (from `fb3950d`, 2026-09-11) guards the item filters.
 
@@ -168,6 +173,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Why it matters:** The costly regressions in the git log (upload loss, access 500s, trash 500) are all in untested server paths.
 - **Status 2026-09-29: open.**
   - **New tests since the audit:** the trash loader's thumbnail filter (`af779ee`) and the upload db machine (29 tests in `app/machines/db`, 7 of them added in `c6751b2`).
+  - **Now run automatically:** since 2026-09-30, CI runs every unit test except the three excluded files (see item 1): 525 tests in 37 files.
   - **Unchanged:** `app/.server/__tests__` still has 5 test files, there are still 8 Playwright specs, and `item-actions.ts` still has no tests.
 
 ### 14. Two thumbnail orchestrators
@@ -229,6 +235,9 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-09-27 | `c6751b2` | 9, 13 | Quota charged once, only after the Item row exists, with 7 new db-machine tests. |
 | 2026-09-29 | `b7ec938` | 8 | `Permission_itemId_fkey` changed to `ON DELETE CASCADE`, with a cleanup of orphaned rows. |
 | 2026-09-29 | `62ddd1c` | 8 | Folder access check and `openedAt` writes moved from loaders into actions. |
+| 2026-09-30 | `0c1db6d` | 8 | `getCollectionForUser` checks existence before permission again, so a missing collection is 404, not 403. |
+| 2026-09-30 | `1f030cf`, `14f2ca9` | 6, 13 | The dead `/recent` link now points to `/all`; the page-size test expects the new default of 50. |
+| 2026-09-30 | `b95cdd5` | 1 | CI workflow added, plus the hook's `--all` mode. |
 
 ## Phased remediation plan
 
@@ -250,13 +259,13 @@ Quick wins that shrink the surface area before anything else. Also finish or rev
 
 Build the safety net: CI, a deploy that works, error tracking and a linter. Every later fix depends on these to stay fixed.
 
-- No CI: nothing runs typecheck, tests or build automatically (0.5–1 day)
+- ~~No CI: nothing runs typecheck, tests or build automatically (0.5–1 day)~~: resolved 2026-09-30
 - Deploy path is broken and runs an end-of-life Node (1–2 days)
 - No error tracking or structured logging (1 day)
 - No linter (1 day + fixes)
 - The type baseline is stale, and escape hatches are growing (1–2 days)
 
-*Status 2026-09-29:* not started.
+*Status 2026-09-30:* CI is done. The deploy path, error tracking, linter and type baseline aren't started.
 
 ### Phase 2 · this month
 
