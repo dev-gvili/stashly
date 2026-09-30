@@ -152,7 +152,7 @@ export function OverviewView({
             subtitle="your most recently opened items"
             action={
               <Link
-                to={to(href('/:me/stash/recent', me))}
+                to={to(href('/:me/stash/all', me))}
                 className="text-muted-foreground hover:text-foreground text-xs tracking-wider uppercase transition-colors"
               >
                 All files →
