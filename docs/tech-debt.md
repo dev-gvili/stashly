@@ -8,7 +8,7 @@ Stashly already has good habits: subsystem docs and skills, bugs root-caused in 
 
 **17 items** · 6 high priority · categories: Code 7, Architecture 4, Infrastructure 3, Dependency 1, Documentation 1, Test 1
 
-**Status at 30 Sep 2026:** 3 resolved · 1 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 8 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 30 Sep 2026:** 3 resolved · 2 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 7 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -17,7 +17,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | # | Item | Type | I | R | E | Priority | Effort | Status |
 |---|------|------|---|---|---|----------|--------|--------|
 | 1 | ~~No CI: nothing runs typecheck, tests or build automatically~~ | Infrastructure | 4 | 4 | 2 | **32** (High) | 0.5–1 day | Resolved |
-| 2 | Deploy path is broken and runs an end-of-life Node | Infrastructure | 3 | 5 | 2 | **32** (High) | 1–2 days | Open |
+| 2 | Deploy path is broken and runs an end-of-life Node | Infrastructure | 3 | 5 | 2 | **32** (High) | 1–2 days | Resolved in code; first `fly deploy` unconfirmed |
 | 3 | ~~Two known 500s on ordinary requests~~ | Code | 3 | 3 | 1 | **30** (High) | 0.5 day | Resolved |
 | 4 | No error tracking or structured logging | Infrastructure | 3 | 4 | 2 | **28** (High) | 1 day | Open |
 | 5 | Thumbnails of private files are publicly readable | Architecture | 4 | 5 | 3 | **27** (High) | 3–5 days | Resolved in code; ACL sweep unconfirmed |
@@ -57,7 +57,17 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** `Dockerfile` runs `npm ci` and copies `package-lock.json`, but the repo uses pnpm and has no `package-lock.json`, so the image can't build. The base image is `node:20-alpine`, and Node 20 reached end of life on 30 Apr 2026. `.dockerignore` excludes only `.react-router`, `build`, `node_modules` and `README.md`, so `COPY . /app` sends `.env`, `.git` and `.chat-history` into the build context. There's no `fly.toml` for the app, even though `deploy/README.md` says step 3 is "repo root", and no step runs `prisma migrate deploy`.
 - **Fix:** Rewrite the Dockerfile for pnpm (`corepack enable`, `pnpm fetch` / `install --frozen-lockfile --prod`) on Node 22 or 24 LTS. Add `.env*`, `.git`, `.chat-history`, `copilot_exports`, `tests`, `playwright-report` and `models` to `.dockerignore`. Commit a `fly.toml` with `release_command = "pnpm prisma migrate deploy"`. Pin Node via `engines` and `packageManager`.
 - **Why it matters:** Today a deploy would fail, or would run on a runtime that gets no security patches. Secrets in a build context get uploaded to remote builders.
-- **Status 2026-09-29: open.** The `Dockerfile` still runs `npm ci` on `node:20-alpine`, and there's no `fly.toml`. This matters more now that `b7ec938` ships a migration with a data `DELETE`: nothing in the deploy path runs `prisma migrate deploy`.
+- **Status 2026-09-30: resolved in code** (`e8a61eb`, `326c317`, `eda8fc7`).
+  - **`Dockerfile`:** builds with pnpm 12.4.1 on `node:24-bookworm-slim`. It uses Debian because `onnxruntime-node` and `webgpu` ship glibc-only binaries. It runs as the non-root `node` user on port 8080.
+  - **`fly.toml`:** app `stashly` in `iad`, with `release_command = prisma migrate deploy`, a health check on `/api/health`, one machine always running for the notification streams, a higher request limit, and a shared-CPU 1 GB VM. The VM size is a guess.
+  - **`.dockerignore`:** now excludes `.env*`, `.git`, chat history and tooling.
+  - **Dependencies:** `prisma` moved to dependencies, because the release command runs it and `postinstall` needs it.
+  - **CI `docker` job:** builds the image, runs `prisma validate` in it, and boots it until `/api/health` answers 200. The first run found two bugs that would have broken the deployed app:
+    - `clsx` and `tailwind-merge` were devDependencies the server loads at runtime, so every request returned 500. They're now dependencies (`326c317`).
+    - `app/.server/stripe.ts` throws when the module loads if `STRIPE_SECRET_KEY` is unset, which also broke every request. CI now sets a placeholder, and the deploy README flags the secret as required.
+  - **`deploy/README.md` step 3:** lists all 24 secrets. `BETTER_AUTH_URL` isn't in our code's `process.env` reads; it was found through Better Auth's boot warning.
+  - **Not verified:** a real `fly deploy`, and whether the release command works against prod.
+  - **Not done:** pinning Node with `engines` and pnpm with `packageManager` in `package.json`.
 
 ### 3. Two known 500s on ordinary requests
 
@@ -238,6 +248,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-09-30 | `0c1db6d` | 8 | `getCollectionForUser` checks existence before permission again, so a missing collection is 404, not 403. |
 | 2026-09-30 | `1f030cf`, `14f2ca9` | 6, 13 | The dead `/recent` link now points to `/all`; the page-size test expects the new default of 50. |
 | 2026-09-30 | `b95cdd5` | 1 | CI workflow added, plus the hook's `--all` mode. |
+| 2026-09-30 | `e8a61eb`, `326c317`, `eda8fc7` | 2 | Dockerfile rebuilt for pnpm and Node 24, `fly.toml` with a migration release command, and a CI docker job that boots the image. |
 
 ## Phased remediation plan
 
@@ -260,12 +271,12 @@ Quick wins that shrink the surface area before anything else. Also finish or rev
 Build the safety net: CI, a deploy that works, error tracking and a linter. Every later fix depends on these to stay fixed.
 
 - ~~No CI: nothing runs typecheck, tests or build automatically (0.5–1 day)~~: resolved 2026-09-30
-- Deploy path is broken and runs an end-of-life Node (1–2 days)
+- ~~Deploy path is broken and runs an end-of-life Node (1–2 days)~~: resolved in code 2026-09-30
 - No error tracking or structured logging (1 day)
 - No linter (1 day + fixes)
 - The type baseline is stale, and escape hatches are growing (1–2 days)
 
-*Status 2026-09-30:* CI is done. The deploy path, error tracking, linter and type baseline aren't started.
+*Status 2026-09-30:* CI and the deploy path are done, though the first `fly deploy` is still to confirm. Error tracking, the linter and the type baseline aren't started.
 
 ### Phase 2 · this month
 
