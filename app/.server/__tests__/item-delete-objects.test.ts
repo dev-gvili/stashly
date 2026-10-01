@@ -48,11 +48,15 @@ function interceptDeletes(failKeys: string[] = []) {
   return calls
 }
 
+let strangerId: string
+
 beforeAll(async () => {
   ownerId = uid('User')
   await prisma.user.create({ data: { id: ownerId, name: 'Delete objects', email: `del-${ownerId}@test.local`, emailVerified: true } })
   driveId = uid('Drive')
   await prisma.drive.create({ data: { id: driveId, ownerId } })
+  strangerId = uid('User')
+  await prisma.user.create({ data: { id: strangerId, name: 'Delete stranger', email: `del-${strangerId}@test.local`, emailVerified: true } })
 })
 
 afterEach(() => {
@@ -60,8 +64,78 @@ afterEach(() => {
 })
 
 afterAll(async () => {
-  await wipeTestUsers([ownerId])
-  await prisma.user.deleteMany({ where: { id: ownerId } })
+  await prisma.permission.deleteMany({ where: { users: { some: { id: strangerId } } } })
+  await wipeTestUsers([ownerId, strangerId])
+  await prisma.user.deleteMany({ where: { id: { in: [ownerId, strangerId] } } })
+})
+
+/** Grant `userId` a permission with `role` on `itemId`. */
+async function grant(userId: string, itemId: string, role: 'read' | 'write' | 'owner') {
+  await prisma.permission.create({
+    data: { id: uid('Permission'), itemId, roles: role, users: { connect: { id: userId } } },
+  })
+}
+
+describe('permanent delete requires owner access', () => {
+  it('deleteItem refuses a user with no access: 403, nothing deleted, nothing sent to S3', async () => {
+    const file = await makeItem('file', null, 'not-yours.pdf')
+    const calls = interceptDeletes()
+
+    await expect(deleteItem(file, strangerId)).rejects.toMatchObject({ errorCode: 'FORBIDDEN', status: 403 })
+
+    expect(await prisma.item.count({ where: { id: file } })).toBe(1)
+    expect(calls).toEqual([])
+  })
+
+  it('deleteItem refuses a user with only write access', async () => {
+    const file = await makeItem('file', null, 'shared-write.pdf')
+    await grant(strangerId, file, 'write')
+    interceptDeletes()
+
+    await expect(deleteItem(file, strangerId)).rejects.toMatchObject({ errorCode: 'FORBIDDEN', status: 403 })
+    expect(await prisma.item.count({ where: { id: file } })).toBe(1)
+  })
+
+  it('deleteItem allows a user granted owner access', async () => {
+    const file = await makeItem('file', null, 'shared-owner.pdf')
+    await grant(strangerId, file, 'owner')
+    interceptDeletes()
+
+    await expect(deleteItem(file, strangerId)).resolves.toMatchObject({ id: file })
+  })
+
+  it('refuses a workspace item to a non-member, even one holding an owner permission on it', async () => {
+    // The membership check comes from the item's own workspaceId, not from the
+    // caller, so leaving the workspace out of the request can't skip it.
+    const workspaceId = uid('Workspace')
+    await prisma.workspace.create({ data: { id: workspaceId, name: 'Delete test WS' } })
+    try {
+      const file = await makeItem('file', null, 'workspace-file.pdf')
+      await prisma.item.update({ where: { id: file }, data: { workspaceId } })
+      await grant(strangerId, file, 'owner')
+      const calls = interceptDeletes()
+
+      await expect(deleteItem(file, strangerId)).rejects.toMatchObject({ errorCode: 'FORBIDDEN', status: 403 })
+      expect(await prisma.item.count({ where: { id: file } })).toBe(1)
+      expect(calls).toEqual([])
+
+      await prisma.item.update({ where: { id: file }, data: { workspaceId: null } })
+    } finally {
+      await prisma.workspace.deleteMany({ where: { id: workspaceId } })
+    }
+  })
+
+  it('deleteItems is all-or-nothing: one item without access refuses the whole batch', async () => {
+    const mine = await makeItem('file', null, 'mine.pdf')
+    const theirs = await makeItem('file', null, 'theirs.pdf')
+    await grant(strangerId, mine, 'owner')
+    const calls = interceptDeletes()
+
+    await expect(deleteItems([mine, theirs], strangerId)).rejects.toMatchObject({ errorCode: 'FORBIDDEN', status: 403 })
+
+    expect(await prisma.item.count({ where: { id: { in: [mine, theirs] } } })).toBe(2)
+    expect(calls).toEqual([])
+  })
 })
 
 describe('permanent delete removes stored objects', () => {

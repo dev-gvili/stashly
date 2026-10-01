@@ -30,6 +30,7 @@ import {
   upsertSearchChunks,
   upsertSearchContent,
 } from '@/services/search-actions'
+import { toErrorInfo } from '@/utils/api.errors'
 import { clampPendingLimit } from '@/utils/embedding-backfill'
 import { parseFormData } from '@/utils/parsers'
 import { removeQueryParam, removeQueryParamValue } from '@/utils/query-params'
@@ -147,6 +148,8 @@ export async function action({ request, params }: Route.ActionArgs) {
         return { success: false, error: e }
       }
     }
+    // Delete failures answer with their real status (403 for a refused delete)
+    // rather than a 200 carrying `{ success: false }`.
     case 'delete_item':
       try {
         await deleteItem(parsedData.selectedItem, user.id)
@@ -158,7 +161,11 @@ export async function action({ request, params }: Route.ActionArgs) {
         return redirect(`${url.pathname}${url.search}`)
       } catch (e) {
         console.error(e)
-        return { success: false, error: e }
+        const err = toErrorInfo(e)
+        return data(
+          { success: false, error: err.message ?? 'Delete failed' },
+          { status: err.status ?? 500 }
+        )
       }
     case 'trash_items':
       try {
@@ -200,7 +207,11 @@ export async function action({ request, params }: Route.ActionArgs) {
         return redirect(`${url.pathname}${url.search}`)
       } catch (e) {
         console.error(e)
-        return { success: false, error: e }
+        const err = toErrorInfo(e)
+        return data(
+          { success: false, error: err.message ?? 'Delete failed' },
+          { status: err.status ?? 500 }
+        )
       }
     case 'move_item':
       try {

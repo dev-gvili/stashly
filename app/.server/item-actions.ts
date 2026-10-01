@@ -741,7 +741,38 @@ async function removeStoredObjects(objects: Map<string, string[]>) {
   }
 }
 
+/**
+ * Permanent delete can't be undone, so it needs `owner` access to every item
+ * asked for — the item's owner or an `owner` permission; `write` is not enough —
+ * and, for a workspace item, membership of that workspace (`assertItemAccess`).
+ *
+ * The workspace is read from each item, not taken from the caller: a caller
+ * that left `workspaceId` out would otherwise skip the membership check.
+ * All-or-nothing: every check runs before anything is deleted, so one refusal
+ * deletes nothing. Contents of a deleted folder go with it, as before.
+ */
+async function assertCanDeletePermanently(itemIds: string[], userId: string) {
+  const ids = [...new Set(itemIds)]
+  const workspaces = new Map(
+    (
+      await prisma.item.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, workspaceId: true },
+      })
+    ).map((i) => [i.id, i.workspaceId])
+  )
+  await Promise.all(
+    ids.map((id) =>
+      assertItemAccess(userId, id, {
+        workspaceId: workspaces.get(id) ?? undefined,
+        role: 'owner',
+      })
+    )
+  )
+}
+
 export async function deleteItem(id: string, userId: string) {
+  await assertCanDeletePermanently([id], userId)
   const objects = await storedObjectsOf(await withDescendantIds([id]))
   const deleted = await prisma.item.delete({
     where: { id },
@@ -804,6 +835,7 @@ export async function deleteItems(ids: string[], userId: string) {
     return
   }
 
+  await assertCanDeletePermanently(ids, userId)
   const allIds = await withDescendantIds(ids)
   const objects = await storedObjectsOf(allIds)
 
