@@ -1,0 +1,115 @@
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { DeleteObjectsCommand } from '@aws-sdk/client-s3'
+import { prisma } from '@/services/db'
+import { s3 } from '@/services/s3'
+import { deleteItem, deleteItems } from '@/services/item-actions'
+import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import { wipeTestUsers } from './helpers/wipe-test-users'
+
+/**
+ * Permanent delete must remove the deleted items' bytes and thumbnails from
+ * S3. Before this, `deleteItems` removed only the rows: every "deleted" file
+ * stayed in the bucket (335 such objects were found in one dev bucket).
+ *
+ * Needs a live database (CI provides one). S3 is not available in CI, so the
+ * client's `send` is intercepted and the DeleteObjects calls it receives are
+ * asserted instead.
+ */
+const uid = (model: Parameters<typeof getPrefixForModel>[0]) => toObjectId(getPrefixForModel(model))
+const BUCKET = 'stashly-test-delete-objects'
+
+let ownerId: string
+let driveId: string
+
+async function makeItem(type: 'file' | 'folder', parentId: string | null, name: string) {
+  const id = uid('Item')
+  await prisma.item.create({
+    data: { id, name, type, category: type === 'file' ? 'document' : 'unknown', status: 'normal', ownerId, driveId, parentId, size: 0 },
+  })
+  if (type === 'file') {
+    await prisma.file.create({ data: { id: uid('File'), itemId: id, bucket: BUCKET, key: `${parentId ?? 'root'}/${name}` } })
+    await prisma.thumbnail.create({ data: { id: uid('Thumbnail'), itemId: id, bucket: BUCKET, stage: 3 } })
+  }
+  return id
+}
+
+/** Captures every DeleteObjects call; `failKeys` come back in `Errors`. */
+function interceptDeletes(failKeys: string[] = []) {
+  const calls: { bucket: string; keys: string[] }[] = []
+  const realSend = s3.send.bind(s3)
+  vi.spyOn(s3, 'send').mockImplementation(async (command: any) => {
+    if (command instanceof DeleteObjectsCommand) {
+      const keys = (command.input.Delete?.Objects ?? []).map((o) => o.Key!)
+      calls.push({ bucket: command.input.Bucket!, keys })
+      return { Errors: keys.filter((k) => failKeys.includes(k)).map((Key) => ({ Key, Code: 'InternalError', Message: 'simulated' })) } as any
+    }
+    return realSend(command)
+  })
+  return calls
+}
+
+beforeAll(async () => {
+  ownerId = uid('User')
+  await prisma.user.create({ data: { id: ownerId, name: 'Delete objects', email: `del-${ownerId}@test.local`, emailVerified: true } })
+  driveId = uid('Drive')
+  await prisma.drive.create({ data: { id: driveId, ownerId } })
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+afterAll(async () => {
+  await wipeTestUsers([ownerId])
+  await prisma.user.deleteMany({ where: { id: ownerId } })
+})
+
+describe('permanent delete removes stored objects', () => {
+  it('deleteItems removes a folder subtree’s files and thumbnails', async () => {
+    const folder = await makeItem('folder', null, 'docs')
+    const a = await makeItem('file', folder, 'a.pdf')
+    const sub = await makeItem('folder', folder, 'sub')
+    const b = await makeItem('file', sub, 'b.pdf')
+    const calls = interceptDeletes()
+
+    await deleteItems([folder], ownerId)
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0].bucket).toBe(BUCKET)
+    expect(calls[0].keys.sort()).toEqual(
+      [`${folder}/a.pdf`, `${sub}/b.pdf`, `thumbnails/${a}.webp`, `thumbnails/${b}.webp`].sort()
+    )
+    expect(await prisma.item.count({ where: { id: { in: [folder, a, sub, b] } } })).toBe(0)
+  })
+
+  it('deleteItem removes a single file’s bytes and thumbnail', async () => {
+    const file = await makeItem('file', null, 'single.txt')
+    const calls = interceptDeletes()
+
+    await deleteItem(file, ownerId)
+
+    expect(calls).toEqual([{ bucket: BUCKET, keys: ['root/single.txt', `thumbnails/${file}.webp`] }])
+  })
+
+  it('deleteItem on a folder also removes what was inside it', async () => {
+    const folder = await makeItem('folder', null, 'nested')
+    const inner = await makeItem('file', folder, 'inner.png')
+    const calls = interceptDeletes()
+
+    await deleteItem(folder, ownerId)
+
+    expect(calls[0].keys.sort()).toEqual([`${folder}/inner.png`, `thumbnails/${inner}.webp`].sort())
+  })
+
+  it('logs S3 keys it could not delete, and still completes the delete', async () => {
+    const file = await makeItem('file', null, 'stuck.bin')
+    interceptDeletes(['root/stuck.bin'])
+    const logged = vi.spyOn(console, 'error')
+
+    await expect(deleteItem(file, ownerId)).resolves.toMatchObject({ id: file })
+
+    expect(await prisma.item.count({ where: { id: file } })).toBe(0)
+    const message = logged.mock.calls.map((c) => String(c[0])).find((m) => m.includes('[delete]'))
+    expect(message).toContain(`1 of 2 S3 object(s) left behind in ${BUCKET}`)
+  })
+})

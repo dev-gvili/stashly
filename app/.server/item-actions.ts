@@ -16,9 +16,10 @@ import {
   onItemsRestored,
   onItemsTrashed,
 } from '@/services/quota-actions'
-import { getObjectText } from '@/services/s3'
+import { deleteObjects, getObjectText } from '@/services/s3'
 import {
   signThumbnails,
+  thumbnailKey,
   type WithSignedThumbnails,
 } from '@/services/thumbnail-actions'
 import {
@@ -673,10 +674,79 @@ export async function restoreItems(ids: string[], userId: string) {
  * // Permanently delete a file
  * await deleteItem('item_123', 'usr_456');
  */
+/**
+ * Ids of `ids` and every item beneath them. Deleting an item cascades to its
+ * children in the database (`parent` is `onDelete: Cascade`), so their stored
+ * objects have to be collected before the delete runs.
+ */
+async function withDescendantIds(ids: string[]): Promise<string[]> {
+  if (ids.length === 0) return []
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+    WITH RECURSIVE "Descendants" AS (
+      SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
+      UNION ALL
+      SELECT i."id" FROM "Item" i INNER JOIN "Descendants" d ON i."parentId" = d."id"
+    )
+    SELECT "id" FROM "Descendants"
+  `
+  return rows.map((r) => r.id)
+}
+
+/**
+ * Every S3 object the given items own, grouped by bucket: each file's bytes
+ * (`File.bucket`/`File.key`) and each thumbnail (`thumbnails/{itemId}.webp`).
+ * Read *before* the rows are deleted — afterwards nothing points at them.
+ */
+export async function storedObjectsOf(
+  itemIds: string[]
+): Promise<Map<string, string[]>> {
+  const byBucket = new Map<string, Set<string>>()
+  if (itemIds.length === 0) return new Map()
+  const add = (bucket: string, key: string) => {
+    if (!byBucket.has(bucket)) byBucket.set(bucket, new Set())
+    byBucket.get(bucket)!.add(key)
+  }
+  const [files, thumbnails] = await Promise.all([
+    prisma.file.findMany({
+      where: { itemId: { in: itemIds } },
+      select: { bucket: true, key: true },
+    }),
+    prisma.thumbnail.findMany({
+      where: { itemId: { in: itemIds }, bucket: { not: null } },
+      select: { bucket: true, itemId: true },
+    }),
+  ])
+  for (const f of files) add(f.bucket, f.key)
+  for (const t of thumbnails) if (t.bucket && t.itemId) add(t.bucket, thumbnailKey(t.itemId))
+  return new Map([...byBucket].map(([bucket, keys]) => [bucket, [...keys]]))
+}
+
+/**
+ * Deletes the stored objects of items whose rows are already gone. Runs after
+ * the database delete, never before: if S3 fails here the objects are merely
+ * orphans (scripts/sweep-s3-orphans.ts removes them), whereas the reverse
+ * order could leave live items pointing at missing bytes. A failure is logged
+ * loudly and does not fail the request — the delete the user asked for did
+ * happen.
+ */
+async function removeStoredObjects(objects: Map<string, string[]>) {
+  for (const [bucket, keys] of objects) {
+    const { failed } = await deleteObjects(bucket, keys)
+    if (failed.length > 0) {
+      console.error(
+        `[delete] ${failed.length} of ${keys.length} S3 object(s) left behind in ${bucket}; the orphan sweep will remove them:`,
+        failed
+      )
+    }
+  }
+}
+
 export async function deleteItem(id: string, userId: string) {
+  const objects = await storedObjectsOf(await withDescendantIds([id]))
   const deleted = await prisma.item.delete({
     where: { id },
   })
+  await removeStoredObjects(objects)
 
   const size = deleted.size ?? 0n
   if (size > 0n) {
@@ -734,18 +804,8 @@ export async function deleteItems(ids: string[], userId: string) {
     return
   }
 
-  // Find all descendant IDs using a recursive query
-  const descendantIds = await prisma.$queryRaw<Array<{ id: string }>>`
-    WITH RECURSIVE "Descendants" AS (
-      SELECT "id"
-      FROM "Item"
-      WHERE "id" IN (${Prisma.join(ids)})
-      UNION ALL
-      SELECT i."id" FROM "Item" i INNER JOIN "Descendants" d ON i."parentId" = d."id"
-    )
-    SELECT "id" FROM "Descendants"
-  `
-  const allIds = descendantIds.map((item) => item.id)
+  const allIds = await withDescendantIds(ids)
+  const objects = await storedObjectsOf(allIds)
 
   // Aggregate sizes by status before deleting so we can adjust quota correctly
   const [trashedAgg, activeAgg] = await Promise.all([
@@ -760,6 +820,7 @@ export async function deleteItems(ids: string[], userId: string) {
   ])
 
   const result = await prisma.item.deleteMany({ where: { id: { in: allIds } } })
+  await removeStoredObjects(objects)
 
   const trashedSize = trashedAgg._sum.size ?? 0n
   const activeSize = activeAgg._sum.size ?? 0n

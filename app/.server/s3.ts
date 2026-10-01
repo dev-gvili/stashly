@@ -909,6 +909,53 @@ export async function deleteFile(bucket: string, key: string) {
   }
 }
 
+/** A key `deleteObjects` could not delete, with the reason S3 gave. */
+export interface FailedDelete {
+  key: string
+  code?: string
+  message?: string
+}
+
+/**
+ * Permanently deletes objects from one bucket, 1,000 keys per `DeleteObjects`
+ * call (the API's limit).
+ *
+ * `DeleteObjects` answers 200 even when some keys fail; the failures arrive in
+ * the response's `Errors`. They are returned here, never dropped, and a call
+ * that throws outright (network, auth) marks its whole batch as failed rather
+ * than aborting the rest.
+ *
+ * @example
+ * const { deleted, failed } = await deleteObjects('stashly-x', ['fld/a.pdf', 'thumbnails/item_1.webp'])
+ */
+export async function deleteObjects(
+  bucket: string,
+  keys: string[]
+): Promise<{ deleted: number; failed: FailedDelete[] }> {
+  let deleted = 0
+  const failed: FailedDelete[] = []
+  for (let i = 0; i < keys.length; i += 1000) {
+    const batch = keys.slice(i, i + 1000)
+    try {
+      const res = await s3.send(
+        new DeleteObjectsCommand({
+          Bucket: bucket,
+          Delete: { Objects: batch.map((Key) => ({ Key })), Quiet: true },
+        })
+      )
+      const errors = res.Errors ?? []
+      for (const e of errors) {
+        failed.push({ key: e.Key ?? '', code: e.Code, message: e.Message })
+      }
+      deleted += batch.length - errors.length
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      for (const key of batch) failed.push({ key, code: 'RequestFailed', message })
+    }
+  }
+  return { deleted, failed }
+}
+
 /**
  * Checks whether an object exists in a bucket using a `HEAD` request.
  *
