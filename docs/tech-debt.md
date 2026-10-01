@@ -7,7 +7,7 @@
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
 **Now (1 Oct):** the safety net is mostly in place.
-- **CI:** every push to `main` runs the typecheck, the unit tests, the build and a smoke test of the Docker image. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 607 unit tests with none excluded, and the build. It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Still missing:** error tracking and a linter. Both need a new package, which needs the owner's decision.
@@ -65,10 +65,21 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Why it matters:** Every other fix on this list is only as durable as the check that stops it regressing. This one is cheap and protects all the others.
 - **Resolved 2026-09-30** (`b95cdd5`). `.github/workflows/ci.yml` runs on every push to `main` and every PR. It installs with `--frozen-lockfile`, then runs the typecheck, the unit tests and `pnpm build`. The first run passed on GitHub in 1m53s.
   - **Typecheck:** reuses `check-staged-types.mjs` with a new `--all` flag, which checks every file against `.claude/tsc-baseline.json` rather than only the staged ones. It also fails if tsc dies without reporting any errors, so an empty result can't pass as clean.
-  - **Tests excluded:** `collection-actions` and `pin-actions` need a live Postgres, which CI doesn't have. `activity.test.ts` is also excluded because of 4 failures that predate CI; take it off the list once they're fixed.
+  - **The first version was dishonest, reworked 2026-10-01** (`e6ac762`..`e506455`). The owner pointed out that its green results proved less than claimed:
+    - The docker job passed on an `/api/health` that was a `// TODO` stub returning 200, against a `DATABASE_URL` that didn't exist.
+    - The check job excluded three test files. Their failures were real: two wording strings a refactor had changed silently (one reversing a deliberate fix), and three stale collection tests.
+    - `filters.test.ts` passed by asserting a bug: invalid filter values were dropped, which widened queries.
+    - Vitest's agent-mode `minimal` reporter hid console output and errors from passing tests in Claude Code sessions.
+  - **Now:**
+    - Both jobs use a `pgvector/pgvector:pg17` service.
+    - `/api/health` runs `SELECT 1`.
+    - The release command migrates from the image.
+    - A container with no database must answer 503.
+    - Every test runs, and all server logs print, pass or fail.
+    - The reporter is pinned to `default`.
+    - Invalid filter values throw a 400.
   - **What turning it on found:** before the first push, it caught two regressions already on `main`. One was a type error from the dead `/recent` link, fixed in `1f030cf`; the commit hook missed it because the file wasn't staged. The other was a page-size test left at 25 after `3798c2c` raised the default to 50, fixed in `14f2ca9`.
   - **Actions:** bumped to `checkout@v7`, `setup-node@v7` and `cache@v6` to clear GitHub's warning that Node 20 is deprecated.
-  - **Follow-up:** a Postgres service in CI would let the two DB test files run.
 
 ### 2. Deploy path is broken and runs an end-of-life Node
 
@@ -225,7 +236,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Why it matters:** The costly regressions in the git log (upload loss, access 500s, trash 500) are all in untested server paths.
 - **Status 2026-10-01: open.**
   - **New tests since the audit:** the trash loader's thumbnail filter (`af779ee`) and the upload db machine (29 tests in `app/machines/db`, 7 of them added in `c6751b2`).
-  - **Now run automatically:** since 2026-09-30, CI runs every unit test except the three excluded files (see item 1): 525 tests in 37 files.
+  - **Now run automatically:** since 2026-10-01, CI runs every test file against a real Postgres, with nothing excluded: 607 tests in 42 files.
   - **Fixed in passing:** two `removeItemFromCollection` tests had failed since the function switched to an object argument, and now pass (`76c69a5`). `pnpm test` is 583 passing / 9 failing (2026-10-01).
   - **Unchanged:** `app/.server/__tests__` still has 5 test files, there are still 8 Playwright specs, and `item-actions.ts` still has no tests of its own. `trash-loader.test.ts` only mocks it.
 
@@ -301,6 +312,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-01 | `ea4c2a1`, `7e34556` | 17 | The favorites work in progress was finished: `unfavorite` returns data and bulk favorite clears the selection. Both were confirmed in the browser. |
 | 2026-10-01 | no commit (operation) | 5 | ACL sweep applied to every bucket: 7 grants made private, one bucket's object-ACL flag turned off. Signing cost re-measured: a concurrent `SELECT 1` peaked at 15 ms, against the 697 ms that forced the revert. |
 | 2026-10-01 | `736d6ca` | 8 | Drive and notification filter keys aligned with their schemas, guarded by a new coverage test. |
+| 2026-10-01 | `e6ac762`..`e506455` | 1, 13 | Honest CI: real Postgres for both jobs, a health check that queries the database, every test run, output never hidden, invalid filter values rejected with a 400. |
 
 ## Phased remediation plan
 
