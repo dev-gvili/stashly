@@ -16,13 +16,19 @@ describe('formatActivity', () => {
     expect(formatActivity(act(null))).toBe('Activity recorded')
   })
   it('formats create', () => {
-    expect(formatActivity(withAction('create', {}))).toBe('You created an item')
+    expect(formatActivity(withAction('create', {}))).toBe('You created this item')
   })
   it('formats rename', () => {
     expect(formatActivity(withAction('rename', { oldName: 'a.jpg', newName: 'b.jpg' }))).toBe('You renamed a.jpg → b.jpg')
   })
   it('formats move', () => {
-    expect(formatActivity(withAction('move', { from: 'src', to: 'dst' }))).toBe('You moved this item to dst')
+    // MoveAction's columns are fromParentName/toParentName (29af2d8); the old
+    // `from`/`to` fixture rendered "from undefined to undefined".
+    expect(
+      formatActivity(
+        withAction('move', { fromParentId: 'fld_src', fromParentName: 'src', toParentId: 'fld_dst', toParentName: 'dst' })
+      )
+    ).toBe('You moved this item from src to dst')
   })
   it('formats delete', () => {
     expect(formatActivity(withAction('delete', { name: 'x.pdf', itemType: 'file' }))).toBe('You deleted x.pdf')
