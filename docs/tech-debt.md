@@ -4,11 +4,33 @@
 
 ## Summary
 
-Stashly already has good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sits around the code rather than in it. Nothing runs automatically (no CI, lint or error tracking), the deploy path doesn't build, and thumbnails of private files are publicly readable. Adding CI, fixing the deploy and adding error tracking takes two to four days, and it keeps every later fix from regressing.
+**At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
+
+**Now (1 Oct):** the safety net is mostly in place.
+- **CI:** every push to `main` runs the typecheck, the unit tests, the build and a smoke test of the Docker image. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
+- **Thumbnails:** reads are signed and uploads are private.
+- **Still missing:** error tracking and a linter. Both need a new package, which needs the owner's decision.
 
 **17 items** · 6 high priority · categories: Code 7, Architecture 4, Infrastructure 3, Dependency 1, Documentation 1, Test 1
 
 **Status at 1 Oct 2026:** 5 resolved · 2 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 5 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+
+### What's left, in priority order
+
+| # | Item | What remains | Blocked on |
+|---|------|--------------|------------|
+| 4 | Error tracking and logging | All of it | Owner's choice of package (Sentry, pino or both) |
+| 2 | Deploy path | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
+| 5 | Private thumbnails | Run `scripts/sweep-thumbnail-acls.ts` against prod after the deploy; re-measure signing cost | Item 2's deploy |
+| 8 | Data integrity | Check the two filter maps TASKS.md flags | — |
+| 9 | Orphaned uploads | The S3 orphan-cleanup job and the `AbortIncompleteMultipartUpload` lifecycle rule | — |
+| 10 | Accessibility and responsive UI | All of it | — |
+| 12 | Linter | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
+| 13 | Tests where the risk is | `item-actions`, quota and permission tests; a Postgres service in CI for the DB tests | — |
+| 14 | Two thumbnail orchestrators | Move the upload runner off `useThumbnail` | The owner's visual sign-off on the XState pipeline |
+| 16 | Overlapping UI primitives | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
+| 17 | Unfinished migrations | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -58,7 +80,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Fix:** Rewrite the Dockerfile for pnpm (`corepack enable`, `pnpm fetch` / `install --frozen-lockfile --prod`) on Node 22 or 24 LTS. Add `.env*`, `.git`, `.chat-history`, `copilot_exports`, `tests`, `playwright-report` and `models` to `.dockerignore`. Commit a `fly.toml` with `release_command = "pnpm prisma migrate deploy"`. Pin Node via `engines` and `packageManager`.
 - **Why it matters:** Today a deploy would fail, or would run on a runtime that gets no security patches. Secrets in a build context get uploaded to remote builders.
 - **Status 2026-09-30: resolved in code** (`e8a61eb`, `326c317`, `eda8fc7`).
-  - **`Dockerfile`:** builds with pnpm 12.4.1 on `node:24-bookworm-slim`. It uses Debian because `onnxruntime-node` and `webgpu` ship glibc-only binaries. It runs as the non-root `node` user on port 8080.
+  - **`Dockerfile`:** builds with pnpm 12.4.1 on `node:24-bookworm-slim`. It uses Debian because `onnxruntime-node` ships one Linux build per architecture linked against glibc, needing GLIBC_2.28 with no musl variant, so it can't load on Alpine. This was checked in the shipped binaries on 2026-10-01. The earlier reason also named `webgpu`, which item 6 has since removed. It runs as the non-root `node` user on port 8080.
   - **`fly.toml`:** app `stashly` in `iad`, with `release_command = prisma migrate deploy`, a health check on `/api/health`, one machine always running for the notification streams, a higher request limit, and a shared-CPU 1 GB VM. The VM size is a guess.
   - **`.dockerignore`:** now excludes `.env*`, `.git`, chat history and tooling.
   - **Dependencies:** `prisma` moved to dependencies, because the release command runs it and `postinstall` needs it.
@@ -88,7 +110,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** `server.js` has `morgan` access logs only. There's no Sentry, OpenTelemetry, pino or equivalent anywhere in `app/.server` or `server.js`, and there are 40 `console.log` calls in app code. The thumbnail-signing revert (`4d84ea9`) found silent upload loss (16 of 16 files missing an `Item` row) only because someone reported it.
 - **Fix:** Add an error tracker to the server entry and the root `ErrorBoundary`, and a JSON logger with a request id. Replace `console.log` in `.server` code with the logger.
 - **Why it matters:** Upload loss, quota drift and 500s are all currently invisible until a user complains.
-- **Status 2026-09-29: open.** No error tracker or logger is installed. One partial improvement: the upload panel now reports failed item creation as an `itemFailed` status with the reason (`0235f0e`), so that failure is at least visible to the user.
+- **Status 2026-10-01: open** (re-checked: no Sentry, pino, OpenTelemetry or winston in `package.json`). No error tracker or logger is installed. One partial improvement: the upload panel now reports failed item creation as an `itemFailed` status with the reason (`0235f0e`), so that failure is at least visible to the user.
 
 ### 5. Thumbnails of private files are publicly readable
 
@@ -108,13 +130,12 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** No import found in `app/`, `server*`, `scripts/` or `vite.config.ts` for: `node-llama-cpp`, `node-av`, `webgpu`, `tesseract.js`, `@statelyai/inspect`, `@prisma/studio-core`, `@aws-sdk/client-sts`, `@aws-sdk/s3-presigned-post`, `@huggingface/inference`, `@huggingface/tokenizers`, `@alexanderolsen/libsamplerate-js`, `@hookform/resolvers`, `@stripe/stripe-js`, `@radix-ui/react-tooltip`, `@better-auth/infra`, `@fontsource-variable/geist(-mono)`. `radix-ui` is pinned to `latest`. `crypto-js`, which is no longer maintained, is used in two files for MD5 and random bytes.
 - **Fix:** Remove them one at a time and check that `pnpm build` and `pnpm test` still pass after each (some load through a string or `vite` config). Pin `radix-ui` to an exact range. Replace `crypto-js` with Web Crypto (`crypto.getRandomValues`, `crypto.subtle.digest`). Also rename `toBase64`, which actually returns an MD5 hash.
 - **Why it matters:** Native packages like `node-llama-cpp` and `node-av` make installs and images heavier and slower. `latest` can ship a breaking change on any install.
-- **Status 2026-09-29: partly done** (`d8bf186`, 2026-09-25).
-  - **Done:** the native packages are gone and `radix-ui` is pinned to `^1.6.7`. `crypto-js` is replaced by Web Crypto, and `toBase64` became `toSHA256`, since Web Crypto has no MD5.
+- **Resolved 2026-10-01.**
+  - **First pass** (`d8bf186`, 2026-09-25): the native packages are gone and `radix-ui` is pinned to `^1.6.7`. `crypto-js` is replaced by Web Crypto, and `toBase64` became `toSHA256`, since Web Crypto has no MD5.
   - **Last four removed 2026-10-01** (`ba437d3`): `webgpu`, `@statelyai/inspect`, `@huggingface/tokenizers` and `@stripe/stripe-js`, plus `webgpu`'s two build-permission entries in `pnpm-workspace.yaml`.
     - A whole-repo search found no imports. `'webgpu'` only appears as a device-name string, and `tsconfig`'s `@webgpu/types` is a different package.
     - `app/types/tokenizers-augment.d.ts` declares its module on its own, and `@huggingface/transformers` still installs `@huggingface/tokenizers` transitively.
     - Verified in a fresh clone: frozen install, the typecheck gate, 525/525 tests and the build all passed, and none of the four was installed.
-- **Resolved 2026-10-01.**
   - **Gap `d8bf186` introduced, since fixed:** `overview-view.tsx` linked "All files" to the deleted `/:me/stash/recent` route. It now points to `/:me/stash/all` (`1f030cf`, 2026-09-30).
 
 ### 7. The type baseline is stale, and escape hatches are growing
@@ -137,7 +158,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** All from TASKS.md. `openedAt` is written inside three loaders, two of them awaited on the response path, which breaks the rule in CLAUDE.md. `retrieveUserUsageMetrics` reads quota outside its transaction client. Permanent delete leaves orphan `Permission` rows (`ON DELETE SET NULL`); 19 appeared in one minute on 2026-09-14. Two filter files have unreachable keys.
 - **Fix:** Move `openedAt` to a fire-and-forget action or `clientLoader` ping. Thread `client` through `findQuotaByUserId`. Change the FK to `ON DELETE CASCADE`, or delete permissions explicitly, and add a cleanup migration. Fix the two filter maps.
 - **Why it matters:** Wrong quota numbers and stale permission rows are the kind of bug that surfaces as a billing or access dispute.
-- **Status 2026-09-29: partly done.**
+- **Status 2026-10-01: partly done.**
   - **Permission rows: done** (`b7ec938`). `Permission_itemId_fkey` is now `ON DELETE CASCADE`. The first migration also deletes the rows already orphaned: those with no item, no share link and no invitation recipient. The 2026-09-27 diagnosis counted 956 of them on the dev DB. Prod runs that `DELETE` on its next migration.
   - **`openedAt`: resolved** (`62ddd1c`). The three loaders no longer write it themselves. `getFolder`, `getFileItem` and `getCollectionForUser` record it inside the action, next to the access check; the collection's check and write share one transaction. `62ddd1c` first put the permission check *before* the existence check, so a missing collection answered 403; `0c1db6d` (2026-09-30) restored 404. Accepted as the fix: the write still runs during the `GET`, but it's owned by the action rather than the loader, and no fire-and-forget or `clientLoader` ping is planned. The same commit added an access check to the folder loader, which had read the folder straight from `prisma` without one.
   - **Quota client: fixed 2026-10-01** (`fc655be`). `retrieveUserUsageMetrics` now passes its transaction client to `findQuotaByUserId` (`item-actions.ts:3367`). The function already accepted it; the caller just didn't pass it.
@@ -162,7 +183,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** From the two design critiques in `docs/design-critique/`. Cards and rows are `div`/`tr onClick` and can't be reached by keyboard. About 20 icon buttons have no name. The Filter trigger nests buttons inside a button, which causes a hydration error on every load. The toolbar overflows below 840px and there's no navigation on phones. The item panel covers the file and the audio seek bar is mouse-only.
 - **Fix:** Use real `<a href>` links on cards and rows, `aria-label` on every icon button, and un-nest the Filter toggles. Make the toolbar and grid responsive and add a mobile nav sheet. Dock the item panel on wide screens.
 - **Why it matters:** Keyboard users can't open a file at all, and phone users can't reach most sections. Both limit who can use the product.
-- **Status 2026-09-29: open.** No commit since the audit targets these findings. The UI hasn't been re-audited.
+- **Status 2026-10-01: open.** No commit since the audit targets these findings: searching the log for a11y, aria, accessibility, keyboard and responsive finds none. The UI hasn't been re-audited.
 
 ### 11. Generated and personal files in git
 
@@ -180,7 +201,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** No ESLint or Biome config and no `lint` script. The 12 `eslint-disable` comments in app code don't do anything. Prettier is configured but not enforced.
 - **Fix:** Add ESLint (flat config) with `typescript-eslint`, `react-hooks`, `jsx-a11y` and `no-explicit-any` set to warn. Run it in CI. Enforce Prettier with `--check`.
 - **Why it matters:** `jsx-a11y` alone would have flagged most of the UI debt above. `react-hooks` catches stale-closure bugs across the 41 files in `app/hooks`.
-- **Status 2026-09-29: open.** There's no ESLint or Biome config and no `lint` script.
+- **Status 2026-10-01: open.** There's still no ESLint or Biome config and no `lint` script. Item 7's ban on new `as any` now waits on this.
 
 ### 13. Tests are missing where the risk is
 
@@ -189,11 +210,11 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** 39 unit test files, 25 of them in `app/utils`. There are 0 tests for 74 route modules and 184 components. `app/.server` has 5 test files for 38 modules, and `item-actions.ts` (3,544 lines, 52 exported functions) has none. There are 8 Playwright specs.
 - **Fix:** Don't aim for coverage numbers. Add an integration test per loader/action as you touch it, against the dev DB helpers that already exist in `.server/__tests__/helpers`. Start with create/move/delete/restore in `item-actions`, quota, and permission checks.
 - **Why it matters:** The costly regressions in the git log (upload loss, access 500s, trash 500) are all in untested server paths.
-- **Status 2026-09-29: open.**
+- **Status 2026-10-01: open.**
   - **New tests since the audit:** the trash loader's thumbnail filter (`af779ee`) and the upload db machine (29 tests in `app/machines/db`, 7 of them added in `c6751b2`).
   - **Now run automatically:** since 2026-09-30, CI runs every unit test except the three excluded files (see item 1): 525 tests in 37 files.
   - **Fixed in passing:** two `removeItemFromCollection` tests had failed since the function switched to an object argument, and now pass (`76c69a5`). `pnpm test` is 583 passing / 9 failing (2026-10-01).
-  - **Unchanged:** `app/.server/__tests__` still has 5 test files, there are still 8 Playwright specs, and `item-actions.ts` still has no tests.
+  - **Unchanged:** `app/.server/__tests__` still has 5 test files, there are still 8 Playwright specs, and `item-actions.ts` still has no tests of its own. `trash-loader.test.ts` only mocks it.
 
 ### 14. Two thumbnail orchestrators
 
@@ -202,7 +223,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** The XState scheduler in `app/machines/thumbnail/` is the documented path, but `components/upload/upload-thumbnail-runner.tsx` still drives the legacy `hooks/useThumbnail.ts` orchestrator. Both have to stay correct through changes like the signing work.
 - **Fix:** Move the upload runner onto the scheduler and delete `useThumbnail`. Do this before the signing work so the change happens in one place.
 - **Why it matters:** Every thumbnail change costs twice as much, and the two paths can drift apart.
-- **Status 2026-09-29: open.**
+- **Status 2026-10-01: open.**
   - `upload-thumbnail-runner.tsx` still imports `useThumbnail`, and the signing work (`68e5cc9`) landed with both paths still in place.
   - `1a778fd` (2026-09-26) fixed two bugs in the path: an upload job now replaces a queued backfill job for the same item, and the backfill lane no longer stays paused after an upload.
   - The XState pipeline is on trial behind a flag. The legacy hooks stay until the owner signs it off visually.
@@ -223,7 +244,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** Radix is imported two ways: the `radix-ui` umbrella (24 imports) and individual `@radix-ui/*` packages (13 imports). Icons come from three sources: `lucide-react` (18 imports), `@remixicon/react` (6) and a 4,309-line `icons.tsx`. There are three global stylesheets (`global.css`, `globals.css`, `theme.css`) plus a `.backup`. Animation uses both `framer-motion` (15 imports) and `@formkit/auto-animate` (1).
 - **Fix:** Standardize on the `radix-ui` umbrella, one icon source plus the custom set, and one global stylesheet with a theme layer. Drop `auto-animate`.
 - **Why it matters:** Bundle weight and "which one do I use?" friction for every new component.
-- **Status 2026-09-29: partly done** (`d8bf186`, 2026-09-25).
+- **Status 2026-10-01: partly done** (`d8bf186`, 2026-09-25; counts re-checked 2026-10-01).
   - **Done:** `lucide-react`, `@remixicon/react` and `@formkit/auto-animate` are removed, with their icons moved to `icons.tsx` and 0 imports left. 31 files import the `radix-ui` umbrella.
   - **Left:** 5 files still import `@radix-ui/*`: `item-card.tsx` and four under `components/ui/`. There are still three global stylesheets (`global.css`, `globals.css` and `theme.css`), and `framer-motion` is imported in 15 files.
 
@@ -264,6 +285,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-09-30 | `e8a61eb`, `326c317`, `eda8fc7` | 2 | Dockerfile rebuilt for pnpm and Node 24, `fly.toml` with a migration release command, and a CI docker job that boots the image. |
 | 2026-10-01 | `ba437d3`, `fc655be` | 6, 8 | The last four unused packages removed; the quota read in `retrieveUserUsageMetrics` now runs inside its transaction. |
 | 2026-10-01 | `76c69a5`, `b955723` | 7, 13 | Test files import their Vitest globals and pass the right arguments; the baseline is down to 11 errors, and CI fails on leftover allowance. |
+| 2026-10-01 | `ea4c2a1`, `7e34556` | 17 | The favorites work in progress was finished: `unfavorite` returns data and bulk favorite clears the selection. Both were confirmed in the browser. |
 
 ## Phased remediation plan
 
@@ -304,7 +326,7 @@ Privacy and data correctness. Merge the thumbnail paths first, then make signing
 - Failed uploads leave S3 bytes and charged quota with no Item (2–3 days): quota half done
 - Data-integrity gaps in loaders and deletes (1–2 days): permission cascade, `openedAt` and the quota client done; only the filter maps are unchecked
 
-*Status 2026-09-29:* signing shipped *before* the orchestrators were merged, the reverse of the planned order, so the signing change had to land on both paths.
+*Status 2026-10-01:* only the S3 half of item 9, the filter maps from item 8 and the orchestrator merge remain. Signing shipped *before* the orchestrators were merged, the reverse of the planned order, so the signing change had to land on both paths.
 
 ### Phase 3 · ongoing
 
