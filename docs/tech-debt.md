@@ -14,7 +14,7 @@
 
 **17 items** · 6 high priority · categories: Code 7, Architecture 4, Infrastructure 3, Dependency 1, Documentation 1, Test 1
 
-**Status at 1 Oct 2026:** 5 resolved · 2 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 5 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 1 Oct 2026:** 6 resolved · 1 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 5 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 ### What's left, in priority order
 
@@ -22,7 +22,6 @@
 |---|------|--------------|------------|
 | 4 | Error tracking and logging | All of it | Owner's choice of package (Sentry, pino or both) |
 | 2 | Deploy path | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
-| 5 | Private thumbnails | Run `scripts/sweep-thumbnail-acls.ts` against prod after the deploy; re-measure signing cost | Item 2's deploy |
 | 8 | Data integrity | Check the two filter maps TASKS.md flags | — |
 | 9 | Orphaned uploads | The S3 orphan-cleanup job and the `AbortIncompleteMultipartUpload` lifecycle rule | — |
 | 10 | Accessibility and responsive UI | All of it | — |
@@ -42,7 +41,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 2 | Deploy path is broken and runs an end-of-life Node | Infrastructure | 3 | 5 | 2 | **32** (High) | 1–2 days | Resolved in code; first `fly deploy` unconfirmed |
 | 3 | ~~Two known 500s on ordinary requests~~ | Code | 3 | 3 | 1 | **30** (High) | 0.5 day | Resolved |
 | 4 | No error tracking or structured logging | Infrastructure | 3 | 4 | 2 | **28** (High) | 1 day | Open |
-| 5 | Thumbnails of private files are publicly readable | Architecture | 4 | 5 | 3 | **27** (High) | 3–5 days | Resolved in code; ACL sweep unconfirmed |
+| 5 | ~~Thumbnails of private files are publicly readable~~ | Architecture | 4 | 5 | 3 | **27** (High) | 3–5 days | Resolved |
 | 6 | ~~Unused, unpinned and unmaintained dependencies~~ | Dependency | 2 | 3 | 1 | **25** (High) | 0.5 day | Resolved |
 | 7 | ~~The type baseline is stale, and escape hatches are growing~~ | Code | 3 | 3 | 2 | **24** (Medium) | 1–2 days | Resolved |
 | 8 | Data-integrity gaps in loaders and deletes | Code | 2 | 4 | 2 | **24** (Medium) | 1–2 days | Partly done |
@@ -119,9 +118,20 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** `4d84ea9` reverted signed thumbnail URLs "until signing can be made cheap". `docs/thumbnail-pipeline.md` documents `x-amz-acl: public-read` on every thumbnail PUT. Loaders return the raw public Tigris URL. Anyone who has a URL can see a preview of a private image, PDF page or video frame, and the URL doesn't expire.
 - **Fix:** Keep signing off the loader hot path. Options: (a) an authenticated `/api/thumbnails/:id` redirect/stream route behind a CDN cache key; (b) sign once per key and cache the URL server-side until shortly before it expires; (c) sign in batches that yield with `setImmediate` between chunks. Then turn `public-read` off and backfill the ACLs.
 - **Why it matters:** A privacy gap in a product whose pitch is "your files". It's also the item most likely to become urgent overnight.
-- **Status 2026-09-29: resolved in code** (`68e5cc9`, 2026-09-25). Thumbnails now upload with no ACL. `Thumbnail.url` stores an `s3://` locator, and every read site signs it. Signatures are cached per signing window, so re-renders produce identical URLs the browser can cache. On 2026-09-26, `87bf54d` and `a0f658a` added `bucket` and `color` columns so reads no longer parse the URL. **Still to confirm:**
-  - that `scripts/sweep-thumbnail-acls.ts`, which makes existing objects private, has been run against prod after the deploy. Nothing in the repo records that it has.
-  - the event-loop cost that forced the revert. It wasn't re-measured before shipping, according to `68e5cc9`.
+- **Resolved in code 2026-09-25** (`68e5cc9`). Thumbnails now upload with no ACL. `Thumbnail.url` stores an `s3://` locator, and every read site signs it. Signatures are cached per signing window, so re-renders produce identical URLs the browser can cache. On 2026-09-26, `87bf54d` and `a0f658a` added `bucket` and `color` columns so reads no longer parse the URL.
+- **Resolved 2026-10-01.** Both open points were settled without a deploy.
+  - **ACL sweep:** `scripts/sweep-thumbnail-acls.ts --apply` ran against all four buckets the DB references.
+    - `stashly-alonposhil`: 7 thumbnails had public grants and were made private.
+    - `stashly-alongvili` (465 thumbnails, 0 public): the bucket's object-ACL flag was on, and the sweep turned it off.
+    - `stashly-devgvili` (88 thumbnails): already clean.
+    - `default-bucket`: answered `AccessDenied`. It belongs to two leftover "PinTest" users with 0 items, from the 2026-09-18 pin tests.
+    - A second dry run afterwards showed 0 public grants and the flag off on every bucket.
+  - **Were the 7 grants live?** No. Before the sweep, an anonymous GET of one returned 403 on both Tigris hosts, because the bucket's flag was off. Tigris ignores object ACLs when that flag is off.
+  - **Effect of turning the flag off on `alongvili`:** the flag covers every object in the bucket, not just thumbnails. No app code builds an unsigned URL, since every match is a comment or a test fixture. After the change, signed GETs returned 206 for both a thumbnail and a regular file, and anonymous GETs returned 403 for both.
+  - **Signing cost re-measured** on all 267 thumbnail rows, three runs:
+    - A cold pass signed them in 10.2–16.1 ms, about 0.04–0.06 ms per URL. A warm pass, using the per-window cache, took 0.5–1.1 ms.
+    - A concurrent `SELECT 1` peaked at 1.7–15.2 ms during cold signing, against 1.6–1.8 ms idle. The revert was forced by the same probe climbing to 697 ms.
+    - This ran without uploads in flight, unlike the 2026-09-19 measurement. The event-loop delay histogram read 14–18 ms on warm passes too, where signing takes about 1 ms, so it doesn't isolate signing and isn't used here.
 
 ### 6. Unused, unpinned and unmaintained dependencies
 
@@ -286,6 +296,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-01 | `ba437d3`, `fc655be` | 6, 8 | The last four unused packages removed; the quota read in `retrieveUserUsageMetrics` now runs inside its transaction. |
 | 2026-10-01 | `76c69a5`, `b955723` | 7, 13 | Test files import their Vitest globals and pass the right arguments; the baseline is down to 11 errors, and CI fails on leftover allowance. |
 | 2026-10-01 | `ea4c2a1`, `7e34556` | 17 | The favorites work in progress was finished: `unfavorite` returns data and bulk favorite clears the selection. Both were confirmed in the browser. |
+| 2026-10-01 | no commit (operation) | 5 | ACL sweep applied to every bucket: 7 grants made private, one bucket's object-ACL flag turned off. Signing cost re-measured: a concurrent `SELECT 1` peaked at 15 ms, against the 697 ms that forced the revert. |
 
 ## Phased remediation plan
 
@@ -322,7 +333,7 @@ Build the safety net: CI, a deploy that works, error tracking and a linter. Ever
 Privacy and data correctness. Merge the thumbnail paths first, then make signing cheap and turn off public-read, then reconcile orphaned bytes and quota.
 
 - Two thumbnail orchestrators (2–3 days): open
-- Thumbnails of private files are publicly readable (3–5 days): resolved in code; ACL sweep unconfirmed
+- ~~Thumbnails of private files are publicly readable (3–5 days)~~: resolved 2026-10-01
 - Failed uploads leave S3 bytes and charged quota with no Item (2–3 days): quota half done
 - Data-integrity gaps in loaders and deletes (1–2 days): permission cascade, `openedAt` and the quota client done; only the filter maps are unchecked
 
