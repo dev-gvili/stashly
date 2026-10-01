@@ -22,7 +22,7 @@
 |---|------|--------------|------------|
 | 4 | Error tracking and logging | All of it | Owner's choice of package (Sentry, pino or both) |
 | 2 | Deploy path | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
-| 9 | Orphaned uploads | The S3 orphan-cleanup job and the `AbortIncompleteMultipartUpload` lifecycle rule | — |
+| 9 | Orphaned uploads | Run `scripts/sweep-s3-orphans.ts --apply` (dry run lists 652 orphans, ~943 MB, and 85 stale uploads) | Owner's go-ahead to delete |
 | 10 | Accessibility and responsive UI | All of it | — |
 | 12 | Linter | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
 | 13 | Tests where the risk is | `item-actions`, quota and permission tests; a Postgres service in CI for the DB tests | — |
@@ -195,10 +195,20 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** The `4d84ea9` commit message records 16 of 16 uploads with bytes in S3 and quota charged, but no `Item` row. `storage-actions.ts:471` notes that leftover S3 objects "are orphans that no metadata" references. There's no reconciliation job or bucket lifecycle rule for abandoned multipart uploads.
 - **Fix:** Add a scheduled job that lists S3 keys with no matching `Item`/`Thumbnail` older than N hours and deletes them, then recomputes quota per user. Add an `AbortIncompleteMultipartUpload` lifecycle rule on the bucket.
 - **Why it matters:** Users pay quota for files they can't see, and you pay storage for the same bytes.
-- **Status 2026-09-29: quota half done, S3 half open.**
+- **Status 2026-10-02: fixed in code; the cleanup run is pending.**
   - **Quota:** `c6751b2` (2026-09-27) found that every upload was charged *twice*, once by the file machine as soon as S3 finished and again inside the Item transaction. The first charge also landed before the row existed. Quota is now charged once, in `dbMachine`, and only after `@db.item.created`. A failed charge retries five times with backoff. What happens after the fifth failure is undecided and tracked in TASKS.md; for now the file is logged as unbilled.
   - **Item creation:** before that, `0235f0e` (2026-09-25) moved item creation into a db machine that never throws. A single failed POST used to stop the whole upload manager.
-  - **Still open:** the S3 orphan reconciliation job and the `AbortIncompleteMultipartUpload` lifecycle rule.
+  - **Root cause found 2026-10-01:** permanent delete never touched S3. `deleteItems`/`deleteItem` removed the rows and returned the quota, but `deleteFile` had no callers, so every permanently deleted file and thumbnail stayed in its bucket.
+    - A read-only audit found 652 unreferenced objects (~943 MB) across two buckets, including the files of a folder that no longer exists, plus 85 multipart uploads started more than 24 h earlier and never finished.
+    - Matching was checked: 584 objects in the biggest bucket matched a `File` key exactly, and none of the orphans did.
+  - **Fixed** (`6218641`): permanent delete collects the subtree's file and thumbnail keys, deletes the rows, then deletes the objects through `deleteObjects`.
+    - That helper batches 1,000 keys per call, reads per-key failures from `DeleteObjects`' `Errors`, and logs any keys left behind.
+    - 4 tests fail without the fix and pass with it.
+    - Verified on real Tigris with two throwaway keys: both deleted, none failed.
+  - **Cleanup** (`3d5e1d7`): `scripts/sweep-s3-orphans.ts` deletes unreferenced objects older than 24 h and aborts stale multipart uploads.
+    - Dry run by default; `--apply` acts.
+    - The 2 Oct dry run lists 652 orphans and 85 stale uploads. It has **not been applied yet**.
+  - **No lifecycle rule:** Tigris rejects `AbortIncompleteMultipartUpload` with 400 "Lifecycle only supports expiration rule" (tested on the dev bucket, config restored). The sweep aborts stale uploads instead.
 
 ### 10. UI accessibility and responsive debt
 
@@ -313,6 +323,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-01 | no commit (operation) | 5 | ACL sweep applied to every bucket: 7 grants made private, one bucket's object-ACL flag turned off. Signing cost re-measured: a concurrent `SELECT 1` peaked at 15 ms, against the 697 ms that forced the revert. |
 | 2026-10-01 | `736d6ca` | 8 | Drive and notification filter keys aligned with their schemas, guarded by a new coverage test. |
 | 2026-10-01 | `e6ac762`..`e506455` | 1, 13 | Honest CI: real Postgres for both jobs, a health check that queries the database, every test run, output never hidden, invalid filter values rejected with a 400. |
+| 2026-10-01 | `6218641`, `3d5e1d7` | 9 | Permanent delete now removes S3 objects; `sweep-s3-orphans.ts` cleans up what was left behind (not yet applied). |
 
 ## Phased remediation plan
 
@@ -350,7 +361,7 @@ Privacy and data correctness. Merge the thumbnail paths first, then make signing
 
 - Two thumbnail orchestrators (2–3 days): open
 - ~~Thumbnails of private files are publicly readable (3–5 days)~~: resolved 2026-10-01
-- Failed uploads leave S3 bytes and charged quota with no Item (2–3 days): quota half done
+- Failed uploads leave S3 bytes and charged quota with no Item (2–3 days): fixed in code; cleanup run pending
 - ~~Data-integrity gaps in loaders and deletes (1–2 days)~~: resolved 2026-10-01
 
 *Status 2026-10-01:* only the S3 half of item 9 and the orchestrator merge remain. Signing shipped *before* the orchestrators were merged, the reverse of the planned order, so the signing change had to land on both paths.
