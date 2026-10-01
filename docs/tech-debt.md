@@ -14,7 +14,7 @@
 
 **17 items** · 6 high priority · categories: Code 7, Architecture 4, Infrastructure 3, Dependency 1, Documentation 1, Test 1
 
-**Status at 1 Oct 2026:** 6 resolved · 1 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 5 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 1 Oct 2026:** 7 resolved · 1 resolved in code, rollout step unconfirmed · 3 partly done · 1 declined · 5 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 ### What's left, in priority order
 
@@ -22,7 +22,6 @@
 |---|------|--------------|------------|
 | 4 | Error tracking and logging | All of it | Owner's choice of package (Sentry, pino or both) |
 | 2 | Deploy path | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
-| 8 | Data integrity | Check the two filter maps TASKS.md flags | — |
 | 9 | Orphaned uploads | The S3 orphan-cleanup job and the `AbortIncompleteMultipartUpload` lifecycle rule | — |
 | 10 | Accessibility and responsive UI | All of it | — |
 | 12 | Linter | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
@@ -44,7 +43,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 5 | ~~Thumbnails of private files are publicly readable~~ | Architecture | 4 | 5 | 3 | **27** (High) | 3–5 days | Resolved |
 | 6 | ~~Unused, unpinned and unmaintained dependencies~~ | Dependency | 2 | 3 | 1 | **25** (High) | 0.5 day | Resolved |
 | 7 | ~~The type baseline is stale, and escape hatches are growing~~ | Code | 3 | 3 | 2 | **24** (Medium) | 1–2 days | Resolved |
-| 8 | Data-integrity gaps in loaders and deletes | Code | 2 | 4 | 2 | **24** (Medium) | 1–2 days | Partly done |
+| 8 | ~~Data-integrity gaps in loaders and deletes~~ | Code | 2 | 4 | 2 | **24** (Medium) | 1–2 days | Resolved |
 | 9 | Failed uploads leave S3 bytes and charged quota with no Item | Architecture | 3 | 4 | 3 | **21** (Medium) | 2–3 days | Partly done |
 | 10 | UI accessibility and responsive debt | Code | 4 | 3 | 3 | **21** (Medium) | 5–8 days | Open |
 | 11 | ~~Generated and personal files in git~~ | Documentation | 2 | 2 | 1 | **20** (Medium) | 0.5 day | Resolved |
@@ -168,11 +167,15 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** All from TASKS.md. `openedAt` is written inside three loaders, two of them awaited on the response path, which breaks the rule in CLAUDE.md. `retrieveUserUsageMetrics` reads quota outside its transaction client. Permanent delete leaves orphan `Permission` rows (`ON DELETE SET NULL`); 19 appeared in one minute on 2026-09-14. Two filter files have unreachable keys.
 - **Fix:** Move `openedAt` to a fire-and-forget action or `clientLoader` ping. Thread `client` through `findQuotaByUserId`. Change the FK to `ON DELETE CASCADE`, or delete permissions explicitly, and add a cleanup migration. Fix the two filter maps.
 - **Why it matters:** Wrong quota numbers and stale permission rows are the kind of bug that surfaces as a billing or access dispute.
-- **Status 2026-10-01: partly done.**
+- **Resolved 2026-10-01.**
   - **Permission rows: done** (`b7ec938`). `Permission_itemId_fkey` is now `ON DELETE CASCADE`. The first migration also deletes the rows already orphaned: those with no item, no share link and no invitation recipient. The 2026-09-27 diagnosis counted 956 of them on the dev DB. Prod runs that `DELETE` on its next migration.
   - **`openedAt`: resolved** (`62ddd1c`). The three loaders no longer write it themselves. `getFolder`, `getFileItem` and `getCollectionForUser` record it inside the action, next to the access check; the collection's check and write share one transaction. `62ddd1c` first put the permission check *before* the existence check, so a missing collection answered 403; `0c1db6d` (2026-09-30) restored 404. Accepted as the fix: the write still runs during the `GET`, but it's owned by the action rather than the loader, and no fire-and-forget or `clientLoader` ping is planned. The same commit added an access check to the folder loader, which had read the folder straight from `prisma` without one.
   - **Quota client: fixed 2026-10-01** (`fc655be`). `retrieveUserUsageMetrics` now passes its transaction client to `findQuotaByUserId` (`item-actions.ts:3367`). The function already accepted it; the caller just didn't pass it.
-  - **Filter maps:** not re-checked. `item-filters-coverage.test.ts` (from `fb3950d`, 2026-09-11) guards the item filters.
+  - **Filter maps: fixed 2026-10-01** (`736d6ca`).
+    - **Notifications:** the `user` filter never matched its `userId` schema key, and `id` and `type` had no filter. `searchNotifications`' own JSDoc example passes `{ userId }`, so it would have returned every user's notifications. Now `userId`, `id` and `type` all have filters.
+    - **Drives:** the `createdAt`/`updatedAt` filters could never run and are deleted, since `date` already covers `createdAt` ranges. The `workspaceId` schema key is removed: `Drive` has no workspace column or relation, so no filter for it could exist.
+    - **Test:** `filter-key-coverage.test.ts` runs the item-filters coverage checks over both files. It failed in all five reported ways before the fix.
+    - **Impact:** no route calls either search yet, so nothing visible changed.
 
 ### 9. Failed uploads leave S3 bytes and charged quota with no Item
 
@@ -297,6 +300,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-01 | `76c69a5`, `b955723` | 7, 13 | Test files import their Vitest globals and pass the right arguments; the baseline is down to 11 errors, and CI fails on leftover allowance. |
 | 2026-10-01 | `ea4c2a1`, `7e34556` | 17 | The favorites work in progress was finished: `unfavorite` returns data and bulk favorite clears the selection. Both were confirmed in the browser. |
 | 2026-10-01 | no commit (operation) | 5 | ACL sweep applied to every bucket: 7 grants made private, one bucket's object-ACL flag turned off. Signing cost re-measured: a concurrent `SELECT 1` peaked at 15 ms, against the 697 ms that forced the revert. |
+| 2026-10-01 | `736d6ca` | 8 | Drive and notification filter keys aligned with their schemas, guarded by a new coverage test. |
 
 ## Phased remediation plan
 
@@ -335,9 +339,9 @@ Privacy and data correctness. Merge the thumbnail paths first, then make signing
 - Two thumbnail orchestrators (2–3 days): open
 - ~~Thumbnails of private files are publicly readable (3–5 days)~~: resolved 2026-10-01
 - Failed uploads leave S3 bytes and charged quota with no Item (2–3 days): quota half done
-- Data-integrity gaps in loaders and deletes (1–2 days): permission cascade, `openedAt` and the quota client done; only the filter maps are unchecked
+- ~~Data-integrity gaps in loaders and deletes (1–2 days)~~: resolved 2026-10-01
 
-*Status 2026-10-01:* only the S3 half of item 9, the filter maps from item 8 and the orchestrator merge remain. Signing shipped *before* the orchestrators were merged, the reverse of the planned order, so the signing change had to land on both paths.
+*Status 2026-10-01:* only the S3 half of item 9 and the orchestrator merge remain. Signing shipped *before* the orchestrators were merged, the reverse of the planned order, so the signing change had to land on both paths.
 
 ### Phase 3 · ongoing
 
