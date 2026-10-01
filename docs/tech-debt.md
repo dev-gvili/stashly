@@ -8,7 +8,7 @@ Stashly already has good habits: subsystem docs and skills, bugs root-caused in 
 
 **17 items** · 6 high priority · categories: Code 7, Architecture 4, Infrastructure 3, Dependency 1, Documentation 1, Test 1
 
-**Status at 1 Oct 2026:** 4 resolved · 2 resolved in code, rollout step unconfirmed · 3 partly done · 1 declined · 7 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 1 Oct 2026:** 5 resolved · 2 resolved in code, rollout step unconfirmed · 3 partly done · 1 declined · 6 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -22,7 +22,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 4 | No error tracking or structured logging | Infrastructure | 3 | 4 | 2 | **28** (High) | 1 day | Open |
 | 5 | Thumbnails of private files are publicly readable | Architecture | 4 | 5 | 3 | **27** (High) | 3–5 days | Resolved in code; ACL sweep unconfirmed |
 | 6 | ~~Unused, unpinned and unmaintained dependencies~~ | Dependency | 2 | 3 | 1 | **25** (High) | 0.5 day | Resolved |
-| 7 | The type baseline is stale, and escape hatches are growing | Code | 3 | 3 | 2 | **24** (Medium) | 1–2 days | Open |
+| 7 | ~~The type baseline is stale, and escape hatches are growing~~ | Code | 3 | 3 | 2 | **24** (Medium) | 1–2 days | Resolved |
 | 8 | Data-integrity gaps in loaders and deletes | Code | 2 | 4 | 2 | **24** (Medium) | 1–2 days | Partly done |
 | 9 | Failed uploads leave S3 bytes and charged quota with no Item | Architecture | 3 | 4 | 3 | **21** (Medium) | 2–3 days | Partly done |
 | 10 | UI accessibility and responsive debt | Code | 4 | 3 | 3 | **21** (Medium) | 5–8 days | Open |
@@ -124,7 +124,11 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** `.claude/tsc-baseline.json` accepts 249 errors across 30 files. 15 of those entries (46 errors) point at files that no longer exist, such as `Gemini3DashboardFiles.tsx`, `queue.machine.1.ts` and `dropbox ui/file-list-item.tsx`. 184 of the live errors are in two test files. App code has 72 `as any`, 34 `: any`, 39 `as unknown as` and 7 `@ts-ignore`/`@ts-expect-error`.
 - **Fix:** Prune the stale entries and make the hook fail when a count *drops* without the baseline being rewritten, so it only ratchets down. Fix the two test files (they share helpers), which takes the live errors from 203 to 19. Ban new `as any` in the ESLint config.
 - **Why it matters:** A baseline that never shrinks turns into permission to add more errors. Most of the remaining debt is concentrated in two files.
-- **Status 2026-09-29: open.** `.claude/tsc-baseline.json` still lists 30 files and 249 errors. (The "update test baseline" in `4d06498` is the `pnpm test` pass/fail count recorded in CLAUDE.md, not this file.)
+- **Resolved 2026-10-01** (`76c69a5`, `b955723`). tsc errors fell from **195 to 11**, and the baseline from 30 files and 249 errors to **9 files and 11 errors**.
+  - **The two test files:** all 184 of their errors had one cause. They used Vitest's `describe`, `it` and `expect` without importing them, as the other 34 test files do, and the tsconfig doesn't declare those names globally. Adding the import fixed 182. The other 2 were real bugs: the test called `removeItemFromCollection` with three arguments, but it takes one object. Fixing them also fixed 2 runtime failures, so `collection-actions` went from 7 failing tests to 5.
+  - **Stale entries:** the baseline was regenerated, which removed the 16 entries for deleted files (51 errors) and lowered 3 live files that had improved.
+  - **Ratchet:** in `--all` mode, which is what CI runs, the gate now also fails when the baseline allows more errors than tsc reports, including entries for deleted files. The commit that fixes an error therefore has to lower the baseline too. On the old baseline it blocked 21 entries.
+  - **Not done:** banning new `as any` needs a linter, so it moves to item 12.
 
 ### 8. Data-integrity gaps in loaders and deletes
 
@@ -188,6 +192,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Status 2026-09-29: open.**
   - **New tests since the audit:** the trash loader's thumbnail filter (`af779ee`) and the upload db machine (29 tests in `app/machines/db`, 7 of them added in `c6751b2`).
   - **Now run automatically:** since 2026-09-30, CI runs every unit test except the three excluded files (see item 1): 525 tests in 37 files.
+  - **Fixed in passing:** two `removeItemFromCollection` tests had failed since the function switched to an object argument, and now pass (`76c69a5`). `pnpm test` is 583 passing / 9 failing (2026-10-01).
   - **Unchanged:** `app/.server/__tests__` still has 5 test files, there are still 8 Playwright specs, and `item-actions.ts` still has no tests.
 
 ### 14. Two thumbnail orchestrators
@@ -254,6 +259,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-09-30 | `b95cdd5` | 1 | CI workflow added, plus the hook's `--all` mode. |
 | 2026-09-30 | `e8a61eb`, `326c317`, `eda8fc7` | 2 | Dockerfile rebuilt for pnpm and Node 24, `fly.toml` with a migration release command, and a CI docker job that boots the image. |
 | 2026-10-01 | `ba437d3`, `fc655be` | 6, 8 | The last four unused packages removed; the quota read in `retrieveUserUsageMetrics` now runs inside its transaction. |
+| 2026-10-01 | `76c69a5`, `b955723` | 7, 13 | Test files import their Vitest globals and pass the right arguments; the baseline is down to 11 errors, and CI fails on leftover allowance. |
 
 ## Phased remediation plan
 
@@ -279,9 +285,9 @@ Build the safety net: CI, a deploy that works, error tracking and a linter. Ever
 - ~~Deploy path is broken and runs an end-of-life Node (1–2 days)~~: resolved in code 2026-09-30
 - No error tracking or structured logging (1 day)
 - No linter (1 day + fixes)
-- The type baseline is stale, and escape hatches are growing (1–2 days)
+- ~~The type baseline is stale, and escape hatches are growing (1–2 days)~~: resolved 2026-10-01
 
-*Status 2026-09-30:* CI and the deploy path are done, though the first `fly deploy` is still to confirm. Error tracking, the linter and the type baseline aren't started.
+*Status 2026-10-01:* CI, the deploy path and the type baseline are done, though the first `fly deploy` is still to confirm. Error tracking and the linter aren't started.
 
 ### Phase 2 · this month
 
