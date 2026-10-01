@@ -1,4 +1,8 @@
-# Typecheck, unit tests and production build on every push to main and every PR.
+# Typecheck, every unit test against a real Postgres, the production build, and
+# the production image migrated and booted against that Postgres — on every
+# push to main and every PR. Nothing is excluded and nothing is muted: a
+# failing test or a broken boot turns this red, and every log stays visible.
+#
 # `pnpm build` is the only check for the dot-server rule (a route whose client
 # exports reach a `.server` module) — dev never surfaces it, so this is where
 # it gets caught.
@@ -17,6 +21,25 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Same major version and extensions as the dev database (Postgres 17,
+    # pgvector 0.8, pg_trgm); the migrations create `vector` and `pg_trgm`.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: stashly
+          POSTGRES_PASSWORD: stashly
+          POSTGRES_DB: stashly_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U stashly -d stashly_ci"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgresql://stashly:stashly@localhost:5432/stashly_ci
+      DIRECT_DATABASE_URL: postgresql://stashly:stashly@localhost:5432/stashly_ci
     steps:
       - uses: actions/checkout@v7
 
@@ -46,27 +69,45 @@ jobs:
       - name: Typecheck
         run: node .claude/hooks/check-staged-types.mjs --all
 
-      # Excluded:
-      # - collection-actions and pin-actions write to a live Postgres, and CI
-      #   has none.
-      # - activity.test.ts has 4 failures (formatActivity) that predate CI.
-      #   Remove it from this list once they're fixed.
+      - name: Apply migrations to the CI database
+        run: pnpm prisma migrate deploy
+
+      # Every test file, including the ones that need a database.
       - name: Unit tests
-        run: >-
-          pnpm test
-          --exclude app/.server/__tests__/collection-actions.test.ts
-          --exclude app/utils/__tests__/pin-actions.test.ts
-          --exclude app/utils/__tests__/activity.test.ts
+        run: pnpm test
 
       - name: Build
         run: pnpm build
 
-  # The production image: builds, carries a working Prisma CLI for fly.toml's
-  # release_command, and serves /api/health. No database — the check only
-  # proves the server boots, so the env values are placeholders.
+  # The production image, run the way Fly runs it: fly.toml's release_command
+  # (`prisma migrate deploy`) against a real Postgres, then the server, which
+  # must answer /api/health 200 — and that check queries the database. A second
+  # container pointed at a database that isn't there must answer 503, which
+  # proves the health check can fail at all.
+  #
+  # Third-party secrets (auth, OAuth, Stripe, S3) are placeholders: this job
+  # proves the image migrates, boots and reaches its database, not that those
+  # integrations work. Their warnings in the server log are expected and left
+  # visible.
   docker:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: stashly
+          POSTGRES_PASSWORD: stashly
+          POSTGRES_DB: stashly_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U stashly -d stashly_ci"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      DB_URL: postgresql://stashly:stashly@localhost:5432/stashly_ci
     steps:
       - uses: actions/checkout@v7
 
@@ -76,10 +117,18 @@ jobs:
       - name: Prisma CLI loads the schema
         run: docker run --rm stashly:ci node_modules/.bin/prisma validate
 
-      - name: Server answers /api/health
+      # --network host: the container reaches the Postgres service on localhost.
+      - name: Release command migrates the database
+        run: >-
+          docker run --rm --network host
+          -e DIRECT_DATABASE_URL="$DB_URL"
+          stashly:ci node_modules/.bin/prisma migrate deploy
+
+      - name: Server reaches its database (/api/health must be 200)
         run: |
-          docker run -d --name app -p 8080:8080 \
-            -e DATABASE_URL=postgresql://ci:ci@127.0.0.1:5432/ci \
+          docker run -d --name app --network host \
+            -e PORT=8080 \
+            -e DATABASE_URL="$DB_URL" -e DIRECT_DATABASE_URL="$DB_URL" \
             -e BETTER_AUTH_SECRET=ci-placeholder-secret-0123456789abcdef \
             -e COOKIE_SECRET=ci-placeholder-cookie-0123456789abcdef \
             -e AWS_ACCESS_KEY=ci -e AWS_SECRET_KEY=ci -e AWS_REGION=auto \
@@ -87,11 +136,36 @@ jobs:
             -e STRIPE_SECRET_KEY=sk_test_ci_placeholder \
             stashly:ci
           for i in $(seq 1 30); do
-            if curl -fsS -o /dev/null -w '%{http_code}\n' http://localhost:8080/api/health; then
-              docker logs app
-              exit 0
-            fi
+            code=$(curl -s -o body.json -w '%{http_code}' http://localhost:8080/api/health || true)
+            echo "attempt $i: HTTP $code $(cat body.json 2>/dev/null)"
+            [ "$code" = "200" ] && exit 0
             sleep 2
           done
-          docker logs app
           exit 1
+
+      - name: Health check fails without a database (/api/health must be 503)
+        run: |
+          docker run -d --name app-nodb --network host \
+            -e PORT=8081 \
+            -e DATABASE_URL=postgresql://stashly:stashly@localhost:5999/missing \
+            -e BETTER_AUTH_SECRET=ci-placeholder-secret-0123456789abcdef \
+            -e COOKIE_SECRET=ci-placeholder-cookie-0123456789abcdef \
+            -e AWS_ACCESS_KEY=ci -e AWS_SECRET_KEY=ci -e AWS_REGION=auto \
+            -e AWS_ENDPOINT_URL=http://127.0.0.1:9000 \
+            -e STRIPE_SECRET_KEY=sk_test_ci_placeholder \
+            stashly:ci
+          for i in $(seq 1 30); do
+            code=$(curl -s -o body.json -w '%{http_code}' http://localhost:8081/api/health || true)
+            echo "attempt $i: HTTP $code $(cat body.json 2>/dev/null)"
+            [ "$code" = "503" ] && exit 0
+            [ "$code" = "200" ] && { echo "health check passed with no database"; exit 1; }
+            sleep 2
+          done
+          exit 1
+
+      # Always, pass or fail: everything the servers printed.
+      - name: Server logs
+        if: always()
+        run: |
+          echo "===== app (real database) ====="; docker logs app 2>&1 || true
+          echo "===== app-nodb (no database) ====="; docker logs app-nodb 2>&1 || true
