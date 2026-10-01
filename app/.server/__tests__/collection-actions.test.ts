@@ -1,3 +1,4 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { faker } from '@faker-js/faker'
 import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
@@ -407,7 +408,11 @@ describe('removeItemFromCollection', () => {
     const col = await makeCollection()
     const file = await makeItem(ownerId, 1000)
     await addItemToCollection(ownerId, col.id, file.id)
-    await removeItemFromCollection(ownerId, col.id, file.id)
+    await removeItemFromCollection({
+      userId: ownerId,
+      collectionId: col.id,
+      itemId: file.id,
+    })
 
     const updatedCol = await prisma.item.findUnique({ where: { id: col.id } })
     expect(updatedCol!.size).toBe(0n)
@@ -419,7 +424,11 @@ describe('removeItemFromCollection', () => {
     const file = await makeItem(ownerId)
     await addItemToCollection(ownerId, col.id, file.id)
     await expect(
-      removeItemFromCollection(otherId, col.id, file.id)
+      removeItemFromCollection({
+        userId: otherId,
+        collectionId: col.id,
+        itemId: file.id,
+      })
     ).rejects.toMatchObject({ errorCode: StashlyErrorCode.FORBIDDEN })
   })
 })
