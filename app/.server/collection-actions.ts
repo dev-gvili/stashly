@@ -601,11 +601,9 @@ export async function addItemsToCollection({
   itemIds: string[]
 }) {
   await assertItemPermission(userId, collectionId, 'write')
+  // A caller mistake, so a 400 — ADD_ITEMS_TO_COLLECTION_FAILED maps to 500.
   if (!itemIds.length)
-    throw new StashlyError(
-      StashlyErrorCode.ADD_ITEMS_TO_COLLECTION_FAILED,
-      'No item IDs provided'
-    )
+    throw toRouteError(StashlyErrorCode.INVALID_INPUT, 'No item IDs provided')
 
   const toAdd = await prisma.$queryRaw<{ id: string; size: bigint }[]>`
     WITH accessible AS (

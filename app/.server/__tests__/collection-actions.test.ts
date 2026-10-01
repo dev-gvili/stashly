@@ -438,13 +438,15 @@ describe('removeItemFromCollection', () => {
 // ---------------------------------------------------------------------------
 
 describe('addItemsToCollection', () => {
-  it('adds multiple items, returns their IDs, and sums their sizes', async () => {
+  // addItemsToCollection returns the created CollectionMember rows (ff70589),
+  // so these compare their itemIds.
+  it('adds multiple items, returns their member rows, and sums their sizes', async () => {
     const col = await makeCollection()
     const a = await makeItem(ownerId, 100)
     const b = await makeItem(ownerId, 200)
     const added = await addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [a.id, b.id] })
 
-    expect(added.sort()).toEqual([a.id, b.id].sort())
+    expect(added.map((m) => m.itemId).sort()).toEqual([a.id, b.id].sort())
     const updatedCol = await prisma.item.findUnique({ where: { id: col.id } })
     expect(updatedCol!.size).toBe(300n)
   })
@@ -464,13 +466,14 @@ describe('addItemsToCollection', () => {
     const inaccessible = await makeItem(otherId) // ownerId has no permission
 
     const added = await addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [accessible.id, inaccessible.id] })
-    expect(added).toEqual([accessible.id])
+    expect(added.map((m) => m.itemId)).toEqual([accessible.id])
   })
 
-  it('returns an empty array when itemIds is empty', async () => {
+  it('rejects an empty itemIds list as invalid input (400)', async () => {
     const col = await makeCollection()
-    const added = await addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [] })
-    expect(added).toEqual([])
+    await expect(
+      addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [] })
+    ).rejects.toMatchObject({ errorCode: StashlyErrorCode.INVALID_INPUT, status: 400 })
   })
 
   it('throws FORBIDDEN when the caller has no write access on the collection', async () => {
@@ -657,10 +660,10 @@ describe('listCollectionPermissions', () => {
     })
   })
 
-  it('throws NOT_FOUND when the collection does not exist', async () => {
+  it('throws COLLECTION_NOT_FOUND when the collection does not exist', async () => {
     await expect(
       listCollectionPermissions(ownerId, 'nonexistent')
-    ).rejects.toMatchObject({ errorCode: StashlyErrorCode.NOT_FOUND })
+    ).rejects.toMatchObject({ errorCode: StashlyErrorCode.COLLECTION_NOT_FOUND, status: 404 })
   })
 })
 
@@ -712,9 +715,9 @@ describe('grantCollectionPermission', () => {
     }
   })
 
-  it('throws NOT_FOUND when the collection does not exist', async () => {
+  it('throws COLLECTION_NOT_FOUND when the collection does not exist', async () => {
     await expect(
       grantCollectionPermission(ownerId, otherId, 'nonexistent', 'read')
-    ).rejects.toMatchObject({ errorCode: StashlyErrorCode.NOT_FOUND })
+    ).rejects.toMatchObject({ errorCode: StashlyErrorCode.COLLECTION_NOT_FOUND, status: 404 })
   })
 })
