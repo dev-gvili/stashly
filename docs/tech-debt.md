@@ -14,7 +14,7 @@
 
 **17 items** · 6 high priority · categories: Code 7, Architecture 4, Infrastructure 3, Dependency 1, Documentation 1, Test 1
 
-**Status at 1 Oct 2026:** 7 resolved · 1 resolved in code, rollout step unconfirmed · 3 partly done · 1 declined · 5 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 1 Oct 2026:** 8 resolved · 1 resolved in code, rollout step unconfirmed · 2 partly done · 1 declined · 5 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 ### What's left, in priority order
 
@@ -22,7 +22,6 @@
 |---|------|--------------|------------|
 | 4 | Error tracking and logging | All of it | Owner's choice of package (Sentry, pino or both) |
 | 2 | Deploy path | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
-| 9 | Orphaned uploads | Run `scripts/sweep-s3-orphans.ts --apply` (dry run lists 652 orphans, ~943 MB, and 85 stale uploads) | Owner's go-ahead to delete |
 | 10 | Accessibility and responsive UI | All of it | — |
 | 12 | Linter | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
 | 13 | Tests where the risk is | `item-actions`, quota and permission tests; a Postgres service in CI for the DB tests | — |
@@ -44,7 +43,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 6 | ~~Unused, unpinned and unmaintained dependencies~~ | Dependency | 2 | 3 | 1 | **25** (High) | 0.5 day | Resolved |
 | 7 | ~~The type baseline is stale, and escape hatches are growing~~ | Code | 3 | 3 | 2 | **24** (Medium) | 1–2 days | Resolved |
 | 8 | ~~Data-integrity gaps in loaders and deletes~~ | Code | 2 | 4 | 2 | **24** (Medium) | 1–2 days | Resolved |
-| 9 | Failed uploads leave S3 bytes and charged quota with no Item | Architecture | 3 | 4 | 3 | **21** (Medium) | 2–3 days | Partly done |
+| 9 | ~~Failed uploads leave S3 bytes and charged quota with no Item~~ | Architecture | 3 | 4 | 3 | **21** (Medium) | 2–3 days | Resolved |
 | 10 | UI accessibility and responsive debt | Code | 4 | 3 | 3 | **21** (Medium) | 5–8 days | Open |
 | 11 | ~~Generated and personal files in git~~ | Documentation | 2 | 2 | 1 | **20** (Medium) | 0.5 day | Resolved |
 | 12 | No linter | Code | 2 | 2 | 2 | **16** (Medium) | 1 day + fixes | Open |
@@ -195,7 +194,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** The `4d84ea9` commit message records 16 of 16 uploads with bytes in S3 and quota charged, but no `Item` row. `storage-actions.ts:471` notes that leftover S3 objects "are orphans that no metadata" references. There's no reconciliation job or bucket lifecycle rule for abandoned multipart uploads.
 - **Fix:** Add a scheduled job that lists S3 keys with no matching `Item`/`Thumbnail` older than N hours and deletes them, then recomputes quota per user. Add an `AbortIncompleteMultipartUpload` lifecycle rule on the bucket.
 - **Why it matters:** Users pay quota for files they can't see, and you pay storage for the same bytes.
-- **Status 2026-10-02: fixed in code; the cleanup run is pending.**
+- **Resolved 2026-10-02.**
   - **Quota:** `c6751b2` (2026-09-27) found that every upload was charged *twice*, once by the file machine as soon as S3 finished and again inside the Item transaction. The first charge also landed before the row existed. Quota is now charged once, in `dbMachine`, and only after `@db.item.created`. A failed charge retries five times with backoff. What happens after the fifth failure is undecided and tracked in TASKS.md; for now the file is logged as unbilled.
   - **Item creation:** before that, `0235f0e` (2026-09-25) moved item creation into a db machine that never throws. A single failed POST used to stop the whole upload manager.
   - **Root cause found 2026-10-01:** permanent delete never touched S3. `deleteItems`/`deleteItem` removed the rows and returned the quota, but `deleteFile` had no callers, so every permanently deleted file and thumbnail stayed in its bucket.
@@ -207,7 +206,10 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
     - Verified on real Tigris with two throwaway keys: both deleted, none failed.
   - **Cleanup** (`3d5e1d7`): `scripts/sweep-s3-orphans.ts` deletes unreferenced objects older than 24 h and aborts stale multipart uploads.
     - Dry run by default; `--apply` acts.
-    - The 2 Oct dry run lists 652 orphans and 85 stale uploads. It has **not been applied yet**.
+    - **Applied 2026-10-02** with the owner's go-ahead: 652 objects deleted (624 + 28) and 85 stale multipart uploads aborted (78 + 1 + 6), with 0 delete or abort failures.
+    - A dry run straight afterwards found every object in all three buckets referenced (584, 170 and 27), with 0 orphans and 0 stale uploads.
+    - All 534 `File` rows still have their object in S3, with 0 missing.
+    - `default-bucket` answers `AccessDenied` and fails each run; it belongs to the leftover PinTest users in TASKS.md.
   - **No lifecycle rule:** Tigris rejects `AbortIncompleteMultipartUpload` with 400 "Lifecycle only supports expiration rule" (tested on the dev bucket, config restored). The sweep aborts stale uploads instead.
 
 ### 10. UI accessibility and responsive debt
@@ -323,7 +325,8 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-01 | no commit (operation) | 5 | ACL sweep applied to every bucket: 7 grants made private, one bucket's object-ACL flag turned off. Signing cost re-measured: a concurrent `SELECT 1` peaked at 15 ms, against the 697 ms that forced the revert. |
 | 2026-10-01 | `736d6ca` | 8 | Drive and notification filter keys aligned with their schemas, guarded by a new coverage test. |
 | 2026-10-01 | `e6ac762`..`e506455` | 1, 13 | Honest CI: real Postgres for both jobs, a health check that queries the database, every test run, output never hidden, invalid filter values rejected with a 400. |
-| 2026-10-01 | `6218641`, `3d5e1d7` | 9 | Permanent delete now removes S3 objects; `sweep-s3-orphans.ts` cleans up what was left behind (not yet applied). |
+| 2026-10-01 | `6218641`, `3d5e1d7` | 9 | Permanent delete now removes S3 objects; `sweep-s3-orphans.ts` cleans up what was left behind. |
+| 2026-10-02 | no commit (operation) | 9 | Orphan sweep applied: 652 objects deleted, 85 stale uploads aborted, 0 failures; every bucket now fully referenced. |
 
 ## Phased remediation plan
 
@@ -361,10 +364,10 @@ Privacy and data correctness. Merge the thumbnail paths first, then make signing
 
 - Two thumbnail orchestrators (2–3 days): open
 - ~~Thumbnails of private files are publicly readable (3–5 days)~~: resolved 2026-10-01
-- Failed uploads leave S3 bytes and charged quota with no Item (2–3 days): fixed in code; cleanup run pending
+- ~~Failed uploads leave S3 bytes and charged quota with no Item (2–3 days)~~: resolved 2026-10-02
 - ~~Data-integrity gaps in loaders and deletes (1–2 days)~~: resolved 2026-10-01
 
-*Status 2026-10-01:* only the S3 half of item 9 and the orchestrator merge remain. Signing shipped *before* the orchestrators were merged, the reverse of the planned order, so the signing change had to land on both paths.
+*Status 2026-10-02:* only the orchestrator merge (item 14) remains. Signing shipped *before* the orchestrators were merged, the reverse of the planned order, so the signing change had to land on both paths.
 
 ### Phase 3 · ongoing
 
