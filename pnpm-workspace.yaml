@@ -6,7 +6,6 @@ allowBuilds:
   prisma: true
   protobufjs: true
   sharp: true
-  webgpu: true
 minimumReleaseAgeExclude:
   - baseline-browser-mapping@2.11.23 || 2.11.26
   - tailwind-merge@3.7.0
@@ -33,4 +32,3 @@ onlyBuiltDependencies:
   - prisma
   - protobufjs
   - sharp
-  - webgpu
