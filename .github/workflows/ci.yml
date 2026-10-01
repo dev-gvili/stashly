@@ -40,8 +40,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Ratchet against .claude/tsc-baseline.json: fails only when a file has
-      # more errors than its baseline, since the repo carries ~200 old ones.
+      # Ratchet against .claude/tsc-baseline.json: fails when a file has more
+      # errors than its baseline, or when the baseline still allows errors
+      # that have since been fixed.
       - name: Typecheck
         run: node .claude/hooks/check-staged-types.mjs --all
 

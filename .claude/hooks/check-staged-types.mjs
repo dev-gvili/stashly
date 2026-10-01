@@ -4,14 +4,15 @@
  * Runs the repo's full typecheck (react-router typegen + tsc -b, incremental
  * so ~8s warm) but only *gates* on the staged .ts/.tsx files: a file blocks
  * the commit when its current error count exceeds its count in
- * .claude/tsc-baseline.json. The repo carries ~250 pre-existing errors, so a
- * plain "no errors in staged files" check would wrongly block unrelated edits
- * to already-broken files — the baseline makes the gate ratchet-only.
+ * .claude/tsc-baseline.json. The repo carries a handful of pre-existing errors,
+ * so a plain "no errors in staged files" check would wrongly block unrelated
+ * edits to already-broken files — the baseline makes the gate ratchet-only.
  *
  * Regenerate the baseline after intentionally fixing/accepting errors:
  *   node .claude/hooks/check-staged-types.mjs --update-baseline
  *
- * CI gates the whole repo instead of the staged files:
+ * CI gates the whole repo instead of the staged files, and also fails when the
+ * baseline has slack (a fixed error not yet removed from it):
  *   node .claude/hooks/check-staged-types.mjs --all
  */
 import { execFileSync } from 'node:child_process'
@@ -101,6 +102,22 @@ if (regressions.length > 0) {
     '\nFix the errors, or if the baseline is stale run: node .claude/hooks/check-staged-types.mjs --update-baseline'
   )
   process.exit(2)
+}
+
+// In --all mode a baseline entry above the current count is slack: a fixed
+// error the baseline would let back in. Failing on it keeps the ratchet tight —
+// the commit that fixes errors has to lower the baseline with them. Entries for
+// deleted files count too, since they report zero.
+if (checkAll) {
+  const slack = Object.keys(baseline).filter((f) => (counts.get(f) ?? 0) < baseline[f])
+  if (slack.length > 0) {
+    console.error('BLOCK: the baseline allows more errors than tsc reports:')
+    for (const f of slack) console.error(`  ${f}: baseline ${baseline[f]}, now ${counts.get(f) ?? 0}`)
+    console.error(
+      '\nLock the improvement in: node .claude/hooks/check-staged-types.mjs --update-baseline'
+    )
+    process.exit(2)
+  }
 }
 
 const improved = checked.filter((f) => (counts.get(f) ?? 0) < (baseline[f] ?? 0))
