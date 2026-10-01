@@ -8,7 +8,7 @@ Stashly already has good habits: subsystem docs and skills, bugs root-caused in 
 
 **17 items** · 6 high priority · categories: Code 7, Architecture 4, Infrastructure 3, Dependency 1, Documentation 1, Test 1
 
-**Status at 30 Sep 2026:** 3 resolved · 2 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 7 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 1 Oct 2026:** 4 resolved · 2 resolved in code, rollout step unconfirmed · 3 partly done · 1 declined · 7 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -21,7 +21,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 3 | ~~Two known 500s on ordinary requests~~ | Code | 3 | 3 | 1 | **30** (High) | 0.5 day | Resolved |
 | 4 | No error tracking or structured logging | Infrastructure | 3 | 4 | 2 | **28** (High) | 1 day | Open |
 | 5 | Thumbnails of private files are publicly readable | Architecture | 4 | 5 | 3 | **27** (High) | 3–5 days | Resolved in code; ACL sweep unconfirmed |
-| 6 | Unused, unpinned and unmaintained dependencies | Dependency | 2 | 3 | 1 | **25** (High) | 0.5 day | Partly done |
+| 6 | ~~Unused, unpinned and unmaintained dependencies~~ | Dependency | 2 | 3 | 1 | **25** (High) | 0.5 day | Resolved |
 | 7 | The type baseline is stale, and escape hatches are growing | Code | 3 | 3 | 2 | **24** (Medium) | 1–2 days | Open |
 | 8 | Data-integrity gaps in loaders and deletes | Code | 2 | 4 | 2 | **24** (Medium) | 1–2 days | Partly done |
 | 9 | Failed uploads leave S3 bytes and charged quota with no Item | Architecture | 3 | 4 | 3 | **21** (Medium) | 2–3 days | Partly done |
@@ -110,7 +110,11 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Why it matters:** Native packages like `node-llama-cpp` and `node-av` make installs and images heavier and slower. `latest` can ship a breaking change on any install.
 - **Status 2026-09-29: partly done** (`d8bf186`, 2026-09-25).
   - **Done:** the native packages are gone and `radix-ui` is pinned to `^1.6.7`. `crypto-js` is replaced by Web Crypto, and `toBase64` became `toSHA256`, since Web Crypto has no MD5.
-  - **Still in `package.json`:** `webgpu`, `@statelyai/inspect`, `@huggingface/tokenizers` and `@stripe/stripe-js`. None of them has an import in `app/`, `server*`, `scripts/` or `vite.config.ts`. `tsconfig` references `@webgpu/types`, which is a different package from `webgpu`.
+  - **Last four removed 2026-10-01** (`ba437d3`): `webgpu`, `@statelyai/inspect`, `@huggingface/tokenizers` and `@stripe/stripe-js`, plus `webgpu`'s two build-permission entries in `pnpm-workspace.yaml`.
+    - A whole-repo search found no imports. `'webgpu'` only appears as a device-name string, and `tsconfig`'s `@webgpu/types` is a different package.
+    - `app/types/tokenizers-augment.d.ts` declares its module on its own, and `@huggingface/transformers` still installs `@huggingface/tokenizers` transitively.
+    - Verified in a fresh clone: frozen install, the typecheck gate, 525/525 tests and the build all passed, and none of the four was installed.
+- **Resolved 2026-10-01.**
   - **Gap `d8bf186` introduced, since fixed:** `overview-view.tsx` linked "All files" to the deleted `/:me/stash/recent` route. It now points to `/:me/stash/all` (`1f030cf`, 2026-09-30).
 
 ### 7. The type baseline is stale, and escape hatches are growing
@@ -132,7 +136,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Status 2026-09-29: partly done.**
   - **Permission rows: done** (`b7ec938`). `Permission_itemId_fkey` is now `ON DELETE CASCADE`. The first migration also deletes the rows already orphaned: those with no item, no share link and no invitation recipient. The 2026-09-27 diagnosis counted 956 of them on the dev DB. Prod runs that `DELETE` on its next migration.
   - **`openedAt`: resolved** (`62ddd1c`). The three loaders no longer write it themselves. `getFolder`, `getFileItem` and `getCollectionForUser` record it inside the action, next to the access check; the collection's check and write share one transaction. `62ddd1c` first put the permission check *before* the existence check, so a missing collection answered 403; `0c1db6d` (2026-09-30) restored 404. Accepted as the fix: the write still runs during the `GET`, but it's owned by the action rather than the loader, and no fire-and-forget or `clientLoader` ping is planned. The same commit added an access check to the folder loader, which had read the folder straight from `prisma` without one.
-  - **Quota client: open.** `retrieveUserUsageMetrics` still calls `findQuotaByUserId(userId)` without its `client` (`item-actions.ts:3367`).
+  - **Quota client: fixed 2026-10-01** (`fc655be`). `retrieveUserUsageMetrics` now passes its transaction client to `findQuotaByUserId` (`item-actions.ts:3367`). The function already accepted it; the caller just didn't pass it.
   - **Filter maps:** not re-checked. `item-filters-coverage.test.ts` (from `fb3950d`, 2026-09-11) guards the item filters.
 
 ### 9. Failed uploads leave S3 bytes and charged quota with no Item
@@ -249,6 +253,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-09-30 | `1f030cf`, `14f2ca9` | 6, 13 | The dead `/recent` link now points to `/all`; the page-size test expects the new default of 50. |
 | 2026-09-30 | `b95cdd5` | 1 | CI workflow added, plus the hook's `--all` mode. |
 | 2026-09-30 | `e8a61eb`, `326c317`, `eda8fc7` | 2 | Dockerfile rebuilt for pnpm and Node 24, `fly.toml` with a migration release command, and a CI docker job that boots the image. |
+| 2026-10-01 | `ba437d3`, `fc655be` | 6, 8 | The last four unused packages removed; the quota read in `retrieveUserUsageMetrics` now runs inside its transaction. |
 
 ## Phased remediation plan
 
@@ -259,10 +264,10 @@ These commits touched a register item, oldest first. Commits that don't touch an
 Quick wins that shrink the surface area before anything else. Also finish or revert the favorites work-in-progress from the last item.
 
 - ~~Two known 500s on ordinary requests (0.5 day)~~: resolved
-- Unused, unpinned and unmaintained dependencies (0.5 day): partly done, four unused packages left
+- ~~Unused, unpinned and unmaintained dependencies (0.5 day)~~: resolved 2026-10-01
 - ~~Generated and personal files in git (0.5 day)~~: resolved 2026-09-26
 
-*Status 2026-09-29:* Phase 0 is mostly done. What's left is the four unused packages from item 6 and the favorites work in progress from item 17.
+*Status 2026-10-01:* Phase 0 is done, apart from the favorites work in progress from item 17.
 
 ### Phase 1 · next two weeks
 
@@ -287,7 +292,7 @@ Privacy and data correctness. Merge the thumbnail paths first, then make signing
 - Two thumbnail orchestrators (2–3 days): open
 - Thumbnails of private files are publicly readable (3–5 days): resolved in code; ACL sweep unconfirmed
 - Failed uploads leave S3 bytes and charged quota with no Item (2–3 days): quota half done
-- Data-integrity gaps in loaders and deletes (1–2 days): permission cascade and `openedAt` done
+- Data-integrity gaps in loaders and deletes (1–2 days): permission cascade, `openedAt` and the quota client done; only the filter maps are unchecked
 
 *Status 2026-09-29:* signing shipped *before* the orchestrators were merged, the reverse of the planned order, so the signing change had to land on both paths.
 
