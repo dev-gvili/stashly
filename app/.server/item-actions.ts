@@ -3364,7 +3364,7 @@ export async function retrieveUserUsageMetrics(
     countItems({ where: { ...active, type: 'file' } }, client),
     client.favorite.count({ where: { favoritedById: userId } }),
     countItems({ where: { ownerId: userId, status: 'trashed' } }, client),
-    findQuotaByUserId(userId),
+    findQuotaByUserId(userId, client),
   ])
 
   return {
