@@ -1,11 +1,11 @@
-import type { Route } from './+types/health'
+import { data } from 'react-router'
+import { checkHealth } from '@/services/health-actions'
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-  // TODO: implement loader logic
-  return null
-}
-
-export async function action({ request, params }: Route.ActionArgs) {
-  // TODO: implement action logic
-  return null
+/** 200 when the database answers, 503 when it doesn't — see `checkHealth`. */
+export async function loader() {
+  const report = await checkHealth()
+  return data(report, {
+    status: report.status === 'ok' ? 200 : 503,
+    headers: { 'Cache-Control': 'no-store' },
+  })
 }
