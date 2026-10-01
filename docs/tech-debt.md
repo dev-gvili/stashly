@@ -8,7 +8,7 @@ Stashly already has good habits: subsystem docs and skills, bugs root-caused in 
 
 **17 items** · 6 high priority · categories: Code 7, Architecture 4, Infrastructure 3, Dependency 1, Documentation 1, Test 1
 
-**Status at 1 Oct 2026:** 5 resolved · 2 resolved in code, rollout step unconfirmed · 3 partly done · 1 declined · 6 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 1 Oct 2026:** 5 resolved · 2 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 5 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -32,7 +32,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 14 | Two thumbnail orchestrators | Architecture | 3 | 2 | 3 | **15** (Low) | 2–3 days | Open |
 | 15 | `item-actions.ts` god module | Code | 3 | 2 | 3 | **15** (Low) | 3–5 days, incremental | Declined |
 | 16 | Overlapping UI primitives | Code | 2 | 1 | 2 | **12** (Low) | 2–3 days | Partly done |
-| 17 | Unfinished migrations left in place | Architecture | 2 | 2 | 3 | **12** (Low) | 2–4 days | Open |
+| 17 | Unfinished migrations left in place | Architecture | 2 | 2 | 3 | **12** (Low) | 2–4 days | Partly done |
 
 ## Details
 
@@ -234,7 +234,11 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** From TASKS.md. Seven workspace routes still point at stubs whose loaders return `null`. `workspaces/create.tsx` isn't registered. The flat and nested item API routes are both registered for five resources. The favorites revalidation work is half-done on `main` (`api/favorites.ts:39` has a commented-out return).
 - **Fix:** Finish or revert each one. Start with the favorites work-in-progress, which is small and already live.
 - **Why it matters:** Half-migrations double the surface area to reason about, and stubs look like features that work.
-- **Status 2026-09-29: open.** The `unfavorite` case in `api/favorites.ts` still has the commented-out `return data(…)` followed by a `redirect`. `d8bf186` deleted the stray `recent` and `test` routes, but the workspace stubs weren't touched.
+- **Status 2026-10-01: partly done.**
+  - **Favorites work in progress: finished** (`ea4c2a1`). `unfavorite` now returns `data({ favorited: false })` like `favorite` does. `useFavorite` settles on `fetcher.data`, which the redirect left empty.
+  - **Bulk favorite:** `favorite_items` now strips `selectedItems` from its redirect, as its own comment said it should and as `/api/items` does. That gives the previously unused `removeQueryParam` import its use.
+  - **Checks:** the typecheck gate passes. It isn't checked in a browser, because the dev server was down.
+  - **Still open:** the seven workspace stubs, the unregistered `workspaces/create.tsx` (also one of the 11 baseline type errors), and five resources registered under both the flat and the nested item API routes.
 
 ## Changes since the audit
 
@@ -273,7 +277,7 @@ Quick wins that shrink the surface area before anything else. Also finish or rev
 - ~~Unused, unpinned and unmaintained dependencies (0.5 day)~~: resolved 2026-10-01
 - ~~Generated and personal files in git (0.5 day)~~: resolved 2026-09-26
 
-*Status 2026-10-01:* Phase 0 is done, apart from the favorites work in progress from item 17.
+*Status 2026-10-01:* Phase 0 is done.
 
 ### Phase 1 · next two weeks
 
@@ -312,7 +316,7 @@ Pay down on each touch: add tests for any loader or action you change, and fix a
 - Tests are missing where the risk is (ongoing, ~2 weeks)
 - ~~`item-actions.ts` god module (3–5 days, incremental)~~: declined 2026-09-29
 - Overlapping UI primitives (2–3 days): partly done
-- Unfinished migrations left in place (2–4 days)
+- Unfinished migrations left in place (2–4 days): favorites work in progress finished; workspace stubs and duplicate routes left
 
 ---
 
