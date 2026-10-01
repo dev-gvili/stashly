@@ -1,8 +1,9 @@
-# Production image for the main app, deployed to Fly.io with ../fly.toml.
+# Production image for the main app, deployed to Fly.io with fly.toml (repo root).
 #
 # Debian slim rather than Alpine: onnxruntime-node (via @huggingface/transformers)
-# and webgpu ship glibc-only native binaries. pnpm is pinned to the version CI
-# uses so `--frozen-lockfile` reads the lockfile the same way.
+# ships one linux build per arch, linked against glibc (needs GLIBC_2.28, no musl
+# variant), so it can't load on Alpine. pnpm is pinned to the version CI uses so
+# `--frozen-lockfile` reads the lockfile the same way.
 
 FROM node:24-bookworm-slim AS base
 RUN npm install -g pnpm@12.4.1
