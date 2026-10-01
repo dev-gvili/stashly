@@ -169,3 +169,47 @@ describe('item filter values the filter rejects', () => {
     expect(buildItemFilters(params)).toEqual(buildItemFilters(itemFilterSchema.parse({})))
   })
 })
+
+/**
+ * `roles` means permission roles on a personal stash and workspace-member roles
+ * inside a workspace. Each branch builds a clause for its own kind only; the
+ * other kind used to reach Prisma as an invalid enum and answer 500
+ * (/stash/all?roles=viewer,member, measured 2026-10-01).
+ */
+describe('roles filter', () => {
+  const build = (input: Record<string, unknown>) => () =>
+    buildItemFilters(itemFilterSchema.parse(input))
+
+  it('rejects workspace roles outside a workspace with a 400', () => {
+    expect(build({ roles: 'viewer,member' })).toThrow(
+      expect.objectContaining({ errorCode: 'INVALID_INPUT', status: 400 })
+    )
+  })
+
+  it('rejects permission roles inside a workspace with a 400', () => {
+    expect(build({ roles: 'read,write', workspaceId: 'wsp_1' })).toThrow(
+      expect.objectContaining({ errorCode: 'INVALID_INPUT', status: 400 })
+    )
+  })
+
+  it('filters permission roles outside a workspace', () => {
+    const where = build({ roles: 'read,write' })() as { AND: object[] }
+    expect(where.AND).toContainEqual({
+      permissions: { some: { roles: { in: ['read', 'write'] } } },
+    })
+  })
+
+  it('filters member roles inside a workspace', () => {
+    const where = build({ roles: 'viewer,member', workspaceId: 'wsp_1' })() as {
+      AND: object[]
+    }
+    expect(where.AND).toContainEqual({
+      workspace: { id: 'wsp_1', members: { some: { role: { in: ['viewer', 'member'] } } } },
+    })
+  })
+
+  it('accepts `owner`, a role of both kinds, in either context', () => {
+    expect(build({ roles: 'owner' })).not.toThrow()
+    expect(build({ roles: 'owner', workspaceId: 'wsp_1' })).not.toThrow()
+  })
+})

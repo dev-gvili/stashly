@@ -232,6 +232,9 @@ export const itemFilters = {
   roles: createItemFilter(
     z.array(z.enum(PermissionRole)).or(z.array(z.enum(WorkspaceMemberRole))),
     (roles, params) => {
+      // Each branch validates its own role kind instead of casting: a cast let
+      // `viewer` reach Prisma as a PermissionRole, and the page answered 500.
+      // A throw here becomes a 400 in FilterBuilder.addFilter.
       if (params.workspaceId) {
         return {
           workspace: {
@@ -239,7 +242,7 @@ export const itemFilters = {
             members: {
               some: {
                 role: {
-                  in: roles as WorkspaceMemberRole[],
+                  in: z.array(z.enum(WorkspaceMemberRole)).parse(roles),
                 },
               },
             },
@@ -249,7 +252,7 @@ export const itemFilters = {
       return {
         permissions: {
           some: {
-            roles: { in: roles as PermissionRole[] },
+            roles: { in: z.array(z.enum(PermissionRole)).parse(roles) },
           },
         },
       }
