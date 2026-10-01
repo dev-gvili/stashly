@@ -14,7 +14,6 @@ export const driveFilterSchema = z
     memberLimit: z.number().int(),
     storageLimit: z.bigint(),
     ownerId: z.string(),
-    workspaceId: z.string(),
   })
   .partial() satisfies z.ZodType<Partial<Drive>>
 
@@ -27,12 +26,6 @@ export const driveFilters = {
   id: createDriveFilter(z.string().nonempty(), (id) => ({ id })),
   name: createDriveFilter(z.string().nonempty(), (name) => ({ name })),
   type: createDriveFilter(z.nativeEnum(DriveType), (type) => ({ type })),
-  createdAt: createDriveFilter(z.coerce.date(), (createdAt) => ({
-    createdAt,
-  })),
-  updatedAt: createDriveFilter(z.coerce.date(), (updatedAt) => ({
-    updatedAt,
-  })),
   workspaceLimit: createDriveFilter(
     z.coerce.number().int(),
     (workspaceLimit) => ({ workspaceLimit })

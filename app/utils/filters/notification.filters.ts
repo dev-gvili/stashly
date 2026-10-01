@@ -23,11 +23,16 @@ const createNotificationFilter = createFilter<
 >()
 
 export const notificationFilters = {
+  id: createNotificationFilter(z.string().nonempty(), (id) => ({ id })),
   message: createNotificationFilter(z.string(), (message) => ({
     message,
   })),
-  user: createNotificationFilter(z.string().nonempty(), (userId) => ({
+  userId: createNotificationFilter(z.string().nonempty(), (userId) => ({
     userId,
+  })),
+  // The schema has already split the comma-separated param into an array.
+  type: createNotificationFilter(z.array(z.enum(NotificationType)), (type) => ({
+    type: { in: type },
   })),
   status: createNotificationFilter(z.enum(NotificationStatus), (status) => ({
     status,
