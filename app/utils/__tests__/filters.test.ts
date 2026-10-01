@@ -85,33 +85,8 @@ describe('FilterBuilder', () => {
     expect(returned).toBe(builder)
   })
 
-  it('rejects an invalid filter value with a 400 instead of dropping the filter', () => {
-    const badFilters = {
-      id: makeFilter(z.number(), (v) => ({ id: v } as WhereInput)),
-    }
-    const builder = new FilterBuilder(badFilters, {})
-    // Dropping the filter would leave the query with one constraint fewer, so
-    // it would return *more* rows than asked for. The caller gets a 400.
-    let thrown: unknown
-    try {
-      builder.addFilter('id', 'not-a-number')
-    } catch (error) {
-      thrown = error
-    }
-    expect(thrown).toMatchObject({ errorCode: 'INVALID_INPUT', status: 400 })
-    expect(builder.build()).toEqual([])
-  })
-
-  it('treats an empty string as unset, not invalid', () => {
-    // `?query=` means no query. Skipped like undefined, so it neither throws
-    // nor adds a clause.
-    const strictFilters = {
-      query: makeFilter(z.string().min(1), (v) => ({ name: v } as WhereInput)),
-    }
-    const builder = new FilterBuilder(strictFilters, {})
-    expect(() => builder.addFilter('query', '')).not.toThrow()
-    expect(builder.build()).toEqual([])
-  })
+  // Rejecting an invalid value (400) and skipping an empty string are tested
+  // against the real item filters in item-filters-coverage.test.ts.
 })
 
 // ─── buildFiltersFactory ──────────────────────────────────────────────────────

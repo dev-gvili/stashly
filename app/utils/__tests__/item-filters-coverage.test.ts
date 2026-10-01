@@ -139,3 +139,33 @@ describe('toSearchSchema', () => {
     expect(parsed.orderBy).toEqual({ name: 'asc' })
   })
 })
+
+/**
+ * How the builder treats values that reach it through the real schema. A value
+ * the schema accepts but the filter rejects used to be logged and dropped,
+ * which left the query one constraint short and returned more rows.
+ */
+describe('item filter values the filter rejects', () => {
+  it('rejects a role list that mixes permission and workspace roles with a 400', () => {
+    // The schema accepts each role on its own (`read` is a PermissionRole,
+    // `viewer` a WorkspaceMemberRole); the `roles` filter needs the list to be
+    // all one kind. Measured live: /stash/all?roles=read,viewer answers 400.
+    const params = itemFilterSchema.parse({ roles: 'read,viewer' })
+    expect(params.roles).toEqual(['read', 'viewer'])
+
+    let thrown: unknown
+    try {
+      buildItemFilters(params)
+    } catch (error) {
+      thrown = error
+    }
+    expect(thrown).toMatchObject({ errorCode: 'INVALID_INPUT', status: 400 })
+  })
+
+  it('treats an empty query as unset, not invalid', () => {
+    // `?query=` means no query: the same where clause as no `query` at all.
+    const params = itemFilterSchema.parse({ query: '' })
+    expect(params.query).toBe('')
+    expect(buildItemFilters(params)).toEqual(buildItemFilters(itemFilterSchema.parse({})))
+  })
+})
