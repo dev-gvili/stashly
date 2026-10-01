@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 /**
  * A single filter definition.
  * @template T - The type of the filter's own value.
@@ -62,9 +63,12 @@ export class FilterBuilder<
   ) {}
 
   addFilter<TKey extends keyof TFilters>(key: TKey, value: unknown): this {
+    // Unset, not invalid: absent, null, an empty array, or an empty string
+    // (`?query=` in a URL means "no query", not a malformed one).
     if (
       value !== undefined &&
       value !== null &&
+      value !== '' &&
       (Array.isArray(value) ? value.length > 0 : true)
     ) {
       try {
@@ -74,7 +78,13 @@ export class FilterBuilder<
         )
         this.rebuildConditions()
       } catch (error) {
+        // Never drop the filter and carry on: that leaves the query one
+        // constraint short, so it returns *more* rows than were asked for.
         console.error(`Invalid value for filter '${String(key)}':`, error)
+        throw toRouteError(
+          StashlyErrorCode.INVALID_INPUT,
+          `Invalid value for filter '${String(key)}'`
+        )
       }
     }
     return this
