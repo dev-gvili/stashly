@@ -6,15 +6,15 @@
 
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
-**Now (1 Oct):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 607 unit tests with none excluded, and the build. It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+**Now (2 Oct):** the safety net is mostly in place.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 649 unit tests with none excluded, and the build. It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Still missing:** error tracking and a linter. Both need a new package, which needs the owner's decision.
 
 **17 items** · 6 high priority · categories: Code 7, Architecture 4, Infrastructure 3, Dependency 1, Documentation 1, Test 1
 
-**Status at 1 Oct 2026:** 8 resolved · 1 resolved in code, rollout step unconfirmed · 2 partly done · 1 declined · 5 open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 2 Oct 2026:** 8 resolved · 1 resolved in code, rollout step unconfirmed · 2 partly done · 1 declined · 5 open. Item 8 is resolved as scoped, but a follow-up pass on 2 Oct found one new gap, the `inclusiveSize` trigger, which is still open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 ### What's left, in priority order
 
@@ -22,9 +22,10 @@
 |---|------|--------------|------------|
 | 4 | Error tracking and logging | All of it | Owner's choice of package (Sentry, pino or both) |
 | 2 | Deploy path | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
+| 8 | Data integrity (follow-up) | Trashing a folder that holds subfolders drops the subfolders' bytes from its `inclusiveSize` | A migration to `update_size()`, which needs the owner's OK |
 | 10 | Accessibility and responsive UI | All of it | — |
 | 12 | Linter | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
-| 13 | Tests where the risk is | `item-actions`, quota and permission tests; a Postgres service in CI for the DB tests | — |
+| 13 | Tests where the risk is | `item-actions` create, move and copy; quota on its own; route and component tests | — |
 | 14 | Two thumbnail orchestrators | Move the upload runner off `useThumbnail` | The owner's visual sign-off on the XState pipeline |
 | 16 | Overlapping UI primitives | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
 | 17 | Unfinished migrations | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes | — |
@@ -186,6 +187,29 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
     - **Drives:** the `createdAt`/`updatedAt` filters could never run and are deleted, since `date` already covers `createdAt` ranges. The `workspaceId` schema key is removed: `Drive` has no workspace column or relation, so no filter for it could exist.
     - **Test:** `filter-key-coverage.test.ts` runs the item-filters coverage checks over both files. It failed in all five reported ways before the fix.
     - **Impact:** no route calls either search yet, so nothing visible changed.
+- **Follow-up 2026-10-02: trash, restore and delete.** A second pass over the delete path found gaps the audit missed.
+  - **Permission checks.**
+    - **Permanent delete** (`c554b8c`) now needs `owner` on every item. The workspace is read from each item, so a caller can't skip the membership check by leaving it out. It answers 403 instead of a 200 carrying `{ success: false }`.
+    - **Trash and restore** (`e04d07d`) had no check at all, so any signed-in user could trash or restore another user's items by id. They now need `write`, and `/api/items` answers with the real status.
+    - **One query per batch:** both go through `assertItemsAccess` in `permission-actions.ts`, which checks the whole batch at once.
+  - **Quota over-count on trash** (`e04d07d`).
+    - **Cause:** `trashItems` summed `size` over a folder and its contents. A folder's `size` is a trigger rollup of its active contents, so nested bytes counted once per folder level, and files already in trash counted again. Restore summed only the files.
+    - **Measured** on a 640-item upload of `app/`: trash moved 31,195,710 bytes for 8,195,840 bytes of files, and restore left the quota 22,999,870 bytes off.
+    - **Now:** both sum the files whose status actually changed, and moved exactly 8,195,840 bytes each way.
+  - **Delete only from trash** (`e04d07d`). Permanent delete refused nothing before; it now answers 400 for any item that isn't in trash, and deletes nothing.
+  - **Round-trips** (`e04d07d`, `8e41013`).
+    - Trash, restore and delete are each one statement, a data-modifying CTE. Their activities go in as one batched insert, and the quota update finds its own row.
+    - On the dev DB, at 50 items: 406 / 405 / 60 round-trips on `main` (trash / restore / delete) became 4 / 4 / 3, the same at any batch size.
+    - On the 640-item folder, the median of 5 alternating runs was trash 632 ms (main 703) and restore 1,140 ms (main 1,158). The time is dominated by the size trigger firing on every row (`EXPLAIN ANALYZE`, rolled back).
+  - **Lost upload activity** (`e04d07d`).
+    - **Measured:** 376 of 575 files in one directory upload had no activity.
+    - **Cause:** the activity was started inside the item's transaction on the global client. Prisma's nested `connect` looked the item up on another connection before the commit and failed with P2025, swallowed by `.catch(() => {})`.
+    - **Fix:** it now runs after the commit, and failures are logged. A re-upload had 576 of 576 files and 64 of 64 folders with exactly one activity.
+  - **Open: `inclusiveSize` loses nested bytes.**
+    - **Measured** in a rolled-back transaction: trashing a folder holding a file of 100 bytes and a subfolder with a file of 25 bytes left the parent's `inclusiveSize` at 100, not 125. `main` and the new statement both do it.
+    - **Cause:** it happens when a parent and its child change status in the same statement, inside `update_size()`. The exact mechanism isn't confirmed.
+    - **Fix:** needs a migration.
+  - **Open: delete waits on S3.** Deleting the 640-item folder took 20.8 s; its database statement takes about 0.65 s (`EXPLAIN ANALYZE` on the other, identically shaped copy). So about 20 s is the S3 removal, which `/api/items` awaits before responding. That split is inferred from those two measurements, not timed directly.
 
 ### 9. Failed uploads leave S3 bytes and charged quota with no Item
 
@@ -251,6 +275,13 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - **Now run automatically:** since 2026-10-01, CI runs every test file against a real Postgres, with nothing excluded: 607 tests in 42 files.
   - **Fixed in passing:** two `removeItemFromCollection` tests had failed since the function switched to an object argument, and now pass (`76c69a5`). `pnpm test` is 583 passing / 9 failing (2026-10-01).
   - **Unchanged:** `app/.server/__tests__` still has 5 test files, there are still 8 Playwright specs, and `item-actions.ts` still has no tests of its own. `trash-loader.test.ts` only mocks it.
+- **Status 2026-10-02: open, with `item-actions` coverage started.**
+  - **`item-actions.ts` now has tests of its own**, run against a live database:
+    - `item-delete-objects` (11): S3 removal, owner access, and only from trash.
+    - `item-trash-access` (17): write access, quota amounts on nested and overlapping selections, and batched activities.
+    - `upload-activity` (1): no activity write while a transaction is open. It fails on the old code every time.
+  - **Counts:** `app/.server/__tests__` has 9 test files. `pnpm test` is 649 passing in 46 files, and CI runs all of them.
+  - **Still missing:** create, move and copy in `item-actions`; quota on its own; routes and components. There are still 8 Playwright specs.
 
 ### 14. Two thumbnail orchestrators
 
@@ -271,7 +302,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** `app/.server/item-actions.ts` is 3,544 lines with 58 exports. Next largest: `search-actions.ts` (1,551), `invitation-actions.ts` (1,154), `s3.ts` (1,151).
 - **Fix:** Split it by lifecycle (create/upload, move/copy, trash/restore/delete, metadata/metrics) behind the same exports, one slice per PR, with tests added per slice.
 - **Why it matters:** Merge conflicts and review effort concentrate in one file, and it has no tests.
-- **Status 2026-09-29: declined.** A per-slice plan was drafted, and the owner decided not to split the file. It has grown to 3,668 lines and 59 exports, mostly from `getFolder` in `62ddd1c`. Its tests remain part of item 13.
+- **Status 2026-09-29: declined.** A per-slice plan was drafted, and the owner decided not to split the file. It has grown to 3,668 lines and 59 exports, mostly from `getFolder` in `62ddd1c`. Its tests remain part of item 13. (2026-10-02: 3,665 lines and 59 exports after the trash/restore/delete rewrite.)
 
 ### 16. Overlapping UI primitives
 
@@ -327,6 +358,10 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-01 | `e6ac762`..`e506455` | 1, 13 | Honest CI: real Postgres for both jobs, a health check that queries the database, every test run, output never hidden, invalid filter values rejected with a 400. |
 | 2026-10-01 | `6218641`, `3d5e1d7` | 9 | Permanent delete now removes S3 objects; `sweep-s3-orphans.ts` cleans up what was left behind. |
 | 2026-10-02 | no commit (operation) | 9 | Orphan sweep applied: 652 objects deleted, 85 stale uploads aborted, 0 failures; every bucket now fully referenced. |
+| 2026-10-02 | `c554b8c` | 8 | Permanent delete needs `owner` on every item, with workspace membership read from the item, and answers 403. |
+| 2026-10-02 | `8e41013` | 8 | The quota UPDATE locates its own row: one round-trip per quota change instead of two. |
+| 2026-10-02 | `e04d07d` | 8, 13 | Trash and restore need `write`. Trash's quota over-count is fixed, and delete works only from trash. Each is one statement with batched activities; upload activity no longer races its transaction. 20 new tests. |
+| 2026-10-02 | `1b41e45` | 8 | `onActiveItemsDeleted` removed: permanent delete only takes items from trash, so it had no callers. |
 
 ## Phased remediation plan
 
