@@ -21,7 +21,11 @@ type AiPriority = 'interactive' | 'default' | 'background'
 | `default` | Upload-time pipeline work. |
 | `background` | Backfills, OCR. Nobody is blocked. |
 
-FIFO within a priority; a waiting `interactive` job goes ahead of waiting `background` work. **A running job is never preempted** — WebGPU gives no way to do that. That constraint is why long jobs must *enqueue in small pieces*: `ocrPages` enqueues per page so an interactive job never waits behind more than one page. Any new long-running consumer must do the same.
+FIFO within a priority; a waiting `interactive` job goes ahead of waiting `background` work. **A running job is never preempted** — WebGPU gives no way to do that. That constraint is why long jobs must *enqueue in small pieces*: `ocrPages` enqueues per page so an interactive job never waits behind more than one page, and `embedTexts` enqueues per `EMBED_BATCH_SIZE` (16) texts. Any new long-running consumer must do the same.
+
+**Batch size is also a memory limit.** GPU memory grows with batch × sequence length²: MPNet's attention scores alone are batch × 12 heads × 512 × 512 × 4 bytes, about 12.6 MB per text. Unbatched, a 338-chunk file asked WebGPU for one 4,253,024,256-byte buffer, over its 2 GiB per-buffer limit; the call failed and **every later embedding in the tab failed with the same message**. A 170-chunk file fit and took the GPU process from about 5 GB to 10.9 GB, which it never gave back (measured 2 Oct 2026). Never pass a model an unbounded array.
+
+**Models hold their memory until disposed.** On integrated graphics (the dev machine is an Intel UHD with 0 MB dedicated) every byte the GPU holds is system RAM, and a loaded pipeline keeps its buffers until `dispose()` or the tab closes. `embedding.ai.ts` releases the embedding model after `EMBEDDING_IDLE_RELEASE_MS` (60 s) without use, as a `background` queue job so it never disposes under a running inference; the next call reloads it. Measured: GPU process 1,551 → 199 MB about 60 s after the last batch. The image (ViT) and OCR models do not do this yet.
 
 A failure settles the caller *and* frees the queue (`.finally`), because an unreleased `running` flag deadlocks every later job.
 

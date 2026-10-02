@@ -59,9 +59,13 @@ indexingQueue (module scope, FIFO, 2 at a time)
 - **Legacy path.** With `USE_THUMBNAIL_MACHINE = false` the old `useThumbnail`
   indexes by itself, so the runner does not queue anything here.
 
-## Known, not yet changed
+## Embedding is batched
 
-`embedChunksOnGpu` sends every chunk of a file to the GPU in one call (338
-chunks for a 400 KB source file). It is a suspect in a machine freeze during a
-large folder upload, but unmeasured; splitting it waits for a before/after
-measurement in the browser.
+`embedTexts` sends at most `EMBED_BATCH_SIZE` (16) chunks per GPU call, each
+call its own AI-queue job. It used to send a whole file at once. Measured on
+2 Oct 2026 with the 64-file Prisma client folder: a 338-chunk file asked WebGPU
+for one 4,253,024,256-byte buffer (338 × 12 heads × 512² × 4 bytes) and was
+refused, after which every later embedding in the tab failed the same way, and
+a 170-chunk file took the GPU process from about 5 GB to 10.9 GB. The raw
+numbers are in `.claude/evidence/phase2-before.json` and
+`phase2-gpu-memory.csv`.

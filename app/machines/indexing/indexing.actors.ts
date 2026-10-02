@@ -62,10 +62,10 @@ export const saveMetadataToServer = fromPromise<
  * Turns each chunk's text into a 768-dimension vector on the GPU.
  *
  * Runs through the shared WebGPU queue (`ai-queue.ts`) at `'default'`
- * priority, behind search queries and alongside OCR and salient crops. Every
- * chunk of the file goes in one call today, which for a large file is one big
- * GPU batch (338 chunks for a 400 KB source file); splitting it is tracked
- * separately and needs a before/after measurement first.
+ * priority, behind search queries and alongside OCR and salient crops.
+ * `embedTexts` splits the chunks into GPU calls of `EMBED_BATCH_SIZE`, each its
+ * own queue job, so a 338-chunk file is 22 small calls rather than one that
+ * WebGPU refuses.
  *
  * @returns One vector per chunk, in chunk order.
  * @example

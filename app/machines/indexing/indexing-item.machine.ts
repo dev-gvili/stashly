@@ -208,7 +208,7 @@ export const indexingItemMachine = setup({
 
     embeddingChunks: {
       description:
-        "Turns every chunk's text into a 768-dimension vector on the GPU, through the shared WebGPU queue (ai-queue.ts). All of the file's chunks go in one call.",
+        "Turns every chunk's text into a 768-dimension vector on the GPU, through the shared WebGPU queue (ai-queue.ts), 16 chunks per GPU call.",
       invoke: {
         src: 'embedChunksOnGpu',
         input: ({ context }) => ({ chunks: context.chunks }),
