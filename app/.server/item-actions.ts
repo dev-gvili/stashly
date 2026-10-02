@@ -1311,11 +1311,15 @@ async function findOrCreateFolderPath(
     // which $queryRaw can't deserialize as a result column.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`
 
+    // A trashed folder doesn't count. It used to match, so a re-upload was
+    // filed into the trash: invisible where the user put it, visible only in
+    // Trash.
     const existing = await tx.item.findFirst({
       where: {
         name: folderName,
         parentId: currentParentId,
         type: 'folder',
+        status: { not: 'trashed' },
         ownerId,
       },
       select: { id: true },
