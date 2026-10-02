@@ -170,7 +170,7 @@ Six PL/pgSQL functions back ten triggers. Five of them maintain denormalized rol
 
 | Function | Current migration | Purpose |
 |----------|-------------------|---------|
-| `update_size()` | `20260526000000_user_wipe_trigger_bypass` | Maintains `Item.size` / `Item.inclusiveSize` on the **parent** item |
+| `update_size()` | `20261002090000_fix_inclusive_size_rollup` | Maintains `Item.size` / `Item.inclusiveSize` on the **parent** item |
 | `update_child_count()` | `20251214024737_update_triggers_for_inclusive_counts` | Maintains `Folder.childCount` / `Folder.inclusiveChildCount` on the **parent** folder |
 | `update_collection_size()` | `20260526000000_user_wipe_trigger_bypass` | Maintains a collection `Item.size` when members are added/removed |
 | `sync_item_size_to_collections()` | `20260526000000_user_wipe_trigger_bypass` | Propagates a member item's size change to every parent collection |
@@ -198,12 +198,21 @@ All are `FOR EACH ROW`.
 
 Keeps `Item.size` (active items only) and `Item.inclusiveSize` (all items including trashed) in sync on the parent item.
 
+A child contributes to its parent:
+
+| Column on the parent | The child's contribution |
+|---|---|
+| `size` | the child's `size`, or 0 if the child itself is `trashed` |
+| `inclusiveSize` | a **folder** child's own `inclusiveSize`; any other child's `size` (files carry `inclusiveSize` = 0) |
+
 | Operation | Behaviour |
 |-----------|-----------|
-| **INSERT** | +size to parent `inclusiveSize`; +size to parent `size` if status ≠ `trashed` |
-| **DELETE** | −size from parent `inclusiveSize`; −size from parent `size` if status ≠ `trashed` |
-| **UPDATE (move)** | Decrements old parent, increments new parent (both size columns) |
-| **UPDATE (size/status change)** | Computes delta for both `inclusiveSize` and `size` from old/new status and size values |
+| **INSERT** | Adds the new row's contributions to its parent |
+| **DELETE** | Subtracts the deleted row's contributions from its parent |
+| **UPDATE (move)** | Subtracts the old contributions from the old parent, adds the new ones to the new parent |
+| **UPDATE (size, status or `inclusiveSize` change)** | Applies the change in both contributions to the parent. The parent's update fires the trigger again, so the change travels up to the root |
+
+Before `20261002090000_fix_inclusive_size_rollup` the function passed a folder's `size` change up as an `inclusiveSize` change and ignored `inclusiveSize` changes. As a result, an ancestor more than one level above a trashed item lost that item's bytes from its `inclusiveSize` while the item sat in trash, and a moved folder's trashed contents were never counted under its new parent. That migration also recounts every folder once.
 
 Every parent UPDATE is additionally guarded by `AND NOT stashly_is_wiping_user("ownerId")` so a full user wipe doesn't deadlock against rows the same statement is deleting (see *User-wipe bypass* below).
 
@@ -281,7 +290,8 @@ Firing at the DB level means *every* writer pushes live — `createNotification(
 | `20260416000000_add_collection_size_trigger` | Added `update_collection_size()` + `sync_item_size_to_collections()` and their three triggers (`collection_size_trigger`, `item_size_collection_sync_trigger`, `item_delete_collection_sync_trigger`) |
 | `20260526000000_user_wipe_trigger_bypass` | Added `stashly_is_wiping_user()`; re-issued `update_size()`, `update_collection_size()`, `sync_item_size_to_collections()` with the wipe-bypass `WHERE` guard |
 | `20260724000000_notification_notify` | Added `notify_notification_change()` + the `notification_change_notify` trigger on `Notification` |
-| `20260826000000_defer_folder_item_fk` | **Current** — made `Folder_itemId_fkey` `DEFERRABLE INITIALLY DEFERRED` so `update_child_count()`'s DELETE branch can't race the `ON DELETE CASCADE` on the same facet row (see the ⚠️ note under `update_child_count()`). No function or trigger changed |
+| `20260826000000_defer_folder_item_fk` | Made `Folder_itemId_fkey` `DEFERRABLE INITIALLY DEFERRED` so `update_child_count()`'s DELETE branch can't race the `ON DELETE CASCADE` on the same facet row (see the ⚠️ note under `update_child_count()`). No function or trigger changed |
+| `20261002090000_fix_inclusive_size_rollup` | **Current** — rewrote `update_size()` so `inclusiveSize` follows each child's `inclusiveSize` (folders) or `size` (files) and travels up on its own; recounted every folder's `size` / `inclusiveSize` from the files beneath it, deepest level first |
 
 ### Recommended Explorations
 

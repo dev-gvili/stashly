@@ -14,7 +14,7 @@
 
 **17 items** · 6 high priority · categories: Code 7, Architecture 4, Infrastructure 3, Dependency 1, Documentation 1, Test 1
 
-**Status at 2 Oct 2026:** 8 resolved · 1 resolved in code, rollout step unconfirmed · 2 partly done · 1 declined · 5 open. Item 8 is resolved as scoped, but a follow-up pass on 2 Oct found one new gap, the `inclusiveSize` trigger, which is still open. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 2 Oct 2026:** 8 resolved · 1 resolved in code, rollout step unconfirmed · 2 partly done · 1 declined · 5 open. Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 ### What's left, in priority order
 
@@ -22,7 +22,6 @@
 |---|------|--------------|------------|
 | 4 | Error tracking and logging | All of it | Owner's choice of package (Sentry, pino or both) |
 | 2 | Deploy path | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
-| 8 | Data integrity (follow-up) | Trashing a folder that holds subfolders drops the subfolders' bytes from its `inclusiveSize` | A migration to `update_size()`, which needs the owner's OK |
 | 10 | Accessibility and responsive UI | All of it | — |
 | 12 | Linter | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
 | 13 | Tests where the risk is | `item-actions` create, move and copy; quota on its own; route and component tests | — |
@@ -205,10 +204,12 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
     - **Measured:** 376 of 575 files in one directory upload had no activity.
     - **Cause:** the activity was started inside the item's transaction on the global client. Prisma's nested `connect` looked the item up on another connection before the commit and failed with P2025, swallowed by `.catch(() => {})`.
     - **Fix:** it now runs after the commit, and failures are logged. A re-upload had 576 of 576 files and 64 of 64 folders with exactly one activity.
-  - **Open: `inclusiveSize` loses nested bytes.**
-    - **Measured** in a rolled-back transaction: trashing a folder holding a file of 100 bytes and a subfolder with a file of 25 bytes left the parent's `inclusiveSize` at 100, not 125. `main` and the new statement both do it.
-    - **Cause:** it happens when a parent and its child change status in the same statement, inside `update_size()`. The exact mechanism isn't confirmed.
-    - **Fix:** needs a migration.
+  - **`inclusiveSize` lost nested bytes: fixed** (`20261002090000_fix_inclusive_size_rollup`).
+    - **Measured:** trashing one file two levels below a folder took its bytes off that folder's `inclusiveSize`, although trashed bytes count until permanent delete. A moved folder's trashed contents were never counted under its new parent. Over 15 trash, restore, move, upload and delete steps the old trigger left 13 wrong folder values (rolled-back transactions).
+    - **Cause, read from the function:** `update_size()` passed a folder's `size` change, which counts only active bytes, up as an `inclusiveSize` change. It also never reacted to an `inclusiveSize` change. At trash time the bytes left the grandparent; at permanent delete they left nowhere. The two cancelled, so the figure was wrong only while the file sat in trash. An earlier note here blamed parent and child changing in one statement; trashing a single row on its own shows the bug, so that was wrong.
+    - **Fix:** a folder now contributes its own `inclusiveSize` to its parent's `inclusiveSize`, and a file its `size`. The update branch also reacts to `inclusiveSize` changes. The migration recounted every folder deepest level first; on the dev DB that corrected the 5 folders that were off, by 3,542,674 bytes in total.
+    - **Test:** `item-size-trigger.test.ts` runs the 15 steps on real rows and compares every folder with a recount: 9 steps failed before the migration, 15 of 15 pass after.
+    - **Not done: a statement-level trigger.** It rewrote 704 rows to restore the 639-item copy, where the row-level trigger rewrites 2,832. But a one-row insert went from 3.0 to 10.0 ms (medians, rolled-back runs), so it wasn't shipped. A version with a fast path for one-row statements is the open option.
   - **Open: delete waits on S3.** Deleting the 640-item folder took 20.8 s; its database statement takes about 0.65 s (`EXPLAIN ANALYZE` on the other, identically shaped copy). So about 20 s is the S3 removal, which `/api/items` awaits before responding. That split is inferred from those two measurements, not timed directly.
 
 ### 9. Failed uploads leave S3 bytes and charged quota with no Item
@@ -362,6 +363,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-02 | `8e41013` | 8 | The quota UPDATE locates its own row: one round-trip per quota change instead of two. |
 | 2026-10-02 | `e04d07d` | 8, 13 | Trash and restore need `write`. Trash's quota over-count is fixed, and delete works only from trash. Each is one statement with batched activities; upload activity no longer races its transaction. 20 new tests. |
 | 2026-10-02 | `1b41e45` | 8 | `onActiveItemsDeleted` removed: permanent delete only takes items from trash, so it had no callers. |
+| 2026-10-02 | migration `20261002090000_fix_inclusive_size_rollup` | 8 | `update_size()` passes a folder's `inclusiveSize` up and reacts to its changes; every folder recounted (5 corrected on dev, 3,542,674 bytes). 15-step regression test. |
 
 ## Phased remediation plan
 
