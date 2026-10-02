@@ -7,7 +7,7 @@ This document covers the quota state machine architecture and patterns for manag
 > - `findQuota`, `findQuotaById`, `findQuotaByUserId(userId, client?)`, `findQuotaByDriveId`, `findQuotaByUserAndDrive`, `assertQuotaExists`
 > - `ensureUserQuota(userId, client?)` — idempotent creation; `createQuota` / `deleteQuota`
 > - `validateQuotaFreeSpace(quota, size)` — throws if insufficient; `verifyFreeQuota(quota, dataSize)` → boolean; `checkFreeQuota(itemId, quota, dataSize)`
-> - `onItemsUploaded`, `onItemsCopied`, `onItemsTrashed`, `onItemsRestored`, `onItemsDeleted`, `onActiveItemsDeleted` — apply quota deltas
+> - `onItemsUploaded`, `onItemsCopied`, `onItemsTrashed`, `onItemsRestored`, `onItemsDeleted` — apply quota deltas
 > - `updateTotalQuota` — adjust the total (e.g. on plan change)
 > - `calculateQuota` / `toQuota` / `toQuotaStatus` — pure transforms (see below)
 > - `searchQuotas` — `searchFactory`-backed list

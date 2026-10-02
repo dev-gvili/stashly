@@ -564,21 +564,6 @@ export async function onItemsDeleted({
 }
 
 /**
- * Decrease `used` quota when an active (non-trashed) item is hard-deleted.
- * Use this when deleting an item that was never moved to trash first.
- *
- * @example
- * await onActiveItemsDeleted({ userId, dataSize: BigInt(item.size) })
- */
-export async function onActiveItemsDeleted({
-  userId,
-  dataSize,
-  client,
-}: UpdateAfterInput) {
-  return applyQuotaDelta({ userId, used: -dataSize, client })
-}
-
-/**
  * Update the `total` quota limit, typically called after a plan change.
  *
  * @param params - `userId`, `dataSize` (new total in bytes), optional transaction `client`.
