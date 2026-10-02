@@ -125,13 +125,19 @@ export async function action({ request, params }: Route.ActionArgs) {
         return { success: false, error: e }
       }
     }
+    // Trash, restore and delete failures answer with their real status (403 when
+    // access is refused) rather than a 200 carrying `{ success: false }`.
     case 'trash_item': {
       try {
         await trashItem(parsedData.selectedItem, user.id)
         return redirect(`${url.pathname}${url.search}`)
       } catch (e) {
         console.error(e)
-        return { success: false, error: e }
+        const err = toErrorInfo(e)
+        return data(
+          { success: false, error: err.message ?? 'Trash failed' },
+          { status: err.status ?? 500 }
+        )
       }
     }
     case 'restore_item': {
@@ -145,11 +151,13 @@ export async function action({ request, params }: Route.ActionArgs) {
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
         console.error(e)
-        return { success: false, error: e }
+        const err = toErrorInfo(e)
+        return data(
+          { success: false, error: err.message ?? 'Restore failed' },
+          { status: err.status ?? 500 }
+        )
       }
     }
-    // Delete failures answer with their real status (403 for a refused delete)
-    // rather than a 200 carrying `{ success: false }`.
     case 'delete_item':
       try {
         await deleteItem(parsedData.selectedItem, user.id)
@@ -175,7 +183,11 @@ export async function action({ request, params }: Route.ActionArgs) {
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
         console.error(e)
-        return { success: false, error: e }
+        const err = toErrorInfo(e)
+        return data(
+          { success: false, error: err.message ?? 'Trash failed' },
+          { status: err.status ?? 500 }
+        )
       }
     case 'move_items':
       try {
@@ -198,7 +210,11 @@ export async function action({ request, params }: Route.ActionArgs) {
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
         console.error(e)
-        return { success: false, error: e }
+        const err = toErrorInfo(e)
+        return data(
+          { success: false, error: err.message ?? 'Restore failed' },
+          { status: err.status ?? 500 }
+        )
       }
     case 'delete_items':
       try {

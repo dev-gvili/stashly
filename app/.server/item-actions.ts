@@ -1,16 +1,16 @@
 import { Prisma } from '@/prisma/client'
-import { ItemCategory } from '@/prisma/enums'
+import { ItemCategory, type ItemType } from '@/prisma/enums'
 import { createActivity } from '@/services/activity-actions'
 import { prisma } from '@/services/db'
 import {
   assertItemAccess,
+  assertItemsAccess,
   getItemPermissions,
   hasItemPermission,
 } from '@/services/permission-actions'
 import {
   ensureUserQuota,
   findQuotaByUserId,
-  onActiveItemsDeleted,
   onItemsCopied,
   onItemsDeleted,
   onItemsRestored,
@@ -78,6 +78,92 @@ function recordFavoriteActivity(
       })
     )
     .catch(() => {})
+}
+
+/** What each batched activity kind needs per item. */
+type ActivityItems = {
+  delete: Array<{ id: string; name: string; type: ItemType }>
+  restore: Array<{ id: string }>
+  upload: Array<{ id: string; uploadId: string }>
+}
+
+const ACTIVITY_KINDS = {
+  delete: {
+    model: 'DeleteAction',
+    column: Prisma.sql`"deleteActionId"`,
+    insert: Prisma.sql`INSERT INTO "DeleteAction" ("id", "name", "itemType")
+      SELECT "kindId", "name", "itemType"::"ObjectType" FROM "Input"`,
+  },
+  restore: {
+    model: 'RestoreAction',
+    column: Prisma.sql`"restoreActionId"`,
+    insert: Prisma.sql`INSERT INTO "RestoreAction" ("id") SELECT "kindId" FROM "Input"`,
+  },
+  upload: {
+    model: 'UploadAction',
+    column: Prisma.sql`"uploadActionId"`,
+    insert: Prisma.sql`INSERT INTO "UploadAction" ("id", "uploadId")
+      SELECT "kindId", "uploadId" FROM "Input"`,
+  },
+} as const
+
+/**
+ * Records a trash (`delete`), `restore` or `upload` activity for every item in
+ * one statement, instead of a nested `createActivity` per item (8 round-trips
+ * each). The four tables are filled from one `unnest` of ids generated here;
+ * the foreign keys between them are checked when the statement ends, so they
+ * can all be inserted together.
+ *
+ * Call it only after the items' own transaction has committed: run from inside
+ * it, the insert reads the items on another connection, before they exist.
+ * Fire-and-forget like `recordFavoriteActivity`, but a failure is logged
+ * rather than swallowed — a silent catch hid lost upload activities.
+ *
+ * @example
+ * recordItemActivities('delete', [{ id: 'item_1', name: 'a.pdf', type: 'file' }])
+ * recordItemActivities('upload', [{ id: 'item_1', uploadId: 'up_1' }])
+ */
+function recordItemActivities<K extends keyof ActivityItems>(
+  kind: K,
+  items: ActivityItems[K]
+) {
+  if (items.length === 0) return
+  Promise.resolve()
+    .then(() => {
+      const { model, column, insert } = ACTIVITY_KINDS[kind]
+      const rows = items as Array<{
+        id: string
+        name?: string
+        type?: ItemType
+        uploadId?: string
+      }>
+      const newIds = (prefixModel: Parameters<typeof getPrefixForModel>[0]) =>
+        rows.map(() => toObjectId(getPrefixForModel(prefixModel)))
+      return prisma.$executeRaw`
+        WITH "Input" AS (
+          SELECT * FROM unnest(
+            ${rows.map((i) => i.id)}::text[],
+            ${rows.map((i) => i.name ?? null)}::text[],
+            ${rows.map((i) => (i.type === undefined ? null : i.type === 'folder' ? 'folder' : 'file'))}::text[],
+            ${rows.map((i) => i.uploadId ?? null)}::text[],
+            ${newIds('ActivityTime')}::text[],
+            ${newIds('Activity')}::text[],
+            ${newIds('ItemAction')}::text[],
+            ${newIds(model)}::text[]
+          ) AS t("itemId", "name", "itemType", "uploadId", "timeId", "activityId", "actionId", "kindId")
+        ), "Times" AS (
+          INSERT INTO "ActivityTime" ("id", "observedAt") SELECT "timeId", now() FROM "Input"
+        ), "Activities" AS (
+          INSERT INTO "Activity" ("id", "timeId", "itemId")
+          SELECT "activityId", "timeId", "itemId" FROM "Input"
+        ), "Kinds" AS (
+          ${insert}
+        )
+        INSERT INTO "ItemAction" ("id", "activityId", ${column})
+        SELECT "actionId", "activityId", "kindId" FROM "Input"
+      `
+    })
+    .catch((e) => console.error(`[activity] ${kind} activities not recorded:`, e))
 }
 
 /**
@@ -479,83 +565,41 @@ export async function trashItems(ids: string[], userId: string) {
   if (ids.length === 0) {
     return
   }
+  await assertItemsAccess(userId, ids, 'write')
 
-  // Find all descendant IDs using a recursive query
-  const descendantIds = await prisma.$queryRaw<Array<{ id: string }>>`
-    WITH RECURSIVE "Descendants" AS (
-      SELECT "id"
-      FROM "Item"
-      WHERE "id" IN (${Prisma.join(ids)})
-      UNION ALL
-      SELECT i."id"
-      FROM "Item" i
-      INNER JOIN "Descendants" d ON i."parentId" = d."id"
+  // One statement walks the subtree, trashes what isn't trashed yet, and sums
+  // the bytes of the files it changed. Only files count: a folder's `size` is a
+  // trigger rollup of its active contents, so adding it would count those bytes
+  // again. Files already in trash moved their bytes earlier, so the `status`
+  // guard leaves them out. `UNION` keeps a file reached through two selected
+  // items from counting twice.
+  const [changed] = await prisma.$queryRaw<SubtreeChange[]>`
+    WITH RECURSIVE "Subtree" AS (
+      SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
+      UNION
+      SELECT i."id" FROM "Item" i JOIN "Subtree" s ON i."parentId" = s."id"
+    ), "Changed" AS (
+      UPDATE "Item" i SET "status" = 'trashed', "updatedAt" = now()
+      FROM "Subtree" s
+      WHERE i."id" = s."id" AND i."status" <> 'trashed'
+      RETURNING i."id", i."name", i."type", i."size"
     )
-    SELECT "id" FROM "Descendants"
+    SELECT COUNT(*) AS "count",
+      COALESCE(SUM("size") FILTER (WHERE "type" = 'file'), 0)::bigint AS "bytes",
+      json_agg(json_build_object('id', "id", 'name', "name", 'type', "type"))
+        FILTER (WHERE "id" IN (${Prisma.join(ids)})) AS "roots"
+    FROM "Changed"
   `
 
-  const allIds = descendantIds.map((item) => item.id)
-
-  if (allIds.length === 0) {
-    return
-  }
-
-  const [itemMeta, { _sum }] = await Promise.all([
-    prisma.item.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, name: true, type: true },
-    }),
-    prisma.item.aggregate({
-      where: { id: { in: allIds } },
-      _sum: { size: true },
-    }),
-  ])
-
-  const metaMap = Object.fromEntries(itemMeta.map((i) => [i.id, i]))
-
-  // Update status for all items at once
-  const result = await prisma.item.updateMany({
-    where: {
-      id: { in: allIds },
-    },
-    data: {
-      status: 'trashed',
-    },
-  })
-
-  const trashedSize = _sum.size ?? 0n
-  if (trashedSize > 0n) {
+  if (changed.bytes > 0n) {
     Promise.resolve()
-      .then(() => onItemsTrashed({ userId, dataSize: trashedSize }))
+      .then(() => onItemsTrashed({ userId, dataSize: changed.bytes }))
       .catch(() => {})
   }
 
-  for (const id of ids) {
-    const meta = metaMap[id]
-    createActivity({
-      item: { connect: { id } },
-      time: {
-        create: {
-          id: toObjectId(getPrefixForModel('ActivityTime')),
-          observedAt: new Date(),
-        },
-      },
-      action: {
-        create: {
-          id: toObjectId(getPrefixForModel('ItemAction')),
-          delete: {
-            create: {
-              id: toObjectId(getPrefixForModel('DeleteAction')),
-              name: meta?.name ?? id,
-              itemType: meta?.type === 'folder' ? 'folder' : 'file',
-            },
-          },
-        },
-      },
-    }).catch(() => {})
-  }
+  recordItemActivities('delete', changed.roots ?? [])
 
-  return result
+  return { count: Number(changed.count) }
 }
 
 /**
@@ -589,136 +633,55 @@ export async function restoreItems(ids: string[], userId: string) {
   if (!ids || ids.length === 0) {
     return
   }
+  await assertItemsAccess(userId, ids, 'write')
 
-  // Find all ancestors and descendants (including the items themselves)
-  const itemsToRestore = await prisma.$queryRaw<Array<{ id: string }>>`
-    WITH RECURSIVE
-      Descendants AS (
-        SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
-        UNION
-        SELECT i."id" FROM "Item" i JOIN Descendants d ON i."parentId" = d."id"
-      ),
-      Ancestors AS (
-        SELECT "id", "parentId" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
-        UNION
-        SELECT i."id", i."parentId" FROM "Item" i JOIN Ancestors a ON a."parentId" = i."id"
-      )
-    SELECT "id" FROM Descendants
-    UNION
-    SELECT "id" FROM Ancestors
+  // One statement: the items, their descendants and their ancestors go back to
+  // 'normal' (only the rows actually in trash), and the restored files' bytes
+  // are summed for the quota. Files only, for the same reason as `trashItems`.
+  const [changed] = await prisma.$queryRaw<SubtreeChange[]>`
+    WITH RECURSIVE "Descendants" AS (
+      SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
+      UNION
+      SELECT i."id" FROM "Item" i JOIN "Descendants" d ON i."parentId" = d."id"
+    ), "Ancestors" AS (
+      SELECT "id", "parentId" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
+      UNION
+      SELECT i."id", i."parentId" FROM "Item" i JOIN "Ancestors" a ON a."parentId" = i."id"
+    ), "Related" AS (
+      SELECT "id" FROM "Descendants"
+      UNION
+      SELECT "id" FROM "Ancestors"
+    ), "Changed" AS (
+      UPDATE "Item" i SET "status" = 'normal', "updatedAt" = now()
+      FROM "Related" r
+      WHERE i."id" = r."id" AND i."status" = 'trashed'
+      RETURNING i."id", i."name", i."type", i."size"
+    )
+    SELECT COUNT(*) AS "count",
+      COALESCE(SUM("size") FILTER (WHERE "type" = 'file'), 0)::bigint AS "bytes",
+      json_agg(json_build_object('id', "id", 'name', "name", 'type', "type"))
+        FILTER (WHERE "id" IN (${Prisma.join(ids)})) AS "roots"
+    FROM "Changed"
   `
 
-  const allIds = itemsToRestore.map((item) => item.id)
-
-  if (allIds.length === 0) {
-    return
-  }
-
-  // Sum only items that were actually trashed (those shifting from deleted→used)
-  const { _sum } = await prisma.item.aggregate({
-    where: { id: { in: allIds }, status: 'trashed' },
-    _sum: { size: true },
-  })
-
-  // Update status for all related items at once
-  const result = await prisma.item.updateMany({
-    where: {
-      id: { in: allIds },
-    },
-    data: {
-      status: 'normal',
-    },
-  })
-
-  const restoredSize = _sum.size ?? 0n
-  if (restoredSize > 0n) {
+  if (changed.bytes > 0n) {
     Promise.resolve()
-      .then(() => onItemsRestored({ userId, dataSize: restoredSize }))
+      .then(() => onItemsRestored({ userId, dataSize: changed.bytes }))
       .catch(() => {})
   }
 
-  for (const id of ids) {
-    createActivity({
-      item: { connect: { id } },
-      time: {
-        create: {
-          id: toObjectId(getPrefixForModel('ActivityTime')),
-          observedAt: new Date(),
-        },
-      },
-      action: {
-        create: {
-          id: toObjectId(getPrefixForModel('ItemAction')),
-          restore: {
-            create: { id: toObjectId(getPrefixForModel('RestoreAction')) },
-          },
-        },
-      },
-    }).catch(() => {})
-  }
+  recordItemActivities('restore', changed.roots ?? [])
 
-  return result
+  return { count: Number(changed.count) }
 }
 
-/**
- * >
- * **Importent! deleted items can't be restored**
- * >
- * Hard deletes an item, if item is of type **folder** all its descendants ( childrens ) also be deleted.
- * Prisma's `onDelete: Cascade` in the schema handles the children automatically.
- *
- * @param id - The ID of the item to permanently delete.
- * @param userId - The ID of the user deleting the item (used for quota adjustment).
- *
- * @example
- * // Permanently delete a file
- * await deleteItem('item_123', 'usr_456');
- */
-/**
- * Ids of `ids` and every item beneath them. Deleting an item cascades to its
- * children in the database (`parent` is `onDelete: Cascade`), so their stored
- * objects have to be collected before the delete runs.
- */
-async function withDescendantIds(ids: string[]): Promise<string[]> {
-  if (ids.length === 0) return []
-  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
-    WITH RECURSIVE "Descendants" AS (
-      SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
-      UNION ALL
-      SELECT i."id" FROM "Item" i INNER JOIN "Descendants" d ON i."parentId" = d."id"
-    )
-    SELECT "id" FROM "Descendants"
-  `
-  return rows.map((r) => r.id)
-}
-
-/**
- * Every S3 object the given items own, grouped by bucket: each file's bytes
- * (`File.bucket`/`File.key`) and each thumbnail (`thumbnails/{itemId}.webp`).
- * Read *before* the rows are deleted — afterwards nothing points at them.
- */
-export async function storedObjectsOf(
-  itemIds: string[]
-): Promise<Map<string, string[]>> {
-  const byBucket = new Map<string, Set<string>>()
-  if (itemIds.length === 0) return new Map()
-  const add = (bucket: string, key: string) => {
-    if (!byBucket.has(bucket)) byBucket.set(bucket, new Set())
-    byBucket.get(bucket)!.add(key)
-  }
-  const [files, thumbnails] = await Promise.all([
-    prisma.file.findMany({
-      where: { itemId: { in: itemIds } },
-      select: { bucket: true, key: true },
-    }),
-    prisma.thumbnail.findMany({
-      where: { itemId: { in: itemIds }, bucket: { not: null } },
-      select: { bucket: true, itemId: true },
-    }),
-  ])
-  for (const f of files) add(f.bucket, f.key)
-  for (const t of thumbnails) if (t.bucket && t.itemId) add(t.bucket, thumbnailKey(t.itemId))
-  return new Map([...byBucket].map(([bucket, keys]) => [bucket, [...keys]]))
+/** What a trash, restore or delete statement changed, in one row. */
+type SubtreeChange = {
+  count: bigint
+  /** Bytes of the files that changed status: what the quota moves. */
+  bytes: bigint
+  /** The requested items among the changed rows; null when none changed. */
+  roots: Array<{ id: string; name: string; type: ItemType }> | null
 }
 
 /**
@@ -742,132 +705,113 @@ async function removeStoredObjects(objects: Map<string, string[]>) {
 }
 
 /**
- * Permanent delete can't be undone, so it needs `owner` access to every item
- * asked for — the item's owner or an `owner` permission; `write` is not enough —
- * and, for a workspace item, membership of that workspace (`assertItemAccess`).
+ * Permanently deletes items from trash, with everything beneath them, their
+ * stored objects (file bytes and thumbnails) and their share of the quota.
+ * **Deleted items can't be restored.**
  *
- * The workspace is read from each item, not taken from the caller: a caller
- * that left `workspaceId` out would otherwise skip the membership check.
- * All-or-nothing: every check runs before anything is deleted, so one refusal
- * deletes nothing. Contents of a deleted folder go with it, as before.
+ * Needs `owner` access to every item, and every item must be in trash: one
+ * that isn't refuses the whole batch with a 400 and deletes nothing.
+ *
+ * One statement reads the subtree's S3 keys, deletes the rows and sums the
+ * bytes. Every part of a statement sees the rows as they were before it ran,
+ * so the keys are read before the cascade removes `File` and `Thumbnail`.
  */
-async function assertCanDeletePermanently(itemIds: string[], userId: string) {
-  const ids = [...new Set(itemIds)]
-  const workspaces = new Map(
-    (
-      await prisma.item.findMany({
-        where: { id: { in: ids } },
-        select: { id: true, workspaceId: true },
-      })
-    ).map((i) => [i.id, i.workspaceId])
-  )
-  await Promise.all(
-    ids.map((id) =>
-      assertItemAccess(userId, id, {
-        workspaceId: workspaces.get(id) ?? undefined,
-        role: 'owner',
-      })
-    )
-  )
-}
+async function deleteFromTrash(ids: string[], userId: string) {
+  // Permanent delete can't be undone, so `owner`; `write` is not enough.
+  await assertItemsAccess(userId, ids, 'owner')
 
-export async function deleteItem(id: string, userId: string) {
-  await assertCanDeletePermanently([id], userId)
-  const objects = await storedObjectsOf(await withDescendantIds([id]))
-  const deleted = await prisma.item.delete({
-    where: { id },
-  })
+  const [result] = await prisma.$queryRaw<
+    Array<
+      SubtreeChange & {
+        blocked: boolean
+        objects: Array<{
+          bucket: string
+          key: string | null
+          itemId: string | null
+        }> | null
+      }
+    >
+  >`
+    WITH RECURSIVE "Subtree" AS (
+      SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
+      UNION
+      SELECT i."id" FROM "Item" i JOIN "Subtree" s ON i."parentId" = s."id"
+    ), "Blocked" AS (
+      SELECT 1 FROM "Item"
+      WHERE "id" IN (${Prisma.join(ids)}) AND "status" <> 'trashed'
+      LIMIT 1
+    ), "Objects" AS (
+      SELECT f."bucket", f."key", NULL::text AS "itemId"
+      FROM "File" f JOIN "Subtree" s ON f."itemId" = s."id"
+      UNION
+      SELECT t."bucket", NULL::text, t."itemId"
+      FROM "Thumbnail" t JOIN "Subtree" s ON t."itemId" = s."id"
+      WHERE t."bucket" IS NOT NULL
+    ), "Deleted" AS (
+      DELETE FROM "Item" i USING "Subtree" s
+      WHERE i."id" = s."id" AND NOT EXISTS (SELECT 1 FROM "Blocked")
+      RETURNING i."id", i."name", i."type", i."size", i."status"
+    )
+    SELECT
+      EXISTS (SELECT 1 FROM "Blocked") AS "blocked",
+      (SELECT COUNT(*) FROM "Deleted") AS "count",
+      (SELECT COALESCE(SUM("size") FILTER (WHERE "type" = 'file' AND "status" = 'trashed'), 0)::bigint
+         FROM "Deleted") AS "bytes",
+      (SELECT json_agg(json_build_object('id', "id", 'name', "name", 'type', "type"))
+         FROM "Deleted" WHERE "id" IN (${Prisma.join(ids)})) AS "roots",
+      (SELECT json_agg(json_build_object('bucket', "bucket", 'key', "key", 'itemId', "itemId"))
+         FROM "Objects" WHERE NOT EXISTS (SELECT 1 FROM "Blocked")) AS "objects"
+  `
+
+  if (result.blocked) {
+    throw toRouteError(
+      StashlyErrorCode.INVALID_INPUT,
+      'Only items in trash can be deleted permanently'
+    )
+  }
+
+  const objects = new Map<string, string[]>()
+  for (const o of result.objects ?? []) {
+    const key = o.key ?? thumbnailKey(o.itemId!)
+    objects.set(o.bucket, [...(objects.get(o.bucket) ?? []), key])
+  }
   await removeStoredObjects(objects)
 
-  const size = deleted.size ?? 0n
-  if (size > 0n) {
-    // Items deleted from trash: reduce deleted quota.
-    // Items force-deleted while active: reduce used quota.
-    const quotaFn =
-      deleted.status === 'trashed' ? onItemsDeleted : onActiveItemsDeleted
+  // Bytes in trash are counted in `deleted`, so that is what goes down.
+  if (result.bytes > 0n) {
     Promise.resolve()
-      .then(() => quotaFn({ userId, dataSize: size }))
+      .then(() => onItemsDeleted({ userId, dataSize: result.bytes }))
       .catch(() => {})
   }
 
-  createActivity({
-    item: { connect: { id } },
-    time: {
-      create: {
-        id: toObjectId(getPrefixForModel('ActivityTime')),
-        observedAt: new Date(),
-      },
-    },
-    action: {
-      create: {
-        id: toObjectId(getPrefixForModel('ItemAction')),
-        delete: {
-          create: {
-            id: toObjectId(getPrefixForModel('DeleteAction')),
-            name: deleted.name,
-            itemType: deleted.type === 'folder' ? 'folder' : 'file',
-          },
-        },
-      },
-    },
-  }).catch(() => {})
-
-  return deleted
+  return { count: Number(result.count), roots: result.roots ?? [] }
 }
 
 /**
- * Hard deletes multiple items and all their descendants.
- * Prisma's `onDelete: Cascade` in the schema handles the children automatically.
- * **While that's true,this function takes a more explicit approach Instead of relying on the database to perform cascading deletes**, This gives the application code full control over the process and can be more performant in certain scenarios.
- * >
- * **Importent! deleted items can't be restored**
- * >
- * @param ids - An array of item IDs to permanently delete.
- * @param userId - The ID of the user deleting the items (used for quota adjustment).
+ * Permanently deletes one item from trash, with everything beneath it.
+ * See `deleteFromTrash`.
  *
  * @example
- * // Delete items with IDs 'item_abc' and 'item_xyz' and all their descendants if those items are of type folder`
- * await deleteItems(['item_abc', 'item_xyz'], 'usr_456');
- * // This will delete 'item_abc', 'item_xyz', and any files/folders nested within them.
+ * await deleteItem('item_123', 'usr_456')
+ */
+export async function deleteItem(id: string, userId: string) {
+  const { roots } = await deleteFromTrash([id], userId)
+  return roots[0]
+}
+
+/**
+ * Permanently deletes items from trash, with everything beneath them.
+ * See `deleteFromTrash`.
+ *
+ * @example
+ * await deleteItems(['item_abc', 'item_xyz'], 'usr_456')
  */
 export async function deleteItems(ids: string[], userId: string) {
   if (ids.length === 0) {
     return
   }
-
-  await assertCanDeletePermanently(ids, userId)
-  const allIds = await withDescendantIds(ids)
-  const objects = await storedObjectsOf(allIds)
-
-  // Aggregate sizes by status before deleting so we can adjust quota correctly
-  const [trashedAgg, activeAgg] = await Promise.all([
-    prisma.item.aggregate({
-      where: { id: { in: allIds }, status: 'trashed' },
-      _sum: { size: true },
-    }),
-    prisma.item.aggregate({
-      where: { id: { in: allIds }, status: { not: 'trashed' } },
-      _sum: { size: true },
-    }),
-  ])
-
-  const result = await prisma.item.deleteMany({ where: { id: { in: allIds } } })
-  await removeStoredObjects(objects)
-
-  const trashedSize = trashedAgg._sum.size ?? 0n
-  const activeSize = activeAgg._sum.size ?? 0n
-  if (trashedSize > 0n) {
-    Promise.resolve()
-      .then(() => onItemsDeleted({ userId, dataSize: trashedSize }))
-      .catch(() => {})
-  }
-  if (activeSize > 0n) {
-    Promise.resolve()
-      .then(() => onActiveItemsDeleted({ userId, dataSize: activeSize }))
-      .catch(() => {})
-  }
-
-  return result
+  const { count } = await deleteFromTrash(ids, userId)
+  return { count }
 }
 
 // --- 4. COPY (Recursive) ---
@@ -1724,57 +1668,17 @@ export async function createUploadedItem(data: {
     // Quota is charged by `dbMachine` (`chargingQuota`) once this row exists —
     // charging here too counted every upload twice.
 
-    createActivity({
-      item: { connect: { id: item.id } },
-      time: {
-        create: {
-          id: toObjectId(getPrefixForModel('ActivityTime')),
-          observedAt: new Date(),
-        },
-      },
-      action: {
-        create: {
-          id: toObjectId(getPrefixForModel('ItemAction')),
-          upload: {
-            create: {
-              uploadId: item.uploadId ?? '',
-              id: toObjectId(getPrefixForModel('UploadAction')),
-            },
-          },
-        },
-      },
-    }).catch(() => {})
-
     return item
   })
 
-  for (const folderId of createdFolderIds) {
-    const id = folderId
-    Promise.resolve()
-      .then(() =>
-        createActivity({
-          item: { connect: { id } },
-          time: {
-            create: {
-              id: toObjectId(getPrefixForModel('ActivityTime')),
-              observedAt: new Date(),
-            },
-          },
-          action: {
-            create: {
-              id: toObjectId(getPrefixForModel('ItemAction')),
-              upload: {
-                create: {
-                  id: toObjectId(getPrefixForModel('UploadAction')),
-                  uploadId: data.uploadId,
-                },
-              },
-            },
-          },
-        })
-      )
-      .catch(() => {})
-  }
+  // After both transactions have committed, never inside one: an activity
+  // started inside the file's transaction looked the item up on another
+  // connection before the commit and failed with P2025 under upload load
+  // (376 of 575 files in one directory upload had no activity).
+  recordItemActivities('upload', [
+    { id: result.id, uploadId: result.uploadId ?? '' },
+    ...createdFolderIds.map((id) => ({ id, uploadId: data.uploadId })),
+  ])
 
   return result
 }

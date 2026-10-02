@@ -21,10 +21,16 @@ const BUCKET = 'stashly-test-delete-objects'
 let ownerId: string
 let driveId: string
 
-async function makeItem(type: 'file' | 'folder', parentId: string | null, name: string) {
+// Permanent delete only takes items from trash, so fixtures start there.
+async function makeItem(
+  type: 'file' | 'folder',
+  parentId: string | null,
+  name: string,
+  status: 'trashed' | 'normal' = 'trashed'
+) {
   const id = uid('Item')
   await prisma.item.create({
-    data: { id, name, type, category: type === 'file' ? 'document' : 'unknown', status: 'normal', ownerId, driveId, parentId, size: 0 },
+    data: { id, name, type, category: type === 'file' ? 'document' : 'unknown', status, ownerId, driveId, parentId, size: 0 },
   })
   if (type === 'file') {
     await prisma.file.create({ data: { id: uid('File'), itemId: id, bucket: BUCKET, key: `${parentId ?? 'root'}/${name}` } })
@@ -138,6 +144,29 @@ describe('permanent delete requires owner access', () => {
   })
 })
 
+describe('permanent delete only takes items from trash', () => {
+  it('refuses an item that is not in trash: 400, nothing deleted, nothing sent to S3', async () => {
+    const file = await makeItem('file', null, 'still-active.pdf', 'normal')
+    const calls = interceptDeletes()
+
+    await expect(deleteItem(file, ownerId)).rejects.toMatchObject({ errorCode: 'INVALID_INPUT', status: 400 })
+
+    expect(await prisma.item.count({ where: { id: file } })).toBe(1)
+    expect(calls).toEqual([])
+  })
+
+  it('refuses the whole batch when one item is not in trash', async () => {
+    const trashed = await makeItem('file', null, 'in-trash.pdf')
+    const active = await makeItem('file', null, 'active.pdf', 'normal')
+    const calls = interceptDeletes()
+
+    await expect(deleteItems([trashed, active], ownerId)).rejects.toMatchObject({ errorCode: 'INVALID_INPUT', status: 400 })
+
+    expect(await prisma.item.count({ where: { id: { in: [trashed, active] } } })).toBe(2)
+    expect(calls).toEqual([])
+  })
+})
+
 describe('permanent delete removes stored objects', () => {
   it('deleteItems removes a folder subtree’s files and thumbnails', async () => {
     const folder = await makeItem('folder', null, 'docs')
@@ -162,7 +191,9 @@ describe('permanent delete removes stored objects', () => {
 
     await deleteItem(file, ownerId)
 
-    expect(calls).toEqual([{ bucket: BUCKET, keys: ['root/single.txt', `thumbnails/${file}.webp`] }])
+    expect(calls).toHaveLength(1)
+    expect(calls[0].bucket).toBe(BUCKET)
+    expect(calls[0].keys.sort()).toEqual(['root/single.txt', `thumbnails/${file}.webp`].sort())
   })
 
   it('deleteItem on a folder also removes what was inside it', async () => {

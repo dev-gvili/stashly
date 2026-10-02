@@ -372,6 +372,18 @@ export function findRecipientPermission(
  * // Inside a transaction:
  * const canWrite = await hasItemPermission(userId, itemId, 'write', tx)
  */
+/**
+ * Role hierarchy: owner ≥ write ≥ read. A user with a higher role satisfies
+ * checks for lower roles.
+ */
+function rolesSatisfying(role: PermissionRole): PermissionRole[] {
+  return role === 'read'
+    ? ['read', 'write', 'owner']
+    : role === 'write'
+      ? ['write', 'owner']
+      : ['owner']
+}
+
 export async function hasItemPermission(
   userId: string,
   itemId: string,
@@ -379,14 +391,7 @@ export async function hasItemPermission(
   tx?: Prisma.TransactionClient
 ): Promise<boolean> {
   const db = tx ?? prisma
-  // Role hierarchy: owner ≥ write ≥ read.
-  // A user with a higher role satisfies checks for lower roles.
-  const satisfyingRoles: PermissionRole[] =
-    role === 'read'
-      ? ['read', 'write', 'owner']
-      : role === 'write'
-        ? ['write', 'owner']
-        : ['owner']
+  const satisfyingRoles = rolesSatisfying(role)
   const [perm, item] = await Promise.all([
     db.permission.findFirst({
       where: {
@@ -571,6 +576,66 @@ export async function assertItemAccess(
   }
 
   await assertItemPermission(userId, itemId, role, tx)
+}
+
+/**
+ * `assertItemAccess` for a batch: requires `role` on every item asked for and,
+ * for a workspace item, membership of that workspace.
+ *
+ * The workspace is read from each item, not taken from the caller: a caller
+ * that left `workspaceId` out would otherwise skip the membership check.
+ * All-or-nothing: the check runs before the caller changes anything, so one
+ * refusal changes nothing.
+ *
+ * One query whatever the batch size: it selects the requested items the user
+ * may act on and compares the count. A missing item is refused like a
+ * forbidden one, so the answer doesn't reveal which ids exist.
+ *
+ * @throws `FORBIDDEN` (403) when any item fails either check.
+ *
+ * @example
+ * // Trash is reversible, so `write` is enough:
+ * await assertItemsAccess(userId, ids, 'write')
+ */
+export async function assertItemsAccess(
+  userId: string,
+  itemIds: string[],
+  role: PermissionRole
+): Promise<void> {
+  const ids = [...new Set(itemIds)]
+  if (ids.length === 0) return
+  const allowed = await prisma.item.count({
+    where: {
+      id: { in: ids },
+      AND: [
+        {
+          OR: [
+            { ownerId: userId },
+            {
+              permissions: {
+                some: {
+                  roles: { in: rolesSatisfying(role) },
+                  users: { some: { id: userId } },
+                },
+              },
+            },
+          ],
+        },
+        {
+          OR: [
+            { workspaceId: null },
+            { workspace: { members: { some: { memberId: userId } } } },
+          ],
+        },
+      ],
+    },
+  })
+  if (allowed !== ids.length) {
+    throw toRouteError(
+      StashlyErrorCode.FORBIDDEN,
+      `Access denied: ${role} access is required on every item`
+    )
+  }
 }
 
 // ---------------------------------------------------------------------------
