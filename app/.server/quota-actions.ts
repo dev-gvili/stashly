@@ -405,17 +405,21 @@ async function applyQuotaDelta({
   id?: string
   client?: Prisma.TransactionClient
 }) {
-  // This lookup resolves *which* row to write. It no longer supplies the value
-  // written, which is the entire point: the previous implementation read
+  // The UPDATE locates its own row, so there is no lookup query first. Nothing
+  // is read into JavaScript and written back: the previous implementation read
   // `used`, added the delta in JavaScript, and wrote the result back as an
   // absolute figure. Two uploads that read the same starting value each wrote
   // `start + own size`, so whichever committed second silently erased the
   // other's bytes from the quota — a lost update, on every concurrent batch.
-  let current: QuotaOutput | null = null
-  if (id) current = await findQuotaById(id, client)
-  else if (driveId) current = await findQuotaByDriveId(driveId, client)
-  else if (userId) current = await findQuotaByUserId(userId, client)
-  if (!current) throw toRouteError(StashlyErrorCode.QUOTA_NOT_FOUND)
+  // `Drive.ownerId` is unique, so the user form matches at most one row.
+  const where = id
+    ? Prisma.sql`"id" = ${id}`
+    : driveId
+      ? Prisma.sql`"driveId" = ${driveId}`
+      : userId
+        ? Prisma.sql`"driveId" = (SELECT "id" FROM "Drive" WHERE "ownerId" = ${userId})`
+        : null
+  if (!where) throw toRouteError(StashlyErrorCode.QUOTA_NOT_FOUND)
 
   // Delta, clamp, and status must land in ONE statement — which is why this is
   // raw SQL and not `quota.update`. Postgres evaluates every SET expression
@@ -467,7 +471,7 @@ async function applyQuotaDelta({
       "total" = ${total},
       "status" = ${status},
       "updatedAt" = ${new Date()}
-    WHERE "id" = ${current.id}
+    WHERE ${where}
     RETURNING *
   `
 
