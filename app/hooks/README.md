@@ -17,8 +17,6 @@ These are **not** in the barrel and must be imported from their own module:
 | Hook | Import from | Why |
 |---|---|---|
 | `useSelection`, `useRegisterSelectionItems`, `useSelectionURLSync` | `@/hooks/useSelection` | The module starts an XState actor at import time. The barrel is imported eagerly, so re-exporting it would start the actor during SSR. **Never add it to `index.ts`.** |
-| `useThumbnailPublisher`, `useLiveThumbnail` | `@/hooks/thumbnail-signal` | The barrel picks the active signal implementation; both producer and consumer must go through it so a swap changes both sides atomically. |
-| `useThumbnailBackfill` | `@/hooks/useThumbnailBackfill` | Also exports the `pauseBackfill` / `resumeBackfill` controls. |
 | `useEmbeddingBackfill`, `useEmbeddingBackfillState`, `useRetryEmbeddingBackfill` | `@/hooks/useEmbeddingBackfill` | |
 | `useFavorite`, `useFileHref`, `useIndexStats`, `useItemSearch`, `useRecipientRows` | their own modules | |
 
@@ -71,10 +69,8 @@ These are **not** in the barrel and must be imported from their own module:
 | [`useUploadProgress`](./useUpload.ts#L237) | One file's progress (0–100). | The leaf that draws the bar — **never** a list container. | This is the churny subscription; keep it as deep in the tree as possible. |
 | [`useUploadStatus`](./useUpload.ts#L260) | One file's lifecycle status. | A status badge or retry affordance. | |
 | [`useUploadFile`](./useUpload.ts#L118) | The whole queued-file record. | Only when you genuinely need every field. | Re-renders on every progress tick — prefer the narrow hooks above. |
-| [`useThumbnail`](./useThumbnail.ts#L104) | Runs the 3-stage thumbnail pipeline for one item, from the upload path. | The upload thumbnail runner, where the original `File` is still in memory. | Each stage publishes as it lands, so the card paints instantly and sharpens twice. Metadata, search chunks and OCR run alongside stage 2 for **every** file type, thumbnail or not. |
-| [`useThumbnailBackfill`](./useThumbnailBackfill.ts#L452) | Viewport-gated on-the-fly thumbnails for items that never got one. | On a card's thumbnail area, inside an `ItemCard`. | Returns a callback ref. A backfill costs a full download, so the guards *are* the feature: viewport-gated, LIFO, concurrency-capped, idle-scheduled, attempted once, and paused while uploads run (`pauseBackfill` / `resumeBackfill`). Stage 3 is skipped deliberately. |
-| [`useThumbnailPublisher`](./thumbnail-signal/index.ts#L24) | Producer side of the thumbnail signal — `publishLocal` (stage 1) and `publishPersisted` (stages 2/3). | Inside the pipeline, not in feature code. | Import from `@/hooks/thumbnail-signal`, never a concrete implementation. |
-| [`useLiveThumbnail`](./thumbnail-signal/index.ts#L25) | Consumer side — the latest published stage for one item. | An item card that should show a thumbnail as it's being generated. | Prefer it over the loader's persisted URL while the pipeline runs; `null` means nothing published yet. |
+
+Thumbnail hooks (`useThumbnailWhenVisible`, `useLiveThumbnail`) live with the pipeline in `app/machines/thumbnail/` — see its README.
 
 ## Media viewers
 
@@ -107,7 +103,6 @@ These are **not** in the barrel and must be imported from their own module:
 |---|---|---|
 | `DRAG_ITEM_KEY` | [useItemDragDrop.ts](./useItemDragDrop.ts#L9) | The `dataTransfer` key identifying a dragged stash item. |
 | `readState` | [useFilters.ts](./useFilters.ts#L55) | Parses `FilterState` out of any `URLSearchParams` — usable in a loader. |
-| `pauseBackfill` / `resumeBackfill` | [useThumbnailBackfill.ts](./useThumbnailBackfill.ts#L242) | Yield the thumbnail pipeline to in-flight uploads. |
 | `startEmbeddingBackfill` | [useEmbeddingBackfill.ts](./useEmbeddingBackfill.ts#L279) | Arms the embedding runner by hand; `force` bypasses the once-per-tab latch. |
 | `upload` | [useUpload.ts](./useUpload.ts#L9) | The module-level upload actor, for advanced selectors and inspection. |
 | `selectionActor` | [useSelection.ts](./useSelection.ts#L14) | The module-level selection actor. Must never be re-exported through the barrel. |

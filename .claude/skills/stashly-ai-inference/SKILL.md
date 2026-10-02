@@ -33,7 +33,7 @@ A failure settles the caller *and* frees the queue (`.finally`), because an unre
 
 ## PDF OCR
 
-Recovers text from PDFs that have **no text layer**. Entry: `streamOcrPdf` (in `@/utils/thumbnail-ocr`) runs after `pdfText` compute comes back empty — the `transcribingScannedPdf` state of the indexing machine in `app/machines/indexing/` (actor `transcribeScannedPdf` in `indexing.actors.ts`), or `useThumbnail` on the legacy path.
+Recovers text from PDFs that have **no text layer**. Entry: `streamOcrPdf` (in `@/utils/thumbnail-ocr`) runs after `pdfText` compute comes back empty — the `transcribingScannedPdf` state of the indexing machine in `app/machines/indexing/` (actor `transcribeScannedPdf` in `indexing.actors.ts`).
 
 - **Rasterization** goes through the compute worker (off main thread); **inference** runs on the main thread through the shared queue, matching every other model.
 - **Per-page streaming.** `streamOcrPdf(file, onPage)` renders → transcribes → hands over → drops, one page at a time. Two reasons: a closed tab at page 12 of 15 no longer throws away twelve pages of work (~30s/page), and exactly one decoded bitmap is alive at a time. `onPage` is awaited so persistence back-pressures rendering.
@@ -59,7 +59,7 @@ They live in `localStorage` because they are developer switches that must surviv
 
 Heals `SearchChunk` rows whose `vector` is NULL — chunk text is written server-side *before* the browser embeds it, so any interrupted run (tab closed, navigation, WebGPU fault) leaves passages permanently invisible to semantic search with no error to show for it.
 
-Split mirrors `thumbnail-backfill.ts` / `useThumbnailBackfill.ts`:
+Pure policy in one file, effects in a hook:
 
 - `app/utils/embedding-backfill.ts` — pure policy, no fetch/DOM, unit-tested. `PENDING_EMBEDDING_BATCH = 32`, `PENDING_EMBEDDING_MAX = 100`, `MAX_BACKFILL_BATCHES = 8`. `clampPendingLimit` treats the limit as untrusted URL input (`''`, `'abc'`, `'-5'`, `'1e9'` must all land somewhere sane).
 - `app/hooks/useEmbeddingBackfill.ts` — effects. **Once per tab** (module flag, not per-mount, so client navigation doesn't restart it), idle-scheduled, batched and capped, enqueued at `background` priority, silent on failure.

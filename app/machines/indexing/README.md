@@ -56,8 +56,6 @@ indexingQueue (module scope, FIFO, 2 at a time)
   pending one) and keeps you on the page you were leaving.
 - **Every state has a `description`**, which is what the Stately editor shows.
   `__tests__/state-descriptions.test.ts` fails the build if one is missing.
-- **Legacy path.** With `USE_THUMBNAIL_MACHINE = false` the old `useThumbnail`
-  indexes by itself, so the runner does not queue anything here.
 
 ## Embedding is batched
 
