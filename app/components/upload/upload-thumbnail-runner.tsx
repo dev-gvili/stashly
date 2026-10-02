@@ -9,7 +9,7 @@
  * `useLiveThumbnail(id)` and re-render independently of route revalidation.
  */
 import { memo, useEffect } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { useLocation, useNavigate, useNavigation } from 'react-router'
 import { shallowEqual, useSelector } from '@xstate/react'
 import { useUploadFile } from '@/hooks/useUpload'
 import { UploadActorContext } from '@/machines/upload/upload.context'
@@ -115,6 +115,7 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
   )
   const navigate = useNavigate()
   const location = useLocation()
+  const navigation = useNavigation()
 
   // Facets written by `save_media_metadata` (page count, dimensions, EXIF) need
   // their own debounced revalidation on the machine path, where persistence is a
@@ -143,13 +144,20 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
   // The hook's committed guard replaces the `lastRevalidated` ref this used to
   // keep, and holding `navigate` in a ref means the pathname and search read at
   // commit time are the current ones rather than the ones captured on schedule.
+  //
+  // Skipped while a navigation is in flight: its destination loads fresh
+  // anyway, and `location` still names the page being left until it commits,
+  // so navigating there would abort the user's navigation (React Router's
+  // `startNavigation` aborts any pending one) and keep them where they were.
   useDebouncedCommit(
     createdCount,
-    () =>
+    () => {
+      if (navigation.state !== 'idle') return
       navigate(`${location.pathname}${location.search}`, {
         replace: true,
         state: { reset: true },
-      }),
+      })
+    },
     { delayMs: REVALIDATE_DEBOUNCE_MS }
   )
 

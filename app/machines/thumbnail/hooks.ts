@@ -12,7 +12,7 @@
  * manager, which is what lets a pipeline survive the component that started it.
  */
 import { useCallback, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router'
+import { useRevalidator } from 'react-router'
 import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
 import { useSelector } from '@xstate/react'
 import {
@@ -28,7 +28,7 @@ import {
   canBackfillThumbnail,
   isConnectionTooSlow,
 } from '@/utils/thumbnail-backfill'
-import type { ThumbProgress } from './thumbnail.types'
+import type { ThumbManagerContext, ThumbProgress } from './thumbnail.types'
 
 /** How far outside the viewport a card starts its backfill. */
 const ROOT_MARGIN = '300px 0px'
@@ -55,15 +55,35 @@ export function useThumbnail(itemId: string) {
 }
 
 /**
- * Turns buffered metadata saves into one route revalidation per burst.
+ * True while any upload-mode thumbnail job is queued or running.
+ *
+ * The metadata refresh waits for this to clear so a batch costs one loader run,
+ * not one per file. Files reach `metadataSaved` seconds apart, so the 700 ms
+ * debounce alone fired once per file — 64 folder-loader runs for a 64-file
+ * folder.
+ *
+ * @param context - The thumbnail manager's context.
+ * @returns Whether the upload lane still has work in it.
+ *
+ * @example
+ * const busy = useSelector(thumbnailManager, (s) => hasUploadWork(s.context))
+ */
+function hasUploadWork(context: ThumbManagerContext): boolean {
+  if (context.queue.some((job) => job.mode === 'upload')) return true
+  for (const entry of context.running.values()) {
+    if (entry.mode === 'upload') return true
+  }
+  return false
+}
+
+/**
+ * Turns buffered metadata saves into one route revalidation per upload batch.
  *
  * Needed because the machine persists with a plain `fetch` instead of a React
  * Router fetcher, and `save_media_metadata` writes facets the user can see
  * (page count, dimensions, EXIF). Without this the numbers only appear on the
- * next manual reload.
- *
- * One debounced navigation per burst, never one per file: a 534-file upload
- * firing 534 loader runs is what made the app crawl in the first place.
+ * next manual reload. They now appear when the batch's thumbnail work drains,
+ * or on any earlier navigation, which reloads them anyway.
  *
  * @example
  * // Mount once, high in the upload UI
@@ -74,28 +94,26 @@ export function useThumbnailRevalidation() {
     thumbnailManager,
     (s) => s.context.metadataSaved.length
   )
-  const navigate = useNavigate()
-  const location = useLocation()
+  const uploadsBusy = useSelector(thumbnailManager, (s) =>
+    hasUploadWork(s.context)
+  )
+  const revalidator = useRevalidator()
 
-  // `useDebouncedCommit` holds the commit callback in a ref and calls the
-  // latest one when the timer fires. That is the whole fix: the hand-rolled
-  // `setTimeout` this replaces had `[savedCount]` deps with exhaustive-deps
-  // suppressed, so a pending timer kept the `location` from whenever
-  // `savedCount` last changed. Navigating mid-upload did not re-run the
-  // effect, so the timer fired `navigate(<the page you left>, { replace })`
-  // and bounced the user back — and if the count happened to tick while they
-  // were on some other route, that route was where they got sent once the
-  // queue drained.
+  // `revalidate()`, not `navigate(<current URL>)`. During a pending navigation
+  // React Router's `revalidate()` restarts it at `state.navigation.location`,
+  // the page you are going to; a new `navigate()` aborts the pending one first
+  // (`startNavigation`), which kept you on the folder while every file's save
+  // navigated you back to it.
   const { markCommitted } = useDebouncedCommit(
     savedCount,
     () => {
       consumeRevalidation()
-      navigate(`${location.pathname}${location.search}`, {
-        replace: true,
-        state: { reset: true },
-      })
+      revalidator.revalidate()
     },
-    { delayMs: REVALIDATE_DEBOUNCE_MS, enabled: savedCount > 0 }
+    {
+      delayMs: REVALIDATE_DEBOUNCE_MS,
+      enabled: savedCount > 0 && !uploadsBusy,
+    }
   )
 
   // `consumeRevalidation` empties the buffer, so the count drops back to 0
