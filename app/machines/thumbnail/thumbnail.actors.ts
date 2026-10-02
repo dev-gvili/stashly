@@ -8,11 +8,12 @@
  *
  * **Plain `fetch`, not `useFetcher`.** A module-scope actor has no component to
  * own a React Router fetcher, so every HTTP call here is a raw `fetch`. That is
- * what deletes the 16 ms `waitForIdle` poll the hook needed to await a fetcher.
- * It also means these calls no longer trigger route revalidation: desirable for
- * the search-index writes (`save_ocr_page`, `save_search_chunk_embeddings` are
- * exactly what `SEARCH_INDEX_INTENTS` exists to suppress), but something the
- * metadata POST has to make up for — hence the `metadataSaved` emission.
+ * what deletes the 16 ms `waitForIdle` poll the hook needed to await a fetcher,
+ * and it means none of these calls reload the page's data. The card repaints
+ * from the manager's progress map instead.
+ *
+ * The search-indexing actors (metadata, embeddings, OCR) live in
+ * `app/machines/indexing/indexing.actors.ts`.
  *
  * **Failure convention.** An actor *throws* when the step could plausibly
  * succeed on a retry (network blip, S3 5xx) and *resolves with null* when the
@@ -25,8 +26,6 @@ import {
   generateStage2Resize,
   generateStage3Salient,
   putThumbnailToS3,
-  extractMediaMetadata,
-  buildMediaMetadataFormData,
   type ResizedThumbnail,
 } from '@/utils/thumbnail-pipeline'
 
@@ -183,114 +182,4 @@ export const patchThumbnailActor = fromPromise<
     signal,
   })
   if (!res.ok) throw new Error(`thumbnail PATCH failed: ${res.status}`)
-})
-
-// ── Indexing leg ───────────────────────────────────────────────────────────
-
-export interface MetadataResult {
-  chunks: { id: string; content: string }[]
-  /** A PDF with no text layer — worth an OCR pass once this has landed. */
-  needsOcr: boolean
-}
-
-/**
- * Extracts media metadata and persists it, returning the search chunks the
- * server created so the next state can embed them.
- *
- * Runs for *every* file type, thumbnail or not: a `.zip` has no preview but a
- * `.pdf` with no preview still has a page count and searchable text.
- *
- * `needsOcr` never reaches the server — `buildMediaMetadataFormData` strips it
- * as a client-only signal. It is read here to decide whether an OCR pass
- * follows.
- */
-export const saveMetadataActor = fromPromise<
-  MetadataResult,
-  { itemId: string; file: File }
->(async ({ input, signal }) => {
-  const meta = await extractMediaMetadata(input.file)
-  const fd = buildMediaMetadataFormData(input.itemId, meta)
-  const res = await fetch('/api/items', { method: 'POST', body: fd, signal })
-  if (!res.ok) throw new Error(`save_media_metadata failed: ${res.status}`)
-  const data = (await res.json().catch(() => null)) as {
-    chunks?: { id: string; content: string }[]
-  } | null
-  return { chunks: data?.chunks ?? [], needsOcr: meta.needsOcr === true }
-})
-
-/**
- * Embeds chunks and writes the vectors back. Shared by the metadata pass and
- * every OCR page, because both produce the same `{ id, content }[]` and letting
- * the two paths diverge is how one of them silently stops vectorizing.
- *
- * Vectors are matched to chunks by index, so a count mismatch aborts the write
- * rather than saving misaligned vectors.
- */
-async function embedAndSave(
-  chunks: { id: string; content: string }[],
-  signal?: AbortSignal
-): Promise<void> {
-  if (chunks.length === 0) return
-
-  const { embedTexts } = await import('@/workers/embedding.ai')
-  const vectors = await embedTexts(chunks.map((c) => c.content))
-  if (vectors.length !== chunks.length) {
-    console.error(
-      '[embed chunks] vector count mismatch',
-      vectors.length,
-      chunks.length
-    )
-    return
-  }
-  const payload = chunks.map((c, i) => ({ chunkId: c.id, vector: vectors[i] }))
-  const fd = new FormData()
-  fd.append('intent', 'save_search_chunk_embeddings')
-  fd.append('embeddings', JSON.stringify(payload))
-  const res = await fetch('/api/items', { method: 'POST', body: fd, signal })
-  if (!res.ok) throw new Error(`save embeddings failed: ${res.status}`)
-}
-
-export const embedChunksActor = fromPromise<
-  void,
-  { chunks: { id: string; content: string }[] }
->(({ input, signal }) => embedAndSave(input.chunks, signal))
-
-/**
- * OCRs a scanned PDF page by page, persisting and embedding each page the
- * moment it is transcribed.
- *
- * **Why this stays one actor rather than a state per page.** `streamOcrPdf`
- * awaits `onPage`, so persistence back-pressures rendering — exactly one page
- * is alive at a time instead of N decoded bitmaps queued behind a slow save.
- * Routing each page through a machine transition would mean re-creating that
- * back-pressure by hand to get a property `await` already gives. What the
- * machine contributes is the part that was missing: this whole minutes-long
- * run is now a cancellable state instead of a `void` promise nobody holds.
- */
-export const ocrStreamActor = fromPromise<
-  number,
-  { itemId: string; file: File }
->(async ({ input, signal }) => {
-  const { streamOcrPdf } = await import('@/utils/thumbnail-ocr')
-
-  return streamOcrPdf(input.file, async (page) => {
-    if (signal.aborted) return
-
-    const fd = new FormData()
-    fd.append('intent', 'save_ocr_page')
-    fd.append('itemId', input.itemId)
-    fd.append('pageNum', String(page.pageNum))
-    fd.append('text', page.text)
-    const res = await fetch('/api/items', { method: 'POST', body: fd, signal })
-    if (!res.ok) return
-
-    const data = (await res.json().catch(() => null)) as {
-      chunks?: { id: string; content: string }[]
-    } | null
-    // One unreadable page must not discard the pages already saved — which,
-    // unlike a batch run, are already durable on the server.
-    await embedAndSave(data?.chunks ?? [], signal).catch((e) =>
-      console.error('[ocr page embed]', input.itemId, page.pageNum, e)
-    )
-  })
 })

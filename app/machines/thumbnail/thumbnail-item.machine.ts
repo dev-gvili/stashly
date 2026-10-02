@@ -1,25 +1,16 @@
 /**
  * Per-item thumbnail machine — one actor per file being thumbnailed.
  *
- * Two parallel regions, because the two legs are genuinely independent and
- * today's code hides that by firing one of them as an untracked `void` promise:
+ *   stage 1 blur → 512 resize → upload → save record → salient crop
  *
- *   stages    what the card paints:  stage 1 blur → 512 resize → salient crop
- *   indexing  what search reads:     metadata → embeddings → OCR
- *
- * A `.zip` has no stages worth running but still has metadata worth saving; a
- * scanned PDF finishes its stages in seconds and its indexing minutes later.
- * Modelling them as one sequence would make each wait on the other.
- *
- * The machine is done when *both* regions reach a final state — which is what
- * lets the manager free the concurrency slot at the right moment rather than
- * when the thumbnail happens to paint.
+ * Only what the card paints. Search indexing (metadata, embeddings, OCR) used
+ * to run here as a parallel region; it is its own machine now, in
+ * `app/machines/indexing/`, so a slow embedding no longer holds a thumbnail
+ * slot and a backfill can no longer skip a file's indexing.
  *
  * One machine covers both modes. A `backfill` job enters at `acquiring` (it has
- * to re-download the original), then joins the identical stage path with stage 3
- * and the whole indexing region skipped. That shared path is what removes the
- * near-duplicate orchestration between the old `useThumbnail` and the old
- * `backfill()`.
+ * to re-download the original), then joins the identical stage path with stage
+ * 3 skipped.
  */
 import { setup, assign, emit, enqueueActions } from 'xstate'
 import {
@@ -30,9 +21,6 @@ import {
   presignActor,
   putStageActor,
   patchThumbnailActor,
-  saveMetadataActor,
-  embedChunksActor,
-  ocrStreamActor,
 } from './thumbnail.actors'
 import { stageViewUrl } from '@/utils/thumbnail-pipeline'
 import type {
@@ -74,13 +62,9 @@ export const thumbnailItemMachine = setup({
     presign: presignActor,
     putStage: putStageActor,
     patchThumbnail: patchThumbnailActor,
-    saveMetadata: saveMetadataActor,
-    embedChunks: embedChunksActor,
-    ocrStream: ocrStreamActor,
   },
   guards: {
     isBackfill: ({ context }) => context.mode === 'backfill',
-    skipIndexing: ({ context }) => context.mode !== 'upload',
     canRetry: ({ context }) => context.attempts < MAX_ATTEMPTS,
     /**
      * Stage 3 is images-only and upload-only. On a backfill it is skipped by
@@ -89,8 +73,6 @@ export const thumbnailItemMachine = setup({
      */
     wantsStage3: ({ context }) =>
       context.mode === 'upload' && !!context.file?.type.startsWith('image/'),
-    needsOcr: ({ context }) => context.needsOcr && context.file !== null,
-    hasChunks: ({ context }) => context.chunks.length > 0,
   },
   actions: {
     /**
@@ -131,11 +113,6 @@ export const thumbnailItemMachine = setup({
       },
     })),
 
-    emitMetadataSaved: emit(({ context }) => ({
-      type: 'metadataSaved' as const,
-      itemId: context.itemId,
-    })),
-
     emitFailed: emit(({ context, event }) => {
       const err = (event as unknown as { error?: unknown }).error
       return {
@@ -148,7 +125,7 @@ export const thumbnailItemMachine = setup({
   },
 }).createMachine({
   id: 'thumbnail-item',
-  type: 'parallel',
+  initial: 'stages',
   context: ({ input }) => ({
     itemId: input.itemId,
     mode: input.mode,
@@ -160,8 +137,6 @@ export const thumbnailItemMachine = setup({
     presign: null,
     thumbnailed: false,
     attempts: 0,
-    chunks: [],
-    needsOcr: false,
     error: null,
   }),
   output: ({ context }) => ({
@@ -451,87 +426,13 @@ export const thumbnailItemMachine = setup({
         unavailable: { type: 'final' },
         failed: { type: 'final', entry: ['emitFailed', 'revokeStage1'] },
       },
+      // Any of the endings above ends the whole machine. `stages` stays a
+      // nested state for now so this change doesn't rename every state;
+      // the planned rewrite of this machine flattens it.
+      onDone: { target: 'done' },
     },
 
-    // ── What search reads ───────────────────────────────────────────────
-    indexing: {
-      initial: 'deciding',
-      states: {
-        deciding: {
-          always: [
-            // Backfill items were indexed at upload time; re-running it would
-            // duplicate chunks for no gain.
-            { guard: 'skipIndexing', target: 'skipped' },
-            { target: 'extracting' },
-          ],
-        },
-
-        extracting: {
-          invoke: {
-            src: 'saveMetadata',
-            input: ({ context }) => ({
-              itemId: context.itemId,
-              file: context.file!,
-            }),
-            onDone: {
-              target: 'embedding',
-              actions: [
-                assign({
-                  chunks: ({ event }) => event.output.chunks,
-                  needsOcr: ({ event }) => event.output.needsOcr,
-                }),
-                // Facets the user can see just changed, and a plain `fetch`
-                // does not revalidate the route the way a fetcher would.
-                'emitMetadataSaved',
-              ],
-            },
-            onError: { target: 'indexFailed' },
-          },
-        },
-
-        embedding: {
-          always: [
-            { guard: 'hasChunks', target: 'vectorizing' },
-            { target: 'afterEmbed' },
-          ],
-        },
-
-        vectorizing: {
-          invoke: {
-            src: 'embedChunks',
-            input: ({ context }) => ({ chunks: context.chunks }),
-            onDone: { target: 'afterEmbed' },
-            // A chunk with text but no vector is still findable by keyword, so
-            // this is a degradation rather than a failure of the leg.
-            onError: { target: 'afterEmbed' },
-          },
-        },
-
-        afterEmbed: {
-          always: [{ guard: 'needsOcr', target: 'ocr' }, { target: 'indexed' }],
-        },
-
-        /**
-         * Minutes of work, and — unlike before — a state the machine holds a
-         * handle on. Stopping the actor stops the OCR run.
-         */
-        ocr: {
-          invoke: {
-            src: 'ocrStream',
-            input: ({ context }) => ({
-              itemId: context.itemId,
-              file: context.file!,
-            }),
-            onDone: { target: 'indexed' },
-            onError: { target: 'indexFailed' },
-          },
-        },
-
-        indexed: { type: 'final' },
-        skipped: { type: 'final' },
-        indexFailed: { type: 'final' },
-      },
-    },
+    done: { type: 'final' },
   },
 })
 

@@ -17,6 +17,10 @@ This folder also holds several abandoned prototypes. Before editing anything her
   - **No path throws.** A spawned actor's unhandled rejection stops its parent, so the promise actor this replaced took the whole upload manager down when one file failed. Every ending is an event, and the machine returns to `idle`.
   - `postItem` reads the response body as **text**, never JSON: `POST /api/items` answers an expired session with a redirect that `fetch` follows, so the client gets a 200 carrying the sign-in page. `toOutcome` tells that apart from a real failure.
 
+- `thumbnail/` — the thumbnail scheduler (upload and backfill lanes) and its per-item machine. Thumbnails only. See its README.
+
+- `indexing/` — search indexing for every upload: metadata, chunk vectors, OCR for scanned PDFs. Its own FIFO queue, two at a time, queued by `upload-thumbnail-runner.tsx` at `itemCreated`. See its README.
+
 - `reviset/file.machine.ts` — **the per-file actor.** This is the one `upload.machine.ts` imports (`import { fileMachine } from '../reviset/file.machine'`). Handles quota check, multipart create, chunked upload with pause/resume/abort, completion, and the quota update.
 
 - `quota/quota.machine.ts` + `quota/quota.actors.ts` + `quota/quota.utils.ts`

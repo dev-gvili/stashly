@@ -27,12 +27,13 @@ export interface ThumbProgress {
  * Where a job came from, which decides its lane, its ordering, and how much of
  * the pipeline it runs.
  *
- * - `upload` — the original `File` is in memory. Runs every stage plus the
- *   indexing leg (metadata, embeddings, OCR). FIFO, because upload order is
- *   the order the user dropped the files in.
- * - `backfill` — the file must be re-downloaded first. Stops after stage 2 and
- *   skips indexing entirely (the item was already indexed at upload time).
+ * - `upload` — the original `File` is in memory. Runs every stage. FIFO,
+ *   because upload order is the order the user dropped the files in.
+ * - `backfill` — the file must be re-downloaded first. Stops after stage 2.
  *   LIFO, because the newest request is the card the user just scrolled to.
+ *
+ * Neither mode indexes for search; that is `app/machines/indexing/`, queued
+ * separately for every upload.
  */
 export type ThumbMode = 'upload' | 'backfill'
 
@@ -66,9 +67,6 @@ export interface ThumbItemContext {
   thumbnailed: boolean
   /** Retry budget, consumed by whichever step is failing. */
   attempts: number
-  /** Chunks returned by `save_media_metadata`, awaiting vectors. */
-  chunks: { id: string; content: string }[]
-  needsOcr: boolean
   error: string | null
 }
 
@@ -91,12 +89,6 @@ export type ThumbItemEvent = { type: 'xstate.done' }
 export type ThumbItemEmitted =
   /** A stage is ready to paint. Fired the moment the bytes are reachable. */
   | { type: 'progress'; itemId: string; progress: ThumbProgress }
-  /**
-   * `save_media_metadata` landed. It writes *displayable* facets (page count,
-   * dimensions, EXIF), so unlike the search-index writes it must still trigger
-   * one route revalidation — see the runner's debounce.
-   */
-  | { type: 'metadataSaved'; itemId: string }
   | { type: 'failed'; itemId: string; reason: string }
 
 /** Terminal report handed back to the manager so it can free the slot. */
@@ -114,12 +106,6 @@ export interface ThumbManagerContext {
   running: Map<string, { mode: ThumbMode; ref: AnyActorRef }>
   /** Latest painted stage per item; this map *is* the UI signal. */
   progress: Map<string, ThumbProgress>
-  /**
-   * Items whose metadata POST landed but whose route has not been revalidated
-   * yet. Buffered rather than signalled per item because a 500-file upload
-   * would otherwise fire 500 loader runs.
-   */
-  metadataSaved: string[]
 }
 
 export type ThumbManagerEvent =
@@ -137,7 +123,4 @@ export type ThumbManagerEvent =
   /** The idle-frame follow-up to `tickBackfill`, where the spawning happens. */
   | { type: 'drainBackfillNow' }
   | { type: 'child.progress'; itemId: string; progress: ThumbProgress }
-  | { type: 'child.metadataSaved'; itemId: string }
   | { type: 'child.settled'; itemId: string; thumbnailed: boolean }
-  /** Clears the revalidation buffer once the runner has acted on it. */
-  | { type: 'revalidationConsumed' }

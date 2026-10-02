@@ -30,8 +30,7 @@ const stubItemMachine = setup({
     emitted: {} as ThumbItemEmitted,
     events: {} as
       | { type: 'FINISH'; thumbnailed?: boolean }
-      | { type: 'EMIT_PROGRESS'; src: string }
-      | { type: 'EMIT_METADATA' },
+      | { type: 'EMIT_PROGRESS'; src: string },
   },
 }).createMachine({
   context: ({ input }) => ({ ...input, thumbnailed: true }),
@@ -48,12 +47,6 @@ const stubItemMachine = setup({
             type: 'progress' as const,
             itemId: context.itemId,
             progress: { stage: 2 as const, src: event.src },
-          })),
-        },
-        EMIT_METADATA: {
-          actions: emit(({ context }) => ({
-            type: 'metadataSaved' as const,
-            itemId: context.itemId,
           })),
         },
         FINISH: {
@@ -290,7 +283,7 @@ describe('thumbnailManager — cancellation', () => {
   })
 })
 
-describe('thumbnailManager — signal and revalidation', () => {
+describe('thumbnailManager — signal', () => {
   it('records what a child paints, keyed by item', () => {
     const m = startManager()
     m.send({ type: 'enqueue', job: job('u1', 'upload') })
@@ -305,20 +298,6 @@ describe('thumbnailManager — signal and revalidation', () => {
     })
   })
 
-  it('buffers metadata saves instead of signalling one revalidation per file', () => {
-    const m = startManager()
-    for (const id of ['u1', 'u2']) {
-      m.send({ type: 'enqueue', job: job(id, 'upload') })
-      m.getSnapshot()
-        .context.running.get(id)!
-        .ref.send({ type: 'EMIT_METADATA' })
-    }
-
-    expect(m.getSnapshot().context.metadataSaved).toEqual(['u1', 'u2'])
-
-    m.send({ type: 'revalidationConsumed' })
-    expect(m.getSnapshot().context.metadataSaved).toEqual([])
-  })
 })
 
 describe('thumbnailManager — skip list', () => {

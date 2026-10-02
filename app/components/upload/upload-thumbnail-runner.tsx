@@ -19,10 +19,11 @@ import type { MediaFileStatus } from '@/types/machine.types'
 // either the original hooks or the XState scheduler without changing shape.
 import {
   useThumbnail,
-  useThumbnailRevalidation,
   pauseBackfill,
   resumeBackfill,
+  USE_THUMBNAIL_MACHINE,
 } from '@/machines/thumbnail'
+import { enqueueIndexing, useIndexingRevalidation } from '@/machines/indexing'
 
 const thumbnailedIds = new Set<string>()
 
@@ -76,6 +77,12 @@ function FileThumbnailWatcher({ mediaFileId }: { mediaFileId: string }) {
 
     const file = mediaFile.file
     const id = mediaFile.id
+
+    // Indexing has its own queue and runs for every upload, so it is queued
+    // here, ahead of the thumbnail slot below rather than behind it. The legacy
+    // `useThumbnail` indexes by itself, so only the machine path needs this.
+    if (USE_THUMBNAIL_MACHINE) enqueueIndexing(id, file)
+
     void (async () => {
       const release = await acquireThumbnailSlot()
       try {
@@ -117,11 +124,11 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
   const location = useLocation()
   const navigation = useNavigation()
 
-  // Facets written by `save_media_metadata` (page count, dimensions, EXIF) need
-  // their own debounced revalidation on the machine path, where persistence is a
-  // plain `fetch` and no longer revalidates the route for free. A no-op on the
-  // legacy path, whose fetchers still do.
-  useThumbnailRevalidation()
+  // Facets written by `save_media_metadata` (page count, dimensions, EXIF)
+  // reach the page with one reload per batch, once indexing drains. On the
+  // legacy path the indexing queue stays empty, so this never fires; that
+  // path's fetchers reload the page themselves.
+  useIndexingRevalidation()
 
   // Fresh uploads own the compute worker and the bandwidth. On-demand backfill
   // of older items is strictly background work, so it stands down until the

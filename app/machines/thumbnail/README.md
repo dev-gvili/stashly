@@ -24,6 +24,7 @@ callback had no other way to await one; there was no cancellation; there was no
 retry, so a stage-2 timeout meant waiting for a *full re-download* via backfill
 to redo work that had been seconds from done; and the whole indexing leg
 (metadata → embeddings → minutes of OCR) ran as a `void` promise nobody held.
+(Indexing has since moved to its own machine, `app/machines/indexing/`.)
 
 All of those are scheduler problems, which is exactly what a state machine is
 for. The stages themselves are a straight line and gain comparatively little —
@@ -35,7 +36,7 @@ they are modelled here mainly so cancellation and retry have somewhere to live.
 |---|---|
 | `thumbnail.types.ts` | Context, events, emitted events, job shape |
 | `thumbnail.actors.ts` | `fromPromise` wrappers around the **existing** helpers in `@/utils/thumbnail-pipeline` — no compute logic lives here |
-| `thumbnail-item.machine.ts` | One actor per file: `stages` ∥ `indexing` |
+| `thumbnail-item.machine.ts` | One actor per file: the thumbnail stages, nothing else |
 | `thumbnail-manager.machine.ts` | The scheduler: two lanes, spawn/settle, pause as a state |
 | `attempt-store.ts` | Attempted-once bookkeeping + `sessionStorage` skip list |
 | `client.ts` | The module-scope singleton and its imperative API |
@@ -47,19 +48,22 @@ thumbnailManager (module scope — outlives every component)
 ├── uploadLane    cap 4, FIFO
 ├── backfillLane  cap 2, LIFO · states: active | paused
 └── spawn(thumbnailItemMachine, { itemId, mode, file })
-     ├── stages    acquiring? → stage1 → stage2 → presign → put2 → patch2 → stage3 → put3 → patch3
-     │              ↳ retrying (after 800 ms, budget 2)
-     └── indexing  metadata → embeddings → OCR?          [upload mode only]
+     └── stages    acquiring? → stage1 → stage2 → presign → put2 → patch2 → stage3 → put3 → patch3
+                    ↳ retrying (after 800 ms, budget 2)
 ```
+
+Search indexing (metadata → embeddings → OCR) used to be a parallel `indexing`
+region of the item machine. It is its own queue and machine now, in
+`app/machines/indexing/`, queued by the upload runner for every upload. See that
+folder's README.
 
 ## Decisions worth knowing before editing
 
 - **Plain `fetch`, not `useFetcher`.** A module-scope actor has no component to
   own a fetcher. This is what deletes `waitForIdle`. It also means these calls
-  no longer revalidate the route — good for the search-index writes (exactly
-  what `SEARCH_INDEX_INTENTS` exists to suppress), but `save_media_metadata`
-  writes *visible* facets, so the machine emits `metadataSaved` and
-  `useThumbnailRevalidation()` folds a burst into one navigation.
+  never reload the page's data; the card repaints from the manager's progress
+  map. (The one visible write that does need a reload, `save_media_metadata`,
+  belongs to indexing: `useIndexingRevalidation()` reloads once per batch.)
 - **The retry budget resets on success, never on state entry.** A retry
   re-enters the state that is failing, so `entry: 'resetAttempts'` would wipe
   the counter guarding it and loop forever. This was a real bug, caught by

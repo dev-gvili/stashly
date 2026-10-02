@@ -26,18 +26,17 @@ import {
 } from '@/hooks/useThumbnailBackfill'
 import { useLiveThumbnail as legacyUseLiveThumbnail } from '@/hooks/thumbnail-signal'
 
+/**
+ * True: thumbnails run through the XState manager in this folder, and search
+ * indexing through `app/machines/indexing/`. False: the original hooks, where
+ * `useThumbnail` does both itself.
+ */
 export const USE_THUMBNAIL_MACHINE = true
 
-/**
- * The legacy path had no revalidation hook — its fetchers revalidated the route
- * for free. A no-op keeps the two implementations interface-compatible so the
- * call site doesn't need a conditional.
- */
 const legacy = {
   useThumbnail: legacyUseThumbnail,
   useThumbnailBackfill: legacyUseThumbnailBackfill,
   useLiveThumbnail: legacyUseLiveThumbnail,
-  useThumbnailRevalidation: () => {},
   pauseBackfill: legacyPauseBackfill,
   resumeBackfill: legacyResumeBackfill,
 }
@@ -47,7 +46,6 @@ const impl = USE_THUMBNAIL_MACHINE ? machine : legacy
 export const useThumbnail = impl.useThumbnail
 export const useThumbnailBackfill = impl.useThumbnailBackfill
 export const useLiveThumbnail = impl.useLiveThumbnail
-export const useThumbnailRevalidation = impl.useThumbnailRevalidation
 export const pauseBackfill = impl.pauseBackfill
 export const resumeBackfill = impl.resumeBackfill
 

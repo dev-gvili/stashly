@@ -133,21 +133,6 @@ export const thumbnailManagerMachine = setup({
     }),
 
     /**
-     * Buffers the item instead of revalidating per file. `save_media_metadata`
-     * writes facets the user can see (page count, dimensions, EXIF) and a plain
-     * `fetch` — unlike the fetcher this replaced — triggers no route
-     * revalidation, so something has to. The consumer debounces this list into
-     * one navigation per burst.
-     */
-    bufferRevalidation: assign(({ context, event }) => {
-      if (event.type !== 'child.metadataSaved') return {}
-      if (context.metadataSaved.includes(event.itemId)) return {}
-      return { metadataSaved: [...context.metadataSaved, event.itemId] }
-    }),
-
-    clearRevalidation: assign({ metadataSaved: [] }),
-
-    /**
      * Frees the slot and, for a backfill that produced nothing, writes the item
      * to the permanent skip list.
      *
@@ -185,12 +170,12 @@ export const thumbnailManagerMachine = setup({
     },
   },
 }).createMachine({
+  /** @xstate-layout N4IgpgJg5mDOIC5QBcAWBXAtgIwHYEMBLAGwFpN8CYAnAYjFwEd0wWBtABgF1FQAHAPaxCyQgNy8QAD0QAmAByyAdAE4VigKzqAbABZts2QHYNAGhABPRBt3KAjLLs3HugMy6Ns1wF9v5tFh4RGQUVGB0AMaUEWDEnDxIIILCouKSMggK9i5G8iraHHbadkZG5lYIuvpK8hpG2hqusip2ahz6vv4YOAQk5JT4NLQRqCQQSnzUAlDUcLDxkskiYhKJGcauSqUaRUUmDhz55YiuO0parvVVuhye8tqdIAE9wf1hkaPE45hgyPgQ+D+AGV8AA3SALRJLVKrUDrDQcJTGbQqDjNDhGfK3Y6ZDTaJRNdQmDR5DjabTyR7PIJ9UKDcLDT7jWC-ZDECHcRZCZZpNZyeR2LZ2dwtRr5U7yHF2DFI7SueQK2p2fR2eS6KndGkhAZDWag-DEQgAmEAYXEsCwHIS-G5MPScg8SjszpUrj2eg2rilsg1gV62veSmw+AiAGsAGYkYgAGUoYCUIdE4NoojDACEQxGo5CbSkVvaEM7BXitPlPOWmmVLIh1PIlBw3e52tLlUY7L6XrSdeEg5nI8QY3GExEk2BaBBqERcBmw-3iAA5AQAdxzSVt+b5hccSKMHHucpU+jFuhxeWU9SMHicJIpOw7Wre9OovdnUdjuHjicIyb4+HQLJnLMB1XaENzhE5HXlGxVQbVEOFuKsKmdYwkQ8NwiVcAoSXvf1HxoF8gMHD8Jj-FkIFoWYLR+QC5xA9deXAhB3A0Alal0GDXDghCpQxIwlDcdEmk8JoHkeXABAgOBJGpXC6RoLk8wY6REFIZUcW0XInXkEwFAVaU6h9Pwnk1WTu2fdA+GIAR-nfMAFJ5WFlMqRDEHqFivAUeD9FRYUcNeOSe2DV8B1s+y7U3dxT1uLZDHQ+U1RUXI-K7QMgsI2zh1HMKwKcxQeIVJEVE8ZpZGKAoVGSgMnwIucMt-f9IGypSMh2XRVAKW5kOKBtZClBxBU0LIvExQxDN8IA */
   id: 'thumbnail-manager',
   context: {
     queue: [],
     running: new Map(),
     progress: new Map(),
-    metadataSaved: [],
   },
 
   on: {
@@ -199,11 +184,9 @@ export const thumbnailManagerMachine = setup({
     },
     cancel: { actions: 'dropQueued' },
     'child.progress': { actions: 'recordProgress' },
-    'child.metadataSaved': { actions: 'bufferRevalidation' },
     'child.settled': {
       actions: ['freeSlot', 'drainUpload', raise({ type: 'tickBackfill' })],
     },
-    revalidationConsumed: { actions: 'clearRevalidation' },
   },
 
   type: 'parallel',
@@ -250,7 +233,7 @@ export const thumbnailManagerMachine = setup({
  *
  * The child reports outward with `emit` rather than `sendParent` so that it can
  * be unit-tested as a root actor; the cost of that choice is paid right here,
- * in three explicit `.on(...)` hookups.
+ * in two explicit `.on(...)` hookups and a completion subscription.
  */
 function drainLane(
   context: ThumbManagerContext,
@@ -293,9 +276,6 @@ function drainLane(
         itemId: e.itemId,
         progress: e.progress,
       })
-    )
-    ref.on('metadataSaved', (e) =>
-      self.send({ type: 'child.metadataSaved', itemId: e.itemId })
     )
     ref.on('failed', (e) => console.error('[thumbnail]', e.itemId, e.reason))
     ref.subscribe({

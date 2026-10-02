@@ -11,16 +11,13 @@
  * The hooks are thin by design. All the state lives in the module-scope
  * manager, which is what lets a pipeline survive the component that started it.
  */
-import { useCallback, useEffect } from 'react'
-import { useRevalidator } from 'react-router'
-import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
+import { useCallback } from 'react'
 import { useSelector } from '@xstate/react'
 import {
   thumbnailManager,
   enqueueUpload,
   enqueueBackfill,
   cancelJob,
-  consumeRevalidation,
 } from './client'
 import { shouldSkip } from './attempt-store'
 import { useItemCard } from '@/hooks/useItemCard'
@@ -28,13 +25,10 @@ import {
   canBackfillThumbnail,
   isConnectionTooSlow,
 } from '@/utils/thumbnail-backfill'
-import type { ThumbManagerContext, ThumbProgress } from './thumbnail.types'
+import type { ThumbProgress } from './thumbnail.types'
 
 /** How far outside the viewport a card starts its backfill. */
 const ROOT_MARGIN = '300px 0px'
-
-/** Debounce window for folding many metadata saves into one revalidation. */
-const REVALIDATE_DEBOUNCE_MS = 700
 
 // ── Upload path ────────────────────────────────────────────────────────────
 
@@ -52,76 +46,6 @@ const REVALIDATE_DEBOUNCE_MS = 700
 export function useThumbnail(itemId: string) {
   const run = useCallback((file: File) => enqueueUpload(itemId, file), [itemId])
   return { run }
-}
-
-/**
- * True while any upload-mode thumbnail job is queued or running.
- *
- * The metadata refresh waits for this to clear so a batch costs one loader run,
- * not one per file. Files reach `metadataSaved` seconds apart, so the 700 ms
- * debounce alone fired once per file — 64 folder-loader runs for a 64-file
- * folder.
- *
- * @param context - The thumbnail manager's context.
- * @returns Whether the upload lane still has work in it.
- *
- * @example
- * const busy = useSelector(thumbnailManager, (s) => hasUploadWork(s.context))
- */
-function hasUploadWork(context: ThumbManagerContext): boolean {
-  if (context.queue.some((job) => job.mode === 'upload')) return true
-  for (const entry of context.running.values()) {
-    if (entry.mode === 'upload') return true
-  }
-  return false
-}
-
-/**
- * Turns buffered metadata saves into one route revalidation per upload batch.
- *
- * Needed because the machine persists with a plain `fetch` instead of a React
- * Router fetcher, and `save_media_metadata` writes facets the user can see
- * (page count, dimensions, EXIF). Without this the numbers only appear on the
- * next manual reload. They now appear when the batch's thumbnail work drains,
- * or on any earlier navigation, which reloads them anyway.
- *
- * @example
- * // Mount once, high in the upload UI
- * useThumbnailRevalidation()
- */
-export function useThumbnailRevalidation() {
-  const savedCount = useSelector(
-    thumbnailManager,
-    (s) => s.context.metadataSaved.length
-  )
-  const uploadsBusy = useSelector(thumbnailManager, (s) =>
-    hasUploadWork(s.context)
-  )
-  const revalidator = useRevalidator()
-
-  // `revalidate()`, not `navigate(<current URL>)`. During a pending navigation
-  // React Router's `revalidate()` restarts it at `state.navigation.location`,
-  // the page you are going to; a new `navigate()` aborts the pending one first
-  // (`startNavigation`), which kept you on the folder while every file's save
-  // navigated you back to it.
-  const { markCommitted } = useDebouncedCommit(
-    savedCount,
-    () => {
-      consumeRevalidation()
-      revalidator.revalidate()
-    },
-    {
-      delayMs: REVALIDATE_DEBOUNCE_MS,
-      enabled: savedCount > 0 && !uploadsBusy,
-    }
-  )
-
-  // `consumeRevalidation` empties the buffer, so the count drops back to 0
-  // right after a commit. Recording that as committed keeps the next burst
-  // firing even when it happens to reach the same count as the last one.
-  useEffect(() => {
-    if (savedCount === 0) markCommitted(0)
-  }, [savedCount, markCommitted])
 }
 
 // ── Consumer ───────────────────────────────────────────────────────────────

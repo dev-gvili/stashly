@@ -50,9 +50,6 @@ function happyActors(over: Record<string, unknown> = {}) {
     })),
     putStage: fromPromise(async () => undefined),
     patchThumbnail: fromPromise(async () => undefined),
-    saveMetadata: fromPromise(async () => ({ chunks: [], needsOcr: false })),
-    embedChunks: fromPromise(async () => undefined),
-    ocrStream: fromPromise(async () => 0),
     ...over,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
@@ -70,7 +67,6 @@ async function run(
     { input }
   )
   actor.on('progress', (e) => progress.push(e.progress))
-  actor.on('metadataSaved', () => emitted.push('metadataSaved'))
   actor.on('failed', () => emitted.push('failed'))
   actor.start()
   const output = await toPromise(actor)
@@ -122,21 +118,6 @@ describe('thumbnailItemMachine — upload mode', () => {
 
     expect(stages).toEqual([])
     expect(output.thumbnailed).toBe(false)
-  })
-
-  it('still indexes a file that produced no thumbnail at all', async () => {
-    const saveMetadata = vi.fn(async () => ({ chunks: [], needsOcr: false }))
-    const { emitted } = await run(
-      { itemId: 'i5', mode: 'upload', file: zipFile() },
-      {
-        stage1: fromPromise(async () => null),
-        stage2: fromPromise(async () => null),
-        saveMetadata: fromPromise(saveMetadata),
-      }
-    )
-
-    expect(saveMetadata).toHaveBeenCalledTimes(1)
-    expect(emitted).toContain('metadataSaved')
   })
 
   it('a failed stage 1 costs only the blur, not the pipeline', async () => {
@@ -222,17 +203,15 @@ describe('thumbnailItemMachine — retries', () => {
 })
 
 describe('thumbnailItemMachine — backfill mode', () => {
-  it('downloads the original, stops after stage 2, and skips indexing', async () => {
-    const saveMetadata = vi.fn(async () => ({ chunks: [], needsOcr: false }))
+  it('downloads the original and stops after stage 2', async () => {
     const stage3 = vi.fn(async () => tinyBlob)
     const { output, stages } = await run(
       { itemId: 'b1', mode: 'backfill', file: null },
-      { saveMetadata: fromPromise(saveMetadata), stage3: fromPromise(stage3) }
+      { stage3: fromPromise(stage3) }
     )
 
     expect(stages).toEqual([1, 2])
     expect(stage3).not.toHaveBeenCalled()
-    expect(saveMetadata).not.toHaveBeenCalled()
     expect(output.thumbnailed).toBe(true)
   })
 
@@ -293,60 +272,5 @@ describe('thumbnailItemMachine — backfill mode', () => {
       itemId: 'b3',
       thumbnailed: false,
     })
-  })
-})
-
-describe('thumbnailItemMachine — indexing leg', () => {
-  it('embeds the chunks the metadata POST created', async () => {
-    const embed = vi.fn(async () => undefined)
-    await run(
-      { itemId: 'x1', mode: 'upload', file: pdfFile() },
-      {
-        saveMetadata: fromPromise(async () => ({
-          chunks: [{ id: 'c1', content: 'hello' }],
-          needsOcr: false,
-        })),
-        embedChunks: fromPromise(embed),
-      }
-    )
-
-    expect(embed).toHaveBeenCalledTimes(1)
-  })
-
-  it('runs OCR only for a PDF with no text layer', async () => {
-    const ocr = vi.fn(async () => 42)
-    await run(
-      { itemId: 'x2', mode: 'upload', file: pdfFile() },
-      {
-        saveMetadata: fromPromise(async () => ({ chunks: [], needsOcr: true })),
-        ocrStream: fromPromise(ocr),
-      }
-    )
-
-    expect(ocr).toHaveBeenCalledTimes(1)
-  })
-
-  it('does not run OCR when the PDF had a text layer', async () => {
-    const ocr = vi.fn(async () => 0)
-    await run(
-      { itemId: 'x3', mode: 'upload', file: pdfFile() },
-      { ocrStream: fromPromise(ocr) }
-    )
-
-    expect(ocr).not.toHaveBeenCalled()
-  })
-
-  it('a failed metadata POST does not stop the thumbnail from painting', async () => {
-    const { output, stages } = await run(
-      { itemId: 'x4', mode: 'upload', file: imageFile() },
-      {
-        saveMetadata: fromPromise(async () => {
-          throw new Error('500')
-        }),
-      }
-    )
-
-    expect(stages).toEqual([1, 2, 3])
-    expect(output.thumbnailed).toBe(true)
   })
 })

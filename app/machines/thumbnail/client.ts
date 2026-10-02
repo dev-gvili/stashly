@@ -75,11 +75,6 @@ export function resumeBackfill(): void {
   thumbnailManager.send({ type: 'resumeBackfill' })
 }
 
-/** Acknowledges the buffered metadata saves after revalidating the route. */
-export function consumeRevalidation(): void {
-  thumbnailManager.send({ type: 'revalidationConsumed' })
-}
-
 /**
  * Resolves once an item is neither queued nor running.
  *
