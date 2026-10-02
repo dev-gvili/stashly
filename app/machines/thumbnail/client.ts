@@ -12,6 +12,7 @@
 import { createActor } from 'xstate'
 import { thumbnailManagerMachine } from './thumbnail-manager.machine'
 import { shouldSkip } from './attempt-store'
+import { getHeldFile, holdFile } from './held-files'
 
 export const thumbnailManager = createActor(thumbnailManagerMachine, {
   id: 'thumbnailManager',
@@ -33,67 +34,70 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Queues the full pipeline for a freshly uploaded file, whose bytes are still
- * in memory. Resolves when the item settles — the contract the upload runner
- * already expects from `run(file)`.
+ * Keeps a freshly uploaded file for its thumbnail, without starting any work.
+ *
+ * The thumbnail is made when the item's card comes on screen, from this file,
+ * with no download. If the card was already seen and its job is queued as a
+ * download, that job switches to the held file.
+ *
+ * @param itemId - The new item's id.
+ * @param file - The uploaded file, still in memory.
+ *
+ * @example
+ * if (mediaFile.status === 'itemCreated') holdUploadedFile(mediaFile.id, mediaFile.file)
  */
-export function enqueueUpload(itemId: string, file: File): Promise<void> {
-  thumbnailManager.send({
-    type: 'enqueue',
-    job: { itemId, mode: 'upload', file },
-  })
-  return waitForSettle(itemId)
+export function holdUploadedFile(itemId: string, file: File): void {
+  holdFile(itemId, file)
+  thumbnailManager.send({ type: 'fileHeld', itemId, file })
 }
 
 /**
- * Queues a backfill for an item that never got a thumbnail. The original is
- * re-downloaded by the job itself, so there is no `File` to hand over.
+ * Asks for a thumbnail for an item whose card just came on screen.
+ *
+ * Uses the held upload when there is one, otherwise queues a download of the
+ * original. Does nothing when that kind of job was already tried in this tab,
+ * or when a download already failed for good.
+ *
+ * @example
+ * observer: entry.isIntersecting && requestThumbnail(itemId)
  */
-export function enqueueBackfill(itemId: string): void {
-  if (shouldSkip(itemId)) return
-  thumbnailManager.send({
-    type: 'enqueue',
-    job: { itemId, mode: 'backfill', file: null },
-  })
+export function requestThumbnail(itemId: string): void {
+  if (hasPaintedThumbnail(itemId)) return
+  const file = getHeldFile(itemId)
+  const mode = file ? 'fromMemory' : 'fromDownload'
+  if (shouldSkip(itemId, mode)) return
+  thumbnailManager.send({ type: 'enqueue', job: { itemId, mode, file } })
 }
 
 /**
- * Drops a job that has not started. A running one keeps going on purpose: its
- * download is already paid for, and the manager outlives the card that asked.
+ * True once this tab has painted a real thumbnail (stage 2 or 3) for the item.
+ *
+ * The card's own `thumbnails` come from the loader and stay empty until the
+ * page reloads, so without this a card whose job just finished would look
+ * eligible again and have its thumbnail made a second time.
+ *
+ * @example
+ * if (hasPaintedThumbnail(itemId)) return
  */
-export function cancelJob(itemId: string): void {
+export function hasPaintedThumbnail(itemId: string): boolean {
+  const stage = thumbnailManager.getSnapshot().context.progress.get(itemId)?.stage
+  return stage === 2 || stage === 3
+}
+
+/**
+ * Drops the item's queued job because its card left the screen. A job that
+ * has started finishes anyway: its work is already paid for.
+ */
+export function cancelQueuedThumbnail(itemId: string): void {
   thumbnailManager.send({ type: 'cancel', itemId })
 }
 
-/** Yields the pipeline to in-flight uploads. */
-export function pauseBackfill(): void {
-  thumbnailManager.send({ type: 'pauseBackfill' })
+/** Uploads are moving bytes: stop starting downloads until they finish. */
+export function pauseDownloads(): void {
+  thumbnailManager.send({ type: 'pauseDownloads' })
 }
 
-/** Hands it back once the upload queue drains. */
-export function resumeBackfill(): void {
-  thumbnailManager.send({ type: 'resumeBackfill' })
-}
-
-/**
- * Resolves once an item is neither queued nor running.
- *
- * An item that is in neither on the first look was deduplicated — already
- * running from an earlier enqueue, or already finished — so it resolves
- * immediately rather than waiting for a transition that will never come.
- */
-function waitForSettle(itemId: string): Promise<void> {
-  const present = (snapshot: ReturnType<typeof thumbnailManager.getSnapshot>) =>
-    snapshot.context.running.has(itemId) ||
-    snapshot.context.queue.some((j) => j.itemId === itemId)
-
-  if (!present(thumbnailManager.getSnapshot())) return Promise.resolve()
-
-  return new Promise((resolve) => {
-    const sub = thumbnailManager.subscribe((snapshot) => {
-      if (present(snapshot)) return
-      sub.unsubscribe()
-      resolve()
-    })
-  })
+/** No upload is moving bytes any more: downloads may start again. */
+export function resumeDownloads(): void {
+  thumbnailManager.send({ type: 'resumeDownloads' })
 }

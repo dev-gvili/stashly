@@ -3,9 +3,9 @@
  *
  * GET  ?intent=presign — short-lived PUT for `thumbnails/{itemId}.webp`, plus a
  *                        signed GET per persisted stage for the client to paint
- * GET  ?intent=source  — short-lived GET on the original, for on-the-fly
- *                        backfill of cards whose upload-time generation failed
- *                        or was skipped (see `useThumbnailBackfill`)
+ * GET  ?intent=source  — short-lived GET on the original, for a visible card
+ *                        whose file is not in memory (a `fromDownload` job; see
+ *                        `useThumbnailWhenVisible`)
  * POST                 — create the Thumbnail row
  * PATCH                — record a completed stage
  */

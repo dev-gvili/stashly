@@ -27,7 +27,7 @@ export interface ProgressEvent {
 }
 
 export interface ManagerState {
-  /** e.g. `{ uploadLane: {}, backfillLane: 'active' }` */
+  /** e.g. `{ memoryLane: {}, downloadLane: 'active' }` */
   value: string
   running: string[]
   queue: string[]
@@ -47,11 +47,15 @@ declare global {
             string,
             { stage: 1 | 2 | 3; src: string; width?: number; height?: number }
           >
-          metadataSaved: string[]
         }
       }
       subscribe: (fn: (s: unknown) => void) => { unsubscribe: () => void }
       send: (event: Record<string, unknown>) => void
+    }
+    /** The indexing queue (`app/machines/indexing/client.ts`), which owns metadata saves. */
+    __indexingQueue?: {
+      getSnapshot: () => { context: { metadataSaved: string[] } }
+      subscribe: (fn: (s: unknown) => void) => { unsubscribe: () => void }
     }
     __thumbProbe?: {
       events: ProgressEvent[]
@@ -99,7 +103,10 @@ export async function installProbe(page: Page): Promise<void> {
       firstRunningByMode: {} as Record<string, string[]>,
       metadataSeen: [] as string[],
       laneSamples: [] as string[],
-      stop: () => sub.unsubscribe(),
+      stop: () => {
+        sub.unsubscribe()
+        indexingSub?.unsubscribe()
+      },
     }
 
     const sub = mgr.subscribe(() => {
@@ -137,17 +144,19 @@ export async function installProbe(page: Page): Promise<void> {
         probe.firstRunningByMode[mode] ??= ids
       }
 
-      // The buffer is drained by `useThumbnailRevalidation` within ~700ms, so
-      // reading it after the fact would usually find it empty. Recorded on the
-      // way past instead, which is the only way to prove the indexing leg ran
-      // for a file that produced no thumbnail.
-      for (const itemId of c.metadataSaved) {
-        if (!probe.metadataSeen.includes(itemId)) probe.metadataSeen.push(itemId)
-      }
-
       const lane = JSON.stringify(mgr.getSnapshot().value)
       if (probe.laneSamples[probe.laneSamples.length - 1] !== lane) {
         probe.laneSamples.push(lane)
+      }
+    })
+
+    // Metadata saves live on the indexing queue, which empties its list as
+    // soon as the page reloads. Recorded on the way past, which is the only
+    // way to prove indexing ran for a file that produced no thumbnail.
+    const indexing = window.__indexingQueue
+    const indexingSub = indexing?.subscribe(() => {
+      for (const itemId of indexing.getSnapshot().context.metadataSaved) {
+        if (!probe.metadataSeen.includes(itemId)) probe.metadataSeen.push(itemId)
       }
     })
 
@@ -174,7 +183,9 @@ export async function readManager(page: Page): Promise<ManagerState> {
       running: Array.from(c.context.running.keys()),
       queue: c.context.queue.map((j) => `${j.mode}:${j.itemId}`),
       progressKeys: Array.from(c.context.progress.keys()),
-      metadataSaved: [...c.context.metadataSaved],
+      metadataSaved: [
+        ...(window.__indexingQueue?.getSnapshot().context.metadataSaved ?? []),
+      ],
     }
   })
 }

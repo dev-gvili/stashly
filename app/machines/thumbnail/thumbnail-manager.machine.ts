@@ -1,32 +1,33 @@
 /**
- * The thumbnail scheduler — one queue for work that used to have three.
+ * The thumbnail scheduler: decides which visible cards get their thumbnail
+ * made, and when.
  *
- * Before this machine, effective concurrency was nobody's decision: the upload
- * runner held a 4-slot promise semaphore, the backfill hook held a separate
- * 2-slot LIFO queue with a `paused` boolean, and neither knew about the other.
- * A single manager owns both lanes, so "how much thumbnail work is in flight"
- * is one answer in one place.
+ * Every job starts the same way: a card came on screen without a thumbnail
+ * (`useThumbnailWhenVisible`). Nothing is made for a card nobody has seen. The
+ * job's lane is decided by where its bytes come from:
  *
- * Two lanes, because the two kinds of work want opposite orderings:
+ *   memoryLane    the file was uploaded in this tab and is still held
+ *                 (`held-files.ts`). No download, every stage. 4 at a time,
+ *                 never paused.
+ *   downloadLane  no file in memory; the original is downloaded first, and
+ *                 the salient crop is skipped. 2 at a time, and paused while
+ *                 uploads are moving bytes so the two don't fight over
+ *                 bandwidth.
  *
- *   upload    FIFO — the order the user dropped the files in is the order they
- *             expect to see them appear.
- *   backfill  LIFO — the newest request is the card the user just scrolled to;
- *             the 200 cards they flew past are worth less than the one under
- *             their eyes.
+ * Both lanes take the newest request first: that is the card the user just
+ * scrolled to; the ones they flew past are worth less.
  *
- * The lanes are parallel regions rather than a `paused` flag, so pausing is
- * structural: `drainBackfillNow` is only handled inside `backfillLane.active`,
- * which means a paused lane cannot start work even if some future caller
- * forgets to check a boolean.
+ * Pausing is a state, not a flag: `startQueuedDownloads` is only handled in
+ * `downloadLane.active`, so a paused lane cannot start work even if some
+ * caller forgets to check.
  *
  * This machine schedules; it does not compute. The per-item work lives in
- * `thumbnail-item.machine.ts`, and the compute under that is the untouched
- * `@/utils/thumbnail-pipeline`.
+ * `thumbnail-item.machine.ts`.
  */
 import { setup, assign, raise, type AnyActorRef } from 'xstate'
 import { thumbnailItemMachine } from './thumbnail-item.machine'
 import { markAttempted, rememberFailure, whenIdle } from './attempt-store'
+import { releaseFile } from './held-files'
 import type {
   ThumbJob,
   ThumbManagerContext,
@@ -35,38 +36,31 @@ import type {
 } from './thumbnail.types'
 
 /**
- * Fresh uploads own the compute worker and the bandwidth. Four at a time was
- * tuned against a 534-file drop, where one pipeline per file buried the server.
+ * Jobs that need no download. Four at a time was tuned against a 534-file
+ * drop, where one pipeline per file buried the server.
  */
-const UPLOAD_CONCURRENCY = 4
+const MEMORY_CONCURRENCY = 4
 
-/** Backfill is strictly background work, and each job costs a full download. */
-const BACKFILL_CONCURRENCY = 2
+/** Each of these jobs costs a full download of the original. */
+const DOWNLOAD_CONCURRENCY = 2
 
 /**
- * Picks the next job for a lane and removes it from the queue.
+ * Takes the newest queued job of one kind out of the queue.
  *
- * The lane's ordering lives here and nowhere else: upload takes from the front,
- * backfill from the back.
+ * @param queue - The queue to take from; modified in place.
+ * @param mode - Which lane is asking.
+ * @returns The job, or null when none of that kind is queued.
  */
-function takeNext(queue: ThumbJob[], mode: ThumbMode): ThumbJob | null {
-  let index = -1
-  if (mode === 'upload') {
-    index = queue.findIndex((j) => j.mode === 'upload')
-  } else {
-    // Hand-rolled instead of `findLastIndex`, which needs `lib: es2023` — not
-    // worth a repo-wide tsconfig change for one line.
-    for (let i = queue.length - 1; i >= 0; i--) {
-      if (queue[i].mode === 'backfill') {
-        index = i
-        break
-      }
-    }
+function takeNewest(queue: ThumbJob[], mode: ThumbMode): ThumbJob | null {
+  // Hand-rolled instead of `findLastIndex`, which needs `lib: es2023` — not
+  // worth a repo-wide tsconfig change for one line.
+  for (let i = queue.length - 1; i >= 0; i--) {
+    if (queue[i].mode === mode) return queue.splice(i, 1)[0]
   }
-  if (index === -1) return null
-  return queue.splice(index, 1)[0]
+  return null
 }
 
+/** How many jobs of one kind are running. */
 function runningInLane(
   running: ThumbManagerContext['running'],
   mode: ThumbMode
@@ -86,45 +80,49 @@ export const thumbnailManagerMachine = setup({
   },
   actions: {
     /**
-     * Queues a job unless the item is already queued or running. The dedup is
-     * what replaces the module-level `thumbnailedIds` Set the old runner used.
-     */
-    /**
-     * Queues a job, one per item.
+     * Queues a visible card's job at the newest position, one job per item.
      *
-     * An upload job **replaces** a queued backfill for the same item. The two
-     * race on every upload: the item is created, the route revalidates, and the
-     * new card's viewport backfill queues a file-less job before the runner's
-     * upload job lands. Keeping the first one threw away the only in-memory
-     * copy of the file and left a job that re-downloads it and stops at stage
-     * 2. A job that is already running is left alone either way.
+     * A job already running is left alone. One already queued is moved to the
+     * newest position, since its card was just seen again; if either copy can
+     * run from memory, that one is kept, because it skips the download.
      */
-    addJob: assign(({ context, event }) => {
+    queueJob: assign(({ context, event }) => {
       if (event.type !== 'enqueue') return {}
       const { job } = event
       if (context.running.has(job.itemId)) return {}
-      const queued = context.queue.findIndex((q) => q.itemId === job.itemId)
-      if (queued === -1) return { queue: [...context.queue, job] }
-      if (job.mode === 'upload' && context.queue[queued].mode === 'backfill') {
-        const queue = [...context.queue]
-        queue[queued] = job
-        return { queue }
-      }
-      return {}
+      const existing = context.queue.find((q) => q.itemId === job.itemId)
+      const keep = existing?.mode === 'fromMemory' ? existing : job
+      const queue = context.queue.filter((q) => q.itemId !== job.itemId)
+      return { queue: [...queue, keep] }
     }),
 
     /**
-     * Drops a *queued* job only. A running one is deliberately left to finish:
-     * its download is already paid for, and throwing the result away would be
-     * strictly worse than keeping it. Because the machine outlives every card,
-     * the result still persists even though the card that asked for it is gone
-     * — the old code needed a separate detached-PATCH path for exactly this.
+     * An upload's file just arrived: a queued download job for that item
+     * becomes a memory job. Nothing is queued if the card hasn't been seen.
      */
-    dropQueued: assign(({ context, event }) => {
+    switchQueuedJobToMemory: assign(({ context, event }) => {
+      if (event.type !== 'fileHeld') return {}
+      const index = context.queue.findIndex(
+        (q) => q.itemId === event.itemId && q.mode === 'fromDownload'
+      )
+      if (index === -1) return {}
+      const queue = [...context.queue]
+      queue[index] = { itemId: event.itemId, mode: 'fromMemory', file: event.file }
+      return { queue }
+    }),
+
+    /**
+     * Drops a *queued* job only; its card left the screen. A running one is
+     * left to finish: the work is already paid for, and because this machine
+     * outlives every card, the result still lands. A held file stays held, so
+     * the next time the card is seen it runs from memory again.
+     */
+    dropQueuedJob: assign(({ context, event }) => {
       if (event.type !== 'cancel') return {}
       return { queue: context.queue.filter((q) => q.itemId !== event.itemId) }
     }),
 
+    /** Stores the stage a child just painted; `useLiveThumbnail` reads it. */
     recordProgress: assign(({ context, event }) => {
       if (event.type !== 'child.progress') return {}
       const progress = new Map(context.progress)
@@ -133,17 +131,25 @@ export const thumbnailManagerMachine = setup({
     }),
 
     /**
-     * Frees the slot and, for a backfill that produced nothing, writes the item
-     * to the permanent skip list.
-     *
-     * Only backfill failures are remembered. An upload-time failure is often
-     * transient (a compute timeout in a huge batch), and remembering it would
-     * block the very backfill that exists to recover from it.
+     * Lets go of the uploaded file once its memory job has finished, whatever
+     * the outcome. On failure the item stays eligible for one download job.
+     */
+    releaseHeldFile: ({ context, event }) => {
+      if (event.type !== 'child.settled') return
+      if (context.running.get(event.itemId)?.mode === 'fromMemory') {
+        releaseFile(event.itemId)
+      }
+    },
+
+    /**
+     * Frees the finished job's slot. A download job that produced nothing goes
+     * on the permanent skip list, so the original is never downloaded again
+     * for nothing.
      */
     freeSlot: assign(({ context, event }) => {
       if (event.type !== 'child.settled') return {}
       const entry = context.running.get(event.itemId)
-      if (entry?.mode === 'backfill' && !event.thumbnailed) {
+      if (entry?.mode === 'fromDownload' && !event.thumbnailed) {
         rememberFailure(event.itemId)
       }
       const running = new Map(context.running)
@@ -151,27 +157,27 @@ export const thumbnailManagerMachine = setup({
       return { running }
     }),
 
-    drainUpload: assign(({ context, spawn, self }) =>
-      drainLane(context, spawn, self, 'upload', UPLOAD_CONCURRENCY)
+    startQueuedMemoryJobs: assign(({ context, spawn, self }) =>
+      startJobs(context, spawn, self, 'fromMemory', MEMORY_CONCURRENCY)
     ),
 
-    drainBackfill: assign(({ context, spawn, self }) =>
-      drainLane(context, spawn, self, 'backfill', BACKFILL_CONCURRENCY)
+    startQueuedDownloadJobs: assign(({ context, spawn, self }) =>
+      startJobs(context, spawn, self, 'fromDownload', DOWNLOAD_CONCURRENCY)
     ),
 
     /**
-     * Defers the backfill drain to an idle frame, so a backfill never begins on
-     * a frame the user is scrolling or typing in. If the lane pauses in the
-     * meantime the follow-up event is simply unhandled — which is the point of
-     * making `paused` a state.
+     * Starts downloads on the next idle frame, never on a frame the user is
+     * scrolling or typing in. If the lane pauses meanwhile, the follow-up
+     * event is simply unhandled; that is the point of `paused` being a state.
      */
-    scheduleBackfillDrain: ({ self }) => {
-      whenIdle(() => self.send({ type: 'drainBackfillNow' }))
+    startDownloadsWhenIdle: ({ self }) => {
+      whenIdle(() => self.send({ type: 'startQueuedDownloads' }))
     },
   },
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5QBcAWBXAtgIwHYEMBLAGwFpN8CYAnAYjFwEd0wWBtABgF1FQAHAPaxCyQgNy8QAD0QAmAByyAdAE4VigKzqAbABZts2QHYNAGhABPRBt3KAjLLs3HugMy6Ns1wF9v5tFh4RGQUVGB0AMaUEWDEnDxIIILCouKSMggK9i5G8iraHHbadkZG5lYIuvpK8hpG2hqusip2ahz6vv4YOAQk5JT4NLQRqCQQSnzUAlDUcLDxkskiYhKJGcauSqUaRUUmDhz55YiuO0parvVVuhye8tqdIAE9wf1hkaPE45hgyPgQ+D+AGV8AA3SALRJLVKrUDrDQcJTGbQqDjNDhGfK3Y6ZDTaJRNdQmDR5DjabTyR7PIJ9UKDcLDT7jWC-ZDECHcRZCZZpNZyeR2LZ2dwtRr5U7yHF2DFI7SueQK2p2fR2eS6KndGkhAZDWag-DEQgAmEAYXEsCwHIS-G5MPScg8SjszpUrj2eg2rilsg1gV62veSmw+AiAGsAGYkYgAGUoYCUIdE4NoojDACEQxGo5CbSkVvaEM7BXitPlPOWmmVLIh1PIlBw3e52tLlUY7L6XrSdeEg5nI8QY3GExEk2BaBBqERcBmw-3iAA5AQAdxzSVt+b5hccSKMHHucpU+jFuhxeWU9SMHicJIpOw7Wre9OovdnUdjuHjicIyb4+HQLJnLMB1XaENzhE5HXlGxVQbVEOFuKsKmdYwkQ8NwiVcAoSXvf1HxoF8gMHD8Jj-FkIFoWYLR+QC5xA9deXAhB3A0Alal0GDXDghCpQxIwlDcdEmk8JoHkeXABAgOBJGpXC6RoLk8wY6REFIZUcW0XInXkEwFAVaU6h9Pwnk1WTu2fdA+GIAR-nfMAFJ5WFlMqRDEHqFivAUeD9FRYUcNeOSe2DV8B1s+y7U3dxT1uLZDHQ+U1RUXI-K7QMgsI2zh1HMKwKcxQeIVJEVE8ZpZGKAoVGSgMnwIucMt-f9IGypSMh2XRVAKW5kOKBtZClBxBU0LIvExQxDN8IA */
   id: 'thumbnail-manager',
+  description:
+    'Makes thumbnails for cards that came on screen: from the uploaded file when it is still in memory, otherwise by downloading the original.',
   context: {
     queue: [],
     running: new Map(),
@@ -180,42 +186,54 @@ export const thumbnailManagerMachine = setup({
 
   on: {
     enqueue: {
-      actions: ['addJob', 'drainUpload', raise({ type: 'tickBackfill' })],
+      actions: [
+        'queueJob',
+        'startQueuedMemoryJobs',
+        raise({ type: 'downloadSlotMaybeFree' }),
+      ],
     },
-    cancel: { actions: 'dropQueued' },
+    fileHeld: {
+      actions: ['switchQueuedJobToMemory', 'startQueuedMemoryJobs'],
+    },
+    cancel: { actions: 'dropQueuedJob' },
     'child.progress': { actions: 'recordProgress' },
     'child.settled': {
-      actions: ['freeSlot', 'drainUpload', raise({ type: 'tickBackfill' })],
+      actions: [
+        'releaseHeldFile',
+        'freeSlot',
+        'startQueuedMemoryJobs',
+        raise({ type: 'downloadSlotMaybeFree' }),
+      ],
     },
   },
 
   type: 'parallel',
   states: {
-    /**
-     * Uploads never pause — a file the user is actively dropping is the highest
-     * priority thing in the app — so this lane has no states of its own and is
-     * driven entirely by the root handlers above.
-     */
-    uploadLane: {},
+    memoryLane: {
+      description:
+        'Jobs whose uploaded file is still held: no download, every stage. 4 at a time, newest request first, never paused. Driven by the handlers on the machine itself.',
+    },
 
-    backfillLane: {
+    downloadLane: {
+      description:
+        'Jobs that must download the original first and skip the salient crop. 2 at a time, newest request first.',
       initial: 'active',
       states: {
         active: {
-          // Covers the resume case: entering `active` immediately looks for work
-          // that piled up while paused.
-          entry: 'scheduleBackfillDrain',
+          description:
+            'Starts queued downloads on an idle frame whenever a slot may be free. Entering it after a pause picks up whatever queued meanwhile.',
+          entry: 'startDownloadsWhenIdle',
           on: {
-            tickBackfill: { actions: 'scheduleBackfillDrain' },
-            drainBackfillNow: { actions: 'drainBackfill' },
-            pauseBackfill: { target: 'paused' },
+            downloadSlotMaybeFree: { actions: 'startDownloadsWhenIdle' },
+            startQueuedDownloads: { actions: 'startQueuedDownloadJobs' },
+            pauseDownloads: { target: 'paused' },
           },
         },
         paused: {
+          description:
+            'An upload is moving bytes, so no download starts; jobs keep queueing. Starting work is not handled here at all, so nothing can slip through.',
           on: {
-            resumeBackfill: { target: 'active' },
-            // `tickBackfill` and `drainBackfillNow` are intentionally unhandled
-            // here — a paused lane cannot start work, by construction.
+            resumeDownloads: { target: 'active' },
           },
         },
       },
@@ -224,18 +242,17 @@ export const thumbnailManagerMachine = setup({
 })
 
 /**
- * Fills a lane's free slots, spawning one item actor per job.
+ * Fills one lane's free slots with its newest queued jobs, starting an item
+ * machine for each.
  *
- * `spawn` is only reachable from inside `assign`, and a child's emissions have
- * to be wired to the manager at the moment its ref exists — so the
- * subscriptions are set up here, alongside the spawn, rather than in a separate
- * action that would have to go looking for the ref again.
+ * `spawn` is only reachable inside `assign`, and a child's reports have to be
+ * wired up the moment its ref exists, so the subscriptions are set up here.
+ * The child reports with `emit` rather than `sendParent` so it can be tested
+ * on its own; the cost is these explicit `.on(...)` hookups.
  *
- * The child reports outward with `emit` rather than `sendParent` so that it can
- * be unit-tested as a root actor; the cost of that choice is paid right here,
- * in two explicit `.on(...)` hookups and a completion subscription.
+ * @returns The context changes, or an empty object when nothing started.
  */
-function drainLane(
+function startJobs(
   context: ThumbManagerContext,
   spawn: (
     src: 'item',
@@ -253,19 +270,19 @@ function drainLane(
 
   const queue = [...context.queue]
   const running = new Map(context.running)
-  let spawned = false
+  let started = false
 
   while (free > 0) {
-    const job = takeNext(queue, mode)
+    const job = takeNewest(queue, mode)
     if (!job) break
     free--
-    spawned = true
+    started = true
 
-    markAttempted(job.itemId)
+    markAttempted(job.itemId, job.mode)
 
     const ref = spawn('item', {
-      // Actor id is the item id, which makes the inspector readable and keeps
-      // a second spawn for the same item impossible.
+      // The item id as actor id keeps a second spawn for the same item
+      // impossible and makes the inspector readable.
       id: `thumb-${job.itemId}`,
       input: { itemId: job.itemId, mode: job.mode, file: job.file },
     })
@@ -294,5 +311,5 @@ function drainLane(
     running.set(job.itemId, { mode: job.mode, ref })
   }
 
-  return spawned ? { queue, running } : {}
+  return started ? { queue, running } : {}
 }

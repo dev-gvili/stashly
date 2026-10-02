@@ -4,8 +4,8 @@
  *
  * The effects live in `app/hooks/useEmbeddingBackfill.ts` (client) and the
  * `pending_search_embeddings` loader intent in `app/routes/api/items.ts`
- * (server). Mirrors the `thumbnail-backfill.ts` / `useThumbnailBackfill.ts`
- * split.
+ * (server). Same split as `thumbnail-backfill.ts`: pure policy here, effects in
+ * a hook.
  */
 
 /**

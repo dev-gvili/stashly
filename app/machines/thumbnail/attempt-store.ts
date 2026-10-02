@@ -1,30 +1,37 @@
 /**
  * Bookkeeping for "don't try this one again".
  *
- * A backfill costs a full download of the original, so an item that can't
- * produce a thumbnail must be attempted once and then left alone — otherwise
- * every visit to a folder of un-thumbnailable files re-downloads all of them.
+ * A `fromDownload` job costs a full download of the original, so an item that
+ * can't produce a thumbnail must be attempted once and then left alone —
+ * otherwise every visit to a folder of un-thumbnailable files re-downloads all
+ * of them.
  *
  * Two layers, deliberately:
  *   • in-memory — covers this tab's lifetime, including client-side navigation
  *   • sessionStorage — carries *permanent* failures across a reload
- *
- * NOTE (parallel track): this duplicates the module-private bookkeeping inside
- * `app/hooks/useThumbnailBackfill.ts`. It is re-created here rather than
- * exported from there because that file must stay untouched until the machine
- * path is proven. Collapse the two at merge-back — including the storage key,
- * which is shared on purpose so a switch between the two implementations
- * inherits the other's skip list instead of re-downloading everything.
  */
+import type { ThumbMode } from './thumbnail.types'
 
 /** Cap on the persisted skip list so sessionStorage can't grow unbounded. */
 const MAX_REMEMBERED_FAILURES = 500
 
-/** Shared with the legacy hook on purpose — see the note above. */
+/**
+ * Kept from the old backfill hook so skip lists already in open tabs still
+ * apply; renaming it would re-download every known failure once.
+ */
 const FAILED_STORAGE_KEY = 'stashly:thumb-backfill-failed'
 
-/** Items this tab has already handed to the queue, successful or not. */
-const attempted = new Set<string>()
+/**
+ * Items this tab has already started a job for, kept per kind of job.
+ *
+ * Separate on purpose. A `fromMemory` attempt that fails (a compute timeout in
+ * a big batch) must still leave one `fromDownload` attempt open; with a single
+ * set, a failed upload-time thumbnail blocked the item for the rest of the tab.
+ */
+const attempted: Record<ThumbMode, Set<string>> = {
+  fromMemory: new Set(),
+  fromDownload: new Set(),
+}
 
 let failedCache: Set<string> | null = null
 
@@ -64,30 +71,39 @@ export function rememberFailure(itemId: string): void {
   }
 }
 
-/** True when this tab has already queued work for the item. */
-export function hasAttempted(itemId: string): boolean {
-  return attempted.has(itemId)
+/**
+ * Marks that a job of this kind started for the item.
+ *
+ * Called when a job actually *starts*, not when it is queued: a card that
+ * scrolls back out of range before its slot opens is cancelled, and has to stay
+ * re-triable.
+ *
+ * @example
+ * markAttempted(job.itemId, job.mode)
+ */
+export function markAttempted(itemId: string, mode: ThumbMode): void {
+  attempted[mode].add(itemId)
 }
 
 /**
- * Marks an item as attempted.
+ * Whether a job of this kind should not be started for the item.
  *
- * Called when a job actually *starts*, not when it is enqueued: a card that
- * scrolls back out of range before its slot opens is cancelled, and has to stay
- * re-triable.
+ * `fromMemory`: already tried in this tab. `fromDownload`: already tried in
+ * this tab, or on the permanent skip list, since every download attempt costs
+ * the whole original.
+ *
+ * @example
+ * if (shouldSkip(itemId, 'fromDownload')) return
  */
-export function markAttempted(itemId: string): void {
-  attempted.add(itemId)
-}
-
-/** True when the item is on the permanent skip list or already attempted here. */
-export function shouldSkip(itemId: string): boolean {
-  return attempted.has(itemId) || failedIds().has(itemId)
+export function shouldSkip(itemId: string, mode: ThumbMode): boolean {
+  if (attempted[mode].has(itemId)) return true
+  return mode === 'fromDownload' && failedIds().has(itemId)
 }
 
 /** Test seam — resets both layers. */
 export function resetAttemptStore(): void {
-  attempted.clear()
+  attempted.fromMemory.clear()
+  attempted.fromDownload.clear()
   failedCache = null
   // `typeof` rather than optional chaining: in a non-browser context the
   // identifier is undeclared, and `sessionStorage?.` would still throw.

@@ -57,7 +57,7 @@ function happyActors(over: Record<string, unknown> = {}) {
 
 /** Starts a machine, collecting everything it emits, and resolves with its output. */
 async function run(
-  input: { itemId: string; mode: 'upload' | 'backfill'; file: File | null },
+  input: { itemId: string; mode: 'fromMemory' | 'fromDownload'; file: File | null },
   actors: Record<string, unknown> = {}
 ) {
   const progress: ThumbProgress[] = []
@@ -73,11 +73,11 @@ async function run(
   return { output, progress, emitted, stages: progress.map((p) => p.stage) }
 }
 
-describe('thumbnailItemMachine — upload mode', () => {
+describe('thumbnailItemMachine — from memory', () => {
   it('runs all three stages for an image and reports a thumbnail', async () => {
     const { output, stages } = await run({
       itemId: 'i1',
-      mode: 'upload',
+      mode: 'fromMemory',
       file: imageFile(),
     })
 
@@ -88,7 +88,7 @@ describe('thumbnailItemMachine — upload mode', () => {
   it('stops after stage 2 for a PDF — stage 3 is images only', async () => {
     const { output, stages } = await run({
       itemId: 'i2',
-      mode: 'upload',
+      mode: 'fromMemory',
       file: pdfFile(),
     })
 
@@ -99,7 +99,7 @@ describe('thumbnailItemMachine — upload mode', () => {
   it('cache-busts the stage URLs so an overwritten S3 key still repaints', async () => {
     const { progress } = await run({
       itemId: 'i3',
-      mode: 'upload',
+      mode: 'fromMemory',
       file: imageFile(),
     })
 
@@ -109,7 +109,7 @@ describe('thumbnailItemMachine — upload mode', () => {
 
   it('reports no thumbnail when the type has no stage-2 producer', async () => {
     const { output, stages } = await run(
-      { itemId: 'i4', mode: 'upload', file: zipFile() },
+      { itemId: 'i4', mode: 'fromMemory', file: zipFile() },
       {
         stage1: fromPromise(async () => null),
         stage2: fromPromise(async () => null),
@@ -122,7 +122,7 @@ describe('thumbnailItemMachine — upload mode', () => {
 
   it('a failed stage 1 costs only the blur, not the pipeline', async () => {
     const { output, stages } = await run(
-      { itemId: 'i6', mode: 'upload', file: imageFile() },
+      { itemId: 'i6', mode: 'fromMemory', file: imageFile() },
       {
         stage1: fromPromise(async () => {
           throw new Error('compute timeout')
@@ -136,7 +136,7 @@ describe('thumbnailItemMachine — upload mode', () => {
 
   it('keeps stage 3 even when the stage-2 PATCH fails — the bytes are already live', async () => {
     const { output, stages } = await run(
-      { itemId: 'i7', mode: 'upload', file: imageFile() },
+      { itemId: 'i7', mode: 'fromMemory', file: imageFile() },
       {
         patchThumbnail: fromPromise(async () => {
           throw new Error('500')
@@ -164,7 +164,7 @@ describe('thumbnailItemMachine — retries', () => {
           }),
         }),
       }),
-      { input: { itemId: 'r1', mode: 'upload', file: imageFile() } }
+      { input: { itemId: 'r1', mode: 'fromMemory', file: imageFile() } }
     )
     actor.on('progress', (e) => progress.push(e.progress))
     actor.start()
@@ -188,7 +188,7 @@ describe('thumbnailItemMachine — retries', () => {
           }),
         }),
       }),
-      { input: { itemId: 'r2', mode: 'upload', file: imageFile() } }
+      { input: { itemId: 'r2', mode: 'fromMemory', file: imageFile() } }
     )
     actor.start()
     await vi.advanceTimersByTimeAsync(5_000)
@@ -202,11 +202,11 @@ describe('thumbnailItemMachine — retries', () => {
   })
 })
 
-describe('thumbnailItemMachine — backfill mode', () => {
+describe('thumbnailItemMachine — from download', () => {
   it('downloads the original and stops after stage 2', async () => {
     const stage3 = vi.fn(async () => tinyBlob)
     const { output, stages } = await run(
-      { itemId: 'b1', mode: 'backfill', file: null },
+      { itemId: 'b1', mode: 'fromDownload', file: null },
       { stage3: fromPromise(stage3) }
     )
 
@@ -218,7 +218,7 @@ describe('thumbnailItemMachine — backfill mode', () => {
   it('paints what another client already produced instead of doing the work', async () => {
     const stage2 = vi.fn(async () => resized)
     const { output, progress } = await run(
-      { itemId: 'b2', mode: 'backfill', file: null },
+      { itemId: 'b2', mode: 'fromDownload', file: null },
       {
         acquireSource: fromPromise(async () => ({
           kind: 'existing' as const,
@@ -238,7 +238,7 @@ describe('thumbnailItemMachine — backfill mode', () => {
 
   it("reports the stage the other client actually reached, not an assumed 2", async () => {
     const { progress } = await run(
-      { itemId: 'b4', mode: 'backfill', file: null },
+      { itemId: 'b4', mode: 'fromDownload', file: null },
       {
         acquireSource: fromPromise(async () => ({
           kind: 'existing' as const,
@@ -262,7 +262,7 @@ describe('thumbnailItemMachine — backfill mode', () => {
       thumbnailItemMachine.provide({
         actors: happyActors({ acquireSource: fromPromise(acquire) }),
       }),
-      { input: { itemId: 'b3', mode: 'backfill', file: null } }
+      { input: { itemId: 'b3', mode: 'fromDownload', file: null } }
     )
     actor.start()
     await vi.advanceTimersByTimeAsync(5_000)

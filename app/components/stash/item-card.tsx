@@ -32,14 +32,12 @@ import {
 } from 'react-router'
 import type { Route } from '../../routes/+types/layout'
 import { Actions as ItemCardActions } from './item-card-actions'
-// Implementation switch — see `app/machines/thumbnail/index.ts`. Points at
-// either the original hooks or the XState scheduler without changing shape.
-import { useLiveThumbnail, useThumbnailBackfill } from '@/machines/thumbnail'
+import { useLiveThumbnail, useThumbnailWhenVisible } from '@/machines/thumbnail'
 
 /**
  * Merges a forwarded ref with a hook-owned callback ref (React 19 cleanup
  * aware). Memoize the result — a fresh callback each render would detach and
- * re-attach the backfill observer on every re-render.
+ * re-attach the thumbnail observer on every re-render.
  */
 function composeRefs<T>(
   ...refs: Array<React.Ref<T> | undefined>
@@ -193,12 +191,12 @@ const ItemThumbnail = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
 >((props, ref) => {
   const { className, children, ...rest } = props
-  // Items that never got a thumbnail generate one here, once, when scrolled
-  // into view — otherwise they'd show the category icon forever.
-  const backfillRef = useThumbnailBackfill()
+  // The card's thumbnail is made here, once, when it scrolls into view —
+  // from the uploaded file if it's still in memory, otherwise by downloading.
+  const thumbnailRef = useThumbnailWhenVisible()
   const setRef = React.useMemo(
-    () => composeRefs<React.ComponentRef<typeof AvatarPrimitive.Root>>(ref, backfillRef),
-    [ref, backfillRef]
+    () => composeRefs<React.ComponentRef<typeof AvatarPrimitive.Root>>(ref, thumbnailRef),
+    [ref, thumbnailRef]
   )
   return (
     <AvatarPrimitive.Root
@@ -589,10 +587,10 @@ const ItemCover = React.forwardRef<
   const live = useLiveThumbnail(id)
   const persisted = thumbnails?.find((t) => t.stage === 2)
   const { className, ...rest } = props
-  const backfillRef = useThumbnailBackfill()
+  const thumbnailRef = useThumbnailWhenVisible()
   const setRef = React.useMemo(
-    () => composeRefs<HTMLDivElement>(ref, backfillRef),
-    [ref, backfillRef]
+    () => composeRefs<HTMLDivElement>(ref, thumbnailRef),
+    [ref, thumbnailRef]
   )
 
   const src = live?.src ?? persisted?.url ?? undefined

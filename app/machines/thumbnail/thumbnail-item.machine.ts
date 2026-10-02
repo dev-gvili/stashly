@@ -6,11 +6,12 @@
  * Only what the card paints. Search indexing (metadata, embeddings, OCR) used
  * to run here as a parallel region; it is its own machine now, in
  * `app/machines/indexing/`, so a slow embedding no longer holds a thumbnail
- * slot and a backfill can no longer skip a file's indexing.
+ * slot and a download job can no longer skip a file's indexing.
  *
- * One machine covers both modes. A `backfill` job enters at `acquiring` (it has
- * to re-download the original), then joins the identical stage path with stage
- * 3 skipped.
+ * One machine covers both kinds of job. A `fromDownload` job enters at
+ * `acquiring` (it has to download the original), then joins the identical
+ * stage path with stage 3 skipped. A `fromMemory` job starts at stage 1 with
+ * the uploaded file.
  */
 import { setup, assign, emit, enqueueActions } from 'xstate'
 import {
@@ -64,15 +65,16 @@ export const thumbnailItemMachine = setup({
     patchThumbnail: patchThumbnailActor,
   },
   guards: {
-    isBackfill: ({ context }) => context.mode === 'backfill',
+    /** No file in memory: the original has to be downloaded first. */
+    needsDownload: ({ context }) => context.mode === 'fromDownload',
     canRetry: ({ context }) => context.attempts < MAX_ATTEMPTS,
     /**
-     * Stage 3 is images-only and upload-only. On a backfill it is skipped by
-     * design: it is the most expensive stage and buys the least when the file
-     * had to be re-downloaded to get here.
+     * Stage 3 is for images whose file is in memory. A download job skips it
+     * by design: it is the most expensive stage and buys the least when the
+     * file had to be downloaded to get here.
      */
     wantsStage3: ({ context }) =>
-      context.mode === 'upload' && !!context.file?.type.startsWith('image/'),
+      context.mode === 'fromMemory' && !!context.file?.type.startsWith('image/'),
   },
   actions: {
     /**
@@ -151,13 +153,13 @@ export const thumbnailItemMachine = setup({
       states: {
         deciding: {
           always: [
-            { guard: 'isBackfill', target: 'acquiring' },
+            { guard: 'needsDownload', target: 'acquiring' },
             { target: 'stage1' },
           ],
         },
 
         /**
-         * Backfill only. The server may answer that another client already
+         * Download jobs only. The server may answer that another client already
          * produced this thumbnail, in which case the correct amount of work to
          * do is none — paint theirs and stop.
          */

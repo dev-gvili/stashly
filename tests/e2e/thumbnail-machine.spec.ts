@@ -37,7 +37,7 @@ const PIPELINE_TIMEOUT = 180_000
 const runId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
 
 test.describe('thumbnail machine — scheduler boots', () => {
-  test('starts exactly one manager, with the upload lane open and backfill active', async ({
+  test('starts exactly one manager, with the memory lane open and downloads active', async ({
     page,
   }) => {
     const uploadPage = new UploadPage(page)
@@ -46,7 +46,7 @@ test.describe('thumbnail machine — scheduler boots', () => {
 
     const state = await readManager(page)
 
-    expect(state.value).toBe('{"uploadLane":{},"backfillLane":"active"}')
+    expect(state.value).toBe('{"memoryLane":{},"downloadLane":"active"}')
     expect(state.running).toEqual([])
     expect(state.queue).toEqual([])
   })
@@ -275,14 +275,14 @@ test.describe('thumbnail machine — scheduling', () => {
     for (const e of persisted) expect(e.src).toMatch(/\?v=[23]$/)
   })
 
-  test('backfill lane caps at two and starts the most recent requests first', async ({
+  test('download lane caps at two and starts the most recent requests first', async ({
     page,
   }) => {
     const uploadPage = new UploadPage(page)
     await uploadPage.goto(TEST_USER_ID)
     await installProbe(page)
 
-    // Four backfills enqueued in one turn. These ids do not resolve to files,
+    // Four downloads enqueued in one turn. These ids do not resolve to files,
     // so each job legitimately ends in `unavailable` after a real round trip to
     // `/api/thumbnails/:id/source` — which is all this test needs: it is
     // asserting the lane's ordering and cap, not the job's outcome.
@@ -290,23 +290,23 @@ test.describe('thumbnail machine — scheduling', () => {
     for (const itemId of ids) {
       await sendToManager(page, {
         type: 'enqueue',
-        job: { itemId, mode: 'backfill', file: null },
+        job: { itemId, mode: 'fromDownload', file: null },
       })
     }
 
     await waitForIdle(page, 60_000)
     const probe = await readProbe(page)
 
-    expect(probe.maxRunningByMode.backfill).toBe(2)
+    expect(probe.maxRunningByMode.fromDownload).toBe(2)
     // LIFO — the newest two run first, because they are the cards the user just
     // scrolled to. The batch is spawned inside one `assign`, so this is the
     // whole first batch, not a sampling artefact.
-    expect(new Set(probe.firstRunningByMode.backfill)).toEqual(
+    expect(new Set(probe.firstRunningByMode.fromDownload)).toEqual(
       new Set(['zz-lane-4', 'zz-lane-3'])
     )
   })
 
-  test('pausing stops the backfill lane structurally; resuming drains it', async ({
+  test('pausing stops the download lane structurally; resuming drains it', async ({
     page,
   }) => {
     const uploadPage = new UploadPage(page)
@@ -315,21 +315,21 @@ test.describe('thumbnail machine — scheduling', () => {
 
     // One synchronous turn. `send` is synchronous in XState 5, so nothing —
     // not React, not the network — can interleave. That matters here: the
-    // upload runner's own effect calls `resumeBackfill()` on mount whenever
+    // upload runner's own effect calls `resumeDownloads()` on mount whenever
     // nothing is uploading, and would otherwise stomp a pause sent from a test.
     const paused = await page.evaluate(() => {
       const mgr = window.__thumbMgr!
-      mgr.send({ type: 'pauseBackfill' })
+      mgr.send({ type: 'pauseDownloads' })
       mgr.send({
         type: 'enqueue',
-        job: { itemId: 'zz-paused-1', mode: 'backfill', file: null },
+        job: { itemId: 'zz-paused-1', mode: 'fromDownload', file: null },
       })
 
       // The claim under test is that pausing is *structural*, not a flag read
-      // by a drain loop: `drainBackfillNow` simply has no handler in `paused`.
+      // by a drain loop: `startQueuedDownloads` simply has no handler in `paused`.
       // Firing it directly is a stronger check than waiting to see nothing
       // happen, which could also mean the idle callback just hadn't run.
-      mgr.send({ type: 'drainBackfillNow' })
+      mgr.send({ type: 'startQueuedDownloads' })
 
       const s = mgr.getSnapshot()
       return {
@@ -339,20 +339,20 @@ test.describe('thumbnail machine — scheduling', () => {
       }
     })
 
-    expect(paused.value).toContain('"backfillLane":"paused"')
+    expect(paused.value).toContain('"downloadLane":"paused"')
     expect(paused.running).toEqual([])
-    expect(paused.queue).toEqual(['backfill:zz-paused-1'])
+    expect(paused.queue).toEqual(['fromDownload:zz-paused-1'])
 
     // Resuming re-enters `active`, whose entry action schedules the drain.
-    await sendToManager(page, { type: 'resumeBackfill' })
+    await sendToManager(page, { type: 'resumeDownloads' })
     await waitForIdle(page, 30_000)
 
     const resumed = await readManager(page)
-    expect(resumed.value).toContain('"backfillLane":"active"')
+    expect(resumed.value).toContain('"downloadLane":"active"')
     expect(resumed.queue).toEqual([])
   })
 
-  test('an upload pauses the backfill lane and hands it back afterwards', async ({
+  test('an upload pauses the download lane and hands it back afterwards', async ({
     page,
   }) => {
     const uploadPage = new UploadPage(page)
@@ -362,26 +362,26 @@ test.describe('thumbnail machine — scheduling', () => {
     const name = `e2e-thumb-${runId()}.png`
     await uploadPage.dropRealFiles([{ name, kind: 'png', sizePx: 480 }])
 
-    // The upload runner calls pauseBackfill() while its queue is non-empty.
+    // The upload runner calls pauseDownloads() while its queue is non-empty.
     await expect
       .poll(async () => (await readManager(page)).value, {
-        message: 'backfill lane never paused during an upload',
+        message: 'download lane never paused during an upload',
         timeout: 60_000,
       })
-      .toContain('"backfillLane":"paused"')
+      .toContain('"downloadLane":"paused"')
 
     await waitForIdle(page, PIPELINE_TIMEOUT - 40_000)
 
     await expect
       .poll(async () => (await readManager(page)).value, {
-        message: 'backfill lane never resumed after the upload drained',
+        message: 'download lane never resumed after the upload drained',
         timeout: 60_000,
       })
-      .toContain('"backfillLane":"active"')
+      .toContain('"downloadLane":"active"')
 
     const probe = await readProbe(page)
     // Both transitions really happened, in order.
-    expect(probe.laneSamples.some((s) => s.includes('"backfillLane":"paused"'))).toBe(true)
+    expect(probe.laneSamples.some((s) => s.includes('"downloadLane":"paused"'))).toBe(true)
   })
 
   test('a queued job can be cancelled but a running one is left to finish', async ({
@@ -401,9 +401,9 @@ test.describe('thumbnail machine — scheduling', () => {
       const queue = () =>
         mgr.getSnapshot().context.queue.map((j) => `${j.mode}:${j.itemId}`)
 
-      mgr.send({ type: 'pauseBackfill' })
+      mgr.send({ type: 'pauseDownloads' })
       for (const itemId of ['zz-cancel-1', 'zz-cancel-2', 'zz-cancel-3']) {
-        mgr.send({ type: 'enqueue', job: { itemId, mode: 'backfill', file: null } })
+        mgr.send({ type: 'enqueue', job: { itemId, mode: 'fromDownload', file: null } })
       }
       const queuedBefore = queue()
 
@@ -413,8 +413,8 @@ test.describe('thumbnail machine — scheduling', () => {
 
       // …while a running one is kept: its download is already paid for, and the
       // manager outlives the card that asked, so the result still persists.
-      mgr.send({ type: 'resumeBackfill' })
-      mgr.send({ type: 'drainBackfillNow' })
+      mgr.send({ type: 'resumeDownloads' })
+      mgr.send({ type: 'startQueuedDownloads' })
       const runningBefore = ids()
       const target = runningBefore[0]
       mgr.send({ type: 'cancel', itemId: target })
@@ -424,13 +424,13 @@ test.describe('thumbnail machine — scheduling', () => {
     })
 
     expect(result.queuedBefore).toEqual([
-      'backfill:zz-cancel-1',
-      'backfill:zz-cancel-2',
-      'backfill:zz-cancel-3',
+      'fromDownload:zz-cancel-1',
+      'fromDownload:zz-cancel-2',
+      'fromDownload:zz-cancel-3',
     ])
     expect(result.queuedAfterCancel).toEqual([
-      'backfill:zz-cancel-1',
-      'backfill:zz-cancel-3',
+      'fromDownload:zz-cancel-1',
+      'fromDownload:zz-cancel-3',
     ])
 
     // LIFO: the newest survivors start first, and the lane caps at two.

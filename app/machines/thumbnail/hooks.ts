@@ -1,62 +1,40 @@
 /**
  * React surface for the machine-backed thumbnail pipeline.
  *
- * Every hook here matches the signature of the one it stands in for, so the
- * barrel can swap implementations without a single call site changing shape:
+ * Two hooks, both thin; all state lives in the module-scope manager, which is
+ * what lets a job survive the card that started it:
  *
- *   useThumbnail          ← app/hooks/useThumbnail.ts
- *   useThumbnailBackfill  ← app/hooks/useThumbnailBackfill.ts
- *   useLiveThumbnail      ← app/hooks/thumbnail-signal
- *
- * The hooks are thin by design. All the state lives in the module-scope
- * manager, which is what lets a pipeline survive the component that started it.
+ *   useThumbnailWhenVisible  the only thing that starts thumbnail work
+ *   useLiveThumbnail         what a card paints while work is in flight
  */
-import { useCallback } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import { useSelector } from '@xstate/react'
 import {
   thumbnailManager,
-  enqueueUpload,
-  enqueueBackfill,
-  cancelJob,
+  requestThumbnail,
+  cancelQueuedThumbnail,
 } from './client'
 import { shouldSkip } from './attempt-store'
+import { hasHeldFile, subscribeToHeldFiles } from './held-files'
 import { useItemCard } from '@/hooks/useItemCard'
 import {
   canBackfillThumbnail,
+  canThumbnailFromMemory,
   isConnectionTooSlow,
 } from '@/utils/thumbnail-backfill'
 import type { ThumbProgress } from './thumbnail.types'
 
-/** How far outside the viewport a card starts its backfill. */
+/** How far outside the viewport a card counts as visible. */
 const ROOT_MARGIN = '300px 0px'
 
-// ── Upload path ────────────────────────────────────────────────────────────
-
-/**
- * Queues the full pipeline for one uploaded file.
- *
- * Unchanged in shape from the hook it replaces, but not in nature: `run` now
- * hands the work to a scheduler that outlives this component, so unmounting
- * mid-pipeline no longer abandons anything.
- *
- * @example
- * const { run } = useThumbnail(itemId)
- * useEffect(() => { void run(file) }, [itemId])
- */
-export function useThumbnail(itemId: string) {
-  const run = useCallback((file: File) => enqueueUpload(itemId, file), [itemId])
-  return { run }
-}
-
-// ── Consumer ───────────────────────────────────────────────────────────────
+// ── What a card paints ─────────────────────────────────────────────────────
 
 /**
  * The freshest stage published for one item, or null if nothing yet.
  *
- * Reads the manager's own context — pipeline state and broadcast state are the
- * same thing now, where the old code kept them in two places behind
- * `ACTIVE_SIGNAL`. The reference comparator is load-bearing: without it every
- * card in a 500-item gallery re-renders each time any one item sharpens.
+ * Reads the manager's own context. The reference comparator is load-bearing:
+ * without it every card in a 500-item gallery re-renders each time any one
+ * item sharpens.
  *
  * @example
  * const live = useLiveThumbnail(item.id)
@@ -70,7 +48,7 @@ export function useLiveThumbnail(itemId: string): ThumbProgress | null {
   )
 }
 
-// ── Backfill path ──────────────────────────────────────────────────────────
+// ── What starts thumbnail work ─────────────────────────────────────────────
 
 interface Watch {
   itemId: string
@@ -91,8 +69,8 @@ function getObserver(): IntersectionObserver | null {
       for (const entry of entries) {
         const watch = watched.get(entry.target)
         if (!watch) continue
-        if (entry.isIntersecting) enqueueBackfill(watch.itemId)
-        else cancelJob(watch.itemId)
+        if (entry.isIntersecting) requestThumbnail(watch.itemId)
+        else cancelQueuedThumbnail(watch.itemId)
       }
     },
     { rootMargin: ROOT_MARGIN }
@@ -113,34 +91,51 @@ function onSlowConnection(): boolean {
 }
 
 /**
- * Arms viewport-gated thumbnail backfill for the surrounding `ItemCard`.
+ * Makes the surrounding `ItemCard`'s thumbnail once the card comes on screen.
  *
- * Returns a callback ref for whatever element represents the card's thumbnail
- * area. Items that already have a thumbnail, aren't files, are too large, or
- * have no renderer are never observed at all — the eligibility test is the
- * cheapest guard available, made from data the card already holds.
+ * This is the only trigger for thumbnail work: nothing is made for a card
+ * nobody has seen, including fresh uploads. Returns a callback ref for the
+ * card's thumbnail area. A card is watched only when a job could help it:
+ * no thumbnail yet (stored, or painted in this tab), a type we can render,
+ * and either
  *
- * The scheduling that used to live in this hook (LIFO queue, concurrency cap,
- * idle scheduling, pause/resume) is now the manager's job; what stays here is
- * the part that genuinely needs the DOM.
+ *   - its uploaded file is still held — made from memory, any size; or
+ *   - the original can be downloaded — up to 16 MB, not on a slow connection,
+ *     not already failed for good.
+ *
+ * It re-checks when an upload's file arrives, so a card already on screen
+ * switches from "download" to "from memory" without a reload.
  *
  * @example
- * const backfillRef = useThumbnailBackfill()
- * return <div ref={backfillRef}>…</div>
+ * const thumbnailRef = useThumbnailWhenVisible()
+ * return <div ref={thumbnailRef}>…</div>
  */
-export function useThumbnailBackfill() {
+export function useThumbnailWhenVisible() {
   const { id, name, type, size, thumbnails, file } = useItemCard()
+  const fileHeld = useSyncExternalStore(
+    subscribeToHeldFiles,
+    () => hasHeldFile(id),
+    () => false
+  )
+  const live = useLiveThumbnail(id)
+  const paintedThisTab = live?.stage === 2 || live?.stage === 3
 
+  const candidate = {
+    type,
+    name,
+    size: Number(size ?? 0),
+    mimeType: file?.mimeType,
+    thumbnailUrls: thumbnails?.map((t) => t.url),
+  }
+  // A thumbnail painted in this tab isn't in the loader's `thumbnails` until
+  // the page reloads; without this check the card would ask for it again.
   const eligible =
-    !shouldSkip(id) &&
-    canBackfillThumbnail({
-      type,
-      name,
-      size: Number(size ?? 0),
-      mimeType: file?.mimeType,
-      thumbnailUrls: thumbnails?.map((t) => t.url),
-    }) &&
-    !onSlowConnection()
+    !paintedThisTab &&
+    (fileHeld
+      ? !shouldSkip(id, 'fromMemory') && canThumbnailFromMemory(candidate)
+      : !shouldSkip(id, 'fromDownload') &&
+        canBackfillThumbnail(candidate) &&
+        !onSlowConnection())
 
   return useCallback(
     (node: Element | null) => {
@@ -153,13 +148,16 @@ export function useThumbnailBackfill() {
       return () => {
         io.unobserve(node)
         watched.delete(node)
-        cancelJob(id)
+        cancelQueuedThumbnail(id)
       }
     },
-    [eligible, id]
+    // `fileHeld` is in the list so a card already on screen is observed
+    // afresh when its file arrives; observing fires an initial entry, which
+    // requests the job again, now from memory.
+    [eligible, id, fileHeld]
   )
 }
 
 // ── Upload coordination ────────────────────────────────────────────────────
 
-export { pauseBackfill, resumeBackfill } from './client'
+export { holdUploadedFile, pauseDownloads, resumeDownloads } from './client'

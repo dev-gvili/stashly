@@ -17,7 +17,7 @@ This folder also holds several abandoned prototypes. Before editing anything her
   - **No path throws.** A spawned actor's unhandled rejection stops its parent, so the promise actor this replaced took the whole upload manager down when one file failed. Every ending is an event, and the machine returns to `idle`.
   - `postItem` reads the response body as **text**, never JSON: `POST /api/items` answers an expired session with a redirect that `fetch` follows, so the client gets a 200 carrying the sign-in page. `toOutcome` tells that apart from a real failure.
 
-- `thumbnail/` — the thumbnail scheduler (upload and backfill lanes) and its per-item machine. Thumbnails only. See its README.
+- `thumbnail/` — makes a card's thumbnail when the card comes on screen: a scheduler with a memory lane (uploaded file still held) and a download lane, plus its per-item machine. Thumbnails only. See its README.
 
 - `indexing/` — search indexing for every upload: metadata, chunk vectors, OCR for scanned PDFs. Its own FIFO queue, two at a time, queued by `upload-thumbnail-runner.tsx` at `itemCreated`. See its README.
 

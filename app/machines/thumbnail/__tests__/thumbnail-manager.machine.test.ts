@@ -1,26 +1,27 @@
 /**
  * Manager tests — scheduling only.
  *
- * The item machine is replaced with a stub the test drives by hand, so these
- * assert exactly the behaviour that used to be spread across three hand-rolled
- * queues: how many jobs run at once, in what order, what pausing does, and what
- * happens to a job whose card disappeared.
+ * The item machine is replaced with a stub the test finishes by hand, so these
+ * check how many jobs run at once, in what order, what pausing does, what a
+ * card leaving the screen does, and what happens to an uploaded file's job.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { createActor, setup, emit, assign } from 'xstate'
 import { thumbnailManagerMachine } from '../thumbnail-manager.machine'
-import { resetAttemptStore, failedIds } from '../attempt-store'
+import { resetAttemptStore, failedIds, shouldSkip } from '../attempt-store'
+import { holdFile, hasHeldFile, resetHeldFiles } from '../held-files'
 import type {
   ThumbItemInput,
   ThumbItemOutput,
   ThumbItemEmitted,
   ThumbJob,
+  ThumbMode,
 } from '../thumbnail.types'
 
 /**
- * Stands in for the real item machine: runs until the test tells it to finish,
- * and relays whatever the test asks it to emit. Lets a scheduling test hold N
- * jobs "in flight" without any compute.
+ * Stands in for the real item machine: runs until the test tells it to
+ * finish, and paints a stage when asked. Lets a test hold N jobs "in flight"
+ * without any compute.
  */
 const stubItemMachine = setup({
   types: {
@@ -61,19 +62,19 @@ const stubItemMachine = setup({
   },
 })
 
-const job = (itemId: string, mode: 'upload' | 'backfill'): ThumbJob => ({
+const fileFor = (itemId: string) =>
+  new File([new Uint8Array([1])], `${itemId}.png`, { type: 'image/png' })
+
+const job = (itemId: string, mode: ThumbMode): ThumbJob => ({
   itemId,
   mode,
-  file:
-    mode === 'upload'
-      ? new File([new Uint8Array([1])], `${itemId}.png`, { type: 'image/png' })
-      : null,
+  file: mode === 'fromMemory' ? fileFor(itemId) : null,
 })
 
 function startManager() {
   const actor = createActor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     thumbnailManagerMachine.provide({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       actors: { item: stubItemMachine as any },
     })
   )
@@ -81,7 +82,7 @@ function startManager() {
   return actor
 }
 
-/** The backfill lane drains on an idle frame, which is a `setTimeout` here. */
+/** The download lane starts on an idle frame, which is a `setTimeout` here. */
 const tick = () => new Promise((r) => setTimeout(r, 10))
 
 type Manager = ReturnType<typeof startManager>
@@ -90,6 +91,8 @@ const runningIds = (m: Manager) =>
   Array.from(m.getSnapshot().context.running.keys())
 const queuedIds = (m: Manager) =>
   m.getSnapshot().context.queue.map((j) => j.itemId)
+const enqueue = (m: Manager, itemId: string, mode: ThumbMode) =>
+  m.send({ type: 'enqueue', job: job(itemId, mode) })
 
 function finish(m: Manager, itemId: string, thumbnailed = true) {
   m.getSnapshot()
@@ -99,194 +102,161 @@ function finish(m: Manager, itemId: string, thumbnailed = true) {
 
 beforeEach(() => {
   resetAttemptStore()
+  resetHeldFiles()
 })
 
-describe('thumbnailManager — upload lane', () => {
-  it('runs at most four uploads at a time and queues the rest', () => {
+describe('thumbnailManager — memory lane', () => {
+  it('runs at most four jobs at a time and queues the rest', () => {
     const m = startManager()
-    for (const id of ['u1', 'u2', 'u3', 'u4', 'u5', 'u6']) {
-      m.send({ type: 'enqueue', job: job(id, 'upload') })
-    }
+    for (const id of ['a', 'b', 'c', 'd', 'e', 'f']) enqueue(m, id, 'fromMemory')
 
-    expect(runningIds(m)).toEqual(['u1', 'u2', 'u3', 'u4'])
-    expect(queuedIds(m)).toEqual(['u5', 'u6'])
+    expect(runningIds(m)).toEqual(['a', 'b', 'c', 'd'])
+    expect(queuedIds(m)).toEqual(['e', 'f'])
   })
 
-  it('starts the next queued upload as soon as one settles', () => {
+  it('starts the newest queued job when one finishes', () => {
     const m = startManager()
-    for (const id of ['u1', 'u2', 'u3', 'u4', 'u5']) {
-      m.send({ type: 'enqueue', job: job(id, 'upload') })
-    }
-    finish(m, 'u2')
+    for (const id of ['a', 'b', 'c', 'd', 'e', 'f']) enqueue(m, id, 'fromMemory')
+    finish(m, 'a')
 
-    expect(runningIds(m)).toEqual(['u1', 'u3', 'u4', 'u5'])
+    // f was requested last: it is the card the user just scrolled to.
+    expect(runningIds(m)).toEqual(['b', 'c', 'd', 'f'])
+    expect(queuedIds(m)).toEqual(['e'])
+  })
+
+  it('moves a re-requested queued job to the newest position', () => {
+    const m = startManager()
+    for (const id of ['a', 'b', 'c', 'd', 'e', 'f']) enqueue(m, id, 'fromMemory')
+    enqueue(m, 'e', 'fromMemory')
+    finish(m, 'a')
+
+    expect(runningIds(m)).toContain('e')
+    expect(queuedIds(m)).toEqual(['f'])
+  })
+
+  it('ignores a request for an item already running', () => {
+    const m = startManager()
+    enqueue(m, 'a', 'fromMemory')
+    enqueue(m, 'a', 'fromMemory')
+
+    expect(runningIds(m)).toEqual(['a'])
     expect(queuedIds(m)).toEqual([])
   })
 
-  it('runs uploads in the order they were dropped', () => {
+  it('keeps running while downloads are paused', async () => {
     const m = startManager()
-    for (const id of ['a', 'b', 'c', 'd', 'e', 'f']) {
-      m.send({ type: 'enqueue', job: job(id, 'upload') })
-    }
-    finish(m, 'a')
-    finish(m, 'b')
-
-    expect(runningIds(m)).toEqual(['c', 'd', 'e', 'f'])
-  })
-
-  it('ignores a duplicate enqueue for an item already running', () => {
-    const m = startManager()
-    m.send({ type: 'enqueue', job: job('u1', 'upload') })
-    m.send({ type: 'enqueue', job: job('u1', 'upload') })
+    m.send({ type: 'pauseDownloads' })
+    enqueue(m, 'd1', 'fromDownload')
+    enqueue(m, 'u1', 'fromMemory')
+    await tick()
 
     expect(runningIds(m)).toEqual(['u1'])
-    expect(queuedIds(m)).toEqual([])
   })
 
-  it('ignores a duplicate enqueue for an item still queued', () => {
+  it('lets go of the uploaded file once its job finishes', () => {
     const m = startManager()
-    for (const id of ['u1', 'u2', 'u3', 'u4', 'u5']) {
-      m.send({ type: 'enqueue', job: job(id, 'upload') })
-    }
-    m.send({ type: 'enqueue', job: job('u5', 'upload') })
+    holdFile('a', fileFor('a'))
+    enqueue(m, 'a', 'fromMemory')
+    expect(hasHeldFile('a')).toBe(true)
 
-    expect(queuedIds(m)).toEqual(['u5'])
-  })
+    finish(m, 'a', false)
 
-  // The race every upload runs: the item is created, the route revalidates,
-  // and the new card's viewport backfill queues a file-less job — while the
-  // lane is paused for the upload — before the runner's upload job lands.
-  it('lets an upload replace a queued backfill for the same item', async () => {
-    const m = startManager()
-    m.send({ type: 'pauseBackfill' })
-    m.send({ type: 'enqueue', job: job('x', 'backfill') })
-    m.send({ type: 'enqueue', job: job('x', 'upload') })
-    await tick()
-
-    expect(runningIds(m)).toEqual(['x'])
-    expect(m.getSnapshot().context.running.get('x')?.mode).toBe('upload')
-    expect(queuedIds(m)).toEqual([])
-  })
-
-  it('never lets a backfill replace a queued upload', () => {
-    const m = startManager()
-    for (const id of ['u1', 'u2', 'u3', 'u4', 'u5']) {
-      m.send({ type: 'enqueue', job: job(id, 'upload') })
-    }
-    m.send({ type: 'enqueue', job: job('u5', 'backfill') })
-
-    const queue = m.getSnapshot().context.queue
-    expect(queue.map((j) => [j.itemId, j.mode])).toEqual([['u5', 'upload']])
-    expect(queue[0].file).not.toBeNull()
-  })
-
-  it('leaves a running backfill alone when its upload arrives', async () => {
-    const m = startManager()
-    m.send({ type: 'enqueue', job: job('x', 'backfill') })
-    await tick()
-    m.send({ type: 'enqueue', job: job('x', 'upload') })
-
-    expect(m.getSnapshot().context.running.get('x')?.mode).toBe('backfill')
-    expect(queuedIds(m)).toEqual([])
+    expect(hasHeldFile('a')).toBe(false)
   })
 })
 
-describe('thumbnailManager — backfill lane', () => {
-  it('runs at most two backfills, newest first', async () => {
+describe('thumbnailManager — download lane', () => {
+  it('runs at most two downloads, newest first', async () => {
     const m = startManager()
-    for (const id of ['b1', 'b2', 'b3', 'b4']) {
-      m.send({ type: 'enqueue', job: job(id, 'backfill') })
-    }
+    for (const id of ['b1', 'b2', 'b3', 'b4']) enqueue(m, id, 'fromDownload')
     await tick()
 
-    // LIFO: the cards the user just scrolled to win over the ones they flew past.
     expect(runningIds(m)).toEqual(['b4', 'b3'])
     expect(queuedIds(m)).toEqual(['b1', 'b2'])
   })
 
-  it('keeps taking from the back as slots free up', async () => {
+  it('does not start downloads while paused, and picks them up on resume', async () => {
     const m = startManager()
-    for (const id of ['b1', 'b2', 'b3', 'b4']) {
-      m.send({ type: 'enqueue', job: job(id, 'backfill') })
-    }
+    m.send({ type: 'pauseDownloads' })
+    enqueue(m, 'b1', 'fromDownload')
     await tick()
-    finish(m, 'b4')
-    await tick()
-
-    expect(runningIds(m)).toEqual(['b3', 'b2'])
-  })
-
-  it('does not start backfills while paused', async () => {
-    const m = startManager()
-    m.send({ type: 'pauseBackfill' })
-    m.send({ type: 'enqueue', job: job('b1', 'backfill') })
-    await tick()
-
     expect(runningIds(m)).toEqual([])
-    expect(queuedIds(m)).toEqual(['b1'])
-  })
 
-  it('picks the backlog up on resume', async () => {
-    const m = startManager()
-    m.send({ type: 'pauseBackfill' })
-    m.send({ type: 'enqueue', job: job('b1', 'backfill') })
+    m.send({ type: 'resumeDownloads' })
     await tick()
-    m.send({ type: 'resumeBackfill' })
-    await tick()
-
     expect(runningIds(m)).toEqual(['b1'])
-  })
-
-  it('lets uploads through while backfill is paused', async () => {
-    const m = startManager()
-    m.send({ type: 'pauseBackfill' })
-    m.send({ type: 'enqueue', job: job('b1', 'backfill') })
-    m.send({ type: 'enqueue', job: job('u1', 'upload') })
-    await tick()
-
-    expect(runningIds(m)).toEqual(['u1'])
   })
 
   it('gives each lane its own slots', async () => {
     const m = startManager()
-    for (const id of ['u1', 'u2', 'u3', 'u4']) {
-      m.send({ type: 'enqueue', job: job(id, 'upload') })
-    }
-    m.send({ type: 'enqueue', job: job('b1', 'backfill') })
+    for (const id of ['u1', 'u2', 'u3', 'u4']) enqueue(m, id, 'fromMemory')
+    enqueue(m, 'b1', 'fromDownload')
     await tick()
 
-    // The upload lane being full must not starve backfill, and vice versa.
     expect(runningIds(m)).toContain('b1')
     expect(runningIds(m)).toHaveLength(5)
   })
+
+  it('switches a queued download to memory when the upload file arrives', async () => {
+    const m = startManager()
+    m.send({ type: 'pauseDownloads' })
+    enqueue(m, 'x', 'fromDownload')
+    await tick()
+
+    const file = fileFor('x')
+    m.send({ type: 'fileHeld', itemId: 'x', file })
+
+    expect(runningIds(m)).toEqual(['x'])
+    expect(m.getSnapshot().context.running.get('x')?.mode).toBe('fromMemory')
+    expect(queuedIds(m)).toEqual([])
+  })
+
+  it('queues nothing when a file arrives for a card nobody has seen', () => {
+    const m = startManager()
+    m.send({ type: 'fileHeld', itemId: 'unseen', file: fileFor('unseen') })
+
+    expect(runningIds(m)).toEqual([])
+    expect(queuedIds(m)).toEqual([])
+  })
 })
 
-describe('thumbnailManager — cancellation', () => {
+describe('thumbnailManager — card leaves the screen', () => {
   it('drops a queued job', async () => {
     const m = startManager()
-    for (const id of ['b1', 'b2', 'b3']) {
-      m.send({ type: 'enqueue', job: job(id, 'backfill') })
-    }
+    for (const id of ['b1', 'b2', 'b3']) enqueue(m, id, 'fromDownload')
     await tick()
     m.send({ type: 'cancel', itemId: 'b1' })
 
     expect(queuedIds(m)).toEqual([])
   })
 
-  it('leaves a running job alone — its download is already paid for', async () => {
+  it('leaves a running job alone', async () => {
     const m = startManager()
-    m.send({ type: 'enqueue', job: job('b1', 'backfill') })
+    enqueue(m, 'b1', 'fromDownload')
     await tick()
     m.send({ type: 'cancel', itemId: 'b1' })
 
     expect(runningIds(m)).toEqual(['b1'])
   })
+
+  it('keeps the uploaded file when its queued job is dropped', () => {
+    const m = startManager()
+    for (const id of ['a', 'b', 'c', 'd']) enqueue(m, id, 'fromMemory')
+    holdFile('e', fileFor('e'))
+    enqueue(m, 'e', 'fromMemory')
+    m.send({ type: 'cancel', itemId: 'e' })
+
+    // The next time the card is seen it still runs from memory.
+    expect(queuedIds(m)).toEqual([])
+    expect(hasHeldFile('e')).toBe(true)
+    expect(shouldSkip('e', 'fromMemory')).toBe(false)
+  })
 })
 
-describe('thumbnailManager — signal', () => {
+describe('thumbnailManager — progress', () => {
   it('records what a child paints, keyed by item', () => {
     const m = startManager()
-    m.send({ type: 'enqueue', job: job('u1', 'upload') })
+    enqueue(m, 'u1', 'fromMemory')
     m.getSnapshot().context.running.get('u1')!.ref.send({
       type: 'EMIT_PROGRESS',
       src: 'https://s3.test/u1.webp?v=2',
@@ -297,30 +267,32 @@ describe('thumbnailManager — signal', () => {
       src: 'https://s3.test/u1.webp?v=2',
     })
   })
-
 })
 
-describe('thumbnailManager — skip list', () => {
-  it('remembers a backfill that produced nothing', async () => {
+describe('thumbnailManager — what is tried again', () => {
+  it('puts a download that produced nothing on the permanent skip list', async () => {
     const m = startManager()
-    m.send({ type: 'enqueue', job: job('b1', 'backfill') })
+    enqueue(m, 'b1', 'fromDownload')
     await tick()
     finish(m, 'b1', false)
 
     expect(failedIds().has('b1')).toBe(true)
+    expect(shouldSkip('b1', 'fromDownload')).toBe(true)
   })
 
-  it('does not remember an upload failure — backfill exists to recover from it', () => {
+  it('leaves one download open after a memory job fails', () => {
     const m = startManager()
-    m.send({ type: 'enqueue', job: job('u1', 'upload') })
+    enqueue(m, 'u1', 'fromMemory')
     finish(m, 'u1', false)
 
     expect(failedIds().has('u1')).toBe(false)
+    expect(shouldSkip('u1', 'fromMemory')).toBe(true)
+    expect(shouldSkip('u1', 'fromDownload')).toBe(false)
   })
 
-  it('does not remember a backfill that succeeded', async () => {
+  it('does not remember a download that succeeded', async () => {
     const m = startManager()
-    m.send({ type: 'enqueue', job: job('b1', 'backfill') })
+    enqueue(m, 'b1', 'fromDownload')
     await tick()
     finish(m, 'b1', true)
 

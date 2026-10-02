@@ -1,51 +1,36 @@
 ---
 name: stashly-thumbnail-pipeline
-description: Stashly client-side 3-stage WebP thumbnail pipeline — the XState scheduler in app/machines/thumbnail, the legacy useThumbnail orchestrator, thumbnail-signal architecture, the compute worker, PDF.js OffscreenCanvas handling, presign/PUT/PATCH flow, and gallery thumbnail queries. Load when working on thumbnails, previews, the upload thumbnail runner, or Web Workers.
+description: Stashly client-side 3-stage WebP thumbnail pipeline — the XState scheduler in app/machines/thumbnail (thumbnails made only for cards on screen, memory and download lanes, held upload files), the compute worker, PDF.js OffscreenCanvas handling, presign/PUT/PATCH flow, and gallery thumbnail queries. Load when working on thumbnails, previews, the upload thumbnail runner, or Web Workers.
 ---
 
 # Stashly Thumbnail Pipeline
 
-Client-side 3-stage progressive generation. All output is **WebP**.
+Client-side 3-stage progressive generation. All output is **WebP**. Read `app/machines/thumbnail/README.md` before editing anything in it.
 
-**Orchestration is the XState manager in `app/machines/thumbnail/`** — `USE_THUMBNAIL_MACHINE = true` in its `index.ts` selects it, and every call site imports the hooks from there. One module-scope manager owns two lanes (upload: cap 4, FIFO · backfill: cap 2, LIFO, pause is a state), spawns one item machine per file (thumbnail stages only), and gives the pipeline retry (800 ms, budget 2) and real cancellation. It calls plain `fetch`, not `useFetcher`, so it does **not** revalidate the route. Read `app/machines/thumbnail/README.md` before editing it.
+**A thumbnail is made when its card comes on screen, and only then.** `useThumbnailWhenVisible` (wired into `ItemCard.Thumbnail` and `ItemCard.Cover` via a callback ref) is the only trigger. Nothing is made for a card nobody has seen — including fresh uploads, and the contents of a folder trashed mid-batch. **Memoize any composed ref** (`composeRefs` in `item-card.tsx`): a fresh callback each render detaches and re-attaches the observer.
 
-**Search indexing is not part of this pipeline.** Metadata, chunk embeddings and OCR run in their own queue and machine, `app/machines/indexing/` (FIFO, 2 at a time). The upload runner calls `enqueueIndexing(id, file)` for every upload at `itemCreated`, ahead of the thumbnail slot, and `useIndexingRevalidation()` reloads the page once per batch after the indexing queue drains — with `revalidate()`, never `navigate(<current URL>)`, which would cancel a navigation in progress. On the legacy path (`USE_THUMBNAIL_MACHINE = false`) `useThumbnail` still indexes by itself and the indexing queue stays empty.
+**Orchestration is the XState manager in `app/machines/thumbnail/`.** One module-scope manager, two lanes, decided by where the bytes come from:
 
-The legacy orchestrator, reachable only by flipping that constant off, is `app/hooks/useThumbnail.ts` (`useThumbnailV2.ts` was folded into it) — a thin orchestrator over the same pure helpers in `@/utils/thumbnail-pipeline` (`generateStage1Preview`, `generateStage2Resize`, `generateStage3Salient`, `putThumbnailToS3`, `makeStageUrl`) plus a swappable broadcast channel from `@/hooks/thumbnail-signal`, spawned per-file by `app/components/upload/upload-thumbnail-runner.tsx`.
+| Lane | When | Cap | Paused |
+|---|---|---|---|
+| `memoryLane` (`fromMemory` jobs) | the file was uploaded in this tab and is still held in `held-files.ts` | 4 | never |
+| `downloadLane` (`fromDownload` jobs) | no file in memory; the original is downloaded (≤ 16 MB `BACKFILL_MAX_BYTES`) and stage 3 is skipped | 2 | while uploads move bytes (`pauseDownloads`/`resumeDownloads`) |
 
-**Both paths share the stage helpers.** Compute logic lives in `@/utils/thumbnail-pipeline` and nowhere else — the machine's actors are `fromPromise` wrappers around it.
+Both lanes take the newest request first. Retry is 800 ms with a budget of 2; leaving the screen drops a *queued* job only. It calls plain `fetch`, not `useFetcher`, so it does **not** revalidate the route — the card repaints from the manager's progress map (`useLiveThumbnail`).
 
-**Stage 0 (hex color) was removed in V2** — every consumer already filters `url.startsWith('#')`, so writing it to the DB was pure waste. The pipeline now starts at stage 1.
+**Upload hand-off**: `upload-thumbnail-runner.tsx` watches for `status === 'itemCreated'` (not `'done'`) and calls `holdUploadedFile(id, file)` plus `enqueueIndexing(id, file)`. It starts no thumbnail work. A card already on screen re-checks when its file arrives (`useSyncExternalStore` on `held-files.ts`), and a queued download job for it switches to memory (`fileHeld` event).
 
-**Gate**: pipeline starts only after `status === 'itemCreated'` (not `'done'`). `upload-thumbnail-runner.tsx` watches for `itemCreated` and calls `runThumbnail(file)`. A module-level `thumbnailedIds = new Set<string>()` (shared across hook instances) ensures the pipeline fires exactly once per file.
+**"Already tried" is per kind of job** (`attempt-store.ts`): a failed memory job releases its file and leaves one download attempt open; only download failures reach the `sessionStorage` skip list. **A thumbnail painted in this tab counts as done**: the loader's `thumbnails` stay empty until a reload, so `requestThumbnail` and the hook both check the progress map.
 
-## On-demand backfill (items that never got a thumbnail)
+**Search indexing is not part of this pipeline.** Metadata, chunk embeddings and OCR run in `app/machines/indexing/` (FIFO, 2 at a time), queued for every upload regardless of visibility. `useIndexingRevalidation()` reloads the page once per batch after that queue drains — with `revalidate()`, never `navigate(<current URL>)`, which would cancel a navigation in progress.
 
-Upload-time generation only ever runs from the upload queue, where the original `File` is in memory. When it fails (compute timeout, tab closed mid-run, a deeply-nested file in a huge batch), the item shows the category icon forever. `app/hooks/useThumbnailBackfill.ts` closes that gap: it re-downloads the original and runs **stage 2 only** (stage 3's salient crop is the most expensive stage and buys the least here). Video is the one exception — its stage 2 needs a frame, so `generateStage1Preview` runs first and is fed into `generateStage2Resize`.
+**Compute logic lives in `@/utils/thumbnail-pipeline` and nowhere else** — the machine's actors are `fromPromise` wrappers around it (`generateStage1Preview`, `generateStage2Resize`, `generateStage3Salient`, `putThumbnailToS3`, `stageViewUrl`).
 
-Wired into `ItemCard.Thumbnail` and `ItemCard.Cover` roots via a callback ref — every grid view gets it for free. **Memoize any composed ref** (`composeRefs` in `item-card.tsx`): a fresh callback each render detaches and re-attaches the observer every re-render.
+**Stage 0 (hex color) was removed** — every consumer already filters `url.startsWith('#')`. The pipeline starts at stage 1.
 
-The guards *are* the feature — a backfill costs a full download, so:
+## Downloading the original
 
-| Guard | Where |
-|-------|-------|
-| Viewport-gated (one shared `IntersectionObserver`, `rootMargin: 300px`) | `useThumbnailBackfill.ts` |
-| LIFO queue — newest request runs first, so fast scrolling favours where you stopped | `queue.pop()` in `drain()` |
-| `MAX_CONCURRENT = 2`, jobs started inside `requestIdleCallback` | `drain()` / `whenIdle()` |
-| Yields to uploads — `pauseBackfill()`/`resumeBackfill()` called by `upload-thumbnail-runner.tsx` | exported from the hook |
-| Attempted once — in-memory `Set` + `sessionStorage` skip list for permanent failures | `rememberFailure()` |
-| Type/size eligibility, Data-Saver and 2g opt-out | `app/utils/thumbnail-backfill.ts` (pure, unit-tested) |
-
-`GET /api/thumbnails/:itemId/source` (→ `getThumbnailSource` in `thumbnail-actions.ts`) presigns a 5-minute GET on the original. It re-checks read permission and the 16 MB `BACKFILL_MAX_BYTES` cap server-side, and returns `{ status: 'exists', url }` when another client already backfilled the item — the client paints that instead of downloading again. **Keep the client and server caps in sync** or the client burns a round trip discovering the server said no.
-
-A card that unmounts mid-job (route change) lets the in-flight job finish and persists via a plain `fetch` PATCH rather than the keyed fetcher; only *queued* jobs are dropped.
-
-## Signal architecture
-
-`app/hooks/thumbnail-signal/`: three interchangeable implementations behind a single `ACTIVE_SIGNAL` constant in `index.ts`. Both producer (`useThumbnailPublisher`) and consumer (`useLiveThumbnail`) import from the index, so flipping the constant changes both sides atomically. Implementations: `signal-store.ts` (module-store + `useSyncExternalStore`), `signal-fetcher.ts` (keyed `useFetcher`), `signal-xstate.ts` (actor).
-
-**Currently chosen: `'fetcher'`** (`signal-fetcher.ts`). Producer and consumer both call `useFetcher({ key: 'thumb:<itemId>' })`. Stages 2/3 ride the fetcher itself: producer submits the PATCH via `patchFetcher.submit(fd, { method: 'patch', action: '/api/thumbnails/:id' })`; consumer reads `fetcher.formData?.get('url')` for the optimistic value (available immediately on submit) and `fetcher.data?.url` after the PATCH lands. React Router retains keyed-fetcher state globally, so the consumer sees the latest stage across mount/unmount of any single ItemCard. Stage 1 (local blob URL, no HTTP) rides a tiny side `Map<id, {src}>` with `useSyncExternalStore` subscribers — only what can't go through a fetcher uses the side channel.
-
+`GET /api/thumbnails/:itemId?intent=source` (→ `getThumbnailSource` in `thumbnail-actions.ts`) presigns a 5-minute GET on the original. It re-checks read permission and the 16 MB cap server-side, and returns `{ status: 'exists', url }` when another client already made the thumbnail — the client paints that instead of downloading. **Keep the client and server caps in sync** or the client burns a round trip discovering the server said no. Video is the one type whose stage 2 needs a frame, so stage 1 runs first and feeds it. Type/size eligibility and the Data-Saver/2g opt-out are pure functions in `app/utils/thumbnail-backfill.ts` (`canBackfillThumbnail`, `canThumbnailFromMemory`, `isConnectionTooSlow`), unit-tested.
 ## Stages
 
 | Stage | What | Mechanism |
@@ -114,9 +99,9 @@ thumbnails: { orderBy: { stage: 'desc' }, take: 1, where: { NOT: { url: { starts
 ```
 `orderBy: { stage: 'desc' }` is what makes `take: 1` mean "highest stage" rather than "whichever row comes back first" — see `app/routes/stash/gallery.tsx`. `ItemCard.Cover` instead picks `thumbnails.find(t => t.stage === 2)` directly, since stage 3 crops are the wrong shape for a cover strip.
 
-**Thumbnail utils** (`app/utils/thumbnail.ts`): `hashToColor` (stage 0 only — legacy, kept for `useThumbnail.ts`), `extractTinyThumbnail`, `canvasResize`, `blurImageBlob`, `dataUrlToBlob`. For video thumbnails: `generateVideoThumbnail(file)` from `app/utils/video.ts`.
+**Thumbnail utils** (`app/utils/thumbnail.ts`): `extractTinyThumbnail`, `canvasResize`, `blurImageBlob`, `dataUrlToBlob`, and `hashToColor` (stage 0 only; nothing calls it outside its own test). For video thumbnails: `generateVideoThumbnail(file)` from `app/utils/video.ts`.
 
-**Legacy V1**: `app/hooks/useThumbnail.ts` is the pre-V2 hook (stage 0 hex colors, its own inline compute-worker singleton). It is still exported from `app/hooks/index.ts` but **no component calls it** — don't extend it, and don't mistake it for the live pipeline.
+The old hook-based pipeline (`app/hooks/useThumbnail.ts`, `useThumbnailBackfill.ts`, `thumbnail-signal/`) and the `USE_THUMBNAIL_MACHINE` switch were deleted on 2 Oct 2026; the machine is the only path.
 
 ## Web Workers (general)
 

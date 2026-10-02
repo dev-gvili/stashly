@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   BACKFILL_MAX_BYTES,
   canBackfillThumbnail,
+  canThumbnailFromMemory,
   hasThumbnailProducer,
   isConnectionTooSlow,
   isRealThumbnailUrl,
@@ -76,6 +77,28 @@ describe('canBackfillThumbnail', () => {
     expect(
       canBackfillThumbnail({ ...base, name: 'song.mp3', mimeType: 'audio/mpeg' })
     ).toBe(false)
+  })
+})
+
+describe('canThumbnailFromMemory', () => {
+  const base = { type: 'file', name: 'photo.png', size: 1000, mimeType: 'image/png' }
+
+  it('accepts a renderable file with no thumbnail yet', () => {
+    expect(canThumbnailFromMemory(base)).toBe(true)
+  })
+
+  it('has no size cap — nothing is downloaded', () => {
+    expect(canThumbnailFromMemory({ ...base, size: BACKFILL_MAX_BYTES * 3 })).toBe(true)
+    expect(canBackfillThumbnail({ ...base, size: BACKFILL_MAX_BYTES * 3 })).toBe(false)
+  })
+
+  it('refuses a file that already has a real thumbnail', () => {
+    expect(canThumbnailFromMemory({ ...base, thumbnailUrls: ['https://cdn/x.webp?v=2'] })).toBe(false)
+  })
+
+  it('refuses folders and types with no renderer', () => {
+    expect(canThumbnailFromMemory({ ...base, type: 'folder' })).toBe(false)
+    expect(canThumbnailFromMemory({ ...base, name: 'a.zip', mimeType: 'application/zip' })).toBe(false)
   })
 })
 

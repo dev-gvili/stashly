@@ -1,21 +1,14 @@
 /**
- * Types for the XState thumbnail pipeline.
- *
- * Parallel track: this folder re-implements the *orchestration* of the
- * thumbnail pipeline as a manager machine + per-item child actors. The compute
- * itself is untouched — every actor wraps an existing export of
- * `@/utils/thumbnail-pipeline`.
+ * Types for the thumbnail pipeline: a manager machine that schedules jobs and
+ * one item machine per job. Every actor wraps a helper in
+ * `@/utils/thumbnail-pipeline`; no compute lives in this folder.
  *
  * See `app/machines/thumbnail/README.md` for the why.
  */
 import type { AnyActorRef } from 'xstate'
 import type { ResizedThumbnail } from '@/utils/thumbnail-pipeline'
 
-/**
- * What a card paints. Structurally identical to the `ThumbProgress` of the
- * legacy signal layer (`@/hooks/thumbnail-signal`) so `useLiveThumbnail`
- * consumers need no change when the flag flips.
- */
+/** What a card paints for an item while its job runs: the latest stage. */
 export interface ThumbProgress {
   stage: 1 | 2 | 3
   src: string
@@ -24,24 +17,26 @@ export interface ThumbProgress {
 }
 
 /**
- * Where a job came from, which decides its lane, its ordering, and how much of
- * the pipeline it runs.
+ * Where a job's bytes come from, which decides its lane and how much of the
+ * pipeline it runs. Every job starts the same way: its card became visible.
  *
- * - `upload` — the original `File` is in memory. Runs every stage. FIFO,
- *   because upload order is the order the user dropped the files in.
- * - `backfill` — the file must be re-downloaded first. Stops after stage 2.
- *   LIFO, because the newest request is the card the user just scrolled to.
+ * - `fromMemory` — the file was uploaded in this tab and is still held (see
+ *   `held-files.ts`). No download; runs every stage, including the salient
+ *   crop for images.
+ * - `fromDownload` — no file in memory, so the original is downloaded first.
+ *   Stops after stage 2, since the crop buys the least for the most cost.
  *
- * Neither mode indexes for search; that is `app/machines/indexing/`, queued
- * separately for every upload.
+ * Both lanes take the newest request first: that is the card the user just
+ * scrolled to. Neither indexes for search; that is `app/machines/indexing/`,
+ * queued separately for every upload.
  */
-export type ThumbMode = 'upload' | 'backfill'
+export type ThumbMode = 'fromMemory' | 'fromDownload'
 
 /** A unit of work waiting in the manager's queue. */
 export interface ThumbJob {
   itemId: string
   mode: ThumbMode
-  /** Present for `upload` jobs; `backfill` acquires its own. */
+  /** The held upload for `fromMemory` jobs; null for `fromDownload`, which fetches its own. */
   file: File | null
 }
 
@@ -50,7 +45,7 @@ export interface ThumbJob {
 export interface ThumbItemContext {
   itemId: string
   mode: ThumbMode
-  /** Null until `acquiring` resolves, for backfill jobs. */
+  /** For `fromDownload` jobs, null until `acquiring` has downloaded the original. */
   file: File | null
   /** Stage-1 blob; also the frame stage 2 needs for video. */
   tinyBlob: Blob | null
@@ -109,18 +104,28 @@ export interface ThumbManagerContext {
 }
 
 export type ThumbManagerEvent =
+  /** A visible card asked for its thumbnail. Re-asking moves it to the front. */
   | { type: 'enqueue'; job: ThumbJob }
-  /** Drops a *queued* job. A running one is left to finish — see the machine. */
-  | { type: 'cancel'; itemId: string }
-  | { type: 'pauseBackfill' }
-  | { type: 'resumeBackfill' }
   /**
-   * "Something changed, the backfill lane may have room." Handled only in the
-   * lane's `active` state, so a paused lane ignores it structurally rather than
-   * by checking a flag.
+   * An upload's file just became available. A `fromDownload` job already
+   * queued for that item becomes `fromMemory`, so it skips the download.
    */
-  | { type: 'tickBackfill' }
-  /** The idle-frame follow-up to `tickBackfill`, where the spawning happens. */
-  | { type: 'drainBackfillNow' }
+  | { type: 'fileHeld'; itemId: string; file: File }
+  /** The card left the screen: drop its *queued* job. A running one finishes. */
+  | { type: 'cancel'; itemId: string }
+  /** Uploads are moving bytes: stop starting downloads until they finish. */
+  | { type: 'pauseDownloads' }
+  /** No upload is moving bytes any more: downloads may start again. */
+  | { type: 'resumeDownloads' }
+  /**
+   * "Something changed, the download lane may have room." Handled only while
+   * that lane is `active`, so a paused lane ignores it by construction rather
+   * than by checking a flag.
+   */
+  | { type: 'downloadSlotMaybeFree' }
+  /** Sent on the next idle frame after `downloadSlotMaybeFree`; starts downloads. */
+  | { type: 'startQueuedDownloads' }
+  /** A running item machine painted a stage. */
   | { type: 'child.progress'; itemId: string; progress: ThumbProgress }
+  /** A running item machine finished, whatever the outcome. Frees its slot. */
   | { type: 'child.settled'; itemId: string; thumbnailed: boolean }
