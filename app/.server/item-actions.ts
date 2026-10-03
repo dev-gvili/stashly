@@ -1638,7 +1638,7 @@ export async function createUploadedItem(data: {
   const rootId = segments[0]
   const pathParts = segments.slice(1, -1)
   let resolvedParentId = rootId
-  await assertItemsAccess(data.ownerId, [rootId], 'write')
+  await assertCanUploadTo(data.ownerId, data.key)
   // Resolve folders in their own transaction so its advisory locks release on
   // commit here, not after the file insert. Every file of a directory upload
   // takes the same top-level folder lock, so holding it through the file
@@ -1708,6 +1708,27 @@ export async function createUploadedItem(data: {
   ])
 
   return result
+}
+
+/**
+ * Refuses an upload into a folder the user can't write to. The folder is the
+ * key's first segment, the destination root every upload key starts with.
+ *
+ * Called at every step that commits something: creating the multipart upload
+ * (before any bytes move), completing it (before S3 assembles an object) and
+ * filing the row. A revoke mid-batch therefore stops the next file before its
+ * bytes are sent, rather than after.
+ *
+ * @param userId - The signed-in uploader.
+ * @param key - The object key, `<rootFolderId>/<path>/<name>`.
+ * @throws `FORBIDDEN` (403) without `write` on the root folder (owner, a
+ *   `write` grant on a shared folder, or workspace membership plus a grant).
+ *
+ * @example
+ * await assertCanUploadTo(user.id, 'item_root/photos/a.jpg')
+ */
+export async function assertCanUploadTo(userId: string, key: string) {
+  await assertItemsAccess(userId, [key.split('/')[0]], 'write')
 }
 
 /** `User.bucket`'s schema default (`prisma/models/user.prisma`): not a real bucket. */

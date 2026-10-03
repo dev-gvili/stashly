@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { DeleteObjectsCommand } from '@aws-sdk/client-s3'
 import { prisma } from '@/services/db'
 import { s3 } from '@/services/s3'
-import { createUploadedItem, discardUploadedObject } from '@/services/item-actions'
+import { assertCanUploadTo, createUploadedItem, discardUploadedObject } from '@/services/item-actions'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
@@ -142,6 +142,24 @@ async function grant(userId: string, itemId: string, role: 'read' | 'write' | 'o
     data: { id: uid('Permission'), itemId, roles: role, users: { connect: { id: userId } } },
   })
 }
+
+// The same check `/api/s3/upload` runs before creating and completing a
+// multipart upload, so a revoked user's next file sends no bytes.
+describe('assertCanUploadTo', () => {
+  it('allows the owner of the root folder', async () => {
+    await expect(assertCanUploadTo(ownerId, `${rootId}/a/b.pdf`)).resolves.toBeUndefined()
+  })
+
+  it('allows a write grant, and refuses as soon as it is revoked', async () => {
+    const shared = await makeFolder('revoke-check', rootId)
+    await grant(strangerId, shared, 'write')
+    await expect(assertCanUploadTo(strangerId, `${shared}/x.pdf`)).resolves.toBeUndefined()
+
+    await prisma.permission.deleteMany({ where: { itemId: shared, users: { some: { id: strangerId } } } })
+
+    await expect(assertCanUploadTo(strangerId, `${shared}/x.pdf`)).rejects.toMatchObject({ errorCode: 'FORBIDDEN', status: 403 })
+  })
+})
 
 describe('folder names on the upload path', () => {
   it('refuses when two live folders share the name, and files nothing', async () => {

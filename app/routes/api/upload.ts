@@ -1,4 +1,5 @@
 import { auth } from '@/services/auth'
+import { assertCanUploadTo } from '@/services/item-actions'
 import {
   abortMultipartUpload,
   completeMultipartUpload,
@@ -7,7 +8,8 @@ import {
   getPresignedUrlForPart,
 } from '@/services/s3'
 import { isAmbiguousTsFile, sniffTsBytes, type TsKind } from '@/utils/sniff'
-import { redirect } from 'react-router'
+import { toErrorInfo } from '@/utils/api.errors'
+import { data, redirect } from 'react-router'
 import { z } from 'zod'
 import type { Route } from './+types/upload'
 
@@ -57,8 +59,25 @@ export async function action({ request }: Route.ActionArgs) {
 
   const values = uploadSchema.parse(await request.json())
 
+  /** A refusal the client reads as `{ error }`, with its real status. */
+  const refuse = (e: unknown) => {
+    const err = toErrorInfo(e)
+    return data(
+      { error: err.message ?? 'Upload refused' },
+      { status: err.status ?? 500 }
+    )
+  }
+
   switch (values.action) {
     case 'create-multipart-upload': {
+      // Before any bytes move: a user who lost access to the folder (revoked
+      // mid-batch) stops here instead of uploading the file only to have the
+      // row refused afterwards.
+      try {
+        await assertCanUploadTo(user.id, values.key)
+      } catch (e) {
+        return refuse(e)
+      }
       const { UploadId: uploadId } = await createMultipartUpload(
         bucket,
         values.key,
@@ -78,6 +97,20 @@ export async function action({ request }: Route.ActionArgs) {
       return { url }
     }
     case 'complete-multipart-upload': {
+      // Access revoked while the parts were uploading: abort instead of
+      // completing, so S3 drops the parts and no object is ever assembled.
+      try {
+        await assertCanUploadTo(user.id, values.key)
+      } catch (e) {
+        await abortMultipartUpload(bucket, values.key, values.uploadId).catch(
+          (abortError) =>
+            console.error(
+              `[upload] could not abort ${values.key} after a refused complete; the orphan sweep aborts stale uploads:`,
+              abortError
+            )
+        )
+        return refuse(e)
+      }
       const { Key, Bucket, ETag, VersionId, Location, $metadata } =
         await completeMultipartUpload(
           bucket,

@@ -44,6 +44,26 @@ const FetchInit: RequestInit = {
 }
 
 /**
+ * Reads an `/api/s3/upload` answer, throwing the server's reason when it is not
+ * OK. A refused create or complete (403 when folder access is gone) used to be
+ * parsed like a success, so the file machine carried on with no upload id.
+ *
+ * @example
+ * const { uploadId } = await readUploadResponse<CreateMultipartUploadOutput>(res)
+ */
+async function readUploadResponse<T>(res: Response): Promise<T> {
+  if (res.ok) return await res.json()
+  let reason = `Upload request failed with status ${res.status}`
+  try {
+    const body = (await res.json()) as { error?: unknown }
+    if (typeof body?.error === 'string') reason = body.error
+  } catch {
+    // Not JSON: keep the status line.
+  }
+  throw new Error(reason)
+}
+
+/**
  * Initiates a multipart upload on S3.
  * @param params - The input parameters for creating a multipart upload.
  * @returns A promise that resolves to the output of the create multipart upload operation, including the upload ID.
@@ -60,7 +80,7 @@ export async function createMultipartUpload(
       action: 'create-multipart-upload',
     }),
   })
-  return await res.json()
+  return readUploadResponse<CreateMultipartUploadOutput>(res)
 }
 
 /**
@@ -101,7 +121,7 @@ export async function completeMultipartUpload(
       action: 'complete-multipart-upload',
     }),
   })
-  return await res.json()
+  return readUploadResponse<CompleteMultipartUploadOutput>(res)
 }
 
 /**
