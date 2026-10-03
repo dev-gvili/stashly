@@ -9,9 +9,11 @@ import {
 } from '@/components/icons'
 import {
   Button,
+  buttonVariants,
   Checkbox,
   Badge,
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
   Tabs,
@@ -175,7 +177,14 @@ function FiltersChips({
 function FiltersFlagToggles({ className }: { className?: string }) {
   const { filters } = useFiltersContext()
   return (
-    <span className={cn('flex items-center gap-0.5', className)}>
+    // Above the trigger's full-size button (see `FiltersTrigger`), so a toggle
+    // click flips the flag instead of opening the panel.
+    <span
+      className={cn(
+        'pointer-events-auto relative z-10 flex items-center gap-0.5',
+        className
+      )}
+    >
       {FLAGS.map((f) => {
         const on = filters.state.flags.includes(f.id)
         return (
@@ -221,20 +230,37 @@ interface FiltersTriggerProps {
   className?: string
 }
 
-/** Default trigger renders the canonical "Filter" pill with chips + flags. */
+/**
+ * The "Filter" pill: label, active chips and the flag toggles, opening the
+ * panel when clicked anywhere but a toggle.
+ *
+ * Not one `<button>`: the flag toggles are buttons themselves, and a button
+ * inside a button is invalid HTML that broke hydration on every page with the
+ * header. The pill is a plain element (the popover's anchor) holding the
+ * trigger as a full-size button *behind* the content, so a click on the label
+ * or chips lands on it, and the toggles opt back into pointer events above it.
+ * Custom `children` render in that same pass-through layer: anything
+ * interactive among them needs `pointer-events-auto relative z-10`.
+ */
 function FiltersTrigger({ children, className }: FiltersTriggerProps) {
   return (
-    <PopoverTrigger asChild>
-      <Button
-        variant="outline"
+    <PopoverAnchor asChild>
+      <div
         className={cn(
-          'max-w-md items-center justify-between font-stashly bg-card! border-none ring-2 ring-accent data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground',
+          buttonVariants({ variant: 'outline' }),
+          'relative max-w-md items-center justify-between font-stashly bg-card! border-none ring-2 ring-accent has-data-[state=open]:bg-muted/30 has-data-[state=open]:text-accent-foreground',
           className
         )}
       >
-        {children ?? <FiltersTriggerDefault />}
-      </Button>
-    </PopoverTrigger>
+        <PopoverTrigger
+          aria-label="Filter"
+          className="absolute inset-0 rounded-[inherit] cursor-pointer outline-none"
+        />
+        <span className="pointer-events-none contents">
+          {children ?? <FiltersTriggerDefault />}
+        </span>
+      </div>
+    </PopoverAnchor>
   )
 }
 
