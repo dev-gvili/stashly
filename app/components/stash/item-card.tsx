@@ -35,6 +35,13 @@ import { Actions as ItemCardActions } from './item-card-actions'
 import { useLiveThumbnail, useThumbnailWhenVisible } from '@/machines/thumbnail'
 
 /**
+ * Whether a card's item is in the trash, where it opens nowhere: no card click
+ * and no item link navigates to it. Restore and delete stay in its menu.
+ */
+const isTrashed = (status: StashItem['status'] | undefined) =>
+  status === 'trashed'
+
+/**
  * Merges a forwarded ref with a hook-owned callback ref (React 19 cleanup
  * aware). Memoize the result — a fresh callback each render would detach and
  * re-attach the thumbnail observer on every re-render.
@@ -404,10 +411,19 @@ const ItemLink = React.forwardRef<
   React.ComponentRef<typeof Link>,
   Omit<React.ComponentPropsWithoutRef<typeof Link>, 'to'>
 >((props, ref) => {
-  const { parentId, type, id, user, searchParams } = useItemCard()
+  const { parentId, type, id, user, searchParams, status } = useItemCard()
   const layout = searchParams.get('layout')
   const { className, ...rest } = props
   const itemUrl = useItemUrl()
+
+  // Same rule as the card's own click: a trashed item opens nowhere.
+  if (isTrashed(status)) {
+    return (
+      <span id={id} data-slot="item-link" className={cn('z-0', className)}>
+        {rest.children as React.ReactNode}
+      </span>
+    )
+  }
 
   const to = itemUrl({
     parentId: parentId || '',
@@ -490,6 +506,7 @@ const ItemCardRoot = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        aria-disabled={isTrashed(props.status) || undefined}
         className={cn(
           'rounded-md p-2 grid gap-0 border-input font-stashly surface-glass overflow-hidden group/card card select-none relative z-0 transition-colors',
           isFolder &&
@@ -501,6 +518,11 @@ const ItemCardRoot = ({
           // Ignore clicks from portaled elements (dialogs, dropdowns)
           if (!e.currentTarget.contains(e.target as Node)) return false
           e.stopPropagation()
+          // A trashed item has no live place to open: its folder route shows
+          // the item as if it were still there, and after a re-upload of the
+          // same name the two look like one place. Trash offers its actions
+          // (restore, delete) from the menu instead.
+          if (isTrashed(props.status)) return
           navigate(to, {
             state:{ name: props.name }
           })
