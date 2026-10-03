@@ -3569,24 +3569,33 @@ export async function createRootFolder(
  * folder the caller already navigated to; `getFileItem` still enforces read
  * permission on whatever comes back.
  *
+ * The name must lead to exactly one live item, or to none:
+ * - a trashed item never matches. It keeps its `parentId`, so it still sits in
+ *   the folder, and the link used to open it;
+ * - two live items with the name are not picked between (`findFirst` has no
+ *   order, so the link opened either one). No match is returned, the same
+ *   "never guess" rule uploads follow in `findOrCreateFolderPath`.
+ *
  * @param folderId - The parent folder to look in.
  * @param name - The file name as it appears in the URL (already decoded).
- * @returns The item id, or `null` when the folder holds no file by that name.
+ * @returns The item id, or `null` when the folder holds no live item by that
+ *   name, or more than one.
  *
  * @example
  * // '/…/folders/item_abc/files/spec.md' → 'item_def'
- * const id = await findFolderChildIdByName('item_abc', 'spec.md');
+ * const id = await getChildIdByName('item_abc', 'spec.md');
  */
 export async function getChildIdByName(
   folderId: string,
   name: string,
   client: Prisma.TransactionClient = prisma
 ): Promise<string | null> {
-  const match = await client.item.findFirst({
-    where: { parentId: folderId, name },
+  const matches = await client.item.findMany({
+    where: { parentId: folderId, name, status: { not: 'trashed' } },
     select: { id: true },
+    take: 2,
   })
-  return match?.id ?? null
+  return matches.length === 1 ? matches[0].id : null
 }
 
 /**
