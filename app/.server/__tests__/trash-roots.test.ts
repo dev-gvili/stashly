@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/services/db'
 import {
   getTrashFolderTrail,
@@ -115,6 +115,15 @@ describe('a trashed folder is one entry', () => {
     expect(Math.abs(project.updatedAt!.getTime() - Date.now())).toBeLessThan(tolerance)
     const entry = await prisma.trashItem.findUniqueOrThrow({ where: { itemId: project.id } })
     expect(Math.abs(entry.trashedAt.getTime() - Date.now())).toBeLessThan(tolerance)
+    // The trash activity is written by the same kind of raw statement, after
+    // the commit and without awaiting, so wait for it.
+    await vi.waitFor(async () => {
+      const activity = await prisma.activity.findFirstOrThrow({
+        where: { itemId: project.id, action: { deleteActionId: { not: null } } },
+        select: { time: { select: { observedAt: true } } },
+      })
+      expect(Math.abs(activity.time!.observedAt!.getTime() - Date.now())).toBeLessThan(tolerance)
+    })
   })
 
   it('after a partial restore, the folder contents still trashed become entries', async () => {

@@ -152,7 +152,10 @@ function recordItemActivities<K extends keyof ActivityItems>(
             ${newIds(model)}::text[]
           ) AS t("itemId", "name", "itemType", "uploadId", "timeId", "activityId", "actionId", "kindId")
         ), "Times" AS (
-          INSERT INTO "ActivityTime" ("id", "observedAt") SELECT "timeId", now() FROM "Input"
+          -- UTC, like every timestamp Prisma writes: the session time zone is
+          -- local and the column has none, so a bare now() stored local time
+          -- that Prisma read back as UTC (3 h ahead in Asia/Jerusalem).
+          INSERT INTO "ActivityTime" ("id", "observedAt") SELECT "timeId", (now() AT TIME ZONE 'UTC') FROM "Input"
         ), "Activities" AS (
           INSERT INTO "Activity" ("id", "timeId", "itemId")
           SELECT "activityId", "timeId", "itemId" FROM "Input"
@@ -3581,7 +3584,7 @@ export const TRASH_CRUMB_ID = 'trash'
  * @throws `NOT_FOUND` (404) when the folder is not the user's, not a folder,
  *   or not in Trash: a live folder opens in its own route, not here. A restore
  *   made from this view takes the folder out of Trash too, so the restore
- *   action sends the page back to Trash first (`afterRestoreUrl`).
+ *   action sends the page back to Trash first (`toTrashRedirectUrl`).
  *
  * @example
  * const crumbs = await getTrashFolderTrail(user.id, 'item_abc')
