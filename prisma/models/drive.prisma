@@ -5,6 +5,7 @@ model Drive {
   type  DriveType @default(personal)
   quota Quota?
   items Item[]
+  trash Trash?
 
   // --- New limit columns ---------------------------------------------
   workspaceLimit Int? // Max workspaces per user

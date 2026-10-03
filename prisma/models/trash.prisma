@@ -1,18 +1,27 @@
+/// One trash per drive, created the first time something in the drive is trashed.
 model Trash {
   id        String      @id
+  driveId   String      @unique
+  drive     Drive       @relation(fields: [driveId], references: [id], onDelete: Cascade)
   updatedAt DateTime    @updatedAt @db.Timestamp()
   items     TrashItem[]
 }
 
+/// An item the user trashed directly. Its descendants only get
+/// `Item.status = trashed`: they have no row here, are not listed in Trash,
+/// and come back when this item is restored. A restore deletes the row; a
+/// permanent delete removes it with the item.
 model TrashItem {
-  id         String    @id
-  itemId     String    @unique
-  item       Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  trashId    String
-  trash      Trash     @relation(fields: [trashId], references: [id])
-  createdAt  DateTime  @default(now()) @db.Timestamp()
-  restoredAt DateTime? @db.Timestamp()
-  deletedAt  DateTime? @db.Timestamp()
+  id          String   @id
+  itemId      String   @unique
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  trashId     String
+  trash       Trash    @relation(fields: [trashId], references: [id], onDelete: Cascade)
+  /// When the user trashed it. Sorts Trash, and dates a future 30-day purge.
+  trashedAt   DateTime @default(now()) @db.Timestamp()
+  /// Who trashed it: the owner, or someone with write access to it.
+  trashedById String?
+  trashedBy   User?    @relation(fields: [trashedById], references: [id], onDelete: SetNull)
 
-  @@unique([itemId, trashId])
+  @@index([trashId, trashedAt])
 }

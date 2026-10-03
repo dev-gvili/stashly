@@ -12,6 +12,7 @@ import {
 import {
   getPaginatedItems,
   retrieveUserUsageMetrics,
+  TRASH_ROOTS,
 } from '@/services/item-actions'
 import { parseSearchParams } from '@/utils/parsers'
 import { formatSize } from '@/utils/formaters'
@@ -105,7 +106,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
   let [page, stats] = await Promise.all([
     getPaginatedItems({
-      where: filters,
+      // Only what was trashed directly: a trashed folder is one entry, not
+      // the folder plus every file inside it.
+      where: { AND: [filters, TRASH_ROOTS] },
       ...parsedParams,
       orderBy: parsedParams.orderBy ?? { name: 'asc' },
       include: {

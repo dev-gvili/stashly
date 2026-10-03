@@ -18,6 +18,7 @@ vi.mock('@/services/item-actions', () => ({
     usedBytes: 0n,
     quotaBytes: 0n,
   })),
+  TRASH_ROOTS: { status: 'trashed', OR: ['trash-roots-marker'] },
 }))
 
 import { getPaginatedItems } from '@/services/item-actions'
@@ -55,6 +56,14 @@ describe('trash loader thumbnail view filter', () => {
   it('defaults to grid when the URL carries no ?layout=', async () => {
     const views = await runLoader('http://localhost/usr_test/stash/trash')
     expect(views).toEqual({ itemView: 'grid', parentView: 'grid' })
+  })
+
+  // A trashed folder is one entry: the query must be limited to what was
+  // trashed directly, on top of the URL's own filters.
+  it('lists only what was trashed directly', async () => {
+    await runLoader('http://localhost/usr_test/stash/trash')
+    const where = (vi.mocked(getPaginatedItems).mock.calls.at(-1)![0] as { where: { AND: unknown[] } }).where
+    expect(where.AND).toContainEqual({ status: 'trashed', OR: ['trash-roots-marker'] })
   })
 
   it('uses the layout from the URL when present', async () => {

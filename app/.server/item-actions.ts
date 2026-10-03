@@ -555,6 +555,12 @@ export async function trashItem(id: string, userId: string) {
  * Recursively soft deletes multiple items (files or folders) by setting their status to 'trashed'.
  * If a folder is included in the list, all its descendants will also be marked as trashed.
  *
+ * Only the items asked for become Trash entries: each gets a `TrashItem` row
+ * (in its drive's `Trash`, created on first use). Their descendants get the
+ * status alone. That is what keeps a trashed folder one entry in Trash, and
+ * what lets a file trashed *before* its folder stay an entry of its own, and
+ * stay in Trash when the folder is restored.
+ *
  * @param {string[]} ids - An array of item IDs to trash.
  * @param {string} userId - The ID of the user trashing the items (used for quota adjustment).
  *
@@ -567,29 +573,38 @@ export async function trashItems(ids: string[], userId: string) {
   }
   await assertItemsAccess(userId, ids, 'write')
 
-  // One statement walks the subtree, trashes what isn't trashed yet, and sums
-  // the bytes of the files it changed. Only files count: a folder's `size` is a
-  // trigger rollup of its active contents, so adding it would count those bytes
-  // again. Files already in trash moved their bytes earlier, so the `status`
-  // guard leaves them out. `UNION` keeps a file reached through two selected
-  // items from counting twice.
-  const [changed] = await prisma.$queryRaw<SubtreeChange[]>`
-    WITH RECURSIVE "Subtree" AS (
-      SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
-      UNION
-      SELECT i."id" FROM "Item" i JOIN "Subtree" s ON i."parentId" = s."id"
-    ), "Changed" AS (
-      UPDATE "Item" i SET "status" = 'trashed', "updatedAt" = now()
-      FROM "Subtree" s
-      WHERE i."id" = s."id" AND i."status" <> 'trashed'
-      RETURNING i."id", i."name", i."type", i."size"
-    )
-    SELECT COUNT(*) AS "count",
-      COALESCE(SUM("size") FILTER (WHERE "type" = 'file'), 0)::bigint AS "bytes",
-      json_agg(json_build_object('id', "id", 'name', "name", 'type', "type"))
-        FILTER (WHERE "id" IN (${Prisma.join(ids)})) AS "roots"
-    FROM "Changed"
-  `
+  const changed = await prisma.$transaction(
+    async (tx) => {
+      // One statement walks the subtree, trashes what isn't trashed yet, and
+      // sums the bytes of the files it changed. Only files count: a folder's
+      // `size` is a trigger rollup of its active contents, so adding it would
+      // count those bytes again. Files already in trash moved their bytes
+      // earlier, so the `status` guard leaves them out. `UNION` keeps a file
+      // reached through two selected items from counting twice.
+      const [result] = await tx.$queryRaw<SubtreeChange[]>`
+        WITH RECURSIVE "Subtree" AS (
+          SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
+          UNION
+          SELECT i."id" FROM "Item" i JOIN "Subtree" s ON i."parentId" = s."id"
+        ), "Changed" AS (
+          UPDATE "Item" i SET "status" = 'trashed', "updatedAt" = now()
+          FROM "Subtree" s
+          WHERE i."id" = s."id" AND i."status" <> 'trashed'
+          RETURNING i."id", i."name", i."type", i."size"
+        )
+        SELECT COUNT(*) AS "count",
+          COALESCE(SUM("size") FILTER (WHERE "type" = 'file'), 0)::bigint AS "bytes",
+          json_agg(json_build_object('id', "id", 'name', "name", 'type', "type"))
+            FILTER (WHERE "id" IN (${Prisma.join(ids)})) AS "roots"
+        FROM "Changed"
+      `
+      await recordDirectlyTrashed(ids, userId, tx)
+      return result
+    },
+    // A large folder is one long UPDATE; the 5 s default is the interactive
+    // timeout, which surfaces as an FK error rather than "expired".
+    { timeout: 20_000 }
+  )
 
   if (changed.bytes > 0n) {
     Promise.resolve()
@@ -600,6 +615,47 @@ export async function trashItems(ids: string[], userId: string) {
   recordItemActivities('delete', changed.roots ?? [])
 
   return { count: Number(changed.count) }
+}
+
+/**
+ * Gives each of `ids` a `TrashItem` row, so Trash lists it as an entry.
+ *
+ * An id that already has one keeps it, with its original `trashedAt`: trashing
+ * an entry again doesn't move it in Trash. An id that was only indirectly
+ * trashed (inside a trashed folder) gets one now, and becomes an entry.
+ *
+ * @param ids - The items the user asked to trash.
+ * @param userId - Who trashed them.
+ * @param tx - The transaction the status update ran in.
+ */
+async function recordDirectlyTrashed(
+  ids: string[],
+  userId: string,
+  tx: Prisma.TransactionClient
+) {
+  const items = await tx.item.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, driveId: true },
+  })
+  const trashByDrive = new Map<string, string>()
+  for (const driveId of new Set(items.map((i) => i.driveId))) {
+    const trash = await tx.trash.upsert({
+      where: { driveId },
+      create: { id: toObjectId(getPrefixForModel('Trash')), driveId },
+      update: {},
+      select: { id: true },
+    })
+    trashByDrive.set(driveId, trash.id)
+  }
+  await tx.trashItem.createMany({
+    data: items.map((item) => ({
+      id: toObjectId(getPrefixForModel('TrashItem')),
+      itemId: item.id,
+      trashId: trashByDrive.get(item.driveId)!,
+      trashedById: userId,
+    })),
+    skipDuplicates: true,
+  })
 }
 
 /**
@@ -619,8 +675,10 @@ export async function restoreItem(itemId: string, userId: string) {
 
 /**
  * Recursively restores items from the trash to 'normal' status.
- * This restores the items themselves, all their descendants (children),
- * and all their ancestors (parent folders).
+ * This restores the items themselves, their descendants (children) except
+ * those the user trashed separately before (they stay in Trash), and all
+ * their ancestors (parent folders), so a restored item always has a live
+ * parent.
  *
  * @param {string[]} ids - An array of item IDs to restore.
  * @param {string} userId - The ID of the user restoring the items (used for quota adjustment).
@@ -638,11 +696,24 @@ export async function restoreItems(ids: string[], userId: string) {
   // One statement: the items, their descendants and their ancestors go back to
   // 'normal' (only the rows actually in trash), and the restored files' bytes
   // are summed for the quota. Files only, for the same reason as `trashItems`.
+  //
+  // Trash entries (`TrashItem` rows) shape it:
+  // - "Descendants" stops at a descendant with its own row: the user trashed
+  //   it before its folder, so restoring the folder leaves it in Trash.
+  // - "Unlisted" deletes the rows of everything restored.
+  // - "Orphaned" lists, as entries of their own, the trashed children of a
+  //   restored ancestor that are not being restored (restoring a deep file
+  //   brings its folders back, and their other trashed contents would
+  //   otherwise sit under a live folder with no entry). Their `trashedAt` is
+  //   `updatedAt`, set when the folder above them was trashed.
+  // All sub-statements read the same snapshot, so the CTEs decide from the
+  // pre-restore rows and from `Changed`, never from each other's writes.
   const [changed] = await prisma.$queryRaw<SubtreeChange[]>`
     WITH RECURSIVE "Descendants" AS (
       SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
       UNION
       SELECT i."id" FROM "Item" i JOIN "Descendants" d ON i."parentId" = d."id"
+      WHERE NOT EXISTS (SELECT 1 FROM "TrashItem" t WHERE t."itemId" = i."id")
     ), "Ancestors" AS (
       SELECT "id", "parentId" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
       UNION
@@ -656,6 +727,20 @@ export async function restoreItems(ids: string[], userId: string) {
       FROM "Related" r
       WHERE i."id" = r."id" AND i."status" = 'trashed'
       RETURNING i."id", i."name", i."type", i."size"
+    ), "Unlisted" AS (
+      DELETE FROM "TrashItem" t USING "Changed" c
+      WHERE t."itemId" = c."id"
+      RETURNING t."itemId"
+    ), "Orphaned" AS (
+      INSERT INTO "TrashItem" ("id", "itemId", "trashId", "trashedAt")
+      SELECT 'ti_' || substr(md5(random()::text || i."id"), 1, 22), i."id", tr."id", i."updatedAt"
+      FROM "Item" i
+      JOIN "Changed" c ON c."id" = i."parentId"
+      JOIN "Trash" tr ON tr."driveId" = i."driveId"
+      WHERE i."status" = 'trashed'
+        AND NOT EXISTS (SELECT 1 FROM "Changed" c2 WHERE c2."id" = i."id")
+        AND NOT EXISTS (SELECT 1 FROM "TrashItem" x WHERE x."itemId" = i."id")
+      RETURNING "itemId"
     )
     SELECT COUNT(*) AS "count",
       COALESCE(SUM("size") FILTER (WHERE "type" = 'file'), 0)::bigint AS "bytes",
@@ -3456,6 +3541,25 @@ export async function countItems(
 }
 
 /**
+ * The Trash entries: items the user trashed directly, which are the ones with
+ * a `TrashItem` row. Trashing a folder marks its whole subtree trashed, and
+ * listing every row put the folder and each of its 64 files side by side in
+ * Trash. This keeps the folder as one entry, the way Drive, OneDrive and
+ * Dropbox show a deleted folder; its contents come back with it on restore.
+ *
+ * It is stored, not derived from the parent's status: a file trashed *before*
+ * its folder has a trashed parent too, yet it is still an entry of its own,
+ * and restoring the folder leaves it in Trash (see `restoreItems`).
+ *
+ * @example
+ * prisma.item.findMany({ where: { ownerId, ...TRASH_ROOTS } })
+ */
+export const TRASH_ROOTS = {
+  status: 'trashed',
+  trash: { isNot: null },
+} satisfies Prisma.ItemWhereInput
+
+/**
  * Drive-wide counters for the page toolbar's stat run and storage meter.
  *
  * Five cheap aggregates in one round trip — deliberately *not*
@@ -3482,7 +3586,8 @@ export async function retrieveUserUsageMetrics(
     countItems({ where: { ...active, type: 'folder' } }, client),
     countItems({ where: { ...active, type: 'file' } }, client),
     client.favorite.count({ where: { favoritedById: userId } }),
-    countItems({ where: { ownerId: userId, status: 'trashed' } }, client),
+    // What the Trash page lists, so the count matches its cards.
+    countItems({ where: { ownerId: userId, ...TRASH_ROOTS } }, client),
     findQuotaByUserId(userId, client),
   ])
 

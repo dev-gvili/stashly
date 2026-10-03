@@ -37,6 +37,8 @@ model User {
   drive       Drive?
   favorites   Favorite[]
   pins        PinItem[]
+  /// Items this user trashed directly.
+  trashedItems TrashItem[]
 
   @@index([email])
   @@index([name])
