@@ -186,7 +186,7 @@ Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind s
 
 ## Verification & Commits
 
-- Before reporting a CI result, poll `gh run view <id> --json status,conclusion` until `status` is `completed`. `gh run watch` once returned while the docker job was still building, and a follow-up push then cancelled that run (`cancel-in-progress`), so a job never ran.
+- Before reporting a CI result, wait for `status == completed` with **one background command**, not repeated polling turns: `bash .claude/scripts/wait-for-ci.sh` via Bash `run_in_background` right after the push. It finds the run by commit SHA, exits 0/1/2 (success / other conclusion / no run), and the session is woken once when it exits. Don't use `gh run watch`: it once returned while the docker job was still building, and a follow-up push then cancelled that run (`cancel-in-progress`), so a job never ran.
 - Fix type errors additively — do not delete or weaken existing types to make errors disappear.
 - For UI changes, verify in the browser via the chrome-devtools MCP (or playwright MCP) before declaring done — both require Chrome installed.
 - Browser verification doesn't need a session: chrome-devtools MCP opens a fresh unauthenticated Chrome, but `http://localhost/auth/sign-in` loads the same stylesheet. Append a throwaway `div` with the classes and read `getComputedStyle` to prove a Tailwind class resolves, or inject a mock grid there to measure geometry (column widths, row count, card sizes) before and after a layout change. **To verify a real authenticated page, ask the user to sign in to the MCP Chrome** — they can, and it turns inference into measurement.
