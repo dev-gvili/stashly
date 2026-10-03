@@ -14,6 +14,7 @@
  */
 import type { Page } from '@playwright/test'
 import { expect } from '@playwright/test'
+import { E2E_DRIVE_ID, E2E_ROOT_FOLDER_ID } from '../constants'
 
 /** One stage publication, exactly as the item machine emitted it. */
 export interface ProgressEvent {
@@ -272,6 +273,60 @@ export async function decodeImage(page: Page, url: string) {
       return { decoded: false, width: 0, height: 0 }
     }
   }, url)
+}
+
+/**
+ * Creates an empty folder under the E2E root and returns its id.
+ *
+ * Every upload test drops into its own empty folder. A thumbnail is made only
+ * when its card is on screen, and the shared root holds every earlier run's
+ * `e2e-thumb-*` files, so a new card there can land below the fold and
+ * legitimately never get one.
+ */
+export async function createEmptyFolder(page: Page, name: string): Promise<string> {
+  const res = await page.request.post('/api/items', {
+    form: {
+      intent: 'create_folder_inline',
+      name,
+      parentId: E2E_ROOT_FOLDER_ID,
+      driveId: E2E_DRIVE_ID,
+    },
+  })
+  expect(res.ok(), `create_folder_inline answered ${res.status()}`).toBe(true)
+  const body = (await res.json()) as { folder?: { id: string } }
+  expect(body.folder?.id, 'create_folder_inline returned no folder').toBeTruthy()
+  return body.folder!.id
+}
+
+/**
+ * Records every thumbnail-source request (`intent=source`, a download-lane
+ * job) the page makes from now on. A file uploaded in this tab is still held
+ * in memory, so its thumbnail must never need one.
+ */
+export function recordSourceRequests(page: Page): string[] {
+  const urls: string[] = []
+  page.on('request', (req) => {
+    if (req.url().includes('/api/thumbnails') && req.url().includes('intent=source')) {
+      urls.push(req.url())
+    }
+  })
+  return urls
+}
+
+/**
+ * A signed stage-2/3 view URL for `itemId`. Both stages share one S3 key, and
+ * the stage rides in the signed `response-content-disposition` filename
+ * (`<itemId>-s2.webp`, see `thumbnail-actions.ts`). There is no `?v=` suffix:
+ * appending to a signed URL breaks its signature, which is what the old
+ * `\?v=2$` assertions here expected and why they could never pass.
+ */
+export function stageUrlPattern(itemId: string, stage: 2 | 3): RegExp {
+  return new RegExp(`/thumbnails/${itemId}\\.webp\\?.*${itemId}-s${stage}\\.webp`)
+}
+
+/** Same as `stageUrlPattern`, for any item. */
+export function anyStageUrlPattern(): RegExp {
+  return /\/thumbnails\/[^/?]+\.webp\?.*-s[23]\.webp/
 }
 
 /** Drives the real scheduler's pause control, as the upload runner does. */

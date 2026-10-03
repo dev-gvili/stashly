@@ -11,6 +11,16 @@ export class UploadPage {
   }
 
   /**
+   * Opens a folder's grid. A drop here uploads into this folder, and the new
+   * cards render in its grid, which is what thumbnails need: one is made only
+   * when its card comes on screen.
+   */
+  async gotoFolder(userId: string, folderId: string): Promise<void> {
+    await this.page.goto(`/${userId}/stash/folders/${folderId}?layout=grid&take=100`)
+    await this.page.locator('[data-sidebar="sidebar"]').first().waitFor({ state: 'visible' })
+  }
+
+  /**
    * Dispatches a synthetic drop event on the DropArea with a programmatically
    * created File. Uses page.evaluate because Playwright cannot natively inject
    * FileSystemEntry objects into DataTransfer — but the DropArea falls back to
@@ -189,8 +199,11 @@ export class UploadPage {
   }
 
   /**
-   * Waits for the upload item row to reach data-state="done".
+   * Waits for the upload item row to reach `done` or `itemCreated`.
    * The row is identified by the visible file name text.
+   *
+   * `done` (bytes in S3) lasts only until the item row is written, which is a
+   * single request away, so waiting for `done` alone can miss it entirely.
    */
   async waitForUploadDone(
     fileName: string,
@@ -198,8 +211,15 @@ export class UploadPage {
   ): Promise<void> {
     await expect(
       this.page
-        .locator('li[data-state="done"]')
+        .locator('li:is([data-state="done"], [data-state="itemCreated"])')
         .filter({ hasText: fileName })
+    ).toBeVisible({ timeout })
+  }
+
+  /** Waits for the upload item row to reach `itemCreated`: its row exists. */
+  async waitForItemCreated(fileName: string, timeout = 90_000): Promise<void> {
+    await expect(
+      this.page.locator('li[data-state="itemCreated"]').filter({ hasText: fileName })
     ).toBeVisible({ timeout })
   }
 }

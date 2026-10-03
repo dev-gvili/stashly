@@ -7,14 +7,24 @@
  * actor (`window.__thumbMgr`), the actual DOM it paints, and — for anything
  * claimed to be persisted — the actual bytes fetched back over HTTP.
  *
+ * **A thumbnail is made only when its card is on screen.** Uploading starts no
+ * thumbnail work; the uploaded file is held in memory, and its card's
+ * visibility hook starts a `fromMemory` job when the card appears. So every
+ * upload test drops into a fresh, empty folder it is viewing (`createEmptyFolder`
+ * + `gotoFolder`): the new card is guaranteed to render in view. The shared
+ * root holds every earlier run's files, where a new card can land below the
+ * fold and correctly never get a thumbnail.
+ *
  * Nothing here stubs an actor or asserts a value the test itself supplied. Where
  * a capability may be missing from the browser (WebGPU for stage 3), the test
  * reports that and skips rather than pretending the stage ran.
  *
- * **Side effect:** these upload real files to the E2E user's stash and bucket.
- * Everything is named `e2e-thumb-*` so it is easy to find and remove.
+ * **Side effect:** these upload real files and create folders in the E2E user's
+ * stash and bucket. Everything is named `e2e-thumb-*` so it is easy to find and
+ * remove.
  */
 import { test, expect } from './fixtures'
+import type { Page } from '@playwright/test'
 import { UploadPage } from './pages/upload.page'
 import { TEST_USER_ID } from './constants'
 import {
@@ -28,6 +38,10 @@ import {
   decodeImage,
   sendToManager,
   expectManagerReady,
+  createEmptyFolder,
+  recordSourceRequests,
+  stageUrlPattern,
+  anyStageUrlPattern,
 } from './helpers/thumbnail-machine'
 
 /** Uploads plus real image compute; generous but bounded. */
@@ -35,6 +49,38 @@ const PIPELINE_TIMEOUT = 180_000
 
 /** Unique per run so a re-run never collides with a previous run's items. */
 const runId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+
+/**
+ * Opens a fresh empty folder with the probe recording, ready for a drop whose
+ * cards will render in view.
+ */
+async function openEmptyFolder(page: Page) {
+  const uploadPage = new UploadPage(page)
+  // The scheduler needs a page of the app before the API call can carry the session.
+  await uploadPage.goto(TEST_USER_ID)
+  const folderId = await createEmptyFolder(page, `e2e-thumb-folder-${runId()}`)
+  await uploadPage.gotoFolder(TEST_USER_ID, folderId)
+  // Installed before the drop: the point of a progressive pipeline is the
+  // ordering, and only the final state is visible after the fact.
+  await installProbe(page)
+  return { uploadPage, folderId }
+}
+
+/**
+ * A client-side navigation through the app's own router, so module-scope
+ * state (the scheduler, held upload files) survives it.
+ */
+async function navigateInApp(page: Page, path: string) {
+  await page.evaluate(
+    (p) =>
+      (
+        window as unknown as {
+          __reactRouterDataRouter: { navigate: (to: string) => Promise<void> }
+        }
+      ).__reactRouterDataRouter.navigate(p),
+    path
+  )
+}
 
 test.describe('thumbnail machine — scheduler boots', () => {
   test('starts exactly one manager, with the memory lane open and downloads active', async ({
@@ -52,17 +98,53 @@ test.describe('thumbnail machine — scheduler boots', () => {
   })
 })
 
+test.describe('thumbnail machine — only cards on screen', () => {
+  test.describe.configure({ timeout: PIPELINE_TIMEOUT })
+
+  test('an upload whose card never rendered gets no thumbnail until its folder is opened, then one from memory', async ({
+    page,
+  }) => {
+    const { uploadPage, folderId } = await openEmptyFolder(page)
+    const sources = recordSourceRequests(page)
+
+    const name = `e2e-thumb-${runId()}.png`
+    await uploadPage.dropRealFiles([{ name, kind: 'png', sizePx: 640 }])
+
+    // Leave before the item exists, so its card is never rendered. The upload
+    // and the held file live on: both are module scope, and every navigation
+    // here is client-side (a reload would drop the held file, and the job
+    // would rightly become a download).
+    await navigateInApp(page, `/${TEST_USER_ID}/stash/storage`)
+    await expect(page).toHaveURL(/\/stash\/storage/, { timeout: 30_000 })
+    await uploadPage.waitForItemCreated(name)
+
+    // Nothing is thumbnailed for a card nobody has seen.
+    await waitForIdle(page, 30_000)
+    const away = await readProbe(page)
+    expect(away.events, 'a thumbnail was made for a card that never rendered').toEqual([])
+
+    // Opening the folder renders the card, which starts a memory-lane job.
+    await installProbe(page)
+    await navigateInApp(page, `/${TEST_USER_ID}/stash/folders/${folderId}?layout=grid`)
+    const itemId = await waitForAnyItemAtStage(page, 2, PIPELINE_TIMEOUT - 60_000)
+    const published = await progressFor(page, itemId)
+    expect(published!.src).toMatch(stageUrlPattern(itemId, 2))
+
+    const probe = await readProbe(page)
+    expect(probe.maxRunningByMode.fromMemory ?? 0).toBeGreaterThan(0)
+    expect(probe.maxRunningByMode.fromDownload ?? 0).toBe(0)
+    // The file was still in memory, so the original was never downloaded.
+    expect(sources, 'a held upload was downloaded again to thumbnail it').toEqual([])
+  })
+})
+
 test.describe('thumbnail machine — upload pipeline', () => {
   test.describe.configure({ timeout: PIPELINE_TIMEOUT })
 
   test('publishes a local blur first, then a persisted 512px thumbnail', async ({
     page,
   }) => {
-    const uploadPage = new UploadPage(page)
-    await uploadPage.goto(TEST_USER_ID)
-    // Installed before the drop: the point of a progressive pipeline is the
-    // ordering, and only the final state is visible after the fact.
-    await installProbe(page)
+    const { uploadPage } = await openEmptyFolder(page)
 
     const name = `e2e-thumb-${runId()}.png`
     await uploadPage.dropRealFiles([{ name, kind: 'png', sizePx: 640 }])
@@ -79,7 +161,7 @@ test.describe('thumbnail machine — upload pipeline', () => {
 
     // Stage 1 never leaves the browser; stage 2 is the persisted object.
     expect(stage1!.src).toMatch(/^blob:/)
-    expect(stage2!.src).toMatch(new RegExp(`/thumbnails/${itemId}\\.webp\\?v=2$`))
+    expect(stage2!.src).toMatch(stageUrlPattern(itemId, 2))
 
     // Ordering, from real timestamps rather than array position.
     expect(stage1!.at).toBeLessThan(stage2!.at)
@@ -88,9 +170,7 @@ test.describe('thumbnail machine — upload pipeline', () => {
   test('the stage-2 URL is a real WebP on S3, not just a string the machine reported', async ({
     page,
   }) => {
-    const uploadPage = new UploadPage(page)
-    await uploadPage.goto(TEST_USER_ID)
-    await installProbe(page)
+    const { uploadPage } = await openEmptyFolder(page)
 
     const name = `e2e-thumb-${runId()}.png`
     await uploadPage.dropRealFiles([{ name, kind: 'png', sizePx: 640 }])
@@ -112,20 +192,24 @@ test.describe('thumbnail machine — upload pipeline', () => {
     expect(decoded.height).toBeGreaterThan(0)
     expect(Math.max(decoded.width, decoded.height)).toBeLessThanOrEqual(512)
 
-    // The dimensions the machine reported must match the actual image.
-    expect(published!.width).toBe(decoded.width)
-    expect(published!.height).toBe(decoded.height)
+    // Stage 3 can replace the stage-2 object under the same key before this
+    // fetch, so the reported size is only comparable while it is still stage 2.
+    if (published!.stage === 2) {
+      expect(published!.width).toBe(decoded.width)
+      expect(published!.height).toBe(decoded.height)
+    }
   })
 
   test('the card paints what the machine published', async ({ page }) => {
-    const uploadPage = new UploadPage(page)
-    await uploadPage.goto(TEST_USER_ID)
-    await installProbe(page)
+    const { uploadPage } = await openEmptyFolder(page)
 
     const name = `e2e-thumb-${runId()}.png`
     await uploadPage.dropRealFiles([{ name, kind: 'png', sizePx: 640 }])
 
     const itemId = await waitForAnyItemAtStage(page, 2, PIPELINE_TIMEOUT - 20_000)
+    // Read once the job is done, so a stage-3 upgrade can't swap the src
+    // between reading it and finding the image.
+    await waitForIdle(page, PIPELINE_TIMEOUT - 40_000)
     const published = await progressFor(page, itemId)
 
     const img = page.locator(
@@ -148,9 +232,7 @@ test.describe('thumbnail machine — upload pipeline', () => {
   test('a text file goes through the text-render path and persists', async ({
     page,
   }) => {
-    const uploadPage = new UploadPage(page)
-    await uploadPage.goto(TEST_USER_ID)
-    await installProbe(page)
+    const { uploadPage } = await openEmptyFolder(page)
 
     const name = `e2e-thumb-${runId()}.ts`
     await uploadPage.dropRealFiles([{ name, kind: 'text' }])
@@ -158,7 +240,7 @@ test.describe('thumbnail machine — upload pipeline', () => {
     const itemId = await waitForAnyItemAtStage(page, 2, PIPELINE_TIMEOUT - 20_000)
     const published = await progressFor(page, itemId)
 
-    expect(published!.src).toMatch(/\?v=2$/)
+    expect(published!.src).toMatch(stageUrlPattern(itemId, 2))
     const object = await fetchPersistedThumbnail(page, published!.src)
     expect(object.ok).toBe(true)
     expect(object.isWebp).toBe(true)
@@ -173,14 +255,12 @@ test.describe('thumbnail machine — upload pipeline', () => {
   test('a type with no producer publishes nothing rather than inventing a thumbnail', async ({
     page,
   }) => {
-    const uploadPage = new UploadPage(page)
-    await uploadPage.goto(TEST_USER_ID)
-    await installProbe(page)
+    const { uploadPage } = await openEmptyFolder(page)
 
     const name = `e2e-thumb-${runId()}.bin`
     await uploadPage.dropRealFiles([{ name, kind: 'bin' }])
 
-    await uploadPage.waitForUploadDone(name, 120_000)
+    await uploadPage.waitForItemCreated(name, 120_000)
     // Let the pipeline run to completion rather than asserting on a gap.
     await waitForIdle(page, 120_000)
 
@@ -190,20 +270,21 @@ test.describe('thumbnail machine — upload pipeline', () => {
       `expected no thumbnail for an unrenderable type, got ${JSON.stringify(probe.events)}`
     ).toEqual([])
 
-    // …but the indexing leg still ran. It is deliberately independent of the
-    // stages: a file with no preview still has metadata worth saving, and this
-    // is the assertion that would catch the two being wired together again.
-    expect(
-      probe.metadataSeen.length,
-      'the indexing leg never ran for a file with no thumbnail'
-    ).toBeGreaterThan(0)
+    // …but the indexing leg still ran. It is deliberately independent of
+    // thumbnails: a file with no preview still has metadata worth saving, and
+    // this is the assertion that would catch the two being wired together again.
+    await expect
+      .poll(async () => (await readProbe(page)).metadataSeen.length, {
+        message: 'the indexing leg never ran for a file with no thumbnail',
+        timeout: 60_000,
+      })
+      .toBeGreaterThan(0)
   })
 
   test('stage 3 runs when the browser has WebGPU, and is skipped honestly when it does not', async ({
     page,
   }) => {
-    const uploadPage = new UploadPage(page)
-    await uploadPage.goto(TEST_USER_ID)
+    const { uploadPage } = await openEmptyFolder(page)
 
     const hasWebGpu = await page.evaluate(async () => {
       const gpu = (navigator as Navigator & { gpu?: { requestAdapter: () => Promise<unknown> } }).gpu
@@ -220,7 +301,6 @@ test.describe('thumbnail machine — upload pipeline', () => {
       'No WebGPU adapter in this browser — stage 3 (saliency crop) cannot run, so asserting it would be fiction.'
     )
 
-    await installProbe(page)
     const name = `e2e-thumb-${runId()}.png`
     await uploadPage.dropRealFiles([{ name, kind: 'png', sizePx: 640 }])
 
@@ -228,7 +308,7 @@ test.describe('thumbnail machine — upload pipeline', () => {
     const published = await progressFor(page, itemId)
 
     expect(published!.stage).toBe(3)
-    expect(published!.src).toMatch(/\?v=3$/)
+    expect(published!.src).toMatch(stageUrlPattern(itemId, 3))
 
     const object = await fetchPersistedThumbnail(page, published!.src)
     expect(object.ok).toBe(true)
@@ -239,12 +319,10 @@ test.describe('thumbnail machine — upload pipeline', () => {
 test.describe('thumbnail machine — scheduling', () => {
   test.describe.configure({ timeout: PIPELINE_TIMEOUT })
 
-  test('never exceeds the upload concurrency cap, and drains the whole batch', async ({
+  test('the memory lane never exceeds its cap, and drains the whole batch', async ({
     page,
   }) => {
-    const uploadPage = new UploadPage(page)
-    await uploadPage.goto(TEST_USER_ID)
-    await installProbe(page)
+    const { uploadPage } = await openEmptyFolder(page)
 
     const id = runId()
     const files = Array.from({ length: 8 }, (_, i) => ({
@@ -256,14 +334,16 @@ test.describe('thumbnail machine — scheduling', () => {
     }))
     await uploadPage.dropRealFiles(files)
 
+    // Eight cards fit in an empty folder's first screen, so all eight are
+    // visible and each gets a memory-lane job.
     await waitForAnyItemAtStage(page, 2, PIPELINE_TIMEOUT - 40_000)
     await waitForIdle(page, PIPELINE_TIMEOUT - 20_000)
 
     const probe = await readProbe(page)
 
     // Observed from the real actor across the whole run, not asserted in advance.
-    expect(probe.maxRunningByMode.upload ?? 0).toBeGreaterThan(1)
-    expect(probe.maxRunningByMode.upload ?? 0).toBeLessThanOrEqual(4)
+    expect(probe.maxRunningByMode.fromMemory ?? 0).toBeGreaterThan(1)
+    expect(probe.maxRunningByMode.fromMemory ?? 0).toBeLessThanOrEqual(4)
 
     const state = await readManager(page)
     expect(state.running).toEqual([])
@@ -272,7 +352,7 @@ test.describe('thumbnail machine — scheduling', () => {
     // Every file that produced a thumbnail reached the persisted stage.
     const persisted = probe.events.filter((e) => e.stage >= 2)
     expect(persisted.length).toBeGreaterThan(0)
-    for (const e of persisted) expect(e.src).toMatch(/\?v=[23]$/)
+    for (const e of persisted) expect(e.src).toMatch(anyStageUrlPattern())
   })
 
   test('download lane caps at two and starts the most recent requests first', async ({
@@ -286,13 +366,16 @@ test.describe('thumbnail machine — scheduling', () => {
     // so each job legitimately ends in `sourceUnavailable` after a real round trip to
     // `/api/thumbnails/:id/source` — which is all this test needs: it is
     // asserting the lane's ordering and cap, not the job's outcome.
-    const ids = ['zz-lane-1', 'zz-lane-2', 'zz-lane-3', 'zz-lane-4']
-    for (const itemId of ids) {
-      await sendToManager(page, {
-        type: 'enqueue',
-        job: { itemId, mode: 'fromDownload', file: null },
-      })
-    }
+    //
+    // One `page.evaluate`, not one per job: each evaluate is its own turn, and
+    // the lane drains between turns, so the first job used to start alone
+    // before the rest were queued and the "newest first" batch was never formed.
+    await page.evaluate(() => {
+      const mgr = window.__thumbMgr!
+      for (const itemId of ['zz-lane-1', 'zz-lane-2', 'zz-lane-3', 'zz-lane-4']) {
+        mgr.send({ type: 'enqueue', job: { itemId, mode: 'fromDownload', file: null } })
+      }
+    })
 
     await waitForIdle(page, 60_000)
     const probe = await readProbe(page)
@@ -355,9 +438,7 @@ test.describe('thumbnail machine — scheduling', () => {
   test('an upload pauses the download lane and hands it back afterwards', async ({
     page,
   }) => {
-    const uploadPage = new UploadPage(page)
-    await uploadPage.goto(TEST_USER_ID)
-    await installProbe(page)
+    const { uploadPage } = await openEmptyFolder(page)
 
     const name = `e2e-thumb-${runId()}.png`
     await uploadPage.dropRealFiles([{ name, kind: 'png', sizePx: 480 }])
@@ -370,6 +451,7 @@ test.describe('thumbnail machine — scheduling', () => {
       })
       .toContain('"downloadLane":"paused"')
 
+    await uploadPage.waitForItemCreated(name)
     await waitForIdle(page, PIPELINE_TIMEOUT - 40_000)
 
     await expect
@@ -445,16 +527,15 @@ test.describe('thumbnail machine — scheduling', () => {
 test.describe('thumbnail machine — durability', () => {
   test.describe.configure({ timeout: PIPELINE_TIMEOUT })
 
-  test('the pipeline survives leaving the page that started it', async ({ page }) => {
-    const uploadPage = new UploadPage(page)
-    await uploadPage.goto(TEST_USER_ID)
-    await installProbe(page)
+  test('a started job survives leaving the page that started it', async ({ page }) => {
+    const { uploadPage } = await openEmptyFolder(page)
 
     const name = `e2e-thumb-${runId()}.png`
     await uploadPage.dropRealFiles([{ name, kind: 'png', sizePx: 640 }])
 
-    // Leave as soon as the first stage lands, while the pipeline is mid-flight.
-    await waitForAnyItemAtStage(page, 1, 90_000)
+    // Leave as soon as the first stage lands: the card was on screen, so its
+    // job started, and is now mid-flight.
+    const itemId = await waitForAnyItemAtStage(page, 1, 90_000)
 
     // Client-side navigation — the card unmounts but the module graph, and so
     // the scheduler, live on. (A full reload would legitimately kill it.)
@@ -462,8 +543,9 @@ test.describe('thumbnail machine — durability', () => {
     await expect(page).toHaveURL(/\/stash\/all/, { timeout: 30_000 })
 
     // The work started by the now-unmounted card still completes and persists.
-    const itemId = await waitForAnyItemAtStage(page, 2, PIPELINE_TIMEOUT - 60_000)
+    await waitForAnyItemAtStage(page, 2, PIPELINE_TIMEOUT - 60_000)
     const published = await progressFor(page, itemId)
+    expect(published!.stage).toBeGreaterThanOrEqual(2)
 
     const object = await fetchPersistedThumbnail(page, published!.src)
     expect(

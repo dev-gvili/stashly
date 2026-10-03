@@ -14,11 +14,13 @@ import {
   E2E_ITEM_B_NAME,
   E2E_ITEM_C_NAME,
   E2E_ROOT_FOLDER_ID,
+  E2E_DRIVE_ID,
   E2E_PIN_ITEM_A_ID,
   E2E_PIN_ITEM_B_ID,
   E2E_PIN_ITEM_A_NAME,
   E2E_PIN_ITEM_B_NAME,
 } from './constants'
+import { ensureE2eBucket } from './e2e-bucket'
 
 /**
  * Signs a cookie value the same way better-auth / better-call does:
@@ -56,7 +58,6 @@ export default async function globalSetup() {
       )
     }
 
-    const E2E_DRIVE_ID = 'drv_e2e_test_000000'
     const E2E__ID = 'quo_e2e_test_000000'
     const E2E_ROOT_ID = 'root_e2e_test_000000'
     const E2E_SUB_ID = 'sub_e2e_test_000000'
@@ -73,7 +74,9 @@ export default async function globalSetup() {
         name: 'E2E Test User',
         email: TEST_USER_EMAIL,
         emailVerified: true,
-        bucket: 'stashly-devgvili-sbp7fs6d',
+        // No bucket here: `ensureE2eBucket` below creates a real one, the way
+        // onboarding does. A hardcoded name had gone missing on S3 and made
+        // every upload test time out.
         storagePlanId: freePlan.id,
         subscriptionId: E2E_SUB_ID,
         driveId: E2E_DRIVE_ID,
@@ -85,6 +88,8 @@ export default async function globalSetup() {
         rootId: E2E_ROOT_ID,
       },
     })
+
+    await ensureE2eBucket(prisma, TEST_USER_ID)
 
     // Upsert the test user's Drive — required so the  service can find
     // the user's  via `drive.ownerId`.
