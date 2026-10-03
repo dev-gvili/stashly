@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { afterRestoreUrl } from '@/utils/trash-urls'
+import { toTrashRedirectUrl } from '@/utils/trash-urls'
 
 /**
  * A restore made inside a trashed folder takes the folder out of Trash too,
@@ -8,25 +8,25 @@ import { afterRestoreUrl } from '@/utils/trash-urls'
  */
 const at = (path: string) => new URL(`http://localhost${path}`)
 
-describe('afterRestoreUrl', () => {
+describe('toTrashRedirectUrl', () => {
   it('leaves a trashed-folder view for the Trash entries, keeping the query', () => {
-    expect(afterRestoreUrl(at('/usr_1/stash/trash/folders/item_f?layout=river'))).toBe(
+    expect(toTrashRedirectUrl(at('/usr_1/stash/trash/folders/item_f?layout=river'))).toBe(
       '/usr_1/stash/trash?layout=river'
     )
   })
 
   it('works without a query, and with a trailing slash', () => {
-    expect(afterRestoreUrl(at('/usr_1/stash/trash/folders/item_f/'))).toBe('/usr_1/stash/trash')
+    expect(toTrashRedirectUrl(at('/usr_1/stash/trash/folders/item_f/'))).toBe('/usr_1/stash/trash')
   })
 
   it('stays on the Trash entries', () => {
-    expect(afterRestoreUrl(at('/usr_1/stash/trash?layout=grid&take=50'))).toBe(
+    expect(toTrashRedirectUrl(at('/usr_1/stash/trash?layout=grid&take=50'))).toBe(
       '/usr_1/stash/trash?layout=grid&take=50'
     )
   })
 
   it('stays anywhere else, as before', () => {
-    expect(afterRestoreUrl(at('/usr_1/stash/folders/item_f?layout=grid'))).toBe(
+    expect(toTrashRedirectUrl(at('/usr_1/stash/folders/item_f?layout=grid'))).toBe(
       '/usr_1/stash/folders/item_f?layout=grid'
     )
   })

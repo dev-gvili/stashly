@@ -16,12 +16,12 @@ const TRASH_FOLDER_PATH = /^\/([^/]+)\/stash\/trash\/folders\/[^/]+\/?$/
  * @returns The path and query to redirect to.
  *
  * @example
- * afterRestoreUrl(new URL('http://x/usr_1/stash/trash/folders/item_f?layout=grid'))
+ * toTrashRedirectUrl(new URL('http://x/usr_1/stash/trash/folders/item_f?layout=grid'))
  * // → '/usr_1/stash/trash?layout=grid'
- * afterRestoreUrl(new URL('http://x/usr_1/stash/trash?layout=grid'))
+ * toTrashRedirectUrl(new URL('http://x/usr_1/stash/trash?layout=grid'))
  * // → '/usr_1/stash/trash?layout=grid'
  */
-export function afterRestoreUrl(url: URL): string {
+export function toTrashRedirectUrl(url: URL): string {
   const query = url.searchParams.toString()
   const suffix = query ? `?${query}` : ''
   const inFolder = url.pathname.match(TRASH_FOLDER_PATH)
