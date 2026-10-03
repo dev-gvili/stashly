@@ -508,7 +508,6 @@ const ItemCardRoot = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        aria-disabled={(isTrashed(props.status) && rest.type !== 'folder') || undefined}
         className={cn(
           'rounded-md p-2 grid gap-0 border-input font-stashly surface-glass overflow-hidden group/card card select-none relative z-0 transition-colors',
           isFolder &&

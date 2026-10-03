@@ -3579,7 +3579,9 @@ export const TRASH_CRUMB_ID = 'trash'
  * @returns Crumbs for the toolbar: `Trash`, then the trashed folders down to
  *   this one.
  * @throws `NOT_FOUND` (404) when the folder is not the user's, not a folder,
- *   or not in Trash: a live folder opens in its own route, not here.
+ *   or not in Trash: a live folder opens in its own route, not here. A restore
+ *   made from this view takes the folder out of Trash too, so the restore
+ *   action sends the page back to Trash first (`afterRestoreUrl`).
  *
  * @example
  * const crumbs = await getTrashFolderTrail(user.id, 'item_abc')

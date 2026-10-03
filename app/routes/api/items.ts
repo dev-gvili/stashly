@@ -32,6 +32,7 @@ import {
   upsertSearchContent,
 } from '@/services/search-actions'
 import { toErrorInfo } from '@/utils/api.errors'
+import { afterRestoreUrl } from '@/utils/trash-urls'
 import { clampPendingLimit } from '@/utils/embedding-backfill'
 import { parseFormData } from '@/utils/parsers'
 import { removeQueryParam, removeQueryParamValue } from '@/utils/query-params'
@@ -149,7 +150,10 @@ export async function action({ request, params }: Route.ActionArgs) {
           'selectedItems',
           parsedData.selectedItem
         )
-        return redirect(`${url.pathname}?${searchParams.toString()}`)
+        url.search = searchParams.toString()
+        // From inside a trashed folder this goes back to Trash: the restore
+        // took the folder out of Trash too, and its view would 404.
+        return redirect(afterRestoreUrl(url))
       } catch (e) {
         console.error(e)
         const err = toErrorInfo(e)
@@ -208,7 +212,9 @@ export async function action({ request, params }: Route.ActionArgs) {
       try {
         await restoreItems(parsedData.selectedItems, user.id)
         searchParams = removeQueryParam(searchParams, 'selectedItems')
-        return redirect(`${url.pathname}?${searchParams.toString()}`)
+        url.search = searchParams.toString()
+        // Same as `restore_item`: from inside a trashed folder, back to Trash.
+        return redirect(afterRestoreUrl(url))
       } catch (e) {
         console.error(e)
         const err = toErrorInfo(e)

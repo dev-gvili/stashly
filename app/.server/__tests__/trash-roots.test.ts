@@ -165,6 +165,16 @@ describe('getTrashFolderTrail (browsing a trashed folder inside Trash)', () => {
       await prisma.user.delete({ where: { id: strangerId } })
     }
   })
+
+  // Why the restore action redirects to Trash from this view (the reported
+  // bug): restoring a file inside the folder brings the folder back, so
+  // reloading its Trash view can only 404.
+  it('a restore inside the folder takes the folder out of Trash too', async () => {
+    const note = await prisma.item.findFirstOrThrow({ where: { ownerId, name: 'note.md' } })
+    await restoreItem(note.id, ownerId)
+    expect(await statusOf(inner)).toBe('normal')
+    await expect(getTrashFolderTrail(ownerId, inner)).rejects.toMatchObject({ status: 404 })
+  })
 })
 
 describe('items trashed before their folder (the owner reported this)', () => {
