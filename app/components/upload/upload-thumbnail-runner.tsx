@@ -32,7 +32,7 @@ const REVALIDATE_DEBOUNCE_MS = 700
 
 /**
  * Upload statuses that still hold bandwidth. Anything else (`itemCreated`,
- * `done`, `aborted`, `itemFailed`, `skipped`) is finished work that merely
+ * `done`, `aborted`, `itemFailed`, `failed`, `skipped`) is finished work that merely
  * stays listed in the panel.
  */
 const IN_FLIGHT: ReadonlySet<MediaFileStatus> = new Set<MediaFileStatus>([

@@ -62,11 +62,12 @@ export const fileMachine = setup({
         }
       },
     }),
-    // Saves the error message to the context
+    // Saves the error message to the context. Actors throw `Error`s, and the
+    // manager's `upload.failed` schema wants the text, not the object.
     assignError: assign({
       error: ({ event }) => {
-        return (event as unknown as ErrorActorEvent<unknown, string>)
-          .error as string
+        const error = (event as unknown as ErrorActorEvent<unknown>).error
+        return error instanceof Error ? error.message : String(error)
       },
     }),
     // Assigns the multipart actor reference to the context
@@ -107,6 +108,16 @@ export const fileMachine = setup({
       ({ context }) => ({
         type: 'upload.done',
         mediaFile: context.mediaFile,
+      })
+    ),
+    // Tells the manager this file ended in `error`, so it frees the slot and
+    // shows the reason. Without it the file held its slot for good.
+    sendUploadFailedToParent: sendTo(
+      ({ context }) => context.manager!,
+      ({ context }) => ({
+        type: 'upload.failed',
+        mediaFile: { ...context.mediaFile, status: 'failed' as MediaFileStatus },
+        error: context.error || 'Upload failed',
       })
     ),
     // Sends an 'upload.aborted' event to the parent manager.
@@ -491,7 +502,9 @@ export const fileMachine = setup({
     // Error state: final state after a failure
     error: {
       type: 'final',
-      description: 'An error occurred during the upload process.',
+      entry: 'sendUploadFailedToParent',
+      description:
+        'The quota check, creating the multipart upload or completing it failed (e.g. folder access was revoked). Tells the manager, which frees the slot and marks the file failed with the reason.',
     },
   },
 })

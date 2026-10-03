@@ -185,8 +185,26 @@ const uploadMachine = setup({
         }
       }
     }),
+    /**
+     * The file machine ended in `error` before its bytes were stored: the
+     * quota check, the multipart create or the complete was refused. Keep the
+     * reason so the panel can show it, and the progress this manager holds.
+     */
+    markAsFailed: assign(({ context, event }) => {
+      assertEvent(event, 'upload.failed')
+      let mediaFile = mediafile.parse(event.mediaFile)
+      let current = context.mediaFiles.get(mediaFile.id)
+      return {
+        mediaFiles: new Map(context.mediaFiles).set(mediaFile.id, {
+          ...mediaFile,
+          progress: current?.progress ?? mediaFile.progress,
+          status: 'failed' as const,
+          error: event.error,
+        }),
+      }
+    }),
     removeFromActiveQueue: assign(({ context, event }) => {
-      assertEvent(event, ['upload.aborted', 'upload.done'])
+      assertEvent(event, ['upload.aborted', 'upload.done', 'upload.failed'])
       const mediaFile = mediafile.parse(event.mediaFile)
       const newActiveQueue = new Set(context.queues.active)
       newActiveQueue.delete(mediaFile.id)
@@ -198,7 +216,7 @@ const uploadMachine = setup({
       }
     }),
     removeFromUploads: enqueueActions(({ context, event, enqueue }) => {
-      assertEvent(event, ['upload.aborted', 'upload.done'])
+      assertEvent(event, ['upload.aborted', 'upload.done', 'upload.failed'])
       const mediaFile = mediafile.parse(event.mediaFile)
       enqueue.stopChild(mediaFile.id)
 
@@ -446,6 +464,16 @@ const uploadMachine = setup({
               actions: [
                 'removeFromActiveQueue',
                 'markAsAborted',
+                'removeFromUploads',
+                'uploadPendingFiles',
+              ],
+            },
+            // Mark it failed before offering slots: `uploadPendingFiles` starts
+            // every `pending` file, and this one was still `pending` here.
+            'upload.failed': {
+              actions: [
+                'markAsFailed',
+                'removeFromActiveQueue',
                 'removeFromUploads',
                 'uploadPendingFiles',
               ],

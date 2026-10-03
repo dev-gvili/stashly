@@ -172,6 +172,10 @@ export const status = z.enum([
   // file that does not exist, and `upload-thumbnail-runner` treated it as
   // eligible and fired the thumbnail pipeline at a missing `Item`.
   'itemFailed',
+  // The upload itself never finished: the quota check, creating the multipart
+  // upload or completing it was refused (e.g. folder access revoked). No bytes
+  // stay in S3. Not `itemFailed`, which means the bytes are there.
+  'failed',
 ])
 
 const storagePlanType = z.enum([
@@ -355,6 +359,14 @@ let uploadAborted = z.object({
   type: z.literal(`${UPLOAD}.aborted`),
   mediaFile: mediafile,
 })
+// Sent by a file machine that reached `error`, so the manager frees its slot.
+// Without it the file stayed in `queues.active` for good, and once
+// `maxConcurrentUploads` files had failed no other file could start.
+let uploadFailed = z.object({
+  type: z.literal(`${UPLOAD}.failed`),
+  mediaFile: mediafile,
+  error: z.string(),
+})
 let uploadStarted = z.object({
   type: z.literal(`${UPLOAD}.started`),
   mediaFileId: z.string(),
@@ -440,6 +452,7 @@ export let uploadManagerEvents = z.discriminatedUnion('type', [
   uploadOpen,
   uploadSpawn,
   uploadAborted,
+  uploadFailed,
   uploadActive,
   uploadProgressChange,
   uploadStart,

@@ -9,7 +9,7 @@ This folder also holds several abandoned prototypes. Before editing anything her
 - `upload/upload.machine.ts`
   - Manager for overall upload lifecycle. Spawns per-file actors and controls concurrency (`maxConcurrentUploads`).
   - Maintains a `mediaFiles` map and a `queues` structure; handles `upload.config`, `upload.add`, `upload.spawn`, `upload.start`, `upload.abort`, `upload.pause`/`resume`, `upload.done`, `upload.dismiss`, etc.
-  - On `upload.done` it spawns a `db/db.machine.ts` per file and sends it `@db.item.create`; on `upload.createItem.success` it flips the file's status to `itemCreated`, and on `upload.createItem.error` to `itemFailed`.
+  - On `upload.done` it spawns a `db/db.machine.ts` per file and sends it `@db.item.create`; on `upload.createItem.success` it flips the file's status to `itemCreated`, and on `upload.createItem.error` to `itemFailed`. A file machine that ends in `error` before its bytes are stored sends `upload.failed`, which marks the file `failed` and frees its slot.
   - Instantiated once in `app/hooks/useUpload.ts` (`createActor(uploadMachine, { id: 'uploadManager' })`).
 
 - `db/db.machine.ts` + `db/db.actors.ts` + `db/db.utils.ts`

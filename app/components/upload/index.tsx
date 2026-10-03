@@ -64,7 +64,7 @@ const Styles = {
   CountDown:
     'text-start font-stashly text-xs group-data-[state=aborted]:hidden text-nowrap',
   StatusText: (status: Status) =>
-    `text-start font-stashly text-xs group-data-[state=aborted]:block! group-data-[state=uploading]:hidden! text-nowrap capitalize group-data-[state=itemFailed]:block! group-data-[state=itemFailed]:text-destructive group-data-[state=itemFailed]:font-bold`,
+    `text-start font-stashly text-xs group-data-[state=aborted]:block! group-data-[state=uploading]:hidden! text-nowrap capitalize group-data-[state=itemFailed]:block! group-data-[state=failed]:block!`,
   Description:
     'font-stashly text-xs text-muted-foreground group-data-[state=aborted]:opacity-20',
   Cancel:
@@ -79,13 +79,17 @@ const Styles = {
  * Status values whose raw name would read badly in the panel. Anything absent
  * falls through to the status itself, which `capitalize` already handles.
  *
- * `itemFailed` in particular must not render as "ItemFailed" — it is the one
- * status the user is expected to act on, since the bytes are in S3 but the
- * item row is not in the database.
+ * `itemFailed` must not render as "ItemFailed": to the user it is a failure like
+ * `failed`, even though the bytes reached S3 and only the row is missing. Both
+ * use the same colour as every other status; the reason is in the tooltip.
  */
 const STATUS_LABEL: Partial<Record<MediaFileStatus, string>> = {
   itemFailed: 'failed',
 }
+
+/** Statuses that ended in a failure whose reason is on `mediafile.error`. */
+const isFailure = (status: MediaFileStatus | undefined) =>
+  status === 'itemFailed' || status === 'failed'
 
 const formatCountdown = (value: any) => {
   let parsedProgress = uploadProgress.parse(value)
@@ -337,7 +341,7 @@ const Item = React.memo(
               {formatSize('byte', 'unit', mediafile.file.size)}
             </FileSize>
             <CountDown mediafileId={mediaFileId} />
-            {mediafile.status === 'itemFailed' && mediafile.error ? (
+            {isFailure(mediafile.status) && mediafile.error ? (
               // The reason is the only thing that tells the user whether to
               // retry or sign in again, so it must be reachable — the machine
               // records it on `error` and nothing used to read it.
@@ -345,10 +349,10 @@ const Item = React.memo(
                 <TooltipRoot>
                   <TooltipTrigger asChild>
                     <StatusText
-                      status={mediafile.status}
+                      status={mediafile.status!}
                       mediaFileId={mediaFileId}
                     >
-                      {STATUS_LABEL.itemFailed}
+                      {STATUS_LABEL[mediafile.status!] ?? mediafile.status}
                     </StatusText>
                   </TooltipTrigger>
                   <TooltipContent>{mediafile.error}</TooltipContent>
@@ -390,9 +394,10 @@ const Item = React.memo(
             mediafileId={mediaFileId}
             className="relative hover:[&_[data-slot='double-check']]:hidden"
           >
+            {/* A failure must not show the "uploaded" double check. */}
             <DoubleCheckIcon
               data-slot="double-check"
-              className="size-14 group-data-[state=done]:block group-data-[state=uploading]:hidden group-data-[state=aborted]:hidden group-data-[state=paused]:hidden"
+              className="size-14 group-data-[state=done]:block group-data-[state=uploading]:hidden group-data-[state=aborted]:hidden group-data-[state=paused]:hidden group-data-[state=itemFailed]:hidden group-data-[state=failed]:hidden"
             />
             <Dismiss mediaFileId={mediaFileId} />
           </Progress>
@@ -573,11 +578,9 @@ const Cancel = React.forwardRef<
           <Button
             variant="outline"
             size="icon-sm"
-            hidden={status === 'done' || status === 'itemFailed'}
+            hidden={status === 'done' || isFailure(status)}
             disabled={
-              status === 'aborted' ||
-              status === 'done' ||
-              status === 'itemFailed'
+              status === 'aborted' || status === 'done' || isFailure(status)
             }
             ref={forwardRef}
             onClick={callAll(() => cancel(mediaFileId), onClick)}
@@ -605,8 +608,8 @@ const Dismiss = React.forwardRef<
   const status = useUploadStatus(mediaFileId)
   const { dismiss } = useUpload()
 
-  // A failed creation is finished work the user needs to be able to clear.
-  if (status !== 'done' && status !== 'aborted' && status !== 'itemFailed')
+  // A failure is finished work the user needs to be able to clear.
+  if (status !== 'done' && status !== 'aborted' && !isFailure(status))
     return null
 
   return (
