@@ -4,6 +4,7 @@ import {
   createFolder,
   createUploadedItem,
   deleteItem,
+  discardUploadedObject,
   deleteItems,
   getChildFolders,
   moveItem,
@@ -279,6 +280,12 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
     }
     case 'create_upload_item': {
+      // Every S3 call of an upload uses the session user's bucket
+      // (`/api/s3/upload`), so that is where the bytes are. The form's `bucket`
+      // is only the client's claim of it.
+      if (!user.bucket) {
+        return { success: false, error: 'Your account has no storage bucket' }
+      }
       try {
         const item = await createUploadedItem({
           id: parsedData.id,
@@ -288,10 +295,12 @@ export async function action({ request, params }: Route.ActionArgs) {
           mimeType: parsedData.mimeType,
           etag: parsedData.etag,
           hash: parsedData.hash,
-          bucket: parsedData.bucket,
+          bucket: user.bucket,
           driveId: parsedData.driveId,
           parentId: parsedData.parentId,
-          ownerId: parsedData.ownerId,
+          // The session's user, never the form's `ownerId`: the form is the
+          // client's word, and `createUploadedItem` checks access as this user.
+          ownerId: user.id,
           category: parsedData.category,
           uploadId: parsedData.uploadId,
         })
@@ -312,7 +321,11 @@ export async function action({ request, params }: Route.ActionArgs) {
 
         return data({ success: true, item: serializable })
       } catch (e) {
-        const err = e as { message?: string }
+        // Nothing retries a refused row, so its bytes would stay in S3 for
+        // good. `toErrorInfo`, not `.message`: an access refusal is a
+        // `DataWithResponseInit` whose text lives on `data`.
+        const err = toErrorInfo(e)
+        await discardUploadedObject(user.id, parsedData.key)
         return { success: false, error: err.message }
       }
     }

@@ -1297,7 +1297,7 @@ async function findOrCreateFolderPath(
 ): Promise<{ parentId: string; createdFolderIds: string[] }> {
   let currentParentId = rootId
   const createdFolderIds: string[] = []
-  for (const folderName of pathParts) {
+  for (const [depth, folderName] of pathParts.entries()) {
     // Guard against the check-then-create race: when many files under one
     // directory upload at once, each runs in its own transaction, so their
     // `findFirst`s all miss and each creates a duplicate folder (same name,
@@ -1314,7 +1314,13 @@ async function findOrCreateFolderPath(
     // A trashed folder doesn't count. It used to match, so a re-upload was
     // filed into the trash: invisible where the user put it, visible only in
     // Trash.
-    const existing = await tx.item.findFirst({
+    //
+    // Two live folders with this name is a refusal, never a pick: `findFirst`
+    // has no order, so the file landed in whichever copy Postgres returned
+    // first (two "john" folders, one patient's results filed under the other).
+    // Uploading from inside the intended folder is always unambiguous, which
+    // is what the message tells the user to do.
+    const matches = await tx.item.findMany({
       where: {
         name: folderName,
         parentId: currentParentId,
@@ -1323,7 +1329,16 @@ async function findOrCreateFolderPath(
         ownerId,
       },
       select: { id: true },
+      take: 2,
     })
+    if (matches.length > 1) {
+      const at = pathParts.slice(0, depth + 1).join('/')
+      throw new StashlyError(
+        StashlyErrorCode.CONFLICT,
+        `More than one folder is named "${folderName}" at "${at}", so this file was not filed. Open the folder you mean and upload there.`
+      )
+    }
+    const existing = matches[0]
     if (existing) {
       currentParentId = existing.id
     } else {
@@ -1577,7 +1592,14 @@ export async function upsertMarkdownFacet(
  * activity for the item and any created folders. Quota is not charged here —
  * `dbMachine` charges it once this returns a row.
  *
+ * `ownerId` is the signed-in uploader (the route passes the session user, never
+ * the form's value), and they need `write` access to the folder the key starts
+ * at. Without that check any signed-in user could file items into anyone's
+ * folder by naming it in the key.
+ *
  * @param data - Upload result payload: item ID/name, S3 `key`/`bucket`/`etag`, `size`, `mimeType`, owner/drive/parent IDs, the `uploadId`, and an optional `category`.
+ * @throws `FORBIDDEN` (403) without write access to the key's root folder.
+ * @throws `CONFLICT` (409) when two live folders share a name on the key's path.
  *
  * @example
  * // Create the item record after a completed S3 upload
@@ -1616,6 +1638,7 @@ export async function createUploadedItem(data: {
   const rootId = segments[0]
   const pathParts = segments.slice(1, -1)
   let resolvedParentId = rootId
+  await assertItemsAccess(data.ownerId, [rootId], 'write')
   // Resolve folders in their own transaction so its advisory locks release on
   // commit here, not after the file insert. Every file of a directory upload
   // takes the same top-level folder lock, so holding it through the file
@@ -1685,6 +1708,80 @@ export async function createUploadedItem(data: {
   ])
 
   return result
+}
+
+/** `User.bucket`'s schema default (`prisma/models/user.prisma`): not a real bucket. */
+const PLACEHOLDER_BUCKET = 'default-bucket'
+
+/** What `discardUploadedObject` did with the object it was asked to remove. */
+export type DiscardVerdict = 'deleted' | 'referenced' | 'no-bucket' | 'failed'
+
+/**
+ * Deletes the bytes of an upload whose item row could not be created.
+ *
+ * The bytes reach S3 before the row exists, and nothing retries the row, so a
+ * refused upload's object would otherwise sit in the bucket, unbilled and
+ * unseen, until someone ran the orphan sweep by hand. The key comes from the
+ * request, so the delete is guarded twice:
+ *
+ * - it only ever looks in the **user's own bucket**, read from their row, never
+ *   from the request. Every S3 call of an upload (`/api/s3/upload`) uses that
+ *   bucket, so this is where the bytes are, and no request can reach someone
+ *   else's objects;
+ * - no `File` row may point at the object, the same test the sweep uses to
+ *   call an object an orphan (`classifyObject` in `@/utils/s3-orphans`).
+ *
+ * It deliberately does **not** require access to the destination folder: a
+ * revoke mid-upload is exactly when a row is refused, and checking the folder
+ * kept those bytes for good.
+ *
+ * Never throws: it runs while a refusal is already being answered, and the
+ * original error is the one the user needs to see. A failed delete is logged
+ * loudly, and the orphan sweep is the backstop for it.
+ *
+ * @param userId - The signed-in uploader.
+ * @param key - The object key, `<rootFolderId>/<path>/<name>`.
+ * @returns What happened: `deleted`, `referenced` (kept, a row uses it),
+ *   `no-bucket` (kept, the user has no bucket) or `failed` (nothing deleted:
+ *   S3 or the database refused).
+ *
+ * @example
+ * // In the route, after `createUploadedItem` threw
+ * await discardUploadedObject(user.id, key) // → 'deleted'
+ */
+export async function discardUploadedObject(
+  userId: string,
+  key: string
+): Promise<DiscardVerdict> {
+  let bucket: string | null | undefined
+  let references: number
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { bucket: true },
+    })
+    bucket = user?.bucket
+    // `default-bucket` is the column's schema default, a placeholder shared by
+    // every user onboarding never gave a real bucket. It proves nothing about
+    // whose object this is, so it counts as no bucket.
+    if (!bucket || bucket === PLACEHOLDER_BUCKET) return 'no-bucket'
+    references = await prisma.file.count({ where: { bucket, key } })
+  } catch (e) {
+    console.error(`[upload] could not check whether ${key} is referenced; kept it:`, e)
+    return 'failed'
+  }
+  if (references > 0) return 'referenced'
+
+  // `deleteObjects` never throws: failures come back in `failed`.
+  const { failed } = await deleteObjects(bucket, [key])
+  if (failed.length > 0) {
+    console.error(
+      `[upload] the bytes of a refused upload were left behind in ${bucket}; the orphan sweep will remove them:`,
+      failed
+    )
+    return 'failed'
+  }
+  return 'deleted'
 }
 
 export async function getFolder(
