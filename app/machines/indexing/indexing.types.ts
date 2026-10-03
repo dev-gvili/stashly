@@ -10,7 +10,7 @@
  * See `app/machines/indexing/README.md`.
  */
 import type { AnyActorRef } from 'xstate'
-import type { MediaMetadata } from '@/utils/thumbnail-pipeline'
+import type { MediaMetadata } from '@/utils/media-metadata'
 
 /** A passage the server stored for a file, waiting for its vector. */
 export interface SearchChunkDraft {

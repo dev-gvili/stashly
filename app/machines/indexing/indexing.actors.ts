@@ -19,7 +19,7 @@ import {
   extractMediaMetadata,
   buildMediaMetadataFormData,
   type MediaMetadata,
-} from '@/utils/thumbnail-pipeline'
+} from '@/utils/media-metadata'
 import type { SearchChunkDraft } from './indexing.types'
 
 /**

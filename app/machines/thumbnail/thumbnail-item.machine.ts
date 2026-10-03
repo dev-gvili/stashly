@@ -9,9 +9,11 @@
  * slot and a download job can no longer skip a file's indexing.
  *
  * One machine covers both kinds of job. A `fromDownload` job enters at
- * `acquiring` (it has to download the original), then joins the identical
- * stage path with stage 3 skipped. A `fromMemory` job starts at stage 1 with
- * the uploaded file.
+ * `downloadingOriginal`, then joins the identical path with stage 3 skipped.
+ * A `fromMemory` job starts at `paintingBlurPreview` with the uploaded file.
+ *
+ * Every state has a `description`, which is what the Stately editor shows;
+ * `__tests__/state-descriptions.test.ts` fails if one is missing.
  */
 import { setup, assign, emit, enqueueActions } from 'xstate'
 import {
@@ -23,7 +25,7 @@ import {
   putStageActor,
   patchThumbnailActor,
 } from './thumbnail.actors'
-import { stageViewUrl } from '@/utils/thumbnail-pipeline'
+import { stageViewUrl } from '@/utils/thumbnail-stages'
 import type {
   ThumbItemContext,
   ThumbItemInput,
@@ -127,7 +129,9 @@ export const thumbnailItemMachine = setup({
   },
 }).createMachine({
   id: 'thumbnail-item',
-  initial: 'stages',
+  description:
+    "Makes one card's thumbnail: a blur preview, a 512px resize uploaded and saved, then a salient crop for images whose file is in memory. Ends in exactly one final state, which the manager reads to decide whether to ask again.",
+  initial: 'choosingSource',
   context: ({ input }) => ({
     itemId: input.itemId,
     mode: input.mode,
@@ -147,294 +151,316 @@ export const thumbnailItemMachine = setup({
   }),
 
   states: {
-    // ── What the card paints ────────────────────────────────────────────
-    stages: {
-      initial: 'deciding',
-      states: {
-        deciding: {
-          always: [
-            { guard: 'needsDownload', target: 'acquiring' },
-            { target: 'stage1' },
-          ],
-        },
-
-        /**
-         * Download jobs only. The server may answer that another client already
-         * produced this thumbnail, in which case the correct amount of work to
-         * do is none — paint theirs and stop.
-         */
-        acquiring: {
-          invoke: {
-            src: 'acquireSource',
-            input: ({ context }) => ({ itemId: context.itemId }),
-            onDone: [
-              {
-                guard: ({ event }) => event.output.kind === 'existing',
-                target: 'existing',
-                actions: [
-                  assign({ thumbnailed: true }),
-                  emit(({ context, event }) => {
-                    const { url, stage } = event.output as {
-                      kind: 'existing'
-                      url: string
-                      stage: 2 | 3
-                    }
-                    return {
-                      type: 'progress' as const,
-                      itemId: context.itemId,
-                      // The stage the other client actually reached, reported
-                      // by the server. A signed URL carries no cache-buster to
-                      // read it off, and assuming 2 would under-report a crop.
-                      progress: { stage, src: url },
-                    }
-                  }),
-                ],
-              },
-              {
-                guard: ({ event }) => event.output.kind === 'file',
-                target: 'stage1',
-                actions: [
-                  assign({
-                    file: ({ event }) =>
-                      (event.output as { kind: 'file'; file: File }).file,
-                  }),
-                  'resetAttempts',
-                ],
-              },
-              // `unavailable` is the server declining — permission, size cap,
-              // unsupported type. None of those improve on a retry.
-              { target: 'unavailable' },
-            ],
-            onError: [
-              {
-                guard: 'canRetry',
-                target: 'retryAcquire',
-                actions: 'countAttempt',
-              },
-              { target: 'unavailable' },
-            ],
-          },
-        },
-        retryAcquire: { after: { [RETRY_DELAY_MS]: 'acquiring' } },
-
-        /**
-         * A failed blur is not a failed pipeline — it only costs a slightly
-         * later first paint, so both outcomes walk on to stage 2.
-         */
-        stage1: {
-          invoke: {
-            src: 'stage1',
-            input: ({ context }) => ({ file: context.file! }),
-            onDone: {
-              target: 'stage2',
-              // Inline rather than a named action: the object URL has to be
-              // created, stored *and* emitted from the same blob, and a named
-              // `assign` would have to run before the `emit` could read it back.
-              actions: enqueueActions(({ enqueue, context, event }) => {
-                // Null is normal — plenty of types have no tiny producer.
-                if (!event.output) return
-                const url = URL.createObjectURL(event.output)
-                enqueue.assign({ tinyBlob: event.output, stage1ObjectUrl: url })
-                enqueue.emit({
-                  type: 'progress',
-                  itemId: context.itemId,
-                  progress: { stage: 1, src: url },
-                })
-              }),
-            },
-            onError: { target: 'stage2' },
-          },
-        },
-
-        stage2: {
-          invoke: {
-            src: 'stage2',
-            input: ({ context }) => ({
-              file: context.file!,
-              videoFrame: context.tinyBlob,
-            }),
-            onDone: [
-              {
-                guard: ({ event }) => event.output !== null,
-                target: 'presigning',
-                actions: [
-                  assign({ resized: ({ event }) => event.output }),
-                  'resetAttempts',
-                ],
-              },
-              // Null is a legitimate answer: this type has no stage-2 producer.
-              // Retrying would only reproduce it.
-              { target: 'noThumbnail' },
-            ],
-            onError: [
-              {
-                guard: 'canRetry',
-                target: 'retryStage2',
-                actions: 'countAttempt',
-              },
-              { target: 'noThumbnail' },
-            ],
-          },
-        },
-        retryStage2: { after: { [RETRY_DELAY_MS]: 'stage2' } },
-
-        presigning: {
-          invoke: {
-            src: 'presign',
-            input: ({ context }) => ({ itemId: context.itemId }),
-            onDone: {
-              target: 'putting2',
-              actions: [
-                assign({ presign: ({ event }) => event.output }),
-                'resetAttempts',
-              ],
-            },
-            onError: [
-              {
-                guard: 'canRetry',
-                target: 'retryPresign',
-                actions: 'countAttempt',
-              },
-              { target: 'failed' },
-            ],
-          },
-        },
-        retryPresign: { after: { [RETRY_DELAY_MS]: 'presigning' } },
-
-        /**
-         * The card paints the moment these bytes are reachable — the DB PATCH
-         * that follows is bookkeeping, and making the user wait a round trip
-         * for it would delay every sharpen in the gallery.
-         */
-        putting2: {
-          invoke: {
-            src: 'putStage',
-            input: ({ context }) => ({
-              uploadUrl: context.presign!.uploadUrl,
-              blob: context.resized!.blob,
-              itemId: context.itemId,
-              stage: 2 as const,
-            }),
-            onDone: {
-              target: 'patching2',
-              actions: [
-                'emitStage2',
-                'revokeStage1',
-                'resetAttempts',
-                assign({ thumbnailed: true }),
-              ],
-            },
-            onError: [
-              {
-                guard: 'canRetry',
-                target: 'retryPut2',
-                actions: 'countAttempt',
-              },
-              { target: 'failed' },
-            ],
-          },
-        },
-        retryPut2: { after: { [RETRY_DELAY_MS]: 'putting2' } },
-
-        patching2: {
-          invoke: {
-            src: 'patchThumbnail',
-            input: ({ context }) => ({
-              itemId: context.itemId,
-              stage: 2 as const,
-              url: stageViewUrl(context.presign!.viewUrls, 2),
-              width: context.resized!.width,
-              height: context.resized!.height,
-            }),
-            onDone: [
-              {
-                guard: 'wantsStage3',
-                target: 'stage3',
-                actions: 'resetAttempts',
-              },
-              { target: 'complete' },
-            ],
-            onError: [
-              {
-                guard: 'canRetry',
-                target: 'retryPatch2',
-                actions: 'countAttempt',
-              },
-              // The bytes are on S3 and the card is painting them; only the row
-              // is stale. Losing stage 3 on top of that helps nobody.
-              { guard: 'wantsStage3', target: 'stage3' },
-              { target: 'complete' },
-            ],
-          },
-        },
-        retryPatch2: { after: { [RETRY_DELAY_MS]: 'patching2' } },
-
-        /**
-         * Everything from here is an improvement on an item that already has a
-         * good thumbnail, so every failure path targets `complete` rather than
-         * `failed` — stage 3 is never worth reporting as a broken item.
-         */
-        stage3: {
-          invoke: {
-            src: 'stage3',
-            input: ({ context }) => ({ file: context.file! }),
-            onDone: [
-              {
-                guard: ({ event }) => event.output !== null,
-                target: 'putting3',
-                actions: assign({ salient: ({ event }) => event.output }),
-              },
-              { target: 'complete' },
-            ],
-            onError: { target: 'complete' },
-          },
-        },
-
-        putting3: {
-          invoke: {
-            src: 'putStage',
-            input: ({ context }) => ({
-              uploadUrl: context.presign!.uploadUrl,
-              blob: context.salient!,
-              itemId: context.itemId,
-              stage: 3 as const,
-            }),
-            onDone: { target: 'patching3', actions: 'emitStage3' },
-            onError: { target: 'complete' },
-          },
-        },
-
-        patching3: {
-          invoke: {
-            src: 'patchThumbnail',
-            input: ({ context }) => ({
-              itemId: context.itemId,
-              stage: 3 as const,
-              url: stageViewUrl(context.presign!.viewUrls, 3),
-              width: SALIENT_SIZE,
-              height: SALIENT_SIZE,
-            }),
-            onDone: { target: 'complete' },
-            onError: { target: 'complete' },
-          },
-        },
-
-        complete: { type: 'final', entry: 'revokeStage1' },
-        /** No producer for this type — tells the manager to stop asking. */
-        noThumbnail: { type: 'final', entry: 'revokeStage1' },
-        /** Another client got there first. */
-        existing: { type: 'final' },
-        /** Server declined the source. Never retried. */
-        unavailable: { type: 'final' },
-        failed: { type: 'final', entry: ['emitFailed', 'revokeStage1'] },
-      },
-      // Any of the endings above ends the whole machine. `stages` stays a
-      // nested state for now so this change doesn't rename every state;
-      // the planned rewrite of this machine flattens it.
-      onDone: { target: 'done' },
+    choosingSource: {
+      description:
+        'Picks where the bytes come from. A `fromDownload` job has no file in memory and downloads the original first; a `fromMemory` job goes straight to the blur preview with the uploaded file.',
+      always: [
+        { guard: 'needsDownload', target: 'downloadingOriginal' },
+        { target: 'paintingBlurPreview' },
+      ],
     },
 
-    done: { type: 'final' },
+    downloadingOriginal: {
+      description:
+        "Asks the server for the original (`intent=source`) and downloads it. The server may answer that another client already made this thumbnail, which ends the job with theirs painted. A refusal (permission, size cap, unsupported type) is final; a network error retries.",
+      invoke: {
+        src: 'acquireSource',
+        input: ({ context }) => ({ itemId: context.itemId }),
+        onDone: [
+          {
+            guard: ({ event }) => event.output.kind === 'existing',
+            target: 'alreadyThumbnailed',
+            actions: [
+              assign({ thumbnailed: true }),
+              emit(({ context, event }) => {
+                const { url, stage } = event.output as {
+                  kind: 'existing'
+                  url: string
+                  stage: 2 | 3
+                }
+                return {
+                  type: 'progress' as const,
+                  itemId: context.itemId,
+                  // The stage the other client actually reached, reported by
+                  // the server. A signed URL carries no cache-buster to read it
+                  // off, and assuming 2 would under-report a crop.
+                  progress: { stage, src: url },
+                }
+              }),
+            ],
+          },
+          {
+            guard: ({ event }) => event.output.kind === 'file',
+            target: 'paintingBlurPreview',
+            actions: [
+              assign({
+                file: ({ event }) =>
+                  (event.output as { kind: 'file'; file: File }).file,
+              }),
+              'resetAttempts',
+            ],
+          },
+          // `unavailable` is the server declining — permission, size cap,
+          // unsupported type. None of those improve on a retry.
+          { target: 'sourceUnavailable' },
+        ],
+        onError: [
+          {
+            guard: 'canRetry',
+            target: 'waitingToRetryDownload',
+            actions: 'countAttempt',
+          },
+          { target: 'sourceUnavailable' },
+        ],
+      },
+    },
+    waitingToRetryDownload: {
+      description: `Pauses ${RETRY_DELAY_MS} ms after a failed download, then tries again (at most ${MAX_ATTEMPTS} retries).`,
+      after: { [RETRY_DELAY_MS]: 'downloadingOriginal' },
+    },
+
+    paintingBlurPreview: {
+      description:
+        'Makes a tiny blurred preview (stage 1) in the compute worker and paints it at once, from an object URL, while the real thumbnail is made. Types with no preview producer skip it, and a failure only delays the first paint, so every outcome moves on to the resize.',
+      invoke: {
+        src: 'stage1',
+        input: ({ context }) => ({ file: context.file! }),
+        onDone: {
+          target: 'resizingThumbnail',
+          // Inline rather than a named action: the object URL has to be
+          // created, stored *and* emitted from the same blob, and a named
+          // `assign` would have to run before the `emit` could read it back.
+          actions: enqueueActions(({ enqueue, context, event }) => {
+            // Null is normal — plenty of types have no tiny producer.
+            if (!event.output) return
+            const url = URL.createObjectURL(event.output)
+            enqueue.assign({ tinyBlob: event.output, stage1ObjectUrl: url })
+            enqueue.emit({
+              type: 'progress',
+              itemId: context.itemId,
+              progress: { stage: 1, src: url },
+            })
+          }),
+        },
+        onError: { target: 'resizingThumbnail' },
+      },
+    },
+
+    resizingThumbnail: {
+      description:
+        "Renders the 512px thumbnail (stage 2) in the compute worker: images and PDFs from the file, videos from the preview frame, text by rendering it. A type with no producer ends in `noThumbnailForType`; a failure retries, then ends there too.",
+      invoke: {
+        src: 'stage2',
+        input: ({ context }) => ({
+          file: context.file!,
+          videoFrame: context.tinyBlob,
+        }),
+        onDone: [
+          {
+            guard: ({ event }) => event.output !== null,
+            target: 'requestingUploadUrl',
+            actions: [
+              assign({ resized: ({ event }) => event.output }),
+              'resetAttempts',
+            ],
+          },
+          // Null is a legitimate answer: this type has no stage-2 producer.
+          // Retrying would only reproduce it.
+          { target: 'noThumbnailForType' },
+        ],
+        onError: [
+          {
+            guard: 'canRetry',
+            target: 'waitingToRetryResize',
+            actions: 'countAttempt',
+          },
+          { target: 'noThumbnailForType' },
+        ],
+      },
+    },
+    waitingToRetryResize: {
+      description: `Pauses ${RETRY_DELAY_MS} ms after a failed resize, then tries again.`,
+      after: { [RETRY_DELAY_MS]: 'resizingThumbnail' },
+    },
+
+    requestingUploadUrl: {
+      description:
+        'Asks `/api/thumbnails` (`intent=presign`) for a short-lived PUT URL for `thumbnails/{itemId}.webp`, plus a signed GET per stage for the card to paint. Retries, then fails the job.',
+      invoke: {
+        src: 'presign',
+        input: ({ context }) => ({ itemId: context.itemId }),
+        onDone: {
+          target: 'uploadingResizedThumbnail',
+          actions: [
+            assign({ presign: ({ event }) => event.output }),
+            'resetAttempts',
+          ],
+        },
+        onError: [
+          {
+            guard: 'canRetry',
+            target: 'waitingToRetryUploadUrl',
+            actions: 'countAttempt',
+          },
+          { target: 'failed' },
+        ],
+      },
+    },
+    waitingToRetryUploadUrl: {
+      description: `Pauses ${RETRY_DELAY_MS} ms after a failed presign request, then tries again.`,
+      after: { [RETRY_DELAY_MS]: 'requestingUploadUrl' },
+    },
+
+    uploadingResizedThumbnail: {
+      description:
+        'PUTs the stage-2 webp to S3. The card paints it the moment this succeeds; the database record that follows is bookkeeping, and waiting a round trip for it would delay every sharpen in the gallery. Retries, then fails the job.',
+      invoke: {
+        src: 'putStage',
+        input: ({ context }) => ({
+          uploadUrl: context.presign!.uploadUrl,
+          blob: context.resized!.blob,
+          itemId: context.itemId,
+          stage: 2 as const,
+        }),
+        onDone: {
+          target: 'savingResizedThumbnail',
+          actions: [
+            'emitStage2',
+            'revokeStage1',
+            'resetAttempts',
+            assign({ thumbnailed: true }),
+          ],
+        },
+        onError: [
+          {
+            guard: 'canRetry',
+            target: 'waitingToRetryResizedUpload',
+            actions: 'countAttempt',
+          },
+          { target: 'failed' },
+        ],
+      },
+    },
+    waitingToRetryResizedUpload: {
+      description: `Pauses ${RETRY_DELAY_MS} ms after a failed S3 PUT, then tries again.`,
+      after: { [RETRY_DELAY_MS]: 'uploadingResizedThumbnail' },
+    },
+
+    savingResizedThumbnail: {
+      description:
+        "PATCHes the Thumbnail row with stage 2 and its size. Then crops the salient region if this job wants stage 3, or finishes. A failed save still goes on: the bytes are in S3 and painting, only the row is stale.",
+      invoke: {
+        src: 'patchThumbnail',
+        input: ({ context }) => ({
+          itemId: context.itemId,
+          stage: 2 as const,
+          url: stageViewUrl(context.presign!.viewUrls, 2),
+          width: context.resized!.width,
+          height: context.resized!.height,
+        }),
+        onDone: [
+          {
+            guard: 'wantsStage3',
+            target: 'croppingSalientRegion',
+            actions: 'resetAttempts',
+          },
+          { target: 'thumbnailed' },
+        ],
+        onError: [
+          {
+            guard: 'canRetry',
+            target: 'waitingToRetryResizedSave',
+            actions: 'countAttempt',
+          },
+          // The bytes are on S3 and the card is painting them; only the row
+          // is stale. Losing stage 3 on top of that helps nobody.
+          { guard: 'wantsStage3', target: 'croppingSalientRegion' },
+          { target: 'thumbnailed' },
+        ],
+      },
+    },
+    waitingToRetryResizedSave: {
+      description: `Pauses ${RETRY_DELAY_MS} ms after a failed stage-2 PATCH, then tries again.`,
+      after: { [RETRY_DELAY_MS]: 'savingResizedThumbnail' },
+    },
+
+    croppingSalientRegion: {
+      description:
+        'Stage 3, images held in memory only: finds the salient region with a WebGPU model (through the shared AI queue) and crops a 512px square. An improvement on a thumbnail the item already has, so every failure from here ends in `thumbnailed`, never `failed`.',
+      invoke: {
+        src: 'stage3',
+        input: ({ context }) => ({ file: context.file! }),
+        onDone: [
+          {
+            guard: ({ event }) => event.output !== null,
+            target: 'uploadingSalientCrop',
+            actions: assign({ salient: ({ event }) => event.output }),
+          },
+          { target: 'thumbnailed' },
+        ],
+        onError: { target: 'thumbnailed' },
+      },
+    },
+
+    uploadingSalientCrop: {
+      description:
+        'PUTs the stage-3 crop to S3 over the stage-2 object, with the same presigned URL, and paints it. A failure keeps the stage-2 thumbnail.',
+      invoke: {
+        src: 'putStage',
+        input: ({ context }) => ({
+          uploadUrl: context.presign!.uploadUrl,
+          blob: context.salient!,
+          itemId: context.itemId,
+          stage: 3 as const,
+        }),
+        onDone: { target: 'savingSalientCrop', actions: 'emitStage3' },
+        onError: { target: 'thumbnailed' },
+      },
+    },
+
+    savingSalientCrop: {
+      description:
+        'PATCHes the Thumbnail row with stage 3. Either outcome finishes the job: the crop is already painting.',
+      invoke: {
+        src: 'patchThumbnail',
+        input: ({ context }) => ({
+          itemId: context.itemId,
+          stage: 3 as const,
+          url: stageViewUrl(context.presign!.viewUrls, 3),
+          width: SALIENT_SIZE,
+          height: SALIENT_SIZE,
+        }),
+        onDone: { target: 'thumbnailed' },
+        onError: { target: 'thumbnailed' },
+      },
+    },
+
+    thumbnailed: {
+      type: 'final',
+      entry: 'revokeStage1',
+      description: 'The card has a stored thumbnail (stage 2, and stage 3 when it was wanted and worked).',
+    },
+    noThumbnailForType: {
+      type: 'final',
+      entry: 'revokeStage1',
+      description:
+        "This file's type has no thumbnail producer, or rendering it kept failing. Tells the manager to stop asking for this item.",
+    },
+    alreadyThumbnailed: {
+      type: 'final',
+      description: 'Another client made this thumbnail first; theirs is painted and no work was done.',
+    },
+    sourceUnavailable: {
+      type: 'final',
+      description:
+        'The server declined to hand over the original (permission, size cap, unsupported type) or the download kept failing. Never retried in this tab.',
+    },
+    failed: {
+      type: 'final',
+      entry: ['emitFailed', 'revokeStage1'],
+      description:
+        'Getting an upload URL or storing the stage-2 thumbnail kept failing. Reports the reason; the card keeps its placeholder.',
+    },
   },
 })
 

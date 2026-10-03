@@ -2,7 +2,7 @@
  * Actors for the thumbnail item machine.
  *
  * Every one of these is a thin wrapper around a helper that already exists in
- * `@/utils/thumbnail-pipeline` or `@/utils/thumbnail-backfill`. No compute
+ * `@/utils/thumbnail-stages` or `@/utils/thumbnail-backfill`. No compute
  * logic lives here — this file is the seam between "what the pipeline does"
  * (unchanged, pure, unit-tested) and "when it does it" (the machine).
  *
@@ -27,7 +27,7 @@ import {
   generateStage3Salient,
   putThumbnailToS3,
   type ResizedThumbnail,
-} from '@/utils/thumbnail-pipeline'
+} from '@/utils/thumbnail-stages'
 
 // ── Source acquisition (backfill only) ─────────────────────────────────────
 

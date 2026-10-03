@@ -18,13 +18,15 @@ Client-side 3-stage progressive generation. All output is **WebP**. Read `app/ma
 
 Both lanes take the newest request first. Retry is 800 ms with a budget of 2; leaving the screen drops a *queued* job only. It calls plain `fetch`, not `useFetcher`, so it does **not** revalidate the route — the card repaints from the manager's progress map (`useLiveThumbnail`).
 
+**Each job is one `thumbnail-item.machine.ts` actor**, a flat machine whose states say what happens (`downloadingOriginal`, `paintingBlurPreview`, `resizingThumbnail`, `uploadingResizedThumbnail`, `croppingSalientRegion`, … ending in `thumbnailed`, `noThumbnailForType`, `alreadyThumbnailed`, `sourceUnavailable` or `failed`). Every state carries a `description`, enforced by `__tests__/state-descriptions.test.ts` for both thumbnail machines; the chart is in the README.
+
 **Upload hand-off**: `upload-thumbnail-runner.tsx` watches for `status === 'itemCreated'` (not `'done'`) and calls `holdUploadedFile(id, file)` plus `enqueueIndexing(id, file)`. It starts no thumbnail work. A card already on screen re-checks when its file arrives (`useSyncExternalStore` on `held-files.ts`), and a queued download job for it switches to memory (`fileHeld` event).
 
 **"Already tried" is per kind of job** (`attempt-store.ts`): a failed memory job releases its file and leaves one download attempt open; only download failures reach the `sessionStorage` skip list. **A thumbnail painted in this tab counts as done**: the loader's `thumbnails` stay empty until a reload, so `requestThumbnail` and the hook both check the progress map.
 
 **Search indexing is not part of this pipeline.** Metadata, chunk embeddings and OCR run in `app/machines/indexing/` (FIFO, 2 at a time), queued for every upload regardless of visibility. `useIndexingRevalidation()` reloads the page once per batch after that queue drains — with `revalidate()`, never `navigate(<current URL>)`, which would cancel a navigation in progress.
 
-**Compute logic lives in `@/utils/thumbnail-pipeline` and nowhere else** — the machine's actors are `fromPromise` wrappers around it (`generateStage1Preview`, `generateStage2Resize`, `generateStage3Salient`, `putThumbnailToS3`, `stageViewUrl`).
+**Compute logic lives in `@/utils/thumbnail-stages/` and nowhere else** — one producer per file type (`image.ts`, `pdf.ts`, `video.ts`, `text.ts`, each `{ matches, preview, resize, salientCrop? }`), picked by `producerFor(file)` in match order (text last). The machine's actors are `fromPromise` wrappers around `generateStage1Preview`, `generateStage2Resize`, `generateStage3Salient`, `putThumbnailToS3` and `stageViewUrl` from its index. **A new type is one producer file plus one line in `PRODUCERS`** — don't add a type check to a stage function. The compute-worker RPC is `compute()` in `@/utils/compute-worker` (shared with OCR and metadata); EXIF/ID3/document metadata is `@/utils/media-metadata`, used only by indexing. `thumbnail-pipeline.ts` is gone.
 
 **Stage 0 (hex color) was removed** — every consumer already filters `url.startsWith('#')`. The pipeline starts at stage 1.
 
@@ -51,7 +53,7 @@ PDFs and text-based files stop after stage 2. The PDF.js worker URL is set globa
 
 ## Compute worker
 
-Heavy thumbnail compute runs in a singleton dedicated worker at `app/workers/thumbnail.compute.worker.ts` with an internal concurrency cap of **1** and a 30-second per-op timeout. RPC kinds: `tinyImage` / `tinyPdf` / `tinyText`, `resizeImage` / `resizePdf` / `resizeText`, `pdfText`, `pdfMeta`, `mdMeta`, `imageDimensions`. The pipeline helpers in `@/utils/thumbnail-pipeline` dispatch RPC requests via `compute({ kind, file })`; The orchestration layer handles HTTP on main. Video thumbnails stay on main because they require `<video>` DOM access. Stage 3 (image AI) also stays on main — it calls into `app/workers/thumbnail.ai.ts`, which is a regular module using WebGPU (not a Worker — the file location is historical).
+Heavy thumbnail compute runs in a singleton dedicated worker at `app/workers/thumbnail.compute.worker.ts` with an internal concurrency cap of **1** and a 30-second per-op timeout. RPC kinds: `tinyImage` / `tinyPdf` / `tinyText`, `resizeImage` / `resizePdf` / `resizeText`, `pdfText`, `pdfMeta`, `mdMeta`, `imageDimensions`. The producers in `@/utils/thumbnail-stages` and `@/utils/media-metadata` dispatch RPC requests via `compute({ kind, file })` from `@/utils/compute-worker`; The orchestration layer handles HTTP on main. Video thumbnails stay on main because they require `<video>` DOM access. Stage 3 (image AI) also stays on main — it calls into `app/workers/thumbnail.ai.ts`, which is a regular module using WebGPU (not a Worker — the file location is historical).
 
 The cap is 1 because PDF.js inside a dedicated worker falls back to **fake worker mode** (it can't spawn a sub-worker reliably from inside another worker). In fake-worker mode, multiple concurrent PDF operations terminate each other's tasks ("Worker task was terminated" warnings) — serializing is safer than the throughput win.
 

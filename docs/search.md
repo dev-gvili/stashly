@@ -125,7 +125,7 @@ pnpm prisma migrate dev
 
 ## 4. S3 Content Extraction
 
-> **Not built.** `app/.server/s3-extractors.ts`, `src/extractFromS3.ts`, and `src/s3PdfExtractor.ts` do not exist, and no server-side extraction of S3 objects happens anywhere. Text extraction is **client-side, pre-upload**: `extractMediaMetadata` in `app/utils/thumbnail-pipeline.ts` reads the local `File` and produces `documentText` for PDFs (via `app/workers/thumbnail.compute.worker.ts` → `app/utils/pdf.ts`) and Markdown (via `app/utils/markdown.ts`). There are no BLIP captions or Whisper transcripts in the search-indexing path. The rest of this section is unimplemented design.
+> **Not built.** `app/.server/s3-extractors.ts`, `src/extractFromS3.ts`, and `src/s3PdfExtractor.ts` do not exist, and no server-side extraction of S3 objects happens anywhere. Text extraction is **client-side, pre-upload**: `extractMediaMetadata` in `app/utils/media-metadata.ts` reads the local `File` and produces `documentText` for PDFs (via `app/workers/thumbnail.compute.worker.ts` → `app/utils/pdf.ts`) and Markdown (via `app/utils/markdown.ts`). There are no BLIP captions or Whisper transcripts in the search-indexing path. The rest of this section is unimplemented design.
 
 ### Dispatcher Pattern
 

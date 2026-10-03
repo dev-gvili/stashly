@@ -3,8 +3,8 @@
  *
  * Descriptions are what the Stately editor shows next to each state; without
  * them the chart says what a state is called but not what it does or why. This
- * keeps that from eroding as states are added. The thumbnail machines join this
- * list once they are rewritten with descriptions.
+ * keeps that from eroding as states are added. The thumbnail machines have
+ * their own copy of this check in `app/machines/thumbnail/__tests__/`.
  */
 import { describe, it, expect } from 'vitest'
 import { createMachine, type AnyStateMachine } from 'xstate'

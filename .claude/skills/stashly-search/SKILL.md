@@ -56,7 +56,7 @@ The vector-nearest chunk and the chunk containing the typed words are routinely 
 ## What has a body to index
 
 `Search.content` is only ever written from text something produced. Three
-producers, all in `extractMediaMetadata` (`app/utils/thumbnail-pipeline.ts`):
+producers, all in `extractMediaMetadata` (`app/utils/media-metadata.ts`):
 the PDF text layer, the markdown `mdMeta` worker, and — for every other text
 format (source, config, data, `.txt`) — a direct `File.text()` read gated on
 `isIndexableTextFile` from `app/utils/text-files.ts`, capped at

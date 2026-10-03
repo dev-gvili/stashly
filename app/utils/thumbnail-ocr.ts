@@ -1,7 +1,7 @@
 /**
  * PDF OCR — recovering text from a scan that has no text layer.
  *
- * Split out of `thumbnail-pipeline.ts` so it can actually be code-split. Both
+ * Split out of the former `thumbnail-pipeline.ts` so it can actually be code-split. Both
  * call sites already reached it through `await import()`, but while it lived in
  * the pipeline module that bought nothing: the same files import the pipeline
  * statically for the stage helpers, so rolldown reported
@@ -14,11 +14,11 @@
  * Keeping them behind `await import()` *inside* this module is what makes them
  * separate chunks again once this one is itself split.
  *
- * React-free, matching `thumbnail-pipeline.ts`: progress rides a DOM event so a
+ * React-free, like `@/utils/thumbnail-stages`: progress rides a DOM event so a
  * caller with no component tree can still report it.
  */
 import { classifyDegradation, reportDegraded } from '@/utils/report-degraded'
-import { compute } from '@/utils/thumbnail-pipeline'
+import { compute } from '@/utils/compute-worker'
 
 /**
  * Recover text from a PDF that has no text layer, by rendering its pages and

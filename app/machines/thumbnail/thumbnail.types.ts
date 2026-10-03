@@ -1,12 +1,12 @@
 /**
  * Types for the thumbnail pipeline: a manager machine that schedules jobs and
  * one item machine per job. Every actor wraps a helper in
- * `@/utils/thumbnail-pipeline`; no compute lives in this folder.
+ * `@/utils/thumbnail-stages`; no compute lives in this folder.
  *
  * See `app/machines/thumbnail/README.md` for the why.
  */
 import type { AnyActorRef } from 'xstate'
-import type { ResizedThumbnail } from '@/utils/thumbnail-pipeline'
+import type { ResizedThumbnail } from '@/utils/thumbnail-stages'
 
 /** What a card paints for an item while its job runs: the latest stage. */
 export interface ThumbProgress {
@@ -45,7 +45,7 @@ export interface ThumbJob {
 export interface ThumbItemContext {
   itemId: string
   mode: ThumbMode
-  /** For `fromDownload` jobs, null until `acquiring` has downloaded the original. */
+  /** For `fromDownload` jobs, null until `downloadingOriginal` has downloaded it. */
   file: File | null
   /** Stage-1 blob; also the frame stage 2 needs for video. */
   tinyBlob: Blob | null

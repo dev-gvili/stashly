@@ -1,23 +1,16 @@
 /**
- * Pure pipeline helpers for the progressive thumbnail flow.
+ * Media metadata read from a local `File` before it is indexed: EXIF and bit
+ * depth for images, dimensions for video, text and document info for PDFs and
+ * markdown, the body of other text files, and ID3 tags for audio.
  *
- * No React, no fetchers — just compute + raw `fetch` for S3 PUTs.
- * The orchestrator hook composes these with route-fetcher calls.
+ * Not thumbnail work: the indexing machine (`app/machines/indexing/`) is its
+ * only user. It moved here from `thumbnail-pipeline.ts`.
  */
-import { dataUrlToBlob } from '@/utils/thumbnail'
-import { classifyDegradation, reportDegraded } from '@/utils/report-degraded'
-import { generateVideoThumbnail, getVideoMetadata } from '@/utils/video'
+import { compute } from '@/utils/compute-worker'
+import { getVideoMetadata } from '@/utils/video'
 import { isMarkdownFile } from '@/utils/markdown'
-import {
-  MAX_INDEXED_TEXT_CHARS,
-  isIndexableTextFile,
-  isTextRenderableFile,
-} from '@/utils/text-files'
+import { MAX_INDEXED_TEXT_CHARS, isIndexableTextFile } from '@/utils/text-files'
 import exifr from 'exifr'
-import type {
-  ComputeRequest,
-  ComputeResponse,
-} from '@/workers/thumbnail.compute.worker'
 
 /**
  * Bytes read before decoding, sized so the char cap is reachable even for
@@ -27,218 +20,10 @@ import type {
  */
 const MAX_TEXT_READ_BYTES = MAX_INDEXED_TEXT_CHARS * 4
 
-// ── Compute worker singleton ─────────────────────────────────────────────
-
-let computeWorker: Worker | null = null
-let nextRequestId = 1
-const pending = new Map<number, (msg: ComputeResponse) => void>()
-
-function getComputeWorker(): Worker | null {
-  if (typeof window === 'undefined') return null
-  if (computeWorker) return computeWorker
-
-  try {
-    computeWorker = new Worker(
-      new URL('../workers/thumbnail.compute.worker.ts', import.meta.url),
-      { type: 'module' }
-    )
-  } catch (err) {
-    console.error('[thumbnail compute worker] failed to construct', err)
-    return null
-  }
-  computeWorker.onmessage = (e: MessageEvent<ComputeResponse>) => {
-    const handler = pending.get(e.data.id)
-    if (handler) {
-      pending.delete(e.data.id)
-      handler(e.data)
-    }
-  }
-  computeWorker.onerror = (e) => {
-    console.error(
-      '[thumbnail compute worker] error event',
-      e.message,
-      e.filename,
-      e.lineno
-    )
-  }
-  return computeWorker
-}
-
-const COMPUTE_TIMEOUT_MS = 60_000
-
 /**
- * Rasterizing a whole document at OCR resolution is minutes of work, well past
- * the budget sized for single-page thumbnail ops. Must stay >= the worker's
- * own `PDF_PAGES_TIMEOUT_MS`, or the caller gives up on a request the worker
- * is still faithfully processing.
+ * Everything `extractMediaMetadata` can read, flat, matching the
+ * `save_media_metadata` form fields one to one (except `needsOcr`).
  */
-const PDF_PAGES_TIMEOUT_MS = 200_000
-
-export function compute<TKind extends ComputeRequest['kind']>(
-  req: Omit<Extract<ComputeRequest, { kind: TKind }>, 'id'>
-): Promise<Extract<ComputeResponse, { kind: TKind | 'error' }>> {
-  return new Promise((resolve) => {
-    const worker = getComputeWorker()
-    if (!worker) {
-      resolve({ id: 0, kind: 'error', message: 'no worker available' } as never)
-      return
-    }
-    const id = nextRequestId++
-    const budget =
-      req.kind === 'pdfPages' ? PDF_PAGES_TIMEOUT_MS : COMPUTE_TIMEOUT_MS
-    const timer = setTimeout(() => {
-      if (pending.has(id)) {
-        pending.delete(id)
-        console.error(
-          `[thumbnail compute] timeout waiting for ${req.kind} (id=${id})`
-        )
-        resolve({ id, kind: 'error', message: `timeout: ${req.kind}` } as never)
-      }
-    }, budget)
-    pending.set(id, (msg) => {
-      clearTimeout(timer)
-      resolve(msg as never)
-    })
-    worker.postMessage({ ...req, id } as ComputeRequest)
-  })
-}
-
-// ── Stage producers ──────────────────────────────────────────────────────
-
-export async function generateStage1Preview(file: File): Promise<Blob | null> {
-  if (file.type.startsWith('image/')) {
-    const res = await compute({ kind: 'tinyImage', file })
-    return res.kind === 'tinyImage' ? res.blob : null
-  }
-  if (file.type === 'application/pdf') {
-    const res = await compute({ kind: 'tinyPdf', file })
-    return res.kind === 'tinyPdf' ? res.blob : null
-  }
-  if (file.type.startsWith('video/')) {
-    const dataUrl = await generateVideoThumbnail(file).catch(() => null)
-    return dataUrl ? dataUrlToBlob(dataUrl) : null
-  }
-  if (isTextRenderableFile(file)) {
-    const res = await compute({ kind: 'tinyText', file })
-    return res.kind === 'tinyText' ? res.blob : null
-  }
-  return null
-}
-
-export interface ResizedThumbnail {
-  blob: Blob
-  width: number
-  height: number
-}
-
-export async function generateStage2Resize(
-  file: File,
-  videoFrame?: Blob | null
-): Promise<ResizedThumbnail | null> {
-  if (file.type.startsWith('image/')) {
-    const res = await compute({ kind: 'resizeImage', file })
-    if (res.kind === 'resizeImage' && res.result) {
-      return {
-        blob: res.result.blob,
-        width: res.result.width,
-        height: res.result.height,
-      }
-    }
-    return null
-  }
-  if (file.type === 'application/pdf') {
-    const res = await compute({ kind: 'resizePdf', file })
-    if (res.kind === 'resizePdf' && res.result) {
-      return {
-        blob: res.result.blob,
-        width: res.result.width,
-        height: res.result.height,
-      }
-    }
-    return null
-  }
-  if (file.type.startsWith('video/') && videoFrame) {
-    const frameFile = new File([videoFrame], 'frame.webp', {
-      type: 'image/webp',
-    })
-    const res = await compute({ kind: 'resizeImage', file: frameFile })
-    if (res.kind === 'resizeImage' && res.result) {
-      return {
-        blob: res.result.blob,
-        width: res.result.width,
-        height: res.result.height,
-      }
-    }
-    return null
-  }
-  if (isTextRenderableFile(file)) {
-    const res = await compute({ kind: 'resizeText', file })
-    if (res.kind === 'resizeText' && res.result) {
-      return {
-        blob: res.result.blob,
-        width: res.result.width,
-        height: res.result.height,
-      }
-    }
-    return null
-  }
-  return null
-}
-
-export async function generateStage3Salient(file: File): Promise<Blob | null> {
-  if (!file.type.startsWith('image/')) return null
-  const { generateSalientCrop } = await import('@/workers/thumbnail.ai')
-  return generateSalientCrop(file).catch((e) => {
-    console.error('[generateSalientCrop]', e)
-    // Reported here rather than at the call site: this function also returns
-    // null for non-images above, which is expected and not a degradation.
-    reportDegraded('thumbnail_stage3', classifyDegradation(e))
-    return null
-  })
-}
-
-// ── S3 PUT ───────────────────────────────────────────────────────────────
-
-export async function putThumbnailToS3(
-  uploadUrl: string,
-  blob: Blob,
-  itemId: string,
-  stage: number
-): Promise<boolean> {
-  const res = await fetch(uploadUrl, {
-    method: 'PUT',
-    body: blob,
-    // No `x-amz-acl` — the object stays private and is read through a signed
-    // GET. Tigris applies that header even unsigned when a bucket allows
-    // object ACLs, which would silently make the thumbnail world-readable.
-    headers: { 'Content-Type': 'image/webp' },
-  }).catch((err) => {
-    console.error(`[stage ${stage} PUT] network error`, itemId, err)
-    return null
-  })
-  if (!res || !res.ok) {
-    console.error(`[stage ${stage} PUT] non-ok`, itemId, res?.status)
-    return false
-  }
-  return true
-}
-
-/**
- * Picks the signed view URL for a stage out of the presign payload.
- *
- * Replaces the old `${publicUrl}?v=${stage}` concatenation: the server now
- * returns one signed URL per stage, with `v` signed *into* it. Appending a
- * param to a signed URL invalidates its signature and Tigris returns 403.
- */
-export function stageViewUrl(
-  viewUrls: Record<2 | 3, string>,
-  stage: 2 | 3
-): string {
-  return viewUrls[stage]
-}
-
-// ── Metadata extraction (pure, no fetcher) ───────────────────────────────
-
 export interface MediaMetadata {
   // image
   imageWidth?: number
@@ -643,6 +428,17 @@ async function readImageBitDepth(file: File): Promise<number | undefined> {
 }
 
 
+/**
+ * Reads a file's metadata by type. Never throws for an unreadable field: a
+ * missing value is simply absent.
+ *
+ * @returns The metadata; for a PDF with no text layer, `needsOcr` is set so the
+ *   caller can run OCR after saving this.
+ *
+ * @example
+ * const meta = await extractMediaMetadata(file)
+ * await fetch('/api/items', { method: 'POST', body: buildMediaMetadataFormData(itemId, meta) })
+ */
 export async function extractMediaMetadata(file: File): Promise<MediaMetadata> {
   const meta: MediaMetadata = {}
 
@@ -727,8 +523,8 @@ export async function extractMediaMetadata(file: File): Promise<MediaMetadata> {
     }
 
     // A PDF with no text layer needs OCR, but that runs *after* this returns
-    // — see `streamOcrPdf` in `@/utils/thumbnail-ocr`, which the thumbnail
-    // machine drives from its own actor. Doing it
+    // — see `streamOcrPdf` in `@/utils/thumbnail-ocr`, which the indexing
+    // machine drives from its `transcribingScannedPdf` state. Doing it
     // inline here would hold the metadata POST for the length of the whole OCR
     // run (minutes), so the item's facet, page count and thumbnail would all
     // wait on it, and closing the tab would lose the lot. The flag tells the
@@ -794,11 +590,10 @@ export async function extractMediaMetadata(file: File): Promise<MediaMetadata> {
     } catch (err) {
       // An unreadable body must not sink the rest of the metadata POST — the
       // item still gets its facets, size and thumbnail, just no index entry.
-      console.error('[thumbnail-pipeline] text body read failed', err)
+      console.error('[media-metadata] text body read failed', err)
     }
   } else if (file.type.startsWith('audio/')) {
     const audioMetadata = await extractAudioMetadata(file)
-    console.log('audioMetadata: ', audioMetadata)
     meta.audioAlbum = audioMetadata.audioAlbum
     meta.audioAlbumArtist = audioMetadata.audioAlbumArtist
     meta.audioArtist = audioMetadata.audioArtist
@@ -818,6 +613,14 @@ export async function extractMediaMetadata(file: File): Promise<MediaMetadata> {
   return meta
 }
 
+/**
+ * The `save_media_metadata` form for `POST /api/items`, without the client-only
+ * keys and without empty values.
+ *
+ * @example
+ * buildMediaMetadataFormData('item_1', { imageWidth: 800, needsOcr: false })
+ * // → FormData { intent: 'save_media_metadata', itemId: 'item_1', imageWidth: '800' }
+ */
 export function buildMediaMetadataFormData(
   itemId: string,
   meta: MediaMetadata

@@ -27,7 +27,7 @@ of a folder trashed mid-batch. Where the bytes come from decides the lane:
 | File | Role |
 |---|---|
 | `thumbnail.types.ts` | Context, events, emitted events, job shape |
-| `thumbnail.actors.ts` | `fromPromise` wrappers around the helpers in `@/utils/thumbnail-pipeline`; no compute here |
+| `thumbnail.actors.ts` | `fromPromise` wrappers around `@/utils/thumbnail-stages` (one producer per file type) and `@/utils/compute-worker`; no compute here |
 | `thumbnail-item.machine.ts` | One actor per job: the thumbnail stages |
 | `thumbnail-manager.machine.ts` | The scheduler: the two lanes, start/finish, pause as a state |
 | `held-files.ts` | Uploaded files waiting for their card to be seen |
@@ -62,8 +62,31 @@ of a folder trashed mid-batch. Where the bytes come from decides the lane:
 - **Cancel drops queued jobs only.** A running job's work is already paid for,
   and because the manager outlives every card, its result still lands.
 
-## Still to do
+## Item machine states
 
-The item machine keeps its numbered state names (`stage1`, `putting2`, …) and
-has no state descriptions yet; its rewrite, and splitting
-`@/utils/thumbnail-pipeline.ts` by file type, are the next refactor phase.
+Flat, named for what happens, each with a `description` (the Stately editor
+shows it; `__tests__/state-descriptions.test.ts` fails on a missing one):
+
+```
+choosingSource ─ fromDownload → downloadingOriginal ⇄ waitingToRetryDownload
+       │                              │ existing → alreadyThumbnailed
+       │                              │ declined → sourceUnavailable
+       └ fromMemory ──────────────────┴→ paintingBlurPreview
+ → resizingThumbnail ⇄ waitingToRetryResize        (no producer → noThumbnailForType)
+ → requestingUploadUrl ⇄ waitingToRetryUploadUrl   (gives up → failed)
+ → uploadingResizedThumbnail ⇄ waitingToRetryResizedUpload   (gives up → failed)
+ → savingResizedThumbnail ⇄ waitingToRetryResizedSave
+ → croppingSalientRegion → uploadingSalientCrop → savingSalientCrop   (images in memory only)
+ → thumbnailed
+```
+
+## Where the compute lives
+
+- `@/utils/thumbnail-stages/` — one producer per file type (`image.ts`,
+  `pdf.ts`, `video.ts`, `text.ts`), picked by `producerFor(file)`; the stage
+  functions the actors call; `upload.ts` for the S3 PUT. Adding a type is one
+  file plus one line in `PRODUCERS`.
+- `@/utils/compute-worker.ts` — the compute-worker bridge, shared with OCR and
+  metadata.
+- `@/utils/media-metadata.ts` — EXIF/ID3/document metadata. Indexing uses it;
+  thumbnails don't.

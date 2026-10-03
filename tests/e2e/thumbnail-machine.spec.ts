@@ -283,7 +283,7 @@ test.describe('thumbnail machine — scheduling', () => {
     await installProbe(page)
 
     // Four downloads enqueued in one turn. These ids do not resolve to files,
-    // so each job legitimately ends in `unavailable` after a real round trip to
+    // so each job legitimately ends in `sourceUnavailable` after a real round trip to
     // `/api/thumbnails/:id/source` — which is all this test needs: it is
     // asserting the lane's ordering and cap, not the job's outcome.
     const ids = ['zz-lane-1', 'zz-lane-2', 'zz-lane-3', 'zz-lane-4']

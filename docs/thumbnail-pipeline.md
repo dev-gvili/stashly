@@ -2,7 +2,7 @@
 
 A 3-stage progressive thumbnail generation system. Each stage upgrades the thumbnail asynchronously after upload completes — from an instant local blur preview to a saliency-cropped image. All output is **WebP**.
 
-Driven client-side. Scheduling lives in the XState manager under `app/machines/thumbnail/` (see [section 13](#13-xstate-scheduler)); the stage work itself is the pure helpers in `app/utils/thumbnail-pipeline.ts`, and stage 3's AI runs in `app/workers/thumbnail.ai.ts`. Jobs enter from `app/components/upload/upload-thumbnail-runner.tsx` on upload and from the viewport observer on backfill.
+Driven client-side. Scheduling lives in the XState manager under `app/machines/thumbnail/` (see [section 13](#13-xstate-scheduler)); the stage work itself is one producer per file type in `app/utils/thumbnail-stages/`, and stage 3's AI runs in `app/workers/thumbnail.ai.ts`. Jobs enter from `app/components/upload/upload-thumbnail-runner.tsx` on upload and from the viewport observer on backfill.
 
 > **V1 → V2.** The original pipeline had five stages. **Stage 0** (a hex color hash written to the DB) was removed — every consumer already filtered `url.startsWith('#')`, so persisting it was pure waste. **Stage 4** (Florence-2 caption overlay) was removed too; the Florence-2 code survives only in `app/.client/stashly-ai.ts` for captioning outside the thumbnail path. `app/hooks/useThumbnail.ts` is now the V2 orchestrator — `useThumbnailV2.ts` was folded back into it (45dbcee), so the V1 hook no longer exists under any name. That hook is the *legacy* orchestration path today: reachable only when `USE_THUMBNAIL_MACHINE` is flipped off. Sections below describe V2 unless marked historical.
 
@@ -114,7 +114,7 @@ const { uploadUrl, publicUrl } = await fetcher.load(
   `/api/thumbnails/${itemId}/presign`
 ).data
 
-// 2. PUT the WebP blob directly to S3 — `putThumbnailToS3` in thumbnail-pipeline.ts
+// 2. PUT the WebP blob directly to S3 — `putThumbnailToS3` in thumbnail-stages/upload.ts
 await fetch(uploadUrl, {
   method: 'PUT',
   body: blob,
@@ -245,7 +245,7 @@ All output is **WebP**. Located in `app/utils/thumbnail.ts`:
 | `blurImageBlob(blob, radius)` | Gaussian blur pass over a WebP blob |
 | `dataUrlToBlob(dataUrl)` | Convert data-URL to `Blob`, fallback MIME `image/webp` |
 
-The stage functions themselves live in `app/utils/thumbnail-pipeline.ts` — `generateStage1Preview`, `generateStage2Resize`, `generateStage3Salient`, `putThumbnailToS3`, `makeStageUrl`, plus `compute()` (the compute-worker RPC helper), `extractMediaMetadata`, and `buildMediaMetadataFormData`. The orchestration layer — the machine's actors in `app/machines/thumbnail/thumbnail.actors.ts`, or `useThumbnail` on the legacy path — only sequences them and owns the HTTP state.
+The stage functions live in `app/utils/thumbnail-stages/` — one producer per file type (`image.ts`, `pdf.ts`, `video.ts`, `text.ts`) picked by `producerFor(file)`, the stage functions `generateStage1Preview`, `generateStage2Resize`, `generateStage3Salient`, and `upload.ts` (`putThumbnailToS3`, `stageViewUrl`). `compute()` (the compute-worker RPC helper) is in `app/utils/compute-worker.ts`; `extractMediaMetadata` and `buildMediaMetadataFormData` are in `app/utils/media-metadata.ts`, used by the indexing machine. The machine's actors in `app/machines/thumbnail/thumbnail.actors.ts` only sequence them and own the HTTP state.
 
 For video thumbnails, use `generateVideoThumbnail(file)` from `app/utils/video.ts` (extracts a frame, then runs through the WebP pipeline).
 
@@ -261,7 +261,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
 `getPdfMetadata(file)` returns `{ pageCount, width, height }` from page 1; `extractPdfMetadata(file)` returns the fuller `PdfDocumentMetadata` — both feed document metadata persistence.
 
-`extractPdfText(file, { maxPages = 5, maxChars = 20_000 })` returns `{ text, pageCount, pagesRead }` for indexing. `extractMediaMetadata` in `thumbnail-pipeline.ts` dispatches the `pdfText` compute kind for `application/pdf` (and `mdMeta` for markdown), then POSTs the result to `/api/items` under the `save_media_metadata` intent as `documentText` + `documentPageCount`. Server-side (`app/routes/api/items.ts`) that text goes to `upsertSearchContent` for the document-level `Search.content` fallback, and through `chunkText` → `upsertSearchChunks` for passage-level `SearchChunk` rows. See [`docs/semantic-search.md`](semantic-search.md) for the chunked indexing and embedding flow.
+`extractPdfText(file, { maxPages = 5, maxChars = 20_000 })` returns `{ text, pageCount, pagesRead }` for indexing. `extractMediaMetadata` in `media-metadata.ts` dispatches the `pdfText` compute kind for `application/pdf` (and `mdMeta` for markdown), then POSTs the result to `/api/items` under the `save_media_metadata` intent as `documentText` + `documentPageCount`. Server-side (`app/routes/api/items.ts`) that text goes to `upsertSearchContent` for the document-level `Search.content` fallback, and through `chunkText` → `upsertSearchChunks` for passage-level `SearchChunk` rows. See [`docs/semantic-search.md`](semantic-search.md) for the chunked indexing and embedding flow.
 
 ---
 
@@ -318,7 +318,7 @@ Every stage swallows its own failure: `generateStage3Salient` catches and return
 Main → worker: `{ id: number, kind: ..., file, ...args }`
 Worker → main: `{ id, kind, blob | result | message }` correlated by `id`.
 
-`app/utils/thumbnail-pipeline.ts` exposes a typed `compute({ kind, file })` helper that returns the matching response variant — narrow on `res.kind` to access the result.
+`app/utils/compute-worker.ts` exposes a typed `compute({ kind, file })` helper that returns the matching response variant — narrow on `res.kind` to access the result.
 
 ### Concurrency cap
 
@@ -435,7 +435,7 @@ thumbnailManager (module scope — outlives every component)
 | File | Role |
 |---|---|
 | `thumbnail.types.ts` | Context, events, emitted events, job shape |
-| `thumbnail.actors.ts` | `fromPromise` wrappers around the **existing** helpers in `@/utils/thumbnail-pipeline` — no compute logic lives here |
+| `thumbnail.actors.ts` | `fromPromise` wrappers around the helpers in `@/utils/thumbnail-stages` — no compute logic lives here |
 | `thumbnail-item.machine.ts` | One actor per file: `stages` ∥ `indexing` |
 | `thumbnail-manager.machine.ts` | The scheduler: two lanes, spawn/settle, pause as a state |
 | `attempt-store.ts` | Attempted-once bookkeeping + `sessionStorage` skip list |
