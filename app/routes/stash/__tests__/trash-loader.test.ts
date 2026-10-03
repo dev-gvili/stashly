@@ -19,6 +19,7 @@ vi.mock('@/services/item-actions', () => ({
     quotaBytes: 0n,
   })),
   TRASH_ROOTS: { status: 'trashed', OR: ['trash-roots-marker'] },
+  getTrashFolderTrail: vi.fn(async () => [{ id: 'trash', name: 'Trash', parentId: null, type: 'folder' }]),
 }))
 
 import { getPaginatedItems } from '@/services/item-actions'
@@ -31,13 +32,13 @@ type TrashInclude = {
   parent: { include: { thumbnails: { where: ThumbnailWhere } } }
 }
 
-async function runLoader(url: string) {
+async function runLoader(url: string, params: Record<string, string> = {}) {
   const context = new RouterContextProvider()
   context.set(sessionContext, { user: { id: 'usr_test' } } as never)
   await loader({
     request: new Request(url),
     context,
-    params: {},
+    params,
   } as never)
   const args = vi.mocked(getPaginatedItems).mock.calls.at(-1)![0] as {
     include: TrashInclude
@@ -58,12 +59,27 @@ describe('trash loader thumbnail view filter', () => {
     expect(views).toEqual({ itemView: 'grid', parentView: 'grid' })
   })
 
+  const lastWhere = () =>
+    (vi.mocked(getPaginatedItems).mock.calls.at(-1)![0] as { where: { AND: unknown[] } }).where
+
   // A trashed folder is one entry: the query must be limited to what was
   // trashed directly, on top of the URL's own filters.
   it('lists only what was trashed directly', async () => {
     await runLoader('http://localhost/usr_test/stash/trash')
-    const where = (vi.mocked(getPaginatedItems).mock.calls.at(-1)![0] as { where: { AND: unknown[] } }).where
-    expect(where.AND).toContainEqual({ status: 'trashed', OR: ['trash-roots-marker'] })
+    expect(lastWhere().AND).toContainEqual({ status: 'trashed', OR: ['trash-roots-marker'] })
+  })
+
+  // The URL filters carry `currentUserId`, which scopes nothing; without its
+  // own owner clause Trash listed every user's trashed items.
+  it("lists only the signed-in user's items", async () => {
+    await runLoader('http://localhost/usr_test/stash/trash')
+    expect(lastWhere().AND).toContainEqual({ ownerId: 'usr_test' })
+  })
+
+  it("inside a trashed folder, lists that folder's trashed contents", async () => {
+    await runLoader('http://localhost/usr_test/stash/trash/folders/item_f', { folderId: 'item_f' })
+    expect(lastWhere().AND).toContainEqual({ parentId: 'item_f', status: 'trashed' })
+    expect(lastWhere().AND).toContainEqual({ ownerId: 'usr_test' })
   })
 
   it('uses the layout from the URL when present', async () => {

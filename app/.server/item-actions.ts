@@ -587,7 +587,10 @@ export async function trashItems(ids: string[], userId: string) {
           UNION
           SELECT i."id" FROM "Item" i JOIN "Subtree" s ON i."parentId" = s."id"
         ), "Changed" AS (
-          UPDATE "Item" i SET "status" = 'trashed', "updatedAt" = now()
+          -- UTC, like every timestamp Prisma writes: the session time zone is
+          -- local (Asia/Jerusalem on dev) and the column has none, so a bare
+          -- now() stored local time that Prisma then read back as UTC.
+          UPDATE "Item" i SET "status" = 'trashed', "updatedAt" = (now() AT TIME ZONE 'UTC')
           FROM "Subtree" s
           WHERE i."id" = s."id" AND i."status" <> 'trashed'
           RETURNING i."id", i."name", i."type", i."size"
@@ -723,7 +726,8 @@ export async function restoreItems(ids: string[], userId: string) {
       UNION
       SELECT "id" FROM "Ancestors"
     ), "Changed" AS (
-      UPDATE "Item" i SET "status" = 'normal', "updatedAt" = now()
+      -- UTC, for the reason given in trashItems.
+      UPDATE "Item" i SET "status" = 'normal', "updatedAt" = (now() AT TIME ZONE 'UTC')
       FROM "Related" r
       WHERE i."id" = r."id" AND i."status" = 'trashed'
       RETURNING i."id", i."name", i."type", i."size"
@@ -3558,6 +3562,58 @@ export const TRASH_ROOTS = {
   status: 'trashed',
   trash: { isNot: null },
 } satisfies Prisma.ItemWhereInput
+
+/** The id of the synthetic "Trash" crumb that heads every trash folder trail. */
+export const TRASH_CRUMB_ID = 'trash'
+
+/**
+ * Opens a trashed folder for browsing inside Trash
+ * (`/:me/stash/trash/folders/:folderId`), and returns its trail.
+ *
+ * The trail starts at "Trash" and runs down through trashed folders only: it
+ * stops above the Trash entry the folder sits under, because the live folders
+ * above that are not part of what is in Trash.
+ *
+ * @param userId - The signed-in user; must own the folder.
+ * @param folderId - The trashed folder to open.
+ * @returns Crumbs for the toolbar: `Trash`, then the trashed folders down to
+ *   this one.
+ * @throws `NOT_FOUND` (404) when the folder is not the user's, not a folder,
+ *   or not in Trash: a live folder opens in its own route, not here.
+ *
+ * @example
+ * const crumbs = await getTrashFolderTrail(user.id, 'item_abc')
+ * // → [{ id: 'trash', name: 'Trash', … }, { id: 'item_core', name: 'core-components', … }, …]
+ */
+export async function getTrashFolderTrail(
+  userId: string,
+  folderId: string
+): Promise<Array<{ id: string; name: string; parentId: string | null; type: 'folder' }>> {
+  const folder = await prisma.item.findFirst({
+    where: { id: folderId, ownerId: userId, type: 'folder', status: 'trashed' },
+    select: { id: true },
+  })
+  if (!folder) throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Folder not found in Trash')
+
+  // Walk up while the parent is still trashed, so the trail ends at the
+  // folder's Trash entry.
+  const trail = await prisma.$queryRaw<
+    Array<{ id: string; name: string; parentId: string | null }>
+  >`
+    WITH RECURSIVE "Up" AS (
+      SELECT "id", "name", "parentId", 0 AS "depth" FROM "Item" WHERE "id" = ${folderId}
+      UNION ALL
+      SELECT p."id", p."name", p."parentId", u."depth" + 1
+      FROM "Item" p JOIN "Up" u ON u."parentId" = p."id"
+      WHERE p."status" = 'trashed'
+    )
+    SELECT "id", "name", "parentId" FROM "Up" ORDER BY "depth" DESC
+  `
+  return [
+    { id: TRASH_CRUMB_ID, name: 'Trash', parentId: null, type: 'folder' },
+    ...trail.map((c) => ({ ...c, type: 'folder' as const })),
+  ]
+}
 
 /**
  * Drive-wide counters for the page toolbar's stat run and storage meter.

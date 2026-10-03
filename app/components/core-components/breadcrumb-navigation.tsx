@@ -20,7 +20,7 @@ import type { Breadcrumb as BreadcrumbData } from '@/services/breadcrumbs'
 import { removeQueryParam } from '@/utils'
 import { toItemUrl } from '@/utils/converters'
 import { Fragment } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
+import { Link, useMatches, useParams, useSearchParams } from 'react-router'
 
 export interface StashBreadcrumbsProps {
   crumbs: BreadcrumbData[]
@@ -39,9 +39,22 @@ export interface StashBreadcrumbsProps {
  */
 function useFolderHref(me: string) {
   let { workspaceId } = useParams()
-  return (folderId: string) =>
-    toItemUrl({ type: 'folder', id: folderId, parentId: '', me, workspaceId })
+  // Inside Trash the trail is "Trash / trashed folders…", and every crumb must
+  // stay in Trash: a trashed folder's live route shows it as if it were in
+  // place. `TRASH_CRUMB_ID` is the synthetic "Trash" head.
+  let inTrash = useMatches().some((m) => m.id === 'stash-trash-folder')
+  return (folderId: string) => {
+    if (inTrash) {
+      return folderId === TRASH_CRUMB_ID
+        ? `/${me}/stash/trash`
+        : `/${me}/stash/trash/folders/${folderId}`
+    }
+    return toItemUrl({ type: 'folder', id: folderId, parentId: '', me, workspaceId })
+  }
 }
+
+/** Same as `TRASH_CRUMB_ID` in `@/services/item-actions` (server-only module). */
+const TRASH_CRUMB_ID = 'trash'
 
 const BreadcrumbDropdown = ({ crumbs, me }: StashBreadcrumbsProps) => {
   let [searchParams] = useSearchParams()

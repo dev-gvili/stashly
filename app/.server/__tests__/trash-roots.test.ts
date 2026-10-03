@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { prisma } from '@/services/db'
 import {
+  getTrashFolderTrail,
   restoreItem,
   retrieveUserUsageMetrics,
   trashItem,
   trashItems,
+  TRASH_CRUMB_ID,
   TRASH_ROOTS,
 } from '@/services/item-actions'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
@@ -104,6 +106,17 @@ describe('a trashed folder is one entry', () => {
     expect((await retrieveUserUsageMetrics(ownerId)).trashed).toBe(2)
   })
 
+  // The DB session's time zone is local (Asia/Jerusalem on dev) and these
+  // columns have none, so a bare SQL now() stored local time that Prisma read
+  // back as UTC: hours in the future. Both writers must agree with the clock.
+  it('stamps trash times in UTC, the way Prisma reads them', async () => {
+    const tolerance = 5 * 60_000
+    const project = await prisma.item.findFirstOrThrow({ where: { ownerId, name: 'project' } })
+    expect(Math.abs(project.updatedAt!.getTime() - Date.now())).toBeLessThan(tolerance)
+    const entry = await prisma.trashItem.findUniqueOrThrow({ where: { itemId: project.id } })
+    expect(Math.abs(entry.trashedAt.getTime() - Date.now())).toBeLessThan(tolerance)
+  })
+
   it('after a partial restore, the folder contents still trashed become entries', async () => {
     // Restoring b.ts brings sub and project back with it, so a.ts is left
     // trashed under a live folder, and is listed on its own now.
@@ -111,6 +124,46 @@ describe('a trashed folder is one entry', () => {
 
     expect(await statusOf(deepFile)).toBe('normal')
     expect(await entriesUnder(top)).toEqual(['a.ts', 'single.pdf'])
+    // Its entry carries the time its folder was trashed, not hours ahead.
+    const a = await prisma.item.findFirstOrThrow({ where: { ownerId, name: 'a.ts' } })
+    const entry = await prisma.trashItem.findUniqueOrThrow({ where: { itemId: a.id } })
+    expect(Math.abs(entry.trashedAt.getTime() - Date.now())).toBeLessThan(5 * 60_000)
+  })
+})
+
+describe('getTrashFolderTrail (browsing a trashed folder inside Trash)', () => {
+  let docs: string
+  let inner: string
+  let liveFolder: string
+
+  beforeAll(async () => {
+    // home/ (live) → docs/ (trashed as a whole) → inner/
+    const home = await make('home', 'folder', null)
+    docs = await make('docs', 'folder', home)
+    inner = await make('inner', 'folder', docs)
+    await make('note.md', 'file', inner)
+    liveFolder = await make('still-live', 'folder', home)
+    await trashItem(docs, ownerId)
+  })
+
+  it('runs from Trash down through trashed folders only, never the live ones above', async () => {
+    const trail = await getTrashFolderTrail(ownerId, inner)
+    expect(trail.map((c) => c.name)).toEqual(['Trash', 'docs', 'inner'])
+    expect(trail[0].id).toBe(TRASH_CRUMB_ID)
+  })
+
+  it('refuses a live folder: it opens in its own route, not in Trash', async () => {
+    await expect(getTrashFolderTrail(ownerId, liveFolder)).rejects.toMatchObject({ status: 404 })
+  })
+
+  it("refuses someone else's trashed folder", async () => {
+    const strangerId = uid('User')
+    await prisma.user.create({ data: { id: strangerId, name: 'Trash stranger', email: `roots-${strangerId}@test.local`, emailVerified: true } })
+    try {
+      await expect(getTrashFolderTrail(strangerId, inner)).rejects.toMatchObject({ status: 404 })
+    } finally {
+      await prisma.user.delete({ where: { id: strangerId } })
+    }
   })
 })
 

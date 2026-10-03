@@ -212,6 +212,11 @@ export default [
           id: 'stash-duplicates',
         }),
         route('trash', 'routes/stash/trash.tsx', { id: 'stash-trash' }),
+        // A trashed folder's contents, browsed inside Trash (read-only cards,
+        // a "Trash / …" trail). Never the folder's live route.
+        route('trash/folders/:folderId', 'routes/stash/trash.tsx', {
+          id: 'stash-trash-folder',
+        }),
         route('demo', 'routes/stash/demo.tsx', { id: 'stash-demo' }),
         route('ai-studio', 'routes/stash/ai-studio.tsx', {
           id: 'stash-ai-studio',

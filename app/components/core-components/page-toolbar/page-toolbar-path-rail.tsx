@@ -123,8 +123,14 @@ export function PageToolbarPathRail({
       <SelectAllCheckbox className="shrink-0" />
 
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-        {isTrash ? (
+        {isTrash && !crumbs ? (
           <h1 className="font-stashly text-sm font-semibold">Trash</h1>
+        ) : isTrash ? (
+          // Inside a trashed folder: "Trash / folder / …", every link staying
+          // in Trash (see `useFolderHref` in breadcrumb-navigation.tsx).
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+            <Breadcrumbs />
+          </div>
         ) : (
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             {!crumbs && (

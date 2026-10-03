@@ -11,6 +11,7 @@ import {
 } from '@/utils/filters/item.filters'
 import {
   getPaginatedItems,
+  getTrashFolderTrail,
   retrieveUserUsageMetrics,
   TRASH_ROOTS,
 } from '@/services/item-actions'
@@ -86,8 +87,14 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
-export async function loader({ request, context }: Route.LoaderArgs) {
+export async function loader({ request, context, params }: Route.LoaderArgs) {
   const session = context.get(sessionContext)
+  // `/trash/folders/:folderId` browses inside a trashed folder: its contents,
+  // read-only, under a "Trash / …" trail. Without it, the Trash entries.
+  const folderId = 'folderId' in params ? params.folderId : undefined
+  const crumbs = folderId
+    ? await getTrashFolderTrail(session.user.id, folderId)
+    : undefined
   let searchParams = new URL(request.url).searchParams
   searchParams.set('currentUserId', session.user.id)
   searchParams.set('status', 'trashed')
@@ -106,9 +113,20 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
   let [page, stats] = await Promise.all([
     getPaginatedItems({
-      // Only what was trashed directly: a trashed folder is one entry, not
-      // the folder plus every file inside it.
-      where: { AND: [filters, TRASH_ROOTS] },
+      // Always the signed-in user's own items: `currentUserId` above is not a
+      // scoping filter (see item.filters.ts), and without this Trash listed
+      // every user's trashed items.
+      //
+      // At the top, only what was trashed directly: a trashed folder is one
+      // entry, not the folder plus every file inside it. Inside a folder, its
+      // trashed contents.
+      where: {
+        AND: [
+          filters,
+          { ownerId: session.user.id },
+          folderId ? { parentId: folderId, status: 'trashed' } : TRASH_ROOTS,
+        ],
+      },
       ...parsedParams,
       orderBy: parsedParams.orderBy ?? { name: 'asc' },
       include: {
@@ -200,6 +218,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   // payload — same contract `all.tsx` uses.
   return {
     ...page,
+    crumbs,
     stats: {
       folders: stats.folders,
       files: stats.files,
@@ -225,7 +244,7 @@ export default ({ loaderData }: Route.ComponentProps) => {
     usePagination<Route.ComponentProps['loaderData']['items'][number]>(50)
 
   if (items.length === 0) {
-    return <TrashEmptyState />
+    return <TrashEmptyState inFolder={!!loaderData.crumbs} />
   }
 
   return (

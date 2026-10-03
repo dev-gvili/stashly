@@ -27,7 +27,7 @@ import { Avatar as AvatarPrimitive } from 'radix-ui'
 import React from 'react'
 import {
   Link,
-  useNavigate, useRevalidator, useRouteLoaderData,
+  useNavigate, useParams, useRevalidator, useRouteLoaderData,
   useSearchParams
 } from 'react-router'
 import type { Route } from '../../routes/+types/layout'
@@ -35,8 +35,9 @@ import { Actions as ItemCardActions } from './item-card-actions'
 import { useLiveThumbnail, useThumbnailWhenVisible } from '@/machines/thumbnail'
 
 /**
- * Whether a card's item is in the trash, where it opens nowhere: no card click
- * and no item link navigates to it. Restore and delete stay in its menu.
+ * Whether a card's item is in the trash. It never opens its live route: a
+ * trashed folder opens inside Trash, a trashed file and every item link open
+ * nowhere. Restore and delete stay in its menu.
  */
 const isTrashed = (status: StashItem['status'] | undefined) =>
   status === 'trashed'
@@ -456,6 +457,7 @@ const ItemCardRoot = ({
     useRouteLoaderData<Route.ComponentProps['loaderData']>('layout')!.user
   let navigate = useNavigate()
   const itemUrl = useItemUrl()
+  const { me, workspaceId } = useParams()
 
   let [searchParams, setSearchParams] = useSearchParams()
   const layout = searchParams.get('layout') ?? 'grid'
@@ -506,7 +508,7 @@ const ItemCardRoot = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        aria-disabled={isTrashed(props.status) || undefined}
+        aria-disabled={(isTrashed(props.status) && rest.type !== 'folder') || undefined}
         className={cn(
           'rounded-md p-2 grid gap-0 border-input font-stashly surface-glass overflow-hidden group/card card select-none relative z-0 transition-colors',
           isFolder &&
@@ -518,11 +520,18 @@ const ItemCardRoot = ({
           // Ignore clicks from portaled elements (dialogs, dropdowns)
           if (!e.currentTarget.contains(e.target as Node)) return false
           e.stopPropagation()
-          // A trashed item has no live place to open: its folder route shows
-          // the item as if it were still there, and after a re-upload of the
-          // same name the two look like one place. Trash offers its actions
-          // (restore, delete) from the menu instead.
-          if (isTrashed(props.status)) return
+          // A trashed item never opens its live route: that shows it as if it
+          // were still in place, and after a re-upload of the same name the
+          // two look like one place. A trashed folder opens inside Trash
+          // instead (`/trash/folders/:id`); a trashed file doesn't open, its
+          // actions (restore, delete) are in the menu. Workspace trash has no
+          // such route yet.
+          if (isTrashed(props.status)) {
+            if (rest.type === 'folder' && me && !workspaceId) {
+              navigate(`/${me}/stash/trash/folders/${rest.id}?layout=${layout}`)
+            }
+            return
+          }
           navigate(to, {
             state:{ name: props.name }
           })
