@@ -20,7 +20,7 @@ export function Chip({
       {onRemove && (
         <Button
           onClick={onRemove}
-          className="opacity-60 hover:opacity-100 hover:bg-black/10 rounded-[2px] p-0! size-3! data-[state=open]:bg-black/10"
+          className="opacity-60 hover:opacity-100 hover:bg-black/10 rounded-xs p-0! size-3! data-[state=open]:bg-black/10"
         >
           <RemoveIcon className="size-4!" />
         </Button>
