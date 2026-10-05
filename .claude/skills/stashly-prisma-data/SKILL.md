@@ -35,7 +35,7 @@ The size/collection functions are guarded by `stashly_is_wiping_user()`, so a fu
 
 ## Prisma Client
 
-- Import Prisma client from `app/prisma/client` — do NOT use the generated client via tsx or any other path.
+- Import Prisma client from `app/prisma/client` — do NOT use the generated client via tsx or any other path. Concretely: the instance is `import { prisma } from '@/services/db'` (it carries the `PrismaPg` adapter — `new PrismaClient()` throws under Prisma 7 without one), and the `Prisma` namespace/types come from `@/prisma/client`, never `@prisma/client` (no app file imports it; it has no `Prisma` export here).
 - **No `--schema` flag**: schema lives in `prisma/models/*.prisma` and is wired through `prisma.config.ts`. Passing `--schema=` fails with "file not found".
 - **DB drift recovery**: if `prisma migrate dev` reports drift and wants to reset (destructive), prefer `prisma db push --accept-data-loss` for non-destructive changes (new nullable columns). The "data loss" warning on adding a unique constraint to a new nullable column is spurious — existing rows are NULL, no duplicates possible.
 - **`db push` does NOT auto-regenerate the client** in this repo (Prisma 7 + `prisma.config.ts`). If TS still shows `Property 'X' does not exist on type 'never'` for a new field after push, run `pnpm prisma generate` explicitly.
@@ -44,6 +44,12 @@ The size/collection functions are guarded by `stashly_is_wiping_user()`, so a fu
 ## Database / SQL
 
 Start with the simplest query that works. Do not use recursive CTEs or over-engineered approaches. Optimize only if there's a demonstrated performance need.
+
+## Gotchas
+
+- **Settle DB failure theories in a rolled-back transaction, not by reasoning.** Reproduce inside `prisma.$transaction(async tx => { …; throw new Error('__ROLLBACK__') })` against the dev DB — nothing persists, and competing theories become PASS/FAIL rows. DDL rolls back too in Postgres. On 2026-08-26 reasoning picked the wrong one of three causes for a `deleteItems` P2003; four rolled-back runs settled it. Script in the **repo root**, no top-level await, `npx tsx --env-file=.env <script>.ts`, delete it after. Read the driver's real message from `err.meta.driverAdapterError.cause` — Prisma's text hides which side of an FK failed.
+- **A transaction timeout can surface as an FK violation.** Prisma 7's interactive-transaction timeout rolls back without waiting for the in-flight query, so the remaining statements of a nested create fail as `_PermissionToUser_A_fkey` / `File_itemId_fkey` / `Folder_itemId_fkey` instead of `expired transaction`. Under concurrency, rule out timeouts first: force a low timeout in a rolled-back repro and count the error kinds (2026-09-15: ×11 expired, ×2 FK, one cause — a shared advisory lock held for the whole transaction, fixed in `814ade3`).
+- **Bulk `deleteMany` on related `Item` rows aborts on the rollup triggers** (`tuple to be updated was already modified by an operation triggered by the current command`); deleting leaf-first doesn't help. `stashly_is_wiping_user()` (above) is the intended bypass for a full wipe.
 
 ## Zod Conventions
 

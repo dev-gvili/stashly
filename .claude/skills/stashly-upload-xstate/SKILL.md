@@ -37,6 +37,6 @@ Directory drops therefore keep their hierarchy: the browser sets `webkitRelative
 
 ## AI Machines
 
-`app/machines/ai/` contains two actors — `ai.machine.ts` and `caption.machine.ts` — but **neither is imported anywhere**; they are abandoned experiments, not the live AI path. The running pipeline is `machines/pipeline/` plus the workers in `app/workers/`. Check the importers before assuming a machine under `app/machines/` is wired up.
+There is no `app/machines/ai/` any more: its two unwired experiments (`ai.machine.ts`, `caption.machine.ts`) were deleted in `9133214`. The running pipeline is `machines/pipeline/` plus the workers in `app/workers/` (all inference funnels through `ai-queue.ts`). Check the importers before assuming a machine under `app/machines/` is wired up.
 
 AI API routes live under the `/api/ai/` prefix (see `app/routes.ts`).
