@@ -382,7 +382,7 @@ function CollectionItemCard({ item }: { item: CollectionItem }) {
   return (
     <FileCardDetail
       item={stashItem}
-      className="ring-2! ring-accent"
+      className="ring-2! ring-accent bg-card"
       actions={removeFromCollectionActions}
     />
   )
