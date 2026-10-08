@@ -12,22 +12,32 @@
 - **Thumbnails:** reads are signed and uploads are private.
 - **Still missing:** error tracking and a linter. Both need a new package, which needs the owner's decision.
 
-**17 items** · 6 high priority · categories: Code 7, Architecture 4, Infrastructure 3, Dependency 1, Documentation 1, Test 1
+**Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**Status at 2 Oct 2026:** 8 resolved · 1 resolved in code, rollout step unconfirmed · 2 partly done · 1 declined · 5 open. Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**24 items** (17 from the audit, 7 added 8 Oct) · categories: Code 10, Architecture 7, Infrastructure 3, Test 2, Dependency 1, Documentation 1
+
+**Status at 8 Oct 2026:** 9 resolved · 1 resolved in code, rollout step unconfirmed · 3 partly done · 1 declined · 3 open from the audit · 7 new and open. (At 2 Oct: 8 resolved · 1 in code · 2 partly · 1 declined · 5 open.) Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 ### What's left, in priority order
 
-| # | Item | What remains | Blocked on |
-|---|------|--------------|------------|
-| 4 | Error tracking and logging | All of it | Owner's choice of package (Sentry, pino or both) |
-| 2 | Deploy path | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
-| 10 | Accessibility and responsive UI | All of it | — |
-| 12 | Linter | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
-| 13 | Tests where the risk is | `item-actions` create, move and copy; quota on its own; route and component tests | — |
-| 14 | Two thumbnail orchestrators | Move the upload runner off `useThumbnail` | The owner's visual sign-off on the XState pipeline |
-| 16 | Overlapping UI primitives | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
-| 17 | Unfinished migrations | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes | — |
+*Updated 8 Oct. Ordered by priority score; new items are marked **new**.*
+
+| # | Item | Score | What remains | Blocked on |
+|---|------|-------|--------------|------------|
+| 18 | ~~`/api/quota` trusts the client~~ | 50 | Resolved 2026-10-08: route is read-only, upload charged in `createUploadedItem` | — |
+| 2 | Deploy path | 32 | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
+| 4 | Error tracking and logging | 28 | All of it | Owner's choice of package (Sentry, pino or both) |
+| 19 | **new** Stripe webhook is a stub | 24 | All four event handlers | Whether paid plans ship before launch |
+| 20 | **new** Playwright specs don't run in CI | 24 | A CI job for the 8 specs | — |
+| 10 | Accessibility and responsive UI | 21 | Everything except the nested Filter buttons | — |
+| 22 | **new** Open decisions in upload and onboarding | 20 | Three decisions already written up in TASKS.md | Owner's decision |
+| 21 | **new** Embedding backfill runs in every tab | 18 | Move it to a worker and run it in one tab only | — |
+| 12 | Linter | 16 | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
+| 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; quota on its own; routes and components | — |
+| 23 | **new** Prisma calls in route modules | 16 | 4 routes | — |
+| 24 | **new** Slow first page load | 15 | Find where the 1.4 s goes | — |
+| 16 | Overlapping UI primitives | 12 | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
+| 17 | Unfinished migrations | 12 | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes | Deferred to after personal-first (TASKS.md, 4 Oct) |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -44,14 +54,21 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 7 | ~~The type baseline is stale, and escape hatches are growing~~ | Code | 3 | 3 | 2 | **24** (Medium) | 1–2 days | Resolved |
 | 8 | ~~Data-integrity gaps in loaders and deletes~~ | Code | 2 | 4 | 2 | **24** (Medium) | 1–2 days | Resolved |
 | 9 | ~~Failed uploads leave S3 bytes and charged quota with no Item~~ | Architecture | 3 | 4 | 3 | **21** (Medium) | 2–3 days | Resolved |
-| 10 | UI accessibility and responsive debt | Code | 4 | 3 | 3 | **21** (Medium) | 5–8 days | Open |
+| 10 | UI accessibility and responsive debt | Code | 4 | 3 | 3 | **21** (Medium) | 5–8 days | Partly done (8 Oct) |
 | 11 | ~~Generated and personal files in git~~ | Documentation | 2 | 2 | 1 | **20** (Medium) | 0.5 day | Resolved |
 | 12 | No linter | Code | 2 | 2 | 2 | **16** (Medium) | 1 day + fixes | Open |
 | 13 | Tests are missing where the risk is | Test | 4 | 4 | 4 | **16** (Medium) | ongoing, ~2 weeks | Open |
-| 14 | Two thumbnail orchestrators | Architecture | 3 | 2 | 3 | **15** (Low) | 2–3 days | Open |
+| 14 | ~~Two thumbnail orchestrators~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 2–3 days | Resolved 3 Oct |
 | 15 | `item-actions.ts` god module | Code | 3 | 2 | 3 | **15** (Low) | 3–5 days, incremental | Declined |
 | 16 | Overlapping UI primitives | Code | 2 | 1 | 2 | **12** (Low) | 2–3 days | Partly done |
 | 17 | Unfinished migrations left in place | Architecture | 2 | 2 | 3 | **12** (Low) | 2–4 days | Partly done |
+| 18 | `/api/quota` lets a signed-in user change their own quota | Code | 5 | 5 | 1 | **50** (High) | 0.5–1.5 days | New 8 Oct |
+| 19 | The Stripe webhook acknowledges events and saves nothing | Code | 3 | 5 | 3 | **24** (Medium) | 1–2 days | New 8 Oct |
+| 20 | The Playwright specs don't run in CI | Test | 3 | 3 | 2 | **24** (Medium) | 0.5–1 day | New 8 Oct |
+| 21 | Embedding backfill loads a WebGPU model on the main thread of every tab | Architecture | 3 | 3 | 3 | **18** (Medium) | 1–2 days | New 8 Oct |
+| 22 | Open decisions in the upload and onboarding paths | Architecture | 2 | 3 | 2 | **20** (Medium) | 1 day once decided | New 8 Oct |
+| 23 | Prisma calls made directly from route modules | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | New 8 Oct |
+| 24 | Slow first page load (cold document TTFB) | Architecture | 3 | 2 | 3 | **15** (Low) | 1–3 days | New 8 Oct |
 
 ## Details
 
@@ -245,6 +262,10 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Fix:** Use real `<a href>` links on cards and rows, `aria-label` on every icon button, and un-nest the Filter toggles. Make the toolbar and grid responsive and add a mobile nav sheet. Dock the item panel on wide screens.
 - **Why it matters:** Keyboard users can't open a file at all, and phone users can't reach most sections. Both limit who can use the product.
 - **Status 2026-10-01: open.** No commit since the audit targets these findings: searching the log for a11y, aria, accessibility, keyboard and responsive finds none. The UI hasn't been re-audited.
+- **Status 2026-10-08: partly done.**
+  - **Fixed:** the Filter trigger no longer nests the flag toggles inside its button (`eaf71e4`, 3 Oct), which removes the invalid HTML behind the hydration error.
+  - **A cheap path for the biggest finding:** `item-card.tsx` already defines `ItemCard.Link`, a real React Router `<Link>` (it renders a `<span>` for trashed items). No component renders it: a search for `<X.Link` outside `components/ui/` finds nothing. Rendering it as a stretched link over the card would make cards keyboard- and middle-click-reachable without rewriting them. List rows (`data-table.tsx`) still navigate from a `tr onClick`.
+  - **Unchanged:** unnamed icon buttons, the toolbar overflow below ~840px, phone navigation, the item panel covering the file, and the audio seek bar. Not re-measured in a browser.
 
 ### 11. Generated and personal files in git
 
@@ -283,6 +304,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
     - `upload-activity` (1): no activity write while a transaction is open. It fails on the old code every time.
   - **Counts:** `app/.server/__tests__` has 9 test files. `pnpm test` is 649 passing in 46 files, and CI runs all of them.
   - **Still missing:** create, move and copy in `item-actions`; quota on its own; routes and components. There are still 8 Playwright specs.
+- **Status 2026-10-08: open, improving.** Unit test files went from 39 at the audit to 62. `app/.server/__tests__` has 14, including upload safety, trash roots and the size trigger, and `app/machines` has 10. Still 0 component tests, 1 route test, and no test for the quota route (see item 18). The 8 Playwright specs exist but CI doesn't run them (item 20). `bcb227d` fixed the thumbnail spec's setup.
 
 ### 14. Two thumbnail orchestrators
 
@@ -295,6 +317,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - `upload-thumbnail-runner.tsx` still imports `useThumbnail`, and the signing work (`68e5cc9`) landed with both paths still in place.
   - `1a778fd` (2026-09-26) fixed two bugs in the path: an upload job now replaces a queued backfill job for the same item, and the backfill lane no longer stays paused after an upload.
   - The XState pipeline is on trial behind a flag. The legacy hooks stay until the owner signs it off visually.
+- **Resolved 2026-10-03** (`935a923`). `useThumbnail.ts`, `useThumbnailBackfill.ts` and `hooks/thumbnail-signal/` are deleted (1,389 lines), and nothing in `app/` imports `useThumbnail` any more. The XState scheduler is the only path. `d11ffae` also makes thumbnails only for cards on screen. `d41dd8e` splits the pipeline by file type.
 
 ### 15. `item-actions.ts` god module
 
@@ -303,7 +326,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** `app/.server/item-actions.ts` is 3,544 lines with 58 exports. Next largest: `search-actions.ts` (1,551), `invitation-actions.ts` (1,154), `s3.ts` (1,151).
 - **Fix:** Split it by lifecycle (create/upload, move/copy, trash/restore/delete, metadata/metrics) behind the same exports, one slice per PR, with tests added per slice.
 - **Why it matters:** Merge conflicts and review effort concentrate in one file, and it has no tests.
-- **Status 2026-09-29: declined.** A per-slice plan was drafted, and the owner decided not to split the file. It has grown to 3,668 lines and 59 exports, mostly from `getFolder` in `62ddd1c`. Its tests remain part of item 13. (2026-10-02: 3,665 lines and 59 exports after the trash/restore/delete rewrite.)
+- **Status 2026-09-29: declined.** A per-slice plan was drafted, and the owner decided not to split the file. It has grown to 3,668 lines and 59 exports, mostly from `getFolder` in `62ddd1c`. Its tests remain part of item 13. (2026-10-02: 3,665 lines and 59 exports after the trash/restore/delete rewrite.) **8 Oct:** 3,962 lines. TASKS.md now lists "Split `app/.server/item-actions.ts`" under *Someday* with candidate seams (4 Oct), so the decision may be worth revisiting.
 
 ### 16. Overlapping UI primitives
 
@@ -328,6 +351,79 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - **Bulk favorite:** `favorite_items` now strips `selectedItems` from its redirect, as its own comment said it should and as `/api/items` does. That gives the previously unused `removeQueryParam` import its use.
   - **Checks:** the typecheck gate passes, and the browser test on 2026-10-01 confirmed it. `unfavorite` answers 200 with `{"favorited":false}` and no redirect. The item-page toggle settled correctly through favorite, unfavorite and favorite (123–327 ms) without navigating. Bulk favorite redirected to `?layout=grid` with `selectedItems` stripped.
   - **Still open:** the seven workspace stubs, the unregistered `workspaces/create.tsx` (also one of the 11 baseline type errors), and five resources registered under both the flat and the nested item API routes.
+- **Status 2026-10-08: unchanged, now deferred.** The 4 Oct TASKS.md triage moved the workspace repointing to *Someday* ("workspace-only, so it waits per personal-first"). The stubs and `create.tsx` are still there, and `create.tsx` is still unregistered.
+
+### 18. `/api/quota` lets a signed-in user change their own quota
+
+*Code debt (security) · Impact 5 · Risk 5 · Effort 1 → **50** · est. 0.5–1.5 days · source: new (8 Oct); flagged as unverified in `docs/project-analysis-2026-10-04.md`*
+
+- **Evidence:** `app/routes/api/quota.ts` takes `action` and `dataSize` from the request body (`quotaApiRouteInput`, where `dataSize` is `z.coerce.bigint()` with no sign or range check). It applies them to the caller's own quota:
+  - `update-total-quota` calls `updateTotalQuota`, and `applyQuotaDelta` documents `total` as an *absolute replacement*. Any signed-in user can set their own storage limit to any number.
+  - `items-trashed`, `items-deleted`, `items-restored` and `items-copied` shift `used` and `deleted` by whatever amount the client sends.
+  - `items-uploaded` charges a client-supplied size.
+- **Who calls what:** a search of `app/` finds no client caller for `update-total-quota`, `items-trashed`, `items-deleted`, `items-restored` or `items-copied`. Since 2 Oct the server charges trash, restore and delete itself (item 8). Only `find-quota`, `verify-free-quota`, `check-free-quota` (the quota machine) and `items-uploaded` (`db.machine.ts`) are still in use.
+- **Fix:**
+  1. Delete the five unused intents today, and reject non-positive `dataSize` on the rest.
+  2. Move the upload charge to the server: charge `item.size` from the `Item` row in an action keyed by `itemId`, and stop taking a size from the client. This also settles part of item 22.
+  3. Add a route test that a forged body can't change `total`.
+- **Why it matters:** quota is what paid plans sell, and today it can be changed with one `fetch`. Of everything in this register, this is the cheapest fix for the largest risk.
+- **Verified by reading the code only.** The endpoint wasn't called, so no data changed.
+- **Status 2026-10-08: resolved in code.**
+  - `/api/quota` is read-only: `find-quota`, `verify-free-quota` and `check-free-quota`. Every write action, `items-uploaded` included, answers 400, as does a negative or oversized `dataSize`. The schema is a discriminated union on `action`.
+  - The upload charge is back in `createUploadedItem`, as the last statement of the row's transaction. `dbMachine`'s `chargingQuota`/`retryingQuota`, the client `updateQuota` helper and the quota machine's `update` path are deleted.
+  - Tests: `app/routes/api/__tests__/quota.test.ts` (13; 9 fail against the old route) and `app/.server/__tests__/upload-quota-charge.test.ts` (4, live DB; 3 fail with the charge removed). 10 parallel uploads by one user charged in 297 ms, sum exact.
+  - **Still open:** the size is the client's. `createUploadedItem` charges `data.size`, which `api/items.ts` takes from the form, so a client can still report a smaller file than it stored. Closing it means reading the object's size from S3 (`HeadObject`) before the row is written.
+
+### 19. The Stripe webhook acknowledges events and saves nothing
+
+*Code debt · Impact 3 · Risk 5 · Effort 3 → **24** · est. 1–2 days · source: `docs/project-analysis-2026-10-04.md`*
+
+- **Evidence:** `app/routes/api/stripe.ts` verifies the signature and then, for `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted` and `invoice.paid`, runs only `// TODO` comments and commented-out `prisma` calls. It returns 200, so Stripe marks every event delivered and never retries. `docs/project-overview.md:472` says the handler "syncs subscription state to database", which isn't true today.
+- **Fix:** implement the four handlers against the `Subscription` model, keyed by `stripeSubscriptionId` and safe to run twice (Stripe redelivers). Call `updateTotalQuota` from here on a plan change, server-side, which is the legitimate caller item 18 should keep. Test with the Stripe CLI (`stripe trigger`). Correct `project-overview.md`.
+- **Why it matters:** a renewal, cancellation or failed payment in Stripe never reaches the database. Users keep paid storage after cancelling, or never get it after paying.
+
+### 20. The Playwright specs don't run in CI
+
+*Test debt · Impact 3 · Risk 3 · Effort 2 → **24** · est. 0.5–1 day · source: new (8 Oct)*
+
+- **Evidence:** `.github/workflows/ci.yml` runs the typecheck, `pnpm test` (Vitest), the build and a Docker smoke test. None of its steps runs `test:e2e`, so the 8 specs in `tests/e2e/` run only when someone runs them by hand. `bcb227d` (3 Oct) had to fix the thumbnail spec's setup because it had drifted.
+- **Fix:** add a job that reuses the CI Postgres service, builds and starts the app, seeds the auth session (`tests/e2e` global setup), and runs Playwright on Chromium only. If the full suite is too slow for every push, run it nightly. Upload the report as an artifact.
+- **Why it matters:** the e2e specs cover upload and thumbnails, the flows with the most costly regressions, and they rot when they don't run.
+
+### 21. Embedding backfill loads a WebGPU model on the main thread of every tab
+
+*Architecture debt · Impact 3 · Risk 3 · Effort 3 → **18** · est. 1–2 days · source: TASKS.md (Active)*
+
+- **Evidence:** from TASKS.md. `useEmbeddingBackfill` arms on every new tab and lazy-loads `@/workers/embedding.ai` on the page rather than in a worker. It runs a WebGPU model on the main thread, and it fails on the owner's machine. `c8f3fd1` (2 Oct) embeds in batches of 16 and releases the model when idle, which reduces the cost but doesn't move it off the main thread.
+- **Fix:** run the model in a dedicated worker (the repo already has `app/workers/`). Elect one tab with the Web Locks API (`navigator.locks.request('embedding-backfill', …)`) so N open tabs don't each load the model.
+- **Why it matters:** jank and GPU memory multiply with every open tab, and a failure here is silent until search quality drops.
+
+### 22. Open decisions in the upload and onboarding paths
+
+*Architecture debt · Impact 2 · Risk 3 · Effort 2 → **20** · est. 1 day once decided · source: TASKS.md*
+
+- **Evidence:** three questions are written up in TASKS.md and not yet decided:
+  1. ~~**Quota when every retry fails:** `dbMachine` charges after the `Item` row exists (`chargingQuota` ⇄ `retryingQuota`). If every retry fails, the item exists uncharged.~~ **Settled 2026-10-08** by item 18: the charge is in the row's transaction, so there is no retry and no unbilled row.
+  2. **Failed onboarding:** `onboardNewUser` runs in better-auth's `user.create.after` hook. If bucket, drive or root creation fails, can the user still sign in later with no bucket?
+  3. **Workspace uploads:** `createUploadedItem` never sets `workspaceId`, so a file uploaded into a workspace folder is the uploader's personal item.
+- **Fix:** decide each one, then write a test that pins the decision. Moving the upload charge to the server (item 18) settles question 1.
+- **Why it matters:** each one is a quiet way for quota, ownership or account state to drift from what the UI shows.
+
+### 23. Prisma calls made directly from route modules
+
+*Code debt · Impact 2 · Risk 2 · Effort 2 → **16** · est. 0.5–1 day · source: TASKS.md (Active), confirmed 8 Oct*
+
+- **Evidence:** four route modules import `prisma` from `@/services/db` and query it directly: `routes/api/shares.ts` (`item.findUnique`, `permission.findFirst`, `shareLink.findMany`), `routes/stash/gallery.tsx`, `routes/stash/shares.tsx` and `routes/workspaces/workspace.tsx`. Every other route goes through `app/.server/*-actions.ts`, where access checks live.
+- **Fix:** move each query into the matching `*-actions.ts` next to its access check. Then add the `no-restricted-imports` rule for `@/services/db` under `app/routes/` that TASKS.md proposes as the linter's first rule (item 12).
+- **Why it matters:** access checks are enforced in the actions layer. A route that queries Prisma directly is a place where one can be forgotten. `api/shares.ts` reads permissions itself.
+
+### 24. Slow first page load (cold document TTFB)
+
+*Architecture debt · Impact 3 · Risk 2 · Effort 3 → **15** · est. 1–3 days · source: TASKS.md (Active)*
+
+- **Evidence:** from TASKS.md, measured 2026-09-25 against the production build. The stash document's first load had a **1,752 ms** TTFB, against 354 ms warm, with 254 KB of HTML and 44 signed thumbnail URLs. The server log showed the same document at 2,997 ms. The `.data` request for the same route is fast.
+- **Fix:** profile one cold request before changing anything: route module loading, the signing cache's first window, and the session lookup. Signing is already cached per window (item 5), so 44 cold signatures is the first suspect. Since `d11ffae`, only on-screen cards get thumbnails, so check whether the loader can sign only the first page of thumbnails.
+- **Why it matters:** the first load is the first impression, and it's 5× slower than the same page warm.
 
 ## Changes since the audit
 
@@ -364,6 +460,10 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-02 | `e04d07d` | 8, 13 | Trash and restore need `write`. Trash's quota over-count is fixed, and delete works only from trash. Each is one statement with batched activities; upload activity no longer races its transaction. 20 new tests. |
 | 2026-10-02 | `1b41e45` | 8 | `onActiveItemsDeleted` removed: permanent delete only takes items from trash, so it had no callers. |
 | 2026-10-02 | migration `20261002090000_fix_inclusive_size_rollup` | 8 | `update_size()` passes a folder's `inclusiveSize` up and reacts to its changes; every folder recounted (5 corrected on dev, 3,542,674 bytes). 15-step regression test. |
+| 2026-10-03 | `935a923`, `d11ffae`, `d41dd8e` | 14 | Legacy thumbnail hooks deleted (1,389 lines); the XState scheduler is the only path; thumbnails only for on-screen cards; pipeline split by file type. |
+| 2026-10-03 | `eaf71e4` | 10 | Filter flag toggles no longer nested inside the trigger button. |
+| 2026-10-03 | `bcb227d` | 13, 20 | Thumbnail e2e spec passes again, fixed in its setup. |
+| 2026-10-03 | `fc8934b`, `1821ca4`, `9422c8b` | 22 | Uploads never guess a destination, check folder access before any bytes, and free a failed file's slot. |
 
 ## Phased remediation plan
 
@@ -399,12 +499,12 @@ Build the safety net: CI, a deploy that works, error tracking and a linter. Ever
 
 Privacy and data correctness. Merge the thumbnail paths first, then make signing cheap and turn off public-read, then reconcile orphaned bytes and quota.
 
-- Two thumbnail orchestrators (2–3 days): open
+- ~~Two thumbnail orchestrators (2–3 days)~~: resolved 2026-10-03
 - ~~Thumbnails of private files are publicly readable (3–5 days)~~: resolved 2026-10-01
 - ~~Failed uploads leave S3 bytes and charged quota with no Item (2–3 days)~~: resolved 2026-10-02
 - ~~Data-integrity gaps in loaders and deletes (1–2 days)~~: resolved 2026-10-01
 
-*Status 2026-10-02:* only the orchestrator merge (item 14) remains. Signing shipped *before* the orchestrators were merged, the reverse of the planned order, so the signing change had to land on both paths.
+*Status 2026-10-08:* Phase 2 is done; the orchestrator merge landed 3 Oct. *Status 2026-10-02:* only the orchestrator merge (item 14) remains. Signing shipped *before* the orchestrators were merged, the reverse of the planned order, so the signing change had to land on both paths.
 
 ### Phase 3 · ongoing
 
@@ -416,8 +516,23 @@ Pay down on each touch: add tests for any loader or action you change, and fix a
 - Tests are missing where the risk is (ongoing, ~2 weeks)
 - ~~`item-actions.ts` god module (3–5 days, incremental)~~: declined 2026-09-29
 - Overlapping UI primitives (2–3 days): partly done
-- Unfinished migrations left in place (2–4 days): favorites work in progress finished; workspace stubs and duplicate routes left
+- Unfinished migrations left in place (2–4 days): favorites work in progress finished; workspace stubs and duplicate routes left, deferred 4 Oct
+
+### Phase 4 · added 8 Oct
+
+*start with item 18 this week; the rest fit the Phase 3 cadence*
+
+New items from the 8 Oct re-scan, in the order to do them:
+
+1. **`/api/quota` trusts the client (item 18, 0.5–1.5 days).** Deleting the five unused intents takes minutes and closes the worst of it. Do it before anything else on this list.
+2. **Playwright in CI (item 20, 0.5–1 day).** This puts the upload and thumbnail flows under the safety net that Phase 1 built.
+3. **Stripe webhook (item 19, 1–2 days).** Needed before anyone pays. It's also the right server-side home for `updateTotalQuota`.
+4. **Prisma out of routes (item 23, 0.5–1 day).** Small, and it gives the linter (item 12) its first rule.
+5. **The three open decisions (item 22).** These are decisions rather than code. Item 18's server-side charge settles one of them.
+6. **Embedding backfill in a worker, one tab (item 21, 1–2 days)** and **cold first load (item 24, 1–3 days).** Both are performance work. Profile before changing anything.
 
 ---
 
 *Method: read-only scan of the working tree on your computer — file and line counts, grep for type escapes and markers, an import scan against `package.json`, the tsc baseline, Dockerfile, `.gitignore`/`.dockerignore`, git history since June, and TASKS.md. The generated Prisma client (`app/prisma/`) is excluded from code metrics. "No import found" for a dependency means none in `app/`, `server*`, `scripts/` or `vite.config.ts`; confirm with a build before removing. 40 files had uncommitted changes at the time; findings reflect the working tree.*
+
+*Re-audit 8 Oct: same read-only method over 109 commits since the audit, TASKS.md (triaged 4 Oct) and `docs/project-analysis-2026-10-04.md`. Item 18 was verified by reading the route, schema and `applyQuotaDelta`, not by calling the endpoint. UI findings in item 10 weren't re-measured in a browser.*
