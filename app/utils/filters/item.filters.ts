@@ -1,3 +1,4 @@
+import { livePermission } from '@/utils/permissions'
 import { z } from 'zod'
 import { Prisma, ItemCategory, ItemType, ItemStatus } from '@/prisma/browser'
 import { createFilter, buildFiltersFactory } from '@/utils/filters'
@@ -160,7 +161,8 @@ export const itemFilters = {
   accessibleBy: createItemFilter(z.string(), (userId) => ({
     OR: [
       { ownerId: userId },
-      { permissions: { some: { users: { some: { id: userId } } } } },
+      // Only a live grant: an expired or revoked share no longer lists the item.
+      { permissions: { some: { users: { some: { id: userId } }, ...livePermission() } } },
     ],
   })),
   tags: createItemFilter(z.array(z.string()), (tags) => ({

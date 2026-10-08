@@ -70,12 +70,22 @@ describe('item filters that must produce a constraint', () => {
     expect(clauses(where)).toContainEqual({ workspaceId: 'wsp_1' })
   })
 
-  it('accessibleBy admits owned items and items shared with the user', () => {
+  it('accessibleBy admits owned items and items shared with the user by a live grant', () => {
     const where = buildItemFilters({ accessibleBy: 'usr_1' } as never)
     expect(clauses(where)).toContainEqual({
       OR: [
         { ownerId: 'usr_1' },
-        { permissions: { some: { users: { some: { id: 'usr_1' } } } } },
+        {
+          permissions: {
+            some: {
+              users: { some: { id: 'usr_1' } },
+              // An expired or soft-deleted grant must not list the item
+              // (tech-debt item 26).
+              deletedAt: null,
+              OR: [{ expiresAt: null }, { expiresAt: { gt: expect.any(Date) } }],
+            },
+          },
+        },
       ],
     })
   })

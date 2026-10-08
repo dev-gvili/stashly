@@ -1,4 +1,5 @@
 import type { Permission, PermissionRole, Prisma } from '@/prisma/client'
+import { livePermission } from '@/utils/permissions'
 import { prisma } from '@/services/db'
 import {
   StashlyErrorCode,
@@ -398,6 +399,8 @@ export async function hasItemPermission(
         itemId,
         users: { some: { id: userId } },
         roles: { in: satisfyingRoles },
+        // Only a live grant counts: a revoked or expired one keeps its row.
+        ...livePermission(),
       },
     }),
     db.item.findUnique({ where: { id: itemId }, select: { ownerId: true } }),
@@ -433,7 +436,7 @@ export async function hasLinkPermission(
 ): Promise<boolean> {
   const db = tx ?? prisma
   const perm = await db.permission.findFirst({
-    where: { linkId, users: { some: { id: userId } }, roles: role },
+    where: { linkId, users: { some: { id: userId } }, roles: role, ...livePermission() },
   })
   return !!perm
 }
@@ -459,7 +462,7 @@ export async function hasRecipientPermission(
 ): Promise<boolean> {
   const db = tx ?? prisma
   const perm = await db.permission.findFirst({
-    where: { recipientId, users: { some: { id: userId } }, roles: role },
+    where: { recipientId, users: { some: { id: userId } }, roles: role, ...livePermission() },
   })
   return !!perm
 }
@@ -616,6 +619,7 @@ export async function assertItemsAccess(
                 some: {
                   roles: { in: rolesSatisfying(role) },
                   users: { some: { id: userId } },
+                  ...livePermission(),
                 },
               },
             },
