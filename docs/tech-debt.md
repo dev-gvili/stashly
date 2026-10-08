@@ -16,7 +16,7 @@
 
 **24 items** (17 from the audit, 7 added 8 Oct) · categories: Code 10, Architecture 7, Infrastructure 3, Test 2, Dependency 1, Documentation 1
 
-**Status at 8 Oct 2026:** 9 resolved · 1 resolved in code, rollout step unconfirmed · 3 partly done · 1 declined · 3 open from the audit · 7 new and open. (At 2 Oct: 8 resolved · 1 in code · 2 partly · 1 declined · 5 open.) Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 8 Oct 2026 (end of day):** 10 resolved · 1 resolved in code, rollout step unconfirmed · 3 partly done · 1 declined · 3 open from the audit · 6 new and open. Item 18 was resolved the same day it was found (`2fc9d4d`), with e2e coverage in `9081555`. (Earlier on 8 Oct: 9 resolved · 7 new and open.) (At 2 Oct: 8 resolved · 1 in code · 2 partly · 1 declined · 5 open.) Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 ### What's left, in priority order
 
@@ -33,7 +33,7 @@
 | 22 | **new** Open decisions in upload and onboarding | 20 | Three decisions already written up in TASKS.md | Owner's decision |
 | 21 | **new** Embedding backfill runs in every tab | 18 | Move it to a worker and run it in one tab only | — |
 | 12 | Linter | 16 | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
-| 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; quota on its own; routes and components | — |
+| 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; the rest of `quota-actions`; routes and components | — |
 | 23 | **new** Prisma calls in route modules | 16 | 4 routes | — |
 | 24 | **new** Slow first page load | 15 | Find where the 1.4 s goes | — |
 | 16 | Overlapping UI primitives | 12 | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
@@ -304,6 +304,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
     - `upload-activity` (1): no activity write while a transaction is open. It fails on the old code every time.
   - **Counts:** `app/.server/__tests__` has 9 test files. `pnpm test` is 649 passing in 46 files, and CI runs all of them.
   - **Still missing:** create, move and copy in `item-actions`; quota on its own; routes and components. There are still 8 Playwright specs.
+- **Status 2026-10-08 (end of day): open, improving.** Unit test files are at 64 (760 tests, all passing). `app/.server/__tests__` has 15, adding `upload-quota-charge` (live DB: exact charge, no row without a quota, 10 parallel uploads summed exactly). Route tests went from 1 to 2: `app/routes/api/__tests__/quota.test.ts` covers the quota route item 18 named as untested. The upload e2e spec went from 1 test to 11 (`9081555`); CI still doesn't run it (item 20). Still missing: create, move and copy in `item-actions`, and components.
 - **Status 2026-10-08: open, improving.** Unit test files went from 39 at the audit to 62. `app/.server/__tests__` has 14, including upload safety, trash roots and the size trigger, and `app/machines` has 10. Still 0 component tests, 1 route test, and no test for the quota route (see item 18). The 8 Playwright specs exist but CI doesn't run them (item 20). `bcb227d` fixed the thumbnail spec's setup.
 
 ### 14. Two thumbnail orchestrators
@@ -371,7 +372,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Status 2026-10-08: resolved in code.**
   - `/api/quota` is read-only: `find-quota`, `verify-free-quota` and `check-free-quota`. Every write action, `items-uploaded` included, answers 400, as does a negative or oversized `dataSize`. The schema is a discriminated union on `action`.
   - The upload charge is back in `createUploadedItem`, as the last statement of the row's transaction. `dbMachine`'s `chargingQuota`/`retryingQuota`, the client `updateQuota` helper and the quota machine's `update` path are deleted.
-  - Tests: `app/routes/api/__tests__/quota.test.ts` (13; 9 fail against the old route) and `app/.server/__tests__/upload-quota-charge.test.ts` (4, live DB; 3 fail with the charge removed). 10 parallel uploads by one user charged in 297 ms, sum exact.
+  - Tests: `app/routes/api/__tests__/quota.test.ts` (13; 9 fail against the old route) and `app/.server/__tests__/upload-quota-charge.test.ts` (4, live DB; 3 fail with the charge removed). 10 parallel uploads by one user charged in 297 ms, sum exact. E2E (`9081555`): from the browser, quota grows by exactly the uploaded size, the page sends only reads, and each former write answers 400 (11/11 locally).
   - **Still open:** the size is the client's. `createUploadedItem` charges `data.size`, which `api/items.ts` takes from the form, so a client can still report a smaller file than it stored. Closing it means reading the object's size from S3 (`HeadObject`) before the row is written.
 
 ### 19. The Stripe webhook acknowledges events and saves nothing
@@ -389,6 +390,9 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** `.github/workflows/ci.yml` runs the typecheck, `pnpm test` (Vitest), the build and a Docker smoke test. None of its steps runs `test:e2e`, so the 8 specs in `tests/e2e/` run only when someone runs them by hand. `bcb227d` (3 Oct) had to fix the thumbnail spec's setup because it had drifted.
 - **Fix:** add a job that reuses the CI Postgres service, builds and starts the app, seeds the auth session (`tests/e2e` global setup), and runs Playwright on Chromium only. If the full suite is too slow for every push, run it nightly. Upload the report as an artifact.
 - **Why it matters:** the e2e specs cover upload and thumbnails, the flows with the most costly regressions, and they rot when they don't run.
+- **Status 2026-10-08: open, and more is now at stake.** `9081555` rewrote `upload.spec.ts` from 1 test to 11: filing, the exact server-side quota charge, a page that sends only quota reads, and a 400 for every former write on `/api/quota`. 11/11 pass locally (1 worker, 37.2 s); CI still runs none of it. Two things the CI job must handle:
+  - **One shared user.** Every spec signs in as the same seeded user, and Playwright runs spec *files* in parallel workers. An upload in `thumbnail-machine.spec.ts` can land inside `upload.spec.ts`'s quota window and break its exact delta. Run with `--workers=1`, or seed a user per worker.
+  - **The bucket.** On the 8 Oct run, global setup reported the E2E user back on `default-bucket` and created a new one (`e2e-bucket.ts`). Why it had been reset was not investigated.
 
 ### 21. Embedding backfill loads a WebGPU model on the main thread of every tab
 
@@ -464,6 +468,8 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-03 | `eaf71e4` | 10 | Filter flag toggles no longer nested inside the trigger button. |
 | 2026-10-03 | `bcb227d` | 13, 20 | Thumbnail e2e spec passes again, fixed in its setup. |
 | 2026-10-03 | `fc8934b`, `1821ca4`, `9422c8b` | 22 | Uploads never guess a destination, check folder access before any bytes, and free a failed file's slot. |
+| 2026-10-08 | `2fc9d4d` | 18, 22, 13 | `/api/quota` is read-only; every write action answers 400. Uploads are charged in `createUploadedItem`'s transaction, and the client charge and its retry loop are gone, which settles item 22's first question. 2 new test files: 9 of 13 route tests fail against the old route, 3 of 4 charge tests fail with the server charge removed. |
+| 2026-10-08 | `9081555` | 13, 20 | Upload e2e spec: 1 test to 11, covering filing, the exact quota charge and the refused quota writes. Passes locally; not in CI. |
 
 ## Phased remediation plan
 
@@ -520,12 +526,12 @@ Pay down on each touch: add tests for any loader or action you change, and fix a
 
 ### Phase 4 · added 8 Oct
 
-*start with item 18 this week; the rest fit the Phase 3 cadence*
+*item 18 done 8 Oct; item 20 is next; the rest fit the Phase 3 cadence*
 
 New items from the 8 Oct re-scan, in the order to do them:
 
-1. **`/api/quota` trusts the client (item 18, 0.5–1.5 days).** Deleting the five unused intents takes minutes and closes the worst of it. Do it before anything else on this list.
-2. **Playwright in CI (item 20, 0.5–1 day).** This puts the upload and thumbnail flows under the safety net that Phase 1 built.
+1. ~~**`/api/quota` trusts the client (item 18, 0.5–1.5 days).**~~ **Done 8 Oct** (`2fc9d4d`, e2e in `9081555`). Still open within it: the charged size comes from the client form, not from S3.
+2. **Playwright in CI (item 20, 0.5–1 day).** This puts the upload and thumbnail flows under the safety net that Phase 1 built. Now the next item: the upload spec checks quota from the browser, and the job must run with one worker or a user per worker.
 3. **Stripe webhook (item 19, 1–2 days).** Needed before anyone pays. It's also the right server-side home for `updateTotalQuota`.
 4. **Prisma out of routes (item 23, 0.5–1 day).** Small, and it gives the linter (item 12) its first rule.
 5. **The three open decisions (item 22).** These are decisions rather than code. Item 18's server-side charge settles one of them.
