@@ -26,6 +26,9 @@ beforeAll(async () => {
   await prisma.user.create({ data: { id: ownerId, name: 'Upload activity', email: `upact-${ownerId}@test.local`, emailVerified: true } })
   driveId = uid('Drive')
   await prisma.drive.create({ data: { id: driveId, ownerId } })
+  // `createUploadedItem` charges the uploader's quota in the row's transaction,
+  // and refuses the upload when there is no quota to charge.
+  await prisma.quota.create({ data: { id: uid('Quota'), driveId, total: 10n ** 12n } })
   rootId = uid('Item')
   await prisma.item.create({
     data: { id: rootId, name: 'root', type: 'folder', category: 'unknown', status: 'normal', ownerId, driveId, parentId: null, size: 0 },

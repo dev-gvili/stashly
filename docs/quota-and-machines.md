@@ -111,7 +111,7 @@ export function calculateQuota(
 
 ## Quota State Machine
 
-The live machine is `app/machines/quota/quota.machine.ts`, with its actors in `quota.actors.ts` and the fetch helpers in `quota.utils.ts`. It has one state per *operation kind*, not per quota event — the specific mutation (`items-uploaded`, `items-trashed`, …) travels as the `action` field of the `update` actor's input.
+The live machine is `app/machines/quota/quota.machine.ts`, with its actors in `quota.actors.ts` and the fetch helpers in `quota.utils.ts`. It only **reads** quota: one state per read, no write path.
 
 ```typescript
 // app/machines/quota/quota.machine.ts
@@ -121,7 +121,6 @@ export const quotaMachine = setup({
     verify: verifyQuota,   // POST /api/quota { action: 'verify-free-quota' } → boolean
     check: checkQuota,     // POST /api/quota { action: 'check-free-quota' }
     find: findQuota,       // POST /api/quota { action: 'find-quota' }
-    update: updateQuota,   // POST /api/quota { action, dataSize } — action passed in as input
   },
 }).createMachine({
   id: 'quota',
@@ -133,46 +132,50 @@ export const quotaMachine = setup({
         '@quota.check':  { target: 'check' },
         '@quota.verify': { target: 'verify' },
         '@quota.find':   { target: 'find' },
-        '@quota.update': { target: 'update' },
       },
     },
     check:   { invoke: { src: 'check',  ... } },  // → success | error
     verify:  { invoke: { src: 'verify', ... } },
     find:    { invoke: { src: 'find',   ... } },
-    update:  { invoke: { src: 'update', ... } },
     success: { /* → idle */ },
     error:   { /* → idle */ },
   }
 })
 ```
 
-`quotaMachine` is registered as an actor of `upload/upload.machine.ts`. Note that the per-file machine (`reviset/file.machine.ts`) does **not** go through this machine — it invokes the `checkQuota` and `updateQuota` actors from `quota/quota.actors.ts` directly, in its `checkingQuota` and `updatingQuota` states. `app/machines/actors/quota.machine.ts` is an abandoned prototype that nothing imports.
+`quotaMachine` is registered as an actor of `upload/upload.machine.ts`. `app/machines/actors/quota.machine.ts` is an abandoned prototype that nothing imports.
 
-> ⚠️ **Suspected double-count on upload.** `file.machine.updatingQuota` posts `{ action: 'items-uploaded', dataSize: file.size }` to `/api/quota`, which calls `onItemsUploaded`. Then `createUploadedItem` (`app/.server/item-actions.ts`), triggered by the same `upload.done`, calls `onItemsUploaded` again inside its transaction. Unless one of these is meant to be a no-op, each uploaded file appears to charge its size to `used` twice.
+### Where quota is written
+
+Only on the server, in the same code that changes the rows it accounts for. No request body can change a quota.
+
+| Change | Where | How |
+|---|---|---|
+| Upload | `createUploadedItem` (`item-actions.ts`) | `onItemsUploaded`, last statement of the transaction that creates the `Item`. Row and charge commit together or not at all; a user with no `Quota` row gets no row either. |
+| Trash, restore, delete | `item-actions.ts` | `onItemsTrashed` / `onItemsRestored` / `onItemsDeleted`, with the byte count the statement itself moved |
+| Copy | `item-actions.ts` | `onItemsCopied`, after an `ensureUserQuota` check |
+| Plan limit | billing (`subscription-actions.ts`, `settings/billing.tsx`) | `updateTotalQuota` |
+
+History: until 2026-09-27 an upload was charged twice, once by the file machine's `updatingQuota` and once in `createUploadedItem`. `c6751b2` kept a client-side charge in `dbMachine` (`chargingQuota`, with retries) and removed the server one. On 2026-10-08 that was reversed: the server charge is back in the transaction, and the client charge and the `items-uploaded` action are gone, because a client-posted charge could be skipped or name its own size.
 
 ---
 
 ## Backend API Endpoint
 
-`app/routes/api/quota.ts` — **JSON body** (`request.json()`), parsed by `quotaApiRouteInput`, discriminated on `action`. The `userId` always comes from the session, never from the body:
+`app/routes/api/quota.ts` — **JSON body** (`request.json()`), parsed by `quotaApiRouteInput`, a discriminated union on `action`. **Read-only.** The `userId` always comes from the session, never from the body. A body that fails the schema (an unknown action, including the write actions removed on 2026-10-08, or a negative or oversized `dataSize`) gets a **400**:
 
 ```typescript
-let { action, dataSize } = quotaApiRouteInput.parse(await request.json())
+const parsed = quotaApiRouteInput.safeParse(await request.json())
+if (!parsed.success) throw data({ error: 'Invalid quota request' }, { status: 400 })
 
-switch (action) {
+switch (input.action) {
   case 'find-quota':        return quotaApiRouteOutput.parse(await findQuota({ userId: user.id }))
-  case 'verify-free-quota': return verifyFreeQuota(await findQuota({ userId: user.id }), dataSize)   // boolean
-  case 'check-free-quota':  return checkFreeQuota(data.itemId, await findQuota({ userId: user.id }), dataSize)
-  case 'items-uploaded':    return quotaApiRouteOutput.parse(await onItemsUploaded({ userId: user.id, dataSize }))
-  case 'items-trashed':     ... // onItemsTrashed
-  case 'items-deleted':     ... // onItemsDeleted
-  case 'items-copied':      ... // onItemsCopied
-  case 'items-restored':    ... // onItemsRestored
-  case 'update-total-quota': ... // updateTotalQuota
+  case 'verify-free-quota': return verifyFreeQuota(await findQuota({ userId: user.id }), input.dataSize)   // boolean
+  case 'check-free-quota':  return checkFreeQuota(input.itemId, await findQuota({ userId: user.id }), input.dataSize)
 }
 ```
 
-Callers: `verifyBatchQuota()` in `app/hooks/useUpload.ts` sends `verify-free-quota` once for a whole batch (each file in that batch is then queued with `skipQuotaCheck: true`), and `quota.utils.ts` sends the rest on behalf of the machines.
+Callers: `verifyBatchQuota()` in `app/hooks/useUpload.ts` sends `verify-free-quota` once for a whole batch (each file in that batch is then queued with `skipQuotaCheck: true`), and `quota.actors.ts` sends the three reads on behalf of the quota machine. Covered by `app/routes/api/__tests__/quota.test.ts`.
 
 ---
 

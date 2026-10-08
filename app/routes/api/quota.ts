@@ -1,18 +1,12 @@
-import { redirect } from 'react-router'
-import type { Route } from './+types/upload'
+import { quotaApiRouteInput, quotaApiRouteOutput } from '@/schemas/api.schemas'
 import { auth } from '@/services/auth'
 import {
-  findQuota,
-  onItemsCopied,
-  onItemsRestored,
-  onItemsDeleted,
-  verifyFreeQuota,
   checkFreeQuota,
-  onItemsTrashed,
-  onItemsUploaded,
-  updateTotalQuota,
+  findQuota,
+  verifyFreeQuota,
 } from '@/services/quota-actions'
-import { quotaApiRouteInput, quotaApiRouteOutput } from '@/schemas/api.schemas'
+import { data, redirect } from 'react-router'
+import type { Route } from './+types/upload'
 
 export async function action({ request }: Route.ActionArgs) {
     const session = await auth.api.getSession({
@@ -21,10 +15,16 @@ export async function action({ request }: Route.ActionArgs) {
   if (!session) throw redirect('/auth/sign-in')
   let { user } = session
 
-  let data = await request.json()
-  let { action, dataSize } = quotaApiRouteInput.parse(data)
+  // Read-only. An unknown action — including the write actions this route used
+  // to accept — or a bad size is the client's mistake: answer 400, not the 500
+  // a thrown ZodError would become.
+  const parsed = quotaApiRouteInput.safeParse(await request.json())
+  if (!parsed.success) {
+    throw data({ error: 'Invalid quota request' }, { status: 400 })
+  }
+  const input = parsed.data
 
-  switch (action) {
+  switch (input.action) {
     case 'find-quota': {
       const quota = await findQuota({
         userId: user.id,
@@ -35,59 +35,13 @@ export async function action({ request }: Route.ActionArgs) {
       const quota = await findQuota({
         userId: user.id,
       })
-      return verifyFreeQuota(quota, dataSize)
+      return verifyFreeQuota(quota, input.dataSize)
     }
     case 'check-free-quota': {
       const quota = await findQuota({
         userId: user.id,
       })
-      return checkFreeQuota(data.itemId, quota, dataSize)
-    }
-    case 'items-uploaded': {
-      const data = await onItemsUploaded({
-        userId: user.id,
-        dataSize,
-      })
-      return quotaApiRouteOutput.parse(data)
-    }
-    case 'items-trashed': {
-      const data = await onItemsTrashed({
-        userId: user.id,
-        dataSize,
-      })
-      return quotaApiRouteOutput.parse(data)
-    }
-    case 'items-deleted': {
-      const data = await onItemsDeleted({
-        userId: user.id,
-        dataSize,
-      })
-      return quotaApiRouteOutput.parse(data)
-    }
-    case 'items-copied': {
-      const data = await onItemsCopied({
-        userId: user.id,
-        dataSize,
-      })
-      return quotaApiRouteOutput.parse(data)
-    }
-    case 'items-restored': {
-      const data = await onItemsRestored({
-        userId: user.id,
-        dataSize,
-      })
-      return quotaApiRouteOutput.parse(data)
-    }
-    case 'update-total-quota': {
-      const data = await updateTotalQuota({
-        userId: user.id,
-        dataSize,
-      })
-      return quotaApiRouteOutput.parse(data)
-    }
-    default: {
-      // Ensure you have a proper return type here, depending on your framework's router.
-      return { error: 'Invalid action' }
+      return checkFreeQuota(input.itemId, quota, input.dataSize)
     }
   }
 }

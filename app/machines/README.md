@@ -24,7 +24,7 @@ This folder also holds several abandoned prototypes. Before editing anything her
 - `reviset/file.machine.ts` — **the per-file actor.** This is the one `upload.machine.ts` imports (`import { fileMachine } from '../reviset/file.machine'`). Handles quota check, multipart create, chunked upload with pause/resume/abort, completion, and the quota update.
 
 - `quota/quota.machine.ts` + `quota/quota.actors.ts` + `quota/quota.utils.ts`
-  - Quota machine registered as an actor of the upload manager; the actors (`checkQuota`, `updateQuota`, `findQuota`, `verifyQuota`) are also invoked directly by `reviset/file.machine.ts`.
+  - Quota machine registered as an actor of the upload manager; the actors (`checkQuota`, `findQuota`, `verifyQuota`) are also invoked directly by `reviset/file.machine.ts`.
 
 - `multipart/*` — not a machine: the S3 multipart actors (`s3.mulipart.utils.ts`) and the worker-pool chunk uploader (`s3.multipart.stream.ts`, `s3.multipart.concurrent.ts`).
 

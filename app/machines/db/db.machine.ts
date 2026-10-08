@@ -6,16 +6,8 @@ import {
   type AnyActorRef,
 } from 'xstate'
 import type { DbContext, DbEvents, DbResponse } from '@/types/machine.types'
-import { updateQuota } from '@/machines/quota/quota.actors'
 import { resolveHash, postItem } from './db.actors'
 import { toItemPayload, toOutcome } from './db.utils'
-
-/**
- * Backoff between quota attempts — about 31s in total. What should happen once
- * they are all spent is an open decision (TASKS.md); until it is made, the run
- * reports success, because the row exists and the file is fine.
- */
-const QUOTA_RETRY_DELAYS = [1000, 2000, 4000, 8000, 16000]
 
 /**
  * Writes rows on behalf of an upload, one request per run.
@@ -25,8 +17,7 @@ const QUOTA_RETRY_DELAYS = [1000, 2000, 4000, 8000, 16000]
  * fate of an upload:
  *
  * ```
- *                                                    ┌ @db.item.created    → chargingQuota ⇄ retryingQuota
- *                                                    │                            └→ created ┐
+ *                                                    ┌ @db.item.created    → created     ┐
  * idle → hashing → building → posting → classifying ─┼ @db.item.refused    → refused     ┤
  *   ▲                                                ├ @db.item.rejected   → rejected    ├→ idle
  *   │                                                ├ @db.session.expired → sessionExpired
@@ -46,10 +37,10 @@ const QUOTA_RETRY_DELAYS = [1000, 2000, 4000, 8000, 16000]
  * each travel on the event that carries them into the next step, so context
  * holds only the subject of the run and who to answer.
  *
- * **Quota is charged here, and only here** — after the row exists, so an
- * upload that never got its `Item` is never billed. None of the other endings
- * pass through `chargingQuota`. The charge used to run in the file machine
- * before this machine was even spawned, which billed every `itemFailed` file.
+ * **Quota is not charged here.** The server charges it inside the same
+ * transaction that creates the row (`createUploadedItem`), so a `created`
+ * verdict means the upload is already billed, and no other ending is. The
+ * client used to post the charge itself, which let it skip or forge one.
  *
  * The parent contract is unchanged: `upload.createItem.success` on `created`,
  * `upload.createItem.error` on every other ending.
@@ -67,36 +58,13 @@ export const dbMachine = setup({
   actors: {
     hash: resolveHash,
     post: postItem,
-    chargeQuota: updateQuota,
-  },
-  guards: {
-    canRetryQuota: ({ context }) =>
-      context.quotaAttempts < QUOTA_RETRY_DELAYS.length,
-  },
-  delays: {
-    quotaBackoff: ({ context }) => QUOTA_RETRY_DELAYS[context.quotaAttempts - 1],
   },
   actions: {
-    /**
-     * The subject of the run — the only thing worth keeping across steps. The
-     * attempt count resets here because one machine serves many runs.
-     */
+    /** The subject of the run — the only thing worth keeping across steps. */
     startRun: assign(({ event }) => {
       assertEvent(event, '@db.item.create')
-      return { mediaFile: event.mediaFile, user: event.user, quotaAttempts: 0 }
+      return { mediaFile: event.mediaFile, user: event.user }
     }),
-
-    countQuotaAttempt: assign(({ context }) => ({
-      quotaAttempts: context.quotaAttempts + 1,
-    })),
-
-    /** Provisional — see `QUOTA_RETRY_DELAYS`. The upload goes unbilled. */
-    logQuotaGaveUp: ({ context, event }) => {
-      console.error(
-        `Quota not charged for ${context.mediaFile!.id} after ${context.quotaAttempts + 1} attempts`,
-        (event as { error?: unknown }).error
-      )
-    },
 
     /**
      * Assembles and validates the payload, then hands it on as an event.
@@ -169,10 +137,7 @@ export const dbMachine = setup({
       }))
     }),
 
-    /**
-     * Success reads the subject from context, not the event: `created` is
-     * entered from the quota invoke's done event, which carries no file id.
-     */
+    /** Success reads the subject of the run from context. */
     reportCreated: enqueueActions(({ context, enqueue }) => {
       if (!context.replayTo) return
 
@@ -189,7 +154,6 @@ export const dbMachine = setup({
     replayTo: input?.replayTo,
     mediaFile: undefined,
     user: undefined,
-    quotaAttempts: 0,
   }),
   initial: 'idle',
 
@@ -199,7 +163,7 @@ export const dbMachine = setup({
    * that has no transition for it.
    */
   on: {
-    '@db.item.created': '.chargingQuota',
+    '@db.item.created': '.created',
     '@db.item.refused': '.refused',
     '@db.item.rejected': '.rejected',
     '@db.session.expired': '.sessionExpired',
@@ -283,32 +247,6 @@ export const dbMachine = setup({
      * `res.ok` and blew up inside `res.json()`.
      */
     classifying: {},
-
-    /** The row exists, so this is the first moment the upload is billable. */
-    chargingQuota: {
-      invoke: {
-        id: '@stashly.db.quota',
-        src: 'chargeQuota',
-        input: ({ context }) => ({
-          userId: context.user!.id,
-          action: 'items-uploaded',
-          dataSize: context.mediaFile!.file.size,
-        }),
-        onDone: { target: 'created' },
-        onError: [
-          {
-            guard: 'canRetryQuota',
-            target: 'retryingQuota',
-            actions: 'countQuotaAttempt',
-          },
-          { target: 'created', actions: 'logQuotaGaveUp' },
-        ],
-      },
-    },
-
-    retryingQuota: {
-      after: { quotaBackoff: { target: 'chargingQuota' } },
-    },
 
     created: { entry: 'reportCreated', always: { target: 'idle' } },
     refused: { entry: 'report', always: { target: 'idle' } },

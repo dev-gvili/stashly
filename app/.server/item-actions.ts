@@ -15,6 +15,7 @@ import {
   onItemsDeleted,
   onItemsRestored,
   onItemsTrashed,
+  onItemsUploaded,
 } from '@/services/quota-actions'
 import { deleteObjects, getObjectText } from '@/services/s3'
 import {
@@ -1681,8 +1682,9 @@ export async function upsertMarkdownFacet(
  * Creates the database record for a freshly uploaded file, deriving its parent
  * folder from the S3 key (missing folders in the key path are created on the
  * fly). Also creates the File facet and an owner permission, and records upload
- * activity for the item and any created folders. Quota is not charged here —
- * `dbMachine` charges it once this returns a row.
+ * activity for the item and any created folders. Charges the owner's quota for
+ * `size` in the same transaction as the row — the only place an upload is
+ * charged.
  *
  * `ownerId` is the signed-in uploader (the route passes the session user, never
  * the form's value), and they need `write` access to the folder the key starts
@@ -1784,8 +1786,15 @@ export async function createUploadedItem(data: {
       select: defaultItemSelect,
     })
 
-    // Quota is charged by `dbMachine` (`chargingQuota`) once this row exists —
-    // charging here too counted every upload twice.
+    // The only place an upload is charged. Inside the row's transaction, so the
+    // row and the charge commit together or not at all. Last statement, so the
+    // `Quota` row lock it takes is held only through the commit: parallel
+    // uploads by one user queue on that lock.
+    await onItemsUploaded({
+      userId: data.ownerId,
+      dataSize: data.size,
+      client: tx,
+    })
 
     return item
   })

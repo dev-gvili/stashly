@@ -59,25 +59,35 @@ export type ClientDegradedReport = z.infer<typeof clientDegradedReport>
 // ====================================================== //
 
 /**
- * This schema is for validating and parsing the input from the client.
- * It uses z.coerce.bigint() to safely convert various input types to bigint.
- * The action field is a discriminated union to handle different quota-related actions.
+ * A byte count the client asks about. Never negative, and capped at the
+ * largest size a browser `File` can report.
  */
-export const quotaApiRouteInput = z.object({
-  dataSize: z.coerce.bigint(),
-  action: z
-    .literal('find-quota')
-    .or(z.literal('verify-free-quota'))
-    .or(z.literal('check-free-quota'))
-    .or(z.literal('update-total-quota'))
-    .or(z.literal('items-uploaded'))
-    .or(z.literal('items-trashed'))
-    .or(z.literal('items-copied'))
-    .or(z.literal('items-restored'))
-    .or(z.literal('items-deleted')),
+const clientByteCount = z.coerce
+  .bigint()
+  .nonnegative()
+  .max(BigInt(Number.MAX_SAFE_INTEGER))
 
-  itemId: z.string().optional(),
-})
+/**
+ * Input of `/api/quota`, one shape per `action`. Read-only: every action reads
+ * the quota, none writes it.
+ *
+ * Quota changes only on the server, in the same code that changes the rows it
+ * accounts for: upload in `createUploadedItem`, trash, restore, delete and copy
+ * elsewhere in `item-actions.ts`, and the plan limit (`updateTotalQuota`) in
+ * billing. None of them may be driven by a request body.
+ */
+export const quotaApiRouteInput = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('find-quota') }),
+  z.object({
+    action: z.literal('verify-free-quota'),
+    dataSize: clientByteCount,
+  }),
+  z.object({
+    action: z.literal('check-free-quota'),
+    dataSize: clientByteCount,
+    itemId: z.string(),
+  }),
+])
 
 /**
  * This schema is for transforming the output before it's sent to the client.

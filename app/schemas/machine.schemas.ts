@@ -698,18 +698,10 @@ let quotaVerifyEvent = z.object({
   dataSize: z.bigint(),
 })
 
-let quotaUpdateEvent = z.object({
-  type: z.literal(`${QUOTA}.update`),
-  action: z.string(),
-  userId: z.string(),
-  dataSize: z.bigint(),
-})
-
 export let quotaEvents = z.discriminatedUnion('type', [
   quotaFindEvent,
   quotaCheckEvent,
   quotaVerifyEvent,
-  quotaUpdateEvent,
 ])
 
 export let quotaContext = z.object({
@@ -830,8 +822,6 @@ export let dbContext = z.object({
   replayTo: z.custom<AnyActorRef>().optional(),
   mediaFile: mediafile.optional(),
   user: user.optional(),
-  /** Failed `items-uploaded` charges this run; reset by every `@db.item.create`. */
-  quotaAttempts: z.number(),
 })
 
 // ====================================================== //

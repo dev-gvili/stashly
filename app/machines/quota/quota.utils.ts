@@ -19,31 +19,3 @@ export const FetchInit: RequestInit = {
 export function parseQuota(data: QuotaApiRouteOutput) {
   return quota.parse(data)
 }
-
-/**
- * Updates the user's quota by sending a request to the `/api/quota` endpoint.
- * This function is used to modify the used space, for example, after an upload or deletion.
- *
- * @param input - An object containing the user ID, the action to perform (e.g., 'increment-used', 'decrement-used'), and the size of the data involved.
- * @returns The updated quota information.
- */
-export async function updateQuota({
-  userId,
-  action,
-  dataSize,
-}: {
-  userId: string
-  action: string
-  dataSize: number | bigint
-}) {
-  const res = await fetch('/api/quota', {
-    ...FetchInit,
-    body: JSON.stringify({
-      userId,
-      action,
-      dataSize,
-    }),
-  })
-  let quotaData = await res.json()
-  return parseQuota(quotaData)
-}

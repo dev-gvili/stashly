@@ -190,7 +190,7 @@ flowchart TD
 - **Flat uploads**: Works correctly — the key has no middle segments, so `parentId = key.split('/')[0]` is the destination folder.
 - **Directory drops**: ✅ resolved since this report was written. The key carries `webkitRelativePath`, and `createUploadedItem` recreates the nested folders via `findOrCreateFolderPath` (advisory-locked per `owner:parent:name` so concurrent files in the same directory don't create duplicate folders), parenting the file at the leaf.
 - **Error handling**: The actor reports back — `upload.createItem.error` sets the error on the media file — but there is no retry. If the DB write fails, the file never reaches `itemCreated`, so no thumbnail pipeline runs and the item is absent from the stash.
-- **Quota**: Applied inside `createUploadedItem`'s transaction via `onItemsUploaded`. The per-file machine separately calls `updateQuota` (`POST /api/quota`, `action: 'items-uploaded'`) in its `updatingQuota` state — **suspected double-counting; see the note in `docs/quota-and-machines.md`.**
+- **Quota**: Applied inside `createUploadedItem`'s transaction via `onItemsUploaded`, and nowhere else (2026-10-08). No client code charges quota; see "Where quota is written" in `docs/quota-and-machines.md`.
 
 ---
 

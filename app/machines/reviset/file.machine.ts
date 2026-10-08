@@ -470,7 +470,8 @@ export const fileMachine = setup({
           }
         },
         // Quota is not charged here: the bytes are in S3 but the Item is not
-        // yet written. `dbMachine` charges it once the row exists.
+        // yet written. The server charges it in the transaction that creates
+        // the row (`createUploadedItem`).
         onDone: {
           target: 'success',
           actions: [

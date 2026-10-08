@@ -9,9 +9,9 @@ This document covers the full architecture and implementation of the S3 multipar
 The multipart upload system is composed of:
 
 1. **Parent machine** (`app/machines/upload/upload.machine.ts`) — orchestrates the queue and concurrency (`maxConcurrentUploads`), spawns one file actor per file, runs the post-upload `createDbItem` actor
-2. **File machine** (`app/machines/reviset/file.machine.ts`) — the active per-file actor: checks quota, creates the multipart upload, uploads chunks in parallel (with pause/resume), completes the upload, updates quota, emits `upload.done`
+2. **File machine** (`app/machines/reviset/file.machine.ts`) — the active per-file actor: checks quota, creates the multipart upload, uploads chunks in parallel (with pause/resume), completes the upload, emits `upload.done`
 3. **Multipart utils** (`app/machines/multipart/s3.mulipart.utils.ts`, `s3.multipart.stream.ts`, `s3.multipart.concurrent.ts`) — side-effect handlers + streaming
-4. **Quota** (`app/machines/quota/quota.machine.ts`, `quota/quota.actors.ts`) — quota machine spawned by the parent, plus `checkQuota`/`updateQuota` fetch actors invoked by the file machine
+4. **Quota** (`app/machines/quota/quota.machine.ts`, `quota/quota.actors.ts`) — quota machine spawned by the parent, plus the `checkQuota` fetch actor invoked by the file machine. Quota is *charged* on the server, in `createUploadedItem`
 5. **Backend endpoint** (`app/routes/api/upload.ts`, registered as both `/api/s3/upload` and `/api/s3/multipart`) — handles multipart actions
 
 > `upload/file.machine.ts` is an unused sibling — `upload.machine.ts` imports the file actor from `app/machines/reviset/file.machine.ts`. The machines in `app/machines/actors/` (`multipart.machine.ts`, `queue.machine.ts`, `quota.machine.ts`) are abandoned prototypes that nothing imports.
@@ -32,9 +32,8 @@ export const fileMachine = setup({ ... }).createMachine({
     creatingUpload:   // invoke createMultipartUpload → obtain uploadId from S3
     uploading:        // invoke `multipart` (uploadParts); substates: active | paused
     completingUpload: // invoke completeMultipartUpload → reassemble file in S3
-    updatingQuota:    // invoke updateQuota, then sendUploadDoneToParent
     aborted:          // final — upload cancelled by the user
-    success:          // final — upload + quota update complete
+    success:          // final — upload complete (`upload.done` sent on the transition in)
     error:            // final — failure at any phase
   },
 })
@@ -48,8 +47,7 @@ export const fileMachine = setup({ ... }).createMachine({
 - `uploading.active ↔ uploading.paused` (on `pause` / `resume`, forwarded to the multipart actor as `@multipart.upload.pause` / `@multipart.upload.resume`)
 - `uploading → completingUpload` (on `@multipart.upload.done`)
 - `uploading → aborted` (on `abort` / `@multipart.upload.aborted`)
-- `completingUpload → updatingQuota` (on completion success) / `→ error`
-- `updatingQuota → success` (entry-side `sendUploadDoneToParent`) / `→ error`
+- `completingUpload → success` (on completion success, sending `upload.done` to the parent) / `→ error`
 
 Progress is not held in this machine: `@multipart.upload.progress` from the multipart actor is forwarded straight to the manager as `progress.change`.
 

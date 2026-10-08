@@ -89,6 +89,17 @@ beforeAll(async () => {
   })
   driveId = uid('Drive')
   await prisma.drive.create({ data: { id: driveId, ownerId } })
+  // `createUploadedItem` charges the uploader's quota in the row's transaction,
+  // and refuses the upload when there is no quota to charge. The stranger
+  // uploads into the owner's folder under a grant, and is the one billed.
+  const strangerDriveId = uid('Drive')
+  await prisma.drive.create({ data: { id: strangerDriveId, ownerId: strangerId } })
+  await prisma.quota.createMany({
+    data: [
+      { id: uid('Quota'), driveId, total: 10n ** 12n },
+      { id: uid('Quota'), driveId: strangerDriveId, total: 10n ** 12n },
+    ],
+  })
   rootId = uid('Item')
   await prisma.item.create({
     data: { id: rootId, name: 'root', type: 'folder', category: 'unknown', status: 'normal', ownerId, driveId, parentId: null, size: 0 },

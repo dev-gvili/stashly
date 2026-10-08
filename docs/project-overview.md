@@ -335,7 +335,7 @@ The upload pipeline uses XState state machines in a parent-child actor pattern:
 2. **File machine** requests presigned URLs from `/api/s3/upload` (action: `get-presigned-url`)
 3. **File machine** uploads chunks in parallel directly to S3, verifies ETags
 4. **Concurrency** is gated inside `upload.machine.ts` itself via `maxConcurrentUploads` (default 10) — there is no separate queue actor
-5. **`quota/quota.machine.ts`** is spawned by the parent, and the file machine invokes `checkQuota`/`updateQuota` from `quota/quota.actors.ts`
+5. **`quota/quota.machine.ts`** is spawned by the parent, and the file machine invokes `checkQuota` from `quota/quota.actors.ts` (quota is charged on the server, in `createUploadedItem`)
 6. On `upload.done`, the parent spawns a `createDbItem` actor → `POST /api/items` (intent: `create_upload_item`) → `createUploadedItem()` writes the row, resolving any intermediate folders from the S3 key so dropped hierarchies survive
 7. After DB write, status flips to `'itemCreated'` — this is the gate that triggers the thumbnail pipeline (prevents FK violations on `Thumbnail.itemId`)
 
@@ -483,7 +483,7 @@ Complex async workflows are modeled as XState 5 state machines in `app/machines/
 |---------|----------|---------|
 | `upload.machine` | `upload/` | Parent orchestrator — spawns file actors, gates concurrency via `maxConcurrentUploads` (default 10), runs `createDbItem` on upload done |
 | `file.machine` | `reviset/` | Individual file upload lifecycle — **the active per-file actor**, imported by `upload.machine:12` despite the folder name |
-| `quota.machine` | `quota/` | Storage quota state tracking, spawned by `upload.machine`; `quota.actors.ts` holds the `checkQuota`/`updateQuota` fetch actors |
+| `quota.machine` | `quota/` | Storage quota state tracking, spawned by `upload.machine`; `quota.actors.ts` holds the read-only `findQuota`/`verifyQuota`/`checkQuota` fetch actors |
 | `thumbnail-manager.machine` | `thumbnail/` | Thumbnail scheduler — admits work, caps concurrency, spawns one item actor per item |
 | `thumbnail-item.machine` | `thumbnail/` | Per-item stage 1→3 lifecycle with retry/attempt tracking (`attempt-store.ts`) |
 | `s3.multipart.concurrent` / `.stream` | `multipart/` | Concurrent + streaming multipart utilities |

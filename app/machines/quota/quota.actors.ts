@@ -1,23 +1,6 @@
 import { fromPromise } from 'xstate'
 import type { QuotaInput, QuotaOutput } from '@/services/quota-actions'
-import { updateQuota as update, parseQuota, FetchInit } from './quota.utils'
-
-/**
- * An XState actor that wraps the `updateQuota` function. It's designed to be invoked
- * from a state machine to modify a user's quota based on an action like uploading,
- * copying, or deleting items.
- *
- * @param input - The input containing user ID, action, and data size.
- * @returns The updated quota information.
- */
-export const updateQuota = fromPromise<
-  QuotaOutput,
-   {
-    userId: string
-    dataSize: number | bigint
-    action: string
-  }
->(async ({ input }) => await update(input))
+import { parseQuota, FetchInit } from './quota.utils'
 
 /**
  * An XState actor that fetches the complete, up-to-date quota information for a
