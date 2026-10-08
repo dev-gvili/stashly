@@ -1,5 +1,4 @@
 import {
-  AddIcon,
   AnonymousFillIcon,
   CalendarFillIcon,
   ChevronRightIcon,
@@ -19,6 +18,7 @@ import {
   WorkspaceMembersFillIcon
 } from '@/components/icons'
 import { useClipboard } from '@/hooks/useClipboard'
+import { useRecipientRows } from '@/hooks/useRecipientRows'
 import type { ShareLinkType, ShareScope } from '@/prisma/client'
 import type { PermissionRole } from '@/prisma/enums'
 import type {
@@ -27,13 +27,7 @@ import type {
 } from '@/types/stash.types'
 import { Badge } from '@/ui/badge'
 import { Button } from '@/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/ui/dialog'
+import { Dialog, DialogContent } from '@/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,19 +40,27 @@ import { Input } from '@/ui/input'
 import { ScrollArea } from '@/ui/scroll-area'
 import { Switch } from '@/ui/switch'
 import { toUserInitial } from '@/utils'
+import { getContextIcon } from '@/utils/invitations'
 import { cn } from '@/utils/styles'
 import { AnimatePresence, motion } from 'framer-motion'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useFetcher } from 'react-router'
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput
-} from '../ui'
+  INVITE_BADGE,
+  INVITE_CAPTION,
+  INVITE_CARD,
+  INVITE_DESCRIPTION,
+  INVITE_ROW_REMOVE,
+  INVITE_SUBMIT,
+  InviteDialogHeader,
+  MessageField,
+  focusAddEmails,
+  RecipientsField,
+  RoleSelect,
+  RoleTrigger,
+  sendInvitesLabel,
+} from '@/components/views/invitations/invite-form-fields'
+import { Avatar, AvatarFallback, AvatarImage } from '../ui'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -84,8 +86,6 @@ export interface ShareDialogProps {
   itemName: string
   itemType: 'file' | 'folder' | 'collection'
 }
-
-type InviteRow = { id: string; email: string; role: string }
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -160,11 +160,6 @@ const MEMBER_ROLE_OPTIONS: {
   },
 ]
 
-const INVITE_ROLE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'read', label: 'Can view' },
-  { value: 'write', label: 'Can edit' },
-]
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -187,120 +182,6 @@ function formatRelativeDate(date: Date | string) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-const AVATAR_PALETTES = [
-  { bg: 'bg-amber-100', text: 'text-amber-800' },
-  { bg: 'bg-blue-100', text: 'text-blue-800' },
-  { bg: 'bg-green-100', text: 'text-green-800' },
-  { bg: 'bg-pink-100', text: 'text-pink-800' },
-  { bg: 'bg-violet-100', text: 'text-violet-800' },
-]
-
-function getInitials(name: string | null, fallback?: string) {
-  if (!name) return (fallback ?? '?').charAt(0).toUpperCase()
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-}
-
-// ---------------------------------------------------------------------------
-// RoleSelect — compact inline role dropdown
-// ---------------------------------------------------------------------------
-
-function RoleSelect({
-  value,
-  options,
-  onChange,
-  placeholder,
-}: {
-  value: string
-  options: { value: string; label: string }[]
-  onChange: (v: string) => void
-  placeholder?: string
-}) {
-  const current = options.find((o) => o.value === value)
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="font-stashly text-xs h-7 px-2 gap-1 text-muted-foreground hover:text-foreground"
-        >
-          {current?.label ?? placeholder ?? value}
-          <DropdownIcon className="size-4 text-current opacity-60" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="bg-card shadow-stashly border-input"
-      >
-        {options.map((opt) => (
-          <DropdownMenuItem
-            key={opt.value}
-            onSelect={() => onChange(opt.value)}
-            className={cn(
-              'font-stashly text-xs',
-              value === opt.value && 'bg-accent'
-            )}
-          >
-            {opt.label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// InviteRecipientRow — email input + role selector for invite form
-// ---------------------------------------------------------------------------
-
-function InviteRecipientRow({
-  row,
-  showRemove,
-  onEmail,
-  onRole,
-  onRemove,
-}: {
-  row: InviteRow
-  showRemove: boolean
-  onEmail: (v: string) => void
-  onRole: (v: string) => void
-  onRemove: () => void
-}) {
-  return (
-    <div className="flex items-center gap-1 h-9 pl-3 pr-1 rounded-lg border border-input bg-card focus-within:ring-1 focus-within:ring-ring transition-shadow">
-      <input
-        type="email"
-        placeholder="colleague@example.com"
-        value={row.email}
-        onChange={(e) => onEmail(e.target.value)}
-        className="flex-1 min-w-0 bg-transparent outline-none text-xs font-stashly placeholder:text-muted-foreground"
-      />
-      <div className="flex items-center gap-0.5 border-l border-input pl-1">
-        <RoleSelect
-          value={row.role}
-          options={INVITE_ROLE_OPTIONS}
-          onChange={onRole}
-        />
-        {showRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            aria-label="Remove"
-            className="size-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            <RemoveIcon className="size-4" />
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
 // ---------------------------------------------------------------------------
 // PersonRow — existing user with permission
 // ---------------------------------------------------------------------------
@@ -308,79 +189,47 @@ function InviteRecipientRow({
 function PersonRow({
   user,
   role,
-  idx,
   onRole,
   onRemove,
 }: {
   user: { id: string; name: string | null; image: string | null; email: string }
   role: PermissionRole
-  idx: number
   onRole: (role: string) => void
   onRemove: () => void
 }) {
   const isOwner = role === 'owner'
   return (
-    <div className="flex items-center gap-2.5 py-1">
-      <Avatar className="h-8 w-8 rounded-md shadow-stashly">
-        <AvatarImage src={user.image || ''} alt={user.name!} />
-        <AvatarFallback className="rounded-sm font-sans">
-          {toUserInitial(user.name!)}
+    <div className={INVITE_CARD}>
+      <Avatar className="size-8 rounded-md">
+        <AvatarImage src={user.image || ''} alt={user.name ?? user.email} />
+        <AvatarFallback
+          className={cn(INVITE_BADGE, 'bg-accent text-accent-foreground')}
+        >
+          {toUserInitial(user.name ?? user.email)}
         </AvatarFallback>
       </Avatar>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium font-stashly truncate">
-            {user.name ?? user.email}
-          </span>
-        </div>
-        <p className="text-xs text-muted-foreground font-stashly truncate">
-          {user.email}
-        </p>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm">{user.name ?? user.email}</p>
+        <p className="truncate text-xs text-muted-foreground">{user.email}</p>
       </div>
       {isOwner ? (
-        <span className="text-xs text-muted-foreground font-stashly pr-1.5">
-          Owner
-        </span>
+        <span className={cn(INVITE_CAPTION, 'px-2')}>Owner</span>
       ) : (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="default"
-              className="font-stashly bg-card! border-input! text-xs h-8 gap-1 shrink-0"
-            >
-              {role === 'read' ? 'Can view' : 'Can edit'}
-              <DropdownIcon className="size-4 text-current" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="bg-card shadow-stashly border-input w-48"
+        <>
+          <RoleSelect
+            value={role}
+            options={MEMBER_ROLE_OPTIONS}
+            onChange={onRole}
+          />
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label={`Remove access for ${user.name ?? user.email}`}
+            className={INVITE_ROW_REMOVE}
           >
-            {MEMBER_ROLE_OPTIONS.map((opt) => (
-              <DropdownMenuItem
-                key={opt.value}
-                onSelect={() => onRole(opt.value)}
-                className={cn('font-stashly')}
-              >
-                <opt.Icon className="size-5 text-current" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium">{opt.label}</p>
-                </div>
-                {role === opt.value && (
-                  <DoubleCheckIcon className="size-5 text-current" />
-                )}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuItem
-              onSelect={onRemove}
-              className="font-stashly text-xs text-destructive focus:text-destructive"
-            >
-              <RemoveIcon className="size-5 text-destructive" />
-              Remove access
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <RemoveIcon className="size-4" />
+          </button>
+        </>
       )}
     </div>
   )
@@ -396,56 +245,40 @@ function InviteStatusRow({
   status,
   date,
   onCancel,
-  image,
 }: {
   email: string
   role: string
   status: string
   date: string
-  image: string | null
   onCancel: () => void
 }) {
-  const statusVariant =
-    status === 'accepted'
-      ? 'bg-green-100 text-green-800'
-      : status === 'rejected'
-        ? 'bg-red-100 text-red-800'
-        : status === 'canceled' || status === 'expired'
-          ? 'bg-muted text-muted-foreground'
-          : 'bg-amber-100 text-amber-800'
-
   const roleLabel = role === 'write' ? 'Can edit' : 'Can view'
-
   return (
-    <div className="flex items-center gap-2.5 py-1">
-      <Avatar className="h-8 w-8 rounded-md shadow-stashly">
-        <AvatarImage src={image || ''} alt={email!} />
-        <AvatarFallback className="rounded-sm font-sans">
-          {toUserInitial(email!)}
-        </AvatarFallback>
-      </Avatar>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium font-stashly truncate">{email}</p>
-        <p className="text-xs text-muted-foreground font-stashly">
+    <div className={INVITE_CARD}>
+      <span
+        aria-hidden
+        className={cn(
+          INVITE_BADGE,
+          'border border-dashed border-input text-muted-foreground'
+        )}
+      >
+        {toUserInitial(email)}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm">{email}</p>
+        <p className="truncate text-xs text-muted-foreground">
           {roleLabel} · {date}
         </p>
       </div>
-      <span
-        className={cn(
-          'inline-flex items-center h-5 px-2 rounded-full text-xs font-stashly font-medium',
-          statusVariant
-        )}
-      >
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </span>
-      <Button
-        variant="destructive"
-        size="icon-sm"
+      <span className={cn(INVITE_CAPTION, 'px-2')}>{status}</span>
+      <button
+        type="button"
         onClick={onCancel}
-        aria-label="Cancel invitation"
+        aria-label={`Cancel the invitation to ${email}`}
+        className={INVITE_ROW_REMOVE}
       >
         <RemoveIcon className="size-4" />
-      </Button>
+      </button>
     </div>
   )
 }
@@ -477,9 +310,9 @@ function LinkSettingsDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="outline"
-          size="icon-sm"
-          className="size-9 border-input bg-card shrink-0"
+          variant="ghost"
+          size="icon"
+          className="size-11 shrink-0 rounded-md bg-muted hover:bg-accent"
           aria-label="Link settings"
         >
           <SettingsFillIcon className="size-4 text-muted-foreground" />
@@ -610,26 +443,25 @@ function LinkSettingsDropdown({
 // CopyField — link URL with copy button
 // ---------------------------------------------------------------------------
 
-function CopyField({ url }: { url: string | null }) {
+function CopyField({ url }: { url: string }) {
   const { copy, copied } = useClipboard()
   return (
-    <InputGroup className="rounded-md border border-input bg-card shadow-stashly">
-      <InputGroupAddon align="inline-start">
-        <LinkIcon />
-      </InputGroupAddon>
-      <InputGroupInput
-        type="url"
-        disabled
-        defaultValue={url ?? undefined}
-        placeholder="https://stashly.app/s/abc123"
-        className="pl-8 text-sm"
-      />
-      <InputGroupAddon align="inline-end">
-        <InputGroupButton onClick={() => copy(url ?? '')} disabled={!url}>
-          {copied ? <DoubleCheckIcon /> : <CopyFillIcon />}
-        </InputGroupButton>
-      </InputGroupAddon>
-    </InputGroup>
+    <div className={cn(INVITE_CARD, 'min-w-0 flex-1 pl-3.5')}>
+      <LinkIcon className="size-4 shrink-0 text-muted-foreground" />
+      <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+        {url}
+      </span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => copy(url)}
+        aria-label={copied ? 'Link copied' : 'Copy link'}
+        className="shrink-0 text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        {copied ? <DoubleCheckIcon /> : <CopyFillIcon />}
+      </Button>
+    </div>
   )
 }
 
@@ -657,9 +489,8 @@ export function ShareDialog({
   }>()
 
   // Form state
-  const [inviteRows, setInviteRows] = useState<InviteRow[]>([
-    { id: 'r1', email: '', role: 'read' },
-  ])
+  const invite = useRecipientRows()
+  const [message, setMessage] = useState('')
   const [showInvites, setShowInvites] = useState(false)
   const [scope, setScope] = useState<ShareScope>('anonymous')
   const [generalRole, setGeneralRole] = useState<ShareLinkType>('view')
@@ -670,7 +501,6 @@ export function ShareDialog({
     password: false,
     passwordValue: '',
   })
-  const rowIdRef = useRef(2)
 
   // Load data when dialog opens
   useEffect(() => {
@@ -707,8 +537,8 @@ export function ShareDialog({
   useEffect(() => {
     if (invitesFetcher2.state === 'idle' && invitesFetcher2.data?.success) {
       invitesFetcher.load(`/api/invitations?itemId=${itemId}`)
-      setInviteRows([{ id: 'r1', email: '', role: 'read' }])
-      rowIdRef.current = 2
+      invite.reset()
+      setMessage('')
     }
   }, [invitesFetcher2.state, invitesFetcher2.data])
 
@@ -753,33 +583,13 @@ export function ShareDialog({
   const isRestricted = effectiveScope === 'users'
 
   // Actions
-  const addRow = () => {
-    const id = `r${rowIdRef.current++}`
-    setInviteRows((rows) => [...rows, { id, email: '', role: 'read' }])
-  }
-
-  const removeRow = (id: string) =>
-    setInviteRows((rows) => rows.filter((r) => r.id !== id))
-
-  const patchRow = (id: string, patch: Partial<InviteRow>) =>
-    setInviteRows((rows) =>
-      rows.map((r) => (r.id === id ? { ...r, ...patch } : r))
-    )
-
-  const handleSendInvites = useCallback(() => {
-    const valid = inviteRows.filter((r) => r.email.trim())
-    if (!valid.length) return
-    // parseFormData uses qs.parse for nested keys — expand the array manually
-    const qsRecipients: Record<string, string> = {}
-    valid.forEach((r, i) => {
-      qsRecipients[`recipients[${i}][email]`] = r.email.trim()
-      qsRecipients[`recipients[${i}][role]`] = r.role
-    })
+  const handleSendInvites = () => {
+    if (!invite.valid.length) return
     invitesFetcher2.submit(
-      { intent: 'send_item_invitation', itemId, ...qsRecipients },
+      { intent: 'send_item_invitation', itemId, message, ...invite.toPayload() },
       { method: 'post', action: '/api/invitations' }
     )
-  }, [inviteRows, itemId, invitesFetcher2])
+  }
 
   const handleCancelInvitation = useCallback(
     (invitationId: string) => {
@@ -893,8 +703,9 @@ export function ShareDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        showCloseButton
-        className="font-stashly bg-card border-input shadow-stashly"
+        showCloseButton={false}
+        onOpenAutoFocus={focusAddEmails}
+        className="gap-6 rounded-3xl font-stashly bg-card border-input p-6 shadow-stashly sm:max-w-xl sm:p-8"
         onPointerDownOutside={(e) => {
           e.preventDefault()
           e.stopPropagation()
@@ -907,81 +718,69 @@ export function ShareDialog({
         }}
       >
         {/* Header */}
-        <DialogHeader className="mb-4 w-full">
-          <DialogTitle>Share</DialogTitle>
-          <DialogDescription className="font-stashly max-w-sm truncate">
-            {itemName}
-          </DialogDescription>
-        </DialogHeader>
+        <InviteDialogHeader
+          icon={getContextIcon(itemType === 'file' ? 'file' : itemType)}
+          title={`Share ${itemName}`}
+          description={INVITE_DESCRIPTION}
+        />
 
-        <ScrollArea className="max-h-[min(calc(100svh-10rem),32rem)]">
-          <div className="flex flex-col gap-5">
+        <ScrollArea
+          type="hidden"
+          className="-mx-1 max-h-[min(calc(100svh-10rem),32rem)]"
+        >
+          <div className="flex flex-col gap-5 p-1">
             {/* ── Invite people ──────────────────────────────────── */}
             <section className="flex flex-col gap-2.5">
-              <h3 className="text-xs font-bold text-muted-foreground capitalize tracking-wide font-stashly">
-                Invite people
-              </h3>
-              <div className="flex flex-col gap-2">
-                {inviteRows.map((row) => (
-                  <InviteRecipientRow
-                    key={row.id}
-                    row={row}
-                    showRemove={inviteRows.length > 1}
-                    onEmail={(v) => patchRow(row.id, { email: v })}
-                    onRole={(v) => patchRow(row.id, { role: v })}
-                    onRemove={() => removeRow(row.id)}
-                  />
-                ))}
-              </div>
+              <h3 className={INVITE_CAPTION}>Invite people</h3>
+              <RecipientsField
+                rows={invite.rows}
+                onAddEmails={invite.addEmails}
+                onRemove={invite.remove}
+                onEmail={(id, v) => invite.patch(id, { email: v })}
+                onRole={(id, v) => invite.patch(id, { role: v })}
+              />
+              {invite.rows.length > 0 && (
+                <MessageField value={message} onChange={setMessage} />
+              )}
               {invitesFetcher2.state === 'idle' &&
                 invitesFetcher2.data?.error && (
                   <p className="text-xs text-destructive font-stashly">
                     {invitesFetcher2.data.error}
                   </p>
                 )}
-              <div className="flex items-center justify-between">
+              {invite.rows.length > 0 && (
                 <Button
-                  onClick={addRow}
-                  variant="link"
-                  size="sm"
-                  className="text-xs font-stashly hover:no-underline gap-1.5"
-                >
-                  <AddIcon className="size-5" />
-                  Add another
-                </Button>
-                <Button
-                  size="sm"
-                  className="font-stashly rounded-md"
+                  type="button"
                   onClick={handleSendInvites}
                   disabled={
-                    invitesFetcher2.state !== 'idle' ||
-                    !inviteRows.some((r) => r.email.trim())
+                    invitesFetcher2.state !== 'idle' || !invite.valid.length
                   }
+                  className={cn(INVITE_SUBMIT, 'self-end')}
                 >
-                  Send
+                  {invitesFetcher2.state !== 'idle' && (
+                    <LoaderIcon className="size-4 animate-spin" />
+                  )}
+                  {sendInvitesLabel(invite.valid.length)}
                 </Button>
-              </div>
+              )}
             </section>
 
             {/* ── People with access ─────────────────────────────── */}
             {(directPermissions.length > 0 ||
               permsFetcher.state === 'loading') && (
-              <section className="flex flex-col gap-1">
-                <h3 className="text-xs font-bold text-muted-foreground capitalize tracking-wide font-stashly">
-                  People with access
-                </h3>
+              <section className="flex flex-col gap-2.5">
+                <h3 className={INVITE_CAPTION}>People with access</h3>
                 {permsFetcher.state === 'loading' ? (
                   <div className="h-9 flex items-center">
                     <LoaderIcon className="size-5 text-muted-foreground animate-spin" />
                   </div>
                 ) : (
-                  directPermissions.flatMap((perm, pi) =>
-                    perm.users.map((user, ui) => (
+                  directPermissions.flatMap((perm) =>
+                    perm.users.map((user) => (
                       <PersonRow
                         key={`${perm.id}-${user.id}`}
                         user={user}
                         role={perm.roles}
-                        idx={pi + ui}
                         onRole={(role) => handleRoleChange(user.id, role)}
                         onRemove={() => handleRemovePerm(user.id)}
                       />
@@ -993,18 +792,19 @@ export function ShareDialog({
 
             {/* ── Sent invitations (disclosure) ──────────────────── */}
             {pendingRecipients.length > 0 && (
-              <section className="flex flex-col gap-1">
+              <section className="flex flex-col gap-2.5">
                 <button
                   type="button"
                   onClick={() => setShowInvites((v) => !v)}
-                  className="flex items-center gap-2 w-full text-left"
+                  aria-expanded={showInvites}
+                  className="flex w-full items-center gap-2 text-left"
                 >
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-stashly flex-1">
+                  <span className={cn(INVITE_CAPTION, 'flex-1')}>
                     Sent invitations
-                  </p>
+                  </span>
                   <Badge
                     variant="secondary"
-                    className="rounded-sm font-stashly text-xs h-5 px-1.5"
+                    className="h-5 rounded-md px-2 font-stashly text-xs"
                   >
                     {pendingRecipients.length}
                   </Badge>
@@ -1024,7 +824,7 @@ export function ShareDialog({
                       transition={{ duration: 0.15 }}
                       className="overflow-hidden"
                     >
-                      <div className="flex flex-col gap-0.5 pt-1">
+                      <div className="flex flex-col gap-2.5">
                         {pendingRecipients.map((r) => (
                           <InviteStatusRow
                             key={r.id}
@@ -1032,7 +832,6 @@ export function ShareDialog({
                             role={r.role}
                             status={r.status}
                             date={r.date}
-                            image={null}
                             onCancel={() =>
                               handleCancelInvitation(r.invitationId)
                             }
@@ -1045,38 +844,43 @@ export function ShareDialog({
               </section>
             )}
 
-            {/* Divider
-            <div className="h-px bg-input" /> */}
-
             {/* ── General access ─────────────────────────────────── */}
-            <section className="flex flex-col gap-2">
-              <DialogTitle className="text-xs font-bold text-muted-foreground capitalize tracking-wide font-stashly">
-                General access
-              </DialogTitle>
-              <div className="flex items-center gap-2">
+            <section className="flex flex-col gap-2.5">
+              <h3 className={INVITE_CAPTION}>General access</h3>
+              <div className={INVITE_CARD}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild disabled={isEmbed}>
-                    <Button
-                      variant="outline"
-                      size="lg"
+                    <button
+                      type="button"
                       disabled={isEmbed}
-                      className="gap-1 text-xs font-stashly bg-card border-input"
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-default"
                     >
-                      <ScopeIcon className="size-5" />
-                      <span className="flex flex-col items-start">
-                        {scopeOpt.label}
-                        <p className="text-xs text-muted-foreground font-stashly">
+                      <span
+                        className={cn(
+                          INVITE_BADGE,
+                          'bg-accent text-accent-foreground'
+                        )}
+                      >
+                        <ScopeIcon className="size-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm">
+                          {scopeOpt.label}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
                           {isEmbed
                             ? 'Embed links are always public'
                             : scopeOpt.desc}
-                        </p>
+                        </span>
                       </span>
-                      <DropdownIcon className="size-4" />
-                    </Button>
+                      {!isEmbed && (
+                        <DropdownIcon className="size-4 shrink-0 text-muted-foreground" />
+                      )}
+                    </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="start"
-                    className="w-64 bg-sidebar shadow-md border-input"
+                    className="w-64 border-input bg-card shadow-stashly"
                   >
                     {SCOPE_OPTIONS.map((opt) => (
                       <DropdownMenuItem
@@ -1104,20 +908,18 @@ export function ShareDialog({
                 {!isRestricted && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="default"
-                        className="font-stashly bg-card! border-input! text-xs h-8 gap-1 shrink-0"
-                      >
-                        {GENERAL_ROLE_OPTIONS.find(
-                          (r) => r.value === generalRole
-                        )?.label ?? 'Can view'}
-                        <DropdownIcon className="size-4 text-current" />
-                      </Button>
+                      <RoleTrigger
+                        label={
+                          GENERAL_ROLE_OPTIONS.find(
+                            (r) => r.value === generalRole
+                          )?.label ?? (isEmbed ? 'Embed' : 'Can view')
+                        }
+                        elevated={generalRole !== 'view'}
+                      />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                       align="end"
-                      className="bg-card shadow-stashly border-input"
+                      className="border-input bg-card shadow-stashly"
                     >
                       {GENERAL_ROLE_OPTIONS.filter(
                         (r) => r.value !== 'upload' || itemType === 'folder'
@@ -1127,14 +929,15 @@ export function ShareDialog({
                           onSelect={() => handleRoleChange2(opt.value)}
                           className={cn(
                             'font-stashly',
-                            generalRole === opt.value &&
-                              'text-accent-foreground!'
+                            generalRole === opt.value && 'bg-accent'
                           )}
                         >
                           <opt.Icon className="size-5 text-current" />
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium">{opt.label}</p>
-                            <p className="text-xs">{opt.desc}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {opt.desc}
+                            </p>
                           </div>
                         </DropdownMenuItem>
                       ))}
@@ -1147,17 +950,18 @@ export function ShareDialog({
         </ScrollArea>
 
         {/* Footer — copy link + link settings */}
+        <div className="border-t border-dashed border-input" />
         <div className="flex items-center gap-2">
           {shareUrl ? (
             <CopyField url={shareUrl} />
           ) : (
             <Button
-              variant="outline"
-              className="flex-1 font-stashly border-input bg-card"
+              variant="ghost"
+              className="h-11 flex-1 gap-2 rounded-md bg-muted font-stashly text-xs uppercase tracking-wide hover:bg-accent"
               onClick={() => submitLinkMutation('create_view_link', { scope })}
               disabled={actionFetcher.state !== 'idle'}
             >
-              <LinkIcon className="size-5" />
+              <LinkIcon className="size-4" />
               Create link
             </Button>
           )}

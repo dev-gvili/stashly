@@ -1,4 +1,5 @@
 import type { InviteRow } from '@/types/stash.types'
+import { isInviteEmail, splitInviteEmails } from '@/utils/invite-emails'
 import { useCallback, useState } from 'react'
 
 /**
@@ -22,38 +23,32 @@ function makeId() {
 }
 
 /**
- * A blank recipient row with a fresh id and the default `read` role — the
- * least-privilege default for someone who hasn't been assigned one yet.
+ * A recipient row for `email` with a fresh id and the default `read` role —
+ * the least-privilege default for someone who hasn't been assigned one yet.
  *
  * @example
- * // Seed the form with a single empty row
- * const [rows, setRows] = useState<InviteRow[]>([newRow()])
- *
- * @example
- * // Append another row when the user clicks "Add recipient"
- * setRows((r) => [...r, newRow()])
+ * // One row per address pasted into the "add another email" field
+ * setRows((r) => [...r, ...emails.map(newRow)])
  */
-function newRow(): InviteRow {
-  return { id: makeId(), email: '', role: 'read' }
+function newRow(email: string): InviteRow {
+  return { id: makeId(), email, role: 'read' }
 }
 
 /**
- * Recipient row state for the invite forms — row list plus add / remove /
- * patch / reset, the subset with a non-empty email, and a serializer for the
- * invitations API payload.
+ * Recipient row state for the invite forms — row list plus addEmails /
+ * remove / patch / reset, the rows with a valid email, and a serializer for
+ * the invitations API payload.
  *
- * Shared by `NewInvitationDialog` and `AddRecipientsDialog` so both dialogs
- * agree on row identity and payload shape. Always keeps at least one row —
- * `remove` refuses to empty the form.
+ * Shared by `NewInvitationDialog`, `AddRecipientsDialog` and `ShareDialog` so
+ * they agree on row identity, validity and payload shape. The form starts
+ * empty: addresses arrive through the "add another email" field, which may
+ * hold a comma-separated list.
  *
  * @example
- * // Render the editable rows
- * const { rows, add, remove, patch } = useRecipientRows()
- * {rows.map((row) => (
- *   <RecipientRow key={row.id} row={row}
- *     onChange={(v) => patch(row.id, v)} onRemove={() => remove(row.id)} />
- * ))}
- * <Button onClick={add}>Add recipient</Button>
+ * // Render the editable rows and the field that adds more
+ * const { rows, addEmails, remove, patch } = useRecipientRows()
+ * <RecipientsField rows={rows} onAddEmails={addEmails} onRemove={remove}
+ *   onEmail={(id, email) => patch(id, { email })} onRole={(id, role) => patch(id, { role })} />
  *
  * @example
  * // Submit, then clear the form
@@ -62,17 +57,24 @@ function newRow(): InviteRow {
  * reset()
  *
  * @example
- * // Gate the submit button on at least one filled-in email
+ * // Count only addresses the server will accept on the send button
  * const { valid } = useRecipientRows()
- * <Button disabled={valid.length === 0}>Send</Button>
+ * <Button disabled={valid.length === 0}>Send {valid.length} invites</Button>
  */
 export function useRecipientRows() {
-  const [rows, setRows] = useState<InviteRow[]>([newRow()])
+  const [rows, setRows] = useState<InviteRow[]>([])
 
-  const add = useCallback(() => setRows((r) => [...r, newRow()]), [])
+  /** Adds a row per address in `text` (see `splitInviteEmails`). */
+  const addEmails = useCallback(
+    (text: string) =>
+      setRows((r) => {
+        const emails = splitInviteEmails(text, r.map((row) => row.email))
+        return emails.length ? [...r, ...emails.map(newRow)] : r
+      }),
+    []
+  )
   const remove = useCallback(
-    (id: string) =>
-      setRows((r) => (r.length > 1 ? r.filter((row) => row.id !== id) : r)),
+    (id: string) => setRows((r) => r.filter((row) => row.id !== id)),
     []
   )
   const patch = useCallback(
@@ -82,9 +84,9 @@ export function useRecipientRows() {
       ),
     []
   )
-  const reset = useCallback(() => setRows([newRow()]), [])
+  const reset = useCallback(() => setRows([]), [])
 
-  const valid = rows.filter((r) => r.email.trim())
+  const valid = rows.filter((r) => isInviteEmail(r.email))
 
   /**
    * Serializes valid rows into the bracket-notation keys the invitations API
@@ -94,7 +96,7 @@ export function useRecipientRows() {
   const toPayload = useCallback((): Record<string, string> => {
     const out: Record<string, string> = {}
     rows
-      .filter((r) => r.email.trim())
+      .filter((r) => isInviteEmail(r.email))
       .forEach((r, i) => {
         out[`recipients[${i}][email]`] = r.email.trim()
         out[`recipients[${i}][role]`] = r.role
@@ -102,5 +104,5 @@ export function useRecipientRows() {
     return out
   }, [rows])
 
-  return { rows, add, remove, patch, reset, valid, toPayload }
+  return { rows, addEmails, remove, patch, reset, valid, toPayload }
 }

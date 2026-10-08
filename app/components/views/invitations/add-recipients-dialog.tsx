@@ -1,14 +1,5 @@
-import { AddIcon, LoaderIcon } from '@/components/icons'
 import { useRecipientRows } from '@/hooks/useRecipientRows'
-import { Button } from '@/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/ui/dialog'
+import { Dialog, DialogContent } from '@/ui/dialog'
 import { ScrollArea } from '@/ui/scroll-area'
 import { useEffect, useState } from 'react'
 import { useFetcher } from 'react-router'
@@ -19,7 +10,14 @@ import {
   getContextLabel,
   getContextName,
 } from '@/utils/invitations'
-import { MessageField, RecipientsField } from './invite-form-fields'
+import {
+  INVITE_DESCRIPTION,
+  InviteDialogFooter,
+  InviteDialogHeader,
+  focusAddEmails,
+  MessageField,
+  RecipientsField,
+} from './invite-form-fields'
 
 export interface AddRecipientsDialogProps {
   open: boolean
@@ -42,7 +40,7 @@ export function AddRecipientsDialog({
   onAdded,
 }: AddRecipientsDialogProps) {
   const fetcher = useFetcher<{ success?: boolean; error?: string }>()
-  const { rows, add, remove, patch, reset, valid, toPayload } =
+  const { rows, addEmails, remove, patch, reset, valid, toPayload } =
     useRecipientRows()
   const [message, setMessage] = useState('')
 
@@ -92,20 +90,21 @@ export function AddRecipientsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AddIcon className="size-5 text-primary" />
-            Add recipients
-          </DialogTitle>
-          <DialogDescription className="truncate">{name}</DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        showCloseButton={false}
+        onOpenAutoFocus={focusAddEmails}
+        className="gap-6 rounded-3xl font-stashly border-input bg-card p-6 shadow-stashly sm:max-w-xl sm:p-8">
+        <InviteDialogHeader
+          icon={ContextIcon}
+          title={`Add people to ${name}`}
+          description={INVITE_DESCRIPTION}
+        />
 
-        <ScrollArea className="max-h-[60vh]">
-          <div className="flex flex-col gap-5 px-1 py-1">
+        <ScrollArea type="hidden" className="-mx-1 max-h-[60vh]">
+          <div className="flex flex-col gap-5 p-1">
             {/* Context chip */}
-            <div className="flex items-center gap-3 rounded-xl border border-primary/40 bg-primary/10 p-3">
-              <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-card text-primary">
+            <div className="flex items-center gap-3 rounded-xl bg-muted p-3">
+              <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
                 <ContextIcon className="size-5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -122,7 +121,7 @@ export function AddRecipientsDialog({
             {/* Recipients */}
             <RecipientsField
               rows={rows}
-              onAdd={add}
+              onAddEmails={addEmails}
               onRemove={remove}
               onEmail={(id, v) => patch(id, { email: v })}
               onRole={(id, v) => patch(id, { role: v })}
@@ -132,34 +131,22 @@ export function AddRecipientsDialog({
             <MessageField value={message} onChange={setMessage} />
 
             {error && (
-              <p className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              <p className="rounded-xl bg-muted px-3 py-2 text-xs text-destructive">
                 {error}
               </p>
             )}
           </div>
         </ScrollArea>
 
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={handleAdd}
-            disabled={isSubmitting || !valid.length}
-          >
-            {isSubmitting ? (
-              <LoaderIcon className="mr-2 size-4 animate-spin" />
-            ) : (
-              <AddIcon className="mr-2 size-4" />
-            )}
-            Add {valid.length > 1 ? `${valid.length} people` : 'person'}
-          </Button>
-        </DialogFooter>
+        <InviteDialogFooter
+          submitLabel={
+            valid.length > 1 ? `Add ${valid.length} people` : 'Add person'
+          }
+          onSubmit={handleAdd}
+          disabled={!valid.length}
+          submitting={isSubmitting}
+          onCancel={() => onOpenChange(false)}
+        />
       </DialogContent>
     </Dialog>
   )

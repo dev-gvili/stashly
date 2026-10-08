@@ -1,23 +1,5 @@
-import {
-  CheckIcon,
-  CopyFillIcon,
-  LinkIcon,
-  LoaderIcon,
-  SendInvitationIcon,
-  SubmitIcon,
-} from '@/components/icons'
-import { useClipboard } from '@/hooks/useClipboard'
 import { useRecipientRows } from '@/hooks/useRecipientRows'
-import { Button } from '@/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/ui/dialog'
-import { Label } from '@/ui/label'
+import { Dialog, DialogContent } from '@/ui/dialog'
 import { ScrollArea } from '@/ui/scroll-area'
 import {
   Select,
@@ -26,11 +8,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/ui/select'
-import { cn } from '@/utils/styles'
 import { useEffect, useMemo, useState } from 'react'
 import { useFetcher } from 'react-router'
 import { getContextIcon, type ContextKind } from '@/utils/invitations'
-import { MessageField, RecipientsField } from './invite-form-fields'
+import {
+  INVITE_CAPTION,
+  INVITE_DESCRIPTION,
+  InviteDialogFooter,
+  InviteDialogHeader,
+  focusAddEmails,
+  MessageField,
+  RecipientsField,
+  sendInvitesLabel,
+} from './invite-form-fields'
 
 // ---------------------------------------------------------------------------
 // A thing the user can share. The invitations route loader supplies the list
@@ -86,8 +76,8 @@ function kindLabel(kind: ContextKind): string {
 function TargetOption({ target }: { target: ShareTarget }) {
   const Icon = getContextIcon(target.kind)
   return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      <div className="grid size-7 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="grid size-8 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
         <Icon className="size-4" />
       </div>
       <div className="min-w-0 text-left">
@@ -97,7 +87,7 @@ function TargetOption({ target }: { target: ShareTarget }) {
         <p className="truncate text-xs leading-tight text-muted-foreground">
           {kindLabel(target.kind)}
           {target.path && (
-            <span className="text-muted-foreground/70"> · {target.path}</span>
+            <span className="text-muted-foreground"> · {target.path}</span>
           )}
         </p>
       </div>
@@ -118,13 +108,12 @@ export function NewInvitationDialog({
   onSent,
 }: NewInvitationDialogProps) {
   const fetcher = useFetcher<{ success?: boolean; error?: string }>()
-  const { rows, add, remove, patch, reset, valid, toPayload } =
+  const { rows, addEmails, remove, patch, reset, valid, toPayload } =
     useRecipientRows()
   const [message, setMessage] = useState('')
   const [targetId, setTargetId] = useState(
     defaultTargetId ?? targets[0]?.id ?? ''
   )
-  const { copy, copied } = useClipboard()
 
   const target = useMemo(
     () => targets.find((t) => t.id === targetId) ?? targets[0],
@@ -170,29 +159,31 @@ export function NewInvitationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <SendInvitationIcon className="size-5 text-primary" />
-            New invitation
-          </DialogTitle>
-          <DialogDescription>
-            Share a file or workspace with people.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        showCloseButton={false}
+        onOpenAutoFocus={focusAddEmails}
+        className="gap-6 rounded-3xl font-stashly border-input bg-card p-6 shadow-stashly sm:max-w-xl sm:p-8">
+        <InviteDialogHeader
+          icon={getContextIcon(target?.kind ?? 'file')}
+          title={target ? `Invite to ${target.name}` : 'New invitation'}
+          description={INVITE_DESCRIPTION}
+        />
 
-        <ScrollArea className="max-h-[60vh]">
-          <div className="flex flex-col gap-5 px-1 py-1">
+        <ScrollArea type="hidden" className="-mx-1 max-h-[60vh]">
+          <div className="flex flex-col gap-5 p-1">
             {/* Target picker */}
             <div className="flex flex-col gap-2">
-              <Label className="text-xs">What do you want to share?</Label>
+              <span className={INVITE_CAPTION}>Sharing</span>
               <Select value={targetId} onValueChange={setTargetId}>
-                <SelectTrigger className="h-auto w-full border-input bg-card py-2">
+                <SelectTrigger
+                  aria-label="What do you want to share?"
+                  className="w-full rounded-xl border-0 bg-muted py-2 pl-2.5 pr-3 shadow-none hover:bg-accent data-[size=default]:h-12 dark:bg-muted dark:hover:bg-accent"
+                >
                   <SelectValue>
                     {target && <TargetOption target={target} />}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent className="max-h-72 border-input bg-card shadow-stashly">
+                <SelectContent className="max-h-72 w-(--radix-select-trigger-width) rounded-xl border-input bg-card shadow-stashly">
                   {targets.map((t) => (
                     <SelectItem
                       key={t.id}
@@ -209,7 +200,7 @@ export function NewInvitationDialog({
             {/* Recipients */}
             <RecipientsField
               rows={rows}
-              onAdd={add}
+              onAddEmails={addEmails}
               onRemove={remove}
               onEmail={(id, v) => patch(id, { email: v })}
               onRole={(id, v) => patch(id, { role: v })}
@@ -218,65 +209,22 @@ export function NewInvitationDialog({
             {/* Message */}
             <MessageField value={message} onChange={setMessage} />
 
-            {/* Invite by link */}
-            <div className="flex items-center gap-3 rounded-xl border border-input p-3">
-              <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-                <LinkIcon className="size-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium leading-tight">
-                  Invite by link
-                </p>
-                <p className="text-xs leading-tight text-muted-foreground">
-                  Anyone with the link can request access
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => copy(linkUrl)}
-                className={cn(copied && 'text-green-600 dark:text-green-400')}
-              >
-                {copied ? (
-                  <CheckIcon className="mr-1.5 size-4" />
-                ) : (
-                  <CopyFillIcon className="mr-1.5 size-4" />
-                )}
-                {copied ? 'Copied' : 'Copy'}
-              </Button>
-            </div>
-
             {error && (
-              <p className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              <p className="rounded-xl bg-muted px-3 py-2 text-xs text-destructive">
                 {error}
               </p>
             )}
           </div>
         </ScrollArea>
 
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSend}
-            disabled={isSubmitting || !valid.length || !target}
-          >
-            {isSubmitting ? (
-              <LoaderIcon className="mr-2 size-4 animate-spin" />
-            ) : (
-              <SubmitIcon className="mr-2 size-4" />
-            )}
-            Send{' '}
-            {valid.length > 1 ? `${valid.length} invitations` : 'invitation'}
-          </Button>
-        </DialogFooter>
+        <InviteDialogFooter
+          submitLabel={sendInvitesLabel(valid.length)}
+          onSubmit={handleSend}
+          disabled={!valid.length || !target}
+          submitting={isSubmitting}
+          onCancel={() => onOpenChange(false)}
+          copyLinkUrl={linkUrl || undefined}
+        />
       </DialogContent>
     </Dialog>
   )
