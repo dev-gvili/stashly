@@ -2,8 +2,7 @@ import { sessionContext } from '@/.server/middleware/context'
 import { GridLayout } from '@/components/views/grid-view'
 import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
-import { prisma } from '@/services/db'
-import { signThumbnails } from '@/services/thumbnail-actions'
+import { getItemsSharedWithUser } from '@/services/share-actions'
 import type { Route } from './+types/shares'
 import { redirect } from 'react-router'
 import { usePagination } from '@/hooks/usePagination'
@@ -22,117 +21,8 @@ import { GenericEmptyState } from '@/components/states/generic-empty-state'
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const session = context.get(sessionContext)
-
-  const userId = session.user.id
-  const url = new URL(request.url)
-  const cursor = url.searchParams.get('cursor') ?? undefined
-  const limit = 50
-
-  // Find all items the user has permission to access (excluding items they own)
-  const permissions = await prisma.permission.findMany({
-    where: {
-      users: { some: { id: userId } },
-      // Filter to permissions linked to items the user doesn't own and are active
-      item: {
-        is: {
-          ownerId: { not: userId },
-          status: 'normal',
-        },
-      },
-      // Only non-expired permissions
-      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      // Exclude soft-deleted permissions
-      deletedAt: null,
-    },
-    select: { itemId: true },
-    distinct: ['itemId'],
-  })
-
-  const sharedItemIds = permissions
-    ?.map((p) => p.itemId)
-    .filter((id): id is string => id !== null)
-
-  if (sharedItemIds.length === 0) {
-    return {
-      items: [],
-      nextCursor: null,
-      hasMore: false,
-    }
-  }
-
-  // Paginate shared items
-  const take = limit + 1
-  const items = await prisma.item.findMany({
-    where: {
-      id: { in: sharedItemIds },
-      status: 'normal',
-    },
-    include: {
-      file: true,
-      folder: true,
-      thumbnails: true,
-      locked: true,
-      favorites: {
-        select: {
-          id: true,
-          favoritedBy: {
-            select: {
-              name: true,
-              displayName: true,
-              image: true,
-              id: true,
-            },
-          },
-        },
-      },
-      parent: {
-        include: {
-          file: true,
-          folder: true,
-          favorites: {
-            select: {
-              id: true,
-              favoritedBy: {
-                select: {
-                  displayName: true,
-                  image: true,
-                  name: true,
-                  id: true,
-                },
-              },
-            },
-          },
-          locked: true,
-          thumbnails: {
-            where: {
-              size: {
-                equals: 'large',
-              },
-            },
-            select: {
-              bucket: true,
-              color: true,
-              width: true,
-              height: true,
-              size: true,
-              view: true,
-              id: true,
-              stage: true,
-            },
-          },
-        },
-      },
-    },
-    orderBy: { updatedAt: 'desc' },
-    take,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-  })
-
-  const hasMore = items.length === take
-  const page = await signThumbnails(hasMore ? items.slice(0, limit) : items)
-  const nextCursor = hasMore ? page[page.length - 1].id : null
-
-  return { items: page, nextCursor, hasMore }
+  const cursor = new URL(request.url).searchParams.get('cursor') ?? undefined
+  return getItemsSharedWithUser(session.user.id, { cursor, limit: 50 })
 }
 
 // ---------------------------------------------------------------------------

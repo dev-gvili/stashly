@@ -3,6 +3,8 @@ import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { hasItemPermission } from '@/services/permission-actions'
 import { getPresignedUrl } from '@/services/s3'
 import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
+import type { Prisma } from '@/prisma/client'
+import { ItemCategory, ItemType } from '@/prisma/enums'
 
 // ===================================================== //
 // ================= Thumbnail storage ================= //
@@ -624,4 +626,82 @@ export async function getThumbnailByItemId(
     where: { itemId, view: view as any, size: size as any },
     select: { stage: true, content: true, bucket: true, color: true },
   })
+}
+
+// ===================================================== //
+// ====================== Gallery ====================== //
+// ===================================================== //
+
+/**
+ * The gallery's media: `userId`'s own image and video files that have a
+ * stored thumbnail, newest first, each with its best stored thumbnail signed
+ * for reading (`thumbnails[0].url`).
+ *
+ * Scoped to the owner, so it never reads another user's items whatever
+ * `where` adds.
+ *
+ * @param userId - The signed-in user.
+ * @param where - Extra filters from the URL (`buildItemFilters`), ANDed in.
+ * @param take - Page size.
+ *
+ * @example
+ * const media = await getGalleryMedia(session.user.id, buildItemFilters(params), params.take)
+ */
+export async function getGalleryMedia(
+  userId: string,
+  where: Prisma.ItemWhereInput,
+  take?: number
+) {
+  const items = await prisma.item.findMany({
+    where: {
+      type: ItemType.file,
+      category: {
+        in: [ItemCategory.image, ItemCategory.video],
+      },
+      thumbnails: {
+        some: { bucket: { not: null } },
+      },
+      ...where,
+      // After the spread, so a URL filter can never widen the owner.
+      ownerId: userId,
+    },
+    take,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      parentId: true,
+      file: {
+        select: {
+          key: true,
+        },
+      },
+      thumbnails: {
+        orderBy: { stage: 'desc' },
+        take: 1,
+        where: { bucket: { not: null } },
+        select: {
+          height: true,
+          width: true,
+          bucket: true,
+          color: true,
+          size: true,
+          id: true,
+          stage: true,
+        },
+      },
+      image: { select: { width: true, height: true } },
+      video: {
+        select: {
+          width: true,
+          height: true,
+          duration: true,
+          bitrate: true,
+          codec: true,
+        },
+      },
+    },
+  })
+  return signThumbnails(items)
 }

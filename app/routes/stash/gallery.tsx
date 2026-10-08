@@ -4,9 +4,7 @@ import { Gallery } from '@/components/Gallery'
 import { parseSearchParams } from '@/utils/parsers'
 import { toSearchSchema } from '@/utils'
 import type { Prisma } from '@/prisma/client'
-import { ItemCategory, ItemType } from '@/prisma/enums'
-import { prisma } from '@/services/db'
-import { signThumbnails } from '@/services/thumbnail-actions'
+import { getGalleryMedia } from '@/services/thumbnail-actions'
 import {
   buildItemFilters,
   itemFilterSchema,
@@ -38,59 +36,9 @@ export async function loader({ request, context }: Route.ActionArgs) {
   })
   let filters = buildItemFilters(params)
 
-  let res = await prisma.item.findMany({
-    // cursor: params.cursor ? { id: params.cursor } : undefined,
-    where: {
-      type: ItemType.file,
-      category: {
-        in: [ItemCategory.image, ItemCategory.video],
-      },
-      ownerId: session.user.id,
-      thumbnails: {
-        some: { bucket: { not: null } },
-      },
-      ...filters,
-    },
-    take: params.take,
-    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    select: {
-      id: true,
-      name: true,
-      type: true,
-      parentId: true,
-      file: {
-        select: {
-          key: true,
-        },
-      },
-      thumbnails: {
-        orderBy: { stage: 'desc' },
-        take: 1,
-        where: { bucket: { not: null } },
-        select: {
-          height: true,
-          width: true,
-          bucket: true,
-          color: true,
-          size: true,
-          id: true,
-          stage: true,
-        },
-      },
-      image: { select: { width: true, height: true } },
-      video: {
-        select: {
-          width: true,
-          height: true,
-          duration: true,
-          bitrate: true,
-          codec: true,
-        },
-      },
-    },
-  })
+  let media = await getGalleryMedia(session.user.id, filters, params.take)
 
-  let images = (await signThumbnails(res)).map((item) => {
+  let images = media.map((item) => {
     let thumb = item.thumbnails[0]
     const storedW =
       thumb?.width ?? item.image?.width ?? item.video?.width ?? null
