@@ -16,7 +16,7 @@
 
 **26 items** (17 from the audit, 9 added 8 Oct) · categories: Code 12, Architecture 7, Infrastructure 3, Test 2, Dependency 1, Documentation 1
 
-**Status at 8 Oct 2026 (end of day):** 11 resolved · 1 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 3 open from the audit · 6 new and open. Item 18 was resolved the same day it was found (`2fc9d4d`), with e2e coverage in `9081555`. Item 23 was done for every personal route, which turned up two more: item 25 (share-link actions had no access check, fixed the same day) and item 26 (open). (Earlier on 8 Oct: 9 resolved · 7 new and open.) (At 2 Oct: 8 resolved · 1 in code · 2 partly · 1 declined · 5 open.) Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 8 Oct 2026 (end of day):** 12 resolved · 1 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 3 open from the audit · 5 new and open. Item 18 was resolved the same day it was found (`2fc9d4d`), with e2e coverage in `9081555`. Item 23 was done for every personal route, which turned up two more: item 25 (share-link actions had no access check, fixed the same day) and item 26 (expired and revoked grants still counted, fixed the same day). (Earlier on 8 Oct: 9 resolved · 7 new and open.) (At 2 Oct: 8 resolved · 1 in code · 2 partly · 1 declined · 5 open.) Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 ### What's left, in priority order
 
@@ -26,7 +26,7 @@
 |---|------|-------|--------------|------------|
 | 18 | ~~`/api/quota` trusts the client~~ | 50 | Resolved 2026-10-08: route is read-only, upload charged in `createUploadedItem` | — |
 | 25 | ~~Share-link actions had no access check~~ | 40 | Resolved 2026-10-08: every action takes the acting user and checks it | — |
-| 26 | **new** `hasItemPermission` counts revoked and expired grants | 35 | Confirm in a rolled-back transaction, then filter both | — |
+| 26 | ~~`hasItemPermission` counts revoked and expired grants~~ | 35 | Resolved 2026-10-08: every access check counts only live grants | — |
 | 2 | Deploy path | 32 | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
 | 4 | Error tracking and logging | 28 | All of it | Owner's choice of package (Sentry, pino or both) |
 | 19 | **new** Stripe webhook is a stub | 24 | All four event handlers | Whether paid plans ship before launch |
@@ -72,7 +72,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 23 | Prisma calls made directly from route modules | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Partly done (8 Oct): workspace route deferred |
 | 24 | Slow first page load (cold document TTFB) | Architecture | 3 | 2 | 3 | **15** (Low) | 1–3 days | New 8 Oct |
 | 25 | ~~Share-link actions had no access check~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 8 Oct |
-| 26 | `hasItemPermission` counts soft-deleted and expired permissions | Code | 4 | 3 | 1 | **35** (High) | 0.5 day | New 8 Oct |
+| 26 | ~~`hasItemPermission` counts soft-deleted and expired permissions~~ | Code | 4 | 3 | 1 | **35** (High) | 0.5 day | Resolved 8 Oct |
 
 ## Details
 
@@ -458,6 +458,9 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Not verified end to end:** whether a canceled invitee still passes `assertItemAccess`, which depends on whether a pending invitation's permission already lists them.
 - **Fix:** confirm in a rolled-back transaction, then add both filters to `hasItemPermission` and run the full suite, since every access check goes through it. Item 25's `assertCanManageItemShares` filters both itself for this reason.
 - **Why it matters:** a revoked or expired share that still opens the file is a privacy failure the owner cannot see.
+- **Status 2026-10-08: resolved** (`1a8102a`). **Confirmed 2026-10-08** in a rolled-back transaction: an expired grant and a soft-deleted grant both passed `hasItemPermission` and were both listed by the `accessibleBy` filter. **Canceling does not leak**: a pending invitation's permission has no users (`invitation-actions.ts:621`); the invitee is attached only on accept (`:903`), and only pending recipients can be canceled. **Expiry does**: an accepted share with an end date kept working after `expiresAt`.
+  - **Fix:** `livePermission()` in `app/utils/permissions.ts` (`deletedAt: null`, and `expiresAt` null or in the future) is ANDed into every access decision: `hasItemPermission` (so `assertItemPermission` and `assertItemAccess`), `hasLinkPermission`, `hasRecipientPermission`, the batch `assertItemsAccess`, and the `accessibleBy` item filter that decides what a user's listings show. Workspace sync and removal queries maintain rows rather than decide access, and are unchanged.
+  - **Tests:** `permission-live-grants.test.ts` (14, live DB) fails 8 on the old code: every expired and deleted case. The live-grant and owner cases pass on both. `item-filters-coverage.test.ts` pinned the old `accessibleBy` shape, and now requires the live-grant conditions. `pnpm test` 818/818 (68 files), the type gate is clean and `pnpm build` passes.
 
 ## Changes since the audit
 
@@ -502,6 +505,8 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-08 | `9081555` | 13, 20 | Upload e2e spec: 1 test to 11, covering filing, the exact quota charge and the refused quota writes. Passes locally; not in CI. |
 | 2026-10-08 | `bb321a3` | 25, 23 | Every share-link action takes the acting user and checks it (owner, or a live write permission); the `/api/shares` loader no longer queries Prisma. 37 new tests: 403 for a stranger, a read-only and an expired grantee on all 11 operations. |
 | 2026-10-08 | `e9f163b` | 23, 13 | The shares and gallery routes call actions instead of Prisma; a test fails on any new `@/services/db` import under `app/routes/` (one listed exception, `workspace.tsx`). |
+| 2026-10-08 | `08324f8` | 13 | CI was red on `e9f163b`: the gallery query test signed a real thumbnail URL, which needs an S3 endpoint the check job doesn't set. Signing is now replaced in that test. |
+| 2026-10-08 | `1a8102a` | 26, 13 | Every access check counts only live grants (not soft-deleted, not expired), including the `accessibleBy` listing filter. Confirmed first in a rolled-back transaction; 14 new tests, 8 of which fail on the old code. |
 
 ## Phased remediation plan
 
@@ -568,7 +573,7 @@ New items from the 8 Oct re-scan, in the order to do them:
 4. ~~**Prisma out of routes (item 23, 0.5–1 day).**~~ **Done 8 Oct for every personal route**; `workspace.tsx` deferred. A test stands in for the linter rule. It turned up items 25 (fixed) and 26.
 5. **The three open decisions (item 22).** These are decisions rather than code. Item 18's server-side charge settles one of them.
 6. **Embedding backfill in a worker, one tab (item 21, 1–2 days)** and **cold first load (item 24, 1–3 days).** Both are performance work. Profile before changing anything.
-7. **`hasItemPermission` and revoked grants (item 26, 0.5 day).** Added 8 Oct. Confirm in a rolled-back transaction, then filter. Every access check depends on it, so it ranks above everything here except item 20.
+7. ~~**`hasItemPermission` and revoked grants (item 26, 0.5 day).**~~ **Done 8 Oct**: confirmed, then every access check filtered to live grants.
 
 ---
 
