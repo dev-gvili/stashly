@@ -32,27 +32,42 @@ export class UploadPage {
     sizeBytes: number
     type: string
   }): Promise<void> {
-    await this.page.locator('.fixed.bottom-8.right-8 [data-testid="upload-drop-area"]').waitFor({ state: 'visible' })
-    await this.page.evaluate(
-      ({ name, sizeBytes, type }) => {
-        const dropArea = document.querySelector('.fixed.bottom-8.right-8 [data-testid="upload-drop-area"]')
-        if (!dropArea) throw new Error('DropArea not found')
+    await this.dropFiles([file])
+  }
 
-        const fileData = new Uint8Array(sizeBytes)
-        const syntheticFile = new File([fileData], name, { type })
+  /**
+   * Drops zero-filled files of exact sizes in a single `drop`, as a real
+   * multi-file drag does. Opens the panel first: it starts hidden, and a drop
+   * area that is present but hidden never becomes visible on its own.
+   */
+  async dropFiles(
+    files: { name: string; sizeBytes: number; type: string }[]
+  ): Promise<void> {
+    await this.openPanel()
+    await this.page.evaluate((specs) => {
+      const dropArea = document.querySelector('.fixed.bottom-8.right-8 [data-testid="upload-drop-area"]')
+      if (!dropArea) throw new Error('DropArea not found')
 
-        const dataTransfer = new DataTransfer()
-        dataTransfer.items.add(syntheticFile)
+      const dataTransfer = new DataTransfer()
+      for (const { name, sizeBytes, type } of specs) {
+        dataTransfer.items.add(new File([new Uint8Array(sizeBytes)], name, { type }))
+      }
 
-        const dropEvent = new DragEvent('drop', {
-          dataTransfer,
-          bubbles: true,
-          cancelable: true,
-        })
-        dropArea.dispatchEvent(dropEvent)
-      },
-      { name: file.name, sizeBytes: file.sizeBytes, type: file.type }
-    )
+      dropArea.dispatchEvent(
+        new DragEvent('drop', { dataTransfer, bubbles: true, cancelable: true })
+      )
+    }, files)
+  }
+
+  /**
+   * Waits for the item's card to render in the current folder's grid. Reads
+   * the page the server rendered, so it proves the row exists, not just that
+   * the upload panel said so.
+   */
+  async expectCardInGrid(fileName: string, timeout = 15_000): Promise<void> {
+    await expect(this.page.locator('main').getByText(fileName, { exact: true }).first()).toBeVisible({
+      timeout,
+    })
   }
 
   /**
