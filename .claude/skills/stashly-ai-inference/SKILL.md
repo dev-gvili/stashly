@@ -25,7 +25,9 @@ FIFO within a priority; a waiting `interactive` job goes ahead of waiting `backg
 
 **Batch size is also a memory limit.** GPU memory grows with batch × sequence length²: MPNet's attention scores alone are batch × 12 heads × 512 × 512 × 4 bytes, about 12.6 MB per text. Unbatched, a 338-chunk file asked WebGPU for one 4,253,024,256-byte buffer, over its 2 GiB per-buffer limit; the call failed and **every later embedding in the tab failed with the same message**. A 170-chunk file fit and took the GPU process from about 5 GB to 10.9 GB, which it never gave back (measured 2 Oct 2026). Never pass a model an unbounded array.
 
-**Models hold their memory until disposed.** On integrated graphics (the dev machine is an Intel UHD with 0 MB dedicated) every byte the GPU holds is system RAM, and a loaded pipeline keeps its buffers until `dispose()` or the tab closes. `embedding.ai.ts` releases the embedding model after `EMBEDDING_IDLE_RELEASE_MS` (60 s) without use, as a `background` queue job so it never disposes under a running inference; the next call reloads it. Measured: GPU process 1,551 → 199 MB about 60 s after the last batch. The image (ViT) and OCR models do not do this yet.
+**Models hold their memory until disposed.** On integrated graphics (the dev machine is an Intel UHD with 0 MB dedicated) every byte the GPU holds is system RAM, and a loaded pipeline keeps its buffers until `dispose()` or the tab closes. `embedding.ai.ts` releases the embedding model after `EMBEDDING_IDLE_RELEASE_MS` (60 s) without use, as a `background` queue job so it never releases under a running inference; the next call reloads it. Measured: GPU process 1,551 → 199 MB about 60 s after the last batch (2 Oct, when the model still ran on the page). The image (ViT) and OCR models do not do this yet.
+
+**The embedding model runs in a dedicated worker** (`app/workers/embedding.worker.ts`, since 2026-10-09). `embedding.ai.ts` is only its main-thread client, and its API is unchanged. Each batch is still one `ai-queue` job, and that job awaits the worker's reply, so the one-GPU-job-at-a-time rule holds across the page and the worker even though the worker has its own WebGPU device. Release is `worker.terminate()`, which frees that whole device; a worker that errors is discarded and the next call starts a fresh one. Unit tests can't run a real `Worker` (Node env): `app/workers/__tests__/fake-embedding-worker.ts` speaks the same message protocol. The other models (saliency, OCR) still run on the page.
 
 A failure settles the caller *and* frees the queue (`.finally`), because an unreleased `running` flag deadlocks every later job.
 
@@ -62,7 +64,7 @@ Heals `SearchChunk` rows whose `vector` is NULL — chunk text is written server
 Pure policy in one file, effects in a hook:
 
 - `app/utils/embedding-backfill.ts` — pure policy, no fetch/DOM, unit-tested. `PENDING_EMBEDDING_BATCH = 32`, `PENDING_EMBEDDING_MAX = 100`, `MAX_BACKFILL_BATCHES = 8`. `clampPendingLimit` treats the limit as untrusted URL input (`''`, `'abc'`, `'-5'`, `'1e9'` must all land somewhere sane).
-- `app/hooks/useEmbeddingBackfill.ts` — effects. **Once per tab** (module flag, not per-mount, so client navigation doesn't restart it), idle-scheduled, batched and capped, enqueued at `background` priority, silent on failure.
+- `app/hooks/useEmbeddingBackfill.ts` — effects. **Once per tab** (module flag, not per-mount, so client navigation doesn't restart it) and **one tab at a time** (the `stashly:embedding-backfill` Web Lock via `runInOneTab`; a tab that finds it held reports `skipped`, "Running in another tab"), idle-scheduled, batched and capped, enqueued at `background` priority, silent on failure.
 - `pending_search_embeddings` loader intent + `save_search_chunk_embeddings` action intent in `app/routes/api/items.ts`.
 - Status UI: `app/components/core-components/embedding-backfill-status.tsx`.
 
