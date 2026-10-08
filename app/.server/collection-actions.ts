@@ -797,6 +797,94 @@ export async function getCollectionItems(
 }
 
 /**
+ * Signed cover images for a batch of collection cards: the newest members
+ * that have a real stored thumbnail, at most `perCollection` per collection.
+ *
+ * One query for the whole batch — a window function caps each collection —
+ * so a page of cards costs one round trip, not one per card. Members without
+ * a stored thumbnail are skipped rather than padded, so a collection of
+ * documents simply returns fewer (or no) covers.
+ *
+ * Fails closed: a collection the caller can't read contributes nothing, and
+ * within a readable collection only members the caller can read are used.
+ *
+ * @param userId - The viewer.
+ * @param collectionIds - Collections to fetch covers for.
+ * @param perCollection - Max covers per collection (default 4).
+ * @returns Signed URLs keyed by collection id; collections with no covers
+ *   are absent.
+ *
+ * @example
+ * const covers = await getCollectionCovers(session.user.id, ids)
+ * const urls = covers[collection.id] ?? []
+ */
+export async function getCollectionCovers(
+  userId: string,
+  collectionIds: string[],
+  perCollection = 4
+): Promise<Record<string, string[]>> {
+  if (collectionIds.length === 0) return {}
+
+  const readable = (alias: string) => Prisma.sql`(
+    ${Prisma.raw(alias)}."ownerId" = ${userId}
+    OR EXISTS (
+      SELECT 1
+      FROM "Permission" p
+      JOIN "_PermissionToUser" pu ON pu."A" = p.id
+      WHERE pu."B" = ${userId}
+        AND p."itemId" = ${Prisma.raw(alias)}.id
+        AND p."deletedAt" IS NULL
+        AND (p."expiresAt" IS NULL OR p."expiresAt" > NOW())
+    )
+  )`
+
+  const rows = await prisma.$queryRaw<
+    {
+      collectionId: string
+      itemId: string
+      bucket: string | null
+      stage: number | null
+    }[]
+  >`
+    SELECT "collectionId", "itemId", bucket, stage
+    FROM (
+      SELECT cm."collectionId", i.id AS "itemId", th.bucket, th.stage,
+             ROW_NUMBER() OVER (
+               PARTITION BY cm."collectionId"
+               ORDER BY cm."createdAt" DESC, cm.id DESC
+             ) AS rn
+      FROM "CollectionMember" cm
+      JOIN "Item" c ON c.id = cm."collectionId"
+      JOIN "Item" i ON i.id = cm."itemId"
+      JOIN LATERAL (
+        SELECT t.bucket, t.stage FROM "Thumbnail" t
+        WHERE t."itemId" = i.id AND t.bucket IS NOT NULL
+        ORDER BY t.stage DESC
+        LIMIT 1
+      ) th ON true
+      WHERE cm."collectionId" IN (${Prisma.join(collectionIds)})
+        AND ${readable('c')}
+        AND ${readable('i')}
+    ) ranked
+    WHERE rn <= ${perCollection}
+    ORDER BY "collectionId", rn
+  `
+
+  const covers: Record<string, string[]> = {}
+  const signed = await Promise.all(
+    rows.map((row) =>
+      signStoredThumbnail({ bucket: row.bucket, stage: row.stage }, row.itemId)
+    )
+  )
+  rows.forEach((row, i) => {
+    const url = signed[i]
+    if (!url) return
+    ;(covers[row.collectionId] ??= []).push(url)
+  })
+  return covers
+}
+
+/**
  * Return the total number of items in a collection. Requires `read` access.
  */
 export async function countCollectionItems(

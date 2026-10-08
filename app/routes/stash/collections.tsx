@@ -1,5 +1,8 @@
 import { sessionContext } from '@/.server/middleware/context'
-import { findAllCollections } from '@/services/collection-actions'
+import {
+  findAllCollections,
+  getCollectionCovers,
+} from '@/services/collection-actions'
 import { CollectionsView } from '@/components/views/collections-view'
 import { redirect, data } from 'react-router'
 import type { Route } from './+types/collections'
@@ -27,11 +30,17 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     orderBy: parsedParams.orderBy ?? { createdAt: 'desc' },
   })
 
+  const covers = await getCollectionCovers(
+    session.user.id,
+    raw.map((col) => col.id)
+  )
+
   const collections = raw.map((col) => ({
     id: col.id,
     name: col.name,
     size: col.size,
     itemCount: col.collectionItems.length,
+    covers: covers[col.id] ?? [],
   }))
 
   return { collections }

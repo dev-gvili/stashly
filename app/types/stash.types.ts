@@ -103,6 +103,8 @@ export interface StashCollection {
   name: string
   size: bigint
   itemCount: number
+  /** Signed thumbnail URLs of the newest image-bearing members (0–4). */
+  covers: string[]
 }
 
 // ---------------------------------------------------------------------------

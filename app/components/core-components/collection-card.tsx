@@ -58,9 +58,64 @@ export function CollectionCard({
     )
   }
 
+  const hasCovers = collection.covers.length > 0
+
+  const actions = (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger
+        onClick={(e) => e.stopPropagation()}
+        aria-label="Collection options"
+      >
+        <MoreMenuFillIcon className="size-6!" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="space-y-4 w-48">
+        <DropdownMenuGroup className="mt-2">
+          <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
+            Quick actions
+          </DropdownMenuLabel>
+          <RenameDialog
+            defaultName={collection.name}
+            intent="rename_collection"
+            action="/api/collections"
+            extraData={{ collectionId: collection.id }}
+            title="Rename collection"
+          >
+            <DropdownMenuItem
+              onSelect={(e) => e.preventDefault()}
+              className="items-start"
+            >
+              <RenameFillIcon className="text-foreground" />
+              Rename
+            </DropdownMenuItem>
+          </RenameDialog>
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={(e) => {
+              e.stopPropagation()
+              open({
+                variant: 'destructive',
+                title: `Delete "${collection.name}"?`,
+                description: 'This will move the collection to trash.',
+                confirmText: 'Delete',
+                onConfirm: handleDelete,
+              })
+            }}
+          >
+            <TrashFillIcon />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
   return (
     <Card
-      className="group relative bg-card rounded-md p-4 gap-3 justify-evenly transition-colors cursor-pointer border-none ring-2 ring-accent hover:bg-muted aspect-video w-full max-w-xs"
+      className={cn(
+        'group relative bg-card rounded-3xl p-4 gap-3 justify-evenly transition-colors cursor-pointer border-none ring-2 ring-accent  aspect-16/10 w-full max-w-md',
+        // Thin frame so the cover takes ~75% of the card's height.
+        hasCovers && 'p-2 gap-2'
+      )}
       onClick={() =>
         navigate(
           `${href('/:me/stash/collections/:collectionId', {
@@ -70,65 +125,84 @@ export function CollectionCard({
         )
       }
     >
-      <CardHeader className="p-0">
-        <CardAction>
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger
-              onClick={(e) => e.stopPropagation()}
-              aria-label="Collection options"
-            >
-              <MoreMenuFillIcon className="size-6!" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="space-y-4 w-48">
-              <DropdownMenuGroup className="mt-2">
-                <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-                  Quick actions
-                </DropdownMenuLabel>
-                <RenameDialog
-                  defaultName={collection.name}
-                  intent="rename_collection"
-                  action="/api/collections"
-                  extraData={{ collectionId: collection.id }}
-                  title="Rename collection"
-                >
-                  <DropdownMenuItem
-                    onSelect={(e) => e.preventDefault()}
-                    className="items-start"
-                  >
-                    <RenameFillIcon className="text-foreground" />
-                    Rename
-                  </DropdownMenuItem>
-                </RenameDialog>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    open({
-                      variant: 'destructive',
-                      title: `Delete "${collection.name}"?`,
-                      description: 'This will move the collection to trash.',
-                      confirmText: 'Delete',
-                      onConfirm: handleDelete,
-                    })
-                  }}
-                >
-                  <TrashFillIcon />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </CardAction>
-        <CollectionFillIcon className="size-14" />
-      </CardHeader>
-      <CollectionContent className="p-0 items-start">
-        <CollectionName name={collection.name} className="mt-2" />
-      </CollectionContent>
-      <CollectionFooter className="p-0 mt-2">
+      {hasCovers ? (
+        // The member images are the cover: they fill everything above the
+        // footer, with the name over them. Literal white on a fixed dark
+        // scrim, since theme tokens would invert over a photo in light mode.
+        <CollectionContent className="flex-1 min-h-0 p-0 items-stretch rounded-md">
+          <CollectionCovers
+            urls={collection.covers}
+            className="max-h-11/12 w-full overflow-hidden rounded-2xl  shadow-[2px_6px_6px_0_rgba(38,38,38,0.10)] dark:shadow-[0px_6px_6px_3px_rgba(0,0,0,0.35)]  bg-muted"
+          />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 " />
+          <div className="absolute top-2 right-2 z-10 flex size-6 items-center justify-center rounded  text-white backdrop-blur-sm [&_svg]:size-5!">
+            {actions}
+          </div>
+          <CollectionName
+            name={''}
+            className="absolute bottom-3 left-4 right-4 w-auto max-w-none text-left text-lg font-stashly text-white"
+          />
+        </CollectionContent>
+      ) : (
+        <>
+          <CardHeader className="p-0">
+            <CardAction>{actions}</CardAction>
+            <CollectionFillIcon className="size-14" />
+          </CardHeader>
+          <CollectionContent className="p-0 items-start">
+            <CollectionCount _count={collection.itemCount} />
+          </CollectionContent>
+        </>
+      )}
+      <CollectionFooter className={cn('p-0 mt-0', hasCovers && 'px-2')}>
+        <CollectionName name={collection.name} className="w-auto max-w-none text-left text-lg font-stashly text-white!" />
         <CollectionSize size={collection.size} />
-        <CollectionCount _count={collection.itemCount} />
       </CollectionFooter>
     </Card>
+  )
+}
+
+/**
+ * Cover images for a collection card: 1 image full width, 2 side by side,
+ * 3 as one tall left tile plus two stacked right, 4 as a 2×2 grid. Images
+ * are decorative (the card's name labels it), hence the empty `alt`.
+ *
+ * @example
+ * <CollectionCovers urls={collection.covers} className="h-14" />
+ */
+function CollectionCovers({
+  urls,
+  className,
+}: {
+  urls: string[]
+  className?: string
+}) {
+  const shown = urls.slice(0, 4)
+
+  return (
+    <div
+      data-slot="collection-covers"
+      className={cn(
+        'grid w-full gap-0.5 overflow-hidden rounded-md',
+        shown.length > 1 && 'grid-cols-2',
+        shown.length > 2 && 'grid-rows-2',
+        className
+      )}
+    >
+      {shown.map((url, i) => (
+        <img
+          key={url}
+          src={url}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className={cn(
+            'size-full min-h-0 object-cover',
+            shown.length === 3 && i === 0 && 'row-span-2'
+          )}
+        />
+      ))}
+    </div>
   )
 }
 

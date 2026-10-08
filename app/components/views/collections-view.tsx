@@ -105,7 +105,7 @@ export function CollectionsView({ collections }: CollectionsViewProps) {
           New collection
         </Button>
       </div>
-      <GridLayout>
+      <GridLayout className="xl:grid-cols-[repeat(auto-fill,minmax(22rem,1fr))] lg:grid-cols-3 md:grid-cols-2">
         <AnimatePresence mode="popLayout">
           {collections.map((col) => (
             <motion.div
