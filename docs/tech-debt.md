@@ -16,7 +16,7 @@
 
 **26 items** (17 from the audit, 9 added 8 Oct) · categories: Code 12, Architecture 7, Infrastructure 3, Test 2, Dependency 1, Documentation 1
 
-**Status at 8 Oct 2026 (end of day):** 12 resolved · 1 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 3 open from the audit · 5 new and open. Item 18 was resolved the same day it was found (`2fc9d4d`), with e2e coverage in `9081555`. Item 23 was done for every personal route, which turned up two more: item 25 (share-link actions had no access check, fixed the same day) and item 26 (expired and revoked grants still counted, fixed the same day). (Earlier on 8 Oct: 9 resolved · 7 new and open.) (At 2 Oct: 8 resolved · 1 in code · 2 partly · 1 declined · 5 open.) Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 8 Oct 2026 (end of day):** 13 resolved · 1 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 3 open from the audit · 4 new and open. Item 18 was resolved the same day it was found (`2fc9d4d`), with e2e coverage in `9081555`. Item 23 was done for every personal route, which turned up two more: item 25 (share-link actions had no access check, fixed the same day) and item 26 (expired and revoked grants still counted, fixed the same day). (Earlier on 8 Oct: 9 resolved · 7 new and open.) (At 2 Oct: 8 resolved · 1 in code · 2 partly · 1 declined · 5 open.) Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 ### What's left, in priority order
 
@@ -33,7 +33,7 @@
 | 20 | **new** Playwright specs don't run in CI | 24 | A CI job for the 8 specs | — |
 | 10 | Accessibility and responsive UI | 21 | Everything except the nested Filter buttons | — |
 | 22 | **new** Open decisions in upload and onboarding | 20 | Three decisions already written up in TASKS.md | Owner's decision |
-| 21 | **new** Embedding backfill runs in every tab | 18 | Move it to a worker and run it in one tab only | — |
+| 21 | ~~Embedding backfill runs in every tab~~ | 18 | Resolved 2026-10-09: model in a worker (main-thread blocking 1,279 → 0 ms, measured), one tab via a Web Lock | — |
 | 12 | Linter | 16 | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
 | 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; the rest of `quota-actions`; routes and components | — |
 | 23 | **new** Prisma calls in route modules | 16 | `workspaces/workspace.tsx` only | Deferred to after personal-first (TASKS.md, 8 Oct) |
@@ -67,7 +67,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 18 | `/api/quota` lets a signed-in user change their own quota | Code | 5 | 5 | 1 | **50** (High) | 0.5–1.5 days | New 8 Oct |
 | 19 | The Stripe webhook acknowledges events and saves nothing | Code | 3 | 5 | 3 | **24** (Medium) | 1–2 days | New 8 Oct |
 | 20 | The Playwright specs don't run in CI | Test | 3 | 3 | 2 | **24** (Medium) | 0.5–1 day | New 8 Oct |
-| 21 | Embedding backfill loads a WebGPU model on the main thread of every tab | Architecture | 3 | 3 | 3 | **18** (Medium) | 1–2 days | New 8 Oct |
+| 21 | Embedding backfill loads a WebGPU model on the main thread of every tab | Architecture | 3 | 3 | 3 | **18** (Medium) | 1–2 days | Resolved 9 Oct |
 | 22 | Open decisions in the upload and onboarding paths | Architecture | 2 | 3 | 2 | **20** (Medium) | 1 day once decided | New 8 Oct |
 | 23 | Prisma calls made directly from route modules | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Partly done (8 Oct): workspace route deferred |
 | 24 | Slow first page load (cold document TTFB) | Architecture | 3 | 2 | 3 | **15** (Low) | 1–3 days | New 8 Oct |
@@ -405,6 +405,19 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** from TASKS.md. `useEmbeddingBackfill` arms on every new tab and lazy-loads `@/workers/embedding.ai` on the page rather than in a worker. It runs a WebGPU model on the main thread, and it fails on the owner's machine. `c8f3fd1` (2 Oct) embeds in batches of 16 and releases the model when idle, which reduces the cost but doesn't move it off the main thread.
 - **Fix:** run the model in a dedicated worker (the repo already has `app/workers/`). Elect one tab with the Web Locks API (`navigator.locks.request('embedding-backfill', …)`) so N open tabs don't each load the model.
 - **Why it matters:** jank and GPU memory multiply with every open tab, and a failure here is silent until search quality drops.
+- **Status 2026-10-09: resolved, and measured in a browser** (`df68279`).
+  - **Worker:** `app/workers/embedding.worker.ts` loads and runs the model. `embedding.ai.ts` keeps its API and became the page-side client, so the search query, re-ranking, indexing and the backfill are unchanged. Each batch is still one `ai-queue` job that awaits the worker's reply, which keeps one GPU job at a time across the page and the worker. Release terminates the worker, freeing its whole GPU device.
+  - **One tab:** `runInOneTab` takes the `stashly:embedding-backfill` Web Lock with `ifAvailable`. A tab that finds it held reports `skipped`, "Running in another tab", instead of loading the model and embedding the same chunks.
+  - **Build:** `embedding.worker-*.js` is emitted on its own (541.87 kB, with the model library); the page's `embedding.ai-*.js` is 1.37 kB.
+  - **Tests:** `runInOneTab` (4, fake lock manager). The batching and idle-release tests now run against a fake worker that speaks the real protocol, with two new failure cases (an error reply keeps the worker; a crash fails the waiting request and the next call starts a new worker). `pnpm test` 824/824 (68 files), type gate clean, `pnpm build` passes.
+  - **Measured 2026-10-09** in the owner's Chrome 154 (Intel gen-12lp, WebGPU), dev server, embedding the same two texts with the model already cached:
+    - Old code (model on the page): main-thread long tasks of 122, 57, 65 and 1,035 ms, **1,279 ms blocked**; 2,787 ms end to end; no worker.
+    - New code (model in the worker): **no long tasks, 0 ms blocked**; 3,261 ms end to end; one `embedding.worker.ts` started. One run each, so the ~0.5 s difference in wall time is indicative only.
+    - Vectors: 2 × 768 dimensions, each of norm 1. A first, uncached run took 11,081 ms, also with no long tasks.
+    - **Idle release:** one `terminate()` about a minute after the last embedding.
+    - **One tab:** with the lock held in another tab, a fresh tab's automatic backfill made 0 `pending_search_embeddings` requests; with it free, 1. (The page loads ~290 resources, past the 250-entry default timeline buffer, so the requests were counted by wrapping `fetch` in an init script.)
+    - The D3D failure in TASKS.md did not occur in these runs.
+  - **Not verified:** GPU memory while the worker and a page model are both loaded (the worker has its own WebGPU device, so that memory is held twice), and a production build: these runs were against the dev server.
 
 ### 22. Open decisions in the upload and onboarding paths
 
@@ -507,6 +520,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-08 | `e9f163b` | 23, 13 | The shares and gallery routes call actions instead of Prisma; a test fails on any new `@/services/db` import under `app/routes/` (one listed exception, `workspace.tsx`). |
 | 2026-10-08 | `08324f8` | 13 | CI was red on `e9f163b`: the gallery query test signed a real thumbnail URL, which needs an S3 endpoint the check job doesn't set. Signing is now replaced in that test. |
 | 2026-10-08 | `1a8102a` | 26, 13 | Every access check counts only live grants (not soft-deleted, not expired), including the `accessibleBy` listing filter. Confirmed first in a rolled-back transaction; 14 new tests, 8 of which fail on the old code. |
+| 2026-10-09 | `df68279` | 21, 13 | The embedding model runs in a dedicated worker, and a Web Lock lets one tab drain the backfill. Measured in Chrome: main-thread blocking while embedding went from 1,279 ms to 0 ms. |
 
 ## Phased remediation plan
 
@@ -572,7 +586,7 @@ New items from the 8 Oct re-scan, in the order to do them:
 3. **Stripe webhook (item 19, 1–2 days).** Needed before anyone pays. It's also the right server-side home for `updateTotalQuota`.
 4. ~~**Prisma out of routes (item 23, 0.5–1 day).**~~ **Done 8 Oct for every personal route**; `workspace.tsx` deferred. A test stands in for the linter rule. It turned up items 25 (fixed) and 26.
 5. **The three open decisions (item 22).** These are decisions rather than code. Item 18's server-side charge settles one of them.
-6. **Embedding backfill in a worker, one tab (item 21, 1–2 days)** and **cold first load (item 24, 1–3 days).** Both are performance work. Profile before changing anything.
+6. ~~**Embedding backfill in a worker, one tab (item 21, 1–2 days)**~~ **done 9 Oct, measured: 1,279 → 0 ms of main-thread blocking** and **cold first load (item 24, 1–3 days).** Both are performance work. Profile before changing anything.
 7. ~~**`hasItemPermission` and revoked grants (item 26, 0.5 day).**~~ **Done 8 Oct**: confirmed, then every access check filtered to live grants.
 
 ---
