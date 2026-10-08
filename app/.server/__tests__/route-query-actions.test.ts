@@ -1,4 +1,13 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+
+// Signing needs the S3 endpoint from `.env`, which CI does not set: the first
+// run of this file failed there with `Invalid URL` (input 'undefined'). These
+// tests are about which rows come back, so signing is replaced, not exercised.
+vi.mock('@/services/s3', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/s3')>()),
+  getPresignedUrl: vi.fn(async () => 'https://signed.test/thumbnail.webp'),
+}))
+
 import { prisma } from '@/services/db'
 import { getItemsSharedWithUser } from '@/services/share-actions'
 import { getGalleryMedia } from '@/services/thumbnail-actions'
@@ -99,7 +108,7 @@ describe('getGalleryMedia', () => {
   it('returns only the user’s own media, with a signed thumbnail', async () => {
     const media = await getGalleryMedia(ownerId, {})
     expect(media.map((m) => m.id)).toEqual([ownerImageId])
-    expect(media[0].thumbnails[0].url).toMatch(/^https?:\/\//)
+    expect(media[0].thumbnails[0].url).toBe('https://signed.test/thumbnail.webp')
   })
 
   // The owner is written after the URL filters, so no filter can widen it.
