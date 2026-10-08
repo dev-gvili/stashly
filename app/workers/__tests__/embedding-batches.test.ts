@@ -9,23 +9,16 @@
  * 170-chunk file squeezed under the limit and took the GPU process from about
  * 5 GB to 10.9 GB (measured 2 Oct 2026).
  *
- * The model is mocked: these check how the texts are split and queued, not
- * the model.
+ * The model runs in `embedding.worker.ts`; here a fake worker that speaks the
+ * same protocol stands in for it. These check how the texts are split and
+ * queued, not the model.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { installFakeEmbeddingWorker } from './fake-embedding-worker'
 
-/** Every batch the mocked model was called with, in call order. */
-const calls: string[][] = []
-
-vi.mock('@huggingface/transformers', () => ({
-  pipeline: vi.fn(async () => async (texts: string[]) => {
-    calls.push(texts)
-    // One 2-dimension "vector" per text: [its number, 0], so order is checkable.
-    const data = new Float32Array(texts.length * 2)
-    texts.forEach((text, i) => (data[i * 2] = Number(text)))
-    return { dims: [texts.length, 2], data }
-  }),
-}))
+// One 2-dimension "vector" per text: [its number, 0], so order is checkable.
+const worker = installFakeEmbeddingWorker((text) => [Number(text), 0])
+const calls = worker.calls
 
 const { embedTexts, EMBED_BATCH_SIZE } = await import('../embedding.ai')
 const { enqueue } = await import('../ai-queue')
@@ -76,5 +69,25 @@ describe('embedTexts batching', () => {
     await Promise.all([file, query])
 
     expect(order).toEqual(['query', 'file done'])
+  })
+})
+
+describe('embedTexts when the worker fails', () => {
+  it('rejects with the error the worker reports, and keeps that worker', async () => {
+    const before = worker.started
+    worker.current!.failNext = 'Device is lost'
+    await expect(embedTexts(texts(1))).rejects.toThrow('Device is lost')
+
+    expect(await embedTexts(texts(2))).toHaveLength(2)
+    expect(worker.started).toBe(before)
+  })
+
+  it('a crashed worker fails its waiting request and is replaced on the next call', async () => {
+    const before = worker.started
+    worker.current!.crashOnNext = 'out of memory'
+    await expect(embedTexts(texts(1))).rejects.toThrow('Embedding worker failed: out of memory')
+
+    expect(await embedTexts(texts(1))).toHaveLength(1)
+    expect(worker.started).toBe(before + 1)
   })
 })

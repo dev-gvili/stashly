@@ -223,3 +223,44 @@ export function isBackfillActive(phase: BackfillPhase): boolean {
 export function hasWebGpu(): boolean {
   return typeof navigator !== 'undefined' && 'gpu' in navigator
 }
+
+/** Web Lock name shared by every tab of the app on this origin. */
+export const BACKFILL_LOCK = 'stashly:embedding-backfill'
+
+/** The one `LockManager` method the backfill uses, so tests can fake it. */
+export interface BackfillLocks {
+  request<T>(
+    name: string,
+    options: { ifAvailable: boolean },
+    callback: (lock: unknown | null) => Promise<T>
+  ): Promise<T>
+}
+
+/**
+ * Runs `run` only if no other tab is running the backfill: the first tab to
+ * ask takes {@link BACKFILL_LOCK} and holds it until `run` settles; any other
+ * tab gets `{ ran: false }` straight away rather than waiting.
+ *
+ * Every tab used to drain the same backlog at once. The server hands each one
+ * the same unembedded chunks, so N tabs loaded the model N times and embedded
+ * each chunk N times (tech-debt item 21).
+ *
+ * Without Web Locks (an old browser, or SSR) it just runs, as before.
+ *
+ * @param locks - `navigator.locks`, or a fake in tests.
+ * @param run - The drain.
+ * @returns Whether this tab ran it, and its result if so.
+ *
+ * @example
+ * const outcome = await runInOneTab(navigator.locks, () => drainBacklog(signal))
+ * if (!outcome.ran) reportBackfill({ phase: 'skipped', reason: 'Running in another tab' })
+ */
+export async function runInOneTab<T>(
+  locks: BackfillLocks | undefined,
+  run: () => Promise<T>
+): Promise<{ ran: true; value: T } | { ran: false }> {
+  if (!locks) return { ran: true, value: await run() }
+  return locks.request(BACKFILL_LOCK, { ifAvailable: true }, async (lock) =>
+    lock ? { ran: true as const, value: await run() } : { ran: false as const }
+  )
+}

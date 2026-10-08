@@ -6,20 +6,18 @@
  * vectors can be compared with cosine similarity directly (or dot product,
  * which is equivalent on normalized vectors).
  *
- * Despite the file living under `app/workers/`, this is a regular module
- * (matches `thumbnail.ai.ts`'s pattern). It runs on the main thread but
- * offloads compute to WebGPU, so it doesn't block the UI for inference.
- * Job ordering is shared with image AI through `ai-queue.ts`.
+ * This module is the main-thread client. The model itself runs in a dedicated
+ * worker (`embedding.worker.ts`), so loading it and setting up its ONNX
+ * session no longer block the page: that was a 1,451 ms long task, then a
+ * 766 ms one (measured 2026-09-25, tech-debt item 21). Each batch is still one
+ * job on the shared `ai-queue`, which awaits the worker's reply, so the page's
+ * other models and this one never use a GPU at the same time.
  */
-import {
-  pipeline,
-  type FeatureExtractionPipeline,
-  type ProgressCallback,
-} from '@huggingface/transformers'
+import type { ProgressCallback } from '@huggingface/transformers'
 import { createDebouncer } from '@/utils/debounce'
 import { enqueue, type AiPriority } from './ai-queue'
+import type { EmbeddingRequest, EmbeddingResponse } from './embedding.worker'
 
-const MODEL_ID = 'Xenova/all-mpnet-base-v2'
 export const EMBEDDING_DIM = 768
 
 /**
@@ -46,25 +44,64 @@ export const EMBED_BATCH_SIZE = 16
  */
 export const EMBEDDING_IDLE_RELEASE_MS = 60_000
 
-let pipelinePromise: Promise<FeatureExtractionPipeline> | null = null
-
 /** When a batch last ran, so a release that was queued late can see it was used since. */
 let lastUsedAt = 0
 
 /** Fires `releaseEmbeddingModel` once the model has gone unused for the idle period. */
 const idleRelease = createDebouncer()
 
-async function getPipeline(
-  onProgress?: ProgressCallback,
-): Promise<FeatureExtractionPipeline> {
-  if (!pipelinePromise) {
-    pipelinePromise = pipeline('feature-extraction', MODEL_ID, {
-      device: 'webgpu',
-      dtype: 'q4',
-      progress_callback: onProgress,
-    })
+// ── Worker client ─────────────────────────────────────────────────────────
+
+interface PendingRequest {
+  resolve: (vectors: number[][]) => void
+  reject: (err: Error) => void
+  onProgress?: ProgressCallback
+}
+
+/** The live worker, or null before first use and after a release. */
+let worker: Worker | null = null
+let nextRequestId = 1
+const pending = new Map<number, PendingRequest>()
+
+/** Rejects every request still waiting on a worker that is going away. */
+function failPending(err: Error) {
+  for (const request of pending.values()) request.reject(err)
+  pending.clear()
+}
+
+/**
+ * The embedding worker, started on first use. A worker that errors is
+ * discarded, so the next call starts a fresh one.
+ */
+function getWorker(): Worker {
+  if (worker) return worker
+  if (typeof window === 'undefined') {
+    throw new Error('Text embedding runs only in the browser')
   }
-  return pipelinePromise
+  const started = new Worker(new URL('./embedding.worker.ts', import.meta.url), {
+    type: 'module',
+  })
+  started.onmessage = (event: MessageEvent<EmbeddingResponse>) => {
+    const message = event.data
+    const request = pending.get(message.id)
+    if (!request) return
+    if (message.type === 'progress') {
+      request.onProgress?.(message.progress as Parameters<ProgressCallback>[0])
+      return
+    }
+    pending.delete(message.id)
+    if (message.type === 'result') request.resolve(message.vectors)
+    else request.reject(new Error(message.message))
+  }
+  started.onerror = (event) => {
+    // A worker that failed to load, or threw outside a request, cannot be
+    // trusted with the next one.
+    failPending(new Error(`Embedding worker failed: ${event.message}`))
+    if (worker === started) worker = null
+    started.terminate()
+  }
+  worker = started
+  return started
 }
 
 /**
@@ -86,14 +123,16 @@ export async function releaseEmbeddingModel(
 ): Promise<void> {
   if (!options.onlyIfIdle) idleRelease.cancel()
   await enqueue(async () => {
-    if (!pipelinePromise) return
+    if (!worker) return
     const usedSince = Date.now() - lastUsedAt < EMBEDDING_IDLE_RELEASE_MS
     if (options.onlyIfIdle && usedSince) return
-    const loading = pipelinePromise
-    pipelinePromise = null
+    // Ending the worker frees its whole GPU device, model and buffers alike.
+    // Nothing is in flight: this runs as a queue job, and every batch is one.
+    const ending = worker
+    worker = null
     lastUsedAt = 0
-    const extractor = await loading.catch(() => null)
-    await extractor?.dispose()
+    failPending(new Error('Embedding model released'))
+    ending.terminate()
   }, 'background')
 }
 
@@ -145,8 +184,8 @@ export async function embedTexts(
 }
 
 /**
- * Runs the model once over at most `EMBED_BATCH_SIZE` texts. Must run inside
- * an AI-queue job: it touches the GPU.
+ * Runs the model once over at most `EMBED_BATCH_SIZE` texts, in the worker.
+ * Must run inside an AI-queue job: the worker touches the GPU.
  *
  * @param texts - At most `EMBED_BATCH_SIZE` passages.
  * @param onProgress - Model download progress, on first use.
@@ -156,24 +195,14 @@ async function embedOneBatch(
   texts: string[],
   onProgress?: ProgressCallback,
 ): Promise<number[][]> {
-  const extractor = await getPipeline(onProgress)
-  const output = await extractor(texts, { pooling: 'mean', normalize: true })
+  const target = getWorker()
+  const id = nextRequestId++
+  const vectors = await new Promise<number[][]>((resolve, reject) => {
+    pending.set(id, { resolve, reject, onProgress })
+    target.postMessage({ id, texts } satisfies EmbeddingRequest)
+  })
   lastUsedAt = Date.now()
-
-  // Output shape: [batchSize, 768] flattened. Reshape via dims.
-  const dims = output.dims
-  const data = output.data as Float32Array
-  if (dims.length === 1) {
-    // Single-input case (rare — depends on Transformers.js version)
-    return [Array.from(data)]
-  }
-  const [batchSize, vecSize] = dims
-  const result: number[][] = []
-  for (let i = 0; i < batchSize; i++) {
-    const start = i * vecSize
-    result.push(Array.from(data.subarray(start, start + vecSize)))
-  }
-  return result
+  return vectors
 }
 
 /**

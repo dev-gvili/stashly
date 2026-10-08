@@ -9,6 +9,9 @@ import {
   reportBackfill,
   resetBackfillState,
   subscribeBackfill,
+  BACKFILL_LOCK,
+  runInOneTab,
+  type BackfillLocks,
 } from '../embedding-backfill'
 
 describe('clampPendingLimit', () => {
@@ -131,5 +134,64 @@ describe('backfill progress store', () => {
     reportBackfill({ phase: 'failed', error: 'no WebGPU adapter' })
     expect(getBackfillState().phase).toBe('failed')
     expect(getBackfillState().error).toBe('no WebGPU adapter')
+  })
+})
+
+/**
+ * A `LockManager` with only `ifAvailable` requests: a held name is refused
+ * (callback gets `null`) instead of queued, as in the browser.
+ */
+function fakeLocks() {
+  const held = new Set<string>()
+  const requested: string[] = []
+  const locks: BackfillLocks = {
+    async request(name, options, callback) {
+      requested.push(name)
+      if (!options.ifAvailable) throw new Error('only ifAvailable is faked')
+      if (held.has(name)) return callback(null)
+      held.add(name)
+      try {
+        return await callback({ name })
+      } finally {
+        held.delete(name)
+      }
+    },
+  }
+  return { locks, requested }
+}
+
+describe('runInOneTab', () => {
+  it('runs the drain while holding the backfill lock', async () => {
+    const { locks, requested } = fakeLocks()
+    const outcome = await runInOneTab(locks, async () => 42)
+    expect(outcome).toEqual({ ran: true, value: 42 })
+    expect(requested).toEqual([BACKFILL_LOCK])
+  })
+
+  it('a second tab does not run while the first holds the lock', async () => {
+    const { locks } = fakeLocks()
+    let finishFirst!: () => void
+    const first = runInOneTab(locks, () => new Promise<string>((r) => (finishFirst = () => r('first'))))
+
+    let secondRan = false
+    const second = await runInOneTab(locks, async () => {
+      secondRan = true
+      return 'second'
+    })
+    expect(second).toEqual({ ran: false })
+    expect(secondRan).toBe(false)
+
+    finishFirst()
+    expect(await first).toEqual({ ran: true, value: 'first' })
+  })
+
+  it('releases the lock when the drain fails, so a later run can take it', async () => {
+    const { locks } = fakeLocks()
+    await expect(runInOneTab(locks, async () => { throw new Error('no WebGPU') })).rejects.toThrow('no WebGPU')
+    expect(await runInOneTab(locks, async () => 'again')).toEqual({ ran: true, value: 'again' })
+  })
+
+  it('runs as before where Web Locks are unavailable', async () => {
+    expect(await runInOneTab(undefined, async () => 'ok')).toEqual({ ran: true, value: 'ok' })
   })
 })

@@ -17,6 +17,8 @@
  *
  *   • **Once per tab** — a module flag, not per-mount, so remounting the
  *     layout during client navigation doesn't restart it.
+ *   • **One tab at a time** — a Web Lock (`runInOneTab`), so N open tabs
+ *     don't each load the model and embed the same backlog.
  *   • **Idle-scheduled** — starts in `requestIdleCallback`, never on a frame
  *     the user is interacting with.
  *   • **Batched and capped** — {@link BATCH_LIMIT} chunks per request and at
@@ -37,6 +39,7 @@ import {
   getBackfillServerState,
   getBackfillState,
   reportBackfill,
+  runInOneTab,
   shouldRequestAnotherBatch,
   subscribeBackfill,
   type BackfillState,
@@ -355,7 +358,14 @@ export function startEmbeddingBackfill(
   })
 
   const cancelIdle = whenIdle(() => {
-    drainBacklog(controller.signal, maxBatches)
+    // One tab drains at a time. The others would fetch the same unembedded
+    // chunks and load the model again to embed them twice.
+    runInOneTab(navigator.locks, () => drainBacklog(controller.signal, maxBatches))
+      .then((outcome) => {
+        if (!outcome.ran) {
+          reportBackfill({ phase: 'skipped', reason: 'Running in another tab' })
+        }
+      })
       .catch((e) => {
         if (controller.signal.aborted) return
         // A browser without WebGPU lands here. Search still works — this only
