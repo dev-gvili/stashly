@@ -14,9 +14,9 @@
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**24 items** (17 from the audit, 7 added 8 Oct) · categories: Code 10, Architecture 7, Infrastructure 3, Test 2, Dependency 1, Documentation 1
+**26 items** (17 from the audit, 9 added 8 Oct) · categories: Code 12, Architecture 7, Infrastructure 3, Test 2, Dependency 1, Documentation 1
 
-**Status at 8 Oct 2026 (end of day):** 10 resolved · 1 resolved in code, rollout step unconfirmed · 3 partly done · 1 declined · 3 open from the audit · 6 new and open. Item 18 was resolved the same day it was found (`2fc9d4d`), with e2e coverage in `9081555`. (Earlier on 8 Oct: 9 resolved · 7 new and open.) (At 2 Oct: 8 resolved · 1 in code · 2 partly · 1 declined · 5 open.) Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 8 Oct 2026 (end of day):** 11 resolved · 1 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 3 open from the audit · 6 new and open. Item 18 was resolved the same day it was found (`2fc9d4d`), with e2e coverage in `9081555`. Item 23 was done for every personal route, which turned up two more: item 25 (share-link actions had no access check, fixed the same day) and item 26 (open). (Earlier on 8 Oct: 9 resolved · 7 new and open.) (At 2 Oct: 8 resolved · 1 in code · 2 partly · 1 declined · 5 open.) Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 ### What's left, in priority order
 
@@ -25,6 +25,8 @@
 | # | Item | Score | What remains | Blocked on |
 |---|------|-------|--------------|------------|
 | 18 | ~~`/api/quota` trusts the client~~ | 50 | Resolved 2026-10-08: route is read-only, upload charged in `createUploadedItem` | — |
+| 25 | ~~Share-link actions had no access check~~ | 40 | Resolved 2026-10-08: every action takes the acting user and checks it | — |
+| 26 | **new** `hasItemPermission` counts revoked and expired grants | 35 | Confirm in a rolled-back transaction, then filter both | — |
 | 2 | Deploy path | 32 | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
 | 4 | Error tracking and logging | 28 | All of it | Owner's choice of package (Sentry, pino or both) |
 | 19 | **new** Stripe webhook is a stub | 24 | All four event handlers | Whether paid plans ship before launch |
@@ -34,7 +36,7 @@
 | 21 | **new** Embedding backfill runs in every tab | 18 | Move it to a worker and run it in one tab only | — |
 | 12 | Linter | 16 | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
 | 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; the rest of `quota-actions`; routes and components | — |
-| 23 | **new** Prisma calls in route modules | 16 | 4 routes | — |
+| 23 | **new** Prisma calls in route modules | 16 | `workspaces/workspace.tsx` only | Deferred to after personal-first (TASKS.md, 8 Oct) |
 | 24 | **new** Slow first page load | 15 | Find where the 1.4 s goes | — |
 | 16 | Overlapping UI primitives | 12 | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
 | 17 | Unfinished migrations | 12 | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes | Deferred to after personal-first (TASKS.md, 4 Oct) |
@@ -67,8 +69,10 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 20 | The Playwright specs don't run in CI | Test | 3 | 3 | 2 | **24** (Medium) | 0.5–1 day | New 8 Oct |
 | 21 | Embedding backfill loads a WebGPU model on the main thread of every tab | Architecture | 3 | 3 | 3 | **18** (Medium) | 1–2 days | New 8 Oct |
 | 22 | Open decisions in the upload and onboarding paths | Architecture | 2 | 3 | 2 | **20** (Medium) | 1 day once decided | New 8 Oct |
-| 23 | Prisma calls made directly from route modules | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | New 8 Oct |
+| 23 | Prisma calls made directly from route modules | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Partly done (8 Oct): workspace route deferred |
 | 24 | Slow first page load (cold document TTFB) | Architecture | 3 | 2 | 3 | **15** (Low) | 1–3 days | New 8 Oct |
+| 25 | ~~Share-link actions had no access check~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 8 Oct |
+| 26 | `hasItemPermission` counts soft-deleted and expired permissions | Code | 4 | 3 | 1 | **35** (High) | 0.5 day | New 8 Oct |
 
 ## Details
 
@@ -420,6 +424,14 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** four route modules import `prisma` from `@/services/db` and query it directly: `routes/api/shares.ts` (`item.findUnique`, `permission.findFirst`, `shareLink.findMany`), `routes/stash/gallery.tsx`, `routes/stash/shares.tsx` and `routes/workspaces/workspace.tsx`. Every other route goes through `app/.server/*-actions.ts`, where access checks live.
 - **Fix:** move each query into the matching `*-actions.ts` next to its access check. Then add the `no-restricted-imports` rule for `@/services/db` under `app/routes/` that TASKS.md proposes as the linter's first rule (item 12).
 - **Why it matters:** access checks are enforced in the actions layer. A route that queries Prisma directly is a place where one can be forgotten. `api/shares.ts` reads permissions itself.
+- **Status 2026-10-08: done for every personal route; `workspace.tsx` deferred** (`bb321a3`, `e9f163b`).
+  - `api/shares.ts` lists links through `listShareLinksForItem` (share-actions), with the same rule the route ran inline: owner, or a live `write`/`owner` permission; 404 for a missing item, 403 otherwise.
+  - `stash/shares.tsx` calls `getItemsSharedWithUser`, and `stash/gallery.tsx` calls `getGalleryMedia` (thumbnail-actions), which writes `ownerId` after the URL filters.
+  - None of the three failed open before the move. Each was already scoped to the session user, and the gallery's URL filters build `{ AND: [...] }`, so `?owner=` could only narrow it.
+  - **Guard:** `app/routes/__tests__/no-direct-prisma.test.ts` fails on any `@/services/db` import under `app/routes/`. It stands in for the `no-restricted-imports` rule until item 12. Its one exception is `workspaces/workspace.tsx`, and it also fails if that entry outlives the import.
+  - **Deferred:** `workspace.tsx` (six queries) is workspace-only, so it moved to TASKS.md *Someday* per personal-first.
+  - Moving `api/shares.ts` turned up items 25 and 26.
+  - Tests: `route-query-actions.test.ts` (5, live DB). `pnpm test` 804/804 (67 files), the type gate is clean and `pnpm build` passes.
 
 ### 24. Slow first page load (cold document TTFB)
 
@@ -428,6 +440,24 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** from TASKS.md, measured 2026-09-25 against the production build. The stash document's first load had a **1,752 ms** TTFB, against 354 ms warm, with 254 KB of HTML and 44 signed thumbnail URLs. The server log showed the same document at 2,997 ms. The `.data` request for the same route is fast.
 - **Fix:** profile one cold request before changing anything: route module loading, the signing cache's first window, and the session lookup. Signing is already cached per window (item 5), so 44 cold signatures is the first suspect. Since `d11ffae`, only on-screen cards get thumbnails, so check whether the loader can sign only the first page of thumbnails.
 - **Why it matters:** the first load is the first impression, and it's 5× slower than the same page warm.
+
+### 25. Share-link actions had no access check
+
+*Code debt (security) · Impact 4 · Risk 4 · Effort 1 → **40** · est. 0.5 day · source: found 8 Oct while moving `api/shares.ts` (item 23)*
+
+- **Evidence:** `app/.server/share-actions.ts` had no access check: no `assertItem*` call, and no user passed to any mutation. The `/api/shares` action called `createViewLink`, `createEditLink`, `createEmbedLink`, `createUploadLink`, `updateShareLinkScope`, `updateShareLinkType`, `expireShareLink`, `updateShareLink`, `revokeShareLink` and `revokeAllShareLinksForItem` with only the id from the form. Only the route's *loader* checked access.
+- **Impact today:** any signed-in user could create links on any item, and re-scope, retype, re-password, expire or revoke any link whose id they knew. No route resolves a share link yet, and a link's permission row lists no users, so a forged link granted no read access. It would have become a read hole the day a link resolver shipped. Read from the code; the endpoint was not called.
+- **Fix:** every action takes the acting user as its first argument and checks it itself, so a new caller cannot skip it. `assertCanManageItemShares` keeps the loader's rule: owner, or a live `write`/`owner` permission (not soft-deleted, not expired). `assertCanManageShareLink` finds the link's item from its permission row first. The three generic `updateShareLink` calls in the route became `updateShareLinkSettings`.
+- **Status 2026-10-08: resolved** (`bb321a3`). `share-access.test.ts` (37, live DB): a stranger, a read-only grantee and a grantee whose write permission expired each get 403 on all 11 operations, with the item's links unchanged. The owner and a live writer can manage links. Missing items and links answer 404.
+
+### 26. `hasItemPermission` counts soft-deleted and expired permissions
+
+*Code debt (security) · Impact 4 · Risk 3 · Effort 1 → **35** · est. 0.5 day · source: found 8 Oct while fixing item 25*
+
+- **Evidence:** `hasItemPermission` (`permission-actions.ts:387`) matches any `Permission` that lists the user with a satisfying role. It has no `deletedAt: null` and no `expiresAt` check. `assertItemPermission` and `assertItemAccess` build on it. Canceling an invitation revokes by stamping `deletedAt` (`invitation-actions.ts:1087`, `:1142`), and permissions can carry `expiresAt`.
+- **Not verified end to end:** whether a canceled invitee still passes `assertItemAccess`, which depends on whether a pending invitation's permission already lists them.
+- **Fix:** confirm in a rolled-back transaction, then add both filters to `hasItemPermission` and run the full suite, since every access check goes through it. Item 25's `assertCanManageItemShares` filters both itself for this reason.
+- **Why it matters:** a revoked or expired share that still opens the file is a privacy failure the owner cannot see.
 
 ## Changes since the audit
 
@@ -470,6 +500,8 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-03 | `fc8934b`, `1821ca4`, `9422c8b` | 22 | Uploads never guess a destination, check folder access before any bytes, and free a failed file's slot. |
 | 2026-10-08 | `2fc9d4d` | 18, 22, 13 | `/api/quota` is read-only; every write action answers 400. Uploads are charged in `createUploadedItem`'s transaction, and the client charge and its retry loop are gone, which settles item 22's first question. 2 new test files: 9 of 13 route tests fail against the old route, 3 of 4 charge tests fail with the server charge removed. |
 | 2026-10-08 | `9081555` | 13, 20 | Upload e2e spec: 1 test to 11, covering filing, the exact quota charge and the refused quota writes. Passes locally; not in CI. |
+| 2026-10-08 | `bb321a3` | 25, 23 | Every share-link action takes the acting user and checks it (owner, or a live write permission); the `/api/shares` loader no longer queries Prisma. 37 new tests: 403 for a stranger, a read-only and an expired grantee on all 11 operations. |
+| 2026-10-08 | `e9f163b` | 23, 13 | The shares and gallery routes call actions instead of Prisma; a test fails on any new `@/services/db` import under `app/routes/` (one listed exception, `workspace.tsx`). |
 
 ## Phased remediation plan
 
@@ -533,9 +565,10 @@ New items from the 8 Oct re-scan, in the order to do them:
 1. ~~**`/api/quota` trusts the client (item 18, 0.5–1.5 days).**~~ **Done 8 Oct** (`2fc9d4d`, e2e in `9081555`). Still open within it: the charged size comes from the client form, not from S3.
 2. **Playwright in CI (item 20, 0.5–1 day).** This puts the upload and thumbnail flows under the safety net that Phase 1 built. Now the next item: the upload spec checks quota from the browser, and the job must run with one worker or a user per worker.
 3. **Stripe webhook (item 19, 1–2 days).** Needed before anyone pays. It's also the right server-side home for `updateTotalQuota`.
-4. **Prisma out of routes (item 23, 0.5–1 day).** Small, and it gives the linter (item 12) its first rule.
+4. ~~**Prisma out of routes (item 23, 0.5–1 day).**~~ **Done 8 Oct for every personal route**; `workspace.tsx` deferred. A test stands in for the linter rule. It turned up items 25 (fixed) and 26.
 5. **The three open decisions (item 22).** These are decisions rather than code. Item 18's server-side charge settles one of them.
 6. **Embedding backfill in a worker, one tab (item 21, 1–2 days)** and **cold first load (item 24, 1–3 days).** Both are performance work. Profile before changing anything.
+7. **`hasItemPermission` and revoked grants (item 26, 0.5 day).** Added 8 Oct. Confirm in a rolled-back transaction, then filter. Every access check depends on it, so it ranks above everything here except item 20.
 
 ---
 
