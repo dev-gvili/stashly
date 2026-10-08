@@ -12,6 +12,7 @@ import {
   shareLinkFilterSchema,
 } from '@/utils/filters/shareLink.filters'
 import { searchFactory } from '@/utils/search'
+import { signThumbnails } from '@/services/thumbnail-actions'
 import type {
   ShareLink,
   ShareLinkType,
@@ -244,6 +245,239 @@ export async function isShareLinkActive(id: string): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------------------
+// Access
+// ---------------------------------------------------------------------------
+
+/**
+ * Throws unless `userId` may manage the share links of `itemId`: they own it,
+ * or hold a live `write` or `owner` permission on it (not soft-deleted, not
+ * expired).
+ *
+ * Every link-managing action below calls this (or
+ * {@link assertCanManageShareLink}) itself, so a new caller cannot skip it.
+ * Until 2026-10-08 these actions took no user at all, and any signed-in user
+ * could create, re-scope or revoke links on any item.
+ *
+ * Deliberately not `assertItemAccess`: `hasItemPermission` does not filter out
+ * soft-deleted or expired permissions, and this check always has.
+ *
+ * @param userId - The signed-in user acting on the item's links.
+ * @param itemId - The item whose links are being managed.
+ * @param tx - Optional transaction client.
+ * @throws `ITEM_NOT_FOUND` (404) when the item does not exist.
+ * @throws `FORBIDDEN` (403) without ownership or a live write permission.
+ *
+ * @example
+ * await assertCanManageItemShares(session.user.id, itemId)
+ */
+export async function assertCanManageItemShares(
+  userId: string,
+  itemId: string,
+  tx?: PrismaTx
+): Promise<void> {
+  const db = tx ?? prisma
+  const item = await db.item.findUnique({
+    where: { id: itemId },
+    select: { ownerId: true },
+  })
+  if (!item) throw toRouteError(StashlyErrorCode.ITEM_NOT_FOUND)
+  if (item.ownerId === userId) return
+
+  const writePermission = await db.permission.findFirst({
+    where: {
+      itemId,
+      users: { some: { id: userId } },
+      roles: { in: ['write', 'owner'] },
+      deletedAt: null,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+    select: { id: true },
+  })
+  if (!writePermission) {
+    throw toRouteError(
+      StashlyErrorCode.FORBIDDEN,
+      'You cannot manage sharing for this item'
+    )
+  }
+}
+
+/**
+ * {@link assertCanManageItemShares} for an action that names a link rather
+ * than an item: the link's item is read from its permission row.
+ *
+ * @param userId - The signed-in user acting on the link.
+ * @param linkId - The share link being changed or revoked.
+ * @throws `SHARE_NOT_FOUND` (404) when no item-scoped link has that id.
+ * @throws `ITEM_NOT_FOUND` / `FORBIDDEN` as {@link assertCanManageItemShares}.
+ *
+ * @example
+ * await assertCanManageShareLink(session.user.id, linkId)
+ */
+export async function assertCanManageShareLink(
+  userId: string,
+  linkId: string
+): Promise<void> {
+  const permission = await prisma.permission.findFirst({
+    where: { linkId, itemId: { not: null } },
+    select: { itemId: true },
+  })
+  if (!permission?.itemId) throw toRouteError(StashlyErrorCode.SHARE_NOT_FOUND)
+  await assertCanManageItemShares(userId, permission.itemId)
+}
+
+/**
+ * Every share link on an item, newest first, with the users on each link's
+ * permission. Requires the caller to be able to manage the item's links.
+ *
+ * @param userId - The signed-in user.
+ * @param itemId - The item whose links to list.
+ * @throws As {@link assertCanManageItemShares}.
+ *
+ * @example
+ * const links = await listShareLinksForItem(session.user.id, itemId)
+ */
+export async function listShareLinksForItem(userId: string, itemId: string) {
+  await assertCanManageItemShares(userId, itemId)
+  return prisma.shareLink.findMany({
+    where: { permission: { some: { itemId } } },
+    include: {
+      permission: {
+        include: {
+          users: {
+            select: { id: true, email: true, name: true, image: true },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+}
+
+/**
+ * One page of the items other users have shared with `userId`: items they hold
+ * a live permission on (not soft-deleted, not expired), that they don't own,
+ * and that aren't trashed. Newest-updated first.
+ *
+ * The include matches what the shares grid renders through `FileCardDetail`
+ * and `FolderCardTab`, including the parent's large thumbnail. Thumbnails come
+ * back signed.
+ *
+ * @param userId - The signed-in user; only their own grants are read.
+ * @param opts.cursor - Id of the last item of the previous page.
+ * @param opts.limit - Page size (default 50).
+ * @returns The page, the cursor for the next one, and whether there is one.
+ *
+ * @example
+ * const { items, nextCursor, hasMore } = await getItemsSharedWithUser(session.user.id, { cursor })
+ */
+export async function getItemsSharedWithUser(
+  userId: string,
+  { cursor, limit = 50 }: { cursor?: string; limit?: number } = {}
+) {
+  // Find all items the user has permission to access (excluding items they own)
+  const permissions = await prisma.permission.findMany({
+    where: {
+      users: { some: { id: userId } },
+      // Filter to permissions linked to items the user doesn't own and are active
+      item: {
+        is: {
+          ownerId: { not: userId },
+          status: 'normal',
+        },
+      },
+      // Only non-expired permissions
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      // Exclude soft-deleted permissions
+      deletedAt: null,
+    },
+    select: { itemId: true },
+    distinct: ['itemId'],
+  })
+
+  const sharedItemIds = permissions
+    .map((p) => p.itemId)
+    .filter((id): id is string => id !== null)
+
+  if (sharedItemIds.length === 0) {
+    return { items: [], nextCursor: null, hasMore: false }
+  }
+
+  // Paginate shared items
+  const take = limit + 1
+  const items = await prisma.item.findMany({
+    where: {
+      id: { in: sharedItemIds },
+      status: 'normal',
+    },
+    include: {
+      file: true,
+      folder: true,
+      thumbnails: true,
+      locked: true,
+      favorites: {
+        select: {
+          id: true,
+          favoritedBy: {
+            select: {
+              name: true,
+              displayName: true,
+              image: true,
+              id: true,
+            },
+          },
+        },
+      },
+      parent: {
+        include: {
+          file: true,
+          folder: true,
+          favorites: {
+            select: {
+              id: true,
+              favoritedBy: {
+                select: {
+                  displayName: true,
+                  image: true,
+                  name: true,
+                  id: true,
+                },
+              },
+            },
+          },
+          locked: true,
+          thumbnails: {
+            where: {
+              size: {
+                equals: 'large',
+              },
+            },
+            select: {
+              bucket: true,
+              color: true,
+              width: true,
+              height: true,
+              size: true,
+              view: true,
+              id: true,
+              stage: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: { updatedAt: 'desc' },
+    take,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+  })
+
+  const hasMore = items.length === take
+  const page = await signThumbnails(hasMore ? items.slice(0, limit) : items)
+  const nextCursor = hasMore ? page[page.length - 1].id : null
+
+  return { items: page, nextCursor, hasMore }
+}
+
+// ---------------------------------------------------------------------------
 // Composite actions
 // ---------------------------------------------------------------------------
 
@@ -297,12 +531,18 @@ export function createShareLinkForItem(
  *
  * Prefer this over manually deleting permissions then the link in route code.
  *
+ * @param actorId - The signed-in user; must be able to manage the link's item.
  * @param linkId - The ID of the share link to revoke.
+ * @throws As {@link assertCanManageShareLink}.
  *
  * @example
- * await revokeShareLink(linkId)
+ * await revokeShareLink(session.user.id, linkId)
  */
-export async function revokeShareLink(linkId: string): Promise<void> {
+export async function revokeShareLink(
+  actorId: string,
+  linkId: string
+): Promise<void> {
+  await assertCanManageShareLink(actorId, linkId)
   await prisma.$transaction(async (tx) => {
     await tx.permission.deleteMany({ where: { linkId } })
     await tx.shareLink.delete({ where: { id: linkId } })
@@ -316,14 +556,18 @@ export async function revokeShareLink(linkId: string): Promise<void> {
  * Call this when deleting an item or when an owner wants to revoke all
  * external access at once.
  *
+ * @param actorId - The signed-in user; must be able to manage the item's links.
  * @param itemId - The item whose links to revoke.
+ * @throws As {@link assertCanManageItemShares}.
  *
  * @example
- * await revokeAllShareLinksForItem(itemId)
+ * await revokeAllShareLinksForItem(session.user.id, itemId)
  */
 export async function revokeAllShareLinksForItem(
+  actorId: string,
   itemId: string
 ): Promise<void> {
+  await assertCanManageItemShares(actorId, itemId)
   await prisma.$transaction(async (tx) => {
     const links = await findShareLinksForItem(itemId, tx)
     if (!links.length) return
@@ -338,20 +582,47 @@ export async function revokeAllShareLinksForItem(
 /**
  * Set an expiry date on a ShareLink to make access time-limited.
  *
+ * @param actorId   - The signed-in user; must be able to manage the link's item.
  * @param id        - The ID of the share link.
  * @param expiresAt - The date/time at which the link should expire.
- * @param tx        - Optional transaction client.
+ * @throws As {@link assertCanManageShareLink}.
  *
  * @example
  * // Expire a link in 24 hours:
- * await expireShareLink(linkId, new Date(Date.now() + 86_400_000))
+ * await expireShareLink(session.user.id, linkId, new Date(Date.now() + 86_400_000))
  */
-export function expireShareLink(
+export async function expireShareLink(
+  actorId: string,
   id: string,
-  expiresAt: Date,
-  tx?: PrismaTx
+  expiresAt: Date
 ): Promise<ShareLink> {
-  return updateShareLink({ where: { id }, data: { expiresAt } }, tx)
+  await assertCanManageShareLink(actorId, id)
+  return updateShareLink({ where: { id }, data: { expiresAt } })
+}
+
+/**
+ * Change a link's expiry, downloadability or password. Only the fields given
+ * are written; `expiresAt: null` removes the expiry.
+ *
+ * @param actorId - The signed-in user; must be able to manage the link's item.
+ * @param id - The ID of the share link.
+ * @param settings - The fields to change.
+ * @throws As {@link assertCanManageShareLink}.
+ *
+ * @example
+ * await updateShareLinkSettings(session.user.id, linkId, { downloadable: false })
+ */
+export async function updateShareLinkSettings(
+  actorId: string,
+  id: string,
+  settings: {
+    expiresAt?: Date | null
+    downloadable?: boolean
+    password?: string | null
+  }
+): Promise<ShareLink> {
+  await assertCanManageShareLink(actorId, id)
+  return updateShareLink({ where: { id }, data: settings })
 }
 
 // ---------------------------------------------------------------------------
@@ -443,18 +714,22 @@ type ShareLinkOptions = {
  * Pre-sets `type: 'view'` — callers only need to supply `scope` and optional
  * settings. Creates the ShareLink and its Permission atomically.
  *
+ * @param actorId - The signed-in user; must be able to manage the item's links.
  * @param itemId  - The item being shared.
  * @param scope   - Who can access the link (`anonymous`, `organization`, `users`).
  * @param options - Optional url, downloadable, password, expiresAt.
+ * @throws As {@link assertCanManageItemShares}.
  *
  * @example
- * const link = await createViewLink(itemId, 'anonymous', { downloadable: true })
+ * const link = await createViewLink(session.user.id, itemId, 'anonymous', { downloadable: true })
  */
-export function createViewLink(
+export async function createViewLink(
+  actorId: string,
   itemId: string,
   scope: ShareScope,
   options: ShareLinkOptions = {}
 ): Promise<ShareLink> {
+  await assertCanManageItemShares(actorId, itemId)
   return createShareLinkForItem(
     itemId,
     {
@@ -472,18 +747,22 @@ export function createViewLink(
  *
  * Pre-sets `type: 'edit'` and grants `write` permission to whoever uses it.
  *
+ * @param actorId - The signed-in user; must be able to manage the item's links.
  * @param itemId  - The item being shared.
  * @param scope   - Who can access the link.
  * @param options - Optional url, downloadable, password, expiresAt.
+ * @throws As {@link assertCanManageItemShares}.
  *
  * @example
- * const link = await createEditLink(itemId, 'users', { expiresAt: deadline })
+ * const link = await createEditLink(session.user.id, itemId, 'users', { expiresAt: deadline })
  */
-export function createEditLink(
+export async function createEditLink(
+  actorId: string,
   itemId: string,
   scope: ShareScope,
   options: ShareLinkOptions = {}
 ): Promise<ShareLink> {
+  await assertCanManageItemShares(actorId, itemId)
   return createShareLinkForItem(
     itemId,
     {
@@ -502,16 +781,20 @@ export function createEditLink(
  * Always uses `scope: 'anonymous'` — embed links are inherently public.
  * Pre-sets `type: 'embed'` and `downloadable: false`.
  *
+ * @param actorId - The signed-in user; must be able to manage the item's links.
  * @param itemId  - The item being embedded.
  * @param options - Optional url, password, expiresAt. `downloadable` is forced false.
+ * @throws As {@link assertCanManageItemShares}.
  *
  * @example
- * const link = await createEmbedLink(itemId, { url: '/embed/abc' })
+ * const link = await createEmbedLink(session.user.id, itemId, { url: '/embed/abc' })
  */
-export function createEmbedLink(
+export async function createEmbedLink(
+  actorId: string,
   itemId: string,
   options: Omit<ShareLinkOptions, 'downloadable'> = {}
 ): Promise<ShareLink> {
+  await assertCanManageItemShares(actorId, itemId)
   return createShareLinkForItem(
     itemId,
     {
@@ -530,18 +813,22 @@ export function createEmbedLink(
  *
  * Pre-sets `type: 'upload'` and grants `write` permission to uploaders.
  *
+ * @param actorId - The signed-in user; must be able to manage the item's links.
  * @param itemId  - The folder or item accepting uploads.
  * @param scope   - Who can use the upload link.
  * @param options - Optional url, password, expiresAt.
+ * @throws As {@link assertCanManageItemShares}.
  *
  * @example
- * const link = await createUploadLink(folderId, 'organization')
+ * const link = await createUploadLink(session.user.id, folderId, 'organization')
  */
-export function createUploadLink(
+export async function createUploadLink(
+  actorId: string,
   itemId: string,
   scope: ShareScope,
   options: ShareLinkOptions = {}
 ): Promise<ShareLink> {
+  await assertCanManageItemShares(actorId, itemId)
   return createShareLinkForItem(
     itemId,
     {
@@ -656,19 +943,21 @@ export function isWriteLink(link: ShareLink): boolean {
  * For example, downgrade a public (`anonymous`) link to `users`-only after
  * a workspace policy change.
  *
- * @param id    - The ID of the share link to update.
- * @param scope - The new scope.
- * @param tx    - Optional transaction client.
+ * @param actorId - The signed-in user; must be able to manage the link's item.
+ * @param id      - The ID of the share link to update.
+ * @param scope   - The new scope.
+ * @throws As {@link assertCanManageShareLink}.
  *
  * @example
- * await updateShareLinkScope(linkId, 'organization')
+ * await updateShareLinkScope(session.user.id, linkId, 'organization')
  */
-export function updateShareLinkScope(
+export async function updateShareLinkScope(
+  actorId: string,
   id: string,
-  scope: ShareScope,
-  tx?: PrismaTx
+  scope: ShareScope
 ): Promise<ShareLink> {
-  return updateShareLink({ where: { id }, data: { scope } }, tx)
+  await assertCanManageShareLink(actorId, id)
+  return updateShareLink({ where: { id }, data: { scope } })
 }
 
 /**
@@ -682,17 +971,21 @@ export function updateShareLinkScope(
  *   view | embed  →  roles: 'read'
  *   edit | upload →  roles: 'write'
  *
- * @param id   - The ID of the share link to update.
- * @param type - The new link type.
+ * @param actorId - The signed-in user; must be able to manage the link's item.
+ * @param id      - The ID of the share link to update.
+ * @param type    - The new link type.
+ * @throws As {@link assertCanManageShareLink}.
  *
  * @example
  * // Downgrade to read-only — type AND permission role are updated together:
- * await updateShareLinkType(linkId, 'view')
+ * await updateShareLinkType(session.user.id, linkId, 'view')
  */
 export async function updateShareLinkType(
+  actorId: string,
   id: string,
   type: ShareLinkType
 ): Promise<ShareLink> {
+  await assertCanManageShareLink(actorId, id)
   const role = type === 'edit' || type === 'upload' ? 'write' : 'read'
   const [link] = await prisma.$transaction([
     prisma.shareLink.update({ where: { id }, data: { type } }),

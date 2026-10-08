@@ -13,15 +13,16 @@ import {
   expireShareLink,
   revokeShareLink,
   revokeAllShareLinksForItem,
-  updateShareLink,
+  updateShareLinkSettings,
+  listShareLinksForItem,
 } from '@/services/share-actions'
 import { toErrorInfo } from '@/utils/api.errors'
-import { prisma } from '@/services/db'
 
 // ---------------------------------------------------------------------------
 // Loader — GET /api/shares?itemId=xxx
 // Returns all share links for an item with permission details.
-// Only accessible to the item owner or users with write permission.
+// Only the item owner or a user with a live write permission may list them;
+// `listShareLinksForItem` enforces that and throws 404/403.
 // ---------------------------------------------------------------------------
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -35,49 +36,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     schema: sharesLoaderInput,
   })
 
-  // Validate the user has access to manage this item's links
-  // (must be the owner or have an explicit write-level permission)
-  const item = await prisma.item.findUnique({
-    where: { id: itemId },
-    select: { ownerId: true },
-  })
-
-  if (!item) {
-    return data({ error: 'Item not found' }, { status: 404 })
-  }
-
-  const isOwner = item.ownerId === session.user.id
-  if (!isOwner) {
-    const writePermission = await prisma.permission.findFirst({
-      where: {
-        itemId,
-        users: { some: { id: session.user.id } },
-        roles: { in: ['write', 'owner'] },
-        deletedAt: null,
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      },
-    })
-    if (!writePermission) {
-      return data({ error: 'Access denied' }, { status: 403 })
-    }
-  }
-
   try {
-    const links = await prisma.shareLink.findMany({
-      where: { permission: { some: { itemId } } },
-      include: {
-        permission: {
-          include: {
-            users: {
-              select: { id: true, email: true, name: true, image: true },
-            },
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+    const links = await listShareLinksForItem(session.user.id, itemId)
     return data({ links })
   } catch (e) {
+    const err = toErrorInfo(e)
+    if (err.status && err.status < 500) {
+      return data({ error: err.message ?? 'Error' }, { status: err.status })
+    }
     console.error('[shares loader]', e)
     return data({ error: 'Failed to load share links' }, { status: 500 })
   }
@@ -85,7 +51,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 // ---------------------------------------------------------------------------
 // Action — POST /api/shares
-// Intent-based handler for all share link mutations.
+// Intent-based handler for all share link mutations. Each action is given the
+// session user and checks itself that they may manage the item's links.
 // ---------------------------------------------------------------------------
 
 export async function action({ request }: Route.ActionArgs) {
@@ -98,11 +65,12 @@ export async function action({ request }: Route.ActionArgs) {
     request,
     schema: sharesApiRouteInput,
   })
+  const actorId = session.user.id
 
   try {
     switch (parsedData.intent) {
       case 'create_view_link': {
-        const link = await createViewLink(parsedData.itemId, parsedData.scope, {
+        const link = await createViewLink(actorId, parsedData.itemId, parsedData.scope, {
           downloadable: parsedData.downloadable,
           password: parsedData.password,
           expiresAt: parsedData.expiresAt,
@@ -111,7 +79,7 @@ export async function action({ request }: Route.ActionArgs) {
       }
 
       case 'create_edit_link': {
-        const link = await createEditLink(parsedData.itemId, parsedData.scope, {
+        const link = await createEditLink(actorId, parsedData.itemId, parsedData.scope, {
           password: parsedData.password,
           expiresAt: parsedData.expiresAt,
         })
@@ -119,7 +87,7 @@ export async function action({ request }: Route.ActionArgs) {
       }
 
       case 'create_embed_link': {
-        const link = await createEmbedLink(parsedData.itemId, {
+        const link = await createEmbedLink(actorId, parsedData.itemId, {
           password: parsedData.password,
           expiresAt: parsedData.expiresAt,
         })
@@ -128,6 +96,7 @@ export async function action({ request }: Route.ActionArgs) {
 
       case 'create_upload_link': {
         const link = await createUploadLink(
+          actorId,
           parsedData.itemId,
           parsedData.scope,
           {
@@ -140,6 +109,7 @@ export async function action({ request }: Route.ActionArgs) {
 
       case 'update_link_scope': {
         const link = await updateShareLinkScope(
+          actorId,
           parsedData.linkId,
           parsedData.scope
         )
@@ -148,6 +118,7 @@ export async function action({ request }: Route.ActionArgs) {
 
       case 'update_link_type': {
         const link = await updateShareLinkType(
+          actorId,
           parsedData.linkId,
           parsedData.type
         )
@@ -156,6 +127,7 @@ export async function action({ request }: Route.ActionArgs) {
 
       case 'expire_link': {
         const link = await expireShareLink(
+          actorId,
           parsedData.linkId,
           parsedData.expiresAt
         )
@@ -163,36 +135,33 @@ export async function action({ request }: Route.ActionArgs) {
       }
 
       case 'remove_link_expiry': {
-        const link = await updateShareLink({
-          where: { id: parsedData.linkId },
-          data: { expiresAt: null },
+        const link = await updateShareLinkSettings(actorId, parsedData.linkId, {
+          expiresAt: null,
         })
         return data({ success: true, link })
       }
 
       case 'update_link_downloadable': {
-        const link = await updateShareLink({
-          where: { id: parsedData.linkId },
-          data: { downloadable: parsedData.downloadable },
+        const link = await updateShareLinkSettings(actorId, parsedData.linkId, {
+          downloadable: parsedData.downloadable,
         })
         return data({ success: true, link })
       }
 
       case 'update_link_password': {
-        const link = await updateShareLink({
-          where: { id: parsedData.linkId },
-          data: { password: parsedData.password },
+        const link = await updateShareLinkSettings(actorId, parsedData.linkId, {
+          password: parsedData.password,
         })
         return data({ success: true, link })
       }
 
       case 'revoke_link': {
-        await revokeShareLink(parsedData.linkId)
+        await revokeShareLink(actorId, parsedData.linkId)
         return data({ success: true })
       }
 
       case 'revoke_all_links': {
-        await revokeAllShareLinksForItem(parsedData.itemId)
+        await revokeAllShareLinksForItem(actorId, parsedData.itemId)
         return data({ success: true })
       }
 
