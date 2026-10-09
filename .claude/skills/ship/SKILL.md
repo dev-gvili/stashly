@@ -1,6 +1,8 @@
 ---
 name: ship
 description: Use when the user asks to ship, land, or push what is in the working tree — "/ship", "commit and push this", "get this on main", "ship it". Stashly repo.
+model: haiku
+context: fork
 ---
 
 # Ship
