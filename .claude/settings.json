@@ -1,4 +1,25 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(cd /tmp)",
+      "Bash(pwd -W)",
+      "Read(//tmp/**)",
+      "Bash(git diff *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\poshi\\\\stashly\" -Depth 1 -Force | Where-Object { -not \\($_.Name -match '^\\(node_modules|\\\\.git|dist|build|vendor|\\\\.react-router\\)$'\\) } | Sort-Object Name | Select-Object Name)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\poshi\\\\stashly\\\\app\" -Depth 1 -Force | Where-Object { $_.PSIsContainer } | Sort-Object Name | Select-Object Name)",
+      "PowerShell(head -30)",
+      "PowerShell(node .claude/hooks/check-staged-types.mjs --all 2>&1)",
+      "PowerShell(node .claude/hooks/check-staged-types.mjs --all; \"exit=$LASTEXITCODE\")",
+      "Bash(bash .claude/scripts/wait-for-ci.sh)",
+      "PowerShell(node -e \"const {z}=require\\('zod'\\); const s=z.coerce.bigint\\(\\); for \\(const v of ['-5','0','99999999999999999999', -1e12]\\) console.log\\(JSON.stringify\\(String\\(v\\)\\), '->', String\\(s.parse\\(v\\)\\)\\)\")",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "ClaudeInChromeDomain(localhost)",
+      "mcp__claude_ai_vinktar__list_projects",
+      "mcp__claude_ai_vinktar__get_install_guide",
+      "mcp__claude_ai_vinktar__get_setup_status",
+      "mcp__claude_ai_vinktar__get_project_keys"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -34,11 +55,7 @@
       }
     ]
   },
-  "permissions": {
-    "allow": [
-      "Bash(cd /tmp)",
-      "Bash(pwd -W)",
-      "Read(//tmp/**)"
-    ]
+  "enabledPlugins": {
+    "github@claude-plugins-official": true
   }
 }

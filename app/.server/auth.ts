@@ -3,6 +3,7 @@ import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { prisma } from '@/services/db'
 import { customSession, openAPI } from 'better-auth/plugins'
 import { onboardNewUser } from './onboard'
+import { track } from '@/services/vinktar'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Session, User } from '@/types/machine.types'
 
@@ -91,6 +92,7 @@ export const auth = betterAuth({
         },
         after: async (user) => {
           await onboardNewUser(user)
+          track('signed_up', {}, { userId: user.id })
         },
       },
     },

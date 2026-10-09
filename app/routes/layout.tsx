@@ -16,6 +16,8 @@ import { UploadActorContext } from '@/machines/upload/upload.context'
 import { UploadThumbnailRunner } from '@/components/upload/upload-thumbnail-runner'
 import { sessionContext, workspaceContext } from '@/.server/middleware/context'
 import { useEmbeddingBackfill } from '@/hooks/useEmbeddingBackfill'
+import { identifyUser } from '@/.client/vinktar'
+import { useEffect } from 'react'
 import { Outlet, type ShouldRevalidateFunction } from 'react-router'
 import z from 'zod'
 import type { Route } from './+types/layout'
@@ -81,6 +83,8 @@ export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
   // Re-embeds chunks whose vectors never got written because a previous
   // session ended mid-run. Idle-scheduled and once per tab.
   useEmbeddingBackfill()
+  // Every signed-in page passes here: covers sign-in, sign-up and a restored session.
+  useEffect(() => identifyUser(user.id), [user.id])
   return (
     // The upload manager's life is scoped to this layout on purpose. `auth/*`
     // sits under its own layout, so leaving the app for the sign-in page

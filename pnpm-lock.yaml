@@ -56,6 +56,12 @@ importers:
       '@react-router/node':
         specifier: ^8.4.0
         version: 8.4.0(react-router@8.4.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(typescript@6.0.3)
+      '@vinktarhq/browser':
+        specifier: 0.3.1
+        version: 0.3.1
+      '@vinktarhq/node':
+        specifier: 0.3.1
+        version: 0.3.1
       '@xstate/react':
         specifier: ^6.1.0
         version: 6.1.0(@types/react@19.3.0)(react@19.3.0)(xstate@5.33.2)
@@ -2869,6 +2875,14 @@ packages:
 
   '@upsetjs/venn.js@2.0.0':
     resolution: {integrity: sha512-WbBhLrooyePuQ1VZxrJjtLvTc4NVfpOyKx0sKqioq9bX1C1m7Jgykkn8gLrtwumBioXIqam8DLxp88Adbue6Hw==}
+
+  '@vinktarhq/browser@0.3.1':
+    resolution: {integrity: sha512-nL5QjbUaIGkHEV4TNY7Xg/uipfqErFN4ae9oGemvHyCk1PlO41kaGDJR2YFG14Fc0qOylN8HBvwG4CNEHPHW7g==}
+    engines: {node: '>=18.17'}
+
+  '@vinktarhq/node@0.3.1':
+    resolution: {integrity: sha512-5mn2X3ktHj1ghQ60IZUEzUMWuEyRM7/ALxJAVIMvyG/qDSYPrnwErDTIAPg0fiRHZeuLFTB3dXKuuicjbK/Rwg==}
+    engines: {node: '>=18.17'}
 
   '@visx/curve@4.0.1-alpha.0':
     resolution: {integrity: sha512-jRu61Uz274pV1zyioXmboyrLutYbnKsgjj4njSGCnhdXj5GkZvZbg+ThDb6oOzoAnJOBRLz4rzPlWvNJOzuVMg==}
@@ -8578,6 +8592,10 @@ snapshots:
     optionalDependencies:
       d3-selection: 3.0.0
       d3-transition: 3.0.1(d3-selection@3.0.0)
+
+  '@vinktarhq/browser@0.3.1': {}
+
+  '@vinktarhq/node@0.3.1': {}
 
   '@visx/curve@4.0.1-alpha.0':
     dependencies:
