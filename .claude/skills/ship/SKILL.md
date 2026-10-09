@@ -30,6 +30,7 @@ A concern is the **why**, not the folder. `app/.server/x.ts` and `app/components
 - **Don't manufacture groups.** One coherent change is one commit. Splitting it into four makes the history worse, not more rigorous.
 - **Order by dependency:** schema/types → server → client → docs. Each commit should build on the one before it.
 - Repo config (`.claude/**`, `CLAUDE.md`, `.gitignore`) is its own concern — `chore(skills):`, `docs:`.
+- **`docs/tech-debt.md` has a published twin.** If a group includes it, the same change must also be on the artifact https://claude.ai/artifact/1dAJBVU7hSk6gueAyzgFDt (a hand-made rendering that drifts silently — memory `tech-debt-doc-and-artifact-in-sync`). Republish it to that URL if this session hasn't, and say so in the report.
 
 ## 3. Plan, then go — no confirmation
 
@@ -59,6 +60,8 @@ git push origin main
 On `main`, push straight — that is what was asked. On any other branch, stop and ask whether they want it merged or pushed to that branch instead.
 
 Report the real result. A rejected push (`fetch first`, protected branch) is reported as a failure with the output, never as "shipped" — pull/rebase only if the user says to.
+
+Then wait for CI with **one** background command — `bash .claude/scripts/wait-for-ci.sh` via Bash `run_in_background` (exits 0/1/2: success / other conclusion / no run) — and report its conclusion, not "pushed". Not `gh run watch` (CLAUDE.md → Verification & Commits).
 
 ## Red flags — stop
 
