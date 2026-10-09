@@ -40,7 +40,7 @@ window.Worker = function (...a) { window.__workers++; return new RealWorker(...a
 Repo facts that make a "clean run" the wrong gate:
 
 - Types — `pnpm typecheck` carries **11** pre-existing errors, exactly the entries in `.claude/tsc-baseline.json`. Gate with `node .claude/hooks/check-staged-types.mjs --all` (what CI runs): it fails on any file above its baseline, and on slack — an error you fixed that the baseline still allows (`--update-baseline`, commit it with the fix).
-- `pnpm test` — **742 passing / 0 failing** (verified 2026-10-03). There is no pre-existing failure to discount: a red test is yours to fix, never to skip or exclude.
+- `pnpm test` — **827 passing / 0 failing** (verified 2026-10-09). There is no pre-existing failure to discount: a red test is yours to fix, never to skip or exclude.
 - Dev server is already on port **80**. Don't start a second one; **never** restart or kill it — ask.
 
 Save the baseline to `.claude/evidence/<slug>-before.json` before editing: the raw numbers plus how they were captured (page, repro steps, `initScript`), so step 4 can repeat it exactly. Not the scratchpad — it is deleted when the session ends — and not only the conversation, which is summarized when it grows long. `.gitignore`'s `.claude/*` keeps the folder local. It is the only thing that makes step 4 meaningful.
@@ -59,7 +59,7 @@ Then run the gates that apply to what you touched:
 
 ```bash
 node .claude/hooks/check-staged-types.mjs --all   # exit 0 — only at the END of the task
-pnpm test         # 742/0 baseline; any failure is a regression
+pnpm test         # 827/0 baseline; any failure is a regression
 pnpm build        # REQUIRED if you touched route imports — the .server/client split
                   # is only enforced at build time; dev never surfaces it
 ```
@@ -89,7 +89,7 @@ Then, in one line: root cause, the change, and anything you touched that wasn't 
 | Baseline reconstructed from memory after editing | Revert, capture, redo |
 | Fix and measurement in the same breath, no before | You have one number. That's not a comparison. |
 | User says "still not working" | Your diagnosis was wrong. Re-derive from evidence — don't patch the same theory. |
-| Typecheck "passes" / "fails" | Report the count delta; 202 is the floor |
+| Typecheck "passes" / "fails" | Report the count delta; the 11 errors in `.claude/tsc-baseline.json` are the floor |
 | Counting network requests to infer worker boots | Patch the constructor and count facts |
 | Numbers improved, unrelated files also changed | Name them in the report before committing |
 

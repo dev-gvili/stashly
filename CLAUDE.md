@@ -2,7 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Deep-dive reference lives in skills, not here.** This file holds the always-relevant essentials. Detailed conventions for specific subsystems are extracted into project skills that load on demand — see [Subsystem Skills](#subsystem-skills) below. When a task touches one of those areas, invoke the matching skill before writing code.
+> **Deep-dive reference lives in skills, not here.** This file holds the always-relevant essentials. Detailed conventions for specific subsystems are extracted into project skills that load on demand — see [Subsystem Skills](#subsystem-skills) below. When a task touches one of those areas, loading the matching skill is mandatory — don't proceed without it.
+
+## Following This File
+
+- **Every instruction here is mandatory.** Never skip one because it seems unnecessary in the case at hand. A rule has no unwritten exceptions: "write the migration" has no "unless the diff is empty" clause.
+- **If an instruction looks wrong, outdated, or conflicts with another rule, tell the owner and wait for the answer.** Don't resolve it yourself, and don't edit this file unasked.
+- **This file and the auto-memory (`~/.claude/projects/c--Users-poshi-stashly/memory/`) must agree.** When a rule changes in one, change it in the other in the same step.
+- **Dated facts** (test counts, error baselines) appear here, in skills and in the session handoff. When they disagree, the newest date wins; update the others to match.
 
 ## Scope Discipline
 
@@ -23,17 +30,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Working Style
 
-- **Act first, explain second** — execute commits, edits, and PRs immediately; never describe what you'd do instead of doing it.
+- **Act first, explain second** — execute commits, pushes, edits, and PRs immediately; never describe what you'd do instead of doing it.
+- **Propose first when there's a blast radius** — for anything beyond a small, obvious fix (an unproven bug cause, a rewrite of working code, a change with a blast radius), show the diff and the why, then wait for a go-ahead. Schema files (`prisma/models/*.prisma`), migrations, and shared machines/hooks are hard gates: never edit them before the owner approves.
 - **Act fast, explore minimally** — use Grep/Glob with targeted patterns instead of reading entire files; read only the ranges you need.
 - **Plan before breadth** — for any change touching 3+ files, present a short numbered plan and wait for approval before editing.
 - **Stop on interrupt** — if interrupted, stop and wait; resume from where you left off unless told otherwise.
-- **Simplest approach** — no recursive CTEs, sub-agents, or abstractions when a direct edit works. Don't modify files outside `app/` unless asked.
+- **Simplest approach** — no recursive CTEs, sub-agents, or abstractions when a direct edit works. Don't modify files outside `app/` unless asked — except what this file itself requires: the Prisma schema and migrations ([Migrations](#migrations)), and `CLAUDE.md`, `README.md` and `.claude/skills/` after a significant change ([Development Workflow](#development-workflow) step 2).
 - **Edit the real component** — when editing a React component that was prototyped in HTML, edit the real `.tsx` component (e.g. `invitations-view.tsx`) — never the prototype HTML file.
 - **Surface blockers** — if `gh` auth fails, ask the user to run `gh auth login` interactively; don't retry with env vars.
 
 ## Git Workflow
 
 **`/ship` is the whole flow** — group the working tree into logical commits, write conventional messages, push to `main`. Load the `ship` skill for it rather than improvising the grouping.
+
+**Commit and push without asking.** Finished work ships ([Development Workflow](#development-workflow) step 3) without waiting for permission; this overrides the global default of committing only when asked.
 
 When committing, actually run `git add` and `git commit` — don't just generate messages or describe what you would commit. Use conventional prefixes (`feat:`, `fix:`, `refactor:`) with a body explaining the *why*. Group large changes into logical commits rather than one mega-commit when staging >50 files. **Assume a dirty tree**: it often carries 50+ uncommitted files of unrelated in-progress work, so never `git add -A` expecting your edits to be isolated — stage explicitly and scope by concern. Interactive `git add -p` is unavailable, so a shared file's hunks can't be split; assign each file to one commit by its dominant concern. Set `GITHUB_TOKEN` before using `gh`; if auth fails, ask the user to run `gh auth login` interactively rather than retrying with env vars.
 
@@ -47,7 +57,7 @@ TypeScript (strict) project. Always use TypeScript for new files. When moving/re
 
 ## Migrations
 
-- After any Prisma schema change: write the migration and run `pnpm prisma generate`. **Scope Discipline still applies** — don't run `pnpm prisma migrate dev` yourself unless the user asked you to; otherwise hand it to them. When they have asked, the order is `migrate dev` → `generate` → report.
+- After any Prisma schema change — **including a rename of a relation field or `@relation` name that produces no SQL** — write the migration and run `pnpm prisma generate`. When `prisma migrate diff` is empty, the migration is a `migration.sql` holding only a comment that records the change, so the history still shows it. **Scope Discipline still applies** — don't run `pnpm prisma migrate dev` yourself unless the user asked you to; otherwise hand it to them. When they have asked, the order is `migrate dev` → `generate` → report.
 - The Prisma client in `app/prisma/` is **generated, not tracked** — `postinstall` runs `prisma generate`, so a fresh clone gets it from `pnpm install`, and `build` runs it again first because pnpm 12 skips lifecycle scripts entirely when it judges `node_modules` up to date (a deleted `app/prisma` is *not* restored by a re-install). Import errors on `@/prisma/*` mean: run `pnpm prisma generate`. A schema change therefore produces no `app/prisma` diff to commit; the migration and `.prisma` files are the whole change.
 - A hand-written SQL migration with no schema change (a trigger or function rewrite) is applied with `pnpm prisma migrate deploy`. `migrate dev` here generates a further migration on top of it.
 - Always close with an explicit list of what the user must still run: typically `pnpm prisma migrate dev`, a dev-server restart, and any re-index. The running server caches the old Prisma client and throws `Unknown argument` errors until it restarts, so the restart is not optional.
@@ -60,6 +70,8 @@ TypeScript (strict) project. Always use TypeScript for new files. When moving/re
 - Shell is PowerShell: avoid bash here-strings in commit messages; use `git commit -F <tmpfile>` or single-line `-m` flags for multi-line messages.
 - Prod logs `MaxListenersExceededWarning … drain listeners added to [BrotliCompress]` on large document responses. **Measured not a leak** (heap flat across 500 responses, all streams GC'd): `compression` forwards `res.on('drain')` to its stream but not `off`, so `@react-router/node`'s `waitForDrain` strands one listener per backpressure wait. Don't chase it.
 - `pnpm build` runs a dependency install step first; on 2026-09-25 that step failed with `Access is denied (os error 5)` renaming a `node_modules/.pnpm` staging dir while the prod server was running — an install failure, not a build failure.
+- **The production server build bundles every dependency** (`environments.ssr.resolve.noExternal` in `vite.config.ts`, build only). Left external, its first import loaded 1,697 `node_modules` files and the first page after a start took 4–15 s on this machine (1.6 s on Linux); bundled it loads 38 (tech-debt item 24). Dev doesn't bundle, so a new server-side dependency that can't be bundled (a native addon, or code that reads its own files by path) only fails in `pnpm build` / `pnpm start`. Exclude it with `environments.ssr.resolve.external` rather than turning bundling off. Check after a dependency change: the only bare imports left in `build/server/assets/server-build-*.js` should be Node built-ins.
+- **`.env` is loaded by `app/.server/env.ts`** (`process.loadEnvFile`), imported first by `db.ts` and `stripe.ts`; that side effect is also how Vitest gets `DATABASE_URL`. Not dotenvx at runtime: its import ran hardware probes plus a shell command, ~0.6 s per process. Existing variables win over the file, and a missing file is a no-op (production has none). Scripts and the E2E setup still use dotenvx.
 
 ## Commands
 
@@ -150,7 +162,7 @@ shadcn/ui (source-owned, in `app/components/ui/`) built on Radix UI, styled with
 
 ## Subsystem Skills
 
-Detailed conventions for these areas live in on-demand project skills (`.claude/skills/`). Invoke the matching skill **before** touching the area:
+Detailed conventions for these areas live in on-demand project skills (`.claude/skills/`). Loading the matching skill is **mandatory** before touching the area — reading, planning, or editing. Don't proceed until every skill the task needs is loaded; a task spanning two areas loads both (a schema rename that also edits a component loads `stashly-prisma-data` **and** `stashly-ui-conventions`).
 
 | Skill | Load when working on… |
 |-------|-----------------------|
@@ -199,7 +211,7 @@ Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind s
 - `npx prettier --write <file>` reflows *pre-existing* long lines, so a 10-line edit can land as a 47-line diff. Format only files you created; on a file you edited, check `git diff` afterwards and revert the hunks you didn't cause.
 - A JSDoc block ending `**a**/**b**` contains `*/` and closes the comment early; `tsc` then bails on a parse error and the total error count **drops**. A falling `error TS` count is not automatically good news — check that your touched files are clean, not just that the number went down.
 - Vitest runs `environment: 'node'` and only collects **`.test.ts`** (not `.tsx`); there is no jsdom and no `@testing-library/react`. A React component or hook therefore **cannot be rendered in a test** without new dependencies — which Scope Discipline forbids adding unasked. Keep hooks as thin glue over a pure function and test the function (`useItemUrl` → `itemUrlFor`, `breadcrumbs` → `trimBreadcrumbs`).
-- `pnpm test` is **742 passing / 0 failing (61 files)**, verified 2026-10-03. Some tests need a live database: `collection-actions`, `pin-actions`, `health-actions`, `item-delete-objects`, `item-trash-access`, `upload-activity` and `item-size-trigger`. CI runs **every** file against a `pgvector/pgvector:pg17` service with migrations applied, and excludes nothing. A failing test must be fixed, not excluded, skipped or marked `it.fails`.
+- `pnpm test` is **827 passing / 0 failing (69 files)**, verified 2026-10-09. Some tests need a live database: `collection-actions`, `pin-actions`, `health-actions`, `item-delete-objects`, `item-trash-access`, `upload-activity` and `item-size-trigger`. CI runs **every** file against a `pgvector/pgvector:pg17` service with migrations applied, and excludes nothing. A failing test must be fixed, not excluded, skipped or marked `it.fails`.
 - **Never hide test output.** Vitest switches to its `minimal` reporter under an AI agent (`CLAUDECODE=1`), which drops console output and errors from passing tests. `vitest.config.ts` pins `default` so you see what a terminal or CI sees. Don't mute logs, and don't use `--silent`.
 
 ## Debugging Rules
