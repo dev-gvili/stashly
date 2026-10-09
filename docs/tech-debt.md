@@ -37,7 +37,7 @@
 | 12 | Linter | 16 | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
 | 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; the rest of `quota-actions`; routes and components | — |
 | 23 | **new** Prisma calls in route modules | 16 | `workspaces/workspace.tsx` only | Deferred to after personal-first (TASKS.md, 8 Oct) |
-| 24 | ~~Slow first page load~~ | 15 | Resolved 2026-10-09: server dependencies bundled; first page 4–15 s → ~1 s | — |
+| 24 | ~~Slow first page load~~ | 15 | Resolved 2026-10-09: server dependencies bundled; first page 4–15 s → ~1 s here, first request 1.6 → 0.57 s on Linux (CI) | — |
 | 16 | Overlapping UI primitives | 12 | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
 | 17 | Unfinished migrations | 12 | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes | Deferred to after personal-first (TASKS.md, 4 Oct) |
 
@@ -459,7 +459,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - **Rejected:** loading the build at boot instead. It only moved the same seconds into startup.
   - **Measured (fresh production server, same harness):** first page **4,055–15,119 ms → 761–1,724 ms** in 9 of 10 runs (one run at 5,709 ms, with its warm requests also 2–4× slower); startup 629–2,322 → 522–968 ms; server-build import 4,828–18,440 → 432–659 ms.
   - **Same output:** status codes match on 30 routes; captured back to back, the bodies differ only in request timestamps.
-  - **Linux:** CI's production image answered its first `/api/health` in 1,610 ms before this; not re-measured there.
+  - **Linux:** CI's production image answered its first `/api/health` in **1,610 ms before and 566 ms after** (server logs of the `docker` job, runs on `9c2e75a` and `f731933`; one run each). The bundled image also passed CI's boot checks: 200 with a database, 503 without.
   - **Left:** the first page is still ~1 s against ~0.1 s warm, roughly half the (now small) build import and half first database/session setup.
 
 ### 25. Share-link actions had no access check
