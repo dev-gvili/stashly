@@ -7,7 +7,7 @@ description: Use when the user asks to ship, land, or push what is in the workin
 
 Land the working tree on `main` as a series of commits that each say one thing.
 
-**Core principle: one commit per concern, every file in exactly one commit, and nothing shipped the user didn't mean to ship.** Invoking `/ship` authorizes the commit and the push. It does not authorize deciding, alone, which of the tree's changes were meant to go.
+**Core principle: one commit per concern, every file in exactly one commit, and nothing shipped the user didn't mean to ship.** Invoking `/ship` authorizes the commit and the push, with no confirmation step (owner's decision, 2026-10-09 — CLAUDE.md → Git Workflow: "Commit and push without asking"). What you can't account for stays out of the commits rather than being guessed in.
 
 ## 1. Read the tree before grouping it
 
@@ -31,14 +31,12 @@ A concern is the **why**, not the folder. `app/.server/x.ts` and `app/components
 - **Order by dependency:** schema/types → server → client → docs. Each commit should build on the one before it.
 - Repo config (`.claude/**`, `CLAUDE.md`, `.gitignore`) is its own concern — `chore(skills):`, `docs:`.
 
-## 3. Show the plan, then go
+## 3. Plan, then go — no confirmation
 
-Present the groups as a numbered list — files per group, the prefix and subject line for each — plus:
+Settle the groups — files per group, the prefix and subject line for each — and execute the whole plan straight away. Don't stop to ask for a go-ahead; report the plan with the result (step 5).
 
-- **Anything you cannot account for**, named explicitly. The tree routinely carries unrelated in-progress work (see CLAUDE.md → Git Workflow). Ask before sweeping it in.
+- **Anything you cannot account for stays out.** The tree routinely carries unrelated in-progress work (see CLAUDE.md → Git Workflow). Leave a file you can't explain uncommitted and name it in the report. The one exception is a file that also carries your own change and can't be split: commit it with its dominant concern and say in the body what else rode along.
 - **Verification status, honestly.** If this session ran `pnpm test` / `pnpm typecheck`, report the real numbers. If nothing was verified, say "unverified" — don't silently push untested code to `main`, and don't re-run a suite that already passed this session just to have something to print.
-
-Wait for one confirmation. Then execute the whole plan without stopping to ask again.
 
 ## 4. Commit
 
@@ -67,7 +65,7 @@ Report the real result. A rejected push (`fetch first`, protected branch) is rep
 | Signal | Do instead |
 |---|---|
 | About to `git add -A` | Stage explicit paths |
-| A changed file you can't explain | Read its diff; if still unexplained, ask before including it |
+| A changed file you can't explain | Read its diff; if still unexplained, leave it uncommitted and name it in the report |
 | `git checkout --`, `reset --hard`, `clean`, `commit --amend`, `push --force` | Never, on a tree with uncommitted work. Ask. |
 | One commit staging 50+ files | Regroup by concern first |
 | "I'll describe the commits I'd make" | Run `git add` and `git commit`. Shipping means shipped. |
