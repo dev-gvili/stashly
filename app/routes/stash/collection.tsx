@@ -48,7 +48,8 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
       session.user.id,
       collectionId,
       parsedParams.take,
-      parsedParams.cursor
+      parsedParams.cursor,
+      parsedParams.orderBy
     ),
     // Fetch the user's items to populate the add-to-collection picker
     paginateItems({
@@ -58,7 +59,9 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
         ...filters,
         ownerId: session.user.id,
         status: 'normal',
-        type: { not: 'collection' },
+        // Files only: a collection never holds folders, and a folder the modal
+        // can't draw would still be picked up by its select-all-by-date.
+        type: 'file',
       },
       orderBy: { createdAt: 'desc' },
       include: {

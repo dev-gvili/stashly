@@ -17,7 +17,7 @@ import {
 import type { Prisma } from '@/prisma/browser'
 import { cn } from '@/utils/styles'
 import type { JSX, SVGProps } from 'react'
-import { useSearchParams } from 'react-router'
+import { useParams, useSearchParams } from 'react-router'
 import { CURSOR_KEY } from '@/utils/filter-data'
 
 type SortDir = Prisma.SortOrder
@@ -82,7 +82,10 @@ const SORT_FIELDS: SortFieldDef[] = [
   },
 ]
 
-function readSortFromParams(searchParams: URLSearchParams): {
+function readSortFromParams(
+  searchParams: URLSearchParams,
+  fields: SortFieldDef[]
+): {
   field: SortFieldDef
   dir: SortDir
 } {
@@ -91,18 +94,23 @@ function readSortFromParams(searchParams: URLSearchParams): {
     const m = k.match(re)
     if (m && (v === 'asc' || v === 'desc')) {
       const col = m[1]
-      const found = SORT_FIELDS.find((f) =>
+      const found = fields.find((f) =>
         Array.isArray(f.column) ? f.column.includes(col) : f.column === col
       )
       if (found) return { field: found, dir: v }
     }
   }
-  return { field: SORT_FIELDS[0], dir: 'asc' }
+  return { field: fields[0], dir: 'asc' }
 }
+
+/** Inside a collection there is nothing to count: it holds files only. */
+const COLLECTION_SORT_FIELDS = SORT_FIELDS.filter((f) => f.key !== 'count')
 
 export function SortPill() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const { field, dir } = readSortFromParams(searchParams)
+  const { collectionId } = useParams()
+  const fields = collectionId ? COLLECTION_SORT_FIELDS : SORT_FIELDS
+  const { field, dir } = readSortFromParams(searchParams, fields)
   const dirHint = field.hint(dir)
   const DirIcon = dir === 'asc' ? SortAscIcon : SortDescIcon
 
@@ -174,7 +182,7 @@ export function SortPill() {
             Sort by
           </div>
           <div className="max-h-75 flex flex-col justify-start w-full gap-y-2">
-            {SORT_FIELDS.map((f) => {
+            {fields.map((f) => {
               const on = field.key === f.key
               return (
                 <button

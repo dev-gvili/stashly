@@ -85,6 +85,23 @@ async function makeItem(
   return item
 }
 
+/** Create a bare folder Item owned by `ownerId`, with a write Permission. */
+async function makeFolder() {
+  const folder = await prisma.item.create({
+    data: {
+      id: uid('Item'),
+      name: faker.word.noun(),
+      type: ItemType.folder,
+      category: 'unknown',
+      status: ItemStatus.normal,
+      ownerId,
+      driveId,
+    },
+  })
+  await grantItemPermission(ownerId, folder.id, 'write')
+  return folder
+}
+
 // ---------------------------------------------------------------------------
 // Global setup / teardown
 // ---------------------------------------------------------------------------
@@ -401,6 +418,19 @@ describe('addItemToCollection', () => {
       addItemToCollection(ownerId, col.id, foreignItem.id)
     ).rejects.toMatchObject({ errorCode: StashlyErrorCode.FORBIDDEN })
   })
+
+  it.each([
+    ['a folder', () => makeFolder()],
+    ['a collection', () => makeCollection()],
+  ])('rejects %s with a 400 and adds nothing', async (_label, make) => {
+    const col = await makeCollection()
+    const notAFile = await make()
+    await expect(addItemToCollection(ownerId, col.id, notAFile.id)).rejects.toMatchObject({
+      errorCode: StashlyErrorCode.INVALID_INPUT,
+      status: 400,
+    })
+    expect(await prisma.collectionMember.count({ where: { collectionId: col.id } })).toBe(0)
+  })
 })
 
 describe('removeItemFromCollection', () => {
@@ -467,6 +497,16 @@ describe('addItemsToCollection', () => {
 
     const added = await addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [accessible.id, inaccessible.id] })
     expect(added.map((m) => m.itemId)).toEqual([accessible.id])
+  })
+
+  it('rejects the whole request with a 400 when any item is not a file', async () => {
+    const col = await makeCollection()
+    const file = await makeItem(ownerId)
+    const folder = await makeFolder()
+    await expect(
+      addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [file.id, folder.id] })
+    ).rejects.toMatchObject({ errorCode: StashlyErrorCode.INVALID_INPUT, status: 400 })
+    expect(await prisma.collectionMember.count({ where: { collectionId: col.id } })).toBe(0)
   })
 
   it('rejects an empty itemIds list as invalid input (400)', async () => {
@@ -585,6 +625,88 @@ describe('getCollectionItems', () => {
     const col = await makeCollection()
     await expect(getCollectionItems(otherId, col.id)).rejects.toMatchObject({
       errorCode: StashlyErrorCode.FORBIDDEN,
+    })
+  })
+
+  it('returns files only, never a folder member', async () => {
+    const col = await makeCollection()
+    const file = await makeItem(ownerId)
+    const folder = await makeFolder()
+    // Bypass the add actions, which refuse folders: this is a row that got in some other way.
+    await prisma.collectionMember.createMany({
+      data: [file, folder].map((item) => ({
+        id: uid('CollectionMember'),
+        collectionId: col.id,
+        itemId: item.id,
+      })),
+    })
+
+    const { items } = await getCollectionItems(ownerId, col.id)
+    expect(items.map((i) => i.id)).toEqual([file.id])
+  })
+
+  describe('sorting by the sort pill orderBy', () => {
+    // Lowercase ASCII names order the same under any collation; sizes are
+    // distinct, so name and size each have exactly one right answer.
+    const SEED = [
+      { name: 'delta', size: 100 },
+      { name: 'alpha', size: 200 },
+      { name: 'charlie', size: 300 },
+      { name: 'bravo', size: 400 },
+      { name: 'echo', size: 500 },
+    ]
+    let collectionId: string
+
+    beforeAll(async () => {
+      collectionId = (await makeCollection()).id
+      for (const { name, size } of SEED) {
+        const item = await makeItem(ownerId, size)
+        await prisma.item.update({ where: { id: item.id }, data: { name } })
+        await addItemToCollection(ownerId, collectionId, item.id)
+      }
+    })
+
+    /** Every page, `pageSize` at a time, following nextCursor to the end. */
+    async function walk(orderBy: unknown, pageSize: number) {
+      const items: Awaited<ReturnType<typeof getCollectionItems>>['items'] = []
+      let cursor: string | undefined
+      do {
+        const page = await getCollectionItems(ownerId, collectionId, pageSize, cursor, orderBy)
+        items.push(...page.items)
+        cursor = page.nextCursor
+      } while (cursor)
+      return items
+    }
+
+    it('defaults to name ascending, as the sort pill shows', async () => {
+      const { items } = await getCollectionItems(ownerId, collectionId)
+      expect(items.map((i) => i.name)).toEqual(['alpha', 'bravo', 'charlie', 'delta', 'echo'])
+    })
+
+    it('sorts by name descending', async () => {
+      const { items } = await getCollectionItems(ownerId, collectionId, 50, undefined, { name: 'desc' })
+      expect(items.map((i) => i.name)).toEqual(['echo', 'delta', 'charlie', 'bravo', 'alpha'])
+    })
+
+    it('sorts by size', async () => {
+      const { items } = await getCollectionItems(ownerId, collectionId, 50, undefined, { size: 'desc' })
+      expect(items.map((i) => Number(i.size))).toEqual([500, 400, 300, 200, 100])
+    })
+
+    it.each(['name', 'updatedAt', 'createdAt', 'size', 'type'].flatMap((column) =>
+      (['asc', 'desc'] as const).map((dir) => [column, dir] as const)
+    ))('pages through %s %s with no gaps or repeats', async (column, dir) => {
+      const orderBy = { [column]: dir }
+      const onePage = await walk(orderBy, 100)
+      const paged = await walk(orderBy, 2)
+      expect(onePage).toHaveLength(SEED.length)
+      expect(paged.map((i) => i.id)).toEqual(onePage.map((i) => i.id))
+    })
+
+    it('rejects a sort the sort pill does not offer here with INVALID_INPUT', async () => {
+      await expect(
+        getCollectionItems(ownerId, collectionId, 50, undefined, { members: { _count: 'desc' } })
+      ).rejects.toMatchObject({ errorCode: StashlyErrorCode.INVALID_INPUT })
     })
   })
 })

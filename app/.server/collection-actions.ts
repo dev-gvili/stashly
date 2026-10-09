@@ -25,6 +25,11 @@ import { buildCollectionFilters } from '@/utils/filters/collection.filters'
 import { searchFactory } from '@/utils/search'
 import { createActivity } from './activity-actions'
 import { signStoredThumbnail, signThumbnails } from './thumbnail-actions'
+import {
+  collectionAfterCursor,
+  collectionOrderBy,
+  collectionSortKeys,
+} from './collection-order'
 import { buildItemFilters } from '@/utils/filters/item.filters'
 
 function recordCollectionActivity(
@@ -500,10 +505,23 @@ export async function isItemInCollection(
 }
 
 /**
+ * The 400 for adding anything but a file: a collection holds files only, and
+ * the add-to-collection picker offers nothing else, so a folder or a
+ * collection here is the caller's mistake.
+ */
+const onlyFilesError = () =>
+  toRouteError(
+    StashlyErrorCode.INVALID_INPUT,
+    'Only files can be added to a collection'
+  )
+
+/**
  * Add a single Item to a Collection.
  * The DB trigger `collection_size_trigger` automatically updates the collection's size.
  *
  * Requires `write` access on the collection and at least `read` access on the item.
+ *
+ * @throws A 400 `INVALID_INPUT` route error when the item is not a file.
  */
 export async function addItemToCollection(
   userId: string,
@@ -512,6 +530,12 @@ export async function addItemToCollection(
 ) {
   await assertItemPermission(userId, collectionId, 'write')
   await assertItemPermission(userId, itemId, 'read')
+
+  const item = await prisma.item.findUnique({
+    where: { id: itemId },
+    select: { type: true },
+  })
+  if (item?.type !== ItemType.file) throw onlyFilesError()
 
   const member = await prisma.collectionMember.create({
     data: {
@@ -597,6 +621,9 @@ export async function removeItemsFromCollection({
  *
  * Requires `write` access on the collection. Items the caller cannot `read`
  * are silently skipped.
+ *
+ * @throws A 400 `INVALID_INPUT` route error, adding nothing, when any readable
+ *   item is not a file.
  */
 export async function addItemsToCollection({
   userId,
@@ -612,9 +639,11 @@ export async function addItemsToCollection({
   if (!itemIds.length)
     throw toRouteError(StashlyErrorCode.INVALID_INPUT, 'No item IDs provided')
 
-  const toAdd = await prisma.$queryRaw<{ id: string; size: bigint }[]>`
+  const toAdd = await prisma.$queryRaw<
+    { id: string; size: bigint; type: ItemType }[]
+  >`
     WITH accessible AS (
-      SELECT i.id, i.size
+      SELECT i.id, i.size, i."type"
       FROM "Item" i
       WHERE i.id IN (${Prisma.join(itemIds)})
         AND (
@@ -630,7 +659,7 @@ export async function addItemsToCollection({
           )
         )
     )
-    SELECT a.id, a.size
+    SELECT a.id, a.size, a."type"
     FROM accessible a
     WHERE NOT EXISTS (
       SELECT 1 FROM "CollectionMember" cm
@@ -639,6 +668,7 @@ export async function addItemsToCollection({
     )
   `
 
+  if (toAdd.some((item) => item.type !== ItemType.file)) throw onlyFilesError()
   if (!toAdd.length) return []
 
   const created = await prisma.collectionMember.createManyAndReturn({
@@ -715,30 +745,28 @@ export async function getCollectionForUser(
 /**
  * Retrieve items inside a collection using cursor-based pagination.
  *
- * Results are ordered by `(createdAt DESC, id DESC)` and filtered so only
- * items the caller can read are returned. Each item carries a `thumbnails`
- * array holding its best stored stage (or nothing), signed like any other
- * item payload.
+ * Results are ordered by the sort pill's `orderBy` (name, ascending, when there
+ * is none), with the membership id breaking ties, and filtered to files the
+ * caller can read — a collection holds files only, never folders. Each item carries a `thumbnails` array
+ * holding its best stored stage (or nothing), signed like any other item
+ * payload.
  *
  * Requires `read` access on the collection.
+ *
+ * @param orderBy - The parsed `orderBy` search param; see {@link collectionSortKeys}
+ *   for what it accepts. Anything else is a 400.
  */
 export async function getCollectionItems(
   userId: string,
   collectionId: string,
   limit = 50,
-  cursor?: string
+  cursor?: string,
+  orderBy?: unknown
 ) {
   await assertItemPermission(userId, collectionId, 'read')
 
-  const cursorClause = cursor
-    ? Prisma.sql`AND (
-        cm."createdAt" < (SELECT "createdAt" FROM "CollectionMember" WHERE id = ${cursor})
-        OR (
-          cm."createdAt" = (SELECT "createdAt" FROM "CollectionMember" WHERE id = ${cursor})
-          AND cm.id < ${cursor}
-        )
-      )`
-    : Prisma.sql``
+  const sortKeys = collectionSortKeys(orderBy)
+  const after = collectionAfterCursor(sortKeys, cursor)
 
   const rows = await prisma.$queryRaw<
     (Item & {
@@ -749,10 +777,12 @@ export async function getCollectionItems(
       >[]
     })[]
   >`
+    ${after.with}
     SELECT i.*, cm.id AS "linkId",
            COALESCE(th.thumbnails, '[]'::jsonb) AS thumbnails
     FROM "CollectionMember" cm
     JOIN "Item" i ON i.id = cm."itemId"
+    ${after.join}
     LEFT JOIN LATERAL (
       SELECT jsonb_build_array(jsonb_build_object(
         'id', t.id, 'width', t.width, 'height', t.height, 'size', t.size,
@@ -764,6 +794,8 @@ export async function getCollectionItems(
       LIMIT 1
     ) th ON true
     WHERE cm."collectionId" = ${collectionId}
+      -- A collection holds files only; the add-to-collection picker offers nothing else.
+      AND i."type" = 'file'
       AND (
         i."ownerId" = ${userId}
         OR EXISTS (
@@ -776,8 +808,8 @@ export async function getCollectionItems(
             AND (p."expiresAt" IS NULL OR p."expiresAt" > NOW())
         )
       )
-      ${cursorClause}
-    ORDER BY cm."createdAt" DESC, cm.id DESC
+      ${after.where}
+    ${collectionOrderBy(sortKeys)}
     LIMIT ${limit + 1}
   `
 

@@ -55,7 +55,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       ...filters,
       ownerId: session.user.id,
       status: 'normal',
-      type: { not: 'collection' },
+      // Files only: a collection never holds folders, and a folder the modal
+      // can't draw would still be picked up by its select-all-by-date.
+      type: 'file',
     },
     orderBy: { createdAt: 'desc' },
     include: {
