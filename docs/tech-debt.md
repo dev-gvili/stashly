@@ -16,7 +16,7 @@
 
 **26 items** (17 from the audit, 9 added 8 Oct) · categories: Code 12, Architecture 7, Infrastructure 3, Test 2, Dependency 1, Documentation 1
 
-**Status at 8 Oct 2026 (end of day):** 13 resolved · 1 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 3 open from the audit · 4 new and open. Item 18 was resolved the same day it was found (`2fc9d4d`), with e2e coverage in `9081555`. Item 23 was done for every personal route, which turned up two more: item 25 (share-link actions had no access check, fixed the same day) and item 26 (expired and revoked grants still counted, fixed the same day). (Earlier on 8 Oct: 9 resolved · 7 new and open.) (At 2 Oct: 8 resolved · 1 in code · 2 partly · 1 declined · 5 open.) Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
+**Status at 8 Oct 2026 (end of day):** 14 resolved · 1 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 3 open from the audit · 3 new and open. Item 18 was resolved the same day it was found (`2fc9d4d`), with e2e coverage in `9081555`. Item 23 was done for every personal route, which turned up two more: item 25 (share-link actions had no access check, fixed the same day) and item 26 (expired and revoked grants still counted, fixed the same day). (Earlier on 8 Oct: 9 resolved · 7 new and open.) (At 2 Oct: 8 resolved · 1 in code · 2 partly · 1 declined · 5 open.) Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 ### What's left, in priority order
 
@@ -37,7 +37,7 @@
 | 12 | Linter | 16 | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
 | 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; the rest of `quota-actions`; routes and components | — |
 | 23 | **new** Prisma calls in route modules | 16 | `workspaces/workspace.tsx` only | Deferred to after personal-first (TASKS.md, 8 Oct) |
-| 24 | **new** Slow first page load | 15 | Find where the 1.4 s goes | — |
+| 24 | ~~Slow first page load~~ | 15 | Resolved 2026-10-09: server dependencies bundled; first page 4–15 s → ~1 s | — |
 | 16 | Overlapping UI primitives | 12 | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
 | 17 | Unfinished migrations | 12 | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes | Deferred to after personal-first (TASKS.md, 4 Oct) |
 
@@ -70,7 +70,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 21 | Embedding backfill loads a WebGPU model on the main thread of every tab | Architecture | 3 | 3 | 3 | **18** (Medium) | 1–2 days | Resolved 9 Oct |
 | 22 | Open decisions in the upload and onboarding paths | Architecture | 2 | 3 | 2 | **20** (Medium) | 1 day once decided | New 8 Oct |
 | 23 | Prisma calls made directly from route modules | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Partly done (8 Oct): workspace route deferred |
-| 24 | Slow first page load (cold document TTFB) | Architecture | 3 | 2 | 3 | **15** (Low) | 1–3 days | New 8 Oct |
+| 24 | Slow first page load (cold document TTFB) | Architecture | 3 | 2 | 3 | **15** (Low) | 1–3 days | Resolved 9 Oct |
 | 25 | ~~Share-link actions had no access check~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 8 Oct |
 | 26 | ~~`hasItemPermission` counts soft-deleted and expired permissions~~ | Code | 4 | 3 | 1 | **35** (High) | 0.5 day | Resolved 8 Oct |
 
@@ -453,6 +453,14 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Evidence:** from TASKS.md, measured 2026-09-25 against the production build. The stash document's first load had a **1,752 ms** TTFB, against 354 ms warm, with 254 KB of HTML and 44 signed thumbnail URLs. The server log showed the same document at 2,997 ms. The `.data` request for the same route is fast.
 - **Fix:** profile one cold request before changing anything: route module loading, the signing cache's first window, and the session lookup. Signing is already cached per window (item 5), so 44 cold signatures is the first suspect. Since `d11ffae`, only on-screen cards get thumbnails, so check whether the loader can sign only the first page of thumbnails.
 - **Why it matters:** the first load is the first impression, and it's 5× slower than the same page warm.
+- **Status 2026-10-09: resolved** (`57f499c`). The suspects above were wrong: neither signing nor the loader was slow.
+  - **Cause, measured:** the server build left every dependency external, so its first import (on the first request) loaded **1,697 separate files** from `node_modules`. A module-hook count showed **81% of that import (4,594 of 5,675 ms) was resolving and reading files**, ~2.7 ms each on this Windows machine. A CPU profile of a cold `/api/health` agreed (5.3 s under the deferred build import, mostly file-system calls). Every first request paid it: a page, a redirect, `/api/health`. A static file did not (12 ms).
+  - **Fix:** `vite.config.ts` bundles every dependency into the server build (`environments.ssr.resolve.noExternal`, build only; dev unchanged). Only Node built-ins stay external; the import loads **38 files**. Separately, dotenvx was replaced by `process.loadEnvFile` (`app/.server/env.ts`): importing dotenvx ran hardware probes including a shell command, 597–709 ms per process against 0.6–1.1 ms.
+  - **Rejected:** loading the build at boot instead. It only moved the same seconds into startup.
+  - **Measured (fresh production server, same harness):** first page **4,055–15,119 ms → 761–1,724 ms** in 9 of 10 runs (one run at 5,709 ms, with its warm requests also 2–4× slower); startup 629–2,322 → 522–968 ms; server-build import 4,828–18,440 → 432–659 ms.
+  - **Same output:** status codes match on 30 routes; captured back to back, the bodies differ only in request timestamps.
+  - **Linux:** CI's production image answered its first `/api/health` in 1,610 ms before this; not re-measured there.
+  - **Left:** the first page is still ~1 s against ~0.1 s warm, roughly half the (now small) build import and half first database/session setup.
 
 ### 25. Share-link actions had no access check
 
@@ -521,6 +529,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-08 | `08324f8` | 13 | CI was red on `e9f163b`: the gallery query test signed a real thumbnail URL, which needs an S3 endpoint the check job doesn't set. Signing is now replaced in that test. |
 | 2026-10-08 | `1a8102a` | 26, 13 | Every access check counts only live grants (not soft-deleted, not expired), including the `accessibleBy` listing filter. Confirmed first in a rolled-back transaction; 14 new tests, 8 of which fail on the old code. |
 | 2026-10-09 | `df68279` | 21, 13 | The embedding model runs in a dedicated worker, and a Web Lock lets one tab drain the backfill. Measured in Chrome: main-thread blocking while embedding went from 1,279 ms to 0 ms. |
+| 2026-10-09 | `57f499c` | 24 | Server dependencies bundled into the server build (1,697 files loaded on the first request → 38), and dotenvx replaced by `process.loadEnvFile`. First page after a fresh start: 4,055–15,119 ms → 761–1,724 ms. |
 
 ## Phased remediation plan
 
@@ -586,7 +595,7 @@ New items from the 8 Oct re-scan, in the order to do them:
 3. **Stripe webhook (item 19, 1–2 days).** Needed before anyone pays. It's also the right server-side home for `updateTotalQuota`.
 4. ~~**Prisma out of routes (item 23, 0.5–1 day).**~~ **Done 8 Oct for every personal route**; `workspace.tsx` deferred. A test stands in for the linter rule. It turned up items 25 (fixed) and 26.
 5. **The three open decisions (item 22).** These are decisions rather than code. Item 18's server-side charge settles one of them.
-6. ~~**Embedding backfill in a worker, one tab (item 21, 1–2 days)**~~ **done 9 Oct, measured: 1,279 → 0 ms of main-thread blocking** and **cold first load (item 24, 1–3 days).** Both are performance work. Profile before changing anything.
+6. ~~**Embedding backfill in a worker, one tab (item 21, 1–2 days)**~~ **done 9 Oct, measured: 1,279 → 0 ms of main-thread blocking** and ~~**cold first load (item 24, 1–3 days)**~~ **done 9 Oct: first page 4–15 s → ~1 s, by bundling the server dependencies.**
 7. ~~**`hasItemPermission` and revoked grants (item 26, 0.5 day).**~~ **Done 8 Oct**: confirmed, then every access check filtered to live grants.
 
 ---
