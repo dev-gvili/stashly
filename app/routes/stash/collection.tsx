@@ -14,6 +14,13 @@ import {
 import type { Route } from './+types/collection'
 import { usePagination } from '@/hooks/usePagination'
 import { useEffect } from 'react'
+import { parseSearchParams } from '@/utils/parsers'
+import { toSearchSchema } from '@/utils'
+import {
+  buildItemFilters,
+  itemFilterSchema,
+} from '@/utils/filters/item.filters'
+import type { Prisma } from '@/prisma/client'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
@@ -22,17 +29,33 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
 
   const { collectionId } = params
   const url = new URL(request.url)
-  const cursor = url.searchParams.get('cursor') ?? undefined
-  const limit = Number(url.searchParams.get('take') ?? 50)
+  const searchParams = url.searchParams
+
+  let parsedParams = parseSearchParams({
+    schema: toSearchSchema<
+      typeof itemFilterSchema,
+      Prisma.ItemOrderByWithRelationInput,
+      Prisma.ItemInclude
+    >({ schema: itemFilterSchema }),
+    searchParams,
+  })
+
+  let filters = buildItemFilters(parsedParams)
 
   const [collection, { items, nextCursor }, allItems] = await Promise.all([
     getCollectionForUser(session.user.id, collectionId),
-    getCollectionItems(session.user.id, collectionId, limit, cursor),
+    getCollectionItems(
+      session.user.id,
+      collectionId,
+      parsedParams.take,
+      parsedParams.cursor
+    ),
     // Fetch the user's items to populate the add-to-collection picker
     paginateItems({
-      limit,
-      cursor,
+      limit: parsedParams.take,
+      cursor: parsedParams.cursor,
       where: {
+        ...filters,
         ownerId: session.user.id,
         status: 'normal',
         type: { not: 'collection' },
@@ -67,16 +90,15 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
       null,
   }))
 
-
   // IDs already in this collection
-  const existingItemIds = collection.collectionItems.map((cm) => cm.itemId)
+  const existingItemIds = collection.members.map((cm) => cm.itemId)
 
   return {
     collection: {
       id: collection.id,
       name: collection.name,
       size: collection.size,
-      itemCount: collection.collectionItems.length,
+      itemCount: collection._count.members,
     },
     items,
     nextCursor: nextCursor ?? null,
@@ -104,12 +126,11 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
     }
   })
 
-  console.log('shouldRevalidate', { nextUrl, currentUrl, formAction, formData })
   if (
     formData?.get('intent') === 'add_item_to_collection' ||
     formData?.get('intent') === 'add_items_to_collection' ||
     formData?.get('intent') === 'remove_items_from_collection' ||
-    formData?.get('intent') === 'remove_item_from_collection' 
+    formData?.get('intent') === 'remove_item_from_collection'
   ) {
     return true
   }
@@ -123,10 +144,6 @@ export default function Collection({
 }: Route.ComponentProps) {
   const { items, hasMore, isLoading, loadMore } =
     usePagination<Route.ComponentProps['loaderData']['items'][number]>(50)
-
-  useEffect(() => {
-    console.log("Collection loaderData.items:", loaderData.items)
-  }, [loaderData.items])  
 
   return (
     <CollectionView

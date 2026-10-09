@@ -8,9 +8,11 @@
 model CollectionMember {
   id           String   @id
   collectionId String
-  collection   Item     @relation("CollectionHost", fields: [collectionId], references: [id], onDelete: Cascade)
+  /// The collection (Item.members on the other side).
+  collection   Item     @relation("CollectionMembers", fields: [collectionId], references: [id], onDelete: Cascade)
   itemId       String
-  item         Item     @relation("ItemMember", fields: [itemId], references: [id], onDelete: Cascade)
+  /// The item added to the collection (Item.memberships on the other side).
+  item         Item     @relation("ItemMemberships", fields: [itemId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

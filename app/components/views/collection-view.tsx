@@ -62,9 +62,13 @@ interface CollectionHeader {
 /**
  * A collection row. `getCollectionItems` selects whole `Item` rows, so unlike
  * the slim picker shape these carry the parent folder — which the file page
- * (`/:me/stash/folders/:folderId/files/:fileId`) needs as its folder segment.
+ * (`/:me/stash/folders/:folderId/files/:fileId`) needs as its folder segment —
+ * and real `thumbnails` rows (the best stored stage, already signed).
  */
-type CollectionItem = StashPickerItem & { parentId?: string | null }
+type CollectionItem = StashPickerItem & {
+  parentId?: string | null
+  thumbnails: StashItem['thumbnails']
+}
 
 interface CollectionViewProps {
   collection: CollectionHeader
@@ -319,21 +323,7 @@ function CollectionItemCard({ item }: { item: CollectionItem }) {
     workspaceId: null,
     driveId: '',
     tags: [],
-    thumbnails: item.thumbnailUrl
-      ? [
-          {
-            id: item.id,
-            url: item.thumbnailUrl,
-            width: null,
-            height: null,
-            size: 'medium' as const,
-            view: 'grid' as const,
-            // The picker only ever carries a finished thumbnail URL, so this
-            // stands in as a stage-2 row — what `ItemCard.Cover` looks for.
-            stage: 2,
-          },
-        ]
-      : [],
+    thumbnails: item.thumbnails,
     favorites: [],
     file: null,
     folder: null,

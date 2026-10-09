@@ -1,0 +1,8 @@
+-- Rename the Item <-> CollectionMember relation fields:
+--   Item.collectionItems     -> Item.members      (@relation "CollectionHost" -> "CollectionMembers")
+--   Item.memberOfCollections -> Item.memberships  (@relation "ItemMember"     -> "ItemMemberships")
+--
+-- Relation list fields and @relation names exist only in the Prisma schema and
+-- the generated client; the CollectionMember table, its columns, foreign keys
+-- and indexes are unchanged. `prisma migrate diff` against the schema reports
+-- an empty migration, so there is no SQL to run here.

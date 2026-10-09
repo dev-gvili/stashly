@@ -49,15 +49,37 @@ model Item {
 
   // Location and Storage
   trash               TrashItem?
+
+  // Collections
+  // A collection is not its own model: it is an Item with type='collection'.
+  // Membership is many-to-many from Item to Item (one item can sit in many
+  // collections), so it can't be a single column like `parentId`. It is stored
+  // as one CollectionMember row per (collection, member) pair, and every row
+  // points at two Items:
+  //
+  //   CollectionMember.collection -> the Item that IS the collection
+  //   CollectionMember.item       -> the Item that was ADDED to it
+  //
+  // So each Item has two lists of these rows, one per role it can play.
+  // Neither list is a database column; Prisma resolves both from
+  // CollectionMember's foreign keys (collectionId, itemId).
+
   /**
-   * Items that belong to this collection (only meaningful when type='collection').
-   * An Item with type='collection' is the host; its members are linked via CollectionMember.
+   * As a collection: one CollectionMember row per item inside it.
+   * Only filled when type='collection'; always empty for files and folders.
+   * The member is each row's `itemId` / `item`.
+   * e.g. collection.members.map((m) => m.itemId)
+   *      _count: { select: { members: true } }   // member count
    */
-  collectionItems     CollectionMember[] @relation("CollectionHost")
+  members     CollectionMember[] @relation("CollectionMembers")
+
   /**
-   * Collections this item belongs to (many-to-many self-relation via CollectionMember).
+   * As a member: one CollectionMember row per collection this item was added to.
+   * Any item type can have these, including another collection.
+   * The containing collection is each row's `collectionId` / `collection`.
+   * e.g. item.memberships.map((m) => m.collection)
    */
-  memberOfCollections CollectionMember[] @relation("ItemMember")
+  memberships CollectionMember[] @relation("ItemMemberships")
 
   // Access Control
   locked      LockedItem?

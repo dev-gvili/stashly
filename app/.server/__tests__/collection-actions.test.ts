@@ -144,13 +144,13 @@ afterAll(async () => {
 // ---------------------------------------------------------------------------
 
 describe('findCollectionById', () => {
-  it('returns the collection Item with collectionItems relation', async () => {
+  it('returns the collection Item with members relation', async () => {
     const col = await makeCollection('find-by-id')
     const found = await findCollectionById(col.id)
     expect(found).not.toBeNull()
     expect(found!.id).toBe(col.id)
     expect(found!.name).toBe('find-by-id')
-    expect(Array.isArray(found!.collectionItems)).toBe(true)
+    expect(Array.isArray(found!.members)).toBe(true)
   })
 
   it('returns null for a non-existent ID', async () => {
@@ -205,7 +205,7 @@ describe('createCollection', () => {
     expect(item.name).toBe('My Docs')
     expect(item.ownerId).toBe(ownerId)
     expect(item.size).toBe(0n)
-    expect(Array.isArray(item.collectionItems)).toBe(true)
+    expect(Array.isArray(item.members)).toBe(true)
   })
 
   it('automatically grants the creator write permission', async () => {

@@ -1,4 +1,10 @@
-import { ItemType, ItemStatus, Prisma, type Item } from '@/prisma/client'
+import {
+  ItemType,
+  ItemStatus,
+  Prisma,
+  type Item,
+  type Thumbnail,
+} from '@/prisma/client'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { prisma } from '@/services/db'
 import { z } from 'zod'
@@ -18,7 +24,8 @@ import {
 import { buildCollectionFilters } from '@/utils/filters/collection.filters'
 import { searchFactory } from '@/utils/search'
 import { createActivity } from './activity-actions'
-import { signStoredThumbnail } from './thumbnail-actions'
+import { signStoredThumbnail, signThumbnails } from './thumbnail-actions'
+import { buildItemFilters } from '@/utils/filters/item.filters'
 
 function recordCollectionActivity(
   itemId: string,
@@ -178,7 +185,7 @@ function recordCollectionRestore(itemId: string) {
  */
 export const searchCollections = searchFactory({
   dbDelegate: prisma.item,
-  buildFilters: buildCollectionFilters,
+  buildFilters: buildItemFilters,
   defaultOrderBy: (): Prisma.ItemOrderByWithRelationInput => ({
     createdAt: 'desc',
   }),
@@ -194,18 +201,18 @@ export const searchCollections = searchFactory({
  */
 export type CollectionWithMembers = Prisma.ItemGetPayload<{
   include: {
-    collectionItems: true
-    _count: { select: { collectionItems: true } }
+    members: true
+    _count: { select: { members: true } }
   }
 }>
 
 const defaultInclude: Prisma.ItemInclude = {
-  collectionItems: {
+  members: {
     select: {
       itemId: true,
     },
   },
-  _count: { select: { collectionItems: true } },
+  _count: { select: { members: true } },
 } as const
 
 // ---------------------------------------------------------------------------
@@ -699,7 +706,7 @@ export async function getCollectionForUser(
         'Collection not found'
       )
     }
-    await assertItemPermission(userId, collectionId, 'read', tx)
+    await assertItemPermission(userId, collectionId, 'read', tx) 
     await updateItemOpenedAt(collectionId, tx)
     return collection
   })
@@ -709,7 +716,9 @@ export async function getCollectionForUser(
  * Retrieve items inside a collection using cursor-based pagination.
  *
  * Results are ordered by `(createdAt DESC, id DESC)` and filtered so only
- * items the caller can read are returned.
+ * items the caller can read are returned. Each item carries a `thumbnails`
+ * array holding its best stored stage (or nothing), signed like any other
+ * item payload.
  *
  * Requires `read` access on the collection.
  */
@@ -734,16 +743,22 @@ export async function getCollectionItems(
   const rows = await prisma.$queryRaw<
     (Item & {
       linkId: string
-      thumbnailBucket: string | null
-      thumbnailStage: number | null
+      thumbnails: Pick<
+        Thumbnail,
+        'id' | 'width' | 'height' | 'size' | 'view' | 'stage' | 'bucket' | 'color'
+      >[]
     })[]
   >`
     SELECT i.*, cm.id AS "linkId",
-           th.bucket AS "thumbnailBucket", th.stage AS "thumbnailStage"
+           COALESCE(th.thumbnails, '[]'::jsonb) AS thumbnails
     FROM "CollectionMember" cm
     JOIN "Item" i ON i.id = cm."itemId"
     LEFT JOIN LATERAL (
-      SELECT t.bucket, t.stage FROM "Thumbnail" t
+      SELECT jsonb_build_array(jsonb_build_object(
+        'id', t.id, 'width', t.width, 'height', t.height, 'size', t.size,
+        'view', t.view, 'stage', t.stage, 'bucket', t.bucket, 'color', t.color
+      )) AS thumbnails
+      FROM "Thumbnail" t
       WHERE t."itemId" = i.id AND t.bucket IS NOT NULL
       ORDER BY t.stage DESC
       LIMIT 1
@@ -773,24 +788,7 @@ export async function getCollectionItems(
   }
 
   return {
-    // The best stored stage comes back as flat columns from the raw SELECT,
-    // not a `thumbnails` relation, so it is signed one row at a time.
-    items: await Promise.all(
-      rows.map(
-        async ({
-          linkId: _linkId,
-          thumbnailBucket,
-          thumbnailStage,
-          ...item
-        }) => ({
-          ...(item as Item),
-          thumbnailUrl: await signStoredThumbnail(
-            { bucket: thumbnailBucket, stage: thumbnailStage },
-            item.id
-          ),
-        })
-      )
-    ),
+    items: await signThumbnails(rows.map(({ linkId: _linkId, ...item }) => item)),
     nextCursor,
     hasMore: !!nextCursor,
   }

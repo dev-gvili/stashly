@@ -23,11 +23,11 @@ The size/collection functions are guarded by `stashly_is_wiping_user()`, so a fu
 
 **Nullable relation filtering**: To filter on fields inside a nullable relation, use `relation: { is: { field: value } }` — **not** `relation: { isNot: null, field: value }`. Prisma's TS types reject field filters alongside `isNot`.
 
-**`orderBy` one-field-per-object rule**: `ItemOrderByWithRelationInput` allows exactly one relation field per object. Never merge two relation sorts into one object — Prisma throws at runtime. Use an array: `[{ folder: { childCount: 'asc' } }, { collectionItems: { _count: 'asc' } }]`.
+**`orderBy` one-field-per-object rule**: `ItemOrderByWithRelationInput` allows exactly one relation field per object. Never merge two relation sorts into one object — Prisma throws at runtime. Use an array: `[{ folder: { childCount: 'asc' } }, { members: { _count: 'asc' } }]`.
 
-**Relation count sort**: To sort by a relation's count, use `{ relation: { _count: 'asc' } }` (underscore required — `count` without it throws `Unknown argument`). Example: `{ collectionItems: { _count: 'desc' } }`.
+**Relation count sort**: To sort by a relation's count, use `{ relation: { _count: 'asc' } }` (underscore required — `count` without it throws `Unknown argument`). Example: `{ members: { _count: 'desc' } }`.
 
-**Sort URL convention**: `?orderBy[col]=dir` → qs parses to `{ orderBy: { col: dir } }`. For nested fields: `?orderBy[folder][childCount]=asc`. For multi-field array orderBy: indexed notation `?orderBy[0][folder][childCount]=asc&orderBy[1][collectionItems][_count]=asc` → qs produces `[{ folder: {...} }, { collectionItems: {...} }]`. `getFolderContent` defensively splits any merged multi-key objects before passing to Prisma.
+**Sort URL convention**: `?orderBy[col]=dir` → qs parses to `{ orderBy: { col: dir } }`. For nested fields: `?orderBy[folder][childCount]=asc`. For multi-field array orderBy: indexed notation `?orderBy[0][folder][childCount]=asc&orderBy[1][members][_count]=asc` → qs produces `[{ folder: {...} }, { members: {...} }]`. `getFolderContent` defensively splits any merged multi-key objects before passing to Prisma.
 
 **`ItemCard`-feeding selects need the full `StashAncestor`/`StashPin` shape**: any loader whose items render through `<ItemCard>` must select `parent` as the full `StashAncestor` shape (all item scalars + `file`/`folder`/`favorites`/`thumbnails`/`locked` + a shallow `parent`), not just `{ id, name }` — and the `pins` select needs `pinnedById` (`StashPin` requires it), not just `pinnedBy`. Mirror `trash.tsx`'s `parent: { include: {...} } }` pattern. A narrow select typechecks fine on its own and only fails where `<ItemCard {...item}>` is spread — easy to miss.
 

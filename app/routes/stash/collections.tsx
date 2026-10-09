@@ -39,7 +39,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     id: col.id,
     name: col.name,
     size: col.size,
-    itemCount: col.collectionItems.length,
+    itemCount: col.members.length,
     covers: covers[col.id] ?? [],
   }))
 

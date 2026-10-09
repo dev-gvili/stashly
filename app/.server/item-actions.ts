@@ -3855,7 +3855,7 @@ export async function getFileItem(
       audio: true,
       pdf: true,
       markdown: true,
-      memberOfCollections: {
+      memberships: {
         select: {
           collection: { select: { id: true, name: true } },
         },

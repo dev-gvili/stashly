@@ -75,7 +75,7 @@ const SORT_FIELDS: SortFieldDef[] = [
   },
   {
     key: 'count',
-    column: ['folder][childCount', 'collectionItems][_count'],
+    column: ['folder][childCount', 'members][_count'],
     label: 'Count',
     icon: SortByNumberIcon,
     hint: (d) => (d === 'asc' ? 'Fewest first' : 'Most first'),

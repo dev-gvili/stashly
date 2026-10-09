@@ -315,7 +315,7 @@ function buildPanelItem({
     image: item.image,
     favorites: item.favorites,
     permissions: item.permissions,
-    collections: item.memberOfCollections.map((m) => m.collection),
+    collections: item.memberships.map((m) => m.collection),
     activities,
   }
 }
