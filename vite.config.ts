@@ -20,7 +20,7 @@ import {
 } from 'vite'
 import svgr from 'vite-plugin-svgr'
 
-export default defineConfig(() => ({
+export default defineConfig(({ command }) => ({
   envDir: '.',
   resolve: {
     tsconfigPaths: true,
@@ -47,6 +47,14 @@ export default defineConfig(() => ({
           input: './server/app.ts',
         },
       },
+      // Bundle every dependency into the server build (production only).
+      // Left external, the server build loaded 1,697 separate files from
+      // node_modules on its first request, and 81% of that import was spent
+      // resolving and reading them (~2.7 ms per file on Windows): the first
+      // page after a start took 4–15 s against ~0.1 s warm. Bundled, it loads
+      // 38 files and the first page takes ~1 s (tech-debt item 24, measured
+      // 2026-10-09). Dev is unchanged: Vite serves dependencies itself there.
+      ...(command === 'build' ? { resolve: { noExternal: true } } : {}),
     },
   },
   optimizeDeps: {

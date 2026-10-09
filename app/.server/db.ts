@@ -1,4 +1,4 @@
-import '@dotenvx/dotenvx/config'
+import './env'
 import { PrismaClient } from '@/prisma/client'
 import { withAccelerate } from '@prisma/extension-accelerate'
 import { PrismaPg } from '@prisma/adapter-pg'
