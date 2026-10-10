@@ -138,14 +138,18 @@ release command). Then swap each machine's image in place, which keeps its volum
 env and secrets:
 
 ```sh
-fly image show --app stashly-postgres          # note the tag, e.g. 17.7
-fly config save --app stashly-postgres --config deploy/postgres/fly.toml
-fly deploy --config deploy/postgres/fly.toml --dockerfile deploy/postgres/Dockerfile \
-  --build-arg PG_FLEX_TAG=17.7 --build-only --push --image-label pgvector
+fly image show --app stashly-postgres          # note the tag, e.g. 18.1
+cd deploy/postgres                             # config save writes ./fly.toml
+fly config save --app stashly-postgres
+fly deploy --dockerfile Dockerfile --build-arg PG_FLEX_TAG=18.1 \
+  --build-only --push --image-label pgvector
 fly machine list --app stashly-postgres        # machine ids
 fly machine update <machine-id> --app stashly-postgres \
   --image registry.fly.io/stashly-postgres:pgvector --yes
 ```
+
+`deploy/postgres/fly.toml` is a snapshot of the postgres app's live config: don't
+commit it, re-save it the next time.
 
 The tag must be the one the cluster already runs: a different Postgres major
 can't open the existing data volume. With several machines, update the
