@@ -41,6 +41,13 @@ export default defineConfig(({ command }) => ({
   // Router server manifest (no `app` export) and `pnpm start` dies on
   // `app.use(undefined)`.
   environments: {
+    // Browser source maps for Vinktar (production only). 'hidden' writes the
+    // .map files without a sourceMappingURL comment, so browsers never ask for
+    // them; the Dockerfile uploads them and deletes every .map before the
+    // image ships.
+    ...(command === 'build'
+      ? { client: { build: { sourcemap: 'hidden' as const } } }
+      : {}),
     ssr: {
       build: {
         rollupOptions: {
