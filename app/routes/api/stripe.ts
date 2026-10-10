@@ -2,6 +2,7 @@ import { data } from 'react-router'
 import Stripe from 'stripe'
 import type { Route } from './+types/stripe'
 import { stripe } from '../../.server/stripe'
+import { track } from '@/services/vinktar'
 
 // This is a Remix action that acts as an API endpoint for Stripe webhooks.
 export const action = async ({ request }: Route.ActionArgs) => {
@@ -45,6 +46,14 @@ export const action = async ({ request }: Route.ActionArgs) => {
           //     // Other subscription details
           //   },
           // });
+          track(
+            'subscription_started',
+            {
+              amount: (checkoutSession.amount_total ?? 0) / 100,
+              currency: checkoutSession.currency ?? '',
+            },
+            { userId }
+          )
         }
         break
 

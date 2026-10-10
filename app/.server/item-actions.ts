@@ -23,6 +23,7 @@ import {
   thumbnailKey,
   type WithSignedThumbnails,
 } from '@/services/thumbnail-actions'
+import { track } from '@/services/vinktar'
 import {
   requireAtLeastRole,
   requireMembership,
@@ -1807,6 +1808,13 @@ export async function createUploadedItem(data: {
     { id: result.id, uploadId: result.uploadId ?? '' },
     ...createdFolderIds.map((id) => ({ id, uploadId: data.uploadId })),
   ])
+
+  // After the commit, so a refused or rolled-back upload is never counted.
+  track(
+    'file_uploaded',
+    { size_bytes: Number(data.size), mime_type: data.mimeType },
+    { userId: data.ownerId }
+  )
 
   return result
 }

@@ -151,6 +151,7 @@ Defined in `tsconfig.json` under `compilerOptions.paths` — read it there. Note
 - **AI features**: all inference runs **client-side on WebGPU** (Hugging Face transformers, ONNX Runtime) — query/chunk embeddings, PDF OCR, saliency crops, Whisper. Everything funnels through the priority queue in `app/workers/ai-queue.ts`
 - **Payments**: Stripe, webhooks at `/api/stripe`
 - **Storage**: AWS S3-compatible (Tigris on Fly.io), configured in `app/.server/s3.ts`
+- **Analytics + errors**: Vinktar. Server `app/.server/vinktar.ts` (off under Vitest; Express middleware in `server/app.ts`), browser `app/.client/vinktar.ts` (key and release handed over by the root loader at runtime). Events are sent server-side where they happen. Adding a `track()` call means calling `define_event` in the same step; see `AGENTS.md`
 
 ### UI Components
 
@@ -211,7 +212,7 @@ Notes: use `usePagination<T>(limit)` for any list route; no arbitrary Tailwind s
 - `npx prettier --write <file>` reflows *pre-existing* long lines, so a 10-line edit can land as a 47-line diff. Format only files you created; on a file you edited, check `git diff` afterwards and revert the hunks you didn't cause.
 - A JSDoc block ending `**a**/**b**` contains `*/` and closes the comment early; `tsc` then bails on a parse error and the total error count **drops**. A falling `error TS` count is not automatically good news — check that your touched files are clean, not just that the number went down.
 - Vitest runs `environment: 'node'` and only collects **`.test.ts`** (not `.tsx`); there is no jsdom and no `@testing-library/react`. A React component or hook therefore **cannot be rendered in a test** without new dependencies — which Scope Discipline forbids adding unasked. Keep hooks as thin glue over a pure function and test the function (`useItemUrl` → `itemUrlFor`, `breadcrumbs` → `trimBreadcrumbs`).
-- `pnpm test` is **862 passing / 0 failing (70 files)**, verified 2026-10-09. Some tests need a live database: `collection-actions`, `pin-actions`, `health-actions`, `item-delete-objects`, `item-trash-access`, `upload-activity` and `item-size-trigger`. CI runs **every** file against a `pgvector/pgvector:pg17` service with migrations applied, and excludes nothing. A failing test must be fixed, not excluded, skipped or marked `it.fails`.
+- `pnpm test` is **863 passing / 0 failing (71 files)**, verified 2026-10-10. Some tests need a live database: `collection-actions`, `pin-actions`, `health-actions`, `item-delete-objects`, `item-trash-access`, `upload-activity` and `item-size-trigger`. CI runs **every** file against a `pgvector/pgvector:pg17` service with migrations applied, and excludes nothing. A failing test must be fixed, not excluded, skipped or marked `it.fails`.
 - **Never hide test output.** Vitest switches to its `minimal` reporter under an AI agent (`CLAUDECODE=1`), which drops console output and errors from passing tests. `vitest.config.ts` pins `default` so you see what a terminal or CI sees. Don't mute logs, and don't use `--silent`.
 
 ## Debugging Rules
