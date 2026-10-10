@@ -13,6 +13,7 @@ import {
 } from 'react-router'
 import type { Route } from './+types/root'
 import { getColorScheme } from './.server/theme'
+import { startVinktar } from '@/.client/vinktar'
 
 export const links: Route.LinksFunction = () => [
   { rel: 'stylesheet', href: styles },
@@ -37,7 +38,13 @@ export const shouldRevalidate: ShouldRevalidateFunction = () => false
 // Return the theme from the session storage using the loader
 export async function loader({ request }: Route.LoaderArgs) {
   let colorScheme = await getColorScheme(request)
-  return { colorScheme }
+  // The browser SDK's config, read at runtime so a Fly secret is enough. The
+  // key is the project's public write key: it can only append events.
+  const vinktar = {
+    key: process.env.VINKTAR_KEY,
+    release: process.env.VINKTAR_RELEASE,
+  }
+  return { colorScheme, vinktar }
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -91,6 +98,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function App() {
+export default function App({ loaderData }: Route.ComponentProps) {
+  const { vinktar } = loaderData
+  React.useEffect(() => startVinktar(vinktar), [vinktar])
   return <Outlet />
 }
