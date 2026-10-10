@@ -151,7 +151,7 @@ Defined in `tsconfig.json` under `compilerOptions.paths` — read it there. Note
 - **AI features**: all inference runs **client-side on WebGPU** (Hugging Face transformers, ONNX Runtime) — query/chunk embeddings, PDF OCR, saliency crops, Whisper. Everything funnels through the priority queue in `app/workers/ai-queue.ts`
 - **Payments**: Stripe, webhooks at `/api/stripe`
 - **Storage**: AWS S3-compatible (Tigris on Fly.io), configured in `app/.server/s3.ts`
-- **Analytics + errors**: Vinktar. Server `app/.server/vinktar.ts` (off under Vitest; Express middleware in `server/app.ts`), browser `app/.client/vinktar.ts` (key and release handed over by the root loader at runtime). Events are sent server-side where they happen. Adding a `track()` call means calling `define_event` in the same step; see `AGENTS.md`
+- **Analytics + errors**: Vinktar. Server `app/.server/vinktar.ts` (off under Vitest; Express middleware in `server/app.ts`), browser `app/.client/vinktar.ts` (key and release handed over by the root loader at runtime). Browser source maps are built `hidden` in production, uploaded in the Dockerfile's build stage with the `VINKTAR_CLI_KEY` build secret, then deleted from the image; deploy with the `fly deploy` line in `.env.example`. Events are sent server-side where they happen. Adding a `track()` call means calling `define_event` in the same step; see `AGENTS.md`
 
 ### UI Components
 

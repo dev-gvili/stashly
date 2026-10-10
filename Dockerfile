@@ -26,6 +26,25 @@ FROM deps AS build
 COPY . .
 RUN pnpm build
 
+# Browser source maps to Vinktar, then off the image so the server never serves
+# them. The upload stamps each chunk with a debug id, so it has to run before
+# build/ is copied below. The key (vnk_sk_…, "cli" scope) arrives as a build
+# secret and never lands in a layer; without it (CI, a local docker build) the
+# upload is skipped and only the maps are removed.
+#   fly deploy --build-secret VINKTAR_CLI_KEY=vnk_sk_… \
+#     --build-arg VINKTAR_RELEASE=$(git rev-parse HEAD) \
+#     --env VINKTAR_RELEASE=$(git rev-parse HEAD)
+ARG VINKTAR_RELEASE
+RUN --mount=type=secret,id=VINKTAR_CLI_KEY \
+  if [ -s /run/secrets/VINKTAR_CLI_KEY ] && [ -n "$VINKTAR_RELEASE" ]; then \
+    VINKTAR_CLI_KEY="$(cat /run/secrets/VINKTAR_CLI_KEY)" \
+      npx -y @vinktarhq/cli@0.3.1 sourcemaps upload build/client \
+      --release "$VINKTAR_RELEASE" --quiet; \
+  else \
+    echo "Vinktar source maps: no VINKTAR_CLI_KEY secret or VINKTAR_RELEASE, skipping upload"; \
+  fi \
+  && find build -name '*.map' -delete
+
 FROM toolchain AS prod-deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml prisma.config.ts ./
 COPY prisma ./prisma
