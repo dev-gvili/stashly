@@ -1696,6 +1696,7 @@ export async function upsertMarkdownFacet(
  * @param data - Upload result payload: item ID/name, S3 `key`/`bucket`/`etag`, `size`, `mimeType`, owner/drive/parent IDs, the `uploadId`, and an optional `category`.
  * @throws `FORBIDDEN` (403) without write access to the key's root folder.
  * @throws `CONFLICT` (409) when two live folders share a name on the key's path.
+ * @throws `INSUFFICIENT_QUOTA` (507) when the file doesn't fit the owner's free quota; no row is created.
  *
  * @example
  * // Create the item record after a completed S3 upload
