@@ -127,24 +127,29 @@ connections.
 
 ## pgvector not in the image
 
-If `CREATE EXTENSION vector` fails, the Postgres image lacks pgvector. Deploy a
-custom image to the **postgres app** that adds it — for example a Dockerfile
-`FROM` your cluster's exact `flyio/postgres-flex` tag that builds pgvector:
+The stock `flyio/postgres-flex` image ships Postgres, contrib, repmgr and PostGIS,
+but not pgvector, so `CREATE EXTENSION vector` fails on a fresh cluster.
+[`Dockerfile`](./Dockerfile) adds it as the `postgresql-<major>-pgvector` package
+from the apt.postgresql.org repository the image already carries.
 
-```dockerfile
-# Match the tag your `fly postgres create` provisioned (check `fly image show
-# --app stashly-postgres`), then build pgvector against it.
-FROM flyio/postgres-flex:<tag>
-RUN apt-get update \
- && apt-get install -y --no-install-recommends build-essential git postgresql-server-dev-all \
- && git clone --depth 1 https://github.com/pgvector/pgvector.git /tmp/pgvector \
- && make -C /tmp/pgvector && make -C /tmp/pgvector install \
- && rm -rf /tmp/pgvector \
- && apt-get purge -y build-essential git && apt-get autoremove -y
+Build it with the postgres app's **own** config: a plain `fly deploy` from the repo
+root reads the main app's `fly.toml` (its HTTP service and `prisma migrate deploy`
+release command). Then swap each machine's image in place, which keeps its volume,
+env and secrets:
+
+```sh
+fly image show --app stashly-postgres          # note the tag, e.g. 17.7
+fly config save --app stashly-postgres --config deploy/postgres/fly.toml
+fly deploy --config deploy/postgres/fly.toml --dockerfile deploy/postgres/Dockerfile \
+  --build-arg PG_FLEX_TAG=17.7 --build-only --push --image-label pgvector
+fly machine list --app stashly-postgres        # machine ids
+fly machine update <machine-id> --app stashly-postgres \
+  --image registry.fly.io/stashly-postgres:pgvector --yes
 ```
 
-Deploy it to the postgres app (`fly deploy --app stashly-postgres`), then re-run
-step 3.
+The tag must be the one the cluster already runs: a different Postgres major
+can't open the existing data volume. With several machines, update the
+replicas first and the primary last. Then re-run step 3.
 
 > **Alternative:** Fly **Managed Postgres (MPG)** advertises pgvector support and
 > avoids the custom-image maintenance. Trade-off: with MPG you typically use its
