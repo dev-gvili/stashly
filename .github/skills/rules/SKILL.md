@@ -1,15 +1,8 @@
 ---
-mode: agent
-model: Gemini 2.5 Pro (copilot)
-tools:
-  [
-    'ditrix.ask-me-copilot-tool/ask',
-    'ditrix.ask-me-copilot-tool/choose',
-    'ditrix.ask-me-copilot-tool/review',
-    'ditrix.ask-me-copilot-tool/confirm',
-  ]
+name: rules
+description: rules
+disable-model-invocation: true
 ---
-
 # EXPERT COLLABORATION RULES
 
 ## 1. PRIMARY DIRECTIVE
