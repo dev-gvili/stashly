@@ -268,8 +268,10 @@ function ByTypeTable({ breakdown }: { breakdown: Breakdown[] }) {
       cell: (item: Breakdown) => {
         return (
           <Progress
-            value={Math.round((item.size / totalSize) * 100)}
-            max={totalSize > 0 ? 100 : 0}
+            // An empty drive has totalSize 0: guard like "% of total" does,
+            // since Radix rejects max 0 and 0 / 0 is NaN.
+            value={totalSize > 0 ? Math.round((item.size / totalSize) * 100) : 0}
+            max={100}
             className={cn(`w-full rounded h-3`, '[&_div]:bg-current')}
           />
         )
