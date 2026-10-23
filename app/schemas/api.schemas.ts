@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { toZodArraySchema } from '@/utils/converters'
+import { toUserText, toZodArraySchema } from '@/utils/converters'
 import { ItemCategory, ItemType } from '@/prisma/browser'
 
 // ====================================================== //
@@ -171,7 +171,7 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
   z.object({
     intent: z.literal('rename_item'),
     itemId: z.string(),
-    newName: z.string().nonempty()
+    newName: toUserText(z.string().nonempty())
   }),
   z.object({
     intent: z.literal('move_items'),
@@ -184,12 +184,12 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
   }),
   z.object({
     intent: z.literal('create_folder'),
-    name: z.string().nonempty(),
+    name: toUserText(z.string().nonempty()),
     parentId: z.string().nonempty(),
   }),
   z.object({
     intent: z.literal('create_folder_inline'),
-    name: z.string().nonempty(),
+    name: toUserText(z.string().nonempty()),
     parentId: z.string().nonempty(),
     driveId: z.string().nonempty(),
   }),
@@ -283,7 +283,7 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
     intent: z.literal('save_ocr_page'),
     itemId: z.string().nonempty(),
     pageNum: z.coerce.number().int().positive(),
-    text: z.string().min(1),
+    text: toUserText(z.string().min(1)),
   }),
   z.object({
     intent: z.literal('save_search_chunk_embeddings'),
@@ -330,7 +330,7 @@ export const aiApiRouteInput = z.discriminatedUnion('intent', [
    */
   z.object({
     intent: z.literal('extract-features'),
-    content: z.string().nonempty(),
+    content: toUserText(z.string().nonempty()),
   }),
   z.object({
     intent: z.literal('translate-text'),
@@ -342,7 +342,7 @@ export const aiApiRouteInput = z.discriminatedUnion('intent', [
   }),
   z.object({
     intent: z.literal('summarize-text'),
-    content: z.string().nonempty(),
+    content: toUserText(z.string().nonempty()),
   }),
   z.object({
     intent: z.literal('chat'),
@@ -366,7 +366,7 @@ export const addItemsToCollectionInput = z.object({
 export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
   z.object({
     intent: z.literal('create_collection'),
-    name: z.string().nonempty(),
+    name: toUserText(z.string().nonempty()),
     driveId: z.string().optional(),
     workspaceId: z.string().optional(),
   }),
@@ -430,7 +430,7 @@ export const invitationsApiRouteInput = z.discriminatedUnion('intent', [
     itemId: z.string().nonempty(),
     recipients: z.array(recipientInputSchema).min(1),
     expiresAt: z.coerce.date().optional(),
-    message: z.string().optional(),
+    message: toUserText(z.string().optional()),
   }),
   // Invite multiple recipients to a workspace
   z.object({
@@ -438,7 +438,7 @@ export const invitationsApiRouteInput = z.discriminatedUnion('intent', [
     workspaceId: z.string().nonempty(),
     recipients: z.array(recipientInputSchema).min(1),
     expiresAt: z.coerce.date().optional(),
-    message: z.string().optional(),
+    message: toUserText(z.string().optional()),
   }),
   // Accept a pending invitation (per recipient)
   z.object({
@@ -588,12 +588,12 @@ export const commentsLoaderInput = z.object({
 export const commentsApiRouteInput = z.discriminatedUnion('intent', [
   z.object({
     intent: z.literal('create_comment'),
-    content: z.string().nonempty(),
+    content: toUserText(z.string().nonempty()),
   }),
   z.object({
     intent: z.literal('update_comment'),
     commentId: z.string().nonempty(),
-    content: z.string().nonempty(),
+    content: toUserText(z.string().nonempty()),
   }),
   z.object({
     intent: z.literal('delete_comment'),
@@ -614,7 +614,7 @@ export const versionsLoaderInput = z.object({
 export const versionsApiRouteInput = z.discriminatedUnion('intent', [
   z.object({
     intent: z.literal('create_version'),
-    label: z.string().optional(),
+    label: toUserText(z.string().optional()),
     version: z.string().optional(),
     size: z.coerce.bigint().optional(),
   }),
@@ -634,7 +634,7 @@ export const versionsApiRouteInput = z.discriminatedUnion('intent', [
 
 /** Schema for GET /api/users */
 export const usersLoaderInput = z.object({
-  query: z.string().optional(),
+  query: toUserText(z.string().optional()),
   email: z.string().email().optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().min(1).max(100).default(20),
@@ -643,7 +643,7 @@ export const usersLoaderInput = z.object({
 export const usersApiRouteInput = z.discriminatedUnion('intent', [
   z.object({
     intent: z.literal('update_user'),
-    name: z.string().min(1).optional(),
+    name: toUserText(z.string().min(1).optional()),
     displayName: z.string().optional(),
     image: z.url().optional(),
   }),
@@ -683,7 +683,7 @@ export const notificationsApiRouteInput = z.discriminatedUnion('intent', [
   }),
   z.object({
     intent: z.literal('create_notification'),
-    message: z.string().nonempty(),
+    message: toUserText(z.string().nonempty()),
     type: z.enum(['info', 'warning', 'error', 'success']),
     kind: z
       .enum([
@@ -712,7 +712,7 @@ export const notificationsApiRouteInput = z.discriminatedUnion('intent', [
 export const settingsApiRouteInput = z.discriminatedUnion('intent', [
   z.object({
     intent: z.literal('update_settings'),
-    name: z.string().min(1).optional(),
+    name: toUserText(z.string().min(1).optional()),
     displayName: z.string().optional(),
     image: z.url().optional(),
   }),
@@ -776,13 +776,13 @@ export const workspacesLoaderInput = z.object({
 export const workspacesApiRouteInput = z.discriminatedUnion('intent', [
   z.object({
     intent: z.literal('create_workspace'),
-    name: z.string().nonempty(),
+    name: toUserText(z.string().nonempty()),
     slug: z.string().nonempty(),
   }),
   z.object({
     intent: z.literal('update_workspace'),
     workspaceId: z.string().nonempty(),
-    name: z.string().optional(),
+    name: toUserText(z.string().optional()),
     slug: z.string().optional(),
   }),
   z.object({
@@ -930,13 +930,13 @@ export const searchScope = z.enum(['items'])
 
 /** Shared filter/pagination fields for both halves of the search API. */
 const searchCommonFields = {
-  query: z.string().min(1).max(512),
+  query: toUserText(z.string().min(1).max(512)),
   take: z.coerce.number().int().positive().max(100).default(25),
   skip: z.coerce.number().int().min(0).default(0),
   category: toZodArraySchema(z.enum(ItemCategory)).optional(),
   type: toZodArraySchema(z.enum(ItemType)).optional(),
   extension: toZodArraySchema(z.string().nonempty()).optional(),
-  tags: toZodArraySchema(z.string().trim().min(1)).optional(),
+  tags: toUserText(toZodArraySchema(z.string().trim().min(1)).optional()),
 }
 
 /**

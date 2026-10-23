@@ -673,6 +673,27 @@ export const toZodArraySchema = <T extends z.ZodType<any, string, any>>(
 }
 
 /**
+ * Wraps the schema of a field that holds text someone typed.
+ *
+ * The form and search-param decoders turn "42", "true", "false" and "null" into
+ * values, so a file renamed to "2024" or a search for "true" reached a
+ * `z.string()` as a number or boolean and failed validation. Only those scalars
+ * are turned back into text; `undefined` passes through untouched, so a missing
+ * required field still fails rather than becoming the word "undefined".
+ *
+ * @example
+ * newName: toUserText(z.string().nonempty())
+ */
+export const toUserText = <T extends z.ZodType>(schema: T) =>
+  z.preprocess(
+    (value) =>
+      typeof value === 'number' || typeof value === 'boolean' || value === null
+        ? String(value)
+        : value,
+    schema
+  )
+
+/**
  * Creates a Zod schema that transforms a string like "field:direction,nested.field:direction"
  * into a Prisma-compatible `orderBy` object, with a type assertion.
  *

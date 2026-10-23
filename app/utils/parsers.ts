@@ -1,6 +1,7 @@
 import { parse } from 'qs'
 import { z } from 'zod'
 import { presignedUrl } from '@/schemas/machine.schemas'
+import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
 
 type ParseSearchParamsConfig<T extends z.ZodTypeAny> = {
   schema: T
@@ -23,14 +24,18 @@ export function parseSearchParams<T extends z.ZodTypeAny>(
     ? new URL(config.request.url).searchParams.toString()
     : config.searchParams.toString()
 
-  // Parse search params using qs library
-  const parsedParams = parse(decodeURIComponent(searchParamsString), {
-    decoder: (value) => {
-      // Handle boolean values
-      if (value === 'true') return true
-      if (value === 'false') return false
-      // Return original value for other types
-      return value
+  // `toString()` writes a space as `+`, so the string must be decoded by qs,
+  // which splits on `&` first and then turns `+` into a space and `%XX` into
+  // its character. Decoding the whole string up front (as this used to) left
+  // every space as a literal `+` and split values on an encoded `&` or `=`.
+  const parsedParams = parse(searchParamsString, {
+    decoder: (str, defaultDecoder, charset, type) => {
+      const decoded = defaultDecoder(str, defaultDecoder, charset)
+      if (type === 'value') {
+        if (decoded === 'true') return true
+        if (decoded === 'false') return false
+      }
+      return decoded
     },
   })
 
@@ -38,7 +43,11 @@ export function parseSearchParams<T extends z.ZodTypeAny>(
   const result = config.schema.safeParse(parsedParams)
 
   if (!result.success) {
-    throw new Error(`Invalid search params: ${result.error.message}`)
+    // INVALID_INPUT so a route's `toErrorInfo` answers 400 — a bare Error read as 500.
+    throw new StashlyError(
+      StashlyErrorCode.INVALID_INPUT,
+      `Invalid search params: ${result.error.message}`
+    )
   }
 
   return result.data
@@ -67,18 +76,24 @@ export async function parseFormData<T extends z.ZodTypeAny>({
   if (contentType.includes('application/x-www-form-urlencoded')) {
     // Handle URL-encoded data (typically nested objects using qs syntax)
     const text = await request.text()
-    parsed = parse(decodeURIComponent(text), {
+    // qs must see the raw body: it splits on `&` first, then decodes `+` and
+    // `%XX` per value. Decoding the whole body up front split a value on an
+    // encoded `&`, and the old `+` → space step then mangled a real `c++`.
+    parsed = parse(text, {
       arrayLimit: 100,
       depth: 5,
-      decoder(str) {
-        if (str === 'true') return true
-        if (str === 'false') return false
-        if (str === 'null') return null
-        if (str === 'undefined') return undefined
-        if (str.includes('+')) return str.replace(/\+/g, ' ')
-        const num = Number(str)
-        if (!Number.isNaN(num) && str.trim() !== '') return num
-        return str
+      decoder(str, defaultDecoder, charset, type) {
+        const value = defaultDecoder(str, defaultDecoder, charset)
+        if (type === 'key') return value
+        if (value === 'true') return true
+        if (value === 'false') return false
+        if (value === 'null') return null
+        if (value === 'undefined') return undefined
+        // Only when the number writes back out as the same text: "42" is 42,
+        // but "007", "1.50" and "1e3" are someone's text and stay strings.
+        const num = Number(value)
+        if (value !== '' && String(num) === value) return num
+        return value
       },
     })
   } else {
@@ -118,7 +133,11 @@ export async function parseFormData<T extends z.ZodTypeAny>({
   const result = schema.safeParse(parsed)
 
   if (!result.success) {
-    throw new Error(`Validation failed: ${result.error.message}`)
+    // INVALID_INPUT so a route's `toErrorInfo` answers 400 — a bare Error read as 500.
+    throw new StashlyError(
+      StashlyErrorCode.INVALID_INPUT,
+      `Validation failed: ${result.error.message}`
+    )
   }
 
   return result.data as z.infer<T>
