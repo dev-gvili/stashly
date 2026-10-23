@@ -33,7 +33,7 @@ The size/collection functions are guarded by `stashly_is_wiping_user()`, so a fu
 
 **`ItemCard`-feeding selects need the full `StashAncestor`/`StashPin` shape**: any loader whose items render through `<ItemCard>` must select `parent` as the full `StashAncestor` shape (all item scalars + `file`/`folder`/`favorites`/`thumbnails`/`locked` + a shallow `parent`), not just `{ id, name }` — and the `pins` select needs `pinnedById` (`StashPin` requires it), not just `pinnedBy`. Mirror `trash.tsx`'s `parent: { include: {...} } }` pattern. A narrow select typechecks fine on its own and only fails where `<ItemCard {...item}>` is spread — easy to miss.
 
-**`Favorite` has no unique constraint**: `@@unique([favoritedById, itemId])` was intentionally removed in favor of four plain indexes (migration `20260812030000_sync_favorite_indexes` drops `Favorite_favoritedById_itemId_key`) — the DB allows duplicate favorite rows. `addFavorite`/`addFavorites` must check-then-insert at the app level; don't rely on a DB constraint to catch double-favoriting.
+**`Favorite` has no unique constraint**: `@@unique([favoritedById, itemId])` was intentionally removed in favor of four plain indexes (migration `20260812030000_sync_favorite_indexes` drops `Favorite_favoritedById_itemId_key`) — the DB allows duplicate favorite rows. `addFavorite`/`addFavorites` must check-then-insert at the app level; don't rely on a DB constraint to catch double-favoriting. Duplicates may still exist from before `addFavorite` checked (or from a concurrent race), so anything that **removes** or **counts** favorites must handle them: `removeFavorite` deletes every row for the user (`deleteMany`), and the usage metric counts favorited *items*, not rows.
 
 ## Prisma Client
 

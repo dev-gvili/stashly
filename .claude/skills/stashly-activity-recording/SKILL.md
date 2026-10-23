@@ -25,6 +25,8 @@ description: Stashly activity recording — the fire-and-forget createActivity p
 
 **Favorites**: mirrors the pinned-items pattern. Business logic lives in `app/.server/item-actions.ts` (`addFavorite`/`addFavorites`/`removeFavorite`); the resource route is `/api/favorites` (POST `intent: favorite|unfavorite|favorite_items`). Favorite/Unfavorite is surfaced via the `useFavorite` hook (`app/hooks/useFavorite.ts`) for optimistic toggling, used in both `ItemCard.Actions` and the standalone `Favorite` heart button. `favorite_items` bulk-favorites a comma-separated `selectedItems` list for the toolbar's multi-select action.
 
+**Favorites require read access.** `addFavorite` calls `assertItemAccess` and `addFavorites` calls `assertItemsAccess` (all-or-nothing), so an item id the user can't read is a 403 — otherwise anyone holding an id could favorite another user's file and read it off their Favorites page. `getFavoritedItems` and the usage metric filter with `itemAccessWhere(userId, 'read')` (`permission-actions.ts`), so a favorite whose share was later revoked drops off the list. `removeFavorite` deliberately has **no** check: the row is the user's own, and losing access to the item must not trap it.
+
 ## Activity action types
 
 `ItemAction` has a 1:1 relation to one of: `CreateAction`, `RenameAction`, `MoveAction`, `CopyAction`, `DeleteAction { name, itemType }`, `RestoreAction`, `ShareAction`, `VersionAction`, `CommentAction`, `PermissionAction`, `UploadAction`, `EditAction`, `PinAction { kind: pinned|unpinned|reordered }`, `FavoriteAction { kind: favorited|unfavorited }`, `CollectionAction { kind: item_added|item_removed|emptied, collectionId, itemId, count }`, `BucketAction { kind: emptied }`.
