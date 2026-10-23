@@ -176,6 +176,10 @@ test.describe('thumbnail machine — upload pipeline', () => {
     await uploadPage.dropRealFiles([{ name, kind: 'png', sizePx: 640 }])
 
     const itemId = await waitForAnyItemAtStage(page, 2, PIPELINE_TIMEOUT - 20_000)
+    // Stage 3 PUTs to the same object key as stage 2, so the bytes can change
+    // under a stage read taken before the fetch. Let the pipeline finish, then
+    // compare the final published size against the final object.
+    await waitForIdle(page, PIPELINE_TIMEOUT - 20_000)
     const published = await progressFor(page, itemId)
     expect(published).not.toBeNull()
 
@@ -192,12 +196,10 @@ test.describe('thumbnail machine — upload pipeline', () => {
     expect(decoded.height).toBeGreaterThan(0)
     expect(Math.max(decoded.width, decoded.height)).toBeLessThanOrEqual(512)
 
-    // Stage 3 can replace the stage-2 object under the same key before this
-    // fetch, so the reported size is only comparable while it is still stage 2.
-    if (published!.stage === 2) {
-      expect(published!.width).toBe(decoded.width)
-      expect(published!.height).toBe(decoded.height)
-    }
+    // The queue is idle, so nothing can overwrite the object any more: whichever
+    // stage finished last, its reported size must be the size of the bytes.
+    expect(published!.width).toBe(decoded.width)
+    expect(published!.height).toBe(decoded.height)
   })
 
   test('the card paints what the machine published', async ({ page }) => {
@@ -281,25 +283,11 @@ test.describe('thumbnail machine — upload pipeline', () => {
       .toBeGreaterThan(0)
   })
 
-  test('stage 3 runs when the browser has WebGPU, and is skipped honestly when it does not', async ({
-    page,
-  }) => {
+  // Stage 3 needs no WebGPU: it is native face detection, else a geometric
+  // centre crop (`thumbnail.ai.ts` — the ViT pass is commented out). So it runs
+  // for every image in every browser and is asserted unconditionally.
+  test('stage 3 publishes a 512px square crop for an image', async ({ page }) => {
     const { uploadPage } = await openEmptyFolder(page)
-
-    const hasWebGpu = await page.evaluate(async () => {
-      const gpu = (navigator as Navigator & { gpu?: { requestAdapter: () => Promise<unknown> } }).gpu
-      if (!gpu) return false
-      try {
-        return !!(await gpu.requestAdapter())
-      } catch {
-        return false
-      }
-    })
-
-    test.skip(
-      !hasWebGpu,
-      'No WebGPU adapter in this browser — stage 3 (saliency crop) cannot run, so asserting it would be fiction.'
-    )
 
     const name = `e2e-thumb-${runId()}.png`
     await uploadPage.dropRealFiles([{ name, kind: 'png', sizePx: 640 }])
@@ -313,6 +301,11 @@ test.describe('thumbnail machine — upload pipeline', () => {
     const object = await fetchPersistedThumbnail(page, published!.src)
     expect(object.ok).toBe(true)
     expect(object.isWebp).toBe(true)
+
+    // A square, whatever the source's aspect (this one is 640×480).
+    const decoded = await decodeImage(page, published!.src)
+    expect([decoded.width, decoded.height]).toEqual([512, 512])
+    expect([published!.width, published!.height]).toEqual([512, 512])
   })
 })
 
