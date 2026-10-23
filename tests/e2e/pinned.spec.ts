@@ -3,6 +3,7 @@ import {
   TEST_USER_ID,
   E2E_PIN_ITEM_A_NAME,
   E2E_PIN_ITEM_B_NAME,
+  E2E_PIN_ITEM_C_NAME,
   E2E_ROOT_FOLDER_ID,
 } from './constants'
 
@@ -25,12 +26,17 @@ test.describe('Pinned items', () => {
     await itemCard.hover()
     await itemCard.locator('[data-slot="item-header"] button').last().click()
 
-    await page.getByRole('menuitem', { name: 'Pin' }).click()
-
-    await page.waitForResponse(
-      (res) => res.url().includes('/api/pins') && res.status() === 200,
+    // Registered before the click so a fast response can't be missed, and
+    // POST-only so it is the write itself, not some other request.
+    const saved = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/pins') &&
+        res.request().method() === 'POST' &&
+        res.status() === 200,
       { timeout: 10000 }
     )
+    await page.getByRole('menuitem', { name: 'Pin', exact: true }).click()
+    await saved
 
     await page.goto(pinnedUrl)
     await waitForContent(page)
@@ -46,12 +52,17 @@ test.describe('Pinned items', () => {
     await itemCard.hover()
     await itemCard.locator('[data-slot="item-header"] button').last().click()
 
-    await page.getByRole('menuitem', { name: 'Unpin' }).click()
-
-    await page.waitForResponse(
-      (res) => res.url().includes('/api/pins') && res.status() === 200,
+    // Registered before the click so a fast response can't be missed, and
+    // POST-only so it is the write itself, not some other request.
+    const saved = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/pins') &&
+        res.request().method() === 'POST' &&
+        res.status() === 200,
       { timeout: 10000 }
     )
+    await page.getByRole('menuitem', { name: 'Unpin', exact: true }).click()
+    await saved
 
     await page.goto(pinnedUrl)
     await waitForContent(page)
@@ -61,6 +72,7 @@ test.describe('Pinned items', () => {
   test('pinned page lists pre-pinned items', async ({ page }) => {
     await page.goto(pinnedUrl)
     await waitForContent(page)
-    await expect(page.getByText(E2E_PIN_ITEM_B_NAME)).toBeVisible({ timeout: 10000 })
+    // C, not B: the toggle-off test above unpins B, and nothing re-pins it.
+    await expect(page.getByText(E2E_PIN_ITEM_C_NAME)).toBeVisible({ timeout: 10000 })
   })
 })
