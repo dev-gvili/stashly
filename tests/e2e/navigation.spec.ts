@@ -21,12 +21,23 @@ test.describe('Authenticated navigation', () => {
     await layout.expectSidebarVisible()
   })
 
-  test('clicking Recent Files navigates to /recent', async ({ page }) => {
-    const layout = new LayoutPage(page)
-    await page.goto(`/${TEST_USER_ID}/stash`)
-    await layout.clickNavItem('Recent Files')
-    await expect(page).toHaveURL(new RegExp('/recent'))
-  })
+  // The personal stash no longer has a Recent Files page (only workspaces keep
+  // `/recent`); these cover the sidebar links that replaced it.
+  for (const [label, path] of [
+    ['All', '/all'],
+    ['Images', '/images'],
+    ['Favorites', '/favorites'],
+    ['Pinned', '/pinned'],
+    ['Invitations', '/invitations'],
+    ['Storage', '/storage'],
+  ] as const) {
+    test(`clicking ${label} navigates to ${path}`, async ({ page }) => {
+      const layout = new LayoutPage(page)
+      await page.goto(`/${TEST_USER_ID}/stash`)
+      await layout.clickNavItem(label)
+      await expect(page).toHaveURL(new RegExp(path))
+    })
+  }
 
   test('clicking Collections navigates to /collections', async ({ page }) => {
     const layout = new LayoutPage(page)
