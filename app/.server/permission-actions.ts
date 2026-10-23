@@ -582,6 +582,49 @@ export async function assertItemAccess(
 }
 
 /**
+ * The items a user may act on with `role`: their own, or ones a live grant gives
+ * them, and — for a workspace item — only while they are a member.
+ *
+ * The filter form of `assertItemsAccess`, for a query that must *list* only
+ * what the user can still see rather than refuse a request.
+ *
+ * @example
+ * // Favorites the user can still read — a revoked share drops off the list:
+ * prisma.item.findMany({
+ *   where: { favorites: { some: { favoritedById: userId } }, ...itemAccessWhere(userId, 'read') },
+ * })
+ */
+export function itemAccessWhere(
+  userId: string,
+  role: PermissionRole
+): Prisma.ItemWhereInput {
+  return {
+    AND: [
+      {
+        OR: [
+          { ownerId: userId },
+          {
+            permissions: {
+              some: {
+                roles: { in: rolesSatisfying(role) },
+                users: { some: { id: userId } },
+                ...livePermission(),
+              },
+            },
+          },
+        ],
+      },
+      {
+        OR: [
+          { workspaceId: null },
+          { workspace: { members: { some: { memberId: userId } } } },
+        ],
+      },
+    ],
+  }
+}
+
+/**
  * `assertItemAccess` for a batch: requires `role` on every item asked for and,
  * for a workspace item, membership of that workspace.
  *
@@ -608,31 +651,7 @@ export async function assertItemsAccess(
   const ids = [...new Set(itemIds)]
   if (ids.length === 0) return
   const allowed = await prisma.item.count({
-    where: {
-      id: { in: ids },
-      AND: [
-        {
-          OR: [
-            { ownerId: userId },
-            {
-              permissions: {
-                some: {
-                  roles: { in: rolesSatisfying(role) },
-                  users: { some: { id: userId } },
-                  ...livePermission(),
-                },
-              },
-            },
-          ],
-        },
-        {
-          OR: [
-            { workspaceId: null },
-            { workspace: { members: { some: { memberId: userId } } } },
-          ],
-        },
-      ],
-    },
+    where: { id: { in: ids }, ...itemAccessWhere(userId, role) },
   })
   if (allowed !== ids.length) {
     throw toRouteError(

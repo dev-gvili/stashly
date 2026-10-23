@@ -7,6 +7,7 @@ import {
   assertItemsAccess,
   getItemPermissions,
   hasItemPermission,
+  itemAccessWhere,
 } from '@/services/permission-actions'
 import {
   ensureUserQuota,
@@ -3263,7 +3264,12 @@ export async function getFavoritedItems(
   client: Prisma.TransactionClient = prisma
 ) {
   const items = await client.item.findMany({
-    where: { favorites: { some: { favoritedById: userId } } },
+    // Only items still readable: a favorite outlives a share, and listing the
+    // item after its owner revoked access would keep showing it to this user.
+    where: {
+      favorites: { some: { favoritedById: userId } },
+      ...itemAccessWhere(userId, 'read'),
+    },
     take: limit + 1,
     orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
     cursor: cursor ? { id: cursor } : undefined,
@@ -3433,6 +3439,19 @@ export async function addFavorite(
   favoritedById: string,
   client: Prisma.TransactionClient = prisma
 ) {
+  // Only an item the user can read. Without this, anyone holding an item id
+  // could favorite someone else's file and then read its name, size and
+  // thumbnail off their own Favorites page.
+  await assertItemAccess(favoritedById, itemId, { tx: client })
+
+  // `Favorite` has no unique constraint, so a repeat favorite (a double submit,
+  // two tabs) would insert a second row — check first, as `addFavorites` does.
+  const existing = await client.favorite.findFirst({
+    where: { itemId, favoritedById },
+    select: { id: true },
+  })
+  if (existing) return client.item.findUniqueOrThrow({ where: { id: itemId } })
+
   const updated = await client.item.update({
     where: { id: itemId },
     data: {
@@ -3466,6 +3485,9 @@ export async function addFavorites(
   client: Prisma.TransactionClient = prisma
 ) {
   if (itemIds.length === 0) return 0
+
+  // All-or-nothing, like the single path: one unreadable id refuses the batch.
+  await assertItemsAccess(favoritedById, itemIds, 'read')
 
   const existing = await client.favorite.findMany({
     where: { favoritedById, itemId: { in: itemIds } },
@@ -3507,9 +3529,11 @@ export async function removeFavorite(
     where: { itemId, favoritedById },
   })
   if (!item) return
+  // Every row for this user, not just the first: with no unique constraint a
+  // duplicate could exist, and deleting one left the item favorited.
   const updated = await client.item.update({
     where: { id: itemId },
-    data: { favorites: { delete: { id: item.id } } },
+    data: { favorites: { deleteMany: { favoritedById } } },
   })
   recordFavoriteActivity(itemId, 'unfavorited')
   return updated
@@ -3663,7 +3687,17 @@ export async function retrieveUserUsageMetrics(
   const [folders, files, favorites, trashed, quota] = await Promise.all([
     countItems({ where: { ...active, type: 'folder' } }, client),
     countItems({ where: { ...active, type: 'file' } }, client),
-    client.favorite.count({ where: { favoritedById: userId } }),
+    // What the Favorites page lists: items, not rows (no unique constraint, so
+    // rows can repeat), and only ones the user can still read.
+    countItems(
+      {
+        where: {
+          favorites: { some: { favoritedById: userId } },
+          ...itemAccessWhere(userId, 'read'),
+        },
+      },
+      client
+    ),
     // What the Trash page lists, so the count matches its cards.
     countItems({ where: { ownerId: userId, ...TRASH_ROOTS } }, client),
     findQuotaByUserId(userId, client),

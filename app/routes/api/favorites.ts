@@ -23,12 +23,14 @@ export const action = async ({ request }: Route.ActionArgs) => {
   })
   if (!session) throw redirect('/auth/sign-in')
 
-  const parsedData = await parseFormData({ request, schema: ApiFavoriteSchema })
   let referer = request.headers.get('referer')
   let url = new URL(referer || request.url)
   let searchParams = url.searchParams
 
   try {
+    // Inside the try: a malformed body is the client's fault and answers 400,
+    // where outside it escaped as a 500.
+    const parsedData = await parseFormData({ request, schema: ApiFavoriteSchema })
     switch (parsedData.intent) {
       case 'favorite': {
         await addFavorite(parsedData.itemId, session.user.id)
