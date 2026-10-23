@@ -38,7 +38,17 @@
     "allow": [
       "Bash(cd /tmp)",
       "Bash(pwd -W)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(git diff *)",
+      "PowerShell(node .claude/hooks/check-staged-types.mjs --all 2>&1)",
+      "PowerShell(node .claude/hooks/check-staged-types.mjs --all; \"exit=$LASTEXITCODE\")",
+      "Bash(bash .claude/scripts/wait-for-ci.sh)",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "ClaudeInChromeDomain(localhost)",
+      "mcp__claude_ai_vinktar__list_projects",
+      "mcp__claude_ai_vinktar__get_install_guide",
+      "mcp__claude_ai_vinktar__get_setup_status",
+      "mcp__claude_ai_vinktar__get_project_keys"
     ]
   }
 }
