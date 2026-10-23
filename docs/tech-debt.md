@@ -6,31 +6,38 @@
 
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
-**Now (8 Oct):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 818 unit tests in 68 files with none excluded, and the build. Green on `30eeeb4` (8 Oct); red for one push before it (`e9f163b`, fixed in `08324f8`). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+**Now (23 Oct):** the safety net is mostly in place.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 905 unit tests in 72 files with none excluded, and the build. Green on `82a878e` (23 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
-- **Still missing:** error tracking and a linter. Both need a new package, which needs the owner's decision.
+- **Errors and analytics:** Vinktar on server and browser since 10 Oct (item 4, partly done).
+- **Still missing:** structured logging and a linter. Both need a new package, which needs the owner's decision.
+
+**Update (23 Oct):** an E2E pass after pulling found two more bugs, both fixed the same day. Item 27: favorites skipped the access check, so anyone with an item id could favorite another user's file and read its name and thumbnail. Item 28: the form and search decoders mangled typed text (every multi-word search became a fuzzy match, and a rename to "2024" was refused). The E2E suite runs green locally on one worker (item 20).
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**26 items** (17 from the audit, 9 added 8 Oct) · categories: Code 12, Architecture 7, Infrastructure 3, Test 2, Dependency 1, Documentation 1
+**28 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct) · categories: Code 14, Architecture 7, Infrastructure 3, Test 2, Dependency 1, Documentation 1
+
+**Status at 23 Oct 2026:** 16 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 3 new and open (19, 20, 22). Since 8 Oct: items 21 and 24 resolved (9 Oct), item 4 partly done (Vinktar, 10 Oct), items 27 and 28 found and resolved (23 Oct).
 
 **Status at 8 Oct 2026 (end of day):** 14 resolved · 1 resolved in code, rollout step unconfirmed · 4 partly done · 1 declined · 3 open from the audit · 3 new and open. Item 18 was resolved the same day it was found (`2fc9d4d`), with e2e coverage in `9081555`. Item 23 was done for every personal route, which turned up two more: item 25 (share-link actions had no access check, fixed the same day) and item 26 (expired and revoked grants still counted, fixed the same day). (Earlier on 8 Oct: 9 resolved · 7 new and open.) (At 2 Oct: 8 resolved · 1 in code · 2 partly · 1 declined · 5 open.) Item 8 had a follow-up pass on 2 Oct; what it found is fixed, apart from delete waiting on S3. Each item's details end with a dated **Status** line naming the commits; [Changes since the audit](#changes-since-the-audit) lists them by date.
 
 ### What's left, in priority order
 
-*Updated 8 Oct. Ordered by priority score; new items are marked **new**.*
+*Updated 23 Oct. Ordered by priority score; new items are marked **new**.*
 
 | # | Item | Score | What remains | Blocked on |
 |---|------|-------|--------------|------------|
 | 18 | ~~`/api/quota` trusts the client~~ | 50 | Resolved 2026-10-08: route is read-only, upload charged in `createUploadedItem` | — |
 | 25 | ~~Share-link actions had no access check~~ | 40 | Resolved 2026-10-08: every action takes the acting user and checks it | — |
+| 27 | ~~Favorites skipped the access check~~ | 40 | Resolved 2026-10-23: favoriting and the Favorites list need read access; duplicates handled | — |
 | 26 | ~~`hasItemPermission` counts revoked and expired grants~~ | 35 | Resolved 2026-10-08: every access check counts only live grants | — |
 | 2 | Deploy path | 32 | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
-| 4 | Error tracking and logging | 28 | All of it | Owner's choice of package (Sentry, pino or both) |
+| 4 | Error tracking and logging | 28 | Structured logging; error tracking is Vinktar since 10 Oct | Owner's choice of logger |
+| 28 | ~~Form and search decoders mangle typed text~~ | 25 | Resolved 2026-10-23: values decoded once, typed text kept as text, bad input is a 400 | — |
 | 19 | **new** Stripe webhook is a stub | 24 | All four event handlers | Whether paid plans ship before launch |
-| 20 | **new** Playwright specs don't run in CI | 24 | A CI job for the 8 specs | — |
+| 20 | **new** Playwright specs don't run in CI | 24 | A CI job for the 8 specs; the E2E bucket leaks one per run | — |
 | 10 | Accessibility and responsive UI | 21 | Everything except the nested Filter buttons | — |
 | 22 | **new** Open decisions in upload and onboarding | 20 | Three decisions already written up in TASKS.md | Owner's decision |
 | 21 | ~~Embedding backfill runs in every tab~~ | 18 | Resolved 2026-10-09: model in a worker (main-thread blocking 1,279 → 0 ms, measured), one tab via a Web Lock | — |
@@ -50,7 +57,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 1 | ~~No CI: nothing runs typecheck, tests or build automatically~~ | Infrastructure | 4 | 4 | 2 | **32** (High) | 0.5–1 day | Resolved |
 | 2 | Deploy path is broken and runs an end-of-life Node | Infrastructure | 3 | 5 | 2 | **32** (High) | 1–2 days | Resolved in code; first `fly deploy` unconfirmed |
 | 3 | ~~Two known 500s on ordinary requests~~ | Code | 3 | 3 | 1 | **30** (High) | 0.5 day | Resolved |
-| 4 | No error tracking or structured logging | Infrastructure | 3 | 4 | 2 | **28** (High) | 1 day | Open |
+| 4 | No error tracking or structured logging | Infrastructure | 3 | 4 | 2 | **28** (High) | 1 day | Partly done (10 Oct) |
 | 5 | ~~Thumbnails of private files are publicly readable~~ | Architecture | 4 | 5 | 3 | **27** (High) | 3–5 days | Resolved |
 | 6 | ~~Unused, unpinned and unmaintained dependencies~~ | Dependency | 2 | 3 | 1 | **25** (High) | 0.5 day | Resolved |
 | 7 | ~~The type baseline is stale, and escape hatches are growing~~ | Code | 3 | 3 | 2 | **24** (Medium) | 1–2 days | Resolved |
@@ -64,15 +71,17 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 15 | `item-actions.ts` god module | Code | 3 | 2 | 3 | **15** (Low) | 3–5 days, incremental | Declined |
 | 16 | Overlapping UI primitives | Code | 2 | 1 | 2 | **12** (Low) | 2–3 days | Partly done |
 | 17 | Unfinished migrations left in place | Architecture | 2 | 2 | 3 | **12** (Low) | 2–4 days | Partly done |
-| 18 | `/api/quota` lets a signed-in user change their own quota | Code | 5 | 5 | 1 | **50** (High) | 0.5–1.5 days | New 8 Oct |
+| 18 | ~~`/api/quota` lets a signed-in user change their own quota~~ | Code | 5 | 5 | 1 | **50** (High) | 0.5–1.5 days | Resolved 8 Oct |
 | 19 | The Stripe webhook acknowledges events and saves nothing | Code | 3 | 5 | 3 | **24** (Medium) | 1–2 days | New 8 Oct |
 | 20 | The Playwright specs don't run in CI | Test | 3 | 3 | 2 | **24** (Medium) | 0.5–1 day | New 8 Oct |
-| 21 | Embedding backfill loads a WebGPU model on the main thread of every tab | Architecture | 3 | 3 | 3 | **18** (Medium) | 1–2 days | Resolved 9 Oct |
+| 21 | ~~Embedding backfill loads a WebGPU model on the main thread of every tab~~ | Architecture | 3 | 3 | 3 | **18** (Medium) | 1–2 days | Resolved 9 Oct |
 | 22 | Open decisions in the upload and onboarding paths | Architecture | 2 | 3 | 2 | **20** (Medium) | 1 day once decided | New 8 Oct |
 | 23 | Prisma calls made directly from route modules | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Partly done (8 Oct): workspace route deferred |
-| 24 | Slow first page load (cold document TTFB) | Architecture | 3 | 2 | 3 | **15** (Low) | 1–3 days | Resolved 9 Oct |
+| 24 | ~~Slow first page load (cold document TTFB)~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 1–3 days | Resolved 9 Oct |
 | 25 | ~~Share-link actions had no access check~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 8 Oct |
 | 26 | ~~`hasItemPermission` counts soft-deleted and expired permissions~~ | Code | 4 | 3 | 1 | **35** (High) | 0.5 day | Resolved 8 Oct |
+| 27 | ~~Favorites skipped the access check and stacked duplicate rows~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 23 Oct |
+| 28 | ~~Form and search decoders mangle typed text~~ | Code | 3 | 2 | 1 | **25** (High) | 0.5 day | Resolved 23 Oct |
 
 ## Details
 
@@ -140,6 +149,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Fix:** Add an error tracker to the server entry and the root `ErrorBoundary`, and a JSON logger with a request id. Replace `console.log` in `.server` code with the logger.
 - **Why it matters:** Upload loss, quota drift and 500s are all currently invisible until a user complains.
 - **Status 2026-10-01: open** (re-checked: no Sentry, pino, OpenTelemetry or winston in `package.json`). No error tracker or logger is installed. One partial improvement: the upload panel now reports failed item creation as an `itemFailed` status with the reason (`0235f0e`), so that failure is at least visible to the user.
+- **Status 2026-10-10: partly done** (`65f3891`). Error tracking is Vinktar: `@vinktarhq/node` in `app/.server/vinktar.ts` with uncaught-error capture, and `vinktarRequest()`/`vinktarErrors()` around the React Router handler in `server/app.ts`; `@vinktarhq/browser` in the client, keyed at runtime by the root loader. It is off under Vitest (`vinktar.test.ts`). It also sends three product events (`signed_up`, `file_uploaded`, `subscription_started`). **Still open:** a JSON logger with a request id, and the `console.log` calls in `.server` code.
 
 ### 5. Thumbnails of private files are publicly readable
 
@@ -308,6 +318,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
     - `upload-activity` (1): no activity write while a transaction is open. It fails on the old code every time.
   - **Counts:** `app/.server/__tests__` has 9 test files. `pnpm test` is 649 passing in 46 files, and CI runs all of them.
   - **Still missing:** create, move and copy in `item-actions`; quota on its own; routes and components. There are still 8 Playwright specs.
+- **Status 2026-10-23: open, improving.** `pnpm test` is 905 passing in 72 files (CI green on `82a878e`). New since 8 Oct: `favorite-actions` (16, live DB: access checks, duplicate rows, the usage count) and 26 more `parsers` tests (39 in all: decoding, numeric round-trip, `toUserText`, 400 on bad input), both from items 27 and 28. The favorites e2e spec went from 3 tests to 13, and the search, pinned, navigation and thumbnail specs were brought back in line with the UI (item 20). Still missing: create, move and copy in `item-actions`, and components.
 - **Status 2026-10-08 (end of day): open, improving.** Unit test files are at 68 (818 tests, all passing; CI green on `30eeeb4`). `app/.server/__tests__` has 18, adding `upload-quota-charge` (live DB: exact charge, no row without a quota, 10 parallel uploads summed exactly), `share-access` (37), `route-query-actions` (5) and `permission-live-grants` (14). Route tests went from 1 to 3: `app/routes/api/__tests__/quota.test.ts` covers the quota route item 18 named as untested, and `app/routes/__tests__/no-direct-prisma.test.ts` guards item 23. The upload e2e spec went from 1 test to 11 (`9081555`); CI still doesn't run it (item 20). Still missing: create, move and copy in `item-actions`, and components.
 - **Status 2026-10-08: open, improving.** Unit test files went from 39 at the audit to 62. `app/.server/__tests__` has 14, including upload safety, trash roots and the size trigger, and `app/machines` has 10. Still 0 component tests, 1 route test, and no test for the quota route (see item 18). The 8 Playwright specs exist but CI doesn't run them (item 20). `bcb227d` fixed the thumbnail spec's setup.
 
@@ -397,6 +408,11 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Status 2026-10-08: open, and more is now at stake.** `9081555` rewrote `upload.spec.ts` from 1 test to 11: filing, the exact server-side quota charge, a page that sends only quota reads, and a 400 for every former write on `/api/quota`. 11/11 pass locally (1 worker, 37.2 s); CI still runs none of it. Two things the CI job must handle:
   - **One shared user.** Every spec signs in as the same seeded user, and Playwright runs spec *files* in parallel workers. An upload in `thumbnail-machine.spec.ts` can land inside `upload.spec.ts`'s quota window and break its exact delta. Run with `--workers=1`, or seed a user per worker.
   - **The bucket.** On the 8 Oct run, global setup reported the E2E user back on `default-bucket` and created a new one (`e2e-bucket.ts`). Why it had been reset was not investigated.
+- **Status 2026-10-23: open; the suite is green locally.** After the pull the specs had drifted from the UI, and one parallel-worker race was the cause of most failures.
+  - **One worker** (`a581626`): `playwright.config.ts` sets `workers: 1`, which settles the shared-user point above. Measured: 8 workers → 37 passed, 9 failed; 1 worker → 51 passed, 1 skipped, 0 failed in 1.9 min. Traces are kept on failure (`'on-first-retry'` never recorded one, because `retries` is 0).
+  - **Specs fixed** (`0a1134b`..`b83faa1`): navigation covers the sidebar links that replaced Recent Files; search types into the header `Filters` box after hydration and reads `?query=`; pin and favorite toggles wait for the POST and use exact menu labels; the thumbnail spec asserts stage 3's 512×512 crop, which needs no WebGPU.
+  - **The bucket, answered:** `global-teardown.ts` deletes the E2E user, so every run starts with no bucket and `e2e-bucket.ts` creates a new one. Each run leaves one Tigris bucket behind. A stage-2 thumbnail PUT to a just-created bucket failed intermittently on a blocked request, suspected to be its CORS settings not yet applied. Not proven, and not fixed.
+  - **Still to do:** the CI job itself.
 
 ### 21. Embedding backfill loads a WebGPU model on the main thread of every tab
 
@@ -483,6 +499,30 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - **Fix:** `livePermission()` in `app/utils/permissions.ts` (`deletedAt: null`, and `expiresAt` null or in the future) is ANDed into every access decision: `hasItemPermission` (so `assertItemPermission` and `assertItemAccess`), `hasLinkPermission`, `hasRecipientPermission`, the batch `assertItemsAccess`, and the `accessibleBy` item filter that decides what a user's listings show. Workspace sync and removal queries maintain rows rather than decide access, and are unchanged.
   - **Tests:** `permission-live-grants.test.ts` (14, live DB) fails 8 on the old code: every expired and deleted case. The live-grant and owner cases pass on both. `item-filters-coverage.test.ts` pinned the old `accessibleBy` shape, and now requires the live-grant conditions. `pnpm test` 818/818 (68 files), the type gate is clean and `pnpm build` passes.
 
+### 27. Favorites skipped the access check and stacked duplicate rows
+
+*Code debt (security) · Impact 4 · Risk 4 · Effort 1 → **40** · est. 0.5 day · source: found 23 Oct during the post-pull E2E pass*
+
+- **Evidence:** `addFavorite` and `addFavorites` (`item-actions.ts`) took any item id with no access check, and `getFavoritedItems` listed every favorited row. Anyone holding an item id could favorite another user's file and read its name, size and thumbnail from their own Favorites page. A favorite made while a share was live stayed listed after the owner revoked it. `Favorite` has no unique constraint (by design, see `stashly-prisma-data`), so a double submit stored two rows and `removeFavorite` deleted one: Unfavorite answered 200 and the item stayed. `/api/favorites` parsed its body outside the `try`, so a malformed request was a 500.
+- **Fix:** read access through the existing checks, applied in the action so no caller can skip it.
+- **Status 2026-10-23: resolved** (`6522ba0`).
+  - `addFavorite` runs `assertItemAccess`; `addFavorites` runs `assertItemsAccess` for `read`, all-or-nothing for the batch. An unshared or unknown id is a 403.
+  - `getFavoritedItems` and the favorites usage metric filter with `itemAccessWhere(userId, 'read')`, a new export of `permission-actions.ts` (owner, or a live grant, and workspace membership) that `assertItemsAccess` now uses too. A revoked share drops off the list.
+  - `addFavorite` checks before inserting; `removeFavorite` deletes every row for the user; the usage metric counts items, not rows.
+  - The route parses inside the `try`: bad input is a 400.
+  - **Tests:** `favorite-actions.test.ts` (16, live DB); `favorites.spec.ts` (13), with a second seeded user who owns an unshared, a shared and a revoked item.
+
+### 28. Form and search decoders mangle typed text
+
+*Code debt · Impact 3 · Risk 2 · Effort 1 → **25** · est. 0.5 day · source: found 23 Oct during the post-pull E2E pass*
+
+- **Evidence:** `parseSearchParams` and `parseFormData` (`app/utils/parsers.ts`) decoded the whole string with `decodeURIComponent` before `qs` split it. A space (`+`) arrived as a literal `+`, so every multi-word search matched only as a "Similar name", and an encoded `&` or `=` split a value. The form decoder also turned any numeric-looking text into a number (`"007"`, `"1e3"`, `"2024"`) and `"true"`/`"null"` into values, so renaming a file to "2024" or searching for "true" failed `z.string()`. Both parsers threw a plain error on a schema mismatch, which routes answered as 500.
+- **Status 2026-10-23: resolved** (`65fe46b`).
+  - Both decoders hand decoding to `qs` (its `defaultDecoder`, once per key and value). A value becomes a number only when it writes back as the same text, so `"007"` and `"1.50"` stay strings.
+  - `toUserText(...)` (`app/utils/converters.ts`) wraps 20 free-text fields in `api.schemas.ts`, turning a decoded number or boolean back into the text the user typed.
+  - Schema and parse failures throw `INVALID_INPUT`, which `toErrorInfo` maps to 400. The rule (parse inside the handler's `try`; wrap free text in `toUserText`) is in CLAUDE.md.
+  - **Tests:** `parsers.test.ts`, 13 → 39.
+
 ## Changes since the audit
 
 These commits touched a register item, oldest first. Commits that don't touch any register item are left out, such as page size, the rename dialog, the search `ZodError`, and the Vite typegen watch.
@@ -530,6 +570,11 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-08 | `1a8102a` | 26, 13 | Every access check counts only live grants (not soft-deleted, not expired), including the `accessibleBy` listing filter. Confirmed first in a rolled-back transaction; 14 new tests, 8 of which fail on the old code. |
 | 2026-10-09 | `df68279` | 21, 13 | The embedding model runs in a dedicated worker, and a Web Lock lets one tab drain the backfill. Measured in Chrome: main-thread blocking while embedding went from 1,279 ms to 0 ms. |
 | 2026-10-09 | `57f499c` | 24 | Server dependencies bundled into the server build (1,697 files loaded on the first request → 38), and dotenvx replaced by `process.loadEnvFile`. First page after a fresh start: 4,055–15,119 ms → 761–1,724 ms. |
+| 2026-10-10 | `65f3891` | 4 | Vinktar error tracking and product analytics on server and browser; off under Vitest. |
+| 2026-10-23 | `65fe46b` | 28, 13 | Form and search values decoded once by `qs`; numbers only on an exact round-trip; `toUserText` on 20 free-text fields; bad input is a 400. 26 new parser tests. |
+| 2026-10-23 | `6522ba0` | 27, 13 | Favoriting and the Favorites list need read access (`itemAccessWhere`); duplicate rows no longer stack or survive Unfavorite; parse inside the `try`. 16 new DB tests and the e2e seed for a second user. |
+| 2026-10-23 | `4004b9d` | 21 | The backfill status rendered "unavailable" on the server and "available" in the browser; the hydration mismatch discarded the search view's server HTML. Now `useSyncExternalStore` with a `false` server snapshot. |
+| 2026-10-23 | `a581626`..`b83faa1` | 20, 13 | E2E on one worker with traces kept on failure; navigation, search, pinned, favorites and thumbnail specs brought in line with the UI; stage 3 asserted at 512×512. 51 passed, 1 skipped locally. |
 
 ## Phased remediation plan
 
@@ -597,6 +642,7 @@ New items from the 8 Oct re-scan, in the order to do them:
 5. **The three open decisions (item 22).** These are decisions rather than code. Item 18's server-side charge settles one of them.
 6. ~~**Embedding backfill in a worker, one tab (item 21, 1–2 days)**~~ **done 9 Oct, measured: 1,279 → 0 ms of main-thread blocking** and ~~**cold first load (item 24, 1–3 days)**~~ **done 9 Oct: first page 4–15 s → ~1 s, by bundling the server dependencies.**
 7. ~~**`hasItemPermission` and revoked grants (item 26, 0.5 day).**~~ **Done 8 Oct**: confirmed, then every access check filtered to live grants.
+8. ~~**Favorites access and the text decoders (items 27, 28).**~~ **Found and done 23 Oct** in the post-pull E2E pass. Item 20 is still next: the suite is now green locally on one worker, so the CI job is the only step left, plus deciding how the E2E bucket should outlive a run.
 
 ---
 
