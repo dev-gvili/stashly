@@ -9,6 +9,7 @@
  *
  * @see app/hooks/useEmbeddingBackfill.ts
  */
+import { useSyncExternalStore } from 'react'
 import { Badge } from '@/ui/badge'
 import { Button } from '@/ui/button'
 import { InfoIcon, LoaderIcon } from '@/components/icons'
@@ -57,6 +58,11 @@ function phaseTone(phase: BackfillPhase): string {
   return 'text-foreground'
 }
 
+/** WebGPU support can't change during a page's life, so nothing to subscribe to. */
+function subscribeNever(): () => void {
+  return () => {}
+}
+
 export interface EmbeddingBackfillStatusProps {
   /** Chunks still lacking a vector, from `getSearchIndexStats`. */
   pendingChunks: number
@@ -73,7 +79,11 @@ export function EmbeddingBackfillStatus({
   const state = useEmbeddingBackfillState()
   const retry = useRetryEmbeddingBackfill()
   const drainAll = useDrainEmbeddingBacklog()
-  const webgpu = hasWebGpu()
+  // `navigator.gpu` doesn't exist on the server, so reading it during render
+  // made SSR say "unavailable" and the client "available" — a hydration
+  // mismatch that threw away the server HTML of the whole search view. The
+  // server snapshot is also what hydration renders; the real value follows.
+  const webgpu = useSyncExternalStore(subscribeNever, hasWebGpu, () => false)
   const active = isBackfillActive(state.phase)
   const busy = BUSY_PHASES.has(state.phase)
 
