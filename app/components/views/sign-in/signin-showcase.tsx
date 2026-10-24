@@ -9,8 +9,8 @@ export interface SignInShowcaseProps extends React.ComponentProps<'section'> {
 
 /** Right-hand panel: dot grid + primary glow, fanned previews, a live-looking search hit. */
 export function SignInShowcase({
-  headline = 'Search what’s inside, not what it’s called.',
-  description = 'Transcripts, captions and OCR — processed right in your browser.',
+  headline = 'A stash that knows what’s inside.',
+  description = 'For your files or your whole team’s — every doc, recording and image, understood and shared in one place.',
   className,
   ...props
 }: SignInShowcaseProps) {
