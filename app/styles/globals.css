@@ -493,6 +493,40 @@
   }
 }
 
+/* ── sign-in showcase: dusk landscape ──
+   Fixed values on the primary hue (≈277), not theme variables, so the drawn
+   "photo" looks the same in every colour mode. */
+@theme {
+  --color-dusk-1: oklch(26% 0.11 277);
+  --color-dusk-2: oklch(54.5% 0.158 277);
+  --color-dusk-3: oklch(86% 0.06 277);
+  --color-ridge-back: oklch(38% 0.13 277);
+  --color-ridge-front: oklch(20% 0.07 277);
+}
+
+/* soft primary glow from the top centre of a file-preview area */
+@utility bg-preview-glow {
+  background-image: radial-gradient(
+    ellipse 80% 70% at 50% 0%,
+    oklch(from var(--primary) l c h / 0.3) 0%,
+    transparent 70%
+  );
+}
+
+@utility clip-ridge-back {
+  clip-path: polygon(
+    0% 45%, 12% 25%, 22% 40%, 36% 8%, 48% 35%, 58% 22%,
+    70% 48%, 82% 18%, 92% 38%, 100% 28%, 100% 100%, 0% 100%
+  );
+}
+
+@utility clip-ridge-front {
+  clip-path: polygon(
+    0% 30%, 10% 55%, 24% 20%, 34% 45%, 46% 10%, 60% 50%,
+    72% 32%, 84% 60%, 100% 25%, 100% 100%, 0% 100%
+  );
+}
+
 /* ── Markdown reader (MarkdownStage) ──────────────────────────────────────
    Styles the react-markdown (remark-gfm) output rendered into `.markdown-stage`;
    those nodes are outside Tailwind's reach, so they're styled here against

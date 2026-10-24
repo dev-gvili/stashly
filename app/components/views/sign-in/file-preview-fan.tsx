@@ -15,7 +15,7 @@ const DEFAULT_ITEMS: FanItem[] = [
 ]
 
 // Left / centre / right poses — literal classes so Tailwind compiles them.
-const POSES = ['-rotate-9 translate-y-4 z-10', 'z-20', 'rotate-9 translate-y-4 z-10'] as const
+const POSES = ['-rotate-9 translate-y-4.5 z-10', 'z-20', 'rotate-9 translate-y-4.5 z-10'] as const
 
 export interface FilePreviewFanProps extends React.ComponentProps<'ul'> {
   items?: FanItem[]
@@ -26,19 +26,12 @@ export function FilePreviewFan({ items = DEFAULT_ITEMS, className, ...props }: F
   return (
     <ul
       aria-label="Recently stashed files"
-      className={cn('relative flex h-52 items-start justify-center', className)}
+      className={cn('relative flex h-59 items-start justify-center', className)}
       {...props}
     >
       {items.slice(0, 3).map((item, i) => (
-        <li
-          key={item.id}
-          aria-label={item.label}
-          className={cn(
-            'relative -mx-4 h-46 w-40 overflow-hidden rounded-xl border border-border shadow-2xl',
-            POSES[i]
-          )}
-        >
-          <FilePreview kind={item.kind} withChart={item.withChart} />
+        <li key={item.id} aria-label={item.label} className={cn('relative -mx-4.5', POSES[i])}>
+          <FilePreview kind={item.kind} name={item.label} withChart={item.withChart} />
         </li>
       ))}
     </ul>
