@@ -2,7 +2,9 @@ import { betterAuth } from 'better-auth/minimal'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { prisma } from '@/services/db'
 import { customSession, openAPI } from 'better-auth/plugins'
+import { createAuthMiddleware } from 'better-auth/api'
 import { onboardNewUser } from './onboard'
+import { rememberAccount } from './remembered-account'
 import { track } from '@/services/vinktar'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Session, User } from '@/types/machine.types'
@@ -96,6 +98,22 @@ export const auth = betterAuth({
         },
       },
     },
+  },
+
+  hooks: {
+    // Remember who signed in, for the sign-in page's "Continue as …". OAuth
+    // callbacks are `/callback/:id`; `newSession` is only set when one succeeded.
+    after: createAuthMiddleware(async (ctx) => {
+      const user = ctx.context.newSession?.user
+      if (!user || !ctx.path.startsWith('/callback/')) return
+      const cookie = await rememberAccount({
+        name: user.name,
+        email: user.email,
+        image: user.image ?? null,
+        provider: ctx.params?.id,
+      })
+      if (cookie) ctx.setHeader('set-cookie', cookie)
+    }),
   },
 
   user: {
