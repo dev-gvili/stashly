@@ -165,6 +165,20 @@ describe('permanent delete only takes items from trash', () => {
     expect(await prisma.item.count({ where: { id: { in: [trashed, active] } } })).toBe(2)
     expect(calls).toEqual([])
   })
+
+  it('deletes a locked item, and its lock with it', async () => {
+    // LockedItem_itemId_fkey was RESTRICT: one lock anywhere in the subtree
+    // failed the delete with a foreign-key violation.
+    const folder = await makeItem('folder', null, 'locked-inside')
+    const file = await makeItem('file', folder, 'locked.pdf')
+    await prisma.lockedItem.create({ data: { id: uid('LockedItem'), itemId: file, lockedById: strangerId } })
+    interceptDeletes()
+
+    await deleteItems([folder], ownerId)
+
+    expect(await prisma.item.count({ where: { id: { in: [folder, file] } } })).toBe(0)
+    expect(await prisma.lockedItem.count({ where: { itemId: file } })).toBe(0)
+  })
 })
 
 describe('permanent delete removes stored objects', () => {
