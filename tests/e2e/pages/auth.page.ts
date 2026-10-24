@@ -8,18 +8,16 @@ export class AuthPage {
     await this.page.goto('/auth/sign-in')
   }
 
+  providerButton(name: 'GitHub' | 'Google' | 'Microsoft') {
+    return this.page.getByRole('button', { name, exact: true })
+  }
+
   async expectVisible() {
     await expect(
-      this.page.getByText('Welcome back', { exact: true })
+      this.page.getByRole('heading', { name: 'Welcome back' })
     ).toBeVisible()
-    await expect(
-      this.page.getByRole('button', { name: 'Login with Github' })
-    ).toBeVisible()
-    await expect(
-      this.page.getByRole('button', { name: 'Login with Google' })
-    ).toBeVisible()
-    await expect(
-      this.page.getByRole('button', { name: 'Login with Microsoft' })
-    ).toBeVisible()
+    await expect(this.providerButton('GitHub')).toBeVisible()
+    await expect(this.providerButton('Google')).toBeVisible()
+    await expect(this.providerButton('Microsoft')).toBeVisible()
   }
 }

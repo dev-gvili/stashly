@@ -1,15 +1,10 @@
 import { redirect } from 'react-router'
 import { auth } from '@/services/auth'
+import { getRememberedAccount } from '@/services/remembered-account'
 import type { Route } from './+types/sign-in'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card'
-import { cn } from '@/utils/styles'
-import { AuthButton } from '../../components/auth/button'
+import { authClient } from '@/.client/auth'
+import { SignInPage, ThemeModeSwitcher } from '@/components/views/sign-in'
+import { toUserInitial } from '@/utils/converters'
 
 export const meta: Route.MetaFunction = (props) => [
   { title: 'Stashly | sign-in' },
@@ -26,54 +21,41 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   if (session) {
     return redirect(`/${session.user.id}/stash`)
   }
-  return null
+  return { account: await getRememberedAccount(request) }
 }
 
-export default function SignIn() {
+export default function SignIn({ loaderData }: Route.ComponentProps) {
+  const { account } = loaderData
   return (
-    <div className={cn('flex flex-col gap-6')}>
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">Welcome back</CardTitle>
-          <CardDescription>Login with your Social account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6">
-            <div className="grid gap-4">
-              <AuthButton
-                provider="github"
-                className="w-full font-serif"
-                variant="outline"
-                size="default"
-              >
-                Login with Github
-              </AuthButton>
-              <AuthButton
-                provider="google"
-                className="w-full font-serif"
-                variant="outline"
-                size="default"
-              >
-                Login with Google
-              </AuthButton>
-              <AuthButton
-                provider="microsoft"
-                variant="outline"
-                className="w-full font-serif"
-              >
-                Login with Microsoft
-              </AuthButton>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      <div className="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-primary  ">
-        By clicking continue, you agree to our{' '}
-        {/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
-        <a href="#">Terms of Service</a> and{' '}
-        {/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
-        <a href="#">Privacy Policy</a>.
-      </div>
-    </div>
+    <>
+      <SignInPage
+        user={
+          account
+            ? {
+                name: account.name,
+                email: account.email,
+                initials: toUserInitial(account.name),
+                avatarSrc: account.image ?? undefined,
+              }
+            : undefined
+        }
+        termsHref="#"
+        privacyHref="#"
+        onQuickSignIn={
+          account
+            ? async () => {
+                await authClient.signIn.social({
+                  provider: account.provider,
+                  loginHint: account.email,
+                })
+              }
+            : undefined
+        }
+        onProviderSignIn={async (provider) => {
+          await authClient.signIn.social({ provider })
+        }}
+      />
+      <ThemeModeSwitcher className="fixed right-4 bottom-4 z-10" />
+    </>
   )
 }
