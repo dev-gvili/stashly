@@ -147,7 +147,7 @@ Defined in `tsconfig.json` under `compilerOptions.paths` — read it there. Note
 
 ### Integrations
 
-- **Auth**: `better-auth` in `app/.server/auth.ts`, OAuth via GitHub/Google/Microsoft
+- **Auth**: `better-auth` in `app/.server/auth.ts`, OAuth via GitHub/Google/Microsoft. Its `hooks.after` writes the `last-account` cookie on each `/callback/:id` (`app/.server/remembered-account.ts`), which the sign-in page reads for "Continue as …". It outlives sign-out by design and grants nothing: the card re-runs that provider's OAuth
 - **Search**: hybrid sparse (trigram) + dense (pgvector) retrieval fused with RRF (`app/.server/search-actions.ts`); passages live in `SearchChunk`. Deep dive: `docs/search.md`, `docs/semantic-search.md`
 - **AI features**: all inference runs **client-side on WebGPU** (Hugging Face transformers, ONNX Runtime) — query/chunk embeddings, PDF OCR, saliency crops, Whisper. Everything funnels through the priority queue in `app/workers/ai-queue.ts`
 - **Payments**: Stripe, webhooks at `/api/stripe`
