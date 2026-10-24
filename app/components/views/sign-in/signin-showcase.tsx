@@ -26,13 +26,13 @@ export function SignInShowcase({
       <div aria-hidden="true" className="bg-dots absolute inset-0 mask-radial-from-25% mask-radial-to-72%" />
       <div
         aria-hidden="true"
-        className="absolute top-8 size-140 rounded-full bg-radial from-primary/40 to-transparent to-62% opacity-55 blur-3xl"
+        className="absolute top-8 size-140 bg-radial from-primary/40 to-transparent to-62% opacity-55 blur-3xl"
       />
       <FilePreviewFan />
       <SearchResultPreview />
       <div className="relative flex max-w-105 flex-col gap-2 text-center">
-        <p className="font-sans text-xl font-semibold tracking-tight text-balance text-foreground">{headline}</p>
-        <p className="font-sans text-sm leading-normal text-pretty text-muted-foreground">{description}</p>
+        <p className="text-xl font-semibold tracking-tight text-balance text-foreground">{headline}</p>
+        <p className="text-sm leading-normal text-pretty text-muted-foreground">{description}</p>
       </div>
     </section>
   )

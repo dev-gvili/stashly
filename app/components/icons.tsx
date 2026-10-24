@@ -3093,7 +3093,7 @@ const FolderFillIcon = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       d="M2 6.95c0-.883 0-1.324.07-1.692A4 4 0 0 1 5.257 2.07C5.626 2 6.068 2 6.95 2c.386 0 .58 0 .766.017a4 4 0 0 1 2.18.904c.144.119.28.255.554.529L11 4c.816.816 1.224 1.224 1.712 1.495a4 4 0 0 0 .848.352C14.098 6 14.675 6 15.828 6h.374c2.632 0 3.949 0 4.804.77q.119.105.224.224c.77.855.77 2.172.77 4.804V14c0 3.771 0 5.657-1.172 6.828S17.771 22 14 22h-4c-3.771 0-5.657 0-6.828-1.172S2 17.771 2 14z"
-      />
+    />
     <path
       opacity={0.5}
       fill="currentColor"
@@ -4181,7 +4181,7 @@ const InboxSentFillIcon = (props: SVGProps<SVGSVGElement>) => (
       d="M12.53 5.97a.75.75 0 0 0-1.06 0l-3.3 3.3a.75.75 0 1 0 1.06 1.06l2.02-2.02v8.187c-.534-.008-.865-.042-1.166-.18-.397-.183-.692-.527-1.281-1.214l-.606-.706c-.589-.687-.883-1.031-1.281-1.214S6.066 13 5.16 13H2c.007 4.055.107 6.179 1.465 7.535C4.929 22 7.286 22 12 22s7.072 0 8.536-1.465C21.893 19.179 21.993 17.056 22 13h-3.16c-.905 0-1.358 0-1.755.183-.398.183-.693.527-1.282 1.214l-.605.706c-.59.687-.884 1.031-1.282 1.214-.3.138-.632.172-1.166.18V8.311l2.02 2.02a.75.75 0 1 0 1.06-1.061z"
     />
   </svg>
-);
+)
 export { InboxSentFillIcon }
 
 const MessageFillIcon = (props: SVGProps<SVGSVGElement>) => (
@@ -4209,8 +4209,8 @@ const MessageFillIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {MessageFillIcon};
+)
+export { MessageFillIcon }
 
 const NotificationFullFillIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -4221,7 +4221,7 @@ const NotificationFullFillIcon = (props: SVGProps<SVGSVGElement>) => (
     viewBox=" 0 0 24 24"
     {...props}
   >
-     <path
+    <path
       fill="currentColor"
       d="M22 12c0 4.714 0 7.071-1.465 8.535C19.072 22 16.714 22 12 22s-7.071 0-8.536-1.465C2 19.072 2 16.714 2 12s0-7.071 1.464-8.536C4.93 2 7.286 2 12 2s7.071 0 8.535 1.464C22 4.93 22 7.286 22 12"
       opacity={0.5}
@@ -4231,8 +4231,8 @@ const NotificationFullFillIcon = (props: SVGProps<SVGSVGElement>) => (
       d="M7 16.75a.75.75 0 0 0 0 1.5h6a.75.75 0 0 0 0-1.5zM7 13.25a.75.75 0 0 0 0 1.5h9a.75.75 0 0 0 0-1.5zM22 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0"
     />
   </svg>
-);
-export {NotificationFullFillIcon};
+)
+export { NotificationFullFillIcon }
 
 const NotificationEmptyFillIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -4255,8 +4255,8 @@ const NotificationEmptyFillIcon = (props: SVGProps<SVGSVGElement>) => (
       opacity={0.5}
     />
   </svg>
-);
-export {NotificationEmptyFillIcon};
+)
+export { NotificationEmptyFillIcon }
 
 const SymbleOutlineFillIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -4279,8 +4279,8 @@ const SymbleOutlineFillIcon = (props: SVGProps<SVGSVGElement>) => (
       d="M22 13v-2c0-3.771 0-5.657-1.172-6.828-.974-.975-3.192-1.139-5.828-1.166v17.988c2.636-.027 4.854-.191 5.828-1.166C22 18.657 22 16.771 22 13M9.263 13.298a.75.75 0 0 1 .44.965l-1.5 4a.75.75 0 1 1-1.405-.526l1.5-4a.75.75 0 0 1 .965-.44M6.53 13.47a.75.75 0 0 1 0 1.06l-.47.47.47.47a.75.75 0 1 1-1.06 1.06l-1-1a.75.75 0 0 1 0-1.06l1-1a.75.75 0 0 1 1.06 0M9.97 15.47a.75.75 0 0 1 1.06 0l1 1a.75.75 0 0 1 0 1.06l-1 1a.75.75 0 1 1-1.06-1.06l.47-.47-.47-.47a.75.75 0 0 1 0-1.06"
     />
   </svg>
-);
-export {SymbleOutlineFillIcon};
+)
+export { SymbleOutlineFillIcon }
 
 const RestoreFillIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -4306,8 +4306,8 @@ const RestoreFillIcon = (props: SVGProps<SVGSVGElement>) => (
       d="M9.446 3.25c-1.133 0-2.058 0-2.79.098-.763.103-1.425.325-1.954.854s-.751 1.19-.854 1.955c-.098.73-.098 1.656-.098 2.79v6.059c-.465.014-.76.057-1 .195a1.5 1.5 0 0 0-.549.549C2 16.098 2 16.565 2 17.5s0 1.402.201 1.75a1.5 1.5 0 0 0 .549.549C3.098 20 3.565 20 4.5 20s1.402 0 1.75-.201a1.5 1.5 0 0 0 .549-.549C7 18.902 7 18.435 7 17.5s0-1.402-.201-1.75a1.5 1.5 0 0 0-.549-.549c-.24-.138-.535-.181-1-.195V9c0-1.2.002-2.024.085-2.643.08-.598.224-.89.428-1.094s.496-.348 1.094-.428C7.476 4.752 8.3 4.75 9.5 4.75h5c1.2 0 2.024.002 2.643.085.598.08.89.224 1.094.428s.348.496.428 1.094c.083.619.085 1.443.085 2.643v1.19l-.72-.72a.75.75 0 1 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l2-2a.75.75 0 1 0-1.06-1.06l-.72.72V8.945c0-1.133 0-2.058-.098-2.79-.103-.763-.325-1.425-.854-1.954s-1.19-.751-1.955-.854c-.73-.098-1.656-.098-2.79-.098z"
     />
   </svg>
-);
-export {RestoreFillIcon};
+)
+export { RestoreFillIcon }
 
 // Brand marks for the OAuth buttons, drawn in the set's solid style: squircle corners, full + 50% tones.
 const MicrosoftFillIcon = (props: SVGProps<SVGSVGElement>) => (
@@ -4377,3 +4377,30 @@ const GithubFillIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 export { GithubFillIcon }
+
+const AIFillIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M7.453 5.713c.375-.95 1.72-.95 2.094 0l1.162 2.944c.114.29.344.52.634.634l2.944 1.162c.95.375.95 1.72 0 2.094l-2.944 1.162c-.29.114-.52.344-.634.634l-1.162 2.944c-.375.95-1.72.95-2.094 0L6.29 14.343a1.13 1.13 0 0 0-.634-.634l-2.944-1.162c-.95-.375-.95-1.72 0-2.094L5.657 9.29c.29-.114.52-.344.634-.634z"
+    />
+    <path
+      fill="currentColor"
+      d="M16.925 13.392a.619.619 0 0 1 1.15 0l.901 2.283c.063.16.19.286.349.349l2.283.9a.619.619 0 0 1 0 1.152l-2.283.9a.62.62 0 0 0-.349.349l-.9 2.283a.619.619 0 0 1-1.152 0l-.9-2.283a.62.62 0 0 0-.349-.349l-2.283-.9a.619.619 0 0 1 0-1.152l2.283-.9a.62.62 0 0 0 .349-.349z"
+      opacity={0.7}
+    />
+    <path
+      fill="currentColor"
+      d="M17.04 3.213a.495.495 0 0 1 .92 0l.72 1.827c.051.128.152.229.28.279l1.827.72a.495.495 0 0 1 0 .921l-1.827.72a.5.5 0 0 0-.28.28l-.72 1.827a.495.495 0 0 1-.92 0l-.721-1.827a.5.5 0 0 0-.279-.28l-1.827-.72a.495.495 0 0 1 0-.92l1.827-.721a.5.5 0 0 0 .279-.279z"
+      opacity={0.5}
+    />
+  </svg>
+)
+export { AIFillIcon }

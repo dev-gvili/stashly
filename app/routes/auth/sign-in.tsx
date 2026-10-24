@@ -3,7 +3,7 @@ import { auth } from '@/services/auth'
 import { getRememberedAccount } from '@/services/remembered-account'
 import type { Route } from './+types/sign-in'
 import { authClient } from '@/.client/auth'
-import { SignInPage, ThemeModeSwitcher } from '@/components/views/sign-in'
+import { SignInPage } from '@/components/views/sign-in'
 import { toUserInitial } from '@/utils/converters'
 
 export const meta: Route.MetaFunction = (props) => [
@@ -27,8 +27,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 export default function SignIn({ loaderData }: Route.ComponentProps) {
   const { account } = loaderData
   return (
-    <>
-      <SignInPage
+    <SignInPage
         user={
           account
             ? {
@@ -55,7 +54,5 @@ export default function SignIn({ loaderData }: Route.ComponentProps) {
           await authClient.signIn.social({ provider })
         }}
       />
-      <ThemeModeSwitcher className="fixed right-4 bottom-4 z-10" />
-    </>
   )
 }

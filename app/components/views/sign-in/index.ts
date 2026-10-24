@@ -7,4 +7,3 @@ export { QuickSignInButton, type QuickSignInButtonProps } from './quick-sign-in-
 export { SearchResultPreview, type SearchResultPreviewProps } from './search-result-preview'
 export { SignInPage, type RememberedUser, type SignInPageProps } from './sign-in-page'
 export { SignInShowcase, type SignInShowcaseProps } from './signin-showcase'
-export { ThemeModeSwitcher, type ThemeModeSwitcherProps } from './theme-mode-switcher'

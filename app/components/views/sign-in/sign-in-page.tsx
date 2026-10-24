@@ -50,8 +50,8 @@ export function SignInPage({
         <div className="flex flex-1 items-center justify-center py-12">
           <div className="flex w-full max-w-90 flex-col gap-6">
             <header className="flex flex-col gap-2">
-              <h1 className="font-sans text-3xl font-semibold tracking-tight">Welcome back</h1>
-              <p className="font-sans text-base leading-normal text-muted-foreground">Sign in to your stash.</p>
+              <h1 className="text-3xl font-semibold tracking-tight">Welcome back</h1>
+              <p className="text-base leading-normal text-muted-foreground">Sign in to your stash.</p>
             </header>
 
             {user ? (
@@ -66,7 +66,7 @@ export function SignInPage({
                 />
                 <div className="flex items-center gap-3">
                   <Separator className="flex-1 bg-sidebar-border" />
-                  <span className="font-sans text-xs text-muted-foreground/70">or</span>
+                  <span className="text-xs text-muted-foreground/70">or</span>
                   <Separator className="flex-1 bg-sidebar-border" />
                 </div>
               </>
@@ -86,10 +86,10 @@ export function SignInPage({
             ) : null}
           </div>
         </div>
-        <p className="font-sans text-xs text-muted-foreground/70">
+        <p className="text-xs text-muted-foreground/70">
           By continuing you agree to the{' '}
-          <a href={termsHref} className="font-sans text-primary hover:underline">Terms</a> and{' '}
-          <a href={privacyHref} className="font-sans text-primary hover:underline">Privacy Policy</a>.
+          <a href={termsHref} className="text-primary hover:underline">Terms</a> and{' '}
+          <a href={privacyHref} className="text-primary hover:underline">Privacy Policy</a>.
         </p>
       </div>
 

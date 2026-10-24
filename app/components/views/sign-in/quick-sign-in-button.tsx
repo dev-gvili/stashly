@@ -33,17 +33,17 @@ export function QuickSignInButton({
       )}
       {...props}
     >
-      <Avatar className="size-8.5">
+      <Avatar className="size-8.5 rounded-md">
         {avatarSrc ? <AvatarImage src={avatarSrc} alt="" /> : null}
-        <AvatarFallback className="bg-primary/15 font-sans text-xs font-semibold text-primary">
+        <AvatarFallback className="rounded-md bg-primary/15 text-xs font-semibold text-primary">
           {initials}
         </AvatarFallback>
       </Avatar>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="font-sans text-sm font-medium text-foreground">
+        <span className="text-sm font-medium text-foreground">
           {pending ? 'Signing in…' : 'Continue as ' + name}
         </span>
-        <span className="truncate font-mono text-xs font-normal text-muted-foreground">{email}</span>
+        <span className="truncate text-xs font-normal text-muted-foreground">{email}</span>
       </span>
       <ChevronRightIcon className="size-4 text-muted-foreground" />
     </Button>

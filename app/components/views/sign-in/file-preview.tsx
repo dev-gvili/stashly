@@ -54,7 +54,7 @@ function AudioPreview() {
 function ImagePreview() {
   return (
     <div className="absolute inset-0 bg-linear-to-b from-orange-200 via-orange-300 to-orange-400">
-      <div className="absolute top-10 right-8 size-6 rounded-full bg-amber-50 shadow-lg shadow-amber-200" />
+      <div className="absolute top-10 right-8 size-6 rounded-sm bg-amber-50 shadow-lg shadow-amber-200" />
       <div className="absolute inset-x-0 bottom-0 h-7/12 bg-orange-800" />
       <div className="absolute inset-x-0 bottom-0 h-5/12 bg-orange-900" />
       <div className="absolute inset-x-0 bottom-0 h-1/4 bg-stone-800" />

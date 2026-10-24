@@ -29,7 +29,7 @@ export function MagicLinkForm({
   return (
     <form noValidate onSubmit={onSubmit} className={cn('flex flex-col', className)} {...props}>
       <Field data-invalid={!!error} className="gap-2">
-        <FieldLabel htmlFor={id} className="font-sans text-xs font-normal text-muted-foreground">
+        <FieldLabel htmlFor={id} className="text-xs font-normal text-muted-foreground">
           Email
         </FieldLabel>
         <div className="flex gap-2">
@@ -42,19 +42,19 @@ export function MagicLinkForm({
             aria-invalid={!!error}
             aria-describedby={error ? errorId : undefined}
             onChange={(event) => onEmailChange(event.target.value)}
-            className="h-10.5 rounded-lg border-sidebar-border bg-card px-3.5 font-sans text-sm shadow-none placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15 dark:bg-card"
+            className="h-10.5 rounded-lg border-sidebar-border bg-card px-3.5 text-sm shadow-none placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15 dark:bg-card"
           />
-          <Button type="submit" aria-busy={pending} className="h-10.5 rounded-lg px-4 font-sans">
-            <span className="font-sans">{pending ? 'Sending…' : 'Send link'}</span>
+          <Button type="submit" aria-busy={pending} className="h-10.5 rounded-lg px-4">
+            {pending ? 'Sending…' : 'Send link'}
           </Button>
         </div>
         {error ? (
-          <FieldError id={errorId} className="font-sans text-xs">
+          <FieldError id={errorId} className="text-xs">
             {error}
           </FieldError>
         ) : null}
         {sentTo && !error ? (
-          <FieldDescription className="font-sans text-xs text-primary">
+          <FieldDescription className="text-xs text-primary">
             {'Check your inbox — we sent a link to ' + sentTo}
           </FieldDescription>
         ) : null}

@@ -1,4 +1,4 @@
-import { Pdf2Icon, SemanticSearchIcon } from '@/components/icons'
+import { AIFillIcon, Pdf2Icon } from '@/components/icons'
 import { cn } from '@/utils/styles'
 
 export interface SearchResultPreviewProps extends React.ComponentProps<'figure'> {
@@ -30,19 +30,19 @@ export function SearchResultPreview({
       {...props}
     >
       <div className="flex h-10 items-center gap-2.5 px-3">
-        <SemanticSearchIcon className="size-4 shrink-0 text-primary" />
-        <span className="font-sans text-sm text-foreground">{query}</span>
+        <AIFillIcon className="size-4 shrink-0 text-primary" />
+        <span className="text-sm text-foreground">{query}</span>
       </div>
       <figcaption className="flex items-center gap-3 rounded-lg bg-secondary px-3 py-2.5">
         <Pdf2Icon className="size-4.5 shrink-0 text-foreground/85" />
         <div className="flex min-w-0 flex-1 flex-col gap-0.75">
-          <span className="font-sans text-sm font-medium text-foreground">
-            <span className="font-sans">{fileName}</span>{' '}
-            <span className="font-mono text-xs font-normal text-muted-foreground">{'· ' + location}</span>
+          <span className="text-sm font-medium text-foreground">
+            {fileName}{' '}
+            <span className="text-xs font-normal text-muted-foreground">{'· ' + location}</span>
           </span>
-          <span className="font-sans text-xs leading-relaxed text-muted-foreground">
+          <span className="text-xs leading-relaxed text-muted-foreground">
             {before}
-            <mark className="rounded-xs bg-primary/15 px-0.75 font-sans text-foreground">{match}</mark>
+            <mark className="rounded-xs bg-primary/15 px-0.75 text-foreground">{match}</mark>
             {after}
           </span>
         </div>

@@ -34,10 +34,10 @@ export function OAuthProviderButtons({
             aria-busy={isPending}
             data-dimmed={dimmed}
             onClick={() => onSelect(id)}
-            className="h-10.5 gap-2 rounded-lg border-sidebar-border! bg-transparent! px-2 font-sans text-sm shadow-none hover:bg-secondary! data-[dimmed=true]:opacity-40"
+            className="h-10.5 gap-2 rounded-lg border-sidebar-border! bg-transparent! px-2 text-sm shadow-none hover:bg-secondary! data-[dimmed=true]:opacity-40"
           >
             <Icon className="size-4" />
-            <span className="font-sans">{isPending ? '…' : label}</span>
+            {isPending ? '…' : label}
             {isPending ? <span className="sr-only">{'Connecting to ' + label}</span> : null}
           </Button>
         )
