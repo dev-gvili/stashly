@@ -15,21 +15,14 @@ import {
   searchFolders,
   trashItem,
   trashItems,
-  upsertAudioFacet,
-  upsertImageFacet,
-  upsertMarkdownFacet,
-  upsertPdfFacet,
-  upsertVideoFacet,
 } from '@/services/item-actions'
 import {
   appendSearchPage,
-  chunkText,
   findReindexCandidates,
   findUnembeddedChunks,
   reindexTextItems,
+  saveMediaMetadata,
   setSearchChunkVectors,
-  upsertSearchChunks,
-  upsertSearchContent,
 } from '@/services/search-actions'
 import { toErrorInfo } from '@/utils/api.errors'
 import { toTrashRedirectUrl } from '@/utils/trash-urls'
@@ -335,184 +328,36 @@ export async function action({ request, params }: Route.ActionArgs) {
         return { success: false, error: err.message }
       }
     }
+    // The three index writes answer a refused request with its real status
+    // (403), not a 200 carrying `{ success: false }`. `toErrorInfo`, not
+    // `.message`: an access refusal is a `DataWithResponseInit`.
     case 'save_media_metadata': {
       try {
-        const {
-          itemId,
-          imageWidth,
-          imageHeight,
-          horizontalResolution,
-          verticalResolution,
-          bitDepth,
-          cameraMake,
-          cameraModel,
-          iso,
-          fNumber,
-          exposureTime,
-          focalLength,
-          takenDateTime,
-          latitude,
-          longitude,
-          videoWidth,
-          videoHeight,
-          duration,
-          frameRate,
-          documentText,
-          documentPageCount,
-          pdfTitle,
-          pdfAuthor,
-          pdfSubject,
-          pdfKeywords,
-          pdfCreator,
-          pdfProducer,
-          pdfVersion,
-          pdfLanguage,
-          pdfIsEncrypted,
-          pdfHasFormFields,
-          pdfHasAnnotations,
-          pdfHasSignatures,
-          pdfPageWidth,
-          pdfPageHeight,
-          pdfDocCreatedAt,
-          pdfDocModifiedAt,
-          mdTitle,
-          mdAuthor,
-          mdDescription,
-          mdTags,
-          mdWordCount,
-          mdReadingTime,
-          mdHeadingCount,
-          mdLinkCount,
-          mdImageCount,
-          mdCodeBlockCount,
-          mdTaskCount,
-          mdHasFrontmatter,
-          mdDocCreatedAt,
-          mdDocModifiedAt,
-          ...audioData
-        } = parsedData
-        if (imageWidth != null || imageHeight != null) {
-          await upsertImageFacet(itemId, {
-            width: imageWidth,
-            height: imageHeight,
-            horizontalResolution,
-            verticalResolution,
-            bitDepth,
-            cameraMake,
-            cameraModel,
-            iso,
-            fNumber,
-            exposureTime,
-            focalLength,
-            takenDateTime,
-            latitude,
-            longitude,
-          })
-        } else if (videoWidth || videoHeight) {
-          await upsertVideoFacet(itemId, {
-            width: videoWidth,
-            height: videoHeight,
-            duration,
-            frameRate,
-          })
-        } else if (
-          documentPageCount != null ||
-          pdfVersion != null ||
-          pdfIsEncrypted != null
-        ) {
-          await upsertPdfFacet(itemId, {
-            pageCount: documentPageCount,
-            title: pdfTitle,
-            author: pdfAuthor,
-            subject: pdfSubject,
-            keywords: pdfKeywords,
-            creator: pdfCreator,
-            producer: pdfProducer,
-            pdfVersion,
-            language: pdfLanguage,
-            isEncrypted: pdfIsEncrypted,
-            hasFormFields: pdfHasFormFields,
-            hasAnnotations: pdfHasAnnotations,
-            hasSignatures: pdfHasSignatures,
-            pageWidth: pdfPageWidth,
-            pageHeight: pdfPageHeight,
-            docCreatedAt: pdfDocCreatedAt,
-            docModifiedAt: pdfDocModifiedAt,
-          })
-        } else if (
-          mdWordCount != null ||
-          mdHeadingCount != null ||
-          mdHasFrontmatter != null
-        ) {
-          await upsertMarkdownFacet(itemId, {
-            title: mdTitle,
-            author: mdAuthor,
-            description: mdDescription,
-            tags: mdTags,
-            wordCount: mdWordCount,
-            readingTime: mdReadingTime,
-            headingCount: mdHeadingCount,
-            linkCount: mdLinkCount,
-            imageCount: mdImageCount,
-            codeBlockCount: mdCodeBlockCount,
-            taskCount: mdTaskCount,
-            hasFrontmatter: mdHasFrontmatter,
-            docCreatedAt: mdDocCreatedAt,
-            docModifiedAt: mdDocModifiedAt,
-          })
-        } else if (
-          // Only when the extractor produced actual audio metadata — a bare
-          // `else` here used to stamp an all-null Audio facet onto every
-          // non-media file (text, code, …), which then routed them to the
-          // audio stage in detectMediaKind.
-          parsedData.audioDuration != null ||
-          parsedData.audioBitrate != null ||
-          parsedData.audioTitle != null
-        ) {
-          console.log('Audio Parsed Data: ', audioData)
-          await upsertAudioFacet(itemId, {
-            duration: parsedData.audioDuration,
-            bitrate: parsedData.audioBitrate,
-            title: parsedData.audioTitle,
-            artist: parsedData.audioArtist,
-            album: parsedData.audioAlbum,
-            albumArtist: parsedData.audioAlbumArtist,
-            composer: parsedData.audioComposer,
-            genre: parsedData.audioGenre,
-            copyright: parsedData.audioCopyright,
-            year: parsedData.audioYear,
-            track: parsedData.audioTrack,
-            trackCount: parsedData.audioTrackCount,
-            disc: parsedData.audioDisc,
-            discCount: parsedData.audioDiscCount,
-          })
-        }
-        // Chunked indexing: store full content (document-level fallback) and
-        // per-passage chunks. Server is authoritative for chunk boundaries —
-        // client only sees the resulting `{id, content}` pairs to embed.
-        let chunks: { id: string; ord: number; content: string }[] = []
-        if (documentText) {
-          await upsertSearchContent(itemId, documentText)
-          const split = chunkText(documentText)
-          chunks = await upsertSearchChunks(itemId, split)
-        }
+        const { intent, ...input } = parsedData
+        const chunks = await saveMediaMetadata(user.id, input)
         return data({ success: true, chunks })
       } catch (e) {
-        const err = e as { message?: string }
-        return { success: false, error: err.message }
+        const err = toErrorInfo(e)
+        return data(
+          { success: false, error: err.message },
+          { status: err.status ?? 500 }
+        )
       }
     }
     case 'save_ocr_page': {
       try {
-        const chunks = await appendSearchPage({
+        const chunks = await appendSearchPage(user.id, {
           itemId: parsedData.itemId,
           pageNum: parsedData.pageNum,
           text: parsedData.text,
         })
         return data({ success: true, chunks })
       } catch (e) {
-        const err = e as { message?: string }
-        return { success: false, error: err.message }
+        const err = toErrorInfo(e)
+        return data(
+          { success: false, error: err.message },
+          { status: err.status ?? 500 }
+        )
       }
     }
     case 'save_search_chunk_embeddings': {
@@ -523,11 +368,14 @@ export async function action({ request, params }: Route.ActionArgs) {
         if (!Array.isArray(parsed) || parsed.length === 0) {
           return data({ success: true, written: 0 })
         }
-        const written = await setSearchChunkVectors(parsed)
+        const written = await setSearchChunkVectors(user.id, parsed)
         return data({ success: true, written })
       } catch (e) {
-        const err = e as { message?: string }
-        return { success: false, error: err.message }
+        const err = toErrorInfo(e)
+        return data(
+          { success: false, error: err.message },
+          { status: err.status ?? 500 }
+        )
       }
     }
     case 'reindex_text': {

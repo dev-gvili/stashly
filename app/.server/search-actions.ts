@@ -7,7 +7,15 @@ import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma } from '@/prisma/client'
 import type { ItemForSearchEmbedding } from '@/utils/search-text'
 import { getObjectHead } from './s3'
-import { upsertMarkdownFacet } from './item-actions'
+import {
+  upsertAudioFacet,
+  upsertImageFacet,
+  upsertMarkdownFacet,
+  upsertPdfFacet,
+  upsertVideoFacet,
+} from './item-actions'
+import { assertItemAccess, assertItemsAccess } from './permission-actions'
+import type { MediaMetadataInput } from '@/types/api.types'
 import { isMarkdownName, parseMarkdownMetadata } from '@/utils/markdown'
 import {
   MAX_INDEXED_TEXT_CHARS,
@@ -91,6 +99,182 @@ export async function upsertSearchContent(itemId: string, content: string) {
 }
 
 /**
+ * Save what the browser extracted from an uploaded file: one media facet (the
+ * first kind the payload carries) and, when there is body text, the item's
+ * search content and chunks.
+ *
+ * Needs `write` on the item, checked once here rather than in each writer: the
+ * writers are shared with `reindexTextItems`, whose candidates are already the
+ * user's own. Before this check any signed-in user could rewrite another
+ * user's EXIF or index by item id (tech-debt item 32).
+ *
+ * @returns The created chunks, so the caller can embed them.
+ */
+export async function saveMediaMetadata(
+  userId: string,
+  input: MediaMetadataInput,
+): Promise<{ id: string; ord: number; content: string }[]> {
+  const {
+    itemId,
+    imageWidth,
+    imageHeight,
+    horizontalResolution,
+    verticalResolution,
+    bitDepth,
+    cameraMake,
+    cameraModel,
+    iso,
+    fNumber,
+    exposureTime,
+    focalLength,
+    takenDateTime,
+    latitude,
+    longitude,
+    videoWidth,
+    videoHeight,
+    duration,
+    frameRate,
+    documentText,
+    documentPageCount,
+    pdfTitle,
+    pdfAuthor,
+    pdfSubject,
+    pdfKeywords,
+    pdfCreator,
+    pdfProducer,
+    pdfVersion,
+    pdfLanguage,
+    pdfIsEncrypted,
+    pdfHasFormFields,
+    pdfHasAnnotations,
+    pdfHasSignatures,
+    pdfPageWidth,
+    pdfPageHeight,
+    pdfDocCreatedAt,
+    pdfDocModifiedAt,
+    mdTitle,
+    mdAuthor,
+    mdDescription,
+    mdTags,
+    mdWordCount,
+    mdReadingTime,
+    mdHeadingCount,
+    mdLinkCount,
+    mdImageCount,
+    mdCodeBlockCount,
+    mdTaskCount,
+    mdHasFrontmatter,
+    mdDocCreatedAt,
+    mdDocModifiedAt,
+    ...audioData
+  } = input
+  await assertItemAccess(userId, itemId, { role: 'write' })
+
+  if (imageWidth != null || imageHeight != null) {
+    await upsertImageFacet(itemId, {
+      width: imageWidth,
+      height: imageHeight,
+      horizontalResolution,
+      verticalResolution,
+      bitDepth,
+      cameraMake,
+      cameraModel,
+      iso,
+      fNumber,
+      exposureTime,
+      focalLength,
+      takenDateTime,
+      latitude,
+      longitude,
+    })
+  } else if (videoWidth || videoHeight) {
+    await upsertVideoFacet(itemId, {
+      width: videoWidth,
+      height: videoHeight,
+      duration,
+      frameRate,
+    })
+  } else if (
+    documentPageCount != null ||
+    pdfVersion != null ||
+    pdfIsEncrypted != null
+  ) {
+    await upsertPdfFacet(itemId, {
+      pageCount: documentPageCount,
+      title: pdfTitle,
+      author: pdfAuthor,
+      subject: pdfSubject,
+      keywords: pdfKeywords,
+      creator: pdfCreator,
+      producer: pdfProducer,
+      pdfVersion,
+      language: pdfLanguage,
+      isEncrypted: pdfIsEncrypted,
+      hasFormFields: pdfHasFormFields,
+      hasAnnotations: pdfHasAnnotations,
+      hasSignatures: pdfHasSignatures,
+      pageWidth: pdfPageWidth,
+      pageHeight: pdfPageHeight,
+      docCreatedAt: pdfDocCreatedAt,
+      docModifiedAt: pdfDocModifiedAt,
+    })
+  } else if (
+    mdWordCount != null ||
+    mdHeadingCount != null ||
+    mdHasFrontmatter != null
+  ) {
+    await upsertMarkdownFacet(itemId, {
+      title: mdTitle,
+      author: mdAuthor,
+      description: mdDescription,
+      tags: mdTags,
+      wordCount: mdWordCount,
+      readingTime: mdReadingTime,
+      headingCount: mdHeadingCount,
+      linkCount: mdLinkCount,
+      imageCount: mdImageCount,
+      codeBlockCount: mdCodeBlockCount,
+      taskCount: mdTaskCount,
+      hasFrontmatter: mdHasFrontmatter,
+      docCreatedAt: mdDocCreatedAt,
+      docModifiedAt: mdDocModifiedAt,
+    })
+  } else if (
+    // Only when the extractor produced actual audio metadata — a bare
+    // `else` here used to stamp an all-null Audio facet onto every
+    // non-media file (text, code, …), which then routed them to the
+    // audio stage in detectMediaKind.
+    audioData.audioDuration != null ||
+    audioData.audioBitrate != null ||
+    audioData.audioTitle != null
+  ) {
+    console.log('Audio Parsed Data: ', audioData)
+    await upsertAudioFacet(itemId, {
+      duration: audioData.audioDuration,
+      bitrate: audioData.audioBitrate,
+      title: audioData.audioTitle,
+      artist: audioData.audioArtist,
+      album: audioData.audioAlbum,
+      albumArtist: audioData.audioAlbumArtist,
+      composer: audioData.audioComposer,
+      genre: audioData.audioGenre,
+      copyright: audioData.audioCopyright,
+      year: audioData.audioYear,
+      track: audioData.audioTrack,
+      trackCount: audioData.audioTrackCount,
+      disc: audioData.audioDisc,
+      discCount: audioData.audioDiscCount,
+    })
+  }
+  // Chunked indexing: store full content (document-level fallback) and
+  // per-passage chunks. Server is authoritative for chunk boundaries —
+  // client only sees the resulting `{id, content}` pairs to embed.
+  if (!documentText) return []
+  await upsertSearchContent(itemId, documentText)
+  return upsertSearchChunks(itemId, chunkText(documentText))
+}
+
+/**
  * Append one OCR'd page to an item's search index, incrementally.
  *
  * OCR runs at roughly half a minute per page, so a 15-page document is ~8
@@ -111,17 +295,24 @@ export async function upsertSearchContent(itemId: string, content: string) {
  * OCR knows the page number for free, which is what a "jump to page 7" result
  * link would need.
  *
+ * Needs `write` on the item: without it any signed-in user holding an item id
+ * could append text to someone else's index (tech-debt item 32).
+ *
  * @returns The created chunks, so the caller can embed them immediately.
  *
  * @example
- * const chunks = await appendSearchPage({ itemId, pageNum: 3, text })
+ * const chunks = await appendSearchPage(userId, { itemId, pageNum: 3, text })
  */
-export async function appendSearchPage(params: {
-  itemId: string
-  pageNum: number
-  text: string
-}): Promise<{ id: string; ord: number; content: string }[]> {
+export async function appendSearchPage(
+  userId: string,
+  params: {
+    itemId: string
+    pageNum: number
+    text: string
+  },
+): Promise<{ id: string; ord: number; content: string }[]> {
   const { itemId, pageNum } = params
+  await assertItemAccess(userId, itemId, { role: 'write' })
   const text = params.text.trim()
   if (!text) return []
 
@@ -700,8 +891,13 @@ export async function upsertSearchChunks(
  *
  * Runs in a single transaction so partial writes don't leave the index
  * half-populated.
+ *
+ * Needs `write` on every item behind the chunk ids, checked once for the whole
+ * batch: a refused chunk refuses the batch, so nothing is written. An unknown
+ * chunk id has no item to check and updates no row.
  */
 export async function setSearchChunkVectors(
+  userId: string,
   entries: { chunkId: string; vector: number[] }[],
 ): Promise<number> {
   if (entries.length === 0) return 0
@@ -723,6 +919,17 @@ export async function setSearchChunkVectors(
     ids.push(chunkId)
     literals.push(`[${vector.join(',')}]`)
   }
+
+  const owners = await prisma.searchChunk.findMany({
+    where: { id: { in: ids } },
+    select: { itemId: true },
+    distinct: ['itemId'],
+  })
+  await assertItemsAccess(
+    userId,
+    owners.map((o) => o.itemId),
+    'write',
+  )
 
   return prisma.$executeRaw`
     UPDATE "SearchChunk" c
