@@ -14,7 +14,8 @@ import {
   thumbnailCreateSchema,
   thumbnailUpdateSchema,
 } from '@/schemas/api.schemas'
-import { auth } from '@/services/auth'
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
 import {
   createThumbnail,
   getThumbnailSource,
@@ -24,8 +25,13 @@ import {
 import { toErrorInfo } from '@/utils/api.errors'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
-import { data, redirect, type ShouldRevalidateFunction } from 'react-router'
+import { data, type ShouldRevalidateFunction } from 'react-router'
 import type { Route } from './+types/thumbnails'
+
+// Resolves the session once and forwards the cache cookie it refreshed, which
+// a bare `getSession` here would drop: an upload is a long run of API calls
+// with no page load in between (tech-debt item 35).
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
 
 /**
  * A presigned URL is fetched on demand and used immediately; nothing about a
@@ -44,11 +50,8 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   return defaultShouldRevalidate
 }
 
-export async function loader({ params, request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function loader({ params, request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const itemId = params.itemId
   if (!itemId) return data({ error: 'Not found' }, { status: 404 })
@@ -76,11 +79,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function action({ request, params, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
 
   try {
     if (request.method === 'POST') {

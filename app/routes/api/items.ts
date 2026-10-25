@@ -1,5 +1,6 @@
 import { itemsApiRouteInput } from '@/schemas/api.schemas'
-import { auth } from '@/services/auth'
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
 import {
   createFolder,
   createUploadedItem,
@@ -33,11 +34,13 @@ import { data, redirect } from 'react-router'
 import { z } from 'zod'
 import type { Route } from './+types/items'
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+// Resolves the session once and forwards the cache cookie it refreshed, which
+// a bare `getSession` here would drop: an upload is a long run of API calls
+// with no page load in between (tech-debt item 35).
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
+
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const user = session.user
   const url = new URL(request.url)
@@ -97,11 +100,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   return null
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function action({ request, params, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
   let { user } = session
 
   let parsedData = await parseFormData({ request, schema: itemsApiRouteInput })

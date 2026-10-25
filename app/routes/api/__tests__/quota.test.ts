@@ -31,7 +31,9 @@ vi.mock('@/services/quota-actions', () => ({
   onItemsCopied: vi.fn(async () => QUOTA),
 }))
 
+import { RouterContextProvider } from 'react-router'
 import * as quotaActions from '@/services/quota-actions'
+import { sessionContext } from '@/services/middleware/context'
 import { action } from '../quota'
 
 /** Every quota action that writes to the `Quota` row. */
@@ -44,6 +46,13 @@ const WRITERS = [
   'onItemsCopied',
 ] as const
 
+/** The context `authMiddleware` leaves for the route. */
+function sessionFor(userId: string) {
+  const context = new RouterContextProvider()
+  context.set(sessionContext, { user: { id: userId } } as never)
+  return context
+}
+
 function post(body: unknown) {
   return action({
     request: new Request('http://localhost/api/quota', {
@@ -52,7 +61,7 @@ function post(body: unknown) {
       body: JSON.stringify(body),
     }),
     params: {},
-    context: {},
+    context: sessionFor('usr_test'),
   } as never)
 }
 

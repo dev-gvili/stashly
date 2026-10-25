@@ -1,18 +1,21 @@
 import { quotaApiRouteInput, quotaApiRouteOutput } from '@/schemas/api.schemas'
-import { auth } from '@/services/auth'
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
 import {
   checkFreeQuota,
   findQuota,
   verifyFreeQuota,
 } from '@/services/quota-actions'
-import { data, redirect } from 'react-router'
+import { data } from 'react-router'
 import type { Route } from './+types/upload'
 
-export async function action({ request }: Route.ActionArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+// Resolves the session once and forwards the cache cookie it refreshed, which
+// a bare `getSession` here would drop: an upload is a long run of API calls
+// with no page load in between (tech-debt item 35).
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
+
+export async function action({ request, context }: Route.ActionArgs) {
+    const session = context.get(sessionContext)
   let { user } = session
 
   // Read-only. An unknown action — including the write actions this route used

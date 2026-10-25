@@ -1,12 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// The route's I/O: the session lookup and S3. Mocking them keeps the test off
-// the network while exercising the real request parsing and abort handling.
-vi.mock('@/services/auth', () => ({
-  auth: {
-    api: { getSession: vi.fn(async () => ({ user: { id: 'usr_test', bucket: 'bucket-test' } })) },
-  },
-}))
+// The route's I/O is S3; the session comes from the context authMiddleware
+// sets. Mocking S3 keeps the test off the network while exercising the real
+// request parsing and abort handling.
+vi.mock('@/services/auth', () => ({ auth: { api: { getSession: vi.fn() } } }))
 vi.mock('@/services/item-actions', () => ({ assertCanUploadTo: vi.fn() }))
 vi.mock('@/services/s3', () => ({
   abortMultipartUpload: vi.fn(),
@@ -16,7 +13,9 @@ vi.mock('@/services/s3', () => ({
   getPresignedUrlForPart: vi.fn(),
 }))
 
+import { RouterContextProvider } from 'react-router'
 import * as s3 from '@/services/s3'
+import { sessionContext } from '@/services/middleware/context'
 import { action } from '../upload'
 
 /**
@@ -31,7 +30,15 @@ const abort = () =>
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'abort-multipart-upload', key: 'item_root/a.txt', uploadId: 'up_1' }),
     }),
+    context: sessionFor({ id: 'usr_test', bucket: 'bucket-test' }),
   } as never)
+
+/** The context `authMiddleware` leaves for the route. */
+function sessionFor(user: { id: string; bucket: string }) {
+  const context = new RouterContextProvider()
+  context.set(sessionContext, { user } as never)
+  return context
+}
 
 const s3Error = (name: string) => Object.assign(new Error(name), { name })
 

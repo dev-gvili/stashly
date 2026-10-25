@@ -1,4 +1,5 @@
-import { auth } from '@/services/auth'
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
 import { assertCanUploadTo } from '@/services/item-actions'
 import {
   abortMultipartUpload,
@@ -9,9 +10,14 @@ import {
 } from '@/services/s3'
 import { isAmbiguousTsFile, sniffTsBytes, type TsKind } from '@/utils/sniff'
 import { toErrorInfo } from '@/utils/api.errors'
-import { data, redirect } from 'react-router'
+import { data } from 'react-router'
 import { z } from 'zod'
 import type { Route } from './+types/upload'
+
+// Resolves the session once and forwards the cache cookie it refreshed, which
+// a bare `getSession` here would drop: an upload is a long run of API calls
+// with no page load in between (tech-debt item 35).
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
 
 const defaults = z.object({
   key: z.string(),
@@ -49,11 +55,8 @@ const uploadSchema = z.discriminatedUnion('action', [
   abort_multipart_upload,
 ])
 
-export async function action({ request }: Route.ActionArgs) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function action({ request, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
   const { user } = session
   const { bucket } = user
 
