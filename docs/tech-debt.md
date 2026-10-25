@@ -52,7 +52,7 @@
 | 10 | Accessibility and responsive UI | 21 | Everything except the nested Filter buttons | — |
 | 22 | **new** Open decisions in upload and onboarding | 20 | Three decisions already written up in TASKS.md | Owner's decision |
 | 30 | **new** Signed cookies fall back to the secret `'secret'` | 20 | Refuse to start in production without `COOKIE_SECRET`; set it in the local `.env` | — |
-| 33 | **new** Cancelled uploads leave parts in S3 | 20 | Call the existing `abortUpload` on cancel and on retry exhaustion; check the bucket lifecycle rule | — |
+| 33 | **new** Cancelled uploads leave parts in S3 | 20 | Call the existing `abortUpload` on cancel and on retry exhaustion; today only the manual orphan sweep aborts them | — |
 | 34 | **new** Upload requests retry 4xx answers | 20 | Fail fast on 4xx other than 429 | — |
 | 35 | **new** A session lookup on every request | 20 | better-auth `cookieCache` | Owner's call on revocation delay |
 | 21 | ~~Embedding backfill runs in every tab~~ | 18 | Resolved 2026-10-09: model in a worker (main-thread blocking 1,279 → 0 ms, measured), one tab via a Web Lock | — |
@@ -613,7 +613,8 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 *Infrastructure debt · Impact 2 · Risk 3 · Effort 2 → **20** · est. 0.5 day · source: Upload Call Audit, confirmed in code 25 Oct*
 
 - **Evidence:** `abortUpload` (`app/machines/multipart/s3.mulipart.utils.ts:240`) has no importers. On a user abort the file machine forwards `@multipart.upload.abort`, which only trips the `AbortController` in `s3.multipart.stream.ts`; when part retries run out, the file is "treated as aborted" (`reviset/file.machine.ts:379`). Neither path calls `abort-multipart-upload`, so the uploaded parts stay billed in S3. The 2 Oct orphan sweep (item 9) aborted 85 stale uploads, which is what this leaves behind.
-- **Fix:** invoke `abortUpload` on both paths, and confirm whether the buckets have an `AbortIncompleteMultipartUpload` lifecycle rule as a backstop (not checked).
+- **No backstop:** Tigris rejects an `AbortIncompleteMultipartUpload` lifecycle rule (item 9, tested 2 Oct), so the only cleanup is running `scripts/sweep-s3-orphans.ts` by hand.
+- **Fix:** invoke `abortUpload` on both paths. Without a lifecycle rule, the client call is the only thing that cleans up on time.
 - **Status 2026-10-25: open.**
 
 ### 34. Upload requests retry 4xx answers five times
@@ -841,7 +842,7 @@ New items from the 8 Oct re-scan, in the order to do them:
 *items 31–44, from the upload call audit; the first step is under a day*
 
 1. **Now:** merge PR #26 (item 31), add the ownership checks to the three search-index writes (item 32), and stop retrying 4xx answers (item 34). Two security gaps and a slow failure, each a small diff with a test.
-2. **On the next upload task (about 1.5 days):** abort cancelled and failed multipart uploads and check the lifecycle rule (33); settle the `.ts` sniff (37), the metadata writes (40) and the dead branches (41); measure the concurrency limit and correct the skill (38).
+2. **On the next upload task (about 1.5 days):** abort cancelled and failed multipart uploads (33; Tigris offers no lifecycle rule to fall back on); settle the `.ts` sniff (37), the metadata writes (40) and the dead branches (41); measure the concurrency limit and correct the skill (38).
 3. **A measured performance pass (3–5 days):** the session cookie cache once the owner decides (35), all part URLs in one response (39), the folder tree once per batch (36), and the revalidation and thumbnail overhead (43). Repeat the audit's measured upload before and after; the CLAUDE.md debugging rules require the numbers.
 4. **Only if contention is measured:** the rollup redesign (42) and merging the requests (44). High effort for an unproven payoff.
 
