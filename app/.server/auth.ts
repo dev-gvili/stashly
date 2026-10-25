@@ -5,6 +5,7 @@ import { customSession, openAPI } from 'better-auth/plugins'
 import { createAuthMiddleware } from 'better-auth/api'
 import { onboardNewUser } from './onboard'
 import { rememberAccount } from './remembered-account'
+import { withOnboardingFields } from './session-user'
 import { track } from '@/services/vinktar'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Session, User } from '@/types/machine.types'
@@ -62,6 +63,14 @@ export const auth = betterAuth({
     'https://conjoined-superelegantly-ebony.ngrok-free.dev',
   ],
   session: {
+    // A cached session skips the database for 5 minutes, so a sign-out or
+    // revocation elsewhere takes up to that long to apply (owner's call, 25
+    // Oct). Without it every request read the session from the database,
+    // 30 times for one 100 MB upload (tech-debt item 35).
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60,
+    },
     additionalFields: {
       rootId: {
         type: 'string',
@@ -168,7 +177,8 @@ export const auth = betterAuth({
 
   plugins: [
     customSession(async ({ user, session }) => {
-      let extendedUser = user as User
+      // A new user's cached session predates onboarding; see session-user.ts.
+      let extendedUser = (await withOnboardingFields(user as User)) as User
       let extendedSession = {
         ...session,
         rootId: extendedUser.rootId,

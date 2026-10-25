@@ -1,6 +1,7 @@
 import { redirect, type MiddlewareFunction } from 'react-router'
 import { auth } from '@/services/auth'
 import { sessionContext } from '@/services/middleware/context'
+import { forwardSetCookies } from '@/services/session-user'
 
 /**
  * Resolves the session once per request and puts it on the router context.
@@ -9,14 +10,20 @@ import { sessionContext } from '@/services/middleware/context'
  * single route query executing. Loaders under this middleware read the session
  * with `context.get(sessionContext)` instead of calling `getSession` again.
  */
-export const authMiddleware: MiddlewareFunction<Response> = async ({ request, context }) => {
-  const session = await auth.api.getSession({ headers: request.headers })
+export const authMiddleware: MiddlewareFunction<Response> = async ({ request, context }, next) => {
+  const { headers, response: session } = await auth.api.getSession({
+    headers: request.headers,
+    returnHeaders: true,
+  })
 
   if (!session) {
     throw redirect('/auth/sign-in')
   }
 
   context.set(sessionContext, session)
+
+  // The session cache cookie this lookup refreshed would otherwise be dropped.
+  return forwardSetCookies(await next(), headers)
 }
 
 /**
