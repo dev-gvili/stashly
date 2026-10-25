@@ -67,9 +67,14 @@ export const auth = betterAuth({
     // revocation elsewhere takes up to that long to apply (owner's call, 25
     // Oct). Without it every request read the session from the database,
     // 30 times for one 100 MB upload (tech-debt item 35).
+    // `jwe`, not the default `compact`: the payload is the session (token, IP,
+    // user agent) and the user (email, bucket, plan ids). `compact` is base64
+    // with an HMAC, readable by anyone who sees the cookie; `jwe` encrypts it
+    // with the auth secret.
     cookieCache: {
       enabled: true,
       maxAge: 5 * 60,
+      strategy: 'jwe',
     },
     additionalFields: {
       rootId: {

@@ -645,7 +645,9 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
   - **Refresh:** nothing in the browser calls `get-session`; every lookup is a server-side `auth.api.getSession`, which puts the refreshed cache cookie in its own returned headers and drops it. `authMiddleware` now asks for those headers and forwards the cookie onto the page or `.data` response (`forwardSetCookies` in `session-user.ts`). Without it the cache would have been written once at sign-in and lapsed for good 5 minutes later. API routes outside the layout (`/api/s3/upload`, `/api/items`) read the cookie but don't refresh it.
   - **Sign-up:** `customSession` runs on every lookup, cache hits included (`custom-session/index.mjs`); it now fills `bucket`, `rootId` and `driveId` from the database when the session lacks them or holds the `default-bucket` placeholder (`withOnboardingFields`). Only a session cached before onboarding finished takes that query.
   - **Tests:** `session-user.test.ts` (11, no DB): the fallback reads nothing for an onboarded user and fills each missing field; the forwarder copies the cookie, keeps a route's own cookies, and leaves an immutable redirect alone. `pnpm test` 948/0 in 78 files, type gate exit 0, build clean.
-  - **Not verified:** in a browser, and the effect on the database. The upload re-measure should show `session` scans fall from 12 (10 MB) toward 0–1 with the same request counts. A real new-account sign-up was not tried.
+  - **Encrypted, 25 Oct** (`better-auth-security-best-practices`): `strategy: 'jwe'`. The payload holds the session (token, IP, user agent) and the user (email, bucket, plan ids); the default `compact` is base64 with an HMAC, readable by anyone who sees the cookie. The cookie measured 1,529 characters with no readable id, email or bucket, `HttpOnly; SameSite=Lax; Max-Age=300`, plus `Secure` once served over HTTPS. The secret is 32 characters.
+  - **Measured server-side 25 Oct** (a deleted script against the dev DB with a real dev session, calling `getSession` the way `authMiddleware` does): the first lookup returned `session_data` in its headers; with it, 5 lookups did **0** `session` table scans and returned the user with `bucket` and `rootId` 5/5, against **5** scans for 5 lookups with `disableCookieCache`.
+  - **Not verified:** in a browser, so the forwarding through `authMiddleware` and the upload counts. The upload re-measure should show `session` scans fall from 12 (10 MB) toward 0–1 with the same request counts. A real new-account sign-up was not tried.
 
 ### 36. The folder path is resolved again for every file of a folder upload
 
@@ -786,6 +788,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-25 | `8a79e89` | 33, 13 | A cancelled upload, and one whose part retries ran out, aborts its S3 multipart upload. 3 new tests; 937/0 in 77 files. |
 | 2026-10-25 | `c1dc745` | 35, 13 | 5-minute session cookie cache; `authMiddleware` forwards the refreshed cookie, and `customSession` fills onboarding fields a pre-onboarding cache lacks. 11 new tests; 948/0 in 78 files. Not yet measured. |
 | 2026-10-25 | `e4aeb0e` | 33, 13 | A failed complete also aborts the multipart upload; the route answers an already-aborted upload as done. 5 new tests; 953/0 in 79 files. |
+| 2026-10-25 | `fix(auth): encrypt the session cache cookie` | 35 | The session cache cookie is encrypted (`jwe`). Measured server-side: cached lookups 0 `session` scans, uncached 5 per 5. |
 
 ## Phased remediation plan
 
