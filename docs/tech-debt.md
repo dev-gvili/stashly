@@ -6,18 +6,22 @@
 
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
-**Now (23 Oct):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 905 unit tests in 72 files with none excluded, and the build. Green on `82a878e` (23 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+**Now (25 Oct):** the safety net is mostly in place.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 909 unit tests in 73 files with none excluded, and the build. Green on `bfefbbf` (24 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors and analytics:** Vinktar on server and browser since 10 Oct (item 4, partly done).
 - **Still missing:** structured logging and a linter. Both need a new package, which needs the owner's decision.
 
+**Update (25 Oct):** the git history was re-checked against this register back to 25 Jul, commit by commit. Two items were missing. Item 29: Trash listed every user's trashed items, fixed on 3 Oct (`32d1431`) but never recorded here. Item 30, still open: two signed cookies fall back to the literal secret `'secret'` when `COOKIE_SECRET` is unset, and the local `.env` doesn't set it. Also recorded: a lock on any item made a folder's permanent delete fail (item 8, fixed 24 Oct); the Fly Postgres image gained pgvector (item 2); browser source maps reach Vinktar on deploy (item 4).
+
 **Update (23 Oct):** an E2E pass after pulling found two more bugs, both fixed the same day. Item 27: favorites skipped the access check, so anyone with an item id could favorite another user's file and read its name and thumbnail. Item 28: the form and search decoders mangled typed text (every multi-word search became a fuzzy match, and a rename to "2024" was refused). The E2E suite runs green locally on one worker (item 20).
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**28 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct) · categories: Code 14, Architecture 7, Infrastructure 3, Test 2, Dependency 1, Documentation 1
+**30 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct) · categories: Code 16, Architecture 7, Infrastructure 3, Test 2, Dependency 1, Documentation 1
+
+**Status at 25 Oct 2026:** 17 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 30). Since 23 Oct: item 29 added as resolved (fixed 3 Oct), item 30 added as open.
 
 **Status at 23 Oct 2026:** 16 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 3 new and open (19, 20, 22). Since 8 Oct: items 21 and 24 resolved (9 Oct), item 4 partly done (Vinktar, 10 Oct), items 27 and 28 found and resolved (23 Oct).
 
@@ -25,21 +29,23 @@
 
 ### What's left, in priority order
 
-*Updated 23 Oct. Ordered by priority score; new items are marked **new**.*
+*Updated 25 Oct. Ordered by priority score; new items are marked **new**.*
 
 | # | Item | Score | What remains | Blocked on |
 |---|------|-------|--------------|------------|
 | 18 | ~~`/api/quota` trusts the client~~ | 50 | Resolved 2026-10-08: route is read-only, upload charged in `createUploadedItem` | — |
 | 25 | ~~Share-link actions had no access check~~ | 40 | Resolved 2026-10-08: every action takes the acting user and checks it | — |
 | 27 | ~~Favorites skipped the access check~~ | 40 | Resolved 2026-10-23: favoriting and the Favorites list need read access; duplicates handled | — |
+| 29 | ~~Trash listed every user's trashed items~~ | 40 | Resolved 2026-10-03 (recorded 25 Oct): the Trash query always filters by the signed-in owner | — |
 | 26 | ~~`hasItemPermission` counts revoked and expired grants~~ | 35 | Resolved 2026-10-08: every access check counts only live grants | — |
 | 2 | Deploy path | 32 | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
-| 4 | Error tracking and logging | 28 | Structured logging; error tracking is Vinktar since 10 Oct | Owner's choice of logger |
+| 4 | Error tracking and logging | 28 | Structured logging; error tracking is Vinktar since 10 Oct, with browser source maps uploaded on deploy | Owner's choice of logger |
 | 28 | ~~Form and search decoders mangle typed text~~ | 25 | Resolved 2026-10-23: values decoded once, typed text kept as text, bad input is a 400 | — |
 | 19 | **new** Stripe webhook is a stub | 24 | All four event handlers | Whether paid plans ship before launch |
 | 20 | **new** Playwright specs don't run in CI | 24 | A CI job for the 8 specs; the E2E bucket leaks one per run | — |
 | 10 | Accessibility and responsive UI | 21 | Everything except the nested Filter buttons | — |
 | 22 | **new** Open decisions in upload and onboarding | 20 | Three decisions already written up in TASKS.md | Owner's decision |
+| 30 | **new** Signed cookies fall back to the secret `'secret'` | 20 | Refuse to start in production without `COOKIE_SECRET`; set it in the local `.env` | — |
 | 21 | ~~Embedding backfill runs in every tab~~ | 18 | Resolved 2026-10-09: model in a worker (main-thread blocking 1,279 → 0 ms, measured), one tab via a Web Lock | — |
 | 12 | Linter | 16 | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
 | 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; the rest of `quota-actions`; routes and components | — |
@@ -82,6 +88,8 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 26 | ~~`hasItemPermission` counts soft-deleted and expired permissions~~ | Code | 4 | 3 | 1 | **35** (High) | 0.5 day | Resolved 8 Oct |
 | 27 | ~~Favorites skipped the access check and stacked duplicate rows~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 23 Oct |
 | 28 | ~~Form and search decoders mangle typed text~~ | Code | 3 | 2 | 1 | **25** (High) | 0.5 day | Resolved 23 Oct |
+| 29 | ~~Trash listed every user's trashed items~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 3 Oct (recorded 25 Oct) |
+| 30 | Signed cookies fall back to the literal secret `'secret'` | Code | 2 | 2 | 1 | **20** (Medium) | 0.5 day | New 25 Oct |
 
 ## Details
 
@@ -128,6 +136,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - **`deploy/README.md` step 3:** lists the 22 secrets (20 required, plus 2 optional pool settings). `BETTER_AUTH_URL` isn't in our code's `process.env` reads; it was found through Better Auth's boot warning.
   - **Not verified:** a real `fly deploy`, and whether the release command works against prod.
   - **Not done:** pinning Node with `engines` and pnpm with `packageManager` in `package.json`.
+- **Status 2026-10-10: database side prepared** (`1419e08`, `b237941`). The stock `flyio/postgres-flex` image has no pgvector, so the migrations' `CREATE EXTENSION vector` would fail on a fresh cluster. `deploy/postgres/Dockerfile` installs `postgresql-<major>-pgvector`, taking the major from `PG_FLEX_TAG`, and `deploy/postgres/README.md` swaps the image in with `fly machine update`. The second commit fixed steps that failed when run against the real cluster, so a Fly Postgres cluster exists. **Still unconfirmed (25 Oct):** git records no app `fly deploy` and no run of the release migration against it. `engines` and `packageManager` are still not set.
 
 ### 3. Two known 500s on ordinary requests
 
@@ -150,6 +159,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Why it matters:** Upload loss, quota drift and 500s are all currently invisible until a user complains.
 - **Status 2026-10-01: open** (re-checked: no Sentry, pino, OpenTelemetry or winston in `package.json`). No error tracker or logger is installed. One partial improvement: the upload panel now reports failed item creation as an `itemFailed` status with the reason (`0235f0e`), so that failure is at least visible to the user.
 - **Status 2026-10-10: partly done** (`65f3891`). Error tracking is Vinktar: `@vinktarhq/node` in `app/.server/vinktar.ts` with uncaught-error capture, and `vinktarRequest()`/`vinktarErrors()` around the React Router handler in `server/app.ts`; `@vinktarhq/browser` in the client, keyed at runtime by the root loader. It is off under Vitest (`vinktar.test.ts`). It also sends three product events (`signed_up`, `file_uploaded`, `subscription_started`). **Still open:** a JSON logger with a request id, and the `console.log` calls in `.server` code.
+- **Status 2026-10-25: partly done, unchanged in scope.** `d78b724` (10 Oct) makes browser stack traces readable: the production client build writes `hidden` source maps, the Dockerfile's build stage uploads them with the `VINKTAR_CLI_KEY` build secret, then deletes every `.map`, so the image never serves source. Without the secret the upload is skipped. `app/.server` (tests excluded) has 18 `console.log` calls. Not counted at the audit: `/api/metrics` (`app/.server/metrics.ts`, Prometheus text, from `8df7efb`, 24 Jul) exposes pool, SSE and notify gauges. It is metrics only, not error tracking or logs.
 
 ### 5. Thumbnails of private files are publicly readable
 
@@ -241,7 +251,12 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
     - **Fix:** a folder now contributes its own `inclusiveSize` to its parent's `inclusiveSize`, and a file its `size`. The update branch also reacts to `inclusiveSize` changes. The migration recounted every folder deepest level first; on the dev DB that corrected the 5 folders that were off, by 3,542,674 bytes in total.
     - **Test:** `item-size-trigger.test.ts` runs the 15 steps on real rows and compares every folder with a recount: 9 steps failed before the migration, 15 of 15 pass after.
     - **Not done: a statement-level trigger.** It rewrote 704 rows to restore the 639-item copy, where the row-level trigger rewrites 2,832. But a one-row insert went from 3.0 to 10.0 ms (medians, rolled-back runs), so it wasn't shipped. A version with a fast path for one-row statements is the open option.
-  - **Open: delete waits on S3.** Deleting the 640-item folder took 20.8 s; its database statement takes about 0.65 s (`EXPLAIN ANALYZE` on the other, identically shaped copy). So about 20 s is the S3 removal, which `/api/items` awaits before responding. That split is inferred from those two measurements, not timed directly.
+  - **Open: delete waits on S3.** Deleting the 640-item folder took 20.8 s; its database statement takes about 0.65 s (`EXPLAIN ANALYZE` on the other, identically shaped copy). So about 20 s is the S3 removal, which `/api/items` awaits before responding. That split is inferred from those two measurements, not timed directly. Tracked in TASKS.md since 9 Oct (`4d8e7f9`).
+- **Follow-up 2026-10-02 and 2026-10-03: uploads and timestamps around trash.** Not recorded at the time.
+  - **Uploads into a trashed folder** (`1eac608`). `findOrCreateFolderPath` reused a folder with the right name and parent even if it was in trash. Re-uploading `app/prisma` filed all 64 files inside the trashed `prisma/`: nothing appeared where the user uploaded, and Trash showed the folder at double its size (4.4 → 8.8 MB). The lookup now skips trashed folders. Live-DB test `upload-into-trashed-folder-name`.
+  - **Local time stored as UTC** (`32d1431`, `23eb94a`). The raw statements in `trashItems`/`restoreItems` and the batched activity insert wrote a bare `now()`. The DB session time zone is Asia/Jerusalem and the columns have none, so they stored local time that Prisma reads as UTC: `updatedAt` and activity times showed 3 hours ahead, some in the future. All three now write `now() AT TIME ZONE 'UTC'`; tests check the stamp against the clock.
+  - The same commit, `32d1431`, fixed item 29.
+- **Follow-up 2026-10-24: a lock blocked permanent delete** (`839f933`). `LockedItem.itemId` referenced `Item` with the default `RESTRICT`, so one lock anywhere in a trashed subtree failed the whole delete with `LockedItem_itemId_fkey`, and the rest of the batch with it. The constraint is now `ON DELETE CASCADE`, like the other rows that describe an item (migration and `item.prisma`). `item-delete-objects.test.ts` adds a folder holding a locked file (12 tests).
 
 ### 9. Failed uploads leave S3 bytes and charged quota with no Item
 
@@ -318,6 +333,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
     - `upload-activity` (1): no activity write while a transaction is open. It fails on the old code every time.
   - **Counts:** `app/.server/__tests__` has 9 test files. `pnpm test` is 649 passing in 46 files, and CI runs all of them.
   - **Still missing:** create, move and copy in `item-actions`; quota on its own; routes and components. There are still 8 Playwright specs.
+- **Status 2026-10-25: open, improving.** CI ran 909 tests in 73 files, all passing, on `bfefbbf` (24 Oct). New since 23 Oct: `remembered-account.test.ts` (3) for the sign-in "Continue as" cookie, and a locked-file case in `item-delete-objects` (item 8). Still missing: create, move and copy in `item-actions`, and components.
 - **Status 2026-10-23: open, improving.** `pnpm test` is 905 passing in 72 files (CI green on `82a878e`). New since 8 Oct: `favorite-actions` (16, live DB: access checks, duplicate rows, the usage count) and 26 more `parsers` tests (39 in all: decoding, numeric round-trip, `toUserText`, 400 on bad input), both from items 27 and 28. The favorites e2e spec went from 3 tests to 13, and the search, pinned, navigation and thumbnail specs were brought back in line with the UI (item 20). Still missing: create, move and copy in `item-actions`, and components.
 - **Status 2026-10-08 (end of day): open, improving.** Unit test files are at 68 (818 tests, all passing; CI green on `30eeeb4`). `app/.server/__tests__` has 18, adding `upload-quota-charge` (live DB: exact charge, no row without a quota, 10 parallel uploads summed exactly), `share-access` (37), `route-query-actions` (5) and `permission-live-grants` (14). Route tests went from 1 to 3: `app/routes/api/__tests__/quota.test.ts` covers the quota route item 18 named as untested, and `app/routes/__tests__/no-direct-prisma.test.ts` guards item 23. The upload e2e spec went from 1 test to 11 (`9081555`); CI still doesn't run it (item 20). Still missing: create, move and copy in `item-actions`, and components.
 - **Status 2026-10-08: open, improving.** Unit test files went from 39 at the audit to 62. `app/.server/__tests__` has 14, including upload safety, trash roots and the size trigger, and `app/machines` has 10. Still 0 component tests, 1 route test, and no test for the quota route (see item 18). The 8 Playwright specs exist but CI doesn't run them (item 20). `bcb227d` fixed the thumbnail spec's setup.
@@ -354,6 +370,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Status 2026-10-01: partly done** (`d8bf186`, 2026-09-25; counts re-checked 2026-10-01).
   - **Done:** `lucide-react`, `@remixicon/react` and `@formkit/auto-animate` are removed, with their icons moved to `icons.tsx` and 0 imports left. 31 files import the `radix-ui` umbrella.
   - **Left:** 5 files still import `@radix-ui/*`: `item-card.tsx` and four under `components/ui/`. There are still three global stylesheets (`global.css`, `globals.css` and `theme.css`), and `framer-motion` is imported in 15 files.
+  - **Re-checked 2026-10-25:** still 5 `@radix-ui/*` importers and the same three stylesheets.
 
 ### 17. Unfinished migrations left in place
 
@@ -523,6 +540,23 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - Schema and parse failures throw `INVALID_INPUT`, which `toErrorInfo` maps to 400. The rule (parse inside the handler's `try`; wrap free text in `toUserText`) is in CLAUDE.md.
   - **Tests:** `parsers.test.ts`, 13 → 39.
 
+### 29. Trash listed every user's trashed items
+
+*Code debt (security) · Impact 4 · Risk 4 · Effort 1 → **40** · est. 0.5 day · source: found and fixed 3 Oct while building the trashed-folder view; missed by the 8 Oct re-audit, recorded 25 Oct from git history*
+
+- **Evidence, from the commit:** the Trash loader seeded `currentUserId`, which `item.filters.ts` documents as *not* a scoping filter, so its `where` was status and type only. Every signed-in user's Trash page listed every user's trashed items.
+- **Status 2026-10-03: resolved** (`32d1431`). The Trash query always includes `ownerId` = the signed-in user, and a loader test pins it. The new trashed-folder route (`/:me/stash/trash/folders/:id`) answers 404 for a folder that isn't the user's, isn't a folder or isn't in trash, so a live folder can't be browsed through it. `pnpm test` 737/737 at the time.
+- **Not re-verified on 25 Oct:** read from the commit message and its test, not reproduced.
+
+### 30. Signed cookies fall back to the literal secret `'secret'`
+
+*Code debt (security) · Impact 2 · Risk 2 · Effort 1 → **20** · est. 0.5 day · source: found 24 Oct during the sign-in redesign*
+
+- **Evidence:** `app/.server/theme.ts:10` (`color-scheme`) and `app/.server/remembered-account.ts:16` (`last-account`, added in `e286ffd`) both sign with `process.env.COOKIE_SECRET ?? 'secret'`. The local `.env` has no `COOKIE_SECRET`, so both run on the fallback today. `deploy/README.md` lists `COOKIE_SECRET` as a required Fly secret, but nothing enforces it: a deploy that misses it starts normally.
+- **Impact:** small today. Both cookies are display-only. `last-account` picks the name and avatar on the "Continue as" card, and the card re-runs that provider's full OAuth flow, with only github, google and microsoft accepted. Anyone who knows the secret could forge either cookie, but neither grants access. It matters the day a signed cookie carries something the server trusts.
+- **Fix:** one helper that reads `COOKIE_SECRET` and throws at module load in production when it is unset, as `stripe.ts` does for its key. Both cookies use it. Set the variable in the local `.env`.
+- **Status 2026-10-25: open.**
+
 ## Changes since the audit
 
 These commits touched a register item, oldest first. Commits that don't touch any register item are left out, such as page size, the rename dialog, the search `ZodError`, and the Vite typegen watch.
@@ -544,6 +578,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-09-30 | `0c1db6d` | 8 | `getCollectionForUser` checks existence before permission again, so a missing collection is 404, not 403. |
 | 2026-09-30 | `1f030cf`, `14f2ca9` | 6, 13 | The dead `/recent` link now points to `/all`; the page-size test expects the new default of 50. |
 | 2026-09-30 | `b95cdd5` | 1 | CI workflow added, plus the hook's `--all` mode. |
+| 2026-09-30 | `0b98234` | 1 | Actions moved to their Node 24 majors (`checkout@v7`, `setup-node@v7`, `cache@v6`). |
 | 2026-09-30 | `e8a61eb`, `326c317`, `eda8fc7` | 2 | Dockerfile rebuilt for pnpm and Node 24, `fly.toml` with a migration release command, and a CI docker job that boots the image. |
 | 2026-10-01 | `ba437d3`, `fc655be` | 6, 8 | The last four unused packages removed; the quota read in `retrieveUserUsageMetrics` now runs inside its transaction. |
 | 2026-10-01 | `76c69a5`, `b955723` | 7, 13 | Test files import their Vitest globals and pass the right arguments; the baseline is down to 11 errors, and CI fails on leftover allowance. |
@@ -551,17 +586,20 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-01 | no commit (operation) | 5 | ACL sweep applied to every bucket: 7 grants made private, one bucket's object-ACL flag turned off. Signing cost re-measured: a concurrent `SELECT 1` peaked at 15 ms, against the 697 ms that forced the revert. |
 | 2026-10-01 | `736d6ca` | 8 | Drive and notification filter keys aligned with their schemas, guarded by a new coverage test. |
 | 2026-10-01 | `e6ac762`..`e506455` | 1, 13 | Honest CI: real Postgres for both jobs, a health check that queries the database, every test run, output never hidden, invalid filter values rejected with a 400. |
+| 2026-10-01 | `6030753`, `5727307` | 1, 13 | The filter 400 is tested on filters the app really has. A `roles` filter of the wrong kind (member roles on a personal stash, or the reverse) was cast and answered 500; each branch now parses its own kind. |
 | 2026-10-01 | `6218641`, `3d5e1d7` | 9 | Permanent delete now removes S3 objects; `sweep-s3-orphans.ts` cleans up what was left behind. |
 | 2026-10-02 | no commit (operation) | 9 | Orphan sweep applied: 652 objects deleted, 85 stale uploads aborted, 0 failures; every bucket now fully referenced. |
 | 2026-10-02 | `c554b8c` | 8 | Permanent delete needs `owner` on every item, with workspace membership read from the item, and answers 403. |
 | 2026-10-02 | `8e41013` | 8 | The quota UPDATE locates its own row: one round-trip per quota change instead of two. |
 | 2026-10-02 | `e04d07d` | 8, 13 | Trash and restore need `write`. Trash's quota over-count is fixed, and delete works only from trash. Each is one statement with batched activities; upload activity no longer races its transaction. 20 new tests. |
 | 2026-10-02 | `1b41e45` | 8 | `onActiveItemsDeleted` removed: permanent delete only takes items from trash, so it had no callers. |
-| 2026-10-02 | migration `20261002090000_fix_inclusive_size_rollup` | 8 | `update_size()` passes a folder's `inclusiveSize` up and reacts to its changes; every folder recounted (5 corrected on dev, 3,542,674 bytes). 15-step regression test. |
+| 2026-10-02 | `4396da6` (migration `20261002090000_fix_inclusive_size_rollup`) | 8 | `update_size()` passes a folder's `inclusiveSize` up and reacts to its changes; every folder recounted (5 corrected on dev, 3,542,674 bytes). 15-step regression test. |
+| 2026-10-02 | `1eac608` | 8 | An upload no longer files into a trashed folder of the same name; it creates a fresh one. |
 | 2026-10-03 | `935a923`, `d11ffae`, `d41dd8e` | 14 | Legacy thumbnail hooks deleted (1,389 lines); the XState scheduler is the only path; thumbnails only for on-screen cards; pipeline split by file type. |
 | 2026-10-03 | `eaf71e4` | 10 | Filter flag toggles no longer nested inside the trigger button. |
 | 2026-10-03 | `bcb227d` | 13, 20 | Thumbnail e2e spec passes again, fixed in its setup. |
 | 2026-10-03 | `fc8934b`, `1821ca4`, `9422c8b` | 22 | Uploads never guess a destination, check folder access before any bytes, and free a failed file's slot. |
+| 2026-10-03 | `32d1431`, `23eb94a` | 29, 8 | Trash lists only the signed-in user's items (it listed everyone's); trashed folders open inside Trash. Raw `now()` stamps in trash, restore and the activity insert are written in UTC (they were 3 h ahead). |
 | 2026-10-08 | `2fc9d4d` | 18, 22, 13 | `/api/quota` is read-only; every write action answers 400. Uploads are charged in `createUploadedItem`'s transaction, and the client charge and its retry loop are gone, which settles item 22's first question. 2 new test files: 9 of 13 route tests fail against the old route, 3 of 4 charge tests fail with the server charge removed. |
 | 2026-10-08 | `9081555` | 13, 20 | Upload e2e spec: 1 test to 11, covering filing, the exact quota charge and the refused quota writes. Passes locally; not in CI. |
 | 2026-10-08 | `bb321a3` | 25, 23 | Every share-link action takes the acting user and checks it (owner, or a live write permission); the `/api/shares` loader no longer queries Prisma. 37 new tests: 403 for a stranger, a read-only and an expired grantee on all 11 operations. |
@@ -571,10 +609,14 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-09 | `df68279` | 21, 13 | The embedding model runs in a dedicated worker, and a Web Lock lets one tab drain the backfill. Measured in Chrome: main-thread blocking while embedding went from 1,279 ms to 0 ms. |
 | 2026-10-09 | `57f499c` | 24 | Server dependencies bundled into the server build (1,697 files loaded on the first request → 38), and dotenvx replaced by `process.loadEnvFile`. First page after a fresh start: 4,055–15,119 ms → 761–1,724 ms. |
 | 2026-10-10 | `65f3891` | 4 | Vinktar error tracking and product analytics on server and browser; off under Vitest. |
+| 2026-10-10 | `d78b724` | 4 | Hidden browser source maps uploaded to Vinktar in the Docker build stage, then deleted from the image. |
+| 2026-10-10 | `1419e08`, `b237941` | 2 | The Fly Postgres image installs pgvector, so the migrations' `CREATE EXTENSION vector` works on a fresh cluster; steps fixed against the real cluster. |
 | 2026-10-23 | `65fe46b` | 28, 13 | Form and search values decoded once by `qs`; numbers only on an exact round-trip; `toUserText` on 20 free-text fields; bad input is a 400. 26 new parser tests. |
 | 2026-10-23 | `6522ba0` | 27, 13 | Favoriting and the Favorites list need read access (`itemAccessWhere`); duplicate rows no longer stack or survive Unfavorite; parse inside the `try`. 16 new DB tests and the e2e seed for a second user. |
 | 2026-10-23 | `4004b9d` | 21 | The backfill status rendered "unavailable" on the server and "available" in the browser; the hydration mismatch discarded the search view's server HTML. Now `useSyncExternalStore` with a `false` server snapshot. |
 | 2026-10-23 | `a581626`..`b83faa1` | 20, 13 | E2E on one worker with traces kept on failure; navigation, search, pinned, favorites and thumbnail specs brought in line with the UI; stage 3 asserted at 512×512. 51 passed, 1 skipped locally. |
+| 2026-10-24 | `839f933` | 8, 13 | `LockedItem_itemId_fkey` is `ON DELETE CASCADE`: a locked file no longer fails its folder's permanent delete. One new live-DB test. |
+| 2026-10-24 | `e286ffd` | 30 | The new `last-account` cookie signs with the same `COOKIE_SECRET ?? 'secret'` fallback as the theme cookie. |
 
 ## Phased remediation plan
 
@@ -643,9 +685,13 @@ New items from the 8 Oct re-scan, in the order to do them:
 6. ~~**Embedding backfill in a worker, one tab (item 21, 1–2 days)**~~ **done 9 Oct, measured: 1,279 → 0 ms of main-thread blocking** and ~~**cold first load (item 24, 1–3 days)**~~ **done 9 Oct: first page 4–15 s → ~1 s, by bundling the server dependencies.**
 7. ~~**`hasItemPermission` and revoked grants (item 26, 0.5 day).**~~ **Done 8 Oct**: confirmed, then every access check filtered to live grants.
 8. ~~**Favorites access and the text decoders (items 27, 28).**~~ **Found and done 23 Oct** in the post-pull E2E pass. Item 20 is still next: the suite is now green locally on one worker, so the CI job is the only step left, plus deciding how the E2E bucket should outlive a run.
+9. ~~**Trash scoped to its owner (item 29).**~~ **Done 3 Oct**, recorded 25 Oct from git history.
+10. **Cookie secret fallback (item 30, 0.5 day).** Small and independent; best done before the first `fly deploy` (item 2), so a missing secret stops the release instead of signing with `'secret'`.
 
 ---
 
 *Method: read-only scan of the working tree on your computer — file and line counts, grep for type escapes and markers, an import scan against `package.json`, the tsc baseline, Dockerfile, `.gitignore`/`.dockerignore`, git history since June, and TASKS.md. The generated Prisma client (`app/prisma/`) is excluded from code metrics. "No import found" for a dependency means none in `app/`, `server*`, `scripts/` or `vite.config.ts`; confirm with a build before removing. 40 files had uncommitted changes at the time; findings reflect the working tree.*
 
 *Re-audit 8 Oct: same read-only method over 109 commits since the audit, TASKS.md (triaged 4 Oct) and `docs/project-analysis-2026-10-04.md`. Item 18 was verified by reading the route, schema and `applyQuotaDelta`, not by calling the endpoint. UI findings in item 10 weren't re-measured in a browser.*
+
+*History check 25 Oct: every non-merge commit since 25 Jul that touches `app/`, `server`, `prisma/`, `deploy/`, the Dockerfile, `fly.toml` or `.github/` was matched against this register; commits it doesn't name were read and either added above or left out as feature work (collections sort and covers, invitations, sign-in redesign, item-card rename, styling). Test counts are from CI's log for `bfefbbf`. Items 29 and 30 were read from the commits and the code; neither was reproduced.*
