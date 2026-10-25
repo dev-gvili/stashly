@@ -8,6 +8,7 @@ import {
 } from './storagePlan-actions'
 import { buildQuotaFilters } from '@/utils/filters/quota.filters'
 import { searchFactory } from '@/utils/search'
+import { formatSize } from '@/utils/formaters'
 
 // ---------------------------------------------------------------------------
 // Search
@@ -392,6 +393,7 @@ async function applyQuotaDelta({
   driveId,
   id,
   client = prisma,
+  withinTotal = false,
   ...data
 }: {
   /** Delta applied to `used`. May be negative; the result is clamped at 0. */
@@ -400,6 +402,12 @@ async function applyQuotaDelta({
   deleted?: bigint
   /** Absolute replacement for `total` — a plan change, not a delta. */
   total?: bigint
+  /**
+   * Refuse with `INSUFFICIENT_QUOTA` instead of applying a delta that would
+   * leave `used` above `total`. Checked in the UPDATE's own `WHERE`, so two
+   * concurrent charges can't both pass on the same free space.
+   */
+  withinTotal?: boolean
   userId?: string
   driveId?: string
   id?: string
@@ -446,6 +454,8 @@ async function applyQuotaDelta({
       ? Prisma.sql`"total"`
       : Prisma.sql`${data.total}::bigint`
 
+  const fits = withinTotal ? Prisma.sql`AND ${used} <= ${total}` : Prisma.empty
+
   const status = Prisma.sql`
     CASE
       WHEN ${total} = 0::bigint THEN
@@ -471,11 +481,28 @@ async function applyQuotaDelta({
       "total" = ${total},
       "status" = ${status},
       "updatedAt" = ${new Date()}
-    WHERE ${where}
+    WHERE ${where} ${fits}
     RETURNING *
   `
 
   const row = rows[0]
+  if (!row && withinTotal) {
+    // No row updated: either there is no quota, or the delta doesn't fit.
+    const existing = await client.$queryRaw<PrismaQuota[]>`
+      SELECT * FROM "Quota" WHERE ${where}
+    `
+    if (existing[0]) {
+      const { remaining } = toQuota(existing[0])
+      throw toRouteError(
+        StashlyErrorCode.INSUFFICIENT_QUOTA,
+        `Not enough storage: this needs ${formatSize('byte', 'unit', Number(data.used ?? 0n))} and ${formatSize(
+          'byte',
+          'unit',
+          Number(remaining > 0n ? remaining : 0n)
+        )} is free.`
+      )
+    }
+  }
   if (!row) throw toRouteError(StashlyErrorCode.QUOTA_NOT_FOUND)
 
   return toQuota(row)
@@ -484,9 +511,13 @@ async function applyQuotaDelta({
 // ─── After-action helpers ─────────────────────────────────────────────────────
 
 /**
- * Increase `used` quota after items are uploaded.
+ * Charge an upload to `used`, refusing it when it doesn't fit.
+ *
+ * This is the upload's quota enforcement: the client's pre-check only saves a
+ * wasted transfer, and a client can skip it.
  *
  * @param params - `userId`, `dataSize` (bytes added), optional transaction `client`.
+ * @throws `INSUFFICIENT_QUOTA` (507) when `used + dataSize` would exceed `total`; nothing is charged.
  *
  * @example
  * await onItemsUploaded({ userId, dataSize: BigInt(file.size) })
@@ -496,7 +527,7 @@ export async function onItemsUploaded({
   dataSize,
   client,
 }: UpdateAfterInput) {
-  return applyQuotaDelta({ userId, used: dataSize, client })
+  return applyQuotaDelta({ userId, used: dataSize, client, withinTotal: true })
 }
 
 /**

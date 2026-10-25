@@ -23,6 +23,7 @@ import {
 } from '../multipart/s3.mulipart.utils'
 import { checkQuota } from '../quota/quota.actors'
 import { toCategory } from '../../utils'
+import { formatSize } from '@/utils/formaters'
 
 // ====================================================== //
 // =================== Custom Actors ==================== //
@@ -83,11 +84,17 @@ export const fileMachine = setup({
         }),
     }),
 
-    assignQuotaCheckResult: (
-      _,
-      params: { itemId: string; result: 'allowed' | 'denied' }
-    ) => ({
-      quotaCheckResult: params.result,
+    // Keeps the quota check's answer. Must be `assign`: a plain action's return
+    // value is discarded, which left this unset and the guard unable to pass.
+    assignQuotaCheckResult: assign(
+      (_, params: { itemId: string; result: 'allowed' | 'denied' }) => ({
+        quotaCheckResult: params,
+      })
+    ),
+    // The reason a denied file shows in the upload panel.
+    assignQuotaDenied: assign({
+      error: ({ context }) =>
+        `Not enough storage: this file needs ${formatSize('byte', 'unit', context.mediaFile.file.size)}.`,
     }),
 
     // Removes the multipart actor from the context
@@ -205,13 +212,14 @@ export const fileMachine = setup({
     completeMultipartUpload: completeUpload,
   },
   guards: {
-    // Guard to check if the quota check passed
-    isQuotaCheckPassed: ({ context }) => {
-      return context.quotaCheckResult?.result === 'allowed'
-    },
+    // Whether the quota check allowed the file. Reads the done event, not
+    // context: a transition's guard runs before its actions assign anything.
+    isQuotaCheckPassed: ({ event }) =>
+      (event as unknown as DoneActorEvent<{ result: 'allowed' | 'denied' }>)
+        .output?.result === 'allowed',
   },
 }).createMachine({
-  /** @xstate-layout N4IgpgJg5mDOIC5QDMCWAbMBVADug9gIYQB0OYAdhKhVAMSwAuhATowNoAMAuoqDvlipGqfBT4gAHogCMADgBsJAEycZAZjnqZAFh0BWfZ3UAaEAE9ZOuQE4S+hcpvPltmaoUBfT2bSZcBMRklNS0DMxs7DK8SCACQiJiEtIIMgpKqhpaugZGphayaQDsJEU6CurOCnqcNgr63r4Y2HhEpORUNPQ4hACusGBcMfyCwqLisSnyGWqa2nqGxmaWqeqVpcrqRek7yg7qjSB+LYHtIV0ACn0DEHQscL0AtoM8EvFjSZOy2yqz2Qt5ZayZQyEqGORFCEyGxaGx6Q7HAJtEgAYwAFmAUQBrLoARV6+GYdAgYjAJBoADd8FiyejMVj8YTCEM3qNEhNQCkipsVDpnEUipoijZNvogakZPoZPZBcYiroNJxjAjmkignTsXiCUSwCwWPgWGR0IRGMgDY9URjsYzmCzYu92clENz1Lz+YKISL1GKCgg5NLOAZdDZKvobJx9OovD4jqrWur7iaumrbiSKGTKdTaYnGGAALK9dAiHpsFN2kYJcZO1Y6V02YXQ5SQmRpGzi8pKUH1hTy-SuPkHGOI+OkFE55Mjui6-WGvAms0sC1jsAm-OF4usRhl172tlVr41usNkXN1vi3T6HQkCOcOR3hRyPatlX+EckXojrokQgokQUsB0AAAo866oCWjDvm+OD6lA9ywLA5ZxHunycrIIrKCQ6g6L2jY2PoWhyOe0L6CQcg6MoejQmkTbpC+JzIh+pxfj+f4AcBoHgZBpwkGmLzDEhlYoVIiDKBRcgyjCticKorgCuergYWRaSKNsUpGDodEplxbTMb+qD-nQhAAEYGhwO4Vh8HLCQgqhKte7gaJsjjyMo56cIKJA9mUjh6Ep5SaW+jE6bQ356QZ7FFmBm7aUExmmZAiEOvuqE2WJEl3uGMkQkUREKJwnkCoGt63vWawBdxQXELprFASBkWcZVpDTgaiXIVZKSiZo6VSVlcm+jIxjiVKHgaDoLYtoOTSvhVn4hSx+kAT0-R8aygntSJSr5WoILqE5IKPuKeHSsN1hOHIEZ9kU5UMbNUChTVcFPCtu5rdW0L1r8j4KJKA0Cpo4qPnYWFFHkw0KOGcjXUEjXVQttUcdFjVkNcCXmQJllvSeGzYd9RVkfh4oPvlrgaOk8rWEGUOkDDc1hWxdUbmwMWkI9zwQK1r0Ho2GGCsDrjuT2jjipG0ogpeai1tycLRlN9HQ7dyPLbcrPPRZjpc2UJHKWsDgQuRQv9ZsdjuWoRiXthkqTbG003UxIVLTchkmZEaNJUJUwVBh30+dUgp8q5-WSiRTaA1KCpwlTzNfg7kDw-ViNvnFbCo-xbvralXX6MKGXSdJ2XilsV6ezYLZFMYUZYQ0Q5xtxKL4I8eBgCItApsSpLkhQVI0qi9eN7mBbx6WI4cxjB59uKILyKRcgOC2j63qJkPVzb6q95gzdQK3zWzsaprmj3Dfr2ug9bsPrttdWBsrNMroaPh99jY+VvDjNEBJrQNqEG36Yd13ZIfm-XMn8R7qxSo4DCkZ-RNl0ApMoE8NAlEqO4L651HAVEjgA9+UBP5Tj1AaI08596YKAdqZk59OZgNEvYTQ7hyawJ0BPNQ4lRK1GcCKGB5FvAxgoPgCAcAJAvzaKtUeKUAC0ChxSiJImwmRsjISRw6KEKAwjQHWXIuebCJRQQgyMKJLOYZlAKPOLQK4SsVHJTUeofK1hby2BFAYL0Ej+pbGscKPC6Q+Rh0McvOWo4rQ4g-qQ8x7tEC1msedDK9iDFRiItoTyUZajiybN42WWllxYJTME9OcISgwjqFY4w7k8I+mvrWcSAo9iqDKJoAcGDbpZLelnXJ6QQxYRnpweo+QVjaDsBUaS4YBSLA8XUu2d15r-gaVzZwroowkxDIKHRAdr5OE7B0vKZcckGBSdbXxUd7YowgJMlK1FpEtLWNYIwnT5KPhIHoXamt54OEjnXQ+TcJynCOdZPY7kSAl10J6ZsTYunAjDL8qUAyQQdKXqkwKOBAFaiZJ8lI2gtGBklMoPKvs+orEniUAw5FDDyHkDCGWOytJJ1zIcl6IivlGFyS2awwpAWCjciCew-pIyXXqGNDSPitKwF6CiFEcB4DUtUSkGeiltjgwqaJEEOVfQgmsGCu83J5TaKwpHbeSLED+nCbeCo+NazqMVbnUokqZ50s2PCLhQA */
+  /** @xstate-layout N4IgpgJg5mDOIC5QDMCWAbMBVADug9gIYQB0OYAdhKhVAMSwAuhATowNoAMAuoqDvlipGqfBT4gAHogCMANjkkATJ1UAWAMxq5GzgE45nJQBoQAT0RyZekgA559pQHYlMtdbUBfT6bSZcBMRklNS0DMxs7DK8SCACQiJiEtII8ooq6lo6+oYm5ohKerYkqqVGnGp6Bt6+GNh4RKTkVDT0OIQArrBgXDH8gsKi4rEpMk7ppZraugZGphYI2jZ6kwYyMjN6NSB+9YFNIa0ACp3dEHQscB0Atj08EvGDSSOy48qTWTO584haTiROUquPRqFy2ThOba7AKNEgAYwAFmA4QBrVoARQ6+GYdAgYjAJBoADd8CiCYjkSjMdjCL0HgNEsNQCkXBoSGMAKwQzQaOROKp6H6LQokAx8tJODnaIwcqF1GFBCmojFYnF4igE4mk8lI1HU5hRPpxBlDZKIVnsyXcjS8-lVIX2Ei6VR-NS2G22PQaOX+BqK3Vo2j6wh0MAsFj4FhkdCERjISPXeEB4N02KPRlmhAuIUyVSKSW2bTu9a2OSynw7eV+0hwy6x1oK87qzUUElk+F1xhgACyHXQInabEbqf6CVNL1SbpkJSclT0KjUHMBs6FS84dk4hc0TicGg5Sg0th9e1htbA9dojdD4cj0dj8ZYibPsZ7fYHrEYw-uaZNz2ZsinGc5wXNcV3yRYOWnQxCzkRcPVLEFj0bEgOmrVoSEIOERCJMA6AAAWuN9UEHRgUOrMgIygS5YFgEdjTHP8pF+WximcSolCsLJbA4oUlGcf4lA5LdATkPQnFLOQkPI1D9nQzDsNwgiiJIsj9hIZs6PTcd-yzCoSDUJRKkLG15A0DZeNBNkhK0bQOS5DjEIraFpLQ2gMKw1AcLoQgACNIw4b9RyeJkmMWMtRTnWDIMlGRSw5XiZDskohK5cZxg5MSvCcqs1Jkxo5I8rylP7YiP1U2FfP8yBNN-EKWT0gyjJ5UzzPAg8NBsFitEPT1YqcDYpNy1yoHchT8MIkqVLyoIwwjFgaoYurzQawyimanRWoWPixhIOR3XcGQ+PEgzBthabQhG+TPNw9oujuI0tMYlJbIiqoos5WKy14zgNCUOwhLdVRDo5Ply1qX0htktyrq86ibnu+lFszaZ2Q0WduLGGUfrUHM9FzXaAf3LRbA5Q9TqCc6CrG4r3zYcqglus4FuCzMOrZMs5EMzRZn0Wwc3GKDNzUNRylgsswcrCGzuG0brvG5SyvOkg4duCBmYzCcet2va9syw6frcHMrD+uyYKEkFJW9bKpYpmXGcgC4rludXtNC1xpwyCpPhyGReN+9drKM37S15cnSEptz7fOSrIkC+iWYnIoAVKMzOESlYxLkXiD3zdx+W5w6iit8GT1tqGRqj+XJsV8iY67NW48epbdLUfTVuMsyNo0b69A5fT9q0dRCg4sP4Xwa48DAERL2rXF8UJVttTHifMC7Xtq6HasXae2Q9xsBQON5KKdG0CzRNFBR7HT8ZN0ha3S5rcfJ+nqAr1m288HvBNl+f18N8-LejdaqZg2BlbWh8FCLhPlnNqe51zjD2r9Pc-IXDeArBQfAEA4ASGcvsRGCcdIAFoYELEIX3AUFDKFiSUKPZoF18Eax0gZVcqh9KlBcAbbIUpaGHFoCcO6EAGGu2eroJ0VpnC-TcJKJwLD1wKD5HuYWeNwQyFHkqQMUBgxCJ3osURaN7K7lcKCJcvErC7QoQZSCFRcySXvshZ8L9GzaObrmEmM4uRaDslUcYfNwIg2KLuGy2gdC-SyiXZCEcoDOORjjcCbhWGLmEnZRKacth2JcuXWWOFokTkXDYVaXo4HyE3IKWBO5dpCx3MfUmND0mQ3ypHU4kAck6XnH7HQEVYp8U4HZYOain6rwbNWFpoUDDs05vZKw3EDylK2ouAOANAZ7SUIWUeddmk-iRonXc4DJldJmdnNxgkYIKBWKJNwo9YAdDhHCOA8BNkENCvIQyu0YpWA2F6OyeQ5kgjsHnKx9hQRiVHu-FgIzRghKdGjPaGxdz9U2gUZw+YOLun6h1Ay8g0GeCAA */
   id: 'fileUpload',
   initial: 'pending',
   context: ({ input }) => ({
@@ -266,6 +274,8 @@ export const fileMachine = setup({
     // CheckingQuota state: checks if the user has enough storage space
     checkingQuota: {
       entry: log('Checking quota...'),
+      description:
+        'Checks if the user has enough storage space for the file. If not, the upload is denied and the file fails with a reason.',
       invoke: {
         id: 'checkQuota',
         src: 'checkQuota',
@@ -274,20 +284,38 @@ export const fileMachine = setup({
           itemId: context.mediaFile.id,
           dataSize: BigInt(context.mediaFile.file.size),
         }),
-        onDone: {
-          // guard: 'isQuotaCheckPassed',
-          target: 'creatingUpload',
-          actions: [
-            {
-              type: 'assignQuotaCheckResult',
-              params: ({ event }) => ({
-                itemId: event.output.itemId,
-                result: event.output.result,
-              }),
-            },
-            log('Quota check passed. Creating upload...'),
-          ],
-        },
+        onDone: [
+          {
+            guard: 'isQuotaCheckPassed',
+            target: 'creatingUpload',
+            actions: [
+              {
+                type: 'assignQuotaCheckResult',
+                params: ({ event }) => ({
+                  itemId: event.output.itemId,
+                  result: event.output.result,
+                }),
+              },
+              log('Quota check passed. Creating upload...'),
+            ],
+          },
+          {
+            // Denied: fail before any bytes move. The server refuses the row
+            // anyway; this saves the transfer and says why.
+            target: 'error',
+            actions: [
+              {
+                type: 'assignQuotaCheckResult',
+                params: ({ event }) => ({
+                  itemId: event.output.itemId,
+                  result: event.output.result,
+                }),
+              },
+              'assignQuotaDenied',
+              log('Quota check denied.'),
+            ],
+          },
+        ],
         onError: {
           target: 'error',
           actions: ['assignError', log('Quota check failed.')],
@@ -505,7 +533,7 @@ export const fileMachine = setup({
       type: 'final',
       entry: 'sendUploadFailedToParent',
       description:
-        'The quota check, creating the multipart upload or completing it failed (e.g. folder access was revoked). Tells the manager, which frees the slot and marks the file failed with the reason.',
+        'The quota check failed or denied the file, or creating or completing the multipart upload failed (e.g. folder access was revoked). Tells the manager, which frees the slot and marks the file failed with the reason.',
     },
   },
 })

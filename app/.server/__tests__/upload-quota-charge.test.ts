@@ -20,6 +20,7 @@ let rootId: string
 let quotaId: string
 let noQuotaId: string
 let noQuotaRootId: string
+let tight: { ownerId: string; driveId: string; rootId: string; quotaId: string }
 
 async function makeUser(label: string) {
   const id = uid('User')
@@ -66,12 +67,25 @@ beforeAll(async () => {
   const bare = await makeUser('Upload quota, none defined')
   noQuotaId = bare.id
   noQuotaRootId = bare.root
+
+  const small = await makeUser('Upload quota, 1000 bytes')
+  tight = { ownerId: small.id, driveId: small.drive, rootId: small.root, quotaId: uid('Quota') }
+  await prisma.quota.create({ data: { id: tight.quotaId, driveId: small.drive, total: 1000n } })
 })
 
 afterAll(async () => {
-  await wipeTestUsers([ownerId, noQuotaId])
-  await prisma.user.deleteMany({ where: { id: { in: [ownerId, noQuotaId] } } })
+  await wipeTestUsers([ownerId, noQuotaId, tight.ownerId])
+  await prisma.user.deleteMany({ where: { id: { in: [ownerId, noQuotaId, tight.ownerId] } } })
 })
+
+async function tightUsed() {
+  const q = await prisma.quota.findUniqueOrThrow({ where: { id: tight.quotaId }, select: { used: true } })
+  return q.used
+}
+
+async function setTightUsed(value: bigint) {
+  await prisma.quota.update({ where: { id: tight.quotaId }, data: { used: value } })
+}
 
 describe('createUploadedItem charges quota', () => {
   it('charges the uploader exactly the item size, once', async () => {
@@ -111,5 +125,40 @@ describe('createUploadedItem charges quota', () => {
 
     expect((await used()) - before).toBe(sizes.reduce((a, b) => a + b, 0n))
     expect(elapsed).toBeLessThan(5000)
+  })
+})
+
+// The client's quota check can be skipped, so this is the enforcement.
+describe('createUploadedItem refuses an upload that does not fit', () => {
+  const tightRows = () => prisma.item.count({ where: { ownerId: tight.ownerId, type: 'file' } })
+
+  it('answers 507 INSUFFICIENT_QUOTA, files no row and charges nothing', async () => {
+    await setTightUsed(900n)
+    const rowsBefore = await tightRows()
+    const error = await upload(101n, tight).then(
+      () => null,
+      (e) => e
+    )
+    expect(error).toMatchObject({ errorCode: 'INSUFFICIENT_QUOTA', status: 507 })
+    expect(await tightRows()).toBe(rowsBefore)
+    expect(await tightUsed()).toBe(900n)
+  })
+
+  it('accepts an upload that exactly fills the quota', async () => {
+    await setTightUsed(900n)
+    await upload(100n, tight)
+    expect(await tightUsed()).toBe(1000n)
+  })
+
+  // Two uploads that each fit alone but not together: the check sits in the
+  // UPDATE's WHERE, so the second waits on the row lock and then sees the
+  // first one's charge.
+  it('lets only one of two concurrent uploads take the last free space', async () => {
+    await setTightUsed(400n)
+    const rowsBefore = await tightRows()
+    const results = await Promise.allSettled([upload(500n, tight), upload(500n, tight)])
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+    expect(await tightUsed()).toBe(900n)
+    expect((await tightRows()) - rowsBefore).toBe(1)
   })
 })
