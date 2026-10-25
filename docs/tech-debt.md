@@ -13,13 +13,17 @@
 - **Errors and analytics:** Vinktar on server and browser since 10 Oct (item 4, partly done).
 - **Still missing:** structured logging and a linter. Both need a new package, which needs the owner's decision.
 
+**Update (25 Oct, later):** the Upload Call Audit (10 Oct, `docs/upload-call-audit.md`) was never folded into this register, and its source doc and the quota fix it came with sat on an unmerged branch (PR #26). Its findings were re-checked against `main` and added as **items 31–44**. Two are security-relevant. Item 31: uploads can go past the storage total; the fix is written and CI is green on the rebased PR, but it isn't merged. Item 32: the three search-index writes (`save_media_metadata`, `save_ocr_page`, `save_search_chunk_embeddings`) never receive the signed-in user, so anyone holding an item id can rewrite another user's search text, vectors or metadata. The rest are cleanup and load: cancelled uploads leave parts in S3 (33), 4xx responses are retried (34), and the per-file call counts behind items 35–44.
+
 **Update (25 Oct):** the git history was re-checked against this register back to 25 Jul, commit by commit. Two items were missing. Item 29: Trash listed every user's trashed items, fixed on 3 Oct (`32d1431`) but never recorded here. Item 30, still open: two signed cookies fall back to the literal secret `'secret'` when `COOKIE_SECRET` is unset, and the local `.env` doesn't set it. Also recorded: a lock on any item made a folder's permanent delete fail (item 8, fixed 24 Oct); the Fly Postgres image gained pgvector (item 2); browser source maps reach Vinktar on deploy (item 4).
 
 **Update (23 Oct):** an E2E pass after pulling found two more bugs, both fixed the same day. Item 27: favorites skipped the access check, so anyone with an item id could favorite another user's file and read its name and thumbnail. Item 28: the form and search decoders mangled typed text (every multi-word search became a fuzzy match, and a rename to "2024" was refused). The E2E suite runs green locally on one worker (item 20).
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**30 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct) · categories: Code 16, Architecture 7, Infrastructure 3, Test 2, Dependency 1, Documentation 1
+**44 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit) · categories: Code 22, Architecture 13, Infrastructure 4, Test 2, Documentation 2, Dependency 1
+
+**Status at 25 Oct 2026 (later):** 17 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 18 new and open (19, 20, 22, 30, 31–44). Item 31's fix is on PR #26, rebased onto `main` with CI green, not merged.
 
 **Status at 25 Oct 2026:** 17 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 30). Since 23 Oct: item 29 added as resolved (fixed 3 Oct), item 30 added as open.
 
@@ -29,7 +33,7 @@
 
 ### What's left, in priority order
 
-*Updated 25 Oct. Ordered by priority score; new items are marked **new**.*
+*Updated 25 Oct (items 31–44 added later that day). Ordered by priority score; new items are marked **new**.*
 
 | # | Item | Score | What remains | Blocked on |
 |---|------|-------|--------------|------------|
@@ -38,7 +42,9 @@
 | 27 | ~~Favorites skipped the access check~~ | 40 | Resolved 2026-10-23: favoriting and the Favorites list need read access; duplicates handled | — |
 | 29 | ~~Trash listed every user's trashed items~~ | 40 | Resolved 2026-10-03 (recorded 25 Oct): the Trash query always filters by the signed-in owner | — |
 | 26 | ~~`hasItemPermission` counts revoked and expired grants~~ | 35 | Resolved 2026-10-08: every access check counts only live grants | — |
+| 31 | **new** Uploads can go past the storage total | 35 | Merge PR #26 (rebased, CI green 25 Oct) | Owner's merge |
 | 2 | Deploy path | 32 | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
+| 32 | **new** Search-index writes skip the ownership check | 32 | Pass the session user to three actions and check `write` | — |
 | 4 | Error tracking and logging | 28 | Structured logging; error tracking is Vinktar since 10 Oct, with browser source maps uploaded on deploy | Owner's choice of logger |
 | 28 | ~~Form and search decoders mangle typed text~~ | 25 | Resolved 2026-10-23: values decoded once, typed text kept as text, bad input is a 400 | — |
 | 19 | **new** Stripe webhook is a stub | 24 | All four event handlers | Whether paid plans ship before launch |
@@ -46,13 +52,25 @@
 | 10 | Accessibility and responsive UI | 21 | Everything except the nested Filter buttons | — |
 | 22 | **new** Open decisions in upload and onboarding | 20 | Three decisions already written up in TASKS.md | Owner's decision |
 | 30 | **new** Signed cookies fall back to the secret `'secret'` | 20 | Refuse to start in production without `COOKIE_SECRET`; set it in the local `.env` | — |
+| 33 | **new** Cancelled uploads leave parts in S3 | 20 | Call the existing `abortUpload` on cancel and on retry exhaustion; check the bucket lifecycle rule | — |
+| 34 | **new** Upload requests retry 4xx answers | 20 | Fail fast on 4xx other than 429 | — |
+| 35 | **new** A session lookup on every request | 20 | better-auth `cookieCache` | Owner's call on revocation delay |
 | 21 | ~~Embedding backfill runs in every tab~~ | 18 | Resolved 2026-10-09: model in a worker (main-thread blocking 1,279 → 0 ms, measured), one tab via a Web Lock | — |
 | 12 | Linter | 16 | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
 | 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; the rest of `quota-actions`; routes and components | — |
 | 23 | **new** Prisma calls in route modules | 16 | `workspaces/workspace.tsx` only | Deferred to after personal-first (TASKS.md, 8 Oct) |
 | 24 | ~~Slow first page load~~ | 15 | Resolved 2026-10-09: server dependencies bundled; first page 4–15 s → ~1 s here, first request 1.6 → 0.57 s on Linux (CI) | — |
+| 36 | **new** Folder path resolved again for every file | 15 | Resolve the tree once per batch | Measure first |
+| 37 | **new** The `.ts` sniff's result is thrown away | 15 | Persist the verified type or drop the S3 read | — |
+| 38 | **new** Which upload concurrency limit applies is unknown | 15 | Measure it; correct the upload skill | — |
 | 16 | Overlapping UI primitives | 12 | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
 | 17 | Unfinished migrations | 12 | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes | Deferred to after personal-first (TASKS.md, 4 Oct) |
+| 39 | **new** One presign request per part | 12 | Return every part URL from `create-multipart-upload` | Measure first |
+| 40 | **new** Media-metadata writes do extra work | 10 | Skip the empty POST; one upsert | — |
+| 41 | **new** Dead upload branches | 10 | `create_upload_item` in 3 `shouldRevalidate`s; the idle quota machine | — |
+| 42 | **new** Size rollup locks every ancestor row | 10 | Redesign only if lock waits are measured | Measure first |
+| 43 | **new** Revalidation and thumbnail query overhead | 9 | 2 page reloads per batch, wasted workspace query, 9 queries per thumbnail | Measure first |
+| 44 | **new** Separate complete and create requests | 9 | Merge them, and the triple access check | Measure first |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -90,6 +108,20 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 28 | ~~Form and search decoders mangle typed text~~ | Code | 3 | 2 | 1 | **25** (High) | 0.5 day | Resolved 23 Oct |
 | 29 | ~~Trash listed every user's trashed items~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 3 Oct (recorded 25 Oct) |
 | 30 | Signed cookies fall back to the literal secret `'secret'` | Code | 2 | 2 | 1 | **20** (Medium) | 0.5 day | New 25 Oct |
+| 31 | Uploads can go past the storage total | Code | 3 | 4 | 1 | **35** (High) | merge | New 25 Oct; fix on PR #26 |
+| 32 | Search-index writes skip the ownership check | Code | 3 | 5 | 2 | **32** (High) | 0.5–1 day | New 25 Oct |
+| 33 | Cancelled and failed uploads never abort the multipart upload | Infrastructure | 2 | 3 | 2 | **20** (Medium) | 0.5 day | New 25 Oct |
+| 34 | Upload requests retry 4xx answers five times | Code | 2 | 2 | 1 | **20** (Medium) | 1–2 h | New 25 Oct |
+| 35 | A database session lookup on every request | Architecture | 3 | 2 | 2 | **20** (Medium) | 0.5 day | New 25 Oct |
+| 36 | The folder path is resolved again for every file of a folder upload | Architecture | 3 | 2 | 3 | **15** (Low) | 1–2 days | New 25 Oct |
+| 37 | The `.ts` sniff reads from S3 and nothing uses the result | Code | 1 | 2 | 1 | **15** (Low) | 1–2 h | New 25 Oct |
+| 38 | Which upload concurrency limit applies (10 or 100) is unknown | Documentation | 2 | 1 | 1 | **15** (Low) | 1 h | New 25 Oct |
+| 39 | One presign request per 5 MiB part | Architecture | 2 | 1 | 2 | **12** (Low) | 0.5–1 day | New 25 Oct |
+| 40 | Media-metadata writes do extra work | Code | 1 | 1 | 1 | **10** (Low) | 2 h | New 25 Oct |
+| 41 | Dead upload branches | Code | 1 | 1 | 1 | **10** (Low) | 2 h | New 25 Oct |
+| 42 | The size rollup locks every ancestor row | Architecture | 2 | 3 | 4 | **10** (Low) | 3–5 days | New 25 Oct |
+| 43 | Revalidation and thumbnail query overhead | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | New 25 Oct |
+| 44 | Upload complete and item creation are separate requests | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | New 25 Oct |
 
 ## Details
 
@@ -557,6 +589,121 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Fix:** one helper that reads `COOKIE_SECRET` and throws at module load in production when it is unset, as `stripe.ts` does for its key. Both cookies use it. Set the variable in the local `.env`.
 - **Status 2026-10-25: open.**
 
+Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.md`): every call one uploaded file causes, traced through the code and checked against one measured 8.46 MB upload. Its per-file counts and "× 100,000 files" totals are traced, not measured. On 25 Oct each finding was re-checked against `main`; where a line below says *per the audit*, it wasn't re-read in code that day.
+
+### 31. Uploads can go past the storage total
+
+*Code debt · Impact 3 · Risk 4 · Effort 1 → **35** · est. merge · source: fixed 10 Oct on a branch that was never merged; recorded 25 Oct*
+
+- **Evidence, from the fix's commit:** the file machine's quota guard was commented out, and its result was stored by a plain action whose return value XState discards, so a "denied" answer still created the multipart upload. The server charge in `createUploadedItem` never compared against the total, so a direct API call was always accepted. Measured on the dev DB at the time: a denied UI upload and a direct-API upload both landed and left the quota at −151,000. `main` still has no `withinTotal` in `quota-actions.ts`.
+- **Fix (written):** `onItemsUploaded` puts `used + size <= total` in the row-locked UPDATE's own `WHERE`; a charge that doesn't fit throws 507 and rolls back the whole transaction, Item row included. The client guard reads the done event and a denied file fails before any bytes move.
+- **Status 2026-10-25: open, fix ready.** PR #26 rebased onto `main` (`2594867`, `18be602`, `f921d61`); code patches identical to the originals; `pnpm test` 914/0 in 74 files, type gate exit 0, CI green. Still open from item 18: the charged size comes from the client form, not from S3.
+
+### 32. Search-index writes skip the ownership check
+
+*Code debt (security) · Impact 3 · Risk 5 · Effort 2 → **32** · est. 0.5–1 day · source: Upload Call Audit (flagged "not tested yet"), confirmed in code 25 Oct*
+
+- **Evidence:** in `app/routes/api/items.ts`, `save_media_metadata` (`:338`) calls `upsertImageFacet(itemId, …)` and the other facet writers, `save_ocr_page` (`:505`) calls `appendSearchPage({ itemId, pageNum, text })` and `save_search_chunk_embeddings` (`:518`) calls `setSearchChunkVectors(entries)`. None of the three actions takes a user (`search-actions.ts:119`, `:704`; `item-actions.ts:1489`), so none can check one. Any signed-in user holding an item id can rewrite another user's EXIF and media facets, append search text to their file, or overwrite chunk vectors by chunk id.
+- **Impact:** search poisoning and metadata tampering across accounts; no read of the victim's data. The same class as items 25 and 27.
+- **Fix:** pass the session user and run `assertItemAccess(userId, itemId, { role: 'write' })` in each action, as CLAUDE.md requires. For vectors, read the distinct `itemId`s behind the chunk ids in one query and check those. A scanned PDF sends up to 30 of these per file, so keep it to one check per request.
+- **Status 2026-10-25: open.** Not reproduced with a second user; read from the code.
+
+### 33. Cancelled and failed uploads never abort the multipart upload
+
+*Infrastructure debt · Impact 2 · Risk 3 · Effort 2 → **20** · est. 0.5 day · source: Upload Call Audit, confirmed in code 25 Oct*
+
+- **Evidence:** `abortUpload` (`app/machines/multipart/s3.mulipart.utils.ts:240`) has no importers. On a user abort the file machine forwards `@multipart.upload.abort`, which only trips the `AbortController` in `s3.multipart.stream.ts`; when part retries run out, the file is "treated as aborted" (`reviset/file.machine.ts:379`). Neither path calls `abort-multipart-upload`, so the uploaded parts stay billed in S3. The 2 Oct orphan sweep (item 9) aborted 85 stale uploads, which is what this leaves behind.
+- **Fix:** invoke `abortUpload` on both paths, and confirm whether the buckets have an `AbortIncompleteMultipartUpload` lifecycle rule as a backstop (not checked).
+- **Status 2026-10-25: open.**
+
+### 34. Upload requests retry 4xx answers five times
+
+*Code debt · Impact 2 · Risk 2 · Effort 1 → **20** · est. 1–2 h · source: Upload Call Audit, confirmed in code 25 Oct*
+
+- **Evidence:** `retryFetch` (`s3.multipart.stream.ts:10`) handles 429 on its own; any other non-OK answer throws inside its `try`, the `catch` logs it and retries with growing backoff. A 403 (access revoked mid-upload) or a 400 is retried five times; per the audit, the presign backoff adds up to about 5 minutes before the upload fails.
+- **Fix:** retry 429, 5xx and network errors; fail at once on any other 4xx.
+- **Status 2026-10-25: open.**
+
+### 35. A database session lookup on every request
+
+*Architecture debt · Impact 3 · Risk 2 · Effort 2 → **20** · est. 0.5 day · source: Upload Call Audit, confirmed in code 25 Oct*
+
+- **Evidence:** the `session` block in `app/.server/auth.ts:64` has no `cookieCache`, so every request to the server reads the session from the database. Per the audit that is 5–6 lookups per file, and about 205 for a 1 GiB file just to presign its parts.
+- **Fix:** better-auth `session.cookieCache` with a short `maxAge`. The trade-off is the owner's call: a revoked session stays valid until the cache expires.
+- **Status 2026-10-25: open.** Blocked on that decision.
+
+### 36. The folder path is resolved again for every file of a folder upload
+
+*Architecture debt · Impact 3 · Risk 2 · Effort 3 → **15** · est. 1–2 days · source: Upload Call Audit (per the audit)*
+
+- **Evidence:** `createUploadedItem` resolves each file's folder path in its own transaction: an advisory lock and an `item.findMany` per level, even once the folders exist. Traced: 6 DB calls and 1 transaction per file at 3 levels, about 600,000 calls for a 100,000-file folder.
+- **Fix:** resolve the folder tree once per batch and file each upload by the leaf's id. Measure a folder upload before and after.
+- **Status 2026-10-25: open.**
+
+### 37. The `.ts` sniff reads from S3 and nothing uses the result
+
+*Code debt · Impact 1 · Risk 2 · Effort 1 → **15** · est. 1–2 h · source: Upload Call Audit, confirmed in code 25 Oct*
+
+- **Evidence:** `complete-multipart-upload` (`app/routes/api/upload.ts:122`) does a 1 KB ranged `GetObject` for `.ts`/`.tsx` files. Its comment calls this "the trust boundary" and says the verified type is persisted on the Item, but that step is still a `TODO`, and nothing in `app/` reads the returned `verifiedKind`/`verifiedContentType`.
+- **Fix:** persist the verified type on the Item, or delete the read and the comment. Today it costs an S3 call whose answer is dropped, under a comment promising it is stored.
+- **Status 2026-10-25: open.**
+
+### 38. Which upload concurrency limit applies (10 or 100) is unknown
+
+*Documentation debt · Impact 2 · Risk 1 · Effort 1 → **15** · est. 1 h · source: Upload Call Audit, confirmed in code 25 Oct*
+
+- **Evidence:** `upload.machine.ts:31` sets `maxConcurrentUploads: 10`; the schema default is 100 (`machine.schemas.ts:298`), and the `stashly-upload-xstate` skill says 100. Every throughput and lock-contention estimate depends on which one runs.
+- **Fix:** measure files in flight during a large batch, then make the code and the skill agree.
+- **Status 2026-10-25: open.**
+
+### 39. One presign request per 5 MiB part
+
+*Architecture debt · Impact 2 · Risk 1 · Effort 2 → **12** · est. 0.5–1 day · source: Upload Call Audit, confirmed in code 25 Oct*
+
+- **Evidence:** each part sends its own `get-presigned-url` (`s3.multipart.stream.ts:173`, handled at `upload.ts:90`). Signing is a local HMAC, so each request buys only a session lookup. Measured in the audit's upload: 2 of the 10 requests.
+- **Fix:** return every part URL from `create-multipart-upload`.
+- **Status 2026-10-25: open.**
+
+### 40. Media-metadata writes do extra work
+
+*Code debt · Impact 1 · Risk 1 · Effort 1 → **10** · est. 2 h · source: Upload Call Audit, confirmed in code 25 Oct*
+
+- **Evidence:** `save_media_metadata` is posted for every file type, including a zip with nothing to save. `upsertImageFacet` (`item-actions.ts:1489`) is a `findFirst` then an `update` or `create` (two round-trips, and two concurrent saves can both create).
+- **Fix:** skip the POST when there is nothing to save; one Prisma `upsert` on the unique `itemId`.
+- **Status 2026-10-25: open.**
+
+### 41. Dead upload branches
+
+*Code debt · Impact 1 · Risk 1 · Effort 1 → **10** · est. 2 h · source: Upload Call Audit, confirmed in code 25 Oct*
+
+- **Evidence:** `stash/all.tsx:83`, `stash/folder.tsx:123` and `stash/home.tsx:64` check for `create_upload_item` in `shouldRevalidate`. The check can't match, because the upload POST is a plain `fetch`, which React Router never sees. The quota machine is spawned into `quotaActor` (`upload.machine.ts:123`) and nothing sends it an event, although the `stashly-upload-xstate` skill describes it as tracking and enforcing quota.
+- **Fix:** delete the branches and the idle actor, or wire them up; correct the skill either way. Confirm with the owner first: no current callers doesn't always mean dead.
+- **Status 2026-10-25: open.**
+
+### 42. The size rollup locks every ancestor row
+
+*Architecture debt · Impact 2 · Risk 3 · Effort 4 → **10** · est. 3–5 days · source: Upload Call Audit (per the audit)*
+
+- **Evidence:** `update_size()` runs one `UPDATE "Item"` per ancestor, and each row stays locked until the upload's transaction commits. With several files in flight, all of them queue on the same root and parent rows, and on the user's `Quota` row. Lock waits were not measured.
+- **Fix:** only if contention is measured. Options include batching the rollup per transaction or deferring it.
+- **Status 2026-10-25: open.**
+
+### 43. Revalidation and thumbnail query overhead
+
+*Architecture debt · Impact 2 · Risk 1 · Effort 3 → **9** · est. 1–2 days · source: Upload Call Audit (per the audit)*
+
+- **Evidence:** each batch triggers two full page revalidations (700 ms after the finished count settles, and after the indexing queue drains); the first can land before the row exists. Each `.data` request runs the workspace middleware's `workspaceMember.findMany`, whose only consumer doesn't re-run. A visible image's thumbnail costs 9 permission and bucket queries, and stage 3 re-uploads and re-patches the same key. Measured once: 61,568 rows returned around one upload, most likely the two revalidations, not isolated.
+- **Fix:** one revalidation per batch after rows exist; skip the middleware query on `.data` requests; one permission check per thumbnail request.
+- **Status 2026-10-25: open.**
+
+### 44. Upload complete and item creation are separate requests
+
+*Architecture debt · Impact 2 · Risk 1 · Effort 3 → **9** · est. 1–2 days · source: Upload Call Audit (per the audit)*
+
+- **Evidence:** `complete-multipart-upload` and `create_upload_item` are two requests, and the same `assertCanUploadTo` check runs three times per file (create, complete, item).
+- **Fix:** weigh merging them against the db machine's design (it exists so a failed row never stops the batch). The repeated check is partly defence in depth: the one at complete lets a revoke abort the upload. Low value until measured.
+- **Status 2026-10-25: open.**
+
 ## Changes since the audit
 
 These commits touched a register item, oldest first. Commits that don't touch any register item are left out, such as page size, the rename dialog, the search `ZodError`, and the Vite typegen watch.
@@ -617,6 +764,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-23 | `a581626`..`b83faa1` | 20, 13 | E2E on one worker with traces kept on failure; navigation, search, pinned, favorites and thumbnail specs brought in line with the UI; stage 3 asserted at 512×512. 51 passed, 1 skipped locally. |
 | 2026-10-24 | `839f933` | 8, 13 | `LockedItem_itemId_fkey` is `ON DELETE CASCADE`: a locked file no longer fails its folder's permanent delete. One new live-DB test. |
 | 2026-10-24 | `e286ffd` | 30 | The new `last-account` cookie signs with the same `COOKIE_SECRET ?? 'secret'` fallback as the theme cookie. |
+| 2026-10-25 | `2594867`, `18be602`, `f921d61` (PR #26, not on `main`) | 31, 13 | The 10 Oct quota fix and the upload call audit, rebased onto `main`: the server refuses a charge past the total with a 507, and the client pre-check is honoured. 5 new tests; 914/0 in 74 files, CI green. |
 
 ## Phased remediation plan
 
@@ -688,6 +836,15 @@ New items from the 8 Oct re-scan, in the order to do them:
 9. ~~**Trash scoped to its owner (item 29).**~~ **Done 3 Oct**, recorded 25 Oct from git history.
 10. **Cookie secret fallback (item 30, 0.5 day).** Small and independent; best done before the first `fly deploy` (item 2), so a missing secret stops the release instead of signing with `'secret'`.
 
+### Phase 5 · added 25 Oct
+
+*items 31–44, from the upload call audit; the first step is under a day*
+
+1. **Now:** merge PR #26 (item 31), add the ownership checks to the three search-index writes (item 32), and stop retrying 4xx answers (item 34). Two security gaps and a slow failure, each a small diff with a test.
+2. **On the next upload task (about 1.5 days):** abort cancelled and failed multipart uploads and check the lifecycle rule (33); settle the `.ts` sniff (37), the metadata writes (40) and the dead branches (41); measure the concurrency limit and correct the skill (38).
+3. **A measured performance pass (3–5 days):** the session cookie cache once the owner decides (35), all part URLs in one response (39), the folder tree once per batch (36), and the revalidation and thumbnail overhead (43). Repeat the audit's measured upload before and after; the CLAUDE.md debugging rules require the numbers.
+4. **Only if contention is measured:** the rollup redesign (42) and merging the requests (44). High effort for an unproven payoff.
+
 ---
 
 *Method: read-only scan of the working tree on your computer — file and line counts, grep for type escapes and markers, an import scan against `package.json`, the tsc baseline, Dockerfile, `.gitignore`/`.dockerignore`, git history since June, and TASKS.md. The generated Prisma client (`app/prisma/`) is excluded from code metrics. "No import found" for a dependency means none in `app/`, `server*`, `scripts/` or `vite.config.ts`; confirm with a build before removing. 40 files had uncommitted changes at the time; findings reflect the working tree.*
@@ -695,3 +852,5 @@ New items from the 8 Oct re-scan, in the order to do them:
 *Re-audit 8 Oct: same read-only method over 109 commits since the audit, TASKS.md (triaged 4 Oct) and `docs/project-analysis-2026-10-04.md`. Item 18 was verified by reading the route, schema and `applyQuotaDelta`, not by calling the endpoint. UI findings in item 10 weren't re-measured in a browser.*
 
 *History check 25 Oct: every non-merge commit since 25 Jul that touches `app/`, `server`, `prisma/`, `deploy/`, the Dockerfile, `fly.toml` or `.github/` was matched against this register; commits it doesn't name were read and either added above or left out as feature work (collections sort and covers, invitations, sign-in redesign, item-card rename, styling). Test counts are from CI's log for `bfefbbf`. Items 29 and 30 were read from the commits and the code; neither was reproduced.*
+
+*Upload audit 25 Oct: items 31–44 were taken from `docs/upload-call-audit.md` (10 Oct, on PR #26) and re-checked with targeted reads of `main` at `6173a8c`. Items 36, 42, 43 and 44 are marked "per the audit" and weren't re-read that day. Item 32 was confirmed from the action signatures, not reproduced with a second user. Traced call counts are the audit's; the only measurement behind them is its single 8.46 MB upload.*
