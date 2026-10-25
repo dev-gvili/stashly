@@ -17,6 +17,7 @@ import type {
   MediaFileInput,
 } from '@/types/machine.types'
 import {
+  abortUpload,
   completeUpload,
   createUpload,
   uploadParts as multipartActor,
@@ -210,6 +211,8 @@ export const fileMachine = setup({
     createMultipartUpload: createUpload,
     // Invokes the complete multipart upload service
     completeMultipartUpload: completeUpload,
+    // Invokes the abort multipart upload service
+    abortMultipartUpload: abortUpload,
   },
   guards: {
     // Whether the quota check allowed the file. Reads the done event, not
@@ -400,14 +403,14 @@ export const fileMachine = setup({
             },
             // Incoming event from the multipart actor after being aborted, move to the aborted state
             '@multipart.upload.aborted': {
-              target: '#fileUpload.aborted',
+              target: '#fileUpload.abortingUpload',
               actions: ['markAsAborted', log('Upload aborted by user.')],
             },
             // After all retries are exhausted the multipart actor sends this event.
             // Treat it as an abort so the parent can free the concurrency slot and
             // start the next pending file.
             '@multipart.upload.error': {
-              target: '#fileUpload.aborted',
+              target: '#fileUpload.abortingUpload',
               actions: [
                 'markAsAborted',
                 log(
@@ -476,7 +479,7 @@ export const fileMachine = setup({
               ],
             },
             '@multipart.upload.aborted': {
-              target: '#fileUpload.aborted',
+              target: '#fileUpload.abortingUpload',
               actions: ['markAsAborted', log('Paused upload aborted.')],
             },
           },
@@ -511,6 +514,32 @@ export const fileMachine = setup({
         onError: {
           target: 'error',
           actions: ['assignError', log('Failed to complete multipart upload.')],
+        },
+      },
+    },
+    // AbortingUpload state: tells S3 to drop the parts already uploaded. Without
+    // it a cancelled or failed upload stays open and its parts stay billed;
+    // Tigris has no AbortIncompleteMultipartUpload lifecycle rule to fall back
+    // on (tech-debt item 33). Ends in `aborted` either way: a failed abort is
+    // left for the orphan sweep, and the parent still needs its slot back.
+    abortingUpload: {
+      invoke: {
+        id: 'abortMultipartUpload',
+        src: 'abortMultipartUpload',
+        input: ({ context }) => ({
+          key: context.mediaFile.key,
+          uploadId: context.uploadId!,
+        }),
+        onDone: {
+          target: 'aborted',
+          actions: log('Multipart upload aborted on S3.'),
+        },
+        onError: {
+          target: 'aborted',
+          actions: log(
+            ({ event }) => event,
+            'Failed to abort the multipart upload; the orphan sweep will.'
+          ),
         },
       },
     },
