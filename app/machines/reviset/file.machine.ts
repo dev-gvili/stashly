@@ -512,7 +512,7 @@ export const fileMachine = setup({
           ],
         },
         onError: {
-          target: 'error',
+          target: 'abortingFailedUpload',
           actions: ['assignError', log('Failed to complete multipart upload.')],
         },
       },
@@ -536,6 +536,31 @@ export const fileMachine = setup({
         },
         onError: {
           target: 'aborted',
+          actions: log(
+            ({ event }) => event,
+            'Failed to abort the multipart upload; the orphan sweep will.'
+          ),
+        },
+      },
+    },
+    // AbortingFailedUpload state: completing failed, so the parts are in S3
+    // with nothing to assemble them. Drop them, then fail with the reason
+    // already assigned. A refused complete was aborted by the server already;
+    // the route answers that second abort as done.
+    abortingFailedUpload: {
+      invoke: {
+        id: 'abortFailedMultipartUpload',
+        src: 'abortMultipartUpload',
+        input: ({ context }) => ({
+          key: context.mediaFile.key,
+          uploadId: context.uploadId!,
+        }),
+        onDone: {
+          target: 'error',
+          actions: log('Multipart upload aborted on S3 after a failed complete.'),
+        },
+        onError: {
+          target: 'error',
           actions: log(
             ({ event }) => event,
             'Failed to abort the multipart upload; the orphan sweep will.'

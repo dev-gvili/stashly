@@ -157,7 +157,13 @@ export async function action({ request }: Route.ActionArgs) {
       }
     }
     case 'abort-multipart-upload': {
-      await abortMultipartUpload(bucket, values.key, values.uploadId)
+      // Already gone is done: a refused complete aborts on the server, and the
+      // client then aborts the same upload again on its way to `error`.
+      try {
+        await abortMultipartUpload(bucket, values.key, values.uploadId)
+      } catch (e) {
+        if ((e as { name?: string }).name !== 'NoSuchUpload') throw e
+      }
       return { success: true }
     }
   }
