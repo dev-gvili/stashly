@@ -23,6 +23,8 @@
 
 **44 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit) · categories: Code 22, Architecture 13, Infrastructure 4, Test 2, Documentation 2, Dependency 1
 
+**Status at 25 Oct 2026 (late night):** 21 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 14 new and open (19, 20, 22, 30, 35–44). Items 33 (`8a79e89`) and 34 (`8ac03d9`) resolved: a cancelled or failed upload aborts its multipart upload, and a 4xx other than 429 fails on the first answer. Item 35 has the owner's answer (a 5-minute cookie cache) and waits on a sign-up detail; item 36 waits on a measured folder upload.
+
 **Status at 25 Oct 2026 (night):** 19 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 16 new and open (19, 20, 22, 30, 33–44). Item 32 resolved (`41f2efe`): the three search-index writes need `write` on the item and a refusal is a 403.
 
 **Status at 25 Oct 2026 (end of day):** 18 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 17 new and open (19, 20, 22, 30, 32–44). Item 31 resolved: PR #26 merged as `059d0aa`, CI green. The upload audit was re-run with real 10 MB and 100 MB files as the baseline for items 32–44 (see items 35 and 39).
@@ -56,9 +58,9 @@
 | 10 | Accessibility and responsive UI | 21 | Everything except the nested Filter buttons | — |
 | 22 | **new** Open decisions in upload and onboarding | 20 | Three decisions already written up in TASKS.md | Owner's decision |
 | 30 | **new** Signed cookies fall back to the secret `'secret'` | 20 | Refuse to start in production without `COOKIE_SECRET`; set it in the local `.env` | — |
-| 33 | **new** Cancelled uploads leave parts in S3 | 20 | Call the existing `abortUpload` on cancel and on retry exhaustion; today only the manual orphan sweep aborts them | — |
-| 34 | **new** Upload requests retry 4xx answers | 20 | Fail fast on 4xx other than 429 | — |
-| 35 | **new** A session lookup on every request | 20 | better-auth `cookieCache` | Owner's call on revocation delay |
+| 33 | ~~Cancelled uploads leave parts in S3~~ | 20 | Resolved 2026-10-25 (`8a79e89`): cancel and retry exhaustion both abort the multipart upload | — |
+| 34 | ~~Upload requests retry 4xx answers~~ | 20 | Resolved 2026-10-25 (`8ac03d9`): a 4xx other than 429 fails on the first answer | — |
+| 35 | **new** A session lookup on every request | 20 | better-auth `cookieCache`, 5 minutes (owner, 25 Oct) | A fresh cache cookie after sign-up |
 | 21 | ~~Embedding backfill runs in every tab~~ | 18 | Resolved 2026-10-09: model in a worker (main-thread blocking 1,279 → 0 ms, measured), one tab via a Web Lock | — |
 | 12 | Linter | 16 | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
 | 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; the rest of `quota-actions`; routes and components | — |
@@ -114,8 +116,8 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 30 | Signed cookies fall back to the literal secret `'secret'` | Code | 2 | 2 | 1 | **20** (Medium) | 0.5 day | New 25 Oct |
 | 31 | ~~Uploads can go past the storage total~~ | Code | 3 | 4 | 1 | **35** (High) | merge | Resolved 25 Oct |
 | 32 | ~~Search-index writes skip the ownership check~~ | Code | 3 | 5 | 2 | **32** (High) | 0.5–1 day | Resolved |
-| 33 | Cancelled and failed uploads never abort the multipart upload | Infrastructure | 2 | 3 | 2 | **20** (Medium) | 0.5 day | New 25 Oct |
-| 34 | Upload requests retry 4xx answers five times | Code | 2 | 2 | 1 | **20** (Medium) | 1–2 h | New 25 Oct |
+| 33 | ~~Cancelled and failed uploads never abort the multipart upload~~ | Infrastructure | 2 | 3 | 2 | **20** (Medium) | 0.5 day | Resolved |
+| 34 | ~~Upload requests retry 4xx answers five times~~ | Code | 2 | 2 | 1 | **20** (Medium) | 1–2 h | Resolved |
 | 35 | A database session lookup on every request | Architecture | 3 | 2 | 2 | **20** (Medium) | 0.5 day | New 25 Oct |
 | 36 | The folder path is resolved again for every file of a folder upload | Architecture | 3 | 2 | 3 | **15** (Low) | 1–2 days | New 25 Oct |
 | 37 | The `.ts` sniff reads from S3 and nothing uses the result | Code | 1 | 2 | 1 | **15** (Low) | 1–2 h | New 25 Oct |
@@ -619,7 +621,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** `abortUpload` (`app/machines/multipart/s3.mulipart.utils.ts:240`) has no importers. On a user abort the file machine forwards `@multipart.upload.abort`, which only trips the `AbortController` in `s3.multipart.stream.ts`; when part retries run out, the file is "treated as aborted" (`reviset/file.machine.ts:379`). Neither path calls `abort-multipart-upload`, so the uploaded parts stay billed in S3. The 2 Oct orphan sweep (item 9) aborted 85 stale uploads, which is what this leaves behind.
 - **No backstop:** Tigris rejects an `AbortIncompleteMultipartUpload` lifecycle rule (item 9, tested 2 Oct), so the only cleanup is running `scripts/sweep-s3-orphans.ts` by hand.
 - **Fix:** invoke `abortUpload` on both paths. Without a lifecycle rule, the client call is the only thing that cleans up on time.
-- **Status 2026-10-25: open.**
+- **Status 2026-10-25: resolved** (`8a79e89`). Both paths now go through an `abortingUpload` state in `reviset/file.machine.ts` that runs the existing `abortUpload` actor with the file's key and upload id, then reaches `aborted` whether or not the call succeeds, so the manager always gets its slot back and a failed abort is left to the sweep. The server side already existed and only aborts in the session user's own bucket. `file-abort-multipart.test.ts` (3): retries exhausted, user cancel, and a failing abort call. **Not covered:** a failed `complete-multipart-upload` still goes to `error` without an abort; the item named only the two paths above. Not measured in a browser.
 
 ### 34. Upload requests retry 4xx answers five times
 
@@ -627,7 +629,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 
 - **Evidence:** `retryFetch` (`s3.multipart.stream.ts:10`) handles 429 on its own; any other non-OK answer throws inside its `try`, the `catch` logs it and retries with growing backoff. A 403 (access revoked mid-upload) or a 400 is retried five times; per the audit, the presign backoff adds up to about 5 minutes before the upload fails.
 - **Fix:** retry 429, 5xx and network errors; fail at once on any other 4xx.
-- **Status 2026-10-25: open.**
+- **Status 2026-10-25: resolved** (`8ac03d9`). `retryFetch` throws a 4xx other than 429 on the first answer with its status attached; 429, 5xx and network errors still retry. With item 33, a part request refused mid-upload now fails the file at once and aborts its parts. `retry-fetch.test.ts` (8): 400/403/404/413 make one attempt, 503→500→200 and 429→200 retry, five 500s give up, a network error retries.
 
 ### 35. A database session lookup on every request
 
@@ -636,7 +638,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** the `session` block in `app/.server/auth.ts:64` has no `cookieCache`, so every request to the server reads the session from the database. Per the audit that is 5–6 lookups per file, and about 205 for a 1 GiB file just to presign its parts.
 - **Measured 2026-10-25** (upload audit re-run, `.claude/evidence/upload-audit-before.json`): `session` was scanned exactly once per request to our server, 12 times for a 10 MB upload and 30 times for a 100 MB one. `user` took about one more index lookup per request on top, so a lookup looks like 2 SQL statements (inferred from the counters, not from a query log). A fix should show `session` scans falling toward 0 with the same request counts.
 - **Fix:** better-auth `session.cookieCache` with a short `maxAge`. The trade-off is the owner's call: a revoked session stays valid until the cache expires.
-- **Status 2026-10-25: open.** Blocked on that decision.
+- **Status 2026-10-25: open, decided.** The owner chose a 5-minute `maxAge`. Not turned on yet: on sign-up, better-auth caches the session from the user row it just created (`api/routes/callback.mjs`, `setSessionCookie(c, { session, user })`), while `onboardNewUser` writes `bucket`, `rootId` and `driveId` to the database only, and the `user.create.after` hook runs through `queueAfterTransactionHook`. A new user's cached session could therefore carry no bucket for up to 5 minutes. Needs the cache cookie rewritten from the database after a sign-up callback, then a test.
 
 ### 36. The folder path is resolved again for every file of a folder upload
 
@@ -644,7 +646,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 
 - **Evidence:** `createUploadedItem` resolves each file's folder path in its own transaction: an advisory lock and an `item.findMany` per level, even once the folders exist. Traced: 6 DB calls and 1 transaction per file at 3 levels, about 600,000 calls for a 100,000-file folder.
 - **Fix:** resolve the folder tree once per batch and file each upload by the leaf's id. Measure a folder upload before and after.
-- **Status 2026-10-25: open.**
+- **Status 2026-10-25: open.** The owner chose to measure a real folder upload first (calls, transactions and lock waits per file), then decide on a design with the numbers.
 
 ### 37. The `.ts` sniff reads from S3 and nothing uses the result
 
@@ -773,6 +775,8 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-25 | `059d0aa` (PR #26) | 31, 13 | The 10 Oct quota fix and the upload call audit, rebased and squash-merged: the server refuses a charge past the total with a 507, and the client pre-check is honoured. 5 new tests; 914/0 in 74 files, CI green. |
 | 2026-10-25 | no commit (measurement) | 35, 39 | Upload audit re-run with real 10 MB and 100 MB JPEGs on `059d0aa`: 18 and 54 browser requests, 12 and 30 session lookups, 10 inserts and 4 updates each. Baseline kept in `.claude/evidence/upload-audit-before.json`. |
 | 2026-10-25 | `41f2efe` | 32, 13 | The three search-index writes take the session user and check `write`; a refusal is a 403. 12 new tests with a second user; 926/0 in 75 files. |
+| 2026-10-25 | `8ac03d9` | 34, 13 | `retryFetch` fails a 4xx other than 429 on the first answer. 8 new tests. |
+| 2026-10-25 | `8a79e89` | 33, 13 | A cancelled upload, and one whose part retries ran out, aborts its S3 multipart upload. 3 new tests; 937/0 in 77 files. |
 
 ## Phased remediation plan
 
@@ -848,8 +852,8 @@ New items from the 8 Oct re-scan, in the order to do them:
 
 *items 31–44, from the upload call audit; the first step is under a day*
 
-1. **Now:** ~~merge PR #26 (item 31)~~ done 25 Oct (`059d0aa`); ~~add the ownership checks to the three search-index writes (item 32)~~ done 25 Oct (`41f2efe`); stop retrying 4xx answers (item 34). Two security gaps and a slow failure, each a small diff with a test.
-2. **On the next upload task (about 1.5 days):** abort cancelled and failed multipart uploads (33; Tigris offers no lifecycle rule to fall back on); settle the `.ts` sniff (37), the metadata writes (40) and the dead branches (41); measure the concurrency limit and correct the skill (38).
+1. **Now:** ~~merge PR #26 (item 31)~~ done 25 Oct (`059d0aa`); ~~add the ownership checks to the three search-index writes (item 32)~~ done 25 Oct (`41f2efe`); ~~stop retrying 4xx answers (item 34)~~ done 25 Oct (`8ac03d9`). Two security gaps and a slow failure, each a small diff with a test.
+2. **On the next upload task (about 1.5 days):** ~~abort cancelled and failed multipart uploads (33~~ done 25 Oct, `8a79e89`; Tigris offers no lifecycle rule to fall back on); settle the `.ts` sniff (37), the metadata writes (40) and the dead branches (41); measure the concurrency limit and correct the skill (38).
 3. **A measured performance pass (3–5 days):** the session cookie cache once the owner decides (35), all part URLs in one response (39), the folder tree once per batch (36), and the revalidation and thumbnail overhead (43). Repeat the audit's measured upload before and after; the CLAUDE.md debugging rules require the numbers.
 4. **Only if contention is measured:** the rollup redesign (42) and merging the requests (44). High effort for an unproven payoff.
 
