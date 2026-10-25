@@ -7,7 +7,7 @@
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
 **Now (25 Oct):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 914 unit tests in 74 files with none excluded, and the build. Green on `059d0aa` (25 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 926 unit tests in 75 files with none excluded, and the build. Green on `41f2efe` (25 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors and analytics:** Vinktar on server and browser since 10 Oct (item 4, partly done).
@@ -22,6 +22,8 @@
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
 **44 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit) · categories: Code 22, Architecture 13, Infrastructure 4, Test 2, Documentation 2, Dependency 1
+
+**Status at 25 Oct 2026 (night):** 19 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 16 new and open (19, 20, 22, 30, 33–44). Item 32 resolved (`41f2efe`): the three search-index writes need `write` on the item and a refusal is a 403.
 
 **Status at 25 Oct 2026 (end of day):** 18 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 17 new and open (19, 20, 22, 30, 32–44). Item 31 resolved: PR #26 merged as `059d0aa`, CI green. The upload audit was re-run with real 10 MB and 100 MB files as the baseline for items 32–44 (see items 35 and 39).
 
@@ -46,7 +48,7 @@
 | 26 | ~~`hasItemPermission` counts revoked and expired grants~~ | 35 | Resolved 2026-10-08: every access check counts only live grants | — |
 | 31 | ~~Uploads can go past the storage total~~ | 35 | Resolved 2026-10-25: PR #26 merged as `059d0aa`; a charge past the total is a 507 and rolls back the row | — |
 | 2 | Deploy path | 32 | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
-| 32 | **new** Search-index writes skip the ownership check | 32 | Pass the session user to three actions and check `write` | — |
+| 32 | ~~Search-index writes skip the ownership check~~ | 32 | Resolved 2026-10-25 (`41f2efe`): all three writes check `write` on the item; a refusal is a 403 | — |
 | 4 | Error tracking and logging | 28 | Structured logging; error tracking is Vinktar since 10 Oct, with browser source maps uploaded on deploy | Owner's choice of logger |
 | 28 | ~~Form and search decoders mangle typed text~~ | 25 | Resolved 2026-10-23: values decoded once, typed text kept as text, bad input is a 400 | — |
 | 19 | **new** Stripe webhook is a stub | 24 | All four event handlers | Whether paid plans ship before launch |
@@ -111,7 +113,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 29 | ~~Trash listed every user's trashed items~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 3 Oct (recorded 25 Oct) |
 | 30 | Signed cookies fall back to the literal secret `'secret'` | Code | 2 | 2 | 1 | **20** (Medium) | 0.5 day | New 25 Oct |
 | 31 | ~~Uploads can go past the storage total~~ | Code | 3 | 4 | 1 | **35** (High) | merge | Resolved 25 Oct |
-| 32 | Search-index writes skip the ownership check | Code | 3 | 5 | 2 | **32** (High) | 0.5–1 day | New 25 Oct |
+| 32 | ~~Search-index writes skip the ownership check~~ | Code | 3 | 5 | 2 | **32** (High) | 0.5–1 day | Resolved |
 | 33 | Cancelled and failed uploads never abort the multipart upload | Infrastructure | 2 | 3 | 2 | **20** (Medium) | 0.5 day | New 25 Oct |
 | 34 | Upload requests retry 4xx answers five times | Code | 2 | 2 | 1 | **20** (Medium) | 1–2 h | New 25 Oct |
 | 35 | A database session lookup on every request | Architecture | 3 | 2 | 2 | **20** (Medium) | 0.5 day | New 25 Oct |
@@ -608,7 +610,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** in `app/routes/api/items.ts`, `save_media_metadata` (`:338`) calls `upsertImageFacet(itemId, …)` and the other facet writers, `save_ocr_page` (`:505`) calls `appendSearchPage({ itemId, pageNum, text })` and `save_search_chunk_embeddings` (`:518`) calls `setSearchChunkVectors(entries)`. None of the three actions takes a user (`search-actions.ts:119`, `:704`; `item-actions.ts:1489`), so none can check one. Any signed-in user holding an item id can rewrite another user's EXIF and media facets, append search text to their file, or overwrite chunk vectors by chunk id.
 - **Impact:** search poisoning and metadata tampering across accounts; no read of the victim's data. The same class as items 25 and 27.
 - **Fix:** pass the session user and run `assertItemAccess(userId, itemId, { role: 'write' })` in each action, as CLAUDE.md requires. For vectors, read the distinct `itemId`s behind the chunk ids in one query and check those. A scanned PDF sends up to 30 of these per file, so keep it to one check per request.
-- **Status 2026-10-25: open.** Not reproduced with a second user; read from the code.
+- **Status 2026-10-25: resolved** (`41f2efe`). `saveMediaMetadata` (moved out of the route into `search-actions.ts`), `appendSearchPage` and `setSearchChunkVectors` take the session user and assert `write`. The facet and chunk writers they call stay unchecked because `reindexTextItems` shares them and its candidates are already the user's own. Vectors: one `findMany` maps the chunk ids to their distinct items, then one `assertItemsAccess`; a refused chunk refuses the batch. The route answers a refusal with its real status, 403, where it used to send a 200 with `success: false` and an undefined message. Tested with a second user on the dev DB (`search-index-access.test.ts`, 12 tests): no access and `read` are refused with nothing written, owner and `write` grantee succeed, a mixed vector batch is refused whole. `pnpm test` 926/0 in 75 files, type gate exit 0, build clean.
 
 ### 33. Cancelled and failed uploads never abort the multipart upload
 
@@ -770,6 +772,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-24 | `e286ffd` | 30 | The new `last-account` cookie signs with the same `COOKIE_SECRET ?? 'secret'` fallback as the theme cookie. |
 | 2026-10-25 | `059d0aa` (PR #26) | 31, 13 | The 10 Oct quota fix and the upload call audit, rebased and squash-merged: the server refuses a charge past the total with a 507, and the client pre-check is honoured. 5 new tests; 914/0 in 74 files, CI green. |
 | 2026-10-25 | no commit (measurement) | 35, 39 | Upload audit re-run with real 10 MB and 100 MB JPEGs on `059d0aa`: 18 and 54 browser requests, 12 and 30 session lookups, 10 inserts and 4 updates each. Baseline kept in `.claude/evidence/upload-audit-before.json`. |
+| 2026-10-25 | `41f2efe` | 32, 13 | The three search-index writes take the session user and check `write`; a refusal is a 403. 12 new tests with a second user; 926/0 in 75 files. |
 
 ## Phased remediation plan
 
@@ -845,7 +848,7 @@ New items from the 8 Oct re-scan, in the order to do them:
 
 *items 31–44, from the upload call audit; the first step is under a day*
 
-1. **Now:** ~~merge PR #26 (item 31)~~ done 25 Oct (`059d0aa`); add the ownership checks to the three search-index writes (item 32), and stop retrying 4xx answers (item 34). Two security gaps and a slow failure, each a small diff with a test.
+1. **Now:** ~~merge PR #26 (item 31)~~ done 25 Oct (`059d0aa`); ~~add the ownership checks to the three search-index writes (item 32)~~ done 25 Oct (`41f2efe`); stop retrying 4xx answers (item 34). Two security gaps and a slow failure, each a small diff with a test.
 2. **On the next upload task (about 1.5 days):** abort cancelled and failed multipart uploads (33; Tigris offers no lifecycle rule to fall back on); settle the `.ts` sniff (37), the metadata writes (40) and the dead branches (41); measure the concurrency limit and correct the skill (38).
 3. **A measured performance pass (3–5 days):** the session cookie cache once the owner decides (35), all part URLs in one response (39), the folder tree once per batch (36), and the revalidation and thumbnail overhead (43). Repeat the audit's measured upload before and after; the CLAUDE.md debugging rules require the numbers.
 4. **Only if contention is measured:** the rollup redesign (42) and merging the requests (44). High effort for an unproven payoff.

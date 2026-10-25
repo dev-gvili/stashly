@@ -77,6 +77,8 @@ All through `POST /api/items` intents:
 | `reindex_text` | re-chunks text items (`reindexTextItems`) — markdown through `parseMarkdownMetadata`, everything else raw; the only route for files uploaded before their type was indexable |
 | `reindex_candidates` (GET) | items whose index is thin or missing |
 
+**Every index write needs `write` on the item, checked in the action.** `saveMediaMetadata`, `appendSearchPage` and `setSearchChunkVectors` take the session user first and throw a 403 (tech-debt item 32); vectors are checked once per batch through the chunks' distinct items. The low-level writers they call (`upsertSearchContent`, `upsertSearchChunks`, the facet upserts) are unchecked on purpose, because `reindexTextItems` shares them over the user's own items. A new route must call the checked entry points, never the writers.
+
 **These two must not trigger revalidation** — see `app/utils/revalidation.ts` and the `isSearchIndexSubmission` predicate. A 15-page OCR submits ~30 times; before the guard each submission re-ran the route loader *and* the thumbnail presign loader. Any new background index-write intent belongs in `SEARCH_INDEX_INTENTS`. An intent that also writes displayable facets (like `save_media_metadata`) does **not** — it must still revalidate.
 
 ## Tests
