@@ -58,7 +58,7 @@
 | 10 | Accessibility and responsive UI | 21 | Everything except the nested Filter buttons | — |
 | 22 | **new** Open decisions in upload and onboarding | 20 | Three decisions already written up in TASKS.md | Owner's decision |
 | 30 | **new** Signed cookies fall back to the secret `'secret'` | 20 | Refuse to start in production without `COOKIE_SECRET`; set it in the local `.env` | — |
-| 33 | ~~Cancelled uploads leave parts in S3~~ | 20 | Resolved 2026-10-25 (`8a79e89`): cancel and retry exhaustion both abort the multipart upload | — |
+| 33 | ~~Cancelled uploads leave parts in S3~~ | 20 | Resolved 2026-10-25 (`8a79e89`, `e4aeb0e`): cancel, retry exhaustion and a failed complete all abort the multipart upload | — |
 | 34 | ~~Upload requests retry 4xx answers~~ | 20 | Resolved 2026-10-25 (`8ac03d9`): a 4xx other than 429 fails on the first answer | — |
 | 35 | **new** A session lookup on every request | 20 | Resolved in code (`c1dc745`): 5-minute cookie cache; the drop in session reads is not yet measured | The upload re-measure |
 | 21 | ~~Embedding backfill runs in every tab~~ | 18 | Resolved 2026-10-09: model in a worker (main-thread blocking 1,279 → 0 ms, measured), one tab via a Web Lock | — |
@@ -621,7 +621,8 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** `abortUpload` (`app/machines/multipart/s3.mulipart.utils.ts:240`) has no importers. On a user abort the file machine forwards `@multipart.upload.abort`, which only trips the `AbortController` in `s3.multipart.stream.ts`; when part retries run out, the file is "treated as aborted" (`reviset/file.machine.ts:379`). Neither path calls `abort-multipart-upload`, so the uploaded parts stay billed in S3. The 2 Oct orphan sweep (item 9) aborted 85 stale uploads, which is what this leaves behind.
 - **No backstop:** Tigris rejects an `AbortIncompleteMultipartUpload` lifecycle rule (item 9, tested 2 Oct), so the only cleanup is running `scripts/sweep-s3-orphans.ts` by hand.
 - **Fix:** invoke `abortUpload` on both paths. Without a lifecycle rule, the client call is the only thing that cleans up on time.
-- **Status 2026-10-25: resolved** (`8a79e89`). Both paths now go through an `abortingUpload` state in `reviset/file.machine.ts` that runs the existing `abortUpload` actor with the file's key and upload id, then reaches `aborted` whether or not the call succeeds, so the manager always gets its slot back and a failed abort is left to the sweep. The server side already existed and only aborts in the session user's own bucket. `file-abort-multipart.test.ts` (3): retries exhausted, user cancel, and a failing abort call. **Not covered:** a failed `complete-multipart-upload` still goes to `error` without an abort; the item named only the two paths above. Not measured in a browser.
+- **Status 2026-10-25: resolved** (`8a79e89`). Both paths now go through an `abortingUpload` state in `reviset/file.machine.ts` that runs the existing `abortUpload` actor with the file's key and upload id, then reaches `aborted` whether or not the call succeeds, so the manager always gets its slot back and a failed abort is left to the sweep. The server side already existed and only aborts in the session user's own bucket. `file-abort-multipart.test.ts` (3): retries exhausted, user cancel, and a failing abort call. Not measured in a browser.
+- **Follow-up 2026-10-25** (`e4aeb0e`): a failed `complete-multipart-upload` also aborts now, through `abortingFailedUpload`, and still ends in `error` with the original reason. A refused complete has already been aborted on the server, so the route's `abort-multipart-upload` answers `NoSuchUpload` as done instead of a 500 (Tigris returns `NoSuchUpload`, 404, checked against the dev bucket with a made-up upload id). Tests: 2 more in `file-abort-multipart.test.ts` (5 in all), and `upload-abort.test.ts` (3): aborts in the session's bucket, gone counts as done, any other S3 error still throws. `pnpm test` 953/0 in 79 files.
 
 ### 34. Upload requests retry 4xx answers five times
 
@@ -784,6 +785,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-25 | `8ac03d9` | 34, 13 | `retryFetch` fails a 4xx other than 429 on the first answer. 8 new tests. |
 | 2026-10-25 | `8a79e89` | 33, 13 | A cancelled upload, and one whose part retries ran out, aborts its S3 multipart upload. 3 new tests; 937/0 in 77 files. |
 | 2026-10-25 | `c1dc745` | 35, 13 | 5-minute session cookie cache; `authMiddleware` forwards the refreshed cookie, and `customSession` fills onboarding fields a pre-onboarding cache lacks. 11 new tests; 948/0 in 78 files. Not yet measured. |
+| 2026-10-25 | `e4aeb0e` | 33, 13 | A failed complete also aborts the multipart upload; the route answers an already-aborted upload as done. 5 new tests; 953/0 in 79 files. |
 
 ## Phased remediation plan
 
