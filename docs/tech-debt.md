@@ -23,7 +23,7 @@
 
 **44 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit) · categories: Code 22, Architecture 13, Infrastructure 4, Test 2, Documentation 2, Dependency 1
 
-**Status at 25 Oct 2026 (late night):** 21 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 14 new and open (19, 20, 22, 30, 35–44). Items 33 (`8a79e89`) and 34 (`8ac03d9`) resolved: a cancelled or failed upload aborts its multipart upload, and a 4xx other than 429 fails on the first answer. Item 35 has the owner's answer (a 5-minute cookie cache) and waits on a sign-up detail; item 36 waits on a measured folder upload.
+**Status at 25 Oct 2026 (late night):** 21 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 14 new and open (19, 20, 22, 30, 35–44). Items 33 (`8a79e89`) and 34 (`8ac03d9`) resolved: a cancelled or failed upload aborts its multipart upload, and a 4xx other than 429 fails on the first answer. Item 35 is resolved in code (`c1dc745`, a 5-minute session cookie cache), not yet measured; item 36 waits on a measured folder upload. Counts: 21 resolved · 2 resolved in code, not yet confirmed (2, 35) · 13 new and open (19, 20, 22, 30, 36–44).
 
 **Status at 25 Oct 2026 (night):** 19 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 16 new and open (19, 20, 22, 30, 33–44). Item 32 resolved (`41f2efe`): the three search-index writes need `write` on the item and a refusal is a 403.
 
@@ -60,7 +60,7 @@
 | 30 | **new** Signed cookies fall back to the secret `'secret'` | 20 | Refuse to start in production without `COOKIE_SECRET`; set it in the local `.env` | — |
 | 33 | ~~Cancelled uploads leave parts in S3~~ | 20 | Resolved 2026-10-25 (`8a79e89`): cancel and retry exhaustion both abort the multipart upload | — |
 | 34 | ~~Upload requests retry 4xx answers~~ | 20 | Resolved 2026-10-25 (`8ac03d9`): a 4xx other than 429 fails on the first answer | — |
-| 35 | **new** A session lookup on every request | 20 | better-auth `cookieCache`, 5 minutes (owner, 25 Oct) | A fresh cache cookie after sign-up |
+| 35 | **new** A session lookup on every request | 20 | Resolved in code (`c1dc745`): 5-minute cookie cache; the drop in session reads is not yet measured | The upload re-measure |
 | 21 | ~~Embedding backfill runs in every tab~~ | 18 | Resolved 2026-10-09: model in a worker (main-thread blocking 1,279 → 0 ms, measured), one tab via a Web Lock | — |
 | 12 | Linter | 16 | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
 | 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; the rest of `quota-actions`; routes and components | — |
@@ -118,7 +118,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 32 | ~~Search-index writes skip the ownership check~~ | Code | 3 | 5 | 2 | **32** (High) | 0.5–1 day | Resolved |
 | 33 | ~~Cancelled and failed uploads never abort the multipart upload~~ | Infrastructure | 2 | 3 | 2 | **20** (Medium) | 0.5 day | Resolved |
 | 34 | ~~Upload requests retry 4xx answers five times~~ | Code | 2 | 2 | 1 | **20** (Medium) | 1–2 h | Resolved |
-| 35 | A database session lookup on every request | Architecture | 3 | 2 | 2 | **20** (Medium) | 0.5 day | New 25 Oct |
+| 35 | A database session lookup on every request | Architecture | 3 | 2 | 2 | **20** (Medium) | 0.5 day | Resolved in code; not yet measured |
 | 36 | The folder path is resolved again for every file of a folder upload | Architecture | 3 | 2 | 3 | **15** (Low) | 1–2 days | New 25 Oct |
 | 37 | The `.ts` sniff reads from S3 and nothing uses the result | Code | 1 | 2 | 1 | **15** (Low) | 1–2 h | New 25 Oct |
 | 38 | Which upload concurrency limit applies (10 or 100) is unknown | Documentation | 2 | 1 | 1 | **15** (Low) | 1 h | New 25 Oct |
@@ -639,6 +639,12 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Measured 2026-10-25** (upload audit re-run, `.claude/evidence/upload-audit-before.json`): `session` was scanned exactly once per request to our server, 12 times for a 10 MB upload and 30 times for a 100 MB one. `user` took about one more index lookup per request on top, so a lookup looks like 2 SQL statements (inferred from the counters, not from a query log). A fix should show `session` scans falling toward 0 with the same request counts.
 - **Fix:** better-auth `session.cookieCache` with a short `maxAge`. The trade-off is the owner's call: a revoked session stays valid until the cache expires.
 - **Status 2026-10-25: open, decided.** The owner chose a 5-minute `maxAge`. Not turned on yet: on sign-up, better-auth caches the session from the user row it just created (`api/routes/callback.mjs`, `setSessionCookie(c, { session, user })`), while `onboardNewUser` writes `bucket`, `rootId` and `driveId` to the database only, and the `user.create.after` hook runs through `queueAfterTransactionHook`. A new user's cached session could therefore carry no bucket for up to 5 minutes. Needs the cache cookie rewritten from the database after a sign-up callback, then a test.
+- **Status 2026-10-25 (later): resolved in code** (`c1dc745`), not yet measured.
+  - **Cache:** `session.cookieCache` with `maxAge` 5 minutes in `auth.ts`.
+  - **Refresh:** nothing in the browser calls `get-session`; every lookup is a server-side `auth.api.getSession`, which puts the refreshed cache cookie in its own returned headers and drops it. `authMiddleware` now asks for those headers and forwards the cookie onto the page or `.data` response (`forwardSetCookies` in `session-user.ts`). Without it the cache would have been written once at sign-in and lapsed for good 5 minutes later. API routes outside the layout (`/api/s3/upload`, `/api/items`) read the cookie but don't refresh it.
+  - **Sign-up:** `customSession` runs on every lookup, cache hits included (`custom-session/index.mjs`); it now fills `bucket`, `rootId` and `driveId` from the database when the session lacks them or holds the `default-bucket` placeholder (`withOnboardingFields`). Only a session cached before onboarding finished takes that query.
+  - **Tests:** `session-user.test.ts` (11, no DB): the fallback reads nothing for an onboarded user and fills each missing field; the forwarder copies the cookie, keeps a route's own cookies, and leaves an immutable redirect alone. `pnpm test` 948/0 in 78 files, type gate exit 0, build clean.
+  - **Not verified:** in a browser, and the effect on the database. The upload re-measure should show `session` scans fall from 12 (10 MB) toward 0–1 with the same request counts. A real new-account sign-up was not tried.
 
 ### 36. The folder path is resolved again for every file of a folder upload
 
@@ -777,6 +783,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-25 | `41f2efe` | 32, 13 | The three search-index writes take the session user and check `write`; a refusal is a 403. 12 new tests with a second user; 926/0 in 75 files. |
 | 2026-10-25 | `8ac03d9` | 34, 13 | `retryFetch` fails a 4xx other than 429 on the first answer. 8 new tests. |
 | 2026-10-25 | `8a79e89` | 33, 13 | A cancelled upload, and one whose part retries ran out, aborts its S3 multipart upload. 3 new tests; 937/0 in 77 files. |
+| 2026-10-25 | `c1dc745` | 35, 13 | 5-minute session cookie cache; `authMiddleware` forwards the refreshed cookie, and `customSession` fills onboarding fields a pre-onboarding cache lacks. 11 new tests; 948/0 in 78 files. Not yet measured. |
 
 ## Phased remediation plan
 
@@ -854,7 +861,7 @@ New items from the 8 Oct re-scan, in the order to do them:
 
 1. **Now:** ~~merge PR #26 (item 31)~~ done 25 Oct (`059d0aa`); ~~add the ownership checks to the three search-index writes (item 32)~~ done 25 Oct (`41f2efe`); ~~stop retrying 4xx answers (item 34)~~ done 25 Oct (`8ac03d9`). Two security gaps and a slow failure, each a small diff with a test.
 2. **On the next upload task (about 1.5 days):** ~~abort cancelled and failed multipart uploads (33~~ done 25 Oct, `8a79e89`; Tigris offers no lifecycle rule to fall back on); settle the `.ts` sniff (37), the metadata writes (40) and the dead branches (41); measure the concurrency limit and correct the skill (38).
-3. **A measured performance pass (3–5 days):** the session cookie cache once the owner decides (35), all part URLs in one response (39), the folder tree once per batch (36), and the revalidation and thumbnail overhead (43). Repeat the audit's measured upload before and after; the CLAUDE.md debugging rules require the numbers.
+3. **A measured performance pass (3–5 days):** the session cookie cache (35, in code 25 Oct as `c1dc745`; measure it), all part URLs in one response (39), the folder tree once per batch (36), and the revalidation and thumbnail overhead (43). Repeat the audit's measured upload before and after; the CLAUDE.md debugging rules require the numbers.
 4. **Only if contention is measured:** the rollup redesign (42) and merging the requests (44). High effort for an unproven payoff.
 
 ---
