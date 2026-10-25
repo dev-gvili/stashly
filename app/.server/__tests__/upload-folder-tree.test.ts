@@ -1,0 +1,361 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import pg from 'pg'
+import { prisma } from '@/services/db'
+import {
+  createUploadedItem,
+  resolveUploadFolders,
+} from '@/services/item-actions'
+import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import { wipeTestUsers } from './helpers/wipe-test-users'
+
+/**
+ * A folder upload resolves its whole folder tree in one request
+ * (`resolveUploadFolders`), then files each file straight into its leaf folder
+ * with a single statement: no per-file folder walk, lock or transaction.
+ *
+ * - The tree is created once, with each folder's `Folder` and `View` rows, and a
+ *   second batch reuses it without writing anything.
+ * - It never guesses: two live folders with the same name on a path refuse that
+ *   path, even when one of the copies leads nowhere, and a trashed folder never
+ *   matches. The same rules the per-file walk applied.
+ * - The client names the leaf, so `createUploadedItem` checks it like any
+ *   destination: write access, and a live folder at the moment of the insert.
+ *   A refusal writes nothing and charges nothing.
+ *
+ * Needs a live database (CI provides one).
+ */
+const uid = (model: Parameters<typeof getPrefixForModel>[0]) =>
+  toObjectId(getPrefixForModel(model))
+
+let ownerId: string
+let strangerId: string
+let driveId: string
+let rootId: string
+
+async function makeFolder(
+  name: string,
+  parentId: string,
+  status: 'normal' | 'trashed' = 'normal'
+) {
+  const id = uid('Item')
+  await prisma.item.create({
+    data: {
+      id,
+      name,
+      type: 'folder',
+      category: 'unknown',
+      status,
+      ownerId,
+      driveId,
+      parentId,
+      size: 0,
+    },
+  })
+  return id
+}
+
+function upload(parentId: string, name: string, userId = ownerId, size = 10n) {
+  const id = uid('Item')
+  return {
+    id,
+    run: () =>
+      createUploadedItem({
+        id,
+        name,
+        key: `${rootId}/some/path/${name}`,
+        size,
+        bucket: 'stashly-test-folder-tree',
+        driveId,
+        parentId,
+        ownerId: userId,
+        uploadId: `up-${id}`,
+      }),
+  }
+}
+
+const used = async () =>
+  (
+    await prisma.quota.findFirstOrThrow({
+      where: { driveId },
+      select: { used: true },
+    })
+  ).used
+
+beforeAll(async () => {
+  ownerId = uid('User')
+  strangerId = uid('User')
+  await prisma.user.createMany({
+    data: [
+      {
+        id: ownerId,
+        name: 'Folder tree',
+        email: `tree-${ownerId}@test.local`,
+        emailVerified: true,
+        bucket: 'stashly-test-folder-tree',
+      },
+      {
+        id: strangerId,
+        name: 'Tree stranger',
+        email: `tree-${strangerId}@test.local`,
+        emailVerified: true,
+      },
+    ],
+  })
+  driveId = uid('Drive')
+  await prisma.drive.create({ data: { id: driveId, ownerId } })
+  await prisma.quota.create({
+    data: { id: uid('Quota'), driveId, total: 10n ** 12n },
+  })
+  rootId = uid('Item')
+  await prisma.item.create({
+    data: {
+      id: rootId,
+      name: 'root',
+      type: 'folder',
+      category: 'unknown',
+      status: 'normal',
+      ownerId,
+      driveId,
+      parentId: null,
+      size: 0,
+    },
+  })
+})
+
+afterAll(async () => {
+  await wipeTestUsers([ownerId, strangerId])
+  await prisma.user.deleteMany({ where: { id: { in: [ownerId, strangerId] } } })
+})
+
+describe('resolveUploadFolders', () => {
+  it('creates every missing folder once, with its Folder and View rows', async () => {
+    const { folders, refused, createdFolderIds } = await resolveUploadFolders({
+      userId: ownerId,
+      rootId,
+      driveId,
+      dirs: ['tree/a/b', 'tree/c'],
+    })
+
+    expect(Object.keys(folders).sort()).toEqual([
+      'tree',
+      'tree/a',
+      'tree/a/b',
+      'tree/c',
+    ])
+    expect(refused).toEqual({})
+    expect(createdFolderIds).toHaveLength(4)
+    const rows = await prisma.item.findMany({
+      where: { id: { in: Object.values(folders) } },
+      select: {
+        parentId: true,
+        type: true,
+        status: true,
+        ownerId: true,
+        driveId: true,
+        folder: { select: { childCount: true, view: true } },
+      },
+    })
+    expect(
+      rows.every(
+        (r) =>
+          r.type === 'folder' &&
+          r.status === 'normal' &&
+          r.ownerId === ownerId &&
+          r.driveId === driveId
+      )
+    ).toBe(true)
+    expect(
+      rows.every(
+        (r) =>
+          r.folder?.view?.viewType === 'grid' &&
+          r.folder.view.sortBy === 'type' &&
+          r.folder.view.sortOrder === 'ascending'
+      )
+    ).toBe(true)
+    const tree = await prisma.item.findUniqueOrThrow({
+      where: { id: folders['tree'] },
+      select: { parentId: true, folder: { select: { childCount: true } } },
+    })
+    expect(tree.parentId).toBe(rootId)
+    expect(tree.folder?.childCount).toBe(2)
+  })
+
+  it('reuses the folders on a second batch and creates nothing', async () => {
+    const first = await resolveUploadFolders({
+      userId: ownerId,
+      rootId,
+      driveId,
+      dirs: ['again/x'],
+    })
+    const second = await resolveUploadFolders({
+      userId: ownerId,
+      rootId,
+      driveId,
+      dirs: ['again/x', 'again'],
+    })
+
+    expect(second.folders).toEqual(first.folders)
+    expect(second.createdFolderIds).toEqual([])
+  })
+
+  it('refuses a path through two live folders of the same name, even when one copy leads nowhere', async () => {
+    const { folders } = await resolveUploadFolders({
+      userId: ownerId,
+      rootId,
+      driveId,
+      dirs: ['family/john/2024'],
+    })
+    // A second, empty "john": the joined path still exists in the first copy.
+    await makeFolder('john', folders['family'])
+
+    const r = await resolveUploadFolders({
+      userId: ownerId,
+      rootId,
+      driveId,
+      dirs: ['family/john/2024', 'family/jane'],
+    })
+
+    expect(r.folders['family/john/2024']).toBeUndefined()
+    expect(r.refused['family/john/2024']).toMatch(/"john" at "family\/john"/)
+    expect(r.folders['family/jane']).toBeDefined()
+  })
+
+  it('ignores a trashed folder of the same name', async () => {
+    const trashed = await makeFolder('bin', rootId, 'trashed')
+
+    const { folders, createdFolderIds } = await resolveUploadFolders({
+      userId: ownerId,
+      rootId,
+      driveId,
+      dirs: ['bin'],
+    })
+
+    expect(folders['bin']).not.toBe(trashed)
+    expect(createdFolderIds).toEqual([folders['bin']])
+  })
+
+  it('refuses a user without write access to the root, and creates nothing', async () => {
+    await expect(
+      resolveUploadFolders({
+        userId: strangerId,
+        rootId,
+        driveId,
+        dirs: ['intruder/x'],
+      })
+    ).rejects.toMatchObject({ errorCode: 'FORBIDDEN', status: 403 })
+    expect(await prisma.item.count({ where: { name: 'intruder' } })).toBe(0)
+  })
+})
+
+describe('createUploadedItem into a resolved folder', () => {
+  it('files into the leaf and charges the quota, in one statement after the access check', async () => {
+    const { folders } = await resolveUploadFolders({
+      userId: ownerId,
+      rootId,
+      driveId,
+      dirs: ['docs/2026'],
+    })
+    const before = await used()
+    const u = upload(folders['docs/2026'], 'report.pdf')
+
+    // Count the statements the call sends: the access check and the write.
+    const proto = pg.Client.prototype as any
+    const real = proto.query
+    let statements = 0
+    proto.query = function (...args: unknown[]) {
+      statements++
+      return real.apply(this, args)
+    }
+    try {
+      await u.run()
+    } finally {
+      proto.query = real
+    }
+
+    expect(statements).toBe(2)
+    const row = await prisma.item.findUniqueOrThrow({
+      where: { id: u.id },
+      select: {
+        parentId: true,
+        size: true,
+        file: { select: { key: true } },
+        permissions: {
+          select: { roles: true, users: { select: { id: true } } },
+        },
+      },
+    })
+    expect(row.parentId).toBe(folders['docs/2026'])
+    expect(row.file?.key).toBe(`${rootId}/some/path/report.pdf`)
+    expect(row.permissions).toEqual([
+      { roles: 'owner', users: [{ id: ownerId }] },
+    ])
+    expect((await used()) - before).toBe(10n)
+  })
+
+  it('refuses a resolved folder the uploader cannot write to', async () => {
+    const { folders } = await resolveUploadFolders({
+      userId: ownerId,
+      rootId,
+      driveId,
+      dirs: ['private'],
+    })
+    const u = upload(folders['private'], 'peek.txt', strangerId)
+
+    await expect(u.run()).rejects.toMatchObject({
+      errorCode: 'FORBIDDEN',
+      status: 403,
+    })
+    expect(await prisma.item.count({ where: { id: u.id } })).toBe(0)
+  })
+
+  it('refuses a folder trashed after it was resolved, and charges nothing', async () => {
+    const { folders } = await resolveUploadFolders({
+      userId: ownerId,
+      rootId,
+      driveId,
+      dirs: ['gone'],
+    })
+    await prisma.item.update({
+      where: { id: folders['gone'] },
+      data: { status: 'trashed' },
+    })
+    const before = await used()
+    const u = upload(folders['gone'], 'late.txt')
+
+    await expect(u.run()).rejects.toMatchObject({
+      errorCode: 'ITEM_NOT_FOUND',
+      status: 404,
+    })
+    expect(await prisma.item.count({ where: { id: u.id } })).toBe(0)
+    expect(await used()).toBe(before)
+  })
+
+  it('refuses a file that does not fit, and writes nothing', async () => {
+    const { folders } = await resolveUploadFolders({
+      userId: ownerId,
+      rootId,
+      driveId,
+      dirs: ['full'],
+    })
+    const quota = await prisma.quota.findFirstOrThrow({ where: { driveId } })
+    await prisma.quota.update({
+      where: { id: quota.id },
+      data: { total: quota.used + 5n },
+    })
+    try {
+      const u = upload(folders['full'], 'big.bin')
+
+      await expect(u.run()).rejects.toMatchObject({
+        errorCode: 'INSUFFICIENT_QUOTA',
+        status: 507,
+      })
+      expect(await prisma.item.count({ where: { id: u.id } })).toBe(0)
+      expect(await used()).toBe(quota.used)
+    } finally {
+      await prisma.quota.update({
+        where: { id: quota.id },
+        data: { total: 10n ** 12n },
+      })
+    }
+  })
+})

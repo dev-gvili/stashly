@@ -42,9 +42,10 @@ export function toItemPayload(
     hash: hash || undefined,
     bucket: user.bucket,
     driveId: user.driveId,
-    // The first key segment is the destination root; `createUploadedItem`
-    // resolves the middle segments into folders and re-parents the item.
-    parentId: mediaFile.key.split('/')[0],
+    // The folder `addBatch` resolved for it, when it did. Otherwise the first
+    // key segment, the destination root: `createUploadedItem` then resolves
+    // the middle segments into folders and re-parents the item.
+    parentId: mediaFile.parentId ?? mediaFile.key.split('/')[0],
     ownerId: mediaFile.ownerId ?? user.id,
     category: toCategory(mediaFile.file),
     uploadId: mediaFile.uploadId ?? '',

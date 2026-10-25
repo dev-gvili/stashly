@@ -66,7 +66,7 @@
 | 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; the rest of `quota-actions`; routes and components | — |
 | 23 | **new** Prisma calls in route modules | 16 | `workspaces/workspace.tsx` only | Deferred to after personal-first (TASKS.md, 8 Oct) |
 | 24 | ~~Slow first page load~~ | 15 | Resolved 2026-10-09: server dependencies bundled; first page 4–15 s → ~1 s here, first request 1.6 → 0.57 s on Linux (CI) | — |
-| 36 | **new** Folder path resolved again for every file | 15 | Resolve the tree once per batch | Measure first |
+| 36 | ~~Folder path resolved again for every file~~ | 15 | Resolved 2026-10-26: tree resolved once per batch, each file row one statement; 639-file upload 11,600 → 1,284 statements, 1,824 → 1 locks, measured | — |
 | 37 | **new** The `.ts` sniff's result is thrown away | 15 | Persist the verified type or drop the S3 read | — |
 | 38 | **new** Which upload concurrency limit applies is unknown | 15 | Measure it; correct the upload skill | — |
 | 16 | Overlapping UI primitives | 12 | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
@@ -119,7 +119,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 33 | ~~Cancelled and failed uploads never abort the multipart upload~~ | Infrastructure | 2 | 3 | 2 | **20** (Medium) | 0.5 day | Resolved |
 | 34 | ~~Upload requests retry 4xx answers five times~~ | Code | 2 | 2 | 1 | **20** (Medium) | 1–2 h | Resolved |
 | 35 | ~~A database session lookup on every request~~ | Architecture | 3 | 2 | 2 | **20** (Medium) | 0.5 day | Resolved |
-| 36 | The folder path is resolved again for every file of a folder upload | Architecture | 3 | 2 | 3 | **15** (Low) | 1–2 days | New 25 Oct |
+| 36 | ~~The folder path is resolved again for every file of a folder upload~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 1–2 days | Resolved |
 | 37 | The `.ts` sniff reads from S3 and nothing uses the result | Code | 1 | 2 | 1 | **15** (Low) | 1–2 h | New 25 Oct |
 | 38 | Which upload concurrency limit applies (10 or 100) is unknown | Documentation | 2 | 1 | 1 | **15** (Low) | 1 h | New 25 Oct |
 | 39 | One presign request per 5 MiB part | Architecture | 2 | 1 | 2 | **12** (Low) | 0.5–1 day | New 25 Oct |
@@ -658,6 +658,19 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** `createUploadedItem` resolves each file's folder path in its own transaction: an advisory lock and an `item.findMany` per level, even once the folders exist. Traced: 6 DB calls and 1 transaction per file at 3 levels, about 600,000 calls for a 100,000-file folder.
 - **Fix:** resolve the folder tree once per batch and file each upload by the leaf's id. Measure a folder upload before and after.
 - **Status 2026-10-25: open.** The owner chose to measure a real folder upload first (calls, transactions and lock waits per file), then decide on a design with the numbers.
+- **Measured 2026-10-25** (200 × 1 KB files, 4 levels, `.claude/evidence/folder-upload-before-*`): 20 statements and 2 transactions per file, 10 of them for the folder path (BEGIN, a lock and a lookup per level, COMMIT), 48% of the server time. Lock waits were round trips, not contention: an advisory lock took 6.2 ms at p50, like every other statement.
+- **Status 2026-10-26: resolved in code.** `addBatch` sends one `resolve_upload_folders` request before its files start; `resolveFolderTree` finds or creates the whole tree with one query per depth level and one INSERT for every missing folder, under one advisory lock per uploader. Each file posts its leaf folder as `parentId`, which `createUploadedItem` checks for write access, then writes `Item`, `File`, `Permission`, the user link and the quota charge as one statement (no transaction; a refusal writes and charges nothing). Files without a resolved folder resolve their key path the same way, as a batch of one. Proved first in rolled-back transactions against the dev DB (`.claude/evidence/folder-upload-proof.json`: identical rows, sizes, counts and quota to the old path, and the same refusals). Measured with a real browser upload of `app/` (639 files, 71 folders; `app/assets` is empty and a folder input cannot carry it), each run into a fresh empty folder, every file checked in the DB and in S3 (`.claude/evidence/folder-upload-app-*`):
+
+  |  | before | after |
+  |---|---|---|
+  | DB statements | 11,600 | 1,284 |
+  | transactions | 1,278 | 1 |
+  | advisory locks | 1,824 | 1 |
+  | statements per file | 14–24 (p50 18) | 2 |
+  | `createUploadedItem` server time, p50 | 136 ms | 18 ms |
+  | upload wall clock | 707 s | 554 s |
+
+  Part of the wall-clock gain is S3 latency: `create-multipart-upload`, which this change does not touch, was also faster (p50 996 → 704 ms). A first version queued all 639 files in one synchronous burst after the resolve; it started 100 uploads at once and took 872 s, so `addBatch` keeps handing files over one at a time. Tests: `upload-folder-tree.test.ts` (9, live DB) plus the existing upload, quota and never-guess tests; `pnpm test` 969/0 in 81 files, type gate exit 0, build clean.
 
 ### 37. The `.ts` sniff reads from S3 and nothing uses the result
 
@@ -673,7 +686,8 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 
 - **Evidence:** `upload.machine.ts:31` sets `maxConcurrentUploads: 10`; the schema default is 100 (`machine.schemas.ts:298`), and the `stashly-upload-xstate` skill says 100. Every throughput and lock-contention estimate depends on which one runs.
 - **Fix:** measure files in flight during a large batch, then make the code and the skill agree.
-- **Status 2026-10-25: open.**
+- **Measured 2026-10-26** (item 36's `app/` uploads): when 639 files were queued in one synchronous burst, exactly **100** `/api/s3/upload` requests were in flight at the peak. A file has at most one such request at a time, so 100 files were active: the schema default applies, as the skill says, and `upload.machine.ts:31`'s 10 is overridden. When files are handed over one at a time (`addBatch` as shipped), the peak was 24–25.
+- **Status 2026-10-26: open.** The limit in effect is known (100); `upload.machine.ts:31` still says 10.
 
 ### 39. One presign request per 5 MiB part
 

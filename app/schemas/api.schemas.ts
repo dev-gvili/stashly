@@ -183,6 +183,23 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
     intent: z.literal('create_upload_item'),
   }),
   z.object({
+    intent: z.literal('resolve_upload_folders'),
+    rootId: z.string().nonempty(),
+    // One JSON field, not a repeated one: a folder named "2024" or "a,b" must
+    // arrive as written, and a one-folder batch must still be a list.
+    dirs: z
+      .string()
+      .transform((text, ctx) => {
+        try {
+          return JSON.parse(text) as unknown
+        } catch {
+          ctx.addIssue({ code: 'custom', message: 'dirs must be a JSON array' })
+          return z.NEVER
+        }
+      })
+      .pipe(z.array(z.string().nonempty().max(4096)).max(20_000)),
+  }),
+  z.object({
     intent: z.literal('create_folder'),
     name: toUserText(z.string().nonempty()),
     parentId: z.string().nonempty(),

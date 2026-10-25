@@ -16,7 +16,8 @@ import {
   onItemsDeleted,
   onItemsRestored,
   onItemsTrashed,
-  onItemsUploaded,
+  refuseUploadCharge,
+  uploadChargeSql,
 } from '@/services/quota-actions'
 import { deleteObjects, getObjectText } from '@/services/s3'
 import {
@@ -1362,111 +1363,193 @@ export async function searchFolders(query: string, driveId: string) {
   })
 }
 
+/** Room for a big tree, or for a wait on another batch of the same uploader. */
+const FOLDER_TREE_TX = { timeout: 60_000, maxWait: 10_000 }
+
 /**
- * Internal helper that walks a relative folder path under a root folder,
- * creating any missing folders along the way. Resolves to the ID of the
- * deepest folder plus the IDs of any folders created during the walk.
+ * Resolves the folders of an upload under its root in one go: finds the ones
+ * that exist, creates the rest, and answers each directory's folder id.
  *
- * @param pathParts - Ordered folder names forming the relative path (e.g. `['photos', '2026']`).
- * @param rootId - The ID of the folder to start resolving from.
- * @param ownerId - The ID of the user who will own any created folders.
- * @param driveId - The drive the folders belong to.
- * @param tx - The Prisma transaction client to run all reads/writes in.
+ * `dirs` are paths relative to `rootId` (`photos/2026`), in any order; every
+ * prefix of each is resolved too. One query per depth level while the parents
+ * still exist (below a new folder everything is new), then one statement that
+ * inserts every missing folder with its `Folder` and `View` rows, whatever the
+ * batch size. It replaces a walk that every file repeated: an advisory lock and
+ * a lookup per level, in a transaction of its own, so a 639-file directory sent
+ * 11,600 statements and took 1,824 locks.
+ *
+ * It never guesses, the rules the walk applied: a trashed folder doesn't match,
+ * and two live folders with the same name refuse every path through them
+ * (`refused`), even when only one of the copies continues the path. Only
+ * folders the uploader owns match.
+ *
+ * Takes one advisory lock per uploader for the caller's transaction, so two
+ * batches can't both create the same folder. It is released on commit, before
+ * any file row is written. Per uploader, not per root: two uploads into nested
+ * destinations (`a` and `a/b`) can create the same folder under different roots.
  *
  * @example
- * // Resolve (and create if needed) "photos/2026" under the root folder
- * const { parentId, createdFolderIds } = await findOrCreateFolderPath(
- *   ['photos', '2026'],
- *   'item_root',
- *   'usr_123',
- *   'drv_456',
- *   tx
- * );
+ * const tree = await prisma.$transaction((tx) => resolveFolderTree(tx, rootId, userId, driveId, ['photos/2026']))
+ * tree.folders.get('photos/2026') // → 'item_…'
  */
-async function findOrCreateFolderPath(
-  pathParts: string[],
+async function resolveFolderTree(
+  tx: Prisma.TransactionClient,
   rootId: string,
   ownerId: string,
   driveId: string,
-  tx: Prisma.TransactionClient
-): Promise<{ parentId: string; createdFolderIds: string[] }> {
-  let currentParentId = rootId
-  const createdFolderIds: string[] = []
-  for (const [depth, folderName] of pathParts.entries()) {
-    // Guard against the check-then-create race: when many files under one
-    // directory upload at once, each runs in its own transaction, so their
-    // `findFirst`s all miss and each creates a duplicate folder (same name,
-    // different id, with the directory's contents split across the copies).
-    // A transaction-scoped advisory lock keyed on (owner, parent, name)
-    // serializes concurrent creators of the *same* folder — the waiter then
-    // sees the committed folder and reuses it. Files in unrelated folders
-    // don't contend.
-    const lockKey = `folder:${ownerId}:${currentParentId}:${folderName}`
-    // `$executeRaw`, not `$queryRaw`: pg_advisory_xact_lock returns `void`,
-    // which $queryRaw can't deserialize as a result column.
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`
+  dirs: string[]
+): Promise<{ folders: Map<string, string>; refused: Map<string, string>; createdFolderIds: string[] }> {
+  // `$executeRaw`, not `$queryRaw`: pg_advisory_xact_lock returns `void`,
+  // which $queryRaw can't deserialize as a result column.
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`folder-tree:${ownerId}`}, 0))`
 
-    // A trashed folder doesn't count. It used to match, so a re-upload was
-    // filed into the trash: invisible where the user put it, visible only in
-    // Trash.
-    //
-    // Two live folders with this name is a refusal, never a pick: `findFirst`
-    // has no order, so the file landed in whichever copy Postgres returned
-    // first (two "john" folders, one patient's results filed under the other).
-    // Uploading from inside the intended folder is always unambiguous, which
-    // is what the message tells the user to do.
-    const matches = await tx.item.findMany({
-      where: {
-        name: folderName,
-        parentId: currentParentId,
-        type: 'folder',
-        status: { not: 'trashed' },
-        ownerId,
-      },
-      select: { id: true },
-      take: 2,
-    })
-    if (matches.length > 1) {
-      const at = pathParts.slice(0, depth + 1).join('/')
-      throw new StashlyError(
-        StashlyErrorCode.CONFLICT,
-        `More than one folder is named "${folderName}" at "${at}", so this file was not filed. Open the folder you mean and upload there.`
-      )
-    }
-    const existing = matches[0]
-    if (existing) {
-      currentParentId = existing.id
-    } else {
-      const folder = await tx.item.create({
-        data: {
-          id: toObjectId(getPrefixForModel('Item')),
-          name: folderName,
-          parentId: currentParentId,
-          driveId,
-          ownerId,
-          type: 'folder',
-          category: 'unknown',
-          status: 'normal',
-          folder: {
-            create: {
-              id: toObjectId(getPrefixForModel('Folder')),
-              view: {
-                create: {
-                  viewType: 'grid',
-                  sortBy: 'type',
-                  sortOrder: 'ascending',
-                },
-              },
-            },
-          },
-        },
-        select: { id: true },
-      })
-      currentParentId = folder.id
-      createdFolderIds.push(folder.id)
+  const levels: Set<string>[] = []
+  for (const dir of dirs) {
+    const parts = dir.split('/').filter(Boolean)
+    for (let depth = 1; depth <= parts.length; depth++) {
+      ;(levels[depth - 1] ??= new Set()).add(parts.slice(0, depth).join('/'))
     }
   }
-  return { parentId: currentParentId, createdFolderIds }
+  const parentOf = (path: string) => path.slice(0, Math.max(0, path.lastIndexOf('/')))
+  const nameOf = (path: string) => path.slice(path.lastIndexOf('/') + 1)
+
+  const folders = new Map<string, string>([['', rootId]])
+  const created = new Set<string>()
+  const refused = new Map<string, string>()
+  const missing: { id: string; name: string; parentId: string; folderId: string; viewId: string }[] = []
+
+  for (const level of levels) {
+    const paths = [...level]
+    for (const path of paths) {
+      const reason = refused.get(parentOf(path))
+      if (reason) refused.set(path, reason)
+    }
+    const open = paths.filter((path) => folders.has(parentOf(path)))
+    // Only a folder that already existed can have children that exist.
+    const lookup = open.filter((path) => !created.has(parentOf(path)))
+    const found = new Map<string, string[]>()
+    if (lookup.length > 0) {
+      const rows = await tx.$queryRaw<{ id: string; parentId: string; name: string }[]>`
+        SELECT i."id", i."parentId", i."name"
+        FROM "Item" i
+        JOIN unnest(
+          ${lookup.map((path) => folders.get(parentOf(path))!)}::text[],
+          ${lookup.map(nameOf)}::text[]
+        ) AS wanted("parentId", "name")
+          ON i."parentId" = wanted."parentId" AND i."name" = wanted."name"
+        WHERE i."type" = 'folder' AND i."status" <> 'trashed' AND i."ownerId" = ${ownerId}
+      `
+      for (const row of rows) {
+        const key = `${row.parentId}/${row.name}`
+        found.set(key, [...(found.get(key) ?? []), row.id])
+      }
+    }
+    for (const path of open) {
+      const parentId = folders.get(parentOf(path))!
+      const matches = found.get(`${parentId}/${nameOf(path)}`) ?? []
+      if (matches.length > 1) {
+        // Uploading from inside the intended folder is always unambiguous,
+        // which is what the message tells the user to do.
+        refused.set(
+          path,
+          `More than one folder is named "${nameOf(path)}" at "${path}", so this file was not filed. Open the folder you mean and upload there.`
+        )
+      } else if (matches.length === 1) {
+        folders.set(path, matches[0])
+      } else {
+        const id = toObjectId(getPrefixForModel('Item'))
+        folders.set(path, id)
+        created.add(path)
+        missing.push({
+          id,
+          name: nameOf(path),
+          parentId,
+          folderId: toObjectId(getPrefixForModel('Folder')),
+          viewId: toObjectId(getPrefixForModel('View')),
+        })
+      }
+    }
+  }
+
+  if (missing.length > 0) {
+    // A child can be inserted in the same statement as its parent: foreign
+    // keys and the size/child-count triggers run at the end of the statement,
+    // when both rows exist. A JS Date, not `now()`: the columns are `timestamp
+    // without time zone` and `now()` would store the session's local time.
+    const now = new Date()
+    await tx.$executeRaw`
+      WITH items AS (
+        INSERT INTO "Item" ("id", "name", "parentId", "driveId", "ownerId", "type", "category", "status", "createdAt", "updatedAt")
+        SELECT f."id", f."name", f."parentId", ${driveId}, ${ownerId},
+               'folder'::"ItemType", 'unknown'::"ItemCategory", 'normal'::"ItemStatus", ${now}, ${now}
+        FROM unnest(
+          ${missing.map((f) => f.id)}::text[],
+          ${missing.map((f) => f.name)}::text[],
+          ${missing.map((f) => f.parentId)}::text[]
+        ) AS f("id", "name", "parentId")
+      ), folders AS (
+        INSERT INTO "Folder" ("id", "itemId")
+        SELECT f."folderId", f."itemId"
+        FROM unnest(
+          ${missing.map((f) => f.folderId)}::text[],
+          ${missing.map((f) => f.id)}::text[]
+        ) AS f("folderId", "itemId")
+      )
+      INSERT INTO "View" ("id", "viewType", "sortBy", "sortOrder", "folderId", "createdAt", "updatedAt")
+      SELECT v."id", 'grid'::"ViewType", 'type'::"SortBy", 'ascending'::"SortOrder", v."folderId", ${now}, ${now}
+      FROM unnest(
+        ${missing.map((f) => f.viewId)}::text[],
+        ${missing.map((f) => f.folderId)}::text[]
+      ) AS v("id", "folderId")
+    `
+  }
+
+  folders.delete('')
+  return { folders, refused, createdFolderIds: missing.map((f) => f.id) }
+}
+
+/**
+ * Resolves every folder of a folder upload before its files start, so each file
+ * is filed straight into its folder (`createUploadedItem` with that folder as
+ * `parentId`) instead of resolving its path again. Needs write access to the
+ * root, the check each file of the batch would make. Records an upload activity
+ * for each folder it creates.
+ *
+ * @param input.dirs - Directory paths relative to `rootId`, `/`-separated.
+ * @returns `folders`: path → folder id for every directory and each of its
+ * prefixes. `refused`: path → reason, for paths through two live folders of the
+ * same name; their files are left to `createUploadedItem`, which refuses them.
+ * @throws `FORBIDDEN` (403) without write access to `rootId`.
+ *
+ * @example
+ * const { folders } = await resolveUploadFolders({ userId, rootId, driveId, dirs: ['photos/2026', 'docs'] })
+ * folders['photos/2026'] // → 'item_…'
+ */
+export async function resolveUploadFolders({
+  userId,
+  rootId,
+  driveId,
+  dirs,
+}: {
+  userId: string
+  rootId: string
+  driveId: string
+  dirs: string[]
+}) {
+  await assertItemsAccess(userId, [rootId], 'write')
+  const tree = await prisma.$transaction(
+    (tx) => resolveFolderTree(tx, rootId, userId, driveId, dirs),
+    FOLDER_TREE_TX
+  )
+  recordItemActivities(
+    'upload',
+    tree.createdFolderIds.map((id) => ({ id, uploadId: '' }))
+  )
+  return {
+    folders: Object.fromEntries(tree.folders),
+    refused: Object.fromEntries(tree.refused),
+    createdFolderIds: tree.createdFolderIds,
+  }
 }
 
 /**
@@ -1681,22 +1764,33 @@ export async function upsertMarkdownFacet(
 }
 
 /**
- * Creates the database record for a freshly uploaded file, deriving its parent
- * folder from the S3 key (missing folders in the key path are created on the
- * fly). Also creates the File facet and an owner permission, and records upload
- * activity for the item and any created folders. Charges the owner's quota for
- * `size` in the same transaction as the row — the only place an upload is
- * charged.
+ * Creates the database record for a freshly uploaded file, in its folder, with
+ * the File facet and an owner permission, and charges the owner's quota for
+ * `size`: the only place an upload is charged. Records upload activity for the
+ * item and any folders created for it.
+ *
+ * The row, facet, permission and charge are one statement (`insertUploadedItem`),
+ * so they commit together or not at all.
+ *
+ * The folder is either
+ * - `parentId`, when it differs from the key's first segment: a folder upload
+ *   resolved its folders up front (`resolveUploadFolders`) and names the file's
+ *   own. That is the client's word, so it gets the check any destination gets:
+ *   write access here, and a live folder when the row is inserted; or
+ * - the key's path: the first segment is the root and the middle segments are
+ *   folders, resolved like a batch of one (`resolveFolderTree`). Single files,
+ *   and any upload that didn't resolve first, take this way.
  *
  * `ownerId` is the signed-in uploader (the route passes the session user, never
- * the form's value), and they need `write` access to the folder the key starts
- * at. Without that check any signed-in user could file items into anyone's
- * folder by naming it in the key.
+ * the form's value), and they need `write` access to the destination. Without
+ * that check any signed-in user could file items into anyone's folder by
+ * naming it.
  *
  * @param data - Upload result payload: item ID/name, S3 `key`/`bucket`/`etag`, `size`, `mimeType`, owner/drive/parent IDs, the `uploadId`, and an optional `category`.
- * @throws `FORBIDDEN` (403) without write access to the key's root folder.
+ * @throws `FORBIDDEN` (403) without write access to the destination.
  * @throws `CONFLICT` (409) when two live folders share a name on the key's path.
- * @throws `INSUFFICIENT_QUOTA` (507) when the file doesn't fit the owner's free quota; no row is created.
+ * @throws `ITEM_NOT_FOUND` (404) when the folder is no longer a live folder; nothing is written or charged.
+ * @throws `INSUFFICIENT_QUOTA` (507) when the file doesn't fit the owner's free quota; nothing is written.
  *
  * @example
  * // Create the item record after a completed S3 upload
@@ -1730,82 +1824,38 @@ export async function createUploadedItem(data: {
   uploadId: string
   category?: string
 }) {
-  let createdFolderIds: string[] = []
   const segments = data.key.split('/')
   const rootId = segments[0]
-  const pathParts = segments.slice(1, -1)
-  let resolvedParentId = rootId
-  await assertCanUploadTo(data.ownerId, data.key)
-  // Resolve folders in their own transaction so its advisory locks release on
-  // commit here, not after the file insert. Every file of a directory upload
-  // takes the same top-level folder lock, so holding it through the file
-  // transaction queued concurrent uploads one at a time, and the wait counted
-  // against the 5s interactive timeout (expiry mid nested-create surfaced as
-  // `_PermissionToUser_A_fkey`). Trade-off: a failed file insert can leave its
-  // freshly created folder behind, empty.
-  if (pathParts.length > 0) {
-    const folderResult = await prisma.$transaction((tx) =>
-      findOrCreateFolderPath(pathParts, rootId, data.ownerId, data.driveId, tx)
-    )
-    resolvedParentId = folderResult.parentId
-    createdFolderIds = folderResult.createdFolderIds
+  const path = segments.slice(1, -1).join('/')
+  let parentId = rootId
+  let createdFolderIds: string[] = []
+
+  if (data.parentId && data.parentId !== rootId) {
+    await assertItemsAccess(data.ownerId, [data.parentId], 'write')
+    parentId = data.parentId
+  } else {
+    await assertCanUploadTo(data.ownerId, data.key)
+    if (path) {
+      // Its own transaction, committed before the file's statement, so the
+      // tree lock is never held while a file row is written.
+      const tree = await prisma.$transaction(
+        (tx) => resolveFolderTree(tx, rootId, data.ownerId, data.driveId, [path]),
+        FOLDER_TREE_TX
+      )
+      const refusal = tree.refused.get(path)
+      if (refusal) throw new StashlyError(StashlyErrorCode.CONFLICT, refusal)
+      parentId = tree.folders.get(path)!
+      createdFolderIds = tree.createdFolderIds
+    }
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    const item = await tx.item.create({
-      data: {
-        id: data.id,
-        name: data.name,
-        type: 'file',
-        category: (data.category ?? 'unknown') as any,
-        status: 'normal',
-        ownerId: data.ownerId,
-        driveId: data.driveId,
-        parentId: resolvedParentId,
-        size: data.size,
-        uploadId: data.uploadId,
-        file: {
-          create: {
-            id: toObjectId(getPrefixForModel('File')),
-            bucket: data.bucket,
-            key: data.key,
-            mimeType: data.mimeType,
-            etag: data.etag,
-            // Empty string means the browser could not hash the file; store
-            // null so duplicate grouping reads it as "unknown", not "matches
-            // every other file that also failed".
-            hash: data.hash || null,
-            extension: data.name.split('.').pop() ?? '',
-          },
-        },
-        permissions: {
-          create: {
-            id: toObjectId(getPrefixForModel('Permission')),
-            roles: 'owner',
-            users: { connect: { id: data.ownerId } },
-          },
-        },
-      },
-      select: defaultItemSelect,
-    })
+  const result = await insertUploadedItem({ ...data, parentId })
+  if (!result) return refuseUploadedItem(data.ownerId, parentId, data.size)
 
-    // The only place an upload is charged. Inside the row's transaction, so the
-    // row and the charge commit together or not at all. Last statement, so the
-    // `Quota` row lock it takes is held only through the commit: parallel
-    // uploads by one user queue on that lock.
-    await onItemsUploaded({
-      userId: data.ownerId,
-      dataSize: data.size,
-      client: tx,
-    })
-
-    return item
-  })
-
-  // After both transactions have committed, never inside one: an activity
-  // started inside the file's transaction looked the item up on another
-  // connection before the commit and failed with P2025 under upload load
-  // (376 of 575 files in one directory upload had no activity).
+  // After the statement has committed, never inside it: an activity started
+  // inside the file's transaction looked the item up on another connection
+  // before the commit and failed with P2025 under upload load (376 of 575
+  // files in one directory upload had no activity).
   recordItemActivities('upload', [
     { id: result.id, uploadId: result.uploadId ?? '' },
     ...createdFolderIds.map((id) => ({ id, uploadId: data.uploadId })),
@@ -1819,6 +1869,88 @@ export async function createUploadedItem(data: {
   )
 
   return result
+}
+
+/**
+ * Writes an uploaded file's `Item`, `File`, `Permission` and owner link, and
+ * charges its size to the uploader's quota, as ONE statement.
+ *
+ * Each step reads from the one before: the charge only runs while the parent
+ * is a live folder, and the rows are inserted from the charge's row. A file
+ * that doesn't fit, a missing or trashed parent, or no quota leaves the rest
+ * with no input row, so nothing is written or charged and it answers `null`.
+ * One statement is atomic on its own, so there is no transaction around it:
+ * Prisma's nested create took 9 round trips for the same rows (BEGIN, the
+ * inserts, a user lookup, a read-back, the charge, COMMIT).
+ */
+async function insertUploadedItem(data: {
+  id: string
+  name: string
+  key: string
+  size: bigint
+  mimeType?: string
+  etag?: string
+  hash?: string
+  bucket: string
+  driveId: string
+  parentId: string
+  ownerId: string
+  uploadId: string
+  category?: string
+}) {
+  // A JS Date, not `now()`: the columns are `timestamp without time zone` and
+  // `now()` would store the session's local time while Prisma writes UTC.
+  const now = new Date()
+  const rows = await prisma.$queryRaw<
+    { id: string; name: string; size: bigint; parentId: string; uploadId: string | null }[]
+  >`
+    WITH parent AS (
+      SELECT "id" FROM "Item"
+      WHERE "id" = ${data.parentId} AND "type" = 'folder' AND "status" <> 'trashed'
+    ), charge AS (
+      ${uploadChargeSql(data.ownerId, data.size, Prisma.sql`AND EXISTS (SELECT 1 FROM parent)`)}
+    ), item AS (
+      INSERT INTO "Item" ("id", "name", "type", "category", "status", "ownerId", "driveId", "parentId", "size", "uploadId", "createdAt", "updatedAt")
+      SELECT ${data.id}, ${data.name}, 'file'::"ItemType", ${data.category ?? 'unknown'}::"ItemCategory", 'normal'::"ItemStatus",
+             ${data.ownerId}, ${data.driveId}, parent."id", ${data.size}::bigint, ${data.uploadId}, ${now}, ${now}
+      FROM parent, charge
+      RETURNING "id", "name", "size", "parentId", "uploadId"
+    ), file AS (
+      INSERT INTO "File" ("id", "bucket", "key", "mimeType", "etag", "hash", "extension", "itemId")
+      SELECT ${toObjectId(getPrefixForModel('File'))}, ${data.bucket}, ${data.key}, ${data.mimeType ?? null}, ${data.etag ?? null},
+             ${data.hash || null}, ${data.name.split('.').pop() ?? ''}, item."id"
+      FROM item
+    ), permission AS (
+      INSERT INTO "Permission" ("id", "roles", "itemId", "createdAt", "updatedAt")
+      SELECT ${toObjectId(getPrefixForModel('Permission'))}, 'owner'::"PermissionRole", item."id", ${now}, ${now}
+      FROM item
+      RETURNING "id"
+    ), link AS (
+      INSERT INTO "_PermissionToUser" ("A", "B")
+      SELECT permission."id", ${data.ownerId} FROM permission
+    )
+    SELECT * FROM item
+  `
+  return rows[0] ?? null
+}
+
+/**
+ * Throws why `insertUploadedItem` wrote nothing: the folder is no longer a live
+ * folder (404), or the file doesn't fit or there is no quota. Only called after
+ * a refusal, so a successful upload never pays for it.
+ */
+async function refuseUploadedItem(userId: string, parentId: string, size: bigint): Promise<never> {
+  const parent = await prisma.item.findUnique({
+    where: { id: parentId },
+    select: { type: true, status: true },
+  })
+  if (!parent || parent.type !== 'folder' || parent.status === 'trashed') {
+    throw new StashlyError(
+      StashlyErrorCode.ITEM_NOT_FOUND,
+      'The folder this file was uploaded into no longer exists, so it was not filed.'
+    )
+  }
+  return refuseUploadCharge(userId, size)
 }
 
 /**
@@ -3792,7 +3924,7 @@ export async function createRootFolder(
  *   the folder, and the link used to open it;
  * - two live items with the name are not picked between (`findFirst` has no
  *   order, so the link opened either one). No match is returned, the same
- *   "never guess" rule uploads follow in `findOrCreateFolderPath`.
+ *   "never guess" rule uploads follow in `resolveFolderTree`.
  *
  * @param folderId - The parent folder to look in.
  * @param name - The file name as it appears in the URL (already decoded).

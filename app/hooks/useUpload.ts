@@ -92,6 +92,55 @@ async function verifyBatchQuota(totalSize: number): Promise<boolean> {
   return res.json() as Promise<boolean>
 }
 
+/**
+ * The folder path a key files into, relative to its root: the segments between
+ * the root id and the file name. Empty for a file straight in the root.
+ *
+ * @example
+ * toFolderPath('item_root/photos/2026/a.jpg') // → 'photos/2026'
+ */
+function toFolderPath(key: string): string {
+  return key.split('/').slice(1, -1).join('/')
+}
+
+/**
+ * Asks the server once for the folder of every directory in a batch, creating
+ * the missing ones, so each file is filed straight into its folder instead of
+ * resolving its path again (`createUploadedItem`).
+ *
+ * Never fails the batch: on any error it answers `{}`, and every file then
+ * resolves its own path on the server, as a single-file upload does. A path the
+ * server refused (two live folders with one name) is left out the same way, so
+ * its files are refused one by one with the reason.
+ *
+ * @param rootId - The destination folder every key starts with.
+ * @param keys - The batch's S3 keys.
+ * @returns Folder path (see `toFolderPath`) → folder id.
+ *
+ * @example
+ * const folders = await resolveUploadFolders(rootId, mediaFiles.map((m) => m.key))
+ * folders['photos/2026'] // → 'item_…'
+ */
+async function resolveUploadFolders(
+  rootId: string,
+  keys: string[]
+): Promise<Record<string, string>> {
+  const dirs = [...new Set(keys.map(toFolderPath).filter(Boolean))]
+  if (dirs.length === 0) return {}
+  try {
+    const form = new FormData()
+    form.append('intent', 'resolve_upload_folders')
+    form.append('rootId', rootId)
+    form.append('dirs', JSON.stringify(dirs))
+    const res = await fetch('/api/items', { method: 'POST', body: form })
+    // An expired session redirects to the sign-in page, which isn't JSON.
+    const body = (await res.json()) as { success?: boolean; folders?: Record<string, string> }
+    return body.success && body.folders ? body.folders : {}
+  } catch {
+    return {}
+  }
+}
+
 // ── Per-file hooks ────────────────────────────────────────────────────────────
 // These are standalone hooks — call them in child components, not inside loops.
 
@@ -353,13 +402,26 @@ export function useUpload() {
       const totalSize = files.reduce((sum, f) => sum + f.size, 0)
       const allowed = await verifyBatchQuota(totalSize)
       if (!allowed) return false
+      // One request for the whole tree, so no file resolves its path again.
+      // Keyed from the original files: `normalizeFile` keeps
+      // `webkitRelativePath`, so these are the keys `toMediaFile` builds below.
+      const folders = await resolveUploadFolders(
+        rid,
+        files.map((file) => `${rid}/${file.webkitRelativePath || file.name}`)
+      )
+      // Hand files over one at a time, each after its own `normalizeFile`: its
+      // disk read lets the machine start the uploads already queued. Queuing a
+      // 639-file folder in one synchronous burst instead started 100 uploads
+      // at once, and the upload took 872 s instead of 707 s (measured
+      // 2026-10-25).
       for (const file of files) {
         const normalized = await normalizeFile(file)
         const mediaFile = toMediaFile(normalized, rid)
+        const parentId = folders[toFolderPath(mediaFile.key)]
         startFileHash(mediaFile.id, normalized)
         upload.send({
           type: 'upload.add',
-          mediaFile,
+          mediaFile: parentId ? { ...mediaFile, parentId } : mediaFile,
           skipQuotaCheck: true,
         })
       }

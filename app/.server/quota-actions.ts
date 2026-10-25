@@ -456,19 +456,7 @@ async function applyQuotaDelta({
 
   const fits = withinTotal ? Prisma.sql`AND ${used} <= ${total}` : Prisma.empty
 
-  const status = Prisma.sql`
-    CASE
-      WHEN ${total} = 0::bigint THEN
-        CASE
-          WHEN ${used} > 0::bigint THEN 'exceeded'
-          ELSE 'normal'
-        END
-      WHEN (${used} * 1000::bigint / ${total}) > 1000 THEN 'exceeded'
-      WHEN (${used} * 1000::bigint / ${total}) > 990 THEN 'critical'
-      WHEN (${used} * 1000::bigint / ${total}) > 900 THEN 'warning'
-      ELSE 'normal'
-    END::"QuotaStatus"
-  `
+  const status = toQuotaStatusSql(used, total)
 
   // Raw SQL bypasses Prisma's `@updatedAt`, so set it by hand. Not `now()`: the
   // column is `timestamp without time zone` and the session runs in a local
@@ -486,26 +474,102 @@ async function applyQuotaDelta({
   `
 
   const row = rows[0]
-  if (!row && withinTotal) {
-    // No row updated: either there is no quota, or the delta doesn't fit.
-    const existing = await client.$queryRaw<PrismaQuota[]>`
-      SELECT * FROM "Quota" WHERE ${where}
-    `
-    if (existing[0]) {
-      const { remaining } = toQuota(existing[0])
-      throw toRouteError(
-        StashlyErrorCode.INSUFFICIENT_QUOTA,
-        `Not enough storage: this needs ${formatSize('byte', 'unit', Number(data.used ?? 0n))} and ${formatSize(
-          'byte',
-          'unit',
-          Number(remaining > 0n ? remaining : 0n)
-        )} is free.`
-      )
-    }
-  }
+  // No row updated: either there is no quota, or the delta doesn't fit.
+  if (!row && withinTotal) await refuseCharge(where, data.used ?? 0n, client)
   if (!row) throw toRouteError(StashlyErrorCode.QUOTA_NOT_FOUND)
 
   return toQuota(row)
+}
+
+/**
+ * The `status` a quota row gets for the `used`/`total` a statement leaves it
+ * with. The integer thresholds mirror `toQuotaStatus`'s three-decimal
+ * truncation exactly.
+ */
+function toQuotaStatusSql(used: Prisma.Sql, total: Prisma.Sql) {
+  return Prisma.sql`
+    CASE
+      WHEN ${total} = 0::bigint THEN
+        CASE
+          WHEN ${used} > 0::bigint THEN 'exceeded'
+          ELSE 'normal'
+        END
+      WHEN (${used} * 1000::bigint / ${total}) > 1000 THEN 'exceeded'
+      WHEN (${used} * 1000::bigint / ${total}) > 990 THEN 'critical'
+      WHEN (${used} * 1000::bigint / ${total}) > 900 THEN 'warning'
+      ELSE 'normal'
+    END::"QuotaStatus"
+  `
+}
+
+/**
+ * Throws the error for a charge of `size` that matched no quota row: 507
+ * `INSUFFICIENT_QUOTA` saying how much is free, or `QUOTA_NOT_FOUND` when there
+ * is no row at all.
+ */
+async function refuseCharge(
+  where: Prisma.Sql,
+  size: bigint,
+  client: Prisma.TransactionClient = prisma
+): Promise<never> {
+  const existing = await client.$queryRaw<PrismaQuota[]>`
+    SELECT * FROM "Quota" WHERE ${where}
+  `
+  if (existing[0]) {
+    const { remaining } = toQuota(existing[0])
+    throw toRouteError(
+      StashlyErrorCode.INSUFFICIENT_QUOTA,
+      `Not enough storage: this needs ${formatSize('byte', 'unit', Number(size))} and ${formatSize(
+        'byte',
+        'unit',
+        Number(remaining > 0n ? remaining : 0n)
+      )} is free.`
+    )
+  }
+  throw toRouteError(StashlyErrorCode.QUOTA_NOT_FOUND)
+}
+
+/**
+ * The `UPDATE` that charges an upload to its uploader's quota, for a caller
+ * that runs it inside its own statement: `createUploadedItem` writes the file's
+ * rows and this charge as one statement, so they commit together or not at all.
+ *
+ * Same SET and same refusal as `onItemsUploaded`: it matches no row when the
+ * file doesn't fit (`used + size > total`) or there is no quota. `guard` adds a
+ * condition of the caller's, and `RETURNING 1` gives it a row to build on.
+ *
+ * @example
+ * Prisma.sql`WITH q AS (${uploadChargeSql(userId, size)}) INSERT … SELECT … FROM q`
+ */
+export function uploadChargeSql(
+  userId: string,
+  size: bigint,
+  guard: Prisma.Sql = Prisma.empty
+) {
+  const used = Prisma.sql`GREATEST(0::bigint, "used" + ${size}::bigint)`
+  // Raw SQL bypasses `@updatedAt`; a JS Date, not `now()` (see applyQuotaDelta).
+  return Prisma.sql`
+    UPDATE "Quota"
+    SET
+      "used" = ${used},
+      "status" = ${toQuotaStatusSql(used, Prisma.sql`"total"`)},
+      "updatedAt" = ${new Date()}
+    WHERE "driveId" = (SELECT "id" FROM "Drive" WHERE "ownerId" = ${userId})
+      AND ${used} <= "total"
+      ${guard}
+    RETURNING 1
+  `
+}
+
+/**
+ * Throws why `uploadChargeSql` matched no row: 507 `INSUFFICIENT_QUOTA`, or
+ * `QUOTA_NOT_FOUND`. Only called once a refusal has happened.
+ */
+export function refuseUploadCharge(userId: string, size: bigint): Promise<never> {
+  return refuseCharge(
+    Prisma.sql`"driveId" = (SELECT "id" FROM "Drive" WHERE "ownerId" = ${userId})`,
+    size
+  )
 }
 
 // ─── After-action helpers ─────────────────────────────────────────────────────

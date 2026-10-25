@@ -11,6 +11,7 @@ import {
   moveItem,
   moveItems,
   renameItem,
+  resolveUploadFolders,
   restoreItem,
   restoreItems,
   searchFolders,
@@ -326,6 +327,22 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         const err = toErrorInfo(e)
         await discardUploadedObject(user.id, parsedData.key)
         return { success: false, error: err.message }
+      }
+    }
+    case 'resolve_upload_folders': {
+      // A folder upload's folders, resolved once before its files start. The
+      // drive is the session's, like every folder the uploader creates.
+      try {
+        const { folders } = await resolveUploadFolders({
+          userId: user.id,
+          rootId: parsedData.rootId,
+          driveId: user.driveId,
+          dirs: parsedData.dirs,
+        })
+        return data({ success: true, folders })
+      } catch (e) {
+        const err = toErrorInfo(e)
+        return data({ success: false, error: err.message }, { status: err.status ?? 500 })
       }
     }
     // The three index writes answer a refused request with its real status

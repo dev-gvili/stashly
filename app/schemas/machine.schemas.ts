@@ -274,6 +274,8 @@ export let mediafile = z.object({
   uploadId: z.string().optional(),
   location: z.url().optional(),
   ownerId: z.string().optional(),
+  /** The file's folder, when its upload resolved its folders first (`addBatch`). */
+  parentId: z.string().optional(),
   progress: uploadProgress,
   status: status,
   thumbnail: z.string().optional(),
