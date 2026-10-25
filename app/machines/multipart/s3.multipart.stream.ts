@@ -7,7 +7,13 @@ import { PauseController } from './s3.multipart.concurrent'
 const CHUNK_SIZE = 5 * 1024 * 1024 // 5 MB — S3 minimum part size
 const DEFAULT_CONCURRENCY = 10
 
-async function retryFetch(
+/**
+ * `fetch` with backoff for the part loop. Retries 429, 5xx and network errors;
+ * any other 4xx fails on the first answer. A 403 (access revoked mid-upload)
+ * or a 400 won't change on a retry, and five of them with this backoff kept a
+ * doomed upload alive for minutes (tech-debt item 34).
+ */
+export async function retryFetch(
   url: RequestInfo,
   init: RequestInit,
   maxRetries: number = 5,
@@ -31,12 +37,21 @@ async function retryFetch(
         retries++
         continue
       }
+      if (response.status >= 400 && response.status < 500) {
+        throw Object.assign(
+          new Error(`HTTP error! status: ${response.status}`),
+          { status: response.status, retryable: false }
+        )
+      }
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       return response
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error
+      }
+      if ((error as { retryable?: boolean }).retryable === false) {
         throw error
       }
       console.error(`Fetch attempt failed: ${error}. Retrying...`)
