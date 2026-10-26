@@ -23,7 +23,9 @@
 
 **44 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit) · categories: Code 22, Architecture 13, Infrastructure 4, Test 2, Documentation 2, Dependency 1
 
-**Status at 26 Oct 2026 (latest):** 27 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 8 new and open (19, 20, 22, 37, 41–44). Item 40 resolved (`51ca00d`): a file with nothing to save sends no metadata request, and each facet write is one statement that concurrent saves can't break.
+**Status at 26 Oct 2026 (latest):** 28 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 7 new and open (19, 20, 22, 37, 42–44). Item 41 resolved (`12e3f74`): the upload manager no longer spawns a quota actor that nothing talked to, and three revalidation checks that could never match are gone.
+
+**Status at 26 Oct 2026 (after item 40):** 27 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 8 new and open (19, 20, 22, 37, 41–44). Item 40 resolved (`51ca00d`): a file with nothing to save sends no metadata request, and each facet write is one statement that concurrent saves can't break.
 
 **Status at 26 Oct 2026 (after item 39):** 26 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 9 new and open (19, 20, 22, 37, 40–44). Item 39 resolved (`3ddbf90`): part URLs are signed 100 at a time and the first 100 arrive with the create answer; a 100 MB upload makes 10 requests to our server instead of 30.
 
@@ -81,7 +83,7 @@
 | 17 | Unfinished migrations | 12 | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes | Deferred to after personal-first (TASKS.md, 4 Oct) |
 | 39 | ~~One presign request per part~~ | 12 | Resolved 2026-10-26 (`3ddbf90`): part URLs signed 100 at a time, the first 100 in the create answer; 100 MB upload 30 → 10 requests to our server, measured | — |
 | 40 | ~~Media-metadata writes do extra work~~ | 10 | Resolved 2026-10-26 (`51ca00d`): a file with nothing to save sends no POST; one upsert per facet; 2 → 1 statements per save, 7 of 8 racing first saves refused → 0, measured | — |
-| 41 | **new** Dead upload branches | 10 | `create_upload_item` in 3 `shouldRevalidate`s; the idle quota machine | — |
+| 41 | ~~Dead upload branches~~ | 10 | Resolved 2026-10-26 (`12e3f74`): the 3 unreachable `shouldRevalidate` checks deleted, the quota machine no longer spawned (file kept); actors per upload manager 6 → 5, measured | — |
 | 42 | **new** Size rollup locks every ancestor row | 10 | Redesign only if lock waits are measured | Measure first |
 | 43 | **new** Revalidation and thumbnail query overhead | 9 | 2 page reloads per batch, wasted workspace query, 9 queries per thumbnail | Measure first |
 | 44 | **new** Separate complete and create requests | 9 | Merge them, and the triple access check | Measure first |
@@ -132,7 +134,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 38 | ~~Which upload concurrency limit applies (10 or 100) is unknown~~ | Documentation | 2 | 1 | 1 | **15** (Low) | 1 h | Resolved 26 Oct |
 | 39 | ~~One presign request per 5 MiB part~~ | Architecture | 2 | 1 | 2 | **12** (Low) | 0.5–1 day | Resolved 26 Oct |
 | 40 | ~~Media-metadata writes do extra work~~ | Code | 1 | 1 | 1 | **10** (Low) | 2 h | Resolved 26 Oct |
-| 41 | Dead upload branches | Code | 1 | 1 | 1 | **10** (Low) | 2 h | New 25 Oct |
+| 41 | ~~Dead upload branches~~ | Code | 1 | 1 | 1 | **10** (Low) | 2 h | Resolved 26 Oct |
 | 42 | The size rollup locks every ancestor row | Architecture | 2 | 3 | 4 | **10** (Low) | 3–5 days | New 25 Oct |
 | 43 | Revalidation and thumbnail query overhead | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | New 25 Oct |
 | 44 | Upload complete and item creation are separate requests | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | New 25 Oct |
@@ -741,6 +743,17 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** `stash/all.tsx:83`, `stash/folder.tsx:123` and `stash/home.tsx:64` check for `create_upload_item` in `shouldRevalidate`. The check can't match, because the upload POST is a plain `fetch`, which React Router never sees. The quota machine is spawned into `quotaActor` (`upload.machine.ts:123`) and nothing sends it an event, although the `stashly-upload-xstate` skill describes it as tracking and enforcing quota.
 - **Fix:** delete the branches and the idle actor, or wire them up; correct the skill either way. Confirm with the owner first: no current callers doesn't always mean dead.
 - **Status 2026-10-25: open.**
+- **Status 2026-10-26: resolved** (`12e3f74`). The owner chose to stop spawning the quota machine and keep its file. The three `create_upload_item` checks are deleted: the only sender is `postItem` (`db.actors.ts`), which uses `fetch`. The upload manager no longer registers or spawns `quotaMachine`, and `quotaActor` is gone from its context and schema. `quota/quota.machine.ts` stays on disk, unimported, in case quota reads move into one shared actor. `reviset/file.machine.ts` keeps invoking `checkQuota` from `quota.actors.ts` as its pre-check. The `stashly-upload-xstate` skill and `app/machines/README.md` no longer say the machine tracks or enforces quota. `pnpm test` 1019/0 in 87 files (two test stubs for the quota actor removed, no tests lost); type gate exit 0. Measured with `/verify` (`.claude/evidence/p41-dead-upload-{before,after}.json`) by a temporary probe that drove `HEAD`'s and the new upload manager through the same sequence (config with a limit of 1, one file whose create is refused, one that waits), using XState's `inspect` to record every actor created and every event delivered:
+
+  |  | before | after |
+  |---|---|---|
+  | actors created | 6 | 5 |
+  | quota actor in the system | yes | no |
+  | events the quota actor received | 0 | — |
+  | events the manager received | 6 | 6 |
+  | refused file / next file | `failed` / `pending` | `failed` / `pending` |
+
+  No timing was measured, so no speed-up is claimed. These docs still describe the quota machine as spawned and weren't changed: `docs/upload-multipart.md`, `docs/quota-and-machines.md`, `docs/project-overview.md`, `docs/roadmap.md`, `.github/copilot-instructions.md`.
 
 ### 42. The size rollup locks every ancestor row
 
@@ -841,6 +854,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-26 | `78a63f3` | 38 | The upload manager's initial `maxConcurrentUploads` is 100, matching the schema default that `upload.config` applies. 3 new tests; 975/0 in 82 files. |
 | 2026-10-26 | `3ddbf90` | 39 | Part URLs signed a window of 100 at a time, the first window in the create answer; a part whose URL answers 403 is signed again once. Browser, before → after: 10 MB 12 → 10 requests to our server, 100 MB 30 → 10. 16 new tests; 991/0 in 85 files. |
 | 2026-10-26 | `51ca00d` | 40 | An empty file sends no `save_media_metadata` (`hasMetadataToSave`, the indexing machine's `nothingToSave` guard), and each facet write is one `upsert` on `itemId`. 28 new tests; 1019/0 in 87 files. Before → after, 5 runs: 2 → 1 statements per save; 8 racing first saves, 7 refused → 0; a zip's request 1 → 0. |
+| 2026-10-26 | `12e3f74` | 41 | The three `shouldRevalidate` checks for `create_upload_item` (sent only by `fetch`) deleted, and the upload manager no longer spawns the quota machine, which never received an event; the file is kept. 1019/0 in 87 files. Probe before → after: actors created 6 → 5, everything else the same. |
 
 ## Phased remediation plan
 
@@ -917,7 +931,7 @@ New items from the 8 Oct re-scan, in the order to do them:
 *items 31–44, from the upload call audit; the first step is under a day*
 
 1. **Now:** ~~merge PR #26 (item 31)~~ done 25 Oct (`059d0aa`); ~~add the ownership checks to the three search-index writes (item 32)~~ done 25 Oct (`41f2efe`); ~~stop retrying 4xx answers (item 34)~~ done 25 Oct (`8ac03d9`). Two security gaps and a slow failure, each a small diff with a test.
-2. **On the next upload task (about 1.5 days):** ~~abort cancelled and failed multipart uploads (33~~ done 25 Oct, `8a79e89`; Tigris offers no lifecycle rule to fall back on); settle the `.ts` sniff (37), ~~the metadata writes (40)~~ done 26 Oct (`51ca00d`) and the dead branches (41); ~~measure the concurrency limit and correct the skill (38)~~ done 26 Oct (`78a63f3`).
+2. **On the next upload task (about 1.5 days):** ~~abort cancelled and failed multipart uploads (33~~ done 25 Oct, `8a79e89`; Tigris offers no lifecycle rule to fall back on); settle the `.ts` sniff (37), ~~the metadata writes (40)~~ done 26 Oct (`51ca00d`) and ~~the dead branches (41)~~ done 26 Oct (`12e3f74`); ~~measure the concurrency limit and correct the skill (38)~~ done 26 Oct (`78a63f3`).
 3. **A measured performance pass (3–5 days):** ~~the session cookie cache (35)~~ done 25 Oct, measured; ~~part URLs in bulk (39)~~ done 26 Oct (`3ddbf90`), signed 100 at a time, measured; ~~the folder tree once per batch (36)~~ done 26 Oct (`265c9d6`), measured; and the revalidation and thumbnail overhead (43). Repeat the audit's measured upload before and after; the CLAUDE.md debugging rules require the numbers.
 4. **Only if contention is measured:** the rollup redesign (42) and merging the requests (44). High effort for an unproven payoff.
 
