@@ -23,6 +23,8 @@
 
 **44 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit) · categories: Code 22, Architecture 13, Infrastructure 4, Test 2, Documentation 2, Dependency 1
 
+**Status at 26 Oct 2026 (latest):** 26 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 9 new and open (19, 20, 22, 37, 40–44). Item 39 resolved (`3ddbf90`): part URLs are signed 100 at a time and the first 100 arrive with the create answer; a 100 MB upload makes 10 requests to our server instead of 30.
+
 **Status at 26 Oct 2026 (later):** 25 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 37, 39–44). Item 38 resolved (`78a63f3`): the upload limit is 100 in the code as well as in what runs.
 
 **Status at 26 Oct 2026:** 24 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 11 new and open (19, 20, 22, 37–44). Item 36 resolved (`265c9d6`, the folder tree resolved once per upload). Item 30 resolved (`074c06e`): the signed cookies read `SESSION_SECRET`, and production refuses to boot without it.
@@ -700,6 +702,17 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** each part sends its own `get-presigned-url` (`s3.multipart.stream.ts:173`, handled at `upload.ts:90`). Signing is a local HMAC, so each request buys only a session lookup. Measured 2026-10-25: 2 of 18 requests for a 10 MB upload and 20 of 54 for a 100 MB one. The 20 presigns spanned +262 to +6,649 ms, interleaved with the part PUTs.
 - **Fix:** return every part URL from `create-multipart-upload`.
 - **Status 2026-10-25: open.**
+- **Status 2026-10-26: resolved** (`3ddbf90`). Owner's choice: windows of 100, not every URL at once, which for a 10 GB file would be about 1,900 URLs signed long before use. `create-multipart-upload` takes the part count and returns the first 100 URLs (500 MiB); `get-presigned-urls` signs a range. `createPartUrls` in `s3.multipart.stream.ts` asks for the next window 20 parts ahead, and workers waiting on one window share its request. A URL signed ahead can expire (3,600 s) on a long pause or slow link. A throwaway probe against the dev bucket showed Tigris answering an expired part PUT with 403 `AccessDenied` "Request has expired" and a fresh URL with 200, so a part that gets a 403 is signed again once; a second 403 fails the file as before. The per-part `get-presigned-url` action stays for its other callers. Measured with `/verify` (`.claude/evidence/presign-p39-{before,after}.json`: same page, `upload-audit-init.js`, byte-identical files):
+
+  |  | 10 MB before | after | 100 MB before | after |
+  |---|---|---|---|---|
+  | requests to our server | 12 | 10 | 30 | 10 |
+  | presign requests | 2 | 0 | 20 | 0 |
+  | all browser requests | 18 | 16 | 54 | 34 |
+  | create answer on the wire | 351 B | 1.4 KB | 351 B | 10.8 KB |
+  | item row created at | +2,885 ms | +2,669 ms | +11,803 ms | +11,524 ms |
+
+  The times are one run each. A 4–7% change is within S3's run-to-run variance, so no speed-up is claimed. Signing 100 URLs took 58.6 ms on the server. Tests: `part-urls.test.ts` (9), `upload-presign.test.ts` (6), `file-part-urls.test.ts` (1); the shared `streamParts` contract test now counts PUTs instead of presigns. `pnpm test` 991/0 in 85 files, type gate exit 0, build clean.
 
 ### 40. Media-metadata writes do extra work
 
@@ -814,6 +827,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-26 | `265c9d6` | 36, 38, 13 | A folder upload resolves its tree once (`resolve_upload_folders`: one query per depth level, one INSERT for all missing folders, one lock per uploader), and each file row plus its quota charge is one statement. Real `app/` upload (639 files, 71 folders, all checked in DB and S3): 11,600 → 1,284 statements, 1,278 → 1 transactions, 1,824 → 1 locks, 707 → 554 s. 9 new tests; 969/0 in 81 files. |
 | 2026-10-26 | `074c06e` | 30 | Both signed cookies call `cookieSecret()` (`env.ts`): `SESSION_SECRET`, required in production at module load. Probe before/after: production with no secret loaded and signed with `'secret'` → throws; with a secret, verifies against `'secret'` → against that secret only. 3 new tests; 972/0 in 81 files. |
 | 2026-10-26 | `78a63f3` | 38 | The upload manager's initial `maxConcurrentUploads` is 100, matching the schema default that `upload.config` applies. 3 new tests; 975/0 in 82 files. |
+| 2026-10-26 | `3ddbf90` | 39 | Part URLs signed a window of 100 at a time, the first window in the create answer; a part whose URL answers 403 is signed again once. Browser, before → after: 10 MB 12 → 10 requests to our server, 100 MB 30 → 10. 16 new tests; 991/0 in 85 files. |
 
 ## Phased remediation plan
 
