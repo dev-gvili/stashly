@@ -23,6 +23,8 @@
 
 **44 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit) · categories: Code 22, Architecture 13, Infrastructure 4, Test 2, Documentation 2, Dependency 1
 
+**Status at 26 Oct 2026 (later):** 25 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 37, 39–44). Item 38 resolved (`78a63f3`): the upload limit is 100 in the code as well as in what runs.
+
 **Status at 26 Oct 2026:** 24 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 11 new and open (19, 20, 22, 37–44). Item 36 resolved (`265c9d6`, the folder tree resolved once per upload). Item 30 resolved (`074c06e`): the signed cookies read `SESSION_SECRET`, and production refuses to boot without it.
 
 **Status at 25 Oct 2026 (late night):** 21 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 14 new and open (19, 20, 22, 30, 35–44). Items 33 (`8a79e89`) and 34 (`8ac03d9`) resolved: a cancelled or failed upload aborts its multipart upload, and a 4xx other than 429 fails on the first answer. Item 35 resolved and measured (5-minute encrypted cookie cache; session reads per upload 12 → 0, and 1 when the cookie has expired); item 36 waits on a measured folder upload. Counts: 22 resolved · 1 resolved in code, rollout step unconfirmed (2) · 13 new and open (19, 20, 22, 30, 36–44).
@@ -689,7 +691,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** `upload.machine.ts:31` sets `maxConcurrentUploads: 10`; the schema default is 100 (`machine.schemas.ts:298`), and the `stashly-upload-xstate` skill says 100. Every throughput and lock-contention estimate depends on which one runs.
 - **Fix:** measure files in flight during a large batch, then make the code and the skill agree.
 - **Measured 2026-10-26** (item 36's `app/` uploads): when 639 files were queued in one synchronous burst, exactly **100** `/api/s3/upload` requests were in flight at the peak. A file has at most one such request at a time, so 100 files were active: the schema default applies, as the skill says, and `upload.machine.ts:31`'s 10 is overridden. When files are handed over one at a time (`addBatch` as shipped), the peak was 24–25.
-- **Status 2026-10-26: open.** The limit in effect is known (100); `upload.machine.ts:31` still says 10.
+- **Status 2026-10-26: resolved** (`78a63f3`). The initial context now says 100, the same as the schema default. `useUpload` sends `upload.config` with no limit, and `updateConfig` parses the default in and writes it over the context, which is why the 10 never ran past configuration. The `stashly-upload-xstate` skill already said 100. `upload-concurrency-limit.test.ts` (3): 100 before configuration, 100 after a config that names no limit, and a named limit is kept. `pnpm test` 975/0 in 82 files, type gate exit 0.
 
 ### 39. One presign request per 5 MiB part
 
@@ -811,6 +813,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-25 | `fd23cad` | 35, 13 | The four upload API routes run `authMiddleware`, so they forward the refreshed cookie. Expired-cookie 10 MB upload: 1 session scan. 7 new tests; 960/0 in 80 files. |
 | 2026-10-26 | `265c9d6` | 36, 38, 13 | A folder upload resolves its tree once (`resolve_upload_folders`: one query per depth level, one INSERT for all missing folders, one lock per uploader), and each file row plus its quota charge is one statement. Real `app/` upload (639 files, 71 folders, all checked in DB and S3): 11,600 → 1,284 statements, 1,278 → 1 transactions, 1,824 → 1 locks, 707 → 554 s. 9 new tests; 969/0 in 81 files. |
 | 2026-10-26 | `074c06e` | 30 | Both signed cookies call `cookieSecret()` (`env.ts`): `SESSION_SECRET`, required in production at module load. Probe before/after: production with no secret loaded and signed with `'secret'` → throws; with a secret, verifies against `'secret'` → against that secret only. 3 new tests; 972/0 in 81 files. |
+| 2026-10-26 | `78a63f3` | 38 | The upload manager's initial `maxConcurrentUploads` is 100, matching the schema default that `upload.config` applies. 3 new tests; 975/0 in 82 files. |
 
 ## Phased remediation plan
 
