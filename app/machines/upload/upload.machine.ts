@@ -10,7 +10,6 @@ import {
 // The per-file actor lives in `reviset/`, not in this folder — the
 // `upload/file.machine.ts` sibling was an unused draft and has been deleted.
 import { fileMachine } from '../reviset/file.machine'
-import { quotaMachine } from '@/machines/quota/quota.machine'
 import { dbMachine } from '@/machines/db/db.machine'
 import type {
   UploadManagerData,
@@ -32,7 +31,6 @@ let initialData: UploadManagerData = {
     maxConcurrentUploads: 100,
     maxFileSize: 10000000000,
   },
-  quotaActor: undefined,
   mediaFiles: new Map(),
   fileActors: new Map(),
   queues: {
@@ -53,7 +51,6 @@ const uploadMachine = setup({
   },
   actors: {
     fileMachine,
-    quotaMachine,
     dbMachine,
   },
   actions: {
@@ -118,14 +115,6 @@ const uploadMachine = setup({
           error: mediaFile.error.message,
         })
       }
-    }),
-    spawnQuotaActor: enqueueActions(({ context, event, enqueue, self }) => {
-      enqueue.assign(({ spawn }) => {
-        let actor = spawn('quotaMachine', {
-          systemId: 'quota',
-        })
-        return { quotaActor: actor }
-      })
     }),
     addFile: enqueueActions(({ context, event, enqueue }) => {
       assertEvent(event, 'upload.add')
@@ -418,7 +407,6 @@ const uploadMachine = setup({
       initial: 'idle',
       states: {
         idle: {
-          entry: 'spawnQuotaActor',
           on: {
             'progress.change': {
               actions: 'updateProgress',

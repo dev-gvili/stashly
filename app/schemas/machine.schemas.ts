@@ -5,7 +5,6 @@ import { itemFilterSchema } from '@/utils/filters/item.filters'
 import { createUploadItemFields } from '@/schemas/api.schemas'
 import { toSearchSchema } from '@/utils/converters'
 import type { Prisma } from '@/prisma/browser'
-import type { quotaMachine } from '../machines/quota/quota.machine'
 
 const UPLOAD = 'upload'
 const QUEUE = 'queue'
@@ -317,7 +316,6 @@ export let uploadManagerSchema = z.object({
     completed: z.set(z.string()),
     pending: z.map(z.string(), mediafile),
   }),
-  quotaActor: z.custom<ActorRefFrom<typeof quotaMachine>>().optional(),
   fileActors: z.map(z.string(), z.custom<ActorRefFrom<typeof fileMachine>>()),
   error: z.string().optional(),
   isVisible: z.boolean().default(false),

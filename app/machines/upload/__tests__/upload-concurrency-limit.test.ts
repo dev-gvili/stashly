@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createActor, createMachine } from 'xstate'
+import { createActor } from 'xstate'
 import { uploadMachine } from '../upload.machine'
 
 /**
@@ -25,10 +25,7 @@ const user = {
 }
 
 function startManager() {
-  const machine = uploadMachine.provide({
-    actors: { quotaMachine: createMachine({}) as any },
-  })
-  return createActor(machine).start()
+  return createActor(uploadMachine).start()
 }
 
 describe('the upload concurrency limit', () => {

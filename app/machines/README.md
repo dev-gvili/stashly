@@ -23,8 +23,7 @@ This folder also holds several abandoned prototypes. Before editing anything her
 
 - `reviset/file.machine.ts` — **the per-file actor.** This is the one `upload.machine.ts` imports (`import { fileMachine } from '../reviset/file.machine'`). Handles quota check, multipart create, chunked upload with pause/resume/abort, completion, and the quota update.
 
-- `quota/quota.machine.ts` + `quota/quota.actors.ts` + `quota/quota.utils.ts`
-  - Quota machine registered as an actor of the upload manager; the actors (`checkQuota`, `findQuota`, `verifyQuota`) are also invoked directly by `reviset/file.machine.ts`.
+- `quota/quota.actors.ts` + `quota/quota.utils.ts` — `reviset/file.machine.ts` invokes `checkQuota` directly as its pre-upload check. Quota is charged and enforced on the server, in `createUploadedItem`.
 
 - `multipart/*` — not a machine: the S3 multipart actors (`s3.mulipart.utils.ts`) and the worker-pool chunk uploader (`s3.multipart.stream.ts`, `s3.multipart.concurrent.ts`).
 
@@ -37,7 +36,8 @@ This folder also holds several abandoned prototypes. Before editing anything her
 Nothing imports these. They are kept in-tree but are not the code that runs:
 
 - `upload/file.machine.ts` — **unused sibling of the active `reviset/file.machine.ts`.** Its import in `upload.machine.ts` sits commented out (line 15). Referenced only by the equally-dead `queue/queue.machine.1.ts`.
-- `actors/multipart.machine.ts`, `actors/queue.machine.ts`, `actors/quota.machine.ts` — early prototypes; the live paths are `multipart/*` and `quota/*`.
+- `actors/multipart.machine.ts`, `actors/queue.machine.ts`, `actors/quota.machine.ts` — early prototypes; the live paths are `multipart/*` and `quota/quota.actors.ts`.
+- `quota/quota.machine.ts` — read-only quota machine (`@quota.check` / `verify` / `find`). The upload manager spawned it until 2026-10-26, but nothing ever sent it an event; it is no longer spawned and is kept for a possible shared quota actor.
 - `actors/Uploader.tsx` — imports `@/machines/actors/system.machine.1`, a file that does not exist.
 - `queue/queue.machine.1.ts`, `reviset/queue.machine.ts` — concurrency-queue experiments; queueing lives in `upload.machine.ts`'s `queues` context instead.
 - `ai/ai.machine.ts`, `ai/caption.machine.ts`, `subscription/subscription.machine.ts`, `sidebar/sidebar.machine.ts`, `pagination/infinite-scroll.machine.ts` — defined but not currently wired into any component or route.

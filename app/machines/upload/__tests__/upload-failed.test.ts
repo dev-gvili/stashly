@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createActor, createMachine, fromPromise, waitFor } from 'xstate'
+import { createActor, fromPromise, waitFor } from 'xstate'
 import { uploadMachine } from '../upload.machine'
 import { fileMachine } from '../../reviset/file.machine'
 import type {
@@ -53,8 +53,6 @@ function startManager() {
   const created: string[] = []
   const machine = uploadMachine.provide({
     actors: {
-      // The quota actor isn't under test; an inert machine keeps it off the network.
-      quotaMachine: createMachine({}) as any,
       fileMachine: fileMachine.provide({
         actors: {
           createMultipartUpload: fromPromise<CreateMultipartUploadOutput, CreateMultipartUploadInput>(async ({ input }) => {
