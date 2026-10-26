@@ -130,7 +130,7 @@ jobs:
             -e PORT=8080 \
             -e DATABASE_URL="$DB_URL" -e DIRECT_DATABASE_URL="$DB_URL" \
             -e BETTER_AUTH_SECRET=ci-placeholder-secret-0123456789abcdef \
-            -e COOKIE_SECRET=ci-placeholder-cookie-0123456789abcdef \
+            -e SESSION_SECRET=ci-placeholder-cookie-0123456789abcdef \
             -e AWS_ACCESS_KEY=ci -e AWS_SECRET_KEY=ci -e AWS_REGION=auto \
             -e AWS_ENDPOINT_URL=http://127.0.0.1:9000 \
             -e STRIPE_SECRET_KEY=sk_test_ci_placeholder \
@@ -149,7 +149,7 @@ jobs:
             -e PORT=8081 \
             -e DATABASE_URL=postgresql://stashly:stashly@localhost:5999/missing \
             -e BETTER_AUTH_SECRET=ci-placeholder-secret-0123456789abcdef \
-            -e COOKIE_SECRET=ci-placeholder-cookie-0123456789abcdef \
+            -e SESSION_SECRET=ci-placeholder-cookie-0123456789abcdef \
             -e AWS_ACCESS_KEY=ci -e AWS_SECRET_KEY=ci -e AWS_REGION=auto \
             -e AWS_ENDPOINT_URL=http://127.0.0.1:9000 \
             -e STRIPE_SECRET_KEY=sk_test_ci_placeholder \

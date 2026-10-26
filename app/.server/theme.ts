@@ -1,13 +1,14 @@
 import { createCookie } from "react-router";
 import { createTypedCookie } from "remix-utils/typed-cookie";
 import { z } from "zod";
+import { cookieSecret } from "./env";
 
 // Create a cookie using React Router's createCookie API
 const cookie = createCookie("color-scheme", {
   path: "/",
   sameSite: "lax",
   httpOnly: true,
-  secrets: [process.env.COOKIE_SECRET ?? "secret"],
+  secrets: [cookieSecret()],
 });
 
 // Create a Zod schema to validate the cookie value

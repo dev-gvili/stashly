@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
-import { loadDotEnv } from '../env'
+import { cookieSecret, loadDotEnv } from '../env'
 
 /**
  * `loadDotEnv` replaced `@dotenvx/dotenvx` as the `.env` loader for the server
@@ -45,5 +45,23 @@ describe('loadDotEnv', () => {
   // Production has no .env: it is excluded from the image.
   it('treats a missing file as nothing to load', () => {
     expect(loadDotEnv(path.join(dir, 'does-not-exist.env'))).toBe(false)
+  })
+})
+
+// Tech-debt item 30: both signed cookies used to fall back to 'secret',
+// production included.
+describe('cookieSecret', () => {
+  it('returns SESSION_SECRET when it is set', () => {
+    expect(cookieSecret({ NODE_ENV: 'production', SESSION_SECRET: 's3cret' })).toBe('s3cret')
+  })
+
+  it('refuses to run in production without SESSION_SECRET', () => {
+    expect(() => cookieSecret({ NODE_ENV: 'production' })).toThrow(/SESSION_SECRET/)
+    expect(() => cookieSecret({ NODE_ENV: 'production', SESSION_SECRET: '' })).toThrow(/SESSION_SECRET/)
+  })
+
+  it('falls back to a dev-only value outside production', () => {
+    expect(cookieSecret({ NODE_ENV: 'development' })).toBe('stashly-dev-only-cookie-secret')
+    expect(cookieSecret({})).toBe('stashly-dev-only-cookie-secret')
   })
 })

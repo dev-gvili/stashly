@@ -37,3 +37,27 @@ export function loadDotEnv(path = '.env'): boolean {
 }
 
 loadDotEnv()
+
+/**
+ * The secret that signs Stashly's own cookies (`color-scheme`, `last-account`).
+ *
+ * Production refuses to start without `SESSION_SECRET`: callers read it when
+ * their module loads, so a deploy that misses the secret fails at boot rather
+ * than signing every cookie with a value anyone can read in the source
+ * (tech-debt item 30). Elsewhere a missing secret falls back to a fixed,
+ * clearly named dev value.
+ *
+ * @param env - The environment to read (default `process.env`).
+ * @returns The signing secret.
+ * @throws When `NODE_ENV` is `production` and `SESSION_SECRET` is unset.
+ *
+ * @example
+ * createCookie('color-scheme', { secrets: [cookieSecret()] })
+ */
+export function cookieSecret(env: NodeJS.ProcessEnv = process.env): string {
+  if (env.SESSION_SECRET) return env.SESSION_SECRET
+  if (env.NODE_ENV === 'production') {
+    throw new Error('SESSION_SECRET is not set; it signs the app’s cookies and is required in production')
+  }
+  return 'stashly-dev-only-cookie-secret'
+}

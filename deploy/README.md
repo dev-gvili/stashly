@@ -37,7 +37,7 @@ Built from the repo-root `Dockerfile` and deployed with the repo-root
    | --- | --- |
    | `DATABASE_URL` | All queries, through PgBouncer (`stashly-pgbouncer.flycast:6432`) |
    | `DIRECT_DATABASE_URL` | Migrations and the `LISTEN` client, going straight to Postgres |
-   | `BETTER_AUTH_SECRET`, `COOKIE_SECRET` | Sessions |
+   | `BETTER_AUTH_SECRET`, `SESSION_SECRET` | Sessions. `SESSION_SECRET` signs the `color-scheme` and `last-account` cookies; **the server refuses to boot without it** (`cookieSecret()` in `app/.server/env.ts`) |
    | `BETTER_AUTH_URL` | The public origin, e.g. `https://stashly.fly.dev`. Better Auth reads it itself, not through `process.env` in our code. Without it Better Auth warns at boot and takes the origin from each request, which can break OAuth callbacks and redirects |
    | `GITHUB_CLIENT_ID`/`_SECRET`, `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET` | OAuth sign-in |
    | `AWS_ACCESS_KEY`, `AWS_SECRET_KEY`, `AWS_REGION`, `AWS_ENDPOINT_URL` | Tigris object storage |

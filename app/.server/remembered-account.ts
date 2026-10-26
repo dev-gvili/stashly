@@ -1,6 +1,7 @@
 import { createCookie } from 'react-router'
 import { createTypedCookie } from 'remix-utils/typed-cookie'
 import { z } from 'zod'
+import { cookieSecret } from './env'
 
 /**
  * The account last signed in on this browser, shown on the sign-in page as
@@ -13,7 +14,7 @@ const cookie = createCookie('last-account', {
   sameSite: 'lax',
   httpOnly: true,
   maxAge: 60 * 60 * 24 * 90,
-  secrets: [process.env.COOKIE_SECRET ?? 'secret'],
+  secrets: [cookieSecret()],
 })
 
 export const rememberedAccountSchema = z.object({
