@@ -28,7 +28,8 @@ let initialData: UploadManagerData = {
       driveId: string
       rootId: string
     },
-    maxConcurrentUploads: 10,
+    // Same as the schema default, which `upload.config` writes over this value.
+    maxConcurrentUploads: 100,
     maxFileSize: 10000000000,
   },
   quotaActor: undefined,
