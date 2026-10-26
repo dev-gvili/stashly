@@ -23,6 +23,8 @@
 
 **44 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit) · categories: Code 22, Architecture 13, Infrastructure 4, Test 2, Documentation 2, Dependency 1
 
+**Status at 26 Oct 2026:** 24 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 11 new and open (19, 20, 22, 37–44). Item 36 resolved (`265c9d6`, the folder tree resolved once per upload). Item 30 resolved (`074c06e`): the signed cookies read `SESSION_SECRET`, and production refuses to boot without it.
+
 **Status at 25 Oct 2026 (late night):** 21 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 14 new and open (19, 20, 22, 30, 35–44). Items 33 (`8a79e89`) and 34 (`8ac03d9`) resolved: a cancelled or failed upload aborts its multipart upload, and a 4xx other than 429 fails on the first answer. Item 35 resolved and measured (5-minute encrypted cookie cache; session reads per upload 12 → 0, and 1 when the cookie has expired); item 36 waits on a measured folder upload. Counts: 22 resolved · 1 resolved in code, rollout step unconfirmed (2) · 13 new and open (19, 20, 22, 30, 36–44).
 
 **Status at 25 Oct 2026 (night):** 19 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 16 new and open (19, 20, 22, 30, 33–44). Item 32 resolved (`41f2efe`): the three search-index writes need `write` on the item and a refusal is a 403.
@@ -57,7 +59,7 @@
 | 20 | **new** Playwright specs don't run in CI | 24 | A CI job for the 8 specs; the E2E bucket leaks one per run | — |
 | 10 | Accessibility and responsive UI | 21 | Everything except the nested Filter buttons | — |
 | 22 | **new** Open decisions in upload and onboarding | 20 | Three decisions already written up in TASKS.md | Owner's decision |
-| 30 | **new** Signed cookies fall back to the secret `'secret'` | 20 | Refuse to start in production without `COOKIE_SECRET`; set it in the local `.env` | — |
+| 30 | ~~Signed cookies fall back to the secret `'secret'`~~ | 20 | Resolved 2026-10-26 (`074c06e`): production refuses to boot without `SESSION_SECRET`; set the Fly secret before the next deploy | — |
 | 33 | ~~Cancelled uploads leave parts in S3~~ | 20 | Resolved 2026-10-25 (`8a79e89`, `e4aeb0e`): cancel, retry exhaustion and a failed complete all abort the multipart upload | — |
 | 34 | ~~Upload requests retry 4xx answers~~ | 20 | Resolved 2026-10-25 (`8ac03d9`): a 4xx other than 429 fails on the first answer | — |
 | 35 | ~~A session lookup on every request~~ | 20 | Resolved 2026-10-25: 5-minute encrypted cookie cache, refreshed by the page and upload routes; session reads per upload 12 → 0–1, measured | — |
@@ -113,7 +115,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 27 | ~~Favorites skipped the access check and stacked duplicate rows~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 23 Oct |
 | 28 | ~~Form and search decoders mangle typed text~~ | Code | 3 | 2 | 1 | **25** (High) | 0.5 day | Resolved 23 Oct |
 | 29 | ~~Trash listed every user's trashed items~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 3 Oct (recorded 25 Oct) |
-| 30 | Signed cookies fall back to the literal secret `'secret'` | Code | 2 | 2 | 1 | **20** (Medium) | 0.5 day | New 25 Oct |
+| 30 | ~~Signed cookies fall back to the literal secret `'secret'`~~ | Code | 2 | 2 | 1 | **20** (Medium) | 0.5 day | Resolved 26 Oct |
 | 31 | ~~Uploads can go past the storage total~~ | Code | 3 | 4 | 1 | **35** (High) | merge | Resolved 25 Oct |
 | 32 | ~~Search-index writes skip the ownership check~~ | Code | 3 | 5 | 2 | **32** (High) | 0.5–1 day | Resolved |
 | 33 | ~~Cancelled and failed uploads never abort the multipart upload~~ | Infrastructure | 2 | 3 | 2 | **20** (Medium) | 0.5 day | Resolved |
@@ -592,8 +594,8 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 
 - **Evidence:** `app/.server/theme.ts:10` (`color-scheme`) and `app/.server/remembered-account.ts:16` (`last-account`, added in `e286ffd`) both sign with `process.env.COOKIE_SECRET ?? 'secret'`. The local `.env` has no `COOKIE_SECRET`, so both run on the fallback today. `deploy/README.md` lists `COOKIE_SECRET` as a required Fly secret, but nothing enforces it: a deploy that misses it starts normally.
 - **Impact:** small today. Both cookies are display-only. `last-account` picks the name and avatar on the "Continue as" card, and the card re-runs that provider's full OAuth flow, with only github, google and microsoft accepted. Anyone who knows the secret could forge either cookie, but neither grants access. It matters the day a signed cookie carries something the server trusts.
-- **Fix:** one helper that reads `COOKIE_SECRET` and throws at module load in production when it is unset, as `stripe.ts` does for its key. Both cookies use it. Set the variable in the local `.env`.
-- **Status 2026-10-25: open.**
+- **Fix:** one helper that reads `COOKIE_SECRET` and throws at module load in production when it is unset. Both cookies use it. Set the variable in the local `.env`. (This line used to say "as `stripe.ts` does for its key", but `stripe.ts` passes the key to `new Stripe` and checks nothing.)
+- **Status 2026-10-26: resolved** (`074c06e`). Both cookies call `cookieSecret()` in `app/.server/env.ts`. It reads **`SESSION_SECRET`**, not `COOKIE_SECRET`, because the local `.env` and `app/stashly.d.ts` already declare that name (owner's call). It throws when the module loads under `NODE_ENV=production` if the variable is unset or empty, and falls back to `stashly-dev-only-cookie-secret` elsewhere. Importing it from `env.ts` also loads `.env` first, which neither cookie module did. CI's two `docker run` steps and `deploy/README.md` use the new name. Measured with a probe that loads the module and parses a serialized `color-scheme` cookie (`.claude/evidence/cookie-secret-{before,after}.json`): before the fix, production loaded with no secret and the cookie verified against `'secret'` even with a secret set. After it, production without a secret throws, and with one the cookie verifies against that secret only. 3 new tests in `env.test.ts`; `pnpm test` 972/0 in 81 files, type gate exit 0, build clean. **Before the next `fly deploy`, set the Fly secret `SESSION_SECRET`.** The server no longer boots without it, and a `COOKIE_SECRET` already on Fly is now unused.
 
 Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.md`): every call one uploaded file causes, traced through the code and checked against one measured 8.46 MB upload. Its per-file counts and "× 100,000 files" totals are traced, not measured. On 25 Oct each finding was re-checked against `main`; where a line below says *per the audit*, it wasn't re-read in code that day.
 
@@ -808,6 +810,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-25 | no commit (measurement) | 32–35 | Upload audit re-run on `fa00eae` (`upload-audit-after.json`): requests 18 and 54 as before, writes unchanged, session scans 12 → 0 (10 MB) and 30 → 14 (100 MB, cookie expired mid-upload). |
 | 2026-10-25 | `fd23cad` | 35, 13 | The four upload API routes run `authMiddleware`, so they forward the refreshed cookie. Expired-cookie 10 MB upload: 1 session scan. 7 new tests; 960/0 in 80 files. |
 | 2026-10-26 | `265c9d6` | 36, 38, 13 | A folder upload resolves its tree once (`resolve_upload_folders`: one query per depth level, one INSERT for all missing folders, one lock per uploader), and each file row plus its quota charge is one statement. Real `app/` upload (639 files, 71 folders, all checked in DB and S3): 11,600 → 1,284 statements, 1,278 → 1 transactions, 1,824 → 1 locks, 707 → 554 s. 9 new tests; 969/0 in 81 files. |
+| 2026-10-26 | `074c06e` | 30 | Both signed cookies call `cookieSecret()` (`env.ts`): `SESSION_SECRET`, required in production at module load. Probe before/after: production with no secret loaded and signed with `'secret'` → throws; with a secret, verifies against `'secret'` → against that secret only. 3 new tests; 972/0 in 81 files. |
 
 ## Phased remediation plan
 
@@ -877,7 +880,7 @@ New items from the 8 Oct re-scan, in the order to do them:
 7. ~~**`hasItemPermission` and revoked grants (item 26, 0.5 day).**~~ **Done 8 Oct**: confirmed, then every access check filtered to live grants.
 8. ~~**Favorites access and the text decoders (items 27, 28).**~~ **Found and done 23 Oct** in the post-pull E2E pass. Item 20 is still next: the suite is now green locally on one worker, so the CI job is the only step left, plus deciding how the E2E bucket should outlive a run.
 9. ~~**Trash scoped to its owner (item 29).**~~ **Done 3 Oct**, recorded 25 Oct from git history.
-10. **Cookie secret fallback (item 30, 0.5 day).** Small and independent; best done before the first `fly deploy` (item 2), so a missing secret stops the release instead of signing with `'secret'`.
+10. ~~**Cookie secret fallback (item 30, 0.5 day).**~~ **Done 26 Oct** (`074c06e`): a release missing `SESSION_SECRET` now stops at boot instead of signing with `'secret'`. Set that Fly secret before the first `fly deploy` (item 2).
 
 ### Phase 5 · added 25 Oct
 
