@@ -29,7 +29,11 @@ const twoVectors = [
 /** Actor stubs where every step succeeds; a test overrides only what it checks. */
 function stubs(over: Record<string, unknown> = {}) {
   return {
-    readMetadataFromFile: fromPromise(async () => ({ needsOcr: false })),
+    readMetadataFromFile: fromPromise(async () => ({
+      mdWordCount: 2,
+      documentText: 'hello world',
+      needsOcr: false,
+    })),
     saveMetadataToServer: fromPromise(async () => chunks),
     embedChunksOnGpu: fromPromise(async () => twoVectors),
     saveVectorsToServer: fromPromise(async () => undefined),
@@ -209,6 +213,34 @@ describe('indexingItemMachine — metadata save', () => {
     expect(calls).toBe(3)
     expect(emitted).toEqual(['failed'])
     expect(actor.getSnapshot().output?.outcome).toBe('failed')
+  })
+
+  it.each([
+    ['a zip', {}],
+    ['only client-only keys', { needsOcr: false }],
+  ])('makes no request and announces no save for %s', async (_, metadata) => {
+    const save = vi.fn(async () => chunks)
+    const { output, emitted } = await run({
+      readMetadataFromFile: fromPromise(async () => metadata),
+      saveMetadataToServer: fromPromise(save),
+    })
+
+    expect(save).not.toHaveBeenCalled()
+    expect(emitted).toEqual([])
+    expect(output.outcome).toBe('indexed')
+  })
+
+  it('still saves a scanned PDF that read nothing else', async () => {
+    const save = vi.fn(async () => [])
+    const ocr = vi.fn(async () => 3)
+    await run({
+      readMetadataFromFile: fromPromise(async () => ({ needsOcr: true })),
+      saveMetadataToServer: fromPromise(save),
+      transcribeScannedPdf: fromPromise(ocr),
+    })
+
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(ocr).toHaveBeenCalledTimes(1)
   })
 
   it('ends failed without a request when the file cannot be read', async () => {

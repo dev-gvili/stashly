@@ -32,6 +32,7 @@ row exists, before and independently of the thumbnail.
 ```
 indexingQueue (module scope, FIFO, 2 at a time)
 └── spawn(indexingItemMachine, { itemId, file })
+     readingMetadata ── nothing to save (a zip, an unknown binary) ──→ indexed
      readingMetadata → savingMetadata ─┬─ chunks ─→ embeddingChunks → savingVectors ─┐
                                        ├─ scanned PDF ─────────────────────────────┐ │
                                        └─ neither → indexed                       │ │
@@ -48,6 +49,10 @@ indexingQueue (module scope, FIFO, 2 at a time)
 - **Missing vectors don't fail the file.** Its chunks are already saved and
   keyword-searchable, and `useEmbeddingBackfill` adds vectors to chunks that
   have none. That ending is `indexedWithoutVectors`.
+- **No request when there is nothing to save.** A zip or an unknown binary
+  reads as `{}`. `hasMetadataToSave` (`utils/media-metadata.ts`) applies the
+  form builder's own rule, so the machine goes straight to `indexed`: no POST,
+  and no `metadataSaved`, so a batch of such files reloads nothing either.
 - **One page reload per batch.** `save_media_metadata` writes facets the page
   shows, and the actors use plain `fetch`, which reloads nothing. The queue
   collects the saves and `useIndexingRevalidation` calls `revalidate()` once

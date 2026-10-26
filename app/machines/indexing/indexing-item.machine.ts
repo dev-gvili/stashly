@@ -2,6 +2,7 @@
  * Indexes one uploaded file for search.
  *
  * ```
+ * readingMetadata ── nothing to save (a zip, an unknown binary) ──→ indexed
  * readingMetadata → savingMetadata ─┬─ has chunks ─→ embeddingChunks → savingVectors ─┐
  *                                   ├─ scanned PDF ─────────────────────────────────┐ │
  *                                   └─ neither ─→ indexed                           │ │
@@ -27,6 +28,7 @@ import {
   saveVectorsToServer,
   transcribeScannedPdf,
 } from './indexing.actors'
+import { hasMetadataToSave, type MediaMetadata } from '@/utils/media-metadata'
 import type {
   IndexItemContext,
   IndexItemEmitted,
@@ -75,6 +77,15 @@ export const indexingItemMachine = setup({
   guards: {
     /** The failing server write still has retries left. */
     canRetry: ({ context }) => context.attempts < MAX_ATTEMPTS,
+    /**
+     * The file gave nothing for `save_media_metadata` (a zip, an unknown
+     * binary) and needs no OCR, so there is no request to make. Reads the done
+     * event: a guard runs before `storeMetadata` assigns.
+     */
+    nothingToSave: ({ event }) => {
+      const metadata = outputOf<MediaMetadata>(event)
+      return !hasMetadataToSave(metadata) && metadata.needsOcr !== true
+    },
     /** The server cut the file's text into at least one chunk. */
     serverReturnedChunks: ({ event }) =>
       outputOf<SearchChunkDraft[]>(event).length > 0,
@@ -160,7 +171,14 @@ export const indexingItemMachine = setup({
       invoke: {
         src: 'readMetadataFromFile',
         input: ({ context }) => ({ file: context.file }),
-        onDone: { target: 'savingMetadata', actions: 'storeMetadata' },
+        onDone: [
+          {
+            guard: 'nothingToSave',
+            target: 'indexed',
+            actions: 'storeMetadata',
+          },
+          { target: 'savingMetadata', actions: 'storeMetadata' },
+        ],
         onError: { target: 'failed', actions: 'storeFailureReason' },
       },
     },
@@ -278,7 +296,8 @@ export const indexingItemMachine = setup({
     },
 
     indexed: {
-      description: 'Metadata, chunks and vectors are all saved.',
+      description:
+        'Everything the file had is saved: metadata, chunks and vectors. A file with nothing to save (a zip) ends here without a request.',
       type: 'final',
       entry: { type: 'recordOutcome', params: { outcome: 'indexed' } },
     },

@@ -638,5 +638,20 @@ export function buildMediaMetadataFormData(
   return fd
 }
 
+/**
+ * Whether `buildMediaMetadataFormData` would carry anything beyond `intent`
+ * and `itemId`. A zip or an unknown binary reads as `{}`, and posting that
+ * writes nothing on the server.
+ *
+ * @example
+ * hasMetadataToSave({ needsOcr: false }) // → false
+ * hasMetadataToSave({ imageWidth: 800 }) // → true
+ */
+export function hasMetadataToSave(meta: MediaMetadata): boolean {
+  return Object.entries(meta).some(
+    ([k, v]) => !CLIENT_ONLY_META_KEYS.has(k) && v != null
+  )
+}
+
 /** Keys of `MediaMetadata` that must never reach `save_media_metadata`. */
 const CLIENT_ONLY_META_KEYS: ReadonlySet<string> = new Set(['needsOcr'])

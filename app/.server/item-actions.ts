@@ -1556,6 +1556,8 @@ export async function resolveUploadFolders({
  * Creates or updates the Image facet for an item with extracted image metadata
  * (dimensions, DPI, bit depth, and EXIF camera/exposure/GPS fields).
  * Only the provided fields are written; other existing values are preserved.
+ * One statement (`INSERT … ON CONFLICT` on the unique `itemId`), so two
+ * saves for the same item can't collide.
  *
  * @param itemId - The ID of the item the facet belongs to.
  * @param data - Partial image metadata to store.
@@ -1588,18 +1590,18 @@ export async function upsertImageFacet(
     longitude?: number
   }
 ) {
-  const existing = await prisma.image.findFirst({ where: { itemId } })
-  if (existing) {
-    return prisma.image.update({ where: { id: existing.id }, data })
-  }
-  return prisma.image.create({
-    data: { id: toObjectId(getPrefixForModel('Image')), itemId, ...data },
+  return prisma.image.upsert({
+    where: { itemId },
+    update: data,
+    create: { id: toObjectId(getPrefixForModel('Image')), itemId, ...data },
   })
 }
 
 /**
  * Creates or updates the Video facet for an item with extracted video metadata.
  * Only the provided fields are written; other existing values are preserved.
+ * One statement (`INSERT … ON CONFLICT` on the unique `itemId`), so two
+ * saves for the same item can't collide.
  *
  * @param itemId - The ID of the item the facet belongs to.
  * @param data - Partial video metadata to store.
@@ -1617,12 +1619,10 @@ export async function upsertVideoFacet(
     frameRate?: number
   }
 ) {
-  const existing = await prisma.video.findFirst({ where: { itemId } })
-  if (existing) {
-    return prisma.video.update({ where: { id: existing.id }, data })
-  }
-  return prisma.video.create({
-    data: { id: toObjectId(getPrefixForModel('Video')), itemId, ...data },
+  return prisma.video.upsert({
+    where: { itemId },
+    update: data,
+    create: { id: toObjectId(getPrefixForModel('Video')), itemId, ...data },
   })
 }
 
@@ -1630,6 +1630,8 @@ export async function upsertVideoFacet(
  * Creates or updates the Audio facet for an item with extracted audio metadata
  * (duration, bitrate, and ID3 tag fields such as title/artist/album).
  * Only the provided fields are written; other existing values are preserved.
+ * One statement (`INSERT … ON CONFLICT` on the unique `itemId`), so two
+ * saves for the same item can't collide.
  *
  * @param itemId - The ID of the item the facet belongs to.
  * @param data - Partial audio metadata to store.
@@ -1661,12 +1663,10 @@ export async function upsertAudioFacet(
     discCount?: number
   }
 ) {
-  const existing = await prisma.audio.findFirst({ where: { itemId } })
-  if (existing) {
-    return prisma.audio.update({ where: { id: existing.id }, data })
-  }
-  return prisma.audio.create({
-    data: { id: toObjectId(getPrefixForModel('Audio')), itemId, ...data },
+  return prisma.audio.upsert({
+    where: { itemId },
+    update: data,
+    create: { id: toObjectId(getPrefixForModel('Audio')), itemId, ...data },
   })
 }
 
@@ -1675,6 +1675,8 @@ export async function upsertAudioFacet(
  * metadata (page count, document info fields, and feature flags such as
  * form fields or signatures).
  * Only the provided fields are written; other existing values are preserved.
+ * One statement (`INSERT … ON CONFLICT` on the unique `itemId`), so two
+ * saves for the same item can't collide.
  *
  * @param itemId - The ID of the item the facet belongs to.
  * @param data - Partial PDF metadata to store.
@@ -1709,12 +1711,10 @@ export async function upsertPdfFacet(
     docModifiedAt?: Date
   }
 ) {
-  const existing = await prisma.pdf.findFirst({ where: { itemId } })
-  if (existing) {
-    return prisma.pdf.update({ where: { id: existing.id }, data })
-  }
-  return prisma.pdf.create({
-    data: { id: toObjectId(getPrefixForModel('Pdf')), itemId, ...data },
+  return prisma.pdf.upsert({
+    where: { itemId },
+    update: data,
+    create: { id: toObjectId(getPrefixForModel('Pdf')), itemId, ...data },
   })
 }
 
@@ -1722,6 +1722,8 @@ export async function upsertPdfFacet(
  * Creates or updates the Markdown facet for an item with extracted document
  * statistics (word count, headings, links, code blocks) and frontmatter fields.
  * Only the provided fields are written; other existing values are preserved.
+ * One statement (`INSERT … ON CONFLICT` on the unique `itemId`), so two
+ * saves for the same item can't collide.
  *
  * @param itemId - The ID of the item the facet belongs to.
  * @param data - Partial markdown metadata to store.
@@ -1754,12 +1756,10 @@ export async function upsertMarkdownFacet(
     docModifiedAt?: Date
   }
 ) {
-  const existing = await prisma.markdown.findFirst({ where: { itemId } })
-  if (existing) {
-    return prisma.markdown.update({ where: { id: existing.id }, data })
-  }
-  return prisma.markdown.create({
-    data: { id: toObjectId(getPrefixForModel('Markdown')), itemId, ...data },
+  return prisma.markdown.upsert({
+    where: { itemId },
+    update: data,
+    create: { id: toObjectId(getPrefixForModel('Markdown')), itemId, ...data },
   })
 }
 
