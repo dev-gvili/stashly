@@ -533,20 +533,29 @@ export function ItemPanel({
         className="flex min-h-0 flex-1 flex-col gap-0 bg-card! border-none!"
       >
         <TabsList className="flex items-center bg-card rounded-none p-0 border border-none!">
+          {/* The tooltip triggers on a span (asChild): its default trigger is a
+              <button>, nested inside the tab's <button> (a hydration error).
+              Not on the tab itself, whose data-state="active" the tooltip's
+              data-state would overwrite, and not on the svg, which the tab
+              gives pointer-events: none. */}
           <TabsTrigger
             value="details"
             className="bg-card border-none! data-[state=active]:text-primary! data-[state=active]:bg-card text-muted-foreground/50! hover:text-muted-foreground/80! transition-colors duration-200 ease-in-out"
           >
-            <Tooltip content="Details" side="top" align="center">
-              <DetailsFillIcon className="size-5" />
+            <Tooltip content="Details" side="top" align="center" asChild>
+              <span className="inline-flex">
+                <DetailsFillIcon className="size-5" />
+              </span>
             </Tooltip>
           </TabsTrigger>
           <TabsTrigger
             value="activity"
             className="bg-card border-none! data-[state=active]:text-primary! data-[state=active]:bg-card text-muted-foreground/50! hover:text-muted-foreground/80! transition-colors duration-200 ease-in-out"
           >
-            <Tooltip content="Activity" side="top" align="center">
-              <ActivityFillIcon className="size-5" />
+            <Tooltip content="Activity" side="top" align="center" asChild>
+              <span className="inline-flex">
+                <ActivityFillIcon className="size-5" />
+              </span>
             </Tooltip>
           </TabsTrigger>
         </TabsList>
