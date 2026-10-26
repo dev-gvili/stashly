@@ -19,12 +19,18 @@ function makeFile(sizeBytes: number, name = 'test.bin'): File {
 
 const PRESIGN_URL = 'https://s3.fake/part-upload'
 
-/** Returns a Response-like object for POST /api/s3/upload (presign call). */
-function presignResponse(url = PRESIGN_URL) {
+/**
+ * Returns a Response-like object for POST /api/s3/upload: `{ url }` for the
+ * concurrent implementation's per-part request, `{ urls }` for the stream
+ * implementation's windowed `get-presigned-urls`.
+ */
+function presignResponse(init?: RequestInit, url = PRESIGN_URL) {
+  const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+  const urls = Array.from({ length: body.count ?? 1 }, () => url)
   return Promise.resolve({
     ok: true,
     status: 200,
-    json: () => Promise.resolve({ url }),
+    json: () => Promise.resolve({ url, urls }),
     headers: { get: () => null },
   })
 }
@@ -43,9 +49,9 @@ function putResponse(etag = '"abc123"') {
  * Default fetch mock: POST to /api/s3/upload returns presign URL,
  * PUT to PRESIGN_URL returns 200 with ETag.
  */
-function defaultFetchMock(url: string) {
+function defaultFetchMock(url: string, init?: RequestInit) {
   if (url === PRESIGN_URL) return putResponse()
-  return presignResponse()
+  return presignResponse(init)
 }
 
 // ─── Base input factory ───────────────────────────────────────────────────────
@@ -107,12 +113,12 @@ describe.each([
 
     // Return distinct ETags per part so we can verify ordering
     let putCall = 0
-    mockFetch.mockImplementation((url: string) => {
+    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
       if (url === PRESIGN_URL) {
         putCall++
         return putResponse(`"etag-part-${putCall}"`)
       }
-      return presignResponse()
+      return presignResponse(init)
     })
 
     const onDone = vi.fn()
@@ -161,7 +167,7 @@ describe.each([
   // ── Missing ETag ────────────────────────────────────────────────────────────
 
   it('throws when S3 returns no ETag header', async () => {
-    mockFetch.mockImplementation((url: string) => {
+    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
       if (url === PRESIGN_URL) {
         // PUT response with no ETag header
         return Promise.resolve({
@@ -171,7 +177,7 @@ describe.each([
           headers: { get: () => null }, // ETag missing
         })
       }
-      return presignResponse()
+      return presignResponse(init)
     })
 
     const file = makeFile(1024)
@@ -212,15 +218,16 @@ describe.each([
     let signalChunk1Done!: () => void
     const chunk1Done = new Promise<void>((res) => { signalChunk1Done = res })
 
-    // Track fetch calls. With concurrency=1:
-    // call 1 = presign POST for part 1 (url !== PRESIGN_URL)
-    // call 2 = PUT to PRESIGN_URL for part 1  ← pause here
-    // call 3 = presign POST for part 2
-    // call 4 = PUT to PRESIGN_URL for part 2
+    // Track fetch calls. With concurrency=1, call 1 is the presign POST
+    // (concurrent: for part 1; stream: for parts 1–2) and call 2 is part 1's
+    // PUT ← pause here. Part 2 then takes one more presign (concurrent only)
+    // and its PUT.
     let fetchCallCount = 0
-    mockFetch.mockImplementation((url: string) => {
+    let putCount = 0
+    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
       fetchCallCount++
       if (url === PRESIGN_URL) {
+        putCount++
         if (fetchCallCount === 2) {
           // Pause synchronously so the next worker iteration blocks,
           // then signal that chunk 1 is done and paused.
@@ -229,7 +236,7 @@ describe.each([
         }
         return putResponse(`"etag-${fetchCallCount}"`)
       }
-      return presignResponse()
+      return presignResponse(init)
     })
 
     const uploadPromise = streamParts(
@@ -249,7 +256,7 @@ describe.each([
     expect(onDone).toHaveBeenCalledOnce()
     const [parts] = onDone.mock.calls[0] as [CompletedPart[]]
     expect(parts).toHaveLength(2)
-    expect(mockFetch).toHaveBeenCalledTimes(4) // presign POST + PUT × 2 chunks
+    expect(putCount).toBe(2) // one PUT per chunk
   })
 
   // ── Retry on 429 ───────────────────────────────────────────────────────────
@@ -258,7 +265,7 @@ describe.each([
     vi.useFakeTimers()
 
     let putAttempts = 0
-    mockFetch.mockImplementation((url: string) => {
+    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
       if (url === PRESIGN_URL) {
         putAttempts++
         if (putAttempts === 1) {
@@ -271,7 +278,7 @@ describe.each([
         }
         return putResponse()
       }
-      return presignResponse()
+      return presignResponse(init)
     })
 
     const onDone = vi.fn()

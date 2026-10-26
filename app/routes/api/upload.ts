@@ -19,6 +19,30 @@ import type { Route } from './+types/upload'
 // with no page load in between (tech-debt item 35).
 export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
 
+/** S3's limit on parts per multipart upload. */
+const MAX_PARTS = 10_000
+/** 500 MiB of 5 MiB parts per answer, so no URL is signed long before use. */
+const PART_URLS_PER_REQUEST = 100
+
+/**
+ * Presigned URLs for parts `from`…`from + count - 1`, capped at S3's last
+ * part. Signing is a local HMAC: no S3 round trip, no database read.
+ */
+function signParts(
+  bucket: string,
+  key: string,
+  uploadId: string,
+  from: number,
+  count: number
+) {
+  const n = Math.max(0, Math.min(count, MAX_PARTS - from + 1))
+  return Promise.all(
+    Array.from({ length: n }, (_, i) =>
+      getPresignedUrlForPart(bucket, key, uploadId, from + i)
+    )
+  )
+}
+
 const defaults = z.object({
   key: z.string(),
   uploadId: z.string(),
@@ -29,12 +53,21 @@ const create_multipart_upload = z.object({
   action: z.literal('create-multipart-upload'),
   metadata: z.record(z.string(), z.string()).optional(),
   contentType: z.string().optional(),
+  /** The file's part count: the answer carries the first parts' URLs. */
+  partCount: z.number().int().min(0).max(MAX_PARTS).optional(),
 })
 
 const get_presigned_url = z.object({
   ...defaults.shape,
   action: z.literal('get-presigned-url'),
   partNumber: z.number(),
+})
+
+const get_presigned_urls = z.object({
+  ...defaults.shape,
+  action: z.literal('get-presigned-urls'),
+  from: z.number().int().min(1).max(MAX_PARTS),
+  count: z.number().int().min(1).max(PART_URLS_PER_REQUEST),
 })
 
 const complete_multipart_upload = z.object({
@@ -52,6 +85,7 @@ const uploadSchema = z.discriminatedUnion('action', [
   create_multipart_upload,
   complete_multipart_upload,
   get_presigned_url,
+  get_presigned_urls,
   abort_multipart_upload,
 ])
 
@@ -88,7 +122,26 @@ export async function action({ request, context }: Route.ActionArgs) {
         values.contentType
       )
       if (!uploadId) throw new Error('Failed to create multipart upload')
-      return { uploadId }
+      // The first window of part URLs rides along, so a file of up to 500 MiB
+      // makes no further presign request (tech-debt item 39).
+      const partUrls = await signParts(
+        bucket,
+        values.key,
+        uploadId,
+        1,
+        Math.min(values.partCount ?? 0, PART_URLS_PER_REQUEST)
+      )
+      return { uploadId, partUrls }
+    }
+    case 'get-presigned-urls': {
+      const urls = await signParts(
+        bucket,
+        values.key,
+        values.uploadId,
+        values.from,
+        values.count
+      )
+      return { urls }
     }
     case 'get-presigned-url': {
       const url = await getPresignedUrlForPart(

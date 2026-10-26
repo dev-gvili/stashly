@@ -21,7 +21,9 @@ import {
   completeUpload,
   createUpload,
   uploadParts as multipartActor,
+  type CreateMultipartUploadOutput,
 } from '../multipart/s3.mulipart.utils'
+import { partCountFor } from '../multipart/s3.multipart.stream'
 import { checkQuota } from '../quota/quota.actors'
 import { toCategory } from '../../utils'
 import { formatSize } from '@/utils/formaters'
@@ -41,6 +43,8 @@ export const fileMachine = setup({
     input: {} as MediaFileInput,
     context: {} as MediaFileData & {
       quotaCheckResult?: { itemId: string; result: 'allowed' | 'denied' }
+      /** The first parts' presigned URLs, from the create answer. */
+      partUrls?: string[]
     },
     events: {} as MediaFileEvents,
     output: {} as {
@@ -63,6 +67,9 @@ export const fileMachine = setup({
             .output.uploadId,
         }
       },
+      partUrls: ({ event }) =>
+        (event as unknown as DoneActorEvent<CreateMultipartUploadOutput>)
+          .output.partUrls,
     }),
     // Saves the error message to the context. Actors throw `Error`s, and the
     // manager's `upload.failed` schema wants the text, not the object.
@@ -81,6 +88,7 @@ export const fileMachine = setup({
             file: context.mediaFile.file,
             key: context.mediaFile.key,
             uploadId: context.uploadId!,
+            partUrls: context.partUrls,
           },
         }),
     }),
@@ -337,6 +345,7 @@ export const fileMachine = setup({
           // respect on download). metadata.mimeType below only sets x-amz-meta-*.
           // file.type is already corrected by normalizeFile in useUpload.add.
           contentType: context.mediaFile.file.type,
+          partCount: partCountFor(context.mediaFile.file.size),
           metadata: {
             mimeType: context.mediaFile.file.type,
             subscriptionId: context.user.subscriptionId,

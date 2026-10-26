@@ -14,6 +14,8 @@ export interface CreateMultipartUploadInput {
   /** S3 object Content-Type — set at create time, immutable after. */
   contentType?: string
   metadata?: Record<string, string>
+  /** The file's part count; the answer then carries the first parts' URLs. */
+  partCount?: number
 }
 export interface GetPresignedUrlForPartInput extends BaseUploadArgs {
   partNumber: number
@@ -25,6 +27,8 @@ export interface AbortMultipartUploadInput extends BaseUploadArgs {}
 
 export interface CreateMultipartUploadOutput {
   uploadId: string
+  /** Presigned URLs for parts 1…n (up to 100), for `streamParts`. */
+  partUrls?: string[]
 }
 export interface GetPresignedUrlForPartOutput {
   url: string
@@ -152,6 +156,7 @@ export interface UploadPartsInput {
   file: File
   key: string
   uploadId: string
+  partUrls?: string[]
 }
 
 /**
@@ -166,7 +171,7 @@ export const uploadParts = fromCallback<
   const abortController = new AbortController()
   const pauseController = new PauseController()
 
-  // Stream the parts to s3 storage, every part is presigned and uploaded.
+  // Stream the parts to s3 storage; part URLs are signed a window at a time.
   streamParts({
     ...input,
     abortController,

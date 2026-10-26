@@ -6,6 +6,15 @@ import { PauseController } from './s3.multipart.concurrent'
 
 const CHUNK_SIZE = 5 * 1024 * 1024 // 5 MB — S3 minimum part size
 const DEFAULT_CONCURRENCY = 10
+/** Part URLs asked for per request; the route signs at most 100 (500 MiB). */
+const PART_URL_WINDOW = 100
+/** How far ahead of the part being sent the next window is requested. */
+const PART_URL_PREFETCH = 20
+
+/** How many parts `streamParts` cuts a file of `size` bytes into. */
+export function partCountFor(size: number): number {
+  return Math.ceil(size / CHUNK_SIZE)
+}
 
 /**
  * `fetch` with backoff for the part loop. Retries 429, 5xx and network errors;
@@ -61,6 +70,101 @@ export async function retryFetch(
     }
   }
   throw new Error(`Failed to fetch ${url} after ${maxRetries} retries.`)
+}
+
+export interface PartUrlsInput {
+  key: string
+  uploadId: string
+  totalParts: number
+  /** URLs for parts 1…n, as `create-multipart-upload` returned them. */
+  initial?: string[]
+  signal: AbortSignal
+}
+
+/**
+ * Hands each part its presigned URL, signed a window at a time. Every part
+ * used to ask `/api/s3/upload` for its own URL right before its PUT: 20 of a
+ * 100 MB upload's 54 requests (tech-debt item 39). The first window comes back
+ * with `create-multipart-upload`; the next is requested `PART_URL_PREFETCH`
+ * parts before it is needed, and workers waiting on the same window share
+ * one request.
+ *
+ * `refresh` signs one part again. A URL signed ahead can expire (an hour)
+ * before its part is sent, after a long pause or on a slow link.
+ */
+export function createPartUrls({
+  key,
+  uploadId,
+  totalParts,
+  initial = [],
+  signal,
+}: PartUrlsInput) {
+  const urls = new Map<number, string>()
+  initial.forEach((url, i) => urls.set(i + 1, url))
+  const signing = new Map<number, Promise<void>>()
+  let requestedThrough = initial.length
+
+  function sign(from: number, count: number): Promise<void> {
+    const request = retryFetch(
+      '/api/s3/upload',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          key,
+          uploadId,
+          from,
+          count,
+          action: 'get-presigned-urls',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        signal,
+      },
+      5,
+      2500,
+      3,
+      signal
+    )
+      .then((res) => res.json() as Promise<{ urls: string[] }>)
+      .then(({ urls: signed }) => {
+        signed.forEach((url, i) => urls.set(from + i, url))
+      })
+    // A prefetch nobody awaits yet must not surface as an unhandled
+    // rejection; the part that needs it awaits `request` and sees the error.
+    request.catch(() => {})
+    for (let n = from; n < from + count; n++) signing.set(n, request)
+    return request
+  }
+
+  function requestThrough(partNumber: number) {
+    const through = Math.min(totalParts, partNumber)
+    while (requestedThrough < through) {
+      const from = requestedThrough + 1
+      const count = Math.min(PART_URL_WINDOW, totalParts - requestedThrough)
+      requestedThrough += count
+      sign(from, count)
+    }
+  }
+
+  function signed(partNumber: number): string {
+    const url = urls.get(partNumber)
+    if (!url) throw new Error(`No presigned URL for part ${partNumber}`)
+    return url
+  }
+
+  return {
+    async get(partNumber: number): Promise<string> {
+      requestThrough(partNumber + PART_URL_PREFETCH)
+      if (!urls.has(partNumber)) await signing.get(partNumber)
+      // The server signs fewer than asked only past its own cap.
+      if (!urls.has(partNumber)) await sign(partNumber, 1)
+      return signed(partNumber)
+    },
+    async refresh(partNumber: number): Promise<string> {
+      urls.delete(partNumber)
+      await sign(partNumber, 1)
+      return signed(partNumber)
+    },
+  }
 }
 
 /**
@@ -128,6 +232,8 @@ export interface StreamPartsInput {
   key: string
   file: File
   uploadId: string
+  /** URLs for the first parts, from `create-multipart-upload`. */
+  partUrls?: string[]
   onProgress: (progress: UploadProgress) => void
   onDone: (parts: CompletedPart[]) => void
   abortController: AbortController
@@ -148,6 +254,7 @@ export async function streamParts({
   file,
   uploadId,
   key,
+  partUrls: initialPartUrls,
   onProgress,
   onDone,
   abortController,
@@ -158,8 +265,24 @@ export async function streamParts({
     throw new Error('Cannot upload an empty file')
   }
 
-  const totalParts = Math.ceil(file.size / CHUNK_SIZE)
+  const totalParts = partCountFor(file.size)
   const results: CompletedPart[] = new Array(totalParts)
+  const partUrls = createPartUrls({
+    key,
+    uploadId,
+    totalParts,
+    initial: initialPartUrls,
+    signal: abortController.signal,
+  })
+  const putPart = (url: string, blob: Blob) =>
+    retryFetch(
+      url,
+      { method: 'PUT', body: blob, signal: abortController.signal },
+      5,
+      2500,
+      2,
+      abortController.signal
+    )
 
   // Shared across all concurrent chunk-streams so progress reflects the whole file
   const sharedState: SharedProgressState = {
@@ -184,29 +307,8 @@ export async function streamParts({
       const blob = file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size))
       const partNumber = i + 1
 
-      // 1. Get presigned URL for this part
-      const presignResponse = await retryFetch(
-        '/api/s3/upload',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            key,
-            uploadId,
-            partNumber,
-            action: 'get-presigned-url',
-          }),
-          headers: { 'Content-Type': 'application/json' },
-          signal: abortController.signal,
-        },
-        5,
-        2500,
-        3,
-        abortController.signal
-      )
-
-      const { url: presignedUrl } = (await presignResponse.json()) as {
-        url: string
-      }
+      // 1. This part's presigned URL, usually signed already
+      const presignedUrl = await partUrls.get(partNumber)
 
       if (abortController.signal.aborted) {
         throw new DOMException('Upload aborted', 'AbortError')
@@ -219,18 +321,15 @@ export async function streamParts({
       // browser set Content-Length automatically from blob.size.
       // ProgressReportingTransformStream is therefore used outside the fetch body
       // (see the class definition above) and progress is reported post-upload below.
-      const uploadResponse = await retryFetch(
-        presignedUrl,
-        {
-          method: 'PUT',
-          body: blob,
-          signal: abortController.signal,
-        },
-        5,
-        2500,
-        2,
-        abortController.signal
-      )
+      let uploadResponse: Response
+      try {
+        uploadResponse = await putPart(presignedUrl, blob)
+      } catch (error) {
+        // An expired URL answers 403. Sign this part again, once: a 403 that
+        // isn't expiry (access gone, upload aborted) fails the retry too.
+        if ((error as { status?: number }).status !== 403) throw error
+        uploadResponse = await putPart(await partUrls.refresh(partNumber), blob)
+      }
 
       const etag = uploadResponse.headers.get('ETag')
       if (!etag) {
