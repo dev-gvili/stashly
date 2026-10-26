@@ -807,6 +807,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-25 | `fix(auth): encrypt the session cache cookie` | 35 | The session cache cookie is encrypted (`jwe`). Measured server-side: cached lookups 0 `session` scans, uncached 5 per 5. |
 | 2026-10-25 | no commit (measurement) | 32–35 | Upload audit re-run on `fa00eae` (`upload-audit-after.json`): requests 18 and 54 as before, writes unchanged, session scans 12 → 0 (10 MB) and 30 → 14 (100 MB, cookie expired mid-upload). |
 | 2026-10-25 | `fd23cad` | 35, 13 | The four upload API routes run `authMiddleware`, so they forward the refreshed cookie. Expired-cookie 10 MB upload: 1 session scan. 7 new tests; 960/0 in 80 files. |
+| 2026-10-26 | `265c9d6` | 36, 38, 13 | A folder upload resolves its tree once (`resolve_upload_folders`: one query per depth level, one INSERT for all missing folders, one lock per uploader), and each file row plus its quota charge is one statement. Real `app/` upload (639 files, 71 folders, all checked in DB and S3): 11,600 → 1,284 statements, 1,278 → 1 transactions, 1,824 → 1 locks, 707 → 554 s. 9 new tests; 969/0 in 81 files. |
 
 ## Phased remediation plan
 

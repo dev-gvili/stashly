@@ -151,7 +151,7 @@ Only on the server, in the same code that changes the rows it accounts for. No r
 
 | Change | Where | How |
 |---|---|---|
-| Upload | `createUploadedItem` (`item-actions.ts`) | `onItemsUploaded`, last statement of the transaction that creates the `Item`. Row and charge commit together or not at all; a user with no `Quota` row gets no row either. |
+| Upload | `createUploadedItem` (`item-actions.ts`) | `uploadChargeSql` (`quota-actions.ts`, the same SET and `withinTotal` rule as `onItemsUploaded`), inside the one statement that creates the `Item` (`insertUploadedItem`). Row and charge commit together or not at all; a user with no `Quota` row gets no row either, and `refuseUploadCharge` says why after a refusal. |
 | Trash, restore, delete | `item-actions.ts` | `onItemsTrashed` / `onItemsRestored` / `onItemsDeleted`, with the byte count the statement itself moved |
 | Copy | `item-actions.ts` | `onItemsCopied`, after an `ensureUserQuota` check |
 | Plan limit | billing (`subscription-actions.ts`, `settings/billing.tsx`) | `updateTotalQuota` |
