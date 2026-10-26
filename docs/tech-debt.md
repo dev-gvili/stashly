@@ -6,8 +6,8 @@
 
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
-**Now (25 Oct):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 926 unit tests in 75 files with none excluded, and the build. Green on `41f2efe` (25 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+**Now (26 Oct):** the safety net is mostly in place.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 991 unit tests in 85 files with none excluded, and the build. Green on `8143f81` (26 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors and analytics:** Vinktar on server and browser since 10 Oct (item 4, partly done).
@@ -74,10 +74,10 @@
 | 24 | ~~Slow first page load~~ | 15 | Resolved 2026-10-09: server dependencies bundled; first page 4–15 s → ~1 s here, first request 1.6 → 0.57 s on Linux (CI) | — |
 | 36 | ~~Folder path resolved again for every file~~ | 15 | Resolved 2026-10-26: tree resolved once per batch, each file row one statement; 639-file upload 11,600 → 1,284 statements, 1,824 → 1 locks, measured | — |
 | 37 | **new** The `.ts` sniff's result is thrown away | 15 | Persist the verified type or drop the S3 read | — |
-| 38 | **new** Which upload concurrency limit applies is unknown | 15 | Measure it; correct the upload skill | — |
+| 38 | ~~Which upload concurrency limit applies is unknown~~ | 15 | Resolved 2026-10-26 (`78a63f3`): 100, measured; the code now says 100 too | — |
 | 16 | Overlapping UI primitives | 12 | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
 | 17 | Unfinished migrations | 12 | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes | Deferred to after personal-first (TASKS.md, 4 Oct) |
-| 39 | **new** One presign request per part | 12 | Return every part URL from `create-multipart-upload` | Measure first |
+| 39 | ~~One presign request per part~~ | 12 | Resolved 2026-10-26 (`3ddbf90`): part URLs signed 100 at a time, the first 100 in the create answer; 100 MB upload 30 → 10 requests to our server, measured | — |
 | 40 | **new** Media-metadata writes do extra work | 10 | Skip the empty POST; one upsert | — |
 | 41 | **new** Dead upload branches | 10 | `create_upload_item` in 3 `shouldRevalidate`s; the idle quota machine | — |
 | 42 | **new** Size rollup locks every ancestor row | 10 | Redesign only if lock waits are measured | Measure first |
@@ -127,8 +127,8 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 35 | ~~A database session lookup on every request~~ | Architecture | 3 | 2 | 2 | **20** (Medium) | 0.5 day | Resolved |
 | 36 | ~~The folder path is resolved again for every file of a folder upload~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 1–2 days | Resolved |
 | 37 | The `.ts` sniff reads from S3 and nothing uses the result | Code | 1 | 2 | 1 | **15** (Low) | 1–2 h | New 25 Oct |
-| 38 | Which upload concurrency limit applies (10 or 100) is unknown | Documentation | 2 | 1 | 1 | **15** (Low) | 1 h | New 25 Oct |
-| 39 | One presign request per 5 MiB part | Architecture | 2 | 1 | 2 | **12** (Low) | 0.5–1 day | New 25 Oct |
+| 38 | ~~Which upload concurrency limit applies (10 or 100) is unknown~~ | Documentation | 2 | 1 | 1 | **15** (Low) | 1 h | Resolved 26 Oct |
+| 39 | ~~One presign request per 5 MiB part~~ | Architecture | 2 | 1 | 2 | **12** (Low) | 0.5–1 day | Resolved 26 Oct |
 | 40 | Media-metadata writes do extra work | Code | 1 | 1 | 1 | **10** (Low) | 2 h | New 25 Oct |
 | 41 | Dead upload branches | Code | 1 | 1 | 1 | **10** (Low) | 2 h | New 25 Oct |
 | 42 | The size rollup locks every ancestor row | Architecture | 2 | 3 | 4 | **10** (Low) | 3–5 days | New 25 Oct |
@@ -904,8 +904,8 @@ New items from the 8 Oct re-scan, in the order to do them:
 *items 31–44, from the upload call audit; the first step is under a day*
 
 1. **Now:** ~~merge PR #26 (item 31)~~ done 25 Oct (`059d0aa`); ~~add the ownership checks to the three search-index writes (item 32)~~ done 25 Oct (`41f2efe`); ~~stop retrying 4xx answers (item 34)~~ done 25 Oct (`8ac03d9`). Two security gaps and a slow failure, each a small diff with a test.
-2. **On the next upload task (about 1.5 days):** ~~abort cancelled and failed multipart uploads (33~~ done 25 Oct, `8a79e89`; Tigris offers no lifecycle rule to fall back on); settle the `.ts` sniff (37), the metadata writes (40) and the dead branches (41); measure the concurrency limit and correct the skill (38).
-3. **A measured performance pass (3–5 days):** ~~the session cookie cache (35)~~ done 25 Oct, measured; all part URLs in one response (39), the folder tree once per batch (36), and the revalidation and thumbnail overhead (43). Repeat the audit's measured upload before and after; the CLAUDE.md debugging rules require the numbers.
+2. **On the next upload task (about 1.5 days):** ~~abort cancelled and failed multipart uploads (33~~ done 25 Oct, `8a79e89`; Tigris offers no lifecycle rule to fall back on); settle the `.ts` sniff (37), the metadata writes (40) and the dead branches (41); ~~measure the concurrency limit and correct the skill (38)~~ done 26 Oct (`78a63f3`).
+3. **A measured performance pass (3–5 days):** ~~the session cookie cache (35)~~ done 25 Oct, measured; ~~part URLs in bulk (39)~~ done 26 Oct (`3ddbf90`), signed 100 at a time, measured; ~~the folder tree once per batch (36)~~ done 26 Oct (`265c9d6`), measured; and the revalidation and thumbnail overhead (43). Repeat the audit's measured upload before and after; the CLAUDE.md debugging rules require the numbers.
 4. **Only if contention is measured:** the rollup redesign (42) and merging the requests (44). High effort for an unproven payoff.
 
 ---
