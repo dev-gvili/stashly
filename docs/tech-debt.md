@@ -7,7 +7,7 @@
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
 **Now (26 Oct):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 991 unit tests in 85 files with none excluded, and the build. Green on `8143f81` (26 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 1019 unit tests in 87 files with none excluded, and the build. Green on `8143f81` (26 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors and analytics:** Vinktar on server and browser since 10 Oct (item 4, partly done).
@@ -78,7 +78,7 @@
 | 16 | Overlapping UI primitives | 12 | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
 | 17 | Unfinished migrations | 12 | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes | Deferred to after personal-first (TASKS.md, 4 Oct) |
 | 39 | ~~One presign request per part~~ | 12 | Resolved 2026-10-26 (`3ddbf90`): part URLs signed 100 at a time, the first 100 in the create answer; 100 MB upload 30 → 10 requests to our server, measured | — |
-| 40 | **new** Media-metadata writes do extra work | 10 | Skip the empty POST; one upsert | — |
+| 40 | ~~Media-metadata writes do extra work~~ | 10 | Resolved 2026-10-26 (`51ca00d`): a file with nothing to save sends no POST; one upsert per facet. No timing measured | — |
 | 41 | **new** Dead upload branches | 10 | `create_upload_item` in 3 `shouldRevalidate`s; the idle quota machine | — |
 | 42 | **new** Size rollup locks every ancestor row | 10 | Redesign only if lock waits are measured | Measure first |
 | 43 | **new** Revalidation and thumbnail query overhead | 9 | 2 page reloads per batch, wasted workspace query, 9 queries per thumbnail | Measure first |
@@ -129,7 +129,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 37 | The `.ts` sniff reads from S3 and nothing uses the result | Code | 1 | 2 | 1 | **15** (Low) | 1–2 h | New 25 Oct |
 | 38 | ~~Which upload concurrency limit applies (10 or 100) is unknown~~ | Documentation | 2 | 1 | 1 | **15** (Low) | 1 h | Resolved 26 Oct |
 | 39 | ~~One presign request per 5 MiB part~~ | Architecture | 2 | 1 | 2 | **12** (Low) | 0.5–1 day | Resolved 26 Oct |
-| 40 | Media-metadata writes do extra work | Code | 1 | 1 | 1 | **10** (Low) | 2 h | New 25 Oct |
+| 40 | ~~Media-metadata writes do extra work~~ | Code | 1 | 1 | 1 | **10** (Low) | 2 h | Resolved 26 Oct |
 | 41 | Dead upload branches | Code | 1 | 1 | 1 | **10** (Low) | 2 h | New 25 Oct |
 | 42 | The size rollup locks every ancestor row | Architecture | 2 | 3 | 4 | **10** (Low) | 3–5 days | New 25 Oct |
 | 43 | Revalidation and thumbnail query overhead | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | New 25 Oct |
@@ -721,6 +721,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** `save_media_metadata` is posted for every file type, including a zip with nothing to save. `upsertImageFacet` (`item-actions.ts:1489`) is a `findFirst` then an `update` or `create` (two round-trips, and two concurrent saves can both create).
 - **Fix:** skip the POST when there is nothing to save; one Prisma `upsert` on the unique `itemId`.
 - **Status 2026-10-25: open.**
+- **Status 2026-10-26: resolved** (`51ca00d`). A file with nothing to save no longer sends `save_media_metadata`: the indexing machine's `nothingToSave` guard (`hasMetadataToSave`, which applies the form builder's own rule) takes a zip or an unknown binary straight to `indexed`. The five facet writers (`upsertImageFacet` and the others) are each one `upsert` on the unique `itemId`, in place of `findFirst` and then `update` or `create`. Tests: `facet-upsert.test.ts` (16, against a live database) counts the statements pg sends per save, one each, and races eight first saves on one item; `media-metadata-save.test.ts` (9) holds `hasMetadataToSave` to the form builder; `indexing-item.machine.test.ts` gains 3. `pnpm test` 1019/0 in 87 files; type gate exit 0. No timing or request count was captured before the change, so what is claimed is the removed request for an empty file and one statement per save, not a speed-up.
 
 ### 41. Dead upload branches
 
@@ -828,6 +829,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-26 | `074c06e` | 30 | Both signed cookies call `cookieSecret()` (`env.ts`): `SESSION_SECRET`, required in production at module load. Probe before/after: production with no secret loaded and signed with `'secret'` → throws; with a secret, verifies against `'secret'` → against that secret only. 3 new tests; 972/0 in 81 files. |
 | 2026-10-26 | `78a63f3` | 38 | The upload manager's initial `maxConcurrentUploads` is 100, matching the schema default that `upload.config` applies. 3 new tests; 975/0 in 82 files. |
 | 2026-10-26 | `3ddbf90` | 39 | Part URLs signed a window of 100 at a time, the first window in the create answer; a part whose URL answers 403 is signed again once. Browser, before → after: 10 MB 12 → 10 requests to our server, 100 MB 30 → 10. 16 new tests; 991/0 in 85 files. |
+| 2026-10-26 | `51ca00d` | 40 | An empty file sends no `save_media_metadata` (`hasMetadataToSave`, the indexing machine's `nothingToSave` guard), and each facet write is one `upsert` on `itemId`. 28 new tests; 1019/0 in 87 files. No timing measured. |
 
 ## Phased remediation plan
 
@@ -904,7 +906,7 @@ New items from the 8 Oct re-scan, in the order to do them:
 *items 31–44, from the upload call audit; the first step is under a day*
 
 1. **Now:** ~~merge PR #26 (item 31)~~ done 25 Oct (`059d0aa`); ~~add the ownership checks to the three search-index writes (item 32)~~ done 25 Oct (`41f2efe`); ~~stop retrying 4xx answers (item 34)~~ done 25 Oct (`8ac03d9`). Two security gaps and a slow failure, each a small diff with a test.
-2. **On the next upload task (about 1.5 days):** ~~abort cancelled and failed multipart uploads (33~~ done 25 Oct, `8a79e89`; Tigris offers no lifecycle rule to fall back on); settle the `.ts` sniff (37), the metadata writes (40) and the dead branches (41); ~~measure the concurrency limit and correct the skill (38)~~ done 26 Oct (`78a63f3`).
+2. **On the next upload task (about 1.5 days):** ~~abort cancelled and failed multipart uploads (33~~ done 25 Oct, `8a79e89`; Tigris offers no lifecycle rule to fall back on); settle the `.ts` sniff (37), ~~the metadata writes (40)~~ done 26 Oct (`51ca00d`) and the dead branches (41); ~~measure the concurrency limit and correct the skill (38)~~ done 26 Oct (`78a63f3`).
 3. **A measured performance pass (3–5 days):** ~~the session cookie cache (35)~~ done 25 Oct, measured; ~~part URLs in bulk (39)~~ done 26 Oct (`3ddbf90`), signed 100 at a time, measured; ~~the folder tree once per batch (36)~~ done 26 Oct (`265c9d6`), measured; and the revalidation and thumbnail overhead (43). Repeat the audit's measured upload before and after; the CLAUDE.md debugging rules require the numbers.
 4. **Only if contention is measured:** the rollup redesign (42) and merging the requests (44). High effort for an unproven payoff.
 
