@@ -291,15 +291,16 @@ export const FileList = React.forwardRef<
           className={cn(Styles.FileList, className)}
           {...props}
         >
-          <AnimatePresence mode="popLayout">
-            {fileIds.map((mediaFileId) => (
-              <Item
-                mediaFileId={mediaFileId}
-                key={mediaFileId}
-                id={`media-file-${mediaFileId}`}
-              />
-            ))}
-          </AnimatePresence>
+          {/* Plain rows, no `layout` animation: framer-motion re-measures every
+              layout element when any of them changes, so a 650-file batch made
+              each status change cost the whole list (item 52). */}
+          {fileIds.map((mediaFileId) => (
+            <Item
+              mediaFileId={mediaFileId}
+              key={mediaFileId}
+              id={`media-file-${mediaFileId}`}
+            />
+          ))}
         </ul>
       </div>
     </ScrollArea>
@@ -310,7 +311,7 @@ FileList.displayName = 'Items'
 const Item = React.memo(
   React.forwardRef<
     React.ComponentRef<'li'>,
-    React.ComponentPropsWithoutRef<typeof motion.li> & { mediaFileId: string }
+    React.ComponentPropsWithoutRef<'li'> & { mediaFileId: string }
   >(({ children, className, id, mediaFileId, ...props }, forwardRef) => {
     id = id || React.useId()
     // Identity + status only. The percentage is read inside `Progress`/`CountDown`
@@ -320,17 +321,12 @@ const Item = React.memo(
     if (!mediafile.file) return null
 
     return (
-      <motion.li
+      <li
         id={id}
         ref={forwardRef}
         className={cn(Styles.Item, className)}
         tabIndex={0}
         data-state={mediafile.status}
-        layout="position"
-        initial={{ opacity: 0, height: 0 }}
-        animate={{ opacity: 1, height: 'auto' }}
-        exit={{ opacity: 0, height: 0 }}
-        transition={{ duration: 0.2 }}
         {...props}
       >
         <FileIcon file={mediafile.file} thumbnail={mediafile.thumbnail} />
@@ -402,7 +398,7 @@ const Item = React.memo(
             <Dismiss mediaFileId={mediaFileId} />
           </Progress>
         )}
-      </motion.li>
+      </li>
     )
   })
 )
