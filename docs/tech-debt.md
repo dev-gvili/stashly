@@ -25,6 +25,8 @@
 
 **Status at 30 Oct 2026 (latest):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 3 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 37). Item 44 declined, measured: each of the three access checks per file is one statement of about 3 ms and two are deliberate, and merging complete with create would save one request and 0.16–0.39 s per file but not a batch's time, for a 1–2 day rewrite of the upload machines.
 
+**Status at 30 Oct 2026 (late night, items 49–51):** an external critique of item 42 was checked against the code. Three gaps it pointed at are registered, all open and unmeasured: nothing applies the size log when a server starts (49), no test guards the deferred `Folder_itemId_fkey` (50), and one long row lock stalls the size rollup for every user (51). Its other claims didn't hold. Its fixes for the idle/busy split (log every upload, a statement-level trigger) are the dead ends measured in items 42 and 8. Its rollup fix (merge deltas, write each ancestor once) is what `apply_item_size_deltas()` already does. The log can't drift after a crash: a delta commits in the upload's own statement.
+
 **Status at 30 Oct 2026 (late night, item 48):** item 48 registered and partly done: a malformed `POST /api/items` answered 500, now 400 (measured 3 of 3 intents; 5 new route tests); about 25 more handlers parse before any `try`.
 
 **Status at 30 Oct 2026 (night, after item 42):** 30 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined (44) · 2 open from the audit (12, 13) · 7 new and open (19, 20, 22, 37, 45–47). Item 42 resolved (migrations `20261030140000_upload_size_delta_log`, `20261030160000_upload_size_inline_when_idle`), measured: an upload cascades at once while the database is idle and goes through a size log applied by one rollup at a time while it is busy. 32 uploaders into one shared folder 2,017 → 8,334 files/s, p95 52 → 5.8 ms, lock waiters 20.7 → 0.06, ancestor writes 100,512 → 2,821; one uploader unchanged (0 deltas logged, size work 757 ms vs 615 ms). Items 45–47 are its follow-ups.
@@ -101,6 +103,9 @@
 | 46 | **new** Session cookie expiring mid-upload | 15 | Measure the lookup burst at 100 concurrent uploads; refresh the session during long uploads if it matters | — |
 | 47 | **new** Per-file shared rows left on the upload path | 12 | The direct parent's `Folder.childCount` and (if a collaborator's upload charges the owner) the `Quota` row; measure with all uploaders in one folder | — |
 | 48 | **new** A malformed request answers 500 instead of 400 | 16 | Fixed for `/api/items` (30 Oct). About 25 more handlers call a parser before any `try`; fix them, or make the parsers' error a 400 response everywhere | — |
+| 49 | **new** Nothing applies the size log when a server starts | 15 | Reproduce (deltas pending, process restarted, no upload); then start the rollup loop at server start | — |
+| 50 | **new** No test guards the deferred `Folder_itemId_fkey` | 20 | A live-DB check that the constraint is still deferred, so a `db push` or a regenerated migration that drops it fails | — |
+| 51 | **new** One held row lock stalls the size rollup for every user | 12 | Run item 42's 32-uploader benchmark with a large trash or move in the same tree; if the rollup stalls, batch and lock per owner tree | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -156,6 +161,9 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 46 | A session cookie can expire in the middle of an upload | Architecture | 2 | 1 | 1 | **15** (Low) | 0.5 day | New 30 Oct |
 | 47 | Per-file shared rows left on the upload path | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
 | 48 | A malformed request answers 500 instead of 400 where the parser runs outside `try` | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Partly done (30 Oct) |
+| 49 | Nothing applies the size log when a server starts | Code | 2 | 1 | 1 | **15** (Low) | 0.5 day | New 30 Oct |
+| 50 | No test guards the deferred `Folder_itemId_fkey` | Test | 2 | 2 | 1 | **20** (Medium) | 0.5 day | New 30 Oct |
+| 51 | One held row lock stalls the size rollup for every user | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
 
 ## Details
 
@@ -892,6 +900,30 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** `parseFormData` and `parseSearchParams` throw a typed `INVALID_INPUT` error (status 400), and CLAUDE.md says to call them inside the handler's `try`. `app/routes/api/items.ts:108` called `parseFormData` before any `try`, so the error escaped the action and React Router answered **500 "Unexpected Server Error"**, its body carrying the raw Zod issue list. Reproduced from the browser (`.claude/evidence/p48-invalid-input-before.json`): `trash_items`, `restore_items` and `delete_items` with `selectedItems` sent as repeated fields (the schema wants one comma-separated string) all answered 500. Every `/api/items` intent shared the path. A pattern search found about 25 more handlers that call a parser before any `try`; each needs checking, since a page loader failing the same way shows the error page: `api/activities.ts:20`, `api/collections.ts:40, :104`, `api/comments.ts:23`, `api/invitations.ts:33, :66`, `api/members.ts:20`, `api/permissions.ts:30, :41`, `api/search.ts:89, :111`, `api/shares.ts:34, :64`, `api/thumbnails.ts:59`, `api/versions.ts:24`, `api/workspaces.ts:25, :49`, `stash/all.tsx:103`, `stash/collection.tsx:34`, `stash/collections.tsx:19`, `stash/duplicates.tsx:54`, `stash/folder.tsx:44`, `stash/gallery.tsx:29`, `stash/search.tsx:52`, `stash/trash.tsx:104`.
 - **Fix:** per handler, catch the parser's error and answer with its status, as `/api/items` now does and as `/api/quota` already did (`throw data(..., { status: 400 })`). Or once, centrally: make the parsers throw a `data()` response with the status. That reaches every call site at once, but the `catch` blocks that run `toErrorInfo` on a thrown value would then see a `data()` object, so weigh it with them.
 - **Status 2026-10-30: partly done.** `/api/items` catches the parser's error and rethrows it as `data({ success: false, error }, { status })`. Measured the same way before and after (`.claude/evidence/p48-invalid-input-{before,after}.json`): the three intents 500 → 400, and a well-formed request with made-up ids still reaches the access check (403). `app/routes/api/__tests__/items-invalid-input.test.ts`: 5 cases (the three intents, an unknown intent, `rename_item` without its name), 5 failing with 500 before the fix and passing after. The other sites are open.
+
+### 49. Nothing applies the size log when a server starts
+
+*Code debt · Impact 2 · Risk 1 · Effort 1 → **15** · est. 0.5 day · source: external critique of item 42, 30 Oct*
+
+- **Evidence:** the rollup loop is started by the first `createUploadedItem()` in each process (`item-actions.ts:1830`, `size-rollup.ts:17`). Nothing starts it when the server boots. A delta itself survives a crash: `update_size()` writes it in the upload's own statement, and a run claims and applies its rows in one function call, so a run that dies rolls back and leaves them in place. But a process that stops (a crash or a deploy) while deltas are pending leaves them unapplied until the next upload on any instance starts a loop. Until then the folders above those files read short, and go negative if one of the files was trashed, moved or deleted in the meantime. That is the transient item 42 lists, except it lasts until the next upload. While deltas are pending, every new upload is logged rather than cascaded, so the first upload after the restart applies all of them. Read from the code; not reproduced.
+- **Fix:** reproduce first: leave deltas pending, start a fresh process, upload nothing, read the folder. Then start the loop at server start, either always or only when `ItemSizeDelta` has rows. Once started, the loop already polls (one `EXISTS` every 250 ms) for the life of the process, so starting it at boot only adds the polling before the first upload.
+- **Status 2026-10-30: open.**
+
+### 50. No test guards the deferred `Folder_itemId_fkey`
+
+*Test debt · Impact 2 · Risk 2 · Effort 1 → **20** · est. 0.5 day · source: external critique of item 42, 30 Oct*
+
+- **Evidence:** `Folder_itemId_fkey` is `DEFERRABLE INITIALLY DEFERRED` only because migration `20260826000000_defer_folder_item_fk` made it so. Prisma can't express that, so `prisma db push`, or a migration Prisma generates after the `Folder.item` relation is renamed or its `onDelete` changes, drops the constraint and re-adds it as an immediate check (`docs/data_profile_stashly _prisma_schema.md`, the ⚠️ note under `update_child_count()`; `facet.prisma:21`). That note is the only guard: no file under `app/` mentions the constraint. Losing the flag brings back an intermittent P2003 when one permanent delete holds both a folder and something inside it. Whether it fails depends on the order Postgres visits the rows, so a single test run may not show it.
+- **Fix:** a live-DB check, in an existing delete test, that `pg_constraint` still reports `Folder_itemId_fkey` as deferrable and initially deferred. CI applies every migration before the tests, so a migration that drops the flag fails CI, and a local `db push` fails the next local run.
+- **Status 2026-10-30: open.**
+
+### 51. One held row lock stalls the size rollup for every user
+
+*Architecture debt · Impact 2 · Risk 2 · Effort 3 → **12** · est. 1–2 days · source: external critique of item 42, 30 Oct*
+
+- **Evidence:** each run of `apply_item_size_deltas()` takes the oldest 5,000 deltas in the whole database (`ORDER BY "id" LIMIT`) and applies them in one `UPDATE`, all or nothing. It gives up after waiting 100 ms for any row lock (`20261030140000_upload_size_delta_log`). Any trash, restore, move or delete in an owner's tree locks every ancestor up to that owner's root until its statement commits. So one such statement that holds an ancestor of any delta in the batch for more than 100 ms rolls the run back for every user, and the retry 250 ms later takes the same oldest rows. While deltas are pending, every new upload is logged rather than cascaded, so the backlog grows. Item 42's concurrency benchmark ran no trash, move or delete alongside the uploads, and how long those statements hold ancestor locks was not measured. The critique's "minutes" is a guess. `size_rollup_lock_timeouts_total` (`metrics.ts`) counts the give-ups.
+- **Fix:** measure first. Run item 42's 32-uploader benchmark with a large trash or move in the same owner's tree, and record lock timeouts and the oldest unapplied delta. If the rollup stalls, revisit item 42's open question of keying the rollup per owner tree rather than database-wide: one tree's lock would then hold back only that tree's deltas. The delta table would need the owner, a schema change.
+- **Status 2026-10-30: open.**
 
 ## Changes since the audit
 
