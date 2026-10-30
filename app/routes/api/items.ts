@@ -105,7 +105,18 @@ export async function action({ request, params, context }: Route.ActionArgs) {
   const session = context.get(sessionContext)
   let { user } = session
 
-  let parsedData = await parseFormData({ request, schema: itemsApiRouteInput })
+  // A malformed body is the caller's error: parseFormData throws INVALID_INPUT,
+  // which answers with its own status (400) here instead of escaping the action,
+  // where React Router turns any unhandled throw into a 500.
+  let parsedData = await parseFormData({ request, schema: itemsApiRouteInput }).catch(
+    (e: unknown) => {
+      const err = toErrorInfo(e)
+      throw data(
+        { success: false, error: err.message ?? 'Invalid request' },
+        { status: err.status ?? 400 }
+      )
+    }
+  )
   let referer = request.headers.get('referer')
   let url = new URL(referer || request.url)
   let searchParams = url.searchParams
