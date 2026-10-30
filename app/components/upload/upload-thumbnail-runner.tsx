@@ -78,11 +78,16 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
   // runs pounding the DB, which is a big part of why the app went sluggish and
   // the file route started failing to fetch. usePagination still resets on
   // `state.reset` — it just happens in waves now.
+  //
+  // Counts rows, not finished transfers. A `done` file has no row yet, and its
+  // later `itemCreated` left a count that already included it unchanged, so
+  // when the row took longer than the debounce the only reload missed it and
+  // nothing followed (measured: 0 of 6 rows, grid empty until a manual reload).
   const createdCount = useSelector(
     upload,
     (s) =>
       Array.from(s.context.mediaFiles.values()).filter(
-        (f) => f.status === 'itemCreated' || f.status === 'done'
+        (f) => f.status === 'itemCreated'
       ).length
   )
   const navigate = useNavigate()

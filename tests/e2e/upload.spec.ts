@@ -78,6 +78,45 @@ test.describe('upload — filing', () => {
     await uploadPage.gotoFolder(TEST_USER_ID, folderId)
     for (const f of files) await uploadPage.expectCardInGrid(f.name)
   })
+
+  // A row that takes longer than the runner's 700 ms debounce used to be lost
+  // from the page: the list reload was scheduled when the bytes finished
+  // (`done`, no row yet), the later `itemCreated` left that count unchanged, so
+  // nothing reloaded again, and the indexing reload's `revalidate()` doesn't
+  // refresh the paginated grid. In the measured run the folder header said
+  // 6 files over an empty grid until a manual reload (tech-debt item 43).
+  // Holding every row request past the debounce reproduces it; the names must
+  // appear with no reload.
+  test('files whose rows arrive after the debounce still appear without a reload', async ({
+    page,
+  }) => {
+    const { uploadPage } = await openEmptyFolder(page)
+    const id = runId()
+    const files = [
+      { name: `e2e-upload-${id}-late-a.txt`, sizeBytes: 1_111, type: 'text/plain' },
+      { name: `e2e-upload-${id}-late-b.txt`, sizeBytes: 2_222, type: 'text/plain' },
+      { name: `e2e-upload-${id}-late-c.txt`, sizeBytes: 3_333, type: 'text/plain' },
+    ]
+
+    await page.route('**/api/items', async (route) => {
+      const request = route.request()
+      if (request.method() === 'POST' && request.postData()?.includes('create_upload_item')) {
+        await new Promise((resolve) => setTimeout(resolve, 1_500))
+      }
+      await route.continue()
+    })
+
+    await uploadPage.dropFiles(files)
+    for (const f of files) await uploadPage.waitForItemCreated(f.name)
+
+    // A grid card, not `expectCardInGrid`: with no reload the open upload
+    // panel lists the same names inside <main>, so any text match passes.
+    for (const f of files) {
+      await expect(
+        page.locator('[data-slot="item-card"]').filter({ hasText: f.name })
+      ).toBeVisible({ timeout: 15_000 })
+    }
+  })
 })
 
 test.describe('upload — quota is charged by the server', () => {
