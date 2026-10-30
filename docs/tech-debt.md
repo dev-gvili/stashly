@@ -25,6 +25,8 @@
 
 **Status at 30 Oct 2026 (latest):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 3 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 37). Item 44 declined, measured: each of the three access checks per file is one statement of about 3 ms and two are deliberate, and merging complete with create would save one request and 0.16–0.39 s per file but not a batch's time, for a 1–2 day rewrite of the upload machines.
 
+**Status at 31 Oct 2026 (item 52 partly done):** the upload panel's rows no longer run framer-motion's layout animation (`ec4b521`). The same 650-file upload took 243 s instead of 698 s, with main-thread blocking at 38% of it instead of 70%, and the folder reloaded 9 times instead of 139 (rows now outrun the 700 ms debounce; item 45's mechanism is unchanged). Blocking still grows as the batch does, so item 52 stays open.
+
 **Status at 31 Oct 2026 (item 45 measured):** item 45 reranked 12 → 28 (High) on measurements. Two runs of the 650-file `app/` upload made 146 and 139 full folder reloads, one per 4.6 files, with a reload in flight 27–28% of the upload, each one sending the folder back to its first page. The 700 ms debounce can't merge rows that arrive 1.1 s apart, and the indexing revalidate adds 33–47 more. The same runs found item 52: the main thread spends 99% of the upload in long animation frames, and rows per minute fall from about 150 to about 35 as the batch grows.
 
 **Status at 30 Oct 2026 (late night, items 49–51):** an external critique of item 42 was checked against the code. Three gaps it pointed at are registered, all open and unmeasured: nothing applies the size log when a server starts (49), no test guards the deferred `Folder_itemId_fkey` (50), and one long row lock stalls the size rollup for every user (51). Its other claims didn't hold. Its fixes for the idle/busy split (log every upload, a statement-level trigger) are the dead ends measured in items 42 and 8. Its rollup fix (merge deltas, write each ancestor once) is what `apply_item_size_deltas()` already does. The log can't drift after a crash: a delta commits in the upload's own statement.
@@ -108,7 +110,7 @@
 | 49 | **new** Nothing applies the size log when a server starts | 15 | Reproduce (deltas pending, process restarted, no upload); then start the rollup loop at server start | — |
 | 50 | **new** No test guards the deferred `Folder_itemId_fkey` | 20 | A live-DB check that the constraint is still deferred, so a `db push` or a regenerated migration that drops it fails | — |
 | 51 | **new** One held row lock stalls the size rollup for every user | 12 | Run item 42's 32-uploader benchmark with a large trash or move in the same tree; if the rollup stalls, batch and lock per owner tree | — |
-| 52 | **new** The main thread is saturated for the whole upload | 24 | 99% of a 650-file upload in long frames, 41–77% of each minute blocking; profile the upload machines' event handling | — |
+| 52 | **new** The main thread is saturated for the whole upload | 24 | Panel rows' layout animation removed 31 Oct (upload 698 → 243 s, blocking 70% → 38%); blocking still grows with the batch: measure the per-file machine subscriptions next | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -167,7 +169,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 49 | Nothing applies the size log when a server starts | Code | 2 | 1 | 1 | **15** (Low) | 0.5 day | New 30 Oct |
 | 50 | No test guards the deferred `Folder_itemId_fkey` | Test | 2 | 2 | 1 | **20** (Medium) | 0.5 day | New 30 Oct |
 | 51 | One held row lock stalls the size rollup for every user | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
-| 52 | The main thread is saturated for the whole upload | Architecture | 4 | 4 | 3 | **24** (Medium) | 2–3 days | New 31 Oct |
+| 52 | The main thread is saturated for the whole upload | Architecture | 4 | 4 | 3 | **24** (Medium) | 2–3 days | Partly done (31 Oct) |
 
 ## Details
 
@@ -896,6 +898,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
   - **What each reload costs:** a full folder loader run (11–14 queries, per the 30 Oct evidence above) and a `navigate` with `state.reset`, which `usePagination` treats as a return to the first page. A user browsing the folder during an upload is therefore sent back to the first page every few seconds (read from the code, not measured). At one reload per 4.6 files, a 10,000-file upload would reload about 2,000 times (extrapolated).
   - **Not explained:** the 16 reloads of the 650-file run on 30 Oct. Both runs here made about 140, and that run recorded neither a timeline nor the tab's visibility.
   - **Fix:** one reload schedule for an upload instead of two debounces: during a batch, at most one reload every few seconds (a throttle, not a debounce); one when the batch's last row is created; one when indexing drains. Measure with this harness before and after.
+- **Status 2026-10-31 (later): still open; time-based reloads ruled out.** After item 52's change (`ec4b521`) the same upload made 9 folder loads instead of 139, but only because rows now arrive faster than the 700 ms debounce. The mechanism is unchanged: an upload whose rows arrive more than 700 ms apart (larger files, a slower link) still reloads the whole folder after almost every row. The owner wants a real fix, not a time-based reload: new rows should reach the page without refetching the folder.
 
 ### 46. A session cookie can expire in the middle of an upload
 
@@ -953,6 +956,18 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Why it matters:** the page barely responds while a large upload runs. The falling row rate fits per-event work that grows with the number of files in the batch, which would also make larger uploads slower per file. Not proven.
 - **Fix:** profile one upload (a DevTools performance trace) and find the per-event cost before changing anything. Leads from the code, unverified: in `upload-thumbnail-runner.tsx`, the `createdCount`, `uploading` and `fileIds` selectors each scan every file on every upload event, and each file mounts its own `HoldFileWatcher` subscription.
 - **Status 2026-10-31: open.**
+- **Status 2026-10-31 (later): partly done** (`ec4b521`). The upload panel's rows were `motion.li` with `layout="position"` inside `AnimatePresence mode="popLayout"` (`components/upload/index.tsx`). framer-motion re-measures every layout element when any of them changes, and the panel holds one row per file: 588 were mounted during a traced upload, in a list four rows tall. A DevTools trace taken mid-upload showed framer-motion's animation and measuring code and forced reflows, with most app time under the upload components. The rows are now plain `li`. Measured with item 45's run-2 harness (`.claude/evidence/p52-before.json`, `p52-after.json`, local):
+
+  |  | before | after |
+  |---|---|---|
+  | upload duration | 698 s | 243 s |
+  | rows created per minute (mean) | 56 | 161 |
+  | main-thread blocking | 489 s (70% of the upload) | 93 s (38%) |
+  | long animation frame p50 / p90 | 237 / 574 ms | 132 / 223 ms |
+  | folder `.data` loads | 139 | 9 |
+
+  - **Not done:** blocking still rises as the batch grows (17%, 35%, 48%, 52% of successive minutes), and rows per minute still fall (261, 163, 119, 101), so some per-event cost that grows with the number of files remains. The long frames still sit in the upload actors' promise continuations: `s3.mulipart.utils.ts` 83 s, `sniff.ts` 72 s, `db.actors.ts` 45 s. Next suspects, from the code and not yet measured: one machine subscription per file (each panel row, and a `HoldFileWatcher` per file in `upload-thumbnail-runner.tsx`), plus selectors that scan every file, all re-run on every upload event.
+  - The rows lost their 0.2 s enter and exit animation.
 
 ## Changes since the audit
 
