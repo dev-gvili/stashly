@@ -6,6 +6,12 @@ import { findAllMemberWorkspaces } from '@/services/workspace-actions'
  * Loads the caller's workspace memberships once per request and puts them on
  * the router context.
  *
+ * **Not registered on any route since 2026-10-30** (tech-debt item 43). Its
+ * only reader was the layout loader, which never revalidates, so on the layout
+ * it queried `WorkspaceMember` on every `.data` request for a result nothing
+ * read; the loader now calls `findAllMemberWorkspaces` itself. Register it on
+ * the route whose loaders read `workspaceContext`, not on the layout.
+ *
  * This is a per-*user* value, not a per-URL one: the sidebar renders the list
  * on every authenticated page, so the middleware runs on the whole layout
  * rather than only the `/:me/workspaces/:workspaceId/*` branch. A loader that

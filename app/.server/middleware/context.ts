@@ -24,7 +24,11 @@ export const sessionContext = createContext<AuthSession>()
 /**
  * Every workspace the signed-in user is a member of, with their role in each.
  *
- * Set by `workspaceMiddleware` on the app layout. This is a per-*user* value,
+ * Set by `workspaceMiddleware`, which no route registers since 2026-10-30: its
+ * only reader, the layout loader, never revalidates, so the query ran on every
+ * `.data` request for nothing, and that loader now reads the list itself
+ * (tech-debt item 43). Both are kept for a workspace loader that wants the
+ * list without a second query. This is a per-*user* value,
  * not a per-URL one — the sidebar lists the workspaces on every authenticated
  * page — so it is populated on all routes under the layout, not only the
  * `/:me/workspaces/:workspaceId/*` branch. A loader that wants the workspace
