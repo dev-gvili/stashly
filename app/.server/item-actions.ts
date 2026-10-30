@@ -20,6 +20,7 @@ import {
   uploadChargeSql,
 } from '@/services/quota-actions'
 import { deleteObjects, getObjectText } from '@/services/s3'
+import { ensureSizeRollup } from '@/services/size-rollup'
 import {
   signThumbnails,
   thumbnailKey,
@@ -1824,6 +1825,9 @@ export async function createUploadedItem(data: {
   uploadId: string
   category?: string
 }) {
+  // Under load the file's size reaches its folders through the upload size
+  // log; make sure this process applies it.
+  ensureSizeRollup()
   const segments = data.key.split('/')
   const rootId = segments[0]
   const path = segments.slice(1, -1).join('/')
@@ -2660,6 +2664,11 @@ async function recursiveCopy(
       id: toObjectId(getPrefixForModel('Item')),
       parentId: parentId,
       workspaceId: workspaceId,
+      // A copy isn't an upload. An "uploadId" would also let its size go
+      // through the upload size log under load (migration
+      // 20261030160000_upload_size_inline_when_idle) instead of the immediate
+      // cascade every other copied row takes.
+      uploadId: null,
       // Copy Facets
       ...(file
         ? {

@@ -18,6 +18,11 @@ import type { DegradedReason, DegradedStage } from '@/schemas/api.schemas'
 //   • notify_events_total      — NOTIFY events forwarded by the LISTEN bridge.
 //   • sse_connections          — currently open EventSource streams.
 //   • mark_all_read_total      — the burst trigger itself.
+//   • size_rollup_*            — the upload size log (size-rollup.ts): runs,
+//                                deltas and rows applied, skips, lock timeouts,
+//                                and the slowest run / oldest delta per scrape.
+//                                A run nearing 250 ms means one database-wide
+//                                rollup at a time is no longer enough.
 //
 // Everything is process-local. Fly's Prometheus scrapes each machine and the
 // series carry the instance labels, so per-machine values aggregate upstream.
@@ -28,8 +33,18 @@ const counters = {
   mark_all_read_total: 0,
   sse_connections_opened_total: 0,
   db_pool_errors_total: 0,
+  size_rollup_runs_total: 0,
+  size_rollup_deltas_total: 0,
+  size_rollup_rows_total: 0,
+  size_rollup_skipped_total: 0,
+  size_rollup_lock_timeouts_total: 0,
+  size_rollup_errors_total: 0,
 }
 type CounterName = keyof typeof counters
+
+// Worst rollup in the current scrape window; reset on each scrape.
+let sizeRollupMaxMs = 0
+let sizeRollupOldestMaxMs = 0
 
 let sseActive = 0
 let poolRef: Pool | undefined
@@ -61,6 +76,20 @@ export function inc(name: CounterName, by = 1) {
 export function recordDegraded(stage: DegradedStage, reason: DegradedReason) {
   const key = `${stage}|${reason}`
   degraded.set(key, (degraded.get(key) ?? 0) + 1)
+}
+
+/** Record one applied run of apply_item_size_deltas() (size-rollup.ts). */
+export function recordSizeRollup(run: {
+  deltas: number
+  ancestors: number
+  oldestMs: number
+  ms: number
+}) {
+  counters.size_rollup_runs_total++
+  counters.size_rollup_deltas_total += run.deltas
+  counters.size_rollup_rows_total += run.ancestors
+  sizeRollupMaxMs = Math.max(sizeRollupMaxMs, run.ms)
+  sizeRollupOldestMaxMs = Math.max(sizeRollupOldestMaxMs, run.oldestMs)
 }
 
 export function sseOpened() {
@@ -123,6 +152,40 @@ export function renderPrometheus(): string {
     'pg pool errors observed',
     'counter'
   )
+
+  const sizeRollupCounters: [CounterName, string][] = [
+    ['size_rollup_runs_total', 'Upload size rollups that applied deltas'],
+    ['size_rollup_deltas_total', 'Upload size deltas applied'],
+    ['size_rollup_rows_total', 'Folder rows written by upload size rollups'],
+    [
+      'size_rollup_skipped_total',
+      'Upload size rollups skipped because another run held the lock',
+    ],
+    [
+      'size_rollup_lock_timeouts_total',
+      'Upload size rollups that gave way to a row lock and retried',
+    ],
+    [
+      'size_rollup_errors_total',
+      'Upload size rollups that failed unexpectedly',
+    ],
+  ]
+  for (const [name, help] of sizeRollupCounters)
+    out += metric(`stashly_${name}`, counters[name], help, 'counter')
+  out += metric(
+    'stashly_size_rollup_seconds_max',
+    sizeRollupMaxMs / 1000,
+    'Slowest upload size rollup over the last scrape window',
+    'gauge'
+  )
+  out += metric(
+    'stashly_size_rollup_oldest_delta_seconds_max',
+    sizeRollupOldestMaxMs / 1000,
+    'Oldest upload size delta applied over the last scrape window',
+    'gauge'
+  )
+  sizeRollupMaxMs = 0
+  sizeRollupOldestMaxMs = 0
 
   out += metric(
     'stashly_sse_connections',

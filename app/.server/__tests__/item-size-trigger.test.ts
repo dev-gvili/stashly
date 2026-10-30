@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { Prisma } from '@/prisma/client'
 import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import { flushItemSizes, withSizeRollupPaused } from './helpers/flush-item-sizes'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
 /**
@@ -101,6 +102,151 @@ const steps: Array<[string, () => Promise<unknown>]> = [
 describe('update_size() keeps folder size and inclusiveSize equal to a recount', () => {
   it.each(steps)('%s', async (_step, run) => {
     await run()
+    expect(await wrongFolders()).toEqual([])
+  })
+})
+
+/**
+ * An uploaded file (`uploadId` set) cascades in its INSERT only while the
+ * database is idle: it can take the rollup lock without waiting and nothing is
+ * pending. Otherwise it is logged in "ItemSizeDelta", and
+ * apply_item_size_deltas() writes each affected folder once
+ * (`20261030140000_upload_size_delta_log`,
+ * `20261030160000_upload_size_inline_when_idle`). withSizeRollupPaused() holds
+ * that lock, so an upload inside it takes the logged path and stays pending
+ * (no other rollup, not even a dev server's loop on the same database, applies
+ * it in between). Each step then flushes and compares every folder with both
+ * recounts: the JS one above and recount_folder_sizes().
+ */
+const upload = async (name: string, parent: string, size: number) => {
+  ids[name] = uid('Item')
+  await prisma.item.create({
+    data: { id: ids[name], name, type: 'file', category: 'document', status: 'normal', ownerId, driveId, parentId: ids[parent], size, uploadId: `up_${ids[name]}` },
+  })
+}
+const sizeOf = async (name: string) => {
+  const r = await prisma.item.findUniqueOrThrow({ where: { id: ids[name] }, select: { size: true, inclusiveSize: true } })
+  return `${r.size}/${r.inclusiveSize}`
+}
+const pendingUnder = async (name: string) =>
+  Number((await prisma.$queryRaw<{ n: bigint }[]>`SELECT count(*) AS n FROM "ItemSizeDelta" WHERE "parentId" = ${ids[name]}`)[0].n)
+const recount = async (name: string) => (await prisma.$queryRaw<{ n: number }[]>`SELECT recount_folder_sizes(${ids[name]}) AS n`)[0].n
+
+describe('uploaded files reach their folders through the size log', () => {
+  beforeAll(async () => {
+    // U ─ V ─ W        X (another root, a move target)
+    await make('U', 'folder', null)
+    await make('V', 'folder', 'U')
+    await make('W', 'folder', 'V')
+    await make('X', 'folder', null)
+  })
+
+  it('an upload into an idle database cascades at once and logs nothing', async () => {
+    // Another session can hold the lock for a moment (an upload cascading, a
+    // dev server's rollup); then this upload is logged instead, so try again.
+    let inline = false
+    for (let attempt = 0; attempt < 10 && !inline; attempt++) {
+      await flushItemSizes()
+      const before = await sizeOf('W')
+      await upload(`i${attempt}`, 'W', 1)
+      inline = (await pendingUnder('W')) === 0 && (await sizeOf('W')) !== before
+    }
+    expect(inline).toBe(true)
+    await flushItemSizes()
+    expect(await wrongFolders()).toEqual([])
+  })
+
+  it('an upload while the database is busy waits in the log until the rollup, which writes each folder above it once', async () => {
+    await flushItemSizes()
+    const [w, v, u] = [await sizeOf('W'), await sizeOf('V'), await sizeOf('U')]
+    const plus100 = (s: string) => s.split('/').map((n) => Number(n) + 100).join('/')
+    await withSizeRollupPaused(async () => {
+      await upload('u1', 'W', 100)
+      expect([await sizeOf('W'), await sizeOf('V'), await sizeOf('U')]).toEqual([w, v, u])
+      expect(await pendingUnder('W')).toBe(1)
+    })
+    await flushItemSizes()
+    expect([await sizeOf('W'), await sizeOf('V'), await sizeOf('U')]).toEqual([plus100(w), plus100(v), plus100(u)])
+    expect(await pendingUnder('W')).toBe(0)
+  })
+
+  const pendingSteps: Array<[string, () => Promise<unknown>]> = [
+    ['upload, then trash its folder', async () => { await upload('u2', 'W', 30); await setStatus('W', 'trashed') }],
+    ['restore that folder', () => setStatus('W', 'normal')],
+    ['upload, then move its folder to another root', async () => { await upload('u3', 'W', 20); await prisma.item.update({ where: { id: ids.W }, data: { parentId: ids.X } }) }],
+    ['upload, then delete the file', async () => { await upload('u4', 'V', 10); await prisma.$executeRaw`DELETE FROM "Item" WHERE "id" = ${ids.u4}` }],
+    ['upload, then change its size', async () => { await upload('u5', 'V', 40); await prisma.item.update({ where: { id: ids.u5 }, data: { size: 45 } }) }],
+    ['uploads and plain inserts mixed in one folder', async () => { await upload('u6', 'V', 7); await make('p1', 'file', 'V', 3); await upload('u7', 'V', 5) }],
+    ['upload, then delete its folder with it', async () => {
+      await make('Y', 'folder', 'U')
+      await upload('u8', 'Y', 9)
+      await prisma.$executeRaw`${subtree(ids.Y)} DELETE FROM "Item" i USING "Subtree" s WHERE i."id" = s."id"`
+    }],
+  ]
+
+  it.each(pendingSteps)('%s, then the rollup: every folder equals a recount', async (_step, run) => {
+    await withSizeRollupPaused(run)
+    await flushItemSizes()
+    expect(await wrongFolders()).toEqual([])
+    expect(await recount('U')).toBe(0)
+    expect(await recount('X')).toBe(0)
+  })
+
+  it('recount_folder_sizes() puts a corrupted folder right', async () => {
+    await prisma.$executeRaw`UPDATE "Item" SET "size" = 999, "inclusiveSize" = 999 WHERE "id" = ${ids.V}`
+    expect(await wrongFolders()).not.toEqual([])
+    expect(await recount('U')).toBeGreaterThan(0)
+    expect(await wrongFolders()).toEqual([])
+  })
+})
+
+describe('the size rollup runs one at a time and gives way to user writes', () => {
+  beforeAll(async () => {
+    await make('C1', 'folder', null)
+    await make('C2', 'folder', 'C1')
+  })
+
+  it('a rollup skips while another holds the lock, leaving its deltas for the next', async () => {
+    await withSizeRollupPaused(async () => {
+      await upload('c1', 'C2', 11)
+      const [r] = await prisma.$queryRaw<{ deltas: number; ancestors: number }[]>`SELECT * FROM apply_item_size_deltas()`
+      expect(r).toMatchObject({ deltas: 0, ancestors: 0 })
+      expect(await pendingUnder('C2')).toBe(1)
+    })
+    await flushItemSizes()
+    expect(await sizeOf('C1')).toBe('11/11')
+  })
+
+  it('a rollup that meets a locked folder gives up after 100 ms and keeps its deltas', async () => {
+    await withSizeRollupPaused(() => upload('c2', 'C2', 4))
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT 1 FROM "Item" WHERE "id" = ${ids.C1} FOR UPDATE`
+      // Another rollup (a dev server's loop on this database) may hold the lock
+      // for a moment; it can't apply this delta either, so try until this call
+      // is the one that runs.
+      let outcome = 'skipped'
+      for (let attempt = 0; attempt < 40 && outcome === 'skipped'; attempt++) {
+        try {
+          const [r] = await prisma.$queryRaw<{ deltas: number }[]>`SELECT * FROM apply_item_size_deltas()`
+          if (r.deltas !== 0) outcome = 'applied'
+          else await new Promise((resolve) => setTimeout(resolve, 50))
+        } catch (e) {
+          outcome = /lock timeout|55P03/.test(String(e) + JSON.stringify((e as { meta?: unknown }).meta ?? '')) ? 'timed out' : String(e)
+        }
+      }
+      expect(outcome).toBe('timed out')
+    }, { timeout: 10_000 })
+    expect(await pendingUnder('C2')).toBe(1)
+    await flushItemSizes()
+    expect(await sizeOf('C1')).toBe('15/15')
+  })
+
+  it('three flushes racing apply every delta once', async () => {
+    await withSizeRollupPaused(async () => {
+      for (let k = 0; k < 20; k++) await upload(`r${k}`, 'C2', 1)
+    })
+    await Promise.all([flushItemSizes(), flushItemSizes(), flushItemSizes()])
+    expect(await sizeOf('C1')).toBe('35/35')
     expect(await wrongFolders()).toEqual([])
   })
 })
