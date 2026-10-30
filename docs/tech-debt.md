@@ -6,7 +6,7 @@
 
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
-**Now (26 Oct):** the safety net is mostly in place.
+**Now (30 Oct):** the safety net is mostly in place.
 - **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 1019 unit tests in 87 files with none excluded, and the build. Green on `597a2e5` (26 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
@@ -23,7 +23,9 @@
 
 **44 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit) · categories: Code 22, Architecture 13, Infrastructure 4, Test 2, Documentation 2, Dependency 1
 
-**Status at 26 Oct 2026 (latest):** 28 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 7 new and open (19, 20, 22, 37, 42–44). Item 41 resolved (`12e3f74`): the upload manager no longer spawns a quota actor that nothing talked to, and three revalidation checks that could never match are gone.
+**Status at 30 Oct 2026 (latest):** 28 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 2 declined · 2 open from the audit (12, 13) · 6 new and open (19, 20, 22, 37, 43, 44). Item 42 declined: since `265c9d6` an upload's ancestor and quota locks last one statement, not the whole upload, so the 3–5 day rollup redesign waits for a measured symptom. This was read from the code; lock waits were not measured.
+
+**Status at 26 Oct 2026 (after item 41):** 28 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 7 new and open (19, 20, 22, 37, 42–44). Item 41 resolved (`12e3f74`): the upload manager no longer spawns a quota actor that nothing talked to, and three revalidation checks that could never match are gone.
 
 **Status at 26 Oct 2026 (after item 40):** 27 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined · 2 open from the audit (12, 13) · 8 new and open (19, 20, 22, 37, 41–44). Item 40 resolved (`51ca00d`): a file with nothing to save sends no metadata request, and each facet write is one statement that concurrent saves can't break.
 
@@ -84,7 +86,7 @@
 | 39 | ~~One presign request per part~~ | 12 | Resolved 2026-10-26 (`3ddbf90`): part URLs signed 100 at a time, the first 100 in the create answer; 100 MB upload 30 → 10 requests to our server, measured | — |
 | 40 | ~~Media-metadata writes do extra work~~ | 10 | Resolved 2026-10-26 (`51ca00d`): a file with nothing to save sends no POST; one upsert per facet; 2 → 1 statements per save, 7 of 8 racing first saves refused → 0, measured | — |
 | 41 | ~~Dead upload branches~~ | 10 | Resolved 2026-10-26 (`12e3f74`): the 3 unreachable `shouldRevalidate` checks deleted, the quota machine no longer spawned (file kept); actors per upload manager 6 → 5, measured | — |
-| 42 | **new** Size rollup locks every ancestor row | 10 | Redesign only if lock waits are measured | Measure first |
+| 42 | ~~Size rollup locks every ancestor row~~ | 10 | Declined 2026-10-30: since `265c9d6` the locks last one statement, not the whole upload (read from the code, not measured); reopen on lock timeouts or slow item creation | — |
 | 43 | **new** Revalidation and thumbnail query overhead | 9 | 2 page reloads per batch, wasted workspace query, 9 queries per thumbnail | Measure first |
 | 44 | **new** Separate complete and create requests | 9 | Merge them, and the triple access check | Measure first |
 
@@ -135,7 +137,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 39 | ~~One presign request per 5 MiB part~~ | Architecture | 2 | 1 | 2 | **12** (Low) | 0.5–1 day | Resolved 26 Oct |
 | 40 | ~~Media-metadata writes do extra work~~ | Code | 1 | 1 | 1 | **10** (Low) | 2 h | Resolved 26 Oct |
 | 41 | ~~Dead upload branches~~ | Code | 1 | 1 | 1 | **10** (Low) | 2 h | Resolved 26 Oct |
-| 42 | The size rollup locks every ancestor row | Architecture | 2 | 3 | 4 | **10** (Low) | 3–5 days | New 25 Oct |
+| 42 | The size rollup locks every ancestor row | Architecture | 2 | 3 | 4 | **10** (Low) | 3–5 days | Declined 30 Oct |
 | 43 | Revalidation and thumbnail query overhead | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | New 25 Oct |
 | 44 | Upload complete and item creation are separate requests | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | New 25 Oct |
 
@@ -762,6 +764,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** `update_size()` runs one `UPDATE "Item"` per ancestor, and each row stays locked until the upload's transaction commits. With several files in flight, all of them queue on the same root and parent rows, and on the user's `Quota` row. Lock waits were not measured.
 - **Fix:** only if contention is measured. Options include batching the rollup per transaction or deferring it.
 - **Status 2026-10-25: open.**
+- **Status 2026-10-30: declined.** The evidence describes the code before `265c9d6`. The mechanism still holds: `update_size()` is a per-row trigger, each parent's update fires it again, and so a file insert locks every ancestor up to the root. What changed is how long the locks last. `insertUploadedItem` (`item-actions.ts`) writes the row, the `File` facet, the permission and the quota charge as one statement with no transaction around it, so the ancestor rows and the `Quota` row are released when that statement commits, not when the upload ends. The folder tree is resolved in its own transaction, committed before any file row is written, and `update_size()` skips a change of zero (migration `20261002090000_fix_inclusive_size_rollup`), so creating empty folders locks no ancestors. Every file insert takes its locks in the same order, `Quota` first and then the parent up to the root, so concurrent uploads should queue briefly rather than deadlock. All of this is read from the code; lock waits were still not measured. Reopen the redesign (a statement-level trigger, or a deferred rollup) only on a symptom: lock timeouts, or slow item creation in a large upload. Bulk trash, restore and move still run the trigger inside multi-statement transactions, so a symptom there would also reopen it.
 
 ### 43. Revalidation and thumbnail query overhead
 
@@ -855,6 +858,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-26 | `3ddbf90` | 39 | Part URLs signed a window of 100 at a time, the first window in the create answer; a part whose URL answers 403 is signed again once. Browser, before → after: 10 MB 12 → 10 requests to our server, 100 MB 30 → 10. 16 new tests; 991/0 in 85 files. |
 | 2026-10-26 | `51ca00d` | 40 | An empty file sends no `save_media_metadata` (`hasMetadataToSave`, the indexing machine's `nothingToSave` guard), and each facet write is one `upsert` on `itemId`. 28 new tests; 1019/0 in 87 files. Before → after, 5 runs: 2 → 1 statements per save; 8 racing first saves, 7 refused → 0; a zip's request 1 → 0. |
 | 2026-10-26 | `12e3f74` | 41 | The three `shouldRevalidate` checks for `create_upload_item` (sent only by `fetch`) deleted, and the upload manager no longer spawns the quota machine, which never received an event; the file is kept. 1019/0 in 87 files. Probe before → after: actors created 6 → 5, everything else the same. |
+| 2026-10-30 | no commit (code read) | 42 | Item 42's evidence re-read on `main` at `26bd89c`. Since `265c9d6` the file row and its quota charge are one statement with no transaction, so the ancestor locks the rollup takes are released when it commits; `update_size()` skips a zero change, so new empty folders lock nothing. Declined; nothing measured. |
 
 ## Phased remediation plan
 
@@ -933,7 +937,7 @@ New items from the 8 Oct re-scan, in the order to do them:
 1. **Now:** ~~merge PR #26 (item 31)~~ done 25 Oct (`059d0aa`); ~~add the ownership checks to the three search-index writes (item 32)~~ done 25 Oct (`41f2efe`); ~~stop retrying 4xx answers (item 34)~~ done 25 Oct (`8ac03d9`). Two security gaps and a slow failure, each a small diff with a test.
 2. **On the next upload task (about 1.5 days):** ~~abort cancelled and failed multipart uploads (33~~ done 25 Oct, `8a79e89`; Tigris offers no lifecycle rule to fall back on); settle the `.ts` sniff (37), ~~the metadata writes (40)~~ done 26 Oct (`51ca00d`) and ~~the dead branches (41)~~ done 26 Oct (`12e3f74`); ~~measure the concurrency limit and correct the skill (38)~~ done 26 Oct (`78a63f3`).
 3. **A measured performance pass (3–5 days):** ~~the session cookie cache (35)~~ done 25 Oct, measured; ~~part URLs in bulk (39)~~ done 26 Oct (`3ddbf90`), signed 100 at a time, measured; ~~the folder tree once per batch (36)~~ done 26 Oct (`265c9d6`), measured; and the revalidation and thumbnail overhead (43). Repeat the audit's measured upload before and after; the CLAUDE.md debugging rules require the numbers.
-4. **Only if contention is measured:** the rollup redesign (42) and merging the requests (44). High effort for an unproven payoff.
+4. **Only if contention is measured:** ~~the rollup redesign (42)~~ declined 30 Oct (since `265c9d6` its locks last one statement) and merging the requests (44). High effort for an unproven payoff.
 
 ---
 
@@ -943,4 +947,4 @@ New items from the 8 Oct re-scan, in the order to do them:
 
 *History check 25 Oct: every non-merge commit since 25 Jul that touches `app/`, `server`, `prisma/`, `deploy/`, the Dockerfile, `fly.toml` or `.github/` was matched against this register; commits it doesn't name were read and either added above or left out as feature work (collections sort and covers, invitations, sign-in redesign, item-card rename, styling). Test counts are from CI's log for `bfefbbf`. Items 29 and 30 were read from the commits and the code; neither was reproduced.*
 
-*Upload audit 25 Oct: items 31–44 were taken from `docs/upload-call-audit.md` (10 Oct, on PR #26) and re-checked with targeted reads of `main` at `6173a8c`. Items 36, 42, 43 and 44 are marked "per the audit" and weren't re-read that day. Item 32 was confirmed from the action signatures, not reproduced with a second user. Traced call counts are the audit's; the only measurement behind them is its single 8.46 MB upload.*
+*Upload audit 25 Oct: items 31–44 were taken from `docs/upload-call-audit.md` (10 Oct, on PR #26) and re-checked with targeted reads of `main` at `6173a8c`. Items 36, 42, 43 and 44 are marked "per the audit" and weren't re-read that day. Item 42 was re-read on 30 Oct and declined. Item 32 was confirmed from the action signatures, not reproduced with a second user. Traced call counts are the audit's; the only measurement behind them is its single 8.46 MB upload.*
