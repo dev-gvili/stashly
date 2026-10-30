@@ -21,7 +21,7 @@
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**44 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit) · categories: Code 22, Architecture 13, Infrastructure 4, Test 2, Documentation 2, Dependency 1
+**51 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42) · categories: Code 24, Architecture 17, Infrastructure 4, Test 3, Documentation 2, Dependency 1
 
 **Status at 30 Oct 2026 (latest):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 3 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 37). Item 44 declined, measured: each of the three access checks per file is one statement of about 3 ms and two are deliberate, and merging complete with create would save one request and 0.16–0.39 s per file but not a batch's time, for a 1–2 day rewrite of the upload machines.
 
