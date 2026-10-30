@@ -87,6 +87,12 @@ body = body.replace(/<table>([\s\S]*?)<\/table>/g, (_table, inner) => {
         item += ` <span class="pill g">Resolved ${shortDate(done[1])}</span>`
         remains = `Done${done[2]}: ${remains.slice(done[0].length)}`
       }
+      const declined = remains.match(/^Declined (\d{4}-\d{2}-\d{2}):\s*/)
+      if (declined) {
+        item += ` <span class="pill x">Declined ${shortDate(declined[1])}</span>`
+        const rest = remains.slice(declined[0].length)
+        remains = rest.charAt(0).toUpperCase() + rest.slice(1)
+      }
       tds.splice(0, 5, num, item, score, remains, blocked)
     }
     if (isRegister) {
