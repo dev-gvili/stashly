@@ -11,7 +11,7 @@ The multipart upload system is composed of:
 1. **Parent machine** (`app/machines/upload/upload.machine.ts`) — orchestrates the queue and concurrency (`maxConcurrentUploads`), spawns one file actor per file, runs the post-upload `createDbItem` actor
 2. **File machine** (`app/machines/reviset/file.machine.ts`) — the active per-file actor: checks quota, creates the multipart upload, uploads chunks in parallel (with pause/resume), completes the upload, emits `upload.done`
 3. **Multipart utils** (`app/machines/multipart/s3.mulipart.utils.ts`, `s3.multipart.stream.ts`, `s3.multipart.concurrent.ts`) — side-effect handlers + streaming
-4. **Quota** (`app/machines/quota/quota.machine.ts`, `quota/quota.actors.ts`) — quota machine spawned by the parent, plus the `checkQuota` fetch actor invoked by the file machine. Quota is *charged* on the server, in `createUploadedItem`
+4. **Quota** (`app/machines/quota/quota.actors.ts`) — the `checkQuota` fetch actor, invoked by the file machine as its pre-upload check. Quota is *charged* on the server, in `createUploadedItem`. `quota/quota.machine.ts` is not spawned: the parent spawned it until 2026-10-26, but nothing ever sent it an event (tech-debt #41)
 5. **Backend endpoint** (`app/routes/api/upload.ts`, registered as both `/api/s3/upload` and `/api/s3/multipart`) — handles multipart actions
 
 > `upload/file.machine.ts` is an unused sibling — `upload.machine.ts` imports the file actor from `app/machines/reviset/file.machine.ts`. The machines in `app/machines/actors/` (`multipart.machine.ts`, `queue.machine.ts`, `quota.machine.ts`) are abandoned prototypes that nothing imports.

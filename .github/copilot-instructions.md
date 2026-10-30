@@ -27,7 +27,7 @@ Stashly is a full-stack application built with **React Router**, **Vite**, **Exp
     - `upload.machine.ts`: Parent machine managing overall upload process
     - `file.machine.ts`: Individual file upload state management
     - `queue.machine.ts`: Upload queue orchestration
-    - `quota.machine.ts`: Storage quota tracking and enforcement
+    - `quota/quota.actors.ts`: the `checkQuota` pre-upload check, invoked by the file machine (quota is charged and enforced on the server, in `createUploadedItem`; `quota.machine.ts` is not spawned)
 
 - **Services Layer**: Business logic is encapsulated in services located in `app/.server/services/`. These services orchestrate data access via repositories and enforce business rules and permissions.
   - `WorkspaceItemService.ts`: Manages items within a workspace, handling permissions and lifecycle.

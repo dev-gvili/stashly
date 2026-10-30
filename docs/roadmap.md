@@ -22,7 +22,7 @@ For developer conventions and the actual project structure, see [`CLAUDE.md`](..
 
 ## Phase 2: File Management & Upload — ✅ Shipped
 
-- [x] **Multipart upload** — `app/machines/upload/upload.machine.ts` parent spawns `app/machines/reviset/file.machine.ts` per file (the sibling `app/machines/upload/file.machine.ts` is dead code) plus `app/machines/quota/quota.machine.ts`. Concurrency is gated inside `upload.machine.ts` itself via `maxConcurrentUploads` (schema default 100); the standalone queue-machine copies that used to shadow this were deleted on 2026-08-14.
+- [x] **Multipart upload** — `app/machines/upload/upload.machine.ts` parent spawns `app/machines/reviset/file.machine.ts` per file (the sibling `app/machines/upload/file.machine.ts` is dead code); the file machine runs the quota pre-check (`checkQuota`) itself, and `app/machines/quota/quota.machine.ts` is no longer spawned (2026-10-26). Concurrency is gated inside `upload.machine.ts` itself via `maxConcurrentUploads` (schema default 100); the standalone queue-machine copies that used to shadow this were deleted on 2026-08-14.
 - [x] **Concurrent multipart** — parallel chunk uploads with ETag tracking ([spec](superpowers/specs/2026-04-02-concurrent-multipart-upload-design.md))
 - [x] **Multipart contract tests** — Vitest suite over the streaming layer
 - [x] **Post-upload DB chain** — `createDbItem` actor → `POST /api/items` → `createUploadedItem()`

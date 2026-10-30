@@ -753,7 +753,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
   | events the manager received | 6 | 6 |
   | refused file / next file | `failed` / `pending` | `failed` / `pending` |
 
-  No timing was measured, so no speed-up is claimed. These docs still describe the quota machine as spawned and weren't changed: `docs/upload-multipart.md`, `docs/quota-and-machines.md`, `docs/project-overview.md`, `docs/roadmap.md`, `.github/copilot-instructions.md`.
+  No timing was measured, so no speed-up is claimed. Five more docs described the quota machine as spawned; they were corrected on 30 Oct: `docs/upload-multipart.md`, `docs/quota-and-machines.md`, `docs/project-overview.md`, `docs/roadmap.md`, `.github/copilot-instructions.md`.
 
 ### 42. The size rollup locks every ancestor row
 

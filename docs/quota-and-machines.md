@@ -111,7 +111,7 @@ export function calculateQuota(
 
 ## Quota State Machine
 
-The live machine is `app/machines/quota/quota.machine.ts`, with its actors in `quota.actors.ts` and the fetch helpers in `quota.utils.ts`. It only **reads** quota: one state per read, no write path.
+The machine is `app/machines/quota/quota.machine.ts`, with its actors in `quota.actors.ts` and the fetch helpers in `quota.utils.ts`. It only **reads** quota: one state per read, no write path. **It is not spawned.** The upload manager spawned it until 2026-10-26, but nothing ever sent it an event (tech-debt #41). The file is kept in case quota reads move into one shared actor. What runs is `checkQuota` from `quota.actors.ts`, which `reviset/file.machine.ts` invokes directly.
 
 ```typescript
 // app/machines/quota/quota.machine.ts
@@ -143,7 +143,7 @@ export const quotaMachine = setup({
 })
 ```
 
-`quotaMachine` is registered as an actor of `upload/upload.machine.ts`. `app/machines/actors/quota.machine.ts` is an abandoned prototype that nothing imports.
+Nothing imports `quotaMachine`: `upload/upload.machine.ts` stopped registering and spawning it in `12e3f74`. `app/machines/actors/quota.machine.ts` is an abandoned prototype that nothing imports.
 
 ### Where quota is written
 
