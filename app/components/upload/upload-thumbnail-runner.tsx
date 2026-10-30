@@ -2,18 +2,17 @@
  * Watches the upload queue and hands each finished upload to the work that
  * follows it: search indexing, and the file its thumbnail will be made from.
  *
- * Mounts one watcher per file in the upload panel. Once the file's item
- * exists, the watcher queues its search indexing and holds the file. No
- * thumbnail work starts here: the thumbnail is made when the item's card comes
- * on screen (`useThumbnailWhenVisible`), from the held file.
+ * Subscribes to the upload queue once. When a file's item exists, it queues the
+ * file's search indexing and holds the file. No thumbnail work starts here:
+ * the thumbnail is made when the item's card comes on screen
+ * (`useThumbnailWhenVisible`), from the held file.
  *
  * Also owns the upload-time page refreshes and pauses thumbnail downloads
  * while uploads are moving bytes.
  */
 import { memo, useEffect } from 'react'
 import { useLocation, useNavigate, useNavigation } from 'react-router'
-import { shallowEqual, useSelector } from '@xstate/react'
-import { useUploadFile } from '@/hooks/useUpload'
+import { useSelector } from '@xstate/react'
 import { UploadActorContext } from '@/machines/upload/upload.context'
 import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
 import type { MediaFileStatus } from '@/types/machine.types'
@@ -43,34 +42,28 @@ const IN_FLIGHT: ReadonlySet<MediaFileStatus> = new Set<MediaFileStatus>([
   'paused',
 ])
 
-/**
- * Once the file's item exists, queues its search indexing and holds the file
- * for its thumbnail. Starts no thumbnail work.
- */
-function HoldFileWatcher({ mediaFileId }: { mediaFileId: string }) {
-  const mediaFile = useUploadFile(mediaFileId)
-
-  useEffect(() => {
-    if (!mediaFile) return
-    if (mediaFile.status !== 'itemCreated') return
-    if (handedOverIds.has(mediaFile.id)) return
-    handedOverIds.add(mediaFile.id)
-
-    enqueueIndexing(mediaFile.id, mediaFile.file)
-    holdUploadedFile(mediaFile.id, mediaFile.file)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mediaFile?.status, mediaFile?.id])
-
-  return null
-}
-
 export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
   const upload = UploadActorContext.useActorRef()
-  const fileIds = useSelector(
-    upload,
-    (s) => Array.from(s.context.mediaFiles.keys()),
-    shallowEqual,
-  )
+
+  // Once a file's item exists, queue its search indexing and hold the file for
+  // its thumbnail. One subscription for the whole queue: a watcher component
+  // per file made this component re-create one element per file on every
+  // render, and it renders on every created row (tech-debt item 52).
+  useEffect(() => {
+    const handOver = (snapshot: ReturnType<typeof upload.getSnapshot>) => {
+      for (const mediaFile of snapshot.context.mediaFiles.values()) {
+        if (mediaFile.status !== 'itemCreated') continue
+        if (handedOverIds.has(mediaFile.id)) continue
+        handedOverIds.add(mediaFile.id)
+
+        enqueueIndexing(mediaFile.id, mediaFile.file)
+        holdUploadedFile(mediaFile.id, mediaFile.file)
+      }
+    }
+    handOver(upload.getSnapshot())
+    const subscription = upload.subscribe(handOver)
+    return () => subscription.unsubscribe()
+  }, [upload])
 
   // Pull newly-created items into the list with ONE debounced revalidation per
   // burst, not one per file. Previously each file that reached `itemCreated`
@@ -136,11 +129,5 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
     { delayMs: REVALIDATE_DEBOUNCE_MS }
   )
 
-  return (
-    <>
-      {fileIds.map((id) => (
-        <HoldFileWatcher key={id} mediaFileId={id} />
-      ))}
-    </>
-  )
+  return null
 })

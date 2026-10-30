@@ -272,40 +272,73 @@ export const Trigger = React.forwardRef<
 )
 Trigger.displayName = 'Trigger'
 
-export const FileList = React.forwardRef<
-  React.ComponentRef<'ul'>,
-  React.ComponentPropsWithoutRef<'ul'>
->(({ children, className, id, ...props }, forwardRef) => {
-  id = id || React.useId()
+/** A row is 48 px plus the 8 px `space-y-2` gap (measured in the panel). */
+const ROW_PITCH = 56
+/** The list's viewport height: `h-40`. */
+const LIST_HEIGHT = 160
+/** Rows mounted beyond the visible ones on each side, so scrolling shows no gap. */
+const OVERSCAN = 4
 
-  // Ids only — subscribing to the file objects re-rendered every row on every
-  // progress tick, which is what tripped React's update-depth limit at 20+ files.
-  const fileIds = useUploadFileIds()
+export const FileList = React.memo(
+  React.forwardRef<
+    React.ComponentRef<'ul'>,
+    React.ComponentPropsWithoutRef<'ul'>
+  >(({ children, className, id, ...props }, forwardRef) => {
+    id = id || React.useId()
 
-  return (
-    <ScrollArea className={cn('h-40 w-full rounded-lg')}>
-      <div className="p-1.5">
-        <ul
-          id={id}
-          ref={forwardRef}
-          className={cn(Styles.FileList, className)}
-          {...props}
-        >
-          {/* Plain rows, no `layout` animation: framer-motion re-measures every
-              layout element when any of them changes, so a 650-file batch made
-              each status change cost the whole list (item 52). */}
-          {fileIds.map((mediaFileId) => (
-            <Item
-              mediaFileId={mediaFileId}
-              key={mediaFileId}
-              id={`media-file-${mediaFileId}`}
-            />
-          ))}
-        </ul>
-      </div>
-    </ScrollArea>
-  )
-})
+    // Ids only — subscribing to the file objects re-rendered every row on every
+    // progress tick, which is what tripped React's update-depth limit at 20+ files.
+    const fileIds = useUploadFileIds()
+
+    // Only the rows in view are mounted; spacers stand in for the rest. The
+    // list shows about three rows, and mounting one per file (about 2 ms each,
+    // measured) made every change to it cost the whole batch (item 52).
+    const [scrollTop, setScrollTop] = React.useState(0)
+    const last = Math.min(
+      fileIds.length,
+      Math.ceil((scrollTop + LIST_HEIGHT) / ROW_PITCH) + OVERSCAN
+    )
+    const first = Math.min(
+      last,
+      Math.max(0, Math.floor(scrollTop / ROW_PITCH) - OVERSCAN)
+    )
+
+    return (
+      <ScrollArea
+        className={cn('h-40 w-full rounded-lg')}
+        // Scroll events don't bubble; the capture phase still reaches the root.
+        onScrollCapture={(event) =>
+          setScrollTop((event.target as HTMLElement).scrollTop)
+        }
+      >
+        <div className="p-1.5">
+          <div aria-hidden style={{ height: first * ROW_PITCH }} />
+          <ul
+            id={id}
+            ref={forwardRef}
+            className={cn(Styles.FileList, className)}
+            {...props}
+          >
+            {/* Plain rows, no `layout` animation: framer-motion re-measures every
+                layout element when any of them changes, so a 650-file batch made
+                each status change cost the whole list (item 52). */}
+            {fileIds.slice(first, last).map((mediaFileId) => (
+              <Item
+                mediaFileId={mediaFileId}
+                key={mediaFileId}
+                id={`media-file-${mediaFileId}`}
+              />
+            ))}
+          </ul>
+          <div
+            aria-hidden
+            style={{ height: (fileIds.length - last) * ROW_PITCH }}
+          />
+        </div>
+      </ScrollArea>
+    )
+  })
+)
 FileList.displayName = 'Items'
 
 const Item = React.memo(
