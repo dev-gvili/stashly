@@ -25,6 +25,8 @@
 
 **Status at 30 Oct 2026 (latest):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 3 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 37). Item 44 declined, measured: each of the three access checks per file is one statement of about 3 ms and two are deliberate, and merging complete with create would save one request and 0.16–0.39 s per file but not a batch's time, for a 1–2 day rewrite of the upload machines.
 
+**Status at 31 Oct 2026 (item 52 resolved):** the upload panel mounts only the rows in view and the runner has no per-file components (`999b5a1`). The same 650-file upload went 233 → 90 s after `ec4b521`'s 698 → 233 s, with main-thread blocking at 0% of it, from 70% at the start of the day; rows per minute no longer fall as the batch grows. Isolating the per-file subscriptions was measured first and changed nothing, so it was reverted. Item 45 stays open.
+
 **Status at 31 Oct 2026 (item 52 partly done):** the upload panel's rows no longer run framer-motion's layout animation (`ec4b521`). The same 650-file upload took 243 s instead of 698 s, with main-thread blocking at 38% of it instead of 70%, and the folder reloaded 9 times instead of 139 (rows now outrun the 700 ms debounce; item 45's mechanism is unchanged). Blocking still grows as the batch does, so item 52 stays open.
 
 **Status at 31 Oct 2026 (item 45 measured):** item 45 reranked 12 → 28 (High) on measurements. Two runs of the 650-file `app/` upload made 146 and 139 full folder reloads, one per 4.6 files, with a reload in flight 27–28% of the upload, each one sending the folder back to its first page. The 700 ms debounce can't merge rows that arrive 1.1 s apart, and the indexing revalidate adds 33–47 more. The same runs found item 52: the main thread spends 99% of the upload in long animation frames, and rows per minute fall from about 150 to about 35 as the batch grows.
@@ -110,7 +112,7 @@
 | 49 | **new** Nothing applies the size log when a server starts | 15 | Reproduce (deltas pending, process restarted, no upload); then start the rollup loop at server start | — |
 | 50 | **new** No test guards the deferred `Folder_itemId_fkey` | 20 | A live-DB check that the constraint is still deferred, so a `db push` or a regenerated migration that drops it fails | — |
 | 51 | **new** One held row lock stalls the size rollup for every user | 12 | Run item 42's 32-uploader benchmark with a large trash or move in the same tree; if the rollup stalls, batch and lock per owner tree | — |
-| 52 | **new** The main thread is saturated for the whole upload | 24 | Panel rows' layout animation removed 31 Oct (upload 698 → 243 s, blocking 70% → 38%); blocking still grows with the batch: measure the per-file machine subscriptions next | — |
+| 52 | ~~The main thread is saturated for the whole upload~~ | 24 | Resolved 2026-10-31 (`ec4b521`, `999b5a1`): no layout animation, only visible upload rows mounted, no per-file watchers; 650-file upload 698 → 90 s, main-thread blocking 70% → 0%, measured | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -169,7 +171,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 49 | Nothing applies the size log when a server starts | Code | 2 | 1 | 1 | **15** (Low) | 0.5 day | New 30 Oct |
 | 50 | No test guards the deferred `Folder_itemId_fkey` | Test | 2 | 2 | 1 | **20** (Medium) | 0.5 day | New 30 Oct |
 | 51 | One held row lock stalls the size rollup for every user | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
-| 52 | The main thread is saturated for the whole upload | Architecture | 4 | 4 | 3 | **24** (Medium) | 2–3 days | Partly done (31 Oct) |
+| 52 | ~~The main thread is saturated for the whole upload~~ | Architecture | 4 | 4 | 3 | **24** (Medium) | 2–3 days | Resolved 31 Oct |
 
 ## Details
 
@@ -968,6 +970,20 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 
   - **Not done:** blocking still rises as the batch grows (17%, 35%, 48%, 52% of successive minutes), and rows per minute still fall (261, 163, 119, 101), so some per-event cost that grows with the number of files remains. The long frames still sit in the upload actors' promise continuations: `s3.mulipart.utils.ts` 83 s, `sniff.ts` 72 s, `db.actors.ts` 45 s. Next suspects, from the code and not yet measured: one machine subscription per file (each panel row, and a `HoldFileWatcher` per file in `upload-thumbnail-runner.tsx`), plus selectors that scan every file, all re-run on every upload event.
   - The rows lost their 0.2 s enter and exit animation.
+- **Status 2026-10-31 (night): resolved** (`999b5a1`). Measured with the same harness throughout (`.claude/evidence/p52b-before.json`, `p52c-after.json`, local):
+  - **Dead end, kept so it isn't retried: isolating the subscriptions.** A temporary `inspect` probe counted 3,911 manager snapshots per upload, about six per file and only 651 of them progress ticks. The three per-file hooks were moved onto one subscription that notified only the file that changed. Blocking went 88 → 86 s and the per-minute rise was unchanged, so it was reverted. A selector that returns the same value never reaches React; the cost was the renders that did happen.
+  - **The cause: React work per file, redone on almost every status change.** `UploadPanel` re-renders whenever the upload counts change, and the unmemoized `FileList` rebuilt one `<Item>` per file each time, although the list is `h-40` and shows about three rows. With 651 rows in the panel, mounting them took one 1,422 ms frame, and one panel state change with them mounted took 526 ms. `UploadThumbnailRunner` likewise rendered one `HoldFileWatcher` per file and re-rendered on every created row.
+  - **Fix:** `FileList` is memoized and mounts only the rows in view plus four either side (fixed 56 px pitch, spacers for the rest; scrolling to row 300 and to the end checked in the browser). The runner hands each created file to indexing and the held-file store from one subscription to the upload actor, with no per-file components. Keyboard focus now reaches only the mounted rows.
+
+  |  | before `ec4b521` | after `ec4b521` | after `999b5a1` |
+  |---|---|---|---|
+  | upload duration | 698 s | 233 s | 90 s |
+  | rows created per minute | 56 | 168 | 434 |
+  | main-thread blocking | 489 s (70%) | 88 s (38%) | 0 s (0%) |
+  | long animation frames | 2,436 | 1,539 | 23 |
+  | long frame p50 / p90 | 237 / 574 ms | 132 / 224 ms | 64 / 71 ms |
+
+  - Rows per minute no longer fall as the batch grows (366 in the first minute, 285 in the remaining 30 s). `pnpm test` 1043/0 in 89 files; `upload.spec.ts` and `thumbnail-machine.spec.ts` 26/26; type gate exit 0. All measured on the dev server; production wasn't measured.
 
 ## Changes since the audit
 
