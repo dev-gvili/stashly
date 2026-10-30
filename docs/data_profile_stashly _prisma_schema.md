@@ -9,12 +9,12 @@
 - **Generator:** `prisma-client` (ESM, `.ts` output → `app/prisma/`), preview features `nativeDistinct`, `relationJoins`, `postgresqlExtensions`
 - **Datasource:** PostgreSQL; schema split across `prisma/models/*.prisma`, merged via `prisma.config.ts`
 
-### Model Inventory (56 models)
+### Model Inventory (57 models)
 
 | Domain | Models |
 |--------|--------|
 | **Identity / auth** | `User`, `Account`, `Session`, `Verification` |
-| **Storage core** | `Item`, `LockedItem`, `Drive`, `Quota`, `Trash`, `TrashItem` |
+| **Storage core** | `Item`, `LockedItem`, `Drive`, `Quota`, `Trash`, `TrashItem`, `ItemSizeDelta` (upload size log, see *Upload size log*) |
 | **Facets** | `File`, `Folder`, `Image`, `Video`, `Audio`, `Pdf`, `Markdown` |
 | **Collections** | `CollectionMember` (collection = `Item` with `type='collection'`) |
 | **Views / previews** | `View`, `Thumbnail` |
@@ -164,17 +164,19 @@ ShareLink ──── Permission[] (link-based access)
 
 ### Custom PostgreSQL Functions & Triggers
 
-Six PL/pgSQL functions back ten triggers. Five of them maintain denormalized rollups (size, child count) on parent items and on collections, all server-side so application code never recomputes these values; the sixth bridges `Notification` writes to the live SSE feed via `pg_notify`. Every function is `CREATE OR REPLACE`; the table below lists each at its **current** definition.
+Eight PL/pgSQL functions back ten triggers and the upload size log. Most maintain denormalized rollups (size, child count) on parent items and on collections, all server-side so application code never recomputes these values; `notify_notification_change()` bridges `Notification` writes to the live SSE feed via `pg_notify`. Every function is `CREATE OR REPLACE`; the table below lists each at its **current** definition.
 
 #### Function inventory
 
 | Function | Current migration | Purpose |
 |----------|-------------------|---------|
-| `update_size()` | `20261002090000_fix_inclusive_size_rollup` | Maintains `Item.size` / `Item.inclusiveSize` on the **parent** item |
+| `update_size()` | `20261030160000_upload_size_inline_when_idle` | Maintains `Item.size` / `Item.inclusiveSize` on the **parent** item; logs an uploaded row instead while the database is busy (see *Upload size log*) |
 | `update_child_count()` | `20251214024737_update_triggers_for_inclusive_counts` | Maintains `Folder.childCount` / `Folder.inclusiveChildCount` on the **parent** folder |
 | `update_collection_size()` | `20260526000000_user_wipe_trigger_bypass` | Maintains a collection `Item.size` when members are added/removed |
 | `sync_item_size_to_collections()` | `20260526000000_user_wipe_trigger_bypass` | Propagates a member item's size change to every parent collection |
 | `stashly_is_wiping_user(target_user_id TEXT)` | `20260526000000_user_wipe_trigger_bypass` | `STABLE` helper — true when the session is doing a full user wipe (used as a `WHERE` guard inside the three size functions) |
+| `apply_item_size_deltas(max_deltas, wait_for_lock)` | `20261030140000_upload_size_delta_log` | Applies pending `ItemSizeDelta` rows: each affected folder written once per run, one run at a time database-wide |
+| `recount_folder_sizes(root)` | `20261030140000_upload_size_delta_log` | Recounts a subtree's folder sizes from its files: the test oracle and repair tool |
 | `notify_notification_change()` | `20260724000000_notification_notify` | Emits `pg_notify('notifications', payload)` on every `Notification` write so the singleton `LISTEN` client can fan the change out over SSE |
 
 #### Trigger inventory
@@ -215,6 +217,22 @@ A child contributes to its parent:
 Before `20261002090000_fix_inclusive_size_rollup` the function passed a folder's `size` change up as an `inclusiveSize` change and ignored `inclusiveSize` changes. As a result, an ancestor more than one level above a trashed item lost that item's bytes from its `inclusiveSize` while the item sat in trash, and a moved folder's trashed contents were never counted under its new parent. That migration also recounts every folder once.
 
 Every parent UPDATE is additionally guarded by `AND NOT stashly_is_wiping_user("ownerId")` so a full user wipe doesn't deadlock against rows the same statement is deleting (see *User-wipe bypass* below).
+
+Since `20261030140000_upload_size_delta_log` the function returns at once while `stashly.rollup` is `on` (the rollup's own writes). Since `20261030160000_upload_size_inline_when_idle` its INSERT branch also decides, for a row with an `uploadId`, whether to cascade now or log it (see *Upload size log*).
+
+#### Upload size log (`ItemSizeDelta`)
+
+An uploaded file used to rewrite every folder above it, one row at a time, inside its own INSERT, so uploaders into a shared folder queued on the owner's ancestor rows (measured: 32 uploaders, ~2,000 files/s, 21 of 32 waiting on a lock). Now:
+
+| Step | What happens |
+|------|--------------|
+| INSERT with `uploadId` (`insertUploadedItem`), database **busy**: deltas pending, or the rollup's advisory lock taken | `update_size()` appends `(parentId, active, inclusive)` and returns. Pending deltas are checked first, so a busy upload never takes the lock and the rollup can always get it |
+| Same INSERT, database **idle**: nothing pending, and the lock is free | `update_size()` takes the lock without waiting, cascades at once like any insert, and holds the lock until the statement commits: one such cascade at a time, never overlapping a rollup |
+| Every 250 ms (`app/.server/size-rollup.ts`, one loop per server process) | `apply_item_size_deltas()` claims up to 5,000 rows, walks each parent's **current** ancestors (the active part stops at a trashed folder, as in `update_size()`), and writes each affected row once, with `stashly.rollup` on so the writes don't cascade |
+| Single flight | A database-wide advisory lock: a second caller skips. A run that waits over 100 ms for a row lock (a user's trash, move or delete) gives up and leaves its rows for the next run |
+| Everything else | Folder creation, copy (`recursiveCopy` clears `uploadId`), trash, restore, move, delete and size changes keep the per-row cascade. Deltas are additive and those paths only cascade what was already applied, so the two compose |
+
+Under load a folder's size trails its uploads by about one interval; idle uploads land at once. An upload deleted, moved or trashed before the next run leaves its old folders short, even negative, until that run (≤ ~250 ms). A delta whose folder was deleted is dropped. Tests call `flushItemSizes()` (`app/.server/__tests__/helpers/flush-item-sizes.ts`) before reading a folder's size; no loop runs under Vitest. `recount_folder_sizes(root)` repairs a tree by hand; it returns the folders it rewrote, which undercounts those put right by the cascade from below. Measured (tech-debt item 42): one uploader, a 650-file upload, 0 deltas logged and size work at today's level (757 ms vs 615 ms for 646 files; logging every upload instead cost 2,125 ms); 32 uploaders into one shared folder 2,017 → 8,334 files/s, p95 52 → 5.8 ms, lock waiters 20.7 → 0.06, oldest unapplied size change ≤ 410 ms. Logging every upload (`20261030140000` alone) made one uploader 3.5× costlier, and a first version that tried the lock before the pending check starved the rollup under load.
 
 #### `update_child_count()` — Folder child count maintenance
 
@@ -291,7 +309,9 @@ Firing at the DB level means *every* writer pushes live — `createNotification(
 | `20260526000000_user_wipe_trigger_bypass` | Added `stashly_is_wiping_user()`; re-issued `update_size()`, `update_collection_size()`, `sync_item_size_to_collections()` with the wipe-bypass `WHERE` guard |
 | `20260724000000_notification_notify` | Added `notify_notification_change()` + the `notification_change_notify` trigger on `Notification` |
 | `20260826000000_defer_folder_item_fk` | Made `Folder_itemId_fkey` `DEFERRABLE INITIALLY DEFERRED` so `update_child_count()`'s DELETE branch can't race the `ON DELETE CASCADE` on the same facet row (see the ⚠️ note under `update_child_count()`). No function or trigger changed |
-| `20261002090000_fix_inclusive_size_rollup` | **Current** — rewrote `update_size()` so `inclusiveSize` follows each child's `inclusiveSize` (folders) or `size` (files) and travels up on its own; recounted every folder's `size` / `inclusiveSize` from the files beneath it, deepest level first |
+| `20261002090000_fix_inclusive_size_rollup` | Rewrote `update_size()` so `inclusiveSize` follows each child's `inclusiveSize` (folders) or `size` (files) and travels up on its own; recounted every folder's `size` / `inclusiveSize` from the files beneath it, deepest level first |
+| `20261030140000_upload_size_delta_log` | `ItemSizeDelta`, `log_upload_size()` + `item_size_log_upload`, `update_size()` guards, `apply_item_size_deltas()`, `recount_folder_sizes()`: uploaded files reach their folders through a rollup instead of a per-row cascade |
+| `20261030160000_upload_size_inline_when_idle` | **Current** — `update_size()` cascades an upload at once while the database is idle and logs it while busy (deltas pending checked first, then the rollup lock tried); `log_upload_size()` and `item_size_log_upload` dropped |
 
 ### Recommended Explorations
 

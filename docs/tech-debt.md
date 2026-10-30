@@ -25,6 +25,8 @@
 
 **Status at 30 Oct 2026 (latest):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 3 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 37). Item 44 declined, measured: each of the three access checks per file is one statement of about 3 ms and two are deliberate, and merging complete with create would save one request and 0.16–0.39 s per file but not a batch's time, for a 1–2 day rewrite of the upload machines.
 
+**Status at 30 Oct 2026 (night, after item 42):** 30 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined (44) · 2 open from the audit (12, 13) · 7 new and open (19, 20, 22, 37, 45–47). Item 42 resolved (migrations `20261030140000_upload_size_delta_log`, `20261030160000_upload_size_inline_when_idle`), measured: an upload cascades at once while the database is idle and goes through a size log applied by one rollup at a time while it is busy. 32 uploaders into one shared folder 2,017 → 8,334 files/s, p95 52 → 5.8 ms, lock waiters 20.7 → 0.06, ancestor writes 100,512 → 2,821; one uploader unchanged (0 deltas logged, size work 757 ms vs 615 ms). Items 45–47 are its follow-ups.
+
 **Status at 30 Oct 2026 (after item 43):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 2 declined · 2 open from the audit (12, 13) · 5 new and open (19, 20, 22, 37, 44). Item 43 resolved (`5155d96`, `0828f99`, `d7592ff`), measured: a file whose row lands after the reload's debounce now shows in the grid without a manual reload (0 → 6 of 6), the layout no longer queries workspaces on every navigation (20 → 0 per 20), and a thumbnail call checks access in one statement (3 → 1).
 
 **Status at 30 Oct 2026 (after item 42):** 28 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 2 declined · 2 open from the audit (12, 13) · 6 new and open (19, 20, 22, 37, 43, 44). Item 42 declined: since `265c9d6` an upload's ancestor and quota locks last one statement, not the whole upload, so the 3–5 day rollup redesign waits for a measured symptom. This was read from the code; lock waits were not measured.
@@ -90,9 +92,12 @@
 | 39 | ~~One presign request per part~~ | 12 | Resolved 2026-10-26 (`3ddbf90`): part URLs signed 100 at a time, the first 100 in the create answer; 100 MB upload 30 → 10 requests to our server, measured | — |
 | 40 | ~~Media-metadata writes do extra work~~ | 10 | Resolved 2026-10-26 (`51ca00d`): a file with nothing to save sends no POST; one upsert per facet; 2 → 1 statements per save, 7 of 8 racing first saves refused → 0, measured | — |
 | 41 | ~~Dead upload branches~~ | 10 | Resolved 2026-10-26 (`12e3f74`): the 3 unreachable `shouldRevalidate` checks deleted, the quota machine no longer spawned (file kept); actors per upload manager 6 → 5, measured | — |
-| 42 | ~~Size rollup locks every ancestor row~~ | 10 | Declined 2026-10-30, then measured: 646-file upload, 3,141 ancestor rewrites, 0.48 s database time (0.07% of the upload). `WHEN` clauses tried and undone (+9.5% time). A batched-rollup prototype: 192 rewrites, 434 → 129 ms, identical sizes. 32 uploaders into one shared folder: about 2,000 → 9,000 files/s with a single-flight timed rollup, lock waits 21 → 0 | Owner's decision |
+| 42 | ~~Size rollup locks every ancestor row~~ | 10 | Resolved 2026-10-30: busy uploads go through a size log applied by one rollup at a time; 32 uploaders into one shared folder 2,017 → 8,334 files/s, lock waiters 20.7 → 0.06, one uploader unchanged, measured | — |
 | 43 | ~~Revalidation and thumbnail query overhead~~ | 9 | Resolved 2026-10-30 (`5155d96`, `0828f99`, `d7592ff`): late rows no longer lost from the grid (0 → 6 of 6), workspace scans per 20 navigations 20 → 0, access statements per uploaded image 9 → 3, measured | — |
 | 44 | ~~Separate complete and create requests~~ | 9 | Declined 2026-10-30: each access check is 1 statement (~3 ms) and two of the three are deliberate; merging saves 1 request and 0.16–0.39 s per file, not a batch's time, for a 1–2 day rewrite (measured); reopen if per-file latency becomes a complaint | — |
+| 45 | **new** Folder reloads during an upload | 12 | 16 to 148 full folder reloads per 650-file upload, each 11–14 queries; the spread isn't explained | — |
+| 46 | **new** Session cookie expiring mid-upload | 15 | Measure the lookup burst at 100 concurrent uploads; refresh the session during long uploads if it matters | — |
+| 47 | **new** Per-file shared rows left on the upload path | 12 | The direct parent's `Folder.childCount` and (if a collaborator's upload charges the owner) the `Quota` row; measure with all uploaders in one folder | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -141,9 +146,12 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 39 | ~~One presign request per 5 MiB part~~ | Architecture | 2 | 1 | 2 | **12** (Low) | 0.5–1 day | Resolved 26 Oct |
 | 40 | ~~Media-metadata writes do extra work~~ | Code | 1 | 1 | 1 | **10** (Low) | 2 h | Resolved 26 Oct |
 | 41 | ~~Dead upload branches~~ | Code | 1 | 1 | 1 | **10** (Low) | 2 h | Resolved 26 Oct |
-| 42 | The size rollup locks every ancestor row | Architecture | 2 | 3 | 4 | **10** (Low) | 3–5 days | Declined 30 Oct |
+| 42 | ~~The size rollup locks every ancestor row~~ | Architecture | 2 | 3 | 4 | **10** (Low) | 3–5 days | Resolved 30 Oct |
 | 43 | ~~Revalidation and thumbnail query overhead~~ | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | Resolved 30 Oct |
 | 44 | Upload complete and item creation are separate requests | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | Declined 30 Oct |
+| 45 | Folder reloads during an upload vary from 16 to 148 | Architecture | 2 | 1 | 2 | **12** (Low) | 0.5–1 day | New 30 Oct |
+| 46 | A session cookie can expire in the middle of an upload | Architecture | 2 | 1 | 1 | **15** (Low) | 0.5 day | New 30 Oct |
+| 47 | Per-file shared rows left on the upload path | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
 
 ## Details
 
@@ -798,6 +806,21 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
     Today, adding uploaders lowers throughput (8 uploaders: 2,548–2,807 files/s; 32: about 2,000) and p95 rises tenfold, because every insert passes the same ancestor rows one at a time. A delta log alone only moved that queue into the rollups, each started by an uploader and queueing on the same rows (826 rollups, median 258 ms). One rollup at a time removes it: uploaders never wait on a lock, and at 32 uploaders the database takes about 4.5× the files per second, limited by CPU rather than locks.
   - **Design the numbers point to:** inserts append to a delta log, and a single-flight rollup (`pg_try_advisory_xact_lock`, skip if busy) applies it on a short timer. A timer bounds how stale folder sizes get at any arrival rate; a rollup every N files would leave a slow upload (about 1 file/s, as measured) up to N seconds stale. Bulk trash, restore, move and delete keep today's per-row cascade.
   - **Open decisions before building it:** the interval, and whether the timer polls or is woken by `NOTIFY` (the notification feed already runs `LISTEN`); whether every insert is deferred (then tests and code that read a folder size right after an insert need a flush); keying the single-flight lock per owner tree or globally. It is a schema change (the delta table), a trigger change and a new rollup path, so it starts with a plan for the owner's approval.
+- **Status 2026-10-30 (night): resolved.** Plan `docs/superpowers/plans/2026-10-30-size-rollup-delta-log.md`; migrations `20261030140000_upload_size_delta_log` (the `ItemSizeDelta` table, `apply_item_size_deltas()`, `recount_folder_sizes()`) and `20261030160000_upload_size_inline_when_idle` (the decision in `update_size()`); `app/.server/size-rollup.ts` (a 250 ms loop per server process, started by the first `createUploadedItem`, with `stashly_size_rollup_*` metrics); `recursiveCopy` clears `uploadId`. Evidence `.claude/evidence/p42/` (local).
+  - **Design:** on INSERT of a row with an `uploadId`, `update_size()` logs it when deltas are pending or the rollup's advisory lock is taken (busy), and otherwise takes the lock and cascades at once (idle). One rollup at a time, database-wide, writes each affected folder once and gives way after 100 ms to a row lock held by a user's trash, move or delete. Every other path keeps the per-row cascade; deltas are additive, so the two compose. Proved in rolled-back transactions (23/23 and 12/12 checks, rollbacks rehearsed) and by 16 new cases in `item-size-trigger.test.ts` and `size-rollup.test.ts`.
+  - **Measured**, same harnesses as the baseline (live: the 646/650-file `app/` upload with `track_functions = pl`; concurrency: W uploaders, one connection each, `Item` rows only, one shared folder; exact sizes in every run):
+
+    |  | before | logging every upload | **shipped (log only while busy)** |
+    |---|---|---|---|
+    | one uploader: size work (sum of trigger and rollup self time) | 615 ms | 2,125 ms (580 rollups, 1.1 deltas each) | **757 ms** (0 logged) |
+    | one uploader: `Item` updates | 3,277 | 2,868 | 3,290 |
+    | 8 uploaders, one shared folder | 2,682 files/s, 4.5 waiting | 5,638 | **5,942**, 0 waiting |
+    | 32 uploaders | 2,017 files/s, p95 52 ms, p99 86 ms, 20.7 waiting | 8,419, p95 6.3 ms | **8,334, p95 5.8 ms, p99 7.2 ms, 0.06 waiting** |
+    | 32 uploaders: ancestor writes | 100,512 | 3,630 | **2,821** |
+    | 32 uploaders: oldest unapplied size change | none | 401 ms | **410 ms** |
+
+  - **Two dead ends on the way, kept so they aren't retried:** logging every upload made one uploader 3.5× costlier, because each 250 ms rollup found about one delta and its fixed cost (~3 ms) replaced a 0.75 ms cascade. The first version of the idle/busy decision tried the lock before checking for pending deltas, so busy uploads held it until they committed and the rollup never got it (32 uploaders: 0 of 10 rollups ran, 15,670 deltas left for the end); checking pending deltas first fixed it (8 of 9 ran).
+  - **Known limits:** sizes trail uploads by up to ~0.4 s under load, and an upload deleted, moved or trashed before its delta is applied briefly leaves its old folders short, even negative. The benchmark didn't include the `File`, `Permission` and quota writes. Follow-ups are items 45–47.
 
 ### 43. Revalidation and thumbnail query overhead
 
@@ -833,6 +856,30 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
   - **The check:** `assertCanUploadTo` has been `assertItemsAccess` since 2 Oct, a single `item.count`: 1 statement per call in 5 of 5 runs, about 3 ms warm, so about 9 ms per file for all three. Two of the three are deliberate. The one at `complete` lets a revoke abort the multipart upload before S3 assembles it (item 33), and the one when the row is written is the authorization CLAUDE.md requires in the action layer. Removing either would save about 3 ms and lose that.
   - **The two requests:** per file, `complete-multipart-upload` took 249–537 ms (S3), then 44–113 ms passed in the browser before `create_upload_item`, which took 120–288 ms. Together they are 12 of the batch's 46 requests to our server. Merging would save one request and 0.16–0.39 s per file between the bytes being stored and the row existing, plus a network round trip in production. Files upload in parallel, though, so a batch's wall time barely moves. The merge would rewrite the boundary between the file machine and the db machine (which keeps a failed row from stopping the batch), the `done` → `itemCreated` flow, the db machine's 29 tests and the upload E2E tests: the estimated 1–2 days.
   - **Reopen** if the time for a new file to appear becomes a real complaint, for example over production round trips.
+
+### 45. Folder reloads during an upload vary from 16 to 148
+
+*Architecture debt · Impact 2 · Risk 1 · Effort 2 → **12** · est. 0.5–1 day · source: item 42 measurements, 30 Oct*
+
+- **Evidence:** the post-upload reload (`navigate` to the same URL, 700 ms after the count of created files settles) and the indexing reload together made 148 (25 Oct) and 136 (30 Oct) full folder `.data` loads during a 646-file `app/` upload, and 16 in a 650-file run later the same evening. Each runs 11–14 queries and returns ~34 KB. The 700 ms debounce re-arms whenever files finish about once a second, which explains a high count but not the spread.
+- **Fix:** first find why the count varies; then cap reloads during an active upload (at most one every few seconds, plus one at the end) and measure. Patching single rows needs a client data layer the app doesn't have.
+- **Status 2026-10-30: open.**
+
+### 46. A session cookie can expire in the middle of an upload
+
+*Architecture debt · Impact 2 · Risk 1 · Effort 1 → **15** · est. 0.5 day · source: external critique, 30 Oct*
+
+- **Evidence:** the 5-minute session cache cookie expires mid-upload; every server request already in flight then does one session lookup before the refreshed cookie lands. Part uploads never reach our server (presigned PUTs to Tigris), so the burst is bounded by our own requests in flight (32 at peak in the 25 Oct audit). Not measured at 100 concurrent uploads.
+- **Fix:** measure the burst; if it matters, the client calls `get-session` about every 4 minutes while uploads are active. S3 signatures can't replace the session: our create, complete and item calls check access and charge quota.
+- **Status 2026-10-30: open.**
+
+### 47. Per-file shared rows left on the upload path
+
+*Architecture debt · Impact 2 · Risk 2 · Effort 3 → **12** · est. 1–2 days · source: item 42, 30 Oct*
+
+- **Evidence:** after item 42 an upload still writes, in its own statement, the direct parent's `Folder` row (`childCount`, via `update_child_count()`) and the uploader's `Quota` row. Many uploaders dropping files into the same folder would queue on that `Folder` row; if a collaborator's upload into a shared folder charges the owner's quota, the owner's `Quota` row is shared too. Item 42's benchmark had each uploader in its own subfolder and wrote no quota, so neither was exercised.
+- **Fix:** read whose quota a collaborator's upload charges; measure with all uploaders in one folder; if either queues, the same idle/busy log applies.
+- **Status 2026-10-30: open.**
 
 ## Changes since the audit
 
@@ -916,6 +963,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-30 | `d7592ff` | 43, 20 | The post-upload reload counts only `itemCreated`. With item creation held 1.5 s: rows in the reload 0 → 6 of 6, cards on screen 0 → 6. New E2E test, red on the old count, 3/3 green. 1022/0 in 87 files. |
 | 2026-10-30 | no commit (measurement) | 42 | 646-file `app/` upload on `638f455`: 3,994 `update_size()` calls, 3,141 ancestor rewrites, 0.48 s database time, 95% HOT, no `Item` autovacuum, ~1.2% of WAL. `WHEN` clauses on the `Item` triggers: calls 11,129 → 4,504 but trigger time 462 → 506 ms in rolled-back runs; undone, never committed. Batched-rollup prototype, every 25 files: rewrites 3,141 → 192, size work 434 → 129 ms, identical sizes in 20 runs. Awaits a decision. |
 | 2026-10-30 | no commit (measurement) | 42 | Concurrency, one shared folder, prototype session-gated on the dev database and restored after: 32 uploaders, today 1,837–2,047 files/s with 21 of 32 waiting on locks; rollup by each 25th uploader 2,478–2,599; single-flight 9,603; single-flight 200 ms timer 8,981 files/s, 0 waiting, 3,644 ancestor updates instead of 100,512, sizes at most 342 ms stale. Exact sizes in all 27 runs. |
+| 2026-10-30 | this change | 42, 45–47 | Item 42 resolved: migrations `20261030140000_upload_size_delta_log` and `20261030160000_upload_size_inline_when_idle`, `app/.server/size-rollup.ts`, 16 new test cases (1038/0 in 88 files). Measured: one uploader 0 deltas logged and size work 757 ms (615 before); 32 uploaders into one shared folder 2,017 → 8,334 files/s, 0.06 lock waiters, 2,821 ancestor writes instead of 100,512. Logging every upload (3.5× costlier for one uploader) and a lock-first decision that starved the rollup were measured and replaced. Items 45–47 registered. |
 | 2026-10-30 | no commit (measurement) | 44 | On `aa91fb4`: `assertCanUploadTo` is 1 statement (~3 ms warm), three per file. Per file, complete 249–537 ms, a 44–113 ms browser gap, create 120–288 ms; 12 of the batch's 46 requests. Declined. |
 
 ## Phased remediation plan
