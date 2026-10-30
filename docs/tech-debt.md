@@ -25,6 +25,8 @@
 
 **Status at 30 Oct 2026 (latest):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 3 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 37). Item 44 declined, measured: each of the three access checks per file is one statement of about 3 ms and two are deliberate, and merging complete with create would save one request and 0.16–0.39 s per file but not a batch's time, for a 1–2 day rewrite of the upload machines.
 
+**Status at 30 Oct 2026 (late night, item 48):** item 48 registered and partly done: a malformed `POST /api/items` answered 500, now 400 (measured 3 of 3 intents; 5 new route tests); about 25 more handlers parse before any `try`.
+
 **Status at 30 Oct 2026 (night, after item 42):** 30 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 1 declined (44) · 2 open from the audit (12, 13) · 7 new and open (19, 20, 22, 37, 45–47). Item 42 resolved (migrations `20261030140000_upload_size_delta_log`, `20261030160000_upload_size_inline_when_idle`), measured: an upload cascades at once while the database is idle and goes through a size log applied by one rollup at a time while it is busy. 32 uploaders into one shared folder 2,017 → 8,334 files/s, p95 52 → 5.8 ms, lock waiters 20.7 → 0.06, ancestor writes 100,512 → 2,821; one uploader unchanged (0 deltas logged, size work 757 ms vs 615 ms). Items 45–47 are its follow-ups.
 
 **Status at 30 Oct 2026 (after item 43):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 2 declined · 2 open from the audit (12, 13) · 5 new and open (19, 20, 22, 37, 44). Item 43 resolved (`5155d96`, `0828f99`, `d7592ff`), measured: a file whose row lands after the reload's debounce now shows in the grid without a manual reload (0 → 6 of 6), the layout no longer queries workspaces on every navigation (20 → 0 per 20), and a thumbnail call checks access in one statement (3 → 1).
@@ -98,6 +100,7 @@
 | 45 | **new** Folder reloads during an upload | 12 | 16 to 148 full folder reloads per 650-file upload, each 11–14 queries; the spread isn't explained | — |
 | 46 | **new** Session cookie expiring mid-upload | 15 | Measure the lookup burst at 100 concurrent uploads; refresh the session during long uploads if it matters | — |
 | 47 | **new** Per-file shared rows left on the upload path | 12 | The direct parent's `Folder.childCount` and (if a collaborator's upload charges the owner) the `Quota` row; measure with all uploaders in one folder | — |
+| 48 | **new** A malformed request answers 500 instead of 400 | 16 | Fixed for `/api/items` (30 Oct). About 25 more handlers call a parser before any `try`; fix them, or make the parsers' error a 400 response everywhere | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -152,6 +155,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 45 | Folder reloads during an upload vary from 16 to 148 | Architecture | 2 | 1 | 2 | **12** (Low) | 0.5–1 day | New 30 Oct |
 | 46 | A session cookie can expire in the middle of an upload | Architecture | 2 | 1 | 1 | **15** (Low) | 0.5 day | New 30 Oct |
 | 47 | Per-file shared rows left on the upload path | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
+| 48 | A malformed request answers 500 instead of 400 where the parser runs outside `try` | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Partly done (30 Oct) |
 
 ## Details
 
@@ -881,6 +885,14 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Fix:** read whose quota a collaborator's upload charges; measure with all uploaders in one folder; if either queues, the same idle/busy log applies.
 - **Status 2026-10-30: open.**
 
+### 48. A malformed request answers 500 instead of 400 where the parser runs outside `try`
+
+*Code debt · Impact 2 · Risk 2 · Effort 2 → **16** · est. 0.5–1 day · source: found while trashing the item 42 test folders, 30 Oct*
+
+- **Evidence:** `parseFormData` and `parseSearchParams` throw a typed `INVALID_INPUT` error (status 400), and CLAUDE.md says to call them inside the handler's `try`. `app/routes/api/items.ts:108` called `parseFormData` before any `try`, so the error escaped the action and React Router answered **500 "Unexpected Server Error"**, its body carrying the raw Zod issue list. Reproduced from the browser (`.claude/evidence/p48-invalid-input-before.json`): `trash_items`, `restore_items` and `delete_items` with `selectedItems` sent as repeated fields (the schema wants one comma-separated string) all answered 500. Every `/api/items` intent shared the path. A pattern search found about 25 more handlers that call a parser before any `try`; each needs checking, since a page loader failing the same way shows the error page: `api/activities.ts:20`, `api/collections.ts:40, :104`, `api/comments.ts:23`, `api/invitations.ts:33, :66`, `api/members.ts:20`, `api/permissions.ts:30, :41`, `api/search.ts:89, :111`, `api/shares.ts:34, :64`, `api/thumbnails.ts:59`, `api/versions.ts:24`, `api/workspaces.ts:25, :49`, `stash/all.tsx:103`, `stash/collection.tsx:34`, `stash/collections.tsx:19`, `stash/duplicates.tsx:54`, `stash/folder.tsx:44`, `stash/gallery.tsx:29`, `stash/search.tsx:52`, `stash/trash.tsx:104`.
+- **Fix:** per handler, catch the parser's error and answer with its status, as `/api/items` now does and as `/api/quota` already did (`throw data(..., { status: 400 })`). Or once, centrally: make the parsers throw a `data()` response with the status. That reaches every call site at once, but the `catch` blocks that run `toErrorInfo` on a thrown value would then see a `data()` object, so weigh it with them.
+- **Status 2026-10-30: partly done.** `/api/items` catches the parser's error and rethrows it as `data({ success: false, error }, { status })`. Measured the same way before and after (`.claude/evidence/p48-invalid-input-{before,after}.json`): the three intents 500 → 400, and a well-formed request with made-up ids still reaches the access check (403). `app/routes/api/__tests__/items-invalid-input.test.ts`: 5 cases (the three intents, an unknown intent, `rename_item` without its name), 5 failing with 500 before the fix and passing after. The other sites are open.
+
 ## Changes since the audit
 
 These commits touched a register item, oldest first. Commits that don't touch any register item are left out, such as page size, the rename dialog, the search `ZodError`, and the Vite typegen watch.
@@ -963,7 +975,8 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-30 | `d7592ff` | 43, 20 | The post-upload reload counts only `itemCreated`. With item creation held 1.5 s: rows in the reload 0 → 6 of 6, cards on screen 0 → 6. New E2E test, red on the old count, 3/3 green. 1022/0 in 87 files. |
 | 2026-10-30 | no commit (measurement) | 42 | 646-file `app/` upload on `638f455`: 3,994 `update_size()` calls, 3,141 ancestor rewrites, 0.48 s database time, 95% HOT, no `Item` autovacuum, ~1.2% of WAL. `WHEN` clauses on the `Item` triggers: calls 11,129 → 4,504 but trigger time 462 → 506 ms in rolled-back runs; undone, never committed. Batched-rollup prototype, every 25 files: rewrites 3,141 → 192, size work 434 → 129 ms, identical sizes in 20 runs. Awaits a decision. |
 | 2026-10-30 | no commit (measurement) | 42 | Concurrency, one shared folder, prototype session-gated on the dev database and restored after: 32 uploaders, today 1,837–2,047 files/s with 21 of 32 waiting on locks; rollup by each 25th uploader 2,478–2,599; single-flight 9,603; single-flight 200 ms timer 8,981 files/s, 0 waiting, 3,644 ancestor updates instead of 100,512, sizes at most 342 ms stale. Exact sizes in all 27 runs. |
-| 2026-10-30 | this change | 42, 45–47 | Item 42 resolved: migrations `20261030140000_upload_size_delta_log` and `20261030160000_upload_size_inline_when_idle`, `app/.server/size-rollup.ts`, 16 new test cases (1038/0 in 88 files). Measured: one uploader 0 deltas logged and size work 757 ms (615 before); 32 uploaders into one shared folder 2,017 → 8,334 files/s, 0.06 lock waiters, 2,821 ancestor writes instead of 100,512. Logging every upload (3.5× costlier for one uploader) and a lock-first decision that starved the rollup were measured and replaced. Items 45–47 registered. |
+| 2026-10-30 | `92c804e`, `839f435` | 42, 45–47 | Item 42 resolved: migrations `20261030140000_upload_size_delta_log` and `20261030160000_upload_size_inline_when_idle`, `app/.server/size-rollup.ts`, 16 new test cases (1038/0 in 88 files). Measured: one uploader 0 deltas logged and size work 757 ms (615 before); 32 uploaders into one shared folder 2,017 → 8,334 files/s, 0.06 lock waiters, 2,821 ancestor writes instead of 100,512. Logging every upload (3.5× costlier for one uploader) and a lock-first decision that starved the rollup were measured and replaced. Items 45–47 registered. |
+| 2026-10-30 | `46b3a2b` | 48 | `/api/items` answers a malformed body with 400, not 500: the three item-list intents 500 → 400 (measured), 5 new route tests red → green. About 25 other handlers with the same pattern recorded. |
 | 2026-10-30 | no commit (measurement) | 44 | On `aa91fb4`: `assertCanUploadTo` is 1 statement (~3 ms warm), three per file. Per file, complete 249–537 ms, a 44–113 ms browser gap, create 120–288 ms; 12 of the batch's 46 requests. Declined. |
 
 ## Phased remediation plan
