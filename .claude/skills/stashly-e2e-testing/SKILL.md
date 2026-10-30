@@ -24,7 +24,7 @@ Commands: `pnpm test:e2e` (requires dev server) and `pnpm test:e2e:ui` (Playwrig
 | `constants.ts` | Shared test constants |
 | `auth.spec.ts` | Unauthenticated flows (sign-in, redirects) |
 | `navigation.spec.ts` | Authenticated navigation flows |
-| `upload.spec.ts` | Upload flow |
+| `upload.spec.ts` | Upload flow: filing, a row that lands after the reload debounce, server-side quota charge, read-only `/api/quota` |
 | `favorites.spec.ts` | Favorites: menu toggle on/off, list, duplicate rows, double favorite, bulk, not-favorited no-op, access control (shared / unshared / revoked / unknown id), 400 on malformed input, signed-out redirect (plus `favorites-debug.spec.ts`, a debugging scratch spec) |
 | `pinned.spec.ts` | Pinned items flow |
 | `search.spec.ts` | Search flow |
@@ -57,4 +57,7 @@ From `bcb227d`, where `thumbnail-machine.spec.ts` had been red for three reasons
 - **Seeded state is reset once per run, not per test.** Specs that toggle a seeded item (favorite, pin) need a separate untouched item for their list test (`E2E_ITEM_C`, `E2E_PIN_ITEM_C`), and `--repeat-each` is meaningless for them — repeat with separate runs.
 - **Menu lookups need `exact: true`.** `getByRole('menuitem', { name: 'Favorite' })` also matches *Unfavorite* (and `Pin` matches *Unpin*), which silently does the opposite action.
 - **Don't type or click before hydration.** `fill()` on a server-rendered controlled input is undone when React hydrates (it resets to the URL's state), and a click on a server-rendered Radix control does nothing. It only bites when the dev server is slow, so it looks flaky. Retry the action until its effect is observable — `search.spec.ts`'s `typeQuery` fills until `?query=` reaches the URL; the semantic toggle clicks until the radio is checked.
+- **With the upload panel open, file names are inside `<main>`.** `dropFiles` opens the panel, and `expectCardInGrid` matches any text in `<main>`, so before a reload it passes on the panel's list alone. It proves a filed row only after a reload (which empties the panel). To assert the grid without one, locate `[data-slot="item-card"]` filtered by the name, as `upload.spec.ts`'s late-rows test does. Its first version passed against the bug it was written for.
+- **Hold a request with `page.route`** to reproduce a timing bug: `upload.spec.ts` delays every `create_upload_item` (`request.postData()` carries the intent) past the runner's 700 ms debounce.
+- **Known red (2026-10-30; tech-debt item 20).** `thumbnail-machine.spec.ts` "a type with no producer publishes nothing…" has failed since `51ca00d`: it requires a metadata save for a `.bin`, which item 40 stopped sending. `navigation.spec.ts`'s sidebar clicks are flaky in the full suite (1–3 of 12, a different link each run, URL left on the `?layout=grid` rewrite) and pass 36/36 alone; the same happens on `main`'s code. Don't chase either as a regression from an unrelated change.
 - **Search has no input of its own.** It searches through the header `Filters` box (placeholder `Search…`), which writes the `query` URL param, not `q`. Results are `FileCardDetail` cards (`[data-slot="item-card"]`) that open on click; they have no link role.
