@@ -273,14 +273,20 @@ test.describe('thumbnail machine — upload pipeline', () => {
     ).toEqual([])
 
     // …but the indexing leg still ran. It is deliberately independent of
-    // thumbnails: a file with no preview still has metadata worth saving, and
-    // this is the assertion that would catch the two being wired together again.
+    // thumbnails, and this is the assertion that would catch the two being
+    // wired together again. It is read from the indexing run's final state:
+    // since `51ca00d` (tech-debt item 40) a file with nothing to save, like
+    // this `.bin`, ends in `indexed` without posting `save_media_metadata`.
     await expect
-      .poll(async () => (await readProbe(page)).metadataSeen.length, {
+      .poll(async () => Object.values((await readProbe(page)).indexingLastState), {
         message: 'the indexing leg never ran for a file with no thumbnail',
         timeout: 60_000,
       })
-      .toBeGreaterThan(0)
+      .toEqual(['indexed'])
+    expect(
+      (await readProbe(page)).metadataSeen,
+      'a .bin has nothing to save, so nothing is posted'
+    ).toEqual([])
   })
 
   // Stage 3 needs no WebGPU: it is native face detection, else a geometric

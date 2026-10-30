@@ -36,6 +36,12 @@ export interface ManagerState {
   metadataSaved: string[]
 }
 
+/** One running indexing item machine, as the queue's `running` map holds it. */
+interface IndexingItemRef {
+  getSnapshot: () => { value: unknown }
+  subscribe: (fn: (s: { value: unknown }) => void) => { unsubscribe: () => void }
+}
+
 declare global {
   interface Window {
     __thumbMgr?: {
@@ -55,7 +61,9 @@ declare global {
     }
     /** The indexing queue (`app/machines/indexing/client.ts`), which owns metadata saves. */
     __indexingQueue?: {
-      getSnapshot: () => { context: { metadataSaved: string[] } }
+      getSnapshot: () => {
+        context: { metadataSaved: string[]; running: Map<string, IndexingItemRef> }
+      }
       subscribe: (fn: (s: unknown) => void) => { unsubscribe: () => void }
     }
     __thumbProbe?: {
@@ -65,6 +73,8 @@ declare global {
       firstRunningByMode: Record<string, string[]>
       /** Every item ever seen in the revalidation buffer — see `installProbe`. */
       metadataSeen: string[]
+      /** The last state each indexing run reached, by item: its final state once done. */
+      indexingLastState: Record<string, string>
       laneSamples: string[]
       stop: () => void
     }
@@ -103,10 +113,12 @@ export async function installProbe(page: Page): Promise<void> {
       maxRunningByMode: {} as Record<string, number>,
       firstRunningByMode: {} as Record<string, string[]>,
       metadataSeen: [] as string[],
+      indexingLastState: {} as Record<string, string>,
       laneSamples: [] as string[],
       stop: () => {
         sub.unsubscribe()
         indexingSub?.unsubscribe()
+        for (const s of indexingItemSubs) s.unsubscribe()
       },
     }
 
@@ -152,12 +164,28 @@ export async function installProbe(page: Page): Promise<void> {
     })
 
     // Metadata saves live on the indexing queue, which empties its list as
-    // soon as the page reloads. Recorded on the way past, which is the only
-    // way to prove indexing ran for a file that produced no thumbnail.
+    // soon as the page reloads, so they are recorded on the way past.
+    //
+    // A save no longer proves indexing ran: since `51ca00d` (tech-debt item 40)
+    // a file with nothing to save goes straight to `indexed` without posting
+    // one. So each run is also followed from the moment it appears in
+    // `running` until it ends, and its last state is kept.
     const indexing = window.__indexingQueue
+    const watchedRuns = new Set<string>()
+    const indexingItemSubs: { unsubscribe: () => void }[] = []
     const indexingSub = indexing?.subscribe(() => {
-      for (const itemId of indexing.getSnapshot().context.metadataSaved) {
+      const c = indexing.getSnapshot().context
+      for (const itemId of c.metadataSaved) {
         if (!probe.metadataSeen.includes(itemId)) probe.metadataSeen.push(itemId)
+      }
+      for (const [itemId, run] of c.running) {
+        if (watchedRuns.has(itemId)) continue
+        watchedRuns.add(itemId)
+        const record = (s: { value: unknown }) => {
+          probe.indexingLastState[itemId] = String(s.value)
+        }
+        record(run.getSnapshot())
+        indexingItemSubs.push(run.subscribe(record))
       }
     })
 
@@ -172,6 +200,7 @@ export async function readProbe(page: Page) {
     maxRunningByMode: window.__thumbProbe?.maxRunningByMode ?? {},
     firstRunningByMode: window.__thumbProbe?.firstRunningByMode ?? {},
     metadataSeen: window.__thumbProbe?.metadataSeen ?? [],
+    indexingLastState: window.__thumbProbe?.indexingLastState ?? {},
     laneSamples: window.__thumbProbe?.laneSamples ?? [],
   }))
 }
