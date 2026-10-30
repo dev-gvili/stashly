@@ -23,7 +23,9 @@
 
 **44 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit) · categories: Code 22, Architecture 13, Infrastructure 4, Test 2, Documentation 2, Dependency 1
 
-**Status at 30 Oct 2026 (latest):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 2 declined · 2 open from the audit (12, 13) · 5 new and open (19, 20, 22, 37, 44). Item 43 resolved (`5155d96`, `0828f99`, `d7592ff`), measured: a file whose row lands after the reload's debounce now shows in the grid without a manual reload (0 → 6 of 6), the layout no longer queries workspaces on every navigation (20 → 0 per 20), and a thumbnail call checks access in one statement (3 → 1).
+**Status at 30 Oct 2026 (latest):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 3 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 37). Item 44 declined, measured: each of the three access checks per file is one statement of about 3 ms and two are deliberate, and merging complete with create would save one request and 0.16–0.39 s per file but not a batch's time, for a 1–2 day rewrite of the upload machines.
+
+**Status at 30 Oct 2026 (after item 43):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 2 declined · 2 open from the audit (12, 13) · 5 new and open (19, 20, 22, 37, 44). Item 43 resolved (`5155d96`, `0828f99`, `d7592ff`), measured: a file whose row lands after the reload's debounce now shows in the grid without a manual reload (0 → 6 of 6), the layout no longer queries workspaces on every navigation (20 → 0 per 20), and a thumbnail call checks access in one statement (3 → 1).
 
 **Status at 30 Oct 2026 (after item 42):** 28 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 2 declined · 2 open from the audit (12, 13) · 6 new and open (19, 20, 22, 37, 43, 44). Item 42 declined: since `265c9d6` an upload's ancestor and quota locks last one statement, not the whole upload, so the 3–5 day rollup redesign waits for a measured symptom. This was read from the code; lock waits were not measured.
 
@@ -90,7 +92,7 @@
 | 41 | ~~Dead upload branches~~ | 10 | Resolved 2026-10-26 (`12e3f74`): the 3 unreachable `shouldRevalidate` checks deleted, the quota machine no longer spawned (file kept); actors per upload manager 6 → 5, measured | — |
 | 42 | ~~Size rollup locks every ancestor row~~ | 10 | Declined 2026-10-30: since `265c9d6` the locks last one statement, not the whole upload (read from the code, not measured); reopen on lock timeouts or slow item creation | — |
 | 43 | ~~Revalidation and thumbnail query overhead~~ | 9 | Resolved 2026-10-30 (`5155d96`, `0828f99`, `d7592ff`): late rows no longer lost from the grid (0 → 6 of 6), workspace scans per 20 navigations 20 → 0, access statements per uploaded image 9 → 3, measured | — |
-| 44 | **new** Separate complete and create requests | 9 | Merge them, and the triple access check | Measure first |
+| 44 | ~~Separate complete and create requests~~ | 9 | Declined 2026-10-30: each access check is 1 statement (~3 ms) and two of the three are deliberate; merging saves 1 request and 0.16–0.39 s per file, not a batch's time, for a 1–2 day rewrite (measured); reopen if per-file latency becomes a complaint | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -141,7 +143,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 41 | ~~Dead upload branches~~ | Code | 1 | 1 | 1 | **10** (Low) | 2 h | Resolved 26 Oct |
 | 42 | The size rollup locks every ancestor row | Architecture | 2 | 3 | 4 | **10** (Low) | 3–5 days | Declined 30 Oct |
 | 43 | ~~Revalidation and thumbnail query overhead~~ | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | Resolved 30 Oct |
-| 44 | Upload complete and item creation are separate requests | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | New 25 Oct |
+| 44 | Upload complete and item creation are separate requests | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | Declined 30 Oct |
 
 ## Details
 
@@ -801,6 +803,10 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** `complete-multipart-upload` and `create_upload_item` are two requests, and the same `assertCanUploadTo` check runs three times per file (create, complete, item).
 - **Fix:** weigh merging them against the db machine's design (it exists so a failed row never stops the batch). The repeated check is partly defence in depth: the one at complete lets a revoke abort the upload. Low value until measured.
 - **Status 2026-10-25: open.**
+- **Status 2026-10-30: declined, measured** (`.claude/evidence/p44/before-summary.json`: `main` at `aa91fb4`, six 470-byte PNGs into an empty folder on the dev server). Both claims still hold in the code, but they cost less than the item assumed:
+  - **The check:** `assertCanUploadTo` has been `assertItemsAccess` since 2 Oct, a single `item.count`: 1 statement per call in 5 of 5 runs, about 3 ms warm, so about 9 ms per file for all three. Two of the three are deliberate. The one at `complete` lets a revoke abort the multipart upload before S3 assembles it (item 33), and the one when the row is written is the authorization CLAUDE.md requires in the action layer. Removing either would save about 3 ms and lose that.
+  - **The two requests:** per file, `complete-multipart-upload` took 249–537 ms (S3), then 44–113 ms passed in the browser before `create_upload_item`, which took 120–288 ms. Together they are 12 of the batch's 46 requests to our server. Merging would save one request and 0.16–0.39 s per file between the bytes being stored and the row existing, plus a network round trip in production. Files upload in parallel, though, so a batch's wall time barely moves. The merge would rewrite the boundary between the file machine and the db machine (which keeps a failed row from stopping the batch), the `done` → `itemCreated` flow, the db machine's 29 tests and the upload E2E tests: the estimated 1–2 days.
+  - **Reopen** if the time for a new file to appear becomes a real complaint, for example over production round trips.
 
 ## Changes since the audit
 
@@ -882,6 +888,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-30 | `5155d96` | 43, 13 | The thumbnail presign, PATCH and source calls check read access in the item lookup (`itemAccessWhere`) instead of `hasItemPermission` plus a second read: 3 → 1 statements per call, 9 → 3 per uploaded image. 3 new cases in `permission-live-grants.test.ts`. |
 | 2026-10-30 | `0828f99` | 43 | The layout loader reads the sidebar's workspaces; `workspaceMiddleware` is unregistered. 20 client navigations: 20 → 0 `WorkspaceMember` scans. |
 | 2026-10-30 | `d7592ff` | 43, 20 | The post-upload reload counts only `itemCreated`. With item creation held 1.5 s: rows in the reload 0 → 6 of 6, cards on screen 0 → 6. New E2E test, red on the old count, 3/3 green. 1022/0 in 87 files. |
+| 2026-10-30 | no commit (measurement) | 44 | On `aa91fb4`: `assertCanUploadTo` is 1 statement (~3 ms warm), three per file. Per file, complete 249–537 ms, a 44–113 ms browser gap, create 120–288 ms; 12 of the batch's 46 requests. Declined. |
 
 ## Phased remediation plan
 
@@ -960,7 +967,7 @@ New items from the 8 Oct re-scan, in the order to do them:
 1. **Now:** ~~merge PR #26 (item 31)~~ done 25 Oct (`059d0aa`); ~~add the ownership checks to the three search-index writes (item 32)~~ done 25 Oct (`41f2efe`); ~~stop retrying 4xx answers (item 34)~~ done 25 Oct (`8ac03d9`). Two security gaps and a slow failure, each a small diff with a test.
 2. **On the next upload task (about 1.5 days):** ~~abort cancelled and failed multipart uploads (33~~ done 25 Oct, `8a79e89`; Tigris offers no lifecycle rule to fall back on); settle the `.ts` sniff (37), ~~the metadata writes (40)~~ done 26 Oct (`51ca00d`) and ~~the dead branches (41)~~ done 26 Oct (`12e3f74`); ~~measure the concurrency limit and correct the skill (38)~~ done 26 Oct (`78a63f3`).
 3. **A measured performance pass (3–5 days):** ~~the session cookie cache (35)~~ done 25 Oct, measured; ~~part URLs in bulk (39)~~ done 26 Oct (`3ddbf90`), signed 100 at a time, measured; ~~the folder tree once per batch (36)~~ done 26 Oct (`265c9d6`), measured; ~~the revalidation and thumbnail overhead (43)~~ done 30 Oct (`5155d96`, `0828f99`, `d7592ff`), measured. Repeat the audit's measured upload before and after; the CLAUDE.md debugging rules require the numbers.
-4. **Only if contention is measured:** ~~the rollup redesign (42)~~ declined 30 Oct (since `265c9d6` its locks last one statement) and merging the requests (44). High effort for an unproven payoff.
+4. **Only if contention is measured:** ~~the rollup redesign (42)~~ declined 30 Oct (since `265c9d6` its locks last one statement) and ~~merging the requests (44)~~ declined 30 Oct (measured: about 3 ms per check, one request and 0.16–0.39 s per file). High effort for an unproven payoff.
 
 ---
 
@@ -970,4 +977,4 @@ New items from the 8 Oct re-scan, in the order to do them:
 
 *History check 25 Oct: every non-merge commit since 25 Jul that touches `app/`, `server`, `prisma/`, `deploy/`, the Dockerfile, `fly.toml` or `.github/` was matched against this register; commits it doesn't name were read and either added above or left out as feature work (collections sort and covers, invitations, sign-in redesign, item-card rename, styling). Test counts are from CI's log for `bfefbbf`. Items 29 and 30 were read from the commits and the code; neither was reproduced.*
 
-*Upload audit 25 Oct: items 31–44 were taken from `docs/upload-call-audit.md` (10 Oct, on PR #26) and re-checked with targeted reads of `main` at `6173a8c`. Items 36, 42, 43 and 44 are marked "per the audit" and weren't re-read that day. Item 42 was re-read on 30 Oct and declined; item 43 was re-read, measured and resolved the same day. Item 32 was confirmed from the action signatures, not reproduced with a second user. Traced call counts are the audit's; the only measurement behind them is its single 8.46 MB upload.*
+*Upload audit 25 Oct: items 31–44 were taken from `docs/upload-call-audit.md` (10 Oct, on PR #26) and re-checked with targeted reads of `main` at `6173a8c`. Items 36, 42, 43 and 44 are marked "per the audit" and weren't re-read that day. Item 42 was re-read on 30 Oct and declined; item 43 was re-read, measured and resolved the same day, and item 44 measured and declined. Item 32 was confirmed from the action signatures, not reproduced with a second user. Traced call counts are the audit's; the only measurement behind them is its single 8.46 MB upload.*
