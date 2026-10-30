@@ -1,6 +1,6 @@
 import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
-import { hasItemPermission } from '@/services/permission-actions'
+import { itemAccessWhere } from '@/services/permission-actions'
 import { getPresignedUrl } from '@/services/s3'
 import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import type { Prisma } from '@/prisma/client'
@@ -96,14 +96,28 @@ export function thumbnailLocation(
  * file. Resolved server-side so a collaborator backfilling a shared item writes
  * next to the owner's file instead of into their own bucket.
  *
+ * Also the read check: the item is read through `itemAccessWhere`, so access
+ * and the bucket come back in one statement, where `hasItemPermission` and
+ * then this read took three (measured, tech-debt item 43).
+ *
+ * @throws `FORBIDDEN` (403) when `userId` can't read the item, or it doesn't exist.
  * @throws {StashlyError} `ITEM_NOT_FOUND` when the item has no file bucket.
  */
-async function resolveThumbnailBucket(itemId: string): Promise<string> {
-  const item = await prisma.item.findUnique({
-    where: { id: itemId },
+async function resolveThumbnailBucket(
+  userId: string,
+  itemId: string
+): Promise<string> {
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, ...itemAccessWhere(userId, 'read') },
     select: { file: { select: { bucket: true } } },
   })
-  const bucket = item?.file?.bucket
+  if (!item) {
+    throw toRouteError(
+      StashlyErrorCode.FORBIDDEN,
+      'You do not have access to this item'
+    )
+  }
+  const bucket = item.file?.bucket
   if (!bucket || !BUCKET_RE.test(bucket) || !ITEM_ID_RE.test(itemId)) {
     throw new StashlyError(
       StashlyErrorCode.ITEM_NOT_FOUND,
@@ -345,15 +359,7 @@ export async function presignThumbnailUpload(
   userId: string,
   itemId: string
 ): Promise<{ uploadUrl: string; viewUrls: Record<ThumbnailStage, string> }> {
-  const canRead = await hasItemPermission(userId, itemId, 'read')
-  if (!canRead) {
-    throw toRouteError(
-      StashlyErrorCode.FORBIDDEN,
-      'You do not have access to this item'
-    )
-  }
-
-  const bucket = await resolveThumbnailBucket(itemId)
+  const bucket = await resolveThumbnailBucket(userId, itemId)
   const stage2: ThumbnailLocation = {
     bucket,
     key: thumbnailKey(itemId),
@@ -447,15 +453,7 @@ export async function updateThumbnail(
   view: string = 'grid',
   size: string = 'medium'
 ): Promise<string> {
-  const canRead = await hasItemPermission(userId, itemId, 'read')
-  if (!canRead) {
-    throw toRouteError(
-      StashlyErrorCode.FORBIDDEN,
-      'You do not have access to this item'
-    )
-  }
-
-  const bucket = await resolveThumbnailBucket(itemId)
+  const bucket = await resolveThumbnailBucket(userId, itemId)
   await persistThumbnailStage(itemId, stage, bucket, width, height, view, size)
   return signThumbnailLocation({
     bucket,
@@ -554,16 +552,10 @@ export async function getThumbnailSource(
   userId: string,
   itemId: string
 ): Promise<ThumbnailSource> {
-  const canRead = await hasItemPermission(userId, itemId, 'read')
-  if (!canRead) {
-    throw toRouteError(
-      StashlyErrorCode.FORBIDDEN,
-      'You do not have access to this item'
-    )
-  }
-
-  const item = await prisma.item.findUnique({
-    where: { id: itemId },
+  // The read check is in the `where` (`itemAccessWhere`): one statement, where
+  // `hasItemPermission` first added two. No row means no access, or no item.
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, ...itemAccessWhere(userId, 'read') },
     select: {
       id: true,
       name: true,
@@ -580,7 +572,10 @@ export async function getThumbnailSource(
   })
 
   if (!item) {
-    throw toRouteError(StashlyErrorCode.ITEM_NOT_FOUND, 'Item not found')
+    throw toRouteError(
+      StashlyErrorCode.FORBIDDEN,
+      'You do not have access to this item'
+    )
   }
 
   // The stage travels as its own field: a signed URL carries no `?v=`, so the

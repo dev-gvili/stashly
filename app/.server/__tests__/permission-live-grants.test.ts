@@ -6,6 +6,11 @@ import {
   hasItemPermission,
   hasLinkPermission,
 } from '@/services/permission-actions'
+import {
+  getThumbnailSource,
+  presignThumbnailUpload,
+  updateThumbnail,
+} from '@/services/thumbnail-actions'
 import { buildItemFilters } from '@/utils/filters/item.filters'
 import { toErrorInfo } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
@@ -104,6 +109,15 @@ describe('a live grant still opens the item', () => {
     })
     expect(listed).toBe(1)
   })
+
+  // The fixture items have no File row, so once past the read check the presign
+  // and the PATCH stop at 404 ("no file to attach a thumbnail to"), before any
+  // signing or write: 404 here means access was granted, 403 that it was not.
+  it('the thumbnail calls pass the read check', async () => {
+    expect(await status(() => presignThumbnailUpload(userId, items.live))).toBe(404)
+    expect(await status(() => updateThumbnail(userId, items.live, 2))).toBe(404)
+    expect(await status(() => getThumbnailSource(userId, items.live))).toBe('ok')
+  })
 })
 
 describe.each(['expired', 'deleted'] as const)('a %s grant no longer counts', (kind) => {
@@ -127,7 +141,15 @@ describe.each(['expired', 'deleted'] as const)('a %s grant no longer counts', (k
     expect(listed).toBe(0)
   })
 
+  it('the thumbnail calls answer 403', async () => {
+    expect(await status(() => presignThumbnailUpload(userId, items[kind]))).toBe(403)
+    expect(await status(() => updateThumbnail(userId, items[kind], 2))).toBe(403)
+    expect(await status(() => getThumbnailSource(userId, items[kind]))).toBe(403)
+  })
+
   it('the owner is unaffected', async () => {
     expect(await hasItemPermission(ownerId, items[kind], 'write')).toBe(true)
+    expect(await status(() => presignThumbnailUpload(ownerId, items[kind]))).toBe(404)
+    expect(await status(() => getThumbnailSource(ownerId, items[kind]))).toBe('ok')
   })
 })
