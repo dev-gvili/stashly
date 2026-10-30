@@ -21,9 +21,11 @@
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**51 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42) · categories: Code 24, Architecture 17, Infrastructure 4, Test 3, Documentation 2, Dependency 1
+**52 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 52 added 31 Oct from item 45's measurements) · categories: Code 24, Architecture 18, Infrastructure 4, Test 3, Documentation 2, Dependency 1
 
 **Status at 30 Oct 2026 (latest):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 3 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 37). Item 44 declined, measured: each of the three access checks per file is one statement of about 3 ms and two are deliberate, and merging complete with create would save one request and 0.16–0.39 s per file but not a batch's time, for a 1–2 day rewrite of the upload machines.
+
+**Status at 31 Oct 2026 (item 45 measured):** item 45 reranked 12 → 28 (High) on measurements. Two runs of the 650-file `app/` upload made 146 and 139 full folder reloads, one per 4.6 files, with a reload in flight 27–28% of the upload, each one sending the folder back to its first page. The 700 ms debounce can't merge rows that arrive 1.1 s apart, and the indexing revalidate adds 33–47 more. The same runs found item 52: the main thread spends 99% of the upload in long animation frames, and rows per minute fall from about 150 to about 35 as the batch grows.
 
 **Status at 30 Oct 2026 (late night, items 49–51):** an external critique of item 42 was checked against the code. Three gaps it pointed at are registered, all open and unmeasured: nothing applies the size log when a server starts (49), no test guards the deferred `Folder_itemId_fkey` (50), and one long row lock stalls the size rollup for every user (51). Its other claims didn't hold. Its fixes for the idle/busy split (log every upload, a statement-level trigger) are the dead ends measured in items 42 and 8. Its rollup fix (merge deltas, write each ancestor once) is what `apply_item_size_deltas()` already does. The log can't drift after a crash: a delta commits in the upload's own statement.
 
@@ -99,13 +101,14 @@
 | 42 | ~~Size rollup locks every ancestor row~~ | 10 | Resolved 2026-10-30: busy uploads go through a size log applied by one rollup at a time; 32 uploaders into one shared folder 2,017 → 8,334 files/s, lock waiters 20.7 → 0.06, one uploader unchanged, measured | — |
 | 43 | ~~Revalidation and thumbnail query overhead~~ | 9 | Resolved 2026-10-30 (`5155d96`, `0828f99`, `d7592ff`): late rows no longer lost from the grid (0 → 6 of 6), workspace scans per 20 navigations 20 → 0, access statements per uploaded image 9 → 3, measured | — |
 | 44 | ~~Separate complete and create requests~~ | 9 | Declined 2026-10-30: each access check is 1 statement (~3 ms) and two of the three are deliberate; merging saves 1 request and 0.16–0.39 s per file, not a batch's time, for a 1–2 day rewrite (measured); reopen if per-file latency becomes a complaint | — |
-| 45 | **new** Folder reloads during an upload | 12 | 16 to 148 full folder reloads per 650-file upload, each 11–14 queries; the spread isn't explained | — |
+| 45 | **new** An upload reloads the whole folder every ~5 files | 28 | Measured 31 Oct: 139–146 full reloads per 650-file upload, one in flight 27–28% of the time, each back to the first page; one throttled reload schedule in place of the two debounces | — |
 | 46 | **new** Session cookie expiring mid-upload | 15 | Measure the lookup burst at 100 concurrent uploads; refresh the session during long uploads if it matters | — |
 | 47 | **new** Per-file shared rows left on the upload path | 12 | The direct parent's `Folder.childCount` and (if a collaborator's upload charges the owner) the `Quota` row; measure with all uploaders in one folder | — |
 | 48 | **new** A malformed request answers 500 instead of 400 | 16 | Fixed for `/api/items` (30 Oct). About 25 more handlers call a parser before any `try`; fix them, or make the parsers' error a 400 response everywhere | — |
 | 49 | **new** Nothing applies the size log when a server starts | 15 | Reproduce (deltas pending, process restarted, no upload); then start the rollup loop at server start | — |
 | 50 | **new** No test guards the deferred `Folder_itemId_fkey` | 20 | A live-DB check that the constraint is still deferred, so a `db push` or a regenerated migration that drops it fails | — |
 | 51 | **new** One held row lock stalls the size rollup for every user | 12 | Run item 42's 32-uploader benchmark with a large trash or move in the same tree; if the rollup stalls, batch and lock per owner tree | — |
+| 52 | **new** The main thread is saturated for the whole upload | 24 | 99% of a 650-file upload in long frames, 41–77% of each minute blocking; profile the upload machines' event handling | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -157,13 +160,14 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 42 | ~~The size rollup locks every ancestor row~~ | Architecture | 2 | 3 | 4 | **10** (Low) | 3–5 days | Resolved 30 Oct |
 | 43 | ~~Revalidation and thumbnail query overhead~~ | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | Resolved 30 Oct |
 | 44 | Upload complete and item creation are separate requests | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | Declined 30 Oct |
-| 45 | Folder reloads during an upload vary from 16 to 148 | Architecture | 2 | 1 | 2 | **12** (Low) | 0.5–1 day | New 30 Oct |
+| 45 | An upload reloads the whole folder about once every 5 files | Architecture | 4 | 3 | 2 | **28** (High) | 0.5–1 day | Measured 31 Oct |
 | 46 | A session cookie can expire in the middle of an upload | Architecture | 2 | 1 | 1 | **15** (Low) | 0.5 day | New 30 Oct |
 | 47 | Per-file shared rows left on the upload path | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
 | 48 | A malformed request answers 500 instead of 400 where the parser runs outside `try` | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Partly done (30 Oct) |
 | 49 | Nothing applies the size log when a server starts | Code | 2 | 1 | 1 | **15** (Low) | 0.5 day | New 30 Oct |
 | 50 | No test guards the deferred `Folder_itemId_fkey` | Test | 2 | 2 | 1 | **20** (Medium) | 0.5 day | New 30 Oct |
 | 51 | One held row lock stalls the size rollup for every user | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
+| 52 | The main thread is saturated for the whole upload | Architecture | 4 | 4 | 3 | **24** (Medium) | 2–3 days | New 31 Oct |
 
 ## Details
 
@@ -869,13 +873,29 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
   - **The two requests:** per file, `complete-multipart-upload` took 249–537 ms (S3), then 44–113 ms passed in the browser before `create_upload_item`, which took 120–288 ms. Together they are 12 of the batch's 46 requests to our server. Merging would save one request and 0.16–0.39 s per file between the bytes being stored and the row existing, plus a network round trip in production. Files upload in parallel, though, so a batch's wall time barely moves. The merge would rewrite the boundary between the file machine and the db machine (which keeps a failed row from stopping the batch), the `done` → `itemCreated` flow, the db machine's 29 tests and the upload E2E tests: the estimated 1–2 days.
   - **Reopen** if the time for a new file to appear becomes a real complaint, for example over production round trips.
 
-### 45. Folder reloads during an upload vary from 16 to 148
+### 45. An upload reloads the whole folder about once every 5 files
 
-*Architecture debt · Impact 2 · Risk 1 · Effort 2 → **12** · est. 0.5–1 day · source: item 42 measurements, 30 Oct*
+*Architecture debt · Impact 4 · Risk 3 · Effort 2 → **28** · est. 0.5–1 day · source: item 42 measurements, 30 Oct; measured and reranked 31 Oct (was 12)*
 
 - **Evidence:** the post-upload reload (`navigate` to the same URL, 700 ms after the count of created files settles) and the indexing reload together made 148 (25 Oct) and 136 (30 Oct) full folder `.data` loads during a 646-file `app/` upload, and 16 in a 650-file run later the same evening. Each runs 11–14 queries and returns ~34 KB. The 700 ms debounce re-arms whenever files finish about once a second, which explains a high count but not the spread.
 - **Fix:** first find why the count varies; then cap reloads during an active upload (at most one every few seconds, plus one at the end) and measure. Patching single rows needs a client data layer the app doesn't have.
 - **Status 2026-10-30: open.**
+- **Status 2026-10-31: measured; reranked 12 → 28.** Two runs of item 42's harness: the 650-file `app/` upload into a new empty folder, on the dev server, with the tab visible throughout. The browser recorded every request, history write, 700 ms timer and long animation frame (`.claude/evidence/p45/`, local):
+
+  |  | run 1 | run 2 |
+  |---|---|---|
+  | full folder `.data` loads | 146 | 139 |
+  | from the post-upload `navigate` (`state.reset`) | 99 | 106 |
+  | from the indexing `revalidate()` | 47 | 33 |
+  | share of the upload with a reload navigation in flight | 27% | 28% |
+  | reload, request to commit, p50 | 1.86 s | 1.91 s |
+  | folder loader response headers, p50 | 1.01 s | 0.97 s |
+
+  - **Why there are so many:** the post-upload reload is a 700 ms trailing debounce on the number of created rows (`upload-thumbnail-runner.tsx`), and a debounce only merges a burst. Here rows arrive one at a time, p50 1.1 s apart, and 70% of the gaps exceed 700 ms (run 1), so it fires after most rows. What caps it is the guard that skips a reload while one is in flight: in run 2, 67 of 173 firings were skipped that way. The indexing hook adds a `revalidate()` each time its queue catches up with the uploads (33 and 47 times). The count therefore follows the rows' rhythm and the loader's latency, not the batch: one full reload per 4.6 files.
+  - **Main-thread lag adds to it:** in run 2 the 700 ms timers fired p50 494 ms late (p90 1,078 ms), and a created row reached the debounce p50 407 ms after its response was handled (up to 2.5 s), because the main thread spent 99% of the upload in long animation frames (item 52). A late re-arm leaves a gap that the next row can't close.
+  - **What each reload costs:** a full folder loader run (11–14 queries, per the 30 Oct evidence above) and a `navigate` with `state.reset`, which `usePagination` treats as a return to the first page. A user browsing the folder during an upload is therefore sent back to the first page every few seconds (read from the code, not measured). At one reload per 4.6 files, a 10,000-file upload would reload about 2,000 times (extrapolated).
+  - **Not explained:** the 16 reloads of the 650-file run on 30 Oct. Both runs here made about 140, and that run recorded neither a timeline nor the tab's visibility.
+  - **Fix:** one reload schedule for an upload instead of two debounces: during a batch, at most one reload every few seconds (a throttle, not a debounce); one when the batch's last row is created; one when indexing drains. Measure with this harness before and after.
 
 ### 46. A session cookie can expire in the middle of an upload
 
@@ -924,6 +944,15 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** each run of `apply_item_size_deltas()` takes the oldest 5,000 deltas in the whole database (`ORDER BY "id" LIMIT`) and applies them in one `UPDATE`, all or nothing. It gives up after waiting 100 ms for any row lock (`20261030140000_upload_size_delta_log`). Any trash, restore, move or delete in an owner's tree locks every ancestor up to that owner's root until its statement commits. So one such statement that holds an ancestor of any delta in the batch for more than 100 ms rolls the run back for every user, and the retry 250 ms later takes the same oldest rows. While deltas are pending, every new upload is logged rather than cascaded, so the backlog grows. Item 42's concurrency benchmark ran no trash, move or delete alongside the uploads, and how long those statements hold ancestor locks was not measured. The critique's "minutes" is a guess. `size_rollup_lock_timeouts_total` (`metrics.ts`) counts the give-ups.
 - **Fix:** measure first. Run item 42's 32-uploader benchmark with a large trash or move in the same owner's tree, and record lock timeouts and the oldest unapplied delta. If the rollup stalls, revisit item 42's open question of keying the rollup per owner tree rather than database-wide: one tree's lock would then hold back only that tree's deltas. The delta table would need the owner, a schema change.
 - **Status 2026-10-30: open.**
+
+### 52. The main thread is saturated for the whole upload
+
+*Architecture debt · Impact 4 · Risk 4 · Effort 3 → **24** · est. 2–3 days · source: item 45 measurements, 31 Oct*
+
+- **Evidence:** item 45's run 2 (`.claude/evidence/p45/run2-summary.json`, local): during the 650-file `app/` upload (698 s), the page spent 691 s in long animation frames (2,436 frames; p50 237 ms, p90 574 ms, max 1.07 s), 489 s of it blocking input. Blocking was 41% of the first minute and 73–77% of each minute from the fifth on. Rows created per minute fell from 152 in the first minute to 28–42 later (run 1: 147 to 33–45). Summed over the frames' script attribution: promise continuations in `machines/multipart/s3.mulipart.utils.ts` (after `Response.json`) 287 s, `utils/sniff.ts` 157 s, `machines/db/db.actors.ts` (after `Response.text`) 147 s; React's scheduler 31 s; `machines/indexing/indexing.actors.ts` 10 s. A continuation's time includes everything that runs synchronously after its `await`, so these are the upload machines handling their events, not the parsing. What inside that handling costs the time was not isolated.
+- **Why it matters:** the page barely responds while a large upload runs. The falling row rate fits per-event work that grows with the number of files in the batch, which would also make larger uploads slower per file. Not proven.
+- **Fix:** profile one upload (a DevTools performance trace) and find the per-event cost before changing anything. Leads from the code, unverified: in `upload-thumbnail-runner.tsx`, the `createdCount`, `uploading` and `fileIds` selectors each scan every file on every upload event, and each file mounts its own `HoldFileWatcher` subscription.
+- **Status 2026-10-31: open.**
 
 ## Changes since the audit
 
