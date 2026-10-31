@@ -10,8 +10,8 @@
 - **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1082 in 93 files), and the build. Green on `b5ae56b` (31 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
-- **Errors and analytics:** Vinktar on server and browser since 10 Oct (item 4, partly done).
-- **Still missing:** structured logging and a linter. Both need a new package, which needs the owner's decision.
+- **Errors, analytics and logs:** Vinktar on server and browser since 10 Oct; product events, route timing and a structured logger since 31 Oct (item 4, resolved).
+- **Still missing:** a linter. It needs a new package, which needs the owner's decision.
 
 **Update (25 Oct, later):** the Upload Call Audit (10 Oct, `docs/upload-call-audit.md`) was never folded into this register, and its source doc and the quota fix it came with sat on an unmerged branch (PR #26). Its findings were re-checked against `main` and added as **items 31–44**. Two are security-relevant. Item 31: uploads can go past the storage total; the fix is written and CI is green on the rebased PR, but it isn't merged (merged later that day as `059d0aa`). Item 32: the three search-index writes (`save_media_metadata`, `save_ocr_page`, `save_search_chunk_embeddings`) never receive the signed-in user, so anyone holding an item id can rewrite another user's search text, vectors or metadata. The rest are cleanup and load: cancelled uploads leave parts in S3 (33), 4xx responses are retried (34), and the per-file call counts behind items 35–44.
 
@@ -23,7 +23,9 @@
 
 **54 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 3 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata) · categories: Code 24, Architecture 20, Infrastructure 4, Test 3, Documentation 2, Dependency 1
 
-**Status at 31 Oct 2026 (latest, item 4 updated):** counts unchanged; item 4 stays partly done. Vinktar now sees what the app does, not only its errors: 61 server events, one per completed user action plus each upload and indexing phase (`9f4cf1e`), pageviews named by route, and every slow (over 1 s) or failed request by route pattern (`a836add`). Properties carry shape only, never names, keys or text. Still open in item 4: a JSON logger with a request id.
+**Status at 31 Oct 2026 (latest, item 4 resolved):** 34 resolved · 1 resolved in code, rollout step unconfirmed (2) · 5 partly done (10, 16, 17, 23, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 37, 45–47, 49–51). Item 4 resolved without a new package (`92ad800`): `app/.server/log.ts` writes each line as JSON to stdout (Fly keeps the stream), adds it as a Vinktar breadcrumb so an error carries its request's trail, and raises `warn`/`error` as Vinktar issues. Every line and error carries a request id (Fly's `Fly-Request-Id`, else a fresh one). All 25 `console.error`/`console.warn` calls and the 3 real `console.log` calls in `app/.server` moved to it; one, a dump of a file's audio tags, was deleted.
+
+**Status at 31 Oct 2026 (item 4 updated):** counts unchanged; item 4 stays partly done. Vinktar now sees what the app does, not only its errors: 61 server events, one per completed user action plus each upload and indexing phase (`9f4cf1e`), pageviews named by route, and every slow (over 1 s) or failed request by route pattern (`a836add`). Properties carry shape only, never names, keys or text. Still open in item 4: a JSON logger with a request id.
 
 **Status at 31 Oct 2026 (item 53 resolved):** 33 resolved · 1 resolved in code, rollout step unconfirmed (2) · 6 partly done (4, 10, 16, 17, 23, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 37, 45–47, 49–51). Item 53 resolved: the metadata that trailed an upload was waiting in Chrome for one of dev's six HTTP/1.1 connections, not on the server (p50 7.0 s waiting, 229 ms on the server). The upload's own calls now go at `priority: 'low'`; on a 660-file upload, metadata saves landed by the last row went from 49 to 630, and the last landed 0.3 s after it instead of 6.9 s, with no slower upload.
 
@@ -89,7 +91,7 @@
 | 31 | ~~Uploads can go past the storage total~~ | 35 | Resolved 2026-10-25: PR #26 merged as `059d0aa`; a charge past the total is a 507 and rolls back the row | — |
 | 2 | Deploy path | 32 | The first real `fly deploy` and its release migration | Creating the Fly app and setting secrets |
 | 32 | ~~Search-index writes skip the ownership check~~ | 32 | Resolved 2026-10-25 (`41f2efe`): all three writes check `write` on the item; a refusal is a 403 | — |
-| 4 | Error tracking and logging | 28 | Structured logging; error tracking, product analytics (61 server events), route-named pageviews and slow/failed request timing are Vinktar (10 and 31 Oct) | Owner's choice of logger |
+| 4 | ~~Error tracking and logging~~ | 28 | Resolved 2026-10-31: Vinktar errors, 61 server events, route timing, and `log` (JSON to stdout, breadcrumbs, issues for warn/error) with a request id | — |
 | 28 | ~~Form and search decoders mangle typed text~~ | 25 | Resolved 2026-10-23: values decoded once, typed text kept as text, bad input is a 400 | — |
 | 19 | **new** Stripe webhook is a stub | 24 | All four event handlers | Whether paid plans ship before launch |
 | 20 | **new** Playwright specs don't run in CI | 24 | A CI job for the 8 specs; the E2E bucket leaks one per run | — |
@@ -135,7 +137,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 1 | ~~No CI: nothing runs typecheck, tests or build automatically~~ | Infrastructure | 4 | 4 | 2 | **32** (High) | 0.5–1 day | Resolved |
 | 2 | Deploy path is broken and runs an end-of-life Node | Infrastructure | 3 | 5 | 2 | **32** (High) | 1–2 days | Resolved in code; first `fly deploy` unconfirmed |
 | 3 | ~~Two known 500s on ordinary requests~~ | Code | 3 | 3 | 1 | **30** (High) | 0.5 day | Resolved |
-| 4 | No error tracking or structured logging | Infrastructure | 3 | 4 | 2 | **28** (High) | 1 day | Partly done (31 Oct) |
+| 4 | ~~No error tracking or structured logging~~ | Infrastructure | 3 | 4 | 2 | **28** (High) | 1 day | Resolved 31 Oct |
 | 5 | ~~Thumbnails of private files are publicly readable~~ | Architecture | 4 | 5 | 3 | **27** (High) | 3–5 days | Resolved |
 | 6 | ~~Unused, unpinned and unmaintained dependencies~~ | Dependency | 2 | 3 | 1 | **25** (High) | 0.5 day | Resolved |
 | 7 | ~~The type baseline is stale, and escape hatches are growing~~ | Code | 3 | 3 | 2 | **24** (Medium) | 1–2 days | Resolved |
@@ -261,6 +263,11 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - **Where it happens** (`a836add`): pageviews are named by route id and pattern (`routes/stash/folder`, `/:me/stash/folders/:folderId`) rather than a URL full of ids, once per pathname change, with the navigation's duration. A root middleware sends `route_request_slow` (over 1 s to headers) and `route_request_failed` (5xx or a throw) for every document, `.data` and resource request; only those outliers, since each fetcher submission re-runs every loader on the page. Unit-tested (`request-timing.test.ts`); the pageview checked in the browser on `/auth/sign-in`.
   - **Privacy rule** (CLAUDE.md → Integrations): properties are shape only (counts, bytes, ids, kinds, roles, extensions, durations), never file names, S3 keys, search text, emails, comment bodies or extracted metadata. All 64 events are registered in Vinktar's tracking plan.
   - **Still open:** a JSON logger with a request id. `app/.server` (tests excluded) has 19 `console.log` calls.
+- **Resolved 2026-10-31: the logger, with no new package.** The owner chose Vinktar over pino: `app/.server/log.ts` (`log.debug/info/warn/error(message, fields)`).
+  - **Where a line goes:** stdout as one JSON object per line in production (readable text in dev); a breadcrumb on the request's Vinktar scope, so a captured error arrives with the lines before it; and for `warn`/`error`, a Vinktar issue (an `error` field that is an `Error` is captured as that exception, with its own stack).
+  - **Request id:** `requestIdMiddleware` on the root tags each request's Vinktar scope with `request_id` (Fly's `Fly-Request-Id`, otherwise a fresh id). Log lines and Vinktar errors both carry it, so an issue leads to its lines in the Fly logs.
+  - **Privacy:** messages are fixed text; `key`, `keys`, `bucket`, `name`, `path`, `email`, `query` and `where` fields reach stdout only, never Vinktar.
+  - **Replaced:** every `console.error` (22) and `console.warn` (3) in `app/.server`, plus the 3 real `console.log` calls (the other 16 were JSDoc examples). One, `saveMediaMetadata` printing a file's parsed audio tags, was deleted rather than moved. 9 unit tests (`log.test.ts`); `item-delete-objects.test.ts` reads the new message. Vinktar has no log search, so stdout stays the complete stream.
 
 ### 5. Thumbnails of private files are publicly readable
 
@@ -1155,6 +1162,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-31 | `8aaa67e` | 54, 13 | PaddleOCR runs in a dedicated worker that restarts after any error, so a GPU reset no longer leaves OCR broken until a reload. 12-page scan 17.6 → 12.4 s warm, 0 main-thread long tasks. 4 new tests; 1082/0 in 93 files. |
 | 2026-10-31 | `4e52727` | 53 | The upload's own calls to our server go at `priority: 'low'`, so metadata saves get dev's six HTTP/1.1 sockets first. Against a control run in the same tab: saves landed by the last of 660 rows 49 → 630, last save +6.9 → +0.3 s after it, upload no slower. |
 | 2026-10-31 | `9f4cf1e`, `a836add` | 4 | Vinktar records every user action, upload and indexing phase (61 server events), pageviews by route, and slow or failed requests by route pattern. Properties carry no user content. JSON logger still open. |
+| 2026-10-31 | `92ad800` | 4 | Item 4 resolved: `log` writes JSON to stdout, Vinktar breadcrumbs and issues for warn/error, with a request id on every line and error; every server `console` call moved to it. |
 
 ## Phased remediation plan
 
