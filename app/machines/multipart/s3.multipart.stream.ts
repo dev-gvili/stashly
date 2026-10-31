@@ -109,6 +109,7 @@ export function createPartUrls({
       '/api/s3/upload',
       {
         method: 'POST',
+        priority: 'low',
         body: JSON.stringify({
           key,
           uploadId,

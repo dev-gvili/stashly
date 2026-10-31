@@ -69,6 +69,8 @@ export const postItem = fromPromise<DbResponse, DbItemPayload>(
       method: 'POST',
       body: toFormData(payload),
       signal,
+      // Behind metadata saves, like the upload's other calls (tech-debt 53).
+      priority: 'low',
     })
 
     return await dbResponse.parseAsync({

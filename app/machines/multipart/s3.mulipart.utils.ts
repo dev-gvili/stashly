@@ -42,9 +42,13 @@ export interface AbortMultipartUploadOutput {
 }
 
 
+// `low` lets a file's metadata save go first. Over HTTP/1.1 (dev) Chrome sends
+// six requests at a time per origin, and an upload's own calls kept the rest
+// queued ~7 s (tech-debt item 53); `fetch` defaults to `high`.
 const FetchInit: RequestInit = {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
+  priority: 'low',
 }
 
 /**
