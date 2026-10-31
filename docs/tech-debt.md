@@ -7,7 +7,7 @@
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
 **Now (31 Oct):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1117 in 96 files), and the build. Green on `0594fed` (31 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1140 in 96 files), and the build. Green on `0564240` (31 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors, analytics and logs:** Vinktar on server and browser since 10 Oct; product events, route timing and a structured logger since 31 Oct (item 4, resolved).
@@ -21,9 +21,11 @@
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**57 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55) · categories: Code 24, Architecture 22, Infrastructure 4, Test 4, Documentation 2, Dependency 1
+**59 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client) · categories: Code 26, Architecture 22, Infrastructure 4, Test 4, Documentation 2, Dependency 1
 
-**Status at 31 Oct 2026 (latest, items 55–57):** 36 resolved · 1 resolved in code, rollout step unconfirmed (2) · 5 partly done (10, 16, 17, 23, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 11 new and open (19, 20, 22, 37, 45–47, 49–51, 57). Re-running the upload call audit answered its oldest open question: one `/stash` reload read 3,353,317 rows, 96% of it the activity feed building its nested select for all 8,798 of the user's activities before keeping 12. Item 55 resolved the same day: the feed and the favorites list are one statement each that picks its rows before joining, and `Item` has an `ownerId` index. One reload now reads 134,249 rows in 408 ms, against 905 ms before. Item 57, from item 55, is open: a large user's or workspace's feed still sorts its whole history, which only a schema change would remove. Separately, full-suite runs found item 56, resolved: a test-cleanup deadlock that failed 3 of 8 local runs.
+**Status at 31 Oct 2026 (latest, items 58–59):** 37 resolved · 1 resolved in code, rollout step unconfirmed (2) · 5 partly done (10, 16, 17, 23, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 12 new and open (19, 20, 22, 37, 45–47, 49–51, 57, 59). An upload was charged the size the client claimed: claiming 0 stored three 10 MB files for free (measured). Item 58 resolved: the charge is the stored object's size, read from storage, and an upload onto a name already filed in its folder is refused before any bytes move, because it swapped the bytes behind the filed row while its size stayed. Item 59, open: bytes uploaded and never filed are charged to no one, and rows filed before the fix keep their claimed size.
+
+**Status at 31 Oct 2026 (items 55–57):** 36 resolved · 1 resolved in code, rollout step unconfirmed (2) · 5 partly done (10, 16, 17, 23, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 11 new and open (19, 20, 22, 37, 45–47, 49–51, 57). Re-running the upload call audit answered its oldest open question: one `/stash` reload read 3,353,317 rows, 96% of it the activity feed building its nested select for all 8,798 of the user's activities before keeping 12. Item 55 resolved the same day: the feed and the favorites list are one statement each that picks its rows before joining, and `Item` has an `ownerId` index. One reload now reads 134,249 rows in 408 ms, against 905 ms before. Item 57, from item 55, is open: a large user's or workspace's feed still sorts its whole history, which only a schema change would remove. Separately, full-suite runs found item 56, resolved: a test-cleanup deadlock that failed 3 of 8 local runs.
 
 **Status at 31 Oct 2026 (item 4 resolved):** 34 resolved · 1 resolved in code, rollout step unconfirmed (2) · 5 partly done (10, 16, 17, 23, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 37, 45–47, 49–51). Item 4 resolved without a new package (`92ad800`): `app/.server/log.ts` writes each line as JSON to stdout (Fly keeps the stream), adds it as a Vinktar breadcrumb so an error carries its request's trail, and raises `warn`/`error` as Vinktar issues. Every line and error carries a request id (Fly's `Fly-Request-Id`, else a fresh one). All 25 `console.error`/`console.warn` calls and the 3 real `console.log` calls in `app/.server` moved to it; one, a dump of a file's audio tags, was deleted.
 
@@ -132,6 +134,8 @@
 | 55 | ~~A `/stash` reload reads millions of rows~~ | 28 | Resolved 2026-10-31 (`92e06a7`, `c3e0833`, `158b98b`): feed and favorites filter before they join, `Item(ownerId)` index; one reload 3,353,317 → 134,249 rows, 905 → 408 ms, measured | — |
 | 56 | ~~Test cleanup deadlocks with a parallel size rollup~~ | 20 | Resolved 2026-10-31 (`ed9349b`): the wipe drops the user's pending size deltas first, under the rollup lock; full runs failing 3 of 8 → 0 of 12, measured | — |
 | 57 | **new** A large user's activity feed sorts its whole history | 8 | 16.7 ms and 46,207 rows for 8,798 activities; owner, workspace and time copied onto `Activity`, indexed for both the personal and the workspace feed, would read only `limit` rows (schema change, owner's approval) | Owner's approval for the schema change |
+| 58 | ~~An upload is charged the size the client claims~~ | 32 | Resolved 2026-10-31 (`7383976`, `6029219`, `0564240`): charged from a HEAD of the stored object, and a filed key refused at create and complete; a forged size 0 now charges 10,000,000 of 10,000,000 bytes, +90 ms per create, measured | — |
+| 59 | **new** Bytes no row pays for | 15 | An upload completed and never filed is charged to no one until the orphan sweep runs by hand; rows filed before item 58 keep their claimed size (3 known at size 0). Schedule the sweep or reserve at complete; backfill sizes from a HEAD per `File` (DB change, owner's approval) | Owner's approval for the backfill |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -196,6 +200,8 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 55 | ~~A `/stash` reload reads millions of rows~~ | Architecture | 4 | 3 | 2 | **28** (High) | 1 day | Resolved 31 Oct |
 | 56 | ~~Test cleanup deadlocks with a parallel size rollup~~ | Test | 2 | 2 | 1 | **20** (Medium) | 2 h | Resolved 31 Oct |
 | 57 | A large user's activity feed sorts its whole history | Architecture | 2 | 2 | 4 | **8** (Low) | 3–5 days | New 31 Oct |
+| 58 | ~~An upload is charged the size the client claims~~ | Code | 4 | 4 | 2 | **32** (High) | 1.5 days | Resolved 31 Oct |
+| 59 | Bytes no row pays for | Code | 2 | 3 | 3 | **15** (Low) | 1–2 days | New 31 Oct |
 
 ## Details
 
@@ -1108,6 +1114,23 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Fix:** copy `ownerId`, `workspaceId`, `observedAt` and the time id (the feed's tiebreak) onto `Activity`, and keep them in step on every activity write and on an item's change of owner or workspace. One index per feed scope: `(ownerId, workspaceId, observedAt DESC)` for the personal feed (`workspaceId IS NULL`) and a workspace member's own items, and `(workspaceId, observedAt DESC)` for a workspace admin or owner, whose scope (`activityScopeFor`) has no owner. With both, every feed reads only `limit` rows; with an owner-only index the workspace admin's feed would still sort the whole workspace's history.
 - **Status 2026-10-31: open.** Needs the owner's approval for the schema change; small users already read 5–29 rows.
 
+### 58. An upload is charged the size the client claims
+
+*Code debt · Impact 4 · Risk 4 · Effort 2 → **32** · est. 1.5 days · source: review of the upload's trust in the client, 31 Oct*
+
+- **Evidence:** `create_upload_item` passed the form's `size` to `createUploadedItem`, which charges it to the quota and stores it as `Item.size`. With the page forcing `size=0`, three 10 MB uploads were filed at size 0 and the quota did not move (`.claude/evidence/real-upload-size-before.json`). A second hole made the fix necessary on both ends: keys come from the path, and neither `create-multipart-upload` nor `complete-multipart-upload` checked whether a `File` row already served the key, so a 1-byte filed file could be grown to any size by uploading over it, with its size and the quota unchanged. 31 keys in the dev database are already served by more than one row (64 rows).
+- **Fix:** `headUploadedObject` (`s3.ts`) reads the stored size and ETag; the route charges those, compares the claim and logs a difference, and refuses a missing or unreadable object without deleting it. `assertKeyUnfiled` (`item-actions.ts`) refuses a key a `File` row serves, trashed included, with 409 at create (before any bytes move) and at complete (which aborts). `File(bucket, key)` gained an index for it (migration `20261031120000_file_bucket_key_index`): 1.34 ms and 387 buffers → 0.10 ms and 4 buffers.
+- **Measured:** a Tigris probe of 223 complete-then-HEAD cycles found no object missing and no size or ETag mismatch; HEAD p95 225 ms at 100 in parallel, 89 ms alone; Tigris does not enforce `MpuObjectSize`. With the same forced 0, three 10 MB uploads were charged 10,000,000 each (quota +30,000,000); `create_upload_item` 186–230 → 294–323 ms. A re-upload of a filed name answered 409 in 256 ms with no part sent (`real-upload-size-after.json`).
+- **Status 2026-10-31: resolved.** Same-name re-uploads into a folder now fail with a message instead of silently replacing the older file's content. Not closed: a race in which two uploads of one key both complete before either is filed, and per-upload unique keys, which would remove shared-key rows altogether.
+
+### 59. Bytes no row pays for
+
+*Code debt · Impact 2 · Risk 3 · Effort 3 → **15** · est. 1–2 days · source: item 58, 31 Oct*
+
+- **Evidence:** the charge happens only when the row is filed. An upload that completes and is never filed (a scripted client, or a refused row whose bytes were kept on purpose) stays in the bucket uncharged until `scripts/sweep-s3-orphans.ts --apply` is run by hand. Rows filed before item 58 keep the size their client claimed: `size-b1/b2/b3-1031.bin` (the measurement's own files) are 10 MB objects at size 0.
+- **Fix:** run the orphan sweep on a schedule in report mode, with an alert on uncharged bytes per user, or reserve the size at complete (a new table, owner's approval). Backfill: HEAD each `File`, update `Item.size` where it differs (the size trigger cascades to folders) and correct `Quota.used`, a database change that needs the owner's approval.
+- **Status 2026-10-31: open.**
+
 ## Changes since the audit
 
 These commits touched a register item, oldest first. Commits that don't touch any register item are left out, such as page size, the rename dialog, the search `ZodError`, and the Vite typegen watch.
@@ -1209,6 +1232,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-31 | `92e06a7` | 55, 13 | The activity feed is one raw statement: 2 → 1 round trips, 21.8 → 16.7 ms for 8,798 activities and 6.6 → 2.0 ms for 1; ties ordered by time id. 6 live-DB tests; 1107/0. |
 | 2026-10-31 | `ed9349b` | 56, 13 | `wipeTestUsers` drops the user's pending size deltas under the rollup lock first: full runs failing 3 of 8 → 0 of 12. |
 | 2026-10-31 | `158b98b` | 55, 13 | Favorites filtered before their cards are built, in one statement: 165–200 → 5–8 ms, 4,463 → 1 loops; `itemAccessSql` tested against `itemAccessWhere`. One `/stash` reload 3,353,317 → 134,249 rows. 1117/0 in 96 files. |
+| 2026-10-31 | `7383976`, `6029219`, `0564240` | 58 | Uploads charged from a HEAD of the stored object, not the form's size; a key a `File` row serves is refused at create and complete; `File(bucket, key)` index. A forged size 0: 3 × 10 MB charged 0 → 10,000,000 each, measured. 1140/0 in 96 files. |
 
 ## Phased remediation plan
 
