@@ -36,6 +36,20 @@ import { prisma } from '@/services/db'
 export async function wipeTestUsers(userIds: string[]): Promise<void> {
   if (userIds.length === 0) return
 
+  // Drop this user's pending upload size deltas first, under the rollup's lock.
+  // Parallel test files call `flushItemSizes()`, which applies every pending
+  // delta in the database: applying this user's would update their folders while
+  // the delete below removes them, and the two took row locks in opposite orders
+  // ("deadlock detected", 3 of 8 full runs on 31 Oct). With the deltas gone no
+  // rollup touches these rows. The lock is held only for this small delete:
+  // held for the whole wipe, it made `withSizeRollupPaused` wait out 5 s timeouts.
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('stashly.item_size_rollup'))`
+    await tx.$executeRaw`
+      DELETE FROM "ItemSizeDelta" d USING "Item" i
+      WHERE i."id" = d."parentId" AND i."ownerId" = ANY(${userIds})`
+  })
+
   await prisma.$transaction(
     async (tx) => {
       for (const userId of userIds) {
