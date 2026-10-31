@@ -35,7 +35,7 @@ A failure settles the caller *and* frees the queue (`.finally`), because an unre
 
 ## PDF OCR
 
-Recovers text from PDFs that have **no text layer**. Entry: `streamOcrPdf` (in `@/utils/thumbnail-ocr`) runs after `pdfText` compute comes back empty — the `transcribingScannedPdf` state of the indexing machine in `app/machines/indexing/` (actor `transcribeScannedPdf` in `indexing.actors.ts`).
+Recovers text from PDFs that have **no text layer**. Entry: `streamOcrPdf` (in `@/utils/thumbnail-ocr`) runs after `pdfText` compute comes back empty — `ocr.machine.ts` in `app/machines/indexing/` (actor `transcribeScannedPdf` in `indexing.actors.ts`), in the indexing queue's deferred lane, which is paused while uploads are in flight and resumes after 2 s idle. It saves each page and hands the page's chunks to `embed.machine.ts` for vectors; OCR embeds nothing itself (tech-debt item 53).
 
 - **Rasterization** goes through the compute worker (off main thread); **inference** runs on the main thread through the shared queue, matching every other model.
 - **Per-page streaming.** `streamOcrPdf(file, onPage)` renders → transcribes → hands over → drops, one page at a time. Two reasons: a closed tab at page 12 of 15 no longer throws away twelve pages of work (~30s/page), and exactly one decoded bitmap is alive at a time. `onPage` is awaited so persistence back-pressures rendering.

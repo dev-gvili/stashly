@@ -25,6 +25,8 @@
 
 **Status at 30 Oct 2026 (latest):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 3 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 37). Item 44 declined, measured: each of the three access checks per file is one statement of about 3 ms and two are deliberate, and merging complete with create would save one request and 0.16–0.39 s per file but not a batch's time, for a 1–2 day rewrite of the upload machines.
 
+**Status at 31 Oct 2026 (item 53 partly done):** an upload's metadata no longer waits behind embeddings and OCR. Metadata, vectors and OCR are three machines, and the GPU work waits until uploads are idle. On the 655-file upload every metadata save landed by 256 s (273 by 399 s before, still running) and every markdown and image facet was saved. It still trails a large upload by about 107 s while the server is busy, so item 53 stays open.
+
 **Status at 31 Oct 2026 (items 53–54 registered):** uploads are fast, but many lose their metadata. Facets are written only by the in-tab indexing queue, where each file waits behind every earlier file's embeddings and OCR. A full reload or a closed tab before the queue drains leaves the rest with none: 0 of 30 camera JPEGs in one batch, and 15 of 16 after a reload in another. Item 53 splits the work into metadata (right after `itemCreated`), embedding and OCR machines, the last two deferred until uploads are idle. Item 54 is a re-survey of OCR models and a speed pass.
 
 **Status at 31 Oct 2026 (item 52 resolved):** the upload panel mounts only the rows in view and the runner has no per-file components (`999b5a1`). The same 650-file upload went 233 → 90 s after `ec4b521`'s 698 → 233 s, with main-thread blocking at 0% of it, from 70% at the start of the day; rows per minute no longer fall as the batch grows. Isolating the per-file subscriptions was measured first and changed nothing, so it was reverted. Item 45 stays open.
@@ -115,7 +117,7 @@
 | 50 | **new** No test guards the deferred `Folder_itemId_fkey` | 20 | A live-DB check that the constraint is still deferred, so a `db push` or a regenerated migration that drops it fails | — |
 | 51 | **new** One held row lock stalls the size rollup for every user | 12 | Run item 42's 32-uploader benchmark with a large trash or move in the same tree; if the rollup stalls, batch and lock per owner tree | — |
 | 52 | ~~The main thread is saturated for the whole upload~~ | 24 | Resolved 2026-10-31 (`ec4b521`, `999b5a1`): no layout animation, only visible upload rows mounted, no per-file watchers; 650-file upload 698 → 90 s, main-thread blocking 70% → 0%, measured | — |
-| 53 | **new** An upload's metadata waits behind its embeddings and is lost on reload | 24 | Split the per-file work into metadata (right after `itemCreated`), `embed.machine` and `ocr.machine`, the last two paused while uploads are in flight and resumed after 2 s idle | — |
+| 53 | **new** An upload's metadata waits behind its embeddings and is lost on reload | 24 | Split in (31 Oct): all 655 metadata saves by 256 s instead of 273 by 399 s, every md/image facet saved; still lags a large upload by about 107 s while the server is busy (`save_media_metadata` p90 7.7 s) | — |
 | 54 | **new** OCR is slow, and its models haven't been re-surveyed | 15 | Measure seconds per page with both engines on one scanned PDF, survey current browser OCR models, benchmark, switch on numbers | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
@@ -176,7 +178,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 50 | No test guards the deferred `Folder_itemId_fkey` | Test | 2 | 2 | 1 | **20** (Medium) | 0.5 day | New 30 Oct |
 | 51 | One held row lock stalls the size rollup for every user | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
 | 52 | ~~The main thread is saturated for the whole upload~~ | Architecture | 4 | 4 | 3 | **24** (Medium) | 2–3 days | Resolved 31 Oct |
-| 53 | An upload's metadata waits behind its embeddings and is lost on reload | Architecture | 4 | 4 | 3 | **24** (Medium) | 1–2 days | New 31 Oct |
+| 53 | An upload's metadata waits behind its embeddings and is lost on reload | Architecture | 4 | 4 | 3 | **24** (Medium) | 1–2 days | Partly done (31 Oct) |
 | 54 | OCR is slow, and its models haven't been re-surveyed | Architecture | 3 | 2 | 3 | **15** (Low) | 2–3 days | New 31 Oct |
 
 ## Details
@@ -1008,6 +1010,19 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
   - **Rejected:** a facet backfill that downloads the originals from S3. It costs bandwidth and S3 calls, and it would slow the app with client-side extraction the user can't see a reason for.
   - **Trade-off:** a scanned PDF still waiting for OCR when the tab reloads gets no OCR text. Vectors left unwritten are already healed by the embedding backfill.
 - **Status 2026-10-31: open.** Measure with item 52's harness, before and after: how many metadata saves have landed when the last row is created, and when the last one lands.
+- **Status 2026-10-31 (night): partly done, measured.** The split is in as decided: the metadata machine, `embed.machine.ts`, `ocr.machine.ts`, the queue's metadata and deferred lanes, and the runner pausing the deferred lane while files are in flight (2 s idle to resume). Same harness, the 655-file `app/` upload (`.claude/evidence/p53-before.json`, `p53-after.json`, local):
+
+  |  | before (`999b5a1`) | after |
+  |---|---|---|
+  | metadata saves when the last row was created | 2 | 37 |
+  | metadata saves within 10 s of the last row | 8 | 90 |
+  | last metadata save | still running at 399 s (273 of 651 done) | 256 s: 655 of 655, 0 errors |
+  | markdown / PNG facets in the DB | 0 / 0 (every earlier harness run) | 7 of 7 / 1 of 1 |
+  | vector saves during the upload | 0 | 0; the deferred lane started about 5 s after the last row |
+
+  - **Not done: metadata still trails a large upload.** While files upload, the server answers `save_media_metadata` slowly (p50 432 ms, p90 7.7 s; 327 / 375 ms once uploads end), so most facets land in the 107 s after the last row, and a reload in that window still loses the rest. What makes the request slow under load wasn't isolated. Options: more metadata concurrency, or saving the facets before the file's text.
+  - OCR now embeds nothing itself: each saved page's chunks become an `embed.machine` job. A scanned PDF still waiting for OCR when the tab reloads gets no OCR text, since OCR has no backfill.
+  - `pnpm test` 1054/0 in 91 files (18 new cases across the queue, embed and OCR machines); `upload.spec.ts` and `thumbnail-machine.spec.ts` 26/26; type gate exit 0.
 
 ### 54. OCR is slow, and its models haven't been re-surveyed
 
