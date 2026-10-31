@@ -1,4 +1,4 @@
-import type { Prisma } from '@/prisma/client'
+import { Prisma } from '@/prisma/client'
 import type { ItemCategory } from '@/prisma/enums'
 import { prisma } from '@/services/db'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
@@ -253,7 +253,11 @@ export interface OverviewActivity {
 export async function activityScopeFor(
   userId: string,
   workspaceId?: string
-): Promise<Prisma.ItemWhereInput> {
+): Promise<
+  | { ownerId: string; workspaceId: null }
+  | { workspaceId: string }
+  | { workspaceId: string; ownerId: string }
+> {
   if (!workspaceId) {
     // `workspaceId: null` matters: without it a workspace item the user happens
     // to own would surface in their personal feed, carrying workspace context
@@ -293,102 +297,87 @@ export async function getRecentActivityForUser({
   workspaceId?: string
   limit?: number
 }): Promise<OverviewActivity[]> {
-  const item = await activityScopeFor(userId, workspaceId)
-  const newestFirst = { time: { observedAt: 'desc' } } as const
+  const scope = await activityScopeFor(userId, workspaceId)
+  const owner = 'ownerId' in scope ? Prisma.sql`AND i."ownerId" = ${scope.ownerId}` : Prisma.empty
+  const space =
+    scope.workspaceId === null
+      ? Prisma.sql`AND i."workspaceId" IS NULL`
+      : Prisma.sql`AND i."workspaceId" = ${scope.workspaceId}`
 
-  // Two queries on purpose. Sorting on a relation field keeps Postgres from
-  // applying `take` before Prisma's per-row joins, so one query built the nested
-  // select below for every activity the user has: 8,798 rows, 694 ms and 3.2 M
-  // tuples read for 12 results (31 Oct). Picking the ids first touches only
-  // Activity and ActivityTime; the joins then run for `limit` rows.
-  const newest = await prisma.activity.findMany({
-    where: { item },
-    orderBy: newestFirst,
-    take: limit,
-    select: { id: true },
-  })
+  // One statement. `newest` picks the rows with inner joins only, so the planner
+  // is free to start from the owner's items (`owner_items`) and the joins below
+  // run for `limit` rows. The Prisma `findMany` this replaces sorted on a relation
+  // field, which made it build every nested select before `take`: 8,798 rows,
+  // 694 ms and 3.2 M tuples read for 12 results (31 Oct). Most kinds are just a
+  // non-null `…ActionId` on ItemAction; only pin, collection and favorite carry
+  // a `kind` column worth a join. `t.id` breaks ties: 680 timestamps are shared.
+  const rows = await prisma.$queryRaw<
+    {
+      id: string
+      observedAt: Date | null
+      itemId: string
+      name: string
+      type: 'file' | 'folder'
+      category: ItemCategory
+      parentId: string | null
+      ownerId: string
+      kind: OverviewActivityKind
+    }[]
+  >`
+    WITH newest AS (
+      SELECT a."id", a."itemId", t."observedAt", t."id" AS "timeId"
+      FROM "Activity" a
+      JOIN "ActivityTime" t ON t."id" = a."timeId"
+      JOIN "Item" i ON i."id" = a."itemId"
+      WHERE true ${owner} ${space}
+      ORDER BY t."observedAt" DESC, t."id" COLLATE "C" DESC
+      LIMIT ${limit}
+    )
+    SELECT
+      n."id", n."observedAt",
+      i."id" AS "itemId", i."name", i."type"::text AS "type", i."category",
+      i."parentId", i."ownerId",
+      CASE
+        WHEN ia."editActionId"       IS NOT NULL THEN 'edited'
+        WHEN ia."createActionId"     IS NOT NULL THEN 'created'
+        WHEN ia."renameActionId"     IS NOT NULL THEN 'renamed'
+        WHEN ia."moveActionId"       IS NOT NULL THEN 'moved'
+        WHEN ia."copyActionId"       IS NOT NULL THEN 'copied'
+        WHEN ia."shareActionId"      IS NOT NULL THEN 'shared'
+        WHEN ia."permissionActionId" IS NOT NULL THEN 'changed_permission'
+        WHEN ia."restoreActionId"    IS NOT NULL THEN 'restored'
+        WHEN ia."deleteActionId"     IS NOT NULL THEN 'deleted'
+        WHEN ia."commentActionId"    IS NOT NULL THEN 'commented'
+        WHEN ia."versionActionId"    IS NOT NULL THEN 'updated'
+        WHEN ia."uploadActionId"     IS NOT NULL THEN 'uploaded'
+        WHEN pin."kind"              IS NOT NULL THEN pin."kind"::text
+        WHEN col."kind" = 'item_added'           THEN 'collection_item_added'
+        WHEN col."kind" = 'item_removed'         THEN 'collection_item_removed'
+        WHEN col."kind"              IS NOT NULL THEN 'collection_emptied'
+        WHEN fav."kind"              IS NOT NULL THEN fav."kind"::text
+        WHEN ia."bucketActionId"     IS NOT NULL THEN 'bucket_emptied'
+        ELSE 'viewed'
+      END AS "kind"
+    FROM newest n
+    JOIN "Item" i ON i."id" = n."itemId"
+    LEFT JOIN "ItemAction" ia ON ia."activityId" = n."id"
+    LEFT JOIN "PinAction" pin ON pin."id" = ia."pinActionId"
+    LEFT JOIN "CollectionAction" col ON col."id" = ia."collectionActionId"
+    LEFT JOIN "FavoriteAction" fav ON fav."id" = ia."favoriteActionId"
+    ORDER BY n."observedAt" DESC, n."timeId" COLLATE "C" DESC
+  `
 
-  const rows = await prisma.activity.findMany({
-    where: { id: { in: newest.map((row) => row.id) } },
-    orderBy: newestFirst,
-    select: {
-      id: true,
-      time: { select: { observedAt: true } },
-      item: {
-        select: {
-          id: true,
-          name: true,
-          type: true,
-          category: true,
-          parentId: true,
-          ownerId: true,
-        },
-      },
-      access: { select: { id: true } },
-      action: {
-        select: {
-          create: { select: { id: true } },
-          rename: { select: { id: true } },
-          move: { select: { id: true } },
-          delete: { select: { id: true } },
-          restore: { select: { id: true } },
-          copy: { select: { id: true } },
-          share: { select: { id: true } },
-          version: { select: { id: true } },
-          comment: { select: { id: true } },
-          permission: { select: { id: true } },
-          edit: { select: { id: true } },
-          pin: { select: { id: true, kind: true } },
-          upload: { select: { id: true } },
-          collection: { select: { id: true, kind: true } },
-          favorite: { select: { id: true, kind: true } },
-          bucket: { select: { id: true, kind: true } },
-        },
-      },
+  return rows.map((row) => ({
+    id: row.id,
+    kind: row.kind,
+    observedAt: row.observedAt,
+    item: {
+      id: row.itemId,
+      name: row.name,
+      type: row.type,
+      category: row.category,
+      parentId: row.parentId,
+      ownerId: row.ownerId,
     },
-  })
-
-  return rows.map((row) => {
-    let kind: OverviewActivityKind = 'viewed'
-    const a = row.action
-    if (a?.edit) kind = 'edited'
-    else if (a?.create) kind = 'created'
-    else if (a?.rename) kind = 'renamed'
-    else if (a?.move) kind = 'moved'
-    else if (a?.copy) kind = 'copied'
-    else if (a?.share) kind = 'shared'
-    else if (a?.permission) kind = 'changed_permission'
-    else if (a?.restore) kind = 'restored'
-    else if (a?.delete) kind = 'deleted'
-    else if (a?.comment) kind = 'commented'
-    else if (a?.version) kind = 'updated'
-    else if (a?.upload) kind = 'uploaded'
-    else if (a?.pin) kind = a.pin.kind
-    else if (a?.collection) {
-      kind =
-        a.collection.kind === 'item_added'
-          ? 'collection_item_added'
-          : a.collection.kind === 'item_removed'
-            ? 'collection_item_removed'
-            : 'collection_emptied'
-    } else if (a?.favorite) kind = a.favorite.kind
-    else if (a?.bucket) kind = 'bucket_emptied'
-    else if (row.access) kind = 'viewed'
-
-    return {
-      id: row.id,
-      kind,
-      observedAt: row.time?.observedAt ?? null,
-      item: row.item
-        ? {
-            id: row.item.id,
-            name: row.item.name,
-            type: row.item.type as 'file' | 'folder',
-            category: row.item.category,
-            parentId: row.item.parentId,
-            ownerId: row.item.ownerId,
-          }
-        : null,
-    }
-  })
+  }))
 }
