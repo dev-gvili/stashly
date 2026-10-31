@@ -1146,6 +1146,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-31 | `91e530f`, `71be088` | 54, 13 | PaddleOCR PP-OCRv6 (official ONNX, 31 MB) is the default OCR engine; GLM-OCR re-reads low-confidence pages. Real 12-page scan: about 28 min → 17.6 s; recognition batched 8 lines a run, 12.9 → 7.0 s. 19 new tests; 1076/0. |
 | 2026-10-31 | `0f63f4b` | 54, 13 | Empty, picture-shaped regions no longer count toward a page's confidence: an English cover with icons scored 0.848 and was sent to GLM-OCR, which hung the GPU; now 0.92. 2 new tests; 1078/0. |
 | 2026-10-31 | `8aaa67e` | 54, 13 | PaddleOCR runs in a dedicated worker that restarts after any error, so a GPU reset no longer leaves OCR broken until a reload. 12-page scan 17.6 → 12.4 s warm, 0 main-thread long tasks. 4 new tests; 1082/0 in 93 files. |
+| 2026-10-31 | `4e52727` | 53 | The upload's own calls to our server go at `priority: 'low'`, so metadata saves get dev's six HTTP/1.1 sockets first. Against a control run in the same tab: saves landed by the last of 660 rows 49 → 630, last save +6.9 → +0.3 s after it, upload no slower. |
 
 ## Phased remediation plan
 
