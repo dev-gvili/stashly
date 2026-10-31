@@ -294,11 +294,23 @@ export async function getRecentActivityForUser({
   limit?: number
 }): Promise<OverviewActivity[]> {
   const item = await activityScopeFor(userId, workspaceId)
+  const newestFirst = { time: { observedAt: 'desc' } } as const
+
+  // Two queries on purpose. Sorting on a relation field keeps Postgres from
+  // applying `take` before Prisma's per-row joins, so one query built the nested
+  // select below for every activity the user has: 8,798 rows, 694 ms and 3.2 M
+  // tuples read for 12 results (31 Oct). Picking the ids first touches only
+  // Activity and ActivityTime; the joins then run for `limit` rows.
+  const newest = await prisma.activity.findMany({
+    where: { item },
+    orderBy: newestFirst,
+    take: limit,
+    select: { id: true },
+  })
 
   const rows = await prisma.activity.findMany({
-    where: { item },
-    orderBy: { time: { observedAt: 'desc' } },
-    take: limit,
+    where: { id: { in: newest.map((row) => row.id) } },
+    orderBy: newestFirst,
     select: {
       id: true,
       time: { select: { observedAt: true } },
