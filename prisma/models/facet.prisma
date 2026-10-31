@@ -8,6 +8,8 @@ model File {
   etag      String?
   itemId    String  @unique
   item      Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([bucket, key], map: "file_bucket_key")
 }
 
 model Folder {
