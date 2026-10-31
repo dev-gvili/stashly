@@ -1,11 +1,11 @@
 ---
 name: stashly-ai-inference
-description: Stashly browser-side AI inference — the shared WebGPU ai-queue and its priorities, PDF OCR (GLM-OCR / Florence-2, engine + pixel-budget dev switches, per-page streaming), and the search-embedding backfill. Load when working on OCR, embeddings, the AI queue, or anything that runs a model in the browser in the Stashly repo.
+description: Stashly browser-side AI inference — the shared WebGPU ai-queue and its priorities, PDF OCR (PaddleOCR PP-OCRv6 default on onnxruntime-web, GLM-OCR fallback for low confidence, Florence-2, engine + pixel-budget dev switches, per-page streaming), and the search-embedding backfill. Load when working on OCR, embeddings, the AI queue, or anything that runs a model in the browser in the Stashly repo.
 ---
 
 # Stashly Browser AI Inference
 
-Every model in Stashly runs **client-side** on WebGPU via `@huggingface/transformers`. There is no server-side inference. Consumers: image saliency (thumbnail stage 3), text embedding, PDF OCR.
+Every model in Stashly runs **client-side** on WebGPU, via `@huggingface/transformers` except PaddleOCR, which uses `onnxruntime-web` directly. There is no server-side inference. Consumers: image saliency (thumbnail stage 3), text embedding, PDF OCR.
 
 ## The shared queue — `app/workers/ai-queue.ts`
 
@@ -44,20 +44,31 @@ Recovers text from PDFs that have **no text layer**. Entry: `streamOcrPdf` (in `
 - Each page is persisted immediately via the `save_ocr_page` intent on `POST /api/items`. That intent is in `SEARCH_INDEX_INTENTS` (`app/utils/revalidation.ts`) — it must not revalidate loaders.
 - `ocrPdfFallback` is the non-streaming counterpart; the upload path uses the streaming one.
 - **Best-effort by construction.** No WebGPU, a model that won't download, a page that won't rasterize — the document stays indexed by name and tags, exactly as it would have been. The failure is *reported*, not swallowed, so a systematically broken OCR path is visible rather than looking like "this PDF just has no text".
-- `OCR_MAX_PAGES = 15`.
+- `OCR_MAX_PAGES = 15`, in `ocr-engine.ts` (engine-neutral).
+
+### Default engine: PaddleOCR PP-OCRv6 (since 31 Oct 2026)
+
+`app/workers/paddle-ocr.ai.ts` runs Baidu's `PaddlePaddle/PP-OCRv6_small_det_onnx` (10 MB) and `_small_rec_onnx` (21 MB) on **`onnxruntime-web` directly** (`onnxruntime-web/webgpu`, WebGPU then WASM), not transformers.js. transformers.js 4.3 has no `paddleocr_vl` architecture, and the PaddleOCR-VL ONNX exports on the Hub are CPU/OpenVINO builds without a KV cache, so VL is not an option in the browser. Port of the `runemic-ai/ocr-arena` Space's `paddle.js`.
+
+- **Pure half** in `app/utils/paddle-ocr.ts`, unit-tested: dictionary from `inference.yml`, detector input (long side 960, multiples of 32, BGR, ImageNet norm), DB box extraction with v6 thresholds 0.2 / 0.45 / unclip 1.4 (the Space hard-codes v5's), recognizer input (height 48), greedy CTC, reading order, `pageConfidence`.
+- **Models pinned to commits** and kept in Cache Storage (`stashly-paddle-ocr-v6`); `resolve` redirects to short-lived signed URLs, so the HTTP cache rarely keeps them. Bump the cache name with the commits.
+- **Sessions are created one after the other**: ORT's WebGPU backend throws "another WebGPU EP inference session is being created" on a parallel create.
+- The ORT WASM file is the build's own asset (Vite emits it from `import.meta.url`), not a CDN.
+- **No Hebrew.** A page whose `pageConfidence` is below `PADDLE_FALLBACK_BELOW` (0.9) is re-read with GLM-OCR in `streamOcrPdf`. Measured on clean synthetic renders: English 0.992–0.993, Hebrew 0.654 / 0.737 (garbage text), Hebrew mixed with Latin and digits 0.868. Not yet checked on real scans; every page logs its confidence. `ocr.ai.ts`, and with it transformers.js, loads only when a page falls back.
+- Measured 31 Oct 2026 (NVIDIA Turing): load 1.7–2.9 s from cache, first page ~4 s (shader compile), then 0.4–0.7 s a page at 2 MP. `PADDLE_MAX_PIXELS = 2_000_000` (≈A4 at 150 dpi), untuned.
 
 ### Dev switches (localStorage, not settings or env)
 
-Two engines exist side by side and the choice is still open — GLM-OCR 0.9B (~623MB, default, multilingual-ish) vs Florence-2 base-ft (~340MB, English-only). `app/utils/ocr-engine.ts`:
+`app/utils/ocr-engine.ts`. GLM-OCR 0.9B (~623MB, multilingual-ish) and Florence-2 base-ft (~340MB, English-only) stay selectable:
 
 | Key | Values | Notes |
 |-----|--------|-------|
-| `stashly:ocr-engine` | `glm` \| `florence` \| `compare` | `compare` runs both sequentially and logs the difference — ~960MB and double the time, so it is opt-in |
-| `stashly:ocr-max-pixels` | number | Pixel budget per page render |
+| `stashly:ocr-engine` | `paddle` (default) \| `glm` \| `florence` \| `compare` | `compare` runs GLM-OCR and Florence-2 sequentially and logs the difference — ~960MB and double the time, so it is opt-in |
+| `stashly:ocr-max-pixels` | number | Pixel budget per page render, for whichever engine runs |
 
 They live in `localStorage` because they are developer switches that must survive a reload mid-experiment and change without a rebuild. Blocked storage falls back to the default rather than breaking uploads.
 
-**`OCR_MAX_PIXELS` is the most important knob in the pipeline**: ~70% of a page's ~28s is spent before the first token (CPU preprocessing + vision encoder), and both scale with pixel count. Profile before changing anything else. Report real measurements — never `unknown` placeholder telemetry.
+**For GLM-OCR, `OCR_MAX_PIXELS` is the most important knob**: ~70% of a page's ~28s is spent before the first token (CPU preprocessing + vision encoder), and both scale with pixel count. Profile before changing anything else. Report real measurements — never `unknown` placeholder telemetry.
 
 ## Search-embedding backfill
 
