@@ -21,9 +21,11 @@
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**52 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 52 added 31 Oct from item 45's measurements) · categories: Code 24, Architecture 18, Infrastructure 4, Test 3, Documentation 2, Dependency 1
+**54 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 3 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata) · categories: Code 24, Architecture 20, Infrastructure 4, Test 3, Documentation 2, Dependency 1
 
 **Status at 30 Oct 2026 (latest):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 3 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 37). Item 44 declined, measured: each of the three access checks per file is one statement of about 3 ms and two are deliberate, and merging complete with create would save one request and 0.16–0.39 s per file but not a batch's time, for a 1–2 day rewrite of the upload machines.
+
+**Status at 31 Oct 2026 (items 53–54 registered):** uploads are fast, but many lose their metadata. Facets are written only by the in-tab indexing queue, where each file waits behind every earlier file's embeddings and OCR. A full reload or a closed tab before the queue drains leaves the rest with none: 0 of 30 camera JPEGs in one batch, and 15 of 16 after a reload in another. Item 53 splits the work into metadata (right after `itemCreated`), embedding and OCR machines, the last two deferred until uploads are idle. Item 54 is a re-survey of OCR models and a speed pass.
 
 **Status at 31 Oct 2026 (item 52 resolved):** the upload panel mounts only the rows in view and the runner has no per-file components (`999b5a1`). The same 650-file upload went 233 → 90 s after `ec4b521`'s 698 → 233 s, with main-thread blocking at 0% of it, from 70% at the start of the day; rows per minute no longer fall as the batch grows. Isolating the per-file subscriptions was measured first and changed nothing, so it was reverted. Item 45 stays open.
 
@@ -113,6 +115,8 @@
 | 50 | **new** No test guards the deferred `Folder_itemId_fkey` | 20 | A live-DB check that the constraint is still deferred, so a `db push` or a regenerated migration that drops it fails | — |
 | 51 | **new** One held row lock stalls the size rollup for every user | 12 | Run item 42's 32-uploader benchmark with a large trash or move in the same tree; if the rollup stalls, batch and lock per owner tree | — |
 | 52 | ~~The main thread is saturated for the whole upload~~ | 24 | Resolved 2026-10-31 (`ec4b521`, `999b5a1`): no layout animation, only visible upload rows mounted, no per-file watchers; 650-file upload 698 → 90 s, main-thread blocking 70% → 0%, measured | — |
+| 53 | **new** An upload's metadata waits behind its embeddings and is lost on reload | 24 | Split the per-file work into metadata (right after `itemCreated`), `embed.machine` and `ocr.machine`, the last two paused while uploads are in flight and resumed after 2 s idle | — |
+| 54 | **new** OCR is slow, and its models haven't been re-surveyed | 15 | Measure seconds per page with both engines on one scanned PDF, survey current browser OCR models, benchmark, switch on numbers | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -172,6 +176,8 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 50 | No test guards the deferred `Folder_itemId_fkey` | Test | 2 | 2 | 1 | **20** (Medium) | 0.5 day | New 30 Oct |
 | 51 | One held row lock stalls the size rollup for every user | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
 | 52 | ~~The main thread is saturated for the whole upload~~ | Architecture | 4 | 4 | 3 | **24** (Medium) | 2–3 days | Resolved 31 Oct |
+| 53 | An upload's metadata waits behind its embeddings and is lost on reload | Architecture | 4 | 4 | 3 | **24** (Medium) | 1–2 days | New 31 Oct |
+| 54 | OCR is slow, and its models haven't been re-surveyed | Architecture | 3 | 2 | 3 | **15** (Low) | 2–3 days | New 31 Oct |
 
 ## Details
 
@@ -984,6 +990,32 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
   | long frame p50 / p90 | 237 / 574 ms | 132 / 224 ms | 64 / 71 ms |
 
   - Rows per minute no longer fall as the batch grows (366 in the first minute, 285 in the remaining 30 s). `pnpm test` 1043/0 in 89 files; `upload.spec.ts` and `thumbnail-machine.spec.ts` 26/26; type gate exit 0. All measured on the dev server; production wasn't measured.
+
+### 53. An upload's metadata waits behind its embeddings and is lost on reload
+
+*Architecture debt · Impact 4 · Risk 4 · Effort 3 → **24** · est. 1–2 days · source: owner report after item 52, 31 Oct*
+
+- **Evidence:** facets (image dimensions and EXIF, markdown facets, page counts) are written only by the in-tab indexing queue (`app/machines/indexing/`). Each file is one `indexing-item` machine that holds one of the queue's two slots (`INDEXING_CONCURRENCY = 2`) through every step: reading metadata, saving it, embedding the chunks on the GPU, saving vectors, and OCR for a scanned PDF. So a file's facets wait behind every earlier file's embeddings and OCR. Nothing in the queue is persisted, and facets have no backfill (embeddings do: `pending_search_embeddings`), so a file still queued when the tab does a full load or closes never gets its facets.
+  - **How far behind:** in item 52's last run, all 651 rows existed after 90 s, while metadata saves stood at 40 after 129 s and 271 after 387 s, about 0.75 a second (`.claude/evidence/p52c-after.json`).
+  - **Missing facets, counted in the dev DB per 10 minutes** (markdown and image uploads since 30 Oct 18:00 UTC): every harness run that ended with a full navigation got 0 facets on its markdown and image files, including runs before any of that night's commits (21:30–22:40 UTC). The owner's own batch got 33 of 58 markdown files, then 0 of 30 camera JPEGs. 15 of 16 JPEGs uploaded in the MCP tab lost their facets when that tab was reloaded about 5 minutes later. Files that went up alone, or in a batch the tab stayed open for, all got theirs: 1 of 1 PNG, then 30 of 30 PNGs uploaded as one 10 s burst.
+  - The same JPEG uploaded on 26 Oct has its full EXIF facet (2736×3648, HUAWEI CLT-L09, f/1.8, ISO 50). Uploaded on 31 Oct it has none.
+  - Item 52 made this more likely: an upload now finishes in a fraction of the time, while indexing still takes many minutes after it.
+- **Fix (decided 31 Oct):** split the per-file work into three machines.
+  - `indexing-item.machine.ts`: metadata only (read, save, retry), run right after `itemCreated`.
+  - `embed.machine.ts`: vector embedding only (embed chunks, save vectors, retry).
+  - `ocr.machine.ts`: the old `transcribingScannedPdf`, page by page; each page's chunks go to `embed.machine`.
+  - `indexing-queue.machine.ts` gets two lanes: metadata, always open; and embed plus OCR, paused while any upload is in flight and resumed after 2 s with none.
+  - **Rejected:** a facet backfill that downloads the originals from S3. It costs bandwidth and S3 calls, and it would slow the app with client-side extraction the user can't see a reason for.
+  - **Trade-off:** a scanned PDF still waiting for OCR when the tab reloads gets no OCR text. Vectors left unwritten are already healed by the embedding backfill.
+- **Status 2026-10-31: open.** Measure with item 52's harness, before and after: how many metadata saves have landed when the last row is created, and when the last one lands.
+
+### 54. OCR is slow, and its models haven't been re-surveyed
+
+*Architecture debt · Impact 3 · Risk 2 · Effort 3 → **15** · est. 2–3 days · source: owner, 31 Oct*
+
+- **Evidence:** scanned PDFs are transcribed in the browser by GLM-OCR 0.9B (about 623 MB, the default) or Florence-2 base-ft (about 340 MB, English only), up to `OCR_MAX_PAGES = 15` pages. The `stashly-ai-inference` skill records about 28 s a page, about 70% of it before the first token (CPU preprocessing and the vision encoder), both scaling with `OCR_MAX_PIXELS`. Not re-measured; the engines were last compared months ago.
+- **Fix:** measure seconds per page and the time before the first token, with both engines, on one fixed scanned PDF. Then survey current browser-capable OCR models (WebGPU or ONNX), benchmark the best candidates on the same PDF, and switch only on numbers.
+- **Status 2026-10-31: open.** Item 53 moves OCR into its own machine first.
 
 ## Changes since the audit
 
