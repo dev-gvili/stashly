@@ -31,6 +31,8 @@ FIFO within a priority; a waiting `interactive` job goes ahead of waiting `backg
 
 A failure settles the caller *and* frees the queue (`.finally`), because an unreleased `running` flag deadlocks every later job.
 
+**A lost GPU device must drop every cached model.** Windows' GPU watchdog (TDR) can reset the device mid-inference (`DXGI_ERROR_DEVICE_HUNG`, seen 31 Oct 2026 on page 1 of a GLM-OCR run on an NVIDIA Turing card). That reset kills every WebGPU device on the adapter, the embedding worker's included. A model cached across jobs then fails every later call with `[Device] is lost`, and before the fix 30 indexing jobs in a row did. `isDeviceLostError` (`ai-queue.ts`) is the shared check. `ocr.ai.ts` drops `modelPromise` on it, and `embedding.ai.ts` ends the worker on it. `streamOcrPdf` stops the run instead of reloading 623 MB to hang the GPU again on the next page. Saliency goes through `PipelineManager` (`stash.ai.ts`), which already resets on `device.lost`. Any new consumer that caches a model needs the same handling.
+
 `aiQueueDepth()` exposes `{ waiting, running }` for status UI.
 
 ## PDF OCR

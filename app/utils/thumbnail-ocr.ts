@@ -18,6 +18,7 @@
  * caller with no component tree can still report it.
  */
 import { classifyDegradation, reportDegraded } from '@/utils/report-degraded'
+import { isDeviceLostError } from '@/workers/ai-queue'
 import { compute } from '@/utils/compute-worker'
 
 /**
@@ -132,6 +133,9 @@ export async function streamOcrPdf(
         // One unreadable page must not discard the pages already saved —
         // which, unlike before, are already durable on the server.
         console.error(`[ocr] page ${pageNum} failed`, err)
+        // The GPU was reset under this page. Going on would reload the model
+        // and risk hanging the GPU again on the next one, so stop the run.
+        if (isDeviceLostError(err)) throw err
       }
 
       reportOcrProgress(file.name, {

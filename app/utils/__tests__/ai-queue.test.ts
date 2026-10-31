@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { enqueue, aiQueueDepth } from '@/workers/ai-queue'
+import { enqueue, aiQueueDepth, isDeviceLostError } from '@/workers/ai-queue'
 
 /** A job that resolves only when told to, so ordering is deterministic. */
 function gate() {
@@ -96,5 +96,27 @@ describe('ai-queue', () => {
     g.release()
     await Promise.all([blocker, queued])
     expect(aiQueueDepth()).toEqual({ waiting: 0, running: false })
+  })
+})
+
+describe('isDeviceLostError', () => {
+  it('recognises the ways a lost WebGPU device is reported', () => {
+    // Shortened from the ONNX Runtime error after a Windows GPU watchdog reset (31 Oct 2026).
+    expect(
+      isDeviceLostError(
+        new Error(
+          "failed to call OrtRun(). ERROR_CODE: 1, ERROR_MESSAGE: ... Failed to execute 'mapAsync' on 'GPUBuffer': [Device] is lost.",
+        ),
+      ),
+    ).toBe(true)
+    expect(isDeviceLostError(new Error('Device was lost'))).toBe(true)
+    expect(isDeviceLostError('GPU device-lost')).toBe(true)
+    expect(isDeviceLostError(new Error('DXGI_ERROR_DEVICE_HUNG (0x887A0006)'))).toBe(true)
+  })
+
+  it('leaves other failures alone', () => {
+    expect(isDeviceLostError(new Error('out of memory'))).toBe(false)
+    expect(isDeviceLostError(new Error('Failed to fetch'))).toBe(false)
+    expect(isDeviceLostError(undefined)).toBe(false)
   })
 })

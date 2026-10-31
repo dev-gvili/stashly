@@ -107,6 +107,24 @@ export function enqueue<T>(
   })
 }
 
+/**
+ * True when `err` says the WebGPU device is gone (a driver reset, or Windows'
+ * GPU watchdog after a dispatch ran too long).
+ *
+ * A lost device never comes back, and every model session created on it fails
+ * the same way from then on. A consumer that caches a model must drop it on
+ * this error so the next job builds one on a fresh device.
+ *
+ * @example
+ * isDeviceLostError(new Error("Failed to execute 'mapAsync' on 'GPUBuffer': [Device] is lost.")) // true
+ */
+export function isDeviceLostError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err)
+  return /device\]?\s+(?:is|was|has been)\s+lost|device[- ]lost|DXGI_ERROR_DEVICE_(?:HUNG|REMOVED|RESET)/i.test(
+    message,
+  )
+}
+
 /** Queue depth, for status UI and diagnostics. */
 export function aiQueueDepth(): { waiting: number; running: boolean } {
   return { waiting: waiting.length, running }

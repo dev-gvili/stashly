@@ -40,7 +40,7 @@ import {
   RawImage,
   type ProgressCallback,
 } from '@huggingface/transformers'
-import { enqueue } from './ai-queue'
+import { enqueue, isDeviceLostError } from './ai-queue'
 
 /**
  * Stamps the moment the first *generated* token arrives.
@@ -207,6 +207,20 @@ async function getModel(onProgress?: ProgressCallback) {
 }
 
 /**
+ * Drops the cached model when `err` is a lost WebGPU device, so the next page
+ * loads it again on a fresh device instead of failing against the dead one.
+ * The `.catch` in {@link getModel} only covers a failed load, not a model that
+ * loaded and later lost its device.
+ */
+function discardModelIfDeviceLost(err: unknown): void {
+  if (!isDeviceLostError(err) || !modelPromise) return
+  const lost = modelPromise
+  modelPromise = null
+  console.warn('[ocr] WebGPU device lost — the model will reload on next use')
+  void lost.then(({ model }) => model.dispose()).catch(() => {})
+}
+
+/**
  * Log what WebGPU the browser actually offers.
  *
  * `navigator.gpu` merely existing is not enough — `requestAdapter()` can still
@@ -255,7 +269,13 @@ export function ocrSinglePage(
   return enqueue(async () => {
     const { processor, model } = await getModel(onProgress)
     const startedAt = performance.now()
-    const result = await transcribe(processor, model, page.blob)
+    let result: Awaited<ReturnType<typeof transcribe>>
+    try {
+      result = await transcribe(processor, model, page.blob)
+    } catch (err) {
+      discardModelIfDeviceLost(err)
+      throw err
+    }
 
     // Logged here, not only in `ocrPages`. The per-page breakdown originally
     // lived in the batch loop, which the upload path stopped using when it
@@ -304,8 +324,13 @@ export function ocrImage(
 ): Promise<string> {
   return enqueue(async () => {
     const { processor, model } = await getModel(onProgress)
-    const { text } = await transcribe(processor, model, image)
-    return text
+    try {
+      const { text } = await transcribe(processor, model, image)
+      return text
+    } catch (err) {
+      discardModelIfDeviceLost(err)
+      throw err
+    }
   }, 'background')
 }
 
@@ -392,6 +417,12 @@ export function ocrPages(
       } catch (err) {
         // One unreadable page shouldn't discard the pages already transcribed.
         console.error(`[ocr] page ${page.pageNum} failed`, err)
+        // `loaded` is bound to the dead device, so every later page would fail
+        // the same way.
+        if (isDeviceLostError(err)) {
+          discardModelIfDeviceLost(err)
+          break
+        }
       }
       onPage?.({
         page: page.pageNum,

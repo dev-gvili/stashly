@@ -75,11 +75,21 @@ describe('embedTexts batching', () => {
 describe('embedTexts when the worker fails', () => {
   it('rejects with the error the worker reports, and keeps that worker', async () => {
     const before = worker.started
-    worker.current!.failNext = 'Device is lost'
-    await expect(embedTexts(texts(1))).rejects.toThrow('Device is lost')
+    worker.current!.failNext = 'Invalid input'
+    await expect(embedTexts(texts(1))).rejects.toThrow('Invalid input')
 
     expect(await embedTexts(texts(2))).toHaveLength(2)
     expect(worker.started).toBe(before)
+  })
+
+  it('replaces a worker whose GPU device was lost, so later batches recover', async () => {
+    const before = worker.started
+    worker.current!.failNext =
+      "Failed to execute 'mapAsync' on 'GPUBuffer': [Device] is lost."
+    await expect(embedTexts(texts(1))).rejects.toThrow('[Device] is lost')
+
+    expect(await embedTexts(texts(2))).toHaveLength(2)
+    expect(worker.started).toBe(before + 1)
   })
 
   it('a crashed worker fails its waiting request and is replaced on the next call', async () => {

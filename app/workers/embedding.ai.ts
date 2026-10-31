@@ -15,7 +15,7 @@
  */
 import type { ProgressCallback } from '@huggingface/transformers'
 import { createDebouncer } from '@/utils/debounce'
-import { enqueue, type AiPriority } from './ai-queue'
+import { enqueue, isDeviceLostError, type AiPriority } from './ai-queue'
 import type { EmbeddingRequest, EmbeddingResponse } from './embedding.worker'
 
 export const EMBEDDING_DIM = 768
@@ -90,8 +90,21 @@ function getWorker(): Worker {
       return
     }
     pending.delete(message.id)
-    if (message.type === 'result') request.resolve(message.vectors)
-    else request.reject(new Error(message.message))
+    if (message.type === 'result') {
+      request.resolve(message.vectors)
+      return
+    }
+    const err = new Error(message.message)
+    request.reject(err)
+    // The worker's pipeline is bound to the dead device and would fail every
+    // later batch the same way. Ending it frees that device; the next batch
+    // starts a fresh worker.
+    if (isDeviceLostError(err)) {
+      console.warn('[embedding] WebGPU device lost — restarting the worker')
+      failPending(err)
+      if (worker === started) worker = null
+      started.terminate()
+    }
   }
   started.onerror = (event) => {
     // A worker that failed to load, or threw outside a request, cannot be
