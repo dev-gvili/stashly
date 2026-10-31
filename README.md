@@ -24,7 +24,7 @@ A full-stack file management platform for personal stashes and collaborative wor
 | Backend    | Express 5, TypeScript strict, better-auth |
 | Database   | PostgreSQL, Prisma ORM, pgvector |
 | Storage    | AWS S3-compatible (Tigris on Fly.io), multipart upload |
-| AI         | HuggingFace Transformers.js, ONNX Runtime WebGPU, Whisper, Tesseract OCR |
+| AI         | HuggingFace Transformers.js, ONNX Runtime Web (WebGPU), Whisper, PaddleOCR PP-OCRv6 (GLM-OCR fallback) |
 | Search     | pgvector + embeddings (full-text and semantic search) |
 | Payments   | Stripe |
 
@@ -105,6 +105,8 @@ app/
 │   ├── upload/           # Upload orchestrator — spawns the per-file actor
 │   ├── reviset/          # The active per-file upload actor (file.machine.ts)
 │   ├── multipart/        # S3 multipart utilities (concurrent + streaming)
+│   ├── indexing/         # Search indexing: metadata, chunk vectors, OCR (three machines, two lanes)
+│   ├── thumbnail/        # Thumbnail scheduler (only cards on screen)
 │   ├── quota/            # Storage quota tracking + enforcement
 │   ├── pipeline/         # AI pipeline (detect → transcribe → summarize → tag)
 │   ├── selection/        # Multi-select with shift-range
@@ -115,8 +117,10 @@ app/
 ├── workers/              # Off-main-thread + model wrappers
 │   ├── stash.worker.ts   # Language detection + tokenization (ONNX / Transformers.js)
 │   ├── thumbnail.compute.worker.ts  # Thumbnail compute (OffscreenCanvas, PDF.js)
-│   ├── embedding.ai.ts   # 768-dim text embeddings on WebGPU
-│   └── ai-queue.ts       # Shared job ordering across AI work
+│   ├── embedding.ai.ts   # 768-dim text embeddings (client of embedding.worker.ts)
+│   ├── paddle-ocr.ai.ts  # PDF OCR, PaddleOCR PP-OCRv6 (client of paddle-ocr.worker.ts)
+│   ├── ocr.ai.ts         # GLM-OCR, the OCR fallback for low-confidence pages
+│   └── ai-queue.ts       # Shared job ordering across AI work; isDeviceLostError
 ├── schemas/              # Zod schemas — source of truth for validation
 │   ├── api.schemas.ts    # API request / response shapes
 │   ├── machine.schemas.ts# XState machine event payloads

@@ -85,17 +85,36 @@ A scanned PDF — or an export whose pages are images — extracts to **zero
 characters**. It uploads fine, thumbnails fine, and is silently unfindable by
 content, because `save_media_metadata` only indexes `if (documentText)`.
 
-When `extractPdfText` returns empty, `extractMediaMetadata` renders the pages
-and reads them with a vision model instead:
+When the metadata machine's `pdfText` comes back empty, the indexing queue
+hands the file to `ocr.machine.ts` (its deferred lane, which waits while
+uploads run). That runs `streamOcrPdf` (`app/utils/thumbnail-ocr.ts`), one page
+at a time:
 
 ```
-pdfText → '' ──► compute({ kind: 'pdfPages' })   // rasterize, in the worker
-                   └─► ocrPages()                 // GLM-OCR, main thread + WebGPU
-                         └─► documentText ──► normal chunk + embed path
+ocr.machine → streamOcrPdf
+  for each page (up to OCR_MAX_PAGES = 15):
+    compute({ kind: 'pdfPageAt' })          // rasterize one page, compute worker
+    └─► paddleOcrPage()                     // PaddleOCR, its own worker (default)
+          confidence < 0.89 ─► ocrSinglePage()   // GLM-OCR, main thread (Hebrew)
+    └─► save_ocr_page ──► the page's chunks go to embed.machine for vectors
 ```
 
-**Model:** `onnx-community/GLM-OCR-ONNX` at q4f16 (~623MB: decoder 322MB,
-vision encoder 251MB, embeddings 50MB). Purpose-built for document
+**Default engine (since 31 Oct 2026): PaddleOCR PP-OCRv6**, Baidu's official
+ONNX models `PaddlePaddle/PP-OCRv6_small_det_onnx` (10 MB, finds text lines)
+and `PaddlePaddle/PP-OCRv6_small_rec_onnx` (21 MB, reads each line), pinned to
+commits and run on `onnxruntime-web` in `app/workers/paddle-ocr.worker.ts`.
+The model-free half (detector post-processing, CTC decoding, reading order,
+page confidence) is `app/utils/paddle-ocr.ts`. Measured on one real 12-page
+scan: GLM-OCR about 28 minutes, PaddleOCR 12.4 s warm. Details, survey and
+numbers: tech-debt item 54 and the `stashly-ai-inference` skill.
+
+**GLM-OCR stays as the fallback** for what PP-OCR can't read, Hebrew above
+all: a page whose confidence is below 0.89 is read again by GLM-OCR. The
+history below explains how GLM-OCR was chosen in the first place. It can also
+be made the only engine with `localStorage['stashly:ocr-engine'] = 'glm'`.
+
+**GLM-OCR model:** `onnx-community/GLM-OCR-ONNX` at q4f16 (~623MB: decoder
+322MB, vision encoder 251MB, embeddings 50MB). Purpose-built for document
 transcription, 0.9B parameters, 94.62 on OmniDocBench v1.5.
 
 It replaced `onnx-community/Qwen3-VL-2B-Instruct-ONNX`, and the reason is
@@ -107,11 +126,14 @@ confirmed active), about three minutes for a dense page. Generation is one
 forward pass per token, so decoder size is the lever: 322MB against 949MB at
 the same quantization.
 
-**Hebrew quality is therefore an open, empirical question.** If RTL
-transcription comes back wrong, `MODEL_ID` in `ocr.ai.ts` is a one-constant
-revert — the surrounding plumbing is model-agnostic.
+**Hebrew quality is still an open, empirical question**, now for the fallback.
+GLM-OCR has also hung an NVIDIA Turing GPU twice (Windows TDR,
+`DXGI_ERROR_DEVICE_HUNG`), so a page that falls back is not free.
 
 ### Model comparison — measured, not argued
+
+*The comparison that chose GLM-OCR over Qwen3-VL and Florence-2, before
+PaddleOCR. PaddleOCR's numbers are in tech-debt item 54.*
 
 Three models were run over the same 15-page image-only PDF on the same
 integrated GPU (Intel Gen12LP). Decoder size predicts speed almost exactly —
@@ -166,21 +188,24 @@ No new dependency: `GlmOcrForConditionalGeneration` ships in
 instruction-tuned, so the prompt is the terse `Text Recognition:` label rather
 than a conversational request.
 
-Cost control, since this is the most expensive thing in the pipeline:
+Cost control:
 
 | Guard | Value | Why |
 |---|---|---|
-| Trigger | only on zero extracted chars | a PDF with a text layer never loads the model |
-| Import | lazy `import('@/workers/ocr.ai')` | a session that meets no scanned PDF never downloads weights |
-| `OCR_MAX_PAGES` | 6 | each page is a full autoregressive generation; 12 was 35+ min per upload on integrated graphics |
-| `MAX_NEW_TOKENS` | 768 | decoding dominates page latency, ahead of image size |
-| Render budget | `OCR_MAX_PIXELS` | the processor's `smart_resize` downscales to ~1.0M px regardless, so rendering above it is wasted rasterization |
-| `do_sample` | false | sampling invents text that was never on the page — worse than a gap |
+| Trigger | only on zero extracted chars | a PDF with a text layer never loads a model |
+| Import | lazy `import('@/workers/paddle-ocr.ai')`; `ocr.ai` only on a fallback page | a session that meets no scanned PDF never downloads weights, and a run whose pages all read confidently never loads transformers.js |
+| `OCR_MAX_PAGES` | 15 (`ocr-engine.ts`) | sized for GLM-OCR's minutes per page; PaddleOCR reads a page in about a second |
+| Render budget | `PADDLE_MAX_PIXELS` 2.0M px; GLM-OCR `OCR_MAX_PIXELS` 1.0M | PaddleOCR reads line crops from the full render; GLM-OCR's `smart_resize` downscales to ~1.0M anyway |
+| Fallback | page confidence below 0.89 | 27 real English pages scored 0.92–0.997, synthetic Hebrew 0.649 and 0, mixed Hebrew/Latin 0.868 |
+| Load failure | stops the run once | a model that can't load no longer fails every page in turn |
+| GPU reset | stops the run; models drop themselves | a lost device fails everything after it; PaddleOCR's worker restarts after any error |
+| GLM `MAX_NEW_TOKENS` | 768 | decoding dominates a GLM page, ahead of image size |
+| GLM `do_sample` | false | sampling invents text that was never on the page — worse than a gap |
 | Queue | `enqueue` **per page**, `'background'` | one job per document starved interactive search for minutes; per-page yields let a query jump the queue |
 
-Rasterization runs in the compute worker (`pdfPages`, 180s budget vs. the 30s
-used for thumbnail ops); inference runs on the main thread through
-`ai-queue.ts`, like every other model in the app. Failures report to
+Rasterization runs in the compute worker (`pdfPageAt`, one page at a time).
+PaddleOCR runs in its own worker and GLM-OCR on the main thread, both through
+`ai-queue.ts` so only one AI job touches the GPU at a time. Failures report to
 `/api/metrics` under the `ocr` stage and leave the document indexed by name
 and tags — exactly what it would have been anyway.
 
@@ -206,7 +231,7 @@ chunkText(fullText, { chunkChars = 1500, overlapChars = 250 })
 
 - `Xenova/all-mpnet-base-v2` via `@huggingface/transformers`, `device: 'webgpu'`, `dtype: 'q4'`
 - 768-dim, mean-pooled and L2-normalized (`{ pooling: 'mean', normalize: true }` — the recommended config for MPNet; vectors compare cleanly with cosine similarity)
-- Despite living under `app/workers/`, this is a plain module on the main thread (same pattern as `thumbnail.ai.ts`) — compute is offloaded to WebGPU rather than to a Worker
+- The model runs in a dedicated worker (`embedding.worker.ts`, since 9 Oct 2026); `embedding.ai.ts` is its main-thread client. A worker that errors, or reports a lost GPU device, is ended and the next batch starts a fresh one (31 Oct 2026)
 - Runs through `app/workers/ai-queue.ts` shared with image-AI work — only one WebGPU job at a time
 - Batched: `embedTexts(texts: string[])` is meaningfully faster than per-call invocations due to model warm-up
 
@@ -218,7 +243,7 @@ chunkText(fullText, { chunkChars = 1500, overlapChars = 250 })
 
 ### 5. Wire-up — the indexing leg
 
-Runs right after the stage-2 resize, for every file type regardless of whether a thumbnail was produced. Under the XState path this is the item machine's `indexing` region (`metadata → embeddings → OCR?`), which runs in parallel with `stages` and — unlike the `void` promise it replaced — is a held actor that can be cancelled and awaited. Under the legacy path it is `runMetadataPipeline`, kicked off unawaited from `useThumbnail().run` in `app/hooks/useThumbnail.ts`. Either way the steps are the same:
+Runs for every upload as soon as its `Item` row exists, independent of the thumbnail, in the indexing queue (`app/machines/indexing/`, see its README). Since tech-debt item 53 (31 Oct 2026) it is three machines: metadata right away, then vectors (`embed.machine`) and OCR (`ocr.machine`) in a deferred lane that waits while uploads run. The steps:
 
 1. `extractMediaMetadata(file)` → `documentText` for PDF / Markdown
 2. POST `save_media_metadata` to `/api/items`; the handler calls `upsertSearchContent` + `chunkText` + `upsertSearchChunks` and returns `chunks: [{id, ord, content}]`
@@ -336,9 +361,12 @@ Three forcing functions:
 | `EMBEDDING_DIM` | `embedding.ai.ts` | 768 | Tied to MPNet; changing model also requires schema migration |
 | `extractPdfText.maxPages` | `pdf.ts` | 50 | Raised from 5 once chunked indexing shipped |
 | `extractPdfText.maxChars` | `pdf.ts` | 200_000 | After per-page concat, total cap |
-| `OCR_MAX_PAGES` | `ocr.ai.ts` | 6 | Pages sent to the vision model; each is a full generation pass |
-| `OCR_MAX_PIXELS` | `ocr.ai.ts` | 14·14·4·1280 | Pixel budget for OCR renders; matches the processor’s `smart_resize` default |
-| `MAX_NEW_TOKENS` | `ocr.ai.ts` | 768 | Generation ceiling per page — the dominant latency lever |
+| `OCR_MAX_PAGES` | `ocr-engine.ts` | 15 | Pages OCR'd per document, whichever engine runs |
+| `PADDLE_MAX_PIXELS` | `paddle-ocr.ai.ts` | 2,000,000 | Render budget for PaddleOCR pages (≈A4 at 150 dpi); untuned |
+| `PADDLE_FALLBACK_BELOW` | `paddle-ocr.ai.ts` | 0.89 | Page confidence below which GLM-OCR re-reads the page |
+| `REC_BATCH_SIZE` | `paddle-ocr.ts` | 8 | Lines per recognizer run; 12.9 → 7.0 s of recognition on a real 12-page scan |
+| `OCR_MAX_PIXELS` | `ocr.ai.ts` | 14·14·4·1280 | GLM-OCR render budget; matches the processor’s `smart_resize` default |
+| `MAX_NEW_TOKENS` | `ocr.ai.ts` | 768 | GLM-OCR generation ceiling per page — its dominant latency lever |
 
 ---
 
@@ -354,7 +382,7 @@ Three forcing functions:
 - **Query embedding location.** Resolved: client-side, matching the index side. No server-side inference and no new dependency; browsers without WebGPU degrade to keyword-only rather than losing search.
 - **Query-path indexes.** `search_content_trgm_idx` (GIN trigram on `Search.content`) and an HNSW replacement for the useless btree on `SearchChunk.vector` — migration `20260815000000_search_query_indexes`.
 - **Lifted the `maxPages` cap** to 50 pages / 200,000 chars, now that chunked indexing makes extra pages into extra searchable passages rather than tokenizer-truncated waste.
-- **OCR fallback** for PDFs with no text layer — `app/workers/ocr.ai.ts`, triggered from `extractMediaMetadata` only when extraction yields zero characters. See [§ OCR fallback](#0-client-ocr-fallback-for-pdfs-with-no-text-layer).
+- **OCR fallback** for PDFs with no text layer, triggered only when extraction yields zero characters. PaddleOCR PP-OCRv6 by default since 31 Oct 2026 (`paddle-ocr.worker.ts`), GLM-OCR (`ocr.ai.ts`) for low-confidence pages. See [§ OCR fallback](#0-client-ocr-fallback-for-pdfs-with-no-text-layer).
 
 ### Next slices
 - **Per-page metadata for chunks.** Today `extractPdfText` joins pages with `\n\n` and discards page numbers. To populate `SearchChunk.pageNum`, extend `extractPdfText` to return `[{ pageNum, text }]` and pipe per-page chunking through.

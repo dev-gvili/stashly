@@ -129,7 +129,7 @@ Built with React Router 8 (SSR), Express 5, PostgreSQL (Prisma), and S3-compatib
 - **Summarization** — extract key points from audio/text content
 - **Translation** — multi-language text translation
 - **Embeddings** — vector embeddings for semantic search indexing
-- **PDF OCR** — per-page text extraction (GLM-OCR / Florence-2), streamed into the search index
+- **PDF OCR** — per-page text extraction for scans with no text layer, streamed into the search index: PaddleOCR PP-OCRv6 (31 MB) by default, GLM-OCR for pages it reads with low confidence such as Hebrew (Florence-2 selectable)
 - **Chat** — conversational AI interface
 - All inference runs in Web Workers via ONNX Runtime (WebGPU with WASM fallback), serialized through the shared priority queue in `app/workers/ai-queue.ts`
 
@@ -422,15 +422,16 @@ Main Thread → Web Worker → ONNX Runtime (WebGPU or WASM fallback)
                               ├── Xenova/paraphrase-multilingual-MiniLM-L12-v2 (pipeline tagging)
                               ├── Xenova/all-mpnet-base-v2 (search embeddings, 768-dim)
                               ├── Xenova/vit-base-patch16-224 (thumbnail saliency)
-                              └── onnx-community/GLM-OCR-ONNX · Florence-2-*-ft (PDF OCR)
+                              ├── PaddlePaddle/PP-OCRv6_small_det_onnx + _rec_onnx (PDF OCR, default; onnxruntime-web)
+                              └── onnx-community/GLM-OCR-ONNX (OCR fallback for low-confidence pages) · Florence-2-*-ft
 ```
 
 - Hardware auto-detection: uses GPU if available, falls back to CPU/WASM
 - Chunked processing for long audio files
-- All inference funnels through a single WebGPU context via the priority queue in `app/workers/ai-queue.ts`
+- All inference funnels through the priority queue in `app/workers/ai-queue.ts`, one job on the GPU at a time. The embedding model and PaddleOCR run in dedicated workers that restart after a failure; every cached model drops itself when the WebGPU device is lost (a Windows GPU reset), instead of failing every later job
 - When an optional stage falls back (no WebGPU, a model that won't load), the client reports it to `/api/metrics` — see [Observability](#observability)
 
-Key files: `app/workers/` (`ai-queue.ts`, `stash.ai.ts`, `embedding.ai.ts`, `thumbnail.ai.ts`, `ocr.ai.ts`, `ocr-florence.ai.ts`), `app/machines/pipeline/`, `app/.client/stashly-ai.ts`
+Key files: `app/workers/` (`ai-queue.ts`, `stash.ai.ts`, `embedding.ai.ts` + `embedding.worker.ts`, `thumbnail.ai.ts`, `paddle-ocr.ai.ts` + `paddle-ocr.worker.ts`, `ocr.ai.ts`, `ocr-florence.ai.ts`), `app/utils/paddle-ocr.ts`, `app/utils/thumbnail-ocr.ts`, `app/machines/indexing/`, `app/machines/pipeline/`, `app/.client/stashly-ai.ts`
 
 See: [`docs/ai-pipeline.md`](ai-pipeline.md)
 

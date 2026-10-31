@@ -47,7 +47,7 @@ Both lanes take the newest request first. Retry is 800 ms with a budget of 2; le
 
 PDFs and text-based files stop after stage 2. The PDF.js worker URL is set globally on import in `app/utils/pdf.ts` via `pdfjs-dist/build/pdf.worker.min.mjs?url`.
 
-**PDF text extraction is indexing, not thumbnailing**: the metadata machine's (`indexing-item.machine.ts`) `readingMetadata` state dispatches the `pdfText` compute RPC, and when it comes back empty (a scan with no text layer) the queue hands the file to `ocr.machine.ts`, which runs `streamOcrPdf` — page-by-page vision-model OCR, persisted per page. That path is documented in the `stashly-ai-inference` skill; don't add OCR logic here.
+**PDF text extraction is indexing, not thumbnailing**: the metadata machine's (`indexing-item.machine.ts`) `readingMetadata` state dispatches the `pdfText` compute RPC, and when it comes back empty (a scan with no text layer) the queue hands the file to `ocr.machine.ts`, which runs `streamOcrPdf` — page-by-page OCR (PaddleOCR PP-OCRv6 in its own worker, GLM-OCR for low-confidence pages), persisted per page. It rasterizes each page with the same compute worker (`pdfPageAt`). That path is documented in the `stashly-ai-inference` skill; don't add OCR logic here.
 
 **Text thumbnails**: `app/utils/text-thumbnail.ts` "screenshots" the first ~32 KB of a text-based file (plain text, markdown, code, config) onto an A4-proportioned white page via OffscreenCanvas — sans-serif for prose extensions, monospace for code/config (extension wins over mime because code files often arrive as `text/plain`/`application/octet-stream`). Detection is `isTextRenderableFile`; compute-worker RPC kinds are `tinyText`/`resizeText`. Empty files return null — no thumbnail beats a blank page. Line layout (`layoutTextLines`) is pure and unit-tested in `app/utils/__tests__/text-thumbnail.test.ts`.
 
@@ -113,7 +113,7 @@ CPU-intensive work runs off the main thread in `app/workers/`:
 - `stash.ai.ts` — AI inference helpers for the stash worker
 - `embedding.ai.ts` — embedding inference
 - `thumbnail.ai.ts` — saliency crop; a regular module on main, not a `Worker`
-- `ocr.ai.ts` / `ocr-florence.ai.ts` — PDF OCR engines (see the `stashly-ai-inference` skill)
+- `paddle-ocr.ai.ts` + `paddle-ocr.worker.ts` (default), `ocr.ai.ts` (GLM-OCR fallback), `ocr-florence.ai.ts` — PDF OCR engines (see the `stashly-ai-inference` skill)
 - `ai-queue.ts` — shared **priority** queue so saliency, embedding and OCR never hit WebGPU at once
 
 Workers are loaded via `new Worker(new URL('./workers/...', import.meta.url))`. Type augmentations for third-party worker APIs live in `app/types/tokenizers-augment.d.ts`.

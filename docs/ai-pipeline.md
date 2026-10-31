@@ -23,8 +23,9 @@ This document covers the AI pipeline architecture for Stashly, including product
 | State machine | `app/machines/pipeline/pipeline.machine.ts` + `pipeline.actors.ts` | Stages: detect language → transcribe → correct transcript → summarize → extract keywords → generate tags, plus a `detectHardwareActor`. |
 | Inference | `app/workers/stash.ai.ts` | `detectLanguage`, `transcribeAudio`, `summarizeText`, `generateTagsFromText`, `extractKeywordsFromText`. A `PipelineManager` singleton caches pipelines per `task-model` key with per-model dtype overrides. |
 | Multimodal client | `app/.client/stashly-ai.ts` | `transcribe()` (chat-template prompt over an audio input), `StashlyAI.caption()`, `StashlyAI.processImage()`. |
-| Text embedding | `app/workers/embedding.ai.ts` | Search embeddings — see [`docs/semantic-search.md`](./semantic-search.md). |
-| WebGPU serialization | `app/workers/ai-queue.ts` | One inference job at a time; concurrent jobs cause device-lost errors. |
+| Text embedding | `app/workers/embedding.ai.ts` + `embedding.worker.ts` | Search embeddings in a dedicated worker — see [`docs/semantic-search.md`](./semantic-search.md). |
+| PDF OCR | `app/workers/paddle-ocr.ai.ts` + `paddle-ocr.worker.ts`, `ocr.ai.ts` | Scans with no text layer: PaddleOCR PP-OCRv6 (official ONNX, `onnxruntime-web`) in a dedicated worker by default; GLM-OCR re-reads pages below 0.89 confidence (Hebrew). See the `stashly-ai-inference` skill. |
+| WebGPU serialization | `app/workers/ai-queue.ts` | One inference job at a time; concurrent jobs cause device-lost errors. `isDeviceLostError` lets each cached model drop itself after a GPU reset, and workers restart, so one reset doesn't fail every later job. |
 | Consumer | `app/routes/stash/demo.tsx` | The only route that spawns `stash.worker.ts` today. |
 
 **Models actually loaded** (all ONNX, in-browser):
