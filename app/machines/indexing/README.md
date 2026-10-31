@@ -78,9 +78,14 @@ pauses thumbnail downloads. A pause starts nothing new; a running job finishes.
   emits its chunks; the queue turns each page into an `embed.machine` job. A
   scanned PDF still waiting for OCR when the tab reloads gets no OCR text: OCR
   has no backfill.
-- **Metadata still lags a large upload.** While files upload, the server answers
-  `save_media_metadata` slowly (p90 7.7 s on the 655-file run, 375 ms once idle),
-  so most facets land in the minute or two after the last row.
+- **Metadata keeps pace with the upload because the upload's calls go at low
+  priority.** Over HTTP/1.1 (dev) Chrome sends six requests at a time per
+  origin. The upload's own calls (`/api/s3/upload`, `create_upload_item`) kept
+  the metadata saves queued for seconds, though the server answers in ~15 ms.
+  They now send `priority: 'low'`, so `save_media_metadata` (default `high`)
+  goes first. Measured on a 660-file upload (tech-debt item 53): saves landed
+  by the last row went from 49 to 630, and the last one landed 0.3 s after it
+  instead of 6.9 s. Don't send a new upload-time call at default priority.
 - **No request when there is nothing to save.** A zip or an unknown binary
   reads as `{}`. `hasMetadataToSave` (`utils/media-metadata.ts`) applies the
   form builder's own rule, so the machine goes straight to `indexed`: no POST,

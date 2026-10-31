@@ -23,7 +23,9 @@
 
 **54 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 3 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata) · categories: Code 24, Architecture 20, Infrastructure 4, Test 3, Documentation 2, Dependency 1
 
-**Status at 31 Oct 2026 (latest, item 54 resolved):** 32 resolved · 1 resolved in code, rollout step unconfirmed (2) · 7 partly done (4, 10, 16, 17, 23, 48, 53) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 37, 45–47, 49–51). Item 54 resolved: scanned PDFs are read by PaddleOCR PP-OCRv6 (Baidu's official ONNX, 31 MB) in a dedicated worker, and GLM-OCR (623 MB) only re-reads a page below 0.89 confidence, for Hebrew, which PP-OCR can't read. The same real 12-page scan took about 28 minutes with GLM-OCR and takes 12.4 s, with 0 main-thread long tasks. A GPU reset no longer breaks AI work for the rest of the tab: cached models drop themselves and the OCR worker restarts. Open from it: the threshold has not met a real Hebrew scan, and a page that falls back to GLM-OCR can still hang this GPU.
+**Status at 31 Oct 2026 (latest, item 53 resolved):** 33 resolved · 1 resolved in code, rollout step unconfirmed (2) · 6 partly done (4, 10, 16, 17, 23, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 37, 45–47, 49–51). Item 53 resolved: the metadata that trailed an upload was waiting in Chrome for one of dev's six HTTP/1.1 connections, not on the server (p50 7.0 s waiting, 229 ms on the server). The upload's own calls now go at `priority: 'low'`; on a 660-file upload, metadata saves landed by the last row went from 49 to 630, and the last landed 0.3 s after it instead of 6.9 s, with no slower upload.
+
+**Status at 31 Oct 2026 (item 54 resolved):** 32 resolved · 1 resolved in code, rollout step unconfirmed (2) · 7 partly done (4, 10, 16, 17, 23, 48, 53) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 37, 45–47, 49–51). Item 54 resolved: scanned PDFs are read by PaddleOCR PP-OCRv6 (Baidu's official ONNX, 31 MB) in a dedicated worker, and GLM-OCR (623 MB) only re-reads a page below 0.89 confidence, for Hebrew, which PP-OCR can't read. The same real 12-page scan took about 28 minutes with GLM-OCR and takes 12.4 s, with 0 main-thread long tasks. A GPU reset no longer breaks AI work for the rest of the tab: cached models drop themselves and the OCR worker restarts. Open from it: the threshold has not met a real Hebrew scan, and a page that falls back to GLM-OCR can still hang this GPU.
 
 **Status at 30 Oct 2026:** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 3 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 37). Item 44 declined, measured: each of the three access checks per file is one statement of about 3 ms and two are deliberate, and merging complete with create would save one request and 0.16–0.39 s per file but not a batch's time, for a 1–2 day rewrite of the upload machines.
 
@@ -119,7 +121,7 @@
 | 50 | **new** No test guards the deferred `Folder_itemId_fkey` | 20 | A live-DB check that the constraint is still deferred, so a `db push` or a regenerated migration that drops it fails | — |
 | 51 | **new** One held row lock stalls the size rollup for every user | 12 | Run item 42's 32-uploader benchmark with a large trash or move in the same tree; if the rollup stalls, batch and lock per owner tree | — |
 | 52 | ~~The main thread is saturated for the whole upload~~ | 24 | Resolved 2026-10-31 (`ec4b521`, `999b5a1`): no layout animation, only visible upload rows mounted, no per-file watchers; 650-file upload 698 → 90 s, main-thread blocking 70% → 0%, measured | — |
-| 53 | **new** An upload's metadata waits behind its embeddings and is lost on reload | 24 | Split in (31 Oct): all 655 metadata saves by 256 s instead of 273 by 399 s, every md/image facet saved; still lags a large upload by about 107 s while the server is busy (`save_media_metadata` p90 7.7 s) | — |
+| 53 | **new** An upload's metadata waits behind its embeddings and is lost on reload | 24 | Split in (31 Oct): all 655 metadata saves by 256 s instead of 273 by 399 s, every md/image facet saved. Resolved (31 Oct): the lag was Chrome's six HTTP/1.1 sockets, not the server; upload calls at `priority: 'low'` took saves landed by the last row from 49 to 630 of 660 | — |
 | 54 | ~~OCR is slow, and its models haven't been re-surveyed~~ | 15 | Resolved 2026-10-31: PaddleOCR PP-OCRv6 (31 MB, in a worker) by default, GLM-OCR only for pages below 0.89 confidence; 12-page scan about 28 min → 12.4 s, measured | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
@@ -180,7 +182,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 50 | No test guards the deferred `Folder_itemId_fkey` | Test | 2 | 2 | 1 | **20** (Medium) | 0.5 day | New 30 Oct |
 | 51 | One held row lock stalls the size rollup for every user | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
 | 52 | ~~The main thread is saturated for the whole upload~~ | Architecture | 4 | 4 | 3 | **24** (Medium) | 2–3 days | Resolved 31 Oct |
-| 53 | An upload's metadata waits behind its embeddings and is lost on reload | Architecture | 4 | 4 | 3 | **24** (Medium) | 1–2 days | Partly done (31 Oct) |
+| 53 | An upload's metadata waits behind its embeddings and is lost on reload | Architecture | 4 | 4 | 3 | **24** (Medium) | 1–2 days | Resolved (31 Oct) |
 | 54 | ~~OCR is slow, and its models haven't been re-surveyed~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 2–3 days | Resolved 31 Oct |
 
 ## Details
@@ -1025,6 +1027,19 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
   - **Not done: metadata still trails a large upload.** While files upload, the server answers `save_media_metadata` slowly (p50 432 ms, p90 7.7 s; 327 / 375 ms once uploads end), so most facets land in the 107 s after the last row, and a reload in that window still loses the rest. What makes the request slow under load wasn't isolated. Options: more metadata concurrency, or saving the facets before the file's text.
   - OCR now embeds nothing itself: each saved page's chunks become an `embed.machine` job. A scanned PDF still waiting for OCR when the tab reloads gets no OCR text, since OCR has no backfill.
   - `pnpm test` 1054/0 in 91 files (18 new cases across the queue, embed and OCR machines); `upload.spec.ts` and `thumbnail-machine.spec.ts` 26/26; type gate exit 0.
+- **Status 2026-10-31 (morning): resolved.** The trailing metadata wasn't the server. Resource Timing from the 655-file run (`.claude/evidence/p53-sock-timing.json`) splits each same-origin request into its wait for a socket and its time on the server: `/api/items` waited p50 7.0 s in the browser and spent 229 ms on the server, 95% of all same-origin time was spent waiting, and never more than 6 requests were on the wire. Dev is HTTP/1.1, where Chrome opens six connections per origin, and the upload's own calls filled them. Production serves HTTP/2, which multiplexes, so the wait is mostly a dev effect there.
+  - **Fix:** the upload's same-origin calls send `priority: 'low'` (the four `/api/s3/upload` actions, the part-URL windows, `create_upload_item`). `save_media_metadata` keeps `fetch`'s default `high`, so Chrome hands it the next free socket. More metadata concurrency, one of the options above, would only have added requests to the same queue.
+  - **Measured** with `upload-audit-init.js` (now records queue, server time, protocol and priority) and `p53-priority-metric.mjs`, two 660-file `app/` uploads minutes apart in one tab; the control strips `priority` in the harness (`.claude/evidence/p53-priority-control.json`, `p53-priority-after.json`, local):
+
+    |  | control | `low` |
+    |---|---|---|
+    | metadata saves landed by the last row | 49 | 630 |
+    | last metadata save after the last row | +6.9 s | +0.3 s |
+    | metadata socket wait during the upload, p50 | 2,373 ms | 17 ms |
+    | last row created | 56.4 s | 51.9 s |
+
+    One run each. Server time was far lower in both runs than on 31 Oct (`create_upload_item` 11–13 ms), so the 107 s tail measured then also had a server-load part that these runs didn't reproduce.
+  - Still open by decision: OCR has no backfill (see the trade-off above).
 
 ### 54. OCR is slow, and its models haven't been re-surveyed
 
