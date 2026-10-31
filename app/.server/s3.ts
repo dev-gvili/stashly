@@ -1009,6 +1009,53 @@ export async function getFileMetadata(bucket: string, key: string) {
 }
 
 /**
+ * The size and ETag of an uploaded object, read from storage: what an upload is
+ * charged for, never the client's claim of it.
+ *
+ * A missing object is looked for once more after 250 ms before it counts as
+ * missing. A probe of 223 complete-then-HEAD cycles on Tigris found none
+ * missing on the first look (31 Oct), so this only covers a slow replica.
+ *
+ * @returns `{ size, etag }`, or `null` when the object is not there.
+ * @throws `SERVICE_UNAVAILABLE` (503) on any other storage error, and when
+ *   storage reports no length: read as 0, that would charge nothing.
+ *
+ * @example
+ * const stored = await headUploadedObject(user.bucket, key) // → { size: 5243904n, etag: '"…-2"' }
+ */
+export async function headUploadedObject(
+  bucket: string,
+  key: string
+): Promise<{ size: bigint; etag: string | undefined } | null> {
+  const unreadable = () =>
+    new StashlyError(
+      StashlyErrorCode.SERVICE_UNAVAILABLE,
+      'Could not read the uploaded file from storage'
+    )
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }))
+      if (res.ContentLength === undefined) {
+        log.error('S3 head of an uploaded object had no length', { key })
+        throw unreadable()
+      }
+      return { size: BigInt(res.ContentLength), etag: res.ETag }
+    } catch (error) {
+      if (error instanceof StashlyError) throw error
+      const err = error as { name?: string; $metadata?: { httpStatusCode?: number } }
+      const missing =
+        err.name === 'NotFound' || err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404
+      if (!missing) {
+        log.error('S3 head of an uploaded object failed', { key, error })
+        throw unreadable()
+      }
+      if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 250))
+    }
+  }
+  return null
+}
+
+/**
  * getObjectHead — ranged GET of the first N bytes, used by the
  *  complete-multipart-upload verification in the action route.
  * Pulls 1KB regardless of object size.

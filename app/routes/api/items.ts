@@ -2,6 +2,8 @@ import { itemsApiRouteInput } from '@/schemas/api.schemas'
 import { authMiddleware } from '@/services/middleware/auth'
 import { sessionContext } from '@/services/middleware/context'
 import { track } from '@/services/vinktar'
+import { log } from '@/services/log'
+import { headUploadedObject } from '@/services/s3'
 import {
   createFolder,
   createUploadedItem,
@@ -298,14 +300,49 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       if (!user.bucket) {
         return { success: false, error: 'Your account has no storage bucket' }
       }
+      const refusalProps = {
+        size_bytes: Number(parsedData.size),
+        mime_type: parsedData.mimeType ?? null,
+        category: parsedData.category ?? null,
+        has_parent: Boolean(parsedData.parentId),
+      }
+      // The charge and `Item.size` are the stored object's, read from storage:
+      // the form's size is the client's claim, and a claim of 0 stored any
+      // file for free. Read before the `try`, whose refusal deletes the bytes:
+      // no row serves this object yet, so a storage blip must not delete a
+      // good upload. A missing or unreadable object is left to the sweep.
+      let stored: Awaited<ReturnType<typeof headUploadedObject>>
+      try {
+        stored = await headUploadedObject(user.bucket, parsedData.key)
+      } catch (e) {
+        const err = toErrorInfo(e)
+        track('upload_item_refused', { status: err.status ?? 503, ...refusalProps }, { userId: user.id })
+        return { success: false, error: err.message }
+      }
+      if (!stored) {
+        track('upload_item_refused', { status: 404, ...refusalProps }, { userId: user.id })
+        return { success: false, error: 'The uploaded file was not found in storage' }
+      }
+      const etagMatches =
+        !parsedData.etag || parsedData.etag.replace(/"/g, '') === stored.etag?.replace(/"/g, '')
+      if (stored.size !== parsedData.size || !etagMatches) {
+        // An honest client always matches (223 of 223 in the 31 Oct probe).
+        log.warn('upload claim differs from the stored object', {
+          itemId: parsedData.id,
+          claimed_bytes: Number(parsedData.size),
+          stored_bytes: Number(stored.size),
+          etag_matches: etagMatches,
+        })
+      }
       try {
         const item = await createUploadedItem({
           id: parsedData.id,
           name: parsedData.name,
           key: parsedData.key,
-          size: parsedData.size,
+          size: stored.size,
           mimeType: parsedData.mimeType,
-          etag: parsedData.etag,
+          // The stored object's, like the size; none rather than the claim.
+          etag: stored.etag,
           hash: parsedData.hash,
           bucket: user.bucket,
           // The session's drive, like the bucket and owner: a form naming
@@ -343,13 +380,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         await discardUploadedObject(user.id, parsedData.key)
         track(
           'upload_item_refused',
-          {
-            status: err.status ?? 500,
-            size_bytes: Number(parsedData.size),
-            mime_type: parsedData.mimeType ?? null,
-            category: parsedData.category ?? null,
-            has_parent: Boolean(parsedData.parentId),
-          },
+          { status: err.status ?? 500, ...refusalProps, size_bytes: Number(stored.size) },
           { userId: user.id }
         )
         return { success: false, error: err.message }

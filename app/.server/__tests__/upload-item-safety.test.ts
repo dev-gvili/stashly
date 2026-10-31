@@ -1,8 +1,13 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { DeleteObjectsCommand } from '@aws-sdk/client-s3'
+import { DeleteObjectsCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { prisma } from '@/services/db'
-import { s3 } from '@/services/s3'
-import { assertCanUploadTo, createUploadedItem, discardUploadedObject } from '@/services/item-actions'
+import { headUploadedObject, s3 } from '@/services/s3'
+import {
+  assertCanUploadTo,
+  assertKeyUnfiled,
+  createUploadedItem,
+  discardUploadedObject,
+} from '@/services/item-actions'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
@@ -266,5 +271,83 @@ describe('discardUploadedObject', () => {
 
     await expect(discardUploadedObject(ownerId, key)).resolves.toBe('failed')
     expect(log).toHaveBeenCalled()
+  })
+})
+
+describe('assertKeyUnfiled', () => {
+  it('refuses a key a File row already serves, with 409', async () => {
+    const u = upload('filed/f.pdf')
+    await u.run()
+    await expect(assertKeyUnfiled(BUCKET, u.key)).rejects.toMatchObject({ status: 409 })
+  })
+
+  // Its bytes are the trashed item's: restoring it must not serve someone's
+  // newer upload.
+  it('refuses the key of a trashed file too', async () => {
+    const u = upload('filed/t.pdf')
+    await u.run()
+    await prisma.item.update({ where: { id: u.id }, data: { status: 'trashed' } })
+    await expect(assertKeyUnfiled(BUCKET, u.key)).rejects.toMatchObject({ status: 409 })
+  })
+
+  it('allows a key no row serves, and the same key in another bucket', async () => {
+    const u = upload('filed/g.pdf')
+    await u.run()
+    await expect(assertKeyUnfiled(BUCKET, `${rootId}/filed/new.pdf`)).resolves.toBeUndefined()
+    await expect(assertKeyUnfiled(STRANGER_BUCKET, u.key)).resolves.toBeUndefined()
+  })
+})
+
+/** Answers HeadObject with each of `answers` in turn; other commands pass through. */
+function interceptHeads(...answers: (Record<string, unknown> | Error)[]) {
+  const heads: string[] = []
+  const realSend = s3.send.bind(s3)
+  vi.spyOn(s3, 'send').mockImplementation(async (command: any) => {
+    if (!(command instanceof HeadObjectCommand)) return realSend(command)
+    heads.push(`${command.input.Bucket}/${command.input.Key}`)
+    const answer = answers[Math.min(heads.length, answers.length) - 1]
+    if (answer instanceof Error) throw answer
+    return answer as any
+  })
+  return heads
+}
+
+const notFound = () => Object.assign(new Error('NotFound'), { name: 'NotFound', $metadata: { httpStatusCode: 404 } })
+
+describe('headUploadedObject', () => {
+  it('reads the stored size as a bigint, with its ETag', async () => {
+    const heads = interceptHeads({ ContentLength: 5243904, ETag: '"abc-2"' })
+    await expect(headUploadedObject(BUCKET, 'k')).resolves.toEqual({ size: 5243904n, etag: '"abc-2"' })
+    expect(heads).toEqual([`${BUCKET}/k`])
+  })
+
+  it('reads an empty object as 0', async () => {
+    interceptHeads({ ContentLength: 0, ETag: '"e"' })
+    await expect(headUploadedObject(BUCKET, 'k')).resolves.toEqual({ size: 0n, etag: '"e"' })
+  })
+
+  it('looks once more before calling an object missing', async () => {
+    const heads = interceptHeads(notFound(), { ContentLength: 7, ETag: '"e"' })
+    await expect(headUploadedObject(BUCKET, 'k')).resolves.toEqual({ size: 7n, etag: '"e"' })
+    expect(heads).toHaveLength(2)
+  })
+
+  it('answers null for an object still missing on the second look', async () => {
+    const heads = interceptHeads(notFound())
+    await expect(headUploadedObject(BUCKET, 'k')).resolves.toBeNull()
+    expect(heads).toHaveLength(2)
+  })
+
+  it('throws 503 on any other storage error', async () => {
+    interceptHeads(Object.assign(new Error('InternalError'), { name: 'InternalError', $metadata: { httpStatusCode: 500 } }))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await expect(headUploadedObject(BUCKET, 'k')).rejects.toMatchObject({ status: 503 })
+  })
+
+  // 0 would charge nothing for a file of any size.
+  it('throws 503 when storage reports no length, rather than reading it as 0', async () => {
+    interceptHeads({ ETag: '"e"' })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await expect(headUploadedObject(BUCKET, 'k')).rejects.toMatchObject({ status: 503 })
   })
 })
