@@ -1,4 +1,4 @@
-import type { Permission, PermissionRole, Prisma } from '@/prisma/client'
+import { Prisma, type Permission, type PermissionRole } from '@/prisma/client'
 import { livePermission } from '@/utils/permissions'
 import { prisma } from '@/services/db'
 import {
@@ -579,6 +579,42 @@ export async function assertItemAccess(
   }
 
   await assertItemPermission(userId, itemId, role, tx)
+}
+
+/**
+ * `itemAccessWhere` as a SQL condition on the `Item` row aliased `item`, for raw
+ * queries that must filter before they join (a Prisma `findMany` runs its
+ * relation joins on every candidate row before `take`). Mirrors the SQL Prisma
+ * generates for `itemAccessWhere`; `permission-live-grants.test.ts` checks the
+ * two grant the same items.
+ *
+ * `expiresAt` is a `timestamp` column holding UTC wall time (what Prisma
+ * writes), so it is compared with the UTC wall time, not the session's.
+ *
+ * @example
+ * prisma.$queryRaw`SELECT i."id" FROM "Item" i WHERE ${itemAccessSql(userId, 'read')}`
+ */
+export function itemAccessSql(
+  userId: string,
+  role: PermissionRole,
+  item: Prisma.Sql = Prisma.raw('i')
+): Prisma.Sql {
+  const roles = rolesSatisfying(role).map((r) => Prisma.sql`${r}::"PermissionRole"`)
+  return Prisma.sql`(
+    (${item}."ownerId" = ${userId} OR EXISTS (
+      SELECT 1 FROM "Permission" p
+      JOIN "_PermissionToUser" pu ON pu."A" = p."id"
+      WHERE p."itemId" = ${item}."id"
+        AND pu."B" = ${userId}
+        AND p."roles" IN (${Prisma.join(roles)})
+        AND p."deletedAt" IS NULL
+        AND (p."expiresAt" IS NULL OR p."expiresAt" > (now() AT TIME ZONE 'UTC'))
+    ))
+    AND (${item}."workspaceId" IS NULL OR EXISTS (
+      SELECT 1 FROM "WorkspaceMember" m
+      WHERE m."workspaceId" = ${item}."workspaceId" AND m."memberId" = ${userId}
+    ))
+  )`
 }
 
 /**

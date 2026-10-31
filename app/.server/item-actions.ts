@@ -7,6 +7,7 @@ import {
   assertItemsAccess,
   getItemPermissions,
   hasItemPermission,
+  itemAccessSql,
   itemAccessWhere,
 } from '@/services/permission-actions'
 import {
@@ -3498,9 +3499,136 @@ export async function findFavoritesForUser(
   })
 }
 
+/** What each favorite carries: the full `ItemCard` shape, parent included. */
+export const favoriteItemSelect = {
+  id: true,
+  name: true,
+  type: true,
+  size: true,
+  inclusiveSize: true,
+  category: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+  ownerId: true,
+  parentId: true,
+  workspaceId: true,
+  driveId: true,
+  file: true,
+  folder: true,
+  tags: true,
+  favorites: {
+    select: {
+      id: true,
+      favoritedBy: { select: { id: true, name: true, displayName: true, image: true } },
+    },
+  },
+  thumbnails: {
+    select: { height: true, width: true, bucket: true, color: true, view: true, size: true, id: true, stage: true },
+  },
+  pins: {
+    select: {
+      id: true,
+      pinnedById: true,
+      pinnedBy: { select: { id: true, name: true, displayName: true, image: true } },
+    },
+  },
+  parent: {
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      size: true,
+      inclusiveSize: true,
+      category: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      ownerId: true,
+      parentId: true,
+      workspaceId: true,
+      driveId: true,
+      tags: true,
+      file: true,
+      folder: true,
+      favorites: {
+        select: {
+          id: true,
+          favoritedBy: { select: { id: true, name: true, displayName: true, image: true } },
+        },
+      },
+      thumbnails: {
+        select: { height: true, width: true, bucket: true, color: true, view: true, size: true, id: true, stage: true },
+      },
+      locked: { select: { id: true, lockedById: true, lockedAt: true } },
+      parent: { select: { id: true, name: true } },
+    },
+  },
+  locked: { select: { id: true, lockedById: true, lockedAt: true } },
+  permissions: {
+    select: {
+      id: true,
+      roles: true,
+      linkId: true,
+      recipientId: true,
+      users: { select: { displayName: true, email: true, id: true, image: true, name: true } },
+    },
+  },
+} satisfies Prisma.ItemSelect
+
+type FavoriteItem = Prisma.ItemGetPayload<{ select: typeof favoriteItemSelect }>
+
+/** Epoch milliseconds: nested `timestamp` columns must not reach JSON as local-time strings. */
+const epochMs = (column: Prisma.Sql) => Prisma.sql`floor(extract(epoch FROM ${column}) * 1000)::bigint`
+
+/** JSON fields for an item's file, folder, favorites, thumbnails and lock, arrays ordered by id. */
+const cardRelationsSql = (item: Prisma.Sql) => Prisma.sql`
+  'file', (SELECT to_jsonb(f) FROM "File" f WHERE f."itemId" = ${item}."id"),
+  'folder', (SELECT to_jsonb(fo) FROM "Folder" fo WHERE fo."itemId" = ${item}."id"),
+  'favorites', COALESCE((
+    SELECT jsonb_agg(jsonb_build_object(
+      'id', fav."id",
+      'favoritedBy', jsonb_build_object('id', u."id", 'name', u."name", 'displayName', u."displayName", 'image', u."image")
+    ) ORDER BY fav."id")
+    FROM "Favorite" fav JOIN "user" u ON u."id" = fav."favoritedById"
+    WHERE fav."itemId" = ${item}."id"
+  ), '[]'::jsonb),
+  'thumbnails', COALESCE((
+    SELECT jsonb_agg(jsonb_build_object(
+      'height', t."height", 'width', t."width", 'bucket', t."bucket", 'color', t."color",
+      'view', t."view", 'size', t."size", 'id', t."id", 'stage', t."stage"
+    ) ORDER BY t."id")
+    FROM "Thumbnail" t WHERE t."itemId" = ${item}."id"
+  ), '[]'::jsonb),
+  'locked', (
+    SELECT jsonb_build_object('id', l."id", 'lockedById', l."lockedById", 'lockedAt', ${epochMs(Prisma.sql`l."lockedAt"`)})
+    FROM "LockedItem" l WHERE l."itemId" = ${item}."id"
+  )`
+
+type LockedJson = { id: string; lockedById: string; lockedAt: number } | null
+const toLocked = (l: LockedJson) => (l ? { ...l, lockedAt: new Date(l.lockedAt) } : null)
+
+type CardJson = Pick<FavoriteItem, 'file' | 'folder' | 'favorites' | 'thumbnails'> & { locked: LockedJson }
+type ParentJson = Omit<NonNullable<FavoriteItem['parent']>, 'size' | 'inclusiveSize' | 'createdAt' | 'updatedAt' | 'locked'> & {
+  size: string
+  inclusiveSize: string
+  createdAt: number
+  updatedAt: number
+  locked: LockedJson
+}
+type FavoriteRow = Omit<FavoriteItem, keyof CardJson | 'parent'> & { card: CardJson; parent: ParentJson | null }
+
 /**
  * Returns a paginated list of items favorited by the given user,
  * with all relations required by ItemCard.
+ *
+ * One statement that filters first: `page` picks the favorited items the user
+ * can still read, in page order, and only those rows are joined to build the
+ * card. The Prisma `findMany` this replaces ran every relation join for every
+ * item the user could read before keeping the favorites: 4,463 rows and
+ * 165-200 ms for 1 favorite (31 Oct). Same result, ordering and cursor
+ * semantics (the page starts at the cursor row); `favorite-actions.test.ts`
+ * checks it against that query.
  *
  * @param userId - The ID of the user whose favorites to list.
  * @param cursor - Optional cursor from the previous page (ID of the last item).
@@ -3527,137 +3655,79 @@ export async function getFavoritedItems(
   },
   client: Prisma.TransactionClient = prisma
 ) {
-  const items = await client.item.findMany({
-    // Only items still readable: a favorite outlives a share, and listing the
-    // item after its owner revoked access would keep showing it to this user.
-    where: {
-      favorites: { some: { favoritedById: userId } },
-      ...itemAccessWhere(userId, 'read'),
+  // A missing cursor item yields an empty page, as Prisma's cursor does.
+  const atCursor = cursor
+    ? Prisma.sql`AND EXISTS (
+        SELECT 1 FROM "Item" c WHERE c."id" = ${cursor}
+          AND (i."createdAt" < c."createdAt" OR (i."createdAt" = c."createdAt" AND i."id" >= c."id"))
+      )`
+    : Prisma.empty
+
+  const rows = await client.$queryRaw<FavoriteRow[]>`
+    WITH page AS (
+      SELECT i.* FROM "Item" i
+      WHERE EXISTS (SELECT 1 FROM "Favorite" fv WHERE fv."itemId" = i."id" AND fv."favoritedById" = ${userId})
+        AND ${itemAccessSql(userId, 'read')}
+        ${atCursor}
+      ORDER BY i."createdAt" DESC, i."id" ASC
+      LIMIT ${limit + 1}
+    )
+    SELECT
+      i."id", i."name", i."type"::text AS "type", i."size", i."inclusiveSize",
+      i."category"::text AS "category", i."status"::text AS "status",
+      i."createdAt", i."updatedAt", i."ownerId", i."parentId", i."workspaceId", i."driveId",
+      COALESCE(i."tags", '{}') AS "tags", -- Prisma reads a NULL list as []
+      jsonb_build_object(${cardRelationsSql(Prisma.raw('i'))}) AS "card",
+      COALESCE((
+        SELECT jsonb_agg(jsonb_build_object(
+          'id', pin."id", 'pinnedById', pin."pinnedById",
+          'pinnedBy', jsonb_build_object('id', u."id", 'name', u."name", 'displayName', u."displayName", 'image', u."image")
+        ) ORDER BY pin."id")
+        FROM "PinItem" pin JOIN "user" u ON u."id" = pin."pinnedById"
+        WHERE pin."itemId" = i."id"
+      ), '[]'::jsonb) AS "pins",
+      (
+        SELECT jsonb_build_object(
+          'id', p."id", 'name', p."name", 'type', p."type", 'size', p."size"::text,
+          'inclusiveSize', p."inclusiveSize"::text, 'category', p."category", 'status', p."status",
+          'createdAt', ${epochMs(Prisma.sql`p."createdAt"`)}, 'updatedAt', ${epochMs(Prisma.sql`p."updatedAt"`)},
+          'ownerId', p."ownerId", 'parentId', p."parentId", 'workspaceId', p."workspaceId",
+          'driveId', p."driveId", 'tags', COALESCE(p."tags", '{}'),
+          ${cardRelationsSql(Prisma.raw('p'))},
+          'parent', (SELECT jsonb_build_object('id', gp."id", 'name', gp."name") FROM "Item" gp WHERE gp."id" = p."parentId")
+        )
+        FROM "Item" p WHERE p."id" = i."parentId"
+      ) AS "parent",
+      COALESCE((
+        SELECT jsonb_agg(jsonb_build_object(
+          'id', perm."id", 'roles', perm."roles", 'linkId', perm."linkId", 'recipientId', perm."recipientId",
+          'users', COALESCE((
+            SELECT jsonb_agg(jsonb_build_object(
+              'displayName', u."displayName", 'email', u."email", 'id', u."id", 'image', u."image", 'name', u."name"
+            ) ORDER BY u."id")
+            FROM "_PermissionToUser" pu JOIN "user" u ON u."id" = pu."B"
+            WHERE pu."A" = perm."id"
+          ), '[]'::jsonb)
+        ) ORDER BY perm."id")
+        FROM "Permission" perm WHERE perm."itemId" = i."id"
+      ), '[]'::jsonb) AS "permissions"
+    FROM page i
+    ORDER BY i."createdAt" DESC, i."id" ASC
+  `
+
+  const items: FavoriteItem[] = rows.map(({ card, parent, ...item }) => ({
+    ...item,
+    ...card,
+    locked: toLocked(card.locked),
+    parent: parent && {
+      ...parent,
+      size: BigInt(parent.size),
+      inclusiveSize: BigInt(parent.inclusiveSize),
+      createdAt: new Date(parent.createdAt),
+      updatedAt: new Date(parent.updatedAt),
+      locked: toLocked(parent.locked),
     },
-    take: limit + 1,
-    orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-    cursor: cursor ? { id: cursor } : undefined,
-    select: {
-      id: true,
-      name: true,
-      type: true,
-      size: true,
-      inclusiveSize: true,
-      category: true,
-      status: true,
-      createdAt: true,
-      updatedAt: true,
-      ownerId: true,
-      parentId: true,
-      workspaceId: true,
-      driveId: true,
-      file: true,
-      folder: true,
-      tags: true,
-      favorites: {
-        select: {
-          id: true,
-          favoritedBy: {
-            select: { id: true, name: true, displayName: true, image: true },
-          },
-        },
-      },
-      thumbnails: {
-        select: {
-          height: true,
-          width: true,
-          bucket: true,
-          color: true,
-          view: true,
-          size: true,
-          id: true,
-          stage: true,
-        },
-      },
-      pins: {
-        select: {
-          id: true,
-          pinnedById: true,
-          pinnedBy: {
-            select: { id: true, name: true, displayName: true, image: true },
-          },
-        },
-      },
-      parent: {
-        select: {
-          id: true,
-          name: true,
-          type: true,
-          size: true,
-          inclusiveSize: true,
-          category: true,
-          status: true,
-          createdAt: true,
-          updatedAt: true,
-          ownerId: true,
-          parentId: true,
-          workspaceId: true,
-          driveId: true,
-          tags: true,
-          file: true,
-          folder: true,
-          favorites: {
-            select: {
-              id: true,
-              favoritedBy: {
-                select: {
-                  id: true,
-                  name: true,
-                  displayName: true,
-                  image: true,
-                },
-              },
-            },
-          },
-          thumbnails: {
-            select: {
-              height: true,
-              width: true,
-              bucket: true,
-              color: true,
-              view: true,
-              size: true,
-              id: true,
-              stage: true,
-            },
-          },
-          locked: {
-            select: { id: true, lockedById: true, lockedAt: true },
-          },
-          parent: { select: { id: true, name: true } },
-        },
-      },
-      locked: {
-        select: {
-          id: true,
-          lockedById: true,
-          lockedAt: true,
-        },
-      },
-      permissions: {
-        select: {
-          id: true,
-          roles: true,
-          linkId: true,
-          recipientId: true,
-          users: {
-            select: {
-              displayName: true,
-              email: true,
-              id: true,
-              image: true,
-              name: true,
-            },
-          },
-        },
-      },
-    },
-  })
+  }))
 
   const hasMore = items.length > limit
   const data = await signThumbnails(items.slice(0, limit))

@@ -1,10 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { prisma } from '@/services/db'
+import { Prisma, type PermissionRole } from '@/prisma/client'
 import {
   assertItemAccess,
   assertItemsAccess,
   hasItemPermission,
   hasLinkPermission,
+  itemAccessSql,
+  itemAccessWhere,
 } from '@/services/permission-actions'
 import {
   getThumbnailSource,
@@ -86,6 +89,38 @@ afterAll(async () => {
   await prisma.shareLink.deleteMany({ where: { id: { in: Object.values(links) } } })
   await wipeTestUsers([ownerId, userId])
   await prisma.user.deleteMany({ where: { id: { in: [ownerId, userId] } } })
+})
+
+/** The fixture items `itemAccessSql` lets `who` act on with `role`. */
+async function sqlAccess(who: string, role: PermissionRole) {
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT i."id" FROM "Item" i
+    WHERE i."id" IN (${Prisma.join(Object.values(items))}) AND ${itemAccessSql(who, role)}`
+  return rows.map((r) => r.id).sort()
+}
+
+/** The same, through the Prisma filter it mirrors. */
+async function whereAccess(who: string, role: PermissionRole) {
+  const rows = await prisma.item.findMany({
+    where: { id: { in: Object.values(items) }, ...itemAccessWhere(who, role) },
+    select: { id: true },
+  })
+  return rows.map((r) => r.id).sort()
+}
+
+describe('itemAccessSql grants exactly what itemAccessWhere grants', () => {
+  it.each(['read', 'write', 'owner'] as const)('for the %s role', async (role) => {
+    // The grantee holds a write grant on each item: live, expired, deleted.
+    expect(await sqlAccess(userId, role)).toEqual(await whereAccess(userId, role))
+    expect(await sqlAccess(ownerId, role)).toEqual(await whereAccess(ownerId, role))
+  })
+
+  it('counts only the live grant, up to the role it carries; the owner gets every item', async () => {
+    expect(await sqlAccess(userId, 'read')).toEqual([items.live])
+    expect(await sqlAccess(userId, 'write')).toEqual([items.live])
+    expect(await sqlAccess(userId, 'owner')).toEqual([])
+    expect(await sqlAccess(ownerId, 'owner')).toEqual(Object.values(items).sort())
+  })
 })
 
 describe('a live grant still opens the item', () => {
