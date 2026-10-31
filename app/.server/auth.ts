@@ -127,6 +127,15 @@ export const auth = betterAuth({
         provider: ctx.params?.id,
       })
       if (cookie) ctx.setHeader('set-cookie', cookie)
+      track(
+        'signed_in',
+        {
+          provider: ctx.params?.id ?? null,
+          new_account:
+            Date.now() - new Date(user.createdAt).getTime() < 60_000,
+        },
+        { userId: user.id }
+      )
     }),
   },
 

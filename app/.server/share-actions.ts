@@ -12,6 +12,7 @@ import {
   shareLinkFilterSchema,
 } from '@/utils/filters/shareLink.filters'
 import { searchFactory } from '@/utils/search'
+import { track } from '@/services/vinktar'
 import { signThumbnails } from '@/services/thumbnail-actions'
 import type {
   ShareLink,
@@ -543,9 +544,12 @@ export async function revokeShareLink(
   linkId: string
 ): Promise<void> {
   await assertCanManageShareLink(actorId, linkId)
-  await prisma.$transaction(async (tx) => {
+  const link = await prisma.$transaction(async (tx) => {
     await tx.permission.deleteMany({ where: { linkId } })
-    await tx.shareLink.delete({ where: { id: linkId } })
+    return tx.shareLink.delete({ where: { id: linkId } })
+  })
+  trackShareLink('share_link_revoked', actorId, link, {
+    age_hours: Math.round((Date.now() - link.createdAt.getTime()) / 3_600_000),
   })
 }
 
@@ -568,15 +572,21 @@ export async function revokeAllShareLinksForItem(
   itemId: string
 ): Promise<void> {
   await assertCanManageItemShares(actorId, itemId)
-  await prisma.$transaction(async (tx) => {
+  const revoked = await prisma.$transaction(async (tx) => {
     const links = await findShareLinksForItem(itemId, tx)
-    if (!links.length) return
+    if (!links.length) return 0
 
     const linkIds = links.map((l) => l.id)
 
     await tx.permission.deleteMany({ where: { linkId: { in: linkIds } } })
     await tx.shareLink.deleteMany({ where: { id: { in: linkIds } } })
+    return linkIds.length
   })
+  track(
+    'share_links_revoked_all',
+    { item_id: itemId, link_count: revoked },
+    { userId: actorId }
+  )
 }
 
 /**
@@ -597,7 +607,8 @@ export async function expireShareLink(
   expiresAt: Date
 ): Promise<ShareLink> {
   await assertCanManageShareLink(actorId, id)
-  return updateShareLink({ where: { id }, data: { expiresAt } })
+  const link = await updateShareLink({ where: { id }, data: { expiresAt } })
+  return trackShareLink('share_link_expired', actorId, link)
 }
 
 /**
@@ -622,7 +633,10 @@ export async function updateShareLinkSettings(
   }
 ): Promise<ShareLink> {
   await assertCanManageShareLink(actorId, id)
-  return updateShareLink({ where: { id }, data: settings })
+  const link = await updateShareLink({ where: { id }, data: settings })
+  return trackShareLink('share_link_updated', actorId, link, {
+    changed_keys: Object.keys(settings).sort().join(','),
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -694,12 +708,44 @@ export async function removeUserFromShareLink(
       'Permission for the given share link not found'
     )
   }
-  return updatePermission({ users: { disconnect: { id: userId } } }, tx)
+  const permission = await updatePermission(
+    { users: { disconnect: { id: userId } } },
+    tx
+  )
+  track(
+    'share_link_user_removed',
+    { link_id: linkId, target_user_id: userId },
+    { userId: actorId }
+  )
+  return permission
 }
 
 // ---------------------------------------------------------------------------
 // Typed creators
 // ---------------------------------------------------------------------------
+
+/** Sends a share-link event with the link's shape, never its URL or password. */
+function trackShareLink(
+  name: string,
+  actorId: string,
+  link: ShareLink,
+  extra: Record<string, string | number | boolean | null> = {}
+) {
+  track(
+    name,
+    {
+      link_id: link.id,
+      link_type: link.type,
+      scope: link.scope,
+      downloadable: link.downloadable ?? null,
+      has_password: Boolean(link.password),
+      has_expiry: link.expiresAt != null,
+      ...extra,
+    },
+    { userId: actorId }
+  )
+  return link
+}
 
 type ShareLinkOptions = {
   url?: string
@@ -730,7 +776,7 @@ export async function createViewLink(
   options: ShareLinkOptions = {}
 ): Promise<ShareLink> {
   await assertCanManageItemShares(actorId, itemId)
-  return createShareLinkForItem(
+  const link = await createShareLinkForItem(
     itemId,
     {
       id: toObjectId(getPrefixForModel('ShareLink')),
@@ -740,6 +786,7 @@ export async function createViewLink(
     },
     { roles: 'read' }
   )
+  return trackShareLink('share_link_created', actorId, link, { item_id: itemId })
 }
 
 /**
@@ -763,7 +810,7 @@ export async function createEditLink(
   options: ShareLinkOptions = {}
 ): Promise<ShareLink> {
   await assertCanManageItemShares(actorId, itemId)
-  return createShareLinkForItem(
+  const link = await createShareLinkForItem(
     itemId,
     {
       id: toObjectId(getPrefixForModel('ShareLink')),
@@ -773,6 +820,7 @@ export async function createEditLink(
     },
     { roles: 'write' }
   )
+  return trackShareLink('share_link_created', actorId, link, { item_id: itemId })
 }
 
 /**
@@ -795,7 +843,7 @@ export async function createEmbedLink(
   options: Omit<ShareLinkOptions, 'downloadable'> = {}
 ): Promise<ShareLink> {
   await assertCanManageItemShares(actorId, itemId)
-  return createShareLinkForItem(
+  const link = await createShareLinkForItem(
     itemId,
     {
       id: toObjectId(getPrefixForModel('ShareLink')),
@@ -806,6 +854,7 @@ export async function createEmbedLink(
     },
     { roles: 'read' }
   )
+  return trackShareLink('share_link_created', actorId, link, { item_id: itemId })
 }
 
 /**
@@ -829,7 +878,7 @@ export async function createUploadLink(
   options: ShareLinkOptions = {}
 ): Promise<ShareLink> {
   await assertCanManageItemShares(actorId, itemId)
-  return createShareLinkForItem(
+  const link = await createShareLinkForItem(
     itemId,
     {
       id: toObjectId(getPrefixForModel('ShareLink')),
@@ -839,6 +888,7 @@ export async function createUploadLink(
     },
     { roles: 'write' }
   )
+  return trackShareLink('share_link_created', actorId, link, { item_id: itemId })
 }
 
 // ---------------------------------------------------------------------------
@@ -957,7 +1007,10 @@ export async function updateShareLinkScope(
   scope: ShareScope
 ): Promise<ShareLink> {
   await assertCanManageShareLink(actorId, id)
-  return updateShareLink({ where: { id }, data: { scope } })
+  const link = await updateShareLink({ where: { id }, data: { scope } })
+  return trackShareLink('share_link_updated', actorId, link, {
+    changed_keys: 'scope',
+  })
 }
 
 /**
@@ -994,5 +1047,7 @@ export async function updateShareLinkType(
       data: { roles: role },
     }),
   ])
-  return link
+  return trackShareLink('share_link_updated', actorId, link, {
+    changed_keys: 'type',
+  })
 }

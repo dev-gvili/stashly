@@ -1,4 +1,5 @@
 import { prisma } from '@/services/db'
+import { track } from '@/services/vinktar'
 import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma } from '@/prisma/client'
@@ -54,8 +55,10 @@ export async function createVersion({
   version,
   size,
   content,
+  userId,
 }: {
   itemId: string
+  userId: string
   label?: string | null
   version?: string | null
   size?: bigint | number | null
@@ -81,6 +84,17 @@ export async function createVersion({
       },
     },
   }).catch(() => {})
+  track(
+    'version_created',
+    {
+      version_id: ver.id,
+      item_id: itemId,
+      size_bytes: size == null ? null : Number(size),
+      has_label: Boolean(label),
+      has_content: content != null,
+    },
+    { userId }
+  )
   return ver
 }
 
@@ -110,7 +124,7 @@ export async function restoreVersion({
     )
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // Snapshot the current item state as a new version before restoring
     const currentItem = await tx.item.findUnique({ where: { id: itemId } })
     if (!currentItem) {
@@ -125,6 +139,19 @@ export async function restoreVersion({
 
     return { restored, version }
   })
+  track(
+    'version_restored',
+    {
+      version_id: versionId,
+      item_id: itemId,
+      size_bytes: version.size == null ? null : Number(version.size),
+      version_age_hours: version.createdAt
+        ? Math.round((Date.now() - version.createdAt.getTime()) / 3_600_000)
+        : null,
+    },
+    { userId }
+  )
+  return result
 }
 
 /**
@@ -150,5 +177,15 @@ export async function deleteVersion({
       'You do not have permission to delete this version'
     )
   }
-  return prisma.itemVersion.delete({ where: { id: versionId } })
+  const deleted = await prisma.itemVersion.delete({ where: { id: versionId } })
+  track(
+    'version_deleted',
+    {
+      version_id: versionId,
+      item_id: version.itemId,
+      size_bytes: version.size == null ? null : Number(version.size),
+    },
+    { userId: ownerId }
+  )
+  return deleted
 }

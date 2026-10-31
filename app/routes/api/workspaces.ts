@@ -7,6 +7,7 @@ import {
   workspacesApiRouteInput,
 } from '@/schemas/api.schemas'
 import { toErrorInfo } from '@/utils/api.errors'
+import { track } from '@/services/vinktar'
 import {
   findWorkspaceById,
   findAllWorkspaces,
@@ -58,6 +59,11 @@ export async function action({ request, params }: Route.ActionArgs) {
         slug: formData.slug,
       })
       await addMember(session.user.id, workspace.id, 'owner')
+      track(
+        'workspace_created',
+        { workspace_id: workspace.id, name_length: formData.name.length },
+        { userId: session.user.id }
+      )
       return data({ workspace }, { status: 201 })
     }
 

@@ -1,4 +1,5 @@
 import { prisma } from '@/services/db'
+import { track } from '@/services/vinktar'
 import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma } from '@/prisma/client'
@@ -62,6 +63,16 @@ export async function createComment({
       },
     },
   }).catch(() => {})
+  track(
+    'comment_created',
+    {
+      comment_id: comment.id,
+      item_id: itemId,
+      body_length: content.length,
+      is_reply: false,
+    },
+    { userId: ownerId }
+  )
   return comment
 }
 
@@ -87,10 +98,21 @@ export async function updateComment({
       'You do not have permission to update this comment'
     )
   }
-  return prisma.comment.update({
+  const updated = await prisma.comment.update({
     where: { id: commentId },
     data: { content },
   })
+  track(
+    'comment_edited',
+    {
+      comment_id: commentId,
+      item_id: comment.itemId,
+      body_length: content.length,
+      previous_body_length: comment.content.length,
+    },
+    { userId: ownerId }
+  )
+  return updated
 }
 
 /**
@@ -113,5 +135,17 @@ export async function deleteComment({
       'You do not have permission to delete this comment'
     )
   }
-  return prisma.comment.delete({ where: { id: commentId } })
+  const deleted = await prisma.comment.delete({ where: { id: commentId } })
+  track(
+    'comment_deleted',
+    {
+      comment_id: commentId,
+      item_id: comment.itemId,
+      age_hours: Math.round(
+        (Date.now() - comment.createdAt.getTime()) / 3_600_000
+      ),
+    },
+    { userId: ownerId }
+  )
+  return deleted
 }

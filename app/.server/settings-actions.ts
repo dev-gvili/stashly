@@ -1,4 +1,5 @@
 import { prisma } from '@/services/db'
+import { track } from '@/services/vinktar'
 import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import type { Prisma } from '@/prisma/client'
 
@@ -53,7 +54,7 @@ export async function updateUserSettings({
   if (displayName !== undefined) data.displayName = displayName
   if (image !== undefined) data.image = image
 
-  return prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id: userId },
     data,
     select: {
@@ -67,4 +68,14 @@ export async function updateUserSettings({
       updatedAt: true,
     },
   })
+  // Which fields changed, never their values.
+  track(
+    'settings_updated',
+    {
+      changed_keys: Object.keys(data).sort().join(','),
+      changed_count: Object.keys(data).length,
+    },
+    { userId }
+  )
+  return updated
 }

@@ -1,4 +1,5 @@
 import { prisma } from '@/services/db'
+import { track } from '@/services/vinktar'
 import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma } from '@/prisma/client'
@@ -118,5 +119,16 @@ export async function deleteUser(userId: string) {
   if (!user) {
     throw toRouteError(StashlyErrorCode.USER_NOT_FOUND, `User not found: ${userId}`)
   }
-  return prisma.user.delete({ where: { id: userId } })
+  const deleted = await prisma.user.delete({ where: { id: userId } })
+  track(
+    'account_deleted',
+    {
+      account_days: Math.round(
+        (Date.now() - user.createdAt.getTime()) / 86_400_000
+      ),
+      email_verified: user.emailVerified,
+    },
+    { userId }
+  )
+  return deleted
 }

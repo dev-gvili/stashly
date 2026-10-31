@@ -1,4 +1,5 @@
 import { prisma } from '@/services/db'
+import { track } from '@/services/vinktar'
 import {
   signThumbnails,
   type WithSignedThumbnails,
@@ -170,7 +171,9 @@ export async function saveMediaMetadata(
   } = input
   await assertItemAccess(userId, itemId, { role: 'write' })
 
+  let facet: 'image' | 'video' | 'pdf' | 'markdown' | 'audio' | 'none' = 'none'
   if (imageWidth != null || imageHeight != null) {
+    facet = 'image'
     await upsertImageFacet(itemId, {
       width: imageWidth,
       height: imageHeight,
@@ -188,6 +191,7 @@ export async function saveMediaMetadata(
       longitude,
     })
   } else if (videoWidth || videoHeight) {
+    facet = 'video'
     await upsertVideoFacet(itemId, {
       width: videoWidth,
       height: videoHeight,
@@ -199,6 +203,7 @@ export async function saveMediaMetadata(
     pdfVersion != null ||
     pdfIsEncrypted != null
   ) {
+    facet = 'pdf'
     await upsertPdfFacet(itemId, {
       pageCount: documentPageCount,
       title: pdfTitle,
@@ -223,6 +228,7 @@ export async function saveMediaMetadata(
     mdHeadingCount != null ||
     mdHasFrontmatter != null
   ) {
+    facet = 'markdown'
     await upsertMarkdownFacet(itemId, {
       title: mdTitle,
       author: mdAuthor,
@@ -249,6 +255,7 @@ export async function saveMediaMetadata(
     audioData.audioTitle != null
   ) {
     console.log('Audio Parsed Data: ', audioData)
+    facet = 'audio'
     await upsertAudioFacet(itemId, {
       duration: audioData.audioDuration,
       bitrate: audioData.audioBitrate,
@@ -269,9 +276,28 @@ export async function saveMediaMetadata(
   // Chunked indexing: store full content (document-level fallback) and
   // per-passage chunks. Server is authoritative for chunk boundaries —
   // client only sees the resulting `{id, content}` pairs to embed.
-  if (!documentText) return []
-  await upsertSearchContent(itemId, documentText)
-  return upsertSearchChunks(itemId, chunkText(documentText))
+  let chunks: { id: string; ord: number; content: string }[] = []
+  if (documentText) {
+    await upsertSearchContent(itemId, documentText)
+    chunks = await upsertSearchChunks(itemId, chunkText(documentText))
+  }
+
+  // What was extracted, never the extracted text, titles or coordinates.
+  track(
+    'media_metadata_saved',
+    {
+      item_id: itemId,
+      facet,
+      text_length: documentText?.length ?? 0,
+      chunk_count: chunks.length,
+      page_count: documentPageCount ?? null,
+      duration_seconds: duration ?? audioData.audioDuration ?? null,
+      has_exif_camera: cameraMake != null || cameraModel != null,
+      has_location: latitude != null && longitude != null,
+    },
+    { userId }
+  )
+  return chunks
 }
 
 /**
@@ -314,7 +340,14 @@ export async function appendSearchPage(
   const { itemId, pageNum } = params
   await assertItemAccess(userId, itemId, { role: 'write' })
   const text = params.text.trim()
-  if (!text) return []
+  if (!text) {
+    track(
+      'ocr_page_saved',
+      { item_id: itemId, page_num: pageNum, text_length: 0, chunk_count: 0 },
+      { userId }
+    )
+    return []
+  }
 
   // Document-level fallback content grows page by page. Separated by blank
   // lines to match how `extractPdfText` joins pages, so both paths produce the
@@ -363,6 +396,17 @@ export async function appendSearchPage(
   if (rows.length === 0) return []
 
   await prisma.searchChunk.createMany({ data: rows })
+
+  track(
+    'ocr_page_saved',
+    {
+      item_id: itemId,
+      page_num: pageNum,
+      text_length: text.length,
+      chunk_count: rows.length,
+    },
+    { userId }
+  )
 
   return rows.map((r) => ({ id: r.id, ord: r.ord, content: r.content }))
 }
@@ -742,6 +786,15 @@ export async function reindexTextItems(
   // "18 still queued" instead of a number capped at the batch size. Reuses the
   // same finder so the predicate for "needs rebuilding" lives in one place.
   const remaining = (await findReindexCandidates(ownerId, REMAINING_PROBE)).length
+  track(
+    'text_reindexed',
+    {
+      done_count: done.length,
+      failed_count: failed.length,
+      remaining_count: remaining,
+    },
+    { userId: ownerId }
+  )
   return { done, failed, remaining }
 }
 
@@ -931,12 +984,23 @@ export async function setSearchChunkVectors(
     'write',
   )
 
-  return prisma.$executeRaw`
+  const updated = await prisma.$executeRaw`
     UPDATE "SearchChunk" c
     SET vector = v.vec::vector, "updatedAt" = NOW()
     FROM unnest(${ids}::text[], ${literals}::text[]) AS v(id, vec)
     WHERE c."id" = v.id
   `
+  track(
+    'search_chunks_embedded',
+    {
+      chunk_count: ids.length,
+      updated_count: updated,
+      item_count: owners.length,
+      dimensions: entries[0]?.vector.length ?? null,
+    },
+    { userId }
+  )
+  return updated
 }
 
 /**
@@ -1625,6 +1689,7 @@ export async function searchItemsHybrid(
   params: SearchItemsParams,
 ): Promise<SearchItemsResult> {
   const { ownerId, vector, where, take = 25, skip = 0 } = params
+  const startedAt = performance.now()
 
   const ranking = await rankSearchResults({
     ownerId,
@@ -1632,7 +1697,27 @@ export async function searchItemsHybrid(
     vector,
   })
 
+  // The query's shape, never its text: what people search for is theirs.
+  const trackSearch = (resultCount: number) =>
+    track(
+      'search_performed',
+      {
+        pass: vector ? 'semantic' : 'keyword',
+        semantic: ranking.semantic,
+        query_length: params.query.length,
+        term_count: splitQueryTerms(normalizeQuery(params.query)).length,
+        result_count: resultCount,
+        keyword_count: ranking.keywordCount,
+        semantic_count: ranking.semanticCount,
+        filtered: where != null && Object.keys(where).length > 0,
+        page_offset: skip,
+        duration_ms: Math.round(performance.now() - startedAt),
+      },
+      { userId: ownerId }
+    )
+
   if (ranking.ids.length === 0) {
+    trackSearch(0)
     return {
       items: [],
       total: 0,
@@ -1664,6 +1749,8 @@ export async function searchItemsHybrid(
     page.map((item) => item.id),
     normalizeQuery(params.query),
   )
+
+  trackSearch(ordered.length)
 
   return {
     items: page.map((item) => {

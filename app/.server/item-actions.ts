@@ -41,6 +41,7 @@ import { getPrefixForModel, toChunkArray, toObjectId } from '@/utils/converters'
 import { buildItemFilters } from '@/utils/filters/item.filters'
 import { formatSize } from '@/utils/formaters'
 import { extractMarkdownHeadings, type MarkdownHeading } from '@/utils/markdown'
+import { parseFileExtension } from '@/utils/parsers'
 import { searchFactory } from '@/utils/search'
 
 /**
@@ -217,8 +218,12 @@ export async function getItemWithPermissions(userId: string, itemId: string) {
  * // Rename a file
  * const item = await renameItem('item_123', 'vacation-photos.zip');
  */
-export async function renameItem(itemId: string, newName: string) {
-  return await prisma.$transaction(async (tx) => {
+export async function renameItem(
+  itemId: string,
+  newName: string,
+  userId?: string
+) {
+  const renamed = await prisma.$transaction(async (tx) => {
     const existing = await tx.item.findUniqueOrThrow({
       where: { id: itemId },
       select: { name: true },
@@ -255,6 +260,20 @@ export async function renameItem(itemId: string, newName: string) {
 
     return item
   })
+
+  track(
+    'item_renamed',
+    {
+      item_id: itemId,
+      item_type: renamed.type,
+      category: renamed.category,
+      workspace_id: renamed.workspaceId ?? null,
+      name_length: newName.length,
+    },
+    { userId: userId ?? renamed.ownerId }
+  )
+
+  return renamed
 }
 
 // --- 2. MOVE ---
@@ -446,6 +465,19 @@ export async function moveItems(
     )
     .catch(() => {})
 
+  track(
+    'items_moved',
+    {
+      item_count: result.length,
+      folder_count: result.filter((item) => item.type === 'folder').length,
+      file_count: result.filter((item) => item.type === 'file').length,
+      from_folder_id: fromParentId,
+      to_folder_id: toParentId,
+      workspace_id: result[0]?.workspaceId ?? null,
+    },
+    { userId }
+  )
+
   return result
 }
 
@@ -625,6 +657,18 @@ export async function trashItems(ids: string[], userId: string) {
 
   recordItemActivities('delete', changed.roots ?? [])
 
+  track(
+    'items_trashed',
+    {
+      selected_count: ids.length,
+      changed_count: Number(changed.count),
+      folder_count: (changed.roots ?? []).filter((r) => r.type === 'folder')
+        .length,
+      bytes: Number(changed.bytes),
+    },
+    { userId }
+  )
+
   return { count: Number(changed.count) }
 }
 
@@ -769,6 +813,18 @@ export async function restoreItems(ids: string[], userId: string) {
 
   recordItemActivities('restore', changed.roots ?? [])
 
+  track(
+    'items_restored',
+    {
+      selected_count: ids.length,
+      changed_count: Number(changed.count),
+      folder_count: (changed.roots ?? []).filter((r) => r.type === 'folder')
+        .length,
+      bytes: Number(changed.bytes),
+    },
+    { userId }
+  )
+
   return { count: Number(changed.count) }
 }
 
@@ -881,6 +937,17 @@ async function deleteFromTrash(ids: string[], userId: string) {
       .catch(() => {})
   }
 
+  track(
+    'items_deleted',
+    {
+      selected_count: ids.length,
+      deleted_count: Number(result.count),
+      bytes_freed: Number(result.bytes),
+      object_count: [...objects.values()].reduce((n, keys) => n + keys.length, 0),
+    },
+    { userId }
+  )
+
   return { count: Number(result.count), roots: result.roots ?? [] }
 }
 
@@ -949,7 +1016,7 @@ export async function copyItem(
     )
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const copied = await prisma.$transaction(async (tx) => {
     // 1. Fetch source item with all facets
     const source = await tx.item.findUniqueOrThrow({
       where: { id: itemId },
@@ -1233,6 +1300,24 @@ export async function copyItem(
       return newItem
     }
   })
+
+  // After the commit, so a copy refused for quota or access is never counted.
+  if (copied) {
+    track(
+      'item_copied',
+      {
+        source_item_id: itemId,
+        item_type: copied.type,
+        size_bytes: Number(copied.size),
+        target_folder_id: targetParentId,
+        workspace_id: copied.workspaceId ?? null,
+        cross_workspace: Boolean(targetWorkspaceId),
+      },
+      { userId }
+    )
+  }
+
+  return copied
 }
 
 // --- 5. CREATE FOLDER ---
@@ -1296,6 +1381,18 @@ export async function createFolder(
       },
     },
   }).catch(() => {})
+
+  track(
+    'folder_created',
+    {
+      folder_id: folder.id,
+      parent_id: parentId,
+      drive_id: driveId,
+      at_root: parentId === null,
+      name_length: folderName.length,
+    },
+    { userId: ownerId }
+  )
 
   return folder
 }
@@ -1545,6 +1642,17 @@ export async function resolveUploadFolders({
   recordItemActivities(
     'upload',
     tree.createdFolderIds.map((id) => ({ id, uploadId: '' }))
+  )
+  track(
+    'upload_folders_resolved',
+    {
+      root_id: rootId,
+      dir_count: dirs.length,
+      created_count: tree.createdFolderIds.length,
+      refused_count: tree.refused.size,
+      max_depth: Math.max(0, ...dirs.map((d) => d.split('/').length)),
+    },
+    { userId }
   )
   return {
     folders: Object.fromEntries(tree.folders),
@@ -1868,7 +1976,15 @@ export async function createUploadedItem(data: {
   // After the commit, so a refused or rolled-back upload is never counted.
   track(
     'file_uploaded',
-    { size_bytes: Number(data.size), mime_type: data.mimeType },
+    {
+      size_bytes: Number(data.size),
+      mime_type: data.mimeType,
+      category: data.category,
+      extension: parseFileExtension(data.name).toLowerCase(),
+      drive_id: data.driveId,
+      parent_id: parentId,
+      created_folder_count: createdFolderIds.length,
+    },
     { userId: data.ownerId }
   )
 
@@ -3606,6 +3722,16 @@ export async function addFavorite(
     },
   })
   recordFavoriteActivity(itemId, 'favorited')
+  track(
+    'favorite_added',
+    {
+      item_id: itemId,
+      item_type: updated.type,
+      workspace_id: updated.workspaceId ?? null,
+      item_count: 1,
+    },
+    { userId: favoritedById }
+  )
   return updated
 }
 
@@ -3648,6 +3774,15 @@ export async function addFavorites(
   })
 
   for (const itemId of toAdd) recordFavoriteActivity(itemId, 'favorited')
+  track(
+    'favorite_added',
+    {
+      item_count: toAdd.length,
+      selected_count: itemIds.length,
+      already_favorited_count: already.size,
+    },
+    { userId: favoritedById }
+  )
   return toAdd.length
 }
 
@@ -3678,6 +3813,15 @@ export async function removeFavorite(
     data: { favorites: { deleteMany: { favoritedById } } },
   })
   recordFavoriteActivity(itemId, 'unfavorited')
+  track(
+    'favorite_removed',
+    {
+      item_id: itemId,
+      item_type: updated.type,
+      workspace_id: updated.workspaceId ?? null,
+    },
+    { userId: favoritedById }
+  )
   return updated
 }
 

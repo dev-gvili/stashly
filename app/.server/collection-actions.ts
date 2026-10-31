@@ -23,6 +23,7 @@ import {
 } from '@/utils/api.errors'
 import { buildCollectionFilters } from '@/utils/filters/collection.filters'
 import { searchFactory } from '@/utils/search'
+import { track } from '@/services/vinktar'
 import { createActivity } from './activity-actions'
 import { signStoredThumbnail, signThumbnails } from './thumbnail-actions'
 import {
@@ -329,6 +330,11 @@ export async function createCollection({
     return newItem
   })
   recordCollectionCreate(created.id)
+  track(
+    'collection_created',
+    { collection_id: created.id, drive_id: driveId, workspace_id: null },
+    { userId: ownerId }
+  )
   return created
 }
 
@@ -383,6 +389,11 @@ export async function createWorkspaceCollection({
     return newItem
   })
   recordCollectionCreate(created.id)
+  track(
+    'collection_created',
+    { collection_id: created.id, drive_id: driveId, workspace_id: workspaceId },
+    { userId: ownerId }
+  )
   return created
 }
 
@@ -416,6 +427,15 @@ export async function renameCollection({
   })
 
   recordCollectionRename(collectionId, existing.name, newName)
+  track(
+    'collection_renamed',
+    {
+      collection_id: collectionId,
+      workspace_id: updated.workspaceId ?? null,
+      name_length: newName.length,
+    },
+    { userId }
+  )
   return updated
 }
 
@@ -440,6 +460,15 @@ export async function trashCollection({
     data: { status: ItemStatus.trashed },
   })
   recordCollectionDelete(collectionId, trashed.name)
+  track(
+    'collection_trashed',
+    {
+      collection_id: collectionId,
+      workspace_id: trashed.workspaceId ?? null,
+      size_bytes: Number(trashed.size),
+    },
+    { userId }
+  )
   return trashed
 }
 
@@ -460,6 +489,15 @@ export async function restoreCollection({
     data: { status: ItemStatus.normal },
   })
   recordCollectionRestore(collectionId)
+  track(
+    'collection_restored',
+    {
+      collection_id: collectionId,
+      workspace_id: restored.workspaceId ?? null,
+      size_bytes: Number(restored.size),
+    },
+    { userId }
+  )
   return restored
 }
 
@@ -481,6 +519,15 @@ export async function deleteCollection({
   })
   const deleted = await prisma.item.delete({ where: { id: collectionId } })
   recordCollectionDelete(collectionId, existing?.name ?? deleted.name)
+  track(
+    'collection_deleted',
+    {
+      collection_id: collectionId,
+      workspace_id: deleted.workspaceId ?? null,
+      size_bytes: Number(deleted.size),
+    },
+    { userId }
+  )
   return deleted
 }
 
@@ -550,6 +597,11 @@ export async function addItemToCollection(
     targetItemId: itemId,
     count: 1,
   })
+  track(
+    'collection_items_added',
+    { collection_id: collectionId, item_count: 1, selected_count: 1 },
+    { userId }
+  )
   return member
 }
 
@@ -579,6 +631,11 @@ export async function removeItemFromCollection({
     targetItemId: itemId,
     count: 1,
   })
+  track(
+    'collection_items_removed',
+    { collection_id: collectionId, item_count: 1, selected_count: 1 },
+    { userId }
+  )
   return removed
 }
 
@@ -611,6 +668,16 @@ export async function removeItemsFromCollection({
       count: result.count,
     })
   }
+
+  track(
+    'collection_items_removed',
+    {
+      collection_id: collectionId,
+      item_count: result.count,
+      selected_count: itemIds.length,
+    },
+    { userId }
+  )
 
   return itemIds
 }
@@ -688,6 +755,19 @@ export async function addItemsToCollection({
     })
   }
 
+  track(
+    'collection_items_added',
+    {
+      collection_id: collectionId,
+      item_count: created.length,
+      selected_count: itemIds.length,
+      total_bytes: Number(
+        toAdd.reduce((sum, item) => sum + item.size, BigInt(0))
+      ),
+    },
+    { userId }
+  )
+
   return created
 }
 
@@ -714,6 +794,11 @@ export async function clearCollection({
     collectionId,
     count: result.count,
   })
+  track(
+    'collection_cleared',
+    { collection_id: collectionId, item_count: result.count },
+    { userId }
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -987,5 +1072,17 @@ export async function grantCollectionPermission(
     )
   }
 
-  return grantItemPermission(targetUserId, collectionId, role)
+  const permission = await grantItemPermission(targetUserId, collectionId, role)
+  track(
+    'collection_permission_granted',
+    {
+      collection_id: collectionId,
+      target_user_id: targetUserId,
+      role,
+      granted_by_owner: isOwner,
+      workspace_id: item.workspaceId ?? null,
+    },
+    { userId: actingUserId }
+  )
+  return permission
 }

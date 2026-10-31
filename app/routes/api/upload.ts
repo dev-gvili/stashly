@@ -10,6 +10,8 @@ import {
 } from '@/services/s3'
 import { isAmbiguousTsFile, sniffTsBytes, type TsKind } from '@/utils/sniff'
 import { toErrorInfo } from '@/utils/api.errors'
+import { parseFileExtension } from '@/utils/parsers'
+import { track } from '@/services/vinktar'
 import { data } from 'react-router'
 import { z } from 'zod'
 import type { Route } from './+types/upload'
@@ -96,9 +98,24 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   const values = uploadSchema.parse(await request.json())
 
+  // The file's extension, never its key: the key holds the user's folder and
+  // file names.
+  const extension = parseFileExtension(
+    values.key.split('/').pop() ?? ''
+  ).toLowerCase()
+
   /** A refusal the client reads as `{ error }`, with its real status. */
   const refuse = (e: unknown) => {
     const err = toErrorInfo(e)
+    track(
+      'upload_refused',
+      {
+        phase: values.action,
+        status: err.status ?? 500,
+        extension,
+      },
+      { userId: user.id }
+    )
     return data(
       { error: err.message ?? 'Upload refused' },
       { status: err.status ?? 500 }
@@ -130,6 +147,16 @@ export async function action({ request, context }: Route.ActionArgs) {
         uploadId,
         1,
         Math.min(values.partCount ?? 0, PART_URLS_PER_REQUEST)
+      )
+      track(
+        'upload_started',
+        {
+          extension,
+          content_type: values.contentType ?? null,
+          part_count: values.partCount ?? null,
+          signed_part_count: partUrls.length,
+        },
+        { userId: user.id }
       )
       return { uploadId, partUrls }
     }
@@ -201,6 +228,16 @@ export async function action({ request, context }: Route.ActionArgs) {
         }
       }
 
+      track(
+        'upload_transfer_completed',
+        {
+          extension,
+          part_count: values.parts.length,
+          ts_kind: verifiedKind ?? null,
+        },
+        { userId: user.id }
+      )
+
       return {
         key: Key,
         bucket: Bucket,
@@ -215,11 +252,18 @@ export async function action({ request, context }: Route.ActionArgs) {
     case 'abort-multipart-upload': {
       // Already gone is done: a refused complete aborts on the server, and the
       // client then aborts the same upload again on its way to `error`.
+      let alreadyGone = false
       try {
         await abortMultipartUpload(bucket, values.key, values.uploadId)
       } catch (e) {
         if ((e as { name?: string }).name !== 'NoSuchUpload') throw e
+        alreadyGone = true
       }
+      track(
+        'upload_aborted',
+        { extension, already_gone: alreadyGone },
+        { userId: user.id }
+      )
       return { success: true }
     }
   }

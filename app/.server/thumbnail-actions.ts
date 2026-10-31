@@ -1,4 +1,5 @@
 import { prisma } from '@/services/db'
+import { track } from '@/services/vinktar'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { itemAccessWhere } from '@/services/permission-actions'
 import { getPresignedUrl } from '@/services/s3'
@@ -455,6 +456,18 @@ export async function updateThumbnail(
 ): Promise<string> {
   const bucket = await resolveThumbnailBucket(userId, itemId)
   await persistThumbnailStage(itemId, stage, bucket, width, height, view, size)
+  track(
+    'thumbnail_stage_saved',
+    {
+      item_id: itemId,
+      stage,
+      width: width ?? null,
+      height: height ?? null,
+      view,
+      size,
+    },
+    { userId }
+  )
   return signThumbnailLocation({
     bucket,
     key: thumbnailKey(itemId),
@@ -580,21 +593,39 @@ export async function getThumbnailSource(
 
   // The stage travels as its own field: a signed URL carries no `?v=`, so the
   // client can no longer read it off the URL.
+  const size = Number(item.size)
+  /** Records which way the backfill request went, then answers it. */
+  const answer = <T extends ThumbnailSource>(source: T, reason?: string): T => {
+    track(
+      'thumbnail_source_requested',
+      {
+        item_id: itemId,
+        status: source.status,
+        reason: reason ?? null,
+        size_bytes: size,
+        mime_type: item.file?.mimeType ?? null,
+      },
+      { userId }
+    )
+    return source
+  }
+
   const stored = item.thumbnails[0]
     ? thumbnailLocation(item.thumbnails[0], itemId)
     : null
   if (stored) {
-    return {
+    return answer({
       status: 'exists',
       url: await signThumbnailLocation(stored),
       stage: stored.stage,
-    }
+    })
   }
 
-  if (item.type !== 'file' || !item.file?.key) return { status: 'unsupported' }
+  if (item.type !== 'file' || !item.file?.key)
+    return answer({ status: 'unsupported' }, 'not_a_file')
 
-  const size = Number(item.size)
-  if (size <= 0 || size > BACKFILL_MAX_BYTES) return { status: 'unsupported' }
+  if (size <= 0 || size > BACKFILL_MAX_BYTES)
+    return answer({ status: 'unsupported' }, size <= 0 ? 'empty' : 'too_large')
 
   const downloadUrl = await getPresignedUrl(
     item.file.bucket,
@@ -603,13 +634,13 @@ export async function getThumbnailSource(
     300
   )
 
-  return {
+  return answer({
     status: 'ready',
     downloadUrl,
     mimeType: item.file.mimeType,
     name: item.name,
     size,
-  }
+  })
 }
 
 export async function getThumbnailByItemId(

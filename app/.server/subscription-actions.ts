@@ -1,4 +1,5 @@
 import { prisma } from '@/services/db'
+import { track } from '@/services/vinktar'
 import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma, StoragePlan } from '@/prisma/client'
@@ -107,6 +108,9 @@ export async function updateSubscriptionPlan({
 
   // Ensure a subscription record exists
   const active = await findActiveSubscriptionByOwner(userId)
+  const previousPlan = active
+    ? await findStoragePlanById(active.storagePlanId).catch(() => null)
+    : null
   if (active) {
     await updateSubscriptionRecord({
       where: { id: active.id },
@@ -121,6 +125,18 @@ export async function updateSubscriptionPlan({
     })
   }
 
+  track(
+    'subscription_plan_changed',
+    {
+      from_plan: previousPlan?.type ?? null,
+      to_plan: plan.type,
+      to_plan_name: plan.name,
+      storage_limit_bytes: Number(plan.storageLimit),
+      had_subscription: Boolean(active),
+    },
+    { userId }
+  )
+
   return plan
 }
 
@@ -134,10 +150,22 @@ export async function cancelSubscription(userId: string) {
     throw toRouteError(StashlyErrorCode.SUBSCRIPTION_NOT_FOUND)
   }
 
-  return updateSubscriptionRecord({
+  const canceled = await updateSubscriptionRecord({
     where: { id: active.id },
     data: { status: 'canceled' as SubscriptionStatus },
   })
+  track(
+    'subscription_canceled',
+    {
+      subscription_id: active.id,
+      storage_plan_id: active.storagePlanId,
+      subscribed_days: Math.round(
+        (Date.now() - active.createdAt.getTime()) / 86_400_000
+      ),
+    },
+    { userId }
+  )
+  return canceled
 }
 
 // ---------------------------------------------------------------------------

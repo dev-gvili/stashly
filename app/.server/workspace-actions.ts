@@ -1,4 +1,5 @@
 import { prisma } from '@/services/db'
+import { track } from '@/services/vinktar'
 import {
   StashlyError,
   StashlyErrorCode,
@@ -304,13 +305,13 @@ export function findAllMemberWorkspaces(
  * @example
  * const mem = await addMember(userId, workspaceId, 'admin')
  */
-export function addMember(
+export async function addMember(
   userId: string,
   workspaceId: string,
   role: WorkspaceMemberRole = 'member',
   client: Prisma.TransactionClient = prisma
 ): Promise<WorkspaceMember> {
-  return client.workspaceMember.create({
+  const member = await client.workspaceMember.create({
     data: {
       id: toObjectId(getPrefixForModel('WorkspaceMember')),
       member: { connect: { id: userId } },
@@ -318,6 +319,13 @@ export function addMember(
       role,
     },
   })
+  // The member's own id: callers don't pass who added them.
+  track(
+    'workspace_member_added',
+    { workspace_id: workspaceId, role, member_id: member.id },
+    { userId }
+  )
+  return member
 }
 
 /**
@@ -592,14 +600,24 @@ export async function changeRole(
   workspaceId: string,
   newRole: WorkspaceMemberRole
 ): Promise<WorkspaceMember> {
-  return prisma.$transaction(async (tc) => {
+  const { updated, previousRole } = await prisma.$transaction(async (tc) => {
+    const previous = await tc.workspaceMember.findUnique({
+      where: { memberId_workspaceId: { memberId: userId, workspaceId } },
+      select: { role: true },
+    })
     const updated = await tc.workspaceMember.update({
       where: { memberId_workspaceId: { memberId: userId, workspaceId } },
       data: { role: newRole },
     })
     await syncMemberItemPermissions(userId, workspaceId, tc)
-    return updated
+    return { updated, previousRole: previous?.role ?? null }
   })
+  track(
+    'workspace_member_role_changed',
+    { workspace_id: workspaceId, from_role: previousRole, to_role: newRole },
+    { userId }
+  )
+  return updated
 }
 
 /**
@@ -617,13 +635,19 @@ export async function removeMember(
   userId: string,
   workspaceId: string
 ): Promise<WorkspaceMember> {
-  return prisma.$transaction(async (tc) => {
+  const removed = await prisma.$transaction(async (tc) => {
     const removed = await tc.workspaceMember.delete({
       where: { memberId_workspaceId: { memberId: userId, workspaceId } },
     })
     await removeAllMemberItemPermissions(userId, workspaceId, tc)
     return removed
   })
+  track(
+    'workspace_member_removed',
+    { workspace_id: workspaceId, role: removed.role },
+    { userId }
+  )
+  return removed
 }
 
 // ---------------------------------------------------------------------------

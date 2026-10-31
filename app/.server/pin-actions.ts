@@ -1,5 +1,6 @@
 import type { Prisma } from '@/prisma/client'
 import { prisma } from '@/services/db'
+import { track } from '@/services/vinktar'
 import { toObjectId, getPrefixForModel } from '@/utils/converters'
 import { createActivity } from './activity-actions'
 import { signThumbnails } from './thumbnail-actions'
@@ -149,6 +150,9 @@ export async function pinItem(
     },
   })
   recordPinActivity(itemId, 'pinned')
+  track('item_pinned', { item_id: itemId, pin_id: created.id }, {
+    userId: pinnedById,
+  })
   return created
 }
 
@@ -163,6 +167,17 @@ export async function unpinItem(
   if (!row) return
   await client.pinItem.delete({ where: { id: row.id } })
   recordPinActivity(itemId, 'unpinned')
+  track(
+    'item_unpinned',
+    {
+      item_id: itemId,
+      pin_id: row.id,
+      pinned_hours: Math.round(
+        (Date.now() - row.createdAt.getTime()) / 3_600_000
+      ),
+    },
+    { userId: pinnedById }
+  )
 }
 
 export async function reorderPin(
@@ -183,6 +198,11 @@ export async function reorderPin(
     throw new Error('Pin not found or not owned by user')
   }
   if (updated) recordPinActivity(updated.itemId, 'reordered')
+  track(
+    'pin_reordered',
+    { pin_id: pinId, item_id: updated?.itemId ?? null, position },
+    { userId: pinnedById }
+  )
 }
 
 export async function isPinned(

@@ -70,6 +70,7 @@ export async function action({ request, params, unstable_url, context, unstable_
     if (formData.intent === 'create_version') {
       const version = await createVersion({
         itemId,
+        userId: session.user.id,
         label: formData.label ?? null,
         version: formData.version ?? null,
         size: formData.size ?? null,

@@ -1,6 +1,7 @@
 import { itemsApiRouteInput } from '@/schemas/api.schemas'
 import { authMiddleware } from '@/services/middleware/auth'
 import { sessionContext } from '@/services/middleware/context'
+import { track } from '@/services/vinktar'
 import {
   createFolder,
   createUploadedItem,
@@ -124,7 +125,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
   switch (parsedData.intent) {
     case 'rename_item': {
       try {
-        await renameItem(parsedData.itemId, parsedData.newName)
+        await renameItem(parsedData.itemId, parsedData.newName, user.id)
         console.log({ referer, url: url.pathname })
         return redirect(`${url.pathname}`)
       } catch (e) {
@@ -337,6 +338,17 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         // `DataWithResponseInit` whose text lives on `data`.
         const err = toErrorInfo(e)
         await discardUploadedObject(user.id, parsedData.key)
+        track(
+          'upload_item_refused',
+          {
+            status: err.status ?? 500,
+            size_bytes: Number(parsedData.size),
+            mime_type: parsedData.mimeType ?? null,
+            category: parsedData.category ?? null,
+            has_parent: Boolean(parsedData.parentId),
+          },
+          { userId: user.id }
+        )
         return { success: false, error: err.message }
       }
     }

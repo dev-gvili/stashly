@@ -1,5 +1,6 @@
 import { Prisma } from '@/prisma/client'
 import { prisma } from '@/services/db'
+import { track } from '@/services/vinktar'
 import { findQuotaByUserId, toQuotaStatus } from './quota-actions'
 import { emptyBucket } from './s3'
 import type { ItemCategory } from '@/prisma/enums'
@@ -404,7 +405,7 @@ export async function emptyUserBucket(userId: string) {
   ])
   const rootId = user?.rootId ?? null
 
-  await prisma.$transaction(async (tx) => {
+  const deletedItems = await prisma.$transaction(async (tx) => {
     // Flag the session so the size/count triggers skip cross-row UPDATEs that
     // target this user's own rows — those rows are also being DELETEd by the
     // same outer statement and would raise Postgres 27000. Triggers still
@@ -433,7 +434,7 @@ export async function emptyUserBucket(userId: string) {
     await tx.image.deleteMany({ where: { item: { ownerId: userId } } })
     await tx.video.deleteMany({ where: { item: { ownerId: userId } } })
     await tx.audio.deleteMany({ where: { item: { ownerId: userId } } })
-    await tx.item.deleteMany({
+    const { count } = await tx.item.deleteMany({
       where: { ownerId: userId, ...exceptRootItem },
     })
 
@@ -451,6 +452,7 @@ export async function emptyUserBucket(userId: string) {
         data: { childCount: 0, inclusiveChildCount: 0 },
       })
     }
+    return count
   })
 
   // Zero quota usage now that DB is committed, so the user sees fresh numbers
@@ -475,4 +477,13 @@ export async function emptyUserBucket(userId: string) {
   }
 
   if (rootId) recordBucketEmptied(rootId)
+  track(
+    'bucket_emptied',
+    {
+      item_count: deletedItems,
+      bytes_freed: quota ? Number(quota.used + quota.deleted) : null,
+      had_bucket: Boolean(user?.bucket),
+    },
+    { userId }
+  )
 }

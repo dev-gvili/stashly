@@ -24,6 +24,7 @@ import { buildInvitationFilters } from '@/utils/filters/invitation.filters'
 import { searchFactory } from '@/utils/search'
 import type { Folder, ItemCategory } from '@/prisma/browser'
 import { prisma } from '@/services/db'
+import { track } from '@/services/vinktar'
 import { createNotification } from './notification-actions'
 import { signThumbnails, type WithSignedThumbnails } from './thumbnail-actions'
 
@@ -140,6 +141,36 @@ type RecipientInput = {
   email: string
   role: string
 }
+
+/**
+ * Sends an invitation event with what it is for (item or workspace) and its
+ * age, never the recipients' emails or the sender's message.
+ */
+function trackInvitation(
+  name: string,
+  userId: string,
+  invitation: Pick<Invitation, 'id' | 'itemId' | 'workspaceId' | 'createdAt'>,
+  extra: Record<string, string | number | boolean | null> = {}
+) {
+  track(
+    name,
+    {
+      invitation_id: invitation.id,
+      kind: invitation.workspaceId ? 'workspace' : 'item',
+      item_id: invitation.itemId,
+      workspace_id: invitation.workspaceId,
+      age_hours: Math.round(
+        (Date.now() - invitation.createdAt.getTime()) / 3_600_000
+      ),
+      ...extra,
+    },
+    { userId }
+  )
+}
+
+/** The distinct roles of a recipient list, for an event property. */
+const recipientRoles = (recipients: RecipientInput[]) =>
+  [...new Set(recipients.map((r) => r.role))].sort().join(',')
 
 type SendInvitationOptions = {
   expiresAt?: Date
@@ -636,6 +667,12 @@ export async function sendItemInvitation(
   })
 
   await notifyInvitationSent(invitation, recipients)
+  trackInvitation('invitation_sent', senderId, invitation, {
+    recipient_count: recipients.length,
+    roles: recipientRoles(recipients),
+    has_message: Boolean(invitation.message),
+    has_expiry: invitation.expiresAt != null,
+  })
   return invitation
 }
 
@@ -747,6 +784,12 @@ export async function sendWorkspaceInvitation(
   })
 
   await notifyInvitationSent(invitation, recipients)
+  trackInvitation('invitation_sent', senderId, invitation, {
+    recipient_count: recipients.length,
+    roles: recipientRoles(recipients),
+    has_message: Boolean(invitation.message),
+    has_expiry: invitation.expiresAt != null,
+  })
   return invitation
 }
 
@@ -928,6 +971,9 @@ export async function acceptInvitation(
   })
 
   await notifyInvitationAccepted(invitation, userId, userEmail)
+  trackInvitation('invitation_accepted', userId, invitation, {
+    role: recipient.role,
+  })
   return result
 }
 
@@ -969,6 +1015,9 @@ export async function rejectInvitation(
   await prisma.invitationRecipient.update({
     where: { id: recipientId },
     data: { status: 'rejected' },
+  })
+  trackInvitation('invitation_rejected', userId, recipient.invitation, {
+    role: recipient.role,
   })
   return findInvitationById(
     recipient.invitationId
@@ -1017,7 +1066,7 @@ export async function undoInvitationResponse(
     throw toRouteError(StashlyErrorCode.GONE, 'Invitation has expired')
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     if (recipient.status === 'accepted') {
       if (recipient.permission) {
         await tx.permission.update({
@@ -1042,6 +1091,11 @@ export async function undoInvitationResponse(
       tx
     ) as Promise<InvitationWithDetails>
   })
+  trackInvitation('invitation_response_undone', userId, invitation, {
+    previous_status: recipient.status,
+    role: recipient.role,
+  })
+  return result
 }
 
 /**
@@ -1080,7 +1134,7 @@ export async function cancelInvitationRecipient(
     )
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     if (recipient.permission) {
       await tx.permission.update({
         where: { id: recipient.permission.id },
@@ -1098,6 +1152,11 @@ export async function cancelInvitationRecipient(
       tx
     ) as Promise<InvitationWithDetails>
   })
+  trackInvitation('invitation_canceled', senderId, recipient.invitation, {
+    recipient_count: 1,
+    whole_invitation: false,
+  })
+  return result
 }
 
 /**
@@ -1133,7 +1192,7 @@ export async function cancelInvitation(
     )
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     for (const recipient of pendingRecipients) {
       // Soft-delete associated permission
       if (recipient.permission) {
@@ -1154,4 +1213,9 @@ export async function cancelInvitation(
       tx
     ) as Promise<InvitationWithDetails>
   })
+  trackInvitation('invitation_canceled', senderId, invitation, {
+    recipient_count: pendingRecipients.length,
+    whole_invitation: true,
+  })
+  return result
 }
