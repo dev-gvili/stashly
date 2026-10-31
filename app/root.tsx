@@ -8,12 +8,17 @@ import {
   Scripts,
   ScrollRestoration,
   useFetcher,
+  useLocation,
+  useMatches,
+  useNavigation,
   useRouteLoaderData,
   type ShouldRevalidateFunction,
 } from 'react-router'
 import type { Route } from './+types/root'
 import { getColorScheme } from './.server/theme'
-import { startVinktar } from '@/.client/vinktar'
+import { startVinktar, trackRouteView } from '@/.client/vinktar'
+import { requestTimingMiddleware } from '@/services/middleware/request-timing'
+import { routePattern } from '@/utils/misc'
 
 export const links: Route.LinksFunction = () => [
   { rel: 'stylesheet', href: styles },
@@ -34,6 +39,9 @@ export function meta({
   ]
 }
 export const shouldRevalidate: ShouldRevalidateFunction = () => false
+
+// Slow and failed requests, every route's loaders and actions included.
+export const middleware: Route.MiddlewareFunction[] = [requestTimingMiddleware]
 
 // Return the theme from the session storage using the loader
 export async function loader({ request }: Route.LoaderArgs) {
@@ -101,5 +109,51 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App({ loaderData }: Route.ComponentProps) {
   const { vinktar } = loaderData
   React.useEffect(() => startVinktar(vinktar), [vinktar])
+  useRouteViews()
   return <Outlet />
+}
+
+/**
+ * Sends one page view per pathname change, named by the leaf route. Keyed on
+ * the pathname alone: filters, sorting and the selection all live in the
+ * query string, and each would otherwise count as a view.
+ *
+ * Declared after `startVinktar`'s effect, so the first view finds it started.
+ */
+function useRouteViews() {
+  const matches = useMatches()
+  const { pathname } = useLocation()
+  const navigation = useNavigation()
+  const navigationStartedAt = React.useRef<number | null>(null)
+  const initial = React.useRef(true)
+  // StrictMode (React Router's default client entry) runs effects twice in dev.
+  const lastPathname = React.useRef<string | null>(null)
+
+  React.useEffect(() => {
+    if (navigation.state !== 'idle' && navigationStartedAt.current === null) {
+      navigationStartedAt.current = performance.now()
+    }
+  }, [navigation.state])
+
+  React.useEffect(() => {
+    const leaf = matches.at(-1)
+    if (!leaf || lastPathname.current === pathname) return
+    lastPathname.current = pathname
+    const startedAt = navigationStartedAt.current
+    trackRouteView({
+      routeId: leaf.id,
+      pattern: routePattern(leaf.pathname, leaf.params),
+      // The first view: since the document started loading.
+      durationMs: initial.current
+        ? performance.now()
+        : startedAt === null
+          ? 0
+          : performance.now() - startedAt,
+      initial: initial.current,
+    })
+    initial.current = false
+    navigationStartedAt.current = null
+    // Only a new pathname is a new view; `matches` changes with it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
 }

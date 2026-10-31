@@ -1,4 +1,11 @@
-import { getClient, getUserId, identify, init, reset } from '@vinktarhq/browser'
+import {
+  getClient,
+  getUserId,
+  identify,
+  init,
+  page,
+  reset,
+} from '@vinktarhq/browser'
 
 /** The signed-in user seen before `startVinktar` ran, identified once it does. */
 let pendingUserId: string | undefined
@@ -23,6 +30,9 @@ export function startVinktar(config: { key?: string; release?: string }) {
     // Our own requests carry the visit's device and session ids, which the
     // server's `vinktarRequest()` adopts.
     propagateIdentity: [window.location.origin],
+    // `trackRouteView` sends them instead, named by route: the SDK's own carry
+    // only the URL, whose ids split one page into a row per folder.
+    autoPageviews: false,
   })
   if (pendingUserId) identifyUser(pendingUserId)
 }
@@ -55,4 +65,31 @@ export function identifyUser(userId: string) {
 export function resetVinktarUser() {
   pendingUserId = undefined
   reset()
+}
+
+/**
+ * Records a page view named by the route it rendered, not its URL.
+ *
+ * @param view - `routeId`: the leaf route's id (`routes/stash/folder`);
+ *   `pattern`: its path pattern (`/:me/stash/folders/:folderId`);
+ *   `durationMs`: from the navigation starting to this render, or the time
+ *   since the document started loading on the first view; `initial`: the
+ *   document load rather than a client navigation.
+ *
+ * @example
+ * trackRouteView({ routeId: leaf.id, pattern, durationMs: 120, initial: false })
+ */
+export function trackRouteView(view: {
+  routeId: string
+  pattern: string
+  durationMs: number
+  initial: boolean
+}) {
+  if (!getClient()) return
+  page(view.routeId, {
+    route_id: view.routeId,
+    route_pattern: view.pattern,
+    duration_ms: Math.round(view.durationMs),
+    initial: view.initial,
+  })
 }
