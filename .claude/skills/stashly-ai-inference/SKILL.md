@@ -55,7 +55,8 @@ Recovers text from PDFs that have **no text layer**. Entry: `streamOcrPdf` (in `
 - **Sessions are created one after the other**: ORT's WebGPU backend throws "another WebGPU EP inference session is being created" on a parallel create.
 - The ORT WASM file is the build's own asset (Vite emits it from `import.meta.url`), not a CDN.
 - **No Hebrew.** A page whose `pageConfidence` is below `PADDLE_FALLBACK_BELOW` (0.9) is re-read with GLM-OCR in `streamOcrPdf`. Measured on clean synthetic renders: English 0.992–0.993, Hebrew 0.654 / 0.737 (garbage text), Hebrew mixed with Latin and digits 0.868. Not yet checked on real scans; every page logs its confidence. `ocr.ai.ts`, and with it transformers.js, loads only when a page falls back.
-- Measured 31 Oct 2026 (NVIDIA Turing): load 1.7–2.9 s from cache, first page ~4 s (shader compile), then 0.4–0.7 s a page at 2 MP. `PADDLE_MAX_PIXELS = 2_000_000` (≈A4 at 150 dpi), untuned.
+- Measured 31 Oct 2026 (NVIDIA Turing) on the real 12-page, 443-line "Stashly upload load audit.pdf": 17.5–17.8 s warm through `streamOcrPdf` (GLM-OCR took ~28 min on the same file). `PADDLE_MAX_PIXELS = 2_000_000` (≈A4 at 150 dpi), untuned.
+- **Cost grows with lines, not pixels.** Each page logs `detect / recognize / decode` and the recognizer output size. The recognizer emits ~18,000 class scores per step, so a dense page copies 120–370 MB back from the GPU, and that readback dominates. Lines are batched 8 per run, sorted by aspect ratio and zero-padded (`REC_BATCH_SIZE`): recognition 12.9 → 7.0 s on that file, total −25%. The next lever is an argmax on the GPU (an ONNX graph edit), not more batching. Measure on a real PDF, not a synthetic page: synthetic pages hid this speed-up.
 
 ### Dev switches (localStorage, not settings or env)
 

@@ -25,7 +25,8 @@ import {
   orderLines,
   pageConfidence,
   parseCharacterDict,
-  recognitionInput,
+  recognitionBatchInput,
+  REC_BATCH_SIZE,
   type RecognizedLine,
   type RgbaImage,
 } from '@/utils/paddle-ocr'
@@ -163,8 +164,25 @@ async function decodePage(blob: Blob): Promise<RgbaImage> {
   }
 }
 
-async function readPage(models: Models, page: RgbaImage): Promise<RecognizedLine[]> {
+/** Where a page's time went, logged per page to say which part to optimise. */
+interface PageTiming {
+  /** Detector input, run and box extraction. */
+  detMs: number
+  /** Recognizer runs, including copying their output back from the GPU. */
+  recMs: number
+  /** CTC decoding of that output on the main thread. */
+  decodeMs: number
+  /** Recognizer output read back, in MB. */
+  outMB: number
+}
+
+async function readPage(
+  models: Models,
+  page: RgbaImage,
+): Promise<{ lines: RecognizedLine[]; timing: PageTiming }> {
   const { det, rec, dictionary } = models
+  const timing: PageTiming = { detMs: 0, recMs: 0, decodeMs: 0, outMB: 0 }
+  const detStart = performance.now()
   const input = detectionInput(page)
   const detOut = await det.run({
     [det.inputNames[0]]: new ort.Tensor('float32', input.data, [1, 3, input.height, input.width]),
@@ -177,26 +195,46 @@ async function readPage(models: Models, page: RgbaImage): Promise<RecognizedLine
     page.width / input.width,
     page.height / input.height,
   )
+  timing.detMs = performance.now() - detStart
 
-  const lines: RecognizedLine[] = []
-  for (let i = 0; i < boxes.length; i++) {
-    const line = recognitionInput(cropRgba(page, boxes[i]))
+  // Batched by aspect ratio, so lines of similar width share a run and little
+  // of each batch is padding. Results go back to their box by index.
+  const crops = boxes.map((box) => cropRgba(page, box))
+  const ratio = (i: number) => crops[i].width / crops[i].height
+  const order = crops.map((_, i) => i).sort((a, b) => ratio(a) - ratio(b))
+  const lines: RecognizedLine[] = new Array(boxes.length)
+  for (let start = 0; start < order.length; start += REC_BATCH_SIZE) {
+    const indices = order.slice(start, start + REC_BATCH_SIZE)
+    const input = recognitionBatchInput(indices.map((i) => crops[i]))
+    const recStart = performance.now()
     const recOut = await rec.run({
-      [rec.inputNames[0]]: new ort.Tensor('float32', line.data, [1, 3, line.height, line.width]),
+      [rec.inputNames[0]]: new ort.Tensor('float32', input.data, [
+        input.batch,
+        3,
+        input.height,
+        input.width,
+      ]),
     })
     const output = recOut[rec.outputNames[0]]
     const [, steps, classes] = output.dims
-    const { text, confidence } = ctcGreedyDecode(
-      output.data as Float32Array,
-      steps,
-      classes,
-      dictionary,
-    )
-    lines.push({ ...boxes[i], text, confidence })
+    const probs = output.data as Float32Array
+    const decodeStart = performance.now()
+    timing.recMs += decodeStart - recStart
+    timing.outMB += probs.byteLength / 1e6
+    indices.forEach((i, b) => {
+      const { text, confidence } = ctcGreedyDecode(
+        probs.subarray(b * steps * classes, (b + 1) * steps * classes),
+        steps,
+        classes,
+        dictionary,
+      )
+      lines[i] = { ...boxes[i], text, confidence }
+    })
+    timing.decodeMs += performance.now() - decodeStart
     // The pre/post-processing runs on the main thread; let the page paint.
-    if (i % 4 === 3) await new Promise((resolve) => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 0))
   }
-  return lines
+  return { lines, timing }
 }
 
 /**
@@ -216,11 +254,12 @@ export function paddleOcrPage(
     const models = await getModels()
     const startedAt = performance.now()
     let lines: RecognizedLine[]
+    let timing: PageTiming
     let pixels: number
     try {
       const image = await decodePage(page.blob)
       pixels = image.width * image.height
-      lines = await readPage(models, image)
+      ;({ lines, timing } = await readPage(models, image))
     } catch (err) {
       discardModelsIfDeviceLost(err)
       throw err
@@ -232,7 +271,9 @@ export function paddleOcrPage(
       `[ocr] paddle page ${page.pageNum}${options.totalPages ? `/${options.totalPages}` : ''}: ` +
         `${text.length} chars, ${lines.length} lines, confidence ` +
         `${confidence === null ? 'n/a (no lines)' : confidence.toFixed(3)} ` +
-        `in ${Math.round(performance.now() - startedAt)}ms (${Math.round(pixels / 1000)}k px)`,
+        `in ${Math.round(performance.now() - startedAt)}ms (${Math.round(pixels / 1000)}k px; ` +
+        `detect ${Math.round(timing.detMs)}ms, recognize ${Math.round(timing.recMs)}ms ` +
+        `for ${Math.round(timing.outMB)}MB of output, decode ${Math.round(timing.decodeMs)}ms)`,
     )
     return { text, confidence, lines: lines.length }
   }, 'background')

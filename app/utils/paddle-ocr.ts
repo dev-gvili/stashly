@@ -240,21 +240,48 @@ export function extractTextBoxes(
 }
 
 /**
- * The recognizer's input for one cropped line: height {@link REC_HEIGHT},
- * width keeping the aspect ratio (capped at {@link REC_MAX_WIDTH}), values in
- * [-1, 1].
+ * Lines per recognizer run; its exported dynamic shapes allow batches of 8.
+ *
+ * Measured 31 Oct 2026 on a real 12-page scan (443 lines, NVIDIA Turing, warm,
+ * two runs each): batches of 1 took 23.4 / 23.5 s with 12.9 / 12.8 s in the
+ * recognizer; batches of 8 took 17.8 / 17.5 s with 7.0 / 7.1 s. 420 of 443
+ * lines read identically; the rest differ in spacing or single characters,
+ * about as often better as worse.
  */
-export function recognitionInput(line: RgbaImage): {
+export const REC_BATCH_SIZE = 8
+
+/**
+ * The recognizer's input for a batch of cropped lines.
+ *
+ * Each line is resized to height {@link REC_HEIGHT} keeping its aspect ratio,
+ * scaled to [-1, 1], and zero-padded on the right to the batch's widest line
+ * (capped at {@link REC_MAX_WIDTH}), as PaddleOCR pads. Sort lines by aspect
+ * ratio before batching so little of each batch is padding.
+ *
+ * @returns `batch × 3 × height × width` floats, row-major.
+ */
+export function recognitionBatchInput(lines: readonly RgbaImage[]): {
   data: Float32Array
   width: number
   height: number
+  batch: number
 } {
-  const width = Math.min(
-    REC_MAX_WIDTH,
-    Math.max(16, Math.ceil((line.width * REC_HEIGHT) / line.height)),
-  )
-  const resized = resizeRgba(line, width, REC_HEIGHT)
-  return { data: toChwBgr(resized, (v) => (v / 255 - 0.5) / 0.5), width, height: REC_HEIGHT }
+  const widths = lines.map((l) => Math.max(1, Math.ceil((l.width * REC_HEIGHT) / l.height)))
+  const width = Math.min(REC_MAX_WIDTH, Math.max(16, ...widths))
+  const plane = REC_HEIGHT * width
+  const data = new Float32Array(lines.length * 3 * plane)
+  lines.forEach((line, b) => {
+    const w = Math.min(width, widths[b])
+    const chw = toChwBgr(resizeRgba(line, w, REC_HEIGHT), (v) => (v / 255 - 0.5) / 0.5)
+    const linePlane = REC_HEIGHT * w
+    for (let c = 0; c < 3; c++) {
+      for (let y = 0; y < REC_HEIGHT; y++) {
+        const from = c * linePlane + y * w
+        data.set(chw.subarray(from, from + w), b * 3 * plane + c * plane + y * width)
+      }
+    }
+  })
+  return { data, width, height: REC_HEIGHT, batch: lines.length }
 }
 
 /**

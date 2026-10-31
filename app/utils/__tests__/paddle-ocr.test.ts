@@ -5,7 +5,7 @@ import {
   cropRgba,
   detectionInput,
   extractTextBoxes,
-  recognitionInput,
+  recognitionBatchInput,
   ctcGreedyDecode,
   orderLines,
   pageConfidence,
@@ -74,9 +74,32 @@ describe('image preparation', () => {
   })
 
   it('resizes a line to height 48, keeping its aspect ratio, values in [-1, 1]', () => {
-    const input = recognitionInput(solid(200, 24, [255, 255, 255]))
-    expect([input.width, input.height]).toEqual([400, 48])
+    const input = recognitionBatchInput([solid(200, 24, [255, 255, 255])])
+    expect([input.batch, input.width, input.height]).toEqual([1, 400, 48])
     expect(input.data[0]).toBeCloseTo(1)
+  })
+
+  it('pads each line of a batch with zeros to the widest line, keeping lines apart', () => {
+    // 400 px wide at height 48, and 96 px wide at height 48.
+    const input = recognitionBatchInput([
+      solid(200, 24, [255, 255, 255]),
+      solid(48, 24, [0, 0, 0]),
+    ])
+    const plane = 48 * 400
+    expect([input.batch, input.width]).toEqual([2, 400])
+    expect(input.data).toHaveLength(2 * 3 * plane)
+    // Line 0 fills its row; line 1 is -1 (black) for 96 px, then padding.
+    expect(input.data[399]).toBeCloseTo(1)
+    const line1 = 3 * plane
+    expect(input.data[line1 + 95]).toBeCloseTo(-1)
+    expect(input.data[line1 + 96]).toBe(0)
+    // Last channel, last row, past the line: still padding.
+    expect(input.data[line1 + 2 * plane + 47 * 400 + 399]).toBe(0)
+  })
+
+  it('caps the batch width at 3200', () => {
+    const input = recognitionBatchInput([solid(4000, 24, [255, 255, 255])])
+    expect(input.width).toBe(3200)
   })
 })
 
