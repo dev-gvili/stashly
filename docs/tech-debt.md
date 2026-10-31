@@ -21,9 +21,9 @@
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**57 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55–57 from re-running the upload call audit) · categories: Code 24, Architecture 22, Infrastructure 4, Test 4, Documentation 2, Dependency 1
+**57 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55) · categories: Code 24, Architecture 22, Infrastructure 4, Test 4, Documentation 2, Dependency 1
 
-**Status at 31 Oct 2026 (latest, items 55–57):** 36 resolved · 1 resolved in code, rollout step unconfirmed (2) · 5 partly done (10, 16, 17, 23, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 11 new and open (19, 20, 22, 37, 45–47, 49–51, 57). Re-running the upload call audit answered its oldest open question: one `/stash` reload read 3,353,317 rows, 96% of it the activity feed building its nested select for all 8,798 of the user's activities before keeping 12. Item 55 resolved the same day: the feed and the favorites list are one statement each that picks its rows before joining, and `Item` has an `ownerId` index. One reload now reads 134,249 rows in 408 ms, against 905 ms before. Item 56 resolved: a test-cleanup deadlock that failed 3 of 8 local full runs. Item 57 is open: a large user's feed still sorts its whole history, which only a schema change would remove.
+**Status at 31 Oct 2026 (latest, items 55–57):** 36 resolved · 1 resolved in code, rollout step unconfirmed (2) · 5 partly done (10, 16, 17, 23, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 11 new and open (19, 20, 22, 37, 45–47, 49–51, 57). Re-running the upload call audit answered its oldest open question: one `/stash` reload read 3,353,317 rows, 96% of it the activity feed building its nested select for all 8,798 of the user's activities before keeping 12. Item 55 resolved the same day: the feed and the favorites list are one statement each that picks its rows before joining, and `Item` has an `ownerId` index. One reload now reads 134,249 rows in 408 ms, against 905 ms before. Item 57, from item 55, is open: a large user's or workspace's feed still sorts its whole history, which only a schema change would remove. Separately, full-suite runs found item 56, resolved: a test-cleanup deadlock that failed 3 of 8 local runs.
 
 **Status at 31 Oct 2026 (item 4 resolved):** 34 resolved · 1 resolved in code, rollout step unconfirmed (2) · 5 partly done (10, 16, 17, 23, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 37, 45–47, 49–51). Item 4 resolved without a new package (`92ad800`): `app/.server/log.ts` writes each line as JSON to stdout (Fly keeps the stream), adds it as a Vinktar breadcrumb so an error carries its request's trail, and raises `warn`/`error` as Vinktar issues. Every line and error carries a request id (Fly's `Fly-Request-Id`, else a fresh one). All 25 `console.error`/`console.warn` calls and the 3 real `console.log` calls in `app/.server` moved to it; one, a dump of a file's audio tags, was deleted.
 
@@ -131,7 +131,7 @@
 | 54 | ~~OCR is slow, and its models haven't been re-surveyed~~ | 15 | Resolved 2026-10-31: PaddleOCR PP-OCRv6 (31 MB, in a worker) by default, GLM-OCR only for pages below 0.89 confidence; 12-page scan about 28 min → 12.4 s, measured | — |
 | 55 | ~~A `/stash` reload reads millions of rows~~ | 28 | Resolved 2026-10-31 (`92e06a7`, `c3e0833`, `158b98b`): feed and favorites filter before they join, `Item(ownerId)` index; one reload 3,353,317 → 134,249 rows, 905 → 408 ms, measured | — |
 | 56 | ~~Test cleanup deadlocks with a parallel size rollup~~ | 20 | Resolved 2026-10-31 (`ed9349b`): the wipe drops the user's pending size deltas first, under the rollup lock; full runs failing 3 of 8 → 0 of 12, measured | — |
-| 57 | **new** A large user's activity feed sorts its whole history | 8 | 16.7 ms and 46,207 rows for 8,798 activities; an `Activity(ownerId, observedAt)` column pair and index would read only `limit` rows (schema change, owner's approval) | Owner's approval for the schema change |
+| 57 | **new** A large user's activity feed sorts its whole history | 8 | 16.7 ms and 46,207 rows for 8,798 activities; owner, workspace and time copied onto `Activity`, indexed for both the personal and the workspace feed, would read only `limit` rows (schema change, owner's approval) | Owner's approval for the schema change |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -195,7 +195,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 54 | ~~OCR is slow, and its models haven't been re-surveyed~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 2–3 days | Resolved 31 Oct |
 | 55 | ~~A `/stash` reload reads millions of rows~~ | Architecture | 4 | 3 | 2 | **28** (High) | 1 day | Resolved 31 Oct |
 | 56 | ~~Test cleanup deadlocks with a parallel size rollup~~ | Test | 2 | 2 | 1 | **20** (Medium) | 2 h | Resolved 31 Oct |
-| 57 | A large user's activity feed sorts its whole history | Architecture | 2 | 2 | 4 | **8** (Low) | 1–2 days | New 31 Oct |
+| 57 | A large user's activity feed sorts its whole history | Architecture | 2 | 2 | 4 | **8** (Low) | 3–5 days | New 31 Oct |
 
 ## Details
 
@@ -1080,7 +1080,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 
 *Architecture debt · Impact 4 · Risk 3 · Effort 2 → **28** · est. 1 day · source: upload call audit re-run, 31 Oct*
 
-- **Evidence:** re-running the upload call audit (`docs/upload-call-audit.md`, Re-run 31 Oct), a 10 MB upload's window read 6.7 M rows against 23,903 on 25 Oct. One `/stash` reload measured on its own read **3,353,317** (`pg_stat_database.tup_returned`) in 905 ms, and an upload causes two. The upload path itself was unchanged; the stash had grown from empty to 3,361 files. Each home-loader function was run alone with a `pg_stat_user_tables` diff:
+- **Evidence:** re-running the upload call audit (`docs/upload-call-audit.md`, Re-run 31 Oct), a 10 MB upload's window read 6.7 M rows against 23,903 on 25 Oct (`tup_returned` in `.claude/evidence/upload-audit-after-10MB-pg-diff.json`, the 25 Oct re-run; the audit doc's tables don't carry rows read). One `/stash` reload measured on its own read **3,353,317** (`pg_stat_database.tup_returned`) in 905 ms, and an upload causes two. The upload path itself was unchanged; the stash had grown from empty to 3,361 files. Each home-loader function was run alone with a `pg_stat_user_tables` diff:
   - `getRecentActivityForUser` read 3,223,731 rows in 696 ms. Its Prisma `findMany` sorted on a related table (`time.observedAt`), so Postgres ran all 16 action-kind lookups for each of the user's 8,798 activities before keeping 12 (`EXPLAIN ANALYZE`: 694 ms, 8,798 loops, 8,798 `RestoreAction` scans).
   - `getFavoritedItems` took 165–200 ms for 1 favorite. Postgres ran every card join for all 4,463 items the user could read, then merge-joined `Favorite` last. A fresh `ANALYZE` gave the same plan.
   - Six statements read the whole `Item` table, because `ownerId` had no index.
@@ -1096,16 +1096,16 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 
 *Test debt · Impact 2 · Risk 2 · Effort 1 → **20** · est. 2 h · source: full-suite runs, 31 Oct*
 
-- **Evidence:** `upload-quota-charge.test.ts` failed in its `afterAll` in 3 of 8 local full runs. The Postgres log named both sides five times that day: `wipeTestUsers`' `DELETE FROM "Item" WHERE "ownerId" = $1` against `apply_item_size_deltas(NULL, true)`. Only `flushItemSizes()` passes `true`, so the other side was a parallel test file applying every pending delta in the database, which updated the wiped user's folders while they were being deleted.
+- **Evidence:** `upload-quota-charge.test.ts` failed in its `afterAll` in 3 of 8 local full runs. The Postgres log named both sides five times that day: `wipeTestUsers`' `DELETE FROM "Item" WHERE "ownerId" = $1` against `apply_item_size_deltas(NULL, true)`. Only `flushItemSizes()` and `recount_folder_sizes()` pass `true`, and both run from parallel test files: either applies every pending delta in the database, which updated the wiped user's folders while they were being deleted. The fix covers both, because it removes the user's deltas.
 - **Fix:** `wipeTestUsers` first deletes the user's pending `ItemSizeDelta` rows, under the rollup's advisory lock, in a short transaction of its own.
 - **Status 2026-10-31: resolved** (`ed9349b`). Holding the lock for the whole wipe was tried first: no deadlocks, but `item-size-trigger.test.ts` then hit 5 s timeouts waiting behind long wipes (2 of 12 runs). With the short lock: 12 of 12 full runs green, no new deadlocks in the Postgres log.
 
 ### 57. A large user's activity feed sorts its whole history
 
-*Architecture debt · Impact 2 · Risk 2 · Effort 4 → **8** · est. 1–2 days · source: item 55, 31 Oct*
+*Architecture debt · Impact 2 · Risk 2 · Effort 4 → **8** · est. 3–5 days (migration, backfill, keeping the copies in step) · source: item 55, 31 Oct*
 
 - **Evidence:** after item 55 the feed for a user with 8,798 activities still reads `ActivityTime`, `Activity` and `Item` in full to sort them (46,207 rows, 16.7 ms median). The time is on `ActivityTime` and the owner on `Item`, so no index can give "this owner's newest". An `ActivityTime("observedAt")` index was measured and rejected (item 55).
-- **Fix:** copy `ownerId` (and `workspaceId`) and `observedAt` onto `Activity`, index `(ownerId, observedAt DESC)`, and keep them in step on every activity write and on an item's change of owner or workspace. The feed then reads `limit` rows for any user.
+- **Fix:** copy `ownerId`, `workspaceId`, `observedAt` and the time id (the feed's tiebreak) onto `Activity`, and keep them in step on every activity write and on an item's change of owner or workspace. One index per feed scope: `(ownerId, workspaceId, observedAt DESC)` for the personal feed (`workspaceId IS NULL`) and a workspace member's own items, and `(workspaceId, observedAt DESC)` for a workspace admin or owner, whose scope (`activityScopeFor`) has no owner. With both, every feed reads only `limit` rows; with an owner-only index the workspace admin's feed would still sort the whole workspace's history.
 - **Status 2026-10-31: open.** Needs the owner's approval for the schema change; small users already read 5–29 rows.
 
 ## Changes since the audit
