@@ -1,13 +1,17 @@
 model File {
-  id        String  @id
-  mimeType  String?
-  hash      String?
-  extension String?
-  bucket    String
-  key       String
-  etag      String?
-  itemId    String  @unique
-  item      Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id         String  @id
+  mimeType   String?
+  hash       String?
+  extension  String?
+  bucket     String
+  key        String
+  /// Where the upload put it, `<rootId>/<folders>/<name>` as the browser saw it.
+  /// A record of the upload, not the file's current place: a move or rename
+  /// leaves it as it was. `key` is the object's own (`toObjectKey`).
+  uploadPath String
+  etag       String?
+  itemId     String  @unique
+  item       Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([bucket, key], map: "file_bucket_key")
 }

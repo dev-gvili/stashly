@@ -468,6 +468,7 @@ export function generateMockFile({
     extension: extension,
     bucket: drive.name,
     key: `${drive.name}/${filename}`,
+    uploadPath: `${drive.name}/${filename}`,
     etag: faker.string.alphanumeric(12),
     filename,
     name,
