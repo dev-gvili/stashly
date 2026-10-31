@@ -125,6 +125,9 @@ model Item {
   @@index([driveId, parentId, name(sort: Asc)], map: "drive_parent_name_cursor")
   @@index([driveId, parentId, createdAt(sort: Desc)], map: "drive_parent_created_at")
   @@index([driveId, createdAt(sort: Desc)], map: "drive_created_at")
+  // owner index: every "my items" query (overview feed, usage, storage) filters on
+  // ownerId; without it each one read the whole table, every user's items included
+  @@index([ownerId], map: "owner_items")
 }
 
 model LockedItem {
