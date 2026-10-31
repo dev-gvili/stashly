@@ -74,16 +74,18 @@ export function resetVinktarUser() {
  *   `pattern`: its path pattern (`/:me/stash/folders/:folderId`);
  *   `durationMs`: from the navigation starting to this render, or the time
  *   since the document started loading on the first view; `initial`: the
- *   document load rather than a client navigation.
+ *   document load rather than a client navigation; `from`: the route the
+ *   previous view rendered, left out on the first view, which has none.
  *
  * @example
- * trackRouteView({ routeId: leaf.id, pattern, durationMs: 120, initial: false })
+ * trackRouteView({ routeId: leaf.id, pattern, durationMs: 120, initial: false, from })
  */
 export function trackRouteView(view: {
   routeId: string
   pattern: string
   durationMs: number
   initial: boolean
+  from?: { routeId: string; pattern: string }
 }) {
   if (!getClient()) return
   page(view.routeId, {
@@ -91,5 +93,9 @@ export function trackRouteView(view: {
     route_pattern: view.pattern,
     duration_ms: Math.round(view.durationMs),
     initial: view.initial,
+    ...(view.from && {
+      from_route_id: view.from.routeId,
+      from_route_pattern: view.from.pattern,
+    }),
   })
 }

@@ -133,6 +133,9 @@ function useRouteViews() {
   const initial = React.useRef(true)
   // StrictMode (React Router's default client entry) runs effects twice in dev.
   const lastPathname = React.useRef<string | null>(null)
+  const lastRoute = React.useRef<{ routeId: string; pattern: string }>(
+    undefined
+  )
 
   React.useEffect(() => {
     if (navigation.state !== 'idle' && navigationStartedAt.current === null) {
@@ -145,9 +148,13 @@ function useRouteViews() {
     if (!leaf || lastPathname.current === pathname) return
     lastPathname.current = pathname
     const startedAt = navigationStartedAt.current
-    trackRouteView({
+    const route = {
       routeId: leaf.id,
       pattern: routePattern(leaf.pathname, leaf.params),
+    }
+    trackRouteView({
+      ...route,
+      from: lastRoute.current,
       // The first view: since the document started loading.
       durationMs: initial.current
         ? performance.now()
@@ -157,6 +164,7 @@ function useRouteViews() {
       initial: initial.current,
     })
     initial.current = false
+    lastRoute.current = route
     navigationStartedAt.current = null
     // Only a new pathname is a new view; `matches` changes with it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
