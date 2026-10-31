@@ -2,43 +2,21 @@
  * Browser-side OCR with PaddleOCR PP-OCRv6 (Baidu), on ONNX Runtime Web.
  *
  * The default OCR engine. Two small models read a page: a detector finds the
- * text lines, a recognizer reads each one (pre/post-processing lives in
- * `@/utils/paddle-ocr`). About 31 MB together, against GLM-OCR's 623 MB, and
- * each call is short, which also keeps the GPU clear of the Windows watchdog
- * reset GLM-OCR triggered on long dispatches (31 Oct 2026).
+ * text lines, a recognizer reads each one. About 31 MB together, against
+ * GLM-OCR's 623 MB, and each call is short.
  *
  * Its recognizer covers Chinese, Japanese, English and Latin scripts, not
  * Hebrew. The caller compares {@link PaddlePage.confidence} with
  * {@link PADDLE_FALLBACK_BELOW} and re-reads doubtful pages with GLM-OCR.
  *
- * Like the other `*.ai.ts` modules this runs on the main thread, one page per
- * job on the shared AI queue.
+ * The models run in `paddle-ocr.worker.ts`; this is its main-thread client.
+ * Each page is one job on the shared AI queue that waits for the worker's
+ * reply. A worker that reports any error, or crashes, is ended, and the next
+ * page starts a fresh one with its own ONNX Runtime and WebGPU device: after a
+ * GPU reset the old runtime never recovers (31 Oct 2026).
  */
-import * as ort from 'onnxruntime-web/webgpu'
-import { enqueue, isDeviceLostError } from './ai-queue'
-import {
-  cropRgba,
-  ctcGreedyDecode,
-  detectionInput,
-  extractTextBoxes,
-  MIN_LINE_CONFIDENCE,
-  orderLines,
-  pageConfidence,
-  parseCharacterDict,
-  recognitionBatchInput,
-  REC_BATCH_SIZE,
-  type RecognizedLine,
-  type RgbaImage,
-} from '@/utils/paddle-ocr'
-
-// Pinned to commits so an upstream push can't change what runs.
-const DET_URL =
-  'https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det_onnx/resolve/28fe5895c24fd108c19eb3e8479f4ab385fbfc62/inference.onnx'
-const REC_BASE =
-  'https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx/resolve/b8f84f0b80c529de40b4fbb3544b84fa7233a513'
-
-/** Cache Storage bucket; rename it when the pinned commits change. */
-const MODEL_CACHE = 'stashly-paddle-ocr-v6'
+import { enqueue } from './ai-queue'
+import type { PaddlePage, PaddleRequest, PaddleResponse, PageTiming } from './paddle-ocr.worker'
 
 /**
  * Pixel budget for a page render. Recognition reads line crops from the full
@@ -60,74 +38,71 @@ export const PADDLE_MAX_PIXELS = 2_000_000
  */
 export const PADDLE_FALLBACK_BELOW = 0.89
 
-/** What one page produced. */
-export interface PaddlePage {
-  text: string
-  /** Length-weighted mean line confidence; null when no line was found. */
-  confidence: number | null
-  lines: number
+type Reply = Exclude<PaddleResponse, { type: 'error' }>
+
+/** A request without its id; distributes so `read` keeps its `blob`. */
+type RequestBody = PaddleRequest extends infer R ? (R extends unknown ? Omit<R, 'id'> : never) : never
+
+interface PendingRequest {
+  resolve: (reply: Reply) => void
+  reject: (err: Error) => void
 }
 
-interface Models {
-  det: ort.InferenceSession
-  rec: ort.InferenceSession
-  dictionary: string[]
+/** The live worker, or null before first use and after a failure. */
+let worker: Worker | null = null
+let nextRequestId = 1
+const pending = new Map<number, PendingRequest>()
+
+function failPending(err: Error) {
+  for (const request of pending.values()) request.reject(err)
+  pending.clear()
 }
 
-let modelsPromise: Promise<Models> | null = null
-
-/**
- * A model file from Cache Storage, downloading it on first use. `resolve`
- * redirects to short-lived signed URLs, so the HTTP cache rarely keeps them.
- */
-async function fetchCached(url: string): Promise<Response> {
-  let cache: Cache | null = null
-  try {
-    cache = await caches.open(MODEL_CACHE)
-    const hit = await cache.match(url)
-    if (hit) return hit
-  } catch {
-    // No Cache Storage (insecure context, blocked storage): download each time.
-  }
-  const response = await fetch(url)
-  if (!response.ok) throw new Error(`${url} answered ${response.status}`)
-  if (cache) await cache.put(url, response.clone()).catch(() => {})
-  return response
+/** Ends the worker; the next request starts a fresh one. */
+function discardWorker(ending: Worker, reason: string) {
+  if (worker !== ending) return
+  worker = null
+  ending.terminate()
+  console.warn(`[ocr] PaddleOCR worker restarted after: ${reason}`)
 }
 
-function getModels(): Promise<Models> {
-  if (!modelsPromise) {
-    const startedAt = performance.now()
-    console.info('[ocr] loading PaddleOCR PP-OCRv6 (~31MB on first run)…')
-    // ORT prints routine warnings (shape ops placed on the CPU) through
-    // console.error, which reads as a failure.
-    ort.env.logLevel = 'error'
-    const options: ort.InferenceSession.SessionOptions = {
-      executionProviders: ['webgpu', 'wasm'],
-      graphOptimizationLevel: 'all',
+function getWorker(): Worker {
+  if (worker) return worker
+  const started = new Worker(new URL('./paddle-ocr.worker.ts', import.meta.url), {
+    type: 'module',
+  })
+  started.onmessage = (event: MessageEvent<PaddleResponse>) => {
+    const message = event.data
+    const request = pending.get(message.id)
+    if (!request) return
+    pending.delete(message.id)
+    if (message.type !== 'error') {
+      request.resolve(message)
+      return
     }
-    modelsPromise = (async () => {
-      const [detBytes, recBytes, yaml] = await Promise.all([
-        fetchCached(DET_URL).then((r) => r.arrayBuffer()),
-        fetchCached(`${REC_BASE}/inference.onnx`).then((r) => r.arrayBuffer()),
-        fetchCached(`${REC_BASE}/inference.yml`).then((r) => r.text()),
-      ])
-      // One after the other: ORT's WebGPU backend rejects a second session
-      // while one is being created ("another WebGPU EP inference session is
-      // being created").
-      const det = await ort.InferenceSession.create(new Uint8Array(detBytes), options)
-      const rec = await ort.InferenceSession.create(new Uint8Array(recBytes), options)
-      console.info(
-        `[ocr] PaddleOCR ready in ${Math.round(performance.now() - startedAt)}ms`,
-      )
-      return { det, rec, dictionary: parseCharacterDict(yaml) }
-    })()
-    modelsPromise.catch((err) => {
-      console.error('[ocr] PaddleOCR load FAILED', err)
-      modelsPromise = null
-    })
+    request.reject(new Error(message.message))
+    discardWorker(started, message.message)
   }
-  return modelsPromise
+  started.onerror = (event) => {
+    failPending(new Error(`PaddleOCR worker failed: ${event.message}`))
+    discardWorker(started, event.message)
+  }
+  worker = started
+  return started
+}
+
+/** Sends one request and waits for its reply. Must run inside an AI-queue job. */
+function request(message: RequestBody): Promise<Reply> {
+  const target = getWorker()
+  const id = nextRequestId++
+  return new Promise<Reply>((resolve, reject) => {
+    pending.set(id, { resolve, reject })
+    target.postMessage({ ...message, id } as PaddleRequest)
+  })
+}
+
+function logLoad(loadMs: number | undefined) {
+  if (loadMs !== undefined) console.info(`[ocr] PaddleOCR ready in ${loadMs}ms`)
 }
 
 /**
@@ -136,106 +111,19 @@ function getModels(): Promise<Models> {
  */
 export function preloadPaddleOcr(): Promise<void> {
   return enqueue(async () => {
-    await getModels()
+    const reply = await request({ type: 'load' })
+    logLoad(reply.loadMs)
   }, 'background')
 }
 
-/** Drops the sessions on a lost device so the next page builds fresh ones. */
-function discardModelsIfDeviceLost(err: unknown): void {
-  if (!isDeviceLostError(err) || !modelsPromise) return
-  const lost = modelsPromise
-  modelsPromise = null
-  console.warn('[ocr] WebGPU device lost — PaddleOCR will reload on next use')
-  void lost
-    .then(({ det, rec }) => Promise.all([det.release(), rec.release()]))
-    .catch(() => {})
-}
-
-async function decodePage(blob: Blob): Promise<RgbaImage> {
-  const bitmap = await createImageBitmap(blob)
-  try {
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
-    const context = canvas.getContext('2d', { willReadFrequently: true })
-    if (!context) throw new Error('No 2D context for OCR page decode')
-    context.drawImage(bitmap, 0, 0)
-    const { data, width, height } = context.getImageData(0, 0, bitmap.width, bitmap.height)
-    return { data, width, height }
-  } finally {
-    bitmap.close()
-  }
-}
-
-/** Where a page's time went, logged per page to say which part to optimise. */
-interface PageTiming {
-  /** Detector input, run and box extraction. */
-  detMs: number
-  /** Recognizer runs, including copying their output back from the GPU. */
-  recMs: number
-  /** CTC decoding of that output on the main thread. */
-  decodeMs: number
-  /** Recognizer output read back, in MB. */
-  outMB: number
-}
-
-async function readPage(
-  models: Models,
-  page: RgbaImage,
-): Promise<{ lines: RecognizedLine[]; timing: PageTiming }> {
-  const { det, rec, dictionary } = models
-  const timing: PageTiming = { detMs: 0, recMs: 0, decodeMs: 0, outMB: 0 }
-  const detStart = performance.now()
-  const input = detectionInput(page)
-  const detOut = await det.run({
-    [det.inputNames[0]]: new ort.Tensor('float32', input.data, [1, 3, input.height, input.width]),
-  })
-  const prob = detOut[det.outputNames[0]].data as Float32Array
-  const boxes = extractTextBoxes(
-    prob,
-    input.width,
-    input.height,
-    page.width / input.width,
-    page.height / input.height,
+function describe(page: PaddlePage, timing: PageTiming): string {
+  const confidence = page.confidence === null ? 'n/a (no text)' : page.confidence.toFixed(3)
+  return (
+    `${page.text.length} chars, ${page.lines} lines, confidence ${confidence} ` +
+    `(${Math.round(timing.pixels / 1000)}k px; detect ${Math.round(timing.detMs)}ms, ` +
+    `recognize ${Math.round(timing.recMs)}ms for ${Math.round(timing.outMB)}MB of output, ` +
+    `decode ${Math.round(timing.decodeMs)}ms)`
   )
-  timing.detMs = performance.now() - detStart
-
-  // Batched by aspect ratio, so lines of similar width share a run and little
-  // of each batch is padding. Results go back to their box by index.
-  const crops = boxes.map((box) => cropRgba(page, box))
-  const ratio = (i: number) => crops[i].width / crops[i].height
-  const order = crops.map((_, i) => i).sort((a, b) => ratio(a) - ratio(b))
-  const lines: RecognizedLine[] = new Array(boxes.length)
-  for (let start = 0; start < order.length; start += REC_BATCH_SIZE) {
-    const indices = order.slice(start, start + REC_BATCH_SIZE)
-    const input = recognitionBatchInput(indices.map((i) => crops[i]))
-    const recStart = performance.now()
-    const recOut = await rec.run({
-      [rec.inputNames[0]]: new ort.Tensor('float32', input.data, [
-        input.batch,
-        3,
-        input.height,
-        input.width,
-      ]),
-    })
-    const output = recOut[rec.outputNames[0]]
-    const [, steps, classes] = output.dims
-    const probs = output.data as Float32Array
-    const decodeStart = performance.now()
-    timing.recMs += decodeStart - recStart
-    timing.outMB += probs.byteLength / 1e6
-    indices.forEach((i, b) => {
-      const { text, confidence } = ctcGreedyDecode(
-        probs.subarray(b * steps * classes, (b + 1) * steps * classes),
-        steps,
-        classes,
-        dictionary,
-      )
-      lines[i] = { ...boxes[i], text, confidence }
-    })
-    timing.decodeMs += performance.now() - decodeStart
-    // The pre/post-processing runs on the main thread; let the page paint.
-    await new Promise((resolve) => setTimeout(resolve, 0))
-  }
-  return { lines, timing }
 }
 
 /**
@@ -252,30 +140,14 @@ export function paddleOcrPage(
   options: { totalPages?: number } = {},
 ): Promise<PaddlePage> {
   return enqueue(async () => {
-    const models = await getModels()
     const startedAt = performance.now()
-    let lines: RecognizedLine[]
-    let timing: PageTiming
-    let pixels: number
-    try {
-      const image = await decodePage(page.blob)
-      pixels = image.width * image.height
-      ;({ lines, timing } = await readPage(models, image))
-    } catch (err) {
-      discardModelsIfDeviceLost(err)
-      throw err
-    }
-
-    const confidence = pageConfidence(lines)
-    const text = orderLines(lines.filter((l) => l.text && l.confidence > MIN_LINE_CONFIDENCE))
+    const reply = await request({ type: 'read', blob: page.blob })
+    if (reply.type !== 'page') throw new Error(`Unexpected PaddleOCR reply: ${reply.type}`)
+    logLoad(reply.loadMs)
     console.info(
-      `[ocr] paddle page ${page.pageNum}${options.totalPages ? `/${options.totalPages}` : ''}: ` +
-        `${text.length} chars, ${lines.length} lines, confidence ` +
-        `${confidence === null ? 'n/a (no lines)' : confidence.toFixed(3)} ` +
-        `in ${Math.round(performance.now() - startedAt)}ms (${Math.round(pixels / 1000)}k px; ` +
-        `detect ${Math.round(timing.detMs)}ms, recognize ${Math.round(timing.recMs)}ms ` +
-        `for ${Math.round(timing.outMB)}MB of output, decode ${Math.round(timing.decodeMs)}ms)`,
+      `[ocr] paddle page ${page.pageNum}${options.totalPages ? `/${options.totalPages}` : ''} ` +
+        `in ${Math.round(performance.now() - startedAt)}ms: ${describe(reply.page, reply.timing)}`,
     )
-    return { text, confidence, lines: lines.length }
+    return reply.page
   }, 'background')
 }
