@@ -308,7 +308,10 @@ export async function action({ request, params, context }: Route.ActionArgs) {
           etag: parsedData.etag,
           hash: parsedData.hash,
           bucket: user.bucket,
-          driveId: parsedData.driveId,
+          // The session's drive, like the bucket and owner: a form naming
+          // another user's drive filed the row (and any folders made for it)
+          // there, owned by this user.
+          driveId: user.driveId,
           parentId: parsedData.parentId,
           // The session's user, never the form's `ownerId`: the form is the
           // client's word, and `createUploadedItem` checks access as this user.

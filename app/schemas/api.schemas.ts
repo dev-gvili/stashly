@@ -152,7 +152,9 @@ export const createUploadItemFields = z.object({
   // S3's own key limit. Its middle segments become folders, so an unbounded
   // key was unbounded work for `createUploadedItem`.
   key: z.string().max(1024),
-  size: z.coerce.bigint(),
+  // The client's claim, charged to the uploader's quota as is: a negative size
+  // gave quota back. Not yet checked against the S3 object's real size.
+  size: z.coerce.bigint().nonnegative(),
   mimeType: z.string().optional(),
   etag: z.string().optional(),
   // Client-computed content hash; empty string when the browser could not
