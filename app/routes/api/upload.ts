@@ -1,6 +1,6 @@
 import { authMiddleware } from '@/services/middleware/auth'
 import { sessionContext } from '@/services/middleware/context'
-import { assertCanUploadTo } from '@/services/item-actions'
+import { assertCanUploadTo, assertKeyUnfiled } from '@/services/item-actions'
 import {
   abortMultipartUpload,
   completeMultipartUpload,
@@ -126,9 +126,11 @@ export async function action({ request, context }: Route.ActionArgs) {
     case 'create-multipart-upload': {
       // Before any bytes move: a user who lost access to the folder (revoked
       // mid-batch) stops here instead of uploading the file only to have the
-      // row refused afterwards.
+      // row refused afterwards. So does an upload onto a key a filed row
+      // already serves, which would swap the bytes behind it.
       try {
         await assertCanUploadTo(user.id, values.key)
+        await assertKeyUnfiled(bucket, values.key)
       } catch (e) {
         return refuse(e)
       }
@@ -180,10 +182,12 @@ export async function action({ request, context }: Route.ActionArgs) {
       return { url }
     }
     case 'complete-multipart-upload': {
-      // Access revoked while the parts were uploading: abort instead of
-      // completing, so S3 drops the parts and no object is ever assembled.
+      // Access revoked while the parts were uploading, or another upload of
+      // the same key filed its row meanwhile: abort instead of completing, so
+      // S3 drops the parts and no object is ever assembled.
       try {
         await assertCanUploadTo(user.id, values.key)
+        await assertKeyUnfiled(bucket, values.key)
       } catch (e) {
         await abortMultipartUpload(bucket, values.key, values.uploadId).catch(
           (abortError) =>

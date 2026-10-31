@@ -2129,6 +2129,35 @@ export async function assertCanUploadTo(userId: string, key: string) {
 /** `User.bucket`'s schema default (`prisma/models/user.prisma`): not a real bucket. */
 const PLACEHOLDER_BUCKET = 'default-bucket'
 
+/**
+ * Refuses an upload onto a key a `File` row already serves.
+ *
+ * Keys come from the file's path (`<root>/<path>/<name>`), so a second upload
+ * under the same name lands on the object a filed row serves. Completing it
+ * swapped the bytes behind that row while its size and the uploader's quota
+ * kept the old number: a 1-byte file could be grown to any size for free, and
+ * an honest re-upload silently replaced the older item's content. A trashed
+ * row counts too: its bytes are what a restore brings back.
+ *
+ * Runs at `create-multipart-upload`, before any bytes move, and again at
+ * `complete-multipart-upload`, which aborts on refusal.
+ *
+ * @param bucket - The session user's bucket, the one every upload call uses.
+ * @throws `CONFLICT` (409) when a row serves the key.
+ *
+ * @example
+ * await assertKeyUnfiled(user.bucket, 'item_root/report.pdf')
+ */
+export async function assertKeyUnfiled(bucket: string, key: string) {
+  const filed = await prisma.file.findFirst({ where: { bucket, key }, select: { id: true } })
+  if (filed) {
+    throw new StashlyError(
+      StashlyErrorCode.CONFLICT,
+      'A file with this name is already here (or in the trash). Rename it or delete the other one first.'
+    )
+  }
+}
+
 /** What `discardUploadedObject` did with the object it was asked to remove. */
 export type DiscardVerdict = 'deleted' | 'referenced' | 'no-bucket' | 'failed'
 

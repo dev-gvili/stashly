@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // The route's I/O is S3; signing is mocked to name the part it signed.
 vi.mock('@/services/auth', () => ({ auth: { api: { getSession: vi.fn() } } }))
-vi.mock('@/services/item-actions', () => ({ assertCanUploadTo: vi.fn() }))
+vi.mock('@/services/item-actions', () => ({ assertCanUploadTo: vi.fn(), assertKeyUnfiled: vi.fn() }))
 vi.mock('@/services/s3', () => ({
   abortMultipartUpload: vi.fn(),
   completeMultipartUpload: vi.fn(),
