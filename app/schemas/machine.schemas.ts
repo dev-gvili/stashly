@@ -269,7 +269,10 @@ export let mediafile = z.object({
   etag: z.string().optional(),
   file: z.file(),
   id: z.string(),
+  /** The object's S3 key, unique per upload (`toObjectKey`). */
   key: z.string(),
+  /** `<rootId>/<folders>/<name>`: where the upload puts the file. */
+  uploadPath: z.string(),
   uploadId: z.string().optional(),
   location: z.url().optional(),
   ownerId: z.string().optional(),

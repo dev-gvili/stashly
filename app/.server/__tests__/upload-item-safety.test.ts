@@ -8,7 +8,7 @@ import {
   createUploadedItem,
   discardUploadedObject,
 } from '@/services/item-actions'
-import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import { getPrefixForModel, toObjectId, toObjectKey } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
 /**
@@ -48,14 +48,16 @@ async function makeFolder(name: string, parentId: string, status: 'normal' | 'tr
 /** Files `<path>` under `root` as `userId`, the way a directory upload does. */
 function upload(path: string, userId = ownerId, root = rootId) {
   const id = uid('Item')
+  const key = toObjectKey(`${root}/${path}`, id)
   return {
     id,
-    key: `${root}/${path}`,
+    key,
     run: () =>
       createUploadedItem({
         id,
         name: path.split('/').pop()!,
-        key: `${root}/${path}`,
+        key,
+        uploadPath: `${root}/${path}`,
         size: 10n,
         bucket: BUCKET,
         driveId,
@@ -349,5 +351,61 @@ describe('headUploadedObject', () => {
     interceptHeads({ ETag: '"e"' })
     vi.spyOn(console, 'error').mockImplementation(() => {})
     await expect(headUploadedObject(BUCKET, 'k')).rejects.toMatchObject({ status: 503 })
+  })
+})
+
+/**
+ * Each upload has its own object (`toObjectKey`): two uploads of one name into
+ * one folder are two items with their own bytes, which versions and the
+ * duplicates comparison both need. The folders come from the upload path.
+ */
+describe('one object per upload', () => {
+  it('files two uploads of one name into one folder as two items, each with its own object', async () => {
+    const first = upload('twice/same.pdf')
+    const second = upload('twice/same.pdf')
+    await first.run()
+    await second.run()
+
+    const files = await prisma.file.findMany({
+      where: { itemId: { in: [first.id, second.id] } },
+      select: { key: true, uploadPath: true, item: { select: { parentId: true } } },
+    })
+    expect(files).toHaveLength(2)
+    expect(new Set(files.map((f) => f.key)).size).toBe(2)
+    expect(new Set(files.map((f) => f.item.parentId)).size).toBe(1)
+    expect(files.map((f) => f.uploadPath)).toEqual([`${rootId}/twice/same.pdf`, `${rootId}/twice/same.pdf`])
+  })
+
+  it('makes the folders of the upload path, none from the key', async () => {
+    const u = upload('deep/er/d.pdf')
+    await u.run()
+
+    const item = await prisma.item.findUniqueOrThrow({ where: { id: u.id }, select: { parent: { select: { name: true, parent: { select: { name: true } } } } } })
+    expect(item.parent?.name).toBe('er')
+    expect(item.parent?.parent?.name).toBe('deep')
+    expect(await prisma.item.count({ where: { name: u.id, type: 'folder' } })).toBe(0)
+  })
+
+  it.each([
+    ["another item's key", () => toObjectKey(`${rootId}/keyed/k.pdf`, uid('Item'))],
+    ['the bare upload path', () => `${rootId}/keyed/k.pdf`],
+    ['another root', (id: string) => `${uid('Item')}/${id}/k.pdf`],
+  ])('refuses %s as the key with 400, and files nothing', async (_, keyFor) => {
+    const id = uid('Item')
+    await expect(
+      createUploadedItem({
+        id,
+        name: 'k.pdf',
+        key: keyFor(id),
+        uploadPath: `${rootId}/keyed/k.pdf`,
+        size: 10n,
+        bucket: BUCKET,
+        driveId,
+        parentId: rootId,
+        ownerId,
+        uploadId: `up-${id}`,
+      })
+    ).rejects.toMatchObject({ status: 400 })
+    expect(await prisma.item.count({ where: { id } })).toBe(0)
   })
 })

@@ -25,7 +25,7 @@ type Owner = Extract<DbEvents, { type: '@db.item.create' }>['user']
  *
  * @example
  * toItemPayload(mediaFile, user, 'sha256-…')
- * // → { id, name, key, size: 12n, bucket, driveId, parentId, … }
+ * // → { id, name, key, uploadPath, size: 12n, bucket, driveId, parentId, … }
  */
 export function toItemPayload(
   mediaFile: MediaFile,
@@ -36,16 +36,17 @@ export function toItemPayload(
     id: mediaFile.id,
     name: mediaFile.file.name,
     key: mediaFile.key,
+    uploadPath: mediaFile.uploadPath,
     size: mediaFile.file.size,
     mimeType: mediaFile.file.type || undefined,
     etag: mediaFile.etag,
     hash: hash || undefined,
     bucket: user.bucket,
     driveId: user.driveId,
-    // The folder `addBatch` resolved for it, when it did. Otherwise the first
-    // key segment, the destination root: `createUploadedItem` then resolves
-    // the middle segments into folders and re-parents the item.
-    parentId: mediaFile.parentId ?? mediaFile.key.split('/')[0],
+    // The folder `addBatch` resolved for it, when it did. Otherwise the upload
+    // path's first segment, the destination root: `createUploadedItem` then
+    // resolves its middle segments into folders and re-parents the item.
+    parentId: mediaFile.parentId ?? mediaFile.uploadPath.split('/')[0],
     ownerId: mediaFile.ownerId ?? user.id,
     category: toCategory(mediaFile.file),
     uploadId: mediaFile.uploadId ?? '',

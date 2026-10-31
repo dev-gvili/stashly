@@ -33,7 +33,8 @@ const user = {
 function mediaFile(id: string) {
   return {
     id,
-    key: `item_root/${id}.pdf`,
+    key: `item_root/${id}/${id}.pdf`,
+    uploadPath: `item_root/${id}.pdf`,
     file: new File(['x'], `${id}.pdf`, { type: 'application/pdf' }),
     status: 'pending' as const,
     progress: {
@@ -83,7 +84,7 @@ describe('a file that fails before uploading', () => {
     expect(refused?.error).toBe('Access denied: write access is required on every item')
     expect(actor.getSnapshot().context.queues.active.has('refused')).toBe(false)
 
-    await waitFor(actor, () => created.includes('item_root/next.pdf'), { timeout: 2000 })
+    await waitFor(actor, () => created.includes('item_root/next/next.pdf'), { timeout: 2000 })
     actor.stop()
   })
 })

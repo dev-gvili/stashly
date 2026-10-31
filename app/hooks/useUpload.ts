@@ -93,14 +93,14 @@ async function verifyBatchQuota(totalSize: number): Promise<boolean> {
 }
 
 /**
- * The folder path a key files into, relative to its root: the segments between
+ * The folder path an upload path files into, relative to its root: the segments between
  * the root id and the file name. Empty for a file straight in the root.
  *
  * @example
  * toFolderPath('item_root/photos/2026/a.jpg') // → 'photos/2026'
  */
-function toFolderPath(key: string): string {
-  return key.split('/').slice(1, -1).join('/')
+function toFolderPath(uploadPath: string): string {
+  return uploadPath.split('/').slice(1, -1).join('/')
 }
 
 /**
@@ -404,7 +404,7 @@ export function useUpload() {
       if (!allowed) return false
       // One request for the whole tree, so no file resolves its path again.
       // Keyed from the original files: `normalizeFile` keeps
-      // `webkitRelativePath`, so these are the keys `toMediaFile` builds below.
+      // `webkitRelativePath`, so these are the upload paths `toMediaFile` builds below.
       const folders = await resolveUploadFolders(
         rid,
         files.map((file) => `${rid}/${file.webkitRelativePath || file.name}`)
@@ -417,7 +417,7 @@ export function useUpload() {
       for (const file of files) {
         const normalized = await normalizeFile(file)
         const mediaFile = toMediaFile(normalized, rid)
-        const parentId = folders[toFolderPath(mediaFile.key)]
+        const parentId = folders[toFolderPath(mediaFile.uploadPath)]
         startFileHash(mediaFile.id, normalized)
         upload.send({
           type: 'upload.add',

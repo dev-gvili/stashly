@@ -14,7 +14,8 @@ const mediaFile = (over: Record<string, unknown> = {}) =>
   ({
     id: 'mf_1',
     file: new File(['x'], 'photo.png', { type: 'image/png' }),
-    key: 'fld_root/nested/photo.png',
+    key: 'fld_root/mf_1/photo.png',
+    uploadPath: 'fld_root/nested/photo.png',
     progress: {},
     status: 'done',
     etag: 'etag-1',
@@ -179,10 +180,17 @@ describe('toOutcome', () => {
 })
 
 describe('toItemPayload', () => {
-  it('takes the destination root from the first key segment', () => {
+  it("takes the destination root from the upload path's first segment", () => {
     // The middle segments are resolved into folders server-side, so the
     // client sends the root and `createUploadedItem` re-parents the item.
     expect(toItemPayload(mediaFile(), user).parentId).toBe('fld_root')
+  })
+
+  it('sends the object key and the upload path apart', () => {
+    expect(toItemPayload(mediaFile(), user)).toMatchObject({
+      key: 'fld_root/mf_1/photo.png',
+      uploadPath: 'fld_root/nested/photo.png',
+    })
   })
 
   it('normalises an absent hash away instead of sending an empty string', () => {

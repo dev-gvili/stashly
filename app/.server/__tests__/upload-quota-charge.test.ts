@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { prisma } from '@/services/db'
 import { createUploadedItem } from '@/services/item-actions'
-import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import { getPrefixForModel, toObjectId, toObjectKey } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
 /**
@@ -41,7 +41,8 @@ function upload(size: bigint, as = { ownerId, driveId, rootId }) {
   return createUploadedItem({
     id,
     name: `${id}.bin`,
-    key: `${as.rootId}/${id}.bin`,
+    key: toObjectKey(`${as.rootId}/${id}.bin`, id),
+    uploadPath: `${as.rootId}/${id}.bin`,
     size,
     bucket: 'stashly-test-upload-quota',
     driveId: as.driveId,

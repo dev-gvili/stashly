@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { prisma } from '@/services/db'
 import { createUploadedItem } from '@/services/item-actions'
-import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import { getPrefixForModel, toObjectId, toObjectKey } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
 /**
@@ -78,7 +78,8 @@ async function uploadIntoPrisma(name: string) {
   await createUploadedItem({
     id,
     name,
-    key: `${rootId}/prisma/${name}`,
+    key: toObjectKey(`${rootId}/prisma/${name}`, id),
+    uploadPath: `${rootId}/prisma/${name}`,
     size: 10n,
     bucket: 'stashly-test-upload-trashed-name',
     driveId,

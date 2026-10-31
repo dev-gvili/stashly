@@ -306,7 +306,7 @@ describe('getFavoritedItems matches the Prisma query it replaced', () => {
     await prisma.thumbnail.create({ data: { id: uid('Thumbnail'), itemId: parent, width: 10, height: 20, color: '#abc' } })
 
     const full = await item({ parentId: parent, createdAt: at(10), tags: ['x', 'y'] })
-    await prisma.file.create({ data: { id: uid('File'), itemId: full, bucket: 'b', key: `k/${full}`, mimeType: 'image/png', extension: 'png' } })
+    await prisma.file.create({ data: { id: uid('File'), itemId: full, bucket: 'b', key: `k/${full}`, uploadPath: `k/${full}`, mimeType: 'image/png', extension: 'png' } })
     await prisma.thumbnail.createMany({
       data: [
         { id: uid('Thumbnail'), itemId: full, size: 'small', stage: 2, width: 1, height: 2 },

@@ -339,6 +339,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
           id: parsedData.id,
           name: parsedData.name,
           key: parsedData.key,
+          uploadPath: parsedData.uploadPath,
           size: stored.size,
           mimeType: parsedData.mimeType,
           // The stored object's, like the size; none rather than the claim.

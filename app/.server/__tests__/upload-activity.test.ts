@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/services/db'
 import { createUploadedItem } from '@/services/item-actions'
-import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import { getPrefixForModel, toObjectId, toObjectKey } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
 /**
@@ -79,7 +79,8 @@ describe('upload activity', () => {
     await createUploadedItem({
       id: fileId,
       name: 'a.ts',
-      key: `${rootId}/created-folder/a.ts`,
+      key: toObjectKey(`${rootId}/created-folder/a.ts`, fileId),
+      uploadPath: `${rootId}/created-folder/a.ts`,
       size: 10n,
       bucket: 'stashly-test-upload-activity',
       driveId,

@@ -33,7 +33,8 @@ async function makeItem(
     data: { id, name, type, category: type === 'file' ? 'document' : 'unknown', status, ownerId, driveId, parentId, size: 0 },
   })
   if (type === 'file') {
-    await prisma.file.create({ data: { id: uid('File'), itemId: id, bucket: BUCKET, key: `${parentId ?? 'root'}/${name}` } })
+    const key = `${parentId ?? 'root'}/${name}`
+    await prisma.file.create({ data: { id: uid('File'), itemId: id, bucket: BUCKET, key, uploadPath: key } })
     await prisma.thumbnail.create({ data: { id: uid('Thumbnail'), itemId: id, bucket: BUCKET, stage: 3 } })
   }
   return id
@@ -232,5 +233,62 @@ describe('permanent delete removes stored objects', () => {
       String(c[0]).includes('S3 objects left behind after a delete')
     )
     expect(call?.[1]).toMatchObject({ bucket: BUCKET, failed_count: 1, object_count: 2 })
+  })
+})
+
+/**
+ * A copy points at the original's bytes instead of duplicating them
+ * (`copyItem` copies the `File` row, key included), so an object belongs to
+ * every row that names it. Deleting one of them must not take the bytes from
+ * the others: the delete used to remove every key in the deleted subtree, and
+ * a copy outside it was left pointing at nothing.
+ */
+describe('bytes shared by a copy', () => {
+  /** A copy of `sourceId`'s file under `parentId`: a new row, the same object. */
+  async function makeCopy(sourceId: string, parentId: string | null, name: string, status: 'trashed' | 'normal') {
+    const source = await prisma.file.findUniqueOrThrow({ where: { itemId: sourceId } })
+    const id = uid('Item')
+    await prisma.item.create({
+      data: { id, name, type: 'file', category: 'document', status, ownerId, driveId, parentId, size: 0 },
+    })
+    await prisma.file.create({ data: { id: uid('File'), itemId: id, bucket: source.bucket, key: source.key, uploadPath: source.uploadPath } })
+    return id
+  }
+
+  it('keeps the object while a copy outside the delete still uses it', async () => {
+    const original = await makeItem('file', null, 'shared-original.pdf')
+    const copy = await makeCopy(original, null, 'shared-copy.pdf', 'normal')
+    const calls = interceptDeletes()
+
+    await deleteItem(original, ownerId)
+
+    const keys = calls.flatMap((c) => c.keys)
+    expect(keys).not.toContain('root/shared-original.pdf')
+    expect(keys).toContain(`thumbnails/${original}.webp`)
+    expect(await prisma.file.count({ where: { itemId: copy } })).toBe(1)
+  })
+
+  it('deletes the object with the last row that uses it', async () => {
+    const original = await makeItem('file', null, 'last-original.pdf')
+    const copy = await makeCopy(original, null, 'last-copy.pdf', 'trashed')
+    interceptDeletes()
+    await deleteItem(original, ownerId)
+    vi.restoreAllMocks()
+    const calls = interceptDeletes()
+
+    await deleteItem(copy, ownerId)
+
+    expect(calls.flatMap((c) => c.keys)).toContain('root/last-original.pdf')
+  })
+
+  it('deletes it once when the original and its copy go in the same delete', async () => {
+    const folder = await makeItem('folder', null, 'both-inside')
+    const original = await makeItem('file', folder, 'both.pdf')
+    await makeCopy(original, folder, 'both-copy.pdf', 'trashed')
+    const calls = interceptDeletes()
+
+    await deleteItem(folder, ownerId)
+
+    expect(calls.flatMap((c) => c.keys).filter((k) => k === `${folder}/both.pdf`)).toHaveLength(1)
   })
 })

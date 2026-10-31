@@ -39,7 +39,7 @@ import {
   StashlyErrorCode,
   toRouteError,
 } from '@/utils/api.errors'
-import { getPrefixForModel, toChunkArray, toObjectId } from '@/utils/converters'
+import { getPrefixForModel, toChunkArray, toObjectId, toObjectKey } from '@/utils/converters'
 import { buildItemFilters } from '@/utils/filters/item.filters'
 import { formatSize } from '@/utils/formaters'
 import { extractMarkdownHeadings, type MarkdownHeading } from '@/utils/markdown'
@@ -901,8 +901,15 @@ async function deleteFromTrash(ids: string[], userId: string) {
       WHERE "id" IN (${Prisma.join(ids)}) AND "status" <> 'trashed'
       LIMIT 1
     ), "Objects" AS (
+      -- A copy points at its original's object instead of duplicating it, so
+      -- an object goes only with the last row that names it.
       SELECT f."bucket", f."key", NULL::text AS "itemId"
       FROM "File" f JOIN "Subtree" s ON f."itemId" = s."id"
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "File" o
+        WHERE o."bucket" = f."bucket" AND o."key" = f."key"
+          AND o."itemId" NOT IN (SELECT "id" FROM "Subtree")
+      )
       UNION
       SELECT t."bucket", NULL::text, t."itemId"
       FROM "Thumbnail" t JOIN "Subtree" s ON t."itemId" = s."id"
@@ -1918,18 +1925,23 @@ export async function upsertMarkdownFacet(
  *   resolved its folders up front (`resolveUploadFolders`) and names the file's
  *   own. That is the client's word, so it gets the check any destination gets:
  *   write access here, and a live folder when the row is inserted; or
- * - the key's path: the first segment is the root and the middle segments are
- *   folders, resolved like a batch of one (`resolveFolderTree`). Single files,
- *   and any upload that didn't resolve first, take this way.
+ * - the upload path: the first segment is the root and the middle segments
+ *   are folders, resolved like a batch of one (`resolveFolderTree`). Single
+ *   files, and any upload that didn't resolve first, take this way.
+ *
+ * The key must be the upload's own (`toObjectKey(uploadPath, id)`): a key
+ * another row serves would put two rows on one object, and a later upload to
+ * it would change both. Anything else is refused with 400.
  *
  * `ownerId` is the signed-in uploader (the route passes the session user, never
  * the form's value), and they need `write` access to the destination. Without
  * that check any signed-in user could file items into anyone's folder by
  * naming it.
  *
- * @param data - Upload result payload: item ID/name, S3 `key`/`bucket`/`etag`, `size`, `mimeType`, owner/drive/parent IDs, the `uploadId`, and an optional `category`.
+ * @param data - Upload result payload: item ID/name, S3 `key`/`bucket`/`etag`, the `uploadPath`, `size`, `mimeType`, owner/drive/parent IDs, the `uploadId`, and an optional `category`.
+ * @throws `INVALID_INPUT` (400) when the key is not `toObjectKey(uploadPath, id)`.
  * @throws `FORBIDDEN` (403) without write access to the destination.
- * @throws `CONFLICT` (409) when two live folders share a name on the key's path.
+ * @throws `CONFLICT` (409) when two live folders share a name on the upload path.
  * @throws `ITEM_NOT_FOUND` (404) when the folder is no longer a live folder; nothing is written or charged.
  * @throws `INSUFFICIENT_QUOTA` (507) when the file doesn't fit the owner's free quota; nothing is written.
  *
@@ -1938,7 +1950,8 @@ export async function upsertMarkdownFacet(
  * const item = await createUploadedItem({
  *   id: 'item_123',
  *   name: 'report.pdf',
- *   key: 'item_root/documents/report.pdf',
+ *   key: 'item_root/item_123/report.pdf',
+ *   uploadPath: 'item_root/documents/report.pdf',
  *   size: 1024n,
  *   mimeType: 'application/pdf',
  *   bucket: 'stashly-bucket',
@@ -1953,6 +1966,7 @@ export async function createUploadedItem(data: {
   id: string
   name: string
   key: string
+  uploadPath: string
   size: bigint
   mimeType?: string
   etag?: string
@@ -1968,7 +1982,13 @@ export async function createUploadedItem(data: {
   // Under load the file's size reaches its folders through the upload size
   // log; make sure this process applies it.
   ensureSizeRollup()
-  const segments = data.key.split('/')
+  if (data.key !== toObjectKey(data.uploadPath, data.id)) {
+    throw new StashlyError(
+      StashlyErrorCode.INVALID_INPUT,
+      "The upload's storage key does not match its item"
+    )
+  }
+  const segments = data.uploadPath.split('/')
   const rootId = segments[0]
   const path = segments.slice(1, -1).join('/')
   let parentId = rootId
@@ -1978,7 +1998,7 @@ export async function createUploadedItem(data: {
     await assertItemsAccess(data.ownerId, [data.parentId], 'write')
     parentId = data.parentId
   } else {
-    await assertCanUploadTo(data.ownerId, data.key)
+    await assertCanUploadTo(data.ownerId, data.uploadPath)
     if (path) {
       // Its own transaction, committed before the file's statement, so the
       // tree lock is never held while a file row is written.
@@ -2039,6 +2059,7 @@ async function insertUploadedItem(data: {
   id: string
   name: string
   key: string
+  uploadPath: string
   size: bigint
   mimeType?: string
   etag?: string
@@ -2068,8 +2089,8 @@ async function insertUploadedItem(data: {
       FROM parent, charge
       RETURNING "id", "name", "size", "parentId", "uploadId"
     ), file AS (
-      INSERT INTO "File" ("id", "bucket", "key", "mimeType", "etag", "hash", "extension", "itemId")
-      SELECT ${toObjectId(getPrefixForModel('File'))}, ${data.bucket}, ${data.key}, ${data.mimeType ?? null}, ${data.etag ?? null},
+      INSERT INTO "File" ("id", "bucket", "key", "uploadPath", "mimeType", "etag", "hash", "extension", "itemId")
+      SELECT ${toObjectId(getPrefixForModel('File'))}, ${data.bucket}, ${data.key}, ${data.uploadPath}, ${data.mimeType ?? null}, ${data.etag ?? null},
              ${data.hash || null}, ${data.name.split('.').pop() ?? ''}, item."id"
       FROM item
     ), permission AS (
@@ -2153,7 +2174,7 @@ export async function assertKeyUnfiled(bucket: string, key: string) {
   if (filed) {
     throw new StashlyError(
       StashlyErrorCode.CONFLICT,
-      'A file with this name is already here (or in the trash). Rename it or delete the other one first.'
+      "This upload's storage key is already in use"
     )
   }
 }

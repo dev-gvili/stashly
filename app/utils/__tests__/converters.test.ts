@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   toUserInitial,
+  toMediaFile,
+  toObjectKey,
   toChunkArray,
   toItemPath,
   toItemUrl,
@@ -418,5 +420,37 @@ describe('toItemUrl', () => {
     })
     expect(url.startsWith(`/${ME}/`)).toBe(true)
     expect(url).not.toContain('usr_uploader')
+  })
+})
+
+/**
+ * Each upload gets its own object: two uploads of one name into one folder
+ * used to share a key, and the second replaced the bytes behind the first.
+ */
+describe('toMediaFile', () => {
+  const inFolder = (name: string) => {
+    const file = new File(['x'], name)
+    Object.defineProperty(file, 'webkitRelativePath', { value: `photos/2024/${name}` })
+    return file
+  }
+
+  it('keeps the folders in the upload path and the item id in the key', () => {
+    const media = toMediaFile(inFolder('a.jpg'), 'item_root')
+    expect(media.uploadPath).toBe('item_root/photos/2024/a.jpg')
+    expect(media.key).toBe(`item_root/${media.id}/a.jpg`)
+    expect(media.key).toBe(toObjectKey(media.uploadPath, media.id))
+  })
+
+  it('gives two uploads of one name two keys and one upload path', () => {
+    const first = toMediaFile(inFolder('a.jpg'), 'item_root')
+    const second = toMediaFile(inFolder('a.jpg'), 'item_root')
+    expect(first.key).not.toBe(second.key)
+    expect(first.uploadPath).toBe(second.uploadPath)
+  })
+
+  it('files a single file straight into the root', () => {
+    const media = toMediaFile(new File(['x'], 'b.pdf'), 'item_root')
+    expect(media.uploadPath).toBe('item_root/b.pdf')
+    expect(media.key).toBe(`item_root/${media.id}/b.pdf`)
   })
 })

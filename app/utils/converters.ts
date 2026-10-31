@@ -551,15 +551,37 @@ function toUploadFileKey<
   }
 }
 
+/**
+ * The S3 key an upload's bytes are stored under: its root, its item id, then
+ * the file's name.
+ *
+ * Unique per upload, so two uploads of one name never land on one object: the
+ * second used to replace the bytes behind the first's row, which left no old
+ * version to keep and made both duplicate copies show the same content. The
+ * folders live in the upload path (`File.uploadPath`), not here. The server
+ * refuses a row whose key is not this, so a client can't file over an object
+ * another row already serves.
+ *
+ * @example
+ * toObjectKey('item_root/photos/2024/a.jpg', 'item_abc') // → 'item_root/item_abc/a.jpg'
+ */
+export function toObjectKey(uploadPath: string, itemId: string): string {
+  const segments = uploadPath.split('/')
+  return `${segments[0]}/${itemId}/${segments[segments.length - 1]}`
+}
+
 export let toUploadFile = (
   file: File,
   rootId: string,
   workspaceId?: string
 ) => {
+  const id = toObjectId(getPrefixForModel('Item'))
+  const uploadPath = toUploadFileKey(file, rootId, workspaceId)
   return {
-    id: toObjectId(getPrefixForModel('Item')),
+    id,
     file: file,
-    key: toUploadFileKey(file, rootId, workspaceId),
+    key: toObjectKey(uploadPath, id),
+    uploadPath,
     status: 'pending' as Status,
     progress: {
       percentage: 0,
@@ -588,16 +610,19 @@ export let toUploadFile = (
  * @example
  * const file = new File(["content"], "hello.png", { type: "image/png" });
  * const mediaFile = toMediaFile(file, "item_root123");
- * // Returns { id: "item_...", key: "item_root123/hello.png", status: "pending", ... }
+ * // Returns { id: "item_abc", key: "item_root123/item_abc/hello.png", uploadPath: "item_root123/hello.png", status: "pending", ... }
  */
 export let toMediaFile = (
   file: File,
   rootId: string,
   workspaceId?: string
 ): MediaFile => {
+  const id = toObjectId(getPrefixForModel('Item'))
+  const uploadPath = toUploadFileKey(file, rootId, workspaceId)
   return {
-    id: toObjectId(getPrefixForModel('Item')),
-    key: toUploadFileKey(file, rootId, workspaceId),
+    id,
+    key: toObjectKey(uploadPath, id),
+    uploadPath,
     file: file,
     progress: {
       percentage: 0,

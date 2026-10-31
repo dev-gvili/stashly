@@ -82,7 +82,8 @@ describe('create_upload_item', () => {
       intent: 'create_upload_item',
       id: 'item_new',
       name: 'a.jpg',
-      key: 'item_root/a.jpg',
+      key: 'item_root/item_new/a.jpg',
+      uploadPath: 'item_root/a.jpg',
       size: '1024',
       bucket: 'bucket-other',
       driveId: 'drv_other',
@@ -154,7 +155,7 @@ describe('create_upload_item', () => {
 
   it('reads the object in the session user’s bucket, not the form’s', async () => {
     await send(upload())
-    expect(headUploadedObject).toHaveBeenCalledWith('bucket-mine', 'item_root/a.jpg')
+    expect(headUploadedObject).toHaveBeenCalledWith('bucket-mine', 'item_root/item_new/a.jpg')
   })
 
   it('refuses an object that is not in storage, and deletes nothing', async () => {

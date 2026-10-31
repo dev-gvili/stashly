@@ -6,7 +6,7 @@ import {
   resolveUploadFolders,
 } from '@/services/item-actions'
 import { itemsApiRouteInput } from '@/schemas/api.schemas'
-import { getPrefixForModel, toObjectId } from '@/utils/converters'
+import { getPrefixForModel, toObjectId, toObjectKey } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
 /**
@@ -63,7 +63,8 @@ function upload(parentId: string, name: string, userId = ownerId, size = 10n) {
       createUploadedItem({
         id,
         name,
-        key: `${rootId}/some/path/${name}`,
+        key: toObjectKey(`${rootId}/some/path/${name}`, id),
+        uploadPath: `${rootId}/some/path/${name}`,
         size,
         bucket: 'stashly-test-folder-tree',
         driveId,
@@ -272,13 +273,16 @@ describe('resolveUploadFolders', () => {
     expect(folders[dir.replace(/\/$/, '')]).toBe(createdFolderIds.at(-1))
   })
 
-  it('rejects a key or a folder path longer than S3 allows', () => {
+  it('rejects a key, an upload path or a folder path longer than S3 allows', () => {
     const long = `${rootId}/${'x'.repeat(1024)}`
-    const upload = itemsApiRouteInput.safeParse({
-      intent: 'create_upload_item', id: 'i', name: 'f', key: long, size: '1', bucket: 'b',
-      driveId, parentId: rootId, ownerId, uploadId: 'u',
-    })
-    expect(upload.success).toBe(false)
+    const upload = (fields: { key: string; uploadPath: string }) =>
+      itemsApiRouteInput.safeParse({
+        intent: 'create_upload_item', id: 'i', name: 'f', size: '1', bucket: 'b',
+        driveId, parentId: rootId, ownerId, uploadId: 'u', ...fields,
+      }).success
+    expect(upload({ key: `${rootId}/i/f`, uploadPath: `${rootId}/f` })).toBe(true)
+    expect(upload({ key: long, uploadPath: `${rootId}/f` })).toBe(false)
+    expect(upload({ key: `${rootId}/i/f`, uploadPath: long })).toBe(false)
     const resolve = itemsApiRouteInput.safeParse({
       intent: 'resolve_upload_folders', rootId, dirs: JSON.stringify(['y'.repeat(1025)]),
     })
@@ -317,14 +321,15 @@ describe('createUploadedItem into a resolved folder', () => {
       select: {
         parentId: true,
         size: true,
-        file: { select: { key: true } },
+        file: { select: { key: true, uploadPath: true } },
         permissions: {
           select: { roles: true, users: { select: { id: true } } },
         },
       },
     })
     expect(row.parentId).toBe(folders['docs/2026'])
-    expect(row.file?.key).toBe(`${rootId}/some/path/report.pdf`)
+    expect(row.file?.key).toBe(toObjectKey(`${rootId}/some/path/report.pdf`, u.id))
+    expect(row.file?.uploadPath).toBe(`${rootId}/some/path/report.pdf`)
     expect(row.permissions).toEqual([
       { roles: 'owner', users: [{ id: ownerId }] },
     ])

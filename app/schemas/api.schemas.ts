@@ -149,11 +149,14 @@ let moveItemSchema = z.object({
 export const createUploadItemFields = z.object({
   id: z.string(),
   name: z.string(),
-  // S3's own key limit. Its middle segments become folders, so an unbounded
-  // key was unbounded work for `createUploadedItem`.
+  // The object's own key, `<root>/<id>/<name>` (`toObjectKey`), within S3's
+  // key limit.
   key: z.string().max(1024),
-  // The client's claim, charged to the uploader's quota as is: a negative size
-  // gave quota back. Not yet checked against the S3 object's real size.
+  // `<root>/<folders>/<name>`. Its middle segments become folders, so an
+  // unbounded path was unbounded work for `createUploadedItem`.
+  uploadPath: z.string().max(1024),
+  // The client's claim, only compared: the charge and `Item.size` are the
+  // stored object's (`headUploadedObject`). A negative claim is still refused.
   size: z.coerce.bigint().nonnegative(),
   mimeType: z.string().optional(),
   etag: z.string().optional(),
