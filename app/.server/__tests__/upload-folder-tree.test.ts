@@ -5,6 +5,7 @@ import {
   createUploadedItem,
   resolveUploadFolders,
 } from '@/services/item-actions'
+import { itemsApiRouteInput } from '@/schemas/api.schemas'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
@@ -244,6 +245,44 @@ describe('resolveUploadFolders', () => {
       })
     ).rejects.toMatchObject({ errorCode: 'FORBIDDEN', status: 403 })
     expect(await prisma.item.count({ where: { name: 'intruder' } })).toBe(0)
+  })
+
+  // Each prefix used to be re-joined from its parts, so a deep path cost its
+  // depth squared before any query: 2.4 s of blocked event loop for one 32 KB
+  // key (31 Oct). Paths are capped at S3's 1,024-character key, and a request
+  // at 20,000 folders.
+  it('refuses a batch of more than 20,000 folders before any lock or write, quickly', async () => {
+    const dirs = Array.from({ length: 101 }, (_, i) => `toomany${i}/${'a/'.repeat(199)}`)
+    const started = performance.now()
+    await expect(resolveUploadFolders({ userId: ownerId, rootId, driveId, dirs })).rejects.toMatchObject({
+      errorCode: 'INVALID_INPUT',
+      status: 400,
+    })
+    expect(performance.now() - started).toBeLessThan(1000)
+    expect(await prisma.item.count({ where: { name: { startsWith: 'toomany' }, parentId: rootId } })).toBe(0)
+  })
+
+  it('resolves the deepest path a 1,024-character key allows', async () => {
+    const dir = `deep/${'d/'.repeat(509)}`
+    expect(dir.length).toBeLessThanOrEqual(1024)
+    const started = performance.now()
+    const { folders, createdFolderIds } = await resolveUploadFolders({ userId: ownerId, rootId, driveId, dirs: [dir] })
+    expect(performance.now() - started).toBeLessThan(5000)
+    expect(createdFolderIds).toHaveLength(510)
+    expect(folders[dir.replace(/\/$/, '')]).toBe(createdFolderIds.at(-1))
+  })
+
+  it('rejects a key or a folder path longer than S3 allows', () => {
+    const long = `${rootId}/${'x'.repeat(1024)}`
+    const upload = itemsApiRouteInput.safeParse({
+      intent: 'create_upload_item', id: 'i', name: 'f', key: long, size: '1', bucket: 'b',
+      driveId, parentId: rootId, ownerId, uploadId: 'u',
+    })
+    expect(upload.success).toBe(false)
+    const resolve = itemsApiRouteInput.safeParse({
+      intent: 'resolve_upload_folders', rootId, dirs: JSON.stringify(['y'.repeat(1025)]),
+    })
+    expect(resolve.success).toBe(false)
   })
 })
 

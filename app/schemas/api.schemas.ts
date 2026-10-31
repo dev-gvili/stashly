@@ -149,7 +149,9 @@ let moveItemSchema = z.object({
 export const createUploadItemFields = z.object({
   id: z.string(),
   name: z.string(),
-  key: z.string(),
+  // S3's own key limit. Its middle segments become folders, so an unbounded
+  // key was unbounded work for `createUploadedItem`.
+  key: z.string().max(1024),
   size: z.coerce.bigint(),
   mimeType: z.string().optional(),
   etag: z.string().optional(),
@@ -197,7 +199,9 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
           return z.NEVER
         }
       })
-      .pipe(z.array(z.string().nonempty().max(4096)).max(20_000)),
+      // Each path is part of an S3 key, so S3's 1,024-character key limit
+      // bounds it too; `resolveFolderTree` caps the folders they add up to.
+      .pipe(z.array(z.string().nonempty().max(1024)).max(20_000)),
   }),
   z.object({
     intent: z.literal('create_folder'),

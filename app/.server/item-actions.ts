@@ -1472,6 +1472,15 @@ export async function searchFolders(query: string, driveId: string) {
 const FOLDER_TREE_TX = { timeout: 60_000, maxWait: 10_000 }
 
 /**
+ * Distinct folders one request may resolve. Past it the batch is refused (400)
+ * and its files resolve their own paths one by one, as a single file does. The
+ * schemas already cap each path at S3's 1,024-character key, so this bounds
+ * the work: a request of 20,000 paths each 512 folders deep would otherwise
+ * build millions of prefixes before the first query.
+ */
+const MAX_UPLOAD_FOLDERS = 20_000
+
+/**
  * Resolves the folders of an upload under its root in one go: finds the ones
  * that exist, creates the rest, and answers each directory's folder id.
  *
@@ -1504,17 +1513,33 @@ async function resolveFolderTree(
   driveId: string,
   dirs: string[]
 ): Promise<{ folders: Map<string, string>; refused: Map<string, string>; createdFolderIds: string[] }> {
+  // Every prefix is kept, so a path still costs about its length squared in
+  // characters; the limits bound that: paths of at most 1,024 characters
+  // (the schemas) and MAX_UPLOAD_FOLDERS. Unbounded, one 32 KB key blocked the
+  // event loop for 2.4 s (31 Oct); at the limits a refusal takes 75 ms and a
+  // 1,024-character key 2 ms. Extending the previous prefix, rather than
+  // re-joining the parts per depth, also cut that 32 KB case to 0.6 s.
+  const levels: Set<string>[] = []
+  let folderCount = 0
+  for (const dir of dirs) {
+    let prefix = ''
+    for (const [depth, part] of dir.split('/').filter(Boolean).entries()) {
+      prefix = prefix ? `${prefix}/${part}` : part
+      const level = (levels[depth] ??= new Set())
+      if (level.has(prefix)) continue
+      level.add(prefix)
+      if (++folderCount > MAX_UPLOAD_FOLDERS) {
+        throw new StashlyError(
+          StashlyErrorCode.INVALID_INPUT,
+          `An upload can resolve at most ${MAX_UPLOAD_FOLDERS.toLocaleString('en')} folders at once.`
+        )
+      }
+    }
+  }
+
   // `$executeRaw`, not `$queryRaw`: pg_advisory_xact_lock returns `void`,
   // which $queryRaw can't deserialize as a result column.
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`folder-tree:${ownerId}`}, 0))`
-
-  const levels: Set<string>[] = []
-  for (const dir of dirs) {
-    const parts = dir.split('/').filter(Boolean)
-    for (let depth = 1; depth <= parts.length; depth++) {
-      ;(levels[depth - 1] ??= new Set()).add(parts.slice(0, depth).join('/'))
-    }
-  }
   const parentOf = (path: string) => path.slice(0, Math.max(0, path.lastIndexOf('/')))
   const nameOf = (path: string) => path.slice(path.lastIndexOf('/') + 1)
 
