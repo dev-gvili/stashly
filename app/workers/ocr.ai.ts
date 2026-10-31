@@ -41,6 +41,7 @@ import {
   type ProgressCallback,
 } from '@huggingface/transformers'
 import { enqueue, isDeviceLostError } from './ai-queue'
+import { OCR_MAX_PAGES } from '@/utils/ocr-engine'
 
 /**
  * Stamps the moment the first *generated* token arrives.
@@ -71,20 +72,6 @@ class FirstTokenTimer extends BaseStreamer {
 }
 
 const MODEL_ID = 'onnx-community/GLM-OCR-ONNX'
-
-/**
- * Pages sent through the model per document.
- *
- * Sized from measurement, not preference. The 2B model this replaced managed
- * ~4 tok/s on integrated graphics (Intel Gen12LP) — about three minutes for a
- * page that used its full token budget, and over half an hour for twelve
- * pages of one upload. This decoder is roughly a third the size, so expect
- * proportionally better, but the ceiling is hardware rather than code.
- *
- * Six pages keeps a bad case tolerable while still covering the front matter,
- * where titles and summaries live. Raise it on discrete graphics.
- */
-export const OCR_MAX_PAGES = 15
 
 /** Cap on characters kept per page, mirroring `extractPdfText`'s budget. */
 const OCR_MAX_CHARS_PER_PAGE = 6_000

@@ -63,29 +63,55 @@ export async function streamOcrPdf(
     console.info(
       `[ocr] "${file.name}" has no text layer — streaming OCR page by page.`
     )
-    const { OCR_MAX_PAGES, OCR_MAX_PIXELS, ocrSinglePage } = await import(
-      '@/workers/ocr.ai'
-    )
-    const maxPages = options.maxPages ?? OCR_MAX_PAGES
-
-    // Keep the engine switch working here too. Streaming can run either single
+    // Keep the engine switch working here too. Streaming can run any single
     // engine; `compare` needs both over an identical page set, so it defers to
     // the batch path rather than doubling every page of a streamed run.
-    const { getOcrEngine, getOcrMaxPixels } = await import('@/utils/ocr-engine')
+    const { getOcrEngine, getOcrMaxPixels, OCR_MAX_PAGES } = await import(
+      '@/utils/ocr-engine'
+    )
     const engine = getOcrEngine()
-    // Prefill dominates a page and scales with pixel count, so this is the
-    // knob worth A/B-ing. Overridable at runtime to avoid a rebuild per trial.
-    const maxPixels = getOcrMaxPixels(OCR_MAX_PIXELS)
+    const maxPages = options.maxPages ?? OCR_MAX_PAGES
+
+    // GLM-OCR loads only when used: a Paddle run whose pages all read
+    // confidently never pulls in transformers.js.
+    const glm = () => import('@/workers/ocr.ai')
+    const paddle =
+      engine === 'paddle' ? await import('@/workers/paddle-ocr.ai') : null
+    // A load failure goes to the outer catch and is reported once, instead of
+    // every page retrying the load and failing the same way.
+    if (paddle) await paddle.preloadPaddleOcr()
+    // Overridable at runtime to avoid a rebuild per trial. For GLM-OCR,
+    // prefill dominates a page and scales with pixel count; Paddle's
+    // recognizer reads line crops from the full render.
+    const maxPixels = getOcrMaxPixels(
+      paddle ? paddle.PADDLE_MAX_PIXELS : (await glm()).OCR_MAX_PIXELS,
+    )
 
     const transcribePage = async (
       blob: Blob,
       pageNum: number,
       totalPages: number,
-    ) => {
+    ): Promise<{ text: string }> => {
       if (engine === 'florence') {
         const { ocrImageFlorence } = await import('@/workers/ocr-florence.ai')
         return { text: await ocrImageFlorence(blob) }
       }
+      if (paddle) {
+        const page = await paddle.paddleOcrPage({ blob, pageNum }, { totalPages })
+        if (
+          page.confidence === null ||
+          page.confidence >= paddle.PADDLE_FALLBACK_BELOW
+        ) {
+          return page
+        }
+        // A script the recognizer has no characters for (Hebrew) reads as
+        // low-confidence guesses; the multilingual model gets the page.
+        console.info(
+          `[ocr] page ${pageNum}: PaddleOCR confidence ${page.confidence.toFixed(3)} ` +
+            `< ${paddle.PADDLE_FALLBACK_BELOW}, re-reading with GLM-OCR`,
+        )
+      }
+      const { ocrSinglePage } = await glm()
       return ocrSinglePage({ blob, pageNum }, { totalPages })
     }
 
@@ -163,7 +189,8 @@ export async function ocrPdfFallback(file: File): Promise<string | null> {
     console.info(
       `[ocr] "${file.name}" has no text layer — falling back to OCR.`
     )
-    const { OCR_MAX_PAGES, OCR_MAX_PIXELS } = await import('@/workers/ocr.ai')
+    const { OCR_MAX_PIXELS } = await import('@/workers/ocr.ai')
+    const { OCR_MAX_PAGES } = await import('@/utils/ocr-engine')
 
     // Explicit type argument: `TKind` can't be inferred from an object literal
     // that carries kind-specific optional fields, so it widens to the whole
@@ -188,8 +215,8 @@ export async function ocrPdfFallback(file: File): Promise<string | null> {
     }
     console.info(`[ocr] rasterized ${pages.length} page(s) of "${file.name}"`)
 
-    // Which implementation runs is a developer switch (see `ocr-engine.ts`),
-    // defaulting to GLM-OCR so a normal upload keeps its existing cost.
+    // Which implementation runs is a developer switch (see `ocr-engine.ts`).
+    // Only `compare` reaches this batch path; any other engine falls to GLM-OCR.
     const { getOcrEngine } = await import('@/utils/ocr-engine')
     const engine = getOcrEngine()
     const onPage = (progress: {

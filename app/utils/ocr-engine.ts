@@ -1,11 +1,12 @@
 /**
  * Which OCR implementation the upload pipeline uses.
  *
- * Two implementations exist side by side and the choice between them is still
- * open — GLM-OCR is multilingual-ish and 623MB, Florence-2 is English-only,
- * ~340MB, with a decoder a fifth the size. Rather than settle it by argument,
- * this makes the engine switchable so the same document can be run through
- * either (or both) and the console can show the difference.
+ * PaddleOCR PP-OCRv6 (~31MB) is the default; a page it reads with low
+ * confidence (a script it has no characters for, such as Hebrew) is re-read
+ * with GLM-OCR. The vision-language models stay selectable: GLM-OCR is
+ * multilingual-ish and 623MB, Florence-2 is English-only, ~340MB. The switch
+ * lets the same document run through any of them and the console show the
+ * difference.
  *
  * The preference lives in `localStorage` rather than a setting or an env var:
  * it is a developer switch, it needs to survive a reload mid-experiment, and
@@ -21,32 +22,38 @@
  */
 
 export type OcrEngine =
-  /** GLM-OCR 0.9B, ~623MB. The default. */
+  /** PaddleOCR PP-OCRv6, ~31MB, GLM-OCR for low-confidence pages. The default. */
+  | 'paddle'
+  /** GLM-OCR 0.9B, ~623MB. */
   | 'glm'
   /** Florence-2 base-ft, ~340MB, English-only. */
   | 'florence'
-  /** Both, sequentially, logging a comparison. Costs ~960MB and double the time. */
+  /** GLM-OCR and Florence-2, sequentially, logging a comparison. ~960MB, double the time. */
   | 'compare'
 
 export const OCR_ENGINE_KEY = 'stashly:ocr-engine'
 
-const VALID: ReadonlySet<string> = new Set(['glm', 'florence', 'compare'])
+const VALID: ReadonlySet<string> = new Set(['paddle', 'glm', 'florence', 'compare'])
+
+const DEFAULT_ENGINE: OcrEngine = 'paddle'
+
+/** Pages read per document, whichever engine runs. */
+export const OCR_MAX_PAGES = 15
 
 /**
  * The engine to use for the next OCR run.
  *
- * Defaults to `'glm'` so a normal upload keeps its existing cost. Comparison
- * mode is opt-in precisely because it doubles both the download and the
- * runtime, and nobody should discover that by accident.
+ * Comparison mode is opt-in precisely because it doubles both the download
+ * and the runtime, and nobody should discover that by accident.
  */
 export function getOcrEngine(): OcrEngine {
-  if (typeof window === 'undefined') return 'glm'
+  if (typeof window === 'undefined') return DEFAULT_ENGINE
   try {
     const stored = window.localStorage.getItem(OCR_ENGINE_KEY)
-    return stored && VALID.has(stored) ? (stored as OcrEngine) : 'glm'
+    return stored && VALID.has(stored) ? (stored as OcrEngine) : DEFAULT_ENGINE
   } catch {
     // Private mode / blocked storage — fall back rather than break uploads.
-    return 'glm'
+    return DEFAULT_ENGINE
   }
 }
 
@@ -87,7 +94,7 @@ export function getOcrMaxPixels(fallback: number): number {
 export function setOcrEngine(engine: OcrEngine): void {
   if (typeof window === 'undefined') return
   if (!VALID.has(engine)) {
-    console.error(`[ocr] unknown engine "${engine}" — use glm | florence | compare`)
+    console.error(`[ocr] unknown engine "${engine}" — use paddle | glm | florence | compare`)
     return
   }
   try {
