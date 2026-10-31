@@ -50,14 +50,15 @@ export const PADDLE_MAX_PIXELS = 2_000_000
 /**
  * Page confidence below which the caller re-reads the page with GLM-OCR.
  *
- * Measured 31 Oct 2026 on clean synthetic renders (not scans), NVIDIA Turing:
- * English 0.992–0.993 (28px Arial, 14px Times); Hebrew 0.654 (Arial) and
- * 0.737 (David), both read as garbage; Hebrew mixed with Latin and digits
- * 0.868. Set above the mixed page. A doubtful English scan that falls below
- * costs time, not correctness, since GLM-OCR reads English too. Not yet
- * checked against real scans; each page logs its confidence.
+ * Measured 31 Oct 2026 with `pageConfidence` as it is now: 27 real English
+ * scan pages (two PDFs) scored 0.92–0.997, the lowest a cover full of icons;
+ * synthetic Hebrew pages 0.649 (Arial) and 0 (David, nothing read); Hebrew
+ * mixed with Latin and digits 0.868. Set midway between 0.868 and 0.92.
+ *
+ * A misrouted page is not free: GLM-OCR has reset the GPU (Windows TDR) on
+ * this machine's NVIDIA Turing twice. Each page logs its confidence.
  */
-export const PADDLE_FALLBACK_BELOW = 0.9
+export const PADDLE_FALLBACK_BELOW = 0.89
 
 /** What one page produced. */
 export interface PaddlePage {

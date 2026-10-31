@@ -208,4 +208,23 @@ describe('pageConfidence', () => {
   it('is null for a page with no lines', () => {
     expect(pageConfidence([])).toBeNull()
   })
+
+  it('leaves out empty picture-shaped regions', () => {
+    const icons = Array.from({ length: 12 }, (_, i) => ({
+      text: '',
+      confidence: 0,
+      x0: 0,
+      y0: 100 + i * 200,
+      x1: 200,
+      y1: 243 + i * 200,
+    }))
+    expect(pageConfidence([line('Stashly Technical Atlas', 0, 0, 0.99), ...icons])).toBeCloseTo(0.99)
+    expect(pageConfidence(icons)).toBeNull()
+  })
+
+  it('counts empty line-shaped regions as unread text, so a page of them reads 0', () => {
+    // 100 × 20 boxes from `line()`: aspect 5, a strip of text the model could not read.
+    const unread = Array.from({ length: 6 }, (_, i) => line('', 0, i * 30, 0))
+    expect(pageConfidence(unread)).toBe(0)
+  })
 })

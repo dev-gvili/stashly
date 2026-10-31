@@ -361,22 +361,39 @@ export function orderLines(lines: readonly RecognizedLine[]): string {
 }
 
 /**
- * The page's confidence: the mean of every recognized line's confidence,
- * weighted by its length, including lines too doubtful to keep.
+ * The page's confidence: the mean confidence of every line that read as
+ * text, weighted by its length, including lines too doubtful to keep.
  *
- * Including them is the point. On a script the recognizer has no characters
- * for (Hebrew), most lines come back as low-confidence guesses, and this is
- * the signal that sends the page to the multilingual fallback.
+ * Including doubtful lines is the point. On a script the recognizer has no
+ * characters for (Hebrew), most lines come back as low-confidence guesses, and
+ * this is the signal that sends the page to the multilingual fallback.
  *
- * @returns null when the page had no lines at all (blank, or a picture).
+ * A region that read as nothing counts only when it is shaped like a line of
+ * text. The detector also marks pictures and icons; counting those took an
+ * English cover page with a dozen icons (about 200×150 px) to 0.848 (31 Oct
+ * 2026). But a Hebrew page in some fonts reads as nothing on every line
+ * (strips about 420×31), and leaving those out made it look blank, so it
+ * never reached the fallback. An empty line-shaped region counts as one
+ * character at confidence 0.
+ *
+ * @returns null when nothing on the page looks like text.
  */
 export function pageConfidence(lines: readonly RecognizedLine[]): number | null {
   let weighted = 0
   let characters = 0
   for (const line of lines) {
-    const length = Math.max(1, line.text.length)
-    weighted += line.confidence * length
-    characters += length
+    if (line.text) {
+      weighted += line.confidence * line.text.length
+      characters += line.text.length
+    } else if ((line.x1 - line.x0) / (line.y1 - line.y0) >= EMPTY_LINE_MIN_ASPECT) {
+      characters += 1
+    }
   }
   return characters > 0 ? weighted / characters : null
 }
+
+/**
+ * Width-to-height ratio from which an empty region counts as an unread line
+ * rather than a picture. Measured: icons 1.3–1.4, Hebrew lines about 13.
+ */
+export const EMPTY_LINE_MIN_ASPECT = 3
