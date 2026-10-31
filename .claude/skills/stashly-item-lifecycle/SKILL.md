@@ -46,6 +46,7 @@ The DB session time zone is Asia/Jerusalem and the timestamp columns have no zon
 ## Stored objects
 
 - `deleteFromTrash` reads the subtree's S3 keys (files and thumbnails) **in the same statement** that deletes the rows. Every part of a statement sees the rows as they were before it ran, so the keys are read before the cascade removes `File`/`Thumbnail`.
+- **An object goes with the last row that names it.** A copy points at its original's object (`copyItem` copies the `File` row, key included) and is charged its size, so the delete leaves out any key a `File` row outside the deleted subtree still uses. Until 2026-11-01 it deleted every key in the subtree, and permanently deleting an original left its copies pointing at nothing. Test: `item-delete-objects.test.ts` ("bytes shared by a copy").
 - A refused upload's object is removed by `discardUploadedObject`, only when no `File` row uses it and only in the uploader's own bucket (read from their user row; the schema default `'default-bucket'` counts as no bucket).
 - Anything that slipped through is caught by `scripts/sweep-s3-orphans.ts` (unreferenced objects plus stale multipart uploads), run **by hand**. Applied on 2 Oct: 652 objects deleted, 85 uploads aborted, 0 failures.
 - A full user wipe is `emptyUserBucket()` (`storage-actions.ts`). Bulk `deleteMany` on related `Item` rows aborts on the rollup triggers; the wipe sets the `stashly_is_wiping_user()` session flags (see `stashly-prisma-data`).
