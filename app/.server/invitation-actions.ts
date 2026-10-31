@@ -25,6 +25,7 @@ import { searchFactory } from '@/utils/search'
 import type { Folder, ItemCategory } from '@/prisma/browser'
 import { prisma } from '@/services/db'
 import { track } from '@/services/vinktar'
+import { log } from '@/services/log'
 import { createNotification } from './notification-actions'
 import { signThumbnails, type WithSignedThumbnails } from './thumbnail-actions'
 
@@ -837,10 +838,10 @@ async function notifyInvitationSent(
       )
     )
   } catch (err) {
-    console.error(
-      '[invitations] failed to create recipient notifications:',
-      err
-    )
+    log.error('invitation recipient notifications not created', {
+      invitation_id: invitation.id,
+      error: err,
+    })
   }
 }
 
@@ -877,10 +878,10 @@ async function notifyInvitationAccepted(
       kind: isWorkspace ? 'member' : 'invitation',
     })
   } catch (err) {
-    console.error(
-      '[invitations] failed to notify sender of acceptance:',
-      err
-    )
+    log.error('invitation sender not notified of acceptance', {
+      workspace_id: invitation.workspaceId,
+      error: err,
+    })
   }
 }
 

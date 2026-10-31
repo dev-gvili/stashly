@@ -17,6 +17,7 @@ import {
 import type { Route } from './+types/root'
 import { getColorScheme } from './.server/theme'
 import { startVinktar, trackRouteView } from '@/.client/vinktar'
+import { requestIdMiddleware } from '@/services/log'
 import { requestTimingMiddleware } from '@/services/middleware/request-timing'
 import { routePattern } from '@/utils/misc'
 
@@ -40,8 +41,12 @@ export function meta({
 }
 export const shouldRevalidate: ShouldRevalidateFunction = () => false
 
-// Slow and failed requests, every route's loaders and actions included.
-export const middleware: Route.MiddlewareFunction[] = [requestTimingMiddleware]
+// A request id on every log line and error, then slow and failed requests,
+// every route's loaders and actions included.
+export const middleware: Route.MiddlewareFunction[] = [
+  requestIdMiddleware,
+  requestTimingMiddleware,
+]
 
 // Return the theme from the session storage using the loader
 export async function loader({ request }: Route.LoaderArgs) {

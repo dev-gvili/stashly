@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events'
 import pg from 'pg'
 import { inc } from './metrics'
+import { log } from '@/services/log'
 
 // ---------------------------------------------------------------------------
 // Server-side notification bus + Postgres LISTEN bridge.
@@ -80,16 +81,16 @@ export function ensureListener(): Promise<unknown> {
     }
   })
   client.on('error', (err) => {
-    console.error('[notifications] LISTEN client error:', err.message)
+    log.warn('notifications LISTEN client error', { error: err })
   })
   client.on('end', reconnect)
 
   const ready = client
     .connect()
     .then(() => client.query('LISTEN notifications'))
-    .then(() => console.log('[notifications] LISTEN client connected'))
+    .then(() => log.info('notifications LISTEN client connected'))
     .catch((err) => {
-      console.error('[notifications] LISTEN connect failed:', err.message)
+      log.warn('notifications LISTEN connect failed', { error: err })
       reconnect()
     })
 

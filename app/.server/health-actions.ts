@@ -1,4 +1,5 @@
 import { prisma } from '@/services/db'
+import { log } from '@/services/log'
 
 export type HealthReport =
   | { status: 'ok'; db: 'ok'; dbLatencyMs: number }
@@ -23,7 +24,7 @@ export async function checkHealth(): Promise<HealthReport> {
     await prisma.$queryRaw`SELECT 1`
     return { status: 'ok', db: 'ok', dbLatencyMs: Math.round(performance.now() - started) }
   } catch (error) {
-    console.error('[health] database check failed:', error)
+    log.error('health check: database unreachable', { error })
     return {
       status: 'error',
       db: 'unreachable',

@@ -1,4 +1,5 @@
 import { prisma } from '@/services/db'
+import { log } from '@/services/log'
 import { inc, recordSizeRollup } from './metrics'
 
 // ---------------------------------------------------------------------------
@@ -98,10 +99,7 @@ export function ensureSizeRollup() {
     try {
       outcome = await runSizeRollup()
     } catch (e) {
-      console.error(
-        '[size-rollup] run failed:',
-        e instanceof Error ? e.message : e
-      )
+      log.error('size rollup run failed', { error: e })
       outcome = { kind: 'error' }
     }
     if (outcome.kind === 'applied') recordSizeRollup(outcome)

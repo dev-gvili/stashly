@@ -254,7 +254,6 @@ export async function saveMediaMetadata(
     audioData.audioBitrate != null ||
     audioData.audioTitle != null
   ) {
-    console.log('Audio Parsed Data: ', audioData)
     facet = 'audio'
     await upsertAudioFacet(itemId, {
       duration: audioData.audioDuration,

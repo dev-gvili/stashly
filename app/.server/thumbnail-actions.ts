@@ -1,5 +1,6 @@
 import { prisma } from '@/services/db'
 import { track } from '@/services/vinktar'
+import { log } from '@/services/log'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { itemAccessWhere } from '@/services/permission-actions'
 import { getPresignedUrl } from '@/services/s3'
@@ -225,8 +226,8 @@ export async function signStoredThumbnail(
   const location = thumbnailLocation(row, itemId)
   if (location) return signThumbnailLocation(location)
   if (row.bucket) {
-    console.warn('[thumbnails] refusing to sign unrecognised row', {
-      itemId,
+    log.warn('refused to sign an unrecognised thumbnail row', {
+      item_id: itemId,
       bucket: row.bucket.slice(0, 80),
       stage: row.stage,
     })

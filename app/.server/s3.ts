@@ -27,6 +27,7 @@ import type { auth } from './auth'
 import { toCategory } from '../utils/converters'
 import { parseEtag } from '../utils/parsers'
 import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { log } from '@/services/log'
 
 export interface UploadProgress {
   percentage: number
@@ -157,7 +158,7 @@ export async function deleteBucket(bucketName: string) {
   try {
     await s3.send(new DeleteBucketCommand({ Bucket: bucketName }))
   } catch (error) {
-    console.error('Error deleting bucket:', error)
+    log.error('S3 bucket delete failed', { bucket: bucketName, error })
     throw new StashlyError(
       StashlyErrorCode.DELETE_BUCKET_FAILED,
       'Failed to delete bucket'
@@ -228,7 +229,7 @@ export async function createUserBucket(user: User): Promise<string> {
     await applyDefaultBucketPolicy(bucketName)
     return bucketName
   } catch (error) {
-    console.error('Error creating bucket:', error)
+    log.error('S3 bucket create failed', { error })
     throw new StashlyError(
       StashlyErrorCode.CREATE_BUCKET_FAILED,
       'Failed to create user bucket'
@@ -376,11 +377,10 @@ export async function setObjectAclEnabled(
     body: JSON.stringify({ acl_settings: { allow_object_acl: enabled } }),
   })
   if (!response.ok) {
-    console.error(
-      `Error setting object ACL on ${bucket}:`,
-      response.status,
-      response.text
-    )
+    log.error('S3 object ACL setting failed', {
+      bucket,
+      status: response.status,
+    })
     throw new StashlyError(
       StashlyErrorCode.CREATE_BUCKET_FAILED,
       'Failed to update object ACL setting on user bucket'
@@ -573,7 +573,7 @@ export async function uploadFile(
     const timeDelta = (currentTime - lastLoadedTime) / 1000
 
     if (timeDelta <= 0) {
-      console.warn(`No time elapsed for ${key}, skipping progress update`)
+      log.debug('no time elapsed, progress update skipped', { key })
       return
     }
 
@@ -602,10 +602,7 @@ export async function uploadFile(
       metadata: response.$metadata,
     }
   } catch (error: unknown) {
-    console.error(
-      'Error uploading file:',
-      error instanceof Error ? error.message : error
-    )
+    log.error('S3 upload failed', { key, error })
     throw new Error(
       `Failed to upload file to S3: ${error instanceof Error ? error.message : error}`
     )
@@ -904,7 +901,7 @@ export async function deleteFile(bucket: string, key: string) {
   try {
     await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
   } catch (error) {
-    console.error('Error deleting file:', error)
+    log.error('S3 file delete failed', { error })
     throw new Error('Failed to delete file from S3')
   }
 }
@@ -1006,7 +1003,7 @@ export async function getFileMetadata(bucket: string, key: string) {
       metadata: response.Metadata,
     }
   } catch (error) {
-    console.error('Error getting file metadata:', error)
+    log.error('S3 file metadata read failed', { error })
     throw new Error('Failed to get file metadata from S3')
   }
 }

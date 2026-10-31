@@ -1,5 +1,6 @@
 import { monitorEventLoopDelay } from 'node:perf_hooks'
 import type { Pool } from 'pg'
+import { log } from '@/services/log'
 import type { DegradedReason, DegradedStage } from '@/schemas/api.schemas'
 
 // ---------------------------------------------------------------------------
@@ -109,7 +110,7 @@ export function registerPoolMetrics(pool: Pool) {
   poolRef = pool
   pool.on('error', (err) => {
     counters.db_pool_errors_total++
-    console.error('[metrics] pg pool error:', err.message)
+    log.error('pg pool error', { error: err })
   })
 }
 

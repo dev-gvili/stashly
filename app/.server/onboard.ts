@@ -1,5 +1,6 @@
 // userOnboarding.server.ts
 import { createActor } from 'xstate'
+import { log } from '@/services/log'
 import type { User } from 'better-auth'
 import { onboardingMachine } from '@/machines/onboard/onboard.machine'
 
@@ -25,7 +26,7 @@ export async function onboardNewUser(user: User) {
         }
       },
       error: (err) => {
-        console.error('Onboarding actor errored unexpectedly:', err)
+        log.error('onboarding actor failed', { user_id: user.id, error: err })
         reject(err)
       },
     })

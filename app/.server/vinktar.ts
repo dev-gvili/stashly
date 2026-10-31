@@ -19,4 +19,10 @@ if (!getClient()) {
   init({ enabled: process.env.NODE_ENV !== 'test', captureErrors: true })
 }
 
-export { captureException, track } from '@vinktarhq/node'
+export {
+  addBreadcrumb,
+  captureException,
+  captureMessage,
+  scope,
+  track,
+} from '@vinktarhq/node'

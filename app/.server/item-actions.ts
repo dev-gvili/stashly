@@ -27,6 +27,7 @@ import {
   type WithSignedThumbnails,
 } from '@/services/thumbnail-actions'
 import { track } from '@/services/vinktar'
+import { log } from '@/services/log'
 import {
   requireAtLeastRole,
   requireMembership,
@@ -172,7 +173,9 @@ function recordItemActivities<K extends keyof ActivityItems>(
         SELECT "actionId", "activityId", "kindId" FROM "Input"
       `
     })
-    .catch((e) => console.error(`[activity] ${kind} activities not recorded:`, e))
+    .catch((error) =>
+      log.error('activities not recorded', { kind, count: items.length, error })
+    )
 }
 
 /**
@@ -849,10 +852,13 @@ async function removeStoredObjects(objects: Map<string, string[]>) {
   for (const [bucket, keys] of objects) {
     const { failed } = await deleteObjects(bucket, keys)
     if (failed.length > 0) {
-      console.error(
-        `[delete] ${failed.length} of ${keys.length} S3 object(s) left behind in ${bucket}; the orphan sweep will remove them:`,
-        failed
-      )
+      // The orphan sweep removes them.
+      log.error('S3 objects left behind after a delete', {
+        bucket,
+        failed_count: failed.length,
+        object_count: keys.length,
+        keys: failed,
+      })
     }
   }
 }
@@ -2151,7 +2157,10 @@ export async function discardUploadedObject(
     if (!bucket || bucket === PLACEHOLDER_BUCKET) return 'no-bucket'
     references = await prisma.file.count({ where: { bucket, key } })
   } catch (e) {
-    console.error(`[upload] could not check whether ${key} is referenced; kept it:`, e)
+    log.error('could not check whether a refused upload is referenced; kept it', {
+      key,
+      error: e,
+    })
     return 'failed'
   }
   if (references > 0) return 'referenced'
@@ -2159,10 +2168,8 @@ export async function discardUploadedObject(
   // `deleteObjects` never throws: failures come back in `failed`.
   const { failed } = await deleteObjects(bucket, [key])
   if (failed.length > 0) {
-    console.error(
-      `[upload] the bytes of a refused upload were left behind in ${bucket}; the orphan sweep will remove them:`,
-      failed
-    )
+    // The orphan sweep removes them.
+    log.error('bytes of a refused upload left behind', { bucket, keys: failed })
     return 'failed'
   }
   return 'deleted'
@@ -2503,11 +2510,10 @@ export async function getFolderContent(params: GetFolderContentParams) {
     }
   } catch (error) {
     if (error instanceof StashlyError) {
-      console.error('[getFolderContent] Database query failed:', {
-        message: error.message,
-        stack: error.stack,
+      log.error('folder content query failed', {
+        error,
         where,
-        orderBy,
+        order_by: orderBy,
         cursor,
       })
       throw new StashlyError(StashlyErrorCode.LIST_ITEMS_FAILED)
@@ -3116,7 +3122,7 @@ export async function getSuggestedItems(
       suggestedFolders: folders as any,
     })
   } catch (error) {
-    console.error('Error fetching suggested items:', error)
+    log.error('suggested items query failed', { error })
     throw error
   }
 }
@@ -3387,9 +3393,11 @@ export async function createManyItemsBatched(
   for (let i = 0; i < chunks.length; i++) {
     const batch = chunks[i]
     try {
-      console.log(
-        `Creating batch ${i + 1} of ${chunks.length} (${batch.length} items)...`
-      )
+      log.debug('creating item batch', {
+        batch: i + 1,
+        batch_count: chunks.length,
+        item_count: batch.length,
+      })
       const createdBatch = await prisma.$transaction(
         batch.map((item) =>
           prisma.item.create({
@@ -3399,12 +3407,10 @@ export async function createManyItemsBatched(
       )
       createdItems.push(...createdBatch)
     } catch (e) {
-      console.error(`Error creating batch ${i + 1}:`, e)
+      log.error('item batch failed', { batch: i + 1, error: e })
       if (e instanceof Prisma.PrismaClientKnownRequestError) {
         // If batch creation fails (e.g. due to unique constraint, relation constraint, timeout constraint), try creating items individually to isolate the error
-        console.warn(
-          `Batch ${i + 1} failed, attempting to create items individually to identify issues...`
-        )
+        log.info('retrying item batch one item at a time', { batch: i + 1 })
         try {
           let createdBatch = await Promise.all(
             batch.map((item) =>
@@ -3415,10 +3421,10 @@ export async function createManyItemsBatched(
           )
           createdItems.push(...createdBatch)
         } catch (err) {
-          console.error(
-            `Error creating items individually in batch ${i + 1}:`,
-            err
-          )
+          log.error('item batch failed one item at a time', {
+            batch: i + 1,
+            error: err,
+          })
           throw err
         }
       }

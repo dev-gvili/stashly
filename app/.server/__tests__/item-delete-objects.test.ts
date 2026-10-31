@@ -228,7 +228,9 @@ describe('permanent delete removes stored objects', () => {
     await expect(deleteItem(file, ownerId)).resolves.toMatchObject({ id: file })
 
     expect(await prisma.item.count({ where: { id: file } })).toBe(0)
-    const message = logged.mock.calls.map((c) => String(c[0])).find((m) => m.includes('[delete]'))
-    expect(message).toContain(`1 of 2 S3 object(s) left behind in ${BUCKET}`)
+    const call = logged.mock.calls.find((c) =>
+      String(c[0]).includes('S3 objects left behind after a delete')
+    )
+    expect(call?.[1]).toMatchObject({ bucket: BUCKET, failed_count: 1, object_count: 2 })
   })
 })
