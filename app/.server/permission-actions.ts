@@ -582,9 +582,10 @@ export async function assertItemAccess(
 }
 
 /**
- * `itemAccessWhere` as a SQL condition on the `Item` row aliased `item`, for raw
- * queries that must filter before they join (a Prisma `findMany` runs its
- * relation joins on every candidate row before `take`). Mirrors the SQL Prisma
+ * `itemAccessWhere` as a SQL condition on the `Item` row aliased `i` (pass
+ * `item` for another alias), for raw queries that must filter before they join
+ * (a Prisma `findMany` runs its relation joins on every candidate row before
+ * `take`). Mirrors the SQL Prisma
  * generates for `itemAccessWhere`; `permission-live-grants.test.ts` checks the
  * two grant the same items.
  *
