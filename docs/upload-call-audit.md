@@ -4,6 +4,41 @@
 
 > **Point in time.** The counts below are as of 10 Oct and have not been re-traced. Its findings became tech-debt items 31–44, and many have changed since (session cache, folder tree resolved once, part URLs signed 100 at a time, single-statement facet writes, indexing split into three machines, PaddleOCR). The [Changes since the audit](tech-debt.md#changes-since-the-audit) table in `tech-debt.md` lists each change with its measured before and after; read that first. Row 41 is updated for the OCR engine (31 Oct).
 
+## Re-run, 31 Oct
+
+The measured part was repeated on `main` at `2ce72f3`, the same way as the 25 and 26 Oct re-runs: the same user and page (`/:me/stash?layout=grid&take=100`), header **+ → Files** into the root folder, `.claude/evidence/upload-audit-init.js` as the init script, and `audit-pgstat.ts` snapshots around each upload. The files followed the recorded recipe: a 4000×3000 JPEG with EXIF, padded to exactly 10,000,000 and 100,000,000 bytes. The traced counts below were **not** re-traced. Raw data: `.claude/evidence/upload-audit-1031*.json`.
+
+Three things differed from the earlier runs:
+- The stash held 364 folders and 3,361 files (it was empty on 25 Oct).
+- 8,381 search chunks were still waiting for embeddings, so the audit tab held the backfill's Web Lock to keep the backfill out of the window.
+- Postgres now commits about 4 transactions a second while idle (the size-rollup loop added 30 Oct polls every 250 ms), so raw transaction counts are read net of that.
+
+**The upload itself: unchanged since 26 Oct**
+
+| | 10 Oct | 25 Oct | 26 Oct | **31 Oct** |
+|---|---|---|---|---|
+| 10 MB: browser requests (card on screen) | 10 (card off screen) | 18 | 16 | **16** |
+| 10 MB: requests to our server | 8 | 12 | 10 | **10** |
+| 10 MB: session lookups in the DB | ~6 | 0 | — | **1** |
+| 10 MB: rows written (insert / update) | 9 / 3 | 10 / 4 | — | **10 / 4** |
+| 10 MB: item row created at | 6.6 s | — | 2.7 s | **2.0 s** |
+| 100 MB: browser requests | — | 54 | 34 | **34** |
+| 100 MB: session lookups in the DB | — | 14 | — | **0** |
+| 100 MB: part upload window (20 parts, 0 retries) | — | 12.4 s | 11.5 s | **13.1 s** |
+
+**Rows read: the open question from 10 Oct, answered.** One `/stash` reload measured on its own read **3,353,317 tuples**: an upload's two reloads account for the whole 6.7 M of a 10 MB upload's window. On 10 Oct the same request hung and the 61,568 rows were left unattributed (see [Not verified](#not-verified)); they were the same cost on a smaller stash. 96% of it was the overview's activity feed, which built its nested select for every one of the user's 8,798 activities before keeping 12. Fixed the same day:
+
+| Change | Before | After |
+|---|---|---|
+| Activity feed as one statement, newest rows picked first (`92e06a7`) | 694 ms, 3.2 M tuples, 8,798 loops | 16.7 ms median for the largest user; 0.16–0.32 ms and 5–29 rows for small ones |
+| `Item(ownerId)` index (`c3e0833`) | every "my items" query read the whole table | small owners use the index; an owner of most of the table still reads it in full, which is the cheaper plan |
+| Favorites filtered before their cards are built (`158b98b`) | 165–200 ms, every card join run for 4,463 readable items | 5–8 ms, 0.79 ms in the database, 1 row |
+| **One `/stash` reload** | **905 ms, 3,353,317 tuples returned** | **408 ms, 134,249 tuples returned** (122,012 from table counters) |
+
+Rejected after measuring: an index on `ActivityTime("observedAt")` made the largest feed 3.5× faster and a 1,748-activity user's 2× slower (17.1 against 8.7 ms with the owner index too), so it was not added. The remaining feed cost for a large user is the sort over its whole history; only a denormalized `Activity(ownerId, observedAt)` index would remove it.
+
+**Not explained:** in the 10 MB run, 8 thumbnails already on the page were requested again right after the reload. Cross-origin timing hides whether they came from cache, and it did not recur in the 100 MB run. The first of the two reloads is aborted in the browser about 400 ms in, but the server still runs its loader in full.
+
 **How to read the numbers**
 - **Traced** means the count was read from the code by following every call. A traced count is exact for the code path, but it was not observed running.
 - **Measured** means it was observed in one real upload in Chrome (an 8.46 MB JPEG uploaded into the root folder from `/:me/stash`), together with the Postgres activity counters for the same window.
@@ -339,7 +374,7 @@ These are proposals. None of them is implemented. The savings are traced, per fi
 ## Not verified
 
 - **SQL statements per Prisma call**: how many INSERTs a nested create sends, and whether `relationJoins` makes each read one statement. Query logging was not enabled; `pg_stat_statements` is not installed on the dev DB.
-- **What the 61,568 rows read came from.** I attribute them to the two `/stash` revalidations, but the single `.data` request I sent to isolate them never answered. After the upload, every new request from that tab stayed pending (the compute-worker script request was also pending), while the server answered `curl` at once. **The cause was not investigated.** It is possibly connection exhaustion in the dev tab. The same symptom hit twice earlier in this session.
+- **What the 61,568 rows read came from.** I attribute them to the two `/stash` revalidations, but the single `.data` request I sent to isolate them never answered. After the upload, every new request from that tab stayed pending (the compute-worker script request was also pending), while the server answered `curl` at once. **The cause was not investigated.** It is possibly connection exhaustion in the dev tab. The same symptom hit twice earlier in this session. *Answered 31 Oct (see [Re-run, 31 Oct](#re-run-31-oct)): one isolated `/stash` reload read 3,353,317 tuples, 96% of it the activity feed; the hang itself was not reproduced.*
 - **Tigris answered one part `PUT` with 503**, as seen in the network panel. My fetch log recorded both part PUTs as 200. **Not reconciled**; it may be a retry that the log merged.
 - Which `maxConcurrentUploads` applies at runtime (10 or 100).
 - How many revalidation waves a large batch produces (R₁, R₂).

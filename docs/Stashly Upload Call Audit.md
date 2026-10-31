@@ -4,7 +4,43 @@ Stashly · upload pipeline · 10 Oct 2026
 
 Every database call, network request, S3 call and trigger that runs for one uploaded file, from the moment it is selected until it is fully processed. Counts were traced through the code and checked against one real upload measured in Chrome and in Postgres's activity counters.
 
-Point in time (10 Oct), not re-traced since. What changed afterwards, with measured before and after, is in the "Changes since the audit" table of `docs/tech-debt.md` (items 31–54). Row 41 is updated for the OCR engine (31 Oct).
+Point in time (10 Oct), not re-traced since. What changed afterwards, with measured before and after, is in the "Changes since the audit" table of `docs/tech-debt.md` (items 31–54). Row 41 is updated for the OCR engine (31 Oct). The measured part was repeated on 31 Oct: see Re-run, 31 Oct.
+
+## Re-run, 31 Oct
+
+The measured part was repeated on `main` at `2ce72f3`, the same way as the 25 and 26 Oct re-runs. Same user and page (`/:me/stash?layout=grid&take=100`), header **+ → Files** into the root folder, the same request recorder and `pg_stat` snapshots around each upload. The files were 4000×3000 JPEGs with EXIF, padded to exactly 10,000,000 and 100,000,000 bytes. The traced counts further down were **not** re-traced.
+
+What differed: the stash held 364 folders and 3,361 files (it was empty on 25 Oct). 8,381 search chunks were waiting for embeddings, so the audit tab held the backfill's lock to keep it out of the window. Postgres now commits about 4 transactions a second while idle, because the size-rollup loop added on 30 Oct polls every 250 ms.
+
+### The upload itself: unchanged since 26 Oct
+
+| Measure | 10 Oct | 25 Oct | 26 Oct | 31 Oct |
+|---|---|---|---|---|
+| 10 MB: browser requests (card on screen) | 10 (off screen) | 18 | 16 | **16** |
+| 10 MB: requests to our server | 8 | 12 | 10 | **10** |
+| 10 MB: session lookups in the DB | ~6 | 0 | — | **1** |
+| 10 MB: rows written (insert / update) | 9 / 3 | 10 / 4 | — | **10 / 4** |
+| 10 MB: item row created at | 6.6 s | — | 2.7 s | **2.0 s** |
+| 100 MB: browser requests | — | 54 | 34 | **34** |
+| 100 MB: session lookups in the DB | — | 14 | — | **0** |
+| 100 MB: part upload window (20 parts, 0 retries) | — | 12.4 s | 11.5 s | **13.1 s** |
+
+### Rows read: the open question from 10 Oct, answered
+
+One `/stash` reload, measured on its own, read **3,353,317 rows**. An upload triggers two reloads, which is the whole 6.7 M of a 10 MB upload's window. On 10 Oct the same isolating request hung, so the 61,568 rows were never attributed. They were the same cost on a smaller stash. 96% of it was the overview's activity feed, which built its nested select for every one of the user's 8,798 activities before keeping 12. Fixed the same day:
+
+- Rows read per `/stash` reload: 3,353,317 → **134,249**
+- One `/stash` reload: 905 ms → **408 ms**
+- Activity feed, 8,798 activities: 694 ms → **16.7 ms**
+- Favorites on the overview: 165–200 ms → **5–8 ms**
+
+| Change | Before | After |
+|---|---|---|
+| Activity feed as one statement, newest rows picked first (`92e06a7`) | 694 ms, 3.2 M rows, 8,798 loops | 16.7 ms median for the largest user; 0.16–0.32 ms and 5–29 rows for small ones |
+| `Item(ownerId)` index (`c3e0833`) | every "my items" query read the whole table | small owners use the index; an owner of most of the table still reads it in full, the cheaper plan |
+| Favorites filtered before their cards are built (`158b98b`) | 165–200 ms, every card join run for 4,463 readable items | 5–8 ms, 0.79 ms in the database, 1 row |
+
+Rejected after measuring: an index on `ActivityTime("observedAt")` made the largest feed 3.5× faster but a 1,748-activity user's 2× slower (17.1 against 8.7 ms), so it was not added. For a large user the feed still sorts its whole history; only a denormalized `Activity(ownerId, observedAt)` index would remove that. Not explained: in the 10 MB run, 8 thumbnails already on the page were requested again right after the reload. It did not recur in the 100 MB run. The first of the two reloads is cancelled in the browser about 400 ms in, but the server still runs its loader in full. Raw data: `.claude/evidence/upload-audit-1031*.json`.
 
 DB Prisma / SQL call FETCH browser request S3 server → Tigris SDK call TRIG Postgres trigger work
 
@@ -342,7 +378,7 @@ These are proposals; nothing here is built yet. The savings are traced for the 1
 ## Not verified
 
 - How many SQL statements each Prisma call sends (nested creates, `relationJoins`). There is no query log or `pg_stat_statements`.
-- What the 61,568 rows read came from. The request sent to isolate one revalidation never answered: after the upload, new requests from the test tab stayed pending while the server answered `curl`. The cause was not investigated.
+- What the 61,568 rows read came from. The request sent to isolate one revalidation never answered: after the upload, new requests from the test tab stayed pending while the server answered `curl`. The cause was not investigated. *Answered 31 Oct: one isolated `/stash` reload read 3,353,317 rows, 96% of it the activity feed (see Re-run, 31 Oct). The hang itself was not reproduced.*
 - Tigris answered one part `PUT` with 503 in the network panel, while the request log recorded both PUTs as 200. Not reconciled.
 - Which concurrency limit applies at runtime (10 or 100).
 - How many revalidation waves a large batch produces.
