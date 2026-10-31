@@ -2,6 +2,8 @@
 
 *2026-10-10. This audit traces the code from the moment a file is selected until it is fully processed. It also includes one measured upload in the browser. The line links point at the working tree, which has uncommitted changes to `file.machine.ts`, `quota-actions.ts` and `item-actions.ts` from the quota fix.*
 
+> **Point in time.** The counts below are as of 10 Oct and have not been re-traced. Its findings became tech-debt items 31–44, and many have changed since (session cache, folder tree resolved once, part URLs signed 100 at a time, single-statement facet writes, indexing split into three machines, PaddleOCR). The [Changes since the audit](tech-debt.md#changes-since-the-audit) table in `tech-debt.md` lists each change with its measured before and after; read that first. Row 41 is updated for the OCR engine (31 Oct).
+
 **How to read the numbers**
 - **Traced** means the count was read from the code by following every call. A traced count is exact for the code path, but it was not observed running.
 - **Measured** means it was observed in one real upload in Chrome (an 8.46 MB JPEG uploaded into the root folder from `/:me/stash`), together with the Postgres activity counters for the same window.
@@ -155,7 +157,7 @@ No upload call goes through a React Router fetcher; every one is a plain `fetch`
 | 38 | FETCH | 1, text files only | Model download (`Xenova/all-mpnet-base-v2`, q4), on the first text file in the tab and again after 60 s idle. Should come from Cache Storage after the first time | [embedding.worker.ts:46](../app/workers/embedding.worker.ts#L46) | Hugging Face CDN |
 | 39 | FETCH | 1, text files only | `POST /api/items` `save_search_chunk_embeddings`. All chunks go in one request (768-dim vectors). Does not revalidate | `postVectors` [indexing.actors.ts:174](../app/machines/indexing/indexing.actors.ts#L174) | our server |
 | 40 | DB | 2 | Session lookup + `UPDATE "SearchChunk" … FROM unnest` | [search-actions.ts:727](../app/.server/search-actions.ts#L727) | SearchChunk |
-| 41 | FETCH + DB | scanned PDF only: ≤15 pages × (1 + 1) | `save_ocr_page` (5 Prisma calls) plus `save_search_chunk_embeddings` (2) per page, so **up to 105 Prisma calls**. The OCR model (~623 MB) downloads on first use | [indexing.actors.ts:128](../app/machines/indexing/indexing.actors.ts#L128), [ocr.ai.ts:87](../app/workers/ocr.ai.ts#L87), [search-actions.ts:131-174](../app/.server/search-actions.ts#L131) | our server, Hugging Face |
+| 41 | FETCH + DB | scanned PDF only: ≤15 pages × (1 + 1) | `save_ocr_page` (5 Prisma calls) plus `save_search_chunk_embeddings` (2) per page, so **up to 105 Prisma calls** (as of 10 Oct). OCR models download on first use: PaddleOCR PP-OCRv6, about 31 MB, by default since 31 Oct; GLM-OCR, about 623 MB, only when a page reads below 0.89 confidence | [indexing.actors.ts](../app/machines/indexing/indexing.actors.ts), [ocr-engine.ts](../app/utils/ocr-engine.ts) (`OCR_MAX_PAGES`), [paddle-ocr.worker.ts](../app/workers/paddle-ocr.worker.ts), [search-actions.ts:131-174](../app/.server/search-actions.ts#L131) | our server, Hugging Face |
 
 ### 2.7 Thumbnails (only when the card is on screen)
 

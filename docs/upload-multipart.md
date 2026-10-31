@@ -178,7 +178,7 @@ upload.start()
 - `Upload` — root; calls `configure({ user })` from `useUpload()` on mount
 - `DropArea` — drag-and-drop zone; spreads `dragHandlers`, or `makeDropHandler(folderId)` for a folder-targeted drop
 - `Trigger` — file input label; calls `add` / `addBatch` on file selection
-- `FileList` — renders queued files from `useUploadFileIds()`
+- `FileList` — renders queued files from `useUploadFileIds()`. Memoized and windowed: only the rows in view plus 4 either side are mounted (fixed 56 px pitch, spacers for the rest), with no layout animation. Mounting all 651 rows of a big upload cost one 1,422 ms frame (tech-debt item 52, 31 Oct 2026)
 - `Total` — displays total file count (`useUploadCounts()`)
 - `CountDown` — shows time remaining per file
 - `StatusText` — shows upload status per file

@@ -7,8 +7,8 @@ Key components and hooks:
 - `Upload` — Container that initializes the upload actor configuration via `upload.send({ type: 'upload.config', config })`.
 - `DropArea` — Drop zone that accepts files and dispatches `upload.add` events.
 - `Trigger` — File input trigger that dispatches local `upload.add` events when files are selected.
-- `FileList` — Renders file list using `useFiles()` or `useUploadFiles()` hooks.
-- `File item subcomponents` — Small presentational components used by `FileList` to display name, size, status, progress indicator.
+- `FileList` — Renders the file list from `useUploadFileIds()`. Memoized and windowed: only the rows in view plus 4 either side are mounted (56 px pitch, spacers for the rest), and rows have no layout animation. Keep it that way: mounting every row of a 650-file upload, with framer-motion's `layout` on each, saturated the main thread for the whole upload (tech-debt item 52).
+- `File item subcomponents` — Small memoized presentational components used by `FileList` to display name, size, status, progress indicator.
 - `Panel` — A floating uploading panel used to show active uploads and provide quick actions.
 
 Hooks provided:

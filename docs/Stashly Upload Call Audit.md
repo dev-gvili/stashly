@@ -4,6 +4,8 @@ Stashly · upload pipeline · 10 Oct 2026
 
 Every database call, network request, S3 call and trigger that runs for one uploaded file, from the moment it is selected until it is fully processed. Counts were traced through the code and checked against one real upload measured in Chrome and in Postgres's activity counters.
 
+Point in time (10 Oct), not re-traced since. What changed afterwards, with measured before and after, is in the "Changes since the audit" table of `docs/tech-debt.md` (items 31–54). Row 41 is updated for the OCR engine (31 Oct).
+
 DB Prisma / SQL call FETCH browser request S3 server → Tigris SDK call TRIG Postgres trigger work
 
 ## A 100,000-file folder upload
@@ -162,7 +164,7 @@ No upload call goes through a React Router fetcher, so only these two re-run loa
 | 38 | FETCH | first use | Embedding model `all-mpnet-base-v2` (q4), downloaded on the first text file in a tab | [embedding.worker.ts:46](https://github.com/dev-gvili/stashly/blob/main/app/workers/embedding.worker.ts#L46) | Hugging Face CDN |
 | 39 | FETCH | 1 (text) | `POST /api/items save_search_chunk_embeddings`, with every chunk in one request | [indexing.actors.ts:174](https://github.com/dev-gvili/stashly/blob/main/app/machines/indexing/indexing.actors.ts#L174) | our server |
 | 40 | DB | 2 (text) | Session lookup + `UPDATE "SearchChunk" … FROM unnest` | [search-actions.ts:727](https://github.com/dev-gvili/stashly/blob/main/app/.server/search-actions.ts#L727) | SearchChunk |
-| 41 | FETCH DB | ≤ 30 / ≤ 105 | Scanned PDF only, up to 15 pages. Each page sends `save_ocr_page` (5 DB) and `save_search_chunk_embeddings` (2 DB). The OCR model (about 623 MB) downloads on first use | [indexing.actors.ts:128](https://github.com/dev-gvili/stashly/blob/main/app/machines/indexing/indexing.actors.ts#L128) | our server, Hugging Face |
+| 41 | FETCH DB | ≤ 30 / ≤ 105 | Scanned PDF only, up to 15 pages. Each page sends `save_ocr_page` (5 DB) and `save_search_chunk_embeddings` (2 DB). OCR models download on first use: PaddleOCR PP-OCRv6 (about 31 MB) by default since 31 Oct, GLM-OCR (about 623 MB) only for pages below 0.89 confidence | [indexing.actors.ts:128](https://github.com/dev-gvili/stashly/blob/main/app/machines/indexing/indexing.actors.ts#L128) | our server, Hugging Face |
 
 ### Thumbnails (only while the card is on screen)
 
