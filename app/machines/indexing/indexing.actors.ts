@@ -2,8 +2,9 @@
  * The async steps of indexing one file, one actor per step.
  *
  * Each actor does exactly one thing: read the file, or call one endpoint, or
- * run one model. The order, the retries and what a failure means live in
- * `indexing-item.machine.ts`, not here.
+ * run one model. The order, the retries and what a failure means live in the
+ * machines (`indexing-item.machine.ts`, `embed.machine.ts`, `ocr.machine.ts`),
+ * not here.
  *
  * Every HTTP call is a plain `fetch`, never a React Router fetcher. A fetcher
  * would re-run every loader on the page after each submit, and these writes
@@ -98,24 +99,28 @@ export const saveVectorsToServer = fromPromise<
 })
 
 /**
- * Reads a scanned PDF page by page with the OCR model, saving and embedding
- * each page as soon as it is read.
+ * Reads a scanned PDF page by page with the OCR model, saving each page's text
+ * as soon as it is read and handing the page's chunks to `onPageChunks`.
  *
  * One actor rather than a state per page on purpose: `streamOcrPdf` awaits the
  * per-page callback, so saving holds back rendering and only one decoded page
- * is in memory at a time. A page whose save or embedding fails is logged and
- * skipped; the pages already saved stay saved.
+ * is in memory at a time. A page whose save fails is skipped; the pages already
+ * saved stay saved. Vectors are not made here: `ocr.machine` passes each page's
+ * chunks to `embed.machine`.
  *
  * @returns How many characters of text were read.
  * @example
- * invoke: { src: 'transcribeScannedPdf', input: ({ context }) => ({ itemId, file }) }
+ * invoke: { src: 'transcribeScannedPdf', input: ({ context, self }) => ({ itemId, file, onPageChunks }) }
  */
 export const transcribeScannedPdf = fromPromise<
   number,
-  { itemId: string; file: File }
+  {
+    itemId: string
+    file: File
+    onPageChunks: (chunks: SearchChunkDraft[]) => void
+  }
 >(async ({ input, signal }) => {
   const { streamOcrPdf } = await import('@/utils/thumbnail-ocr')
-  const { embedTexts } = await import('@/workers/embedding.ai')
 
   return streamOcrPdf(input.file, async (page) => {
     if (signal.aborted) return
@@ -132,22 +137,7 @@ export const transcribeScannedPdf = fromPromise<
       chunks?: SearchChunkDraft[]
     } | null
     const chunks = data?.chunks ?? []
-    if (chunks.length === 0) return
-
-    try {
-      const vectors = await embedTexts(chunks.map((chunk) => chunk.content))
-      if (vectors.length !== chunks.length) {
-        console.error(
-          '[ocr page] vector count mismatch',
-          input.itemId,
-          page.pageNum
-        )
-        return
-      }
-      await postVectors(chunks, vectors, signal)
-    } catch (e) {
-      console.error('[ocr page embed]', input.itemId, page.pageNum, e)
-    }
+    if (chunks.length > 0) input.onPageChunks(chunks)
   })
 })
 

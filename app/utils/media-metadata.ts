@@ -523,8 +523,8 @@ export async function extractMediaMetadata(file: File): Promise<MediaMetadata> {
     }
 
     // A PDF with no text layer needs OCR, but that runs *after* this returns
-    // — see `streamOcrPdf` in `@/utils/thumbnail-ocr`, which the indexing
-    // machine drives from its `transcribingScannedPdf` state. Doing it
+    // — see `streamOcrPdf` in `@/utils/thumbnail-ocr`, which `ocr.machine`
+    // (`app/machines/indexing/`) drives from its `transcribing` state. Doing it
     // inline here would hold the metadata POST for the length of the whole OCR
     // run (minutes), so the item's facet, page count and thumbnail would all
     // wait on it, and closing the tab would lose the lot. The flag tells the

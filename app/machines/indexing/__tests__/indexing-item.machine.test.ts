@@ -1,9 +1,10 @@
 /**
- * Indexing item machine tests.
+ * Metadata machine tests.
  *
- * Every actor is stubbed, so these check the order of steps, what a retry does,
- * and which ending each failure lands in — not the metadata reading, the
- * embedding model or the server, which have their own coverage.
+ * Both actors are stubbed, so these check the order of steps, what a retry
+ * does, which ending each failure lands in, and what the output hands the
+ * queue for the deferred lane — not the metadata reading or the server, which
+ * have their own coverage.
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { createActor, fromPromise, toPromise } from 'xstate'
@@ -21,10 +22,6 @@ const chunks = [
   { id: 'c1', content: 'hello' },
   { id: 'c2', content: 'world' },
 ]
-const twoVectors = [
-  [0.1, 0.2],
-  [0.3, 0.4],
-]
 
 /** Actor stubs where every step succeeds; a test overrides only what it checks. */
 function stubs(over: Record<string, unknown> = {}) {
@@ -35,9 +32,6 @@ function stubs(over: Record<string, unknown> = {}) {
       needsOcr: false,
     })),
     saveMetadataToServer: fromPromise(async () => chunks),
-    embedChunksOnGpu: fromPromise(async () => twoVectors),
-    saveVectorsToServer: fromPromise(async () => undefined),
-    transcribeScannedPdf: fromPromise(async () => 120),
     ...over,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
@@ -62,122 +56,68 @@ async function run(over: Record<string, unknown> = {}) {
 }
 
 describe('indexingItemMachine — normal file', () => {
-  it('saves metadata, embeds every chunk, saves the vectors, and ends indexed', async () => {
-    const saveVectors = vi.fn(async () => undefined)
-    const { output, emitted } = await run({
-      saveVectorsToServer: fromPromise(saveVectors),
-    })
+  it('saves the metadata, announces it, and hands the chunks back for embedding', async () => {
+    const { output, emitted } = await run()
 
-    expect(saveVectors).toHaveBeenCalledTimes(1)
-    expect(output).toEqual({ itemId: 'i1', outcome: 'indexed' })
+    expect(output).toMatchObject({
+      itemId: 'i1',
+      outcome: 'indexed',
+      chunks,
+      needsOcr: false,
+    })
+    expect(output.file).toBeInstanceOf(File)
     expect(emitted).toEqual(['metadataSaved'])
   })
 
-  it('skips embedding when the server cut no chunks', async () => {
-    const embed = vi.fn(async () => [])
+  it('ends as soon as the save lands: no GPU work in this machine', async () => {
+    const { actor } = start()
+    await toPromise(actor)
+
+    expect(actor.getSnapshot().value).toBe('indexed')
+  })
+
+  it('hands back no chunks when the server cut none', async () => {
     const { output } = await run({
       saveMetadataToServer: fromPromise(async () => []),
-      embedChunksOnGpu: fromPromise(embed),
     })
 
-    expect(embed).not.toHaveBeenCalled()
+    expect(output.chunks).toEqual([])
     expect(output.outcome).toBe('indexed')
   })
 })
 
 describe('indexingItemMachine — scanned PDF', () => {
-  it('runs OCR when the PDF has no text layer', async () => {
-    const ocr = vi.fn(async () => 300)
+  it('saves a scanned PDF that read nothing else, and flags it for OCR', async () => {
+    const save = vi.fn(async () => [])
     const { output } = await run({
       readMetadataFromFile: fromPromise(async () => ({ needsOcr: true })),
-      saveMetadataToServer: fromPromise(async () => []),
-      transcribeScannedPdf: fromPromise(ocr),
+      saveMetadataToServer: fromPromise(save),
     })
 
-    expect(ocr).toHaveBeenCalledTimes(1)
-    expect(output.outcome).toBe('indexed')
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(output.needsOcr).toBe(true)
   })
 
-  it('embeds the chunks it has first, then runs OCR', async () => {
-    const order: string[] = []
-    await run({
-      readMetadataFromFile: fromPromise(async () => ({ needsOcr: true })),
-      embedChunksOnGpu: fromPromise(async () => {
-        order.push('embed')
-        return twoVectors
-      }),
-      transcribeScannedPdf: fromPromise(async () => {
-        order.push('ocr')
-        return 1
-      }),
-    })
+  it('does not flag a file with a text layer for OCR', async () => {
+    const { output } = await run()
 
-    expect(order).toEqual(['embed', 'ocr'])
+    expect(output.needsOcr).toBe(false)
   })
 
-  it('does not run OCR for a file with a text layer', async () => {
-    const ocr = vi.fn(async () => 0)
-    await run({ transcribeScannedPdf: fromPromise(ocr) })
-
-    expect(ocr).not.toHaveBeenCalled()
-  })
-
-  it('ends failed when OCR breaks', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    const { output, emitted } = await run({
-      readMetadataFromFile: fromPromise(async () => ({ needsOcr: true })),
-      saveMetadataToServer: fromPromise(async () => []),
-      transcribeScannedPdf: fromPromise(async () => {
-        throw new Error('model crashed')
-      }),
-    })
-
-    expect(output.outcome).toBe('failed')
-    expect(emitted).toContain('failed')
-  })
-})
-
-describe('indexingItemMachine — vectors that do not make it', () => {
-  it('ends indexedWithoutVectors when embedding throws', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const saveVectors = vi.fn(async () => undefined)
-    const { output } = await run({
-      embedChunksOnGpu: fromPromise(async () => {
-        throw new Error('GPU lost')
-      }),
-      saveVectorsToServer: fromPromise(saveVectors),
-    })
-
-    expect(saveVectors).not.toHaveBeenCalled()
-    expect(output.outcome).toBe('indexedWithoutVectors')
-  })
-
-  it('never saves vectors whose count does not match the chunks', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const saveVectors = vi.fn(async () => undefined)
-    const { output } = await run({
-      embedChunksOnGpu: fromPromise(async () => [[0.1, 0.2]]),
-      saveVectorsToServer: fromPromise(saveVectors),
-    })
-
-    expect(saveVectors).not.toHaveBeenCalled()
-    expect(output.outcome).toBe('indexedWithoutVectors')
-  })
-
-  it('retries a failed vector save twice, then gives up on vectors only', async () => {
+  it('does not flag OCR when the metadata never reached the server', async () => {
     vi.useFakeTimers()
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    let calls = 0
     const { actor } = start({
-      saveVectorsToServer: fromPromise(async () => {
-        calls++
-        throw new Error('503')
+      readMetadataFromFile: fromPromise(async () => ({ needsOcr: true })),
+      saveMetadataToServer: fromPromise(async () => {
+        throw new Error('500')
       }),
     })
     await vi.advanceTimersByTimeAsync(5_000)
 
-    expect(calls).toBe(3)
-    expect(actor.getSnapshot().output?.outcome).toBe('indexedWithoutVectors')
+    expect(actor.getSnapshot().output).toMatchObject({
+      outcome: 'failed',
+      needsOcr: false,
+    })
   })
 })
 
@@ -227,20 +167,7 @@ describe('indexingItemMachine — metadata save', () => {
 
     expect(save).not.toHaveBeenCalled()
     expect(emitted).toEqual([])
-    expect(output.outcome).toBe('indexed')
-  })
-
-  it('still saves a scanned PDF that read nothing else', async () => {
-    const save = vi.fn(async () => [])
-    const ocr = vi.fn(async () => 3)
-    await run({
-      readMetadataFromFile: fromPromise(async () => ({ needsOcr: true })),
-      saveMetadataToServer: fromPromise(save),
-      transcribeScannedPdf: fromPromise(ocr),
-    })
-
-    expect(save).toHaveBeenCalledTimes(1)
-    expect(ocr).toHaveBeenCalledTimes(1)
+    expect(output).toMatchObject({ outcome: 'indexed', chunks: [], needsOcr: false })
   })
 
   it('ends failed without a request when the file cannot be read', async () => {

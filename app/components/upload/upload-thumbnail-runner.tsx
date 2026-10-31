@@ -7,27 +7,36 @@
  * the thumbnail is made when the item's card comes on screen
  * (`useThumbnailWhenVisible`), from the held file.
  *
- * Also owns the upload-time page refreshes and pauses thumbnail downloads
- * while uploads are moving bytes.
+ * Also owns the upload-time page refreshes, and pauses thumbnail downloads and
+ * indexing's GPU work while uploads are moving bytes.
  */
-import { memo, useEffect } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate, useNavigation } from 'react-router'
 import { useSelector } from '@xstate/react'
 import { UploadActorContext } from '@/machines/upload/upload.context'
 import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
+import { createDebouncer } from '@/utils/debounce'
 import type { MediaFileStatus } from '@/types/machine.types'
 import {
   holdUploadedFile,
   pauseDownloads,
   resumeDownloads,
 } from '@/machines/thumbnail'
-import { enqueueIndexing, useIndexingRevalidation } from '@/machines/indexing'
+import {
+  enqueueIndexing,
+  pauseDeferredIndexing,
+  resumeDeferredIndexing,
+  useIndexingRevalidation,
+} from '@/machines/indexing'
 
 /** Files already handed over, so each is handed over once per tab. */
 const handedOverIds = new Set<string>()
 
 /** Debounce window for pulling newly-created items into the list. */
 const REVALIDATE_DEBOUNCE_MS = 700
+
+/** How long uploads must be idle before indexing's GPU work starts again. */
+const DEFERRED_RESUME_DELAY_MS = 2_000
 
 /**
  * Upload statuses that still hold bandwidth. Anything else (`itemCreated`,
@@ -108,6 +117,27 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
     else resumeDownloads()
     return () => resumeDownloads()
   }, [uploading])
+
+  // Indexing's GPU work (vectors and OCR) waits until no file has been in
+  // flight for DEFERRED_RESUME_DELAY_MS, so it never delays a batch's uploads
+  // or their metadata, and back-to-back drops don't start and stop it
+  // (tech-debt item 53). The metadata itself is saved as each row lands.
+  const resumeLater = useMemo(() => createDebouncer(), [])
+  useEffect(() => {
+    if (uploading) {
+      resumeLater.cancel()
+      pauseDeferredIndexing()
+    } else {
+      resumeLater.call(resumeDeferredIndexing, DEFERRED_RESUME_DELAY_MS)
+    }
+  }, [uploading, resumeLater])
+  useEffect(
+    () => () => {
+      resumeLater.cancel()
+      resumeDeferredIndexing()
+    },
+    [resumeLater]
+  )
 
   // The hook's committed guard replaces the `lastRevalidated` ref this used to
   // keep, and holding `navigate` in a ref means the pathname and search read at

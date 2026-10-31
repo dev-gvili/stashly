@@ -10,6 +10,8 @@ import { describe, it, expect } from 'vitest'
 import { createMachine, type AnyStateMachine } from 'xstate'
 import { indexingItemMachine } from '../indexing-item.machine'
 import { indexingQueueMachine } from '../indexing-queue.machine'
+import { embedMachine } from '../embed.machine'
+import { ocrMachine } from '../ocr.machine'
 
 interface StateNodeLike {
   path: string[]
@@ -44,6 +46,8 @@ describe('state descriptions', () => {
   it.each([
     ['indexingItem', indexingItemMachine],
     ['indexingQueue', indexingQueueMachine],
+    ['embed', embedMachine],
+    ['ocr', ocrMachine],
   ] as const)('every state in %s has a description', (_, machine) => {
     expect(statesWithoutDescription(machine)).toEqual([])
   })

@@ -17,29 +17,54 @@ That coupled two jobs that have nothing to do with each other:
 Now the upload runner queues indexing for every upload as soon as its `Item`
 row exists, before and independently of the thumbnail.
 
+## Why metadata, vectors and OCR are three machines
+
+Until tech-debt item 53 one machine per file did everything in one of the
+queue's two slots: read and save the metadata, embed the chunks on the GPU,
+save the vectors, OCR a scanned PDF. A file's facets therefore waited behind
+every earlier file's GPU work, and nothing in the queue survives a reload, so
+a tab reloaded mid-batch left the rest with no facets at all (measured: 0 of 30
+camera JPEGs in one batch, 15 of 16 after a reload in another). Facets have no
+backfill, and downloading originals from S3 to make one was rejected (bandwidth,
+S3 calls, client work the user can't see a reason for).
+
+Now metadata runs right after each row exists, and the GPU work waits in a
+deferred lane until uploads are idle. Measured on the 655-file `app/` upload:
+every metadata save landed 107 s after the last row instead of still running
+at 399 s, and the markdown and image files all have their facets.
+
 ## Layout
 
 | File | Role |
 |---|---|
-| `indexing.types.ts` | Job, context, events, emitted events, outcomes |
+| `indexing.types.ts` | Jobs, contexts, events, emitted events, outcomes for all four machines |
 | `indexing.actors.ts` | One `fromPromise` actor per step: read metadata, save metadata, embed, save vectors, OCR |
-| `indexing-item.machine.ts` | One file's indexing, step by step |
-| `indexing-queue.machine.ts` | FIFO, 2 at a time; collects metadata saves for the page reload |
-| `client.ts` | The tab's queue instance, `enqueueIndexing`, `markIndexingRevalidated` |
+| `indexing-item.machine.ts` | One file's metadata: read, save, retry |
+| `embed.machine.ts` | One set of chunks' vectors: embed, save, retry |
+| `ocr.machine.ts` | One scanned PDF, page by page; hands each page's chunks out |
+| `indexing-queue.machine.ts` | Two lanes, 2 at a time each; collects metadata saves for the page reload |
+| `client.ts` | The tab's queue instance, `enqueueIndexing`, `pauseDeferredIndexing`, `resumeDeferredIndexing`, `markIndexingRevalidated` |
 | `hooks.ts` | `useIndexingRevalidation`: one page reload per batch |
 | `index.ts` | Public exports |
 
 ```
-indexingQueue (module scope, FIFO, 2 at a time)
-└── spawn(indexingItemMachine, { itemId, file })
-     readingMetadata ── nothing to save (a zip, an unknown binary) ──→ indexed
-     readingMetadata → savingMetadata ─┬─ chunks ─→ embeddingChunks → savingVectors ─┐
-                                       ├─ scanned PDF ─────────────────────────────┐ │
-                                       └─ neither → indexed                       │ │
-                                                        choosingNextStep ←─────────┼─┘
-                                                          ├─ scanned PDF → transcribingScannedPdf
-                                                          └─ indexed | indexedWithoutVectors
+indexingQueue (module scope, parallel)
+├── metadata lane (always open, FIFO, 2 at a time)
+│    └── spawn(indexingItemMachine, { itemId, file })
+│         readingMetadata ── nothing to save (a zip) ──→ indexed
+│         readingMetadata → savingMetadata ⇄ retry ──→ indexed | failed
+│         output: chunks, needsOcr ─┐
+├── deferred lane (running | paused, FIFO, 2 at a time)  ◄─┘
+│    ├── spawn(embedMachine, { itemId, chunks })
+│    │     embeddingChunks → savingVectors ⇄ retry ──→ embedded | withoutVectors
+│    └── spawn(ocrMachine, { itemId, file })
+│          transcribing ──→ transcribed | failed
+│            └─ each saved page: pageChunks ──→ a new embed job
 ```
+
+The upload runner pauses the deferred lane while any file is in flight and
+resumes it after 2 s with none (`DEFERRED_RESUME_DELAY_MS`), the same way it
+pauses thumbnail downloads. A pause starts nothing new; a running job finishes.
 
 ## Decisions worth knowing before editing
 
@@ -48,7 +73,14 @@ indexingQueue (module scope, FIFO, 2 at a time)
   a second try.
 - **Missing vectors don't fail the file.** Its chunks are already saved and
   keyword-searchable, and `useEmbeddingBackfill` adds vectors to chunks that
-  have none. That ending is `indexedWithoutVectors`.
+  have none. That ending is `withoutVectors`, in `embed.machine`.
+- **OCR makes no vectors.** `ocr.machine` saves each page (`save_ocr_page`) and
+  emits its chunks; the queue turns each page into an `embed.machine` job. A
+  scanned PDF still waiting for OCR when the tab reloads gets no OCR text: OCR
+  has no backfill.
+- **Metadata still lags a large upload.** While files upload, the server answers
+  `save_media_metadata` slowly (p90 7.7 s on the 655-file run, 375 ms once idle),
+  so most facets land in the minute or two after the last row.
 - **No request when there is nothing to save.** A zip or an unknown binary
   reads as `{}`. `hasMetadataToSave` (`utils/media-metadata.ts`) applies the
   form builder's own rule, so the machine goes straight to `indexed`: no POST,
@@ -56,7 +88,7 @@ indexingQueue (module scope, FIFO, 2 at a time)
 - **One page reload per batch.** `save_media_metadata` writes facets the page
   shows, and the actors use plain `fetch`, which reloads nothing. The queue
   collects the saves and `useIndexingRevalidation` calls `revalidate()` once
-  the queue is empty. Never `navigate(<current URL>)`: while you are navigating
+  the metadata lane is empty (vectors and OCR change nothing the page shows). Never `navigate(<current URL>)`: while you are navigating
   it cancels your navigation (React Router's `startNavigation` aborts the
   pending one) and keeps you on the page you were leaving.
 - **Every state has a `description`**, which is what the Stately editor shows.

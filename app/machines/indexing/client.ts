@@ -41,6 +41,28 @@ export function enqueueIndexing(itemId: string, file: File): void {
 }
 
 /**
+ * Holds back the GPU work (vectors and OCR) while an upload moves bytes.
+ * Jobs keep queueing; running ones finish; none is started.
+ *
+ * @example
+ * if (uploading) pauseDeferredIndexing()
+ */
+export function pauseDeferredIndexing(): void {
+  indexingQueue.send({ type: 'pauseDeferred' })
+}
+
+/**
+ * Lets the GPU work (vectors and OCR) run again, oldest first. The upload
+ * runner calls it once uploads have been idle for a moment.
+ *
+ * @example
+ * resumeLater.call(resumeDeferredIndexing, DEFERRED_RESUME_DELAY_MS)
+ */
+export function resumeDeferredIndexing(): void {
+  indexingQueue.send({ type: 'resumeDeferred' })
+}
+
+/**
  * Tells the queue the page has reloaded, so the metadata saves it collected
  * no longer need a reload.
  *
