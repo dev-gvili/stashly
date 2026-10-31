@@ -6,8 +6,8 @@
 
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
-**Now (30 Oct):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, all 1022 unit tests in 87 files with none excluded, and the build. Green on `d7592ff` (30 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+**Now (31 Oct):** the safety net is mostly in place.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1082 in 93 files), and the build. Green on `b5ae56b` (31 Oct). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors and analytics:** Vinktar on server and browser since 10 Oct (item 4, partly done).
@@ -23,7 +23,9 @@
 
 **54 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 3 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata) · categories: Code 24, Architecture 20, Infrastructure 4, Test 3, Documentation 2, Dependency 1
 
-**Status at 30 Oct 2026 (latest):** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 3 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 37). Item 44 declined, measured: each of the three access checks per file is one statement of about 3 ms and two are deliberate, and merging complete with create would save one request and 0.16–0.39 s per file but not a batch's time, for a 1–2 day rewrite of the upload machines.
+**Status at 31 Oct 2026 (latest, item 54 resolved):** 32 resolved · 1 resolved in code, rollout step unconfirmed (2) · 7 partly done (4, 10, 16, 17, 23, 48, 53) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 37, 45–47, 49–51). Item 54 resolved: scanned PDFs are read by PaddleOCR PP-OCRv6 (Baidu's official ONNX, 31 MB) in a dedicated worker, and GLM-OCR (623 MB) only re-reads a page below 0.89 confidence, for Hebrew, which PP-OCR can't read. The same real 12-page scan took about 28 minutes with GLM-OCR and takes 12.4 s, with 0 main-thread long tasks. A GPU reset no longer breaks AI work for the rest of the tab: cached models drop themselves and the OCR worker restarts. Open from it: the threshold has not met a real Hebrew scan, and a page that falls back to GLM-OCR can still hang this GPU.
+
+**Status at 30 Oct 2026:** 29 resolved · 1 resolved in code, rollout step unconfirmed · 5 partly done · 3 declined · 2 open from the audit (12, 13) · 4 new and open (19, 20, 22, 37). Item 44 declined, measured: each of the three access checks per file is one statement of about 3 ms and two are deliberate, and merging complete with create would save one request and 0.16–0.39 s per file but not a batch's time, for a 1–2 day rewrite of the upload machines.
 
 **Status at 31 Oct 2026 (item 53 partly done):** an upload's metadata no longer waits behind embeddings and OCR. Metadata, vectors and OCR are three machines, and the GPU work waits until uploads are idle. On the 655-file upload every metadata save landed by 256 s (273 by 399 s before, still running) and every markdown and image facet was saved. It still trails a large upload by about 107 s while the server is busy, so item 53 stays open.
 
@@ -71,7 +73,7 @@
 
 ### What's left, in priority order
 
-*Updated 25 Oct (items 31–44 added later that day). Ordered by priority score; new items are marked **new**.*
+*Updated 31 Oct (items 31–44 added 25 Oct, 45–54 on 30–31 Oct). Listed in the order items were added; new items are marked **new**.*
 
 | # | Item | Score | What remains | Blocked on |
 |---|------|-------|--------------|------------|
@@ -118,7 +120,7 @@
 | 51 | **new** One held row lock stalls the size rollup for every user | 12 | Run item 42's 32-uploader benchmark with a large trash or move in the same tree; if the rollup stalls, batch and lock per owner tree | — |
 | 52 | ~~The main thread is saturated for the whole upload~~ | 24 | Resolved 2026-10-31 (`ec4b521`, `999b5a1`): no layout animation, only visible upload rows mounted, no per-file watchers; 650-file upload 698 → 90 s, main-thread blocking 70% → 0%, measured | — |
 | 53 | **new** An upload's metadata waits behind its embeddings and is lost on reload | 24 | Split in (31 Oct): all 655 metadata saves by 256 s instead of 273 by 399 s, every md/image facet saved; still lags a large upload by about 107 s while the server is busy (`save_media_metadata` p90 7.7 s) | — |
-| 54 | **new** OCR is slow, and its models haven't been re-surveyed | 15 | Measure seconds per page with both engines on one scanned PDF, survey current browser OCR models, benchmark, switch on numbers | — |
+| 54 | ~~OCR is slow, and its models haven't been re-surveyed~~ | 15 | Resolved 2026-10-31: PaddleOCR PP-OCRv6 (31 MB, in a worker) by default, GLM-OCR only for pages below 0.89 confidence; 12-page scan about 28 min → 12.4 s, measured | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -179,7 +181,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 51 | One held row lock stalls the size rollup for every user | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
 | 52 | ~~The main thread is saturated for the whole upload~~ | Architecture | 4 | 4 | 3 | **24** (Medium) | 2–3 days | Resolved 31 Oct |
 | 53 | An upload's metadata waits behind its embeddings and is lost on reload | Architecture | 4 | 4 | 3 | **24** (Medium) | 1–2 days | Partly done (31 Oct) |
-| 54 | OCR is slow, and its models haven't been re-surveyed | Architecture | 3 | 2 | 3 | **15** (Low) | 2–3 days | New 31 Oct |
+| 54 | ~~OCR is slow, and its models haven't been re-surveyed~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 2–3 days | Resolved 31 Oct |
 
 ## Details
 
@@ -1030,7 +1032,12 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 
 - **Evidence:** scanned PDFs are transcribed in the browser by GLM-OCR 0.9B (about 623 MB, the default) or Florence-2 base-ft (about 340 MB, English only), up to `OCR_MAX_PAGES = 15` pages. The `stashly-ai-inference` skill records about 28 s a page, about 70% of it before the first token (CPU preprocessing and the vision encoder), both scaling with `OCR_MAX_PIXELS`. Not re-measured; the engines were last compared months ago.
 - **Fix:** measure seconds per page and the time before the first token, with both engines, on one fixed scanned PDF. Then survey current browser-capable OCR models (WebGPU or ONNX), benchmark the best candidates on the same PDF, and switch only on numbers.
-- **Status 2026-10-31: open.** Item 53 moves OCR into its own machine first.
+- **Status 2026-10-31: resolved** (`91e530f`, `71be088`, `0f63f4b`, `8aaa67e`; with `6651a44`). Measured on one real 12-page scan with no text layer ("Stashly upload load audit.pdf", 443 lines): GLM-OCR took about 28 minutes (03:05–03:33 by its page saves); **PaddleOCR PP-OCRv6 takes 12.3–12.5 s warm, 17.5 s cold**, with 15,399 characters against GLM's about 14,000.
+  - **Survey.** PaddleOCR-VL can't run here: transformers.js 4.3 has no `paddleocr_vl` architecture, and its ONNX exports on the Hub are CPU/OpenVINO builds with no KV cache. Chosen instead: Baidu's official ONNX `PaddlePaddle/PP-OCRv6_small_det_onnx` and `_rec_onnx` (31 MB against 623 MB), pinned to commits, run on `onnxruntime-web` in a dedicated worker (`paddle-ocr.worker.ts`). They are what `paddlex --paddle2onnx` produces (PaddleOCR docs). The pre/post-processing is a port of the `runemic-ai/ocr-arena` Space, with v6's thresholds; LightOnOCR, EasyOCR and Tesseract from that Space were not benchmarked.
+  - **Speed.** Recognition is batched 8 lines a run, sorted by aspect ratio: 12.9 → 7.0 s of recognition on the file, total 23.5 → 17.6 s, 420 of 443 lines identical. Moving it into a worker took the warm total to 12.4 s, with 0 main-thread long tasks. A synthetic benchmark page had hidden the batching gain, so every number here comes from the real file.
+  - **Hebrew.** PP-OCR has no Hebrew recognizer. A page whose `pageConfidence` is below 0.89 is re-read by GLM-OCR: 27 real English pages scored 0.92–0.997; synthetic Hebrew 0.649 and 0, Hebrew mixed with Latin 0.868. Empty, picture-shaped regions are left out: counting them sent an English cover (0.848) to GLM.
+  - **GPU resets.** GLM-OCR hung this NVIDIA Turing twice (`DXGI_ERROR_DEVICE_HUNG`). Every cached model now drops itself on a lost device (`isDeviceLostError`), and the PaddleOCR worker restarts after any error. Before that, one reset failed every later OCR page and embedding in the tab.
+  - **Left open:** the 0.89 threshold has not met a real Hebrew scan; a page that does fall back can still reset the GPU; the recognizer copies 120–370 MB a page back from the GPU, which an argmax inside the model would remove (needs our own converted model); the server build carries two unused 26 MB copies of the ONNX Runtime WASM.
 
 ## Changes since the audit
 
@@ -1117,6 +1124,13 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-10-30 | `92c804e`, `839f435` | 42, 45–47 | Item 42 resolved: migrations `20261030140000_upload_size_delta_log` and `20261030160000_upload_size_inline_when_idle`, `app/.server/size-rollup.ts`, 16 new test cases (1038/0 in 88 files). Measured: one uploader 0 deltas logged and size work 757 ms (615 before); 32 uploaders into one shared folder 2,017 → 8,334 files/s, 0.06 lock waiters, 2,821 ancestor writes instead of 100,512. Logging every upload (3.5× costlier for one uploader) and a lock-first decision that starved the rollup were measured and replaced. Items 45–47 registered. |
 | 2026-10-30 | `46b3a2b` | 48 | `/api/items` answers a malformed body with 400, not 500: the three item-list intents 500 → 400 (measured), 5 new route tests red → green. About 25 other handlers with the same pattern recorded. |
 | 2026-10-30 | no commit (measurement) | 44 | On `aa91fb4`: `assertCanUploadTo` is 1 statement (~3 ms warm), three per file. Per file, complete 249–537 ms, a 44–113 ms browser gap, create 120–288 ms; 12 of the batch's 46 requests. Declined. |
+| 2026-10-31 | `ec4b521` | 52, 45 | The upload panel's rows lose framer-motion's layout animation: 650-file upload 698 → 243 s, main-thread blocking 70% → 38%, folder reloads 139 → 9. |
+| 2026-10-31 | `999b5a1` | 52 | Only the visible upload rows are mounted, and the thumbnail runner has one queue subscription instead of a watcher per file: the same upload 233 → 90 s, blocking 38% → 0%. Per-file machine subscriptions were measured first, changed nothing, and were reverted. |
+| 2026-10-31 | `42502a5` | 53, 13 | Indexing split into a metadata machine (right after `itemCreated`), an embed machine and an OCR machine; the GPU lane waits while uploads run. 655-file upload: every metadata save by 256 s (273 by 399 s before), every markdown and image facet saved. 18 new tests; 1054/0 in 91 files. |
+| 2026-10-31 | `6651a44` | 54, 13 | A lost WebGPU device (Windows TDR during GLM-OCR) no longer fails every later AI job in the tab: OCR drops its cached model and stops the run, the embedding worker restarts. 3 new tests; 1057/0. |
+| 2026-10-31 | `91e530f`, `71be088` | 54, 13 | PaddleOCR PP-OCRv6 (official ONNX, 31 MB) is the default OCR engine; GLM-OCR re-reads low-confidence pages. Real 12-page scan: about 28 min → 17.6 s; recognition batched 8 lines a run, 12.9 → 7.0 s. 19 new tests; 1076/0. |
+| 2026-10-31 | `0f63f4b` | 54, 13 | Empty, picture-shaped regions no longer count toward a page's confidence: an English cover with icons scored 0.848 and was sent to GLM-OCR, which hung the GPU; now 0.92. 2 new tests; 1078/0. |
+| 2026-10-31 | `8aaa67e` | 54, 13 | PaddleOCR runs in a dedicated worker that restarts after any error, so a GPU reset no longer leaves OCR broken until a reload. 12-page scan 17.6 → 12.4 s warm, 0 main-thread long tasks. 4 new tests; 1082/0 in 93 files. |
 
 ## Phased remediation plan
 
