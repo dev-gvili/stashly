@@ -302,7 +302,7 @@ export function AddToCollectionDialog({
           {count > 0 && (
             <Button
               variant="link"
-              className="font-stashly h-auto p-0"
+              className="font-stashly h-auto p-0 text-muted-foreground hover:text-foreground hover:no-underline"
               onClick={() => setSelected(new Set())}
             >
               Clear

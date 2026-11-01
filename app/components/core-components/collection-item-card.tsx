@@ -180,7 +180,20 @@ export function CollectionItemCard({
 }: CollectionItemCardProps) {
   const picker = mode === 'picker'
 
-  const footer = (
+  const footer = picker ? (
+    // Picker tiles are denser than the collection page's: name and size only.
+    <div
+      className={cn(
+        'flex flex-col gap-px px-2.5 pt-2 pb-2.25',
+        existing && 'opacity-50'
+      )}
+    >
+      <p className="font-stashly truncate text-xs font-medium">{item.name}</p>
+      <p className="font-stashly truncate text-xs text-muted-foreground">
+        {formatSize('byte', 'unit', Number(item.size))}
+      </p>
+    </div>
+  ) : (
     <div
       className={cn(
         'flex items-center gap-2.25 px-3 py-2.5',
