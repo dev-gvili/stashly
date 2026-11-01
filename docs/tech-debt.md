@@ -23,7 +23,9 @@
 
 **60 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 1 added 1 Nov: 60 from making each upload its own object) · categories: Code 27, Architecture 22, Infrastructure 4, Test 4, Documentation 2, Dependency 1
 
-**Status at 1 Nov 2026 (latest, item 60):** 38 resolved · 1 resolved in code, rollout step unconfirmed (2) · 5 partly done (10, 16, 17, 23, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 12 new and open (19, 20, 22, 37, 45–47, 49–51, 57, 59). Item 58's refusal of a filed key also refused every same-name upload, which a versions feature and the duplicates comparison both need. Each upload now has its own object (`<root>/<itemId>/<name>`), and the folders it named live in `File.uploadPath`; same-name uploads are separate items again, each with its own bytes. Item 60, found on the way and resolved: a copy points at its original's object, and permanently deleting the original deleted the copy's bytes.
+**Status at 1 Nov 2026 (latest, items 23 and 37):** 40 resolved · 1 resolved in code, rollout step unconfirmed (2) · 4 partly done (10, 16, 17, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 11 new and open (19, 20, 22, 45–47, 49–51, 57, 59). Item 23: the last route that queried Prisma itself (`workspace.tsx`) goes through `getWorkspaceOverview`, which also stops a non-member telling real workspace ids from unknown ones. Item 37: the `.ts` re-sniff on complete is gone; nothing read its answer and no row existed yet to store it on.
+
+**Status at 1 Nov 2026 (item 60):** 38 resolved · 1 resolved in code, rollout step unconfirmed (2) · 5 partly done (10, 16, 17, 23, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 12 new and open (19, 20, 22, 37, 45–47, 49–51, 57, 59). Item 58's refusal of a filed key also refused every same-name upload, which a versions feature and the duplicates comparison both need. Each upload now has its own object (`<root>/<itemId>/<name>`), and the folders it named live in `File.uploadPath`; same-name uploads are separate items again, each with its own bytes. Item 60, found on the way and resolved: a copy points at its original's object, and permanently deleting the original deleted the copy's bytes.
 
 **Status at 31 Oct 2026 (items 58–59):** 37 resolved · 1 resolved in code, rollout step unconfirmed (2) · 5 partly done (10, 16, 17, 23, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 12 new and open (19, 20, 22, 37, 45–47, 49–51, 57, 59). An upload was charged the size the client claimed: claiming 0 stored three 10 MB files for free (measured). Item 58 resolved: the charge is the stored object's size, read from storage, and an upload onto a name already filed in its folder is refused before any bytes move, because it swapped the bytes behind the filed row while its size stayed. Item 59, open: bytes uploaded and never filed are charged to no one, and rows filed before the fix keep their claimed size.
 
@@ -110,10 +112,10 @@
 | 21 | ~~Embedding backfill runs in every tab~~ | 18 | Resolved 2026-10-09: model in a worker (main-thread blocking 1,279 → 0 ms, measured), one tab via a Web Lock | — |
 | 12 | Linter | 16 | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
 | 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; the rest of `quota-actions`; routes and components | — |
-| 23 | **new** Prisma calls in route modules | 16 | `workspaces/workspace.tsx` only | Deferred to after personal-first (TASKS.md, 8 Oct) |
+| 23 | ~~Prisma calls in route modules~~ | 16 | Resolved 2026-11-01: `workspace.tsx` calls `getWorkspaceOverview`; the guard test has no exceptions left | — |
 | 24 | ~~Slow first page load~~ | 15 | Resolved 2026-10-09: server dependencies bundled; first page 4–15 s → ~1 s here, first request 1.6 → 0.57 s on Linux (CI) | — |
 | 36 | ~~Folder path resolved again for every file~~ | 15 | Resolved 2026-10-26: tree resolved once per batch, each file row one statement; 639-file upload 11,600 → 1,284 statements, 1,824 → 1 locks, measured | — |
-| 37 | **new** The `.ts` sniff's result is thrown away | 15 | Persist the verified type or drop the S3 read | — |
+| 37 | ~~The `.ts` sniff's result is thrown away~~ | 15 | Resolved 2026-11-01: the S3 read dropped; the client's sniff before upload stays | — |
 | 38 | ~~Which upload concurrency limit applies is unknown~~ | 15 | Resolved 2026-10-26 (`78a63f3`): 100, measured; the code now says 100 too | — |
 | 16 | Overlapping UI primitives | 12 | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
 | 17 | Unfinished migrations | 12 | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes | Deferred to after personal-first (TASKS.md, 4 Oct) |
@@ -168,7 +170,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 20 | The Playwright specs don't run in CI | Test | 3 | 3 | 2 | **24** (Medium) | 0.5–1 day | New 8 Oct |
 | 21 | ~~Embedding backfill loads a WebGPU model on the main thread of every tab~~ | Architecture | 3 | 3 | 3 | **18** (Medium) | 1–2 days | Resolved 9 Oct |
 | 22 | Open decisions in the upload and onboarding paths | Architecture | 2 | 3 | 2 | **20** (Medium) | 1 day once decided | New 8 Oct |
-| 23 | Prisma calls made directly from route modules | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Partly done (8 Oct): workspace route deferred |
+| 23 | Prisma calls made directly from route modules | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Resolved 1 Nov |
 | 24 | ~~Slow first page load (cold document TTFB)~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 1–3 days | Resolved 9 Oct |
 | 25 | ~~Share-link actions had no access check~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 8 Oct |
 | 26 | ~~`hasItemPermission` counts soft-deleted and expired permissions~~ | Code | 4 | 3 | 1 | **35** (High) | 0.5 day | Resolved 8 Oct |
@@ -182,7 +184,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 34 | ~~Upload requests retry 4xx answers five times~~ | Code | 2 | 2 | 1 | **20** (Medium) | 1–2 h | Resolved |
 | 35 | ~~A database session lookup on every request~~ | Architecture | 3 | 2 | 2 | **20** (Medium) | 0.5 day | Resolved |
 | 36 | ~~The folder path is resolved again for every file of a folder upload~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 1–2 days | Resolved |
-| 37 | The `.ts` sniff reads from S3 and nothing uses the result | Code | 1 | 2 | 1 | **15** (Low) | 1–2 h | New 25 Oct |
+| 37 | The `.ts` sniff reads from S3 and nothing uses the result | Code | 1 | 2 | 1 | **15** (Low) | 1–2 h | Resolved 1 Nov |
 | 38 | ~~Which upload concurrency limit applies (10 or 100) is unknown~~ | Documentation | 2 | 1 | 1 | **15** (Low) | 1 h | Resolved 26 Oct |
 | 39 | ~~One presign request per 5 MiB part~~ | Architecture | 2 | 1 | 2 | **12** (Low) | 0.5–1 day | Resolved 26 Oct |
 | 40 | ~~Media-metadata writes do extra work~~ | Code | 1 | 1 | 1 | **10** (Low) | 2 h | Resolved 26 Oct |
@@ -607,6 +609,8 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - **Deferred:** `workspace.tsx` (six queries) is workspace-only, so it moved to TASKS.md *Someday* per personal-first.
   - Moving `api/shares.ts` turned up items 25 and 26.
   - Tests: `route-query-actions.test.ts` (5, live DB). `pnpm test` 804/804 (67 files), the type gate is clean and `pnpm build` passes.
+- **Status 2026-11-01: resolved.** `workspace.tsx`'s six queries moved to `getWorkspaceOverview` (workspace-actions), which checks `viewer` **before** looking the workspace up. Before, the route looked it up first, so a non-member got 404 for an unknown id and 403 for a real one, which told them which ids exist; now both answer 403. The queries run in parallel. `no-direct-prisma.test.ts` has no exceptions left. `pnpm test` 1151/0 in 96 files (one fewer: the guard's two tests became one), type gate exit 0.
+  - **Noticed, not fixed:** the loader still sends `storageBytes: 0n` and `status: 'offline'` for every member, placeholder values the page displays.
 
 ### 24. Slow first page load (cold document TTFB)
 
@@ -770,6 +774,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** `complete-multipart-upload` (`app/routes/api/upload.ts:122`) does a 1 KB ranged `GetObject` for `.ts`/`.tsx` files. Its comment calls this "the trust boundary" and says the verified type is persisted on the Item, but that step is still a `TODO`, and nothing in `app/` reads the returned `verifiedKind`/`verifiedContentType`.
 - **Fix:** persist the verified type on the Item, or delete the read and the comment. Today it costs an S3 call whose answer is dropped, under a comment promising it is stored.
 - **Status 2026-10-25: open.**
+- **Status 2026-11-01: resolved, by deleting the read.** Persisting was never possible there: `complete-multipart-upload` runs before the `File` row exists, so the `TODO`'s `item.update({ where: { key } })` had nothing to match. The client already sniffs the same 1 KB before upload (`normalizeFile`, `app/utils/sniff.ts`). Removed the ranged `GetObject`, the response's `verifiedKind`/`verifiedContentType` and `upload_transfer_completed`'s `ts_kind` property; `getObjectHead` stays for search indexing.
 
 ### 38. Which upload concurrency limit applies (10 or 100) is unknown
 
