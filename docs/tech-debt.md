@@ -7,7 +7,7 @@
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
 **Now (1 Nov):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1186 in 100 files), and the build. Green on `ebfd3da` (1 Nov). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1189 in 100 files), and the build. Green on `ebfd3da` (1 Nov). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors, analytics and logs:** Vinktar on server and browser since 10 Oct; product events, route timing and a structured logger since 31 Oct (item 4, resolved).
@@ -23,7 +23,9 @@
 
 **60 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 1 added 1 Nov: 60 from making each upload its own object) · categories: Code 27, Architecture 22, Infrastructure 4, Test 4, Documentation 2, Dependency 1
 
-**Status at 1 Nov 2026 (latest, item 48):** 43 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 9 new and open (19, 20, 22, 45–47, 51, 57, 59). Item 48: a malformed request to any route answers 400 instead of 500, through one helper in every handler.
+**Status at 1 Nov 2026 (latest, item 10 partly done):** counts unchanged. Keyboard users can open a card or a list row (Tab, Enter), phones have a menu button, and the audio seek bar takes the keyboard. Testing found two bugs on the way and fixed them: the sidebar trigger toggled the phone sheet from the desktop state, so it stayed shut, and every phone-width load threw a hydration error.
+
+**Status at 1 Nov 2026 (item 48):** 43 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 9 new and open (19, 20, 22, 45–47, 51, 57, 59). Item 48: a malformed request to any route answers 400 instead of 500, through one helper in every handler.
 
 **Status at 1 Nov 2026 (items 49 and 50):** 42 resolved · 1 resolved in code, rollout step unconfirmed (2) · 4 partly done (10, 16, 17, 48) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 9 new and open (19, 20, 22, 45–47, 51, 57, 59). Item 49: the server starts the size rollup as it loads, so deltas a stopped process left pending no longer wait for the next upload. Item 50: a live-DB test fails if `Folder_itemId_fkey` stops being deferred, checked against a rolled-back `NOT DEFERRABLE`.
 
@@ -107,7 +109,7 @@
 | 28 | ~~Form and search decoders mangle typed text~~ | 25 | Resolved 2026-10-23: values decoded once, typed text kept as text, bad input is a 400 | — |
 | 19 | **new** Stripe webhook is a stub | 24 | All four event handlers | Whether paid plans ship before launch |
 | 20 | **new** Playwright specs don't run in CI | 24 | A CI job for the 8 specs; the E2E bucket leaks one per run | — |
-| 10 | Accessibility and responsive UI | 21 | Everything except the nested Filter buttons | — |
+| 10 | Accessibility and responsive UI | 21 | Keyboard on cards and rows, phone navigation and the seek bar done 1 Nov. Left: about 50 unnamed icon buttons, the toolbar below ~840px, the item panel covering the file | — |
 | 22 | **new** Open decisions in upload and onboarding | 20 | Three decisions already written up in TASKS.md | Owner's decision |
 | 30 | ~~Signed cookies fall back to the secret `'secret'`~~ | 20 | Resolved 2026-10-26 (`074c06e`): production refuses to boot without `SESSION_SECRET`; set the Fly secret before the next deploy | — |
 | 33 | ~~Cancelled uploads leave parts in S3~~ | 20 | Resolved 2026-10-25 (`8a79e89`, `e4aeb0e`): cancel, retry exhaustion and a failed complete all abort the multipart upload | — |
@@ -161,7 +163,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 7 | ~~The type baseline is stale, and escape hatches are growing~~ | Code | 3 | 3 | 2 | **24** (Medium) | 1–2 days | Resolved |
 | 8 | ~~Data-integrity gaps in loaders and deletes~~ | Code | 2 | 4 | 2 | **24** (Medium) | 1–2 days | Resolved |
 | 9 | ~~Failed uploads leave S3 bytes and charged quota with no Item~~ | Architecture | 3 | 4 | 3 | **21** (Medium) | 2–3 days | Resolved |
-| 10 | UI accessibility and responsive debt | Code | 4 | 3 | 3 | **21** (Medium) | 5–8 days | Partly done (8 Oct) |
+| 10 | UI accessibility and responsive debt | Code | 4 | 3 | 3 | **21** (Medium) | 5–8 days | Partly done (1 Nov) |
 | 11 | ~~Generated and personal files in git~~ | Documentation | 2 | 2 | 1 | **20** (Medium) | 0.5 day | Resolved |
 | 12 | No linter | Code | 2 | 2 | 2 | **16** (Medium) | 1 day + fixes | Open |
 | 13 | Tests are missing where the risk is | Test | 4 | 4 | 4 | **16** (Medium) | ongoing, ~2 weeks | Open |
@@ -428,6 +430,12 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - **Fixed:** the Filter trigger no longer nests the flag toggles inside its button (`eaf71e4`, 3 Oct), which removes the invalid HTML behind the hydration error.
   - **A cheap path for the biggest finding:** `item-card.tsx` already defines `ItemCard.Link`, a real React Router `<Link>` (it renders a `<span>` for trashed items). No component renders it: a search for `<X.Link` outside `components/ui/` finds nothing. Rendering it as a stretched link over the card would make cards keyboard- and middle-click-reachable without rewriting them. List rows (`data-table.tsx`) still navigate from a `tr onClick`.
   - **Unchanged:** unnamed icon buttons, the toolbar overflow below ~840px, phone navigation, the item panel covering the file, and the audio seek bar. Not re-measured in a browser.
+- **Status 2026-11-01: partly done; four findings fixed, three left.** Checked in the browser on the signed-in dev app unless noted.
+  - **Cards:** `ItemCardRoot` renders a link stretched over every card (`data-slot="item-card-link"`, named by the item), `pointer-events-none` so the mouse still lands on the card. A real Tab focused a folder card with a visible ring and Enter opened it; all 25 file cards in the folder had the link; the image stayed topmost under the pointer, a click opened the file, and the checkbox selected without navigating. Trashed items follow the click rule: a trashed folder opens inside Trash, a trashed file gets no link.
+  - **List rows:** the name cell is a link (`list-view.tsx`); Tab focused it with a ring and Enter opened the folder. The row click stays for the mouse. The folder page has no list layout at all (`ListLayout` is used only by All, collections and search), unchanged.
+  - **Phone navigation:** a `SidebarTrigger` in `app-header.tsx`, `md:hidden` (the sheet's breakpoint is 768px). A real tap opened the sheet and Escape closed it. Two bugs found doing this: the trigger toggled the sheet with `setOpenMobile(!open)`, the desktop state, so with the desktop sidebar expanded a tap kept it shut (now `!openMobile`); and `useIsMobile` read `window.innerWidth` in its initial state, so every load at phone width threw "Hydration failed" and re-rendered the layout (measured in fresh tabs: thrown with the old line, none with the fix; it now starts from the SSR value and the existing `matchMedia` effect corrects it after mount).
+  - **Audio seek bar:** `tabIndex`, `aria-valuemin/max/now/valuetext`, arrows ±5 s, Page Up/Down ±30 s, Home/End. **Not checked in a browser:** the test account had no audio file.
+  - **Left:** about 50 icon buttons without a name (the card checkboxes are among them), the toolbar below ~840px, and the item panel covering the file (not re-measured). Middle-click on a card still doesn't open a new tab (the link takes no pointer events); list rows do.
 
 ### 11. Generated and personal files in git
 
