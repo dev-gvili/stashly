@@ -200,7 +200,9 @@ export function CollectionItemCard({
   const preview = (
     <div
       className={cn(
-        'relative aspect-4/3 overflow-hidden border-b border-input bg-muted',
+        'relative aspect-4/3 overflow-hidden bg-muted',
+        // The detail tile separates preview from footer; the picker tile doesn't.
+        !picker && 'border-b border-input',
         existing && 'opacity-50'
       )}
     >
@@ -209,7 +211,8 @@ export function CollectionItemCard({
   )
 
   const shell = cn(
-    'relative flex flex-col overflow-hidden rounded-2xl border border-border/50 bg-card text-left transition-[border-color,box-shadow] hover:border-border',
+    'relative flex flex-col overflow-hidden border border-border/50 bg-card text-left transition-[border-color,box-shadow] hover:border-border',
+    picker ? 'rounded-xl' : 'rounded-2xl',
     selected && 'border-primary ring-3 ring-primary/15 hover:border-primary'
   )
 
