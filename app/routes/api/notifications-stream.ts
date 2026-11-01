@@ -1,5 +1,6 @@
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
 import { eventStream } from 'remix-utils/sse/server'
-import { auth } from '@/services/auth'
 import {
   ensureListener,
   subscribe,
@@ -19,9 +20,10 @@ import type { Route } from './+types/notifications-stream'
 // another user's stream.
 // ---------------------------------------------------------------------------
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({ headers: request.headers })
-  if (!session) return new Response('Unauthorized', { status: 401 })
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
+
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const userId = session.user.id
 

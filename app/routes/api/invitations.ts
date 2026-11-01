@@ -1,9 +1,10 @@
+import { authMiddleware } from '@/services/middleware/auth';
+import { sessionContext } from '@/services/middleware/context';
 import {
     invitationsApiRouteInput,
     invitationsLoaderInput,
 } from '@/schemas/api.schemas';
 import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
-import { auth } from '@/services/auth';
 import {
     acceptInvitation,
     cancelInvitation,
@@ -17,18 +18,17 @@ import {
     undoInvitationResponse,
 } from '@/services/invitation-actions';
 import { parseFormData, parseSearchParams } from '@/utils/parsers';
-import { data, redirect } from 'react-router';
+import { data } from 'react-router';
 import type { Route } from './+types/invitations';
 
 // ---------------------------------------------------------------------------
 // Loader — GET /api/invitations?type=sent|received[&itemId=xxx]
 // ---------------------------------------------------------------------------
 
-export async function loader({ request }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware];
+
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const { type, itemId } = parseOrRespond(() => parseSearchParams({
     request,
@@ -57,11 +57,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 // Action — POST /api/invitations
 // ---------------------------------------------------------------------------
 
-export async function action({ request }: Route.ActionArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function action({ request, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
 
   const parsedData = await parseFormData({
     request,

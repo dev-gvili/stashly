@@ -1,19 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 
-// These routes read the session with their own getSession call; the auth module
-// is mocked to hand back a signed-in user. A malformed request must be refused
-// with 400 by the parser, before any action (or the database) is reached.
-vi.mock('@/services/auth', () => ({
-  auth: {
-    api: {
-      getSession: vi.fn(async () => ({
-        user: { id: 'usr_test', email: 'test@example.com', driveId: 'drv_test' },
-      })),
-    },
-  },
-}))
+// These routes read the session from the context `authMiddleware` fills; the
+// test fills it with a signed-in user, and stubs the auth module so better-auth
+// isn't loaded. A malformed request must be refused with 400 by the parser,
+// before any action (or the database) is reached.
+vi.mock('@/services/auth', () => ({ auth: { api: { getSession: vi.fn() } } }))
 
 import { RouterContextProvider } from 'react-router'
+import { sessionContext } from '@/services/middleware/context'
 import * as activities from '../activities'
 import * as collections from '../collections'
 import * as comments from '../comments'
@@ -26,7 +20,11 @@ type Handler = (args: never) => unknown
 /** The status of the `data()` response the handler threw, or of what it returned. */
 async function statusOf(handler: Handler, request: Request, params: Record<string, string> = {}) {
   try {
-    const result = await handler({ request, params, context: new RouterContextProvider() } as never)
+    const context = new RouterContextProvider()
+    context.set(sessionContext, {
+      user: { id: 'usr_test', email: 'test@example.com', driveId: 'drv_test' },
+    } as never)
+    const result = await handler({ request, params, context } as never)
     if (result instanceof Response) return result.status
     return (result as { init?: { status?: number } } | null)?.init?.status ?? 200
   } catch (thrown) {

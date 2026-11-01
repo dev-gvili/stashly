@@ -1,3 +1,5 @@
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
 /**
  * `/api/search/:type` — the query side of the search feature.
  *
@@ -13,7 +15,6 @@
  *
  * @see docs/semantic-search.md
  */
-import { auth } from '@/services/auth'
 import { getSearchIndexStats, searchItemsHybrid } from '@/services/search-actions'
 import {
   searchApiRouteInput,
@@ -25,7 +26,7 @@ import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.erro
 import { buildItemFilters } from '@/utils/filters/item.filters'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { isSearchableQuery, normalizeQuery } from '@/utils/search-query'
-import { data, redirect } from 'react-router'
+import { data } from 'react-router'
 import type { Route } from './+types/search'
 
 /** Empty result, shared by the too-short-query and unknown-scope paths. */
@@ -65,9 +66,10 @@ function filtersFor(input: {
   } as Parameters<typeof buildItemFilters>[0])
 }
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-  const session = await auth.api.getSession({ headers: request.headers })
-  if (!session) throw redirect('/auth/sign-in')
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
+
+export async function loader({ request, params, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   assertScope(params.type)
 
@@ -104,9 +106,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return data(searchApiRouteOutput.parse(results))
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
-  const session = await auth.api.getSession({ headers: request.headers })
-  if (!session) throw redirect('/auth/sign-in')
+export async function action({ request, params, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
 
   assertScope(params.type)
 

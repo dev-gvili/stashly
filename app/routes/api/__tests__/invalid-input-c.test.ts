@@ -3,11 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 // A request that fails its route's Zod schema is the caller's error: the
 // parsers throw INVALID_INPUT (400), and a handler that lets it escape is
 // answered 500 by React Router. Each case below runs before any action does.
-// Routes still calling `getSession` themselves get a signed-in user from the
-// mocked auth module; the others read the session from the context.
-vi.mock('@/services/auth', () => ({
-  auth: { api: { getSession: vi.fn(async () => ({ user: { id: 'usr_test' } })) } },
-}))
+// The routes read the session from the context `authMiddleware` fills; the auth
+// module is stubbed so better-auth isn't loaded.
+vi.mock('@/services/auth', () => ({ auth: { api: { getSession: vi.fn() } } }))
 
 import { RouterContextProvider } from 'react-router'
 import { sessionContext } from '@/services/middleware/context'

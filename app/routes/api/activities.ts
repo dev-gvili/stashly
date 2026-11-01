@@ -1,5 +1,6 @@
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
 import { data } from 'react-router'
-import { auth } from '@/services/auth'
 import { parseSearchParams } from '@/utils/parsers'
 import { parseOrRespond } from '@/utils/api.errors'
 import { searchActivities } from '@/services/activity-actions'
@@ -12,11 +13,10 @@ const schema = z.object({
   take: z.coerce.number().min(1).max(50).default(20),
 })
 
-export async function loader({ request }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) return data({ error: 'Unauthorized' }, { status: 401 })
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
+
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const params = parseOrRespond(() => parseSearchParams({ request, schema }))
 

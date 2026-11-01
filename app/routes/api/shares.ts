@@ -1,6 +1,7 @@
-import { auth } from '@/services/auth'
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
-import { redirect, data } from 'react-router'
+import { data } from 'react-router'
 import type { Route } from './+types/shares'
 import { sharesApiRouteInput, sharesLoaderInput } from '@/schemas/api.schemas'
 import {
@@ -25,11 +26,10 @@ import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.erro
 // `listShareLinksForItem` enforces that and throws 404/403.
 // ---------------------------------------------------------------------------
 
-export async function loader({ request }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
+
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const { itemId } = parseOrRespond(() =>
     parseSearchParams({ request, schema: sharesLoaderInput })
@@ -54,11 +54,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 // session user and checks itself that they may manage the item's links.
 // ---------------------------------------------------------------------------
 
-export async function action({ request }: Route.ActionArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function action({ request, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
 
   const parsedData = await parseFormData({
     request,

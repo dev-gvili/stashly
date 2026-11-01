@@ -1,6 +1,7 @@
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
 import type { Route } from './+types/pins'
-import { data, redirect } from 'react-router'
-import { auth } from '@/services/auth'
+import { data } from 'react-router'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { pinApiRouteInput, pinApiRouteQuery } from '@/schemas/api.schemas'
 import {
@@ -12,11 +13,10 @@ import {
 } from '@/services/pin-actions'
 import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 
-export const loader = async ({ request }: Route.LoaderArgs) => {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
+
+export const loader = async ({ request, context }: Route.LoaderArgs) => {
+  const session = context.get(sessionContext)
 
   const params = parseOrRespond(() =>
     parseSearchParams({ request, schema: pinApiRouteQuery })
@@ -34,11 +34,8 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
   })
 }
 
-export const action = async ({ request }: Route.ActionArgs) => {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export const action = async ({ request, context }: Route.ActionArgs) => {
+  const session = context.get(sessionContext)
 
   const parsedData = await parseFormData({ request, schema: pinApiRouteInput }).catch(
     rethrowAsResponse

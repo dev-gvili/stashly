@@ -1,5 +1,6 @@
-import { data, redirect } from 'react-router'
-import { auth } from '@/services/auth'
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
+import { data } from 'react-router'
 import type { Route } from './+types/versions'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import {
@@ -15,11 +16,10 @@ import {
   deleteVersion,
 } from '@/services/version-actions'
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
+
+export async function loader({ request, params, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const { itemId: queryItemId, versionId: queryVersionId } = parseOrRespond(() =>
     parseSearchParams({
@@ -53,10 +53,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params, unstable_url, context, unstable_pattern }: Route.ActionArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+  const session = context.get(sessionContext)
 
   const itemId = params.itemId
   if (!itemId) {

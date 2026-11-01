@@ -1,5 +1,6 @@
-import { data, redirect } from 'react-router'
-import { auth } from '@/services/auth'
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
+import { data } from 'react-router'
 import type { Route } from './+types/members'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { membersLoaderInput, membersApiRouteInput } from '@/schemas/api.schemas'
@@ -11,11 +12,10 @@ import {
 } from '@/services/workspace-actions'
 import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 
-export async function loader({ request }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
+
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   const params = parseOrRespond(() => parseSearchParams({ request, schema: membersLoaderInput }))
 
@@ -23,11 +23,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   return data({ members })
 }
 
-export async function action({ request }: Route.ActionArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function action({ request, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
 
   const formData = await parseFormData({ request, schema: membersApiRouteInput }).catch(
     rethrowAsResponse

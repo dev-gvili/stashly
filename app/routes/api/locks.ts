@@ -1,6 +1,6 @@
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
 import type { Route } from './+types/locks'
-import { redirect } from 'react-router'
-import { auth } from '@/services/auth'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { lockApiRouteInput, lockApiRouteQuery } from '@/schemas/api.schemas'
 import {
@@ -11,11 +11,10 @@ import {
 } from '@/services/lock-actions'
 import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 
-export const loader = async ({ request }: Route.LoaderArgs) => {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
+
+export const loader = async ({ request, context }: Route.LoaderArgs) => {
+  const session = context.get(sessionContext)
 
   const params = parseOrRespond(() => parseSearchParams({ request, schema: lockApiRouteQuery }))
 
@@ -28,11 +27,8 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
   return getLockedItems({ userId: session.user.id, cursor: params.cursor })
 }
 
-export const action = async ({ request }: Route.ActionArgs) => {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export const action = async ({ request, context }: Route.ActionArgs) => {
+  const session = context.get(sessionContext)
 
   const formData = await parseFormData({ request, schema: lockApiRouteInput }).catch(
     rethrowAsResponse

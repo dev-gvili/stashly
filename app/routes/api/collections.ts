@@ -1,7 +1,8 @@
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
 import {
   collectionsApiRouteInput
 } from '@/schemas/api.schemas'
-import { auth } from '@/services/auth'
 import {
   addItemsToCollection,
   clearCollection,
@@ -26,11 +27,10 @@ import type { Prisma } from '@/prisma/client'
 import { data, redirect } from 'react-router'
 import type { Route } from './+types/collections'
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/signin')
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
+
+export async function loader({ request, params, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   let searchParams = new URL(request.url).searchParams
   searchParams.set('currentUserId', session.user.id)
@@ -96,11 +96,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   })
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/signin')
+export async function action({ request, params, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
 
   const formData = await parseFormData({
     request,

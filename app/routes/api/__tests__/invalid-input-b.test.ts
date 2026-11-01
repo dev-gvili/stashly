@@ -1,12 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 
-// Routes still calling `auth.api.getSession` themselves get a signed-in user
-// from the mock; the others (permissions) read it from the context. A malformed
-// request must be refused by the parser before any action runs, so no action
-// module is mocked.
-vi.mock('@/services/auth', () => ({
-  auth: { api: { getSession: vi.fn(async () => ({ user: { id: 'usr_test' } })) } },
-}))
+// These routes read the session from the context `authMiddleware` fills; the
+// test fills it, and stubs the auth module so better-auth isn't loaded. A
+// malformed request must be refused by the parser before any action runs, so no
+// action module is mocked.
+vi.mock('@/services/auth', () => ({ auth: { api: { getSession: vi.fn() } } }))
 
 import { RouterContextProvider } from 'react-router'
 import { sessionContext } from '@/services/middleware/context'

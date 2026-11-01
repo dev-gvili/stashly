@@ -1,5 +1,6 @@
-import { data, redirect } from 'react-router'
-import { auth } from '@/services/auth'
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
+import { data } from 'react-router'
 import type { Route } from './+types/users'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { usersLoaderInput, usersApiRouteInput } from '@/schemas/api.schemas'
@@ -12,11 +13,10 @@ import {
 } from '@/services/user-actions'
 import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
+
+export async function loader({ request, params, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   // Detail route: GET /api/users/:userId
   if (params.userId) {
@@ -54,11 +54,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function action({ request, params, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
 
   try {
     const formData = await parseFormData({
