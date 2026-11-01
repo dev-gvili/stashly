@@ -50,6 +50,27 @@ function mediaFile(id: string) {
  * upload fails the way a 403 from `/api/s3/upload` does, and every other file
  * records that it got as far as creating its upload, then waits.
  */
+/**
+ * The manager hands new rows to listening pages instead of keeping them
+ * (tech-debt item 45): a file's row on `upload.createItem.success`, a folder
+ * upload's folders on `upload.items.created`.
+ */
+describe('created rows', () => {
+  it('emits each new row to listeners', () => {
+    const actor = createActor(uploadMachine).start()
+    actor.send({ type: 'upload.config', config: { user } } as any)
+    const seen: unknown[][] = []
+    actor.on('items.created', (e) => seen.push(e.items))
+
+    actor.send({ type: 'upload.items.created', items: [{ id: 'item_dir' }] })
+    actor.send({ type: 'upload.createItem.success', mediaFileId: 'mf_1', item: { id: 'item_file' } })
+    actor.send({ type: 'upload.createItem.success', mediaFileId: 'mf_2' })
+
+    expect(seen).toEqual([[{ id: 'item_dir' }], [{ id: 'item_file' }], []])
+    actor.stop()
+  })
+})
+
 function startManager() {
   const created: string[] = []
   const machine = uploadMachine.provide({

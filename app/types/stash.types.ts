@@ -714,6 +714,10 @@ export interface LibraryStats {
   quota: string
   /** 0–100 */
   usedPercent: number
+  /** the used bytes behind `size`, for adding an upload's rows in the browser */
+  sizeBytes?: number
+  /** the quota bytes behind `quota` */
+  quotaBytes?: number
 }
 
 export type ToolbarContext = 'files' | 'trash' | 'favorites' | 'shared'

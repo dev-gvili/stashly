@@ -3,7 +3,7 @@
  * `client.ts`; this only turns its "metadata saved" reports into a page reload.
  */
 import { useEffect } from 'react'
-import { useRevalidator } from 'react-router'
+import { useMatches, useRevalidator } from 'react-router'
 import { useSelector } from '@xstate/react'
 import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
 import { indexingQueue, markIndexingRevalidated } from './client'
@@ -11,6 +11,19 @@ import type { IndexQueueContext } from './indexing.types'
 
 /** Quiet period after the queue drains before the page reloads. */
 const REVALIDATE_DEBOUNCE_MS = 700
+
+/**
+ * Routes that render facets: the item page (page count, PDF title, audio
+ * artist) and the galleries (dimensions). Folder cards select none, so a
+ * folder page gains nothing from the reload (tech-debt item 45).
+ */
+const FACET_ROUTES = new Set([
+  'stash-file',
+  'stash-workspace-file',
+  'stash-images',
+  'stash-videos',
+  'workspace-gallery',
+])
 
 /**
  * True while any file is queued or being indexed.
@@ -26,7 +39,8 @@ function isIndexing(context: IndexQueueContext): boolean {
 }
 
 /**
- * Reloads the page's data once per upload batch, after its metadata is saved.
+ * Reloads a page that shows facets once per upload batch, after its metadata
+ * is saved. Any other page only clears the saved list.
  *
  * `save_media_metadata` writes facets the page shows (page count, dimensions,
  * EXIF), and indexing saves with a plain `fetch`, which reloads nothing. So
@@ -49,12 +63,13 @@ export function useIndexingRevalidation() {
   )
   const busy = useSelector(indexingQueue, (s) => isIndexing(s.context))
   const revalidator = useRevalidator()
+  const showsFacets = useMatches().some((match) => FACET_ROUTES.has(match.id))
 
   const { markCommitted } = useDebouncedCommit(
     savedCount,
     () => {
       markIndexingRevalidated()
-      revalidator.revalidate()
+      if (showsFacets) revalidator.revalidate()
     },
     { delayMs: REVALIDATE_DEBOUNCE_MS, enabled: savedCount > 0 && !busy }
   )

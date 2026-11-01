@@ -19,6 +19,7 @@ import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { Button } from '@/components/ui/button'
 import { usePagination } from '@/hooks/usePagination'
+import { useCreatedItems } from '@/hooks/useUpload'
 import { motion } from 'framer-motion'
 import { itemVariants } from '@/components/views/variants'
 import { Fragment, useId } from 'react'
@@ -130,6 +131,7 @@ export async function loader({ request, params, context }: Route.ActionArgs) {
   return {
     ...folderContent,
     crumbs,
+    rootId: session.user.rootId,
     stats: {
       folders: stats.folders,
       files: stats.files,
@@ -141,6 +143,9 @@ export async function loader({ request, params, context }: Route.ActionArgs) {
         stats.quotaBytes > 0n
           ? Math.round(Number((stats.usedBytes * 100n) / stats.quotaBytes))
           : 0,
+      // Raw too, so an upload's rows can be added to them in the browser.
+      sizeBytes: Number(stats.usedBytes),
+      quotaBytes: Number(stats.quotaBytes),
     } satisfies LibraryStats,
   }
 }
@@ -148,9 +153,23 @@ export async function loader({ request, params, context }: Route.ActionArgs) {
 export default function Index({ loaderData }: Route.ComponentProps) {
   let id = useId()
   let location = useLocation()
-  let { items, loadMore, isLoading, hasMore } = usePagination<
+  let { items, insertItems, loadMore, isLoading, hasMore } = usePagination<
     Route.ComponentProps['loaderData']['items'][number]
   >(50, '?index')
+  // An upload's new rows go straight into the list and the drive-wide
+  // counts, rather than reloading the page (tech-debt item 45).
+  const live = useCreatedItems({
+    statsFolderId: null,
+    stats: loaderData.stats,
+    insert: (rows: typeof items) =>
+      insertItems(rows, { foldersFirst: true, parentId: loaderData.rootId }),
+  })
+  const stats = {
+    ...live,
+    size: formatSize('byte', 'unit', live.sizeBytes),
+    usedPercent:
+      live.quotaBytes > 0 ? Math.round((live.sizeBytes * 100) / live.quotaBytes) : 0,
+  }
   if (items.length === 0) return <FilesEmptyState />
 
   return (
@@ -159,7 +178,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
           the shared selection actor and only enters bulk mode when this route's
           ids are registered. */}
       <SelectionProvider items={items.map((i) => i.id)}>
-        <StashPageToolbar stats={loaderData.stats} items={items} parentName={location.state?.name ?? location.pathname.split('/').pop()} />
+        <StashPageToolbar stats={stats} items={items} parentName={location.state?.name ?? location.pathname.split('/').pop()} />
         <ListLayout items={items} />
         <GridLayout>
           {items?.map((item) =>

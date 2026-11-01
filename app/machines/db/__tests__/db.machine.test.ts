@@ -227,6 +227,13 @@ describe('dbMachine', () => {
     expect(parentStatus).toBe('active')
   })
 
+  // The page inserts this row instead of reloading the folder (item 45).
+  it('passes the row the server answered with on to the manager', async () => {
+    const item = { id: 'mf_1', name: 'photo.png', size: 1 }
+    const { reply } = await create(respondWith({ body: JSON.stringify({ success: true, item }) }))
+    expect(reply).toMatchObject({ type: 'upload.createItem.success', mediaFileId: 'mf_1', item })
+  })
+
   it.each([
     ['an expired session', { redirected: true, contentType: 'text/html' }],
     ['a 500', { ok: false, status: 500 }],

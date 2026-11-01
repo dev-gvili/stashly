@@ -3,11 +3,14 @@ import pg from 'pg'
 import { prisma } from '@/services/db'
 import {
   createUploadedItem,
+  getCardItems,
+  getFolderContent,
   resolveUploadFolders,
 } from '@/services/item-actions'
 import { itemsApiRouteInput } from '@/schemas/api.schemas'
 import { getPrefixForModel, toObjectId, toObjectKey } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
+import { flushItemSizes, withSizeRollupPaused } from './helpers/flush-item-sizes'
 
 /**
  * A folder upload resolves its whole folder tree in one request
@@ -401,5 +404,37 @@ describe('createUploadedItem into a resolved folder', () => {
         data: { total: 10n ** 12n },
       })
     }
+  })
+})
+
+/**
+ * An upload hands the page the new row itself (tech-debt item 45), so the page
+ * can insert it instead of reloading the folder. That row must be exactly the
+ * one the folder listing would have returned, or the card renders differently
+ * once the page next loads.
+ */
+describe('getCardItems', () => {
+  it('returns the row the folder listing returns, and only the caller’s own', async () => {
+    const { folders } = await resolveUploadFolders({
+      userId: ownerId,
+      rootId,
+      driveId,
+      dirs: ['cards'],
+    })
+    const u = upload(folders['cards'], 'card.txt')
+    // Logged rather than cascaded, as under a busy database: a flush between
+    // the two reads below would otherwise change the parent's size.
+    await withSizeRollupPaused(() => u.run())
+    await flushItemSizes()
+
+    const listing = await getFolderContent({
+      userId: ownerId,
+      limit: 50,
+      where: { parentId: folders['cards'] },
+    })
+    const [card] = await getCardItems(ownerId, [u.id])
+
+    expect(card).toEqual(listing.items.find((i) => i.id === u.id))
+    expect(await getCardItems(strangerId, [u.id])).toEqual([])
   })
 })

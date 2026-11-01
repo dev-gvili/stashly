@@ -4,6 +4,7 @@ import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { GridLayout } from '@/components/views/grid-view'
 import { usePagination } from '@/hooks/usePagination'
+import { useCreatedItems } from '@/hooks/useUpload'
 import { sessionContext } from '@/.server/middleware/context'
 import { breadcrumbs } from '@/services/breadcrumbs'
 import {
@@ -85,6 +86,8 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
     // Counts are folder-scoped; the storage meter stays drive-wide.
     stats: {
       ...stats,
+      // Raw too, so an upload's rows can be added to it in the browser.
+      sizeBytes: Number(stats.sizeBytes),
       size: formatSize('byte', 'unit', Number(stats.sizeBytes)),
     },
   }
@@ -136,9 +139,18 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
 }
 
 export default ({ loaderData, params }: Route.ComponentProps) => {
-  let { items, loadMore, isLoading, hasMore } = usePagination<
+  let { items, insertItems, loadMore, isLoading, hasMore } = usePagination<
     Route.ComponentProps['loaderData']['items'][number]
   >(50, '')
+  // An upload's new rows go straight into the list and the counts, rather
+  // than reloading the folder after every few files (tech-debt item 45).
+  const live = useCreatedItems({
+    statsFolderId: params.folderId,
+    stats: loaderData.stats,
+    insert: (rows: typeof items) =>
+      insertItems(rows, { foldersFirst: true, parentId: params.folderId }),
+  })
+  const stats = { ...live, size: formatSize('byte', 'unit', live.sizeBytes) }
   return (
     <div className="w-full h-full relative space-y-4">
       {/* SelectionProvider must wrap the toolbar too — it reads the shared
@@ -146,7 +158,7 @@ export default ({ loaderData, params }: Route.ComponentProps) => {
           registered. */}
       <SelectionProvider items={items.map((i) => i.id)}>
         <StashPageToolbar
-          stats={loaderData.stats}
+          stats={stats}
           items={items}
           parentId={params.folderId}
           parentName={loaderData.folderName}

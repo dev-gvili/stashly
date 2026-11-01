@@ -137,13 +137,17 @@ export const dbMachine = setup({
       }))
     }),
 
-    /** Success reads the subject of the run from context. */
-    reportCreated: enqueueActions(({ context, enqueue }) => {
+    /**
+     * Success reads the subject of the run from context, and the row the
+     * server answered with from the `@db.item.created` that entered `created`.
+     */
+    reportCreated: enqueueActions(({ context, event, enqueue }) => {
       if (!context.replayTo) return
 
       enqueue.sendTo(context.replayTo, {
         type: 'upload.createItem.success' as const,
         mediaFileId: context.mediaFile!.id,
+        item: (event as { item?: Record<string, unknown> }).item,
       })
     }),
   },

@@ -10,12 +10,12 @@
  * Also owns the upload-time page refreshes, and pauses thumbnail downloads and
  * indexing's GPU work while uploads are moving bytes.
  */
-import { memo, useEffect, useMemo } from 'react'
+import { memo, useEffect, useMemo, useRef } from 'react'
 import { useLocation, useNavigate, useNavigation } from 'react-router'
 import { useSelector } from '@xstate/react'
 import { UploadActorContext } from '@/machines/upload/upload.context'
-import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
 import { createDebouncer } from '@/utils/debounce'
+import { takeShownRows } from '@/hooks/useUpload'
 import type { MediaFileStatus } from '@/types/machine.types'
 import {
   holdUploadedFile,
@@ -32,8 +32,6 @@ import {
 /** Files already handed over, so each is handed over once per tab. */
 const handedOverIds = new Set<string>()
 
-/** Debounce window for pulling newly-created items into the list. */
-const REVALIDATE_DEBOUNCE_MS = 700
 
 /** How long uploads must be idle before indexing's GPU work starts again. */
 const DEFERRED_RESUME_DELAY_MS = 2_000
@@ -74,17 +72,7 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
     return () => subscription.unsubscribe()
   }, [upload])
 
-  // Pull newly-created items into the list with ONE debounced revalidation per
-  // burst, not one per file. Previously each file that reached `itemCreated`
-  // fired its own `navigate({ reset })`; a 534-file upload meant 534 loader
-  // runs pounding the DB, which is a big part of why the app went sluggish and
-  // the file route started failing to fetch. usePagination still resets on
-  // `state.reset` — it just happens in waves now.
-  //
-  // Counts rows, not finished transfers. A `done` file has no row yet, and its
-  // later `itemCreated` left a count that already included it unchanged, so
-  // when the row took longer than the debounce the only reload missed it and
-  // nothing followed (measured: 0 of 6 rows, grid empty until a manual reload).
+  // Counts rows, not finished transfers: a `done` file has no row yet.
   const createdCount = useSelector(
     upload,
     (s) =>
@@ -92,12 +80,19 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
         (f) => f.status === 'itemCreated'
       ).length
   )
+  // A batch ends when no file is moving bytes or waiting for its row.
+  const batchPending = useSelector(upload, (s) =>
+    Array.from(s.context.mediaFiles.values()).some(
+      (f) => IN_FLIGHT.has(f.status) || f.status === 'done'
+    )
+  )
   const navigate = useNavigate()
   const location = useLocation()
   const navigation = useNavigation()
 
   // Facets written by `save_media_metadata` (page count, dimensions, EXIF)
-  // reach the page with one reload per batch, once indexing drains.
+  // reach the pages that show them with one reload per batch, once indexing
+  // drains.
   useIndexingRevalidation()
 
   // Uploads own the bandwidth. Thumbnail jobs that must download an original
@@ -139,25 +134,37 @@ export const UploadThumbnailRunner = memo(function UploadThumbnailRunner() {
     [resumeLater]
   )
 
-  // The hook's committed guard replaces the `lastRevalidated` ref this used to
-  // keep, and holding `navigate` in a ref means the pathname and search read at
-  // commit time are the current ones rather than the ones captured on schedule.
+  // New rows reach a folder page without a reload: the page inserts each one
+  // the upload hands it (`useCreatedItems`). Reloading the folder after every
+  // row instead ran its loader 139–146 times per 650-file upload and sent the
+  // reader back to the first page each time (tech-debt item 45).
   //
-  // Skipped while a navigation is in flight: its destination loads fresh
-  // anyway, and `location` still names the page being left until it commits,
-  // so navigating there would abort the user's navigation (React Router's
-  // `startNavigation` aborts any pending one) and keep them where they were.
-  useDebouncedCommit(
-    createdCount,
-    () => {
-      if (navigation.state !== 'idle') return
-      navigate(`${location.pathname}${location.search}`, {
-        replace: true,
-        state: { reset: true },
-      })
-    },
-    { delayMs: REVALIDATE_DEBOUNCE_MS }
+  // When a batch ends, the page is reloaded once unless it showed every row
+  // the batch created (`takeShownRows`): another route, a filter, a row past
+  // the loaded page or a folder the page doesn't list all leave one out. Not
+  // while a navigation is in flight: its destination loads fresh anyway, and
+  // `location` still names the page being left, so navigating there would
+  // abort the user's navigation. The check waits until it settles.
+  const accounted = useRef<Set<string> | null>(null)
+  accounted.current ??= new Set(
+    Array.from(upload.getSnapshot().context.mediaFiles.values())
+      .filter((f) => f.status === 'itemCreated')
+      .map((f) => f.id)
   )
+  useEffect(() => {
+    if (batchPending || navigation.state !== 'idle') return
+    const created = Array.from(upload.getSnapshot().context.mediaFiles.values())
+      .filter((f) => f.status === 'itemCreated' && !accounted.current!.has(f.id))
+      .map((f) => f.id)
+    if (created.length === 0) return
+    for (const id of created) accounted.current!.add(id)
+    const { ids, missed } = takeShownRows()
+    if (!missed && created.every((id) => ids.has(id))) return
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: { reset: true },
+    })
+  }, [batchPending, createdCount, navigation.state])
 
   return null
 })

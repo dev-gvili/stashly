@@ -6,6 +6,7 @@ import {
   and,
   not,
   sendTo,
+  emit,
 } from 'xstate'
 // The per-file actor lives in `reviset/`, not in this folder — the
 // `upload/file.machine.ts` sibling was an unused draft and has been deleted.
@@ -13,6 +14,7 @@ import { fileMachine } from '../reviset/file.machine'
 import { dbMachine } from '@/machines/db/db.machine'
 import type {
   UploadManagerData,
+  UploadManagerEmitted,
   UploadManagerEvents,
 } from '@/types/machine.types'
 import { config, mediafile, uploadProgress } from '@/schemas/machine.schemas'
@@ -48,6 +50,7 @@ const uploadMachine = setup({
   types: {
     context: {} as UploadManagerData,
     events: {} as UploadManagerEvents,
+    emitted: {} as UploadManagerEmitted,
   },
   actors: {
     fileMachine,
@@ -352,6 +355,22 @@ const uploadMachine = setup({
         }),
       }
     }),
+    /**
+     * Hands new rows to the pages listening (`useCreatedItems`), which insert
+     * them instead of reloading the folder (tech-debt item 45). Emitted, not
+     * kept: a page that mounts later loads them from its loader, and a
+     * 10,000-file upload would otherwise hold every row in memory.
+     */
+    emitCreatedItems: emit(({ event }) => {
+      assertEvent(event, ['upload.createItem.success', 'upload.items.created'])
+      const items =
+        event.type === 'upload.items.created'
+          ? event.items
+          : event.item
+            ? [event.item]
+            : []
+      return { type: 'items.created' as const, items }
+    }),
     dismissFile: assign(({ context, event }) => {
       assertEvent(event, 'upload.dismiss')
       const dismissed = new Set(context.dismissed)
@@ -483,7 +502,10 @@ const uploadMachine = setup({
               actions: 'dismissFile',
             },
             'upload.createItem.success': {
-              actions: 'markAsItemCreated',
+              actions: ['markAsItemCreated', 'emitCreatedItems'],
+            },
+            'upload.items.created': {
+              actions: 'emitCreatedItems',
             },
             'upload.createItem.error': {
               actions: 'markItemCreationError',

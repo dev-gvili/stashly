@@ -430,9 +430,24 @@ let uploadDismiss = z.object({
   mediaFileId: z.string(),
 })
 
+/**
+ * A folder listing row as `/api/items` sends it (`cardItemOutput`): byte counts
+ * as numbers, dates as strings. The page revives it (`reviveCardItem`) and
+ * inserts it instead of reloading the folder (tech-debt item 45).
+ */
+export let createdItemRow = z.record(z.string(), z.unknown())
+
 let uploadCreateItemSuccess = z.object({
   type: z.literal(`${UPLOAD}.createItem.success`),
   mediaFileId: z.string(),
+  /** The new row; absent when the server sent none. */
+  item: createdItemRow.optional(),
+})
+
+/** Rows created outside a file's own request: a folder upload's folders. */
+let uploadItemsCreated = z.object({
+  type: z.literal(`${UPLOAD}.items.created`),
+  items: z.array(createdItemRow),
 })
 
 let uploadCreateItemError = z.object({
@@ -474,6 +489,7 @@ export let uploadManagerEvents = z.discriminatedUnion('type', [
   uploadCreateItemError,
   uploadThumbnail,
   uploadCreateItemSuccess,
+  uploadItemsCreated,
 ])
 
 export let fileMachineContext = z.object({
@@ -749,6 +765,8 @@ let dbItemPostEvent = z.object({
 let dbItemCreated = z.object({
   type: z.literal(`${DB}.item.created`),
   mediaFileId: z.string(),
+  /** The row the server answered with, passed on to the upload manager. */
+  item: createdItemRow.optional(),
 })
 
 /** 2xx JSON that reports `success: false` — the server declined the write. */

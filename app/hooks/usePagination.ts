@@ -9,6 +9,7 @@ import {
 } from 'react-router'
 import { sessionService } from '../machines/session/sessionStorage.machine'
 import { useSelector } from '@xstate/react'
+import { canInsertUnder, cardOrderFor, showCreatedRows } from '@/utils/pagination'
 
 // Generic type ensuring items have an ID for deduplication
 export interface Identifiable {
@@ -280,8 +281,36 @@ export function usePagination<T extends Identifiable>(
     }
   }, [searchParams, location])
 
+  /**
+   * Shows an upload's new rows instead of reloading the folder (tech-debt item
+   * 45): rows directly in `parentId` are inserted where the loader would have
+   * placed them, and each file grows the listed folder card it landed inside.
+   * Returns the ids it showed for certain (`showCreatedRows`); the upload
+   * runner reloads the page once its batch ends if any row is missing.
+   */
+  const insertItems = useCallback(
+    (rows: T[], { foldersFirst, parentId }: { foldersFirst: boolean; parentId: string }) => {
+      const compare = canInsertUnder(searchParams)
+        ? cardOrderFor(searchParams, { foldersFirst })
+        : null
+      const sortsBySize = [...searchParams.keys()].some((key) => /^orderBy(\[\d+\])?\[size\]$/.test(key))
+      const created = rows as (T & Parameters<typeof showCreatedRows>[1][number])[]
+      const options = { compare, hasMore, parentId, sortsBySize }
+      const basis = itemsRef.current
+      const { list, shown } = showCreatedRows(basis, created, options)
+      // Read by the next call before React renders, so two calls in one tick
+      // build on each other instead of the second dropping the first's rows.
+      itemsRef.current = list
+      // Rebuilt if another update (a page merge) landed first, so neither is lost.
+      setItems((prev) => (prev === basis ? list : showCreatedRows(prev, created, options).list))
+      return shown
+    },
+    [searchParams, hasMore]
+  )
+
   return {
     items, // The concatenated list of unique items
+    insertItems, // Places rows created on this page into the list
     nextCursor, // The cursor for the next fetch request
     loadMore, // Function to trigger the next fetch
     isLoading: navigation.state === 'loading', // Loading state indicator

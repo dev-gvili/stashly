@@ -3,8 +3,10 @@ import { toMediaFile } from '@/utils/converters'
 import { startFileHash } from '@/utils/file-hash'
 import { normalizeFile } from '@/utils/sniff'
 import { shallowEqual, useSelector } from '@xstate/react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigation } from 'react-router'
 import { UploadActorContext } from '@/machines/upload/upload.context'
+import { addCreatedToStats, reviveCardItem, type RawStats } from '@/utils/pagination'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -124,9 +126,10 @@ function toFolderPath(uploadPath: string): string {
 async function resolveUploadFolders(
   rootId: string,
   keys: string[]
-): Promise<Record<string, string>> {
+): Promise<{ folders: Record<string, string>; created: Record<string, unknown>[] }> {
+  const none = { folders: {}, created: [] }
   const dirs = [...new Set(keys.map(toFolderPath).filter(Boolean))]
-  if (dirs.length === 0) return {}
+  if (dirs.length === 0) return none
   try {
     const form = new FormData()
     form.append('intent', 'resolve_upload_folders')
@@ -134,11 +137,107 @@ async function resolveUploadFolders(
     form.append('dirs', JSON.stringify(dirs))
     const res = await fetch('/api/items', { method: 'POST', body: form })
     // An expired session redirects to the sign-in page, which isn't JSON.
-    const body = (await res.json()) as { success?: boolean; folders?: Record<string, string> }
-    return body.success && body.folders ? body.folders : {}
+    const body = (await res.json()) as {
+      success?: boolean
+      folders?: Record<string, string>
+      created?: Record<string, unknown>[]
+    }
+    return body.success && body.folders
+      ? { folders: body.folders, created: body.created ?? [] }
+      : none
   } catch {
-    return {}
+    return none
   }
+}
+
+/**
+ * Which new rows a mounted page showed for certain, and whether any arrived
+ * that it could not show. The upload runner takes this when a batch ends and
+ * reloads the page once unless every row it created was shown (tech-debt
+ * item 45). Module state: one tab has one upload manager and one page.
+ */
+let shownRows = { ids: new Set<string>(), missed: false }
+
+/**
+ * Hands over what pages showed since the last call, and starts again.
+ *
+ * @returns The ids shown for certain, and whether a row was missed.
+ *
+ * @example
+ * const { ids, missed } = takeShownRows()
+ * if (missed || created.some((id) => !ids.has(id))) reload()
+ */
+export function takeShownRows() {
+  const taken = shownRows
+  shownRows = { ids: new Set(), missed: false }
+  return taken
+}
+
+/**
+ * Shows an upload's new rows on the page that lists their folder, without
+ * reloading it (tech-debt item 45). Each row the upload manager emits (a
+ * file's, or a folder upload's folders) is revived to the loader's types,
+ * handed to `insert` once, and added to the page's counts. The counts start
+ * again from `stats` whenever the loader's change, since a fresh load already
+ * includes the rows before it.
+ *
+ * @param options.statsFolderId - The folder the stats describe, or null when
+ *   they are drive-wide (the stash root page).
+ * @param options.stats - The loader's stats with raw counts. Pass the loader's
+ *   own object: a new identity is what starts the counts again.
+ * @param options.insert - Shows the rows (`usePagination`'s `insertItems`) and
+ *   returns the ids it showed for certain. Not called while a navigation is in
+ *   flight: the page on screen is about to be replaced.
+ * @returns The counts with the new rows added.
+ *
+ * @example
+ * const live = useCreatedItems({
+ *   statsFolderId: params.folderId,
+ *   stats: loaderData.stats,
+ *   insert: (rows) => insertItems(rows, { foldersFirst: true, parentId: params.folderId }),
+ * })
+ */
+export function useCreatedItems<T extends { id: string }, S extends RawStats>({
+  statsFolderId,
+  stats,
+  insert,
+}: {
+  statsFolderId: string | null
+  stats: S
+  insert: (rows: T[]) => Set<string>
+}): S {
+  const upload = UploadActorContext.useActorRef()
+  const [live, setLive] = useState({ base: stats, value: stats })
+  // A new load includes every row created before it: start again from it.
+  if (live.base !== stats) setLive({ base: stats, value: stats })
+
+  // Each row is shown and counted once, however often it arrives.
+  const seen = useRef(new Set<string>())
+  // The latest closures, so the subscription isn't torn down every render.
+  const navigating = useNavigation().state !== 'idle'
+  const latest = useRef({ statsFolderId, insert, navigating })
+  latest.current = { statsFolderId, insert, navigating }
+
+  useEffect(() => {
+    const subscription = upload.on('items.created', ({ items }) => {
+      const rows = (items.map(reviveCardItem) as unknown as (T & { type: unknown })[]).filter(
+        (row) => !seen.current.has(row.id)
+      )
+      if (rows.length === 0) return
+      for (const row of rows) seen.current.add(row.id)
+      const { statsFolderId, insert, navigating } = latest.current
+      const shown = navigating ? new Set<string>() : insert(rows)
+      for (const id of shown) shownRows.ids.add(id)
+      if (rows.some((row) => !shown.has(row.id))) shownRows.missed = true
+      setLive((prev) => ({
+        ...prev,
+        value: addCreatedToStats(prev.value, rows, { folderId: statsFolderId }),
+      }))
+    })
+    return () => subscription.unsubscribe()
+  }, [upload])
+
+  return live.value
 }
 
 // ── Per-file hooks ────────────────────────────────────────────────────────────
@@ -405,10 +504,12 @@ export function useUpload() {
       // One request for the whole tree, so no file resolves its path again.
       // Keyed from the original files: `normalizeFile` keeps
       // `webkitRelativePath`, so these are the upload paths `toMediaFile` builds below.
-      const folders = await resolveUploadFolders(
+      const { folders, created } = await resolveUploadFolders(
         rid,
         files.map((file) => `${rid}/${file.webkitRelativePath || file.name}`)
       )
+      // The folders it made, for the page to show before their files land.
+      if (created.length > 0) upload.send({ type: 'upload.items.created', items: created })
       // Hand files over one at a time, each after its own `normalizeFile`: its
       // disk read lets the machine start the uploads already queued. Queuing a
       // 639-file folder in one synchronous burst instead started 100 uploads

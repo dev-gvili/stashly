@@ -2371,6 +2371,129 @@ interface GetFolderContentParams {
 }
 
 /**
+ * The fields a folder listing returns per item: what `<ItemCard>`,
+ * `FileCardDetail` and `FolderCardTab` render, `parent` included as the full
+ * `StashAncestor`. Shared by `getFolderContent` and `getCardItems`, so a row an
+ * upload hands the page is exactly the row the next load of the folder returns.
+ */
+const folderCardSelect = {
+  id: true,
+  name: true,
+  type: true,
+  size: true,
+  inclusiveSize: true,
+  category: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+  ownerId: true,
+  parentId: true,
+  workspaceId: true,
+  driveId: true,
+  file: true,
+  folder: true,
+  locked: true,
+  favorites: {
+    select: {
+      id: true,
+      favoritedBy: {
+        select: {
+          id: true,
+          name: true,
+          displayName: true,
+          image: true,
+        },
+      },
+    },
+  },
+  thumbnails: {
+    select: {
+      height: true,
+      width: true,
+      bucket: true,
+      color: true,
+      view: true,
+      size: true,
+      id: true,
+      stage: true,
+    },
+  },
+  tags: true,
+  parent: {
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      size: true,
+      inclusiveSize: true,
+      category: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      ownerId: true,
+      parentId: true,
+      workspaceId: true,
+      driveId: true,
+      file: true,
+      folder: true,
+      locked: true,
+      favorites: {
+        select: {
+          id: true,
+          favoritedById: true,
+          favoritedBy: {
+            select: {
+              id: true,
+              name: true,
+              displayName: true,
+              image: true,
+            },
+          },
+        },
+      },
+      thumbnails: {
+        select: {
+          height: true,
+          width: true,
+          bucket: true,
+          color: true,
+          view: true,
+          size: true,
+          id: true,
+          stage: true,
+        },
+      },
+      tags: true,
+      parent: true,
+    },
+  },
+} satisfies Prisma.ItemSelect
+
+/**
+ * The listing rows of the caller's own items, signed like `getFolderContent`'s.
+ * An upload answers with these (tech-debt item 45), so the page inserts the new
+ * rows instead of reloading the whole folder.
+ *
+ * Only the caller's own items: an upload creates its rows as the uploader, and
+ * nothing here checks folder access, so another user's ids return nothing.
+ *
+ * @param userId - The caller; only items they own are returned.
+ * @param ids - The items to read. Missing or foreign ids are left out.
+ * @returns The rows, in no particular order.
+ *
+ * @example
+ * const [card] = await getCardItems(user.id, [item.id])
+ */
+export async function getCardItems(userId: string, ids: string[]) {
+  if (ids.length === 0) return []
+  const items = await prisma.item.findMany({
+    where: { id: { in: ids }, ownerId: userId },
+    select: folderCardSelect,
+  })
+  return signThumbnails(items)
+}
+
+/**
  * Retrieves a page of items (files and folders) within a specified parent folder.
  * Uses cursor pagination and leverages predefined database indexes for optimal performance.
  *
@@ -2479,98 +2602,7 @@ export async function getFolderContent(params: GetFolderContentParams) {
       take: limit + 1,
       orderBy,
       cursor: cursor ? { id: cursor } : undefined,
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        size: true,
-        inclusiveSize: true,
-        category: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-        ownerId: true,
-        parentId: true,
-        workspaceId: true,
-        driveId: true,
-        file: true,
-        folder: true,
-        locked: true,
-        favorites: {
-          select: {
-            id: true,
-            favoritedBy: {
-              select: {
-                id: true,
-                name: true,
-                displayName: true,
-                image: true,
-              },
-            },
-          },
-        },
-        thumbnails: {
-          select: {
-            height: true,
-            width: true,
-            bucket: true,
-            color: true,
-            view: true,
-            size: true,
-            id: true,
-            stage: true,
-          },
-        },
-        tags: true,
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            size: true,
-            inclusiveSize: true,
-            category: true,
-            status: true,
-            createdAt: true,
-            updatedAt: true,
-            ownerId: true,
-            parentId: true,
-            workspaceId: true,
-            driveId: true,
-            file: true,
-            folder: true,
-            locked: true,
-            favorites: {
-              select: {
-                id: true,
-                favoritedById: true,
-                favoritedBy: {
-                  select: {
-                    id: true,
-                    name: true,
-                    displayName: true,
-                    image: true,
-                  },
-                },
-              },
-            },
-            thumbnails: {
-              select: {
-                height: true,
-                width: true,
-                bucket: true,
-                color: true,
-                view: true,
-                size: true,
-                id: true,
-                stage: true,
-              },
-            },
-            tags: true,
-            parent: true,
-          },
-        },
-      },
+      select: folderCardSelect,
     })
 
     // --- 4. Compute Pagination Metadata ---

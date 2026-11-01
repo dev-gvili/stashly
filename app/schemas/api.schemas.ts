@@ -103,6 +103,27 @@ export const quotaApiRouteOutput = z.object({
   status: z.enum(['normal', 'warning', 'critical', 'exceeded']),
 })
 
+const ancestorBytes = z
+  .object({ size: z.coerce.number(), inclusiveSize: z.coerce.number() })
+  .loose()
+
+/**
+ * A folder listing row (`getCardItems`) as `/api/items` sends it, after an
+ * upload creates it or its folders (tech-debt item 45). The payload is JSON,
+ * which has no BigInt, so the byte counts of the item, its parent and the
+ * parent's parent go out as numbers; `reviveCardItem` turns them back.
+ */
+export const cardItemOutput = z
+  .object({
+    size: z.coerce.number(),
+    inclusiveSize: z.coerce.number().optional(),
+    parent: ancestorBytes
+      .extend({ parent: ancestorBytes.nullable().optional() })
+      .nullable()
+      .optional(),
+  })
+  .loose()
+
 // ====================================================== //
 // =================== Items Api Route ================== //
 // ====================================================== //

@@ -120,7 +120,7 @@ export function toOutcome(
     }
   }
 
-  let envelope: { success?: boolean; error?: string }
+  let envelope: { success?: boolean; error?: string; item?: Record<string, unknown> }
   try {
     envelope = JSON.parse(response.body)
   } catch {
@@ -132,7 +132,7 @@ export function toOutcome(
   }
 
   return envelope?.success === true
-    ? { type: '@db.item.created', mediaFileId }
+    ? { type: '@db.item.created', mediaFileId, item: envelope.item }
     : {
         type: '@db.item.refused',
         mediaFileId,

@@ -70,6 +70,12 @@ export type ProcessingStatus = z.infer<typeof processingStatus>
 
 export type UploadManagerData = z.infer<typeof uploadManagerSchema>
 export type UploadManagerEvents = z.infer<typeof uploadManagerEvents>
+/** What the upload manager emits to listeners (`actor.on`), not events it takes. */
+export type UploadManagerEmitted = {
+  type: 'items.created'
+  /** Listing rows as `/api/items` sent them; `reviveCardItem` restores their types. */
+  items: Record<string, unknown>[]
+}
 
 // ====================================================== //
 // =============== Multipart Machine Types ============== //

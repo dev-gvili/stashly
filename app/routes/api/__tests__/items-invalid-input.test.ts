@@ -10,6 +10,15 @@ vi.mock('@/services/item-actions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/item-actions')>()),
   createUploadedItem: vi.fn(async (data: { id: string; size: bigint }) => ({ id: data.id, size: data.size })),
   discardUploadedObject: vi.fn(async () => 'deleted'),
+  getCardItems: vi.fn(async (_userId: string, ids: string[]) =>
+    ids.map((id) => ({
+      id,
+      size: 1024n,
+      inclusiveSize: 0n,
+      createdAt: new Date('2026-11-01T00:00:00Z'),
+      parent: { id: 'item_root', size: 2048n, inclusiveSize: 4096n, parent: null },
+    }))
+  ),
 }))
 // The stored object's HEAD is what the upload is charged for.
 vi.mock('@/services/s3', async (importOriginal) => ({
@@ -19,7 +28,7 @@ vi.mock('@/services/s3', async (importOriginal) => ({
 
 import { RouterContextProvider } from 'react-router'
 import { sessionContext } from '@/services/middleware/context'
-import { createUploadedItem, discardUploadedObject } from '@/services/item-actions'
+import { createUploadedItem, discardUploadedObject, getCardItems } from '@/services/item-actions'
 import { headUploadedObject } from '@/services/s3'
 import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
 import { action } from '../items'
@@ -126,6 +135,30 @@ describe('create_upload_item', () => {
     expect(createUploadedItem).toHaveBeenCalledWith(
       expect.objectContaining({ driveId: 'drv_mine', bucket: 'bucket-mine', ownerId: 'usr_me' })
     )
+  })
+
+  // The page inserts this row instead of reloading the folder (item 45). It is
+  // the listing's card row, sent as JSON, so its BigInt sizes become numbers.
+  it('answers with the card row the folder listing would show', async () => {
+    const result = (await respond(upload())) as { data: { success: boolean; item: Record<string, unknown> } }
+    expect(getCardItems).toHaveBeenCalledWith('usr_me', ['item_new'])
+    expect(result.data.success).toBe(true)
+    expect(result.data.item).toMatchObject({
+      id: 'item_new',
+      size: 1024,
+      inclusiveSize: 0,
+      parent: { size: 2048, inclusiveSize: 4096 },
+    })
+    expect(() => JSON.stringify(result.data)).not.toThrow()
+  })
+
+  // A partial row would render as a broken card; with none the page reloads.
+  it('still reports success, with no row, when its card cannot be read', async () => {
+    vi.mocked(getCardItems).mockRejectedValueOnce(new Error('read failed'))
+    const result = (await respond(upload())) as { data: { success: boolean; item?: unknown } }
+    expect(result.data.success).toBe(true)
+    expect(result.data.item).toBeUndefined()
+    expect(discardUploadedObject).not.toHaveBeenCalled()
   })
 
   it.each(['-1', '-1000000000'])('refuses a negative size (%s) with 400 and charges nothing', async (size) => {

@@ -1,4 +1,4 @@
-import { itemsApiRouteInput } from '@/schemas/api.schemas'
+import { cardItemOutput, itemsApiRouteInput } from '@/schemas/api.schemas'
 import { authMiddleware } from '@/services/middleware/auth'
 import { sessionContext } from '@/services/middleware/context'
 import { track } from '@/services/vinktar'
@@ -9,6 +9,7 @@ import {
   createUploadedItem,
   deleteItem,
   discardUploadedObject,
+  getCardItems,
   deleteItems,
   getChildFolders,
   moveItem,
@@ -35,7 +36,6 @@ import { clampPendingLimit } from '@/utils/embedding-backfill'
 import { parseFormData } from '@/utils/parsers'
 import { removeQueryParam, removeQueryParamValue } from '@/utils/query-params'
 import { data, redirect } from 'react-router'
-import { z } from 'zod'
 import type { Route } from './+types/items'
 
 // Resolves the session once and forwards the cache cookie it refreshed, which
@@ -351,22 +351,18 @@ export async function action({ request, params, context }: Route.ActionArgs) {
           category: parsedData.category,
           uploadId: parsedData.uploadId,
         })
-        const serializable = z
-          .object({
-            size: z.coerce.number(),
-            inclusiveSize: z.coerce.number().optional(),
-            parent: z
-              .object({
-                size: z.coerce.number(),
-                inclusiveSize: z.coerce.number().optional(),
-              })
-              .loose()
-              .optional(),
-          })
-          .loose()
-          .parse(item)
-
-        return data({ success: true, item: serializable })
+        // The page inserts this row instead of reloading the folder (tech-debt
+        // item 45), so it is the listing's row. The item is filed whatever
+        // happens here: without a card the answer carries no row, and the
+        // page reloads once the batch ends, since it has nothing to show.
+        const card = await getCardItems(user.id, [item.id]).then(
+          ([row]) => row,
+          (error) => {
+            log.warn('uploaded item card read failed', { itemId: item.id, error })
+            return undefined
+          }
+        )
+        return data({ success: true, item: card && cardItemOutput.parse(card) })
       } catch (e) {
         // Nothing retries a refused row, so its bytes would stay in S3 for
         // good. `toErrorInfo`, not `.message`: an access refusal is a
@@ -385,13 +381,23 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       // A folder upload's folders, resolved once before its files start. The
       // drive is the session's, like every folder the uploader creates.
       try {
-        const { folders } = await resolveUploadFolders({
+        const { folders, createdFolderIds } = await resolveUploadFolders({
           userId: user.id,
           rootId: parsedData.rootId,
           driveId: user.driveId,
           dirs: parsedData.dirs,
         })
-        return data({ success: true, folders })
+        // The rows of the folders this created, for the page to insert like
+        // the files' rows (tech-debt item 45). Optional: without them the
+        // folders show on the next load.
+        const created = await getCardItems(user.id, createdFolderIds).then(
+          (rows) => rows.map((row) => cardItemOutput.parse(row)),
+          (error) => {
+            log.warn('created folder cards read failed', { count: createdFolderIds.length, error })
+            return []
+          }
+        )
+        return data({ success: true, folders, created })
       } catch (e) {
         const err = toErrorInfo(e)
         return data({ success: false, error: err.message }, { status: err.status ?? 500 })
