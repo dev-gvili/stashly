@@ -7,7 +7,7 @@
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
 **Now (1 Nov):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1243 in 102 files), and the build. Green on `461f7e8` (1 Nov). A second job runs the 8 Playwright specs against the dev server, a throwaway Postgres and real Tigris storage (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1252 in 103 files), and the build. Green on `36eff9f` (1 Nov). A second job runs the 8 Playwright specs against the dev server, a throwaway Postgres and real Tigris storage (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors, analytics and logs:** Vinktar on server and browser since 10 Oct; product events, route timing and a structured logger since 31 Oct (item 4, resolved).
@@ -23,7 +23,9 @@
 
 **65 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 6 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62, 64 and 65 from item 45) · categories: Code 32, Architecture 22, Infrastructure 4, Test 4, Documentation 2, Dependency 1
 
-**Status at 1 Nov 2026 (latest, item 20):** 50 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 7 new and open (19, 22, 46, 47, 51, 57, 59). Item 20 resolved: every push runs the 8 Playwright specs in CI (65 passed, 4–6 min) against a throwaway Postgres and real Tigris storage; the teardown deletes the E2E bucket, and the sidebar-click flake is fixed (62/3 → 65/0 on a full local run). Item 19 deferred by the owner: the service isn't public yet, so the Stripe webhook waits until paid plans go live.
+**Status at 1 Nov 2026 (latest, item 22):** 51 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 6 new and open (19, 46, 47, 51, 57, 59; 19 and 57 deferred by the owner). Item 22 resolved: an account whose onboarding failed is finished on its next session read, every step reusing what the failed run made, where before it stayed without a bucket, root or drive and a second run could only fail. The workspace-upload question moved to item 17, deferred with workspaces.
+
+**Status at 1 Nov 2026 (item 20):** 50 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 7 new and open (19, 22, 46, 47, 51, 57, 59). Item 20 resolved: every push runs the 8 Playwright specs in CI (65 passed, 4–6 min) against a throwaway Postgres and real Tigris storage; the teardown deletes the E2E bucket, and the sidebar-click flake is fixed (62/3 → 65/0 on a full local run). Item 19 deferred by the owner: the service isn't public yet, so the Stripe webhook waits until paid plans go live.
 
 **Status at 1 Nov 2026 (items 64 and 65):** 49 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 8 new and open (19, 20, 22, 46, 47, 51, 57, 59). Item 64 resolved: "folders first" now lists folders before files (`type asc`), in `getFolderContent` and in the page's inserts. Item 65 resolved: the dead `forEach` guard is a working `some` in four routes, and a theme submission no longer re-runs the folder loader (1 request → 0, measured). Item 57 re-measured and deferred by the owner: the largest feed in the dev database is 1,355 activities at 13.4 ms.
 
@@ -122,7 +124,7 @@
 | 19 | **new** Stripe webhook is a stub | 24 | All four event handlers. Deferred 2026-11-01: private development, no public service yet | Deferred by the owner until paid plans go live |
 | 20 | ~~Playwright specs don't run in CI~~ | 24 | Resolved 2026-11-01 (`85f85b9`, `461f7e8`): an `e2e` job runs all 8 specs on every push against a throwaway Postgres and real Tigris (65 passed, 4–6 min); teardown deletes the E2E bucket; the navigation flake fixed | — |
 | 10 | Accessibility and responsive UI | 21 | Keyboard on cards and rows, phone navigation and the seek bar done 1 Nov. Left: about 50 unnamed icon buttons, the toolbar below ~840px, the item panel covering the file | — |
-| 22 | **new** Open decisions in upload and onboarding | 20 | Three decisions already written up in TASKS.md | Owner's decision |
+| 22 | ~~Open decisions in upload and onboarding~~ | 20 | Resolved 2026-11-01 (`7e2e9c1`, `36eff9f`): a failed onboarding runs again on the next session read, every step reusing what the failed run made (red 4 of 18 → green 20 of 20); workspace uploads moved to item 17 | — |
 | 30 | ~~Signed cookies fall back to the secret `'secret'`~~ | 20 | Resolved 2026-10-26 (`074c06e`): production refuses to boot without `SESSION_SECRET`; set the Fly secret before the next deploy | — |
 | 33 | ~~Cancelled uploads leave parts in S3~~ | 20 | Resolved 2026-10-25 (`8a79e89`, `e4aeb0e`): cancel, retry exhaustion and a failed complete all abort the multipart upload | — |
 | 34 | ~~Upload requests retry 4xx answers~~ | 20 | Resolved 2026-10-25 (`8ac03d9`): a 4xx other than 429 fails on the first answer | — |
@@ -136,7 +138,7 @@
 | 37 | ~~The `.ts` sniff's result is thrown away~~ | 15 | Resolved 2026-11-01: the S3 read dropped; the client's sniff before upload stays | — |
 | 38 | ~~Which upload concurrency limit applies is unknown~~ | 15 | Resolved 2026-10-26 (`78a63f3`): 100, measured; the code now says 100 too | — |
 | 16 | Overlapping UI primitives | 12 | 5 `@radix-ui/*` importers, 3 global stylesheets | — |
-| 17 | Unfinished migrations | 12 | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes | Deferred to after personal-first (TASKS.md, 4 Oct) |
+| 17 | Unfinished migrations | 12 | Workspace stubs, unregistered `workspaces/create.tsx`, duplicate flat/nested API routes; which workspace and owner an upload into a workspace folder gets (from item 22) | Deferred to after personal-first (TASKS.md, 4 Oct) |
 | 39 | ~~One presign request per part~~ | 12 | Resolved 2026-10-26 (`3ddbf90`): part URLs signed 100 at a time, the first 100 in the create answer; 100 MB upload 30 → 10 requests to our server, measured | — |
 | 40 | ~~Media-metadata writes do extra work~~ | 10 | Resolved 2026-10-26 (`51ca00d`): a file with nothing to save sends no POST; one upsert per facet; 2 → 1 statements per save, 7 of 8 racing first saves refused → 0, measured | — |
 | 41 | ~~Dead upload branches~~ | 10 | Resolved 2026-10-26 (`12e3f74`): the 3 unreachable `shouldRevalidate` checks deleted, the quota machine no longer spawned (file kept); actors per upload manager 6 → 5, measured | — |
@@ -192,7 +194,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 19 | The Stripe webhook acknowledges events and saves nothing | Code | 3 | 5 | 3 | **24** (Medium) | 1–2 days | New 8 Oct |
 | 20 | ~~The Playwright specs don't run in CI~~ | Test | 3 | 3 | 2 | **24** (Medium) | 0.5–1 day | Resolved 1 Nov |
 | 21 | ~~Embedding backfill loads a WebGPU model on the main thread of every tab~~ | Architecture | 3 | 3 | 3 | **18** (Medium) | 1–2 days | Resolved 9 Oct |
-| 22 | Open decisions in the upload and onboarding paths | Architecture | 2 | 3 | 2 | **20** (Medium) | 1 day once decided | New 8 Oct |
+| 22 | ~~Open decisions in the upload and onboarding paths~~ | Architecture | 2 | 3 | 2 | **20** (Medium) | 1 day once decided | Resolved 1 Nov |
 | 23 | Prisma calls made directly from route modules | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Resolved 1 Nov |
 | 24 | ~~Slow first page load (cold document TTFB)~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 1–3 days | Resolved 9 Oct |
 | 25 | ~~Share-link actions had no access check~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 8 Oct |
@@ -549,6 +551,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - **Checks:** the typecheck gate passes, and the browser test on 2026-10-01 confirmed it. `unfavorite` answers 200 with `{"favorited":false}` and no redirect. The item-page toggle settled correctly through favorite, unfavorite and favorite (123–327 ms) without navigating. Bulk favorite redirected to `?layout=grid` with `selectedItems` stripped.
   - **Still open:** the seven workspace stubs, the unregistered `workspaces/create.tsx` (also one of the 11 baseline type errors), and five resources registered under both the flat and the nested item API routes.
 - **Status 2026-10-08: unchanged, now deferred.** The 4 Oct TASKS.md triage moved the workspace repointing to *Someday* ("workspace-only, so it waits per personal-first"). The stubs and `create.tsx` are still there, and `create.tsx` is still unregistered.
+- **Status 2026-11-01: one more decision moved here from item 22.** `createUploadedItem` never sets `workspaceId`, so a file uploaded into a workspace folder is the uploader's personal item (checked on `main`: its `INSERT` has no `workspaceId` column). The owner deferred deciding what it should be (inherit the folder's workspace, its owner, or both) until workspaces are built.
 
 ### 18. `/api/quota` lets a signed-in user change their own quota
 
@@ -633,6 +636,9 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   3. **Workspace uploads:** `createUploadedItem` never sets `workspaceId`, so a file uploaded into a workspace folder is the uploader's personal item.
 - **Fix:** decide each one, then write a test that pins the decision. Moving the upload charge to the server (item 18) settles question 1.
 - **Why it matters:** each one is a quiet way for quota, ownership or account state to drift from what the UI shows.
+- **Status 2026-11-01: resolved** (`7e2e9c1`, `36eff9f`). The owner decided the two left:
+  - **Failed onboarding: run it again.** Read from the code first: onboarding ran only in the create hook, so a failed run left the row without a bucket, root or drive for good. It couldn't have been re-run either: `Drive.ownerId`, `Subscription.ownerId` and `Quota.driveId` are unique, so a second run failed at the first row the first had made, and the machine's "already onboarded" guard read a context field that was never set. Now every step finds before it creates (subscription and drive by owner, quota by drive, root by drive), a new bucket is written to the row at once and reused while it exists, and a complete row ends the run in `alreadyOnboarded`. `withOnboardingFields` re-runs onboarding when the stored row is still incomplete, waiting 60 s after a failed re-run, and one run per user is shared in the process. Red first: 4 of 18 failed (a unique-constraint error, `failure` instead of `alreadyOnboarded`, no re-run); now 20 of 20 (`onboard.machine.test.ts`, live DB with storage faked, and `session-user.test.ts`). Not exercised against the dev server: it needs a broken account in the database.
+  - **Workspace uploads:** deferred with workspaces, recorded under item 17.
 
 ### 23. Prisma calls made directly from route modules
 
@@ -1352,6 +1358,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-11-01 | `da59fdd` | 62, 13 | Every API route reads the session through `authMiddleware`; the guard covers all of `api/*.ts` with 9 named exceptions. 1214/0 in 100 files. |
 | 2026-11-01 | `bacb903` | 63, 13 | `GET /api/collections` and `GET /api/subscription` parse their payload through an output schema, as `/api/quota` does; 500 → 200, measured. 2 new tests; 1216/0 in 101 files. |
 | 2026-11-01 | `85f85b9`, `461f7e8` | 20 | CI's `e2e` job runs the 8 Playwright specs on every push (dev server, throwaway Postgres, Tigris keys from repository secrets); teardown deletes the E2E bucket, retrying Tigris's late `BucketNotEmpty`; sidebar tests wait for the `?layout=grid` rewrite. 65 passed in CI. |
+| 2026-11-01 | `7e2e9c1`, `36eff9f` | 22, 17 | A failed onboarding runs again on the next session read: each step finds before it creates, a new bucket is written to the row at once, a complete row ends in `alreadyOnboarded`. Red 4 of 18 → 20 of 20; 1252/0 in 103 files. Workspace uploads moved to item 17. |
 
 ## Phased remediation plan
 
