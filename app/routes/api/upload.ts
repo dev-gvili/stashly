@@ -5,10 +5,8 @@ import {
   abortMultipartUpload,
   completeMultipartUpload,
   createMultipartUpload,
-  getObjectHead,
   getPresignedUrlForPart,
 } from '@/services/s3'
-import { isAmbiguousTsFile, sniffTsBytes, type TsKind } from '@/utils/sniff'
 import { toErrorInfo } from '@/utils/api.errors'
 import { parseFileExtension } from '@/utils/parsers'
 import { track } from '@/services/vinktar'
@@ -206,38 +204,11 @@ export async function action({ request, context }: Route.ActionArgs) {
           values.parts
         )
 
-      // Authoritative server-side sniff for the ambiguous .ts extension.
-      // The client's contentType is a claim; this ranged GetObject (1KB)
-      // is the trust boundary. Persist the verified value on the Item
-      // record and use it as the source of truth for downloads/previews.
-      let verifiedKind: TsKind | undefined
-      let verifiedContentType: string | undefined
-      if (isAmbiguousTsFile(values.key)) {
-        try {
-          const head = await getObjectHead(bucket, values.key)
-          const sniffed = sniffTsBytes(head)
-          verifiedKind = sniffed.kind
-          verifiedContentType = sniffed.contentType
-          // TODO: persist on the Item record, e.g.
-          // await prisma.item.update({
-          //   where: { key: values.key },
-          //   data: { mimeType: verifiedContentType },
-          // })
-        } catch (err) {
-          // Verification is best-effort — don't fail a completed upload over it.
-          console.error('Post-upload content verification failed', {
-            key: values.key,
-            err,
-          })
-        }
-      }
-
       track(
         'upload_transfer_completed',
         {
           extension,
           part_count: values.parts.length,
-          ts_kind: verifiedKind ?? null,
         },
         { userId: user.id }
       )
@@ -249,8 +220,6 @@ export async function action({ request, context }: Route.ActionArgs) {
         version: VersionId,
         location: Location,
         metadata: $metadata,
-        verifiedKind,
-        verifiedContentType,
       }
     }
     case 'abort-multipart-upload': {

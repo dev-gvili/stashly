@@ -217,7 +217,7 @@ export async function action({ request }: Route.ActionArgs) {
   switch (values.action) {
     case 'create-multipart-upload': ...  // returns { uploadId }
     case 'get-presigned-url':       ...  // returns { url }
-    case 'complete-multipart-upload': ... // { key, bucket, etag, version, location, metadata, verifiedKind, verifiedContentType }
+    case 'complete-multipart-upload': ... // { key, bucket, etag, version, location, metadata }
     case 'abort-multipart-upload':  ...  // returns { success: true }
   }
 }
@@ -225,7 +225,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 The bucket comes off the session user; there is no `UploadService` / `fixCors()` call and no `upload-file` (single-shot) action.
 
-**`.ts` content verification:** on `complete-multipart-upload`, if `isAmbiguousTsFile(key)` the route does a ranged `getObjectHead` (1 KB) and runs `sniffTsBytes` to distinguish TypeScript source from MPEG transport stream, returning `verifiedKind` / `verifiedContentType`. The client's `contentType` is only a claim; this server-side sniff is the trust boundary. It is best-effort — a failure is logged, never fails a completed upload. Note the in-code `TODO`: the verified MIME is **not yet persisted** onto the `Item` record.
+**`.ts` content type:** the client tells TypeScript source from MPEG transport stream before upload (`normalizeFile` in `app/utils/sniff.ts`, 1 KB). Until 2026-11-01 `complete-multipart-upload` repeated the sniff with a ranged `GetObject` and returned `verifiedKind` / `verifiedContentType`, but nothing read them and no row existed yet to store them on, so the read was removed (tech-debt item 37).
 
 ---
 
