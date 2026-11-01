@@ -6,6 +6,8 @@ import { OTHER_USER_EMAIL, TEST_USER_EMAIL } from './constants'
 
 /** The `User.bucket` column's default, shared by every user without one. */
 const PLACEHOLDER_BUCKET = 'default-bucket'
+const DELETE_ATTEMPTS = 5
+const DELETE_RETRY_MS = 3_000
 
 export default async function globalTeardown() {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
@@ -32,9 +34,13 @@ export default async function globalTeardown() {
 }
 
 /**
- * Empties and deletes the bucket, if it exists. A failed delete is reported,
- * not thrown: the tests have already run, and a leftover bucket must not turn
- * a green run red.
+ * Empties and deletes the bucket, if it exists, trying up to
+ * `DELETE_ATTEMPTS` times. Tigris can answer `BucketNotEmpty` just after the
+ * last object was deleted: the first CI run (`85f85b9`) failed that way, and
+ * the same bucket listed 0 objects, 0 multipart uploads and 0 versions
+ * minutes later. Each attempt empties the bucket again (`deleteBucket`).
+ * A failed delete is reported, not thrown: the tests have already run, and a
+ * leftover bucket must not turn a green run red.
  */
 async function deleteE2eBucket(bucket: string) {
   // Imported here, not at the top: the S3 client reads its credentials from
@@ -46,10 +52,17 @@ async function deleteE2eBucket(bucket: string) {
     .then(() => true)
     .catch(() => false)
   if (!exists) return
-  try {
-    await deleteBucket(bucket)
-    console.log(`[E2E] deleted bucket ${bucket}`)
-  } catch (error) {
-    console.warn(`[E2E] could not delete bucket ${bucket}`, error)
+  for (let attempt = 1; attempt <= DELETE_ATTEMPTS; attempt++) {
+    try {
+      await deleteBucket(bucket)
+      console.log(`[E2E] deleted bucket ${bucket} (attempt ${attempt})`)
+      return
+    } catch (error) {
+      if (attempt === DELETE_ATTEMPTS) {
+        console.warn(`[E2E] could not delete bucket ${bucket}`, error)
+        return
+      }
+      await new Promise((resolve) => setTimeout(resolve, DELETE_RETRY_MS))
+    }
   }
 }
