@@ -209,7 +209,7 @@ export function CollectionItemCard({
   )
 
   const shell = cn(
-    'relative flex flex-col overflow-hidden rounded-2xl border border-input bg-card text-left transition-[border-color,box-shadow] hover:border-muted-foreground/50',
+    'relative flex flex-col overflow-hidden rounded-2xl border border-border/50 bg-card text-left transition-[border-color,box-shadow] hover:border-border',
     selected && 'border-primary ring-3 ring-primary/15 hover:border-primary'
   )
 

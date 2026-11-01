@@ -78,7 +78,7 @@ export function CollectionCard({
   }
 
   return (
-    <Card className="relative flex flex-col gap-0 rounded-2xl border border-input bg-card p-0 transition-[border-color,box-shadow] hover:border-muted-foreground/50 hover:shadow-stashly">
+    <Card className="relative flex flex-col gap-0 rounded-2xl border border-border/50 bg-card p-0 transition-[border-color,box-shadow] hover:border-border hover:shadow-stashly">
       <Link
         to={to}
         aria-label={`Open ${collection.name}`}
