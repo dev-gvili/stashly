@@ -791,6 +791,98 @@ export async function revokeItemPermission(
 }
 
 // ---------------------------------------------------------------------------
+// Caller-checked item permission actions (the `/api/permissions` route)
+// ---------------------------------------------------------------------------
+//
+// The helpers above take no caller: they serve code that has already decided
+// the grant is allowed (upload, invitation accept). A route must use these
+// instead — read access to list an item's grants, write access to change them,
+// owner access to hand out `owner`.
+
+/**
+ * List `itemId`'s permissions for a caller with read access to it.
+ *
+ * Each permission carries only the user fields the share dialog shows.
+ *
+ * @throws `FORBIDDEN` (403) when `userId` has no live read grant and is not
+ *   the owner.
+ *
+ * @example
+ * const permissions = await listItemPermissionsForUser(session.user.id, itemId)
+ */
+export async function listItemPermissionsForUser(userId: string, itemId: string) {
+  await assertItemPermission(userId, itemId, 'read')
+  return prisma.permission.findMany({
+    where: { itemId },
+    include: {
+      users: { select: { id: true, name: true, email: true, image: true } },
+    },
+  })
+}
+
+/**
+ * Grant `granteeId` `role` on `itemId`, on behalf of `userId`.
+ *
+ * @throws `FORBIDDEN` (403) unless `userId` has write access, or owner access
+ *   when `role` is `'owner'`.
+ *
+ * @example
+ * await grantItemPermissionForUser(session.user.id, inviteeId, itemId, 'read')
+ */
+export async function grantItemPermissionForUser(
+  userId: string,
+  granteeId: string,
+  itemId: string,
+  role: PermissionRole
+): Promise<Permission> {
+  await assertItemPermission(userId, itemId, role === 'owner' ? 'owner' : 'write')
+  return grantItemPermission(granteeId, itemId, role)
+}
+
+/**
+ * Remove `granteeId`'s access to `itemId`, on behalf of `userId`.
+ *
+ * @throws `FORBIDDEN` (403) unless `userId` has write access to the item.
+ *
+ * @example
+ * await revokeItemPermissionForUser(session.user.id, collaboratorId, itemId)
+ */
+export async function revokeItemPermissionForUser(
+  userId: string,
+  granteeId: string,
+  itemId: string
+): Promise<void> {
+  await assertItemPermission(userId, itemId, 'write')
+  await revokeItemPermission(granteeId, itemId)
+}
+
+/**
+ * Set when permission `permissionId` expires, on behalf of `userId`.
+ *
+ * @throws `SHARE_NOT_FOUND` (404) when the permission does not exist or is not
+ *   tied to an item; `FORBIDDEN` (403) unless `userId` has write access to
+ *   that item.
+ *
+ * @example
+ * await expirePermissionForUser(session.user.id, permissionId, nextWeek)
+ */
+export async function expirePermissionForUser(
+  userId: string,
+  permissionId: string,
+  expiresAt: Date
+): Promise<Permission> {
+  const permission = await prisma.permission.findUnique({
+    where: { id: permissionId },
+    select: { itemId: true },
+  })
+  if (!permission?.itemId) {
+    throw toRouteError(StashlyErrorCode.SHARE_NOT_FOUND, 'Permission not found')
+  }
+  await assertItemPermission(userId, permission.itemId, 'write')
+  return expirePermission(permissionId, expiresAt)
+}
+
+// ---------------------------------------------------------------------------
 // Share link permission actions
 // ---------------------------------------------------------------------------
 

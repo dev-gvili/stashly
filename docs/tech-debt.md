@@ -7,7 +7,7 @@
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
 **Now (1 Nov):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1189 in 100 files), and the build. Green on `ebfd3da` (1 Nov). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1194 in 100 files), and the build. Green on `ebfd3da` (1 Nov). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors, analytics and logs:** Vinktar on server and browser since 10 Oct; product events, route timing and a structured logger since 31 Oct (item 4, resolved).
@@ -21,9 +21,11 @@
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**60 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 1 added 1 Nov: 60 from making each upload its own object) · categories: Code 27, Architecture 22, Infrastructure 4, Test 4, Documentation 2, Dependency 1
+**62 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 3 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`) · categories: Code 29, Architecture 22, Infrastructure 4, Test 4, Documentation 2, Dependency 1
 
-**Status at 1 Nov 2026 (latest, item 10 partly done):** counts unchanged. Keyboard users can open a card or a list row (Tab, Enter), phones have a menu button, and the audio seek bar takes the keyboard. Testing found two bugs on the way and fixed them: the sidebar trigger toggled the phone sheet from the desktop state, so it stayed shut, and every phone-width load threw a hydration error.
+**Status at 1 Nov 2026 (latest, items 61 and 62):** 44 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 45–47, 51, 57, 59, 62). Item 61, resolved the day it was found: `/api/permissions` called the permission helpers with no caller, so any signed-in user could list who has access to any item (full user rows) and grant themselves write or owner on it. Listing now needs read access and managing needs write (owner to hand out owner); a stranger gets 403 on both, measured against the dev server. Item 62, open: 19 more API routes still call `getSession` themselves.
+
+**Status at 1 Nov 2026 (item 10 partly done):** counts unchanged. Keyboard users can open a card or a list row (Tab, Enter), phones have a menu button, and the audio seek bar takes the keyboard. Testing found two bugs on the way and fixed them: the sidebar trigger toggled the phone sheet from the desktop state, so it stayed shut, and every phone-width load threw a hydration error.
 
 **Status at 1 Nov 2026 (item 48):** 43 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 9 new and open (19, 20, 22, 45–47, 51, 57, 59). Item 48: a malformed request to any route answers 400 instead of 500, through one helper in every handler.
 
@@ -93,7 +95,7 @@
 
 ### What's left, in priority order
 
-*Updated 31 Oct (items 31–44 added 25 Oct, 45–57 on 30–31 Oct). Listed in the order items were added; new items are marked **new**.*
+*Updated 1 Nov (items 31–44 added 25 Oct, 45–57 on 30–31 Oct, 58–62 on 31 Oct–1 Nov). Listed in the order items were added; new items are marked **new**.*
 
 | # | Item | Score | What remains | Blocked on |
 |---|------|-------|--------------|------------|
@@ -147,6 +149,8 @@
 | 58 | ~~An upload is charged the size the client claims~~ | 32 | Resolved 2026-10-31 (`7383976`, `6029219`, `0564240`, `ebfd3da`): charged from a HEAD of the stored object, and every upload has its own object key, so none can be written over; a forged size 0 now charges 10,000,000 of 10,000,000 bytes, +90 ms per create, measured | — |
 | 59 | **new** Bytes no row pays for | 15 | An upload completed and never filed is charged to no one until the orphan sweep runs by hand; rows filed before item 58 keep their claimed size (3 known at size 0). Schedule the sweep or reserve at complete; backfill sizes from a HEAD per `File` (DB change, owner's approval) | Owner's approval for the backfill |
 | 60 | ~~Deleting a file deletes its copies' bytes~~ | 32 | Resolved 2026-11-01 (`ebfd3da`): an object is deleted only with the last `File` row that names it; red test first | — |
+| 61 | ~~`/api/permissions` had no access check~~ | 50 | Resolved 2026-11-01: listing needs read access, granting, revoking and expiring need write (owner to grant owner); a stranger gets 403, measured; users trimmed to id, name, email, image | — |
+| 62 | **new** 19 API routes read the session themselves | 16 | Move them onto `authMiddleware` + `sessionContext` and extend the guard in `auth-middleware.test.ts` to them | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -214,6 +218,8 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 58 | ~~An upload is charged the size the client claims~~ | Code | 4 | 4 | 2 | **32** (High) | 1.5 days | Resolved 31 Oct |
 | 59 | Bytes no row pays for | Code | 2 | 3 | 3 | **15** (Low) | 1–2 days | New 31 Oct |
 | 60 | ~~Deleting a file deletes its copies' bytes~~ | Code | 4 | 4 | 2 | **32** (High) | 2 h | Resolved 1 Nov |
+| 61 | ~~`/api/permissions` had no access check~~ | Code | 5 | 5 | 1 | **50** (High) | 2 h | Resolved 1 Nov |
+| 62 | 19 API routes read the session themselves | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | New 1 Nov |
 
 ## Details
 
@@ -1165,6 +1171,23 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Evidence:** `copyItem` copies the `File` row, key included, so a copy points at its original's object and is charged its size, without the bytes being duplicated. Permanent delete (`deleteFromTrash`) sent every key in the deleted subtree to S3, so deleting an original from Trash deleted the object its copies still name. A live-DB test reproduced it: the copy's key was in the `DeleteObjects` call.
 - **Fix:** the delete's `Objects` CTE leaves out any key a `File` row outside the deleted subtree still names, so an object goes with the last row that uses it (an index probe on `file_bucket_key`). Three tests: a copy outside the delete keeps the object, deleting the last row deletes it, and an original and its copy deleted together delete it once.
 - **Status 2026-11-01: resolved** (`ebfd3da`).
+
+### 61. `/api/permissions` had no access check
+
+*Code debt (security) · Impact 5 · Risk 5 · Effort 1 → **50** · est. 2 h · source: the handoff's next task, 1 Nov*
+
+- **Evidence:** the loader called `getItemPermissions(itemId)` and the action called `grantItemPermission`, `revokeItemPermission` and `expirePermission`, none of which take the caller. Any signed-in user could list who has access to any item, with every column of their `User` rows, and grant themselves `write` or `owner` on it, revoke anyone, or expire any permission by id. Read from the code; the open route was not exercised before the fix.
+- **Fix:** caller-checked actions in `permission-actions.ts`, which the route now calls: `listItemPermissionsForUser` needs read access and selects only `id`, `name`, `email` and `image` (what the share dialog shows); `grantItemPermissionForUser` and `revokeItemPermissionForUser` need write, and owner to hand out `owner`; `expirePermissionForUser` finds the permission's item and needs write on it (404 for an unknown permission). The route reads the session through `authMiddleware`. The bare helpers stay for code that has already decided the grant (upload, invitation accept).
+- **Measured:** 5 live-DB tests in `permission-live-grants.test.ts`, red (5 failing) then green. Against the dev server, an item the signed-in user neither owns nor holds a grant on: list 403, grant self `write` 403; the owner's own folder 200. 1194/0 in 100 files.
+- **Status 2026-11-01: resolved.** A write holder can still revoke the owner's explicit grant rows; the owner keeps access through `Item.ownerId`.
+
+### 62. 19 API routes read the session themselves
+
+*Code debt · Impact 2 · Risk 2 · Effort 2 → **16** · est. 0.5–1 day · source: item 61, 1 Nov*
+
+- **Evidence:** activities, collections, comments, favorites, invitations, locks, members, metrics, notifications-stream, notifications, pins, search, settings, shares, source-types, subscription, users, versions and workspaces (`app/routes/api/*.ts`) call `auth.api.getSession` themselves. A bare `getSession` drops the session-cache cookie it refreshed, so once the cookie expires each call falls back to a database lookup (item 35).
+- **Fix:** `export const middleware = [authMiddleware]` and `context.get(sessionContext)` in each, as `items.ts` and now `permissions.ts` do; extend the guard in `auth-middleware.test.ts` from the upload routes to all of them. `metrics.ts` (a beacon answering 204) and `notifications-stream.ts` (SSE) need a look before they move.
+- **Status 2026-11-01: open.**
 
 ## Changes since the audit
 

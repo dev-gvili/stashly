@@ -4,10 +4,14 @@ import { Prisma, type PermissionRole } from '@/prisma/client'
 import {
   assertItemAccess,
   assertItemsAccess,
+  expirePermissionForUser,
+  grantItemPermissionForUser,
   hasItemPermission,
   hasLinkPermission,
   itemAccessSql,
   itemAccessWhere,
+  listItemPermissionsForUser,
+  revokeItemPermissionForUser,
 } from '@/services/permission-actions'
 import {
   getThumbnailSource,
@@ -186,5 +190,45 @@ describe.each(['expired', 'deleted'] as const)('a %s grant no longer counts', (k
     expect(await hasItemPermission(ownerId, items[kind], 'write')).toBe(true)
     expect(await status(() => presignThumbnailUpload(ownerId, items[kind]))).toBe(404)
     expect(await status(() => getThumbnailSource(ownerId, items[kind]))).toBe('ok')
+  })
+})
+
+/**
+ * `/api/permissions` called the bare helpers with no caller, so any signed-in
+ * user could list an item's grants (full user rows) and grant themselves write
+ * on it (tech-debt item 61). The caller-checked actions need read to list and
+ * write to manage; an expired grant counts as none.
+ */
+describe('managing an item’s permissions checks the caller', () => {
+  const expiredPermissionId = () =>
+    prisma.permission
+      .findFirstOrThrow({ where: { itemId: items.expired }, select: { id: true } })
+      .then((p) => p.id)
+
+  it('a user without a live grant can neither list nor manage', async () => {
+    const itemId = items.expired
+    expect(await status(() => listItemPermissionsForUser(userId, itemId))).toBe(403)
+    expect(await status(() => grantItemPermissionForUser(userId, userId, itemId, 'write'))).toBe(403)
+    expect(await status(() => revokeItemPermissionForUser(userId, ownerId, itemId))).toBe(403)
+    const permissionId = await expiredPermissionId()
+    expect(await status(() => expirePermissionForUser(userId, permissionId, new Date()))).toBe(403)
+  })
+
+  it('a writer cannot hand out the owner role', async () => {
+    expect(await status(() => grantItemPermissionForUser(userId, userId, items.live, 'owner'))).toBe(403)
+  })
+
+  it('a missing permission answers 404', async () => {
+    expect(await status(() => expirePermissionForUser(ownerId, uid('Permission'), new Date()))).toBe(404)
+  })
+
+  it('a reader gets the list, with only the user fields the share dialog shows', async () => {
+    const permissions = await listItemPermissionsForUser(userId, items.live)
+    expect(permissions).toHaveLength(1)
+    expect(Object.keys(permissions[0].users[0]).sort()).toEqual(['email', 'id', 'image', 'name'])
+  })
+
+  it('the owner lists any of their items', async () => {
+    expect(await listItemPermissionsForUser(ownerId, items.expired)).toHaveLength(1)
   })
 })

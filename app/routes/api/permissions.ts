@@ -1,5 +1,6 @@
-import { data, redirect } from 'react-router'
-import { auth } from '@/services/auth'
+import { data } from 'react-router'
+import { authMiddleware } from '@/services/middleware/auth'
+import { sessionContext } from '@/services/middleware/context'
 import type { Route } from './+types/permissions'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import {
@@ -8,37 +9,38 @@ import {
 } from '@/schemas/api.schemas'
 import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 import {
-  getItemPermissions,
-  grantItemPermission,
-  revokeItemPermission,
-  expirePermission,
+  listItemPermissionsForUser,
+  grantItemPermissionForUser,
+  revokeItemPermissionForUser,
+  expirePermissionForUser,
 } from '@/services/permission-actions'
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
+
+export async function loader({ request, params, context }: Route.LoaderArgs) {
+  const session = context.get(sessionContext)
 
   // itemId can come from URL params (e.g. /api/items/:itemId/permissions) or query string
-  const itemIdFromParams = (params as any).itemId
-  if (itemIdFromParams) {
-    const permissions = await getItemPermissions(itemIdFromParams)
-    return data({ permissions })
-  }
+  const itemId =
+    (params as { itemId?: string }).itemId ??
+    parseOrRespond(() =>
+      parseSearchParams({ request, schema: permissionsLoaderInput })
+    ).itemId
 
-  const query = parseOrRespond(() =>
-    parseSearchParams({ request, schema: permissionsLoaderInput })
-  )
-  const permissions = await getItemPermissions(query.itemId)
-  return data({ permissions })
+  try {
+    const permissions = await listItemPermissionsForUser(session.user.id, itemId)
+    return data({ permissions })
+  } catch (e) {
+    const err = toErrorInfo(e)
+    return data(
+      { error: err.message ?? 'An error occurred' },
+      { status: err.status ?? 500 }
+    )
+  }
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
-    const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-  if (!session) throw redirect('/auth/sign-in')
+export async function action({ request, context }: Route.ActionArgs) {
+  const session = context.get(sessionContext)
 
   const formData = await parseFormData({
     request,
@@ -47,21 +49,27 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   try {
     if (formData.intent === 'grant_permission') {
-      const permission = await grantItemPermission(
+      const permission = await grantItemPermissionForUser(
+        session.user.id,
         formData.userId,
         formData.itemId,
-        formData.role as any
+        formData.role
       )
       return data({ permission }, { status: 201 })
     }
 
     if (formData.intent === 'revoke_permission') {
-      await revokeItemPermission(formData.userId, formData.itemId)
+      await revokeItemPermissionForUser(
+        session.user.id,
+        formData.userId,
+        formData.itemId
+      )
       return data({ success: true })
     }
 
     if (formData.intent === 'expire_permission') {
-      const permission = await expirePermission(
+      const permission = await expirePermissionForUser(
+        session.user.id,
         formData.permissionId,
         formData.expiresAt
       )

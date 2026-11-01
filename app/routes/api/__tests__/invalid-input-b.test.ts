@@ -1,13 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
 
-// These routes read the session with `auth.api.getSession` themselves; the mock
-// hands them a signed-in user. A malformed request must be refused by the
-// parser before any action runs, so no action module is mocked.
+// Routes still calling `auth.api.getSession` themselves get a signed-in user
+// from the mock; the others (permissions) read it from the context. A malformed
+// request must be refused by the parser before any action runs, so no action
+// module is mocked.
 vi.mock('@/services/auth', () => ({
   auth: { api: { getSession: vi.fn(async () => ({ user: { id: 'usr_test' } })) } },
 }))
 
 import { RouterContextProvider } from 'react-router'
+import { sessionContext } from '@/services/middleware/context'
 import * as notifications from '../notifications'
 import * as permissions from '../permissions'
 import * as pins from '../pins'
@@ -20,7 +22,9 @@ type Handler = (args: never) => Promise<unknown> | unknown
 /** The status of the `data()` response the handler threw, or of what it returned. */
 async function statusOf(handler: Handler, request: Request, params: Record<string, string> = {}) {
   try {
-    const result = await handler({ request, params, context: new RouterContextProvider() } as never)
+    const context = new RouterContextProvider()
+    context.set(sessionContext, { user: { id: 'usr_test' } } as never)
+    const result = await handler({ request, params, context } as never)
     return (result as { init?: { status?: number } } | null)?.init?.status ?? 200
   } catch (thrown) {
     return (thrown as { init?: { status?: number } }).init?.status ?? 500
