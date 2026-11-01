@@ -84,7 +84,7 @@ pnpm format       # Format with Prettier
 pnpm test         # Run unit tests once (any app/**/__tests__/*.test.ts)
 pnpm test:watch   # Run unit tests in watch mode
 pnpm prisma migrate dev   # Run database migrations
-pnpm test:e2e     # Run E2E tests (requires dev server)
+pnpm test:e2e     # Run E2E tests (requires dev server; CI's e2e job runs them on every push, Tigris keys from repo secrets)
 pnpm test:e2e:ui  # Run E2E tests with Playwright UI
 ```
 

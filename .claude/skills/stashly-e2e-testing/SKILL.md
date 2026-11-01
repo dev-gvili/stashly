@@ -11,6 +11,10 @@ Tests live in `tests/e2e/`. Run against `http://localhost` — **port 80, not 30
 
 Commands: `pnpm test:e2e` (requires dev server) and `pnpm test:e2e:ui` (Playwright UI).
 
+## In CI
+
+The `e2e` job in `.github/workflows/ci.yml` runs every spec on every push (tech-debt item 20): `pnpm dev` on port 80 (the runner allows it with `ip_unprivileged_port_start=80`), its own throwaway pgvector Postgres with `migrate deploy` plus one `free` storage-plan row, Chromium, one worker. Storage is **real Tigris**, with the keys in the repository secrets `AWS_ACCESS_KEY` / `AWS_SECRET_KEY`: `createUserBucket` calls Tigris's own bucket-settings API, so MinIO or another S3 stand-in can't replace it. The HTML report and failed tests' traces are uploaded as the `playwright-report` artifact, pass or fail. 65 passed in 4.1–6.3 min on 1 Nov. A spec that needs a new environment variable needs it in that job too.
+
 ## Structure
 
 | File | Purpose |
@@ -60,5 +64,6 @@ From `bcb227d`, where `thumbnail-machine.spec.ts` had been red for three reasons
 - **With the upload panel open, file names are inside `<main>`.** `dropFiles` opens the panel, and `expectCardInGrid` matches any text in `<main>`, so before a reload it passes on the panel's list alone. It proves a filed row only after a reload (which empties the panel). To assert the grid without one, locate `[data-slot="item-card"]` filtered by the name, as `upload.spec.ts`'s late-rows test does. Its first version passed against the bug it was written for.
 - **Hold a request with `page.route`** to reproduce a timing bug: `upload.spec.ts` delays every `create_upload_item` (`request.postData()` carries the intent) past the runner's 700 ms debounce.
 - **A metadata save doesn't prove indexing ran.** Since `51ca00d` (tech-debt item 40) a file with nothing to save (a `.bin`, a zip) ends in `indexed` without posting `save_media_metadata`. Read the run's final state from the probe's `indexingLastState` (`helpers/thumbnail-machine.ts`), which follows each run from the queue's `running` map.
-- **Known flaky (2026-10-30; tech-debt item 20).** `navigation.spec.ts`'s sidebar clicks fail in the full suite (1–3 of 12, a different link each run, URL left on the `?layout=grid` rewrite) and pass 36/36 alone; the same happens on `main`'s code. Don't chase it as a regression from an unrelated change.
+- **A page that rewrites its own URL races your click.** `LayoutMenu` writes `?layout=grid` into a clean URL in an effect after hydration, as a navigation of its own. A sidebar click before that is replaced by it, and the page stays on `/stash?layout=grid` (1–3 of `navigation.spec.ts`'s tests failed per full run until 1 Nov; the trace showed no request for the clicked page at all). Wait for the rewrite first: `navigation.spec.ts`'s `gotoStashHome` does `toHaveURL(/[?&]layout=grid/)`, or open the URL with `?layout=grid` already in it.
+- **The teardown deletes the E2E user's bucket**, never the placeholder `default-bucket`, retrying up to 5 times: Tigris can answer `BucketNotEmpty` right after the bucket was emptied (CI, 1 Nov: deleted on attempt 2). A failed delete is logged, not thrown.
 - **Search has no input of its own.** It searches through the header `Filters` box (placeholder `Search…`), which writes the `query` URL param, not `q`. Results are `FileCardDetail` cards (`[data-slot="item-card"]`) that open on click; they have no link role.
