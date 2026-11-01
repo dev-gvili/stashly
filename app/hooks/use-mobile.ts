@@ -28,10 +28,11 @@ export function useIsMobile(
   breakpoint: number = DEFAULT_MOBILE_BREAKPOINT,
   fallback = false
 ): boolean {
-  const [isMobile, setIsMobile] = React.useState<boolean>(() => {
-    if (typeof window === 'undefined') return fallback
-    return window.innerWidth < breakpoint
-  })
+  // Start from what the server rendered, never from `window`: reading the width
+  // here made the first client render differ from the HTML on any phone-width
+  // screen, and React threw a hydration error and re-rendered the whole layout.
+  // The effect below reads the real width right after mount.
+  const [isMobile, setIsMobile] = React.useState<boolean>(fallback)
 
   React.useEffect(() => {
     if (

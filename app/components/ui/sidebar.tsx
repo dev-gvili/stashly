@@ -391,7 +391,7 @@ function SidebarTrigger({
   sidebarId?: string
   tooltip?: string
 }) {
-  const { isMobile, setOpenMobile, open, toggleSidebar, state } =
+  const { isMobile, setOpenMobile, openMobile, toggleSidebar, state } =
     useSidebar(sidebarId)
 
   let tooltipContent =
@@ -407,7 +407,9 @@ function SidebarTrigger({
         className={cn(className)}
         onClick={(event) => {
           onClick?.(event)
-          isMobile ? setOpenMobile(!open) : toggleSidebar()
+          // The mobile sheet has its own state; toggling it from the desktop
+          // `open` left it shut whenever the desktop sidebar was expanded.
+          isMobile ? setOpenMobile(!openMobile) : toggleSidebar()
         }}
         {...props}
       >

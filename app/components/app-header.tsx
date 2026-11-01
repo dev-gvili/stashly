@@ -32,6 +32,7 @@ import {
 } from '@/components/layout-toggle'
 import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
 import { Button } from '@/ui/button'
+import { SidebarTrigger } from '@/ui/sidebar'
 import { ButtonGroup } from '@/ui/button-group'
 import { Trigger } from '@/components/upload'
 
@@ -47,6 +48,13 @@ export function AppHeader() {
   const rootId = layoutData?.user?.rootId
   return (
     <header className="bg-background z-40 flex items-center h-14 justify-between pl-0 pr-2 py-2 sticky top-0 shrink-0 gap-2">
+      {/* Below md the sidebar is a sheet, and its own trigger sits inside it;
+          this is the only way to open navigation on a phone. */}
+      <SidebarTrigger
+        sidebarId="default"
+        size="icon"
+        className="md:hidden bg-card! border-input rounded-md! shrink-0"
+      />
       <Button
         variant="outline"
         size="icon"
