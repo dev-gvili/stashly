@@ -23,8 +23,11 @@ vi.mock('@/services/item-actions', async (importOriginal) => ({
     hasMore: false,
   })),
 }))
-vi.mock('@/services/subscription-actions', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/services/subscription-actions')>()),
+// Stubbed whole: the real module loads the Stripe client, which throws without
+// a key (CI has none).
+vi.mock('@/services/subscription-actions', () => ({
+  updateSubscriptionPlan: vi.fn(),
+  cancelSubscription: vi.fn(),
   getActiveSubscription: vi.fn(async () => ({
     id: 'sub_a',
     status: 'active',
