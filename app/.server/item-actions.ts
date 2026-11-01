@@ -2566,7 +2566,7 @@ export async function getFolderContent(params: GetFolderContentParams) {
 
   // Folders First Logic (group by type)
   if (foldersFirst) {
-    orderBy.push({ type: 'desc' }) // 'folder' comes after 'file' alphabetically, so desc puts folders first
+    orderBy.push({ type: 'asc' }) // the ItemType enum is declared folder, file, collection, and Postgres orders by that
   }
 
   // Apply caller-provided sort if any, otherwise the sortBy/sortDirection default
@@ -2818,7 +2818,7 @@ export async function paginateItems<
 
     // Group folders first if requested
     if (foldersFirst) {
-      orderBy.push({ type: 'desc' }) // 'folder' > 'file'
+      orderBy.push({ type: 'asc' }) // enum order: folder, file, collection
     }
 
     // Apply primary sort field

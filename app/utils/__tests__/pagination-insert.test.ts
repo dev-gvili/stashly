@@ -32,12 +32,12 @@ const ids = (list: Row[]) => list.map((r) => r.id)
 const params = (search: string) => new URLSearchParams(search)
 
 describe('cardOrderFor', () => {
-  // `getFolderContent` orders `type desc` over the ItemType enum, declared
-  // folder, file, collection: files sort before folders (probed 1 Nov).
-  it('orders like getFolderContent: type desc, then name, then id', () => {
+  // `getFolderContent` orders `type asc` over the ItemType enum, declared
+  // folder, file, collection: folders sort before files (tech-debt item 64).
+  it('orders like getFolderContent: type asc, then name, then id', () => {
     const compare = cardOrderFor(params(''), { foldersFirst: true })!
     const list = [row('3', 'b', 'folder'), row('2', 'a', 'folder'), row('1', 'b'), row('0', 'a')]
-    expect(ids([...list].sort(compare))).toEqual(['0', '1', '2', '3'])
+    expect(ids([...list].sort(compare))).toEqual(['2', '3', '0', '1'])
   })
 
   it('takes the sort from the URL, id breaking ties', () => {
@@ -81,20 +81,29 @@ describe('canInsertUnder', () => {
 
 describe('insertCardItems', () => {
   const compare = cardOrderFor(params(''), { foldersFirst: true })!
-  const list = [row('f1', 'a'), row('f3', 'c'), row('d1', 'a', 'folder')]
+  const list = [row('d1', 'a', 'folder'), row('f1', 'a'), row('f3', 'c')]
 
   it('places a new row where the loader would', () => {
     expect(ids(insertCardItems(list, [row('f2', 'b')], { compare, hasMore: false }))).toEqual([
+      'd1',
       'f1',
       'f2',
       'f3',
+    ])
+  })
+
+  it('places a new folder before the files', () => {
+    expect(ids(insertCardItems(list, [row('d2', 'z', 'folder')], { compare, hasMore: false }))).toEqual([
       'd1',
+      'd2',
+      'f1',
+      'f3',
     ])
   })
 
   it('appends a row past the end only when the whole folder is loaded', () => {
-    const late = row('d2', 'z', 'folder')
-    expect(ids(insertCardItems(list, [late], { compare, hasMore: false }))).toEqual(['f1', 'f3', 'd1', 'd2'])
+    const late = row('f9', 'z')
+    expect(ids(insertCardItems(list, [late], { compare, hasMore: false }))).toEqual(['d1', 'f1', 'f3', 'f9'])
     // With more pages to come, the row belongs to a later page: `loadMore`
     // brings it, and inserting it now would put it above rows not yet loaded.
     expect(insertCardItems(list, [late], { compare, hasMore: true })).toBe(list)
@@ -107,12 +116,12 @@ describe('insertCardItems', () => {
   it('places several rows in one call', () => {
     const rows = [row('f4', 'd'), row('f0', '0'), row('f2', 'b')]
     expect(ids(insertCardItems(list, rows, { compare, hasMore: false }))).toEqual([
+      'd1',
       'f0',
       'f1',
       'f2',
       'f3',
       'f4',
-      'd1',
     ])
   })
 })

@@ -651,9 +651,9 @@ type CardRow = { id: string; [field: string]: unknown }
 export type CardCompare = (a: CardRow, b: CardRow) => number
 
 /**
- * `type desc` sorts by the ItemType enum's declared order, which Postgres uses
- * for ORDER BY: folder, file, collection (probed 2026-11-01). So "folders
- * first" in `getFolderContent` actually puts files before folders.
+ * `type asc` sorts by the ItemType enum's declared order, which Postgres uses
+ * for ORDER BY: folder, file, collection (probed 2026-11-01), so "folders
+ * first" in `getFolderContent` is `asc`.
  */
 const TYPE_RANK: Record<string, number> = { folder: 0, file: 1, collection: 2 }
 
@@ -680,7 +680,7 @@ function compareValues(column: string, a: unknown, b: unknown): number {
 }
 
 /**
- * The page's sort as a comparator, mirroring `getFolderContent`: `type desc`
+ * The page's sort as a comparator, mirroring `getFolderContent`: `type asc`
  * when `foldersFirst`, then the URL's `orderBy[col]=dir` (or name ascending),
  * then `id`. Null for a sort the browser cannot reproduce (Count, a relation,
  * an unknown column or direction): such a page inserts nothing.
@@ -696,7 +696,7 @@ export function cardOrderFor(
   searchParams: URLSearchParams,
   { foldersFirst }: { foldersFirst: boolean }
 ): CardCompare | null {
-  const keys: [string, 'asc' | 'desc'][] = foldersFirst ? [['type', 'desc']] : []
+  const keys: [string, 'asc' | 'desc'][] = foldersFirst ? [['type', 'asc']] : []
   let sorted = false
   for (const [param, dir] of searchParams) {
     if (!param.startsWith('orderBy')) continue
