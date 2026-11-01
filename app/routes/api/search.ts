@@ -21,7 +21,7 @@ import {
   searchApiRouteQuery,
   searchScope,
 } from '@/schemas/api.schemas'
-import { toErrorInfo } from '@/utils/api.errors'
+import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 import { buildItemFilters } from '@/utils/filters/item.filters'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { isSearchableQuery, normalizeQuery } from '@/utils/search-query'
@@ -86,10 +86,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     return data(EMPTY)
   }
 
-  const input = parseSearchParams({
-    schema: searchApiRouteQuery,
-    searchParams: url.searchParams,
-  })
+  const input = parseOrRespond(() =>
+    parseSearchParams({
+      schema: searchApiRouteQuery,
+      searchParams: url.searchParams,
+    })
+  )
 
   const results = await searchItemsHybrid({
     ownerId: session.user.id,
@@ -108,7 +110,9 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   assertScope(params.type)
 
-  const input = await parseFormData({ request, schema: searchApiRouteInput })
+  const input = await parseFormData({ request, schema: searchApiRouteInput }).catch(
+    rethrowAsResponse
+  )
 
   if (!isSearchableQuery(input.query)) return data(EMPTY)
 

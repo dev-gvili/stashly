@@ -10,7 +10,7 @@ import {
   getPinnedItems,
   isPinned,
 } from '@/services/pin-actions'
-import { toErrorInfo } from '@/utils/api.errors'
+import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
     const session = await auth.api.getSession({
@@ -18,7 +18,9 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
   })
   if (!session) throw redirect('/auth/sign-in')
 
-  const params = parseSearchParams({ request, schema: pinApiRouteQuery })
+  const params = parseOrRespond(() =>
+    parseSearchParams({ request, schema: pinApiRouteQuery })
+  )
 
   if (params.intent === 'check') {
     if (!params.itemId) return data({ pinned: false }, { status: 400 })
@@ -38,7 +40,9 @@ export const action = async ({ request }: Route.ActionArgs) => {
   })
   if (!session) throw redirect('/auth/sign-in')
 
-  const parsedData = await parseFormData({ request, schema: pinApiRouteInput })
+  const parsedData = await parseFormData({ request, schema: pinApiRouteInput }).catch(
+    rethrowAsResponse
+  )
 
   try {
     switch (parsedData.intent) {

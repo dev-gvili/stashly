@@ -9,7 +9,7 @@ import {
   removeMember,
   changeRole,
 } from '@/services/workspace-actions'
-import { toErrorInfo } from '@/utils/api.errors'
+import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 
 export async function loader({ request }: Route.LoaderArgs) {
     const session = await auth.api.getSession({
@@ -17,7 +17,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   })
   if (!session) throw redirect('/auth/sign-in')
 
-  const params = parseSearchParams({ request, schema: membersLoaderInput })
+  const params = parseOrRespond(() => parseSearchParams({ request, schema: membersLoaderInput }))
 
   const members = await getMembersForWorkspace(params.workspaceId)
   return data({ members })
@@ -29,13 +29,9 @@ export async function action({ request }: Route.ActionArgs) {
   })
   if (!session) throw redirect('/auth/sign-in')
 
-  let formData: ReturnType<typeof membersApiRouteInput.parse>
-  try {
-    formData = await parseFormData({ request, schema: membersApiRouteInput })
-  } catch (e) {
-    const err = e as { message?: string }
-    return data({ error: err.message ?? 'Invalid input' }, { status: 400 })
-  }
+  const formData = await parseFormData({ request, schema: membersApiRouteInput }).catch(
+    rethrowAsResponse
+  )
 
   try {
     if (formData.intent === 'add_member') {

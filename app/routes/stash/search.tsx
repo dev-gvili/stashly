@@ -13,6 +13,7 @@ import { isSearchableQuery, clampTake } from '@/utils/search-query'
 import type { SearchResponse } from '@/types/stash.types'
 import type { Route } from './+types/search'
 import { parseSearchParams } from '@/utils/parsers'
+import { parseOrRespond } from '@/utils/api.errors'
 import { toSearchSchema } from '@/utils'
 import type { Prisma } from '@/prisma/client'
 
@@ -49,14 +50,14 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   // Context for the `favorited` filter, which scopes to the viewer, not the owner.
   searchParams.set('currentUserId', session.user.id)
 
-  const parsedParams = parseSearchParams({
+  const parsedParams = parseOrRespond(() => parseSearchParams({
     searchParams,
     schema: toSearchSchema<
       typeof itemFilterSchema,
       Prisma.ItemOrderByWithRelationInput,
       Prisma.ItemInclude
     >({ schema: itemFilterSchema }),
-  })
+  }), 'text')
 
   const filters = buildItemFilters(parsedParams)
 

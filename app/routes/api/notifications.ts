@@ -6,7 +6,7 @@ import {
   notificationsLoaderInput,
   notificationsApiRouteInput,
 } from '@/schemas/api.schemas'
-import { toErrorInfo } from '@/utils/api.errors'
+import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 import {
   listNotifications,
   markNotificationRead,
@@ -23,10 +23,12 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!session) throw redirect('/auth/sign-in')
 
   try {
-    const query = parseSearchParams({
-      request,
-      schema: notificationsLoaderInput,
-    })
+    const query = parseOrRespond(() =>
+      parseSearchParams({
+        request,
+        schema: notificationsLoaderInput,
+      })
+    )
     const result = await listNotifications({
       userId: session.user.id,
       status: query.status,
@@ -54,7 +56,7 @@ export async function action({ request }: Route.ActionArgs) {
     const formData = await parseFormData({
       request,
       schema: notificationsApiRouteInput,
-    })
+    }).catch(rethrowAsResponse)
 
     if (formData.intent === 'mark_read') {
       const notification = await markNotificationRead(

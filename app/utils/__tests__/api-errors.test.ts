@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { StashlyError, StashlyErrorCode, toErrorInfo } from '../api.errors'
+import { parseOrRespond, rethrowAsResponse, StashlyError, StashlyErrorCode, toErrorInfo } from '../api.errors'
 
 describe('toErrorInfo', () => {
   it('reads the status off a StashlyError', () => {
@@ -46,5 +46,40 @@ describe('toErrorInfo', () => {
       status: undefined,
       message: undefined,
     })
+  })
+})
+describe('rethrowAsResponse and parseOrRespond', () => {
+  const invalid = () => {
+    throw new StashlyError(StashlyErrorCode.INVALID_INPUT, 'itemId is required')
+  }
+  const thrown = (fn: () => unknown) => {
+    try {
+      fn()
+    } catch (e) {
+      return e as { data: unknown; init: { status: number } }
+    }
+    throw new Error('did not throw')
+  }
+
+  it('answers the parser error as 400 JSON, or as text for a page loader', () => {
+    expect(thrown(() => parseOrRespond(invalid))).toMatchObject({
+      data: { success: false, error: 'itemId is required' },
+      init: { status: 400 },
+    })
+    expect(thrown(() => parseOrRespond(invalid, 'text'))).toMatchObject({
+      data: 'itemId is required',
+      init: { status: 400 },
+    })
+  })
+
+  it('returns the parsed value when the parser succeeds', () => {
+    expect(parseOrRespond(() => 42)).toBe(42)
+  })
+
+  // A handler whose parse sits inside a try sends the thrown response through
+  // toErrorInfo in its catch; status and message must both survive that.
+  it('keeps status and message when a catch block reads it with toErrorInfo', () => {
+    const e = thrown(() => rethrowAsResponse(new StashlyError(StashlyErrorCode.INVALID_INPUT, 'bad intent')))
+    expect(toErrorInfo(e)).toEqual({ status: 400, message: 'bad intent' })
   })
 })

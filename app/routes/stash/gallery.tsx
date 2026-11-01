@@ -2,6 +2,7 @@ import { sessionContext } from '@/.server/middleware/context'
 import type { Route } from './+types/gallery'
 import { Gallery } from '@/components/Gallery'
 import { parseSearchParams } from '@/utils/parsers'
+import { parseOrRespond } from '@/utils/api.errors'
 import { toSearchSchema } from '@/utils'
 import type { Prisma } from '@/prisma/client'
 import { getGalleryMedia } from '@/services/thumbnail-actions'
@@ -26,14 +27,14 @@ export async function loader({ request, context }: Route.ActionArgs) {
   const layout = searchParams.get('layout')
   searchParams.append('take', '200')
 
-  let params = parseSearchParams({
+  let params = parseOrRespond(() => parseSearchParams({
     schema: toSearchSchema<
       typeof itemFilterSchema,
       Prisma.ItemOrderByWithRelationInput,
       Prisma.ItemInclude
     >({ schema: itemFilterSchema }),
     searchParams,
-  })
+  }), 'text')
   let filters = buildItemFilters(params)
 
   let media = await getGalleryMedia(session.user.id, filters, params.take)

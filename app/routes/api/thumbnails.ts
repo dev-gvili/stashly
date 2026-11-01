@@ -22,7 +22,7 @@ import {
   presignThumbnailUpload,
   updateThumbnail,
 } from '@/services/thumbnail-actions'
-import { toErrorInfo } from '@/utils/api.errors'
+import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
 import { data, type ShouldRevalidateFunction } from 'react-router'
@@ -56,10 +56,12 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const itemId = params.itemId
   if (!itemId) return data({ error: 'Not found' }, { status: 404 })
 
-  const query = parseSearchParams({
-    request,
-    schema: thumbnailApiRouteQuery,
-  })
+  const query = parseOrRespond(() =>
+    parseSearchParams({
+      request,
+      schema: thumbnailApiRouteQuery,
+    })
+  )
 
   try {
     if (query.intent === 'presign') {
@@ -87,7 +89,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       const parsedData = await parseFormData({
         request,
         schema: thumbnailCreateSchema,
-      })
+      }).catch(rethrowAsResponse)
       const thumbnail = await createThumbnail(
         params.itemId || parsedData.itemId,
         parsedData.url,
@@ -108,7 +110,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       const parsedData = await parseFormData({
         request,
         schema: thumbnailUpdateSchema,
-      })
+      }).catch(rethrowAsResponse)
       // `parsedData.url` is the client's optimistic src — deliberately unused.
       // The bucket and key are derived server-side in `updateThumbnail`.
       const signedUrl = await updateThumbnail(

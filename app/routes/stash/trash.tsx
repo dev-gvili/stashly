@@ -16,6 +16,7 @@ import {
   TRASH_ROOTS,
 } from '@/services/item-actions'
 import { parseSearchParams } from '@/utils/parsers'
+import { parseOrRespond } from '@/utils/api.errors'
 import { formatSize } from '@/utils/formaters'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
 import type { LibraryStats } from '@/types/stash.types'
@@ -101,14 +102,14 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   // `Thumbnail.view` is non-nullable: a clean URL (no `?layout=`) must not
   // reach Prisma as `view: null`. Same default the grid/card views use.
   let layout = searchParams.get('layout') ?? 'grid'
-  let parsedParams = parseSearchParams({
+  let parsedParams = parseOrRespond(() => parseSearchParams({
     schema: toSearchSchema<
       typeof itemFilterSchema,
       Prisma.ItemOrderByWithRelationInput,
       Prisma.ItemInclude
     >({ schema: itemFilterSchema }),
     searchParams,
-  })
+  }), 'text')
   let filters = buildItemFilters(parsedParams)
 
   let [page, stats] = await Promise.all([

@@ -19,6 +19,7 @@ import {
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
 import { parseSearchParams } from '@/utils/parsers'
+import { parseOrRespond } from '@/utils/api.errors'
 import { getQueryParamArray } from '@/utils/query-params'
 import { type ShouldRevalidateFunction } from 'react-router'
 import { SelectionProvider } from '../../components/stash/selection'
@@ -41,14 +42,14 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
   searchParams.set('currentUserId', session.user.id)
   searchParams.set('parentId', params.folderId)
 
-  let parsedParams = parseSearchParams({
+  let parsedParams = parseOrRespond(() => parseSearchParams({
     schema: toSearchSchema<
       typeof itemFilterSchema,
       Prisma.ItemOrderByWithRelationInput,
       Prisma.ItemInclude
     >({ schema: itemFilterSchema }),
     searchParams,
-  })
+  }), 'text')
 
   let filters = buildItemFilters(parsedParams)
 

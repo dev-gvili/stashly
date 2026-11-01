@@ -11,6 +11,7 @@ import {
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
 import { parseSearchParams } from '@/utils/parsers'
+import { parseOrRespond } from '@/utils/api.errors'
 import { toSearchSchema } from '@/utils'
 import type { Prisma } from '@/prisma/client'
 import { GridLayout } from '@/components/views/grid-view'
@@ -100,14 +101,14 @@ export async function loader({ request, params, context }: Route.ActionArgs) {
   let searchParams = new URL(request.url).searchParams
   searchParams.set('currentUserId', session.user.id)
   searchParams.set('parentId', session.user.rootId)
-  let parsedParams = parseSearchParams({
+  let parsedParams = parseOrRespond(() => parseSearchParams({
     schema: toSearchSchema<
       typeof itemFilterSchema,
       Prisma.ItemOrderByWithRelationInput,
       Prisma.ItemInclude
     >({ schema: itemFilterSchema }),
     searchParams,
-  })
+  }), 'text')
 
   let filters = buildItemFilters(parsedParams)
 

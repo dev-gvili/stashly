@@ -5,6 +5,7 @@ import { resolveDuplicatesApiRouteInput } from '@/schemas/api.schemas'
 import { trashItems } from '@/services/item-actions'
 import { getDuplicateGroups } from '@/services/storage-actions'
 import { parseFormData } from '@/utils/parsers'
+import { rethrowAsResponse } from '@/utils/api.errors'
 import { useCallback } from 'react'
 import {
   href,
@@ -54,7 +55,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const input = await parseFormData({
     request,
     schema: resolveDuplicatesApiRouteInput,
-  })
+  }).catch((e) => rethrowAsResponse(e, 'text'))
 
   // Soft delete only — `trashItems` flips status and adjusts quota, so every
   // copy stays restorable from Trash. Never `deleteItems` here.

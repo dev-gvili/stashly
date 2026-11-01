@@ -6,7 +6,7 @@ import { toZodArraySchema } from '@/utils/converters'
 import { removeQueryParam } from '@/utils/query-params'
 import z from 'zod'
 import { addFavorite, addFavorites, removeFavorite } from '@/services/item-actions'
-import { toErrorInfo } from '@/utils/api.errors'
+import { rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 
 const ApiFavoriteSchema = z.discriminatedUnion('intent', [
   z.object({ intent: z.literal('favorite'), itemId: z.string() }),
@@ -28,9 +28,9 @@ export const action = async ({ request }: Route.ActionArgs) => {
   let searchParams = url.searchParams
 
   try {
-    // Inside the try: a malformed body is the client's fault and answers 400,
-    // where outside it escaped as a 500.
-    const parsedData = await parseFormData({ request, schema: ApiFavoriteSchema })
+    const parsedData = await parseFormData({ request, schema: ApiFavoriteSchema }).catch(
+      rethrowAsResponse
+    )
     switch (parsedData.intent) {
       case 'favorite': {
         await addFavorite(parsedData.itemId, session.user.id)

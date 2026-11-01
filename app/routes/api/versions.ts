@@ -6,7 +6,7 @@ import {
   versionsLoaderInput,
   versionsApiRouteInput,
 } from '@/schemas/api.schemas'
-import { toErrorInfo } from '@/utils/api.errors'
+import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 import {
   listVersions,
   getVersion,
@@ -21,10 +21,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   })
   if (!session) throw redirect('/auth/sign-in')
 
-  const { itemId: queryItemId, versionId: queryVersionId } = parseSearchParams({
-    request,
-    schema: versionsLoaderInput,
-  })
+  const { itemId: queryItemId, versionId: queryVersionId } = parseOrRespond(() =>
+    parseSearchParams({
+      request,
+      schema: versionsLoaderInput,
+    })
+  )
 
   const itemId = params.itemId ?? queryItemId
   const versionId = params.versionId ?? queryVersionId
@@ -65,7 +67,7 @@ export async function action({ request, params, unstable_url, context, unstable_
     const formData = await parseFormData({
       request,
       schema: versionsApiRouteInput,
-    })
+    }).catch(rethrowAsResponse)
 
     if (formData.intent === 'create_version') {
       const version = await createVersion({

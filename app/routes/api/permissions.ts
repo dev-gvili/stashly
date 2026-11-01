@@ -6,7 +6,7 @@ import {
   permissionsLoaderInput,
   permissionsApiRouteInput,
 } from '@/schemas/api.schemas'
-import { toErrorInfo } from '@/utils/api.errors'
+import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 import {
   getItemPermissions,
   grantItemPermission,
@@ -27,7 +27,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     return data({ permissions })
   }
 
-  const query = parseSearchParams({ request, schema: permissionsLoaderInput })
+  const query = parseOrRespond(() =>
+    parseSearchParams({ request, schema: permissionsLoaderInput })
+  )
   const permissions = await getItemPermissions(query.itemId)
   return data({ permissions })
 }
@@ -41,7 +43,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await parseFormData({
     request,
     schema: permissionsApiRouteInput,
-  })
+  }).catch(rethrowAsResponse)
 
   try {
     if (formData.intent === 'grant_permission') {

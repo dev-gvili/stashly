@@ -15,6 +15,7 @@ import type { Route } from './+types/collection'
 import { usePagination } from '@/hooks/usePagination'
 import { useEffect } from 'react'
 import { parseSearchParams } from '@/utils/parsers'
+import { parseOrRespond } from '@/utils/api.errors'
 import { toSearchSchema } from '@/utils'
 import {
   buildItemFilters,
@@ -31,14 +32,14 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
   const url = new URL(request.url)
   const searchParams = url.searchParams
 
-  let parsedParams = parseSearchParams({
+  let parsedParams = parseOrRespond(() => parseSearchParams({
     schema: toSearchSchema<
       typeof itemFilterSchema,
       Prisma.ItemOrderByWithRelationInput,
       Prisma.ItemInclude
     >({ schema: itemFilterSchema }),
     searchParams,
-  })
+  }), 'text')
 
   let filters = buildItemFilters(parsedParams)
 

@@ -6,7 +6,7 @@ import {
   workspacesLoaderInput,
   workspacesApiRouteInput,
 } from '@/schemas/api.schemas'
-import { toErrorInfo } from '@/utils/api.errors'
+import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 import { track } from '@/services/vinktar'
 import {
   findWorkspaceById,
@@ -23,7 +23,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   })
   if (!session) throw redirect('/auth/sign-in')
 
-  const query = parseSearchParams({ request, schema: workspacesLoaderInput })
+  const query = parseOrRespond(() => parseSearchParams({ request, schema: workspacesLoaderInput }))
 
   // Resolve workspaceId from query params or URL params
   const workspaceId = query.workspaceId ?? (params as any).workspaceId
@@ -50,7 +50,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await parseFormData({
     request,
     schema: workspacesApiRouteInput,
-  })
+  }).catch(rethrowAsResponse)
 
   try {
     if (formData.intent === 'create_workspace') {

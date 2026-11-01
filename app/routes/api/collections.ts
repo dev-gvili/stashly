@@ -20,6 +20,7 @@ import {
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
+import { parseOrRespond, rethrowAsResponse } from '@/utils/api.errors'
 import { toSearchSchema } from '@/utils'
 import type { Prisma } from '@/prisma/client'
 import { data, redirect } from 'react-router'
@@ -37,14 +38,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     searchParams.set('collectionId', params.collectionId)
   }
 
-  let parsedParams = parseSearchParams({
+  let parsedParams = parseOrRespond(() => parseSearchParams({
     schema: toSearchSchema<
       typeof itemFilterSchema,
       Prisma.ItemOrderByWithRelationInput,
       Prisma.ItemInclude
     >({ schema: itemFilterSchema }),
     searchParams,
-  })
+  }))
 
   let filters = buildItemFilters(parsedParams)
 
@@ -104,7 +105,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await parseFormData({
     request,
     schema: collectionsApiRouteInput,
-  })
+  }).catch(rethrowAsResponse)
 
   let referer = request.headers.get('referer')
   let url = new URL(referer || request.url)

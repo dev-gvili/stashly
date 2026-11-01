@@ -29,7 +29,7 @@ import {
   saveMediaMetadata,
   setSearchChunkVectors,
 } from '@/services/search-actions'
-import { toErrorInfo } from '@/utils/api.errors'
+import { rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 import { toTrashRedirectUrl } from '@/utils/trash-urls'
 import { clampPendingLimit } from '@/utils/embedding-backfill'
 import { parseFormData } from '@/utils/parsers'
@@ -112,13 +112,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
   // which answers with its own status (400) here instead of escaping the action,
   // where React Router turns any unhandled throw into a 500.
   let parsedData = await parseFormData({ request, schema: itemsApiRouteInput }).catch(
-    (e: unknown) => {
-      const err = toErrorInfo(e)
-      throw data(
-        { success: false, error: err.message ?? 'Invalid request' },
-        { status: err.status ?? 400 }
-      )
-    }
+    rethrowAsResponse
   )
   let referer = request.headers.get('referer')
   let url = new URL(referer || request.url)

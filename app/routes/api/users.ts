@@ -10,7 +10,7 @@ import {
   searchUsersByQuery,
   deleteUser,
 } from '@/services/user-actions'
-import { toErrorInfo } from '@/utils/api.errors'
+import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 
 export async function loader({ request, params }: Route.LoaderArgs) {
     const session = await auth.api.getSession({
@@ -34,7 +34,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   // List / search route: GET /api/users?query=...
   try {
-    const query = parseSearchParams({ request, schema: usersLoaderInput })
+    const query = parseOrRespond(() => parseSearchParams({ request, schema: usersLoaderInput }))
     if (query.email) {
       const user = await findUserByEmail(query.email)
       return data({ user })
@@ -64,7 +64,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     const formData = await parseFormData({
       request,
       schema: usersApiRouteInput,
-    })
+    }).catch(rethrowAsResponse)
 
     if (formData.intent === 'update_user') {
       const userId = params.userId ?? session.user.id

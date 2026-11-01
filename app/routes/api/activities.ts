@@ -1,6 +1,7 @@
 import { data } from 'react-router'
 import { auth } from '@/services/auth'
 import { parseSearchParams } from '@/utils/parsers'
+import { parseOrRespond } from '@/utils/api.errors'
 import { searchActivities } from '@/services/activity-actions'
 import { z } from 'zod'
 import type { Route } from './+types/activities'
@@ -17,7 +18,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   })
   if (!session) return data({ error: 'Unauthorized' }, { status: 401 })
 
-  const params = parseSearchParams({ request, schema })
+  const params = parseOrRespond(() => parseSearchParams({ request, schema }))
 
   const result = await searchActivities({
     itemId: params.itemId ? { equals: params.itemId } : undefined,

@@ -635,11 +635,56 @@ export function toErrorInfo(error: unknown): {
   const status =
     typeof raw === 'number' && raw >= 400 && raw <= 599 ? raw : undefined
 
-  const text = isData ? e?.data : e?.message
+  // A `data()` payload is the message itself, or `{ error }` (`rethrowAsResponse`).
+  const payload = isData ? e?.data : undefined
+  const text = isData
+    ? typeof payload === 'object' && payload !== null
+      ? (payload as { error?: unknown }).error
+      : payload
+    : e?.message
 
   return {
     status,
     message: typeof text === 'string' ? text : undefined,
+  }
+}
+
+/**
+ * Rethrows a request parser's error as a `data()` response with its status, so
+ * a malformed request answers 400 instead of escaping the handler as a 500
+ * (tech-debt item 48). Chain it onto `parseFormData` / `parseSearchParams`.
+ *
+ * `'json'` (API routes) throws `{ success: false, error }`, the shape their
+ * callers read; `'text'` (page loaders) throws the message itself, which is
+ * what the error boundary shows from `error.data`.
+ *
+ * `parseSearchParams` is synchronous, so it goes through `parseOrRespond`.
+ *
+ * @example
+ * const input = await parseFormData({ request, schema }).catch(rethrowAsResponse)
+ */
+export function rethrowAsResponse(error: unknown, shape: 'json' | 'text' = 'json'): never {
+  const err = toErrorInfo(error)
+  const status = err.status ?? 400
+  const message = err.message ?? 'Invalid request'
+  throw shape === 'json'
+    ? data({ success: false, error: message }, { status })
+    : data(message, { status })
+}
+
+/**
+ * Runs a synchronous parser and turns its error into a response, as
+ * `rethrowAsResponse` does for the async `parseFormData`.
+ *
+ * @example
+ * const query = parseOrRespond(() => parseSearchParams({ request, schema }))
+ * const filters = parseOrRespond(() => parseSearchParams({ request, schema }), 'text')
+ */
+export function parseOrRespond<T>(parse: () => T, shape: 'json' | 'text' = 'json'): T {
+  try {
+    return parse()
+  } catch (e) {
+    rethrowAsResponse(e, shape)
   }
 }
 

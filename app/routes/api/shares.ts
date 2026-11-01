@@ -16,7 +16,7 @@ import {
   updateShareLinkSettings,
   listShareLinksForItem,
 } from '@/services/share-actions'
-import { toErrorInfo } from '@/utils/api.errors'
+import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 
 // ---------------------------------------------------------------------------
 // Loader — GET /api/shares?itemId=xxx
@@ -31,10 +31,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   })
   if (!session) throw redirect('/auth/sign-in')
 
-  const { itemId } = parseSearchParams({
-    request,
-    schema: sharesLoaderInput,
-  })
+  const { itemId } = parseOrRespond(() =>
+    parseSearchParams({ request, schema: sharesLoaderInput })
+  )
 
   try {
     const links = await listShareLinksForItem(session.user.id, itemId)
@@ -64,7 +63,7 @@ export async function action({ request }: Route.ActionArgs) {
   const parsedData = await parseFormData({
     request,
     schema: sharesApiRouteInput,
-  })
+  }).catch(rethrowAsResponse)
   const actorId = session.user.id
 
   try {

@@ -7,7 +7,7 @@ import {
   getUserSettings,
   updateUserSettings,
 } from '@/services/settings-actions'
-import { toErrorInfo } from '@/utils/api.errors'
+import { rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 
 export async function loader({ request }: Route.LoaderArgs) {
     const session = await auth.api.getSession({
@@ -37,7 +37,7 @@ export async function action({ request }: Route.ActionArgs) {
     const formData = await parseFormData({
       request,
       schema: settingsApiRouteInput,
-    })
+    }).catch(rethrowAsResponse)
 
     if (formData.intent === 'update_settings') {
       const { intent, ...rest } = formData

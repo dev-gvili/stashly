@@ -6,7 +6,7 @@ import {
   commentsLoaderInput,
   commentsApiRouteInput,
 } from '@/schemas/api.schemas'
-import { toErrorInfo } from '@/utils/api.errors'
+import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 import {
   listComments,
   createComment,
@@ -20,10 +20,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   })
   if (!session) throw redirect('/auth/sign-in')
 
-  const { itemId: queryItemId } = parseSearchParams({
+  const { itemId: queryItemId } = parseOrRespond(() => parseSearchParams({
     request,
     schema: commentsLoaderInput,
-  })
+  }))
 
   const itemId = params.itemId ?? queryItemId
   if (!itemId) {
@@ -49,7 +49,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     const formData = await parseFormData({
       request,
       schema: commentsApiRouteInput,
-    })
+    }).catch(rethrowAsResponse)
 
     if (formData.intent === 'create_comment') {
       const comment = await createComment({
