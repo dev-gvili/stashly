@@ -7,7 +7,7 @@
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
 **Now (1 Nov):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1214 in 100 files), and the build. Green on `ebfd3da` (1 Nov). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1216 in 101 files), and the build. Green on `ebfd3da` (1 Nov). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors, analytics and logs:** Vinktar on server and browser since 10 Oct; product events, route timing and a structured logger since 31 Oct (item 4, resolved).
@@ -23,7 +23,9 @@
 
 **63 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 4 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62) · categories: Code 30, Architecture 22, Infrastructure 4, Test 4, Documentation 2, Dependency 1
 
-**Status at 1 Nov 2026 (latest, items 62 and 63):** 45 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 45–47, 51, 57, 59, 63). Item 62 resolved (`da59fdd`): every API route reads the session through `authMiddleware`, and a guard fails any new one that doesn't, unless it is named with its reason. Anonymous requests now get one answer everywhere, a redirect to `/auth/sign-in` (collections sent them to a misspelt `/auth/signin`). Item 63, found while checking it and present before it: `GET /api/collections` and `GET /api/subscription` answer 500, because their payload holds a `BigInt` that the resource route can't serialize.
+**Status at 1 Nov 2026 (latest, item 63):** 46 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 9 new and open (19, 20, 22, 45–47, 51, 57, 59). Item 63 resolved (`bacb903`): `GET /api/collections` and `GET /api/subscription` parse their payload through an output schema before sending it, as `/api/quota` does, so bytes go out as numbers; both answered 500 and now answer 200, measured.
+
+**Status at 1 Nov 2026 (items 62 and 63):** 45 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 45–47, 51, 57, 59, 63). Item 62 resolved (`da59fdd`): every API route reads the session through `authMiddleware`, and a guard fails any new one that doesn't, unless it is named with its reason. Anonymous requests now get one answer everywhere, a redirect to `/auth/sign-in` (collections sent them to a misspelt `/auth/signin`). Item 63, found while checking it and present before it: `GET /api/collections` and `GET /api/subscription` answer 500, because their payload holds a `BigInt` that the resource route can't serialize.
 
 **Status at 1 Nov 2026 (items 61 and 62):** 44 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 45–47, 51, 57, 59, 62). Item 61, resolved the day it was found: `/api/permissions` called the permission helpers with no caller, so any signed-in user could list who has access to any item (full user rows) and grant themselves write or owner on it. Listing now needs read access and managing needs write (owner to hand out owner); a stranger gets 403 on both, measured against the dev server. Item 62, open: 19 more API routes still call `getSession` themselves.
 
@@ -153,7 +155,7 @@
 | 60 | ~~Deleting a file deletes its copies' bytes~~ | 32 | Resolved 2026-11-01 (`ebfd3da`): an object is deleted only with the last `File` row that names it; red test first | — |
 | 61 | ~~`/api/permissions` had no access check~~ | 50 | Resolved 2026-11-01: listing needs read access, granting, revoking and expiring need write (owner to grant owner); a stranger gets 403, measured; users trimmed to id, name, email, image | — |
 | 62 | ~~19 API routes read the session themselves~~ | 16 | Resolved 2026-11-01 (`da59fdd`): 18 moved onto `authMiddleware`, `metrics` kept as a named exception; the guard covers every `api/*.ts`, checked red | — |
-| 63 | **new** Two GET routes answer 500 on a `BigInt` | 12 | `GET /api/collections` and `GET /api/subscription` return a payload holding a `BigInt`; serialize it (or return only what callers read). No UI caller of either GET found | — |
+| 63 | ~~Two GET routes answer 500 on a `BigInt`~~ | 12 | Resolved 2026-11-01 (`bacb903`): both loaders parse their payload through an output schema (`collectionsLoaderOutput`, `subscriptionLoaderOutput`), as `/api/quota` does; 500 → 200, measured | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -223,7 +225,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 60 | ~~Deleting a file deletes its copies' bytes~~ | Code | 4 | 4 | 2 | **32** (High) | 2 h | Resolved 1 Nov |
 | 61 | ~~`/api/permissions` had no access check~~ | Code | 5 | 5 | 1 | **50** (High) | 2 h | Resolved 1 Nov |
 | 62 | ~~19 API routes read the session themselves~~ | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Resolved 1 Nov |
-| 63 | Two GET routes answer 500 on a `BigInt` | Code | 2 | 2 | 3 | **12** (Medium) | 2 h | New 1 Nov |
+| 63 | ~~Two GET routes answer 500 on a `BigInt`~~ | Code | 2 | 2 | 3 | **12** (Medium) | 2 h | Resolved 1 Nov |
 
 ## Details
 
@@ -1198,8 +1200,9 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 *Code debt · Impact 2 · Risk 2 · Effort 3 → **12** · est. 2 h · source: checking item 62, 1 Nov*
 
 - **Evidence:** signed in, `GET /api/collections` and `GET /api/subscription` answer 500 `TypeError: Do not know how to serialize a BigInt`. The same request to the route as it was before item 62 (HEAD `421c5ee`'s `collections.ts`) answered the same, so it predates the move. No component calls either GET; the collection picker loads `/api/collections/:collectionId`.
-- **Fix:** convert the `BigInt` fields (sizes, quota) before returning, or narrow the payload to what a caller reads; or delete the GET if nothing needs it.
-- **Status 2026-11-01: open.**
+- **Fix:** each loader parses its payload through an output schema in `api.schemas.ts` before `data()`, as `/api/quota` does with `quotaApiRouteOutput`: `collectionsLoaderOutput` (the picker's items, `size` coerced to a number) and `subscriptionLoaderOutput` (the subscription and its plan, `storageLimit` coerced).
+- **Measured:** `bigint-output.test.ts` sends each loader's payload through JSON, red (2 failing with the same `TypeError`) then green. Against the dev server, both GETs 500 → 200, `size` a number. 1216/0 in 101 files.
+- **Status 2026-11-01: resolved** (`bacb903`).
 
 ## Changes since the audit
 
@@ -1306,6 +1309,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-11-01 | `85335f6`, `ebfd3da` | 58, 60 | Each upload has its own object key (`<root>/<itemId>/<name>`), folders in `File.uploadPath`; same-name uploads are separate items again (409 → filed, measured). Permanent delete keeps an object a copy still names. 1152/0 in 96 files. |
 | 2026-11-01 | `8b292f0` | 61, 13 | `/api/permissions` checks the caller: list needs read, grant, revoke and expire need write (owner to grant owner); users trimmed to id, name, email, image. A stranger 403 on list and grant, measured. 5 live-DB tests; 1194/0. |
 | 2026-11-01 | `da59fdd` | 62, 13 | Every API route reads the session through `authMiddleware`; the guard covers all of `api/*.ts` with 9 named exceptions. 1214/0 in 100 files. |
+| 2026-11-01 | `bacb903` | 63, 13 | `GET /api/collections` and `GET /api/subscription` parse their payload through an output schema, as `/api/quota` does; 500 → 200, measured. 2 new tests; 1216/0 in 101 files. |
 
 ## Phased remediation plan
 
