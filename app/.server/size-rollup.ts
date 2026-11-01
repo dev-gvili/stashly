@@ -15,8 +15,10 @@ import { inc, recordSizeRollup } from './metrics'
 // One loop per process, pinned to globalThis so dev HMR doesn't stack a second
 // one. Every loop drains the whole log, and the function's advisory lock lets
 // one run at a time across all processes; a loop that finds it held skips.
-// Started by the first createUploadedItem() in the process, the only code
-// whose rows can be logged. Off under Vitest: tests flush explicitly.
+// Started when server/app.ts loads (at boot in production), so deltas a
+// stopped process left pending are applied without waiting for an upload;
+// createUploadedItem() also starts it, for scripts. Off under Vitest: tests
+// flush explicitly.
 // ---------------------------------------------------------------------------
 
 export const SIZE_ROLLUP_INTERVAL_MS = 250
