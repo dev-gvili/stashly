@@ -292,6 +292,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - **Request id:** `requestIdMiddleware` on the root tags each request's Vinktar scope with `request_id` (Fly's `Fly-Request-Id`, otherwise a fresh id). Log lines and Vinktar errors both carry it, so an issue leads to its lines in the Fly logs.
   - **Privacy:** messages are fixed text; `key`, `keys`, `bucket`, `name`, `path`, `email`, `query` and `where` fields reach stdout only, never Vinktar.
   - **Replaced:** every `console.error` (22) and `console.warn` (3) in `app/.server`, plus the 3 real `console.log` calls (the other 16 were JSDoc examples). One, `saveMediaMetadata` printing a file's parsed audio tags, was deleted rather than moved. 9 unit tests (`log.test.ts`); `item-delete-objects.test.ts` reads the new message. Vinktar has no log search, so stdout stays the complete stream.
+- **Status 2026-10-31 (later): resolved** (`92ad800`), without a new package. `app/.server/log.ts` writes each server log line as JSON to stdout (Fly keeps the stream), adds it as a Vinktar breadcrumb on the request's scope, and raises `warn`/`error` as Vinktar issues; `requestIdMiddleware` tags every line and error with a request id. All 25 `console.error`/`console.warn` calls and the 3 real `console.log` calls in `app/.server` moved to it. The tables and the 31 Oct summary already said resolved; this section was not updated at the time (fixed 1 Nov).
 
 ### 5. Thumbnails of private files are publicly readable
 
@@ -482,6 +483,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - `1a778fd` (2026-09-26) fixed two bugs in the path: an upload job now replaces a queued backfill job for the same item, and the backfill lane no longer stays paused after an upload.
   - The XState pipeline is on trial behind a flag. The legacy hooks stay until the owner signs it off visually.
 - **Resolved 2026-10-03** (`935a923`). `useThumbnail.ts`, `useThumbnailBackfill.ts` and `hooks/thumbnail-signal/` are deleted (1,389 lines), and nothing in `app/` imports `useThumbnail` any more. The XState scheduler is the only path. `d11ffae` also makes thumbnails only for cards on screen. `d41dd8e` splits the pipeline by file type.
+- **Status 2026-10-03: resolved** (`935a923`). The legacy thumbnail hook pipeline was deleted (1,389 lines), leaving the XState scheduler in `app/machines/thumbnail/` as the only orchestrator. The 8 Oct re-audit and both tables recorded this; this section was not updated at the time (fixed 1 Nov).
 
 ### 15. `item-actions.ts` god module
 
