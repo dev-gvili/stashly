@@ -292,3 +292,21 @@ describe('bytes shared by a copy', () => {
     expect(calls.flatMap((c) => c.keys).filter((k) => k === `${folder}/both.pdf`)).toHaveLength(1)
   })
 })
+
+/**
+ * Deleting a folder together with something inside it only works because
+ * `Folder_itemId_fkey` is checked at COMMIT (migration
+ * 20260826000000_defer_folder_item_fk). Prisma can't express that, so a
+ * `db push` or a regenerated migration re-adds it as an immediate check, and
+ * the delete then fails with P2003 only when Postgres happens to visit the
+ * rows in the wrong order. Read the flag itself rather than hope for that order.
+ */
+describe('the Folder foreign key stays deferred', () => {
+  it('Folder_itemId_fkey is DEFERRABLE INITIALLY DEFERRED', async () => {
+    const rows = await prisma.$queryRaw<{ deferrable: boolean; deferred: boolean }[]>`
+      SELECT condeferrable AS deferrable, condeferred AS deferred
+      FROM pg_constraint
+      WHERE conname = 'Folder_itemId_fkey' AND conrelid = '"Folder"'::regclass`
+    expect(rows).toEqual([{ deferrable: true, deferred: true }])
+  })
+})
