@@ -136,10 +136,14 @@ function Waveform({
   bars,
   playedCount,
   onSeek,
+  currentTime,
+  duration,
 }: {
   bars: number[]
   playedCount: number
   onSeek: (frac: number) => void
+  currentTime: number
+  duration: number
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -159,14 +163,41 @@ function Waveform({
     seekAt(e.clientX)
   }
 
+  // The keyboard's way to seek, as the slider pattern expects: arrows 5 s,
+  // Page Up/Down 30 s, Home/End to either end.
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (!(duration > 0)) return
+    const step: Record<string, number> = {
+      ArrowRight: 5,
+      ArrowUp: 5,
+      ArrowLeft: -5,
+      ArrowDown: -5,
+      PageUp: 30,
+      PageDown: -30,
+    }
+    let target: number
+    if (e.key === 'Home') target = 0
+    else if (e.key === 'End') target = duration
+    else if (e.key in step) target = currentTime + step[e.key]
+    else return
+    e.preventDefault()
+    onSeek(Math.max(0, Math.min(1, target / duration)))
+  }
+
   return (
     <div
       ref={containerRef}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
-      className="flex h-full items-center gap-0.5 cursor-pointer select-none"
+      onKeyDown={onKeyDown}
+      tabIndex={0}
+      className="flex h-full items-center gap-0.5 cursor-pointer select-none rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       role="slider"
       aria-label="Seek"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(duration)}
+      aria-valuenow={Math.round(currentTime)}
+      aria-valuetext={`${formatClock(currentTime)} of ${formatClock(duration)}`}
     >
       {bars.map((h, i) => {
         const played = i <= playedCount
@@ -261,7 +292,13 @@ export function AudioStage({
 
         {/* Waveform + times */}
         <div className="space-y-2 h-20 min-w-lg mx-auto">
-          <Waveform bars={wave} playedCount={playedBars} onSeek={audio.seek} />
+          <Waveform
+            bars={wave}
+            playedCount={playedBars}
+            onSeek={audio.seek}
+            currentTime={audio.currentTime}
+            duration={audio.duration > 0 ? audio.duration : (item.audio?.duration ?? 0)}
+          />
           <div className="flex items-center justify-between font-stashly text-xs tabular-nums text-muted-foreground">
             <span>{formatClock(audio.currentTime)}</span>
             <span>{displayDuration}</span>

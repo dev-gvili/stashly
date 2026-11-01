@@ -497,6 +497,13 @@ const ItemCardRoot = ({
 
   const Comp = asChild ? Slot : 'div'
 
+  // Where Enter on the card goes: the same rule as its click below.
+  const href = isTrashed(props.status)
+    ? rest.type === 'folder' && me && !workspaceId
+      ? `/${me}/stash/trash/folders/${rest.id}?layout=${layout}`
+      : null
+    : to
+
   return (
     <ItemCardContext.Provider value={value}>
       <Comp
@@ -536,6 +543,21 @@ const ItemCardRoot = ({
           })
         }}
       >
+        {/* The keyboard's way in: Tab reaches the card and Enter opens it.
+            Stretched over the card but `pointer-events-none`, so the mouse
+            still lands on the card (drag, selection, hover) as before. Not
+            with `asChild`, where Slot takes a single child. */}
+        {href && !asChild && (
+          <Link
+            to={href}
+            state={{ name: props.name }}
+            aria-label={props.name}
+            draggable={false}
+            data-slot="item-card-link"
+            className="absolute inset-0 rounded-md pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            onClick={(e) => e.stopPropagation()}
+          />
+        )}
         {children}
       </Comp>
     </ItemCardContext.Provider>

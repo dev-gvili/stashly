@@ -1,4 +1,4 @@
-import { useSearchParams, useNavigate, useRouteLoaderData } from 'react-router'
+import { Link, useSearchParams, useNavigate, useRouteLoaderData } from 'react-router'
 import type { LoaderData } from '@/hooks/usePagination'
 import type { StashItem } from '@/types/stash.types'
 import { DataTable, type DataTableColumn } from '@/components/core-components/data-table'
@@ -42,6 +42,16 @@ export const ListLayout = <T extends StashItem>({ items }: ListViewProps<T>) => 
   const selectedItems = getQueryParamArray(searchParams, 'selectedItems')
   const selectedIds = new Set(selectedItems)
 
+  const hrefFor = (item: T) => {
+    const to = itemUrl({
+      parentId: item.parentId || '',
+      type: item.type,
+      id: item.id,
+      ownerId: user.id,
+    })
+    return layout ? `${to}?layout=${layout}` : to
+  }
+
   const columns: DataTableColumn<T>[] = [
     {
       key: 'name',
@@ -51,7 +61,15 @@ export const ListLayout = <T extends StashItem>({ items }: ListViewProps<T>) => 
         return (
           <div className="flex items-center gap-2 min-w-0">
             {Icon && <Icon className="size-5 shrink-0 text-muted-foreground" />}
-            <span className="truncate text-sm">{item.name}</span>
+            {/* The row's click is mouse-only; this link is how a keyboard
+                (and a middle-click) opens the item. */}
+            <Link
+              to={hrefFor(item)}
+              className="truncate text-sm rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {item.name}
+            </Link>
           </div>
         )
       },
@@ -87,15 +105,7 @@ export const ListLayout = <T extends StashItem>({ items }: ListViewProps<T>) => 
       columns={columns}
       data={items ?? []}
       getRowId={(item) => item.id}
-      onRowClick={(item) => {
-        const to = itemUrl({
-          parentId: item.parentId || '',
-          type: item.type,
-          id: item.id,
-          ownerId: user.id,
-        })
-        navigate(layout ? `${to}?layout=${layout}` : to)
-      }}
+      onRowClick={(item) => navigate(hrefFor(item))}
       selectable
       selectedIds={selectedIds}
       onSelectChange={(id, checked) => {
