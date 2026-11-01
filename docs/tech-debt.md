@@ -7,7 +7,7 @@
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
 **Now (1 Nov):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1216 in 101 files), and the build. Green on `ebfd3da` (1 Nov). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1242 in 102 files), and the build. Green on `74e0628` (1 Nov). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors, analytics and logs:** Vinktar on server and browser since 10 Oct; product events, route timing and a structured logger since 31 Oct (item 4, resolved).
@@ -21,9 +21,11 @@
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**63 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 4 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62) · categories: Code 30, Architecture 22, Infrastructure 4, Test 4, Documentation 2, Dependency 1
+**65 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 6 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62, 64 and 65 from item 45) · categories: Code 32, Architecture 22, Infrastructure 4, Test 4, Documentation 2, Dependency 1
 
-**Status at 1 Nov 2026 (latest, item 63):** 46 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 9 new and open (19, 20, 22, 45–47, 51, 57, 59). Item 63 resolved (`bacb903`): `GET /api/collections` and `GET /api/subscription` parse their payload through an output schema before sending it, as `/api/quota` does, so bytes go out as numbers; both answered 500 and now answer 200, measured.
+**Status at 1 Nov 2026 (latest, item 45):** 47 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 46, 47, 51, 57, 59, 64, 65). Item 45 resolved: an upload no longer reloads the folder. Each new row comes back with its create request and the page inserts it in place; on a 30-file upload whose rows landed up to 1.9 s apart, folder reloads went 14 → 0. A page that can't show a row for certain (a filter, a row past the loaded page, another route) reloads once when the batch ends. Items 64 and 65, found on the way: "folders first" puts files first, and a `shouldRevalidate` guard does nothing.
+
+**Status at 1 Nov 2026 (item 63):** 46 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 9 new and open (19, 20, 22, 45–47, 51, 57, 59). Item 63 resolved (`bacb903`): `GET /api/collections` and `GET /api/subscription` parse their payload through an output schema before sending it, as `/api/quota` does, so bytes go out as numbers; both answered 500 and now answer 200, measured.
 
 **Status at 1 Nov 2026 (items 62 and 63):** 45 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 45–47, 51, 57, 59, 63). Item 62 resolved (`da59fdd`): every API route reads the session through `authMiddleware`, and a guard fails any new one that doesn't, unless it is named with its reason. Anonymous requests now get one answer everywhere, a redirect to `/auth/sign-in` (collections sent them to a misspelt `/auth/signin`). Item 63, found while checking it and present before it: `GET /api/collections` and `GET /api/subscription` answer 500, because their payload holds a `BigInt` that the resource route can't serialize.
 
@@ -137,7 +139,7 @@
 | 42 | ~~Size rollup locks every ancestor row~~ | 10 | Resolved 2026-10-30: busy uploads go through a size log applied by one rollup at a time; 32 uploaders into one shared folder 2,017 → 8,334 files/s, lock waiters 20.7 → 0.06, one uploader unchanged, measured | — |
 | 43 | ~~Revalidation and thumbnail query overhead~~ | 9 | Resolved 2026-10-30 (`5155d96`, `0828f99`, `d7592ff`): late rows no longer lost from the grid (0 → 6 of 6), workspace scans per 20 navigations 20 → 0, access statements per uploaded image 9 → 3, measured | — |
 | 44 | ~~Separate complete and create requests~~ | 9 | Declined 2026-10-30: each access check is 1 statement (~3 ms) and two of the three are deliberate; merging saves 1 request and 0.16–0.39 s per file, not a batch's time, for a 1–2 day rewrite (measured); reopen if per-file latency becomes a complaint | — |
-| 45 | **new** An upload reloads the whole folder every ~5 files | 28 | Measured 31 Oct: 139–146 full reloads per 650-file upload, one in flight 27–28% of the time, each back to the first page; one throttled reload schedule in place of the two debounces | — |
+| 45 | ~~An upload reloads the whole folder every ~5 files~~ | 28 | Resolved 2026-11-01: the create request answers with the listing row and the page inserts it; 30 slow rows 14 reloads → 0, measured; one reload at batch end only for a row the page can't place | — |
 | 46 | **new** Session cookie expiring mid-upload | 15 | Measure the lookup burst at 100 concurrent uploads; refresh the session during long uploads if it matters | — |
 | 47 | **new** Per-file shared rows left on the upload path | 12 | The direct parent's `Folder.childCount` and (if a collaborator's upload charges the owner) the `Quota` row; measure with all uploaders in one folder | — |
 | 48 | ~~A malformed request answers 500 instead of 400~~ | 16 | Resolved 2026-11-01: every route's parser goes through `rethrowAsResponse` / `parseOrRespond`; 33 red→green route cases | — |
@@ -156,6 +158,8 @@
 | 61 | ~~`/api/permissions` had no access check~~ | 50 | Resolved 2026-11-01: listing needs read access, granting, revoking and expiring need write (owner to grant owner); a stranger gets 403, measured; users trimmed to id, name, email, image | — |
 | 62 | ~~19 API routes read the session themselves~~ | 16 | Resolved 2026-11-01 (`da59fdd`): 18 moved onto `authMiddleware`, `metrics` kept as a named exception; the guard covers every `api/*.ts`, checked red | — |
 | 63 | ~~Two GET routes answer 500 on a `BigInt`~~ | 12 | Resolved 2026-11-01 (`bacb903`): both loaders parse their payload through an output schema (`collectionsLoaderOutput`, `subscriptionLoaderOutput`), as `/api/quota` does; 500 → 200, measured | — |
+| 64 | **new** "Folders first" lists files first | 15 | `type desc` sorts by the enum's declared order (folder, file, collection), so files come first; decide the order, then fix `getFolderContent` and `TYPE_RANK` together | — |
+| 65 | **new** A `shouldRevalidate` guard that does nothing | 10 | `forEach(… return false)` in `folder.tsx` and `all.tsx` returns from the callback; favorites/sidebar/theme submissions still revalidate | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -207,7 +211,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 42 | ~~The size rollup locks every ancestor row~~ | Architecture | 2 | 3 | 4 | **10** (Low) | 3–5 days | Resolved 30 Oct |
 | 43 | ~~Revalidation and thumbnail query overhead~~ | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | Resolved 30 Oct |
 | 44 | Upload complete and item creation are separate requests | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | Declined 30 Oct |
-| 45 | An upload reloads the whole folder about once every 5 files | Architecture | 4 | 3 | 2 | **28** (High) | 0.5–1 day | Measured 31 Oct |
+| 45 | ~~An upload reloads the whole folder about once every 5 files~~ | Architecture | 4 | 3 | 2 | **28** (High) | 0.5–1 day | Resolved 1 Nov |
 | 46 | A session cookie can expire in the middle of an upload | Architecture | 2 | 1 | 1 | **15** (Low) | 0.5 day | New 30 Oct |
 | 47 | Per-file shared rows left on the upload path | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
 | 48 | A malformed request answers 500 instead of 400 where the parser runs outside `try` | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Resolved 1 Nov |
@@ -226,6 +230,8 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 61 | ~~`/api/permissions` had no access check~~ | Code | 5 | 5 | 1 | **50** (High) | 2 h | Resolved 1 Nov |
 | 62 | ~~19 API routes read the session themselves~~ | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Resolved 1 Nov |
 | 63 | ~~Two GET routes answer 500 on a `BigInt`~~ | Code | 2 | 2 | 3 | **12** (Medium) | 2 h | Resolved 1 Nov |
+| 64 | "Folders first" lists files first | Code | 2 | 1 | 1 | **15** (Low) | 1 h | New 1 Nov |
+| 65 | A `shouldRevalidate` guard that does nothing | Code | 1 | 1 | 1 | **10** (Low) | 1 h | New 1 Nov |
 
 ## Details
 
@@ -976,6 +982,13 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
   - **Not explained:** the 16 reloads of the 650-file run on 30 Oct. Both runs here made about 140, and that run recorded neither a timeline nor the tab's visibility.
   - **Fix:** one reload schedule for an upload instead of two debounces: during a batch, at most one reload every few seconds (a throttle, not a debounce); one when the batch's last row is created; one when indexing drains. Measure with this harness before and after.
 - **Status 2026-10-31 (later): still open; time-based reloads ruled out.** After item 52's change (`ec4b521`) the same upload made 9 folder loads instead of 139, but only because rows now arrive faster than the 700 ms debounce. The mechanism is unchanged: an upload whose rows arrive more than 700 ms apart (larger files, a slower link) still reloads the whole folder after almost every row. The owner wants a real fix, not a time-based reload: new rows should reach the page without refetching the folder.
+- **Status 2026-11-01: resolved.** New rows reach the page without refetching the folder.
+  - **Server:** `create_upload_item` answers with the new item's folder-listing row (`getCardItems`, the same `folderCardSelect` as `getFolderContent`, through `cardItemOutput` for JSON), and `resolve_upload_folders` with the rows of the folders it created. A failed read answers with no row rather than a partial one. One extra query per file: `create_upload_item` p50 229 → 222 ms, p90 361 → 415 ms (30 files each).
+  - **Client:** the row travels `@db.item.created` → `upload.createItem.success` → the upload manager's `items.created` emit (not kept in context). `useCreatedItems` (folder and stash-root pages) revives it and `usePagination.insertItems` places it with `showCreatedRows` (`app/utils/pagination.ts`): rows in the folder at the loader's place (folders-first, the URL sort, `id`), files into the listed folder card they landed in, and the counts in the toolbar.
+  - **Fallback, one reload at batch end:** a page reports which rows it showed for certain; the runner reloads once when the batch ends if any row was not shown (a filter or the Count sort, a row past the loaded page, a folder the page doesn't list, a navigation in flight, a grown card under a size sort, another route). The indexing `revalidate()` now runs only on the routes that show facets (item page, galleries).
+  - **Measured** (`.claude/evidence/p45/slow30-before.json`, `slow30-after.json`, recorder in the page before the app loads): 30 random files of 0.5–15 MB into an empty folder, rows up to 1.9 s apart (13–14 of 29 gaps over 700 ms): folder reloads during the upload 14 → 0, all 30 cards on the page, the same order and toolbar after a reload, and the inserted card's HTML identical to the server-rendered one but for a Radix id. A size-sorted page placed a new file between its neighbours; a folder upload's card ended at "500 KB, 2 items", what the server shows; a filtered page and a mid-upload navigation each reloaded once, after the last row.
+  - **Not measured:** the 650-file harness, and a one-file folder pick (the harness could not pick a second folder; unit-tested).
+  - **Review:** a three-reviewer pass found seven ways a guessed placement could lose a row, all closed by the shown-rows rule. Found on the way: items 64 and 65.
 
 ### 46. A session cookie can expire in the middle of an upload
 
@@ -1203,6 +1216,22 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Fix:** each loader parses its payload through an output schema in `api.schemas.ts` before `data()`, as `/api/quota` does with `quotaApiRouteOutput`: `collectionsLoaderOutput` (the picker's items, `size` coerced to a number) and `subscriptionLoaderOutput` (the subscription and its plan, `storageLimit` coerced).
 - **Measured:** `bigint-output.test.ts` sends each loader's payload through JSON, red (2 failing with the same `TypeError`) then green. Against the dev server, both GETs 500 → 200, `size` a number. 1216/0 in 101 files.
 - **Status 2026-11-01: resolved** (`bacb903`).
+
+### 64. "Folders first" lists files first
+
+*Code debt · Impact 2 · Risk 1 · Effort 1 → **15** · est. 1 h · source: item 45, 1 Nov*
+
+- **Evidence:** `getFolderContent` sorts `{ type: 'desc' }` when `foldersFirst`, commented "'folder' comes after 'file' alphabetically". Postgres orders an enum by its declared order, and `ItemType` is declared folder, file, collection (`pg_enum.enumsortorder` 1, 2, 3, probed 1 Nov), so `desc` puts files before folders. Seen live: a folder upload's card lands after the files.
+- **Fix:** decide the order, then change `getFolderContent` and `TYPE_RANK` in `app/utils/pagination.ts` together (the page's inserts mirror it).
+- **Status 2026-11-01: open.**
+
+### 65. A `shouldRevalidate` guard that does nothing
+
+*Code debt · Impact 1 · Risk 1 · Effort 1 → **10** · est. 1 h · source: item 45's review, 1 Nov*
+
+- **Evidence:** `folder.tsx` and `all.tsx` run `['favorites', 'sidebar', 'theme'].forEach((action) => { if (formAction?.includes(action)) return false })`. The `return` leaves the callback, not `shouldRevalidate`, so those submissions still re-run the folder loader. Read from the code, not measured.
+- **Fix:** `if (['favorites', 'sidebar', 'theme'].some((a) => formAction?.includes(a))) return false`, after checking that none of those submissions changes what the folder shows.
+- **Status 2026-11-01: open.**
 
 ## Changes since the audit
 
