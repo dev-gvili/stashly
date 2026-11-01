@@ -13,15 +13,6 @@ import { describe, expect, it } from 'vitest'
  */
 const ROUTES_DIR = path.resolve(__dirname, '..')
 
-/**
- * Known exceptions, each with its reason. The test also fails when an entry no
- * longer imports the client, so this list can only shrink.
- */
-const ALLOWED: Record<string, string> = {
-  'workspaces/workspace.tsx':
-    'workspace-only page; deferred to TASKS.md Someday per personal-first (2026-10-08)',
-}
-
 function routeFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name)
@@ -40,11 +31,7 @@ const offenders = routeFiles(ROUTES_DIR)
   .sort()
 
 describe('route modules do not import the Prisma client', () => {
-  it('only the listed exceptions import @/services/db', () => {
-    expect(offenders.filter((f) => !(f in ALLOWED))).toEqual([])
-  })
-
-  it('every listed exception still needs its entry', () => {
-    expect(Object.keys(ALLOWED).filter((f) => !offenders.includes(f))).toEqual([])
+  it('no route imports @/services/db', () => {
+    expect(offenders).toEqual([])
   })
 })

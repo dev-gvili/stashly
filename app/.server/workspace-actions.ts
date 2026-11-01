@@ -685,6 +685,86 @@ export async function listWorkspaceItems(userId: string, workspaceId: string) {
 }
 
 /**
+ * Everything the workspace overview page shows: the workspace and its plan,
+ * the caller's membership, all members, the 12 most recent items, pending
+ * invitations and the summed item size. Requires at least `viewer`.
+ *
+ * The role check runs before the workspace lookup, so a non-member gets the
+ * same 403 whether or not the id exists.
+ *
+ * @throws {StashlyError} 403 when the user is not a member, 404 when the
+ * workspace is gone.
+ *
+ * @example
+ * const overview = await getWorkspaceOverview(userId, workspaceId)
+ */
+export async function getWorkspaceOverview(userId: string, workspaceId: string) {
+  await requireAtLeastRole(userId, workspaceId, 'viewer')
+
+  const [
+    workspace,
+    currentMember,
+    memberships,
+    recentItems,
+    pendingInvitations,
+    storageAgg,
+  ] = await Promise.all([
+    prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      include: { storagePlan: true },
+    }),
+    prisma.workspaceMember.findUnique({
+      where: { memberId_workspaceId: { memberId: userId, workspaceId } },
+    }),
+    prisma.workspaceMember.findMany({
+      where: { workspaceId },
+      include: {
+        member: { select: { id: true, name: true, email: true, image: true } },
+      },
+      orderBy: [{ role: 'asc' }, { member: { name: 'asc' } }],
+    }),
+    prisma.item.findMany({
+      where: { workspaceId, status: 'normal' },
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        size: true,
+        updatedAt: true,
+        owner: { select: { name: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 12,
+    }),
+    prisma.invitation.findMany({
+      where: { workspaceId },
+      include: {
+        sender: { select: { name: true } },
+        recipients: {
+          where: { status: 'pending' },
+          select: { id: true, email: true, role: true, createdAt: true },
+        },
+      },
+    }),
+    prisma.item.aggregate({
+      where: { workspaceId },
+      _sum: { size: true },
+    }),
+  ])
+  if (!workspace)
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Workspace not found')
+
+  return {
+    workspace,
+    currentMember,
+    memberships,
+    recentItems,
+    pendingInvitations,
+    storageUsedBytes: storageAgg._sum.size ?? 0n,
+  }
+}
+
+/**
  * Create a new item in a workspace.
  * Requires the user to be at least a `member`.
  *

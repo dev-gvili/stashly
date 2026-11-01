@@ -1,8 +1,7 @@
 import { sessionContext } from '@/.server/middleware/context'
 import type { Route } from './+types/workspace'
 import { redirect } from 'react-router'
-import { prisma } from '@/services/db'
-import { requireAtLeastRole } from '@/services/workspace-actions'
+import { getWorkspaceOverview } from '@/services/workspace-actions'
 import { WorkspaceOverview } from '@/components/views/workspace-overview'
 import { DesignCanvas, DCSection, DCArtboard } from '@/components/ui/design-canvas'
 
@@ -20,51 +19,14 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
 
   const { workspaceId, me } = params
 
-  const workspace = await prisma.workspace.findUnique({
-    where: { id: workspaceId },
-    include: { storagePlan: true },
-  })
-  if (!workspace) throw new Response('Not found', { status: 404 })
-
-  // Verify membership
-  await requireAtLeastRole(session.user.id, workspaceId, 'viewer')
-
-  const currentMember = await prisma.workspaceMember.findUnique({
-    where: { memberId_workspaceId: { memberId: session.user.id, workspaceId } },
-  })
-
-  // Members with user details
-  const memberships = await prisma.workspaceMember.findMany({
-    where: { workspaceId },
-    include: { member: { select: { id: true, name: true, email: true, image: true } } },
-    orderBy: [{ role: 'asc' }, { member: { name: 'asc' } }],
-  })
-
-  // Recent items in the workspace
-  const recentItems = await prisma.item.findMany({
-    where: { workspaceId, status: 'normal' },
-    select: {
-      id: true, name: true, category: true, size: true, updatedAt: true,
-      owner: { select: { name: true } },
-    },
-    orderBy: { updatedAt: 'desc' },
-    take: 12,
-  })
-
-  // Pending invitations for this workspace
-  const pendingInvitations = await prisma.invitation.findMany({
-    where: { workspaceId },
-    include: {
-      sender: { select: { name: true } },
-      recipients: { where: { status: 'pending' }, select: { id: true, email: true, role: true, createdAt: true } },
-    },
-  })
-
-  // Aggregate storage used by items in this workspace
-  const storageAgg = await prisma.item.aggregate({
-    where: { workspaceId },
-    _sum: { size: true },
-  })
+  const {
+    workspace,
+    currentMember,
+    memberships,
+    recentItems,
+    pendingInvitations,
+    storageUsedBytes,
+  } = await getWorkspaceOverview(session.user.id, workspaceId)
 
   const storageLimitBytes = workspace.storagePlan
     ? BigInt(workspace.storagePlan.storageLimit ?? 0) * 1024n * 1024n * 1024n
@@ -86,7 +48,7 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
       name: workspace.name,
       slug: workspace.slug,
       description: workspace.description,
-      storageUsedBytes: storageAgg._sum.size ?? 0n,
+      storageUsedBytes,
       storageLimitBytes,
       role: (currentMember?.role ?? 'viewer') as 'owner' | 'admin' | 'member' | 'viewer',
     },
