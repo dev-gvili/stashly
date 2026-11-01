@@ -389,6 +389,27 @@ export const addItemsToCollectionInput = z.object({
 })
 
 
+/**
+ * Output of the `/api/collections` loader (the add-to-collection picker's
+ * pages), parsed before it is sent: a resource route's payload is JSON, which
+ * has no BigInt, so `size` goes out as a number, as `/api/quota` does.
+ */
+export const collectionsLoaderOutput = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      type: z.string(),
+      category: z.string(),
+      size: z.coerce.number(),
+      createdAt: z.date(),
+      thumbnailUrl: z.string().nullable(),
+    })
+  ),
+  nextCursor: z.string().nullable(),
+  hasMore: z.boolean(),
+})
+
 export const collectionsApiRouteInput = z.discriminatedUnion('intent', [
   z.object({
     intent: z.literal('create_collection'),
@@ -789,6 +810,41 @@ export const subscriptionApiRouteInput = z.discriminatedUnion('intent', [
     intent: z.literal('cancel_subscription'),
   }),
 ])
+
+/**
+ * Output of the `/api/subscription` loader: the active subscription and its
+ * plan, or `null`. Parsed before it is sent, so the plan's `storageLimit`
+ * (a BigInt column) goes out as a number, as `/api/quota` does.
+ */
+export const subscriptionLoaderOutput = z.object({
+  subscription: z
+    .object({
+      id: z.string(),
+      status: z.string(),
+      metadata: z.unknown(),
+      createdAt: z.date(),
+      updatedAt: z.date(),
+      endedAt: z.date().nullable(),
+      storagePlanId: z.string(),
+      stripeSubscriptionId: z.string().nullable(),
+      ownerId: z.string(),
+      storagePlan: z.object({
+        id: z.string(),
+        name: z.string(),
+        tag: z.string(),
+        description: z.string().nullable(),
+        type: z.string(),
+        storageLimit: z.coerce.number(),
+        workspaceLimit: z.number(),
+        memberLimit: z.number(),
+        features: z.array(z.string()),
+        priceCents: z.number().nullable(),
+        currency: z.string().nullable(),
+        stripePriceId: z.string().nullable(),
+      }),
+    })
+    .nullable(),
+})
 
 // ====================================================== //
 // ================ Workspaces Api Route ================ //

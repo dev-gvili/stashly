@@ -3,7 +3,10 @@ import { sessionContext } from '@/services/middleware/context'
 import { data } from 'react-router'
 import type { Route } from './+types/subscription'
 import { parseFormData } from '@/utils/parsers'
-import { subscriptionApiRouteInput } from '@/schemas/api.schemas'
+import {
+  subscriptionApiRouteInput,
+  subscriptionLoaderOutput,
+} from '@/schemas/api.schemas'
 import {
   getActiveSubscription,
   updateSubscriptionPlan,
@@ -17,7 +20,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const session = context.get(sessionContext)
 
   const subscription = await getActiveSubscription(session.user.id)
-  return data({ subscription })
+  return data(subscriptionLoaderOutput.parse({ subscription }))
 }
 
 export async function action({ request, context }: Route.ActionArgs) {

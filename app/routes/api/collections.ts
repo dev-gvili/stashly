@@ -1,7 +1,8 @@
 import { authMiddleware } from '@/services/middleware/auth'
 import { sessionContext } from '@/services/middleware/context'
 import {
-  collectionsApiRouteInput
+  collectionsApiRouteInput,
+  collectionsLoaderOutput,
 } from '@/schemas/api.schemas'
 import {
   addItemsToCollection,
@@ -89,11 +90,13 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
       null,
   }))
 
-  return data({
-    items: availableItems,
-    nextCursor: allItems.nextCursor,
-    hasMore: allItems.hasMore,
-  })
+  return data(
+    collectionsLoaderOutput.parse({
+      items: availableItems,
+      nextCursor: allItems.nextCursor,
+      hasMore: allItems.hasMore,
+    })
+  )
 }
 
 export async function action({ request, params, context }: Route.ActionArgs) {
