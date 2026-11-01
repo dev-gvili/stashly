@@ -3,7 +3,8 @@ import { assign, fromPromise, setup } from 'xstate'
 import type { User as FullUser } from '@/services/auth.types'
 import type { User } from 'better-auth'
 import { prisma } from '@/services/db'
-import { createUserBucket } from '@/services/s3'
+import { HeadBucketCommand } from '@aws-sdk/client-s3'
+import { createUserBucket, s3 } from '@/services/s3'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { createSubscriptionRecord, findActiveSubscriptionByOwner, updateSubscriptionRecord } from '@/services/subscription-actions'
 import { findDefaultStoragePlan } from '@/services/storagePlan-actions'
@@ -28,8 +29,18 @@ interface OnboardingContext {
   fullUser?: FullUser
   quota?: Omit<Quota, 'createdAt' | 'updatedAt'>
   bucketName?: string
+  /** The row's bucket when this run started: an earlier run's, or the placeholder. */
+  storedBucket?: string
   rootId?: string
   error?: unknown
+}
+
+/** The `User.bucket` column default: no bucket of the user's own yet. */
+const PLACEHOLDER_BUCKET = 'default-bucket'
+
+/** Whether the row already has what onboarding writes. */
+function isOnboarded(stored: { bucket: string; rootId: string | null; driveId: string | null }) {
+  return !!stored.rootId && !!stored.driveId && !!stored.bucket && stored.bucket !== PLACEHOLDER_BUCKET
 }
 
 // The input for the machine
@@ -37,11 +48,19 @@ type OnboardingInput = {
   user: User
 }
 
+// Every step reuses what an earlier run created, because onboarding runs again
+// on sign-in for an account a failed run left incomplete (tech-debt item 22).
+// `Drive.ownerId`, `Subscription.ownerId` and `Quota.driveId` are unique, so a
+// step that always created failed the second run at the first row the first
+// run had made, and the account stayed broken.
 export const onboardingMachine = setup({
   actors: {
-    checkExistingDrive: fromPromise(
+    readStoredUser: fromPromise(
       async ({ input }: { input: { user: User } }) => {
-        return findDriveByOwner(input.user.id)
+        return prisma.user.findUniqueOrThrow({
+          where: { id: input.user.id },
+          select: { bucket: true, rootId: true, driveId: true },
+        })
       }
     ),
     findDefaultStoragePlan: fromPromise(
@@ -53,6 +72,9 @@ export const onboardingMachine = setup({
       Subscription,
       { user: User; storagePlan: StoragePlan }
     >(async ({ input }) => {
+      // Any status: `ownerId` is unique, so a cancelled one blocks a new row too.
+      const existing = await prisma.subscription.findUnique({ where: { ownerId: input.user.id } })
+      if (existing) return existing
       return await createSubscriptionRecord({
         id: toObjectId(getPrefixForModel('Subscription')),
         owner: {
@@ -72,6 +94,8 @@ export const onboardingMachine = setup({
       Drive,
       { user: User; bucketName: string; storagePlan: StoragePlan }
     >(async ({ input }) => {
+      const existing = await findDriveByOwner(input.user.id)
+      if (existing) return existing
       return await createDrive({
         name: input.bucketName,
         owner: { connect: { id: input.user.id } },
@@ -80,6 +104,8 @@ export const onboardingMachine = setup({
     }),
     createQuota: fromPromise<void, { drive: Drive; storagePlan: StoragePlan }>(
       async ({ input }) => {
+        const existing = await prisma.quota.findUnique({ where: { driveId: input.drive.id } })
+        if (existing) return
         await createQuota({
           id: toObjectId(getPrefixForModel('Quota')),
           total: input.storagePlan.storageLimit,
@@ -93,6 +119,11 @@ export const onboardingMachine = setup({
     ),
     createRootFolder: fromPromise<{ id: string }, { drive: Drive; user: User }>(
       async ({ input }) => {
+        const existing = await prisma.item.findFirst({
+          where: { ownerId: input.user.id, driveId: input.drive.id, parentId: null, type: 'folder' },
+          select: { id: true },
+        })
+        if (existing) return existing
         let rootFolder = await createFolder(
           'root',
           null,
@@ -126,16 +157,26 @@ export const onboardingMachine = setup({
       })
       return updatedUser as FullUser
     }),
-    createBucket: fromPromise<string, { user: User }>(async ({ input }) => {
-      return await createUserBucket(input.user)
-    }),
+    createBucket: fromPromise<string, { user: User; storedBucket: string | null }>(
+      async ({ input }) => {
+        // A bucket is the one thing a later run can't find by owner, so it is
+        // written to the row as soon as it exists, and reused while it does.
+        if (input.storedBucket && input.storedBucket !== PLACEHOLDER_BUCKET) {
+          const exists = await s3
+            .send(new HeadBucketCommand({ Bucket: input.storedBucket }))
+            .then(() => true)
+            .catch(() => false)
+          if (exists) return input.storedBucket
+        }
+        const bucket = await createUserBucket(input.user)
+        await prisma.user.update({ where: { id: input.user.id }, data: { bucket } })
+        return bucket
+      }
+    ),
   },
   types: {
     context: {} as OnboardingContext,
     input: {} as OnboardingInput,
-  },
-  guards: {
-    isOnboarded: ({ context }) => !!context.bucketName,
   },
 }).createMachine({
   /** @xstate-layout N4IgpgJg5mDOIC5QHsB2AjZBDAThAlqlAHQDGAFmKQNaFQCiAHvrAC50AiO+AbmAMQQ0YYoR7JqItJlwEiZSjTpMW7Il15gEY5KSzs0AbQAMAXROnEoAA7JY+A6ishGiAMzHjxAEwBOY74ALMYAjCEAHADsgdEANCAAnojhbsThgQBsAKwhGdFZAf5ZAL7F8dLYeHQKVLREKmyc3HyCwqKo4pLEFbLVFLXKzI3qzVo6eo4WhiGWSCC29o7OrggeXn4BwWFRMYHxSQghxhkhxL4ZxpFuGTcp4cbepeUYlXIk-Ur1Q2pQGi1gOBwyBwxGsABt9AAzYEAW26L168g+dQY3yamm0HV0+nwRjMFmcCwcuKccxWax8-iCoQi0TiiUQEVOWV83gygRiGV8bnCjzKIB6VSRODAOKIACEAK40MCsVqoEQ6LqCt5kEViqBSmWsTHiCYkqZmQl2YloZbJe7ENwhLLhLIZbzeKK2yL7RnGLKpDkeNyRILc7yRPnPGRC97qn5ayRygFAkHgqGw+Gh1WkCN0KOy3XYyb4o1zIlLMkWrzW232x3OqJu1beVJuX1uXy5Xw5dIhJ4ChFh4iQwhvDhgSFYSVg1gAZVYwKwMAAChDUPLFVjld3VX3UAOhyOx5Pp3OF9n9XjzPmbCai6AViE3BziFlItEgt4bxlwiEa0c8sQboEsllAibTIXxKfkVWqDct2HUcJynHAZzAecsEXWNgVBCFWGhHA4XA+RIM4bcYL3eCD2Qo8cRPAkCwvElzUOW9AnvR9AmfV93xrTIsmIYxeRvcIHQCfi2U7XDw1FH5x0ldBYDTfBrEcJd2k6KQ1z6dMiEk6TZPkklyNzU9ZnPRZaOLQ50i9SI31tZtfGbQJwk-HjTnCfjLh4ptmxZETVOFcS6E0mTuB0tB+FQ+MMKwnCfLEjUAu0xw9INPNDPmGizVMiJAOITk7XCGy7IchkEAuDI0jZFz-0ySIXMCbyUzUvyRk0RSlRU+rfI1P4xixY9UENFLCxMq9EEdSJTlCJ0eXfTJbMc85iCOSIXSdLIXweOrXgazrRlCwE0ITTCk1EtVGt+UZEsos9UuM9LhoQUbxpCSaXJCGbfBraJwiY3I3G8GJvBZYxarA6KTo1ABFSVkFYLAWpXNrNo6n5IehrALr65LjRu0k7rZW00muYIcjGrYMk-G9UmOFIIjy+ziY2xEYuRqGYd2uN0MTbDk0Rpm6BRmH0f6rHTRxlwRuyL6UnZD0QhJ0IyaKvLSx+v0mxSVlQJDHniElawIA1ABVWAATh5TucZnW9cN42cEFzHqOxuiPBiYhqs8S5CZfGJyb++8CgE2WH18KIGZ7XX9Z+I2TbCjnDq547w+tgE7YM4XLzF1YgciV37k8K52S910iqOX7uJOJ6Ml+wIQiCSJSn5VBkAgOBnFEtOhozgBaBWDk7rjbIHwfB+uUPU0UFEGh+Lr29ujPAm8RybTOLkOQ5NlQmOUetsjaVoxn0WVhuU5skAv83AA7k9mL4xfStUIxqpJtVq3vD+wI6DdzghCkNFwbZ+vNyrsnyExvI+PIjkcj3jrHWf8TY-qVxfrzDSUlApyXTn-A+jIWRcSiEGcy1U7QL2vtkV2HIlo13SABS4iCwZT1GPvOi3gqZMWuBLNkf0-yOT9MvB0b557B3PjQtMp1+ZYAYaZP6BQzgsTrB5ay885qMVpNVey5C-DBi7O1EgidI423EbjdIjFHRORcukSIDwe6MiOF9YI3JQi-SBjAmhWAwTqggAkAA8muSA+iM7ZC4gDFiwd-Cy1vEXA474rQ3HMZ6WWrJz4ZBobAaUpA4DwAdiLJ2f1Jae15DxWyV8DhhDvO+TwdZmx+HMYkkGWjexYHwGCSUIpfHkmyQTAueS8pBBrA6bOPEHR5Umucda9cgA */
@@ -144,28 +185,29 @@ export const onboardingMachine = setup({
     context: {} as OnboardingContext,
     input: {} as OnboardingInput,
   },
-  initial: 'checkingExistingDrive',
+  initial: 'readingStoredUser',
   context: ({ input }) => ({
     user: input.user,
     bucketName: undefined,
     error: undefined,
   }),
   states: {
-    checkingExistingDrive: {
+    readingStoredUser: {
       description: `
-	* Checks if the user already has an existing drive (S3 bucket) associated with their account.
-	* This determines if the onboarding process needs to create new resources or if the user is already onboarded.
+	* Reads the user row's bucket, root and drive.
+	* With all three set the user is already onboarded; otherwise every step below runs, reusing what an earlier run made.
 		`,
       invoke: {
-        src: 'checkExistingDrive',
+        src: 'readStoredUser',
         input: ({ context }) => ({ user: context.user }),
         onDone: [
           {
-            guard: 'isOnboarded',
+            guard: ({ event }) => isOnboarded(event.output),
             target: 'alreadyOnboarded',
           },
           {
             target: 'creatingBucket',
+            actions: assign({ storedBucket: ({ event }) => event.output.bucket }),
           },
         ],
         onError: {
@@ -180,7 +222,7 @@ export const onboardingMachine = setup({
 	* The bucket name is generated based on the user's ID.`,
       invoke: {
         src: 'createBucket',
-        input: ({ context }) => ({ user: context.user }),
+        input: ({ context }) => ({ user: context.user, storedBucket: context.storedBucket ?? null }),
         onDone: {
           target: 'findingDefaultStoragePlan',
           actions: assign({

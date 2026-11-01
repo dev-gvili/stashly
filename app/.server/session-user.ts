@@ -1,4 +1,5 @@
 import { prisma } from '@/services/db'
+import { log } from '@/services/log'
 
 /** The `User.bucket` column default: no bucket of the user's own yet. */
 const PLACEHOLDER_BUCKET = 'default-bucket'
@@ -66,8 +67,43 @@ export function forwardSetCookies(response: Response, from: Headers): Response {
  */
 export async function withOnboardingFields<
   U extends OnboardingFields & { id: string },
->(user: U, read: ReadOnboardingFields = readOnboardingFields): Promise<U> {
+>(
+  user: U,
+  read: ReadOnboardingFields = readOnboardingFields,
+  onboard: Onboard = runOnboarding
+): Promise<U> {
   if (!needsOnboardingFields(user)) return user
   const stored = await read(user.id)
-  return stored ? { ...user, ...stored } : user
+  if (!stored) return user
+  if (!needsOnboardingFields(stored)) return { ...user, ...stored }
+
+  // Onboarding runs once, in better-auth's create hook, and a run that failed
+  // left the row without a bucket, root or drive for good (tech-debt item 22).
+  // Run it again; every step reuses what the failed run made. After a failure,
+  // wait `ONBOARDING_RETRY_MS` before the next try rather than one per request.
+  const failedAt = onboardingFailedAt.get(user.id)
+  if (failedAt && Date.now() - failedAt < ONBOARDING_RETRY_MS) return { ...user, ...stored }
+  try {
+    await onboard(user)
+    onboardingFailedAt.delete(user.id)
+  } catch (error) {
+    onboardingFailedAt.set(user.id, Date.now())
+    log.error('onboarding re-run failed', { user_id: user.id, error })
+    return { ...user, ...stored }
+  }
+  const repaired = await read(user.id)
+  return { ...user, ...(repaired ?? stored) }
+}
+
+type Onboard = (user: { id: string }) => Promise<void>
+
+/** How long a failed onboarding re-run waits before the next one. */
+const ONBOARDING_RETRY_MS = 60_000
+const onboardingFailedAt = new Map<string, number>()
+
+// Imported when needed: onboard.ts reaches the machine, item-actions and s3,
+// which a session read for an onboarded user never needs.
+const runOnboarding: Onboard = async (user) => {
+  const { onboardNewUser } = await import('./onboard')
+  await onboardNewUser(user as Parameters<typeof onboardNewUser>[0])
 }

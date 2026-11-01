@@ -30,7 +30,49 @@ describe('withOnboardingFields', () => {
 
   it('returns the session user unchanged when the row is gone', async () => {
     const user = { ...onboarded, bucket: 'default-bucket' }
-    expect(await withOnboardingFields(user, async () => null)).toBe(user)
+    const onboard = vi.fn()
+    expect(await withOnboardingFields(user, async () => null, onboard)).toBe(user)
+    expect(onboard).not.toHaveBeenCalled()
+  })
+
+  // Onboarding runs once, in better-auth's create hook. One that failed left the
+  // row without a bucket, root or drive, and nothing ran it again (item 22).
+  it('re-runs onboarding when the stored row is incomplete, then reads the row again', async () => {
+    const user = { ...onboarded, bucket: 'default-bucket', rootId: null }
+    const read = vi
+      .fn()
+      .mockResolvedValueOnce({ ...stored, bucket: 'default-bucket', rootId: null })
+      .mockResolvedValueOnce(stored)
+    const onboard = vi.fn(async () => {})
+    expect(await withOnboardingFields(user, read, onboard)).toEqual(onboarded)
+    expect(onboard).toHaveBeenCalledWith(user)
+    expect(read).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not re-run onboarding when the stored row is complete', async () => {
+    const onboard = vi.fn()
+    await withOnboardingFields({ ...onboarded, rootId: null }, async () => stored, onboard)
+    expect(onboard).not.toHaveBeenCalled()
+  })
+
+  it('returns the stored fields when the re-run fails', async () => {
+    const incomplete = { ...stored, rootId: null }
+    const onboard = vi.fn(async () => {
+      throw new Error('bucket creation failed')
+    })
+    const user = { ...onboarded, id: 'usr_failing', rootId: null }
+    expect(await withOnboardingFields(user, async () => incomplete, onboard)).toEqual({ ...user, ...incomplete })
+  })
+
+  it('waits out a failed re-run before trying again', async () => {
+    const onboard = vi.fn(async () => {
+      throw new Error('bucket creation failed')
+    })
+    const user = { ...onboarded, id: 'usr_cooldown', rootId: null }
+    const read = async () => ({ ...stored, rootId: null })
+    await withOnboardingFields(user, read, onboard)
+    await withOnboardingFields(user, read, onboard)
+    expect(onboard).toHaveBeenCalledTimes(1)
   })
 })
 
