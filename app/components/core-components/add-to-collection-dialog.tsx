@@ -250,7 +250,9 @@ export function AddToCollectionDialog({
           </div>
         </div>
 
-        <ScrollArea className="min-h-0 flex-1">
+        {/* Radix ScrollArea needs a definite height to scroll: the wrapper takes the flex space, the area fills it. */}
+        <div className="min-h-0 flex-1">
+        <ScrollArea className="h-full">
           <div className="flex flex-col gap-5.5 px-5 pt-4 pb-6">
             {groups.length === 0 ? (
               <p className="font-stashly py-12 text-center text-sm text-muted-foreground">
@@ -289,6 +291,7 @@ export function AddToCollectionDialog({
             />
           </div>
         </ScrollArea>
+        </div>
 
         <div className="flex flex-wrap items-center gap-3 border-t border-input bg-sidebar px-5 py-3">
           <span className="font-stashly text-sm whitespace-nowrap">

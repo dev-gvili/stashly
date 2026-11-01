@@ -45,7 +45,7 @@ export function CollectionEmptyState({
   children,
 }: CollectionEmptyStateProps) {
   return (
-    <Empty className="rounded-2xl border border-dashed py-18">
+    <Empty className="rounded-2xl border border-dashed border-input py-18">
       <EmptyHeader>
         <EmptyMedia>
           <div className="relative size-16">

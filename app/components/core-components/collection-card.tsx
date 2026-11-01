@@ -78,11 +78,11 @@ export function CollectionCard({
   }
 
   return (
-    <Card className="relative flex flex-col gap-0 rounded-2xl border bg-card p-0 transition-[border-color,box-shadow] hover:border-input hover:shadow-stashly">
+    <Card className="relative flex flex-col gap-0 rounded-2xl border border-input bg-card p-0 transition-[border-color,box-shadow] hover:border-muted-foreground/50 hover:shadow-stashly">
       <Link
         to={to}
         aria-label={`Open ${collection.name}`}
-        className="relative m-1.75 mb-0 aspect-16/10 overflow-hidden rounded-xl bg-muted"
+        className="relative m-1.75 mb-0 block aspect-16/10 overflow-hidden rounded-xl bg-muted"
       >
         <CollectionCover variant="stack" covers={collection.covers} />
       </Link>

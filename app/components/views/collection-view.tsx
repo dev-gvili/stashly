@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { LoadMoreItems } from '@/components/core-components/buttons'
 import {
@@ -27,13 +27,14 @@ import {
   SortListIcon,
 } from '@/components/icons'
 import { CollectionEmptyState } from '@/components/states/collection-empty-state'
+import { SelectionProvider } from '@/components/stash/selection'
 import { LayoutMenu, LayoutMenuItem } from '@/components/ui/layout-menu'
 import {
   useCollectionMutations,
   usePendingRemovedIds,
 } from '@/hooks/useCollectionMutations'
-import { useCollectionSelection } from '@/hooks/useCollectionSelection'
 import { useItemUrl } from '@/hooks/useItemUrl'
+import { useSelection } from '@/hooks/useSelection'
 import type { StashItem, StashPickerItem } from '@/types/stash.types'
 import { Badge } from '@/ui/badge'
 import { Button } from '@/ui/button'
@@ -105,6 +106,8 @@ function CollectionItemRow({
   selected,
   selecting,
   onToggle,
+  onCheckedChange,
+  onCheckboxMouseDown,
   onOpen,
   onRemove,
 }: {
@@ -112,6 +115,8 @@ function CollectionItemRow({
   selected: boolean
   selecting: boolean
   onToggle: (id: string) => void
+  onCheckedChange: (id: string, checked: boolean | 'indeterminate') => void
+  onCheckboxMouseDown: (e: React.MouseEvent) => void
   onOpen: (id: string) => void
   onRemove: (id: string) => void
 }) {
@@ -124,7 +129,8 @@ function CollectionItemRow({
     >
       <Checkbox
         checked={selected}
-        onCheckedChange={() => onToggle(item.id)}
+        onMouseDown={onCheckboxMouseDown}
+        onCheckedChange={(c) => onCheckedChange(item.id, c)}
         aria-label={`Select ${item.name}`}
         className="size-5.5 shrink-0 rounded-full"
       />
@@ -256,8 +262,28 @@ export function CollectionView({
   }, [tiles, activeKind, query])
 
   const ids = useMemo(() => filtered.map((t) => t.id), [filtered])
-  const sel = useCollectionSelection(ids)
+  // The shared selection actor (`SelectionProvider` below registers `ids`):
+  // shift-click ranges and the `?selectedItems=` URL sync come with it.
+  const selection = useSelection()
+  const selectedCount = selection.selectedIds.length
+  const isSelecting = selectedCount > 0
+  const toggle = (id: string) =>
+    selection.onCheckedChange(id, !selection.isChecked(id))
+  const { unselectAll } = selection
   const col = { id: collection.id, name: collection.name }
+
+  // Escape clears the selection, unless a dialog or menu is open (it closes first).
+  useEffect(() => {
+    if (!isSelecting) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      if (document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]'))
+        return
+      unselectAll()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isSelecting, unselectAll])
 
   const openItem = useCallback(
     (id: string) => {
@@ -304,8 +330,8 @@ export function CollectionView({
   }
 
   function removeSelected() {
-    removeItems(col, [...sel.selected])
-    sel.clear()
+    removeItems(col, selection.selectedIds)
+    unselectAll()
   }
 
   const isEmpty = tiles.length === 0
@@ -317,6 +343,7 @@ export function CollectionView({
   )
 
   return (
+    <SelectionProvider items={ids}>
     <div className="relative mx-auto flex w-full max-w-screen-2xl flex-col gap-5 px-8 pt-6 pb-30 max-sm:px-4">
       <div className="bg-dots mask-fade-b pointer-events-none absolute inset-x-0 top-0 h-72" />
 
@@ -374,12 +401,12 @@ export function CollectionView({
         </CollectionEmptyState>
       ) : (
         <>
-          {sel.isSelecting ? (
+          {isSelecting ? (
             <SelectionBar
-              count={sel.count}
-              allSelected={sel.allSelected}
-              onToggleAll={sel.allSelected ? sel.clear : sel.selectAll}
-              onClear={sel.clear}
+              count={selectedCount}
+              allSelected={selection.allSelected}
+              onToggleAll={() => selection.toggleAll()}
+              onClear={() => unselectAll()}
               onRemove={removeSelected}
             />
           ) : (
@@ -440,9 +467,11 @@ export function CollectionView({
                 <CollectionItemRow
                   key={t.id}
                   item={t}
-                  selected={sel.selected.has(t.id)}
-                  selecting={sel.isSelecting}
-                  onToggle={sel.toggle}
+                  selected={selection.isChecked(t.id)}
+                  selecting={isSelecting}
+                  onToggle={toggle}
+                  onCheckedChange={selection.onCheckedChange}
+                  onCheckboxMouseDown={selection.onMouseDown}
                   onOpen={openItem}
                   onRemove={removeOne}
                 />
@@ -454,9 +483,11 @@ export function CollectionView({
                 <CollectionItemCard
                   key={t.id}
                   item={t}
-                  selected={sel.selected.has(t.id)}
-                  selecting={sel.isSelecting}
-                  onToggle={sel.toggle}
+                  selected={selection.isChecked(t.id)}
+                  selecting={isSelecting}
+                  onToggle={toggle}
+                  onCheckedChange={selection.onCheckedChange}
+                  onCheckboxMouseDown={selection.onMouseDown}
                   onOpen={openItem}
                 />
               ))}
@@ -475,5 +506,6 @@ export function CollectionView({
         </div>
       )}
     </div>
+    </SelectionProvider>
   )
 }

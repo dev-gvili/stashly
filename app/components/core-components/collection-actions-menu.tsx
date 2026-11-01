@@ -74,7 +74,7 @@ export function CollectionActionsMenu({
         {!detail && openHref && (
           <DropdownMenuItem asChild>
             <Link to={openHref}>
-              <CollectionFillIcon className="size-4" />
+              <CollectionFillIcon className="size-4 text-current" />
               Open
             </Link>
           </DropdownMenuItem>
@@ -82,14 +82,14 @@ export function CollectionActionsMenu({
         {!detail && addHref && (
           <DropdownMenuItem asChild>
             <Link to={addHref}>
-              <AddIcon className="size-4" />
+              <AddIcon className="size-4 text-current" />
               Add items
             </Link>
           </DropdownMenuItem>
         )}
         <RenameCollectionDialog collection={collection}>
           <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-            <RenameFillIcon className="size-4" />
+            <RenameFillIcon className="size-4 text-current" />
             Rename
           </DropdownMenuItem>
         </RenameCollectionDialog>
@@ -106,7 +106,7 @@ export function CollectionActionsMenu({
             })
           }
         >
-          <RemoveSquareIcon className="size-4" />
+          <RemoveSquareIcon className="size-4 text-current" />
           Empty collection
         </DropdownMenuItem>
         <DropdownMenuItem
@@ -121,7 +121,7 @@ export function CollectionActionsMenu({
             })
           }
         >
-          <TrashFillIcon className="size-4" />
+          <TrashFillIcon className="size-4 text-current" />
           Move to trash
         </DropdownMenuItem>
       </DropdownMenuContent>

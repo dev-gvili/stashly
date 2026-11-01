@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react'
+import type { KeyboardEvent, MouseEvent } from 'react'
 import { FilePreview } from '@/components/core-components/collection-cover'
 import {
   AudioFillIcon,
@@ -153,6 +153,9 @@ interface CollectionItemCardProps {
   /** Picker: already in the collection. Shown dimmed, not selectable. */
   existing?: boolean
   onToggle: (id: string) => void
+  /** Detail: the check itself, so shift-click can extend a range (`useSelection`). */
+  onCheckedChange?: (id: string, checked: boolean | 'indeterminate') => void
+  onCheckboxMouseDown?: (e: MouseEvent<HTMLButtonElement>) => void
   onOpen?: (id: string) => void
 }
 
@@ -171,6 +174,8 @@ export function CollectionItemCard({
   selecting = false,
   existing = false,
   onToggle,
+  onCheckedChange,
+  onCheckboxMouseDown,
   onOpen,
 }: CollectionItemCardProps) {
   const picker = mode === 'picker'
@@ -204,8 +209,8 @@ export function CollectionItemCard({
   )
 
   const shell = cn(
-    'relative flex flex-col overflow-hidden rounded-2xl border bg-card text-left transition-[border-color,box-shadow] hover:border-input',
-    selected && 'border-primary ring-3 ring-primary/15'
+    'relative flex flex-col overflow-hidden rounded-2xl border border-input bg-card text-left transition-[border-color,box-shadow] hover:border-muted-foreground/50',
+    selected && 'border-primary ring-3 ring-primary/15 hover:border-primary'
   )
 
   if (picker) {
@@ -267,7 +272,10 @@ export function CollectionItemCard({
       </button>
       <Checkbox
         checked={selected}
-        onCheckedChange={() => onToggle(item.id)}
+        onMouseDown={onCheckboxMouseDown}
+        onCheckedChange={(c) =>
+          onCheckedChange ? onCheckedChange(item.id, c) : onToggle(item.id)
+        }
         aria-label={`Select ${item.name}`}
         className="absolute top-2 left-2 size-5.5 rounded-full border-white/75 bg-black/30 backdrop-blur-xs data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
       />

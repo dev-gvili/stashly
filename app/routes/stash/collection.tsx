@@ -124,6 +124,22 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   // times for nothing.
   if (isSearchIndexSubmission(formData)) return false
 
+  // Selecting a file writes `?selectedItems=` and the picker `?add=1`; neither
+  // changes what this loader returns, so toggling a checkbox must not refetch it.
+  const withoutUiParams = (u: URL) => {
+    const p = new URLSearchParams(u.search)
+    p.delete('selectedItems')
+    p.delete('add')
+    return p.toString()
+  }
+  if (
+    !formAction &&
+    currentUrl.pathname === nextUrl.pathname &&
+    withoutUiParams(currentUrl) === withoutUiParams(nextUrl)
+  ) {
+    return false
+  }
+
   if (['sidebar', 'theme'].some((action) => formAction?.includes(action))) {
     return false
   }
