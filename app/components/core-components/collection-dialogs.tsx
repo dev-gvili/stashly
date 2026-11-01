@@ -90,8 +90,8 @@ function NameForm({
 
 /**
  * Creates a collection. The action redirects back to the current page without
- * the new id, so this stays put and toasts; opening the new (empty)
- * collection needs the action to return the id.
+ * the new id, so this stays put; opening the new (empty) collection needs the
+ * action to return the id.
  *
  * @example
  * <NewCollectionDialog open={open} onOpenChange={setOpen} />

@@ -1,7 +1,6 @@
 import { AppContent } from '@/components/app-content'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarProvider } from '@/components/ui/sidebar'
-import { Toaster } from '@/components/ui/sonner'
 import { authMiddleware, meMiddleware } from '@/services/middleware/auth'
 import { listNotifications } from '@/services/notification-actions'
 import { findAllMemberWorkspaces } from '@/services/workspace-actions'
@@ -101,7 +100,6 @@ export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
           <UploadPanel user={user} />
           <UploadThumbnailRunner />
           <Confirm />
-          <Toaster />
         </AppContent>
       </SidebarProvider>
     </UploadActorContext.Provider>

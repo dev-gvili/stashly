@@ -361,7 +361,6 @@ export function CollectionView({
           <CollectionActionsMenu
             collection={{ ...col, itemCount }}
             variant="detail"
-            memberIds={existingItemIds}
           />
         </div>
       </div>

@@ -1,19 +1,14 @@
 import { useCallback, useMemo } from 'react'
 import { useFetchers, useSubmit } from 'react-router'
-import { toast } from 'sonner'
 
 const ACTION = '/api/collections'
 
 type CollectionRef = { id: string; name: string }
 
 /**
- * Collection mutations with their toasts. Every message says the files stay in
- * the stash, and Remove / Empty / Trash carry an Undo that re-submits the
- * inverse intent.
- *
- * Submits go through `useSubmit({ navigate: false })` rather than a
- * component-owned fetcher: a card that trashes itself unmounts, and an Undo
- * clicked afterwards would otherwise call a dead fetcher.
+ * Collection writes, one function per intent. Submits go through
+ * `useSubmit({ navigate: false })` rather than a component-owned fetcher: a
+ * card that trashes itself unmounts, and its fetcher would die with it.
  *
  * @example
  * const { removeItems } = useCollectionMutations()
@@ -33,73 +28,37 @@ export function useCollectionMutations() {
     [submit]
   )
 
-  return useMemo(() => {
-    const addItems = (col: CollectionRef, itemIds: string[], quiet = false) => {
-      send({
-        intent: 'add_items_to_collection',
-        collectionId: col.id,
-        itemIds: itemIds.join(','),
-      })
-      if (quiet) return
-      toast.success(
-        `Added ${itemIds.length} ${itemIds.length === 1 ? 'file' : 'files'} to “${col.name}”`
-      )
-    }
-
-    return {
+  return useMemo(
+    () => ({
       create(name: string) {
         send({ intent: 'create_collection', name })
-        toast.success(`Created “${name}”`)
       },
       rename(col: CollectionRef, newName: string) {
         send({ intent: 'rename_collection', collectionId: col.id, newName })
-        toast.success(`Renamed to “${newName}”`)
       },
-      addItems,
+      addItems(col: CollectionRef, itemIds: string[]) {
+        send({
+          intent: 'add_items_to_collection',
+          collectionId: col.id,
+          itemIds: itemIds.join(','),
+        })
+      },
       removeItems(col: CollectionRef, itemIds: string[]) {
         send({
           intent: 'remove_items_from_collection',
           collectionId: col.id,
           itemIds: itemIds.join(','),
         })
-        const n = itemIds.length
-        toast.success(
-          `Removed ${n} ${n === 1 ? 'file' : 'files'} from “${col.name}”. The files stay in your stash.`,
-          {
-            action: {
-              label: 'Undo',
-              onClick: () => addItems(col, itemIds, true),
-            },
-          }
-        )
       },
-      /**
-       * @param memberIds Current member ids, for Undo. Omitted where the caller
-       *   only knows the count (the index), so no Undo is offered there.
-       */
-      empty(col: CollectionRef, memberIds?: string[]) {
+      empty(col: CollectionRef) {
         send({ intent: 'clear_collection', collectionId: col.id })
-        toast.success(`Emptied “${col.name}”. The files stay in your stash.`, {
-          action: memberIds?.length
-            ? {
-                label: 'Undo',
-                onClick: () => addItems(col, memberIds, true),
-              }
-            : undefined,
-        })
       },
       trash(col: CollectionRef) {
         send({ intent: 'trash_collection', collectionId: col.id })
-        toast.success(`Moved “${col.name}” to trash. The files stay in your stash.`, {
-          action: {
-            label: 'Undo',
-            onClick: () =>
-              send({ intent: 'restore_collection', collectionId: col.id }),
-          },
-        })
       },
-    }
-  }, [send])
+    }),
+    [send]
+  )
 }
 
 /**

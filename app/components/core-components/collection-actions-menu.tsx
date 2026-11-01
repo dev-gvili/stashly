@@ -27,8 +27,6 @@ interface CollectionActionsMenuProps {
   /** Where Open and Add items go (card variant). */
   openHref?: string
   addHref?: string
-  /** Current member ids, so Empty can offer Undo. */
-  memberIds?: string[]
   className?: string
 }
 
@@ -42,14 +40,13 @@ function plural(n: number) {
  * first and say the files stay in the stash.
  *
  * @example
- * <CollectionActionsMenu collection={{ id, name, itemCount }} variant="detail" memberIds={ids} />
+ * <CollectionActionsMenu collection={{ id, name, itemCount }} variant="detail" />
  */
 export function CollectionActionsMenu({
   collection,
   variant = 'card',
   openHref,
   addHref,
-  memberIds,
   className,
 }: CollectionActionsMenuProps) {
   const { open } = useConfirm()
@@ -105,7 +102,7 @@ export function CollectionActionsMenu({
               title: `Empty “${collection.name}”?`,
               description: `Removes all ${plural(collection.itemCount)} from this collection. The files stay in your stash.`,
               confirmText: 'Empty collection',
-              onConfirm: () => empty(collection, memberIds),
+              onConfirm: () => empty(collection),
             })
           }
         >
