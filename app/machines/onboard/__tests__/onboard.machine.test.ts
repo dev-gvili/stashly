@@ -19,6 +19,10 @@ const { buckets, createUserBucket } = vi.hoisted(() => {
   return { buckets, createUserBucket }
 })
 
+// Stubbed whole: the machine reaches subscription-actions, whose Stripe client
+// throws at load without STRIPE_SECRET_KEY, which CI doesn't set.
+vi.mock('@/services/stripe', () => ({ stripe: {} }))
+
 vi.mock('@/services/s3', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/s3')>()),
   createUserBucket: (user: { id: string }) => createUserBucket(user),
