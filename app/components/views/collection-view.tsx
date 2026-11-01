@@ -1,52 +1,47 @@
-import { useState } from 'react'
-import { Link, useFetcher, useParams, useSearchParams } from 'react-router'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Button } from '@/ui/button'
-import { Badge } from '@/ui/badge'
-import { Separator } from '@/ui/separator'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/ui/dropdown-menu'
+import { useCallback, useMemo, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { LoadMoreItems } from '@/components/core-components/buttons'
-import { RenameDialog } from '@/components/core-components/rename-dialog'
 import {
   AddToCollectionDialog,
   type AddToCollectionItem,
 } from '@/components/core-components/add-to-collection-dialog'
-import { CollectionEmptyState } from '@/components/states/collection-empty-state'
+import { CollectionActionsMenu } from '@/components/core-components/collection-actions-menu'
 import {
-  ActivityFillIcon,
+  CollectionItemCard,
+  formatTileDate,
+  KIND_LABELS,
+  KindFilter,
+  KindIcon,
+  kindOf,
+  type CollectionTileItem,
+  type Kind,
+} from '@/components/core-components/collection-item-card'
+import { SelectionBar } from '@/components/core-components/selection-bar'
+import {
   AddIcon,
-  CollectionFillIcon,
-  CopyFillIcon,
-  DetailsFillIcon,
-  FileFillIcon,
-  FolderIcon,
-  LockFillIcon,
-  MoreMenuFillIcon,
-  MoveFillIcon,
+  ArrowLeftFillIcon,
+  GridFillIcon,
+  ListFillIcon,
   RemoveIcon,
-  RenameFillIcon,
-  ShareItemFillIcon,
-  TrashFillIcon,
+  SearchFillIcon,
+  SortListIcon,
 } from '@/components/icons'
+import { CollectionEmptyState } from '@/components/states/collection-empty-state'
+import { LayoutMenu, LayoutMenuItem } from '@/components/ui/layout-menu'
+import {
+  useCollectionMutations,
+  usePendingRemovedIds,
+} from '@/hooks/useCollectionMutations'
+import { useCollectionSelection } from '@/hooks/useCollectionSelection'
+import { useItemUrl } from '@/hooks/useItemUrl'
+import type { StashItem, StashPickerItem } from '@/types/stash.types'
+import { Badge } from '@/ui/badge'
+import { Button } from '@/ui/button'
+import { Checkbox } from '@/ui/checkbox'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/ui/input-group'
+import { Tooltip } from '@/ui/tooltip'
 import { formatSize } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
-import useConfirm from '@/hooks/useConfirm'
-import type { ItemType } from '@/prisma/client'
-import type { StashItem, StashPickerItem } from '@/types/stash.types'
-import { GridLayout } from './grid-view'
-import { ListLayout } from './list-view'
-import { ItemCard } from '@/components/stash/item-card'
-import { FileCardDetail } from '@/components/core-components/file-card-variants'
-import { FolderCardTab } from './folder-card-components/folder-card-tab'
-import { ButtonGroup } from '../ui'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,10 +55,9 @@ interface CollectionHeader {
 }
 
 /**
- * A collection row. `getCollectionItems` selects whole `Item` rows, so unlike
- * the slim picker shape these carry the parent folder — which the file page
- * (`/:me/stash/folders/:folderId/files/:fileId`) needs as its folder segment —
- * and real `thumbnails` rows (the best stored stage, already signed).
+ * A collection row. `getCollectionItems` selects whole `Item` rows, so these
+ * carry `parentId` (the file page needs its folder segment) and real
+ * `thumbnails` (the best stored stage, already signed).
  */
 type CollectionItem = StashPickerItem & {
   parentId?: string | null
@@ -81,377 +75,97 @@ interface CollectionViewProps {
   collectionsHref: string
 }
 
-// ---------------------------------------------------------------------------
-// Item type icon
-// ---------------------------------------------------------------------------
+type Tile = CollectionTileItem & { parentId: string | null }
 
-function ItemTypeIcon({
-  type,
-  className,
-}: {
-  type: ItemType
-  className?: string
-}) {
-  if (type === 'folder')
-    return <FolderIcon className={cn('size-4 text-amber-500', className)} />
-  if (type === 'collection')
-    return (
-      <CollectionFillIcon className={cn('size-4 text-violet-500', className)} />
-    )
-  return <FileFillIcon className={cn('size-4 text-muted-foreground', className)} />
-}
+// Server-side sort (the loader's `?orderBy[...]`, allow-listed in
+// collection-order.ts) so it holds across pages. No param means name ascending.
+const SORTS = [
+  { label: 'Name', param: null },
+  { label: 'Newest', param: ['createdAt', 'desc'] },
+  { label: 'Size', param: ['size', 'desc'] },
+] as const
 
-// ---------------------------------------------------------------------------
-// Collection page header + actions dropdown
-// ---------------------------------------------------------------------------
-
-function CollectionPageHeader({
-  collection,
-  collectionsHref,
-  availableItems,
-  existingItemIds,
-}: {
-  collection: CollectionHeader
-  collectionsHref: string
-  availableItems: AddToCollectionItem[]
-  existingItemIds: string[]
-}) {
-  const fetcher = useFetcher()
-  const { open } = useConfirm()
-  const [addOpen, setAddOpen] = useState(false)
-
-  function handleDelete() {
-    fetcher.submit(
-      { intent: 'trash_collection', collectionId: collection.id },
-      { method: 'POST', action: '/api/collections' }
-    )
-  }
-
-  function handleEmpty() {
-    fetcher.submit(
-      { intent: 'clear_collection', collectionId: collection.id },
-      { method: 'POST', action: '/api/collections' }
-    )
-  }
-
-  return (
-    <>
-      <div className="flex items-start justify-between gap-4 px-0 ">
-        <div className="flex gap-1 min-w-0 items-center">
-          <h1 className="text-xl font-semibold font-stashly truncate">
-            {collection.name}
-          </h1>
-
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-            <Badge variant="default" className="rounded">
-              {collection.itemCount}{' '}
-              {collection.itemCount === 1 ? 'item' : 'items'}
-            </Badge>
-            <span>{formatSize('byte', 'unit', Number(collection.size))}</span>
-          </div>
-        </div>
-
-        <ButtonGroup>
-          {/* Add items button */}
-          <AddToCollectionDialog
-            collectionId={collection.id}
-            collectionName={collection.name}
-            items={availableItems}
-            existingItemIds={existingItemIds}
-          >
-            <Button
-              variant="outline"
-              size="default"
-              className="font-stashly bg-card border-input"
-            >
-              <AddIcon className="size-5 text-current" />
-              Add items
-            </Button>
-          </AddToCollectionDialog>
-
-          {/* Actions dropdown — mirrors item-card-actions.tsx structure */}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="bg-card border-input"
-              >
-                <MoreMenuFillIcon className="size-6!" />
-              </Button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent
-              align="end"
-              className="space-y-4 w-48 bg-sidebar p-2"
-            >
-              <DropdownMenuGroup className="mt-2">
-                <AddToCollectionDialog
-                  collectionId={collection.id}
-                  collectionName={collection.name}
-                  items={availableItems}
-                  existingItemIds={existingItemIds}
-                >
-                  <DropdownMenuItem
-                    className="items-start"
-                    onSelect={(e) => e.preventDefault()}
-                  >
-                    <AddIcon className="text-foreground" />
-                    Add items
-                  </DropdownMenuItem>
-                </AddToCollectionDialog>
-              </DropdownMenuGroup>
-
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-                  Access
-                </DropdownMenuLabel>
-                <DropdownMenuItem className="items-start">
-                  <ShareItemFillIcon className="text-foreground" />
-                  Share
-                </DropdownMenuItem>
-                <DropdownMenuItem className="items-start">
-                  <LockFillIcon className="text-foreground" />
-                  Lock
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-                  Organize
-                </DropdownMenuLabel>
-                <DropdownMenuItem className="items-start">
-                  <CopyFillIcon className="text-foreground" />
-                  Copy
-                </DropdownMenuItem>
-                <DropdownMenuItem className="items-start">
-                  <MoveFillIcon className="text-foreground" />
-                  Move
-                </DropdownMenuItem>
-                <RenameDialog
-                  defaultName={collection.name}
-                  intent="rename_collection"
-                  extraData={{ collectionId: collection.id }}
-                  action="/api/collections"
-                  title="Rename collection"
-                >
-                  <DropdownMenuItem
-                    className="items-start"
-                    onSelect={(e) => e.preventDefault()}
-                  >
-                    <RenameFillIcon className="text-foreground" />
-                    Rename
-                  </DropdownMenuItem>
-                </RenameDialog>
-              </DropdownMenuGroup>
-
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="text-xs font-stashly text-muted-foreground">
-                  Information
-                </DropdownMenuLabel>
-                <DropdownMenuItem className="items-start">
-                  <ActivityFillIcon className="text-foreground" />
-                  Activity
-                </DropdownMenuItem>
-                <DropdownMenuItem className="items-start">
-                  <DetailsFillIcon className="text-foreground" />
-                  Details
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                className="mt-2 items-start"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  open({
-                    variant: 'destructive',
-                    title: `Move "${collection.name}" to trash?`,
-                    description: 'Trashed collections can be restored later.',
-                    confirmText: 'Move to trash',
-                    onConfirm: handleDelete,
-                  })
-                }}
-              >
-                <TrashFillIcon className="text-foreground" />
-                <span className="text-nowrap shrink-0">Move to trash</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                variant="destructive"
-                className="mt-2 items-start"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  open({
-                    variant: 'destructive',
-                    title: `Empty "${collection.name}"?`,
-                    description:
-                      'This will remove all items from this collection.',
-                    confirmText: 'Empty collection',
-                    onConfirm: handleEmpty,
-                  })
-                }}
-              >
-                <TrashFillIcon className="text-foreground" />
-                <span className="text-nowrap shrink-0">Empty collection</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </ButtonGroup>
-      </div>
-    </>
+function sortIndexOf(searchParams: URLSearchParams) {
+  const idx = SORTS.findIndex(
+    (s) => s.param && searchParams.has(`orderBy[${s.param[0]}]`)
   )
+  return idx === -1 ? 0 : idx
+}
+
+function plural(n: number) {
+  return `${n} ${n === 1 ? 'file' : 'files'}`
 }
 
 // ---------------------------------------------------------------------------
-// Grid card
+// List row
 // ---------------------------------------------------------------------------
 
-function CollectionItemCard({ item }: { item: CollectionItem }) {
-  const stashItem: StashItem = {
-    ...item,
-    status: 'normal',
-    inclusiveSize: item.size,
-    updatedAt: null,
-    // Keep the real parent: `ItemCard` routes files through
-    // `/…/folders/:folderId/files/:fileId`, so a null here collapsed the URL to
-    // `/…/folders/files/:fileId` and the file page lost its folder context.
-    parentId: item.parentId ?? null,
-    ownerId: '',
-    workspaceId: null,
-    driveId: '',
-    tags: [],
-    thumbnails: item.thumbnails,
-    favorites: [],
-    file: null,
-    folder: null,
-    parent: null,
-    locked: null,
-  }
-
-  const { collectionId } = useParams()
-
-  const removeFromCollectionActions = collectionId ? (
-    <>
-      <ItemCard.Actions.Group>
-        <ItemCard.Actions.Preview />
-        <ItemCard.Actions.Download />
-      </ItemCard.Actions.Group>
-      <ItemCard.Actions.Group label="Quick actions">
-        <ItemCard.Actions.Favorite />
-        <ItemCard.Actions.Pin />
-      </ItemCard.Actions.Group>
-      <ItemCard.Actions.Group label="Access">
-        <ItemCard.Actions.Share />
-        <ItemCard.Actions.Invite />
-        <ItemCard.Actions.Lock />
-      </ItemCard.Actions.Group>
-      <ItemCard.Actions.Group label="Organize">
-        <ItemCard.Actions.Copy />
-        <ItemCard.Actions.Move />
-        <ItemCard.Actions.Rename />
-      </ItemCard.Actions.Group>
-      <ItemCard.Actions.Group label="Information">
-        <ItemCard.Actions.Activity />
-        <ItemCard.Actions.Details />
-      </ItemCard.Actions.Group>
-      <ItemCard.Actions.RemoveFromCollection collectionId={collectionId} />
-    </>
-  ) : undefined
-
-  if (stashItem.type === 'folder') {
-    return (
-      <FolderCardTab {...stashItem}>
-        {removeFromCollectionActions}
-      </FolderCardTab>
-    )
-  }
-
+function CollectionItemRow({
+  item,
+  selected,
+  selecting,
+  onToggle,
+  onOpen,
+  onRemove,
+}: {
+  item: Tile
+  selected: boolean
+  selecting: boolean
+  onToggle: (id: string) => void
+  onOpen: (id: string) => void
+  onRemove: (id: string) => void
+}) {
   return (
-    <FileCardDetail
-      item={stashItem}
-      className="ring-2! ring-accent bg-card"
-      actions={removeFromCollectionActions}
-    />
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Item row
-// ---------------------------------------------------------------------------
-
-const rowVariants = {
-  hidden: { opacity: 0, y: 4 },
-  visible: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
-}
-
-function CollectionItemRow({ item }: { item: StashPickerItem }) {
-  const fetcher = useFetcher()
-  const { open } = useConfirm()
-  const { collectionId } = useParams()
-  const isRemoving = fetcher.state !== 'idle'
-
-  function handleRemove() {
-    fetcher.submit(
-      { intent: 'remove_item', itemId: item.id, collectionId: collectionId! },
-      { method: 'post', action: '/api/collections' }
-    )
-  }
-
-  return (
-    <motion.div
-      layout
-      variants={rowVariants}
-      initial="hidden"
-      animate="visible"
-      exit="exit"
-      transition={{ duration: 0.15 }}
+    <div
       className={cn(
-        'group flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 transition-colors hover:bg-accent/50',
-        isRemoving && 'opacity-50 pointer-events-none'
+        'font-stashly group flex h-13 items-center gap-3 rounded-lg px-2 hover:bg-secondary',
+        selected && 'bg-primary/15'
       )}
     >
-      {!item.thumbnailUrl ? (
-        <ItemTypeIcon type={item.type} />
-      ) : (
-        <img
-          src={item.thumbnailUrl}
-          alt=""
-          className="size-6 rounded object-cover shrink-0"
-          width={24}
-          height={24}
-        />
-      )}
-
-      <span className="flex-1 truncate text-sm font-medium">{item.name}</span>
-
-      <div className="flex items-center gap-3 shrink-0">
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {formatSize('byte', 'unit', Number(item.size))}
+      <Checkbox
+        checked={selected}
+        onCheckedChange={() => onToggle(item.id)}
+        aria-label={`Select ${item.name}`}
+        className="size-5.5 shrink-0 rounded-full"
+      />
+      <button
+        type="button"
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        onClick={() => (selecting ? onToggle(item.id) : onOpen(item.id))}
+      >
+        <span className="flex h-7.5 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+          {item.thumbnailUrl ? (
+            <img
+              src={item.thumbnailUrl}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="size-full object-cover"
+            />
+          ) : (
+            <KindIcon category={item.category} />
+          )}
         </span>
-
+        <span className="truncate text-sm font-medium">{item.name}</span>
+      </button>
+      <span className="w-24 shrink-0 text-xs text-muted-foreground">
+        {formatSize('byte', 'unit', Number(item.size))}
+      </span>
+      <span className="w-24 shrink-0 text-xs text-muted-foreground">
+        {formatTileDate(item.createdAt)}
+      </span>
+      <Tooltip content="Remove from collection">
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() =>
-            open({
-              variant: 'destructive',
-              title: `Remove "${item.name}"?`,
-              description: 'This will remove the item from this collection.',
-              confirmText: 'Remove',
-              onConfirm: handleRemove,
-            })
-          }
-          aria-label={`Remove ${item.name} from collection`}
+          className="size-8 shrink-0 hover:bg-destructive/15 hover:text-destructive"
+          aria-label="Remove from collection"
+          onClick={() => onRemove(item.id)}
         >
-          <RemoveIcon className="size-4!" />
+          <RemoveIcon className="size-4" />
         </Button>
-      </div>
-    </motion.div>
+      </Tooltip>
+    </div>
   )
 }
 
@@ -459,6 +173,18 @@ function CollectionItemRow({ item }: { item: StashPickerItem }) {
 // Main export
 // ---------------------------------------------------------------------------
 
+/**
+ * A single collection: title + meta, an Add items CTA, a kind / search / sort
+ * toolbar (swapped in place for the selection bar while files are selected),
+ * and the files as tiles or rows.
+ *
+ * Kind and search filter the loaded pages; sort is server-side. Share, the
+ * shared-with avatars, "updated" and bulk Download wait on data and endpoints
+ * the loader and API don't have yet.
+ *
+ * @example
+ * <CollectionView collection={c} items={items} availableItems={a} existingItemIds={ids} … />
+ */
 export function CollectionView({
   collection,
   items,
@@ -469,31 +195,276 @@ export function CollectionView({
   loadMore,
   collectionsHref,
 }: CollectionViewProps) {
-  const [searchParams] = useSearchParams()
-  const isGrid = searchParams.get('layout') === 'grid'
+  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const itemUrl = useItemUrl()
+  const { removeItems } = useCollectionMutations()
+  const removing = usePendingRemovedIds(collection.id)
+
+  const [kind, setKind] = useState('all')
+  const [query, setQuery] = useState('')
+
+  const view = searchParams.get('layout') === 'list' ? 'list' : 'grid'
+  const sortIdx = sortIndexOf(searchParams)
+  const addOpen = searchParams.get('add') === '1'
+
+  // Items still in the collection (optimistic: removals in flight are hidden).
+  const tiles = useMemo<Tile[]>(
+    () =>
+      items
+        .filter((i) => !removing.has(i.id))
+        .map((i) => ({
+          id: i.id,
+          name: i.name,
+          category: i.category,
+          size: i.size,
+          createdAt: i.createdAt,
+          parentId: i.parentId ?? null,
+          thumbnailUrl:
+            i.thumbnails?.find((t) => t.url && !t.url.startsWith('#'))?.url ??
+            null,
+        })),
+    [items, removing]
+  )
+
+  const itemCount = Math.max(0, collection.itemCount - removing.size)
+
+  const kindOptions = useMemo(() => {
+    const counts = new Map<Kind, number>()
+    for (const t of tiles) {
+      const k = kindOf(t.category)
+      if (k !== 'other') counts.set(k, (counts.get(k) ?? 0) + 1)
+    }
+    return [
+      { value: 'all', label: 'All', count: tiles.length },
+      ...(Object.keys(KIND_LABELS) as Kind[])
+        .filter((k) => counts.has(k))
+        .map((k) => ({ value: k, label: KIND_LABELS[k], count: counts.get(k) })),
+    ]
+  }, [tiles])
+
+  // A kind whose files were all removed falls back to All.
+  const activeKind = kindOptions.some((o) => o.value === kind) ? kind : 'all'
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return tiles.filter(
+      (t) =>
+        (activeKind === 'all' || kindOf(t.category) === activeKind) &&
+        (!q || t.name.toLowerCase().includes(q))
+    )
+  }, [tiles, activeKind, query])
+
+  const ids = useMemo(() => filtered.map((t) => t.id), [filtered])
+  const sel = useCollectionSelection(ids)
+  const col = { id: collection.id, name: collection.name }
+
+  const openItem = useCallback(
+    (id: string) => {
+      const t = tiles.find((x) => x.id === id)
+      if (t)
+        navigate(
+          itemUrl({ type: 'file', id, parentId: t.parentId ?? '', ownerId: '' })
+        )
+    },
+    [tiles, navigate, itemUrl]
+  )
+
+  function setParams(update: (p: URLSearchParams) => void) {
+    setSearchParams(
+      (prev) => {
+        update(prev)
+        return prev
+      },
+      { preventScrollReset: true }
+    )
+  }
+
+  function setSort(index: number) {
+    setParams((p) => {
+      for (const key of [...p.keys()]) if (key.startsWith('orderBy')) p.delete(key)
+      const s = SORTS[index]
+      if (s.param) p.set(`orderBy[${s.param[0]}]`, s.param[1])
+    })
+  }
+
+  function handleAddOpenChange(open: boolean) {
+    setParams((p) => (open ? p.set('add', '1') : p.delete('add')))
+  }
+
+  // New files should be visible right away: clear the filters, newest first.
+  function handleAdded() {
+    setKind('all')
+    setQuery('')
+    setSort(1)
+  }
+
+  function removeOne(id: string) {
+    removeItems(col, [id])
+  }
+
+  function removeSelected() {
+    removeItems(col, [...sel.selected])
+    sel.clear()
+  }
+
+  const isEmpty = tiles.length === 0
+  const addButton = (
+    <Button className="font-stashly">
+      <AddIcon className="size-5" />
+      Add items
+    </Button>
+  )
 
   return (
-    <div className="flex flex-col gap-4 pb-8 px-1">
-      <CollectionPageHeader
-        collection={collection}
-        collectionsHref={collectionsHref}
-        availableItems={availableItems}
-        existingItemIds={existingItemIds}
-      />
+    <div className="relative mx-auto flex w-full max-w-screen-2xl flex-col gap-5 px-8 pt-6 pb-30 max-sm:px-4">
+      <div className="bg-dots mask-fade-b pointer-events-none absolute inset-x-0 top-0 h-72" />
 
-      {items.length === 0 ? (
-        <CollectionEmptyState key="empty" />
-      ) : isGrid ? (
-        <GridLayout>
-          {items.map((item) => (
-            <CollectionItemCard key={item.id} item={item} />
-          ))}
-        </GridLayout>
+      <Button
+        variant="ghost"
+        size="sm"
+        asChild
+        className="font-stashly relative self-start whitespace-nowrap"
+      >
+        <Link to={`${collectionsHref}?layout=grid`}>
+          <ArrowLeftFillIcon className="size-4" />
+          All collections
+        </Link>
+      </Button>
+
+      <div className="relative flex flex-wrap items-end justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-2">
+          <h1 className="font-stashly text-3xl font-semibold tracking-tighter break-words">
+            {collection.name}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className="font-stashly text-xs">
+              {plural(itemCount)}
+            </Badge>
+            <Badge variant="secondary" className="font-stashly text-xs">
+              {formatSize('byte', 'unit', Number(collection.size))}
+            </Badge>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <AddToCollectionDialog
+            collectionId={collection.id}
+            collectionName={collection.name}
+            items={availableItems}
+            existingItemIds={existingItemIds}
+            open={addOpen}
+            onOpenChange={handleAddOpenChange}
+            onAdded={handleAdded}
+          >
+            {addButton}
+          </AddToCollectionDialog>
+          <CollectionActionsMenu
+            collection={{ ...col, itemCount }}
+            variant="detail"
+            memberIds={existingItemIds}
+          />
+        </div>
+      </div>
+
+      {isEmpty ? (
+        <CollectionEmptyState variant="collection">
+          <Button className="font-stashly" onClick={() => handleAddOpenChange(true)}>
+            <AddIcon className="size-5" />
+            Add items
+          </Button>
+        </CollectionEmptyState>
       ) : (
-        <ListLayout items={items as StashItem[]} />
+        <>
+          {sel.isSelecting ? (
+            <SelectionBar
+              count={sel.count}
+              allSelected={sel.allSelected}
+              onToggleAll={sel.allSelected ? sel.clear : sel.selectAll}
+              onClear={sel.clear}
+              onRemove={removeSelected}
+            />
+          ) : (
+            <div className="relative flex min-h-11 flex-wrap items-center justify-between gap-2.5">
+              <KindFilter
+                value={activeKind}
+                onChange={setKind}
+                options={kindOptions}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <InputGroup className="h-8 w-50 max-sm:w-full">
+                  <InputGroupAddon>
+                    <SearchFillIcon className="size-4" />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    className="font-stashly"
+                    placeholder="Find in collection"
+                    aria-label="Find in collection"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                </InputGroup>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="font-stashly bg-card"
+                  onClick={() => setSort((sortIdx + 1) % SORTS.length)}
+                >
+                  <SortListIcon className="size-4" />
+                  {SORTS[sortIdx].label}
+                </Button>
+                <LayoutMenu value={view} className="shrink-0">
+                  <LayoutMenuItem value="grid" tooltip="Grid" aria-label="Grid view">
+                    <GridFillIcon className="size-5" />
+                  </LayoutMenuItem>
+                  <LayoutMenuItem value="list" tooltip="List" aria-label="List view">
+                    <ListFillIcon className="size-5" />
+                  </LayoutMenuItem>
+                </LayoutMenu>
+              </div>
+            </div>
+          )}
+
+          {filtered.length === 0 ? (
+            <p className="font-stashly py-12 text-center text-sm text-muted-foreground">
+              Nothing in this collection matches.
+            </p>
+          ) : view === 'list' ? (
+            <div className="flex flex-col">
+              <div className="font-stashly flex items-center gap-3 border-b border-input px-2 pb-2 text-xs tracking-widest text-muted-foreground uppercase">
+                <span className="w-5.5 shrink-0" />
+                <span className="flex-1">Name</span>
+                <span className="w-24 shrink-0">Size</span>
+                <span className="w-24 shrink-0">Uploaded</span>
+                <span className="size-8 shrink-0" />
+              </div>
+              {filtered.map((t) => (
+                <CollectionItemRow
+                  key={t.id}
+                  item={t}
+                  selected={sel.selected.has(t.id)}
+                  selecting={sel.isSelecting}
+                  onToggle={sel.toggle}
+                  onOpen={openItem}
+                  onRemove={removeOne}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="grid-cards-md grid gap-3.5">
+              {filtered.map((t) => (
+                <CollectionItemCard
+                  key={t.id}
+                  item={t}
+                  selected={sel.selected.has(t.id)}
+                  selecting={sel.isSelecting}
+                  onToggle={sel.toggle}
+                  onOpen={openItem}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
-      {/* </AnimatePresence> */}
-      {/* </div> */}
 
       {hasMore && (
         <div className="flex justify-center pt-2">

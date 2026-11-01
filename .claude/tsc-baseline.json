@@ -2,7 +2,6 @@
   "app/components/ui/post-it.tsx": 2,
   "app/routes/api/versions.ts": 2,
   "app/.server/stripe.ts": 1,
-  "app/components/core-components/add-to-collection-dialog.tsx": 1,
   "app/components/ui/scroll-area.tsx": 1,
   "app/machines/quota/quota.machine.ts": 1,
   "app/machines/subscription/subscription.actors.ts": 1,
