@@ -7,7 +7,7 @@
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
 **Now (1 Nov):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1242 in 102 files), and the build. Green on `8c6d85e` (1 Nov). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1243 in 102 files), and the build. Green on `8c6d85e` (1 Nov). The 8 Playwright specs are not part of it (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors, analytics and logs:** Vinktar on server and browser since 10 Oct; product events, route timing and a structured logger since 31 Oct (item 4, resolved).
@@ -23,7 +23,9 @@
 
 **65 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 6 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62, 64 and 65 from item 45) · categories: Code 32, Architecture 22, Infrastructure 4, Test 4, Documentation 2, Dependency 1
 
-**Status at 1 Nov 2026 (latest, item 45):** 47 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 46, 47, 51, 57, 59, 64, 65). Item 45 resolved: an upload no longer reloads the folder. Each new row comes back with its create request and the page inserts it in place; on a 30-file upload whose rows landed up to 1.9 s apart, folder reloads went 14 → 0. A page that can't show a row for certain (a filter, a row past the loaded page, another route) reloads once when the batch ends. Items 64 and 65, found on the way: "folders first" puts files first, and a `shouldRevalidate` guard does nothing.
+**Status at 1 Nov 2026 (latest, items 64 and 65):** 49 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 8 new and open (19, 20, 22, 46, 47, 51, 57, 59). Item 64 resolved: "folders first" now lists folders before files (`type asc`), in `getFolderContent` and in the page's inserts. Item 65 resolved: the dead `forEach` guard is a working `some` in four routes, and a theme submission no longer re-runs the folder loader (1 request → 0, measured).
+
+**Status at 1 Nov 2026 (item 45):** 47 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 20, 22, 46, 47, 51, 57, 59, 64, 65). Item 45 resolved: an upload no longer reloads the folder. Each new row comes back with its create request and the page inserts it in place; on a 30-file upload whose rows landed up to 1.9 s apart, folder reloads went 14 → 0. A page that can't show a row for certain (a filter, a row past the loaded page, another route) reloads once when the batch ends. Items 64 and 65, found on the way: "folders first" puts files first, and a `shouldRevalidate` guard does nothing.
 
 **Status at 1 Nov 2026 (item 63):** 46 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 9 new and open (19, 20, 22, 45–47, 51, 57, 59). Item 63 resolved (`bacb903`): `GET /api/collections` and `GET /api/subscription` parse their payload through an output schema before sending it, as `/api/quota` does, so bytes go out as numbers; both answered 500 and now answer 200, measured.
 
@@ -158,8 +160,8 @@
 | 61 | ~~`/api/permissions` had no access check~~ | 50 | Resolved 2026-11-01: listing needs read access, granting, revoking and expiring need write (owner to grant owner); a stranger gets 403, measured; users trimmed to id, name, email, image | — |
 | 62 | ~~19 API routes read the session themselves~~ | 16 | Resolved 2026-11-01 (`da59fdd`): 18 moved onto `authMiddleware`, `metrics` kept as a named exception; the guard covers every `api/*.ts`, checked red | — |
 | 63 | ~~Two GET routes answer 500 on a `BigInt`~~ | 12 | Resolved 2026-11-01 (`bacb903`): both loaders parse their payload through an output schema (`collectionsLoaderOutput`, `subscriptionLoaderOutput`), as `/api/quota` does; 500 → 200, measured | — |
-| 64 | **new** "Folders first" lists files first | 15 | `type desc` sorts by the enum's declared order (folder, file, collection), so files come first; decide the order, then fix `getFolderContent` and `TYPE_RANK` together | — |
-| 65 | **new** A `shouldRevalidate` guard that does nothing | 10 | `forEach(… return false)` in `folder.tsx` and `all.tsx` returns from the callback; favorites/sidebar/theme submissions still revalidate | — |
+| 64 | ~~"Folders first" lists files first~~ | 15 | Resolved 2026-11-01: `type asc` in both `getFolderContent` queries and in the page's inserts; a folder upload's card now lists first, measured | — |
+| 65 | ~~A `shouldRevalidate` guard that does nothing~~ | 10 | Resolved 2026-11-01: `some(...)` in the four routes that had the dead `forEach`; a theme submission re-ran the folder loader once, now 0 requests, measured | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -230,8 +232,8 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 61 | ~~`/api/permissions` had no access check~~ | Code | 5 | 5 | 1 | **50** (High) | 2 h | Resolved 1 Nov |
 | 62 | ~~19 API routes read the session themselves~~ | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Resolved 1 Nov |
 | 63 | ~~Two GET routes answer 500 on a `BigInt`~~ | Code | 2 | 2 | 3 | **12** (Medium) | 2 h | Resolved 1 Nov |
-| 64 | "Folders first" lists files first | Code | 2 | 1 | 1 | **15** (Low) | 1 h | New 1 Nov |
-| 65 | A `shouldRevalidate` guard that does nothing | Code | 1 | 1 | 1 | **10** (Low) | 1 h | New 1 Nov |
+| 64 | ~~"Folders first" lists files first~~ | Code | 2 | 1 | 1 | **15** (Low) | 1 h | Resolved 1 Nov |
+| 65 | ~~A `shouldRevalidate` guard that does nothing~~ | Code | 1 | 1 | 1 | **10** (Low) | 1 h | Resolved 1 Nov |
 
 ## Details
 
@@ -1222,16 +1224,19 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 *Code debt · Impact 2 · Risk 1 · Effort 1 → **15** · est. 1 h · source: item 45, 1 Nov*
 
 - **Evidence:** `getFolderContent` sorts `{ type: 'desc' }` when `foldersFirst`, commented "'folder' comes after 'file' alphabetically". Postgres orders an enum by its declared order, and `ItemType` is declared folder, file, collection (`pg_enum.enumsortorder` 1, 2, 3, probed 1 Nov), so `desc` puts files before folders. Seen live: a folder upload's card lands after the files.
-- **Fix:** decide the order, then change `getFolderContent` and `TYPE_RANK` in `app/utils/pagination.ts` together (the page's inserts mirror it).
-- **Status 2026-11-01: open.**
+- **Fix:** the owner chose folders first. `getFolderContent` and the cursor-paged query beside it sort `type: 'asc'`, and `cardOrderFor` in `app/utils/pagination.ts` sorts the same way over `TYPE_RANK` (folder 0, file 1, collection 2, already ascending).
+- **Measured:** `pagination-insert.test.ts` red (the corrected order test failed with files first), then green; the fixtures that listed the folder last were reordered and a case for a new folder was added. Live, `p45-after2` (a folder and 40 files) renders `p45-dir4` first.
+- **Status 2026-11-01: resolved.**
 
 ### 65. A `shouldRevalidate` guard that does nothing
 
 *Code debt · Impact 1 · Risk 1 · Effort 1 → **10** · est. 1 h · source: item 45's review, 1 Nov*
 
 - **Evidence:** `folder.tsx` and `all.tsx` run `['favorites', 'sidebar', 'theme'].forEach((action) => { if (formAction?.includes(action)) return false })`. The `return` leaves the callback, not `shouldRevalidate`, so those submissions still re-run the folder loader. Read from the code, not measured.
-- **Fix:** `if (['favorites', 'sidebar', 'theme'].some((a) => formAction?.includes(a))) return false`, after checking that none of those submissions changes what the folder shows.
-- **Status 2026-11-01: open.**
+- **Also in:** `home.tsx` and `collection.tsx` had the same dead guard (for `sidebar` and `theme`), so four routes, not two.
+- **Fix:** `if (['sidebar', 'theme'].some((a) => formAction?.includes(a))) return false` in all four. `favorites` stays out of it: the toolbar's bulk "Favorite items" posts to `/api/favorites` with no per-card fetcher, so a card learns its new state only from the loader.
+- **Measured:** in the in-app browser on `p45-after2`, submitting the current theme made 2 requests with the old guard (`/api/theme.data` and the folder's `.data`) and 1 with the fix (`/api/theme.data`). Sidebar was not measured; its submission goes through the same guard.
+- **Status 2026-11-01: resolved.**
 
 ## Changes since the audit
 
