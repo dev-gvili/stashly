@@ -51,11 +51,9 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
     'selectedItems'
   )
 
-  ;['sidebar', 'theme'].forEach((action) => {
-    if (formAction?.includes(action)) {
-      return false
-    }
-  })
+  if (['sidebar', 'theme'].some((action) => formAction?.includes(action))) {
+    return false
+  }
 
   if (
     formData?.get('intent') === 'move_items' ||

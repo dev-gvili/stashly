@@ -124,11 +124,9 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   // times for nothing.
   if (isSearchIndexSubmission(formData)) return false
 
-  ;['sidebar', 'theme'].forEach((action) => {
-    if (formAction?.includes(action)) {
-      return false
-    }
-  })
+  if (['sidebar', 'theme'].some((action) => formAction?.includes(action))) {
+    return false
+  }
 
   if (
     formData?.get('intent') === 'add_item_to_collection' ||
