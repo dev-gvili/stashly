@@ -320,7 +320,7 @@ export function AccessPermissions({
             className={cn(
               'grid size-7 shrink-0 place-items-center rounded-lg',
               allowed
-                ? 'bg-green-500/15 text-green-600 dark:text-green-400'
+                ? 'bg-success/15 text-success-foreground'
                 : 'bg-muted text-muted-foreground'
             )}
           >
@@ -335,7 +335,7 @@ export function AccessPermissions({
             {label}
           </span>
           {allowed ? (
-            <CheckIcon className="size-4 text-green-600 dark:text-green-400" />
+            <CheckIcon className="size-4 text-success-foreground" />
           ) : (
             <LockIcon className="size-3.5 text-muted-foreground" />
           )}

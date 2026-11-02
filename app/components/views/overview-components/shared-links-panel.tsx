@@ -11,8 +11,8 @@ import { PanelCard } from './panel-card'
 
 /** Literal tints — Tailwind only compiles class names it can see in source. */
 const STATE_DOT: Record<LinkState, string> = {
-  live: 'bg-emerald-500',
-  expiring: 'bg-amber-500',
+  live: 'bg-success',
+  expiring: 'bg-warning',
   expired: 'bg-muted-foreground',
 }
 

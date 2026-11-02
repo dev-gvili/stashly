@@ -10,18 +10,18 @@ import { Badge } from '../ui';
 
 const pillColors: Record<InvitationStatus, string> = {
   pending:
-    'bg-amber-400 text-amber-900 dark:bg-amber-900/30 dark:text-amber-400',
+    'bg-warning/15 text-warning-foreground',
   accepted:
-    'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400',
-  rejected: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400',
+    'bg-info/15 text-info-foreground',
+  rejected: 'bg-rejected/15 text-rejected-foreground',
   canceled: 'bg-chart-4 text-chart-800 dark:bg-chart-900/30 dark:text-chart-400',
   expired: 'bg-stone-100 text-stone-800 dark:bg-stone-900/30 dark:text-stone-400',
 }
 
 const dotColors: Record<InvitationStatus, string> = {
-  pending: 'bg-amber-400',
-  accepted: 'bg-sky-400',
-  rejected: 'bg-rose-400',
+  pending: 'bg-warning',
+  accepted: 'bg-info',
+  rejected: 'bg-rejected',
   canceled: 'bg-gray-400',
   expired: 'bg-stone-400',
 }

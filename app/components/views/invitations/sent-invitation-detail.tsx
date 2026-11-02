@@ -59,9 +59,9 @@ import { formatMediaDate } from '@/utils'
 // ---------------------------------------------------------------------------
 
 const SEGMENT_COLORS: Record<InvitationStatus, string> = {
-  accepted: 'bg-sky-400',
-  pending: 'bg-amber-400',
-  rejected: 'bg-rose-400',
+  accepted: 'bg-info',
+  pending: 'bg-warning',
+  rejected: 'bg-rejected',
   canceled: 'bg-gray-400',
   expired: 'bg-stone-400 ',
 }
