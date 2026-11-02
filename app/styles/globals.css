@@ -98,6 +98,9 @@
     0 2px 4px -1px oklch(0.1822 0 0 / 0.05);
   --shadow-sm: 0 1px 2px 0 oklch(0.1822 0 0 / 0.05);
   --shadow-xs: 0 0px 1px 0 oklch(0.1822 0 0 / 0.03);
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
 }
 
 [data-theme='system'] {
@@ -151,6 +154,9 @@
       'JetBrains Mono Variable', 'Geist Mono Dark', 'Geist Mono Fallback';
     --font-stashly:
       'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
+
+    --text-2xs: 0.6875rem;
+    --text-2xs--line-height: 1rem;
 
     --dot-color: oklch(0.2931 0 0 / 0.25);
     --dot-size: 1px;
@@ -225,7 +231,8 @@
     'JetBrains Mono Variable', 'Geist Mono Dark', 'Geist Mono Fallback';
   --font-stashly:
     'Share Tech Mono', 'Share Tech Mono Fallback', 'IBM Plex Sans Hebrew';
-
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
   /* surface patterns */
   --dot-color: oklch(0.7414 0 0 / 0.2);
   --dot-size: 1px;
@@ -295,8 +302,7 @@
     --font-sans: 'Geist Dark', 'Geist Fallback';
     --font-mono:
       'JetBrains Mono Variable', 'Geist Mono Dark', 'Geist Mono Fallback';
-    --font-stashly:
-      'Share Tech Mono','IBM Plex Sans Hebrew';
+    --font-stashly: 'Share Tech Mono', 'IBM Plex Sans Hebrew';
     --dot-color: oklch(0.7414 0 0 / 0.2);
     --dot-size: 1px;
     --dot-gap: 22px;
@@ -304,7 +310,8 @@
     --grid-size: 1px;
     --grid-gap: 64px;
     --surface-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-
+    --text-2xs: 0.6875rem;
+    --text-2xs--line-height: 1rem;
     --shadow-stashly:
       0 1px 2px 0 oklch(0.1822 0 0 / 0.4),
       0 2px 4px -1px oklch(0.1822 0 0 / 0.3),
@@ -373,6 +380,8 @@
   --shadow-md: var(--shadow-md);
   --shadow-sm: var(--shadow-sm);
   --shadow-xs: var(--shadow-xs);
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
 }
 
 @layer base {
@@ -557,15 +566,34 @@
 
 @utility clip-ridge-back {
   clip-path: polygon(
-    0% 45%, 12% 25%, 22% 40%, 36% 8%, 48% 35%, 58% 22%,
-    70% 48%, 82% 18%, 92% 38%, 100% 28%, 100% 100%, 0% 100%
+    0% 45%,
+    12% 25%,
+    22% 40%,
+    36% 8%,
+    48% 35%,
+    58% 22%,
+    70% 48%,
+    82% 18%,
+    92% 38%,
+    100% 28%,
+    100% 100%,
+    0% 100%
   );
 }
 
 @utility clip-ridge-front {
   clip-path: polygon(
-    0% 30%, 10% 55%, 24% 20%, 34% 45%, 46% 10%, 60% 50%,
-    72% 32%, 84% 60%, 100% 25%, 100% 100%, 0% 100%
+    0% 30%,
+    10% 55%,
+    24% 20%,
+    34% 45%,
+    46% 10%,
+    60% 50%,
+    72% 32%,
+    84% 60%,
+    100% 25%,
+    100% 100%,
+    0% 100%
   );
 }
 
