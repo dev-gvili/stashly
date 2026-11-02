@@ -94,7 +94,7 @@ function AppHeader({
 }) {
   const isError = stateValue === 'error'
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-30 border-b border-input bg-background/95 backdrop-blur-sm">
       <div className="max-w-4xl mx-auto px-6 h-10 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-[9px] font-bold tracking-[0.35em] uppercase text-muted-foreground">
@@ -447,7 +447,7 @@ function TranscriptCard({
 
   return (
     <div className="border border-border animate-in slide-in-from-bottom-3 fade-in duration-400 rounded bg-sidebar">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-input">
         <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground">
           Transcript
         </span>

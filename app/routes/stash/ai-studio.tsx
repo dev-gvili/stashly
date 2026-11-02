@@ -289,7 +289,7 @@ function DZReady() {
 
 function MetaStrip() {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] tracking-[0.15em] uppercase text-(--mut) py-2 border-b border-dashed border-border">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] tracking-[0.15em] uppercase text-(--mut) py-2 border-b border-dashed border-input">
       <span className="text-(--fg) truncate max-w-[40ch] normal-case">{FILE_INFO.name}</span>
       <span className="opacity-40">·</span>
       <span>{FILE_INFO.size}</span>
@@ -309,7 +309,7 @@ function TranscriptCard({ phase }: { phase: Phase }) {
   const tokens = Math.ceil(TRANSCRIPT.length / 4)
   return (
     <div className="border border-border rounded-md bg-card">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-input">
         <div className="text-[10px] uppercase tracking-[0.3em]">Transcript</div>
         <div className="flex items-center gap-1">
           <ToolBtn label="Summarize" disabled={phase !== 'ready'} />
@@ -322,7 +322,7 @@ function TranscriptCard({ phase }: { phase: Phase }) {
       <div className="px-4 py-4 max-h-64 overflow-auto">
         <p className="text-[12px] leading-relaxed text-(--fg) opacity-90 whitespace-pre-wrap">{TRANSCRIPT}</p>
       </div>
-      <div className="flex items-center gap-3 px-4 py-1.5 border-t border-dashed border-border text-[10px] tracking-[0.18em] uppercase text-(--mut)">
+      <div className="flex items-center gap-3 px-4 py-1.5 border-t border-dashed border-input text-[10px] tracking-[0.18em] uppercase text-(--mut)">
         <span>{wordCount.toLocaleString()} words</span>
         <span className="opacity-40">·</span>
         <span>~{tokens.toLocaleString()} tokens</span>
@@ -348,7 +348,7 @@ function ToolBtn({ label, disabled }: { label: string; disabled?: boolean }) {
 function SummaryCard() {
   return (
     <div className="border border-border rounded-md bg-card">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-input">
         <div className="text-[10px] uppercase tracking-[0.3em]">Summary</div>
         <ToolBtn label="Copy" />
       </div>
@@ -518,7 +518,7 @@ function VarConsole({ phase, onUpload, onCancel }: { phase: Phase; onUpload: () 
       </div>
       <Dropzone phase={phase} onUpload={onUpload} onCancel={onCancel} />
       <div className="border border-border rounded-md bg-card overflow-hidden">
-        <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+        <div className="px-3 py-2 border-b border-input flex items-center justify-between">
           <div className="text-[10px] uppercase tracking-[0.3em]">Pipeline log</div>
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-[oklch(0.7_0.18_25)]" />
@@ -557,7 +557,7 @@ export default function AiStudioRoute() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="border-b border-border bg-card">
+      <div className="border-b border-input bg-card">
         <div className="max-w-4xl mx-auto px-6 py-3 flex flex-wrap gap-2">
           {VARIANTS.map((option) => (
             <button

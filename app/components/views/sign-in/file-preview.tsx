@@ -100,7 +100,7 @@ export function FilePreview({ kind, name, withChart, className, ...props }: File
         {kind === 'audio' ? <AudioPreview /> : null}
         {kind === 'image' ? <ImagePreview /> : null}
       </div>
-      <div aria-hidden className="flex items-center gap-1.5 border-t border-border bg-card px-3 py-2.5">
+      <div aria-hidden className="flex items-center gap-1.5 border-t border-input bg-card px-3 py-2.5">
         <Icon className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="truncate font-sans text-xs font-medium text-foreground">{name}</span>
       </div>

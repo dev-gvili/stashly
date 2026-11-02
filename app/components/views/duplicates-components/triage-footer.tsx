@@ -34,7 +34,7 @@ export function TriageFooter({
   return (
     <div
       className={cn(
-        'bg-background/95 border-border sticky bottom-0 z-20 border-t backdrop-blur',
+        'bg-background/95 border-input sticky bottom-0 z-20 border-t backdrop-blur',
         className
       )}
     >

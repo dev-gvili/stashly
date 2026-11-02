@@ -188,7 +188,7 @@ export function NotificationsPanel({
         className="relative w-md rounded-md shadow-xl overflow-hidden font-stashly border-none ring-2 ring-accent p-2 bg-card"
       >
         {/* ── header ── */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex items-center justify-between border-b border-input px-4 py-3">
           <div className="flex items-baseline gap-2">
             <h2 className="font-stashly text-sm font-semibold">
               Notifications
