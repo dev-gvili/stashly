@@ -1,5 +1,6 @@
 import { CollectionFillIcon, ResumeFillIcon } from '@/components/icons'
 import type { ItemCategory } from '@/prisma/client'
+import { toIcon } from '@/utils/converters'
 import { cn } from '@/utils/styles'
 
 // Literal class lookups: Tailwind only emits classes it can read in the source.
@@ -121,43 +122,56 @@ function Tile({
 
 /**
  * Cover for a collection card. `stack` fans three tiles over a dot field;
- * `mosaic` is one large tile beside two small ones. Tiles with no image stay
- * empty, and with no images at all the front tile shows the collection glyph.
+ * `mosaic` is one large tile beside two small ones.
  *
- * @param covers Signed thumbnail URLs, newest first.
+ * In `stack`, tiles with no image stay empty, and with no images at all the
+ * front tile shows the collection glyph. In `mosaic`, each tile is a member:
+ * its thumbnail, or its kind icon on a muted ground when it has none.
+ *
+ * @param covers Signed thumbnail URLs, newest first (`stack`).
+ * @param tiles The newest members, newest first (`mosaic`).
  *
  * @example
  * <CollectionCover variant="stack" covers={collection.covers} />
+ * <CollectionCover variant="mosaic" tiles={collection.tiles} />
  */
 export function CollectionCover({
   variant = 'stack',
-  covers,
+  covers = [],
+  tiles = [],
 }: {
   variant?: 'stack' | 'mosaic'
-  covers: string[]
+  covers?: string[]
+  tiles?: { url: string | null; category: ItemCategory }[]
 }) {
   if (variant === 'mosaic') {
     return (
       <div className="grid-mosaic grid size-full gap-0.75">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className={cn(
-              'overflow-hidden bg-secondary',
-              i === 0 && 'row-span-2'
-            )}
-          >
-            {covers[i] && (
-              <img
-                src={covers[i]}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="size-full object-cover"
-              />
-            )}
-          </div>
-        ))}
+        {[0, 1, 2].map((i) => {
+          const tile = tiles[i]
+          const Icon = tile && !tile.url ? toIcon(tile.category) : null
+          return (
+            <div
+              key={i}
+              className={cn(
+                'bg-muted text-muted-foreground grid place-items-center overflow-hidden',
+                i === 0 && 'row-span-2'
+              )}
+            >
+              {tile?.url ? (
+                <img
+                  src={tile.url}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="size-full object-cover"
+                />
+              ) : (
+                Icon && <Icon className={i === 0 ? 'size-6' : 'size-4'} />
+              )}
+            </div>
+          )
+        })}
       </div>
     )
   }

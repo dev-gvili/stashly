@@ -3,6 +3,7 @@ import {
   ItemStatus,
   Prisma,
   type Item,
+  type ItemCategory,
   type Thumbnail,
 } from '@/prisma/client'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
@@ -940,18 +941,7 @@ export async function getCollectionCovers(
 ): Promise<Record<string, string[]>> {
   if (collectionIds.length === 0) return {}
 
-  const readable = (alias: string) => Prisma.sql`(
-    ${Prisma.raw(alias)}."ownerId" = ${userId}
-    OR EXISTS (
-      SELECT 1
-      FROM "Permission" p
-      JOIN "_PermissionToUser" pu ON pu."A" = p.id
-      WHERE pu."B" = ${userId}
-        AND p."itemId" = ${Prisma.raw(alias)}.id
-        AND p."deletedAt" IS NULL
-        AND (p."expiresAt" IS NULL OR p."expiresAt" > NOW())
-    )
-  )`
+  const readable = (alias: string) => readableBy(userId, alias)
 
   const rows = await prisma.$queryRaw<
     {
@@ -997,6 +987,106 @@ export async function getCollectionCovers(
     ;(covers[row.collectionId] ??= []).push(url)
   })
   return covers
+}
+
+/**
+ * SQL fragment: the item at `alias` is readable by `userId` — owned, or shared
+ * through a live (undeleted, unexpired) permission. Shared by the cover queries
+ * so both fail closed the same way.
+ */
+function readableBy(userId: string, alias: string) {
+  return Prisma.sql`(
+    ${Prisma.raw(alias)}."ownerId" = ${userId}
+    OR EXISTS (
+      SELECT 1
+      FROM "Permission" p
+      JOIN "_PermissionToUser" pu ON pu."A" = p.id
+      WHERE pu."B" = ${userId}
+        AND p."itemId" = ${Prisma.raw(alias)}.id
+        AND p."deletedAt" IS NULL
+        AND (p."expiresAt" IS NULL OR p."expiresAt" > NOW())
+    )
+  )`
+}
+
+/** One tile of a mosaic cover: a member's thumbnail, or its kind when it has none. */
+export interface CollectionMosaicTile {
+  url: string | null
+  category: ItemCategory
+}
+
+/**
+ * The newest members of each collection as mosaic tiles. Unlike
+ * {@link getCollectionCovers}, a member with no stored thumbnail still takes
+ * its place, with `url: null`, so the cover can show its kind instead of
+ * skipping it.
+ *
+ * Fails closed the same way: unreadable collections contribute nothing, and
+ * unreadable members are left out.
+ *
+ * @param perCollection - Tiles per collection (default 3: one large, two small).
+ * @returns Tiles keyed by collection id, newest member first; collections with
+ *   no readable members are absent.
+ *
+ * @example
+ * const mosaics = await getCollectionMosaics(session.user.id, ids)
+ * <CollectionCover variant="mosaic" tiles={mosaics[collection.id] ?? []} />
+ */
+export async function getCollectionMosaics(
+  userId: string,
+  collectionIds: string[],
+  perCollection = 3
+): Promise<Record<string, CollectionMosaicTile[]>> {
+  if (collectionIds.length === 0) return {}
+
+  const rows = await prisma.$queryRaw<
+    {
+      collectionId: string
+      itemId: string
+      category: ItemCategory
+      bucket: string | null
+      stage: number | null
+    }[]
+  >`
+    SELECT "collectionId", "itemId", category, bucket, stage
+    FROM (
+      SELECT cm."collectionId", i.id AS "itemId", i.category, th.bucket, th.stage,
+             ROW_NUMBER() OVER (
+               PARTITION BY cm."collectionId"
+               ORDER BY cm."createdAt" DESC, cm.id DESC
+             ) AS rn
+      FROM "CollectionMember" cm
+      JOIN "Item" c ON c.id = cm."collectionId"
+      JOIN "Item" i ON i.id = cm."itemId"
+      LEFT JOIN LATERAL (
+        SELECT t.bucket, t.stage FROM "Thumbnail" t
+        WHERE t."itemId" = i.id AND t.bucket IS NOT NULL
+        ORDER BY t.stage DESC
+        LIMIT 1
+      ) th ON true
+      WHERE cm."collectionId" IN (${Prisma.join(collectionIds)})
+        AND ${readableBy(userId, 'c')}
+        AND ${readableBy(userId, 'i')}
+    ) ranked
+    WHERE rn <= ${perCollection}
+    ORDER BY "collectionId", rn
+  `
+
+  const signed = await Promise.all(
+    rows.map((row) =>
+      row.bucket
+        ? signStoredThumbnail({ bucket: row.bucket, stage: row.stage }, row.itemId)
+        : null
+    )
+  )
+  const mosaics: Record<string, CollectionMosaicTile[]> = {}
+  rows.forEach((row, i) => {
+    ;(mosaics[row.collectionId] ??= []).push({
+      url: signed[i] ?? null,
+      category: row.category,
+    })
+  })
+  return mosaics
 }
 
 /**
