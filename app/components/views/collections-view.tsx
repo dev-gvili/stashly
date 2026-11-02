@@ -6,9 +6,9 @@ import {
   type CollectionCardItem,
 } from '@/components/core-components/collection-card'
 import { NewCollectionDialog } from '@/components/core-components/collection-dialogs'
-import { AddIcon, GridFillIcon, ListFillIcon, SearchFillIcon, SortListIcon } from '@/components/icons'
+import { LayoutSegments, type CollectionLayout } from '@/components/collections'
+import { AddIcon, SearchFillIcon, SortListIcon } from '@/components/icons'
 import { CollectionEmptyState } from '@/components/states/collection-empty-state'
-import { LayoutMenu, LayoutMenuItem } from '@/components/ui/layout-menu'
 import { Badge } from '@/ui/badge'
 import { Button } from '@/ui/button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/ui/input-group'
@@ -47,7 +47,7 @@ export function CollectionsView({ collections }: CollectionsViewProps) {
   const [newOpen, setNewOpen] = useState(false)
   const [query, setQuery] = useState('')
 
-  const view = searchParams.get('layout') === 'list' ? 'list' : 'grid'
+  const view: CollectionLayout = searchParams.get('layout') === 'list' ? 'list' : 'grid'
   const sortIdx = currentSortIndex(searchParams)
   const hasCollections = collections.length > 0
 
@@ -66,6 +66,16 @@ export function CollectionsView({ collections }: CollectionsViewProps) {
           if (key.startsWith('orderBy')) prev.delete(key)
         }
         if (next.param) prev.set(`orderBy[${next.param[0]}]`, next.param[1])
+        return prev
+      },
+      { preventScrollReset: true }
+    )
+  }
+
+  function setLayout(next: CollectionLayout) {
+    setSearchParams(
+      (prev) => {
+        prev.set('layout', next)
         return prev
       },
       { preventScrollReset: true }
@@ -124,14 +134,7 @@ export function CollectionsView({ collections }: CollectionsViewProps) {
                 <SortListIcon className="size-4" />
                 {SORTS[sortIdx].label}
               </Button>
-              <LayoutMenu value={view} className="shrink-0">
-                <LayoutMenuItem value="grid" tooltip="Grid" aria-label="Grid view">
-                  <GridFillIcon className="size-5" />
-                </LayoutMenuItem>
-                <LayoutMenuItem value="list" tooltip="List" aria-label="List view">
-                  <ListFillIcon className="size-5" />
-                </LayoutMenuItem>
-              </LayoutMenu>
+              <LayoutSegments value={view} onValueChange={setLayout} className="shrink-0" />
             </div>
           </div>
 

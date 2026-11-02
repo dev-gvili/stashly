@@ -9,26 +9,29 @@ import { CollectionActionsMenu } from '@/components/core-components/collection-a
 import {
   CollectionItemCard,
   formatTileDate,
-  KIND_LABELS,
-  KindFilter,
   KindIcon,
   kindOf,
   type CollectionTileItem,
-  type Kind,
 } from '@/components/core-components/collection-item-card'
 import { SelectionBar } from '@/components/core-components/selection-bar'
 import {
+  CollectionStats,
+  KindFilterSegments,
+  kindFilterOptions,
+  LayoutSegments,
+  type CollectionKind,
+  type CollectionLayout,
+  type KindFilterValue,
+} from '@/components/collections'
+import {
   AddIcon,
   ArrowLeftFillIcon,
-  GridFillIcon,
-  ListFillIcon,
   RemoveIcon,
   SearchFillIcon,
   SortListIcon,
 } from '@/components/icons'
 import { CollectionEmptyState } from '@/components/states/collection-empty-state'
 import { SelectionProvider } from '@/components/stash/selection'
-import { LayoutMenu, LayoutMenuItem } from '@/components/ui/layout-menu'
 import {
   useCollectionMutations,
   usePendingRemovedIds,
@@ -36,7 +39,6 @@ import {
 import { useItemUrl } from '@/hooks/useItemUrl'
 import { useSelection } from '@/hooks/useSelection'
 import type { StashItem, StashPickerItem } from '@/types/stash.types'
-import { Badge } from '@/ui/badge'
 import { Button } from '@/ui/button'
 import { Checkbox } from '@/ui/checkbox'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/ui/input-group'
@@ -91,10 +93,6 @@ function sortIndexOf(searchParams: URLSearchParams) {
     (s) => s.param && searchParams.has(`orderBy[${s.param[0]}]`)
   )
   return idx === -1 ? 0 : idx
-}
-
-function plural(n: number) {
-  return `${n} ${n === 1 ? 'file' : 'files'}`
 }
 
 // ---------------------------------------------------------------------------
@@ -207,10 +205,10 @@ export function CollectionView({
   const { removeItems } = useCollectionMutations()
   const removing = usePendingRemovedIds(collection.id)
 
-  const [kind, setKind] = useState('all')
+  const [kind, setKind] = useState<KindFilterValue>('all')
   const [query, setQuery] = useState('')
 
-  const view = searchParams.get('layout') === 'list' ? 'list' : 'grid'
+  const view: CollectionLayout = searchParams.get('layout') === 'list' ? 'list' : 'grid'
   const sortIdx = sortIndexOf(searchParams)
   const addOpen = searchParams.get('add') === '1'
 
@@ -236,17 +234,15 @@ export function CollectionView({
   const itemCount = Math.max(0, collection.itemCount - removing.size)
 
   const kindOptions = useMemo(() => {
-    const counts = new Map<Kind, number>()
+    const counts: Partial<Record<CollectionKind, number>> = {}
     for (const t of tiles) {
       const k = kindOf(t.category)
-      if (k !== 'other') counts.set(k, (counts.get(k) ?? 0) + 1)
+      if (k !== 'other') counts[k] = (counts[k] ?? 0) + 1
     }
-    return [
-      { value: 'all', label: 'All', count: tiles.length },
-      ...(Object.keys(KIND_LABELS) as Kind[])
-        .filter((k) => counts.has(k))
-        .map((k) => ({ value: k, label: KIND_LABELS[k], count: counts.get(k) })),
-    ]
+    // The helper's All sums the four kinds; All also shows files of no kind.
+    return kindFilterOptions(counts).map((o) =>
+      o.value === 'all' ? { ...o, count: tiles.length } : o
+    )
   }, [tiles])
 
   // A kind whose files were all removed falls back to All.
@@ -364,14 +360,7 @@ export function CollectionView({
           <h1 className="font-stashly text-3xl font-semibold tracking-tighter break-words">
             {collection.name}
           </h1>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="font-stashly text-xs">
-              {plural(itemCount)}
-            </Badge>
-            <Badge variant="secondary" className="font-stashly text-xs">
-              {formatSize('byte', 'unit', Number(collection.size))}
-            </Badge>
-          </div>
+          <CollectionStats itemCount={itemCount} size={collection.size} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <AddToCollectionDialog
@@ -411,9 +400,9 @@ export function CollectionView({
             />
           ) : (
             <div className="relative flex min-h-11 flex-wrap items-center justify-between gap-2.5">
-              <KindFilter
+              <KindFilterSegments
                 value={activeKind}
-                onChange={setKind}
+                onValueChange={setKind}
                 options={kindOptions}
               />
               <div className="flex flex-wrap items-center gap-2">
@@ -438,14 +427,11 @@ export function CollectionView({
                   <SortListIcon className="size-4" />
                   {SORTS[sortIdx].label}
                 </Button>
-                <LayoutMenu value={view} className="shrink-0">
-                  <LayoutMenuItem value="grid" tooltip="Grid" aria-label="Grid view">
-                    <GridFillIcon className="size-5" />
-                  </LayoutMenuItem>
-                  <LayoutMenuItem value="list" tooltip="List" aria-label="List view">
-                    <ListFillIcon className="size-5" />
-                  </LayoutMenuItem>
-                </LayoutMenu>
+                <LayoutSegments
+                  value={view}
+                  onValueChange={(next) => setParams((p) => p.set('layout', next))}
+                  className="shrink-0"
+                />
               </div>
             </div>
           )}
