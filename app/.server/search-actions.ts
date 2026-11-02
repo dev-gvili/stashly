@@ -15,7 +15,11 @@ import {
   upsertPdfFacet,
   upsertVideoFacet,
 } from './item-actions'
-import { assertItemAccess, assertItemsAccess } from './permission-actions'
+import {
+  assertItemAccess,
+  assertItemsAccess,
+  itemAccessWhere,
+} from './permission-actions'
 import type { MediaMetadataInput } from '@/types/api.types'
 import { isMarkdownName, parseMarkdownMetadata } from '@/utils/markdown'
 import {
@@ -1848,5 +1852,69 @@ export async function getSearchIndexStats(ownerId: string): Promise<{
     indexedChunks: Number(row?.indexed ?? 0),
     pendingChunks: Number(row?.pending ?? 0),
     indexedItems: Number(row?.items ?? 0),
+  }
+}
+
+/**
+ * Which of `itemIds` have a search index row, limited to items the user can
+ * read. The home page uses it to mark processed files and to suggest queries
+ * only from files search can actually see.
+ *
+ * @example
+ * const indexed = new Set(await getIndexedItemIds(userId, files.map((f) => f.id)))
+ */
+export async function getIndexedItemIds(
+  userId: string,
+  itemIds: string[]
+): Promise<string[]> {
+  if (itemIds.length === 0) return []
+  const rows = await prisma.search.findMany({
+    where: {
+      itemId: { in: itemIds },
+      item: itemAccessWhere(userId, 'read'),
+    },
+    select: { itemId: true },
+  })
+  return rows.map((row) => row.itemId)
+}
+
+/**
+ * Coverage for the home page's Searchable pill: how many of the owner's files
+ * have a `Search` row, and up to three audio or video files that do not, with
+ * their duration. Only `normal` files count — trashed ones are not searchable
+ * and not offered.
+ */
+export async function getSearchableCoverage(ownerId: string, queueLimit = 3) {
+  const base = { ownerId, type: 'file' as const, status: 'normal' as const }
+  const [totalFiles, searchableFiles, queueRows] = await Promise.all([
+    prisma.item.count({ where: base }),
+    prisma.item.count({ where: { ...base, search: { isNot: null } } }),
+    prisma.item.findMany({
+      where: {
+        ...base,
+        category: { in: ['audio', 'video'] },
+        search: null,
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: queueLimit,
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        audio: { select: { duration: true } },
+        video: { select: { duration: true } },
+      },
+    }),
+  ])
+
+  return {
+    totalFiles,
+    searchableFiles,
+    queue: queueRows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      kind: row.category === 'video' ? ('video' as const) : ('audio' as const),
+      durationSec: row.audio?.duration ?? row.video?.duration ?? null,
+    })),
   }
 }
