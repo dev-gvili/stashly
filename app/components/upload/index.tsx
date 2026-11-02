@@ -44,7 +44,7 @@ import { useParams } from 'react-router'
 
 const Styles = {
   FileExtention:
-    'font-bold text-[0.55rem] dark:text-black dark:bg-white/40 bg-black text-white w-full max-w-max  flex items-center justify-center uppercase h-4 py-1 px-2 rounded-md group-data-[state=aborted]:dark:opacity-20',
+    'font-bold text-xs dark:text-black dark:bg-white/40 bg-black text-white w-full max-w-max  flex items-center justify-center uppercase h-4 py-1 px-2 rounded-md group-data-[state=aborted]:dark:opacity-20',
   DropArea:
     'group z-50 w-full aspect-video  border border-border/20 bg-inherit shadow-none rounded-lg p-4 grid place-items-center',
   Trigger:

@@ -97,16 +97,16 @@ function AppHeader({
     <header className="sticky top-0 z-30 border-b border-input bg-background/95 backdrop-blur-sm">
       <div className="max-w-4xl mx-auto px-6 h-10 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-[9px] font-bold tracking-[0.35em] uppercase text-muted-foreground">
+          <span className="text-xs font-bold tracking-[0.35em] uppercase text-muted-foreground">
             Stashly
           </span>
           <span className="text-border/60 text-xs leading-none">/</span>
-          <span className="text-[9px] font-bold tracking-[0.35em] uppercase text-primary">
+          <span className="text-xs font-bold tracking-[0.35em] uppercase text-primary">
             Local AI
           </span>
         </div>
 
-        <div className="flex items-center gap-3 text-[9px] font-bold tracking-[0.18em] uppercase">
+        <div className="flex items-center gap-3 text-xs font-bold tracking-[0.18em] uppercase">
           {modelName && (
             <span className="hidden sm:block text-muted-foreground/50 truncate max-w-36">
               {modelName}
@@ -157,13 +157,13 @@ function UploadIdleState({ isError }: { isError: boolean }) {
       />
       <div className="text-center space-y-1.5">
         <p
-          className={`text-[10px] font-bold tracking-[0.28em] uppercase ${
+          className={`text-xs font-bold tracking-[0.28em] uppercase ${
             isError ? 'text-destructive-foreground' : 'text-foreground/60'
           }`}
         >
           {isError ? 'Upload failed — try again' : 'Drop audio or video'}
         </p>
-        <p className="text-[9px] tracking-[0.18em] uppercase text-muted-foreground/40">
+        <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground/40">
           Runs entirely on your device
         </p>
       </div>
@@ -182,7 +182,7 @@ function UploadLoadingState({
     <div className="flex flex-col items-center gap-5 animate-in fade-in duration-200 w-full max-w-xs">
       <div className="flex items-center gap-2.5">
         <LoaderIcon className="w-3.5 h-3.5 text-primary animate-spin" />
-        <span className="text-[9px] font-bold tracking-[0.25em] uppercase text-primary">
+        <span className="text-xs font-bold tracking-[0.25em] uppercase text-primary">
           {loadingPhases.length > 0
             ? loadingPhases[loadingPhases.length - 1]
             : 'Loading Models'}
@@ -192,10 +192,10 @@ function UploadLoadingState({
         Object.entries(progress).map(([file, p]) => (
           <div key={file} className="w-full space-y-1.5">
             <div className="flex justify-between items-center">
-              <span className="text-[9px] tracking-wider text-muted-foreground/60 truncate max-w-44">
+              <span className="text-xs tracking-wider text-muted-foreground/60 truncate max-w-44">
                 {file.split('/').pop()}
               </span>
-              <span className="text-[9px] font-bold text-primary tabular-nums">
+              <span className="text-xs font-bold text-primary tabular-nums">
                 {Math.round(p)}%
               </span>
             </div>
@@ -211,10 +211,10 @@ function UploadDetectingState() {
     <div className="flex flex-col items-center gap-4 animate-in fade-in duration-200">
       <LanguageIcon className="w-8 h-8 text-primary animate-pulse" />
       <div className="text-center space-y-1">
-        <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-primary">
+        <p className="text-xs font-bold tracking-[0.28em] uppercase text-primary">
           Detecting Language
         </p>
-        <p className="text-[9px] tracking-wider text-muted-foreground/50">
+        <p className="text-xs tracking-wider text-muted-foreground/50">
           Analyzing audio fingerprint
         </p>
       </div>
@@ -263,17 +263,17 @@ function UploadTranscribingState({
       </div>
 
       <div className="text-center space-y-1">
-        <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-primary">
+        <p className="text-xs font-bold tracking-[0.28em] uppercase text-primary">
           Transcribing
         </p>
         {transcriptProgress ? (
-          <p className="text-[9px] tracking-wider text-muted-foreground/50">
+          <p className="text-xs tracking-wider text-muted-foreground/50">
             {transcriptProgress.currentChunk} / {transcriptProgress.totalChunks} chunks
             {transcriptProgress.timeProcessed > 0 &&
               ` · ${formatTime(transcriptProgress.timeProcessed)} processed`}
           </p>
         ) : audioDuration > 0 ? (
-          <p className="text-[9px] tracking-wider text-muted-foreground/50">
+          <p className="text-xs tracking-wider text-muted-foreground/50">
             {formatTime(audioDuration)} audio file
           </p>
         ) : null}
@@ -306,7 +306,7 @@ function UploadPostProcessingState({ stateValue }: { stateValue: string }) {
       {stateValue === 'generating_tags' && (
         <AiTagsIcon className="w-8 h-8 text-primary animate-pulse" />
       )}
-      <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-primary">
+      <p className="text-xs font-bold tracking-[0.28em] uppercase text-primary">
         {label}
       </p>
     </div>
@@ -395,7 +395,7 @@ function MetadataStrip({
   gpuShort: string | null
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] tracking-[0.15em] text-muted-foreground/50 uppercase animate-in fade-in duration-300 pb-4 border-b border-border/20">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tracking-[0.15em] text-muted-foreground/50 uppercase animate-in fade-in duration-300 pb-4 border-b border-border/20">
       <span className="normal-case text-muted-foreground/70 truncate max-w-56">
         {fileInfo.name}
       </span>
@@ -448,7 +448,7 @@ function TranscriptCard({
   return (
     <div className="border border-border animate-in slide-in-from-bottom-3 fade-in duration-400 rounded bg-sidebar">
       <div className="flex items-center justify-between px-4 py-2 border-b border-input">
-        <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground">
+        <span className="text-xs font-bold tracking-[0.3em] uppercase text-muted-foreground">
           Transcript
         </span>
         <div className="flex items-center gap-0.5">
@@ -501,11 +501,11 @@ function TranscriptCard({
         </div>
       </ScrollArea>
       <div className="flex items-center gap-3 px-4 py-2 border-t border-border/30">
-        <span className="text-[9px] tracking-[0.18em] uppercase text-muted-foreground/35">
+        <span className="text-xs tracking-[0.18em] uppercase text-muted-foreground/35">
           {wordCount.toLocaleString()} words
         </span>
         <span className="text-border/30">·</span>
-        <span className="text-[9px] tracking-[0.18em] uppercase text-muted-foreground/35">
+        <span className="text-xs tracking-[0.18em] uppercase text-muted-foreground/35">
           ~{approxTokens.toLocaleString()} tokens
         </span>
       </div>
@@ -525,7 +525,7 @@ function SummaryCard({
   return (
     <div className="border border-border/50 animate-in slide-in-from-bottom-3 fade-in duration-400">
       <div className="flex items-center justify-between px-4 py-2 border-b border-border/50">
-        <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
+        <span className="text-xs font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
           Summary
         </span>
         <Button
@@ -561,7 +561,7 @@ function KeywordsTagsGrid({
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-in slide-in-from-bottom-3 fade-in duration-400">
       {keywords.length > 0 && (
         <div className="space-y-2.5">
-          <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
+          <span className="text-xs font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
             Keywords
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -578,7 +578,7 @@ function KeywordsTagsGrid({
       )}
       {generatedTags.length > 0 && (
         <div className="space-y-2.5">
-          <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
+          <span className="text-xs font-bold tracking-[0.3em] uppercase text-muted-foreground/50">
             Tags
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -704,7 +704,7 @@ export default function App() {
                 onClick={handleCancel}
                 variant="ghost"
                 size="sm"
-                className="text-[9px] font-bold tracking-[0.25em] uppercase text-muted-foreground/50 hover:text-destructive-foreground gap-1.5 h-7"
+                className="text-xs font-bold tracking-[0.25em] uppercase text-muted-foreground/50 hover:text-destructive-foreground gap-1.5 h-7"
               >
                 <RemoveIcon className="w-3 h-3" />
                 Cancel

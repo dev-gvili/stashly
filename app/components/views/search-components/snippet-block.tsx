@@ -37,7 +37,7 @@ export function SnippetBlock({
             // than the card — it truncates so the rule and the hit count, which
             // are the parts that don't fit anywhere else, always survive.
             <span
-              className="text-accent-foreground font-stashly min-w-0 truncate text-[11px] tracking-wider uppercase"
+              className="text-accent-foreground font-stashly min-w-0 truncate text-xs tracking-wider uppercase"
               title={snippet.locator}
             >
               {snippet.locator}
@@ -45,7 +45,7 @@ export function SnippetBlock({
           )}
           <span className="bg-border h-px min-w-3 flex-1" />
           {hitCount > 0 && (
-            <span className="text-muted-foreground font-stashly shrink-0 text-[11px] tabular-nums">
+            <span className="text-muted-foreground font-stashly shrink-0 text-xs tabular-nums">
               {hitCount} {hitCount === 1 ? 'hit' : 'hits'}
             </span>
           )}

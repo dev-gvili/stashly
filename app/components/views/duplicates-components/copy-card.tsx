@@ -50,7 +50,7 @@ export function DuplicateCopyCard({
           aria-hidden="true"
           className="data-[state=checked]:border-primary data-[state=checked]:bg-primary pointer-events-none size-4 rounded-[5px]"
         />
-        <span className="text-muted-foreground font-stashly text-[10px] tracking-[0.14em] whitespace-nowrap uppercase">
+        <span className="text-muted-foreground font-stashly text-xs tracking-[0.14em] whitespace-nowrap uppercase">
           {isKept ? 'Keeping' : 'Delete'}
         </span>
       </span>

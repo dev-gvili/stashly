@@ -47,7 +47,7 @@ function NotificationBell({
         <span
           className={cn(
             'absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full px-1',
-            'bg-foreground text-[10px] leading-none text-background',
+            'bg-foreground text-xs leading-none text-background',
             'font-stashly tabular-nums'
           )}
         >
@@ -194,7 +194,7 @@ export function NotificationsPanel({
               Notifications
             </h2>
             {unread > 0 && (
-              <span className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground tabular-nums">
+              <span className="text-xs uppercase tracking-[0.08em] text-muted-foreground tabular-nums">
                 {unread} unread
               </span>
             )}
@@ -207,7 +207,7 @@ export function NotificationsPanel({
               variant="ghost"
               size="sm"
               disabled={unread === 0 || markAllFetcher.state !== 'idle'}
-              className="h-7 gap-1.5 px-2 text-[11px] uppercase tracking-[0.08em] text-muted-foreground active:scale-[0.96]"
+              className="h-7 gap-1.5 px-2 text-xs uppercase tracking-[0.08em] text-muted-foreground active:scale-[0.96]"
             >
               <DoubleCheckIcon className="size-4" />
               Mark all read

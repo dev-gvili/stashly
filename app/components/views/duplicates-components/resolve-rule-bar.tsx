@@ -19,7 +19,7 @@ export function ResolveRuleBar({
   const active = RESOLVE_RULES.find((entry) => entry.id === rule)
   return (
     <div className={cn('flex flex-wrap items-center gap-2 py-5', className)}>
-      <span className="text-muted-foreground font-stashly mr-1 text-[10px] tracking-[0.2em] whitespace-nowrap uppercase">
+      <span className="text-muted-foreground font-stashly mr-1 text-xs tracking-[0.2em] whitespace-nowrap uppercase">
         Resolve by
       </span>
       <div
@@ -38,7 +38,7 @@ export function ResolveRuleBar({
               title={entry.hint}
               onClick={() => onRuleChange(entry.id)}
               className={cn(
-                'font-stashly h-7 rounded-lg border px-2.5 text-[11px] whitespace-nowrap transition-colors',
+                'font-stashly h-7 rounded-lg border px-2.5 text-xs whitespace-nowrap transition-colors',
                 on
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-card border-input text-muted-foreground hover:text-foreground hover:border-ring'
@@ -50,7 +50,7 @@ export function ResolveRuleBar({
         })}
       </div>
       {active && (
-        <span className="text-muted-foreground font-stashly ml-1 text-[11px]">
+        <span className="text-muted-foreground font-stashly ml-1 text-xs">
           {active.hint}
         </span>
       )}

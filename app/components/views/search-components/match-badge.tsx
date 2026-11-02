@@ -14,7 +14,7 @@ export function MatchBadge({
     <span
       title={MATCH_KIND_NOTE[kind]}
       className={cn(
-        'font-stashly inline-flex h-4 items-center rounded-[3px] px-1.5 text-[10px] tracking-wider uppercase',
+        'font-stashly inline-flex h-4 items-center rounded-[3px] px-1.5 text-xs tracking-wider uppercase',
         kind === 'name'
           ? 'bg-accent text-accent-foreground'
           : 'bg-background text-muted-foreground',

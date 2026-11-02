@@ -80,7 +80,7 @@ export function NotificationItem({
           {notification.message}
         </p>
 
-        <div className="mt-1.5 flex items-center gap-2 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+        <div className="mt-1.5 flex items-center gap-2 text-xs uppercase tracking-[0.08em] text-muted-foreground">
           <span
             className={cn(
               notification.type === 'error' && 'text-destructive',
@@ -115,7 +115,7 @@ export function NotificationItem({
               type="submit"
               variant="ghost"
               size="sm"
-              className="h-6 px-2 text-[10px] uppercase tracking-[0.08em] text-muted-foreground opacity-0 focus-visible:opacity-100 group-hover:opacity-100 active:scale-[0.96]"
+              className="h-6 px-2 text-xs uppercase tracking-[0.08em] text-muted-foreground opacity-0 focus-visible:opacity-100 group-hover:opacity-100 active:scale-[0.96]"
             >
               Mark read
             </Button>

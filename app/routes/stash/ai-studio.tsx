@@ -136,7 +136,7 @@ function PipelineRail({ phase }: { phase: Phase }) {
   const idx = flow.indexOf(phase as any)
 
   return (
-    <div className="flex items-center gap-1 text-[9px] uppercase tracking-[0.2em]">
+    <div className="flex items-center gap-1 text-xs uppercase tracking-[0.2em]">
       {flow.map((id, i) => {
         const done = idx > i || phase === 'ready'
         const current = idx === i
@@ -197,7 +197,7 @@ function Dropzone({
         <div className="absolute top-2 right-2 flex items-center gap-2">
           <button
             onClick={onCancel}
-            className="text-[10px] uppercase tracking-[0.2em] text-(--mut) hover:text-[oklch(0.7_0.18_25)] inline-flex items-center gap-1.5 z-10"
+            className="text-xs uppercase tracking-[0.2em] text-(--mut) hover:text-[oklch(0.7_0.18_25)] inline-flex items-center gap-1.5 z-10"
           >
             <Icon name="x" className="w-3 h-3" />
             Cancel
@@ -217,8 +217,8 @@ function DZIdle() {
         <path d="m21 15-5-5-7 7-4-3-2 2" />
       </svg>
       <div className="text-center space-y-1">
-        <div className="text-[11px] tracking-[0.3em] uppercase">Drop audio or video</div>
-        <div className="text-[10px] tracking-[0.18em] uppercase text-(--mut)">Runs entirely on your device · WebGPU</div>
+        <div className="text-xs tracking-[0.3em] uppercase">Drop audio or video</div>
+        <div className="text-xs tracking-[0.18em] uppercase text-(--mut)">Runs entirely on your device · WebGPU</div>
       </div>
     </div>
   )
@@ -227,13 +227,13 @@ function DZIdle() {
 function DZLoading() {
   return (
     <div className="w-full max-w-sm space-y-3 px-6">
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-(--acc-fg)">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-(--acc-fg)">
         <span className="w-1.5 h-1.5 rounded-full bg-(--acc-fg) animate-pulse" />
         Loading models
       </div>
       {MODEL_FILES.map((file) => (
         <div key={file.name}>
-          <div className="flex justify-between text-[10px] mb-1">
+          <div className="flex justify-between text-xs mb-1">
             <span className="text-(--mut) truncate">{file.name}</span>
             <span className="tabular-nums">{file.progress}%</span>
           </div>
@@ -251,8 +251,8 @@ function DZTranscribing() {
     <div className="flex flex-col items-center gap-3">
       <Waveform active />
       <div className="text-center space-y-1">
-        <div className="text-[11px] uppercase tracking-[0.3em] text-(--acc-fg)">Transcribing</div>
-        <div className="text-[10px] uppercase tracking-[0.2em] text-(--mut)">7 / 14 chunks · 3:42 processed</div>
+        <div className="text-xs uppercase tracking-[0.3em] text-(--acc-fg)">Transcribing</div>
+        <div className="text-xs uppercase tracking-[0.2em] text-(--mut)">7 / 14 chunks · 3:42 processed</div>
       </div>
     </div>
   )
@@ -265,8 +265,8 @@ function DZGeneric({ title, sub, icon }: { title: string; sub: string; icon: 'se
         <Icon name={icon} className="w-7 h-7" />
       </div>
       <div className="text-center space-y-1">
-        <div className="text-[11px] uppercase tracking-[0.3em]">{title}</div>
-        <div className="text-[10px] uppercase tracking-[0.2em] text-(--mut)">{sub}</div>
+        <div className="text-xs uppercase tracking-[0.3em]">{title}</div>
+        <div className="text-xs uppercase tracking-[0.2em] text-(--mut)">{sub}</div>
       </div>
     </div>
   )
@@ -280,8 +280,8 @@ function DZReady() {
         <path d="m8 12 3 3 6-7" />
       </svg>
       <div className="text-center space-y-1">
-        <div className="text-[11px] uppercase tracking-[0.3em] text-(--acc-fg)">Pipeline complete</div>
-        <div className="text-[10px] uppercase tracking-[0.2em] text-(--mut)">Drop another file to continue</div>
+        <div className="text-xs uppercase tracking-[0.3em] text-(--acc-fg)">Pipeline complete</div>
+        <div className="text-xs uppercase tracking-[0.2em] text-(--mut)">Drop another file to continue</div>
       </div>
     </div>
   )
@@ -289,7 +289,7 @@ function DZReady() {
 
 function MetaStrip() {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] tracking-[0.15em] uppercase text-(--mut) py-2 border-b border-dashed border-input">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tracking-[0.15em] uppercase text-(--mut) py-2 border-b border-dashed border-input">
       <span className="text-(--fg) truncate max-w-[40ch] normal-case">{FILE_INFO.name}</span>
       <span className="opacity-40">·</span>
       <span>{FILE_INFO.size}</span>
@@ -310,7 +310,7 @@ function TranscriptCard({ phase }: { phase: Phase }) {
   return (
     <div className="border border-border rounded-md bg-card">
       <div className="flex items-center justify-between px-4 py-2 border-b border-input">
-        <div className="text-[10px] uppercase tracking-[0.3em]">Transcript</div>
+        <div className="text-xs uppercase tracking-[0.3em]">Transcript</div>
         <div className="flex items-center gap-1">
           <ToolBtn label="Summarize" disabled={phase !== 'ready'} />
           <ToolBtn label="Keywords" disabled={phase !== 'ready'} />
@@ -322,7 +322,7 @@ function TranscriptCard({ phase }: { phase: Phase }) {
       <div className="px-4 py-4 max-h-64 overflow-auto">
         <p className="text-[12px] leading-relaxed text-(--fg) opacity-90 whitespace-pre-wrap">{TRANSCRIPT}</p>
       </div>
-      <div className="flex items-center gap-3 px-4 py-1.5 border-t border-dashed border-input text-[10px] tracking-[0.18em] uppercase text-(--mut)">
+      <div className="flex items-center gap-3 px-4 py-1.5 border-t border-dashed border-input text-xs tracking-[0.18em] uppercase text-(--mut)">
         <span>{wordCount.toLocaleString()} words</span>
         <span className="opacity-40">·</span>
         <span>~{tokens.toLocaleString()} tokens</span>
@@ -338,7 +338,7 @@ function ToolBtn({ label, disabled }: { label: string; disabled?: boolean }) {
   return (
     <button
       disabled={disabled}
-      className="text-[10px] tracking-[0.2em] uppercase px-2 py-1 rounded-sm hover:bg-(--bg) text-(--mut) hover:text-(--fg) disabled:opacity-30 disabled:hover:bg-transparent"
+      className="text-xs tracking-[0.2em] uppercase px-2 py-1 rounded-sm hover:bg-(--bg) text-(--mut) hover:text-(--fg) disabled:opacity-30 disabled:hover:bg-transparent"
     >
       {label}
     </button>
@@ -349,7 +349,7 @@ function SummaryCard() {
   return (
     <div className="border border-border rounded-md bg-card">
       <div className="flex items-center justify-between px-4 py-2 border-b border-input">
-        <div className="text-[10px] uppercase tracking-[0.3em]">Summary</div>
+        <div className="text-xs uppercase tracking-[0.3em]">Summary</div>
         <ToolBtn label="Copy" />
       </div>
       <div className="px-4 py-4 text-[12px] leading-relaxed text-(--fg) opacity-90">{SUMMARY}</div>
@@ -360,15 +360,15 @@ function SummaryCard() {
 function ChipsCard({ title, items, variant = 'outline' }: { title: string; items: string[]; variant?: 'outline' | 'solid' }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-[0.3em] mb-2 text-(--mut)">{title}</div>
+      <div className="text-xs uppercase tracking-[0.3em] mb-2 text-(--mut)">{title}</div>
       <div className="flex flex-wrap gap-1.5">
         {items.map((item, index) => (
           <span
             key={`${item}-${index}`}
             className={
               variant === 'solid'
-                ? 'px-2 py-0.5 rounded-xs bg-(--acc) text-(--acc-fg) text-[11px] border border-(--acc-border)'
-                : 'px-2 py-0.5 rounded-xs border border-border text-(--mut) text-[11px] hover:text-(--fg) hover:border-ring cursor-pointer'
+                ? 'px-2 py-0.5 rounded-xs bg-(--acc) text-(--acc-fg) text-xs border border-(--acc-border)'
+                : 'px-2 py-0.5 rounded-xs border border-border text-(--mut) text-xs hover:text-(--fg) hover:border-ring cursor-pointer'
             }
           >
             {item}
@@ -385,7 +385,7 @@ function VarStudio({ phase, onUpload, onCancel }: { phase: Phase; onUpload: () =
       <div className="flex items-center justify-between">
         <div className="flex items-baseline gap-3">
           <h1 className="text-lg">AI Studio</h1>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-(--mut)">/ local · webgpu · streaming</span>
+          <span className="text-xs uppercase tracking-[0.2em] text-(--mut)">/ local · webgpu · streaming</span>
         </div>
         <PipelineRail phase={phase} />
       </div>
@@ -422,11 +422,11 @@ function VarLab({ phase, onUpload, onCancel }: { phase: Phase; onUpload: () => v
       <aside className="col-span-12 lg:col-span-4 space-y-4">
         <div className="flex items-baseline gap-3">
           <h1 className="text-lg">Lab</h1>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-(--mut)">/ pipeline</span>
+          <span className="text-xs uppercase tracking-[0.2em] text-(--mut)">/ pipeline</span>
         </div>
         <Dropzone phase={phase} onUpload={onUpload} onCancel={onCancel} />
         <div className="border border-border rounded-md bg-card p-3">
-          <div className="text-[10px] uppercase tracking-[0.3em] mb-2 text-(--mut)">Pipeline</div>
+          <div className="text-xs uppercase tracking-[0.3em] mb-2 text-(--mut)">Pipeline</div>
           <ol className="space-y-px">
             {pipeline.map((step, index) => {
               const done = idx > index || phase === 'ready'
@@ -444,18 +444,18 @@ function VarLab({ phase, onUpload, onCancel }: { phase: Phase; onUpload: () => v
                 >
                   <span className={`w-2.5 h-2.5 rounded-xs ${done ? 'bg-(--acc-fg)' : current ? 'border border-(--acc-fg) animate-pulse' : 'border border-border'}`} />
                   <div className="min-w-0">
-                    <div className="text-[11px]">{step.label}</div>
-                    <div className="text-[9px] text-(--mut) truncate uppercase tracking-[0.15em]">{step.status}</div>
+                    <div className="text-xs">{step.label}</div>
+                    <div className="text-xs text-(--mut) truncate uppercase tracking-[0.15em]">{step.status}</div>
                   </div>
-                  <span className="text-[9px] uppercase tracking-[0.2em] text-(--mut)">{done ? '✓' : current ? '··' : ''}</span>
+                  <span className="text-xs uppercase tracking-[0.2em] text-(--mut)">{done ? '✓' : current ? '··' : ''}</span>
                 </li>
               )
             })}
           </ol>
         </div>
         <div className="border border-border rounded-md bg-card p-3">
-          <div className="text-[10px] uppercase tracking-[0.3em] text-(--mut) mb-2">Device</div>
-          <div className="grid grid-cols-2 gap-y-1.5 gap-x-3 text-[11px]">
+          <div className="text-xs uppercase tracking-[0.3em] text-(--mut) mb-2">Device</div>
+          <div className="grid grid-cols-2 gap-y-1.5 gap-x-3 text-xs">
             <span className="text-(--mut) uppercase tracking-[0.2em]">Backend</span>
             <span>WebGPU</span>
             <span className="text-(--mut) uppercase tracking-[0.2em]">Adapter</span>
@@ -483,8 +483,8 @@ function VarLab({ phase, onUpload, onCancel }: { phase: Phase; onUpload: () => v
         ) : (
           <div className="border border-dashed border-border rounded-md bg-card h-full min-h-100 flex items-center justify-center">
             <div className="text-center space-y-2 text-(--mut)">
-              <div className="text-[10px] uppercase tracking-[0.3em]">Output panel</div>
-              <div className="text-[10px] uppercase tracking-[0.18em] opacity-70">Artifacts will materialize here as the pipeline runs</div>
+              <div className="text-xs uppercase tracking-[0.3em]">Output panel</div>
+              <div className="text-xs uppercase tracking-[0.18em] opacity-70">Artifacts will materialize here as the pipeline runs</div>
             </div>
           </div>
         )}
@@ -514,19 +514,19 @@ function VarConsole({ phase, onUpload, onCancel }: { phase: Phase; onUpload: () 
     <div className="max-w-4xl mx-auto px-6 py-6 space-y-5">
       <div className="flex items-baseline gap-3">
         <h1 className="text-lg">Console</h1>
-        <span className="text-[10px] uppercase tracking-[0.2em] text-(--mut)">/ terminal log</span>
+        <span className="text-xs uppercase tracking-[0.2em] text-(--mut)">/ terminal log</span>
       </div>
       <Dropzone phase={phase} onUpload={onUpload} onCancel={onCancel} />
       <div className="border border-border rounded-md bg-card overflow-hidden">
         <div className="px-3 py-2 border-b border-input flex items-center justify-between">
-          <div className="text-[10px] uppercase tracking-[0.3em]">Pipeline log</div>
+          <div className="text-xs uppercase tracking-[0.3em]">Pipeline log</div>
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-[oklch(0.7_0.18_25)]" />
             <span className="w-2 h-2 rounded-full bg-[oklch(0.85_0.15_85)]" />
             <span className="w-2 h-2 rounded-full bg-[oklch(0.7_0.16_160)]" />
           </div>
         </div>
-        <pre className="px-3 py-2 text-[10.5px] leading-relaxed font-stashly overflow-auto max-h-105">
+        <pre className="px-3 py-2 text-xs leading-relaxed font-stashly overflow-auto max-h-105">
           {lines.map((line, index) => (
             <div key={index} className="grid grid-cols-[64px_1fr] gap-2">
               <span className="text-(--mut)">{line.t}</span>
@@ -564,7 +564,7 @@ export default function AiStudioRoute() {
               key={option.id}
               type="button"
               onClick={() => setVariant(option.id)}
-              className={`rounded-full px-3 py-1.5 text-[11px] uppercase tracking-[0.2em] transition ${
+              className={`rounded-full px-3 py-1.5 text-xs uppercase tracking-[0.2em] transition ${
                 variant === option.id
                   ? 'bg-(--acc) text-(--acc-fg)'
                   : 'bg-background text-(--mut) hover:bg-(--bg)'

@@ -67,7 +67,7 @@ export function ResultsSummary({
         )}
       </span>
 
-      <span className="text-muted-foreground font-stashly hidden items-center gap-3 text-[11px] whitespace-nowrap lg:flex">
+      <span className="text-muted-foreground font-stashly hidden items-center gap-3 text-xs whitespace-nowrap lg:flex">
         <span className="inline-flex items-center gap-1.5">
           <span className="bg-primary border-primary size-2.5 rounded-xs border" />
           query term

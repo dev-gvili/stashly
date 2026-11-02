@@ -32,7 +32,7 @@ export function ScoreBadge({
     <span
       title={`${scoreBand(score)} match. ${scoreTitle(kind)}`}
       className={cn(
-        'bg-background/80 text-foreground font-stashly inline-flex h-5 items-center rounded-full px-2 text-[11px] tabular-nums backdrop-blur-sm',
+        'bg-background/80 text-foreground font-stashly inline-flex h-5 items-center rounded-full px-2 text-xs tabular-nums backdrop-blur-sm',
         className
       )}
     >

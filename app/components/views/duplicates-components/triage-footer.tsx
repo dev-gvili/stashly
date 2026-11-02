@@ -62,7 +62,7 @@ export function TriageFooter({
           <UndoIcon className="size-4" />
           Previous group
         </Button>
-        <span className="text-muted-foreground font-stashly ml-auto inline-flex items-center gap-1.5 text-[10.5px] whitespace-nowrap">
+        <span className="text-muted-foreground font-stashly ml-auto inline-flex items-center gap-1.5 text-xs whitespace-nowrap">
           <UndoIcon className="size-3.5" />
           Deleted copies go to Trash — restore any time
         </span>
