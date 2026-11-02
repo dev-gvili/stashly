@@ -338,7 +338,7 @@ function ToolBtn({ label, disabled }: { label: string; disabled?: boolean }) {
   return (
     <button
       disabled={disabled}
-      className="text-xs tracking-[0.2em] uppercase px-2 py-1 rounded-sm hover:bg-(--bg) text-(--mut) hover:text-(--fg) disabled:opacity-30 disabled:hover:bg-transparent"
+      className="text-xs tracking-[0.2em] uppercase px-2 py-1 rounded-sm hover:bg-(--bg) text-(--mut) hover:text-(--fg) disabled:opacity-50 disabled:hover:bg-transparent"
     >
       {label}
     </button>
