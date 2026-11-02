@@ -76,11 +76,11 @@ Available sub-components: `Group`, `Item`, `Preview`, `Download`, `Copy`, `Move`
 
 **Surface layering**: chrome (headers, toolbars, dialog top/bottom) uses `bg-sidebar`; canvas (content, item grids) uses `bg-background`. App-header pattern: `h-14`, outline buttons with `bg-card!`. App-toolbar pattern: `h-12 p-2` sticky bottom.
 
-**z-index layering**: Tooltips use `z-9999` (highest). Sticky headers/toolbars use `z-10` max — never `z-40` or higher, or they cover tooltip portals. Dialogs/dropdowns inherit from Radix Portal defaults.
+**z-index layering**: Tooltips use `z-9999` (highest). Sticky toolbars use `z-10` max — never `z-40` or higher, or they cover tooltip portals. **The one exception is `app-header.tsx` (`z-40`):** it shares the root stacking context with the item-page overlays (`image-stage` and `video-stage` controls at `z-20`, `sibling-nav` at `z-40`), measured on a file page 2026-11-03, so lowering it to `z-10` would let those draw over it as content scrolls. Lower the overlays first if you want the header lower. Dialogs/dropdowns inherit from Radix Portal defaults.
 
 **Border color**: structural separators (`border-b`/`border-t` between regions) always use `border-input` — never the default `border` token.
 
-**`Card` component pattern**: Always override Card defaults — never use a bare `<Card>` without explicit classes. Full pattern: `<Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden">`. `CardHeader`: `flex items-baseline px-4 py-4`. `CardTitle`: `text-sm uppercase font-stashly`. `CardDescription`: `text-sm text-muted-foreground`. `CardContent`: `p-4`.
+**`Card` component pattern**: Always override Card defaults — never use a bare `<Card>` without explicit classes. Full pattern: `<Card className="border border-input rounded-md surface-glass bg-card p-0 overflow-hidden">`. `CardHeader`: `flex items-baseline px-4 py-4`. `CardTitle`: `text-sm uppercase font-stashly`. `CardDescription`: `text-sm text-muted-foreground`. `CardContent`: `p-4`. **Tile cards are a second, deliberate pattern** (collection, home and file cards, the overview panels in `overview-components/`): `rounded-2xl border border-border/50 bg-card` with `overflow-hidden`, and a `border-b border-border/50` between cover and body. Use it for browsable tiles, the panel pattern for page sections. Don't mix them in one grid.
 
 ## Typography, icons & inputs
 
@@ -94,7 +94,7 @@ Available sub-components: `Group`, `Item`, `Preview`, `Download`, `Copy`, `Move`
 
 **`ButtonGroup` is for related secondary actions only**: never fuse a primary submit button with a secondary action in a `ButtonGroup` — primary actions stand alone.
 
-**Toggle/segmented control styling**: For filter rows or segmented controls, mirror `LayoutMenu`/`LayoutMenuItem` from `app/components/ui/layout-menu.tsx` — container `max-w-max rounded`, items `bg-card text-foreground hover:bg-muted aria-checked:bg-muted! aria-checked:text-accent-foreground first-of-type:rounded-l-md last-of-type:rounded-r-md`. Don't roll your own `ToggleGroup` styling.
+**Toggle/segmented control styling**: For filter rows or segmented controls, mirror `LayoutMenu`/`LayoutMenuItem` from `app/components/ui/layout-menu.tsx` — container `max-w-max rounded`, items `bg-card text-foreground hover:bg-muted aria-checked:bg-muted! aria-checked:text-accent-foreground first-of-type:rounded-l-md last-of-type:rounded-r-md`. Don't roll your own `ToggleGroup` styling. **Two styles coexist on purpose:** `LayoutMenu` is the header-bar toggle (`layout-toggle.tsx`); `SegmentedControl` (`ui/segmented-control.tsx`) is a recessed `bg-muted` track with a raised `bg-card` active segment, used for in-page single-choice filters (`collections/kind-filter-segments.tsx`, `layout-segments.tsx`). Use `SegmentedControl` in a page body, `LayoutMenu` in the header bar.
 
 **No sub-`text-xs` sizes**: never use arbitrary text sizes like `text-[10px]` / `text-[11px]`. `text-xs` is the smallest allowed scale value.
 
