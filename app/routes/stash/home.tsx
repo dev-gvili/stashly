@@ -1,16 +1,30 @@
 import { sessionContext } from '@/.server/middleware/context'
 import type { Route } from './+types/home'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
-import { redirect } from 'react-router'
+import { href, useFetcher } from 'react-router'
 import type { ShouldRevalidateFunction } from 'react-router'
 import { getQueryParamArray } from '@/utils/query-params'
-import { OverviewView } from '@/components/views/overview-components'
+import { HomeView } from '@/components/views/home-components/home-view'
+import {
+  toChipQueries,
+  toHomeCollection,
+  toHomeFile,
+  toNeedsYouEntries,
+  toQueueEntries,
+} from '@/components/views/home-components/home-data'
+import type { HomeFile, NeedsYouEntry } from '@/types/home.types'
 import type { StashItem } from '@/types/stash.types'
-import { getSuggestedItems, retrieveUserUsageMetrics } from '@/services/item-actions'
+import { getSuggestedItems } from '@/services/item-actions'
 import { getPinnedItems } from '@/services/pin-actions'
-import { getFavoritedItems } from '@/services/item-actions'
-import { getRecentActivityForUser } from '@/services/activity-actions'
-import { getStorageSummary } from '@/services/storage-actions'
+import {
+  findAllCollections,
+  getCollectionMosaics,
+} from '@/services/collection-actions'
+import { listReceivedInvitations } from '@/services/invitation-actions'
+import {
+  getIndexedItemIds,
+  getSearchableCoverage,
+} from '@/services/search-actions'
 
 export { ErrorBoundary } from '@/components/error-boundary'
 
@@ -73,64 +87,109 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
   return true
 }
 
-export async function loader({ request, context }: Route.LoaderArgs) {
+export async function loader({ context }: Route.LoaderArgs) {
   const session = context.get(sessionContext)
+  const userId = session.user.id
 
-  // The overview asks for eleven cards under "Recently opened" (the first is
-  // the hero, two columns wide and two rows tall, with ten filling the five
-  // columns beside it) and eight favorites, so raise the fetch limits to match
-  // the layout.
-  const [suggestions, pinned, favorites, activity, stats, storage] =
+  const [suggestions, pinned, collections, invitations, coverage] =
     await Promise.all([
       getSuggestedItems({
-        userId: session.user.id,
+        userId,
         driveId: session.user.driveId,
         rootId: session.user.rootId,
-        maxFolders: 6,
-        maxFiles: 11,
+        maxFolders: 0,
+        maxFiles: 8,
       }),
-      getPinnedItems({ userId: session.user.id, limit: 4 }),
-      getFavoritedItems({ userId: session.user.id, limit: 8 }),
-      getRecentActivityForUser({ userId: session.user.id, limit: 12 }),
-      retrieveUserUsageMetrics(session.user.id),
-      getStorageSummary(session.user.id),
+      getPinnedItems({ userId, limit: 24 }),
+      findAllCollections({
+        where: { ownerId: userId, status: 'normal' },
+        orderBy: { updatedAt: 'desc' },
+        take: 8,
+      }),
+      listReceivedInvitations(session.user.email),
+      getSearchableCoverage(userId),
     ])
 
+  const [mosaics, indexedIds] = await Promise.all([
+    getCollectionMosaics(
+      userId,
+      collections.map((col) => col.id)
+    ),
+    getIndexedItemIds(userId, [
+      ...suggestions.suggestedFiles.map((f) => f.id),
+      ...pinned.items.map((f) => f.id),
+    ]),
+  ])
+
+  const ctx = {
+    me: userId,
+    indexedIds: new Set(indexedIds),
+    pinnedIds: new Set(pinned.items.map((item) => item.id)),
+  }
+  const recentItems = suggestions.suggestedFiles as StashItem[]
+  // Pinned files not already among the recent ones, so the Pinned tab has them.
+  const recentIds = new Set(recentItems.map((item) => item.id))
+  const extraPinned = (pinned.items as StashItem[]).filter(
+    (item) => !recentIds.has(item.id)
+  )
+
   return {
-    suggestedFolders: suggestions.suggestedFolders,
-    suggestedFiles: suggestions.suggestedFiles,
-    pinned: pinned.items,
-    favorites: favorites.items,
-    activity,
-    stats,
-    storage,
-    user: session.user,
+    me: userId,
+    firstName: session.user.name.split(' ')[0] ?? session.user.name,
+    rootId: session.user.rootId,
+    recent: [...recentItems, ...extraPinned].map((item) =>
+      toHomeFile(item, ctx)
+    ),
+    collections: collections.map((col) =>
+      toHomeCollection(
+        { id: col.id, name: col.name, itemCount: col.members.length },
+        mosaics[col.id] ?? [],
+        userId
+      )
+    ),
+    chips: toChipQueries(recentItems, indexedIds),
+    needsYou: toNeedsYouEntries(invitations, session.user.email),
+    searchable: {
+      done: coverage.searchableFiles,
+      total: coverage.totalFiles,
+      queue: toQueueEntries(coverage.queue),
+    },
   }
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const {
-    user,
-    suggestedFolders,
-    suggestedFiles,
-    pinned,
-    favorites,
-    activity,
-    stats,
-    storage,
-  } = loaderData
+  const { me, rootId, firstName, chips, ...data } = loaderData
+  const pins = useFetcher()
+  const invitations = useFetcher()
+
+  const togglePin = (file: HomeFile) =>
+    pins.submit(
+      { intent: file.pinned ? 'unpin' : 'pin', itemId: file.id },
+      { method: 'POST', action: '/api/pins' }
+    )
+
+  const respond = (intent: 'accept_invitation' | 'reject_invitation') =>
+    (entry: NeedsYouEntry) =>
+      invitations.submit(
+        { intent, recipientId: entry.recipientId },
+        { method: 'POST', action: '/api/invitations' }
+      )
 
   return (
-    <OverviewView
-      user={{ id: user.id, name: user.name }}
-      subline={`${stats.folders.toLocaleString()} folders · ${stats.files.toLocaleString()} files`}
-      suggestedFolders={suggestedFolders}
-      suggestedFiles={suggestedFiles}
-      pinned={pinned as StashItem[]}
-      favorites={favorites as unknown as StashItem[]}
-      activity={activity}
-      storage={storage ?? undefined}
-      trash={stats.trashed > 0 ? { count: stats.trashed } : undefined}
+    <HomeView
+      {...data}
+      me={me}
+      firstName={firstName}
+      suggestions={chips.map((query) => ({ query, ai: true }))}
+      moreHref={{
+        all: href('/:me/stash/folders/:folderId', { me, folderId: rootId }),
+        pinned: href('/:me/stash/pinned', { me }),
+        collections: href('/:me/stash/collections', { me }),
+        shared: href('/:me/stash/shares', { me }),
+      }}
+      onTogglePin={togglePin}
+      onActOnNeed={respond('accept_invitation')}
+      onDismissNeed={respond('reject_invitation')}
     />
   )
 }
