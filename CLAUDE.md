@@ -165,6 +165,13 @@ shadcn/ui (source-owned, in `app/components/ui/`) built on Radix UI, styled with
 
 - After any CSS/Tailwind/layout change, hard-refresh and verify against the live DOM (chrome-devtools MCP) before declaring done — stale Tailwind stylesheets have caused false negatives. (Data Honesty and the extend-don't-duplicate rule apply here too — see above.)
 
+## Frontend / Design
+
+- **Load the required design/UI skills before touching a component** ([Subsystem Skills](#subsystem-skills)).
+- **Use `font-stashly`, the stashly type scale (`text-xs` is the smallest) and the design tokens.** Never use raw font classes (`font-sans`, `font-mono`) — a mockup's font classes are translated, not copied.
+- **No circular avatars unless the design shows them. Don't add UI controls (pickers, toggles) that aren't in the spec.**
+- **After a UI change, verify in the browser via chrome-devtools in both light and dark mode before claiming done or pushing.**
+
 ## Subsystem Skills
 
 Detailed conventions for these areas live in on-demand project skills (`.claude/skills/`). Loading the matching skill is **mandatory** before touching the area — reading, planning, or editing. Don't proceed until every skill the task needs is loaded; a task spanning two areas loads both (a schema rename that also edits a component loads `stashly-prisma-data` **and** `stashly-ui-conventions`).
