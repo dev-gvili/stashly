@@ -171,11 +171,13 @@ Eight PL/pgSQL functions back ten triggers and the upload size log. Most maintai
 | Function | Current migration | Purpose |
 |----------|-------------------|---------|
 | `update_size()` | `20261030160000_upload_size_inline_when_idle` | Maintains `Item.size` / `Item.inclusiveSize` on the **parent** item; logs an uploaded row instead while the database is busy (see *Upload size log*) |
-| `update_child_count()` | `20251214024737_update_triggers_for_inclusive_counts` | Maintains `Folder.childCount` / `Folder.inclusiveChildCount` on the **parent** folder |
+| `stashly_charge_upload(drive_id, amount)` | `20261106120000_upload_quota_log` | Charges an upload to a drive inside its statement: charges at once while idle, logs in `QuotaDelta` while busy and far from the limit, and charges strictly, one at a time, near it. Answers whether the file may be filed |
+| `stashly_quota_status(used, total)` | `20261106120000_upload_quota_log` | The `QuotaStatus` for a `used` and `total`; mirrors `toQuotaStatus()` |
+| `update_child_count()` | `20261106120000_upload_quota_log` | Maintains `Folder.childCount` / `Folder.inclusiveChildCount` on the **parent** folder |
 | `update_collection_size()` | `20260526000000_user_wipe_trigger_bypass` | Maintains a collection `Item.size` when members are added/removed |
 | `sync_item_size_to_collections()` | `20260526000000_user_wipe_trigger_bypass` | Propagates a member item's size change to every parent collection |
 | `stashly_is_wiping_user(target_user_id TEXT)` | `20260526000000_user_wipe_trigger_bypass` | `STABLE` helper — true when the session is doing a full user wipe (used as a `WHERE` guard inside the three size functions) |
-| `apply_item_size_deltas(max_deltas, wait_for_lock)` | `20261030140000_upload_size_delta_log` | Applies pending `ItemSizeDelta` rows: each affected folder written once per run, one run at a time database-wide |
+| `apply_item_size_deltas(max_deltas, wait_for_lock)` | `20261106120000_upload_quota_log` | Applies pending `ItemSizeDelta` and `QuotaDelta` rows: each affected folder written once per run, one run at a time database-wide |
 | `recount_folder_sizes(root)` | `20261030140000_upload_size_delta_log` | Recounts a subtree's folder sizes from its files: the test oracle and repair tool |
 | `notify_notification_change()` | `20260724000000_notification_notify` | Emits `pg_notify('notifications', payload)` on every `Notification` write so the singleton `LISTEN` client can fan the change out over SSE |
 
@@ -240,7 +242,7 @@ Keeps `Folder.childCount` (active items only) and `Folder.inclusiveChildCount` (
 
 | Operation | Behaviour |
 |-----------|-----------|
-| **INSERT** | +1 `inclusiveChildCount`; +1 `childCount` if status ≠ `trashed` |
+| **INSERT** | +1 `inclusiveChildCount`; +1 `childCount` if status ≠ `trashed`. An uploaded row while the database is busy appends its +1 to `ItemSizeDelta.children` instead, for the rollup |
 | **DELETE** | −1 `inclusiveChildCount`; −1 `childCount` if status ≠ `trashed` |
 | **UPDATE (move)** | Decrements old parent, increments new parent (both counters) |
 | **UPDATE (trash/restore)** | `inclusiveChildCount` unchanged; `childCount` ±1 based on status transition |

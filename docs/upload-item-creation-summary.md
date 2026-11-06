@@ -57,7 +57,7 @@ z.object({
 - `defaultItemSelect` — standard select shape, already defined in this file
 - `prisma` — already imported
 
-**Also does, in one statement (`insertUploadedItem`, no transaction):** creates the owner `Permission` and its user link and charges the quota (`uploadChargeSql`), each step reading from the one before, so a refusal writes and charges nothing. A file posted without a resolved folder has its key path resolved first by `resolveFolderTree`, as a batch of one. Activity rows (for the file and each folder created along the way) are written fire-and-forget with `createActivity`. (Updated 2026-10-25, tech-debt #36.)
+**Also does, in one statement (`insertUploadedItem`, no transaction):** creates the owner `Permission` and its user link and charges the folder's drive (`stashly_charge_upload()`), each step reading from the one before, so a refusal writes and charges nothing. A file posted without a resolved folder has its key path resolved first by `resolveFolderTree`, as a batch of one. Activity rows (for the file and each folder created along the way) are written fire-and-forget with `createActivity`. (Updated 2026-10-25, tech-debt #36.)
 
 ---
 
@@ -190,7 +190,7 @@ flowchart TD
 - **Flat uploads**: Works correctly — the key has no middle segments, so `parentId = key.split('/')[0]` is the destination folder.
 - **Directory drops**: ✅ resolved since this report was written. The key carries `webkitRelativePath`. Since 2026-10-25 (tech-debt #36) `addBatch` resolves the whole folder tree in one request before the files start (`resolveUploadFolders`: one query per depth level, one INSERT for every missing folder, one advisory lock per uploader), and each file is filed straight into its leaf. Measured on a 639-file `app/` upload: 11,600 statements and 1,824 locks before, 1,284 and 1 after. An empty folder is never uploaded: a folder input only lists files.
 - **Error handling**: The actor reports back — `upload.createItem.error` sets the error on the media file — but there is no retry. If the DB write fails, the file never reaches `itemCreated`, so no thumbnail pipeline runs and the item is absent from the stash.
-- **Quota**: Applied inside `createUploadedItem`'s single statement via `uploadChargeSql`, and nowhere else (2026-10-08; one statement since 2026-10-25). No client code charges quota; see "Where quota is written" in `docs/quota-and-machines.md`.
+- **Quota**: Applied to the folder's drive inside `createUploadedItem`'s single statement via `stashly_charge_upload()`, and nowhere else (2026-10-08; one statement since 2026-10-25). No client code charges quota; see "Where quota is written" in `docs/quota-and-machines.md`.
 
 ---
 

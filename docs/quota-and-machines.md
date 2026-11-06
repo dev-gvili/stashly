@@ -151,8 +151,8 @@ Only on the server, in the same code that changes the rows it accounts for. No r
 
 | Change | Where | How |
 |---|---|---|
-| Upload | `createUploadedItem` (`item-actions.ts`) | `uploadChargeSql` (`quota-actions.ts`, the same SET and `withinTotal` rule as `onItemsUploaded`), inside the one statement that creates the `Item` (`insertUploadedItem`). Row and charge commit together or not at all; a user with no `Quota` row gets no row either, and `refuseUploadCharge` says why after a refusal. |
-| Trash, restore, delete | `item-actions.ts` | `onItemsTrashed` / `onItemsRestored` / `onItemsDeleted`, with the byte count the statement itself moved |
+| Upload | `createUploadedItem` (`item-actions.ts`) | `stashly_charge_upload()` (migration `20261106120000_upload_quota_log`), inside the one statement that creates the `Item` (`insertUploadedItem`), against the **folder's drive**. Row and charge commit together or not at all; a drive with no `Quota` row gets no row either, and `refuseUploadCharge` says why after a refusal. Far from the limit a busy upload logs the charge in `QuotaDelta` and the rollup adds it; near the limit it charges strictly, one at a time. |
+| Trash, restore, delete | `item-actions.ts` | `onItemsTrashed` / `onItemsRestored` / `onItemsDeleted`, with the bytes the statement itself moved, once per `Item.driveId` |
 | Copy | `item-actions.ts` | `onItemsCopied`, after an `ensureUserQuota` check |
 | Plan limit | billing (`subscription-actions.ts`, `settings/billing.tsx`) | `updateTotalQuota` |
 
