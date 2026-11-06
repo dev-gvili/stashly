@@ -17,9 +17,8 @@ import {
 } from '@/services/item-actions'
 import { parseSearchParams } from '@/utils/parsers'
 import { parseOrRespond } from '@/utils/api.errors'
-import { formatSize } from '@/utils/formaters'
+import { toLibraryStats } from '@/utils/library-stats'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
-import type { LibraryStats } from '@/types/stash.types'
 import { StashPageToolbar } from '@/components/views/stash-page-toolbar'
 import { redirect, type ShouldRevalidateFunction } from 'react-router'
 import { Fragment } from 'react/jsx-runtime'
@@ -220,18 +219,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   return {
     ...page,
     crumbs,
-    stats: {
-      folders: stats.folders,
-      files: stats.files,
-      favorites: stats.favorites,
-      trashed: stats.trashed,
-      size: formatSize('byte', 'unit', Number(stats.usedBytes)),
-      quota: formatSize('byte', 'unit', Number(stats.quotaBytes)),
-      usedPercent:
-        stats.quotaBytes > 0n
-          ? Math.round(Number((stats.usedBytes * 100n) / stats.quotaBytes))
-          : 0,
-    } satisfies LibraryStats,
+    stats: toLibraryStats(stats),
   }
 }
 

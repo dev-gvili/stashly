@@ -4,6 +4,7 @@ import { isSearchIndexSubmission } from '@/utils/revalidation'
 import { redirect, useLocation } from 'react-router'
 import { getFolderContent, retrieveUserUsageMetrics } from '@/services/item-actions'
 import { formatSize } from '@/utils/formaters'
+import { toLibraryStats } from '@/utils/library-stats'
 import { StashPageToolbar } from '@/components/views/stash-page-toolbar'
 import type { LibraryStats } from '@/types/stash.types'
 import {
@@ -131,16 +132,7 @@ export async function loader({ request, params, context }: Route.ActionArgs) {
     crumbs,
     rootId: session.user.rootId,
     stats: {
-      folders: stats.folders,
-      files: stats.files,
-      favorites: stats.favorites,
-      trashed: stats.trashed,
-      size: formatSize('byte', 'unit', Number(stats.usedBytes)),
-      quota: formatSize('byte', 'unit', Number(stats.quotaBytes)),
-      usedPercent:
-        stats.quotaBytes > 0n
-          ? Math.round(Number((stats.usedBytes * 100n) / stats.quotaBytes))
-          : 0,
+      ...toLibraryStats(stats),
       // Raw too, so an upload's rows can be added to them in the browser.
       sizeBytes: Number(stats.usedBytes),
       quotaBytes: Number(stats.quotaBytes),
