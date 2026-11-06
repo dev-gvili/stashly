@@ -1381,6 +1381,7 @@ export async function copyItem(
  * @param {string | null} parentId - The ID of the parent folder, or null if creating in the root.
  * @param {string} ownerId - The ID of the user who will own the folder.
  * @param {string} driveId - The ID of the drive (tenant scope) where the folder resides.
+ * @throws `FORBIDDEN` (403) without `write` on `parentId`, the same rule as an upload into it.
  * @example
  * const newFolder = await createFolder('My Documents', 'item_root123', 'usr_456', 'drv_789');
  */
@@ -1390,6 +1391,8 @@ export async function createFolder(
   ownerId: string,
   driveId: string // Tenant scope, for a folder with no parent
 ) {
+  if (parentId) await assertItemAccess(ownerId, parentId, { role: 'write' })
+
   // A folder sits on its parent's drive, whoever makes it: that drive pays for
   // what is uploaded into it.
   const parent = parentId

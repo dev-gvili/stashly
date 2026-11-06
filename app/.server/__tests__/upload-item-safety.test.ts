@@ -231,6 +231,23 @@ describe('the drive owner pays', () => {
     expect(row.driveId).toBe(driveId)
   })
 
+  it('refuses a new folder without write access on the parent, and creates nothing', async () => {
+    const unshared = await makeFolder('no-grant', rootId)
+    const readOnly = await makeFolder('read-grant', rootId)
+    await grant(strangerId, readOnly, 'read')
+
+    for (const parent of [unshared, readOnly]) {
+      await expect(createFolder('intruder', parent, strangerId, strangerDriveId)).rejects.toMatchObject({
+        errorCode: 'FORBIDDEN',
+        status: 403,
+      })
+      expect(await prisma.item.count({ where: { parentId: parent } })).toBe(0)
+    }
+
+    const mine = await createFolder('mine', unshared, ownerId, driveId)
+    expect(mine.parentId).toBe(unshared)
+  })
+
   it("puts the folders of a collaborator's folder upload on the parent's drive", async () => {
     const shared = await sharedFolder('pays-tree')
 
