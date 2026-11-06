@@ -262,7 +262,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         )
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
-        const err = e as { message?: string }
+        const err = toErrorInfo(e)
         return { success: false, error: err.message }
       }
     }
@@ -283,8 +283,8 @@ export async function action({ request, params, context }: Route.ActionArgs) {
           },
         })
       } catch (e) {
-        const err = e as { message?: string }
-        return data({ error: err.message }, { status: 500 })
+        const err = toErrorInfo(e)
+        return data({ error: err.message }, { status: err.status ?? 500 })
       }
     }
     case 'create_upload_item': {

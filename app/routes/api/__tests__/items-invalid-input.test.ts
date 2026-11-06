@@ -8,6 +8,7 @@ vi.mock('@/services/auth', () => ({ auth: { api: { getSession: vi.fn() } } }))
 // hands it; every other action keeps its real implementation.
 vi.mock('@/services/item-actions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/item-actions')>()),
+  createFolder: vi.fn(),
   createUploadedItem: vi.fn(async (data: { id: string; size: bigint }) => ({ id: data.id, size: data.size })),
   discardUploadedObject: vi.fn(async () => 'deleted'),
   getCardItems: vi.fn(async (_userId: string, ids: string[]) =>
@@ -28,9 +29,9 @@ vi.mock('@/services/s3', async (importOriginal) => ({
 
 import { RouterContextProvider } from 'react-router'
 import { sessionContext } from '@/services/middleware/context'
-import { createUploadedItem, discardUploadedObject, getCardItems } from '@/services/item-actions'
+import { createFolder, createUploadedItem, discardUploadedObject, getCardItems } from '@/services/item-actions'
 import { headUploadedObject } from '@/services/s3'
-import { StashlyError, StashlyErrorCode } from '@/utils/api.errors'
+import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { action } from '../items'
 
 function post(form: [string, string][]) {
@@ -84,6 +85,25 @@ describe('POST /api/items refuses a malformed body with 400, not 500', () => {
  * client's claim, and a client declaring 0 stored any file for free. A negative
  * claim is still refused before anything runs.
  */
+describe('create_folder_inline', () => {
+  const form: [string, string][] = [
+    ['intent', 'create_folder_inline'],
+    ['name', 'new'],
+    ['parentId', 'item_parent'],
+    ['driveId', 'drv_test'],
+  ]
+
+  it('answers a refusal with its own status, not 500', async () => {
+    vi.mocked(createFolder).mockRejectedValueOnce(toRouteError(StashlyErrorCode.FORBIDDEN))
+    expect(await statusOf(form)).toBe(403)
+  })
+
+  it('stays 500 for a failure that carries no status', async () => {
+    vi.mocked(createFolder).mockRejectedValueOnce(new Error('database down'))
+    expect(await statusOf(form)).toBe(500)
+  })
+})
+
 describe('create_upload_item', () => {
   const session = { id: 'usr_me', driveId: 'drv_mine', bucket: 'bucket-mine' }
   const upload = (overrides: Record<string, string> = {}): [string, string][] =>
