@@ -39,6 +39,7 @@ function run(result: 'allowed' | 'denied') {
         mediaFile: {
           id: 'item_1',
           key: 'item_root/a.txt',
+          uploadPath: 'item_root/a.txt',
           file: new File([new Uint8Array(2048)], 'a.txt', { type: 'text/plain' }),
         },
       } as never,

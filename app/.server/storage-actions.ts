@@ -458,6 +458,8 @@ export async function emptyUserBucket(userId: string) {
   // Zero quota usage now that DB is committed, so the user sees fresh numbers
   // even if S3 cleanup below fails partway.
   if (quota) {
+    // A charge still in the log would land on the zeroed row.
+    await prisma.quotaDelta.deleteMany({ where: { driveId: quota.driveId } })
     await prisma.quota.update({
       where: { id: quota.id },
       data: {

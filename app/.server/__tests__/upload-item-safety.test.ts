@@ -5,10 +5,16 @@ import { headUploadedObject, s3 } from '@/services/s3'
 import {
   assertCanUploadTo,
   assertKeyUnfiled,
+  createFolder,
   createUploadedItem,
   discardUploadedObject,
+  moveItems,
+  resolveUploadFolders,
+  trashItems,
 } from '@/services/item-actions'
+import { toErrorInfo } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId, toObjectKey } from '@/utils/converters'
+import { flushItemSizes } from './helpers/flush-item-sizes'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
 /**
@@ -35,6 +41,7 @@ let ownerId: string
 let strangerId: string
 let bucketlessId: string
 let driveId: string
+let strangerDriveId: string
 let rootId: string
 
 async function makeFolder(name: string, parentId: string, status: 'normal' | 'trashed' = 'normal') {
@@ -60,7 +67,6 @@ function upload(path: string, userId = ownerId, root = rootId) {
         uploadPath: `${root}/${path}`,
         size: 10n,
         bucket: BUCKET,
-        driveId,
         parentId: root,
         ownerId: userId,
         uploadId: `up-${id}`,
@@ -96,10 +102,10 @@ beforeAll(async () => {
   })
   driveId = uid('Drive')
   await prisma.drive.create({ data: { id: driveId, ownerId } })
-  // `createUploadedItem` charges the uploader's quota in the row's transaction,
-  // and refuses the upload when there is no quota to charge. The stranger
-  // uploads into the owner's folder under a grant, and is the one billed.
-  const strangerDriveId = uid('Drive')
+  // `createUploadedItem` charges the quota of the folder's drive, and refuses
+  // the upload when there is no quota to charge. The stranger uploads into the
+  // owner's folder under a grant, and the owner is the one billed.
+  strangerDriveId = uid('Drive')
   await prisma.drive.create({ data: { id: strangerDriveId, ownerId: strangerId } })
   await prisma.quota.createMany({
     data: [
@@ -151,6 +157,107 @@ describe('who may file an upload', () => {
 
     await expect(u.run()).rejects.toMatchObject({ errorCode: 'FORBIDDEN', status: 403 })
     expect(await prisma.item.count({ where: { id: u.id } })).toBe(0)
+  })
+})
+
+describe('the drive owner pays', () => {
+  const quotaOf = async (drive: string) => {
+    await flushItemSizes()
+    return prisma.quota.findUniqueOrThrow({ where: { driveId: drive }, select: { used: true, deleted: true } })
+  }
+
+  /** A collaborator's upload, with the session drive the route passes. */
+  function collaboratorUpload(name: string, parentId: string, size = 10n) {
+    const id = uid('Item')
+    return {
+      id,
+      run: () =>
+        createUploadedItem({
+          id,
+          name,
+          key: toObjectKey(`${parentId}/${name}`, id),
+          uploadPath: `${parentId}/${name}`,
+          size,
+          bucket: STRANGER_BUCKET,
+          parentId,
+          ownerId: strangerId,
+          uploadId: `up-${id}`,
+        }),
+    }
+  }
+
+  async function sharedFolder(name: string) {
+    const shared = await makeFolder(name, rootId)
+    await grant(strangerId, shared, 'write')
+    return shared
+  }
+
+  it("charges a collaborator's upload to the folder's drive, and files it there", async () => {
+    const shared = await sharedFolder('pays-upload')
+    const owner = await quotaOf(driveId)
+    const stranger = await quotaOf(strangerDriveId)
+
+    const u = collaboratorUpload('pays.bin', shared, 40n)
+    await u.run()
+
+    expect((await quotaOf(driveId)).used).toBe(owner.used + 40n)
+    expect((await quotaOf(strangerDriveId)).used).toBe(stranger.used)
+    const row = await prisma.item.findUniqueOrThrow({ where: { id: u.id }, select: { driveId: true, ownerId: true } })
+    expect(row).toEqual({ driveId, ownerId: strangerId })
+  })
+
+  // Trashing a folder takes whatever is in it, whoever uploaded that.
+  it('refunds the drive that was charged, whoever trashes the file', async () => {
+    const shared = await sharedFolder('pays-trash')
+    const u = collaboratorUpload('refund.bin', shared, 70n)
+    await u.run()
+    const owner = await quotaOf(driveId)
+    const stranger = await quotaOf(strangerDriveId)
+
+    await trashItems([shared], ownerId)
+
+    await vi.waitFor(async () => {
+      expect(await quotaOf(driveId)).toEqual({ used: owner.used - 70n, deleted: owner.deleted + 70n })
+    })
+    expect(await quotaOf(strangerDriveId)).toEqual(stranger)
+  })
+
+  it("puts a collaborator's new folder on the parent's drive", async () => {
+    const shared = await sharedFolder('pays-folder')
+
+    const folder = await createFolder('made-by-stranger', shared, strangerId, strangerDriveId)
+
+    const row = await prisma.item.findUniqueOrThrow({ where: { id: folder.id }, select: { driveId: true } })
+    expect(row.driveId).toBe(driveId)
+  })
+
+  it("puts the folders of a collaborator's folder upload on the parent's drive", async () => {
+    const shared = await sharedFolder('pays-tree')
+
+    const { folders } = await resolveUploadFolders({ userId: strangerId, rootId: shared, dirs: ['deep/er'] })
+
+    const rows = await prisma.item.findMany({ where: { id: { in: Object.values(folders) } }, select: { driveId: true } })
+    expect(rows.map((r) => r.driveId)).toEqual([driveId, driveId])
+  })
+
+  it('refuses a move between drives', async () => {
+    const shared = await sharedFolder('pays-move')
+    const mine = uid('Item')
+    await prisma.item.create({
+      data: { id: mine, name: 'mine.bin', type: 'file', category: 'document', status: 'normal', ownerId: strangerId, driveId: strangerDriveId, parentId: null, size: 5 },
+    })
+
+    await expect(moveItems([mine], shared, strangerId)).rejects.toMatchObject({ errorCode: 'MOVE_ITEM_FAILED' })
+    const row = await prisma.item.findUniqueOrThrow({ where: { id: mine }, select: { parentId: true } })
+    expect(row.parentId).toBeNull()
+  })
+
+  it("doesn't tell a collaborator how much of the owner's space is free", async () => {
+    const shared = await sharedFolder('pays-refuse')
+    const refusal = await collaboratorUpload('too-big.bin', shared, 10n ** 13n).run().catch((e) => e)
+
+    expect(toErrorInfo(refusal).status).toBe(507)
+    expect(toErrorInfo(refusal).message).not.toMatch(/free/i)
   })
 })
 
@@ -400,7 +507,6 @@ describe('one object per upload', () => {
         uploadPath: `${rootId}/keyed/k.pdf`,
         size: 10n,
         bucket: BUCKET,
-        driveId,
         parentId: rootId,
         ownerId,
         uploadId: `up-${id}`,

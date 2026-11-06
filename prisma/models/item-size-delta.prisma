@@ -1,8 +1,9 @@
-/// A pending change to a folder's size from an uploaded file.
+/// A pending change to a folder's size or child count from an uploaded file.
 ///
 /// While the database is busy (deltas pending, or the rollup lock taken), an
 /// insert of an `Item` with an `uploadId` doesn't rewrite every folder above
-/// it: `update_size()` appends its size here instead, and
+/// it: `update_size()` appends its size here instead, `update_child_count()`
+/// appends its +1, and
 /// `apply_item_size_deltas()` applies all pending rows to each affected folder
 /// once, on a short timer (`app/.server/size-rollup.ts`). While it is idle the
 /// upload cascades at once, like any insert. Rows live for about one rollup
@@ -20,5 +21,7 @@ model ItemSizeDelta {
   active    BigInt
   /// Bytes for the parent's `inclusiveSize`.
   inclusive BigInt
+  /// Children to add to the parent's `childCount` and `inclusiveChildCount`.
+  children  Int      @default(0)
   createdAt DateTime @default(now()) @db.Timestamptz(3)
 }

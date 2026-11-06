@@ -82,7 +82,6 @@ async function uploadIntoPrisma(name: string) {
     uploadPath: `${rootId}/prisma/${name}`,
     size: 10n,
     bucket: 'stashly-test-upload-trashed-name',
-    driveId,
     parentId: rootId,
     ownerId,
     uploadId: `up-${id}`,

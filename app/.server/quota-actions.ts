@@ -9,6 +9,7 @@ import {
 import { buildQuotaFilters } from '@/utils/filters/quota.filters'
 import { searchFactory } from '@/utils/search'
 import { formatSize } from '@/utils/formaters'
+import { assertItemsAccess } from './permission-actions'
 
 // ---------------------------------------------------------------------------
 // Search
@@ -43,7 +44,9 @@ export interface QuotaInput {
 }
 
 export interface UpdateAfterInput {
-  userId: string
+  /** Whose drive; or name the drive itself. */
+  userId?: string
+  driveId?: string
   dataSize: bigint
   client?: Prisma.TransactionClient
 }
@@ -530,49 +533,58 @@ async function refuseCharge(
 }
 
 /**
- * The `UPDATE` that charges an upload to its uploader's quota, for a caller
- * that runs it inside its own statement: `createUploadedItem` writes the file's
- * rows and this charge as one statement, so they commit together or not at all.
- *
- * Same SET and same refusal as `onItemsUploaded`: it matches no row when the
- * file doesn't fit (`used + size > total`) or there is no quota. `guard` adds a
- * condition of the caller's, and `RETURNING 1` gives it a row to build on.
- *
- * @example
- * Prisma.sql`WITH q AS (${uploadChargeSql(userId, size)}) INSERT … SELECT … FROM q`
+ * Throws why `stashly_charge_upload()` refused an upload: 507
+ * `INSUFFICIENT_QUOTA`, or `QUOTA_NOT_FOUND`. Only called once a refusal has
+ * happened. The drive's owner is told how much is free; a collaborator isn't,
+ * since that is the owner's business.
  */
-export function uploadChargeSql(
+export async function refuseUploadCharge(
+  driveId: string,
   userId: string,
-  size: bigint,
-  guard: Prisma.Sql = Prisma.empty
-) {
-  const used = Prisma.sql`GREATEST(0::bigint, "used" + ${size}::bigint)`
-  // Raw SQL bypasses `@updatedAt`; a JS Date, not `now()` (see applyQuotaDelta).
-  return Prisma.sql`
-    UPDATE "Quota"
-    SET
-      "used" = ${used},
-      "status" = ${toQuotaStatusSql(used, Prisma.sql`"total"`)},
-      "updatedAt" = ${new Date()}
-    WHERE "driveId" = (SELECT "id" FROM "Drive" WHERE "ownerId" = ${userId})
-      AND ${used} <= "total"
-      ${guard}
-    RETURNING 1
-  `
-}
-
-/**
- * Throws why `uploadChargeSql` matched no row: 507 `INSUFFICIENT_QUOTA`, or
- * `QUOTA_NOT_FOUND`. Only called once a refusal has happened.
- */
-export function refuseUploadCharge(userId: string, size: bigint): Promise<never> {
-  return refuseCharge(
-    Prisma.sql`"driveId" = (SELECT "id" FROM "Drive" WHERE "ownerId" = ${userId})`,
-    size
+  size: bigint
+): Promise<never> {
+  const where = Prisma.sql`"driveId" = ${driveId}`
+  const drive = await prisma.drive.findUnique({
+    where: { id: driveId },
+    select: { ownerId: true },
+  })
+  if (drive?.ownerId === userId) return refuseCharge(where, size)
+  const [quota] = await prisma.$queryRaw<{ id: string }[]>`SELECT "id" FROM "Quota" WHERE ${where}`
+  if (!quota) throw toRouteError(StashlyErrorCode.QUOTA_NOT_FOUND)
+  throw toRouteError(
+    StashlyErrorCode.INSUFFICIENT_QUOTA,
+    "This file doesn't fit: the folder's owner has run out of storage."
   )
 }
 
-// ─── After-action helpers ─────────────────────────────────────────────────────
+/**
+ * The quota an upload into `folderId` is charged to: its drive's. For the
+ * pre-check before any bytes move, so a caller answers yes or no and never
+ * hands these numbers to a collaborator.
+ *
+ * @throws `FORBIDDEN` (403) without write access to the folder.
+ */
+export async function findQuotaForFolder(userId: string, folderId: string) {
+  await assertItemsAccess(userId, [folderId], 'write')
+  const folder = await prisma.item.findUniqueOrThrow({
+    where: { id: folderId },
+    select: { driveId: true },
+  })
+  const quota = await findQuotaByDriveId(folder.driveId)
+  if (!quota) throw toRouteError(StashlyErrorCode.QUOTA_NOT_FOUND)
+  return quota
+}
+
+/**
+ * Applies a drive's logged charges now, so a change that lowers `used` can't
+ * clamp at 0 against a charge that hasn't arrived and leave it too high once it
+ * does. Does nothing when the drive has none pending.
+ */
+export async function settlePendingCharges(driveId: string) {
+  const [{ pending }] = await prisma.$queryRaw<{ pending: boolean }[]>`
+    SELECT EXISTS (SELECT 1 FROM "QuotaDelta" WHERE "driveId" = ${driveId}) AS pending`
+  if (pending) await prisma.$queryRaw`SELECT * FROM apply_item_size_deltas(NULL, true)`
+}
 
 /**
  * Charge an upload to `used`, refusing it when it doesn't fit.
@@ -620,10 +632,11 @@ export async function onItemsCopied({
  */
 export async function onItemsTrashed({
   userId,
+  driveId,
   dataSize,
   client,
 }: UpdateAfterInput) {
-  return applyQuotaDelta({ userId, used: -dataSize, deleted: dataSize, client })
+  return applyQuotaDelta({ userId, driveId, used: -dataSize, deleted: dataSize, client })
 }
 
 /**
@@ -636,10 +649,11 @@ export async function onItemsTrashed({
  */
 export async function onItemsRestored({
   userId,
+  driveId,
   dataSize,
   client,
 }: UpdateAfterInput) {
-  return applyQuotaDelta({ userId, used: dataSize, deleted: -dataSize, client })
+  return applyQuotaDelta({ userId, driveId, used: dataSize, deleted: -dataSize, client })
 }
 
 /**
@@ -652,10 +666,11 @@ export async function onItemsRestored({
  */
 export async function onItemsDeleted({
   userId,
+  driveId,
   dataSize,
   client,
 }: UpdateAfterInput) {
-  return applyQuotaDelta({ userId, deleted: -dataSize, client })
+  return applyQuotaDelta({ userId, driveId, deleted: -dataSize, client })
 }
 
 /**

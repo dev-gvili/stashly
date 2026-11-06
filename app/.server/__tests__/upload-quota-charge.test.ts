@@ -1,7 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/services/db'
-import { createUploadedItem } from '@/services/item-actions'
+import { createUploadedItem, trashItems } from '@/services/item-actions'
 import { getPrefixForModel, toObjectId, toObjectKey } from '@/utils/converters'
+import { flushItemSizes, withSizeRollupPaused } from './helpers/flush-item-sizes'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
 /**
@@ -45,7 +46,6 @@ function upload(size: bigint, as = { ownerId, driveId, rootId }) {
     uploadPath: `${as.rootId}/${id}.bin`,
     size,
     bucket: 'stashly-test-upload-quota',
-    driveId: as.driveId,
     parentId: as.rootId,
     ownerId: as.ownerId,
     uploadId: `up-${id}`,
@@ -53,6 +53,7 @@ function upload(size: bigint, as = { ownerId, driveId, rootId }) {
 }
 
 async function used() {
+  await flushItemSizes()
   const q = await prisma.quota.findUniqueOrThrow({ where: { id: quotaId }, select: { used: true } })
   return q.used
 }
@@ -75,11 +76,97 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await wipeTestUsers([ownerId, noQuotaId, tight.ownerId])
-  await prisma.user.deleteMany({ where: { id: { in: [ownerId, noQuotaId, tight.ownerId] } } })
+  await wipeTestUsers([ownerId, noQuotaId, tight.ownerId, ...extraUsers])
+  await prisma.user.deleteMany({ where: { id: { in: [ownerId, noQuotaId, tight.ownerId, ...extraUsers] } } })
+})
+
+const extraUsers: string[] = []
+
+/** A user with a fresh quota of `total`, for a test that reads exact numbers. */
+async function freshDrive(total: bigint) {
+  const user = await makeUser('Upload quota, logged')
+  extraUsers.push(user.id)
+  await prisma.quota.create({ data: { id: uid('Quota'), driveId: user.drive, total } })
+  return {
+    as: { ownerId: user.id, driveId: user.drive, rootId: user.root },
+    quota: () => prisma.quota.findUniqueOrThrow({ where: { driveId: user.drive }, select: { used: true, deleted: true, status: true } }),
+    pending: () => prisma.quotaDelta.count({ where: { driveId: user.drive } }),
+  }
+}
+
+describe('while the database is busy, the charge goes through the log', () => {
+  it("logs a charge far from the limit, leaving the shared row alone until the rollup", async () => {
+    const d = await freshDrive(10n ** 9n)
+
+    await withSizeRollupPaused(async () => {
+      await upload(500n, d.as)
+      expect((await d.quota()).used).toBe(0n)
+      expect(await d.pending()).toBe(1)
+    })
+
+    await flushItemSizes()
+    expect((await d.quota()).used).toBe(500n)
+    expect(await d.pending()).toBe(0)
+  })
+
+  it('counts logged charges against the limit', async () => {
+    const d = await freshDrive(100_000n)
+
+    await withSizeRollupPaused(async () => {
+      await upload(900n, d.as)
+      expect(await d.pending()).toBe(1)
+      await expect(upload(99_101n, d.as)).rejects.toMatchObject({ status: 507 })
+      await upload(99_100n, d.as)
+    })
+
+    await flushItemSizes()
+    expect((await d.quota()).used).toBe(100_000n)
+  })
+
+  it('fills a drive to exactly its limit under parallel uploads', async () => {
+    const d = await freshDrive(4_000n)
+
+    const results = await withSizeRollupPaused(() =>
+      Promise.allSettled(Array.from({ length: 60 }, () => upload(100n, d.as)))
+    )
+
+    await flushItemSizes()
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(40)
+    expect(await d.quota()).toMatchObject({ used: 4_000n, status: 'critical' })
+  })
+
+  it("logs a folder's child count, and the rollup adds it", async () => {
+    const d = await freshDrive(10n ** 9n)
+    await prisma.folder.create({ data: { id: uid('Folder'), itemId: d.as.rootId } })
+    const count = () =>
+      prisma.folder.findUniqueOrThrow({ where: { itemId: d.as.rootId }, select: { childCount: true, inclusiveChildCount: true } })
+
+    await withSizeRollupPaused(async () => {
+      await upload(10n, d.as)
+      expect(await count()).toEqual({ childCount: 0, inclusiveChildCount: 0 })
+    })
+
+    await flushItemSizes()
+    expect(await count()).toEqual({ childCount: 1, inclusiveChildCount: 1 })
+  })
+
+  // `used` is clamped at 0, so a refund landing before its own charge would
+  // floor there and the charge would then count the file twice.
+  it('applies a logged charge before refunding it', async () => {
+    const d = await freshDrive(10n ** 9n)
+    const item = await withSizeRollupPaused(() => upload(300n, d.as))
+
+    await trashItems([item.id], d.as.ownerId)
+
+    await vi.waitFor(async () => {
+      await flushItemSizes()
+      expect(await d.quota()).toMatchObject({ used: 0n, deleted: 300n })
+    })
+  })
 })
 
 async function tightUsed() {
+  await flushItemSizes()
   const q = await prisma.quota.findUniqueOrThrow({ where: { id: tight.quotaId }, select: { used: true } })
   return q.used
 }

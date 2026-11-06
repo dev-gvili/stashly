@@ -38,6 +38,7 @@ describe('file machine part URLs', () => {
           mediaFile: {
             id: 'item_1',
             key: 'item_root/a.bin',
+            uploadPath: 'item_root/a.bin',
             // 2 full 5 MiB parts and 1 byte: 3 parts.
             file: new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'a.bin'),
           },

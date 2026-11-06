@@ -293,6 +293,9 @@ export const fileMachine = setup({
         input: ({ context }) => ({
           userId: context.user.id,
           itemId: context.mediaFile.id,
+          // The drive that pays is the destination's: the resolved folder, or
+          // the root the upload path starts at.
+          folderId: context.mediaFile.parentId ?? context.mediaFile.uploadPath.split('/')[0],
           dataSize: BigInt(context.mediaFile.file.size),
         }),
         onDone: [

@@ -4,8 +4,10 @@ import { sessionContext } from '@/services/middleware/context'
 import {
   checkFreeQuota,
   findQuota,
+  findQuotaForFolder,
   verifyFreeQuota,
 } from '@/services/quota-actions'
+import { toErrorInfo } from '@/utils/api.errors'
 import { data } from 'react-router'
 import type { Route } from './+types/upload'
 
@@ -27,6 +29,18 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
   const input = parsed.data
 
+  // A pre-check answers for the drive that would pay: the folder's. Only ever a
+  // yes or no, so a collaborator learns nothing of the owner's numbers.
+  const chargedQuota = async (folderId?: string) => {
+    if (!folderId) return findQuota({ userId: user.id })
+    try {
+      return await findQuotaForFolder(user.id, folderId)
+    } catch (e) {
+      const err = toErrorInfo(e)
+      throw data({ error: err.message }, { status: err.status ?? 500 })
+    }
+  }
+
   switch (input.action) {
     case 'find-quota': {
       const quota = await findQuota({
@@ -35,16 +49,10 @@ export async function action({ request, context }: Route.ActionArgs) {
       return quotaApiRouteOutput.parse(quota)
     }
     case 'verify-free-quota': {
-      const quota = await findQuota({
-        userId: user.id,
-      })
-      return verifyFreeQuota(quota, input.dataSize)
+      return verifyFreeQuota(await chargedQuota(input.folderId), input.dataSize)
     }
     case 'check-free-quota': {
-      const quota = await findQuota({
-        userId: user.id,
-      })
-      return checkFreeQuota(input.itemId, quota, input.dataSize)
+      return checkFreeQuota(input.itemId, await chargedQuota(input.folderId), input.dataSize)
     }
   }
 }

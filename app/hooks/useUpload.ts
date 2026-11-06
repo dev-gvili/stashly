@@ -70,28 +70,31 @@ async function collectFiles(entry: FileSystemEntry): Promise<File[]> {
 }
 
 /**
- * Asks the server once whether a whole batch fits in the user's free quota.
+ * Asks the server once whether a whole batch fits in the free quota of the drive
+ * the destination folder is on, which is the one charged.
  * Checking the batch up front avoids a per-file round trip for a folder drop,
  * which is why `addBatch` then sends each file with `skipQuotaCheck: true`.
  *
  * @param totalSize - Combined byte size of every file in the batch.
+ * @param folderId - The folder the batch is going into.
  *
  * @example
  * // Gate a folder drop on one quota call
  * const totalSize = files.reduce((sum, f) => sum + f.size, 0)
- * if (!(await verifyBatchQuota(totalSize))) return false
+ * if (!(await verifyBatchQuota(totalSize, folderId))) return false
  *
  * @example
  * // Check a single large file before queueing it
- * await verifyBatchQuota(file.size)
+ * await verifyBatchQuota(file.size, folderId)
  */
-async function verifyBatchQuota(totalSize: number): Promise<boolean> {
+async function verifyBatchQuota(totalSize: number, folderId: string): Promise<boolean> {
   const res = await fetch('/api/quota', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'verify-free-quota', dataSize: totalSize }),
+    body: JSON.stringify({ action: 'verify-free-quota', dataSize: totalSize, folderId }),
   })
-  return res.json() as Promise<boolean>
+  // A refusal's body is an object, which would read as a yes.
+  return res.ok && ((await res.json()) as boolean)
 }
 
 /**
@@ -499,7 +502,7 @@ export function useUpload() {
       const rid = overrideRootId ?? rootId
       if (!rid) return false
       const totalSize = files.reduce((sum, f) => sum + f.size, 0)
-      const allowed = await verifyBatchQuota(totalSize)
+      const allowed = await verifyBatchQuota(totalSize, rid)
       if (!allowed) return false
       // One request for the whole tree, so no file resolves its path again.
       // Keyed from the original files: `normalizeFile` keeps

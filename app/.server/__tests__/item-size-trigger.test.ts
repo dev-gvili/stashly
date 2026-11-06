@@ -129,7 +129,7 @@ const sizeOf = async (name: string) => {
   return `${r.size}/${r.inclusiveSize}`
 }
 const pendingUnder = async (name: string) =>
-  Number((await prisma.$queryRaw<{ n: bigint }[]>`SELECT count(*) AS n FROM "ItemSizeDelta" WHERE "parentId" = ${ids[name]}`)[0].n)
+  Number((await prisma.$queryRaw<{ n: bigint }[]>`SELECT count(*) AS n FROM "ItemSizeDelta" WHERE "parentId" = ${ids[name]} AND ("active" <> 0 OR "inclusive" <> 0)`)[0].n)
 const recount = async (name: string) => (await prisma.$queryRaw<{ n: number }[]>`SELECT recount_folder_sizes(${ids[name]}) AS n`)[0].n
 
 describe('uploaded files reach their folders through the size log', () => {
@@ -235,8 +235,9 @@ describe('the size rollup runs one at a time and gives way to user writes', () =
         }
       }
       expect(outcome).toBe('timed out')
+      // Inside the lock: once it is released, a rollup may apply this at any time.
+      expect(await pendingUnder('C2')).toBe(1)
     }, { timeout: 10_000 })
-    expect(await pendingUnder('C2')).toBe(1)
     await flushItemSizes()
     expect(await sizeOf('C1')).toBe('15/15')
   })

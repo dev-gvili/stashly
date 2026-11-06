@@ -18,7 +18,26 @@ model Quota {
   @@index([driveId])
   @@index([status])
   @@index([createdAt])
-  @@index([updatedAt])
+}
+
+/// An upload's charge, waiting to reach its drive's `Quota` row.
+///
+/// While the database is busy, an upload far from its drive's limit doesn't
+/// write the shared `Quota` row: `stashly_charge_upload()` appends its size
+/// here, and `apply_item_size_deltas()` adds all pending rows to each `Quota`
+/// once per run (`app/.server/size-rollup.ts`). The limit counts these rows, so a
+/// logged charge can't be spent twice. Near the limit, or while idle, the charge
+/// goes straight to `Quota`. See migration `20261106120000_upload_quota_log`.
+model QuotaDelta {
+  id        BigInt   @id @default(autoincrement())
+  /// Bytes to add to the drive's `used`.
+  used      BigInt
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  driveId String
+  drive   Drive  @relation(fields: [driveId], references: [id], onDelete: Cascade)
+
+  @@index([driveId])
 }
 
 enum QuotaStatus {

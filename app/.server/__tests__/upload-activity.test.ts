@@ -83,7 +83,6 @@ describe('upload activity', () => {
       uploadPath: `${rootId}/created-folder/a.ts`,
       size: 10n,
       bucket: 'stashly-test-upload-activity',
-      driveId,
       parentId: rootId,
       ownerId,
       uploadId,

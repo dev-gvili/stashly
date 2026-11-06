@@ -70,7 +70,6 @@ function upload(parentId: string, name: string, userId = ownerId, size = 10n) {
         uploadPath: `${rootId}/some/path/${name}`,
         size,
         bucket: 'stashly-test-folder-tree',
-        driveId,
         parentId,
         ownerId: userId,
         uploadId: `up-${id}`,
@@ -78,13 +77,15 @@ function upload(parentId: string, name: string, userId = ownerId, size = 10n) {
   }
 }
 
-const used = async () =>
-  (
+const used = async () => {
+  await flushItemSizes()
+  return (
     await prisma.quota.findFirstOrThrow({
       where: { driveId },
       select: { used: true },
     })
   ).used
+}
 
 beforeAll(async () => {
   ownerId = uid('User')
@@ -137,7 +138,6 @@ describe('resolveUploadFolders', () => {
     const { folders, refused, createdFolderIds } = await resolveUploadFolders({
       userId: ownerId,
       rootId,
-      driveId,
       dirs: ['tree/a/b', 'tree/c'],
     })
 
@@ -189,13 +189,11 @@ describe('resolveUploadFolders', () => {
     const first = await resolveUploadFolders({
       userId: ownerId,
       rootId,
-      driveId,
       dirs: ['again/x'],
     })
     const second = await resolveUploadFolders({
       userId: ownerId,
       rootId,
-      driveId,
       dirs: ['again/x', 'again'],
     })
 
@@ -207,7 +205,6 @@ describe('resolveUploadFolders', () => {
     const { folders } = await resolveUploadFolders({
       userId: ownerId,
       rootId,
-      driveId,
       dirs: ['family/john/2024'],
     })
     // A second, empty "john": the joined path still exists in the first copy.
@@ -216,7 +213,6 @@ describe('resolveUploadFolders', () => {
     const r = await resolveUploadFolders({
       userId: ownerId,
       rootId,
-      driveId,
       dirs: ['family/john/2024', 'family/jane'],
     })
 
@@ -231,7 +227,6 @@ describe('resolveUploadFolders', () => {
     const { folders, createdFolderIds } = await resolveUploadFolders({
       userId: ownerId,
       rootId,
-      driveId,
       dirs: ['bin'],
     })
 
@@ -244,7 +239,6 @@ describe('resolveUploadFolders', () => {
       resolveUploadFolders({
         userId: strangerId,
         rootId,
-        driveId,
         dirs: ['intruder/x'],
       })
     ).rejects.toMatchObject({ errorCode: 'FORBIDDEN', status: 403 })
@@ -258,7 +252,7 @@ describe('resolveUploadFolders', () => {
   it('refuses a batch of more than 20,000 folders before any lock or write, quickly', async () => {
     const dirs = Array.from({ length: 101 }, (_, i) => `toomany${i}/${'a/'.repeat(199)}`)
     const started = performance.now()
-    await expect(resolveUploadFolders({ userId: ownerId, rootId, driveId, dirs })).rejects.toMatchObject({
+    await expect(resolveUploadFolders({ userId: ownerId, rootId, dirs })).rejects.toMatchObject({
       errorCode: 'INVALID_INPUT',
       status: 400,
     })
@@ -270,7 +264,7 @@ describe('resolveUploadFolders', () => {
     const dir = `deep/${'d/'.repeat(509)}`
     expect(dir.length).toBeLessThanOrEqual(1024)
     const started = performance.now()
-    const { folders, createdFolderIds } = await resolveUploadFolders({ userId: ownerId, rootId, driveId, dirs: [dir] })
+    const { folders, createdFolderIds } = await resolveUploadFolders({ userId: ownerId, rootId, dirs: [dir] })
     expect(performance.now() - started).toBeLessThan(5000)
     expect(createdFolderIds).toHaveLength(510)
     expect(folders[dir.replace(/\/$/, '')]).toBe(createdFolderIds.at(-1))
@@ -298,7 +292,6 @@ describe('createUploadedItem into a resolved folder', () => {
     const { folders } = await resolveUploadFolders({
       userId: ownerId,
       rootId,
-      driveId,
       dirs: ['docs/2026'],
     })
     const before = await used()
@@ -343,7 +336,6 @@ describe('createUploadedItem into a resolved folder', () => {
     const { folders } = await resolveUploadFolders({
       userId: ownerId,
       rootId,
-      driveId,
       dirs: ['private'],
     })
     const u = upload(folders['private'], 'peek.txt', strangerId)
@@ -359,7 +351,6 @@ describe('createUploadedItem into a resolved folder', () => {
     const { folders } = await resolveUploadFolders({
       userId: ownerId,
       rootId,
-      driveId,
       dirs: ['gone'],
     })
     await prisma.item.update({
@@ -381,7 +372,6 @@ describe('createUploadedItem into a resolved folder', () => {
     const { folders } = await resolveUploadFolders({
       userId: ownerId,
       rootId,
-      driveId,
       dirs: ['full'],
     })
     const quota = await prisma.quota.findFirstOrThrow({ where: { driveId } })
@@ -418,7 +408,6 @@ describe('getCardItems', () => {
     const { folders } = await resolveUploadFolders({
       userId: ownerId,
       rootId,
-      driveId,
       dirs: ['cards'],
     })
     const u = upload(folders['cards'], 'card.txt')

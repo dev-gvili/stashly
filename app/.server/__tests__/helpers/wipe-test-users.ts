@@ -48,6 +48,9 @@ export async function wipeTestUsers(userIds: string[]): Promise<void> {
     await tx.$executeRaw`
       DELETE FROM "ItemSizeDelta" d USING "Item" i
       WHERE i."id" = d."parentId" AND i."ownerId" = ANY(${userIds})`
+    await tx.$executeRaw`
+      DELETE FROM "QuotaDelta" d USING "Drive" r
+      WHERE r."id" = d."driveId" AND r."ownerId" = ANY(${userIds})`
   })
 
   await prisma.$transaction(

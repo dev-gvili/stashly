@@ -21,6 +21,7 @@ const QUOTA = {
 
 vi.mock('@/services/quota-actions', () => ({
   findQuota: vi.fn(async () => QUOTA),
+  findQuotaForFolder: vi.fn(async () => QUOTA),
   verifyFreeQuota: vi.fn(() => true),
   checkFreeQuota: vi.fn((itemId: string) => ({ itemId, result: 'allowed' })),
   onItemsUploaded: vi.fn(async () => QUOTA),
@@ -132,6 +133,21 @@ describe('/api/quota still serves what the client sends', () => {
   it('verifies free quota for the session user', async () => {
     expect(await post({ action: 'verify-free-quota', dataSize: '500' })).toBe(true)
     expect(quotaActions.verifyFreeQuota).toHaveBeenCalledWith(QUOTA, 500n)
+  })
+
+  it("answers for the destination folder's drive, with only a yes or no", async () => {
+    expect(await post({ action: 'verify-free-quota', dataSize: '500', folderId: 'item_shared' })).toBe(true)
+    expect(quotaActions.findQuotaForFolder).toHaveBeenCalledWith('usr_test', 'item_shared')
+    expect(
+      await post({ action: 'check-free-quota', dataSize: '500', itemId: 'itm_1', folderId: 'item_shared' })
+    ).toEqual({ itemId: 'itm_1', result: 'allowed' })
+  })
+
+  it('answers a refused folder with its status', async () => {
+    vi.mocked(quotaActions.findQuotaForFolder).mockRejectedValueOnce(
+      Object.assign(new Error('Access denied'), { status: 403 })
+    )
+    expect(await statusOf({ action: 'verify-free-quota', dataSize: '500', folderId: 'item_private' })).toBe(403)
   })
 
   it('checks free quota for an item', async () => {

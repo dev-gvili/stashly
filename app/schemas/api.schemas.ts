@@ -81,11 +81,13 @@ export const quotaApiRouteInput = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('verify-free-quota'),
     dataSize: clientByteCount,
+    folderId: z.string().optional(),
   }),
   z.object({
     action: z.literal('check-free-quota'),
     dataSize: clientByteCount,
     itemId: z.string(),
+    folderId: z.string().optional(),
   }),
 ])
 

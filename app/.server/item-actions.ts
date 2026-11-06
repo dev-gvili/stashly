@@ -18,7 +18,7 @@ import {
   onItemsRestored,
   onItemsTrashed,
   refuseUploadCharge,
-  uploadChargeSql,
+  settlePendingCharges,
 } from '@/services/quota-actions'
 import { deleteObjects, getObjectText } from '@/services/s3'
 import { ensureSizeRollup } from '@/services/size-rollup'
@@ -323,12 +323,13 @@ export async function moveItems(
             id: true,
             parentId: true,
             type: true,
+            driveId: true,
             owner: { select: { rootId: true } },
           },
         }),
         tx.item.findUnique({
           where: { id: targetFolderId },
-          select: { id: true, name: true, type: true, parentId: true },
+          select: { id: true, name: true, type: true, parentId: true, driveId: true },
         }),
       ])
 
@@ -367,6 +368,15 @@ export async function moveItems(
       }
 
       for (const item of items) {
+        // A drive pays for what is on it, so an item never changes drive. The
+        // folder picker only lists the session's drive; this is the rule itself.
+        if (item.driveId !== targetFolder.driveId) {
+          throw new StashlyError(
+            StashlyErrorCode.MOVE_ITEM_FAILED,
+            'Items can only be moved within their own drive'
+          )
+        }
+
         if (item.id === targetFolderId) {
           throw new StashlyError(
             StashlyErrorCode.MOVE_ITEM_FAILED,
@@ -637,10 +647,11 @@ export async function trashItems(ids: string[], userId: string) {
           UPDATE "Item" i SET "status" = 'trashed', "updatedAt" = (now() AT TIME ZONE 'UTC')
           FROM "Subtree" s
           WHERE i."id" = s."id" AND i."status" <> 'trashed'
-          RETURNING i."id", i."name", i."type", i."size"
+          RETURNING i."id", i."name", i."type", i."size", i."driveId"
         )
         SELECT COUNT(*) AS "count",
           COALESCE(SUM("size") FILTER (WHERE "type" = 'file'), 0)::bigint AS "bytes",
+          ${bytesPerDrive(Prisma.raw(`"Changed"`))},
           json_agg(json_build_object('id', "id", 'name', "name", 'type', "type"))
             FILTER (WHERE "id" IN (${Prisma.join(ids)})) AS "roots"
         FROM "Changed"
@@ -653,10 +664,13 @@ export async function trashItems(ids: string[], userId: string) {
     { timeout: 20_000 }
   )
 
-  if (changed.bytes > 0n) {
-    Promise.resolve()
-      .then(() => onItemsTrashed({ userId, dataSize: changed.bytes }))
-      .catch(() => {})
+  // Each file's drive is the one that was charged for it, whoever trashes it.
+  for (const { driveId, dataSize } of toDriveBytes(changed)) {
+    // A failed settle must not cost the refund: at worst `used` clamps at 0.
+    settlePendingCharges(driveId)
+      .catch((error) => log.warn('logged quota charges not settled before a refund', { driveId, error }))
+      .then(() => onItemsTrashed({ driveId, dataSize }))
+      .catch((error) => log.error('quota move after trash failed', { driveId, error }))
   }
 
   recordItemActivities('delete', changed.roots ?? [])
@@ -786,7 +800,7 @@ export async function restoreItems(ids: string[], userId: string) {
       UPDATE "Item" i SET "status" = 'normal', "updatedAt" = (now() AT TIME ZONE 'UTC')
       FROM "Related" r
       WHERE i."id" = r."id" AND i."status" = 'trashed'
-      RETURNING i."id", i."name", i."type", i."size"
+      RETURNING i."id", i."name", i."type", i."size", i."driveId"
     ), "Unlisted" AS (
       DELETE FROM "TrashItem" t USING "Changed" c
       WHERE t."itemId" = c."id"
@@ -804,15 +818,16 @@ export async function restoreItems(ids: string[], userId: string) {
     )
     SELECT COUNT(*) AS "count",
       COALESCE(SUM("size") FILTER (WHERE "type" = 'file'), 0)::bigint AS "bytes",
+      ${bytesPerDrive(Prisma.raw(`"Changed"`))},
       json_agg(json_build_object('id', "id", 'name', "name", 'type', "type"))
         FILTER (WHERE "id" IN (${Prisma.join(ids)})) AS "roots"
     FROM "Changed"
   `
 
-  if (changed.bytes > 0n) {
-    Promise.resolve()
-      .then(() => onItemsRestored({ userId, dataSize: changed.bytes }))
-      .catch(() => {})
+  for (const { driveId, dataSize } of toDriveBytes(changed)) {
+    onItemsRestored({ driveId, dataSize }).catch((error) =>
+      log.error('quota move after restore failed', { driveId, error })
+    )
   }
 
   recordItemActivities('restore', changed.roots ?? [])
@@ -837,8 +852,30 @@ type SubtreeChange = {
   count: bigint
   /** Bytes of the files that changed status: what the quota moves. */
   bytes: bigint
+  /** The same bytes per drive, as text: JSON has no BigInt. Null when none. */
+  drives: Array<{ driveId: string; bytes: string }> | null
   /** The requested items among the changed rows; null when none changed. */
   roots: Array<{ id: string; name: string; type: ItemType }> | null
+}
+
+/**
+ * A `"drives"` select column for a statement's changed rows: the files' bytes per
+ * drive, for a subquery in the same statement. `changed` is a CTE with `"size"`,
+ * `"type"` and `"driveId"`, narrowed by `filter`.
+ */
+function bytesPerDrive(changed: Prisma.Sql, filter: Prisma.Sql = Prisma.empty) {
+  return Prisma.sql`(
+    SELECT json_agg(json_build_object('driveId', d."driveId", 'bytes', d."bytes"::text))
+    FROM (
+      SELECT "driveId", SUM("size") AS "bytes" FROM ${changed}
+      WHERE "type" = 'file' ${filter}
+      GROUP BY "driveId" HAVING SUM("size") > 0
+    ) d
+  ) AS "drives"`
+}
+
+function toDriveBytes({ drives }: Pick<SubtreeChange, 'drives'>) {
+  return (drives ?? []).map(({ driveId, bytes }) => ({ driveId, dataSize: BigInt(bytes) }))
 }
 
 /**
@@ -917,10 +954,11 @@ async function deleteFromTrash(ids: string[], userId: string) {
     ), "Deleted" AS (
       DELETE FROM "Item" i USING "Subtree" s
       WHERE i."id" = s."id" AND NOT EXISTS (SELECT 1 FROM "Blocked")
-      RETURNING i."id", i."name", i."type", i."size", i."status"
+      RETURNING i."id", i."name", i."type", i."size", i."status", i."driveId"
     )
     SELECT
       EXISTS (SELECT 1 FROM "Blocked") AS "blocked",
+      ${bytesPerDrive(Prisma.raw(`"Deleted"`), Prisma.sql`AND "status" = 'trashed'`)},
       (SELECT COUNT(*) FROM "Deleted") AS "count",
       (SELECT COALESCE(SUM("size") FILTER (WHERE "type" = 'file' AND "status" = 'trashed'), 0)::bigint
          FROM "Deleted") AS "bytes",
@@ -945,10 +983,10 @@ async function deleteFromTrash(ids: string[], userId: string) {
   await removeStoredObjects(objects)
 
   // Bytes in trash are counted in `deleted`, so that is what goes down.
-  if (result.bytes > 0n) {
-    Promise.resolve()
-      .then(() => onItemsDeleted({ userId, dataSize: result.bytes }))
-      .catch(() => {})
+  for (const { driveId, dataSize } of toDriveBytes(result)) {
+    onItemsDeleted({ driveId, dataSize }).catch((error) =>
+      log.error('quota move after delete failed', { driveId, error })
+    )
   }
 
   track(
@@ -1350,14 +1388,20 @@ export async function createFolder(
   folderName: string,
   parentId: string | null,
   ownerId: string,
-  driveId: string // Tenant scope
+  driveId: string // Tenant scope, for a folder with no parent
 ) {
+  // A folder sits on its parent's drive, whoever makes it: that drive pays for
+  // what is uploaded into it.
+  const parent = parentId
+    ? await prisma.item.findUnique({ where: { id: parentId }, select: { driveId: true } })
+    : null
+  const folderDriveId = parent?.driveId ?? driveId
   const folder = await prisma.item.create({
     data: {
       id: toObjectId(getPrefixForModel('Item')),
       name: folderName,
       parentId: parentId,
-      driveId: driveId,
+      driveId: folderDriveId,
       ownerId: ownerId,
       type: 'folder',
       category: 'unknown',
@@ -1510,14 +1554,13 @@ const MAX_UPLOAD_FOLDERS = 20_000
  * destinations (`a` and `a/b`) can create the same folder under different roots.
  *
  * @example
- * const tree = await prisma.$transaction((tx) => resolveFolderTree(tx, rootId, userId, driveId, ['photos/2026']))
+ * const tree = await prisma.$transaction((tx) => resolveFolderTree(tx, rootId, userId, ['photos/2026']))
  * tree.folders.get('photos/2026') // → 'item_…'
  */
 async function resolveFolderTree(
   tx: Prisma.TransactionClient,
   rootId: string,
   ownerId: string,
-  driveId: string,
   dirs: string[]
 ): Promise<{ folders: Map<string, string>; refused: Map<string, string>; createdFolderIds: string[] }> {
   // Every prefix is kept, so a path still costs about its length squared in
@@ -1614,6 +1657,11 @@ async function resolveFolderTree(
     // when both rows exist. A JS Date, not `now()`: the columns are `timestamp
     // without time zone` and `now()` would store the session's local time.
     const now = new Date()
+    // On the root's drive, whoever uploads: that drive pays for these folders.
+    const { driveId } = await tx.item.findUniqueOrThrow({
+      where: { id: rootId },
+      select: { driveId: true },
+    })
     await tx.$executeRaw`
       WITH items AS (
         INSERT INTO "Item" ("id", "name", "parentId", "driveId", "ownerId", "type", "category", "status", "createdAt", "updatedAt")
@@ -1659,23 +1707,21 @@ async function resolveFolderTree(
  * @throws `FORBIDDEN` (403) without write access to `rootId`.
  *
  * @example
- * const { folders } = await resolveUploadFolders({ userId, rootId, driveId, dirs: ['photos/2026', 'docs'] })
+ * const { folders } = await resolveUploadFolders({ userId, rootId, dirs: ['photos/2026', 'docs'] })
  * folders['photos/2026'] // → 'item_…'
  */
 export async function resolveUploadFolders({
   userId,
   rootId,
-  driveId,
   dirs,
 }: {
   userId: string
   rootId: string
-  driveId: string
   dirs: string[]
 }) {
   await assertItemsAccess(userId, [rootId], 'write')
   const tree = await prisma.$transaction(
-    (tx) => resolveFolderTree(tx, rootId, userId, driveId, dirs),
+    (tx) => resolveFolderTree(tx, rootId, userId, dirs),
     FOLDER_TREE_TX
   )
   recordItemActivities(
@@ -1938,12 +1984,12 @@ export async function upsertMarkdownFacet(
  * that check any signed-in user could file items into anyone's folder by
  * naming it.
  *
- * @param data - Upload result payload: item ID/name, S3 `key`/`bucket`/`etag`, the `uploadPath`, `size`, `mimeType`, owner/drive/parent IDs, the `uploadId`, and an optional `category`.
+ * @param data - Upload result payload: item ID/name, S3 `key`/`bucket`/`etag`, the `uploadPath`, `size`, `mimeType`, owner/parent IDs, the `uploadId`, and an optional `category`. The drive is the folder's.
  * @throws `INVALID_INPUT` (400) when the key is not `toObjectKey(uploadPath, id)`.
  * @throws `FORBIDDEN` (403) without write access to the destination.
  * @throws `CONFLICT` (409) when two live folders share a name on the upload path.
  * @throws `ITEM_NOT_FOUND` (404) when the folder is no longer a live folder; nothing is written or charged.
- * @throws `INSUFFICIENT_QUOTA` (507) when the file doesn't fit the owner's free quota; nothing is written.
+ * @throws `INSUFFICIENT_QUOTA` (507) when the file doesn't fit the free quota of the folder's drive; nothing is written.
  *
  * @example
  * // Create the item record after a completed S3 upload
@@ -1955,7 +2001,6 @@ export async function upsertMarkdownFacet(
  *   size: 1024n,
  *   mimeType: 'application/pdf',
  *   bucket: 'stashly-bucket',
- *   driveId: 'drv_456',
  *   parentId: 'item_root',
  *   ownerId: 'usr_789',
  *   uploadId: 'upl_abc',
@@ -1973,14 +2018,13 @@ export async function createUploadedItem(data: {
   /** Client-computed content hash (see `app/workers/hash.worker.ts`). */
   hash?: string
   bucket: string
-  driveId: string
   parentId: string
   ownerId: string
   uploadId: string
   category?: string
 }) {
-  // Under load the file's size reaches its folders through the upload size
-  // log; make sure this process applies it.
+  // Under load the file's size and charge reach their rows through the upload
+  // logs; make sure this process applies them.
   ensureSizeRollup()
   if (data.key !== toObjectKey(data.uploadPath, data.id)) {
     throw new StashlyError(
@@ -2003,7 +2047,7 @@ export async function createUploadedItem(data: {
       // Its own transaction, committed before the file's statement, so the
       // tree lock is never held while a file row is written.
       const tree = await prisma.$transaction(
-        (tx) => resolveFolderTree(tx, rootId, data.ownerId, data.driveId, [path]),
+        (tx) => resolveFolderTree(tx, rootId, data.ownerId, [path]),
         FOLDER_TREE_TX
       )
       const refusal = tree.refused.get(path)
@@ -2033,7 +2077,7 @@ export async function createUploadedItem(data: {
       mime_type: data.mimeType,
       category: data.category,
       extension: parseFileExtension(data.name).toLowerCase(),
-      drive_id: data.driveId,
+      drive_id: result.driveId,
       parent_id: parentId,
       created_folder_count: createdFolderIds.length,
     },
@@ -2045,12 +2089,17 @@ export async function createUploadedItem(data: {
 
 /**
  * Writes an uploaded file's `Item`, `File`, `Permission` and owner link, and
- * charges its size to the uploader's quota, as ONE statement.
+ * charges its size to the folder's drive, as ONE statement. The drive pays for
+ * what is on it, so a collaborator's upload charges the folder's owner, and the
+ * row takes that drive: its refunds follow it.
  *
  * Each step reads from the one before: the charge only runs while the parent
- * is a live folder, and the rows are inserted from the charge's row. A file
+ * is a live folder, and the rows are inserted only when it says yes. A file
  * that doesn't fit, a missing or trashed parent, or no quota leaves the rest
  * with no input row, so nothing is written or charged and it answers `null`.
+ * `stashly_charge_upload()` keeps the limit strict; while the database is busy
+ * it logs the charge rather than writing the shared `Quota` row (migration
+ * `20261106120000_upload_quota_log`).
  * One statement is atomic on its own, so there is no transaction around it:
  * Prisma's nested create took 9 round trips for the same rows (BEGIN, the
  * inserts, a user lookup, a read-back, the charge, COMMIT).
@@ -2065,7 +2114,6 @@ async function insertUploadedItem(data: {
   etag?: string
   hash?: string
   bucket: string
-  driveId: string
   parentId: string
   ownerId: string
   uploadId: string
@@ -2075,19 +2123,27 @@ async function insertUploadedItem(data: {
   // `now()` would store the session's local time while Prisma writes UTC.
   const now = new Date()
   const rows = await prisma.$queryRaw<
-    { id: string; name: string; size: bigint; parentId: string; uploadId: string | null }[]
+    {
+      id: string
+      name: string
+      size: bigint
+      parentId: string
+      uploadId: string | null
+      driveId: string
+    }[]
   >`
     WITH parent AS (
-      SELECT "id" FROM "Item"
+      SELECT "id", "driveId" FROM "Item"
       WHERE "id" = ${data.parentId} AND "type" = 'folder' AND "status" <> 'trashed'
     ), charge AS (
-      ${uploadChargeSql(data.ownerId, data.size, Prisma.sql`AND EXISTS (SELECT 1 FROM parent)`)}
+      SELECT stashly_charge_upload(parent."driveId", ${data.size}::bigint) AS "ok" FROM parent
     ), item AS (
       INSERT INTO "Item" ("id", "name", "type", "category", "status", "ownerId", "driveId", "parentId", "size", "uploadId", "createdAt", "updatedAt")
       SELECT ${data.id}, ${data.name}, 'file'::"ItemType", ${data.category ?? 'unknown'}::"ItemCategory", 'normal'::"ItemStatus",
-             ${data.ownerId}, ${data.driveId}, parent."id", ${data.size}::bigint, ${data.uploadId}, ${now}, ${now}
+             ${data.ownerId}, parent."driveId", parent."id", ${data.size}::bigint, ${data.uploadId}, ${now}, ${now}
       FROM parent, charge
-      RETURNING "id", "name", "size", "parentId", "uploadId"
+      WHERE charge."ok"
+      RETURNING "id", "name", "size", "parentId", "uploadId", "driveId"
     ), file AS (
       INSERT INTO "File" ("id", "bucket", "key", "uploadPath", "mimeType", "etag", "hash", "extension", "itemId")
       SELECT ${toObjectId(getPrefixForModel('File'))}, ${data.bucket}, ${data.key}, ${data.uploadPath}, ${data.mimeType ?? null}, ${data.etag ?? null},
@@ -2115,7 +2171,7 @@ async function insertUploadedItem(data: {
 async function refuseUploadedItem(userId: string, parentId: string, size: bigint): Promise<never> {
   const parent = await prisma.item.findUnique({
     where: { id: parentId },
-    select: { type: true, status: true },
+    select: { type: true, status: true, driveId: true },
   })
   if (!parent || parent.type !== 'folder' || parent.status === 'trashed') {
     throw new StashlyError(
@@ -2123,7 +2179,7 @@ async function refuseUploadedItem(userId: string, parentId: string, size: bigint
       'The folder this file was uploaded into no longer exists, so it was not filed.'
     )
   }
-  return refuseUploadCharge(userId, size)
+  return refuseUploadCharge(parent.driveId, userId, size)
 }
 
 /**

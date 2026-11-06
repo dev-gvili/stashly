@@ -340,10 +340,6 @@ export async function action({ request, params, context }: Route.ActionArgs) {
           etag: stored.etag,
           hash: parsedData.hash,
           bucket: user.bucket,
-          // The session's drive, like the bucket and owner: a form naming
-          // another user's drive filed the row (and any folders made for it)
-          // there, owned by this user.
-          driveId: user.driveId,
           parentId: parsedData.parentId,
           // The session's user, never the form's `ownerId`: the form is the
           // client's word, and `createUploadedItem` checks access as this user.
@@ -378,13 +374,11 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       }
     }
     case 'resolve_upload_folders': {
-      // A folder upload's folders, resolved once before its files start. The
-      // drive is the session's, like every folder the uploader creates.
+      // A folder upload's folders, resolved once before its files start.
       try {
         const { folders, createdFolderIds } = await resolveUploadFolders({
           userId: user.id,
           rootId: parsedData.rootId,
-          driveId: user.driveId,
           dirs: parsedData.dirs,
         })
         // The rows of the folders this created, for the page to insert like

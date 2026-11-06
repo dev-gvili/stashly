@@ -9,8 +9,9 @@ import { inc, recordSizeRollup } from './metrics'
 // above it in its own INSERT: update_size() logs its size in "ItemSizeDelta",
 // and apply_item_size_deltas() writes each affected folder once per run
 // (20261030160000_upload_size_inline_when_idle; idle uploads cascade at once).
-// This loop calls it every 250 ms while anything is pending, so under load a
-// folder's size trails its uploads by about that.
+// A folder's child count and a drive's quota charge take the same way
+// (20261106120000_upload_quota_log). This loop calls it every 250 ms while
+// anything is pending, so under load those numbers trail uploads by about that.
 //
 // One loop per process, pinned to globalThis so dev HMR doesn't stack a second
 // one. Every loop drains the whole log, and the function's advisory lock lets
@@ -64,7 +65,7 @@ function isLockTimeout(e: unknown) {
 async function runSizeRollup(): Promise<SizeRollupOutcome> {
   const [{ pending }] = await prisma.$queryRaw<
     { pending: boolean }[]
-  >`SELECT EXISTS (SELECT 1 FROM "ItemSizeDelta") AS pending`
+  >`SELECT EXISTS (SELECT 1 FROM "ItemSizeDelta") OR EXISTS (SELECT 1 FROM "QuotaDelta") AS pending`
   if (!pending) return { kind: 'idle' }
   const t = performance.now()
   try {

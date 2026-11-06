@@ -50,13 +50,14 @@ export const verifyQuota = fromPromise<boolean, QuotaInput>(
 export const checkQuota = fromPromise<{
   itemId: string
   result: 'allowed' | 'denied'
-}, QuotaInput & { itemId: string }>(
+}, QuotaInput & { itemId: string; folderId?: string }>(
   async ({ input }) => {
     const res = await fetch('/api/quota', {
       ...FetchInit,
       body: JSON.stringify({
         userId: input.userId,
         itemId: input.itemId,
+        folderId: input.folderId,
         dataSize: input.dataSize.toString(),
         action: 'check-free-quota',
       }),

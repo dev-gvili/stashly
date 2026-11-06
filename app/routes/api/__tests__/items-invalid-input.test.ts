@@ -130,11 +130,12 @@ describe('create_upload_item', () => {
     vi.mocked(headUploadedObject).mockResolvedValue({ size: 1024n, etag: '"e"' })
   })
 
-  it('files into the session user’s drive, bucket and name, whatever the form says', async () => {
+  it('files with the session user’s bucket and name, and takes no drive from the form', async () => {
     expect(await send(upload())).toBe(200)
     expect(createUploadedItem).toHaveBeenCalledWith(
-      expect.objectContaining({ driveId: 'drv_mine', bucket: 'bucket-mine', ownerId: 'usr_me' })
+      expect.objectContaining({ bucket: 'bucket-mine', ownerId: 'usr_me' })
     )
+    expect(vi.mocked(createUploadedItem).mock.calls.at(-1)?.[0]).not.toHaveProperty('driveId')
   })
 
   // The page inserts this row instead of reloading the folder (item 45). It is

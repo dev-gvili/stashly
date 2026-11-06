@@ -4,6 +4,7 @@ model Drive {
   // personal or business
   type  DriveType @default(personal)
   quota Quota?
+  quotaDeltas QuotaDelta[]
   items Item[]
   trash Trash?
 
