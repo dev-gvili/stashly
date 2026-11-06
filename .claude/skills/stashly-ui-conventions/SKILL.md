@@ -113,3 +113,17 @@ Available sub-components: `Group`, `Item`, `Preview`, `Download`, `Copy`, `Move`
 **Design exploration files**: `option-*.css` and `options/` directories in `app/styles/` are design experiments — never import them in production code and never commit them.
 
 Use the `/shadcn-ui` skill when building new UI components.
+
+## Implementing a design or mockup
+
+A mockup export (a folder of `.tsx`, a `.html` prototype, a Figma node) is a **reference to translate**, not code to copy. Its shims, preview app and font classes don't belong in the repo. Work in this order:
+
+1. **Read the mockup and name its target.** Open the files the user pointed at first, then only what the plan needs. If the user says "this design" and nothing identifies it, ask which one before planning.
+2. **Plan before editing. Wait for an OK.** Send a plan with:
+   - **Each file you'll change or create**, with what changes in it (and why a new file beats extending an existing one).
+   - **What you're NOT changing**, so scope is explicit (neighbouring views, schema, routes, old components).
+   - **Anything not in the mockup**: a control, panel, avatar, picker or toggle you'd have to add, and any mockup element with **no real data behind it** (it gets omitted or labelled unavailable, never faked, per Data Honesty).
+   - **Decisions that need the user** (where data comes from, stubs, what to drop).
+3. **Translate, don't transcribe**: `font-sans`/`font-mono` → `font-stashly`; mockup shims → the repo's `@/ui` primitives and `@/components/icons`; hooks the app already has (`useUpload`, `usePinItem`, …) replace the mockup's stand-ins; the page's data comes from `*-actions.ts` through the loader.
+4. **Add nothing the mockup doesn't show**: no extra pickers, toggles, circular avatars or panels.
+5. **Verify before "done"**: the type gate, unit tests for any pure mapper, then the browser in **light and dark mode** (ask the user to sign in to the MCP Chrome for an authenticated route). "Typecheck passes" alone is not verification. Say what was and wasn't checked.
