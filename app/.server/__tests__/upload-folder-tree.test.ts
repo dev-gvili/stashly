@@ -6,6 +6,7 @@ import {
   getCardItems,
   getFolderContent,
   resolveUploadFolders,
+  trashItems,
 } from '@/services/item-actions'
 import { itemsApiRouteInput } from '@/schemas/api.schemas'
 import { getPrefixForModel, toObjectId, toObjectKey } from '@/utils/converters'
@@ -394,6 +395,175 @@ describe('createUploadedItem into a resolved folder', () => {
         data: { total: 10n ** 12n },
       })
     }
+  })
+})
+
+/**
+ * An upload and a trash of its folder at the same moment must not leave a live
+ * item inside a trashed folder. Each statement sees the database as it was when
+ * it started, so without a lock between them neither saw the other: the upload
+ * read the folder as live, the trash's walk never saw the new row (6 of 6 runs
+ * on 7 Nov, both orders). A `blocker` connection holds each side at a fixed
+ * point so the order is certain:
+ *
+ * - trash first: the upload waits for the trash, then is refused (404);
+ * - upload or folder tree first: the trash waits for it, then trashes what it
+ *   made.
+ */
+describe('an upload racing a trash of its folder', () => {
+  let blocker: pg.Client
+  let probe: pg.Client
+  const url = () => process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL
+
+  beforeAll(async () => {
+    blocker = new pg.Client({ connectionString: url() })
+    probe = new pg.Client({ connectionString: url() })
+    await Promise.all([blocker.connect(), probe.connect()])
+  })
+  afterAll(async () => {
+    await Promise.all([blocker.end(), probe.end()])
+  })
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+  /** Waits until another transaction holds a write lock on the folder's row. */
+  async function untilWriteLocked(folderId: string) {
+    for (let i = 0; i < 400; i++) {
+      try {
+        await probe.query(
+          `SELECT 1 FROM "Item" WHERE "id" = $1 FOR NO KEY UPDATE NOWAIT`,
+          [folderId]
+        )
+      } catch (error) {
+        if ((error as { code?: string }).code === '55P03') return
+        throw error
+      }
+      await sleep(25)
+    }
+    throw new Error('the trash never locked the folder')
+  }
+
+  /** Waits until a statement matching `pattern` waits on the blocker. */
+  async function untilBlocked(pattern: string) {
+    const pid = (await blocker.query('SELECT pg_backend_pid() AS pid')).rows[0].pid
+    for (let i = 0; i < 400; i++) {
+      const { rows } = await probe.query(
+        `SELECT count(*)::int AS n FROM pg_stat_activity
+         WHERE $1 = ANY(pg_blocking_pids(pid)) AND query ILIKE $2`,
+        [pid, pattern]
+      )
+      if (rows[0].n > 0) return
+      await sleep(25)
+    }
+    throw new Error(`nothing matching ${pattern} waited on the blocker`)
+  }
+
+  /** Starts a trash of `folderId` that stops, uncommitted, after its UPDATE. */
+  async function pausedTrash(folderId: string) {
+    await blocker.query('BEGIN')
+    await blocker.query('LOCK TABLE "TrashItem" IN SHARE MODE')
+    const trash = trashItems([folderId], ownerId)
+    await untilWriteLocked(folderId)
+    return {
+      trash,
+      release: async () => {
+        await blocker.query('COMMIT')
+        await trash
+      },
+    }
+  }
+
+  const status = async (id: string) =>
+    (await prisma.item.findUnique({ where: { id }, select: { status: true } }))
+      ?.status ?? 'absent'
+
+  it('refuses a file whose folder is being trashed (trash first)', async () => {
+    const folderId = await makeFolder('race-trash-first', rootId)
+    const before = await used()
+    const { release } = await pausedTrash(folderId)
+    const u = upload(folderId, 'late.txt')
+    const filing = u.run().then(
+      () => 'filed',
+      (error) => error
+    )
+    await sleep(300)
+    await release()
+
+    expect(await filing).toMatchObject({ errorCode: 'ITEM_NOT_FOUND', status: 404 })
+    expect(await status(folderId)).toBe('trashed')
+    expect(await status(u.id)).toBe('absent')
+    expect(await used()).toBe(before)
+  })
+
+  it('trashes a file filed while the trash started (upload first)', async () => {
+    const folderId = await makeFolder('race-upload-first', rootId)
+    const key = (
+      await blocker.query(
+        `SELECT hashtextextended('stashly.quota_charge:' || $1, 0) AS k`,
+        [driveId]
+      )
+    ).rows[0].k
+    // The upload has read its folder and waits in its quota charge.
+    await blocker.query('SELECT pg_advisory_lock($1)', [key])
+    const u = upload(folderId, 'early.txt')
+    const filing = u.run()
+    try {
+      await untilBlocked('%stashly_charge_upload%')
+      const trash = trashItems([folderId], ownerId)
+      await Promise.race([trash, sleep(300)])
+      await blocker.query('SELECT pg_advisory_unlock($1)', [key])
+      await filing
+      await trash
+    } finally {
+      await blocker.query('SELECT pg_advisory_unlock_all()')
+    }
+
+    expect(await status(folderId)).toBe('trashed')
+    expect(await status(u.id)).toBe('trashed')
+  })
+
+  it('refuses a folder tree whose root is being trashed (trash first)', async () => {
+    const folderId = await makeFolder('race-tree-trash-first', rootId)
+    const { release } = await pausedTrash(folderId)
+    const resolving = resolveUploadFolders({
+      userId: ownerId,
+      rootId: folderId,
+      dirs: ['x/y'],
+    }).then(
+      () => 'resolved',
+      (error) => error
+    )
+    await sleep(300)
+    await release()
+
+    expect(await resolving).toMatchObject({ errorCode: 'ITEM_NOT_FOUND', status: 404 })
+    expect(await prisma.item.count({ where: { parentId: folderId } })).toBe(0)
+  })
+
+  it('trashes the folders a tree created while the trash started (tree first)', async () => {
+    const folderId = await makeFolder('race-tree-first', rootId)
+    // The tree has looked its folders up and waits to insert the new ones.
+    await blocker.query('BEGIN')
+    await blocker.query('LOCK TABLE "View" IN SHARE MODE')
+    const resolving = resolveUploadFolders({
+      userId: ownerId,
+      rootId: folderId,
+      dirs: ['x/y'],
+    })
+    let trash: Promise<unknown> | undefined
+    try {
+      await untilBlocked('%INSERT INTO "Item"%unnest%')
+      trash = trashItems([folderId], ownerId)
+      await Promise.race([trash, sleep(300)])
+    } finally {
+      await blocker.query('COMMIT')
+    }
+    const { folders } = await resolving
+    await trash
+
+    expect(await status(folderId)).toBe('trashed')
+    expect(await status(folders['x'])).toBe('trashed')
+    expect(await status(folders['x/y'])).toBe('trashed')
   })
 })
 

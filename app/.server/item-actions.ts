@@ -621,6 +621,46 @@ export async function trashItem(id: string, userId: string) {
  * @example
  * await trashItems(['item_1', 'fld_2'], 'usr_456');
  */
+/**
+ * Holds every folder under `ids` (and the folders among `ids`) FOR UPDATE for
+ * the rest of the transaction, before the trash walks the subtree.
+ *
+ * A statement sees the database as it was when it started, so a trash and an
+ * upload into one of its folders could each miss the other: the upload read
+ * the folder as live, the walk never saw the new row, and the file stayed live
+ * inside a trashed folder. FOR UPDATE is the one row lock that conflicts with
+ * the FOR KEY SHARE every insert takes on its parent (`insertUploadedItem`,
+ * `resolveFolderTree`), so an upload already running finishes first, and one
+ * arriving later waits, then finds its folder trashed and is refused.
+ *
+ * The walk that follows is a statement of its own, so it sees everything that
+ * finished while these locks were waited for. A folder created during that
+ * wait is visible only to a later statement, so the lock repeats until it
+ * finds no folder it didn't hold: nothing can then be created under a held
+ * folder before this transaction ends, so it stops, normally after the
+ * second pass. Folders only, found through `parent_type_name_cursor`: files
+ * get nothing put inside them.
+ */
+async function lockSubtreeFolders(tx: Prisma.TransactionClient, ids: string[]) {
+  let held = -1
+  for (;;) {
+    const [{ count }] = await tx.$queryRaw<{ count: bigint }[]>`
+      WITH RECURSIVE "Folders" AS (
+        SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)}) AND "type" = 'folder'
+        UNION
+        SELECT i."id" FROM "Item" i JOIN "Folders" f ON i."parentId" = f."id"
+        WHERE i."type" = 'folder'
+      ), "Held" AS (
+        SELECT i."id" FROM "Item" i WHERE i."id" IN (SELECT "id" FROM "Folders")
+        FOR UPDATE
+      )
+      SELECT COUNT(*) AS "count" FROM "Held"
+    `
+    if (Number(count) === held) return
+    held = Number(count)
+  }
+}
+
 export async function trashItems(ids: string[], userId: string) {
   if (ids.length === 0) {
     return
@@ -629,6 +669,7 @@ export async function trashItems(ids: string[], userId: string) {
 
   const changed = await prisma.$transaction(
     async (tx) => {
+      await lockSubtreeFolders(tx, ids)
       // One statement walks the subtree, trashes what isn't trashed yet, and
       // sums the bytes of the files it changed. Only files count: a folder's
       // `size` is a trigger rollup of its active contents, so adding it would
@@ -1606,6 +1647,21 @@ async function resolveFolderTree(
   // `$executeRaw`, not `$queryRaw`: pg_advisory_xact_lock returns `void`,
   // which $queryRaw can't deserialize as a result column.
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`folder-tree:${ownerId}`}, 0))`
+  // The root and every folder found below are held FOR KEY SHARE until the
+  // transaction commits, as `insertUploadedItem` holds its folder: a trash
+  // running now either finished first (the root is refused, a trashed folder
+  // isn't found) or waits for this tree and then trashes what it created.
+  const [root] = await tx.$queryRaw<{ id: string }[]>`
+    SELECT "id" FROM "Item"
+    WHERE "id" = ${rootId} AND "type" = 'folder' AND "status" <> 'trashed'
+    FOR KEY SHARE
+  `
+  if (!root) {
+    throw new StashlyError(
+      StashlyErrorCode.ITEM_NOT_FOUND,
+      'The folder this upload went into no longer exists, so nothing was filed.'
+    )
+  }
   const parentOf = (path: string) => path.slice(0, Math.max(0, path.lastIndexOf('/')))
   const nameOf = (path: string) => path.slice(path.lastIndexOf('/') + 1)
 
@@ -1634,6 +1690,7 @@ async function resolveFolderTree(
         ) AS wanted("parentId", "name")
           ON i."parentId" = wanted."parentId" AND i."name" = wanted."name"
         WHERE i."type" = 'folder' AND i."status" <> 'trashed' AND i."ownerId" = ${ownerId}
+        FOR KEY SHARE OF i
       `
       for (const row of rows) {
         const key = `${row.parentId}/${row.name}`
@@ -2149,8 +2206,15 @@ async function insertUploadedItem(data: {
     }[]
   >`
     WITH parent AS (
+      -- FOR KEY SHARE, the lock the parentId foreign key takes anyway, taken
+      -- here so the status check can't go stale: a trash holds its folders
+      -- FOR UPDATE (lockSubtreeFolders), so this waits for it and re-reads
+      -- the row, which is then trashed, and nothing is written. Size and child
+      -- count updates don't conflict with it, so concurrent uploads into one
+      -- folder don't queue on it.
       SELECT "id", "driveId" FROM "Item"
       WHERE "id" = ${data.parentId} AND "type" = 'folder' AND "status" <> 'trashed'
+      FOR KEY SHARE
     ), charge AS (
       SELECT stashly_charge_upload(parent."driveId", ${data.size}::bigint) AS "ok" FROM parent
     ), item AS (
