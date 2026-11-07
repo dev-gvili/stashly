@@ -177,7 +177,9 @@ Eight PL/pgSQL functions back ten triggers and the upload size log. Most maintai
 | `update_collection_size()` | `20260526000000_user_wipe_trigger_bypass` | Maintains a collection `Item.size` when members are added/removed |
 | `sync_item_size_to_collections()` | `20260526000000_user_wipe_trigger_bypass` | Propagates a member item's size change to every parent collection |
 | `stashly_is_wiping_user(target_user_id TEXT)` | `20260526000000_user_wipe_trigger_bypass` | `STABLE` helper — true when the session is doing a full user wipe (used as a `WHERE` guard inside the three size functions) |
-| `apply_item_size_deltas(max_deltas, wait_for_lock)` | `20261106120000_upload_quota_log` | Applies pending `ItemSizeDelta` and `QuotaDelta` rows: each affected folder written once per run, one run at a time database-wide |
+| `stashly_apply_folder_deltas(ids, active, inclusive, children, inclusive_children)` | `20261106210000_status_change_rollup` | The walk and writes shared by the rollup and the status trigger: per-parent deltas in, each affected folder written once (rows locked in id order, `FOR NO KEY UPDATE`, `Folder` before `Item`) |
+| `stashly_status_change()` | `20261106210000_status_change_rollup` | Statement-level trigger function: sums what a status change did per parent (`new_active - old_active`, folders included) and calls `stashly_apply_folder_deltas()` once |
+| `apply_item_size_deltas(max_deltas, wait_for_lock)` | `20261106210000_status_change_rollup` | Applies pending `ItemSizeDelta` and `QuotaDelta` rows: each affected folder written once per run, one run at a time database-wide |
 | `recount_folder_sizes(root)` | `20261030140000_upload_size_delta_log` | Recounts a subtree's folder sizes from its files: the test oracle and repair tool |
 | `notify_notification_change()` | `20260724000000_notification_notify` | Emits `pg_notify('notifications', payload)` on every `Notification` write so the singleton `LISTEN` client can fan the change out over SSE |
 
@@ -191,12 +193,13 @@ Eight PL/pgSQL functions back ten triggers and the upload size log. Most maintai
 | `item_child_count_insert` | `Item` | AFTER INSERT | `update_child_count()` |
 | `item_child_count_update` | `Item` | AFTER UPDATE | `update_child_count()` |
 | `item_child_count_delete` | `Item` | AFTER DELETE | `update_child_count()` |
+| `item_status_change` | `Item` | AFTER UPDATE, **FOR EACH STATEMENT**, transition tables `status_old` / `status_new` | `stashly_status_change()` |
 | `item_size_collection_sync_trigger` | `Item` | AFTER UPDATE OF `size`, `WHEN (OLD.size IS DISTINCT FROM NEW.size)` | `sync_item_size_to_collections()` |
 | `item_delete_collection_sync_trigger` | `Item` | **BEFORE** DELETE | `sync_item_size_to_collections()` |
 | `collection_size_trigger` | `CollectionMember` | AFTER INSERT OR DELETE | `update_collection_size()` |
 | `notification_change_notify` | `Notification` | AFTER INSERT OR UPDATE OR DELETE | `notify_notification_change()` |
 
-All are `FOR EACH ROW`.
+All are `FOR EACH ROW` except `item_status_change`. `update_size()` and `update_child_count()` leave a pure status change (same parent, same sizes) to it.
 
 #### `update_size()` — Parent item size maintenance
 
@@ -313,7 +316,8 @@ Firing at the DB level means *every* writer pushes live — `createNotification(
 | `20260826000000_defer_folder_item_fk` | Made `Folder_itemId_fkey` `DEFERRABLE INITIALLY DEFERRED` so `update_child_count()`'s DELETE branch can't race the `ON DELETE CASCADE` on the same facet row (see the ⚠️ note under `update_child_count()`). No function or trigger changed |
 | `20261002090000_fix_inclusive_size_rollup` | Rewrote `update_size()` so `inclusiveSize` follows each child's `inclusiveSize` (folders) or `size` (files) and travels up on its own; recounted every folder's `size` / `inclusiveSize` from the files beneath it, deepest level first |
 | `20261030140000_upload_size_delta_log` | `ItemSizeDelta`, `log_upload_size()` + `item_size_log_upload`, `update_size()` guards, `apply_item_size_deltas()`, `recount_folder_sizes()`: uploaded files reach their folders through a rollup instead of a per-row cascade |
-| `20261030160000_upload_size_inline_when_idle` | **Current** — `update_size()` cascades an upload at once while the database is idle and logs it while busy (deltas pending checked first, then the rollup lock tried); `log_upload_size()` and `item_size_log_upload` dropped |
+| `20261106210000_status_change_rollup` | **Current** — `update_size()` / `update_child_count()` leave a pure status change to the statement-level `item_status_change` trigger, which writes each folder once; `stashly_apply_folder_deltas()` is shared with `apply_item_size_deltas()` (tech-debt item 51) |
+| `20261030160000_upload_size_inline_when_idle` | `update_size()` cascades an upload at once while the database is idle and logs it while busy (deltas pending checked first, then the rollup lock tried); `log_upload_size()` and `item_size_log_upload` dropped |
 
 ### Recommended Explorations
 

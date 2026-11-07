@@ -5,7 +5,7 @@ description: Stashly item lifecycle — trash, restore, permanent delete and the
 
 # Stashly Item Lifecycle
 
-`normal` → **trash** → **restore** (back to `normal`) or **permanent delete** (gone, bytes and all). All three live in `app/.server/item-actions.ts`; each is **one statement** (a data-modifying CTE) that walks the subtree, changes only the rows not already in the target state, and sums the bytes it moved. Keep it that way: on 50 items this took round-trips from 406 / 405 / 60 to 4 / 4 / 3 (trash / restore / delete), constant in the batch size (`e04d07d`).
+`normal` → **trash** → **restore** (back to `normal`) or **permanent delete** (gone, bytes and all). All three live in `app/.server/item-actions.ts`; each is **one statement** (a data-modifying CTE) that walks the subtree, changes only the rows not already in the target state, and sums the bytes it moved. Keep it that way: on 50 items this took round-trips from 406 / 405 / 60 to 4 / 4 / 3 (trash / restore / delete), constant in the batch size (`e04d07d`). The size and child-count writes a status change causes come from the statement-level `item_status_change` trigger, once per affected folder: per-row triggers rewrote every ancestor once per file, which made restore quadratic (20,000 files 122 s → about 3 s, item 51). Restore's `Orphaned` step pairs rows with `GROUP BY` and an array, never a join with `"Changed"`: with statistics taken while nothing was in trash, a nested loop there compared 5,000 files 12.5 million times.
 
 | Action | Function | Needs | Quota |
 |---|---|---|---|
