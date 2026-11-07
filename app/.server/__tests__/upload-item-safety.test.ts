@@ -216,9 +216,14 @@ describe('the drive owner pays', () => {
 
     await trashItems([shared], ownerId)
 
-    await vi.waitFor(async () => {
-      expect(await quotaOf(driveId)).toEqual({ used: owner.used - 70n, deleted: owner.deleted + 70n })
-    })
+    // The refund settles logged charges first, which waits for the rollup lock;
+    // another test file holding it (withSizeRollupPaused) delays it past 1 s.
+    await vi.waitFor(
+      async () => {
+        expect(await quotaOf(driveId)).toEqual({ used: owner.used - 70n, deleted: owner.deleted + 70n })
+      },
+      { timeout: 10_000, interval: 100 }
+    )
     expect(await quotaOf(strangerDriveId)).toEqual(stranger)
   })
 

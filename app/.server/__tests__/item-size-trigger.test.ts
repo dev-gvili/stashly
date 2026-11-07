@@ -251,3 +251,137 @@ describe('the size rollup runs one at a time and gives way to user writes', () =
     expect(await wrongFolders()).toEqual([])
   })
 })
+
+/**
+ * A status change moves no bytes between files, only a folder's `size` and
+ * `childCount`, so one statement can write each folder once. Per-row triggers
+ * wrote every ancestor once per file inside one transaction, and each write of
+ * the same row costs more than the last: restoring 20,000 files took 122 s.
+ */
+describe('a status change writes each folder once', () => {
+  const FILES = 40
+  const folderWithFacet = async (name: string, parent: string | null) => {
+    ids[name] = uid('Item')
+    await prisma.item.create({
+      data: {
+        id: ids[name], name, type: 'folder', category: 'unknown', status: 'normal', ownerId, driveId,
+        parentId: parent ? ids[parent] : null, folder: { create: { id: uid('Folder') } },
+      },
+    })
+  }
+  const filesIn = async (parent: string) => {
+    for (let k = 0; k < FILES; k++) await make(`${parent}-${k}`, 'file', parent, 5)
+  }
+  const trashSql = (name: string) =>
+    Prisma.sql`${subtree(ids[name])} UPDATE "Item" i SET "status" = 'trashed' FROM "Subtree" s WHERE i."id" = s."id" AND i."status" <> 'trashed'`
+  const restoreSql = (name: string) =>
+    Prisma.sql`${subtree(ids[name])} UPDATE "Item" i SET "status" = 'normal' FROM "Subtree" s WHERE i."id" = s."id" AND i."status" = 'trashed'`
+
+  /** `Item` rows `statement` updates, triggers included. Rolled back. */
+  const itemUpdates = async (statement: Prisma.Sql) => {
+    let updates = -1
+    await prisma
+      .$transaction(async (tx) => {
+        // Read before too: the view also holds this connection's earlier
+        // transactions until Postgres flushes them, at most once a second.
+        const read = async () =>
+          Number((await tx.$queryRaw<{ n: bigint }[]>`SELECT n_tup_upd AS n FROM pg_stat_xact_user_tables WHERE relname = 'Item'`)[0].n)
+        const before = await read()
+        await tx.$executeRaw(statement)
+        updates = (await read()) - before
+        throw new Error('roll back')
+      })
+      .catch((e) => {
+        if ((e as Error).message !== 'roll back') throw e
+      })
+    return updates
+  }
+
+  /** Folders whose child counts differ from their rows. */
+  const wrongChildCounts = async () => {
+    const rows = await prisma.$queryRaw<{ name: string }[]>`
+      SELECT i."name" FROM "Folder" f JOIN "Item" i ON i."id" = f."itemId"
+      WHERE i."ownerId" = ${ownerId} AND (
+        f."childCount" <> (SELECT count(*) FROM "Item" c WHERE c."parentId" = i."id" AND c."status" <> 'trashed')
+        OR f."inclusiveChildCount" <> (SELECT count(*) FROM "Item" c WHERE c."parentId" = i."id"))`
+    return rows.map((r) => r.name)
+  }
+  const expectExact = async () => {
+    await flushItemSizes()
+    expect(await wrongFolders()).toEqual([])
+    expect(await wrongChildCounts()).toEqual([])
+  }
+
+  beforeAll(async () => {
+    // P ─ Q ─ R ─ S, 40 files of 5 bytes in R and in S
+    await folderWithFacet('P', null)
+    await folderWithFacet('Q', 'P')
+    await folderWithFacet('R', 'Q')
+    await folderWithFacet('S2', 'R')
+    await filesIn('R')
+    await filesIn('S2')
+  })
+
+  it('trashing a subtree updates its rows and each folder once', async () => {
+    // 83 rows change status, and Q, R, S2 and P each take one size write.
+    expect(await itemUpdates(trashSql('Q'))).toBeLessThanOrEqual(87)
+  })
+
+  it('restoring a subtree updates its rows and each folder once', async () => {
+    await prisma.$executeRaw(trashSql('Q'))
+    expect(await itemUpdates(restoreSql('Q'))).toBeLessThanOrEqual(87)
+    await prisma.$executeRaw(restoreSql('Q'))
+    await expectExact()
+  })
+
+  it('a subtree trash and restore keep every rollup exact', async () => {
+    await prisma.$executeRaw(trashSql('Q'))
+    await expectExact()
+    expect(await sizeOf('Q')).toBe(`0/${FILES * 10}`)
+    expect(await sizeOf('P')).toBe(`0/${FILES * 10}`)
+    await prisma.$executeRaw(restoreSql('Q'))
+    await expectExact()
+    expect(await sizeOf('P')).toBe(`${FILES * 10}/${FILES * 10}`)
+  })
+
+  it('a file trashed before its folder stays out of the restored total', async () => {
+    await setStatus('S2-0', 'trashed')
+    await prisma.$executeRaw(trashSql('Q'))
+    await prisma.$executeRaw`${subtree(ids.Q)} UPDATE "Item" i SET "status" = 'normal' FROM "Subtree" s WHERE i."id" = s."id" AND i."id" <> ${ids['S2-0']}`
+    await expectExact()
+    expect(await sizeOf('P')).toBe(`${FILES * 10 - 5}/${FILES * 10}`)
+    await setStatus('S2-0', 'normal')
+    await expectExact()
+  })
+
+  it('restoring one deep file brings only its bytes up through its folders', async () => {
+    await prisma.$executeRaw(trashSql('Q'))
+    await prisma.$executeRaw`UPDATE "Item" SET "status" = 'normal' WHERE "id" IN (${ids.Q}, ${ids.R}, ${ids.S2}, ${ids['S2-1']})`
+    await expectExact()
+    expect(await sizeOf('P')).toBe(`5/${FILES * 10}`)
+    await prisma.$executeRaw(restoreSql('Q'))
+    await expectExact()
+  })
+
+  it('a folder trashed alone takes its size off its ancestors and keeps it', async () => {
+    await setStatus('S2', 'trashed')
+    await expectExact()
+    expect(await sizeOf('S2')).toBe(`${FILES * 5}/${FILES * 5}`)
+    expect(await sizeOf('P')).toBe(`${FILES * 5}/${FILES * 10}`)
+    await setStatus('S2', 'normal')
+    await expectExact()
+    expect(await sizeOf('P')).toBe(`${FILES * 10}/${FILES * 10}`)
+  })
+
+  it('a trash with an upload still in the log ends exact', async () => {
+    await withSizeRollupPaused(async () => {
+      await upload('late', 'S2', 7)
+      await prisma.$executeRaw(trashSql('Q'))
+    })
+    await expectExact()
+    await prisma.$executeRaw(restoreSql('Q'))
+    await expectExact()
+    await prisma.$executeRaw`DELETE FROM "Item" WHERE "id" = ${ids.late}`
+    await expectExact()
+  })
+})

@@ -807,13 +807,26 @@ export async function restoreItems(ids: string[], userId: string) {
       RETURNING t."itemId"
     ), "Orphaned" AS (
       INSERT INTO "TrashItem" ("id", "itemId", "trashId", "trashedAt")
-      SELECT 'ti_' || substr(md5(random()::text || i."id"), 1, 22), i."id", tr."id", i."updatedAt"
-      FROM "Item" i
-      JOIN "Changed" c ON c."id" = i."parentId"
-      JOIN "Trash" tr ON tr."driveId" = i."driveId"
-      WHERE i."status" = 'trashed'
-        AND NOT EXISTS (SELECT 1 FROM "Changed" c2 WHERE c2."id" = i."id")
-        AND NOT EXISTS (SELECT 1 FROM "TrashItem" x WHERE x."itemId" = i."id")
+      SELECT 'ti_' || substr(md5(random()::text || k."id"), 1, 22), k."id", tr."id", k."updatedAt"
+      FROM (
+        -- GROUP BY and an array, never a join with "Changed": once autovacuum
+        -- has analysed the table with nothing in trash, the planner expects no
+        -- trashed rows, and a nested loop compared 5,000 files 12.5 million
+        -- times. No plan of this form can do that.
+        SELECT s."id", max(s."driveId") AS "driveId", max(s."updatedAt") AS "updatedAt"
+        FROM (
+          SELECT i."id", i."driveId", i."updatedAt", false AS "restored"
+          FROM "Item" i
+          WHERE i."status" = 'trashed'
+            AND i."parentId" = ANY (ARRAY(SELECT "id" FROM "Changed" WHERE "type" = 'folder'))
+          UNION ALL
+          SELECT "id", NULL, NULL::timestamp, true FROM "Changed"
+        ) s
+        GROUP BY s."id"
+        HAVING NOT bool_or(s."restored")
+      ) k
+      JOIN "Trash" tr ON tr."driveId" = k."driveId"
+      WHERE NOT EXISTS (SELECT 1 FROM "TrashItem" x WHERE x."itemId" = k."id")
       RETURNING "itemId"
     )
     SELECT COUNT(*) AS "count",
