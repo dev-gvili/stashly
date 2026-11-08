@@ -316,7 +316,21 @@ export async function moveItems(
 
   const { result, fromParentId, fromParentName, toParentId, toParentName } =
     await prisma.$transaction(async (tx) => {
-      // Held until the move commits, so a trash of the target can't miss it.
+      // The folders the items leave are held FOR KEY SHARE until the move
+      // commits, as the target is: a trash holds its folders FOR UPDATE, so a
+      // move arriving during one waits, then reads its items as trashed below
+      // and is refused; one that gets here first makes the trash wait, and its
+      // walk finds the items in their new folder. Without it a trashed item
+      // could be moved into a live folder with no Trash entry, or the two
+      // deadlocked on the old folder's size row. One statement in id order,
+      // the order `lockSubtreeFolders` takes, so the two can't deadlock here.
+      await tx.$queryRaw`
+        SELECT "id" FROM "Item"
+        WHERE "id" = ${targetFolderId}
+           OR "id" IN (SELECT "parentId" FROM "Item" WHERE "id" IN (${Prisma.join(ids)}))
+        ORDER BY "id"
+        FOR KEY SHARE
+      `
       const [items, targetFolder] = await Promise.all([
         tx.item.findMany({
           where: { id: { in: ids } },
@@ -324,6 +338,7 @@ export async function moveItems(
             id: true,
             parentId: true,
             type: true,
+            status: true,
             driveId: true,
             owner: { select: { rootId: true } },
           },
@@ -352,6 +367,14 @@ export async function moveItems(
       }
 
       for (const item of items) {
+        // A trashed item has no place to go but back: restore puts it there.
+        if (item.status === 'trashed') {
+          throw toRouteError(
+            StashlyErrorCode.NOT_FOUND,
+            'One or more items are in trash; restore them before moving them'
+          )
+        }
+
         // A drive pays for what is on it, so an item never changes drive. The
         // folder picker only lists the session's drive; this is the rule itself.
         if (item.driveId !== targetFolder.driveId) {
@@ -635,7 +658,9 @@ async function lockSubtreeFolders(tx: Prisma.TransactionClient, ids: string[]) {
         SELECT i."id" FROM "Item" i JOIN "Folders" f ON i."parentId" = f."id"
         WHERE i."type" = 'folder'
       ), "Held" AS (
+        -- In id order, as moveItems takes its folders, so the two can't deadlock.
         SELECT i."id" FROM "Item" i WHERE i."id" IN (SELECT "id" FROM "Folders")
+        ORDER BY i."id"
         FOR UPDATE
       )
       SELECT COUNT(*) AS "count" FROM "Held"

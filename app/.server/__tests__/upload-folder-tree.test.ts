@@ -569,30 +569,96 @@ describe('an upload racing a trash of its folder', () => {
     expect(await status(folders['x/y'])).toBe('trashed')
   })
 
+  async function makeFile(name: string, parentId: string) {
+    const id = uid('Item')
+    await prisma.item.create({
+      data: {
+        id,
+        name,
+        type: 'file',
+        category: 'unknown',
+        status: 'normal',
+        ownerId,
+        driveId,
+        parentId,
+        size: 10n,
+      },
+    })
+    return id
+  }
+
+  const parentOf = async (id: string) =>
+    (await prisma.item.findUniqueOrThrow({ where: { id }, select: { parentId: true } }))
+      .parentId
+
+  /**
+   * A move takes an item out of its folder as well as into another. Without a
+   * lock on the folder it leaves, a trash of that folder and the move each
+   * missed the other, and the item ended up trashed inside a live folder with
+   * no Trash entry: invisible, and impossible to restore.
+   */
+  describe('a move out of a folder in trash', () => {
+    it('refuses an item inside a folder already in trash', async () => {
+      const folderId = await makeFolder('move-out-in-trash', rootId)
+      const fileId = await makeFile('stuck.txt', folderId)
+      const dest = await makeFolder('move-out-dest-1', rootId)
+      await trashItems([folderId], ownerId)
+
+      await expect(moveItems([fileId], dest, ownerId)).rejects.toMatchObject({
+        status: 404,
+      })
+      expect(await parentOf(fileId)).toBe(folderId)
+      expect(await status(fileId)).toBe('trashed')
+    })
+
+    it('refuses an item whose folder is being trashed (trash first)', async () => {
+      const folderId = await makeFolder('move-out-trash-first', rootId)
+      const fileId = await makeFile('late-move.txt', folderId)
+      const dest = await makeFolder('move-out-dest-2', rootId)
+      const { release } = await pausedTrash(folderId)
+      const moving = moveItems([fileId], dest, ownerId).then(
+        () => 'moved',
+        (error) => error
+      )
+      await sleep(300)
+      await release()
+
+      expect(await moving).toMatchObject({ status: 404 })
+      expect(await parentOf(fileId)).toBe(folderId)
+      expect(await status(fileId)).toBe('trashed')
+    })
+
+    it('leaves the item live in its new folder (move first)', async () => {
+      const folderId = await makeFolder('move-out-move-first', rootId)
+      const fileId = await makeFile('early-move.txt', folderId)
+      const dest = await makeFolder('move-out-dest-3', rootId)
+      // The move has updated the item and waits in its child-count trigger.
+      await blocker.query('BEGIN')
+      await blocker.query('LOCK TABLE "Folder" IN SHARE MODE')
+      const moving = moveItems([fileId], dest, ownerId)
+      let trash: Promise<unknown> | undefined
+      try {
+        await untilBlocked('%UPDATE%"Item"%parentId%')
+        trash = trashItems([folderId], ownerId)
+        await Promise.race([trash, sleep(300)])
+      } finally {
+        await blocker.query('COMMIT')
+      }
+      await moving
+      await trash
+
+      expect(await status(folderId)).toBe('trashed')
+      expect(await parentOf(fileId)).toBe(dest)
+      expect(await status(fileId)).toBe('normal')
+    })
+  })
+
   /**
    * Tech-debt item 67: the other writers that put an item into a folder hold it
    * the same way an upload does, so a destination in trash, or on its way
    * there, is refused and nothing lands in it.
    */
   describe('a create, move or copy into a folder in trash', () => {
-    async function makeFile(name: string, parentId: string) {
-      const id = uid('Item')
-      await prisma.item.create({
-        data: {
-          id,
-          name,
-          type: 'file',
-          category: 'unknown',
-          status: 'normal',
-          ownerId,
-          driveId,
-          parentId,
-          size: 10n,
-        },
-      })
-      return id
-    }
-
     // Each prepares its source first, so only the write itself meets the trash.
     const writers: Record<string, () => Promise<(dest: string) => Promise<unknown>>> = {
       createFolder: async () => (dest) => createFolder('late-folder', dest, ownerId, driveId),
