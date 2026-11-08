@@ -7,7 +7,7 @@
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
 **Now (8 Nov):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1300 in 105 files), and the build. Green on `fad6e25` (8 Nov). A second job runs the 8 Playwright specs against the dev server, a throwaway Postgres and real Tigris storage (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1303 in 105 files), and the build. Green on `fad6e25` (8 Nov). A second job runs the 8 Playwright specs against the dev server, a throwaway Postgres and real Tigris storage (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors, analytics and logs:** Vinktar on server and browser since 10 Oct; product events, route timing and a structured logger since 31 Oct (item 4, resolved).
@@ -181,6 +181,7 @@
 | 66 | ~~An upload into a folder being trashed stays live inside it~~ | 24 | Resolved 2026-11-07 (`bfbaa75`): uploads hold their folder `FOR KEY SHARE` and trash locks its folders `FOR UPDATE` before it walks; a live file in a trashed folder 6 of 6 runs → 0 of 6, trash +3–8 ms on 20,000 files (0.2–0.3%), measured | — |
 | 67 | ~~Creating, moving or copying into a trashed folder is accepted~~ | 16 | Resolved 2026-11-08 (`43a5dd5`): each writer reads its destination `FOR KEY SHARE` in its transaction and answers 404 for a folder in trash; accepted 4 of 4 → refused 6 of 6 (copy included); `copyItem`, which failed on every call, rewritten; create +0.25 ms, move +0.75 ms at p50, measured | — |
 | 68 | **new** A folder copy writes row by row | 12 | `recursiveCopy` creates each item with Prisma inside one interactive transaction: about 2.7 ms per file, so a folder of roughly 1,800 files outlasts the 5 s timeout. Copy in set-based statements, as trash does, and decide what a copy does with thumbnails | — |
+| 69 | ~~A move out of a folder being trashed hides the item~~ | 16 | Resolved 2026-11-08 (`220203b`): a move holds the folders its items leave `FOR KEY SHARE` and refuses a trashed item; trashed item moved into a live folder 2 of 2 → refused, move-first deadlock 1 of 1 → item live in its new folder, measured | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -256,6 +257,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 66 | ~~An upload into a folder being trashed stays live inside it~~ | Code | 3 | 3 | 2 | **24** (Medium) | 1 day | Resolved 7 Nov |
 | 67 | ~~Creating, moving or copying into a trashed folder is accepted~~ | Code | 2 | 2 | 2 | **16** (Medium) | 1 day | Resolved 8 Nov |
 | 68 | A folder copy writes row by row | Code | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 8 Nov |
+| 69 | ~~A move out of a folder being trashed hides the item~~ | Code | 2 | 2 | 2 | **16** (Medium) | 2 h | Resolved 8 Nov |
 
 ## Details
 
@@ -1308,6 +1310,15 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Fix:** copy the subtree in set-based statements, as `trashItems` walks it: map old ids to new in one recursive CTE and insert each table once. Decide how a copy gets thumbnails (regenerate, or refcount thumbnail objects as `File` keys are).
 - **Status 2026-11-08: open.**
 
+### 69. A move out of a folder being trashed hides the item
+
+*Code debt · Impact 2 · Risk 2 · Effort 2 → **16** · est. 2 h · source: review of `d3a241f..69f7da7`, 8 Nov*
+
+- **Evidence:** item 67 locked a move's destination, not the folder its items leave, and `moveItems` never read the items' `status`. Three live-DB tests on `69f7da7`: moving a file out of a folder already in trash, and out of one being trashed (trash first, `pausedTrash`), both succeeded, leaving a `trashed` file inside a live folder with no `TrashItem` row, so Trash never lists it and it can't be restored, while its bytes sit in `deleted`. With the move first (held in its child-count trigger), the two deadlocked (`40P01`): the move's size trigger updates the old folder's row, which the trash holds `FOR UPDATE`, while the trash's walk waits on the moved row.
+- **Fix:** `moveItems` takes the target and every folder its items leave `FOR KEY SHARE` in one statement, in id order, before it reads the items, and refuses an item in trash (404). `lockSubtreeFolders` takes its rows in id order too, so the two can't deadlock. A move arriving during a trash waits, then reads its item as trashed; one that gets there first makes the trash wait, and the walk finds the item in its new folder.
+- **Measured:** the three tests red before, green after; `upload-folder-tree.test.ts` 29/29, full run 1303/0 in 105 files. The fix adds one statement per move; its time was not measured.
+- **Status 2026-11-08: resolved** (`220203b`). Still open from the same review, all in `copyItem`, which nothing calls yet: a copy into its own subtree recurses until the transaction times out, and its quota check isn't atomic (`applyQuotaDelta`'s `withinTotal` would make it so).
+
 ## Changes since the audit
 
 These commits touched a register item, oldest first. Commits that don't touch any register item are left out, such as page size, the rename dialog, the search `ZodError`, and the Vite typegen watch.
@@ -1418,6 +1429,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-11-07 | `d3a241f` | 51, 13 | Trash and restore write each folder once (statement-level `item_status_change` trigger) and restore's `Orphaned` step can't take a quadratic plan. Restore of 20,000 files 122 → 2.7–3.2 s, trash of 50,000 failed → 6.6–6.9 s, rollup timeouts 395–850 → 0. 7 new tests; 1287/0 in 105 files. |
 | 2026-11-07 | `bfbaa75` | 66, 67, 13 | An upload or folder tree racing a trash of its folder is refused (trash first) or trashed with it (upload first): parent read `FOR KEY SHARE`, trash locks its folders `FOR UPDATE` before it walks. Reproduced 6/6 → 0/6; trash's lock step 3–8 ms on 20,000 files, upload statement within noise. 4 new tests; 1291/0 in 105 files. Item 67 registered. |
 | 2026-11-08 | `43a5dd5` | 67, 68, 13 | `createFolder`, `moveItems` and `copyItem` read their destination `FOR KEY SHARE` and refuse one in trash (404); accepted 4/4 → refused 6/6. `copyItem`, broken on every call, rewritten: copier owns and pays, bytes shared, live contents only. Create +0.25 ms, move +0.75 ms at p50. 9 new tests; 1300/0 in 105 files. Item 68 registered. |
+| 2026-11-08 | `220203b` | 69, 13 | `moveItems` holds the folders its items leave `FOR KEY SHARE` and refuses a trashed item; trash locks its folders in id order. A trashed file moved into a live folder 2/2 → refused, a move-first deadlock → item live in its new folder. 3 new tests; 1303/0 in 105 files. |
 | 2026-11-01 | `7e2e9c1`, `36eff9f` | 22, 17 | A failed onboarding runs again on the next session read: each step finds before it creates, a new bucket is written to the row at once, a complete row ends in `alreadyOnboarded`. Red 4 of 18 → 20 of 20; 1252/0 in 103 files. Workspace uploads moved to item 17. |
 
 ## Phased remediation plan
