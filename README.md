@@ -123,7 +123,11 @@ pnpm install
 
 ### 2. Configure
 
-Create `.env` in the repo root (`app/.server/env.ts` loads it; variables already set in the environment win). `.env.example` only covers the Vinktar keys so far, so here is the full list the code reads:
+```bash
+cp .env.example .env
+```
+
+`app/.server/env.ts` loads `.env` at startup; variables already set in the environment win. [`.env.example`](.env.example) lists every variable the code reads, with optional ones commented out:
 
 | Variable | Needed for |
 |---|---|
