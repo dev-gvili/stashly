@@ -317,34 +317,26 @@ export async function moveItems(
   const { result, fromParentId, fromParentName, toParentId, toParentName } =
     await prisma.$transaction(async (tx) => {
       // The folders the items leave are held FOR KEY SHARE until the move
-      // commits, as the target is: a trash holds its folders FOR UPDATE, so a
+      // commits, with the target: a trash holds its folders FOR UPDATE, so a
       // move arriving during one waits, then reads its items as trashed below
       // and is refused; one that gets here first makes the trash wait, and its
       // walk finds the items in their new folder. Without it a trashed item
       // could be moved into a live folder with no Trash entry, or the two
-      // deadlocked on the old folder's size row. One statement in id order,
-      // the order `lockSubtreeFolders` takes, so the two can't deadlock here.
-      await tx.$queryRaw`
-        SELECT "id" FROM "Item"
-        WHERE "id" = ${targetFolderId}
-           OR "id" IN (SELECT "parentId" FROM "Item" WHERE "id" IN (${Prisma.join(ids)}))
-        ORDER BY "id"
-        FOR KEY SHARE
-      `
-      const [items, targetFolder] = await Promise.all([
-        tx.item.findMany({
-          where: { id: { in: ids } },
-          select: {
-            id: true,
-            parentId: true,
-            type: true,
-            status: true,
-            driveId: true,
-            owner: { select: { rootId: true } },
-          },
-        }),
-        lockDestinationFolder(tx, targetFolderId),
-      ])
+      // deadlocked on the old folder's size row (item 69). The items are read
+      // after the lock, never beside it, so that read sees a trash that just
+      // finished.
+      const targetFolder = await lockDestinationFolder(tx, targetFolderId, ids)
+      const items = await tx.item.findMany({
+        where: { id: { in: ids } },
+        select: {
+          id: true,
+          parentId: true,
+          type: true,
+          status: true,
+          driveId: true,
+          owner: { select: { rootId: true } },
+        },
+      })
 
       const canWriteTarget = await hasItemPermission(
         userId,
@@ -681,16 +673,34 @@ async function lockSubtreeFolders(tx: Prisma.TransactionClient, ids: string[]) {
  * that gets here first holds the folder until it commits, so the trash waits
  * and its walk sees what was put inside.
  *
+ * `leaving` are the items a move takes out of their folders: those folders are
+ * held in the same statement, so a move costs no extra round trip for them.
+ * Rows are taken in id order, as `lockSubtreeFolders` takes them, so the two
+ * can't deadlock. The type and status are checked on the row the lock returns,
+ * which is its latest version once any trash holding it has committed.
+ *
  * @throws `ITEM_NOT_FOUND` (404) when no live folder has that id.
  */
-async function lockDestinationFolder(tx: Prisma.TransactionClient, folderId: string) {
-  const [folder] = await tx.$queryRaw<
-    { id: string; name: string; parentId: string | null; driveId: string }[]
+async function lockDestinationFolder(
+  tx: Prisma.TransactionClient,
+  folderId: string,
+  leaving: string[] = []
+) {
+  const rows = await tx.$queryRaw<
+    { id: string; name: string; parentId: string | null; driveId: string; type: string; status: string }[]
   >`
-    SELECT "id", "name", "parentId", "driveId" FROM "Item"
-    WHERE "id" = ${folderId} AND "type" = 'folder' AND "status" <> 'trashed'
+    SELECT "id", "name", "parentId", "driveId", "type", "status" FROM "Item"
+    WHERE "id" = ${folderId}${
+      leaving.length > 0
+        ? Prisma.sql` OR "id" IN (SELECT "parentId" FROM "Item" WHERE "id" IN (${Prisma.join(leaving)}))`
+        : Prisma.empty
+    }
+    ORDER BY "id"
     FOR KEY SHARE
   `
+  const folder = rows.find(
+    (row) => row.id === folderId && row.type === 'folder' && row.status !== 'trashed'
+  )
   if (!folder) {
     throw new StashlyError(
       StashlyErrorCode.ITEM_NOT_FOUND,
