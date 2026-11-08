@@ -316,6 +316,7 @@ export async function moveItems(
 
   const { result, fromParentId, fromParentName, toParentId, toParentName } =
     await prisma.$transaction(async (tx) => {
+      // Held until the move commits, so a trash of the target can't miss it.
       const [items, targetFolder] = await Promise.all([
         tx.item.findMany({
           where: { id: { in: ids } },
@@ -327,25 +328,8 @@ export async function moveItems(
             owner: { select: { rootId: true } },
           },
         }),
-        tx.item.findUnique({
-          where: { id: targetFolderId },
-          select: { id: true, name: true, type: true, parentId: true, driveId: true },
-        }),
+        lockDestinationFolder(tx, targetFolderId),
       ])
-
-      if (!targetFolder) {
-        throw toRouteError(
-          StashlyErrorCode.NOT_FOUND,
-          'Target folder not found'
-        )
-      }
-
-      if (targetFolder.type !== 'folder') {
-        throw new StashlyError(
-          StashlyErrorCode.MOVE_ITEM_FAILED,
-          'Target must be a folder'
-        )
-      }
 
       const canWriteTarget = await hasItemPermission(
         userId,
@@ -659,6 +643,36 @@ async function lockSubtreeFolders(tx: Prisma.TransactionClient, ids: string[]) {
     if (Number(count) === held) return
     held = Number(count)
   }
+}
+
+/**
+ * Reads the folder a create, move or copy writes into, FOR KEY SHARE, for the
+ * rest of the transaction, and refuses one that is gone, not a folder, or in
+ * trash (tech-debt item 67).
+ *
+ * The other half of `lockSubtreeFolders`, as `insertUploadedItem` is for
+ * uploads: a trash holds the folder FOR UPDATE, so this waits for it and
+ * re-reads the row, which is then trashed, and nothing is written. A writer
+ * that gets here first holds the folder until it commits, so the trash waits
+ * and its walk sees what was put inside.
+ *
+ * @throws `ITEM_NOT_FOUND` (404) when no live folder has that id.
+ */
+async function lockDestinationFolder(tx: Prisma.TransactionClient, folderId: string) {
+  const [folder] = await tx.$queryRaw<
+    { id: string; name: string; parentId: string | null; driveId: string }[]
+  >`
+    SELECT "id", "name", "parentId", "driveId" FROM "Item"
+    WHERE "id" = ${folderId} AND "type" = 'folder' AND "status" <> 'trashed'
+    FOR KEY SHARE
+  `
+  if (!folder) {
+    throw new StashlyError(
+      StashlyErrorCode.ITEM_NOT_FOUND,
+      'The destination folder no longer exists or is in trash, so nothing was put in it.'
+    )
+  }
+  return folder
 }
 
 export async function trashItems(ids: string[], userId: string) {
@@ -1086,18 +1100,29 @@ export async function deleteItems(ids: string[], userId: string) {
 
 // --- 4. COPY (Recursive) ---
 /**
- * Recursively copies an item (file or folder) to a new parent location.
- * This function handles permission checks, quota validation, and workspace-specific logic.
- * It supports copying between personal drives and workspaces, or between different workspaces.
+ * Copies an item (a file, or a folder with its live contents) into a folder.
  *
- * @param {string} userId - The ID of the user performing the copy operation.
- * @param {string} itemId - The ID of the source item to be copied.
- * @param {string | undefined | null} targetParentId - The ID of the destination folder.
- * @param {string} [targetWorkspaceId] - Optional ID of the workspace where the item is being copied to.
- * @throws {StashlyError} If the target parent is missing, item is not found, user lacks permissions, or has insufficient quota.
+ * A copy shares its original's bytes: the `File` row is copied with its key, and
+ * a permanent delete keeps an object any other `File` row still names. The
+ * copier still pays for it, so the copy sits on the copier's own drive, which
+ * is checked and charged (a refund follows `Item.driveId`, so the two must be
+ * the same drive). The copier owns every copied item, with an owner grant like
+ * an upload's, so a file someone shared with them can be copied and then opened.
+ * Contents in trash are left out, which is also what the folder's `size`, the
+ * amount charged, counts.
+ *
+ * The destination is held FOR KEY SHARE until the copy commits
+ * (`lockDestinationFolder`), so a folder in trash, or being trashed, is refused.
+ *
+ * @param userId - The user copying, who needs `read` on the source and `write` on the destination.
+ * @param itemId - The item to copy.
+ * @param targetParentId - The folder to copy into.
+ * @param targetWorkspaceId - The workspace the copy joins, when it is not the source's.
+ * @throws `ITEM_NOT_FOUND` (404) for a source or destination that is gone or in trash;
+ *   `FORBIDDEN` (403) without `write` on the destination; `COPY_ITEM_FAILED` when the
+ *   destination is on another drive; `INSUFFICIENT_QUOTA` when the copy doesn't fit.
  *
  * @example
- * // Copy a file to a new folder
  * const copiedItem = await copyItem('usr_1', 'item_123', 'fld_456');
  */
 export async function copyItem(
@@ -1106,322 +1131,110 @@ export async function copyItem(
   targetParentId: string | undefined | null,
   targetWorkspaceId?: string
 ) {
-  // 1. Validate inputs:
-  // Verify that we have the itemId and traget parent id, if not throw, we want to stop as soon as we can any code execution,itemId and targetParentId are required for the operation to succeeded.
   if (!itemId) {
-    throw new StashlyError(
-      StashlyErrorCode.COPY_ITEM_FAILED,
-      'itemId is required'
-    )
+    throw new StashlyError(StashlyErrorCode.COPY_ITEM_FAILED, 'itemId is required')
   }
-
   if (!targetParentId) {
-    throw new StashlyError(
-      StashlyErrorCode.COPY_ITEM_FAILED,
-      'targetParentId is required'
-    )
+    throw new StashlyError(StashlyErrorCode.COPY_ITEM_FAILED, 'targetParentId is required')
   }
 
-  const copied = await prisma.$transaction(async (tx) => {
-    // 1. Fetch source item with all facets
-    const source = await tx.item.findUniqueOrThrow({
-      where: { id: itemId },
-      include: {
-        file: true,
-        folder: true,
-        drive: true,
-        owner: true,
-        video: true,
-        image: true,
-        pdf: true,
-        parent: true,
-        thumbnails: true,
-      },
+  const { copied, source, bytes } = await prisma.$transaction(async (tx) => {
+    const source = await tx.item.findFirst({
+      where: { id: itemId, status: { not: 'trashed' } },
+      include: { ...copyFacets, parent: { select: { name: true } } },
     })
+    if (!source) {
+      throw new StashlyError(StashlyErrorCode.ITEM_NOT_FOUND, 'The item to copy no longer exists or is in trash.')
+    }
+    if (!(await hasItemPermission(userId, itemId, 'read', tx))) {
+      throw toRouteError(StashlyErrorCode.UNAUTHORIZED, 'You do not have access to this item')
+    }
 
-    // 2. Check for read permission on the source item
-    const canRead = await hasItemPermission(userId, itemId, 'read', tx)
+    const target = await lockDestinationFolder(tx, targetParentId)
+    if (!(await hasItemPermission(userId, target.id, 'write', tx))) {
+      throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You do not have write access to the target folder')
+    }
 
-    if (!canRead) {
+    if (source.workspaceId) {
+      await requireMembership(userId, source.workspaceId, 'You do not have access to this item')
+      if (targetWorkspaceId && targetWorkspaceId !== source.workspaceId) {
+        await requireAtLeastRole(
+          userId,
+          targetWorkspaceId,
+          'member',
+          'You must be a member of the target workspace to copy items.'
+        )
+      }
+    }
+
+    const userQuota = await ensureUserQuota(userId, tx)
+    if (userQuota.driveId !== target.driveId) {
+      throw new StashlyError(
+        StashlyErrorCode.COPY_ITEM_FAILED,
+        'A copy goes into your own drive, which pays for it.'
+      )
+    }
+    const { item: copied, bytes } = await recursiveCopy(tx, source, target.id, {
+      ownerId: userId,
+      driveId: target.driveId,
+      workspaceId: source.workspaceId ? (targetWorkspaceId ?? source.workspaceId) : null,
+    })
+    // The bytes of the files actually copied, never the source folder's `size`:
+    // that is a trigger rollup, which trails its contents while the database is
+    // busy (it charged 143 bytes for a 150-byte copy in a full test run).
+    // Refusing here rolls the whole copy back.
+    if (userQuota.remaining < bytes) {
       throw toRouteError(
-        StashlyErrorCode.UNAUTHORIZED,
-        'You do not have access to this item'
+        StashlyErrorCode.INSUFFICIENT_QUOTA,
+        `Insufficient quota to copy the item. you need ${formatSize(
+          'byte',
+          'unit',
+          bytes - userQuota.remaining
+        )} more space to continue.`
       )
     }
-
-    // ~~~~~~~~~~~~ Personal item ~~~~~~~~~~~~ //
-
-    if (!source.workspaceId) {
-      // 3. Check user's quota
-      const userQuota = await ensureUserQuota(userId, tx)
-
-      if (userQuota.remaining < source.size) {
-        throw toRouteError(
-          StashlyErrorCode.INSUFFICIENT_QUOTA,
-          `Insufficient quota to copy the item. you need ${formatSize(
-            'byte',
-            'unit',
-            source.size - userQuota.remaining
-          )} more space to continue.`
-        )
-      }
-      // 4. Perform the copy
-      let newItem = await recursiveCopy(tx, source, targetParentId)
-
-      // 5. Update quota
-      await onItemsCopied({
-        userId,
-        dataSize: source.size,
-        client: tx,
-      })
-
-      createActivity({
-        item: { connect: { id: newItem.id } },
-        time: {
-          create: {
-            id: toObjectId(getPrefixForModel('ActivityTime')),
-            observedAt: new Date(),
-          },
-        },
-        action: {
-          create: {
-            id: toObjectId(getPrefixForModel('ItemAction')),
-            copy: {
-              create: {
-                id: toObjectId(getPrefixForModel('CopyAction')),
-                fromParentId: source.parentId!,
-                fromParentName: source.parent?.name ?? '',
-                toParentId: targetParentId,
-                toParentName: newItem.parent?.name ?? '',
-              },
-            },
-          },
-        },
-      }).catch(() => {})
-
-      return newItem
-    }
-
-    // ~~~~~~~~~~~~ Same Workspace ~~~~~~~~~~~~ //
-
-    // 3. check if user is a member in the source item workspace
-    if (!targetWorkspaceId && source.workspaceId) {
-      await requireMembership(
-        userId,
-        source.workspaceId,
-        'You do not have access to this item'
-      )
-
-      // 4. Check user's quota
-      const userQuota = await ensureUserQuota(userId, tx)
-
-      // quotaRepository.validateFreeSpace(userQuota, source.size)
-
-      if (userQuota.remaining < source.size) {
-        throw toRouteError(
-          StashlyErrorCode.INSUFFICIENT_QUOTA,
-          `Insufficient quota to copy the item. you need ${formatSize(
-            'byte',
-            'unit',
-            source.size - userQuota.remaining
-          )} more space to continue.`
-        )
-      }
-
-      // 5. Perform the copy
-      let newItem = await recursiveCopy(
-        tx,
-        source,
-        targetParentId,
-        source.workspaceId
-      )
-
-      // 6. Update quota
-      await onItemsCopied({
-        userId,
-        dataSize: source.size,
-      })
-
-      createActivity({
-        item: { connect: { id: newItem.id } },
-        time: {
-          create: {
-            id: toObjectId(getPrefixForModel('ActivityTime')),
-            observedAt: new Date(),
-          },
-        },
-        action: {
-          create: {
-            id: toObjectId(getPrefixForModel('ItemAction')),
-            copy: {
-              create: {
-                id: toObjectId(getPrefixForModel('CopyAction')),
-                fromParentId: source.parentId!,
-                fromParentName: source.parent?.name ?? '',
-                toParentId: targetParentId,
-                toParentName: newItem.parent?.name ?? '',
-              },
-            },
-          },
-        },
-      }).catch(() => {})
-
-      return newItem
-    }
-
-    // ~~~~~~~~~~ Same Workspace with Explicit ID ~~~~~~~~~ //
-
-    if (targetWorkspaceId && source.workspaceId === targetWorkspaceId) {
-      await requireMembership(
-        userId,
-        source.workspaceId,
-        'You do not have access to this item'
-      )
-
-      const userQuota = await ensureUserQuota(userId, tx)
-
-      if (userQuota.remaining < source.size) {
-        throw toRouteError(
-          StashlyErrorCode.INSUFFICIENT_QUOTA,
-          `Insufficient quota to copy the item. you need ${formatSize(
-            'byte',
-            'unit',
-            source.size - userQuota.remaining
-          )} more space to continue.`
-        )
-      }
-
-      let newItem = await recursiveCopy(
-        tx,
-        source,
-        targetParentId,
-        source.workspaceId
-      )
-
-      await onItemsCopied({
-        userId,
-        dataSize: source.size,
-        client: tx,
-      })
-
-      createActivity({
-        item: { connect: { id: newItem.id } },
-        time: {
-          create: {
-            id: toObjectId(getPrefixForModel('ActivityTime')),
-            observedAt: new Date(),
-          },
-        },
-        action: {
-          create: {
-            id: toObjectId(getPrefixForModel('ItemAction')),
-            copy: {
-              create: {
-                id: toObjectId(getPrefixForModel('CopyAction')),
-                fromParentId: source.parentId!,
-                fromParentName: source.parent?.name ?? '',
-                toParentId: targetParentId,
-                toParentName: newItem.parent?.name ?? '',
-              },
-            },
-          },
-        },
-      }).catch(() => {})
-
-      return newItem
-    }
-
-    // ~~~~~~~~~~ Different Workspace ~~~~~~~~~ //
-
-    if (
-      targetWorkspaceId &&
-      source.workspaceId &&
-      source.workspaceId !== targetWorkspaceId
-    ) {
-      await requireMembership(
-        userId,
-        source.workspaceId,
-        'You do not have access to this item'
-      )
-
-      await requireAtLeastRole(
-        userId,
-        targetWorkspaceId,
-        'member',
-        'You must be a member of the target workspace to copy items.'
-      )
-
-      const userQuota = await ensureUserQuota(userId, tx)
-
-      if (userQuota.remaining < source.size) {
-        throw toRouteError(
-          StashlyErrorCode.INSUFFICIENT_QUOTA,
-          `Insufficient quota to copy the item. you need ${formatSize(
-            'byte',
-            'unit',
-            source.size - userQuota.remaining
-          )} more space to continue.`
-        )
-      }
-
-      // 5. Perform the copy
-      let newItem = await recursiveCopy(
-        tx,
-        source,
-        targetParentId,
-        targetWorkspaceId
-      )
-
-      // 6. Update quota
-      await onItemsCopied({
-        userId,
-        dataSize: source.size,
-        client: tx,
-      })
-
-      createActivity({
-        item: { connect: { id: newItem.id } },
-        time: {
-          create: {
-            id: toObjectId(getPrefixForModel('ActivityTime')),
-            observedAt: new Date(),
-          },
-        },
-        action: {
-          create: {
-            id: toObjectId(getPrefixForModel('ItemAction')),
-            copy: {
-              create: {
-                id: toObjectId(getPrefixForModel('CopyAction')),
-                fromParentId: source.parentId!,
-                fromParentName: source.parent?.name ?? '',
-                toParentId: targetParentId,
-                toParentName: newItem.parent?.name ?? '',
-              },
-            },
-          },
-        },
-      }).catch(() => {})
-
-      return newItem
-    }
+    await onItemsCopied({ userId, dataSize: bytes, client: tx })
+    return { copied: { ...copied, parentName: target.name }, source, bytes }
   })
 
-  // After the commit, so a copy refused for quota or access is never counted.
-  if (copied) {
-    track(
-      'item_copied',
-      {
-        source_item_id: itemId,
-        item_type: copied.type,
-        size_bytes: Number(copied.size),
-        target_folder_id: targetParentId,
-        workspace_id: copied.workspaceId ?? null,
-        cross_workspace: Boolean(targetWorkspaceId),
+  // After the commit, so a copy refused for quota or access is never counted,
+  // and the activity's own write can't fail inside the copy's transaction.
+  createActivity({
+    item: { connect: { id: copied.id } },
+    time: {
+      create: {
+        id: toObjectId(getPrefixForModel('ActivityTime')),
+        observedAt: new Date(),
       },
-      { userId }
-    )
-  }
+    },
+    action: {
+      create: {
+        id: toObjectId(getPrefixForModel('ItemAction')),
+        copy: {
+          create: {
+            id: toObjectId(getPrefixForModel('CopyAction')),
+            fromParentId: source.parentId ?? '',
+            fromParentName: source.parent?.name ?? '',
+            toParentId: targetParentId,
+            toParentName: copied.parentName,
+          },
+        },
+      },
+    },
+  }).catch((error) => log.error('copy activity failed', { item_id: copied.id, error }))
+
+  track(
+    'item_copied',
+    {
+      source_item_id: itemId,
+      item_type: copied.type,
+      size_bytes: Number(bytes),
+      target_folder_id: targetParentId,
+      workspace_id: copied.workspaceId ?? null,
+      cross_workspace: Boolean(targetWorkspaceId),
+    },
+    { userId }
+  )
 
   return copied
 }
@@ -1447,36 +1260,36 @@ export async function createFolder(
 ) {
   if (parentId) await assertItemAccess(ownerId, parentId, { role: 'write' })
 
-  // A folder sits on its parent's drive, whoever makes it: that drive pays for
-  // what is uploaded into it.
-  const parent = parentId
-    ? await prisma.item.findUnique({ where: { id: parentId }, select: { driveId: true } })
-    : null
-  const folderDriveId = parent?.driveId ?? driveId
-  const folder = await prisma.item.create({
-    data: {
-      id: toObjectId(getPrefixForModel('Item')),
-      name: folderName,
-      parentId: parentId,
-      driveId: folderDriveId,
-      ownerId: ownerId,
-      type: 'folder',
-      category: 'unknown',
-      status: 'normal',
-      // Use a folder facet for additional settings, like view preference
-      folder: {
-        create: {
-          id: toObjectId(getPrefixForModel('Folder')),
-          view: {
-            create: {
-              viewType: 'grid',
-              sortBy: 'type',
-              sortOrder: 'ascending',
-            },
-          }, // Default folder view setting
+  const folder = await prisma.$transaction(async (tx) => {
+    // A folder sits on its parent's drive, whoever makes it: that drive pays for
+    // what is uploaded into it. The parent is held until the create commits, so
+    // a trash of it can't miss the new folder (item 67).
+    const parent = parentId ? await lockDestinationFolder(tx, parentId) : null
+    return tx.item.create({
+      data: {
+        id: toObjectId(getPrefixForModel('Item')),
+        name: folderName,
+        parentId: parentId,
+        driveId: parent?.driveId ?? driveId,
+        ownerId: ownerId,
+        type: 'folder',
+        category: 'unknown',
+        status: 'normal',
+        // Use a folder facet for additional settings, like view preference
+        folder: {
+          create: {
+            id: toObjectId(getPrefixForModel('Folder')),
+            view: {
+              create: {
+                viewType: 'grid',
+                sortBy: 'type',
+                sortOrder: 'ascending',
+              },
+            }, // Default folder view setting
+          },
         },
       },
-    },
+    })
   })
 
   createActivity({
@@ -2998,126 +2811,106 @@ export async function paginateItems<
 
 // --- HELPER: Recursive Copy Logic ---
 
+/** The facets a copy carries over: each is copied as a new row of its own. */
+const copyFacets = {
+  file: true,
+  folder: true,
+  image: true,
+  video: true,
+  audio: true,
+  pdf: true,
+  markdown: true,
+} as const satisfies Prisma.ItemInclude
+
+type CopySource = Prisma.ItemGetPayload<{ include: typeof copyFacets }>
+
+/** A facet's fields for a nested create: a new id, and no `itemId` (the nesting sets it). */
+function copiedFacet<T extends { id: string; itemId: string }>(
+  facet: T | null,
+  model: Parameters<typeof getPrefixForModel>[0]
+) {
+  if (!facet) return undefined
+  const { id: _id, itemId: _itemId, ...fields } = facet
+  return { create: { ...fields, id: toObjectId(getPrefixForModel(model)) } }
+}
+
 /**
- * Internal helper that performs a deep copy of an item and its associated facets.
- * If the item is a folder, it recursively copies all children.
- * @param tx - The Prisma transaction client to ensure atomicity.
- * @param sourceItem - The source item object including its file or folder facets.
- * @param parentId - The ID of the new parent folder.
- * @param workspaceId - Optional ID of the target workspace.
+ * Copies `sourceItem` under `parentId`, then its live contents, in `tx`.
+ *
+ * Only the source's own fields are copied: the copy belongs to `copy.ownerId`
+ * (with an owner grant, as an upload has) on `copy.driveId`. A folder starts
+ * empty, with size and counts 0: the triggers add each copied child as it
+ * arrives, so copying the source's totals would count them twice. Contents in
+ * trash are skipped. A folder gets the default view `createFolder` gives one.
+ *
+ * @param tx - The copy's transaction.
+ * @param sourceItem - The item to copy, with its facets (`copyFacets`).
+ * @param parentId - The folder the copy goes into.
+ * @param copy - Who owns the copy, which drive it is on, and its workspace.
  *
  * @example
- * // Copy a file to a new folder within a transaction
- * await recursiveCopy(tx, sourceFile, 'fld_target123');
- *
- * @example
- * // Copy a folder and all its contents to a different workspace
- * await recursiveCopy(tx, sourceFolder, 'fld_root456', 'ws_other789');
+ * await recursiveCopy(tx, source, 'fld_target123', { ownerId, driveId, workspaceId: null })
  */
 async function recursiveCopy(
-  tx: Prisma.TransactionClient = prisma, // Prisma Transaction Client
-  sourceItem: Prisma.ItemGetPayload<{
-    include: { file: true; folder: true; video: true; image: true; pdf: true }
-  }>, // Typed as Item & { file: File | null, folder: Folder | null }
-  parentId: string | null,
-  workspaceId: string | null = null
+  tx: Prisma.TransactionClient,
+  sourceItem: CopySource,
+  parentId: string,
+  copy: { ownerId: string; driveId: string; workspaceId: string | null }
 ) {
-  // 1. Create the new item
-  let { file, folder, video, image, pdf, ...itemData } = sourceItem
   const newItem = await tx.item.create({
     data: {
-      ...itemData,
       id: toObjectId(getPrefixForModel('Item')),
-      parentId: parentId,
-      workspaceId: workspaceId,
-      // A copy isn't an upload. An "uploadId" would also let its size go
-      // through the upload size log under load (migration
-      // 20261030160000_upload_size_inline_when_idle) instead of the immediate
-      // cascade every other copied row takes.
-      uploadId: null,
-      // Copy Facets
-      ...(file
-        ? {
-            file: {
-              create: {
-                ...file,
-                id: toObjectId(getPrefixForModel('File')),
-              },
-            },
-          }
-        : {}),
-      ...(folder
+      name: sourceItem.name,
+      type: sourceItem.type,
+      category: sourceItem.category,
+      status: 'normal',
+      tags: sourceItem.tags,
+      size: sourceItem.type === 'folder' ? 0n : sourceItem.size,
+      parentId,
+      ownerId: copy.ownerId,
+      driveId: copy.driveId,
+      workspaceId: copy.workspaceId,
+      permissions: {
+        create: {
+          id: toObjectId(getPrefixForModel('Permission')),
+          roles: 'owner',
+          users: { connect: { id: copy.ownerId } },
+        },
+      },
+      file: copiedFacet(sourceItem.file, 'File'),
+      image: copiedFacet(sourceItem.image, 'Image'),
+      video: copiedFacet(sourceItem.video, 'Video'),
+      audio: copiedFacet(sourceItem.audio, 'Audio'),
+      pdf: copiedFacet(sourceItem.pdf, 'Pdf'),
+      markdown: copiedFacet(sourceItem.markdown, 'Markdown'),
+      ...(sourceItem.type === 'folder'
         ? {
             folder: {
               create: {
-                ...folder,
                 id: toObjectId(getPrefixForModel('Folder')),
+                view: {
+                  create: { viewType: 'grid', sortBy: 'type', sortOrder: 'ascending' },
+                },
               },
             },
           }
         : {}),
-      ...(video
-        ? {
-            video: {
-              create: {
-                ...video,
-                id: toObjectId(getPrefixForModel('Video')),
-              },
-            },
-          }
-        : {}),
-      ...(image
-        ? {
-            image: {
-              create: {
-                ...image,
-                id: toObjectId(getPrefixForModel('Image')),
-              },
-            },
-          }
-        : {}),
-      ...(pdf
-        ? {
-            pdf: {
-              create: {
-                ...pdf,
-                id: toObjectId(getPrefixForModel('Pdf')),
-              },
-            },
-          }
-        : {}),
-    },
-    include: {
-      file: true,
-      folder: true,
-      video: true,
-      image: true,
-      pdf: true,
-      parent: true,
     },
   })
 
-  // 2. If it's a folder, recursively copy children
+  let bytes = sourceItem.type === 'folder' ? 0n : sourceItem.size
   if (sourceItem.type === 'folder') {
     const children = await tx.item.findMany({
-      where: { parentId: sourceItem.id },
-      include: {
-        file: true,
-        folder: true,
-        video: true,
-        image: true,
-        pdf: true,
-      },
+      where: { parentId: sourceItem.id, status: { not: 'trashed' } },
+      include: copyFacets,
     })
-
     for (const child of children) {
-      await recursiveCopy(tx, child, newItem.id, newItem.workspaceId)
+      bytes += (await recursiveCopy(tx, child, newItem.id, copy)).bytes
     }
   }
 
-  return newItem
+  return { item: newItem, bytes }
 }
-
 /**
  * Parameters for fetching suggested items based on user activity..
  */

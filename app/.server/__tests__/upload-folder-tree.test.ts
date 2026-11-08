@@ -2,8 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import pg from 'pg'
 import { prisma } from '@/services/db'
 import {
+  copyItem,
+  createFolder,
   createUploadedItem,
   getCardItems,
+  moveItems,
   getFolderContent,
   resolveUploadFolders,
   trashItems,
@@ -564,6 +567,208 @@ describe('an upload racing a trash of its folder', () => {
     expect(await status(folderId)).toBe('trashed')
     expect(await status(folders['x'])).toBe('trashed')
     expect(await status(folders['x/y'])).toBe('trashed')
+  })
+
+  /**
+   * Tech-debt item 67: the other writers that put an item into a folder hold it
+   * the same way an upload does, so a destination in trash, or on its way
+   * there, is refused and nothing lands in it.
+   */
+  describe('a create, move or copy into a folder in trash', () => {
+    async function makeFile(name: string, parentId: string) {
+      const id = uid('Item')
+      await prisma.item.create({
+        data: {
+          id,
+          name,
+          type: 'file',
+          category: 'unknown',
+          status: 'normal',
+          ownerId,
+          driveId,
+          parentId,
+          size: 10n,
+        },
+      })
+      return id
+    }
+
+    // Each prepares its source first, so only the write itself meets the trash.
+    const writers: Record<string, () => Promise<(dest: string) => Promise<unknown>>> = {
+      createFolder: async () => (dest) => createFolder('late-folder', dest, ownerId, driveId),
+      moveItems: async () => {
+        const fileId = await makeFile('moved.txt', rootId)
+        return (dest) => moveItems([fileId], dest, ownerId)
+      },
+      copyItem: async () => {
+        const fileId = await makeFile('copied.txt', rootId)
+        return (dest) => copyItem(ownerId, fileId, dest)
+      },
+    }
+
+    const inside = (folderId: string) => prisma.item.count({ where: { parentId: folderId } })
+
+    for (const [writer, prepare] of Object.entries(writers)) {
+      it(`${writer} refuses a folder already in trash`, async () => {
+        const folderId = await makeFolder(`${writer}-in-trash`, rootId)
+        await trashItems([folderId], ownerId)
+        const write = await prepare()
+
+        await expect(write(folderId)).rejects.toMatchObject({
+          errorCode: 'ITEM_NOT_FOUND',
+          status: 404,
+        })
+        expect(await inside(folderId)).toBe(0)
+      })
+
+      it(`${writer} refuses a folder being trashed (trash first)`, async () => {
+        const folderId = await makeFolder(`${writer}-being-trashed`, rootId)
+        const write = await prepare()
+        const { release } = await pausedTrash(folderId)
+        const writing = write(folderId).then(
+          () => 'written',
+          (error) => error
+        )
+        await sleep(300)
+        await release()
+
+        expect(await writing).toMatchObject({ errorCode: 'ITEM_NOT_FOUND', status: 404 })
+        expect(await status(folderId)).toBe('trashed')
+        expect(await inside(folderId)).toBe(0)
+      })
+    }
+  })
+})
+
+/**
+ * A copy shares its original's bytes but is the copier's: they own it, with an
+ * owner grant, on their own drive, which pays for it. A folder copy takes only
+ * live contents, and its size and counts come from the triggers (item 67).
+ */
+describe('copyItem', () => {
+  async function makeFile(name: string, parentId: string, size: bigint, userId = ownerId, drive = driveId) {
+    const id = uid('Item')
+    await prisma.item.create({
+      data: {
+        id,
+        name,
+        type: 'file',
+        category: 'unknown',
+        status: 'normal',
+        ownerId: userId,
+        driveId: drive,
+        parentId,
+        size,
+        file: {
+          create: {
+            id: uid('File'),
+            bucket: 'stashly-test-folder-tree',
+            key: `copy-test/${id}`,
+            uploadPath: `copy-test/${name}`,
+          },
+        },
+      },
+    })
+    return id
+  }
+
+  const quotaOf = async (drive: string) => {
+    await flushItemSizes()
+    return (await prisma.quota.findFirstOrThrow({ where: { driveId: drive } })).used
+  }
+
+  it('copies a folder’s live contents for the copier, sharing the bytes and charging once', async () => {
+    const src = await makeFolder('copy-src', rootId)
+    const sub = await makeFolder('sub', src)
+    const a = await makeFile('a.txt', src, 100n)
+    await makeFile('b.txt', sub, 50n)
+    const gone = await makeFile('gone.txt', src, 7n)
+    await trashItems([gone], ownerId)
+    const dest = await makeFolder('copy-dest', rootId)
+    const before = await quotaOf(driveId)
+
+    const copy = await copyItem(ownerId, src, dest)
+    await flushItemSizes()
+
+    const tree = await prisma.item.findMany({
+      where: { OR: [{ parentId: copy.id }, { parent: { parentId: copy.id } }] },
+      select: { id: true, name: true, status: true, file: { select: { key: true } } },
+    })
+    expect(tree.map((i) => i.name).sort()).toEqual(['a.txt', 'b.txt', 'sub'])
+    expect(tree.every((i) => i.status === 'normal')).toBe(true)
+    const aKey = (await prisma.file.findUniqueOrThrow({ where: { itemId: a } })).key
+    expect(tree.find((i) => i.name === 'a.txt')?.file?.key).toBe(aKey)
+
+    const copied = await prisma.item.findUniqueOrThrow({
+      where: { id: copy.id },
+      select: { size: true, parentId: true, ownerId: true, folder: { select: { childCount: true } } },
+    })
+    expect(copied).toMatchObject({ size: 150n, parentId: dest, ownerId, folder: { childCount: 2 } })
+    expect(await quotaOf(driveId)).toBe(before + 150n)
+
+    const ids = [copy.id, ...tree.map((i) => i.id)]
+    expect(
+      await prisma.permission.count({
+        where: { itemId: { in: ids }, roles: 'owner', users: { some: { id: ownerId } } },
+      })
+    ).toBe(ids.length)
+  })
+
+  it('charges the bytes it copied while the source folder’s size still trails its uploads', async () => {
+    const src = await makeFolder('copy-trailing', rootId)
+    const dest = await makeFolder('copy-trailing-dest', rootId)
+    const before = await quotaOf(driveId)
+
+    const { copy, srcSize } = await withSizeRollupPaused(async () => {
+      // Uploads into a busy database are logged, so the folder's size stays 0.
+      for (const [name, size] of [['u1.txt', 100n], ['u2.txt', 50n]] as const) {
+        const id = await makeFile(name, src, size)
+        await prisma.item.update({ where: { id }, data: { uploadId: `up-${id}` } })
+      }
+      const u3 = uid('Item')
+      await prisma.item.create({
+        data: {
+          id: u3, name: 'u3.txt', type: 'file', category: 'unknown', status: 'normal',
+          ownerId, driveId, parentId: src, size: 25n, uploadId: `up-${u3}`,
+        },
+      })
+      const srcSize = (await prisma.item.findUniqueOrThrow({ where: { id: src } })).size
+      return { copy: await copyItem(ownerId, src, dest), srcSize }
+    })
+
+    expect(srcSize).toBe(150n) // u3 trails: logged, not yet in the folder's size
+    expect(await quotaOf(driveId)).toBe(before + 175n)
+    expect((await prisma.item.findUniqueOrThrow({ where: { id: copy.id } })).size).toBe(175n)
+  })
+
+  it('lets a user a file was shared with copy it into their own drive, and charges them', async () => {
+    const strangerDrive = uid('Drive')
+    await prisma.drive.create({ data: { id: strangerDrive, ownerId: strangerId } })
+    await prisma.quota.create({ data: { id: uid('Quota'), driveId: strangerDrive, total: 10n ** 9n } })
+    const strangerRoot = await prisma.item.create({
+      data: {
+        id: uid('Item'),
+        name: 'stranger root',
+        type: 'folder',
+        category: 'unknown',
+        ownerId: strangerId,
+        driveId: strangerDrive,
+      },
+    })
+    const shared = await makeFile('shared.txt', rootId, 30n)
+    await prisma.permission.create({
+      data: { id: uid('Permission'), roles: 'read', itemId: shared, users: { connect: { id: strangerId } } },
+    })
+    const [ownerBefore, strangerBefore] = [await quotaOf(driveId), await quotaOf(strangerDrive)]
+
+    const copy = await copyItem(strangerId, shared, strangerRoot.id)
+
+    expect(copy).toMatchObject({ ownerId: strangerId, driveId: strangerDrive, parentId: strangerRoot.id })
+    expect(await quotaOf(strangerDrive)).toBe(strangerBefore + 30n)
+    expect(await quotaOf(driveId)).toBe(ownerBefore)
+
+    // Read alone doesn't let them copy into the owner's folders.
+    await expect(copyItem(strangerId, shared, rootId)).rejects.toMatchObject({ status: 403 })
   })
 })
 
