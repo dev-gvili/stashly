@@ -1,5 +1,7 @@
 # Stashly
 
+[![CI](https://github.com/dev-gvili/stashly/actions/workflows/ci.yml/badge.svg)](https://github.com/dev-gvili/stashly/actions/workflows/ci.yml)
+
 A full-stack file management platform for personal stashes and collaborative workspaces, built with React Router 8 and Express 5.
 
 ## Features
