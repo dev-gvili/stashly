@@ -137,6 +137,40 @@ afterAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: [ownerId, strangerId] } } })
 })
 
+/**
+ * Two connections of their own for the race tests: `blocker` holds a lock so
+ * the order of two transactions is certain, `probe` watches who waits on it.
+ */
+let blocker: pg.Client
+let probe: pg.Client
+const url = () => process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL
+
+beforeAll(async () => {
+  blocker = new pg.Client({ connectionString: url() })
+  probe = new pg.Client({ connectionString: url() })
+  await Promise.all([blocker.connect(), probe.connect()])
+})
+afterAll(async () => {
+  await Promise.all([blocker.end(), probe.end()])
+})
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/** Waits until `count` statements matching `pattern` wait on the blocker. */
+async function untilBlocked(pattern: string, count = 1) {
+  const pid = (await blocker.query('SELECT pg_backend_pid() AS pid')).rows[0].pid
+  for (let i = 0; i < 400; i++) {
+    const { rows } = await probe.query(
+      `SELECT count(*)::int AS n FROM pg_stat_activity
+       WHERE $1 = ANY(pg_blocking_pids(pid)) AND query ILIKE $2`,
+      [pid, pattern]
+    )
+    if (rows[0].n >= count) return
+    await sleep(25)
+  }
+  throw new Error(`fewer than ${count} statements matching ${pattern} waited on the blocker`)
+}
+
 describe('resolveUploadFolders', () => {
   it('creates every missing folder once, with its Folder and View rows', async () => {
     const { folders, refused, createdFolderIds } = await resolveUploadFolders({
@@ -414,21 +448,6 @@ describe('createUploadedItem into a resolved folder', () => {
  *   made.
  */
 describe('an upload racing a trash of its folder', () => {
-  let blocker: pg.Client
-  let probe: pg.Client
-  const url = () => process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL
-
-  beforeAll(async () => {
-    blocker = new pg.Client({ connectionString: url() })
-    probe = new pg.Client({ connectionString: url() })
-    await Promise.all([blocker.connect(), probe.connect()])
-  })
-  afterAll(async () => {
-    await Promise.all([blocker.end(), probe.end()])
-  })
-
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
   /** Waits until another transaction holds a write lock on the folder's row. */
   async function untilWriteLocked(folderId: string) {
     for (let i = 0; i < 400; i++) {
@@ -444,21 +463,6 @@ describe('an upload racing a trash of its folder', () => {
       await sleep(25)
     }
     throw new Error('the trash never locked the folder')
-  }
-
-  /** Waits until a statement matching `pattern` waits on the blocker. */
-  async function untilBlocked(pattern: string) {
-    const pid = (await blocker.query('SELECT pg_backend_pid() AS pid')).rows[0].pid
-    for (let i = 0; i < 400; i++) {
-      const { rows } = await probe.query(
-        `SELECT count(*)::int AS n FROM pg_stat_activity
-         WHERE $1 = ANY(pg_blocking_pids(pid)) AND query ILIKE $2`,
-        [pid, pattern]
-      )
-      if (rows[0].n > 0) return
-      await sleep(25)
-    }
-    throw new Error(`nothing matching ${pattern} waited on the blocker`)
   }
 
   /** Starts a trash of `folderId` that stops, uncommitted, after its UPDATE. */
@@ -835,6 +839,71 @@ describe('copyItem', () => {
 
     // Read alone doesn't let them copy into the owner's folders.
     await expect(copyItem(strangerId, shared, rootId)).rejects.toMatchObject({ status: 403 })
+  })
+
+  /**
+   * A copy lists a folder's contents after it has made the folder's copy, so a
+   * copy into the folder itself, or anywhere under it, found its own copy among
+   * the contents and copied it again, until the transaction timed out.
+   */
+  it('refuses a copy into the folder itself or one of its subfolders, quickly, and writes nothing', async () => {
+    const src = await makeFolder('loop-src', rootId)
+    const sub = await makeFolder('loop-sub', src)
+    const deeper = await makeFolder('loop-deeper', sub)
+    await makeFile('loop.txt', sub, 10n)
+    const before = await quotaOf(driveId)
+
+    for (const into of [src, sub, deeper]) {
+      const started = performance.now()
+      await expect(copyItem(ownerId, src, into)).rejects.toMatchObject({ status: 400 })
+      expect(performance.now() - started).toBeLessThan(1_000)
+    }
+
+    expect(await prisma.item.count({ where: { name: 'loop-src' } })).toBe(1)
+    expect(await quotaOf(driveId)).toBe(before)
+  })
+
+  /**
+   * The free space was read, then charged later in the same transaction, so two
+   * copies that each fit alone could both pass on the same free space. The
+   * blocker holds both after their read and before their first write.
+   */
+  it('lets only one of two racing copies have free space only one fits in', async () => {
+    const tightId = uid('User')
+    await prisma.user.create({
+      data: { id: tightId, name: 'Tight quota', email: `tight-${tightId}@test.local`, emailVerified: true },
+    })
+    try {
+      const tightDrive = uid('Drive')
+      await prisma.drive.create({ data: { id: tightDrive, ownerId: tightId } })
+      await prisma.quota.create({ data: { id: uid('Quota'), driveId: tightDrive, total: 60n } })
+      const tightRoot = uid('Item')
+      await prisma.item.create({
+        data: {
+          id: tightRoot, name: 'tight root', type: 'folder', category: 'unknown',
+          ownerId: tightId, driveId: tightDrive,
+        },
+      })
+      const file = await makeFile('forty.txt', tightRoot, 40n, tightId, tightDrive)
+
+      await blocker.query('BEGIN')
+      await blocker.query('LOCK TABLE "Item" IN SHARE MODE')
+      const copies = [copyItem(tightId, file, tightRoot), copyItem(tightId, file, tightRoot)]
+      let results: PromiseSettledResult<unknown>[]
+      try {
+        await untilBlocked('%INSERT INTO%"Item"%', 2)
+      } finally {
+        await blocker.query('COMMIT')
+        results = await Promise.allSettled(copies)
+      }
+
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+      expect(results.find((r) => r.status === 'rejected')).toMatchObject({ reason: { status: 507 } })
+      expect(await quotaOf(tightDrive)).toBe(40n)
+    } finally {
+      await wipeTestUsers([tightId])
+      await prisma.user.deleteMany({ where: { id: tightId } })
+    }
   })
 })
 

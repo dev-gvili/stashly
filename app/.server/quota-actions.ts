@@ -607,19 +607,23 @@ export async function onItemsUploaded({
 }
 
 /**
- * Increase `used` quota after items are copied.
+ * Charge a copy to `used`, refusing it when it doesn't fit.
+ *
+ * The check is the UPDATE's own (`withinTotal`), so two copies can't both pass
+ * on the same free space.
  *
  * @param params - `userId`, `dataSize` (bytes added), optional transaction `client`.
+ * @throws `INSUFFICIENT_QUOTA` (507) when `used + dataSize` would exceed `total`; nothing is charged.
  *
  * @example
- * await onItemsCopied({ userId, dataSize: BigInt(item.size) })
+ * await onItemsCopied({ userId, dataSize: bytes, client: tx })
  */
 export async function onItemsCopied({
   userId,
   dataSize,
   client,
 }: UpdateAfterInput) {
-  return applyQuotaDelta({ userId, used: dataSize, client })
+  return applyQuotaDelta({ userId, used: dataSize, client, withinTotal: true })
 }
 
 /**

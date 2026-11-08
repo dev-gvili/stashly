@@ -41,7 +41,6 @@ import {
 } from '@/utils/api.errors'
 import { getPrefixForModel, toChunkArray, toObjectId, toObjectKey } from '@/utils/converters'
 import { buildItemFilters } from '@/utils/filters/item.filters'
-import { formatSize } from '@/utils/formaters'
 import { extractMarkdownHeadings, type MarkdownHeading } from '@/utils/markdown'
 import { parseFileExtension } from '@/utils/parsers'
 import { searchFactory } from '@/utils/search'
@@ -1189,6 +1188,25 @@ export async function copyItem(
     if (!(await hasItemPermission(userId, target.id, 'write', tx))) {
       throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You do not have write access to the target folder')
     }
+    // `recursiveCopy` lists a folder's contents after making its copy, so a copy
+    // into the folder or anywhere under it would find that copy among them and
+    // copy it again, until the transaction timed out. The walk is up from the
+    // destination: as many rows as it is deep.
+    if (source.type === 'folder') {
+      const [{ inside }] = await tx.$queryRaw<{ inside: boolean }[]>`
+        WITH RECURSIVE "Up" AS (
+          SELECT "id", "parentId" FROM "Item" WHERE "id" = ${target.id}
+          UNION ALL
+          SELECT i."id", i."parentId" FROM "Item" i JOIN "Up" u ON i."id" = u."parentId"
+        )
+        SELECT EXISTS (SELECT 1 FROM "Up" WHERE "id" = ${source.id}) AS "inside"`
+      if (inside) {
+        throw toRouteError(
+          StashlyErrorCode.INVALID_INPUT,
+          'A folder cannot be copied into itself or one of its subfolders.'
+        )
+      }
+    }
 
     if (source.workspaceId) {
       await requireMembership(userId, source.workspaceId, 'You do not have access to this item')
@@ -1217,17 +1235,9 @@ export async function copyItem(
     // The bytes of the files actually copied, never the source folder's `size`:
     // that is a trigger rollup, which trails its contents while the database is
     // busy (it charged 143 bytes for a 150-byte copy in a full test run).
-    // Refusing here rolls the whole copy back.
-    if (userQuota.remaining < bytes) {
-      throw toRouteError(
-        StashlyErrorCode.INSUFFICIENT_QUOTA,
-        `Insufficient quota to copy the item. you need ${formatSize(
-          'byte',
-          'unit',
-          bytes - userQuota.remaining
-        )} more space to continue.`
-      )
-    }
+    // The charge checks the free space in its own UPDATE, never against a figure
+    // read earlier, so two copies can't both pass on the same free space. A
+    // refusal (507) rolls the whole copy back.
     await onItemsCopied({ userId, dataSize: bytes, client: tx })
     return { copied: { ...copied, parentName: target.name }, source, bytes }
   })
