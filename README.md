@@ -9,7 +9,7 @@ Upload whole folders straight to object storage, find anything with hybrid searc
 ![Node 24](https://img.shields.io/badge/node-24-339933?logo=nodedotjs&logoColor=white)
 ![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![React Router 8](https://img.shields.io/badge/React_Router-8-CA4245?logo=reactrouter&logoColor=white)
-![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17_%2B_pgvector-4169E1?logo=postgresql&logoColor=white)
+![PostgreSQL 17 with pgvector](https://img.shields.io/badge/PostgreSQL_17-pgvector-4169E1?logo=postgresql&logoColor=white)
 
 [Features](#features) · [Architecture](#architecture) · [Getting started](#getting-started) · [Testing](#testing-and-quality) · [Deploy](#deployment) · [Docs](#documentation)
 
