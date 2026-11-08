@@ -176,6 +176,8 @@
 | 63 | ~~Two GET routes answer 500 on a `BigInt`~~ | 12 | Resolved 2026-11-01 (`bacb903`): both loaders parse their payload through an output schema (`collectionsLoaderOutput`, `subscriptionLoaderOutput`), as `/api/quota` does; 500 → 200, measured | — |
 | 64 | ~~"Folders first" lists files first~~ | 15 | Resolved 2026-11-01: `type asc` in both `getFolderContent` queries and in the page's inserts; a folder upload's card now lists first, measured | — |
 | 65 | ~~A `shouldRevalidate` guard that does nothing~~ | 10 | Resolved 2026-11-01: `some(...)` in the four routes that had the dead `forEach`; a theme submission re-ran the folder loader once, now 0 requests, measured | — |
+| 66 | ~~An upload into a folder being trashed stays live inside it~~ | 24 | Resolved 2026-11-07 (`bfbaa75`): uploads hold their folder `FOR KEY SHARE` and trash locks its folders `FOR UPDATE` before it walks; a live file in a trashed folder 6 of 6 runs → 0 of 6, trash +3–8 ms on 20,000 files (0.2–0.3%), measured | — |
+| 67 | **new** Creating, moving or copying into a trashed folder is accepted | 16 | `createFolder`, `moveItems` and `copyItem` never check the destination's status: read it `FOR KEY SHARE` where they write and answer 404 when trashed, with a red test per writer (trashed before and during the call) | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -248,6 +250,8 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 63 | ~~Two GET routes answer 500 on a `BigInt`~~ | Code | 2 | 2 | 3 | **12** (Medium) | 2 h | Resolved 1 Nov |
 | 64 | ~~"Folders first" lists files first~~ | Code | 2 | 1 | 1 | **15** (Low) | 1 h | Resolved 1 Nov |
 | 65 | ~~A `shouldRevalidate` guard that does nothing~~ | Code | 1 | 1 | 1 | **10** (Low) | 1 h | Resolved 1 Nov |
+| 66 | ~~An upload into a folder being trashed stays live inside it~~ | Code | 3 | 3 | 2 | **24** (Medium) | 1 day | Resolved 7 Nov |
+| 67 | Creating, moving or copying into a trashed folder is accepted | Code | 2 | 2 | 2 | **16** (Medium) | 1 day | New 7 Nov |
 
 ## Details
 
