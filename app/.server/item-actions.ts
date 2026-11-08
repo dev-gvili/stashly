@@ -357,6 +357,25 @@ export async function moveItems(
         }
       }
 
+      // A folder can go nowhere under itself: the move would close a loop that
+      // no walk up the tree ever leaves (item 77). The walk is up from the
+      // target, as many rows as it is deep, and only when a folder moves. UNION,
+      // not UNION ALL, so a loop already in the data ends the walk.
+      const movedFolders = items.filter((i) => i.type === 'folder').map((i) => i.id)
+      const aboveTarget = new Set(
+        movedFolders.length === 0
+          ? []
+          : (
+              await tx.$queryRaw<{ id: string }[]>`
+                WITH RECURSIVE "Up" AS (
+                  SELECT "id", "parentId" FROM "Item" WHERE "id" = ${targetFolderId}
+                  UNION
+                  SELECT i."id", i."parentId" FROM "Item" i JOIN "Up" u ON i."id" = u."parentId"
+                )
+                SELECT "id" FROM "Up" WHERE "id" IN (${Prisma.join(movedFolders)})`
+            ).map((r) => r.id)
+      )
+
       for (const item of items) {
         // A trashed item has no place to go but back: restore puts it there.
         if (item.status === 'trashed') {
@@ -389,7 +408,7 @@ export async function moveItems(
           )
         }
 
-        if (targetFolder.parentId === item.id) {
+        if (aboveTarget.has(item.id)) {
           throw new StashlyError(
             StashlyErrorCode.MOVE_ITEM_FAILED,
             'Cannot move a folder into its own subfolder'

@@ -715,6 +715,40 @@ describe('an upload racing a trash of its folder', () => {
  * owner grant, on their own drive, which pays for it. A folder copy takes only
  * live contents, and its size and counts come from the triggers (item 67).
  */
+describe('moveItems into its own subtree', () => {
+  // Empty folders: a moved folder with no bytes cascades nothing, so a cycle the
+  // old code made stays put until `finally` takes it apart again.
+  it.each([
+    ['its child', 1],
+    ['its grandchild', 2],
+    ['a folder five levels down', 5],
+  ])('refuses a move of a folder into %s and writes nothing', async (_label, depth) => {
+    const top = await makeFolder('move-top', rootId)
+    let target = top
+    for (let i = 0; i < depth; i++) target = await makeFolder(`level-${i + 1}`, target)
+
+    try {
+      await expect(moveItems([top], target, ownerId)).rejects.toMatchObject({
+        message: 'Cannot move a folder into its own subfolder',
+      })
+      const { parentId } = await prisma.item.findUniqueOrThrow({ where: { id: top } })
+      expect(parentId).toBe(rootId)
+    } finally {
+      await prisma.item.update({ where: { id: top }, data: { parentId: rootId } })
+    }
+  })
+
+  it('still moves a folder into a sibling’s subfolder', async () => {
+    const a = await makeFolder('move-a', rootId)
+    const b = await makeFolder('move-b', rootId)
+    const bChild = await makeFolder('move-b-child', b)
+
+    await moveItems([a], bChild, ownerId)
+    const { parentId } = await prisma.item.findUniqueOrThrow({ where: { id: a } })
+    expect(parentId).toBe(bChild)
+  })
+})
+
 describe('copyItem', () => {
   async function makeFile(name: string, parentId: string, size: bigint, userId = ownerId, drive = driveId) {
     const id = uid('Item')
