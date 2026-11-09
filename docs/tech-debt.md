@@ -7,7 +7,7 @@
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
 **Now (9 Nov):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1331 in 108 files), and the build. Green on `1de8462` (9 Nov). A second job runs the 8 Playwright specs against the dev server, a throwaway Postgres and real Tigris storage (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1337 in 108 files), and the build. Green on `1de8462` (9 Nov). A second job runs the 8 Playwright specs against the dev server, a throwaway Postgres and real Tigris storage (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors, analytics and logs:** Vinktar on server and browser since 10 Oct; product events, route timing and a structured logger since 31 Oct (item 4, resolved).
@@ -23,7 +23,9 @@
 
 **81 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 6 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62, 64 and 65 from item 45; 2 added 7 Nov: 66 from item 51's open list, 67 from item 66; 10 added 8 Nov: 68 from item 67, 69–76 from a review of `d3a241f..69f7da7`, 77 from fixing items 70 and 71; 4 added 9 Nov: 78–80 from the owner's report on the home page, 81 from a full-suite run) · categories: Code 46, Architecture 22, Infrastructure 4, Test 6, Documentation 2, Dependency 1
 
-**Status at 9 Nov 2026 (latest, items 78–81):** 62 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 11 new and open (19, 46, 57, 59, 68, 72–76, 81; 19, 46 and 57 deferred by the owner). Three bugs from the owner's report were found and resolved the same day. A dropped folder was filed flat into the destination, because the browser leaves `webkitRelativePath` empty for dropped files (78, `063e006`). A freed upload slot went to a file that already held one, so a large drop ran far below its 100-upload limit (79, `0fb542a`). Home suggestions listed fresh uploads (80, `c311f5d`). Item 81 is open: one rollup test timed out in a full local run and passes alone.
+**Status at 9 Nov 2026 (latest, items 73–76):** 66 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 7 new and open (19, 46, 57, 59, 68, 72, 81; 19, 46 and 57 deferred by the owner). Four review findings resolved in `1941759`. Trash's folder lock missed a folder made under one that moved into the tree during its first pass, because it compared counts; reproduced with held transactions (a create into it was accepted), and the passes now compare id lists, +2.5–3.3% on a 2,051-folder lock (73). Move and copy check `write` before saying a destination is in trash (74), a copy joins the destination folder's workspace (75), and the writer-first order is tested for create, move and copy (76). 1337/0 in 108 files.
+
+**Status at 9 Nov 2026 (items 78–81):** 62 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 11 new and open (19, 46, 57, 59, 68, 72–76, 81; 19, 46 and 57 deferred by the owner). Three bugs from the owner's report were found and resolved the same day. A dropped folder was filed flat into the destination, because the browser leaves `webkitRelativePath` empty for dropped files (78, `063e006`). A freed upload slot went to a file that already held one, so a large drop ran far below its 100-upload limit (79, `0fb542a`). Home suggestions listed fresh uploads (80, `c311f5d`). Item 81 is open: one rollup test timed out in a full local run and passes alone.
 
 **Status at 8 Nov 2026 (item 77):** 59 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 46, 57, 59, 68, 72–76; 19, 46 and 57 deferred by the owner). Item 77 resolved (`a917e36`): a move of a folder into its grandchild, or anywhere deeper, was accepted and closed a parent loop (reproduced at 2 and 5 levels); it is now refused, and the dev database held no such loop (0 of 720 folders). A folder move costs one more statement: +10.8% at p50 over all rounds of three alternated runs (9.56 → 10.59 ms), once per call whatever the number of files. Earlier the same day, items 70 and 71 (`f47fa34`), both in `copyItem`: a copy into its own subtree ran until the transaction expired, now 400 in under 1 s; two copies that each fit alone both passed on the same free space, now one is refused 507.
 
@@ -191,10 +193,10 @@
 | 70 | ~~A copy into its own subtree never finishes~~ | 20 | Resolved 2026-11-08 (`f47fa34`): `copyItem` walks up from the destination and answers 400 when it meets the source; timed out at 5 s → 400 in under 1 s for the folder, a child and a grandchild, nothing written, measured | — |
 | 71 | ~~Two copies can both pass on the same free space~~ | 20 | Resolved 2026-11-08 (`f47fa34`): the copy's charge checks the free space in its own UPDATE (`withinTotal`); two 40-byte copies against 60 bytes both charged → one refused 507, measured | — |
 | 72 | **new** Trash and a folder upload may lock folders in opposite orders | 12 | Not reproduced: `lockSubtreeFolders` locks in id order in one statement, `resolveFolderTree` top-down across statements; whether the two can deadlock depends on the plan. Reproduce with two held transactions before any change | — |
-| 73 | **new** Trash's folder lock stops on an equal count, not an equal set | 15 | Not reproduced: `lockSubtreeFolders` repeats until a pass finds as many folders as the last. Show whether a folder can leave and another arrive between passes; compare the id sets if so | — |
-| 74 | **new** Move and copy say a destination is in trash before checking access | 15 | `moveItems` and `copyItem` answer 404 for a destination in trash before the `write` check, so a caller without access learns its state; `createFolder` checks access first | — |
-| 75 | **new** A copy joins the source's workspace, not the destination's | 10 | `copyItem` takes `workspaceId` from the source (or the caller's argument), not from the folder it lands in; pre-existing | — |
-| 76 | **new** The trashed-destination tests cover only trash first | 15 | `createFolder`, `moveItems` and `copyItem` are tested with the trash first; add the writer-first order, as item 69 has for move | — |
+| 73 | ~~Trash's folder lock stops on an equal count, not an equal set~~ | 15 | Resolved 2026-11-09 (`1941759`): the passes compare sorted id lists; a create into a folder made under one that moved in during pass 1 was accepted → 404, reproduced with held transactions; lock +2.5–3.3% at p50 on 2,051 folders | — |
+| 74 | ~~Move and copy say a destination is in trash before checking access~~ | 15 | Resolved 2026-11-09 (`1941759`): `write` is checked first; a caller with no access got 404 for a folder in trash → 403, as for a live one; move/copy p50 unchanged within noise | — |
+| 75 | ~~A copy joins the source's workspace, not the destination's~~ | 10 | Resolved 2026-11-09 (`1941759`): the copy takes the destination folder's `workspaceId`; a workspace file copied into a personal folder kept the workspace → none | — |
+| 76 | ~~The trashed-destination tests cover only trash first~~ | 15 | Resolved 2026-11-09 (`1941759`): writer-first tests for `createFolder`, `moveItems` and `copyItem`; the trash waits for the writer and trashes what it wrote | — |
 | 77 | ~~A move may accept a folder's grandchild as its target~~ | 30 | Resolved 2026-11-08 (`a917e36`): `moveItems` walks up from the target once per call and refuses any moved folder on that path; a move into a grandchild or 5 levels down accepted (loop made) → refused, nothing written, measured | — |
 | 78 | ~~A dropped folder is filed flat into the destination~~ | 35 | Resolved 2026-11-09 (`063e006`): `withEntryPath` gives a dropped file its `entry.fullPath` as `webkitRelativePath`, so `addBatch` builds its folders; 3 unit tests; a real drop not checked in the browser | — |
 | 79 | ~~A freed upload slot goes to a file that already holds one~~ | 25 | Resolved 2026-11-09 (`0fb542a`): the refill skips files already in `queues.active`; the new test fails on the old filter; files in flight during a real drop not measured | — |
@@ -279,10 +281,10 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 70 | ~~A copy into its own subtree never finishes~~ | Code | 2 | 2 | 1 | **20** (Medium) | 1 h | Resolved 8 Nov |
 | 71 | ~~Two copies can both pass on the same free space~~ | Code | 2 | 2 | 1 | **20** (Medium) | 1 h | Resolved 8 Nov |
 | 72 | Trash and a folder upload may lock folders in opposite orders | Code | 2 | 2 | 3 | **12** (Low) | 0.5 day | New 8 Nov, not reproduced |
-| 73 | Trash's folder lock stops on an equal count, not an equal set | Code | 1 | 2 | 1 | **15** (Low) | 1 h | New 8 Nov, not reproduced |
-| 74 | Move and copy say a destination is in trash before checking access | Code | 1 | 2 | 1 | **15** (Low) | 1 h | New 8 Nov |
-| 75 | A copy joins the source's workspace, not the destination's | Code | 1 | 1 | 1 | **10** (Low) | 1 h | New 8 Nov |
-| 76 | The trashed-destination tests cover only trash first | Test | 1 | 2 | 1 | **15** (Low) | 2 h | New 8 Nov |
+| 73 | ~~Trash's folder lock stops on an equal count, not an equal set~~ | Code | 1 | 2 | 1 | **15** (Low) | 1 h | Resolved 9 Nov |
+| 74 | ~~Move and copy say a destination is in trash before checking access~~ | Code | 1 | 2 | 1 | **15** (Low) | 1 h | Resolved 9 Nov |
+| 75 | ~~A copy joins the source's workspace, not the destination's~~ | Code | 1 | 1 | 1 | **10** (Low) | 1 h | Resolved 9 Nov |
+| 76 | ~~The trashed-destination tests cover only trash first~~ | Test | 1 | 2 | 1 | **15** (Low) | 2 h | Resolved 9 Nov |
 | 77 | ~~A move may accept a folder's grandchild as its target~~ | Code | 3 | 3 | 1 | **30** (High) | 1 h | Resolved 8 Nov |
 | 78 | ~~A dropped folder is filed flat into the destination~~ | Code | 4 | 3 | 1 | **35** (High) | 1 h | Resolved 9 Nov |
 | 79 | ~~A freed upload slot goes to a file that already holds one~~ | Code | 3 | 2 | 1 | **25** (High) | 1 h | Resolved 9 Nov |
@@ -1381,7 +1383,9 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 
 - **Evidence (read from the code, not reproduced):** `lockSubtreeFolders` repeats until a pass finds as many folders as the one before. If one folder left the subtree and another arrived between passes, the counts would match while one folder stays unlocked. A writer into a locked folder waits, which may make this impossible; that hasn't been shown.
 - **Fix:** show whether it can happen; if it can, compare the id sets.
-- **Status 2026-11-08: open.**
+- **Shown:** it can. A move takes one folder out of the tree and puts another in, uncommitted, while a third transaction holds an uncommitted folder under the arriving one. Pass 1 waits for the move and counts the folder leaving (2). Pass 2 sees the arriving folder but not the uncommitted one under it, waits for that insert, and counts 2 again, so the lock stopped with the new folder unheld. A `createFolder` into it during the paused trash was accepted and stayed live inside the trashed tree. Test: `upload-folder-tree.test.ts` "holds a folder made under one that moved in while the lock looked (item 73)", red on the old code (`'written'`).
+- **Fix made:** each pass returns its folders' ids, sorted, joined into one string, and the lock stops only when a pass returns the same list. Cost on a 2,051-folder / 20,000-file tree in a rolled-back transaction, 15 alternated runs, twice: p50 79.03 → 80.98 ms and 78.18 → 80.78 ms (+2.5%, +3.3%), 2 passes both ways. An `md5` of the list measured +1.8% / +0.8%; the plain list was kept because it can't stop early on a collision (`.claude/evidence/lock-set/`, local).
+- **Status 2026-11-09: resolved** (`1941759`).
 
 ### 74. Move and copy say a destination is in trash before checking access
 
@@ -1389,7 +1393,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 
 - **Evidence:** `moveItems` and `copyItem` call `lockDestinationFolder`, which answers 404 for a folder in trash, before `hasItemPermission(..., 'write')`. A caller without access to a folder can tell whether it is in trash. `createFolder` checks access first.
 - **Fix:** check `write` on the destination before `lockDestinationFolder` refuses it, as `createFolder` does.
-- **Status 2026-11-08: open.**
+- **Status 2026-11-09: resolved** (`1941759`). A user with read on a file and no access to the destination got 404 for a folder in trash on the old code; now 403 for a trashed and a live folder alike, for move and copy. Same statements, reordered: move p50 6.03 → 6.07 and 6.19 → 6.13 ms, copy 8.11 → 7.93 and 8.10 → 8.07 ms, two alternated runs, inside the ±0.3 ms A/A noise.
 
 ### 75. A copy joins the source's workspace, not the destination's
 
@@ -1397,7 +1401,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 
 - **Evidence:** `copyItem` sets the copy's `workspaceId` from the caller's argument or the source item, never from the folder it lands in, so a copy from a workspace into a personal folder keeps the workspace. Pre-existing, before item 67.
 - **Fix:** take `workspaceId` from the destination folder.
-- **Status 2026-11-08: open.**
+- **Status 2026-11-09: resolved** (`1941759`). `lockDestinationFolder` returns the folder's `workspaceId` and the copy takes it; membership is checked on that workspace when it differs from the source's. The unused `targetWorkspaceId` argument is gone (no route calls `copyItem`). Old code: a workspace file copied into a personal folder kept the workspace id; now none, and a copy into a workspace folder joins that workspace. The `item_copied` event's `cross_workspace` is now "the copy's workspace differs from the source's".
 
 ### 76. The trashed-destination tests cover only trash first
 
@@ -1405,7 +1409,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 
 - **Evidence:** "a create, move or copy into a folder in trash" (`upload-folder-tree.test.ts`) holds the trash and starts the writer. The other order, where the writer holds the folder and the trash waits, is tested only for a move out of a folder (item 69).
 - **Fix:** add the writer-first case for `createFolder`, `moveItems` and `copyItem`.
-- **Status 2026-11-08: open.**
+- **Status 2026-11-09: resolved** (`1941759`). Each writer holds its folder and waits in its child-count trigger (`Folder` held `SHARE`); the trash waits for it (each test takes about 370 ms with a 300 ms hold), then trashes what it wrote. Coverage only: green on the old code.
 
 ### 77. A move may accept a folder's grandchild as its target
 
@@ -1565,6 +1569,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-11-09 | `c311f5d` | 80 | Suggested items need an open, an edit more than 5 s after creation, or a live grant from another user; a fresh upload no longer shows. Dev DB: 0 fresh uploads in 2 users' results, 27–40 ms warm. |
 | 2026-11-09 | `0fb542a` | 79, 13 | The slot refill skips files already in `queues.active`, so a freed slot starts a waiting file. New test fails on the old filter. |
 | 2026-11-09 | `063e006`, `6969de5` | 78, 13 | Dropped folders keep their paths (`withEntryPath`), so `addBatch` builds their folders; 3 unit tests; skill corrected. CI green on `6969de5`, 1330/1331 locally in 108 files (item 81). |
+| 2026-11-09 | `1941759` | 73, 74, 75, 76, 13 | Trash's folder lock compares id lists, not counts (a create into an unheld folder accepted → 404; +2.5–3.3%). Move and copy check `write` before the trash check (404 → 403 for no access). A copy takes the destination folder's workspace. Writer-first tests for create, move and copy. 6 new tests; 1337/0 in 108 files. |
 | 2026-11-01 | `7e2e9c1`, `36eff9f` | 22, 17 | A failed onboarding runs again on the next session read: each step finds before it creates, a new bucket is written to the row at once, a complete row ends in `alreadyOnboarded`. Red 4 of 18 → 20 of 20; 1252/0 in 103 files. Workspace uploads moved to item 17. |
 
 ## Phased remediation plan
