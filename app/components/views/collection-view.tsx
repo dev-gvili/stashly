@@ -224,6 +224,7 @@ export function CollectionView({
           size: i.size,
           createdAt: i.createdAt,
           parentId: i.parentId ?? null,
+          file: i.file ?? null,
           thumbnailUrl:
             i.thumbnails?.find((t) => t.url && !t.url.startsWith('#'))?.url ??
             null,
@@ -314,11 +315,10 @@ export function CollectionView({
     setParams((p) => (open ? p.set('add', '1') : p.delete('add')))
   }
 
-  // New files should be visible right away: clear the filters, newest first.
+  // New files should be visible right away: clear the filters.
   function handleAdded() {
     setKind('all')
     setQuery('')
-    setSort(1)
   }
 
   function removeOne(id: string) {

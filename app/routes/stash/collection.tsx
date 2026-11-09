@@ -8,11 +8,12 @@ import { paginateItems } from '@/services/item-actions'
 import { CollectionView } from '@/components/views/collection-view'
 import {
   redirect,
+  useNavigation,
   useParams,
+  useSearchParams,
   type ShouldRevalidateFunction,
 } from 'react-router'
 import type { Route } from './+types/collection'
-import { usePagination } from '@/hooks/usePagination'
 import { useEffect } from 'react'
 import { parseSearchParams } from '@/utils/parsers'
 import { parseOrRespond } from '@/utils/api.errors'
@@ -24,6 +25,11 @@ import {
 import type { Prisma } from '@/prisma/client'
 
 export { ErrorBoundary } from '@/components/error-boundary'
+
+/** Rows the collection's list adds per "load more" (the schema's default `take`). */
+const COLLECTION_PAGE = 50
+/** The add-files picker's first page. */
+const PICKER_PAGE = 50
 
 export async function loader({ request, params, context }: Route.LoaderArgs) {
   const session = context.get(sessionContext)
@@ -53,9 +59,10 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
       parsedParams.orderBy
     ),
     // Fetch the user's items to populate the add-to-collection picker
+    // The picker's first page; it loads more from /api/collections. Not the
+    // page's `take`, which grows as the collection's list loads more.
     paginateItems({
-      limit: parsedParams.take,
-      cursor: parsedParams.cursor,
+      limit: PICKER_PAGE,
       where: {
         ...filters,
         ownerId: session.user.id,
@@ -66,6 +73,9 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
       },
       orderBy: { createdAt: 'desc' },
       include: {
+        // The tile's thumbnail check reads `file.mimeType` (an image is only
+        // known as one by its mime type), as folder listings send it.
+        file: true,
         thumbnails: {
           select: {
             height: true,
@@ -89,6 +99,7 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
     category: item.category,
     size: item.size,
     createdAt: item.createdAt,
+    file: item.file,
     thumbnailUrl:
       item.thumbnails?.find((t) => t.url && !t.url.startsWith('#'))?.url ??
       null,
@@ -160,17 +171,31 @@ export default function Collection({
   loaderData,
   params,
 }: Route.ComponentProps) {
-  const { items, hasMore, isLoading, loadMore } =
-    usePagination<Route.ComponentProps['loaderData']['items'][number]>(50)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const navigation = useNavigation()
+
+  // The list is the loader's rows, not a copy: "load more" raises `?take=`, so
+  // the loader returns every row on screen, and the reload after an add or
+  // remove redraws the list with them.
+  function loadMore() {
+    const take = Number(searchParams.get('take') ?? COLLECTION_PAGE)
+    setSearchParams(
+      (p) => {
+        p.set('take', String(take + COLLECTION_PAGE))
+        return p
+      },
+      { preventScrollReset: true, replace: true }
+    )
+  }
 
   return (
     <CollectionView
       collection={loaderData.collection}
-      items={items}
+      items={loaderData.items}
       availableItems={loaderData.availableItems}
       existingItemIds={loaderData.existingItemIds}
-      hasMore={hasMore}
-      isLoading={isLoading}
+      hasMore={loaderData.hasMore}
+      isLoading={navigation.state !== 'idle'}
       loadMore={loadMore}
       collectionsHref={`/${params.me}/stash/collections`}
     />

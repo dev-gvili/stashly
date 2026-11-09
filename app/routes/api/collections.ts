@@ -25,7 +25,7 @@ import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { parseOrRespond, rethrowAsResponse } from '@/utils/api.errors'
 import { toSearchSchema } from '@/utils'
 import type { Prisma } from '@/prisma/client'
-import { data, redirect } from 'react-router'
+import { data } from 'react-router'
 import type { Route } from './+types/collections'
 
 export const middleware: Route.MiddlewareFunction[] = [authMiddleware]
@@ -63,6 +63,9 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
     },
     orderBy: { createdAt: 'desc' },
     include: {
+      // The tile's thumbnail check reads `file.mimeType` (an image is only
+      // known as one by its mime type), as folder listings send it.
+      file: true,
       thumbnails: {
         select: {
           height: true,
@@ -85,6 +88,7 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
     category: item.category,
     size: item.size,
     createdAt: item.createdAt,
+    file: item.file,
     thumbnailUrl:
       item.thumbnails?.find((t) => t.url && !t.url.startsWith('#'))?.url ??
       null,
@@ -107,8 +111,6 @@ export async function action({ request, params, context }: Route.ActionArgs) {
     schema: collectionsApiRouteInput,
   }).catch(rethrowAsResponse)
 
-  let referer = request.headers.get('referer')
-  let url = new URL(referer || request.url)
   if (formData.intent === 'create_collection') {
     const driveId = formData.driveId ?? (session.user as any).driveId
     const { workspaceId, ...rest } = formData
@@ -122,56 +124,56 @@ export async function action({ request, params, context }: Route.ActionArgs) {
     } else {
       await createCollection({ ...rest, driveId, ownerId: session.user.id })
     }
-    return redirect(`${url.pathname}${url.search}`)
+    return data({ ok: true })
   }
 
   if (formData.intent === 'rename_collection') {
     let { intent, ...rest } = formData
     let res = await renameCollection({ ...rest, userId: session.user.id })
     console.log('rename', res)
-    return redirect(`${url.pathname}${url.search}`)
+    return data({ ok: true })
   }
 
   if (formData.intent === 'trash_collection') {
     let { intent, ...rest } = formData
     await trashCollection({ ...rest, userId: session.user.id })
-    return redirect(`${url.pathname}${url.search}`)
+    return data({ ok: true })
   }
 
   if (formData.intent === 'clear_collection') {
     let { intent, ...rest } = formData
     await clearCollection({ ...rest, userId: session.user.id })
-    return redirect(`${url.pathname}${url.search}`)
+    return data({ ok: true })
   }
 
   if (formData.intent === 'delete_collection') {
     let { intent, ...rest } = formData
     await deleteCollection({ ...rest, userId: session.user.id })
-    return redirect(`${url.pathname}${url.search}`)
+    return data({ ok: true })
   }
 
   if (formData.intent === 'restore_collection') {
     let { intent, ...rest } = formData
     await restoreCollection({ ...rest, userId: session.user.id })
-    return redirect(`${url.pathname}${url.search}`)
+    return data({ ok: true })
   }
 
   if (formData.intent === 'add_items_to_collection') {
     let { intent, ...rest } = formData
     await addItemsToCollection({ ...rest, userId: session.user.id })
-    return redirect(`${url.pathname}${url.search}`, { status: 303 })
+    return data({ ok: true })
   }
 
   if (formData.intent === 'remove_item_from_collection') {
     let { intent, ...rest } = formData
     await removeItemFromCollection({ ...rest, userId: session.user.id })
-    return redirect(`${url.pathname}${url.search}`)
+    return data({ ok: true })
   }
 
   if (formData.intent === 'remove_items_from_collection') {
     let { intent, ...rest } = formData
     await removeItemsFromCollection({ ...rest, userId: session.user.id })
-    return redirect(`${url.pathname}${url.search}`)
+    return data({ ok: true })
   }
 
   return data({ error: 'Invalid intent' }, { status: 400 })
