@@ -21,6 +21,7 @@ import {
   searchFolders,
   trashItem,
   trashItems,
+  getDownloadUrls,
 } from '@/services/item-actions'
 import {
   appendSearchPage,
@@ -193,6 +194,17 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         const err = toErrorInfo(e)
         return data(
           { success: false, error: err.message ?? 'Trash failed' },
+          { status: err.status ?? 500 }
+        )
+      }
+    case 'download_urls':
+      try {
+        const files = await getDownloadUrls(user.id, parsedData.selectedItems)
+        return data({ files })
+      } catch (e) {
+        const err = toErrorInfo(e)
+        return data(
+          { files: [], error: err.message ?? 'Download failed' },
           { status: err.status ?? 500 }
         )
       }

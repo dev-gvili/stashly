@@ -209,6 +209,11 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
     targetFolderId: z.string(),
     currentParentId: z.string().default(''),
   }),
+  // Signed GET URLs for the selection toolbar's Download (one file, or a zip).
+  z.object({
+    intent: z.literal('download_urls'),
+    selectedItems: toZodArraySchema(z.string()),
+  }),
   createUploadItemFields.extend({
     intent: z.literal('create_upload_item'),
   }),

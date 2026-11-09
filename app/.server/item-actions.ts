@@ -20,7 +20,7 @@ import {
   refuseUploadCharge,
   settlePendingCharges,
 } from '@/services/quota-actions'
-import { deleteObjects, getObjectText } from '@/services/s3'
+import { deleteObjects, getObjectText, getPresignedUrl } from '@/services/s3'
 import { ensureSizeRollup } from '@/services/size-rollup'
 import {
   signThumbnails,
@@ -4472,4 +4472,60 @@ export async function loadTextDocument(
   key: string
 ): Promise<{ text: string }> {
   return { text: await getObjectText(bucket, key) }
+}
+
+/** How long a download URL stays valid: long enough to start a zip of many files. */
+const DOWNLOAD_URL_TTL_SECONDS = 600
+
+/**
+ * Signs a short-lived GET URL for each requested file so the browser can
+ * download it (one file directly, several into a zip).
+ *
+ * One query, filtered by read access: an id the user can't read, a folder, or
+ * a trashed item is not returned, and the whole request is refused — a
+ * partial list would silently drop files from the zip.
+ *
+ * @param userId - The acting user.
+ * @param itemIds - Files to download, in the order the caller wants them.
+ * @throws {StashlyError} NOT_FOUND when any id is missing, unreadable or not a file.
+ *
+ * @example
+ * const files = await getDownloadUrls(session.user.id, ['itm_a', 'itm_b'])
+ * // → [{ id: 'itm_a', name: 'a.png', url: 'https://…X-Amz-Signature=…' }, …]
+ */
+export async function getDownloadUrls(
+  userId: string,
+  itemIds: string[]
+): Promise<{ id: string; name: string; url: string }[]> {
+  const ids = [...new Set(itemIds)]
+  if (ids.length === 0) {
+    throw toRouteError(StashlyErrorCode.INVALID_INPUT, 'No files to download')
+  }
+  const rows = await prisma.item.findMany({
+    where: {
+      id: { in: ids },
+      type: 'file',
+      status: { not: 'trashed' },
+      ...itemAccessWhere(userId, 'read'),
+    },
+    select: { id: true, name: true, file: { select: { bucket: true, key: true } } },
+  })
+  const byId = new Map(rows.map((row) => [row.id, row]))
+  const missing = ids.filter((id) => !byId.get(id)?.file)
+  if (missing.length > 0) {
+    throw toRouteError(StashlyErrorCode.NOT_FOUND, 'Some files are unavailable')
+  }
+  return Promise.all(
+    ids.map(async (id) => {
+      const row = byId.get(id)!
+      const url = await getPresignedUrl(
+        row.file!.bucket,
+        'get',
+        row.file!.key,
+        DOWNLOAD_URL_TTL_SECONDS,
+        { responseCacheControl: 'no-store' }
+      )
+      return { id, name: row.name, url }
+    })
+  )
 }
