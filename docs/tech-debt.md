@@ -6,8 +6,8 @@
 
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
-**Now (8 Nov):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1309 in 105 files), and the build. Green on `f47fa34` (8 Nov). A second job runs the 8 Playwright specs against the dev server, a throwaway Postgres and real Tigris storage (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+**Now (9 Nov):** the safety net is mostly in place.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1331 in 108 files), and the build. Green on `1de8462` (9 Nov). A second job runs the 8 Playwright specs against the dev server, a throwaway Postgres and real Tigris storage (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
 - **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors, analytics and logs:** Vinktar on server and browser since 10 Oct; product events, route timing and a structured logger since 31 Oct (item 4, resolved).
@@ -21,9 +21,11 @@
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**77 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 6 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62, 64 and 65 from item 45; 2 added 7 Nov: 66 from item 51's open list, 67 from item 66; 10 added 8 Nov: 68 from item 67, 69–76 from a review of `d3a241f..69f7da7`, 77 from fixing items 70 and 71) · categories: Code 43, Architecture 22, Infrastructure 4, Test 5, Documentation 2, Dependency 1
+**81 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 6 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62, 64 and 65 from item 45; 2 added 7 Nov: 66 from item 51's open list, 67 from item 66; 10 added 8 Nov: 68 from item 67, 69–76 from a review of `d3a241f..69f7da7`, 77 from fixing items 70 and 71; 4 added 9 Nov: 78–80 from the owner's report on the home page, 81 from a full-suite run) · categories: Code 46, Architecture 22, Infrastructure 4, Test 6, Documentation 2, Dependency 1
 
-**Status at 8 Nov 2026 (latest, item 77):** 59 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 46, 57, 59, 68, 72–76; 19, 46 and 57 deferred by the owner). Item 77 resolved (`a917e36`): a move of a folder into its grandchild, or anywhere deeper, was accepted and closed a parent loop (reproduced at 2 and 5 levels); it is now refused, and the dev database held no such loop (0 of 720 folders). A folder move costs one more statement: +10.8% at p50 over all rounds of three alternated runs (9.56 → 10.59 ms), once per call whatever the number of files. Earlier the same day, items 70 and 71 (`f47fa34`), both in `copyItem`: a copy into its own subtree ran until the transaction expired, now 400 in under 1 s; two copies that each fit alone both passed on the same free space, now one is refused 507.
+**Status at 9 Nov 2026 (latest, items 78–81):** 62 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 11 new and open (19, 46, 57, 59, 68, 72–76, 81; 19, 46 and 57 deferred by the owner). Three bugs from the owner's report were found and resolved the same day. A dropped folder was filed flat into the destination, because the browser leaves `webkitRelativePath` empty for dropped files (78, `063e006`). A freed upload slot went to a file that already held one, so a large drop ran far below its 100-upload limit (79, `0fb542a`). Home suggestions listed fresh uploads (80, `c311f5d`). Item 81 is open: one rollup test timed out in a full local run and passes alone.
+
+**Status at 8 Nov 2026 (item 77):** 59 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 10 new and open (19, 46, 57, 59, 68, 72–76; 19, 46 and 57 deferred by the owner). Item 77 resolved (`a917e36`): a move of a folder into its grandchild, or anywhere deeper, was accepted and closed a parent loop (reproduced at 2 and 5 levels); it is now refused, and the dev database held no such loop (0 of 720 folders). A folder move costs one more statement: +10.8% at p50 over all rounds of three alternated runs (9.56 → 10.59 ms), once per call whatever the number of files. Earlier the same day, items 70 and 71 (`f47fa34`), both in `copyItem`: a copy into its own subtree ran until the transaction expired, now 400 in under 1 s; two copies that each fit alone both passed on the same free space, now one is refused 507.
 
 **Status at 8 Nov 2026 (item 69):** 56 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 5 new and open (19, 46, 57, 59, 68; 19, 46 and 57 deferred by the owner). Item 69, found and resolved the same day: item 67 locked a move's destination but not the folder its items leave, so a move racing a trash could put a trashed file in a live folder with no Trash entry (2 of 2 runs), or deadlock with it (1 of 1). A move now holds those folders too, in the destination's own statement, and refuses a trashed item; a move costs no more than before item 69 (p50 7.51 ms, against 7.86 ms in the same session).
 
@@ -1406,6 +1408,38 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Measured:** the three depths (1, 2, 5) are refused and the folder keeps its parent; a move into a sibling's subfolder still works. Cost on the idle dev DB, a folder holding one 10-byte file moved between two siblings 10 levels deep, 5 rounds × 100 moves, `28d603f` and the fix alternated three times: median round p50 8.55 / 10.32 / 9.65 ms before, 9.48 / 11.28 / 9.83 ms after (+10.9%, +9.3%, +1.9%; mean of all 15 rounds 9.56 → 10.59 ms, +10.8%). The walk itself takes 1.05–1.68 ms of server time from a folder 200+ levels deep; the rest is a round trip. One walk per call, so a move of 100,000 files in one call pays it once (`.claude/evidence/move-into-subtree/`, local).
 - **Status 2026-11-08: resolved** (`a917e36`). Not covered (read from the code, not reproduced): two moves that cross at the same moment, A into a folder under B and B into a folder under A, each walk a tree the other hasn't changed yet. The row locks they take (`FOR KEY SHARE`) don't conflict with the other's parent update, so both could commit and make a loop.
 
+### 78. A dropped folder is filed flat into the destination
+
+*Code debt · Impact 4 · Risk 3 · Effort 1 → **35** · est. 1 h · source: owner's report, 9 Nov*
+
+- **Evidence:** dragging the `app` folder onto a drop zone created every file directly under the stash root and no folders. `collectFiles` (`useUpload.ts`) reads dropped files with `FileSystemFileEntry.file()`, and a `File` made that way has an empty `webkitRelativePath`: the browser fills it only for `<input webkitdirectory>`. The path is on `entry.fullPath`. `addBatch` builds the folder tree from `webkitRelativePath`, so it found no folders. The `stashly-upload-xstate` skill said the gap was closed. That held for the folder picker, not for drops.
+- **Fix:** `withEntryPath(file, entry.fullPath)` gives a dropped file in a folder its `fullPath` as `webkitRelativePath`. A loose file, or one that already has a path, is left as it is.
+- **Status 2026-11-09: resolved** (`063e006`; skill corrected in `6969de5`). 3 unit tests on `withEntryPath`. Not verified: a real folder drop in the browser.
+
+### 79. A freed upload slot goes to a file that already holds one
+
+*Code debt · Impact 3 · Risk 2 · Effort 1 → **25** · est. 1 h · source: owner's report, 9 Nov*
+
+- **Evidence:** after dropping the `app` folder, the upload panel showed about 10 uploads running, against a limit of 100 (item 38). A file stays `pending` until its multipart create returns, but it already sits in `queues.active`. `uploadPendingFiles` picked pending files in the order they were added, so it took those first, `upload.start` refused them as already active, and the freed slot went unused. Each completion could lose a slot, so the active count fell well under the limit as a large batch went on.
+- **Fix:** the refill skips files already in `queues.active`.
+- **Status 2026-11-09: resolved** (`0fb542a`). `upload-concurrency-limit.test.ts` "a freed slot" fails on the old filter and passes on the fix: a limit of 2, one file whose create fails, one still creating, one waiting; the waiting file starts. Not measured: files in flight during a real large drop.
+
+### 80. Home suggestions list files that were only just uploaded
+
+*Code debt · Impact 2 · Risk 2 · Effort 2 → **16** · est. 2 h · source: owner's report, 9 Nov*
+
+- **Evidence:** `getSuggestedItems` (`item-actions.ts`), home's only caller, listed fresh uploads. An upload stamps `createdAt`, `updatedAt` and the owner's own `Permission` row at once, so every new file looked recently edited and recently shared.
+- **Fix:** an owned item needs an `openedAt`, or an `updatedAt` more than 5 s after `createdAt` (a rename, move or restore counts as an edit). A shared item comes from a live grant on someone else's item, checked with `itemAccessSql`. The owner's own upload grant no longer counts. Items are ordered by the latest of opened, edited and shared.
+- **Status 2026-11-09: resolved** (`c311f5d`). Dev DB, 2 users: every result was an opened file, with no fresh uploads. 27–40 ms warm for the larger user (1,668 items). Open question for the owner: whether edits should count at all, or only opens and shares.
+
+### 81. The rollup start test can time out in a full parallel run
+
+*Test debt · Impact 1 · Risk 2 · Effort 2 → **12** · est. 2 h · source: full-suite run, 9 Nov*
+
+- **Evidence:** `size-rollup.test.ts` "loading the server module starts the rollup loop" failed at its 5 s timeout (5,047 ms) in one full local run (1330/1331 in 108 files). The same file passed alone in 361 ms, and CI passed on `6969de5` and `1de8462`. The likely cause is importing the server module while the other files load the CPU, but that hasn't been measured.
+- **Fix:** time the import under a full run first. Then either give that test a longer timeout, with the measured reason, or make the import cheaper. Don't skip or exclude it.
+- **Status 2026-11-09: open.**
+
 ## Changes since the audit
 
 These commits touched a register item, oldest first. Commits that don't touch any register item are left out, such as page size, the rename dialog, the search `ZodError`, and the Vite typegen watch.
@@ -1520,6 +1554,9 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-11-08 | `5219936` | 69 | The source-folder lock moved into `lockDestinationFolder`'s statement: back to two statements per move; p50 8.60 → 7.51 ms (`69f7da7` 7.86 in the same session). 1303/0. |
 | 2026-11-08 | `f47fa34` | 70, 71, 13 | `copyItem` refuses a destination inside the folder it copies (timed out at 5 s → 400 in under 1 s) and charges in one guarded UPDATE (two racing copies both charged against the same free space → one refused 507). Copy p50 +4% in two of three paired runs. 2 new tests; 1305/0 in 105 files. Items 72–77 registered. |
 | 2026-11-08 | `a917e36` | 77, 13 | `moveItems` refuses a move of a folder anywhere under itself, not only into its direct child (grandchild and 5-level moves accepted → refused, 4 new tests); one ancestor walk per folder move, +10.8% at p50. |
+| 2026-11-09 | `c311f5d` | 80 | Suggested items need an open, an edit more than 5 s after creation, or a live grant from another user; a fresh upload no longer shows. Dev DB: 0 fresh uploads in 2 users' results, 27–40 ms warm. |
+| 2026-11-09 | `0fb542a` | 79, 13 | The slot refill skips files already in `queues.active`, so a freed slot starts a waiting file. New test fails on the old filter. |
+| 2026-11-09 | `063e006`, `6969de5` | 78, 13 | Dropped folders keep their paths (`withEntryPath`), so `addBatch` builds their folders; 3 unit tests; skill corrected. CI green on `6969de5`, 1330/1331 locally in 108 files (item 81). |
 | 2026-11-01 | `7e2e9c1`, `36eff9f` | 22, 17 | A failed onboarding runs again on the next session read: each step finds before it creates, a new bucket is written to the row at once, a complete row ends in `alreadyOnboarded`. Red 4 of 18 → 20 of 20; 1252/0 in 103 files. Workspace uploads moved to item 17. |
 
 ## Phased remediation plan
