@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## UI Verification
 
-Applies to UI redesigns, new UI, and big UI updates (small tweaks follow [Frontend Verification](#frontend-verification) as usual). Before committing or pushing such a change, open it in the browser via chrome-devtools MCP and check it in both light and dark mode. Do not report a UI change as done, or push it, until it has been seen rendering correctly. If browser verification is blocked (sign-in, pane issues), say so explicitly and do not push. This gates [Git Workflow](#git-workflow)'s "commit and push without asking" for UI changes; [Frontend Verification](#frontend-verification) and [Verification & Commits](#verification--commits) say how to verify.
+Applies to UI redesigns, new UI, and big UI updates (small tweaks follow [Frontend Verification](#frontend-verification) as usual). Before editing anything for such a change, list (1) the components, utilities, hooks and helpers we can reuse, (2) missing backend/data dependencies, and (3) a phased plan with one commit per phase; mark anything out of scope, then wait for the owner's approval. Before committing or pushing such a change, open it in the browser via chrome-devtools MCP and check it in both light and dark mode. Do not report a UI change as done, or push it, until it has been seen rendering correctly. If browser verification is blocked (sign-in, pane issues), say so explicitly and do not push. This gates [Git Workflow](#git-workflow)'s "commit and push without asking" for UI changes; [Frontend Verification](#frontend-verification) and [Verification & Commits](#verification--commits) say how to verify.
 
 ## Scope Discipline
 
