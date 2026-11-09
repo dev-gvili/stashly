@@ -11,6 +11,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **This file and the auto-memory (`~/.claude/projects/X--stashly/memory/`) must agree.** When a rule changes in one, change it in the other in the same step.
 - **Dated facts** (test counts, error baselines) appear here, in skills and in the session handoff. When they disagree, the newest date wins; update the others to match.
 
+## UI Verification
+
+Before committing or pushing ANY UI change, open it in the browser via chrome-devtools MCP and check it in both light and dark mode. Do not report a UI change as done, or push it, until it has been seen rendering correctly. If browser verification is blocked (sign-in, pane issues), say so explicitly and do not push. This gates [Git Workflow](#git-workflow)'s "commit and push without asking" for UI changes; [Frontend Verification](#frontend-verification) and [Verification & Commits](#verification--commits) say how to verify.
+
 ## Scope Discipline
 
 - **Start where the user pointed.** When a specific file or route is named, open that first — do NOT run broad exploration before it. Read at most **3 files** before proposing a fix. If the fix genuinely needs more, stop and ask rather than widening on your own.
@@ -38,6 +42,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Simplest approach** — no recursive CTEs, sub-agents, or abstractions when a direct edit works. Don't modify files outside `app/` unless asked — except what this file itself requires: the Prisma schema and migrations ([Migrations](#migrations)), and `CLAUDE.md`, `README.md` and `.claude/skills/` after a significant change ([Development Workflow](#development-workflow) step 2).
 - **Edit the real component** — when editing a React component that was prototyped in HTML, edit the real `.tsx` component (e.g. `invitations-view.tsx`) — never the prototype HTML file.
 - **Surface blockers** — if `gh` auth fails, ask the user to run `gh auth login` interactively; don't retry with env vars.
+
+### Scope
+
+When the user pastes errors or a list of items, address ALL of them unless told otherwise. For redesigns from a mockup, confirm scope and list missing backend dependencies BEFORE building, and create a revert point first.
 
 ## Git Workflow
 
@@ -83,11 +91,22 @@ pnpm start        # Run production server
 pnpm typecheck    # Generate React Router types + run tsc
 pnpm format       # Format with Prettier
 pnpm test         # Run unit tests once (any app/**/__tests__/*.test.ts)
+pnpm test app/utils/__tests__/filters.test.ts   # Run one test file (any path or name fragment)
+pnpm test -t "name"   # Run only tests whose name matches
 pnpm test:watch   # Run unit tests in watch mode
 pnpm prisma migrate dev   # Run database migrations
 pnpm test:e2e     # Run E2E tests (requires dev server; CI's e2e job runs them on every push, Tigris keys from repo secrets)
+pnpm test:e2e tests/e2e/<file>.spec.ts   # Run one E2E file
 pnpm test:e2e:ui  # Run E2E tests with Playwright UI
 ```
+
+## Testing Discipline
+
+Run targeted tests for the files you touched (single-test commands are in [Commands](#commands) above). Run the full suite at most once before shipping. If a test is flaky, report it and move on. Do NOT loop the full suite chasing flakes. Tests must never import real Stripe-dependent modules; mock them (stub `@/services/stripe` whole), because STRIPE_SECRET_KEY is blank in CI.
+
+## Performance & Measurement Work
+
+Always benchmark on real data (real PDFs, real folder uploads), never synthetic samples, unless asked. Report metrics accurately, with units and scope, and don't headline misleading numbers. Fix DB hotspots at the root (indexes, single-statement rewrites), not with workarounds like splitting queries. Measure before/after for any perf-sensitive change, and roll back if it regresses. See also [Debugging Rules](#debugging-rules) and [Data Honesty](#data-honesty).
 
 ## Architecture
 
@@ -130,6 +149,10 @@ const collection = await getCollectionForUser(session.user.id, collectionId)
 **API errors**: Use `StashlyError` and `StashlyErrorCode` from `app/utils/api.errors.ts` in action files. Two error shapes reach routes and disagree on the field name — `StashlyError` sets `status`, `throwGuardError` in `workspace-actions.ts` sets `statusCode` — so route handlers normalise with `toErrorInfo` from the same module: `const err = toErrorInfo(e)` then `err.status ?? 500`. Never duck-type one field directly; that silently turns typed 403/404s into 500s. `parseFormData` / `parseSearchParams` throw `INVALID_INPUT` on a schema mismatch, which escapes a handler as a 500. Every route turns it into a 400 the same way, inside a `try` or not: `await parseFormData(...).catch(rethrowAsResponse)`, and `parseOrRespond(() => parseSearchParams(...))` for the synchronous one (both in `api.errors.ts`; page loaders pass `'text'` so the error boundary shows the message). The one exception is `api/metrics.ts`, a beacon that answers 204 to everything.
 
 **Dot-server plugin**: React Router's build rejects a route whose *client-bundled* exports can reach a server module. It strips server code from `loader`, `action`, `middleware` and `headers` only — so a `.server/` import is fine when just those touch it, and fails the build when anything else does (`app/routes/settings/billing.tsx` uses `@/services/*` in five places and builds clean). It reads the **import graph, not usage**: an import nothing references still fails — so removing the last *use* of a `@/services/*` import breaks the build until you delete the import too. A **re-export** from a route (`export { x } from '@/.server/…'`) also fails: a re-export is an ordinary route export, not one of the four stripped ones. Dev never surfaces this — Vite serves modules per request with no tree-shaking, so the server/client split is only attempted at build time, and `pnpm build` is the only check.
+
+### Reuse Existing Infrastructure
+
+Before writing a new hook, provider, secret, query or file, grep for an existing one and use it. Known examples: use `SelectionProvider` (`app/components/stash/selection.tsx`, read with `useSelection`) for multi-select (never a custom selection hook), use `SESSION_SECRET` (via `cookieSecret()` in `app/.server/env.ts`) for signing (no new COOKIE_SECRET), and note that the app has NO ThemeProvider (don't mount components like Toaster that need one). If your plan says 'reuse existing code', it must not add new files or queries.
 
 ### Routing Structure
 
