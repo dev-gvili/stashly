@@ -41,9 +41,30 @@ async function readAllEntries(
 }
 
 /**
+ * Gives a dropped file the folder path it was dropped with. A file read from a
+ * `FileSystemFileEntry` always has an empty `webkitRelativePath` (only an
+ * `<input webkitdirectory>` fills it), so without this a dropped folder's files
+ * were all filed straight into the destination, with no folders. The entry's
+ * `fullPath` (`/app/routes/home.tsx`) still holds the path.
+ *
+ * @example
+ * withEntryPath(file, '/app/routes/home.tsx').webkitRelativePath // → 'app/routes/home.tsx'
+ * withEntryPath(file, '/notes.md').webkitRelativePath // → '' (a loose file)
+ */
+export function withEntryPath(file: File, fullPath: string): File {
+  const path = fullPath.replace(/^\/+/, '')
+  if (file.webkitRelativePath || !path.includes('/')) return file
+  Object.defineProperty(file, 'webkitRelativePath', {
+    value: path,
+    configurable: true,
+  })
+  return file
+}
+
+/**
  * Flattens a dropped entry into a list of `File`s, recursing through
- * directories. Folder structure is not preserved here — the upload machine
- * derives `parentId` separately.
+ * directories. Each file keeps its folder path as `webkitRelativePath`
+ * (`withEntryPath`), which `addBatch` turns into folders.
  *
  * @param entry - A `FileSystemEntry` from `DataTransferItem.webkitGetAsEntry()`.
  *
@@ -58,7 +79,10 @@ async function readAllEntries(
 async function collectFiles(entry: FileSystemEntry): Promise<File[]> {
   if (entry.isFile) {
     return new Promise<File[]>((res, rej) =>
-      (entry as FileSystemFileEntry).file((f) => res([f]), rej)
+      (entry as FileSystemFileEntry).file(
+        (f) => res([withEntryPath(f, entry.fullPath)]),
+        rej
+      )
     )
   }
   if (entry.isDirectory) {
