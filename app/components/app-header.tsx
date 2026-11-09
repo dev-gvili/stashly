@@ -18,11 +18,12 @@ import {
   useRouteLoaderData,
 } from 'react-router'
 import { ModeToggle } from '@/components/color-mode'
+import { GalleryHeaderTools } from '@/components/gallery/gallery-view-controls'
 import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
 import { NotificationsPanel } from '@/components/core-components/notifications/notifications-panel'
 import type { Notification } from '@/types/notification.types'
 import { NewFolderDialog } from '@/components/core-components/new-folder-dialog'
-import { HeaderFilters } from '@/components/filters/filters'
+import { HeaderFilters, HeaderSearch } from '@/components/filters/filters'
 import {
   Grid,
   LayoutToggle,
@@ -42,12 +43,20 @@ export function AppHeader() {
   const layoutData = useRouteLoaderData('layout') as
     | { notifications?: Notification[]; user?: { rootId?: string } }
     | undefined
+  const isImagesPage = useLocation().pathname.endsWith('/images')
   const notifications = layoutData?.notifications ?? []
   // At the stash root there's no `:folderId` in the URL; fall back to the
   // user's root folder so New Folder (and uploads) have a real destination.
   const rootId = layoutData?.user?.rootId
   return (
-    <header className="bg-background z-40 flex items-center h-14 justify-between pl-0 pr-2 py-2 sticky top-0 shrink-0 gap-2">
+    <header
+      className={cn(
+        'bg-background z-40 flex items-center h-14 justify-between pl-0 pr-2 py-2 sticky top-0 shrink-0 gap-2',
+        // Images: a size container, so its controls fit its own width (which
+        // the sidebar changes) and its content can never widen the page.
+        isImagesPage && '@container/header'
+      )}
+    >
       {/* Below md the sidebar is a sheet, and its own trigger sits inside it;
           this is the only way to open navigation on a phone. */}
       <SidebarTrigger
@@ -72,6 +81,18 @@ export function AppHeader() {
           against. */}
       {fileId ? (
         <Breadcrumbs />
+      ) : isImagesPage ? (
+        // Images: the page's trail plus the app search — no upload menu, and
+        // no filter/sort popover (the gallery has its own view controls).
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {/* The page name keeps its text and the search gives way first. On a
+              phone-width header the name steps aside (the page title says
+              it) and the search may shrink past its desktop minimum. */}
+          <div className="shrink-0 @max-md/header:hidden">
+            <Breadcrumbs />
+          </div>
+          <HeaderSearch className="w-full max-w-80 min-w-40 shrink @max-md/header:min-w-0" />
+        </div>
       ) : (
         <div className="flex flex-1 gap-2 items-center">
           <StashlyUpload folderId={folderId} rootId={rootId} />
@@ -79,6 +100,7 @@ export function AppHeader() {
         </div>
       )}
       <div className="flex items-center space-x-2 shrink-0">
+        {isImagesPage && <GalleryHeaderTools />}
         <LayoutToggle>
           <River />
           <Waterfall />

@@ -14,6 +14,8 @@ export interface LayoutMenuProps
     Omit<ToggleGroupSingleProps, 'type'>,
     Pick<Parameters<typeof ToggleGroupItem>[0], 'variant' | 'size'> {
   onLayoutChange?: (value: string) => void
+  /** Written into a URL that has no `?layout=`. Default `grid`. */
+  defaultLayout?: string
 }
 
 export interface LayoutItemProps extends ComponentPropsWithoutRef<
@@ -26,6 +28,7 @@ export const LayoutMenu = ({
   className,
   value,
   onLayoutChange,
+  defaultLayout = 'grid',
   children,
   ...props
 }: LayoutMenuProps) => {
@@ -37,12 +40,12 @@ export const LayoutMenu = ({
     if (hasLayout) return
     setSearchParams(
       (prev) => {
-        prev.set('layout', 'grid')
+        prev.set('layout', defaultLayout)
         return prev
       },
       { replace: true, preventScrollReset: true }
     )
-  }, [hasLayout, setSearchParams])
+  }, [hasLayout, setSearchParams, defaultLayout])
   value = value || searchParams.get('layout') || 'river'
   const _onLayoutChange = (value: string) => {
     if (!value) {

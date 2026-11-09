@@ -50,10 +50,14 @@ function Slider({
         />
       </SliderPrimitive.Track>
       {Array.from({ length: _values.length }, (_, index) => (
+        // Faded, not `hidden`: a display:none thumb can't take focus, which
+        // left the slider unreachable by keyboard. The root's aria-label is
+        // forwarded because Radix puts the slider role on the thumb.
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={index}
-          className="border-primary bg-primary ring-ring/50 hidden group-hover:block size-4 shrink-0 rounded-full border shadow-sm transition-all duration-200 hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+          aria-label={props['aria-label']}
+          className="border-primary bg-primary ring-ring/50 block opacity-0 group-hover:opacity-100 focus-visible:opacity-100 size-4 shrink-0 rounded-full border shadow-sm transition-all duration-200 hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
         />
       ))}
     </SliderPrimitive.Root>

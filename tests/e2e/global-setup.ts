@@ -38,6 +38,8 @@ import {
   E2E_PIN_ITEM_A_NAME,
   E2E_PIN_ITEM_B_NAME,
   E2E_PIN_ITEM_C_NAME,
+  E2E_GALLERY_IMAGES,
+  E2E_GALLERY_COLLECTION,
 } from './constants'
 import { ensureE2eBucket } from './e2e-bucket'
 
@@ -108,7 +110,7 @@ export default async function globalSetup() {
       },
     })
 
-    await ensureE2eBucket(prisma, TEST_USER_ID)
+    const e2eBucket = await ensureE2eBucket(prisma, TEST_USER_ID)
 
     // Upsert the test user's Drive — required so the  service can find
     // the user's  via `drive.ownerId`.
@@ -294,6 +296,79 @@ export default async function globalSetup() {
         { id: 'pin_e2e_test_000_ccc', pinnedById: TEST_USER_ID, itemId: E2E_PIN_ITEM_C_ID, position: 1 },
       ],
     })
+
+    // Seed the Images gallery: three active images with fixed dates, a stage-2
+    // thumbnail each, and no pins. Status and dates reset every run, so a test
+    // that trashed or pinned one starts clean next time.
+    for (const img of E2E_GALLERY_IMAGES) {
+      const createdAt = new Date(Date.now() - img.daysAgo * 86_400_000)
+      await prisma.item.upsert({
+        where: { id: img.id },
+        create: {
+          id: img.id,
+          name: img.name,
+          type: 'file',
+          category: 'image',
+          size: 2_000_000,
+          createdAt,
+          ...itemBase,
+        },
+        update: { name: img.name, status: 'normal', createdAt, category: 'image' },
+      })
+      await prisma.thumbnail.upsert({
+        where: { itemId_view_size: { itemId: img.id, view: 'grid', size: 'medium' } },
+        create: {
+          id: `thumb_${img.id}`,
+          itemId: img.id,
+          view: 'grid',
+          size: 'medium',
+          stage: 2,
+          bucket: 'e2e-gallery',
+          // Real uploads store one 512×512 grid thumbnail; the real size lives
+          // on the Image facet below. The tests check tiles follow the facet.
+          width: 512,
+          height: 512,
+        },
+        update: { stage: 2, bucket: 'e2e-gallery', width: 512, height: 512 },
+      })
+      await prisma.image.upsert({
+        where: { itemId: img.id },
+        create: { id: `img_${img.id}`, itemId: img.id, width: img.width, height: img.height },
+        update: { width: img.width, height: img.height },
+      })
+    }
+    await prisma.pinItem.deleteMany({
+      where: { pinnedById: TEST_USER_ID, itemId: { in: E2E_GALLERY_IMAGES.map((i) => i.id) } },
+    })
+    // Real objects behind the gallery images, so Download has bytes to fetch.
+    // The teardown empties and deletes the bucket.
+    {
+      const { s3 } = await import('../../app/.server/s3')
+      const { PutObjectCommand } = await import('@aws-sdk/client-s3')
+      for (const img of E2E_GALLERY_IMAGES) {
+        const key = `e2e-gallery/${img.id}.png`
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: e2eBucket,
+            Key: key,
+            Body: Buffer.from(`e2e gallery bytes for ${img.name}`),
+            ContentType: 'image/png',
+          })
+        )
+        await prisma.file.upsert({
+          where: { itemId: img.id },
+          create: { id: `file_${img.id}`, itemId: img.id, bucket: e2eBucket, key, uploadPath: img.name, mimeType: 'image/png', extension: 'png' },
+          update: { bucket: e2eBucket, key },
+        })
+      }
+    }
+    // A collection the gallery's "Add to collection" can target, emptied each run.
+    await prisma.item.upsert({
+      where: { id: E2E_GALLERY_COLLECTION.id },
+      create: { id: E2E_GALLERY_COLLECTION.id, name: E2E_GALLERY_COLLECTION.name, type: 'collection', ownerId: TEST_USER_ID, driveId: E2E_DRIVE_ID, parentId: null },
+      update: { name: E2E_GALLERY_COLLECTION.name, status: 'normal' },
+    })
+    await prisma.collectionMember.deleteMany({ where: { collectionId: E2E_GALLERY_COLLECTION.id } })
 
     // Write Playwright storageState — better-auth reads `better-auth.session_token` cookie
     // and validates it as a signed cookie (HMAC-SHA256 with BETTER_AUTH_SECRET).

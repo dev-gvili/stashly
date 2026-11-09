@@ -25,6 +25,17 @@ export default async function globalTeardown() {
     })
     if (user && user.bucket !== PLACEHOLDER_BUCKET) await deleteE2eBucket(user.bucket)
 
+    // Empty the users' collections in a statement of their own first. Left to
+    // the user cascade, deleting a collection and its members in one statement
+    // makes the collection-sync trigger update a row that same statement is
+    // deleting, and Postgres aborts it (27000; see `wipe-test-users.ts`). The
+    // gallery spec's "Add to collection" leaves a member behind.
+    await prisma.collectionMember.deleteMany({
+      where: {
+        collection: { owner: { email: { in: [TEST_USER_EMAIL, OTHER_USER_EMAIL] } } },
+      },
+    })
+
     await prisma.user.deleteMany({
       where: { email: { in: [TEST_USER_EMAIL, OTHER_USER_EMAIL] } },
     })

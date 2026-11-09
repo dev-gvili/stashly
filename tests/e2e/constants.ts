@@ -38,3 +38,18 @@ export const E2E_PIN_ITEM_C_ID = 'item_e2e_pin_ccc0000000000000' // pre-pinned, 
 export const E2E_PIN_ITEM_A_NAME = 'E2E Pin Item A'
 export const E2E_PIN_ITEM_B_NAME = 'E2E Pin Item B'
 export const E2E_PIN_ITEM_C_NAME = 'E2E Pin Item C'
+
+// Images gallery E2E — three images landing in Today, Last week and a past
+// month. Each has a stage-2 thumbnail row so `getGalleryMedia` lists it; the
+// object behind it need not exist, the tests check layout and behaviour.
+export const E2E_GALLERY_IMAGES = [
+  { id: 'item_e2e_gal_aaa0000000000000', name: 'e2e-gallery-today.png', daysAgo: 0, width: 1600, height: 900 },
+  { id: 'item_e2e_gal_bbb0000000000000', name: 'e2e-gallery-week.png', daysAgo: 3, width: 900, height: 1200 },
+  { id: 'item_e2e_gal_ccc0000000000000', name: 'e2e-gallery-old.png', daysAgo: 60, width: 1200, height: 1200 },
+] as const
+
+/** Target for the gallery's "Add to collection"; emptied on every setup run. */
+export const E2E_GALLERY_COLLECTION = {
+  id: 'item_e2e_gal_col0000000000000',
+  name: 'E2E Gallery Collection',
+} as const

@@ -537,6 +537,24 @@ export const Filters = Object.assign(FiltersRoot, {
   Sort: FiltersSort,
 })
 
+// ─── Pre-composed search only — the Images page header ───────────────────
+
+/**
+ * The app search on its own, for headers whose page has no filter or sort
+ * popover (the Images page). Same field, same `?query=` / `?searchMode=`.
+ *
+ * @example
+ * <HeaderSearch className="w-full max-w-80" />
+ */
+export function HeaderSearch({ className }: { className?: string }) {
+  const filters = useFilters()
+  return (
+    <Filters filters={filters} className={className}>
+      <Filters.Search />
+    </Filters>
+  )
+}
+
 // ─── Pre-composed default — the original `HeaderFilters` shape ───────────
 
 export function HeaderFilters() {

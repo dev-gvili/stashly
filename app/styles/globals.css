@@ -551,6 +551,13 @@
   --color-dusk-3: oklch(86% 0.06 277);
   --color-ridge-back: oklch(38% 0.13 277);
   --color-ridge-front: oklch(20% 0.07 277);
+  /* Images gallery: tile reflow, section height and image zoom */
+  --ease-gallery: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* Images gallery: a tile narrower than this hides its name overlay */
+  --container-gallery-label: 7.5rem;
+  /* Images header: narrower than this, the view controls (By date, gap,
+     size) step aside so the search and layout switch keep their room */
+  --container-gallery-header: 60rem;
 }
 
 /* soft primary glow from the top centre of a file-preview area */
@@ -581,6 +588,49 @@
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/*
+ * Images gallery layouts. The browser lays the tiles out, so a width change
+ * (the sidebar animating) costs no JavaScript. Set on the gallery body:
+ * --gallery-gap (px) and --gallery-col (px, the size slider's column width).
+ */
+@utility gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--gallery-col), 1fr));
+  gap: var(--gallery-gap);
+}
+@utility gallery-columns {
+  column-width: var(--gallery-col);
+  column-gap: var(--gallery-gap);
+  & > * {
+    break-inside: avoid;
+    margin-bottom: var(--gallery-gap);
+  }
+}
+/* River: justified rows laid out by the browser. Each tile starts at its
+   width for the target row height (--row-h) and grows in proportion to its
+   aspect ratio, which it keeps — so every tile on a line ends at one height
+   and the line fills the width. The browser decides the line breaks. The
+   trailing pseudo-element takes the last line's leftover space, so that line
+   keeps the target height instead of stretching. */
+@utility gallery-river {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gallery-gap);
+  & > * {
+    flex: var(--aspect) var(--aspect) calc(var(--aspect) * var(--row-h));
+    aspect-ratio: var(--aspect);
+  }
+  &::after {
+    content: '';
+    flex: 10000 1 0;
+  }
+}
+/* Native windowing: the browser skips rendering work for off-screen tiles. */
+@utility content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 12rem;
 }
 
 @utility grid-cards-lg {

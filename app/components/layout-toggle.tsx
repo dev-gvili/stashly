@@ -15,14 +15,19 @@ const LayoutToggle = ({
   ...props
 }: React.ComponentPropsWithoutRef<typeof LayoutMenu>) => {
   let location = useLocation()
-  if (location.pathname.includes('/files')) return null
-
+  // Before any return: the header outlives route changes, so the hook count
+  // must not depend on the path.
   let [searchParams] = useSearchParams()
-  value = value ?? searchParams.get('layout') ?? 'river'
+  if (location.pathname.includes('/files')) return null
+  // The Images page opens on Waterfall; everywhere else defaults to Grid.
+  const defaultLayout = location.pathname.endsWith('/images') ? 'waterfall' : 'grid'
+
+  value = value ?? searchParams.get('layout') ?? defaultLayout
   return (
     <LayoutMenu
       className={cn('font-stashly', className)}
       value={value}
+      defaultLayout={defaultLayout}
       variant="outline"
       {...props}
     >

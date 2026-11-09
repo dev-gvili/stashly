@@ -489,6 +489,22 @@ export type GalleryImage = {
   parentId: string | null
 }
 
+/**
+ * A row of the Images page (`routes/stash/gallery.tsx`): a `GalleryImage` plus
+ * what the page's tiles, grouping and selection bar read.
+ */
+export type GalleryPageImage = GalleryImage & {
+  name: string
+  /** File size in bytes, already a number (the column is a BigInt). Named
+   * `bytes` because the loader's `size` is the thumbnail stage. */
+  bytes: number
+  /** ISO timestamp; drives the date groups. */
+  createdAt: string
+  /** Pinned by the viewer. */
+  pinned: boolean
+  folderName: string | null
+}
+
 // ---------------------------------------------------------------------------
 // Search results presentation
 // ---------------------------------------------------------------------------
