@@ -633,8 +633,9 @@
   contain-intrinsic-size: auto 12rem;
 }
 
-/* View transitions (gallery tile ⇄ file page, `img-${id}`). Restored from the
-   old global.css (32f0247), which nothing imported.
+/* View transitions (gallery tile ⇄ file page): React's <ViewTransition
+   name="img-${id}"> on both sides. Restored from the old global.css (32f0247),
+   which nothing imported.
    No root cross-fade: named elements are lifted out of the root snapshot
    (leaving holes), and cross-fading two holey screenshots is what causes the
    water-ripple blur. Named elements do all the visible animation. */
@@ -647,6 +648,14 @@
 ::view-transition-group(*) {
   animation-duration: 0.45s;
   animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
 }
 
 @utility grid-cards-lg {

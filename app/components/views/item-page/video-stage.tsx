@@ -25,7 +25,7 @@ import { useVideoPlayer } from '@/hooks/useVideoPlayer'
 import type { StashItemVideo } from '@/types/stash.types'
 import { formatClock } from '@/utils/formaters'
 import { cn } from '@/utils/styles'
-import { useEffect, useRef, useState, type JSX } from 'react'
+import { useEffect, useRef, useState, ViewTransition, type JSX } from 'react'
 
 const SKIP_SECONDS = 10
 const RATES = [0.5, 1, 1.5, 2] as const
@@ -167,6 +167,8 @@ export function VideoStage({
         )}
       >
         {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+        {/* Shared element with the gallery tile (same name); see GalleryTile. */}
+        <ViewTransition name={`img-${item.id}`} default="none" share="auto">
         <video
           ref={videoRef}
           src={src}
@@ -179,8 +181,8 @@ export function VideoStage({
           onClick={v.togglePlay}
           onDoubleClick={v.toggleFullscreen}
           className="absolute inset-0 h-full w-full bg-black object-contain"
-          style={{ viewTransitionName: `img-${item.id}` }}
         />
+        </ViewTransition>
 
         {/* Loading spinner */}
         {v.loading && src && (

@@ -9,7 +9,7 @@ import { Button, SidebarTrigger, Tooltip, useSidebar } from '@/components/ui'
 import { useZoom } from '@/hooks/useZoom'
 import type { StashItemImage } from '@/types/stash.types'
 import { cn } from '@/utils/styles'
-import { useEffect, type CSSProperties, type JSX } from 'react'
+import { useEffect, ViewTransition, type CSSProperties, type JSX } from 'react'
 
 // Round ghost icon button — composed from the shadcn Button primitive.
 function IconBtn({
@@ -117,18 +117,19 @@ export function ImageStage({
           <p className="font-stashly text-sm">Image unavailable</p>
         </div>
       ) : (
+        // Shared element with the gallery tile (same name); see GalleryTile.
+        <ViewTransition key={item.id} name={`img-${item.id}`} default="none" share="auto">
         <img
-          key={item.id}
           src={src}
           alt={item.name}
           draggable={false}
           className="max-h-full max-w-full select-none rounded-xl ring-2 ring-accent border-none object-contain shadow-2xl shadow-stashly transition-transform duration-150"
           style={{
-            viewTransitionName: `img-${item.id}`,
             transform: `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.scale})`,
             ...fittedBox(item.image),
           }}
         />
+        </ViewTransition>
       )}
 
       {/* floating zoom controls */}

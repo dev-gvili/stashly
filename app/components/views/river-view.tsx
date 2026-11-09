@@ -1,5 +1,5 @@
-import React from 'react'
-import { Link, useSearchParams, useViewTransitionState } from 'react-router'
+import React, { ViewTransition } from 'react'
+import { Link, useSearchParams } from 'react-router'
 import {
   buildJustifiedRows,
   TARGET_ROW_HEIGHT,
@@ -17,7 +17,6 @@ function RiverItem({
 }) {
   const { img, aspect } = item
   const to = useFileHref(img) ?? '.'
-  const isTransitioning = useViewTransitionState(to)
   return (
     <div
       className="h-full overflow-hidden rounded-md min-w-0"
@@ -30,13 +29,9 @@ function RiverItem({
           : { width: aspect * TARGET_ROW_HEIGHT, flexGrow: 0, flexShrink: 0 }
       }
     >
-      <Link to={to} viewTransition prefetch="intent">
+      <Link to={to} prefetch="intent">
+        <ViewTransition name={`img-${img.id}`} default="none" share="auto">
         <img
-          style={
-            isTransitioning
-              ? { viewTransitionName: `img-${img.id}` }
-              : undefined
-          }
           data-prefetch
           src={img.src!}
           srcSet={img.srcSet}
@@ -48,6 +43,7 @@ function RiverItem({
           width={img.width}
           height={img.height}
         />
+        </ViewTransition>
       </Link>
     </div>
   )

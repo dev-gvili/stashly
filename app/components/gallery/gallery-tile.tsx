@@ -1,5 +1,5 @@
-import { memo, type CSSProperties, type MouseEvent } from 'react'
-import { Link, useViewTransitionState } from 'react-router'
+import { memo, ViewTransition, type CSSProperties, type MouseEvent } from 'react'
+import { Link } from 'react-router'
 import { PinFillIcon } from '@/components/icons'
 import { itemCheckboxClassName } from '@/components/stash/item-card'
 import { fileCardCheckboxClassName } from '@/components/core-components/file-card-variants/file-card-detail'
@@ -43,7 +43,6 @@ export const GalleryTile = memo(function GalleryTile({
   onMouseDown,
 }: GalleryTileProps) {
   const to = useFileHref(image) ?? '.'
-  const isTransitioning = useViewTransitionState(to)
   const { pinned, toggle: togglePin } = usePinItem(image.id, image.pinned)
 
   return (
@@ -59,34 +58,35 @@ export const GalleryTile = memo(function GalleryTile({
       )}
     >
       {/* Media — the browser skips its rendering while it is off screen.
-          While this tile is the view transition's target that is turned off:
-          a freshly mounted `content-visibility: auto` box counts as skipped,
-          and the browser can't capture a named element inside skipped
-          content, so the morph back from the file page had no tile to land on. */}
-      <div
-        style={isTransitioning ? { contentVisibility: 'visible' } : undefined}
-        className={cn(
-          'content-auto absolute inset-0 overflow-hidden rounded-lg bg-muted transition-[inset,border-radius] duration-200 motion-reduce:transition-none',
-          selected && 'inset-1.75 rounded-md'
-        )}
-      >
-        <img
-          src={image.src ?? undefined}
-          alt=""
-          width={image.width}
-          height={image.height}
-          loading="lazy"
-          decoding="async"
-          draggable={false}
-          style={
-            isTransitioning ? { viewTransitionName: `img-${image.id}` } : undefined
-          }
+          Shared element with the file page's stage (same name). The name sits
+          on this box, not the <img>: React measures the entering element in
+          the commit, before the browser has judged a new `content-visibility:
+          auto` box near the viewport, so the <img> inside reads as 0×0 and the
+          morph back from the file page was dropped. The box itself always has
+          its size. `default="none"`: only the pair morphs, so a revalidation or
+          a zoom change doesn't animate the tiles. */}
+      <ViewTransition name={`img-${image.id}`} default="none" share="auto">
+        <div
           className={cn(
-            'size-full object-cover transition-transform duration-500 ease-gallery motion-reduce:transition-none',
-            !selected && 'group-hover:scale-103'
+            'content-auto absolute inset-0 overflow-hidden rounded-lg bg-muted transition-[inset,border-radius] duration-200 motion-reduce:transition-none',
+            selected && 'inset-1.75 rounded-md'
           )}
-        />
-      </div>
+        >
+          <img
+            src={image.src ?? undefined}
+            alt=""
+            width={image.width}
+            height={image.height}
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+            className={cn(
+              'size-full object-cover transition-transform duration-500 ease-gallery motion-reduce:transition-none',
+              !selected && 'group-hover:scale-103'
+            )}
+          />
+        </div>
+      </ViewTransition>
 
       {/* Top shade, so the checkbox and pin read on light images */}
       <div
@@ -121,7 +121,6 @@ export const GalleryTile = memo(function GalleryTile({
       ) : (
         <Link
           to={to}
-          viewTransition
           prefetch="intent"
           aria-label={image.name}
           className="absolute inset-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"

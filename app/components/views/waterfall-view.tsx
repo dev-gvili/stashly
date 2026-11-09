@@ -1,5 +1,5 @@
-import React from 'react'
-import { Link, useSearchParams, useViewTransitionState } from 'react-router'
+import React, { ViewTransition } from 'react'
+import { Link, useSearchParams } from 'react-router'
 import { cn } from '@/utils'
 import { aspectClassFromId } from '@/utils/gallery-layout'
 import type { GalleryImage } from '@/types/stash.types'
@@ -13,11 +13,9 @@ function WaterfallItem({
   aspectClass: string
 }) {
   const to = useFileHref(img) ?? '.'
-  const isTransitioning = useViewTransitionState(to)
   return (
     <Link
       to={to}
-      viewTransition
       prefetch="intent"
       className="surface-elevated"
       mask={`images/${img.id}`}
@@ -29,13 +27,9 @@ function WaterfallItem({
           aspectClass
         )}
       >
+        <ViewTransition name={`img-${img.id}`} default="none" share="auto">
         <img
           src={img.src!}
-          style={
-            isTransitioning
-              ? { viewTransitionName: `img-${img.id}` }
-              : undefined
-          }
           className="w-full h-full object-cover cursor-pointer ring"
           width={img.width}
           height={img.height}
@@ -44,6 +38,7 @@ function WaterfallItem({
           decoding="async"
           loading="lazy"
         />
+        </ViewTransition>
       </div>
     </Link>
   )

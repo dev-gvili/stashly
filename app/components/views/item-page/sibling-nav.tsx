@@ -56,7 +56,7 @@ export function SiblingNav({
   const navigate = useNavigate()
   const goTo = React.useCallback(
     (to: string | null) => {
-      if (to) navigate(to, { replace: true, viewTransition: true })
+      if (to) navigate(to, { replace: true })
     },
     [navigate]
   )
