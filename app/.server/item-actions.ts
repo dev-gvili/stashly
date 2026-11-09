@@ -324,19 +324,8 @@ export async function moveItems(
       // deadlocked on the old folder's size row (item 69). The items are read
       // after the lock, never beside it, so that read sees a trash that just
       // finished.
-      const targetFolder = await lockDestinationFolder(tx, targetFolderId, ids)
-      const items = await tx.item.findMany({
-        where: { id: { in: ids } },
-        select: {
-          id: true,
-          parentId: true,
-          type: true,
-          status: true,
-          driveId: true,
-          owner: { select: { rootId: true } },
-        },
-      })
-
+      // Access first, as createFolder does: answering "in trash" before it told
+      // a caller with no access whether the folder was in trash (item 74).
       const canWriteTarget = await hasItemPermission(
         userId,
         targetFolderId,
@@ -349,6 +338,18 @@ export async function moveItems(
           'You do not have write access to the target folder'
         )
       }
+      const targetFolder = await lockDestinationFolder(tx, targetFolderId, ids)
+      const items = await tx.item.findMany({
+        where: { id: { in: ids } },
+        select: {
+          id: true,
+          parentId: true,
+          type: true,
+          status: true,
+          driveId: true,
+          owner: { select: { rootId: true } },
+        },
+      })
 
       const foundIds = new Set(items.map((i) => i.id))
       for (const id of ids) {
@@ -659,9 +660,12 @@ export async function trashItem(id: string, userId: string) {
  * get nothing put inside them.
  */
 async function lockSubtreeFolders(tx: Prisma.TransactionClient, ids: string[]) {
-  let held = -1
+  // The ids a pass held, not their count: a folder leaving the tree and one
+  // arriving while the first pass waited gave two passes the same count, and a
+  // folder made under the arriving one was never held (item 73).
+  let held: string | null = null
   for (;;) {
-    const [{ count }] = await tx.$queryRaw<{ count: bigint }[]>`
+    const [{ folders }] = await tx.$queryRaw<{ folders: string | null }[]>`
       WITH RECURSIVE "Folders" AS (
         SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)}) AND "type" = 'folder'
         UNION
@@ -673,10 +677,10 @@ async function lockSubtreeFolders(tx: Prisma.TransactionClient, ids: string[]) {
         ORDER BY i."id"
         FOR UPDATE
       )
-      SELECT COUNT(*) AS "count" FROM "Held"
+      SELECT string_agg("id", ',' ORDER BY "id") AS "folders" FROM "Held"
     `
-    if (Number(count) === held) return
-    held = Number(count)
+    if ((folders ?? '') === held) return
+    held = folders ?? ''
   }
 }
 
@@ -705,9 +709,17 @@ async function lockDestinationFolder(
   leaving: string[] = []
 ) {
   const rows = await tx.$queryRaw<
-    { id: string; name: string; parentId: string | null; driveId: string; type: string; status: string }[]
+    {
+      id: string
+      name: string
+      parentId: string | null
+      driveId: string
+      workspaceId: string | null
+      type: string
+      status: string
+    }[]
   >`
-    SELECT "id", "name", "parentId", "driveId", "type", "status" FROM "Item"
+    SELECT "id", "name", "parentId", "driveId", "workspaceId", "type", "status" FROM "Item"
     WHERE "id" = ${folderId}${
       leaving.length > 0
         ? Prisma.sql` OR "id" IN (SELECT "parentId" FROM "Item" WHERE "id" IN (${Prisma.join(leaving)}))`
@@ -1170,7 +1182,6 @@ export async function deleteItems(ids: string[], userId: string) {
  * @param userId - The user copying, who needs `read` on the source and `write` on the destination.
  * @param itemId - The item to copy.
  * @param targetParentId - The folder to copy into.
- * @param targetWorkspaceId - The workspace the copy joins, when it is not the source's.
  * @throws `ITEM_NOT_FOUND` (404) for a source or destination that is gone or in trash;
  *   `FORBIDDEN` (403) without `write` on the destination; `COPY_ITEM_FAILED` when the
  *   destination is on another drive; `INSUFFICIENT_QUOTA` when the copy doesn't fit.
@@ -1181,8 +1192,7 @@ export async function deleteItems(ids: string[], userId: string) {
 export async function copyItem(
   userId: string,
   itemId: string,
-  targetParentId: string | undefined | null,
-  targetWorkspaceId?: string
+  targetParentId: string | undefined | null
 ) {
   if (!itemId) {
     throw new StashlyError(StashlyErrorCode.COPY_ITEM_FAILED, 'itemId is required')
@@ -1203,10 +1213,12 @@ export async function copyItem(
       throw toRouteError(StashlyErrorCode.UNAUTHORIZED, 'You do not have access to this item')
     }
 
-    const target = await lockDestinationFolder(tx, targetParentId)
-    if (!(await hasItemPermission(userId, target.id, 'write', tx))) {
+    // Access before the trash check, so a caller with no access can't tell
+    // whether the folder is in trash (item 74).
+    if (!(await hasItemPermission(userId, targetParentId, 'write', tx))) {
       throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You do not have write access to the target folder')
     }
+    const target = await lockDestinationFolder(tx, targetParentId)
     // `recursiveCopy` lists a folder's contents after making its copy, so a copy
     // into the folder or anywhere under it would find that copy among them and
     // copy it again, until the transaction timed out. The walk is up from the
@@ -1227,16 +1239,19 @@ export async function copyItem(
       }
     }
 
+    // The copy belongs where it lands: the destination folder's workspace, or
+    // none in a personal folder. It once kept the source's, so a copy out of a
+    // workspace into a personal folder stayed in the workspace (item 75).
     if (source.workspaceId) {
       await requireMembership(userId, source.workspaceId, 'You do not have access to this item')
-      if (targetWorkspaceId && targetWorkspaceId !== source.workspaceId) {
-        await requireAtLeastRole(
-          userId,
-          targetWorkspaceId,
-          'member',
-          'You must be a member of the target workspace to copy items.'
-        )
-      }
+    }
+    if (target.workspaceId && target.workspaceId !== source.workspaceId) {
+      await requireAtLeastRole(
+        userId,
+        target.workspaceId,
+        'member',
+        'You must be a member of the target workspace to copy items.'
+      )
     }
 
     const userQuota = await ensureUserQuota(userId, tx)
@@ -1249,7 +1264,7 @@ export async function copyItem(
     const { item: copied, bytes } = await recursiveCopy(tx, source, target.id, {
       ownerId: userId,
       driveId: target.driveId,
-      workspaceId: source.workspaceId ? (targetWorkspaceId ?? source.workspaceId) : null,
+      workspaceId: target.workspaceId,
     })
     // The bytes of the files actually copied, never the source folder's `size`:
     // that is a trigger rollup, which trails its contents while the database is
@@ -1295,7 +1310,7 @@ export async function copyItem(
       size_bytes: Number(bytes),
       target_folder_id: targetParentId,
       workspace_id: copied.workspaceId ?? null,
-      cross_workspace: Boolean(targetWorkspaceId),
+      cross_workspace: copied.workspaceId !== source.workspaceId,
     },
     { userId }
   )

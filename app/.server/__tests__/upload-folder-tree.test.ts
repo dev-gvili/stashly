@@ -156,9 +156,9 @@ afterAll(async () => {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-/** Waits until `count` statements matching `pattern` wait on the blocker. */
-async function untilBlocked(pattern: string, count = 1) {
-  const pid = (await blocker.query('SELECT pg_backend_pid() AS pid')).rows[0].pid
+/** Waits until `count` statements matching `pattern` wait on `holder` (the blocker by default). */
+async function untilBlocked(pattern: string, count = 1, holder = blocker) {
+  const pid = (await holder.query('SELECT pg_backend_pid() AS pid')).rows[0].pid
   for (let i = 0; i < 400; i++) {
     const { rows } = await probe.query(
       `SELECT count(*)::int AS n FROM pg_stat_activity
@@ -706,7 +706,115 @@ describe('an upload racing a trash of its folder', () => {
         expect(await status(folderId)).toBe('trashed')
         expect(await inside(folderId)).toBe(0)
       })
+
+      // Tech-debt item 76: the other order. The writer holds the folder, so the
+      // trash waits for it and then trashes what it put inside.
+      it(`${writer} first: the trash waits, then takes what it wrote (writer first)`, async () => {
+        const folderId = await makeFolder(`${writer}-writer-first`, rootId)
+        const write = await prepare()
+        // The writer has its folder and waits in its child-count trigger.
+        await blocker.query('BEGIN')
+        await blocker.query('LOCK TABLE "Folder" IN SHARE MODE')
+        const writing = write(folderId)
+        let trash: Promise<unknown> | undefined
+        try {
+          await untilBlocked('%"Item"%')
+          trash = trashItems([folderId], ownerId)
+          await Promise.race([trash, sleep(300)])
+        } finally {
+          await blocker.query('COMMIT')
+        }
+        await writing
+        await trash
+
+        expect(await status(folderId)).toBe('trashed')
+        const written = await prisma.item.findMany({
+          where: { parentId: folderId },
+          select: { status: true },
+        })
+        expect(written.map((i) => i.status)).toEqual(['trashed'])
+      })
     }
+
+    /**
+     * Tech-debt item 74: access is checked before the trash, so a caller with
+     * no access to a folder gets the same 403 whether it is in trash or not,
+     * and can't learn which.
+     */
+    it('answers a caller with no access 403 for a folder in trash, as for a live one (item 74)', async () => {
+      const trashed = await makeFolder('no-access-in-trash', rootId)
+      const live = await makeFolder('no-access-live', rootId)
+      await trashItems([trashed], ownerId)
+      const shared = await makeFile('shared-read.txt', rootId)
+      await prisma.permission.create({
+        data: { id: uid('Permission'), roles: 'read', itemId: shared, users: { connect: { id: strangerId } } },
+      })
+
+      for (const dest of [trashed, live]) {
+        await expect(moveItems([shared], dest, strangerId)).rejects.toMatchObject({ status: 403 })
+        await expect(copyItem(strangerId, shared, dest)).rejects.toMatchObject({ status: 403 })
+      }
+      expect(await inside(trashed)).toBe(0)
+      expect(await inside(live)).toBe(0)
+    })
+  })
+
+  /**
+   * Tech-debt item 73: the trash's lock repeats until a pass finds only folders
+   * it already holds. Comparing counts let one folder leaving the tree and one
+   * arriving during the first pass look like no change, so a folder made under
+   * the arriving one was never locked, and a create into it slipped past the
+   * trash and stayed live inside it.
+   */
+  it('holds a folder made under one that moved in while the lock looked (item 73)', async () => {
+    const top = await makeFolder('lock-set-top', rootId)
+    const leaving = await makeFolder('lock-set-leaving', top)
+    const away = await makeFolder('lock-set-away', rootId)
+    const arriving = await makeFolder('lock-set-arriving', away)
+    const late = uid('Item')
+    const mover = new pg.Client({ connectionString: url() })
+    const maker = new pg.Client({ connectionString: url() })
+    await Promise.all([mover.connect(), maker.connect()])
+    let trash: Promise<unknown> | undefined
+    let creating: Promise<unknown> | undefined
+    try {
+      // One folder leaves the tree and one arrives, uncommitted, so the first
+      // pass waits for them and counts the one leaving.
+      await mover.query('BEGIN')
+      await mover.query(`UPDATE "Item" SET "parentId" = $2 WHERE "id" = $1`, [leaving, rootId])
+      await mover.query(`UPDATE "Item" SET "parentId" = $2 WHERE "id" = $1`, [arriving, top])
+      // A folder being made under the arriving one holds it FOR KEY SHARE.
+      await maker.query('BEGIN')
+      await maker.query(
+        `INSERT INTO "Item" ("id", "name", "type", "updatedAt", "ownerId", "driveId", "parentId")
+         VALUES ($1, 'lock-set-late', 'folder', now(), $2, $3, $4)`,
+        [late, ownerId, driveId, arriving]
+      )
+      // The trash stops, uncommitted, before its Trash entries.
+      await blocker.query('BEGIN')
+      await blocker.query('LOCK TABLE "TrashItem" IN SHARE MODE')
+      trash = trashItems([top], ownerId)
+      await untilBlocked('%FOR UPDATE%', 1, mover)
+      await mover.query('COMMIT')
+      // The second pass finds the arriving folder and waits for the one being made.
+      await untilBlocked('%FOR UPDATE%', 1, maker)
+      await maker.query('COMMIT')
+      await untilBlocked('%TrashItem%')
+      creating = createFolder('lock-set-inside', late, ownerId, driveId).then(
+        () => 'written',
+        (error) => error
+      )
+      await sleep(300)
+    } finally {
+      await mover.query('ROLLBACK').catch(() => {})
+      await maker.query('ROLLBACK').catch(() => {})
+      await blocker.query('COMMIT')
+      await Promise.all([mover.end(), maker.end()])
+    }
+    await trash
+    expect(await creating).toMatchObject({ errorCode: 'ITEM_NOT_FOUND', status: 404 })
+    expect(await status(late)).toBe('trashed')
+    expect(await prisma.item.count({ where: { parentId: late } })).toBe(0)
   })
 })
 
@@ -873,6 +981,31 @@ describe('copyItem', () => {
 
     // Read alone doesn't let them copy into the owner's folders.
     await expect(copyItem(strangerId, shared, rootId)).rejects.toMatchObject({ status: 403 })
+  })
+
+  /** Tech-debt item 75: a copy joins the workspace of the folder it lands in, or none. */
+  it('puts a copy in the workspace of the folder it lands in, or none (item 75)', async () => {
+    const workspaceId = uid('Workspace')
+    await prisma.workspace.create({
+      data: {
+        id: workspaceId,
+        name: 'copy workspace',
+        members: { create: { id: uid('WorkspaceMember'), memberId: ownerId, role: 'owner' } },
+      },
+    })
+    try {
+      const wsFolder = await makeFolder('ws-folder', rootId)
+      const wsFile = await makeFile('ws.txt', wsFolder, 5n)
+      await prisma.item.updateMany({ where: { id: { in: [wsFolder, wsFile] } }, data: { workspaceId } })
+      const personal = await makeFolder('personal-dest', rootId)
+
+      expect((await copyItem(ownerId, wsFile, personal)).workspaceId).toBeNull()
+      expect((await copyItem(ownerId, wsFile, wsFolder)).workspaceId).toBe(workspaceId)
+    } finally {
+      await prisma.item.updateMany({ where: { workspaceId }, data: { workspaceId: null } })
+      await prisma.workspaceMember.deleteMany({ where: { workspaceId } })
+      await prisma.workspace.delete({ where: { id: workspaceId } })
+    }
   })
 
   /**
