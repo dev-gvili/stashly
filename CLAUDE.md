@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Every instruction here is mandatory.** Never skip one because it seems unnecessary in the case at hand. A rule has no unwritten exceptions: "write the migration" has no "unless the diff is empty" clause.
 - **If an instruction looks wrong, outdated, or conflicts with another rule, tell the owner and wait for the answer.** Don't resolve it yourself, and don't edit this file unasked.
-- **This file and the auto-memory (`~/.claude/projects/c--Users-poshi-stashly/memory/`) must agree.** When a rule changes in one, change it in the other in the same step.
+- **This file and the auto-memory (`~/.claude/projects/X--stashly/memory/`) must agree.** When a rule changes in one, change it in the other in the same step.
 - **Dated facts** (test counts, error baselines) appear here, in skills and in the session handoff. When they disagree, the newest date wins; update the others to match.
 
 ## Scope Discipline
