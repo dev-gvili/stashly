@@ -85,7 +85,7 @@ TypeScript (strict) project. Always use TypeScript for new files. When moving/re
 ## Commands
 
 ```bash
-pnpm dev          # Start dev server (Express + Vite HMR), http://localhost (PORT env, default 80) — kill any existing process on :80 first
+pnpm dev          # Start dev server (Express + Vite HMR), http://localhost (PORT env, default 80) — if one is already running on :80, use it; never kill it
 pnpm build        # Build for production
 pnpm start        # Run production server
 pnpm typecheck    # Generate React Router types + run tsc
