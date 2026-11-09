@@ -12,7 +12,7 @@ import {
   toNeedsYouEntries,
   toQueueEntries,
 } from '@/components/views/home-components/home-data'
-import type { HomeFile, NeedsYouEntry } from '@/types/home.types'
+import type { NeedsYouEntry } from '@/types/home.types'
 import type { StashItem } from '@/types/stash.types'
 import { getSuggestedItems } from '@/services/item-actions'
 import { getPinnedItems } from '@/services/pin-actions'
@@ -159,14 +159,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 
 export default function Home({ loaderData }: Route.ComponentProps) {
   const { me, rootId, firstName, chips, ...data } = loaderData
-  const pins = useFetcher()
   const invitations = useFetcher()
-
-  const togglePin = (file: HomeFile) =>
-    pins.submit(
-      { intent: file.pinned ? 'unpin' : 'pin', itemId: file.id },
-      { method: 'POST', action: '/api/pins' }
-    )
 
   const respond = (intent: 'accept_invitation' | 'reject_invitation') =>
     (entry: NeedsYouEntry) =>
@@ -187,7 +180,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         collections: href('/:me/stash/collections', { me }),
         shared: href('/:me/stash/shares', { me }),
       }}
-      onTogglePin={togglePin}
       onActOnNeed={respond('accept_invitation')}
       onDismissNeed={respond('reject_invitation')}
     />

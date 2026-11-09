@@ -26,7 +26,6 @@ export interface HomeFeedProps {
   me: string
   /** "See all" destination per tab. */
   moreHref: Record<HomeFeedTab, string>
-  onTogglePin?: (file: HomeFile) => void
 }
 
 /** All / Pinned / Collections / Shared tabs over a fluid grid of file and collection tiles. */
