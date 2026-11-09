@@ -58,8 +58,13 @@ export const GalleryTile = memo(function GalleryTile({
         selected && 'bg-primary/15 ring-2 ring-primary'
       )}
     >
-      {/* Media — the browser skips its rendering while it is off screen. */}
+      {/* Media — the browser skips its rendering while it is off screen.
+          While this tile is the view transition's target that is turned off:
+          a freshly mounted `content-visibility: auto` box counts as skipped,
+          and the browser can't capture a named element inside skipped
+          content, so the morph back from the file page had no tile to land on. */}
       <div
+        style={isTransitioning ? { contentVisibility: 'visible' } : undefined}
         className={cn(
           'content-auto absolute inset-0 overflow-hidden rounded-lg bg-muted transition-[inset,border-radius] duration-200 motion-reduce:transition-none',
           selected && 'inset-1.75 rounded-md'

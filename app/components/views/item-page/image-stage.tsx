@@ -9,7 +9,7 @@ import { Button, SidebarTrigger, Tooltip, useSidebar } from '@/components/ui'
 import { useZoom } from '@/hooks/useZoom'
 import type { StashItemImage } from '@/types/stash.types'
 import { cn } from '@/utils/styles'
-import { useEffect, type JSX } from 'react'
+import { useEffect, type CSSProperties, type JSX } from 'react'
 
 // Round ghost icon button — composed from the shadcn Button primitive.
 function IconBtn({
@@ -41,6 +41,24 @@ function IconBtn({
       </Button>
     </Tooltip>
   )
+}
+
+/**
+ * The image's on-screen box, from its stored dimensions: as large as it fits in
+ * the stage, never past its natural size. The box exists before the file has
+ * loaded, so a view transition from a gallery tile morphs into the image's real
+ * place instead of into a 0×0 point (measured 9 Nov: `complete: false`, 0×0 at
+ * capture). Without dimensions the image sizes itself on load as before.
+ */
+function fittedBox(
+  image: StashItemImage['image']
+): CSSProperties | undefined {
+  if (!image?.width || !image.height) return undefined
+  const { width, height } = image
+  return {
+    aspectRatio: `${width} / ${height}`,
+    width: `min(${width}px, 100cqw, 100cqh * ${width / height})`,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -86,7 +104,11 @@ export function ImageStage({
       onMouseMove={zoom.onMouseMove}
       onMouseUp={zoom.onMouseUp}
       onMouseLeave={zoom.onMouseUp}
-      style={{ cursor: zoom.scale > 1 ? 'grab' : 'default' }}
+      style={{
+        cursor: zoom.scale > 1 ? 'grab' : 'default',
+        // Lets the image size itself against this box (`cqw`/`cqh`) below.
+        containerType: 'size',
+      }}
     >
       {/* Missing src fallback */}
       {!src ? (
@@ -104,6 +126,7 @@ export function ImageStage({
           style={{
             viewTransitionName: `img-${item.id}`,
             transform: `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.scale})`,
+            ...fittedBox(item.image),
           }}
         />
       )}

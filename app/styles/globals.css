@@ -633,6 +633,22 @@
   contain-intrinsic-size: auto 12rem;
 }
 
+/* View transitions (gallery tile ⇄ file page, `img-${id}`). Restored from the
+   old global.css (32f0247), which nothing imported.
+   No root cross-fade: named elements are lifted out of the root snapshot
+   (leaving holes), and cross-fading two holey screenshots is what causes the
+   water-ripple blur. Named elements do all the visible animation. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* Smooth morph for all shared-element groups (thumbnail → full image) */
+::view-transition-group(*) {
+  animation-duration: 0.45s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 @utility grid-cards-lg {
   grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
 }
