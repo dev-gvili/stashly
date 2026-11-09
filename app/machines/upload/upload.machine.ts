@@ -161,8 +161,13 @@ const uploadMachine = setup({
       })
     }),
     uploadPendingFiles: enqueueActions(({ context, enqueue, check }) => {
+      // A file stays 'pending' until its multipart create returns, while it
+      // already holds a slot. Left in, those came first (added earlier),
+      // `upload.start` refused them as already active, and the slot went
+      // unused, so a large batch ran far below the limit.
       let pendingFiles = Array.from(context.mediaFiles.values()).filter(
-        (file) => file.status === 'pending'
+        (file) =>
+          file.status === 'pending' && !context.queues.active.has(file.id)
       )
       if (pendingFiles.length > 0) {
         // The guard ensures config is valid, so we can parse without safeParse here.
