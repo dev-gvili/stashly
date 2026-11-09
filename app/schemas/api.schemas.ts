@@ -431,6 +431,19 @@ export const collectionsLoaderOutput = z.object({
       category: z.string(),
       size: z.coerce.number(),
       createdAt: z.date(),
+      file: z
+        .object({
+          id: z.string(),
+          mimeType: z.string().nullable(),
+          hash: z.string().nullable(),
+          extension: z.string().nullable(),
+          bucket: z.string(),
+          key: z.string(),
+          uploadPath: z.string(),
+          etag: z.string().nullable(),
+          itemId: z.string(),
+        })
+        .nullable(),
       thumbnailUrl: z.string().nullable(),
     })
   ),

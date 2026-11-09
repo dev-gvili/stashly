@@ -10,13 +10,12 @@ import {
 } from '@/components/icons'
 import type { InvitationStatus } from '@/prisma/enums'
 import type {
-  StashItem,
   StashPickerItem,
   StashWorkspaceMember,
 } from '@/types/stash.types'
 import { ItemCard } from '@/components/stash/item-card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/ui/avatar'
-import { toIcon, toUserInitial } from '@/utils/converters'
+import { toIcon, toStashItem, toUserInitial } from '@/utils/converters'
 import { cn } from '@/utils/styles'
 import {
   getContextIcon,
@@ -159,37 +158,7 @@ export function ContextThumbnailFooter({
 // ---------------------------------------------------------------------------
 
 function PreviewItemCard({ item }: { item: StashPickerItem }) {
-  const stashItem: StashItem = {
-    ...item,
-    status: 'normal',
-    inclusiveSize: item.size,
-    updatedAt: null,
-    parentId: null,
-    parent: null,
-    ownerId: '',
-    workspaceId: null,
-    driveId: '',
-    tags: [],
-    thumbnails: item.thumbnailUrl
-      ? [
-          {
-            id: item.id,
-            url: item.thumbnailUrl,
-            width: null,
-            height: null,
-            size: 'medium' as const,
-            view: 'grid' as const,
-            // The picker only ever carries a finished thumbnail URL, so this
-            // stands in as a stage-2 row — what `ItemCard.Cover` looks for.
-            stage: 2,
-          },
-        ]
-      : [],
-    favorites: [],
-    locked: null,
-    file: null,
-    folder: null,
-  }
+  const stashItem = toStashItem(item)
 
   return (
     <ItemCard {...stashItem} className="rounded-md border! border-input">

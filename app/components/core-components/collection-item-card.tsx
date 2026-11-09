@@ -1,5 +1,8 @@
-import type { KeyboardEvent, MouseEvent } from 'react'
+import { useMemo, type KeyboardEvent, type MouseEvent } from 'react'
+import { useRouteLoaderData, useSearchParams } from 'react-router'
 import { FilePreview } from '@/components/core-components/collection-cover'
+import type { ItemCategory } from '@/prisma/client'
+import type { StashItem } from '@/types/stash.types'
 import {
   AudioFillIcon,
   CheckIcon,
@@ -12,7 +15,11 @@ import { Badge } from '@/ui/badge'
 import { Checkbox } from '@/ui/checkbox'
 import { ToggleGroup, ToggleGroupItem } from '@/ui/toggle-group'
 import { formatSize } from '@/utils/formaters'
+import { ItemCardContext } from '@/hooks/useItemCard'
+import { useLiveThumbnail, useThumbnailWhenVisible } from '@/machines/thumbnail'
+import { toStashItem } from '@/utils/converters'
 import { cn } from '@/utils/styles'
+import type { Route } from '../../routes/+types/layout'
 
 // ---------------------------------------------------------------------------
 // Kinds — the coarse buckets the filters offer
@@ -126,10 +133,12 @@ export function KindFilter({
 export interface CollectionTileItem {
   id: string
   name: string
-  category: string
+  category: ItemCategory
   size: bigint | number
   createdAt: Date | string | null
   thumbnailUrl?: string | null
+  /** The file facet: the thumbnail check reads its `mimeType`. */
+  file?: StashItem['file']
 }
 
 const DATE_FMT: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
@@ -142,6 +151,43 @@ function tileMeta(item: CollectionTileItem) {
   const date = formatTileDate(item.createdAt)
   const size = formatSize('byte', 'unit', Number(item.size))
   return date ? `${size} · ${date}` : size
+}
+
+/**
+ * The tile's image. Provides `ItemCardContext` so the thumbnail pipeline can
+ * see the file: it asks for a thumbnail when the tile comes on screen, and
+ * paints the one made in this tab before the loader knows about it.
+ */
+function TilePreview({ item }: { item: CollectionTileItem }) {
+  const user = useRouteLoaderData<Route.ComponentProps['loaderData']>('layout')!.user
+  const [searchParams, setSearchParams] = useSearchParams()
+  // A collection holds files only, so every tile is a file.
+  const stashItem = useMemo(() => toStashItem({ ...item, type: 'file', size: BigInt(item.size) }), [item])
+  return (
+    <ItemCardContext.Provider
+      value={{ ...stashItem, user, searchParams, setSearchParams }}
+    >
+      <TileThumbnail url={item.thumbnailUrl} category={item.category} id={item.id} />
+    </ItemCardContext.Provider>
+  )
+}
+
+function TileThumbnail({
+  id,
+  url,
+  category,
+}: {
+  id: string
+  url?: string | null
+  category: string
+}) {
+  const live = useLiveThumbnail(id)
+  const thumbnailRef = useThumbnailWhenVisible()
+  return (
+    <div ref={thumbnailRef} className="size-full">
+      <FilePreview url={live?.src ?? url} category={category} />
+    </div>
+  )
 }
 
 interface CollectionItemCardProps {
@@ -219,7 +265,7 @@ export function CollectionItemCard({
         existing && 'opacity-50'
       )}
     >
-      <FilePreview url={item.thumbnailUrl} category={item.category} />
+      <TilePreview item={item} />
     </div>
   )
 

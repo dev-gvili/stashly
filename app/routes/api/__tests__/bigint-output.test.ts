@@ -16,6 +16,7 @@ vi.mock('@/services/item-actions', async (importOriginal) => ({
         category: 'image',
         size: 10_000_000n,
         createdAt: new Date('2026-11-01T00:00:00Z'),
+        file: null,
         thumbnails: [],
       },
     ],

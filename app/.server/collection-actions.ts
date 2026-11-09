@@ -2,6 +2,7 @@ import {
   ItemType,
   ItemStatus,
   Prisma,
+  type File,
   type Item,
   type ItemCategory,
   type Thumbnail,
@@ -857,6 +858,7 @@ export async function getCollectionItems(
   const rows = await prisma.$queryRaw<
     (Item & {
       linkId: string
+      file: File | null
       thumbnails: Pick<
         Thumbnail,
         'id' | 'width' | 'height' | 'size' | 'view' | 'stage' | 'bucket' | 'color'
@@ -865,9 +867,11 @@ export async function getCollectionItems(
   >`
     ${after.with}
     SELECT i.*, cm.id AS "linkId",
+           to_jsonb(f) AS file,
            COALESCE(th.thumbnails, '[]'::jsonb) AS thumbnails
     FROM "CollectionMember" cm
     JOIN "Item" i ON i.id = cm."itemId"
+    LEFT JOIN "File" f ON f."itemId" = i.id
     ${after.join}
     LEFT JOIN LATERAL (
       SELECT jsonb_build_array(jsonb_build_object(

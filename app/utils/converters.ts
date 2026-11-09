@@ -35,7 +35,12 @@ import {
   VideoFillIcon,
   WorkspaceFillIcon,
 } from '@/components/icons'
-import type { LinkState, SharedLink } from '@/types/stash.types'
+import type {
+  LinkState,
+  SharedLink,
+  StashItem,
+  StashPickerItem,
+} from '@/types/stash.types'
 import type { MediaFile, Status, UploadProgress } from '@/types/machine.types'
 import { ItemCategory, type ItemType } from '@/prisma/browser'
 import { href } from 'react-router'
@@ -1132,4 +1137,45 @@ export function toLinkState(link: SharedLink): LinkState {
   const days = (new Date(link.expiresAt).getTime() - Date.now()) / 86_400_000
   if (days <= 0) return 'expired'
   return days <= 7 ? 'expiring' : 'live'
+}
+
+/**
+ * Fills a slim picker shape out to a full `StashItem`, so it can render
+ * through `ItemCard` or provide `ItemCardContext` (the thumbnail hooks read it).
+ * The picker only carries a finished thumbnail URL, so it stands in as a
+ * stage-2 row — what `ItemCard.Cover` looks for.
+ *
+ * @example
+ * <ItemCard {...toStashItem(pickerItem)} />
+ */
+export function toStashItem(item: StashPickerItem): StashItem {
+  return {
+    ...item,
+    status: 'normal',
+    inclusiveSize: item.size,
+    updatedAt: null,
+    parentId: null,
+    parent: null,
+    ownerId: '',
+    workspaceId: null,
+    driveId: '',
+    tags: [],
+    thumbnails: item.thumbnailUrl
+      ? [
+          {
+            id: item.id,
+            url: item.thumbnailUrl,
+            width: null,
+            height: null,
+            size: 'medium' as const,
+            view: 'grid' as const,
+            stage: 2,
+          },
+        ]
+      : [],
+    favorites: [],
+    locked: null,
+    file: item.file ?? null,
+    folder: null,
+  }
 }

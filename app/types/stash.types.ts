@@ -200,6 +200,8 @@ export type StashPickerItem = Pick<
   'id' | 'name' | 'type' | 'category' | 'size' | 'createdAt'
 > & {
   thumbnailUrl?: string | null
+  /** The file facet, when the caller has it: the thumbnail check reads its `mimeType`. */
+  file?: StashItem['file']
 }
 
 // ---------------------------------------------------------------------------
