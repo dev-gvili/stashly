@@ -176,16 +176,7 @@ function ItemCardCheckBox({
       onClick={handleClick}
       onCheckedChange={handleCheckedChange}
       data-slot="item-checkbox"
-      className={cn(
-        'size-6 z-10 place-self-start hover:cursor-pointer bg-muted! aria-checked:bg-primary!',
-        // The box is 24px; the pseudo-element lifts the pressable area to 40px
-        // (dense-desktop minimum) without changing layout. Sized to 40 rather
-        // than 44 so it can't reach the actions menu in the opposite corner.
-        'relative after:absolute after:top-1/2 after:left-1/2 after:size-10 after:-translate-1/2',
-        // Base Checkbox animates box-shadow; name both so neither is dropped.
-        'transition-[box-shadow,scale] duration-150 ease-out active:scale-[0.96]',
-        className
-      )}
+      className={cn(itemCheckboxClassName, className)}
       name={name}
       value={value || id}
       {...props}
@@ -193,6 +184,21 @@ function ItemCardCheckBox({
   )
 }
 ItemCardCheckBox.displayName = 'ItemCardCheckBox'
+
+/**
+ * The item card checkbox's own classes, for a surface that selects items but
+ * can't render `ItemCard.Checkbox` (it needs an ItemCard context) — the
+ * Images page tiles.
+ */
+export const itemCheckboxClassName = cn(
+  'size-6 z-10 place-self-start hover:cursor-pointer bg-muted! aria-checked:bg-primary!',
+  // The box is 24px; the pseudo-element lifts the pressable area to 40px
+  // (dense-desktop minimum) without changing layout. Sized to 40 rather
+  // than 44 so it can't reach the actions menu in the opposite corner.
+  'relative after:absolute after:top-1/2 after:left-1/2 after:size-10 after:-translate-1/2',
+  // Base Checkbox animates box-shadow; name both so neither is dropped.
+  'transition-[box-shadow,scale] duration-150 ease-out active:scale-[0.96]'
+)
 
 const ItemThumbnail = React.forwardRef<
   React.ComponentRef<typeof AvatarPrimitive.Root>,

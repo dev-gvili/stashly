@@ -1,6 +1,6 @@
 import { MinusFillIcon, DoubleCheckIcon } from '@/components/icons'
 import { Checkbox } from '@/ui/checkbox'
-import { useSelection } from '@/hooks/useSelection'
+import { selectionActor, useSelection } from '@/hooks/useSelection'
 import { cn } from '@/utils/styles'
 
 /**
@@ -14,6 +14,8 @@ export function SelectAllCheckbox({
   paramName,
   className,
   checkboxClassName,
+  ids,
+  label,
 }: {
   /** URL param the selection syncs to; defaults to `selectedItems` */
   paramName?: string
@@ -21,9 +23,44 @@ export function SelectAllCheckbox({
   className?: string
   /** the box itself — use to re-tint border/fill on a non-default surface */
   checkboxClassName?: string
+  /**
+   * Limit the box to these ids (e.g. one date group) instead of the whole
+   * page: it reflects and toggles only them, leaving other selections alone.
+   */
+  ids?: string[]
+  /** Names the subset in the label: "Select {label}" / "Deselect {label}". */
+  label?: string
 }) {
-  const { allSelected, someSelected, toggleAll } = useSelection()
-  const state = allSelected ? 'on' : someSelected ? 'mixed' : 'off'
+  const { allSelected, someSelected, toggleAll, selectedIds } = useSelection()
+  const subsetCount = ids ? ids.filter((id) => selectedIds.includes(id)).length : 0
+  const state = ids
+    ? ids.length > 0 && subsetCount === ids.length
+      ? 'on'
+      : subsetCount > 0
+        ? 'mixed'
+        : 'off'
+    : allSelected
+      ? 'on'
+      : someSelected
+        ? 'mixed'
+        : 'off'
+
+  const toggle = () => {
+    if (!ids) return toggleAll(paramName)
+    const param = paramName ?? 'selectedItems'
+    const current = selectionActor.getSnapshot().context.selectedIds ?? []
+    const next =
+      state === 'on'
+        ? current.filter((id) => !ids.includes(id))
+        : Array.from(new Set([...current, ...ids]))
+    selectionActor.send({ type: 'SET_SELECTED', selected: next, paramName: param })
+  }
+
+  const ariaLabel = label
+    ? `${state === 'on' ? 'Deselect' : 'Select'} ${label}`
+    : state === 'on'
+      ? 'Clear selection'
+      : 'Select all'
 
   return (
     <span
@@ -36,8 +73,8 @@ export function SelectAllCheckbox({
         checked={
           state === 'on' ? true : state === 'mixed' ? 'indeterminate' : false
         }
-        onCheckedChange={() => toggleAll(paramName)}
-        aria-label={state === 'on' ? 'Clear selection' : 'Select all'}
+        onCheckedChange={toggle}
+        aria-label={ariaLabel}
         className={cn('size-6 rounded-sm hover:cursor-pointer data-[state=checked]:bg-foreground! data-[state=checked]:text-background border-none', checkboxClassName)}
       >
         {state === 'off' ? null : (

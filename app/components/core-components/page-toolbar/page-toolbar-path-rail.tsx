@@ -31,6 +31,7 @@ import {
   RestoreFillIcon,
 } from '@/components/icons'
 import { SelectAllCheckbox } from './toolbar-stats'
+import { AddToCollectionMenu, type CollectionRef } from './add-to-collection-menu'
 import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
 import { useSelection } from '@/hooks/useSelection'
 import { useBreadcrumbs } from '@/hooks'
@@ -47,7 +48,125 @@ import {
   ButtonGroupText,
 } from '@/components/ui'
 
-interface Props extends BulkActions {
+function rail(
+  label: string,
+  Icon: (p: { className?: string }) => JSX.Element,
+  onClick?: () => void,
+  danger?: boolean,
+  /** Disables the button and shows this instead of the label as its tooltip. */
+  disabledReason?: string | null
+) {
+  return (
+    <Tooltip key={label} content={disabledReason ?? label} asChild>
+      {/* A disabled button gets no pointer events, so the tooltip hangs on a wrapper. */}
+      <span className="inline-flex">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClick}
+          disabled={!!disabledReason}
+          aria-label={label}
+          className={cn(danger ? 'text-destructive hover:text-destructive!' : '')}
+        >
+          <Icon className="size-5" />
+        </Button>
+      </span>
+    </Tooltip>
+  )
+}
+
+interface SelectionActionsProps extends BulkActions {
+  selectedCount: number
+  context?: ToolbarContext
+  className?: string
+  /** Shows "Add to collection" with the user's collections. */
+  onAddToCollection?: (collection: CollectionRef) => void
+  /** Shows a × that clears the selection. */
+  onClear?: () => void
+  /** Set when Share can't run for this selection (e.g. several items). */
+  shareDisabledReason?: string | null
+  /** Set when Download can't run now (in progress, or folders selected). */
+  downloadDisabledReason?: string | null
+}
+
+/**
+ * The rail's bulk-mode group — "N selected" plus whichever actions the page
+ * wires: Add to collection / Move / Share / Download / Trash, and a clear
+ * button (Restore / Delete forever in Trash). An action renders only when its
+ * handler is passed, so each page picks its set in `StashPageToolbar`.
+ * `PageToolbarPathRail` swaps it in when a selection exists; the Images page
+ * shows it in the app header.
+ *
+ * @example
+ * {selectedCount > 0 && <PathRailSelectionActions selectedCount={selectedCount} onTrash={trash} />}
+ */
+export function PathRailSelectionActions({
+  selectedCount,
+  context = 'files',
+  className,
+  onAddToCollection,
+  onClear,
+  shareDisabledReason,
+  downloadDisabledReason,
+  ...actions
+}: SelectionActionsProps) {
+  return (
+    <div
+      className={cn(
+        'flex shrink-0 items-center gap-1 rounded-md ring-2 ring-accent bg-card pl-2',
+        className
+      )}
+    >
+      {context === 'trash' ? (
+        <ButtonGroup>
+          <ButtonGroupText className="text-muted-foreground border-none bg-card">
+            {selectedCount} selected
+          </ButtonGroupText>
+          <ButtonGroupSeparator className="bg-accent h-5! my-auto!" />
+          {rail('Restore', RestoreFillIcon, actions.onRestore)}
+          {rail(
+            'Delete forever',
+            () => (
+              <TrashFillIcon className="text-destructive" />
+            ),
+            actions.onDeleteForever,
+            true
+          )}
+        </ButtonGroup>
+      ) : (
+        <ButtonGroup>
+          <ButtonGroupText className="text-muted-foreground border-none bg-card">
+            {selectedCount} selected
+          </ButtonGroupText>
+          {onAddToCollection && <AddToCollectionMenu onSelect={onAddToCollection} />}
+          {actions.onMove && rail('Move to…', MoveFillIcon, actions.onMove)}
+          {/* {rail('Favorite', FavoritesFillIcon, actions.onFavorite)} */}
+          {actions.onShare &&
+            rail('Share', ShareItemFillIcon, actions.onShare, false, shareDisabledReason)}
+          {actions.onDownload &&
+            rail('Download', DownloadFillIcon, actions.onDownload, false, downloadDisabledReason)}
+          {actions.onTrash &&
+            rail(
+              'Trash',
+              () => (
+                <TrashFillIcon />
+              ),
+              actions.onTrash,
+              true
+            )}
+          {onClear && rail('Clear selection (Esc)', RemoveIcon, onClear)}
+        </ButtonGroup>
+      )}
+    </div>
+  )
+}
+
+interface Props
+  extends BulkActions,
+    Pick<
+      SelectionActionsProps,
+      'onAddToCollection' | 'onClear' | 'shareDisabledReason' | 'downloadDisabledReason'
+    > {
   itemCount: number
   context?: ToolbarContext
   onBack?: () => void
@@ -81,25 +200,6 @@ export function PageToolbarPathRail({
   const selectedCount = selectedIds.length
   const active = selectedCount > 0
   const isTrash = context === 'trash'
-
-  const rail = (
-    label: string,
-    Icon: (p: { className?: string }) => JSX.Element,
-    onClick?: () => void,
-    danger?: boolean
-  ) => (
-    <Tooltip key={label} content={label} asChild>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onClick}
-        aria-label={label}
-        className={cn(danger ? 'text-destructive hover:text-destructive!' : '')}
-      >
-        <Icon className="size-5" />
-      </Button>
-    </Tooltip>
-  )
 
   return (
     <nav
@@ -177,66 +277,11 @@ export function PageToolbarPathRail({
       {/* {isTrash && <SelectAllCheckbox className="shrink-0" />} */}
 
       {active ? (
-        <div className="flex shrink-0 items-center gap-1 rounded-md ring-2 ring-accent bg-card pl-2">
-          {isTrash ? (
-            <ButtonGroup>
-              <ButtonGroupText className="text-muted-foreground border-none bg-card">
-                {selectedCount} selected
-              </ButtonGroupText>
-              <ButtonGroupSeparator className="bg-accent h-5! my-auto!" />
-              {rail('Restore', RestoreFillIcon, actions.onRestore)}
-              {rail(
-                'Delete forever',
-                () => (
-                  <TrashFillIcon className="text-destructive" />
-                ),
-                actions.onDeleteForever,
-                true
-              )}
-              {/* <ButtonGroupSeparator className="bg-accent h-5! my-auto!" />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => unselectAll()}
-                aria-label="Clear selection"
-                className="text-muted-foreground"
-              >
-                <RemoveIcon className="size-5" />
-              </Button> */}
-            </ButtonGroup>
-          ) : (
-            <ButtonGroup>
-              <ButtonGroupText className="text-muted-foreground border-none bg-card">
-                {selectedCount} selected
-              </ButtonGroupText>
-              {/* <ButtonGroupSeparator className="bg-accent h-5! my-auto!" /> */}
-
-              {rail('Move to…', MoveFillIcon, actions.onMove)}
-              {/* {rail('Favorite', FavoritesFillIcon, actions.onFavorite)} */}
-              {rail('Download', DownloadFillIcon, actions.onDownload)}
-              {rail('Share', ShareItemFillIcon, actions.onShare)}
-              {/* <ButtonGroupSeparator className="bg-accent h-5! my-auto!" /> */}
-              {/* <ButtonGroupSeparator className="bg-accent h-5! my-auto!" /> */}
-              {rail(
-                'Trash',
-                () => (
-                  <TrashFillIcon />
-                ),
-                actions.onTrash,
-                true
-              )}
-              {/* <Button
-                variant="outline"
-                size="icon"
-                onClick={() => unselectAll()}
-                aria-label="Clear selection"
-                className="text-current border-none"
-                >
-                <RemoveIcon className="size-6" />
-              </Button> */}
-            </ButtonGroup>
-          )}
-        </div>
+        <PathRailSelectionActions
+          selectedCount={selectedCount}
+          context={context}
+          {...actions}
+        />
       ) : (
         <div className="flex shrink-0 items-center gap-1">
           {/* The rail's neutral action. Search is a route rather than an

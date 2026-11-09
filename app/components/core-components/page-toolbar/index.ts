@@ -1,4 +1,4 @@
-export { PageToolbarPathRail } from './page-toolbar-path-rail'
+export { PageToolbarPathRail, PathRailSelectionActions } from './page-toolbar-path-rail'
 export { SelectAllCheckbox } from './toolbar-stats'
 export type {
   LibraryStats,

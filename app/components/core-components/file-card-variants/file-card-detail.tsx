@@ -6,6 +6,14 @@ import { cn } from '@/utils/styles'
 import type { FileCardVariantProps } from './types'
 import { formatSize } from '@/utils/formaters';
 
+/**
+ * The file card's selection checkbox look, layered on `itemCheckboxClassName`:
+ * a ringed input-coloured box that turns foreground when checked. Shared with
+ * the Images page tiles so both select with the same control.
+ */
+export const fileCardCheckboxClassName =
+  'bg-input! rounded-sm backdrop-blur-sm aria-checked:border-none! aria-checked:ring-accent/50 ring-2 aria-checked:bg-foreground! aria-checked:text-background!'
+
 export interface FileCardDetailProps extends FileCardVariantProps {
   /**
    * Replaces the name line. For callers that must render the name themselves —
@@ -79,7 +87,7 @@ export function FileCardDetail({
           <ItemCard.Checkbox
             name="selectedItems"
             value={item.id}
-            className="bg-input! rounded-sm backdrop-blur-sm aria-checked:border-none! aria-checked:ring-accent/50 ring-2 aria-checked:bg-foreground! aria-checked:text-background! "
+            className={fileCardCheckboxClassName}
           />
           {showActions && (
             // rounded-lg (8px) = the hero's 16px radius minus this row's p-2 inset.
