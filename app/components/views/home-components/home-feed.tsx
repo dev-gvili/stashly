@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
-import { ChevronRightIcon, CollectionFillIcon, FolderFillIcon, PinFillIcon, ShareFillIcon } from '@/components/icons'
+import { AIFillIcon, ChevronRightIcon, CollectionFillIcon, FolderFillIcon, PinFillIcon, ShareFillIcon } from '@/components/icons'
 import { HomeCollectionCard } from '@/components/views/home-components/home-collection-card'
-import { HomeFileCard } from '@/components/views/home-components/home-file-card'
+import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { useHomeFeed } from '@/hooks/useHomeFeed'
 import type { HomeCollection, HomeFile, HomeFeedTab } from '@/types/home.types'
 import { Tabs, TabsList, TabsTrigger } from '@/ui/tabs'
@@ -30,7 +30,7 @@ export interface HomeFeedProps {
 }
 
 /** All / Pinned / Collections / Shared tabs over a fluid grid of file and collection tiles. */
-export function HomeFeed({ recent, collections, me, moreHref, onTogglePin }: HomeFeedProps) {
+export function HomeFeed({ recent, collections, me, moreHref }: HomeFeedProps) {
   const feed = useHomeFeed({ recent, collections, me })
   const empty = EMPTY[feed.tab]
   const tab = TABS.find((t) => t.value === feed.tab)!
@@ -64,7 +64,15 @@ export function HomeFeed({ recent, collections, me, moreHref, onTogglePin }: Hom
         <div className="grid grid-cards-md gap-3">
           {feed.entries.map((e) =>
             e.kind === 'file' ? (
-              <HomeFileCard key={e.file.id} file={e.file} onTogglePin={onTogglePin} />
+              <FileCardDetail
+                key={e.file.id}
+                item={e.file.item}
+                meta={
+                  e.file.searchable && (
+                    <AIFillIcon aria-label="Searchable" className="ml-auto size-3.5 shrink-0 text-primary" />
+                  )
+                }
+              />
             ) : (
               <HomeCollectionCard key={e.collection.id} collection={e.collection} />
             )

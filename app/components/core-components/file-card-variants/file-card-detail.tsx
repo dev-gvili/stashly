@@ -5,6 +5,9 @@ import { OpenWithIcon } from '@/components/icons'
 import { cn } from '@/utils/styles'
 import type { FileCardVariantProps } from './types'
 import { formatSize } from '@/utils/formaters';
+import { HomeFilePreview } from '@/components/views/home-components/home-file-preview'
+import { toFileKind } from '@/components/views/home-components/home-data'
+import { KIND_ICON } from '@/components/views/home-components/home-format'
 
 /**
  * The file card's selection checkbox look, layered on `itemCheckboxClassName`:
@@ -54,24 +57,32 @@ export function FileCardDetail({
   children,
 }: FileCardDetailProps) {
   const size = formatSize('byte', 'unit', item.size)
+  const kind = toFileKind(item.category)
+  const KindIcon = KIND_ICON[kind]
 
   return (
     <ItemCard
       {...item}
       className={cn(
-        'flex flex-col gap-0 rounded-3xl! border-none p-2 bg-muted group ring-2 ring-accent',
+        'group flex min-w-0 flex-col gap-0 overflow-hidden rounded-2xl! border border-border/50 bg-card p-0 shadow-none transition-[border-color,box-shadow] hover:border-border hover:shadow-stashly',
         className
       )}
     >
-      {/* Concentric: card is rounded-3xl (24px) with p-2 (8px), so the hero
-          reads 24 − 8 = 16px. The radius has to live on this wrapper too —
-          it owns the overflow clip and the shadow, both of which would
-          otherwise render square behind the rounded thumbnail. */}
-      <div className="relative aspect-4/3 w-full overflow-hidden rounded-2xl  shadow-[2px_6px_6px_0_rgba(38,38,38,0.10)] dark:shadow-[0px_6px_6px_3px_rgba(0,0,0,0.35)]  bg-card">
-        <ItemCard.Thumbnail className="absolute inset-0 h-full w-full ">
-          <ItemCard.ThumbnailImage className="rounded-2xl transition-transform duration-700 ease-out group-hover/card:scale-125" />
-          <ItemCard.ThumbnailFallback className="rounded-2xl text-muted-foreground" />
+      {/* Tile pattern: a 4:3 cover over the body, split by a hairline. */}
+      <div className="relative aspect-4/3 w-full overflow-hidden border-b border-border/50 bg-muted">
+        <ItemCard.Thumbnail className="absolute inset-0 h-full w-full rounded-none">
+          {/* Category art (page, waveform, code lines…) until a thumbnail lands.
+              Before the image: both are absolute, so the later one paints on top. */}
+          <ItemCard.ThumbnailFallback className="rounded-none p-0">
+            <HomeFilePreview kind={kind} />
+          </ItemCard.ThumbnailFallback>
+          <ItemCard.ThumbnailImage className="rounded-none" />
         </ItemCard.Thumbnail>
+
+        {/* Hidden while the checkbox row shows, which takes the same corner. */}
+        {item.file?.extension && (
+          <ItemCard.Kind className="absolute top-2.5 left-2.5 rounded-md bg-background/80 px-1.5 py-0.5 text-2xs backdrop-blur-sm group-hover/card:hidden group-has-[[data-slot=item-checkbox][data-state=checked]]/card:hidden" />
+        )}
 
         {overlay}
         {/* Scrim: the name/kind/Open row sits on a fixed dark ground, so the
@@ -111,17 +122,18 @@ export function FileCardDetail({
         </div>
       </div>
 
-      <div className="flex items-end justify-between gap-3 px-1 pb-1 pt-3">
-        <div className="min-w-0">
-          {name ?? (
-            <ItemCard.Name className="h-auto w-full max-w-full truncate text-left font-stashly text-sm font-semibold text-foreground" />
-          )}
-          <p className="flex items-center gap-2 truncate font-stashly text-xs text-muted-foreground tabular-nums">
-            {size}
-            {meta}
-          </p>
+      <div className="flex min-w-0 flex-col gap-1.5 px-3.5 pt-3 pb-3.5">
+        {name ?? (
+          <ItemCard.Name className="h-auto w-full max-w-full truncate text-left font-stashly text-sm font-medium tracking-tight text-foreground" />
+        )}
+        <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+          <KindIcon className="size-3.5 shrink-0" />
+          <span className="flex min-w-0 items-center gap-1 truncate font-stashly text-2xs tabular-nums">
+            {size} ·
+            <ItemCard.Date className="truncate text-2xs" />
+          </span>
+          {meta}
         </div>
-        <ItemCard.Date className="shrink-0 truncate text-xs text-muted-foreground" />
       </div>
 
       {children}

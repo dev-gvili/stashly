@@ -68,6 +68,7 @@ export function toHomeFile(
     thumbnailUrl: thumb?.url ?? undefined,
     pinned: ctx.pinnedIds.has(item.id),
     searchable: ctx.indexedIds.has(item.id),
+    item,
   }
 }
 

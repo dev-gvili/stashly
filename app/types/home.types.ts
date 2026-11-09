@@ -1,3 +1,5 @@
+import type { StashItem } from '@/types/stash.types'
+
 export type FileKind = 'document' | 'image' | 'audio' | 'video' | 'code'
 
 /** What the home feed needs from a stash item — map from StashItem in the loader. */
@@ -17,6 +19,8 @@ export interface HomeFile {
   searchable?: boolean
   /** Audio / video length, e.g. "6:41". */
   duration?: string
+  /** The loader row, rendered by `FileCardDetail`. */
+  item: StashItem
 }
 
 export interface HomeCollectionTile {
