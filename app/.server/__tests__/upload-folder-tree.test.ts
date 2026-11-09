@@ -43,9 +43,9 @@ let rootId: string
 async function makeFolder(
   name: string,
   parentId: string,
-  status: 'normal' | 'trashed' = 'normal'
+  status: 'normal' | 'trashed' = 'normal',
+  id = uid('Item')
 ) {
-  const id = uid('Item')
   await prisma.item.create({
     data: {
       id,
@@ -571,6 +571,50 @@ describe('an upload racing a trash of its folder', () => {
     expect(await status(folderId)).toBe('trashed')
     expect(await status(folders['x'])).toBe('trashed')
     expect(await status(folders['x/y'])).toBe('trashed')
+  })
+
+  /**
+   * Tech-debt item 72: trash takes its folders FOR UPDATE in id order, in one
+   * statement. A folder tree took its root, then each level, in separate
+   * statements. With a subfolder whose id sorts before the root's, the trash
+   * held the subfolder and waited for the root while the tree held the root
+   * and waited for the subfolder.
+   */
+  it('a folder tree and a trash of its root take their folders in one order (item 72)', async () => {
+    // Ids chosen so the subfolder sorts before the root.
+    const withLead = (lead: string) => {
+      const id = uid('Item')
+      return id.replace('_', `_${lead}`) as typeof id
+    }
+    const root = await makeFolder('order-root', rootId, 'normal', withLead('z'))
+    const sub = await makeFolder('a', root, 'normal', withLead('0'))
+    // Something else holds the root, so the trash takes the subfolder and waits there.
+    await blocker.query('BEGIN')
+    await blocker.query(`SELECT 1 FROM "Item" WHERE "id" = $1 FOR KEY SHARE`, [root])
+    let trash: Promise<unknown> | undefined
+    let resolving: Promise<unknown> | undefined
+    try {
+      trash = trashItems([root], ownerId).then(
+        () => 'trashed',
+        (error) => error
+      )
+      await untilBlocked('%"Held"%FOR UPDATE%')
+      resolving = resolveUploadFolders({ userId: ownerId, rootId: root, dirs: ['a/new'] }).then(
+        () => 'resolved',
+        (error) => error
+      )
+      await sleep(300)
+    } finally {
+      await blocker.query('COMMIT')
+    }
+
+    const outcome = { trash: await trash, resolving: await resolving }
+    expect(String(outcome.trash)).not.toMatch(/deadlock/i)
+    expect(String((outcome.resolving as Error)?.message ?? outcome.resolving)).not.toMatch(/deadlock/i)
+    expect(outcome.trash).toBe('trashed')
+    expect(outcome.resolving).toMatchObject({ errorCode: 'ITEM_NOT_FOUND', status: 404 })
+    expect(await status(root)).toBe('trashed')
+    expect(await prisma.item.count({ where: { parentId: sub } })).toBe(0)
   })
 
   async function makeFile(name: string, parentId: string) {

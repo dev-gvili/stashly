@@ -1539,14 +1539,15 @@ async function resolveFolderTree(
   // `$executeRaw`, not `$queryRaw`: pg_advisory_xact_lock returns `void`,
   // which $queryRaw can't deserialize as a result column.
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`folder-tree:${ownerId}`}, 0))`
-  // The root and every folder found below are held FOR KEY SHARE until the
-  // transaction commits, as `insertUploadedItem` holds its folder: a trash
-  // running now either finished first (the root is refused, a trashed folder
-  // isn't found) or waits for this tree and then trashes what it created.
+  // The root and the folders found below are held FOR KEY SHARE until the
+  // transaction commits, as `insertUploadedItem` holds its folder, but only
+  // once the tree is known, all in one statement in id order (below). Taken a
+  // level at a time, the tree held the root and waited for a subfolder while a
+  // trash of the root, which takes its folders in id order, held the subfolder
+  // and waited for the root: a deadlock (item 72).
   const [root] = await tx.$queryRaw<{ id: string }[]>`
     SELECT "id" FROM "Item"
     WHERE "id" = ${rootId} AND "type" = 'folder' AND "status" <> 'trashed'
-    FOR KEY SHARE
   `
   if (!root) {
     throw new StashlyError(
@@ -1582,7 +1583,6 @@ async function resolveFolderTree(
         ) AS wanted("parentId", "name")
           ON i."parentId" = wanted."parentId" AND i."name" = wanted."name"
         WHERE i."type" = 'folder' AND i."status" <> 'trashed' AND i."ownerId" = ${ownerId}
-        FOR KEY SHARE OF i
       `
       for (const row of rows) {
         const key = `${row.parentId}/${row.name}`
@@ -1614,6 +1614,25 @@ async function resolveFolderTree(
         })
       }
     }
+  }
+
+  // Hold the root and every folder found, in id order as trash takes them, and
+  // read each row again: a trash that ran since the lookups (or holds one of
+  // them now, which this waits for) leaves it trashed, and nothing is filed.
+  const held = [...new Set([...folders].filter(([path]) => !created.has(path)).map(([, id]) => id))]
+  const live = await tx.$queryRaw<{ id: string; status: string }[]>`
+    SELECT "id", "status" FROM "Item"
+    WHERE "id" IN (${Prisma.join(held)})
+    ORDER BY "id"
+    FOR KEY SHARE
+  `
+  if (live.length !== held.length || live.some((row) => row.status === 'trashed')) {
+    throw new StashlyError(
+      StashlyErrorCode.ITEM_NOT_FOUND,
+      live.some((row) => row.id === rootId && row.status === 'trashed')
+        ? 'The folder this upload went into no longer exists, so nothing was filed.'
+        : 'A folder on this upload’s path was moved to trash while it was being resolved, so nothing was filed.'
+    )
   }
 
   if (missing.length > 0) {
