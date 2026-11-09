@@ -125,7 +125,7 @@
 
 ### What's left, in priority order
 
-*Updated 1 Nov (items 31–44 added 25 Oct, 45–57 on 30–31 Oct, 58–63 on 31 Oct–1 Nov). Listed in the order items were added; new items are marked **new**.*
+*Updated 9 Nov (items 31–44 added 25 Oct, 45–57 on 30–31 Oct, 58–63 on 31 Oct–1 Nov, 64–77 on 1–8 Nov, 78–81 on 9 Nov). Listed in the order items were added; new items are marked **new**.*
 
 | # | Item | Score | What remains | Blocked on |
 |---|------|-------|--------------|------------|
@@ -196,6 +196,10 @@
 | 75 | **new** A copy joins the source's workspace, not the destination's | 10 | `copyItem` takes `workspaceId` from the source (or the caller's argument), not from the folder it lands in; pre-existing | — |
 | 76 | **new** The trashed-destination tests cover only trash first | 15 | `createFolder`, `moveItems` and `copyItem` are tested with the trash first; add the writer-first order, as item 69 has for move | — |
 | 77 | ~~A move may accept a folder's grandchild as its target~~ | 30 | Resolved 2026-11-08 (`a917e36`): `moveItems` walks up from the target once per call and refuses any moved folder on that path; a move into a grandchild or 5 levels down accepted (loop made) → refused, nothing written, measured | — |
+| 78 | ~~A dropped folder is filed flat into the destination~~ | 35 | Resolved 2026-11-09 (`063e006`): `withEntryPath` gives a dropped file its `entry.fullPath` as `webkitRelativePath`, so `addBatch` builds its folders; 3 unit tests; a real drop not checked in the browser | — |
+| 79 | ~~A freed upload slot goes to a file that already holds one~~ | 25 | Resolved 2026-11-09 (`0fb542a`): the refill skips files already in `queues.active`; the new test fails on the old filter; files in flight during a real drop not measured | — |
+| 80 | ~~Home suggestions list files that were only just uploaded~~ | 16 | Resolved 2026-11-09 (`c311f5d`): an owned item needs an open or a later edit, a shared one a live grant from another user; 0 fresh uploads in 2 users' results on the dev DB. Open: whether edits should count | — |
+| 81 | **new** The rollup start test can time out in a full parallel run | 12 | Time the server-module import under a full run, then raise that test's timeout with the measured reason or make the import cheaper; never skip it | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -280,6 +284,10 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 75 | A copy joins the source's workspace, not the destination's | Code | 1 | 1 | 1 | **10** (Low) | 1 h | New 8 Nov |
 | 76 | The trashed-destination tests cover only trash first | Test | 1 | 2 | 1 | **15** (Low) | 2 h | New 8 Nov |
 | 77 | ~~A move may accept a folder's grandchild as its target~~ | Code | 3 | 3 | 1 | **30** (High) | 1 h | Resolved 8 Nov |
+| 78 | ~~A dropped folder is filed flat into the destination~~ | Code | 4 | 3 | 1 | **35** (High) | 1 h | Resolved 9 Nov |
+| 79 | ~~A freed upload slot goes to a file that already holds one~~ | Code | 3 | 2 | 1 | **25** (High) | 1 h | Resolved 9 Nov |
+| 80 | ~~Home suggestions list files that were only just uploaded~~ | Code | 2 | 2 | 2 | **16** (Medium) | 2 h | Resolved 9 Nov |
+| 81 | The rollup start test can time out in a full parallel run | Test | 1 | 2 | 2 | **12** (Low) | 2 h | New 9 Nov |
 
 ## Details
 
