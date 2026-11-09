@@ -3005,11 +3005,14 @@ export interface SuggestedItemsResult {
 // --- 8. GET SUGGESTED ITEMS (RECENT ACTIVITY) - OPTIMIZED VERSION ---
 
 /**
- * Fetches suggested folders and files based on recent activity criteria using a single optimized SQL query.
- * This function retrieves items that are recently updated, opened, or created. It performs a complex
- * join across Files, Folders, Favorites, and Thumbnails, aggregating related data into JSON objects
- * for efficient transport. The results are filtered by owner, drive, and status, and optionally
- * scoped to a specific workspace.
+ * Fetches suggested folders and files: the user's own items they opened or
+ * edited, and items shared with them by a live grant, most recent first. An
+ * item that was only created (a fresh upload) is never suggested: it has no
+ * `openedAt`, its `updatedAt` equals its `createdAt`, and the owner's own
+ * Permission row its upload writes doesn't count as a share. "Edited" is
+ * `updatedAt` more than 5 s after `createdAt`, so a rename, move or restore
+ * counts too: nothing records content edits separately. Related rows
+ * (file, folder, favorites, thumbnails, pins) are aggregated into JSON.
  * @param {SuggestedItemsParams} params - Configuration for fetching suggestions.
  * @param {string} params.userId - The ID of the user whose items are being fetched.
  * @param {string} params.driveId - The ID of the drive to search within.
@@ -3103,7 +3106,32 @@ export async function getSuggestedItems(
     } | null
   }
 
+  // Changed after it was created, by more than the upload itself takes.
+  const edited = Prisma.sql`i."updatedAt" > i."createdAt" + interval '5 seconds'`
+
   const buildQuery = (type: 'file' | 'folder', limit: number) => Prisma.sql`
+    WITH grants AS (
+      -- Shared with this user: someone else's item a grant links them to, still
+      -- readable by the app's own rule (live, unexpired, workspace member).
+      -- The owner's own Permission row, which every upload writes stamped with
+      -- the upload's time, never counts.
+      SELECT p."itemId", MAX(p."createdAt") AS "sharedAt"
+      FROM "Permission" p
+      JOIN "_PermissionToUser" pu ON pu."A" = p.id AND pu."B" = ${userId}
+      JOIN "Item" gi ON gi.id = p."itemId" AND gi."ownerId" <> ${userId}
+      WHERE p."deletedAt" IS NULL
+        AND ${itemAccessSql(userId, 'read', Prisma.raw('gi'))}
+      GROUP BY p."itemId"
+    ), candidates AS (
+      -- Own items that were opened or edited. A fresh upload has no openedAt
+      -- and updatedAt = createdAt, so it stays out until someone uses it.
+      SELECT i.id FROM "Item" i
+      WHERE i."ownerId" = ${userId}
+        AND i."driveId" = ${driveId}
+        AND (i."openedAt" IS NOT NULL OR ${edited})
+      UNION
+      SELECT "itemId" FROM grants
+    )
     SELECT
       i.id,
       i.name,
@@ -3189,23 +3217,21 @@ export async function getSuggestedItems(
     LEFT JOIN "user" u ON fav."favoritedById" = u.id
     LEFT JOIN "Thumbnail" t ON i.id = t."itemId"
     LEFT JOIN "PinItem" pin ON i.id = pin."itemId"
-    LEFT JOIN "Permission" p ON i.id = p."itemId"
+    LEFT JOIN grants g ON g."itemId" = i.id
     LEFT JOIN "LockedItem" li ON i.id = li."itemId"
     LEFT JOIN "Item" parent ON i."parentId" = parent.id
     WHERE
-      i."ownerId" = ${userId}
-      AND i."driveId" = ${driveId}
+      i.id IN (SELECT id FROM candidates)
       AND i.type::text = ${type}
       AND i.name != 'root'
       AND i.status = 'normal'
       ${workspaceId ? Prisma.sql`AND i."workspaceId" = ${workspaceId}` : Prisma.empty}
-    GROUP BY i.id, f.id, fo.id, li.id, parent.id, parent.name
+    GROUP BY i.id, f.id, fo.id, li.id, parent.id, parent.name, g."sharedAt"
     ORDER BY
       GREATEST(
-        i."updatedAt",
         i."openedAt",
-        i."createdAt",
-        MAX(p."createdAt")
+        CASE WHEN ${edited} THEN i."updatedAt" END,
+        g."sharedAt"
       ) DESC NULLS LAST
     LIMIT ${limit}
   `
