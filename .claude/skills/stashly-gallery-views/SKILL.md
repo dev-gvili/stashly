@@ -30,7 +30,7 @@ The browser lays tiles out. No per-frame JavaScript position engine exists; the 
 
 ## Date groups
 
-`groupByDate` builds the sections. `GallerySection` renders a group header with a native tri-state checkbox (`SelectAllCheckbox`) that selects the whole group. Tiles use the ItemCard checkbox styling (`itemCheckboxClassName`).
+`groupByDate` builds the sections from the **UTC calendar day** of `createdAt` (a `timestamptz`, the stored instant), against `now` from the Images loader, with an `en-US` default locale. It reads nothing from the runtime's timezone or locale, so the server render and hydration build identical groups (the dev server runs `he-IL` / `Asia/Jerusalem`; a runtime-locale month label failed hydration and fetched every image twice). Don't reintroduce local-time grouping without a way for the server to match it. `GallerySection` renders a group header with a native tri-state checkbox (`SelectAllCheckbox`) that selects the whole group. Tiles use the ItemCard checkbox styling (`itemCheckboxClassName`).
 
 ## Selection and actions
 
@@ -42,13 +42,24 @@ Images use the existing stash selection (`SelectionProvider`, `useSelection`). T
 
 ## View transitions
 
-Can't call hooks inside `.map()`, so each tile resolves its destination with `useFileHref(item) ?? '.'`, passes it to `useViewTransitionState`, and sets the transition name only while transitioning:
+**React's `<ViewTransition>`, not the router's.** React Router's `viewTransition` prop/option and `useViewTransitionState` are deprecated (reactrouter.com/how-to/view-transitions) and must not come back: the router skips its own running transition when a navigation overlaps and leaves `transition.ready` unhandled, which Vinktar logged as `AbortError: Transition was skipped…` (issues 2107/2108, 9 Nov). Running both implementations also interrupts animations. React Router already wraps navigations in `React.startTransition`, so plain `<Link to={to} prefetch="intent">` and `navigate(to, { replace: true })` trigger React's transitions. Never set `useTransitions={false}` or use `flushSync` for a navigation.
+
+Both ends wrap the media element in the same shared name:
 ```tsx
-const to = useFileHref(item) ?? '.'
-const isTransitioning = useViewTransitionState(to)
-style={isTransitioning ? { viewTransitionName: `img-${item.id}` } : undefined}
+<ViewTransition name={`img-${item.id}`} default="none" share="auto">
+  <img … />
+</ViewTransition>
 ```
-Links are `<Link to={to} viewTransition prefetch="intent">` (`Gallery.tsx`, `gallery-tile.tsx`). The receiving end, `img-${item.id}`, lives in `item-page/image-stage.tsx` and `item-page/video-stage.tsx`. Opening an item is a normal navigation to the file page (`routes/stash/file.tsx`); there is no lightbox and no overlay route. The gallery's scroll position is restored through `useScrollRestoration` on the enclosing `[data-slot="scroll-area-viewport"]`.
+Tiles: `gallery-tile.tsx` (on the `content-auto` media box, see below) and the legacy `Gallery.tsx`, `river-view.tsx`, `waterfall-view.tsx`. Stage: `item-page/image-stage.tsx` and `item-page/video-stage.tsx`. `default="none"` means only the shared pair morphs. Measured 9 Nov: a layout change and a checkbox toggle on the gallery started 0 transitions. 3 quick Next clicks plus 10 quick ArrowLeft presses started 2 transitions and produced 0 unhandled rejections (the router version: 3 errors from 3 clicks).
+
+- **Forward** (tile → file page) morphs 159.5 px → 1281×961 in 450 ms. React holds the commit until the stage image has loaded, and `ImageStage` sizes the image from `item.image` width/height (`fittedBox`) so its box is right.
+- **Back** (browser Back, the header's `navigate(-1)`, a push to the gallery) morphs 1281×961 → 159.5 px, also into a scrolled gallery (measured 9 Nov; the docs' `popstate` caveat didn't apply here, because the router commits after the loader, outside the event). Two things broke it, and both must stay fixed:
+  1. **The tiles must mount in the navigation's own commit.** `ImagesGallery` used to build the date groups behind `useState(false)` + `useEffect(() => setMounted(true))`, so a client navigation committed the route with 0 tiles and mounted all of them in a later sync commit, which React doesn't animate. Never gate a tile list behind a mount effect or a hydration flag. The groups are built on every render, server included (see Date groups), so the tiles are in the server HTML and in a navigation's first commit.
+  2. **The name sits on the tile's `content-auto` box, not the `<img>`.** React measures the entering element synchronously in the commit, before the browser has judged a new `content-visibility: auto` box near the viewport, so an `<img>` inside reads as 0×0, React counts it off screen and drops the pair. The box itself always has its size.
+- A tab that browsed before the migration replays old router transitions on Back from sessionStorage `remix-router-transitions` until the tab closes. That is stale state, not a bug in the new code.
+- CSS in `globals.css`: no root cross-fade, `::view-transition-group(*)` 0.45 s `cubic-bezier(0.4,0,0.2,1)`, and a `prefers-reduced-motion` block.
+
+Opening an item is a normal navigation to the file page (`routes/stash/file.tsx`); there is no lightbox and no overlay route. The gallery's scroll position is restored through `useScrollRestoration` on the enclosing `[data-slot="scroll-area-viewport"]`.
 
 **`backdrop-blur` on named view-transition elements**: never apply `backdrop-filter: blur` to an element with a `view-transition-name`. The blur bakes into the snapshot and ripples as it fades. Put the blur on an unnamed parent and use `bg-black/75` on the named element.
 

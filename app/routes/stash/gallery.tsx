@@ -111,7 +111,9 @@ export async function loader({ request, context }: Route.ActionArgs) {
   const crumbs = isImagesPage
     ? [{ id: 'images', name: 'Images', parentId: null, type: 'folder' as const }]
     : undefined
-  return { data: images, prefs, crumbs }
+  // The clock the date groups are built against: the server render and the
+  // browser both use this one, so they build the same groups.
+  return { data: images, prefs, crumbs, now: Date.now() }
 }
 
 /**
@@ -152,5 +154,7 @@ export function shouldRevalidate({
 }
 
 export default function Index({ loaderData }: Route.ComponentProps) {
-  return <Gallery images={loaderData.data!} prefs={loaderData.prefs} />
+  return (
+    <Gallery images={loaderData.data!} prefs={loaderData.prefs} now={loaderData.now} />
+  )
 }

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useSearchParams, Link, useViewTransitionState } from 'react-router'
+import { useSearchParams, Link } from 'react-router'
 import { RiverView } from './views/river-view'
 import { WaterfallLayout } from './views/waterfall-view'
 import type { GalleryImage, GalleryPageImage } from '@/types/stash.types'
@@ -7,7 +7,7 @@ import { GridLayout } from './views/grid-view'
 import { itemVariants } from './views/variants'
 import { useFileHref } from '../hooks/useFileHref'
 import { useScrollRestoration } from '@/hooks/useScrollRestoration'
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, ViewTransition, type CSSProperties } from 'react'
 import { useLocation } from 'react-router'
 import { generateVideoThumbnail } from '@/utils/video'
 import { cn } from '@/utils'
@@ -87,7 +87,6 @@ function VideoItem({ src, className }: { src: string; className?: string }) {
 
 function GridItem({ item, showVideo }: { item: GalleryImage; showVideo: boolean }) {
   const to = useFileHref(item) ?? '.'
-  const isTransitioning = useViewTransitionState(to)
   return (
     <motion.div
       variants={itemVariants}
@@ -101,7 +100,8 @@ function GridItem({ item, showVideo }: { item: GalleryImage; showVideo: boolean 
           className="rounded-md object-cover w-full h-full"
         />
       ) : (
-        <Link to={to} viewTransition prefetch="intent">
+        <Link to={to} prefetch="intent">
+          <ViewTransition name={`img-${item.id}`} default="none" share="auto">
           <motion.img
             data-prefetch="true"
             layoutId={item.id}
@@ -111,11 +111,11 @@ function GridItem({ item, showVideo }: { item: GalleryImage; showVideo: boolean 
             height={item.height}
             sizes={item.sizes}
             srcSet={item.srcSet}
-            style={isTransitioning ? { viewTransitionName: `img-${item.id}` } : undefined}
             className="rounded-md object-cover w-full h-full cursor-pointer"
             decoding="async"
             loading="lazy"
           />
+          </ViewTransition>
         </Link>
       )}
     </motion.div>
@@ -156,7 +156,7 @@ function toLayout(value: string | null): GalleryLayout {
  * preferences. Opening an image is a navigation to the file page, with the
  * existing `img-${id}` view transition.
  */
-function ImagesGallery({ images }: { images: GalleryPageImage[] }) {
+function ImagesGallery({ images, now }: { images: GalleryPageImage[]; now: number }) {
   const [searchParams] = useSearchParams()
   const layout = toLayout(searchParams.get('layout'))
   const { prefs } = useGalleryPrefs()
@@ -180,13 +180,11 @@ function ImagesGallery({ images }: { images: GalleryPageImage[] }) {
   )
   const visibleBytes = visible.reduce((sum, img) => sum + img.bytes, 0)
 
-  // Grouping uses the viewer's timezone, which the server can't know, so the
-  // groups are built once the page is in the browser.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  // Groups are UTC days of `createdAt` against the loader's clock, so the
+  // server render, hydration and a client navigation all build the same ones.
   const groups = useMemo(
-    () => (mounted ? groupByDate(visible, prefs.byDate) : []),
-    [mounted, visible, prefs.byDate]
+    () => groupByDate(visible, prefs.byDate, new Date(now)),
+    [visible, prefs.byDate, now]
   )
 
   const orderedIds = useMemo(
@@ -309,9 +307,12 @@ function GalleryBody({
 export const Gallery = ({
   images,
   prefs,
+  now,
 }: {
   images: GalleryImage[]
   prefs?: GalleryPrefs
+  /** The loader's clock (ms), which the Images page groups dates against. */
+  now?: number
 }) => {
   const location = useLocation()
   const showVideo = location.pathname.includes('videos')
@@ -331,8 +332,8 @@ export const Gallery = ({
 
   return (
     <div ref={containerRef}>
-      {isImagesPage ? (
-        <ImagesGallery images={images as GalleryPageImage[]} />
+      {isImagesPage && now !== undefined ? (
+        <ImagesGallery images={images as GalleryPageImage[]} now={now} />
       ) : (
         <LegacyGallery images={images} showVideo={showVideo} />
       )}

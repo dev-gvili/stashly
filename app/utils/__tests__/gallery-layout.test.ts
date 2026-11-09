@@ -53,10 +53,28 @@ describe('aspectOf', () => {
 })
 
 describe('groupByDate', () => {
-  const now = new Date(2026, 10, 3, 12) // Tue Nov 3 2026, local time
-  const at = (y: number, m: number, d: number, id: string) => ({
+  const now = new Date(Date.UTC(2026, 10, 3, 12)) // Tue Nov 3 2026, UTC
+  const at = (y: number, m: number, d: number, id: string, hour = 9) => ({
     id,
-    createdAt: new Date(y, m, d, 9).toISOString(),
+    createdAt: new Date(Date.UTC(y, m, d, hour)).toISOString(),
+  })
+
+  it('splits days at UTC midnight, whatever zone the process runs in', () => {
+    const groups = groupByDate(
+      [at(2026, 10, 3, 'first-hour', 0), at(2026, 10, 2, 'last-hour', 23)],
+      true,
+      now
+    )
+    expect(groups.map((g) => [g.label, g.items.map((i) => i.id)])).toEqual([
+      ['Today', ['first-hour']],
+      ['Last week', ['last-hour']],
+    ])
+  })
+
+  it('labels in English by default, not in the runtime locale', () => {
+    const groups = groupByDate([at(2026, 9, 1, 'oct', 0)], true, now)
+    expect(groups[0].label).toBe('October')
+    expect(groups[0].sub).toBe('2026')
   })
 
   it('groups into Today, Last week and calendar months, dropping empty ones', () => {

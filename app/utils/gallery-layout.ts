@@ -179,17 +179,22 @@ export type DateGroup<T> = {
 }
 
 const DAY_MS = 86_400_000
-const SHORT_DATE: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
-
-function startOfDay(d: Date): number {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+const SHORT_DATE: Intl.DateTimeFormatOptions = {
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
 }
 
 /**
- * Groups items by `createdAt` in the runtime's local timezone: **Today**, **Last
- * week** (the 7 days before today), then one group per calendar month. Items
- * are sorted newest first inside each group; empty groups are dropped. With
- * `byDate` off, everything is one unlabelled group in the order given.
+ * Groups items by the UTC calendar day of `createdAt`, the instant as it is
+ * stored: **Today**, **Last week** (the 7 days before today), then one group
+ * per calendar month. Items are sorted newest first inside each group; empty
+ * groups are dropped. With `byDate` off, everything is one unlabelled group in
+ * the order given.
+ *
+ * The result depends only on its arguments, never on the runtime's timezone
+ * or locale, so the server render and the browser build the same groups from
+ * the same `now`.
  *
  * @example
  * groupByDate(images, true, new Date())
@@ -199,12 +204,12 @@ export function groupByDate<T extends { createdAt: string | Date }>(
   items: T[],
   byDate: boolean,
   now: Date = new Date(),
-  locale?: string
+  locale = 'en-US'
 ): DateGroup<T>[] {
   if (!byDate) {
     return items.length ? [{ key: 'all', label: null, sub: null, items }] : []
   }
-  const today = startOfDay(now)
+  const today = Math.floor(now.getTime() / DAY_MS) * DAY_MS
   const weekStart = today - 7 * DAY_MS
   const sorted = [...items].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -230,13 +235,13 @@ export function groupByDate<T extends { createdAt: string | Date }>(
     if (t >= today) todayGroup.items.push(item)
     else if (t >= weekStart) weekGroup.items.push(item)
     else {
-      const key = `${d.getFullYear()}-${d.getMonth()}`
+      const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`
       let group = months.get(key)
       if (!group) {
         group = {
           key,
-          label: d.toLocaleDateString(locale, { month: 'long' }),
-          sub: String(d.getFullYear()),
+          label: d.toLocaleDateString(locale, { month: 'long', timeZone: 'UTC' }),
+          sub: String(d.getUTCFullYear()),
           items: [],
         }
         months.set(key, group)
