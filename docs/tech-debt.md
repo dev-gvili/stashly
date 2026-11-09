@@ -225,7 +225,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 12 | No linter | Code | 2 | 2 | 2 | **16** (Medium) | 1 day + fixes | Open |
 | 13 | Tests are missing where the risk is | Test | 4 | 4 | 4 | **16** (Medium) | ongoing, ~2 weeks | Open |
 | 14 | ~~Two thumbnail orchestrators~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 2–3 days | Resolved 3 Oct |
-| 15 | `item-actions.ts` god module | Code | 3 | 2 | 3 | **15** (Low) | 3–5 days, incremental | Declined |
+| 15 | ~~`item-actions.ts` god module~~ | Code | 3 | 2 | 3 | **15** (Low) | 3–5 days, incremental | Declined |
 | 16 | Overlapping UI primitives | Code | 2 | 1 | 2 | **12** (Low) | 2–3 days | Partly done |
 | 17 | Unfinished migrations left in place | Architecture | 2 | 2 | 3 | **12** (Low) | 2–4 days | Partly done |
 | 18 | ~~`/api/quota` lets a signed-in user change their own quota~~ | Code | 5 | 5 | 1 | **50** (High) | 0.5–1.5 days | Resolved 8 Oct |
@@ -254,7 +254,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 41 | ~~Dead upload branches~~ | Code | 1 | 1 | 1 | **10** (Low) | 2 h | Resolved 26 Oct |
 | 42 | ~~The size rollup locks every ancestor row~~ | Architecture | 2 | 3 | 4 | **10** (Low) | 3–5 days | Resolved 30 Oct |
 | 43 | ~~Revalidation and thumbnail query overhead~~ | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | Resolved 30 Oct |
-| 44 | Upload complete and item creation are separate requests | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | Declined 30 Oct |
+| 44 | ~~Upload complete and item creation are separate requests~~ | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | Declined 30 Oct |
 | 45 | ~~An upload reloads the whole folder about once every 5 files~~ | Architecture | 4 | 3 | 2 | **28** (High) | 0.5–1 day | Resolved 1 Nov |
 | 46 | A session cookie can expire in the middle of an upload | Architecture | 2 | 1 | 1 | **15** (Low) | 0.5 day | New 30 Oct |
 | 47 | ~~Per-file shared rows left on the upload path~~ | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | Resolved 6 Nov |
