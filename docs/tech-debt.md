@@ -233,7 +233,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 20 | ~~The Playwright specs don't run in CI~~ | Test | 3 | 3 | 2 | **24** (Medium) | 0.5–1 day | Resolved 1 Nov |
 | 21 | ~~Embedding backfill loads a WebGPU model on the main thread of every tab~~ | Architecture | 3 | 3 | 3 | **18** (Medium) | 1–2 days | Resolved 9 Oct |
 | 22 | ~~Open decisions in the upload and onboarding paths~~ | Architecture | 2 | 3 | 2 | **20** (Medium) | 1 day once decided | Resolved 1 Nov |
-| 23 | Prisma calls made directly from route modules | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Resolved 1 Nov |
+| 23 | ~~Prisma calls made directly from route modules~~ | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Resolved 1 Nov |
 | 24 | ~~Slow first page load (cold document TTFB)~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 1–3 days | Resolved 9 Oct |
 | 25 | ~~Share-link actions had no access check~~ | Code | 4 | 4 | 1 | **40** (High) | 0.5 day | Resolved 8 Oct |
 | 26 | ~~`hasItemPermission` counts soft-deleted and expired permissions~~ | Code | 4 | 3 | 1 | **35** (High) | 0.5 day | Resolved 8 Oct |
@@ -247,7 +247,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 34 | ~~Upload requests retry 4xx answers five times~~ | Code | 2 | 2 | 1 | **20** (Medium) | 1–2 h | Resolved |
 | 35 | ~~A database session lookup on every request~~ | Architecture | 3 | 2 | 2 | **20** (Medium) | 0.5 day | Resolved |
 | 36 | ~~The folder path is resolved again for every file of a folder upload~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 1–2 days | Resolved |
-| 37 | The `.ts` sniff reads from S3 and nothing uses the result | Code | 1 | 2 | 1 | **15** (Low) | 1–2 h | Resolved 1 Nov |
+| 37 | ~~The `.ts` sniff reads from S3 and nothing uses the result~~ | Code | 1 | 2 | 1 | **15** (Low) | 1–2 h | Resolved 1 Nov |
 | 38 | ~~Which upload concurrency limit applies (10 or 100) is unknown~~ | Documentation | 2 | 1 | 1 | **15** (Low) | 1 h | Resolved 26 Oct |
 | 39 | ~~One presign request per 5 MiB part~~ | Architecture | 2 | 1 | 2 | **12** (Low) | 0.5–1 day | Resolved 26 Oct |
 | 40 | ~~Media-metadata writes do extra work~~ | Code | 1 | 1 | 1 | **10** (Low) | 2 h | Resolved 26 Oct |
@@ -257,13 +257,13 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 44 | Upload complete and item creation are separate requests | Architecture | 2 | 1 | 3 | **9** (Low) | 1–2 days | Declined 30 Oct |
 | 45 | ~~An upload reloads the whole folder about once every 5 files~~ | Architecture | 4 | 3 | 2 | **28** (High) | 0.5–1 day | Resolved 1 Nov |
 | 46 | A session cookie can expire in the middle of an upload | Architecture | 2 | 1 | 1 | **15** (Low) | 0.5 day | New 30 Oct |
-| 47 | ~~Per-file shared rows left on the upload path~~ | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | New 30 Oct |
-| 48 | A malformed request answers 500 instead of 400 where the parser runs outside `try` | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Resolved 1 Nov |
-| 49 | Nothing applies the size log when a server starts | Code | 2 | 1 | 1 | **15** (Low) | 0.5 day | Resolved 1 Nov |
-| 50 | No test guards the deferred `Folder_itemId_fkey` | Test | 2 | 2 | 1 | **20** (Medium) | 0.5 day | Resolved 1 Nov |
+| 47 | ~~Per-file shared rows left on the upload path~~ | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | Resolved 6 Nov |
+| 48 | ~~A malformed request answers 500 instead of 400 where the parser runs outside `try`~~ | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Resolved 1 Nov |
+| 49 | ~~Nothing applies the size log when a server starts~~ | Code | 2 | 1 | 1 | **15** (Low) | 0.5 day | Resolved 1 Nov |
+| 50 | ~~No test guards the deferred `Folder_itemId_fkey`~~ | Test | 2 | 2 | 1 | **20** (Medium) | 0.5 day | Resolved 1 Nov |
 | 51 | ~~One held row lock stalls the size rollup for every user~~ | Architecture | 2 | 2 | 3 | **12** (Low) | 1–2 days | Resolved 7 Nov |
 | 52 | ~~The main thread is saturated for the whole upload~~ | Architecture | 4 | 4 | 3 | **24** (Medium) | 2–3 days | Resolved 31 Oct |
-| 53 | An upload's metadata waits behind its embeddings and is lost on reload | Architecture | 4 | 4 | 3 | **24** (Medium) | 1–2 days | Resolved (31 Oct) |
+| 53 | ~~An upload's metadata waits behind its embeddings and is lost on reload~~ | Architecture | 4 | 4 | 3 | **24** (Medium) | 1–2 days | Resolved 31 Oct |
 | 54 | ~~OCR is slow, and its models haven't been re-surveyed~~ | Architecture | 3 | 2 | 3 | **15** (Low) | 2–3 days | Resolved 31 Oct |
 | 55 | ~~A `/stash` reload reads millions of rows~~ | Architecture | 4 | 3 | 2 | **28** (High) | 1 day | Resolved 31 Oct |
 | 56 | ~~Test cleanup deadlocks with a parallel size rollup~~ | Test | 2 | 2 | 1 | **20** (Medium) | 2 h | Resolved 31 Oct |
