@@ -82,3 +82,6 @@ storybook-static
 # Generated Prisma client — `postinstall` runs `prisma generate`
 /app/prisma/
 .github/skills/rules/SKILL.md
+
+# Session handoff (local only, never committed)
+handoff-stashly.md
