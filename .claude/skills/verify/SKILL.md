@@ -40,7 +40,7 @@ window.Worker = function (...a) { window.__workers++; return new RealWorker(...a
 Repo facts that make a "clean run" the wrong gate:
 
 - Types — `pnpm typecheck` carries **11** pre-existing errors, exactly the entries in `.claude/tsc-baseline.json`. Gate with `node .claude/hooks/check-staged-types.mjs --all` (what CI runs): it fails on any file above its baseline, and on slack — an error you fixed that the baseline still allows (`--update-baseline`, commit it with the fix).
-- `pnpm test` — **1337 passing / 0 failing (108 files)** (full local run 2026-11-09, items 73–76). There is no pre-existing failure to discount: a red test is yours to fix, never to skip or exclude.
+- `pnpm test` — **1338 passing / 0 failing (108 files)** (full local run 2026-11-09, item 72). There is no pre-existing failure to discount: a red test is yours to fix, never to skip or exclude.
 - Dev server is already on port **80**. Don't start a second one; **never** restart or kill it — ask.
 
 Save the baseline to `.claude/evidence/<slug>-before.json` before editing: the raw numbers plus how they were captured (page, repro steps, `initScript`), so step 4 can repeat it exactly. Not the scratchpad — it is deleted when the session ends — and not only the conversation, which is summarized when it grows long. `.gitignore`'s `.claude/*` keeps the folder local. It is the only thing that makes step 4 meaningful.
