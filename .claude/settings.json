@@ -20,6 +20,48 @@
             "statusMessage": "Typechecking staged files against baseline"
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/dev-server-guard.mjs",
+            "shell": "bash",
+            "timeout": 10,
+            "statusMessage": "Checking dev-server rules"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/protect-paths.mjs",
+            "shell": "bash",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/convention-check.mjs",
+            "shell": "bash",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/schema-reminder.mjs",
+            "shell": "bash",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "Stop": [
@@ -27,8 +69,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"systemMessage\": \"Workflow checklist (significant changes only — skip for CSS tweaks, type fixes, minor cosmetic changes): (1) tests added/updated, (2) docs updated if needed, (3) detailed commit, (4) PR opened and merged to main.\"}'",
-            "shell": "bash"
+            "command": "node .claude/hooks/stop-docs-nudge.mjs",
+            "shell": "bash",
+            "timeout": 15
           }
         ]
       }
