@@ -3,6 +3,7 @@ import { track } from '@/services/vinktar'
 import { log } from '@/services/log'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { itemAccessWhere } from '@/services/permission-actions'
+import { requireMembership } from '@/services/workspace-actions'
 import { getPresignedUrl } from '@/services/s3'
 import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import type { Prisma } from '@/prisma/client'
@@ -665,20 +666,29 @@ export async function getThumbnailByItemId(
  * for reading (`thumbnails[0].url`).
  *
  * Scoped to the owner, so it never reads another user's items whatever
- * `where` adds.
+ * `where` adds. With `workspaceId` it lists that workspace's media instead:
+ * the items the user may read there (their own, or ones a grant gives them),
+ * and only while they are a member.
  *
  * @param userId - The signed-in user.
  * @param where - Extra filters from the URL (`buildItemFilters`), ANDed in.
  * @param take - Page size.
+ * @param workspaceId - The workspace being browsed, on the workspace gallery.
+ * @throws `FORBIDDEN` (403) when `workspaceId` is given and the user is not a member.
  *
  * @example
  * const media = await getGalleryMedia(session.user.id, buildItemFilters(params), params.take)
+ *
+ * @example
+ * const media = await getGalleryMedia(userId, {}, 200, params.workspaceId)
  */
 export async function getGalleryMedia(
   userId: string,
   where: Prisma.ItemWhereInput,
-  take?: number
+  take?: number,
+  workspaceId?: string
 ) {
+  if (workspaceId) await requireMembership(userId, workspaceId)
   const items = await prisma.item.findMany({
     where: {
       type: ItemType.file,
@@ -689,8 +699,10 @@ export async function getGalleryMedia(
         some: { bucket: { not: null } },
       },
       ...where,
-      // After the spread, so a URL filter can never widen the owner.
-      ownerId: userId,
+      // After the spread, so a URL filter can never widen the scope.
+      ...(workspaceId
+        ? { workspaceId, ...itemAccessWhere(userId, 'read') }
+        : { ownerId: userId }),
     },
     take,
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],

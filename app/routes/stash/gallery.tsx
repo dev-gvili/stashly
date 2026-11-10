@@ -21,8 +21,7 @@ export function meta({ matches }: Route.MetaArgs) {
   ]
 }
 
-export async function loader({ request, context }: Route.ActionArgs) {
-  // TODO: implement action logic
+export async function loader({ request, params: routeParams, context }: Route.LoaderArgs) {
   const session = context.get(sessionContext)
   const url = new URL(request.url)
   const searchParams = url.searchParams
@@ -52,7 +51,14 @@ export async function loader({ request, context }: Route.ActionArgs) {
     filters = { ...filters, category: 'image' }
   }
 
-  let media = await getGalleryMedia(session.user.id, filters, params.take)
+  // `workspaceId` is present only on /:me/workspaces/:workspaceId/gallery; the
+  // action checks membership and scopes the list to that workspace.
+  let media = await getGalleryMedia(
+    session.user.id,
+    filters,
+    params.take,
+    routeParams.workspaceId
+  )
 
   let images = media.map((item) => {
     let thumb = item.thumbnails[0]

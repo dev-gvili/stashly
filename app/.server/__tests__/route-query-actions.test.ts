@@ -32,10 +32,16 @@ let sharedId: string
 let ownerImageId: string
 let viewerImageId: string
 
-async function makeItem(owner: string, drive: string, name: string, category: 'image' | 'document' = 'document') {
+async function makeItem(
+  owner: string,
+  drive: string,
+  name: string,
+  category: 'image' | 'document' = 'document',
+  workspaceId?: string
+) {
   const id = uid('Item')
   await prisma.item.create({
-    data: { id, name, type: 'file', category, status: 'normal', ownerId: owner, driveId: drive, size: 0 },
+    data: { id, name, type: 'file', category, status: 'normal', ownerId: owner, driveId: drive, size: 0, workspaceId },
   })
   return id
 }
@@ -115,5 +121,87 @@ describe('getGalleryMedia', () => {
   it('a filter naming another owner still returns only the user’s own media', async () => {
     const media = await getGalleryMedia(ownerId, { ownerId: viewerId })
     expect(media.map((m) => m.id)).toEqual([ownerImageId])
+  })
+})
+
+// The workspace gallery lists the workspace's media, not the viewer's own
+// (the loader used to ignore `:workspaceId`).
+describe('getGalleryMedia in a workspace', () => {
+  let workspaceId: string
+  let memberId: string
+  let outsiderId: string
+  let uploaderId: string
+  let memberDrive: string
+  let uploaderDrive: string
+  let workspaceImageId: string
+  let otherWorkspaceImageId: string
+  let memberPersonalImageId: string
+  let hiddenWorkspaceImageId: string
+
+  beforeAll(async () => {
+    ;[memberId, outsiderId, uploaderId] = [uid('User'), uid('User'), uid('User')]
+    await prisma.user.createMany({
+      data: [memberId, outsiderId, uploaderId].map((id, i) => ({
+        id,
+        name: `Gallery ws ${i}`,
+        email: `galleryws-${id}@test.local`,
+        emailVerified: true,
+      })),
+    })
+    ;[memberDrive, uploaderDrive] = [uid('Drive'), uid('Drive')]
+    await prisma.drive.createMany({
+      data: [
+        { id: memberDrive, ownerId: memberId },
+        { id: uploaderDrive, ownerId: uploaderId },
+      ],
+    })
+
+    workspaceId = uid('Workspace')
+    await prisma.workspace.create({ data: { id: workspaceId, name: 'Gallery test WS' } })
+    await prisma.workspaceMember.createMany({
+      data: [
+        { id: uid('WorkspaceMember'), memberId, workspaceId, role: 'member' },
+        { id: uid('WorkspaceMember'), memberId: uploaderId, workspaceId, role: 'member' },
+      ],
+    })
+
+    // Uploaded by `uploaderId`, shared with `memberId` through a grant.
+    workspaceImageId = await makeItem(uploaderId, uploaderDrive, 'ws-shared.png', 'image', workspaceId)
+    await grant(memberId, workspaceImageId)
+    // Uploaded by `uploaderId`, no grant: `memberId` may not read it.
+    hiddenWorkspaceImageId = await makeItem(uploaderId, uploaderDrive, 'ws-hidden.png', 'image', workspaceId)
+    // The member's own personal image: not part of the workspace.
+    memberPersonalImageId = await makeItem(memberId, memberDrive, 'personal.png', 'image')
+    // `memberId`'s own upload into the workspace.
+    otherWorkspaceImageId = await makeItem(memberId, memberDrive, 'ws-own.png', 'image', workspaceId)
+    for (const id of [workspaceImageId, hiddenWorkspaceImageId, memberPersonalImageId, otherWorkspaceImageId]) {
+      await storedThumbnail(id)
+    }
+  })
+
+  afterAll(async () => {
+    const users = [memberId, outsiderId, uploaderId]
+    await prisma.permission.deleteMany({ where: { users: { some: { id: { in: users } } } } })
+    await prisma.workspaceMember.deleteMany({ where: { workspaceId } })
+    await wipeTestUsers(users)
+    await prisma.workspace.deleteMany({ where: { id: workspaceId } })
+  })
+
+  it('lists the workspace media the member may read, not their personal images', async () => {
+    const media = await getGalleryMedia(memberId, {}, undefined, workspaceId)
+    expect(media.map((m) => m.id).sort()).toEqual([workspaceImageId, otherWorkspaceImageId].sort())
+  })
+
+  it('refuses a user who is not a member of the workspace', async () => {
+    await expect(getGalleryMedia(outsiderId, {}, undefined, workspaceId)).rejects.toMatchObject({
+      status: 403,
+    })
+  })
+
+  it('keeps the personal gallery on the user’s own media', async () => {
+    const ids = (await getGalleryMedia(memberId, {})).map((m) => m.id)
+    expect(ids).toContain(memberPersonalImageId)
+    expect(ids).not.toContain(workspaceImageId)
+    expect(ids).not.toContain(hiddenWorkspaceImageId)
   })
 })
