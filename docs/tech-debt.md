@@ -202,7 +202,7 @@
 | 77 | ~~A move may accept a folder's grandchild as its target~~ | 30 | Resolved 2026-11-08 (`a917e36`): `moveItems` walks up from the target once per call and refuses any moved folder on that path; a move into a grandchild or 5 levels down accepted (loop made) → refused, nothing written, measured | — |
 | 78 | ~~A dropped folder is filed flat into the destination~~ | 35 | Resolved 2026-11-09 (`063e006`): `withEntryPath` gives a dropped file its `entry.fullPath` as `webkitRelativePath`, so `addBatch` builds its folders; 3 unit tests; a real drop not checked in the browser | — |
 | 79 | ~~A freed upload slot goes to a file that already holds one~~ | 25 | Resolved 2026-11-09 (`0fb542a`): the refill skips files already in `queues.active`; the new test fails on the old filter; files in flight during a real drop not measured | — |
-| 80 | ~~Home suggestions list files that were only just uploaded~~ | 16 | Resolved 2026-11-09 (`c311f5d`): an owned item needs an open or a later edit, a shared one a live grant from another user; 0 fresh uploads in 2 users' results on the dev DB. Open: whether edits should count | — |
+| 80 | ~~Home suggestions list files that were only just uploaded~~ | 16 | Resolved 2026-11-09 (`c311f5d`): an owned item needs an open or a later edit, a shared one a live grant from another user; 0 fresh uploads in 2 users' results on the dev DB. Owner, 10 Nov: edits count | — |
 | 81 | **new** The rollup start test can time out in a full parallel run | 12 | Time the server-module import under a full run, then raise that test's timeout with the measured reason or make the import cheaper; never skip it | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
@@ -1447,7 +1447,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 
 - **Evidence:** `getSuggestedItems` (`item-actions.ts`), home's only caller, listed fresh uploads. An upload stamps `createdAt`, `updatedAt` and the owner's own `Permission` row at once, so every new file looked recently edited and recently shared.
 - **Fix:** an owned item needs an `openedAt`, or an `updatedAt` more than 5 s after `createdAt` (a rename, move or restore counts as an edit). A shared item comes from a live grant on someone else's item, checked with `itemAccessSql`. The owner's own upload grant no longer counts. Items are ordered by the latest of opened, edited and shared.
-- **Status 2026-11-09: resolved** (`c311f5d`). Dev DB, 2 users: every result was an opened file, with no fresh uploads. 27–40 ms warm for the larger user (1,668 items). Open question for the owner: whether edits should count at all, or only opens and shares.
+- **Status 2026-11-09: resolved** (`c311f5d`). Dev DB, 2 users: every result was an opened file, with no fresh uploads. 27–40 ms warm for the larger user (1,668 items). Owner, 10 Nov: edits count, as built.
 
 ### 81. The rollup start test can time out in a full parallel run
 
