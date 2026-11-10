@@ -1,17 +1,18 @@
 // Renders docs/tech-debt.md into the "Stashly Tech Debt" artifact page.
-// usage: node .claude/skills/tech-debt-artifact/build.mjs <out.html>
+// usage: node .claude/skills/tech-debt-artifact/build.mjs <out-dir>
+// Writes <out-dir>/index.html (fixed shell) and <out-dir>/body.html (the register).
 // The stylesheet lives in page-head.html beside this file; page structure
 // (header chips, pills, done rows) is decided here, never by hand-editing the
 // published HTML.
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repo = resolve(here, '../../..')
-const outPath = process.argv[2]
-if (!outPath) {
-  console.error('usage: node build.mjs <out.html>')
+const outDir = process.argv[2]
+if (!outDir) {
+  console.error('usage: node build.mjs <out-dir>')
   process.exit(1)
 }
 
@@ -108,7 +109,13 @@ body = body.replace(/<table>([\s\S]*?)<\/table>/g, (_table, inner) => {
 
 const header = `<header><div class="eyebrow">Tech debt register · Stashly</div><h1>Tech debt, ranked</h1><div class="meta"><span class="chip">Audit 24 Sep 2026</span><span class="chip">Re-audit 8 Oct 2026</span><span class="chip">Updated ${updated}</span><span class="chip">Priority = (Impact + Risk) × (6 − Effort)</span><span class="chip">Source: docs/tech-debt.md</span></div></header>`
 
-const page = `<!doctype html>
+// Two outputs. index.html is a small fixed shell that never changes with the
+// doc; body.html is the rendered register, fetched by the shell. A sync then
+// republishes only body.html and never has to read the 4,000-line page.
+const bodyHtml = `<div class="doc">${header}
+${body}</div>
+`
+const shell = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -117,17 +124,32 @@ const page = `<!doctype html>
 ${head}
 </head>
 <body>
-<div class="doc">${header}
-${body}</div>
+<div id="root"><noscript>This page needs JavaScript to load the register.</noscript></div>
+<script>
+fetch('body.html', { cache: 'no-cache' })
+  .then(function (r) { if (!r.ok) throw new Error('body.html ' + r.status); return r.text() })
+  .then(function (html) {
+    document.getElementById('root').innerHTML = html
+    var id = decodeURIComponent(location.hash.slice(1))
+    var el = id && document.getElementById(id)
+    if (el) el.scrollIntoView()
+  })
+  .catch(function (e) {
+    document.getElementById('root').textContent = 'Could not load the register: ' + e.message
+  })
+</script>
 </body>
 </html>
 `
-writeFileSync(outPath, page)
+mkdirSync(outDir, { recursive: true })
+writeFileSync(join(outDir, 'index.html'), shell)
+writeFileSync(join(outDir, 'body.html'), bodyHtml)
+const page = bodyHtml
 
 // Checks the caller reports: anything here is a rendering bug, not a doc problem.
 const leftoverStrike = (page.match(/~~/g) ?? []).length
 const items = (source.match(/^### \d+\. /gm) ?? []).length
 const itemAnchors = (page.match(/<h3 id="\d+-/g) ?? []).length
-console.log(`wrote ${outPath} (${page.length} bytes) · marked ${markedDir.split('@')[1]} · updated ${updated}`)
+console.log(`wrote ${outDir}/index.html + body.html (${page.length} bytes body) · marked ${markedDir.split('@')[1]} · updated ${updated}`)
 console.log(`items ${items}, item anchors ${itemAnchors}, leftover ~~ ${leftoverStrike}`)
 if (leftoverStrike > 0 || itemAnchors !== items) process.exit(2)
