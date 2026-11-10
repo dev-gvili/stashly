@@ -213,7 +213,6 @@ function Favorite(props: ItemProps) {
 
 function Pin(props: ItemProps) {
   const { id, pins, user } = useItemCard()
-  console.log('Pin component', { id, pins, user })
   const initiallyPinned =
     Array.isArray(pins) && pins.some((p) => p.pinnedById === user?.id)
   const { pinned, toggle, isPending } = usePinItem(id, initiallyPinned)
