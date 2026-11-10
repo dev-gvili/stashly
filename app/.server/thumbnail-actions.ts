@@ -661,7 +661,7 @@ export async function getThumbnailByItemId(
 // ===================================================== //
 
 /**
- * The gallery's media: `userId`'s own image and video files that have a
+ * The gallery's media: `userId`'s own personal (non-workspace) image and video files that have a
  * stored thumbnail, newest first, each with its best stored thumbnail signed
  * for reading (`thumbnails[0].url`).
  *
@@ -702,7 +702,9 @@ export async function getGalleryMedia(
       // After the spread, so a URL filter can never widen the scope.
       ...(workspaceId
         ? { workspaceId, ...itemAccessWhere(userId, 'read') }
-        : { ownerId: userId }),
+        : // `workspaceId: null`: a workspace item the user uploaded belongs to
+          // that workspace's gallery, not their personal one.
+          { ownerId: userId, workspaceId: null }),
     },
     take,
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],

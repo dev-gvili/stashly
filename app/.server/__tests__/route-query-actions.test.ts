@@ -201,6 +201,8 @@ describe('getGalleryMedia in a workspace', () => {
   it('keeps the personal gallery on the user’s own media', async () => {
     const ids = (await getGalleryMedia(memberId, {})).map((m) => m.id)
     expect(ids).toContain(memberPersonalImageId)
+    // Their own upload into a workspace belongs to that workspace's gallery.
+    expect(ids).not.toContain(otherWorkspaceImageId)
     expect(ids).not.toContain(workspaceImageId)
     expect(ids).not.toContain(hiddenWorkspaceImageId)
   })
