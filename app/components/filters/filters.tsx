@@ -569,8 +569,8 @@ export function HeaderFilters() {
   }
   const filters = useFilters()
   return (
-    <Filters filters={filters}>
-      <Filters.Search />
+    <Filters filters={filters} className="min-w-0">
+      <Filters.Search className="min-w-40 shrink" />
       <Filters.Popover>
         <Filters.Trigger />
         <Filters.Panel>

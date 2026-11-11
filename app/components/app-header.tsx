@@ -51,10 +51,9 @@ export function AppHeader() {
   return (
     <header
       className={cn(
-        'bg-background z-40 flex items-center h-14 justify-between pl-0 pr-2 py-2 sticky top-0 shrink-0 gap-2',
-        // Images: a size container, so its controls fit its own width (which
-        // the sidebar changes) and its content can never widen the page.
-        isImagesPage && '@container/header'
+        // A size container on every page, so its controls fit the header's
+        // own width (which the sidebar changes) and can never widen the page.
+        'bg-background z-40 flex items-center h-14 justify-between pl-0 pr-2 py-2 sticky top-0 shrink-0 gap-2 @container/header'
       )}
     >
       {/* Below md the sidebar is a sheet, and its own trigger sits inside it;
@@ -95,7 +94,11 @@ export function AppHeader() {
           <HeaderSearch className="w-full max-w-80 min-w-40 shrink @max-md/header:min-w-0" />
         </div>
       ) : (
-        <div className="flex flex-1 gap-2 items-center">
+        // The group gives way to the right-hand controls instead of drawing
+        // over them: the search shrinks first, and anything still too wide is
+        // clipped (x only, so focus rings above and below survive) until the
+        // narrower layouts take over.
+        <div className="flex min-w-0 flex-1 gap-2 items-center overflow-x-clip">
           <StashlyUpload folderId={folderId} rootId={rootId} />
           <HeaderFilters />
         </div>
