@@ -1,6 +1,6 @@
 # Markdown Reader
 
-The stage that renders an uploaded `.md` file at `/:me/stash/files/:fileId`. Body text streams from S3, headings become a navigable outline, fenced code is tokenized by the *editor's* tokenizer, and ```mermaid fences are drawn as diagrams — all client-side, all in the Ink palette.
+The stage that renders an uploaded `.md` file at `/:me/stash/folders/:folderId/files/:fileId` (`app/routes/stash/file.tsx`). Body text streams from S3, headings become a navigable outline, fenced code is tokenized by the *editor's* tokenizer, and ```mermaid fences are drawn as diagrams — all client-side, all in the Ink palette.
 
 Entry point: `app/components/views/item-page/markdown-stage.tsx`, with `app/components/views/item-page/mermaid-block.tsx` and the two `.client/` modules it lazily reaches for. Block styling lives in `.markdown-stage` in `app/styles/globals.css` — those nodes come out of react-markdown and are outside Tailwind's reach.
 
@@ -56,7 +56,7 @@ Uploaded Markdown is **untrusted content**. Every decision below that looks over
 
 Relative hrefs resolve through `new URL(href, base)` rather than `<Link relative="path">`: React Router treats the current pathname as a directory, so `other.md` would land on `/…/files/current/other.md`, while a browser treats the last segment as a file and yields `/…/files/other.md` — which is what an author writing `[x](other.md)` means. The dummy origin keeps this working during SSR, where there is no `window.location`.
 
-The resulting `:fileId` is a **file name, not an item id**. The file loader resolves it against the containing folder before anything else runs (`app/.server/item-actions.ts`), which is what makes `[spec](upload-multipart.md)` work inside a stash.
+The resulting `:fileId` is a **file name, not an item id**. The file loader (`app/routes/stash/file.tsx`) resolves a `:fileId` that isn't an item id against the containing folder before anything else runs, which is what makes `[spec](upload-multipart.md)` work inside a stash.
 
 ## 4. Code Blocks — the Monaco Ink Theme
 
@@ -81,7 +81,7 @@ A ```mermaid fence renders as an SVG figure. `MarkdownPre` intercepts it at the 
 - Mermaid lays graphs out by measuring rendered text (`getBBox` on live SVG). jsdom does not implement it, so server rendering means headless Chromium in the image — not a library.
 - The SVG it emits carries literal hex, never CSS variables. A server render bakes in one palette, and a theme flip would have to swap between two of them.
 - Diagram source is uploaded content, and diagrams can reference external images. Rendering that server-side turns any shared `.md` into an SSRF primitive against the internal network; in the reader's browser the same request is merely cross-origin.
-- It matches the house pattern — OCR, embeddings, Whisper and the thumbnail pipeline all run in the browser here.
+- It matches the house pattern — OCR, embeddings and the thumbnail pipeline all run in the browser here.
 
 `app/.client/mermaid.ts` owns the render. Points that will bite anyone editing it:
 
