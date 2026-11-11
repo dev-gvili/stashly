@@ -25,8 +25,9 @@ const tileBox = async (page: Page, name: string) => {
 
 const header = (page: Page) => page.locator('header')
 /** The header's LayoutToggle items, in order: River, Waterfall, Grid. */
+const LAYOUTS = ['River view', 'Waterfall view', 'Grid view'] as const
 const layoutItem = (page: Page, index: 0 | 1 | 2) =>
-  header(page).locator('button[role="radio"]:not([aria-label])').nth(index)
+  header(page).getByRole('radio', { name: LAYOUTS[index], exact: true })
 
 test.describe('Images gallery', () => {
   test('defaults: waterfall, 16px gap, grouped by date; controls live in the app header', async ({ page }) => {
@@ -37,8 +38,10 @@ test.describe('Images gallery', () => {
     await expect(header(page).getByText('16px')).toBeVisible()
     await expect(header(page).getByRole('button', { name: 'By date' })).toHaveAttribute('aria-pressed', 'true')
     await expect(header(page).getByRole('slider', { name: 'Thumbnail size' })).toHaveAttribute('aria-valuenow', '3')
-    // No upload menu and no List layout on this page.
-    await expect(header(page).locator('button[role="radio"]:not([aria-label])')).toHaveCount(3)
+    // Three layouts, no List layout and no upload menu on this page.
+    for (const name of LAYOUTS) await expect(header(page).getByRole('radio', { name, exact: true })).toBeVisible()
+    await expect(header(page).getByRole('radio', { name: 'List view', exact: true })).toHaveCount(0)
+    await expect(header(page).getByRole('button', { name: 'New and upload', exact: true })).toHaveCount(0)
     await expect(page.getByRole('toolbar', { name: 'Gallery' })).toHaveCount(0)
 
     await expect(page.getByRole('heading', { name: 'Today', level: 2 })).toBeVisible()
