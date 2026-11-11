@@ -118,6 +118,12 @@ describe('getGalleryMedia', () => {
     expect(media[0].thumbnails[0].url).toBe('https://signed.test/thumbnail.webp')
   })
 
+  // A workspace gallery would hand every member the other members' keys.
+  it('sends no storage key', async () => {
+    const [media] = await getGalleryMedia(ownerId, {})
+    expect(media).not.toHaveProperty('file')
+  })
+
   // The owner scope is AND-ed with the URL filters, so a filter can only
   // narrow it: naming another owner finds nothing rather than their media.
   it('a filter naming another owner never returns their media', async () => {

@@ -725,11 +725,6 @@ export async function getGalleryMedia(
       // Only the viewer's own pin, at most one row: enough for the tile's
       // pinned state without sending everyone's pins.
       pins: { where: { pinnedById: userId }, select: { id: true }, take: 1 },
-      file: {
-        select: {
-          key: true,
-        },
-      },
       thumbnails: {
         orderBy: { stage: 'desc' },
         take: 1,

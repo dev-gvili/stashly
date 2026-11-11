@@ -100,7 +100,6 @@ export async function loader({ request, params: routeParams, context }: Route.Lo
       name: item.name,
       type: item.type,
       parentId: item.parentId,
-      fileKey: item.file?.key,
       // Read by the Images page (`GalleryPageImage`); `size` is a BigInt
       // column, which JSON can't carry.
       bytes: Number(item.size),
