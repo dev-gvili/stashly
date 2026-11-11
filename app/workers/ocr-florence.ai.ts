@@ -51,7 +51,7 @@ import {
   RawImage,
   type ProgressCallback,
 } from '@huggingface/transformers'
-import { enqueue } from './ai-queue'
+import { createModelCache, enqueue } from './ai-queue'
 
 const MODEL_ID = 'onnx-community/Florence-2-base-ft'
 
@@ -77,16 +77,16 @@ const MAX_NEW_TOKENS = 1024
  */
 const VRAM_YIELD_MS = 100
 
-let modelPromise: Promise<{
-  processor: Awaited<ReturnType<typeof AutoProcessor.from_pretrained>>
-  model: Awaited<ReturnType<typeof Florence2ForConditionalGeneration.from_pretrained>>
-}> | null = null
-
-async function getModel(onProgress?: ProgressCallback) {
-  if (!modelPromise) {
+/**
+ * The processor and model, loaded on first use and dropped when their WebGPU
+ * device is lost, so the next page loads them on a fresh device instead of
+ * failing against the dead one. A failed load is not kept either.
+ */
+const modelCache = createModelCache(
+  async (onProgress?: ProgressCallback) => {
     console.info(`[ocr:florence] loading ${MODEL_ID} (~340MB on first run)…`)
     const loadStart = performance.now()
-    modelPromise = (async () => {
+    try {
       const [processor, model] = await Promise.all([
         AutoProcessor.from_pretrained(MODEL_ID, {
           progress_callback: onProgress,
@@ -112,17 +112,29 @@ async function getModel(onProgress?: ProgressCallback) {
         `[ocr:florence] model ready in ${Math.round((performance.now() - loadStart) / 1000)}s`,
       )
       return { processor, model }
-    })()
-    // A failed load must not be cached as a permanent rejection.
-    modelPromise.catch((err) => {
+    } catch (err) {
       console.error(
         `[ocr:florence] model load FAILED for ${MODEL_ID}: ${err instanceof Error ? err.message : String(err)}`,
         err,
       )
-      modelPromise = null
-    })
-  }
-  return modelPromise
+      throw err
+    }
+  },
+  ({ model }) => model.dispose(),
+)
+
+function getModel(onProgress?: ProgressCallback) {
+  return modelCache.get(onProgress)
+}
+
+/**
+ * Drops the cached model when `err` is a lost WebGPU device. True when it did,
+ * so a page loop can stop instead of failing every later page the same way.
+ */
+function discardModelIfDeviceLost(err: unknown): boolean {
+  if (!modelCache.failed(err)) return false
+  console.warn('[ocr:florence] WebGPU device lost — the model will reload on next use')
+  return true
 }
 
 /** Progress for a multi-page run. */
@@ -191,8 +203,13 @@ export function ocrImageFlorence(
 ): Promise<string> {
   return enqueue(async () => {
     const { processor, model } = await getModel(onProgress)
-    const { text } = await transcribe(processor, model, image)
-    return text
+    try {
+      const { text } = await transcribe(processor, model, image)
+      return text
+    } catch (err) {
+      discardModelIfDeviceLost(err)
+      throw err
+    }
   }, 'background')
 }
 
@@ -257,6 +274,9 @@ export function ocrPagesFlorence(
         )
       } catch (err) {
         console.error(`[ocr:florence] page ${page.pageNum} failed`, err)
+        // `loaded` is bound to the dead device, so every later page would fail
+        // the same way.
+        if (discardModelIfDeviceLost(err)) break
       }
       onPage?.({ page: page.pageNum, totalPages: slice.length, charsSoFar: chars })
 

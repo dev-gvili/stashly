@@ -40,7 +40,7 @@ import {
   RawImage,
   type ProgressCallback,
 } from '@huggingface/transformers'
-import { enqueue, isDeviceLostError } from './ai-queue'
+import { createModelCache, enqueue, isDeviceLostError } from './ai-queue'
 import { OCR_MAX_PAGES } from '@/utils/ocr-engine'
 
 /**
@@ -111,16 +111,17 @@ export const OCR_MAX_PIXELS = 14 * 14 * 4 * 1280
  */
 const OCR_PROMPT = 'Text Recognition:'
 
-let modelPromise: Promise<{
-  processor: Awaited<ReturnType<typeof AutoProcessor.from_pretrained>>
-  model: Awaited<ReturnType<typeof AutoModelForImageTextToText.from_pretrained>>
-}> | null = null
-
-async function getModel(onProgress?: ProgressCallback) {
-  if (!modelPromise) {
+/**
+ * The processor and model, loaded on first use and dropped when their WebGPU
+ * device is lost, so the next page loads them on a fresh device instead of
+ * failing against the dead one. A failed load is not kept: the next attempt
+ * gets a fresh chance rather than replaying the error.
+ */
+const modelCache = createModelCache(
+  async (onProgress?: ProgressCallback) => {
     console.info(`[ocr] loading ${MODEL_ID} (~623MB on first run)…`)
     const loadStart = performance.now()
-    modelPromise = (async () => {
+    try {
       const [processor, model] = await Promise.all([
         AutoProcessor.from_pretrained(MODEL_ID, {
           progress_callback: onProgress,
@@ -179,32 +180,28 @@ async function getModel(onProgress?: ProgressCallback) {
       // confirmed active, so "slow" alone does not imply a CPU fallback.
       void logGpuAdapter()
       return { processor, model }
-    })()
-    // A failed load must not be cached as a permanent rejection — the next
-    // attempt should get a fresh chance rather than replaying the error.
-    modelPromise.catch((err) => {
+    } catch (err) {
       console.error(
         `[ocr] model load FAILED for ${MODEL_ID}: ${err instanceof Error ? err.message : String(err)}`,
         err,
       )
-      modelPromise = null
-    })
-  }
-  return modelPromise
+      throw err
+    }
+  },
+  ({ model }) => model.dispose(),
+)
+
+function getModel(onProgress?: ProgressCallback) {
+  return modelCache.get(onProgress)
 }
 
 /**
  * Drops the cached model when `err` is a lost WebGPU device, so the next page
  * loads it again on a fresh device instead of failing against the dead one.
- * The `.catch` in {@link getModel} only covers a failed load, not a model that
- * loaded and later lost its device.
  */
 function discardModelIfDeviceLost(err: unknown): void {
-  if (!isDeviceLostError(err) || !modelPromise) return
-  const lost = modelPromise
-  modelPromise = null
+  if (!modelCache.failed(err)) return
   console.warn('[ocr] WebGPU device lost — the model will reload on next use')
-  void lost.then(({ model }) => model.dispose()).catch(() => {})
 }
 
 /**
