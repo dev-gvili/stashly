@@ -243,6 +243,21 @@ export function findCollectionById(
 }
 
 /**
+ * The collections page's list: the collections `userId` owns that are not in
+ * trash, in `orderBy` (newest first by default). The scope lives here, not in
+ * the loader, so a new caller can't forget it (tech-debt item 91).
+ *
+ * @example
+ * const collections = await listCollectionsForUser(session.user.id, params.orderBy)
+ */
+export function listCollectionsForUser(
+  userId: string,
+  orderBy: Prisma.ItemFindManyArgs['orderBy'] = { createdAt: 'desc' }
+): Promise<CollectionWithMembers[]> {
+  return findAllCollections({ where: { ownerId: userId, status: 'normal' }, orderBy })
+}
+
+/**
  * Return all collection Items matching the given where/orderBy args.
  * Always restricts to type='collection' and merges `defaultInclude`.
  */

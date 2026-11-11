@@ -9,6 +9,7 @@ import {
   createWorkspaceCollection,
   findCollectionById,
   findAllCollections,
+  listCollectionsForUser,
   findFirstCollection,
   countCollections,
   renameCollection,
@@ -183,6 +184,22 @@ describe('findAllCollections', () => {
     const results = await findAllCollections({ where: { name } })
     expect(results.length).toBeGreaterThanOrEqual(1)
     expect(results.every((c) => c.name === name)).toBe(true)
+  })
+})
+
+// The collections page loader used to scope `findAllCollections` itself
+// (tech-debt item 91); the action owns the scope now.
+describe('listCollectionsForUser', () => {
+  it('lists the user’s own live collections only', async () => {
+    const live = await makeCollection()
+    const trashed = await makeCollection()
+    await prisma.item.update({ where: { id: trashed.id }, data: { status: ItemStatus.trashed } })
+    const others = await createCollection({ name: faker.word.noun(), ownerId: otherId, driveId })
+
+    const ids = (await listCollectionsForUser(ownerId)).map((c) => c.id)
+    expect(ids).toContain(live.id)
+    expect(ids).not.toContain(trashed.id)
+    expect(ids).not.toContain(others.id)
   })
 })
 
