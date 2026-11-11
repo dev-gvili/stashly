@@ -198,3 +198,34 @@ describe('getPinnedItems', () => {
     expect(items[2].id).toBe(itemIdA)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Access: a pin needs read access, and the list shows only what is still readable
+// ---------------------------------------------------------------------------
+
+describe('pin access', () => {
+  it('refuses to pin an item the user cannot read, and writes no row', async () => {
+    await expect(pinItem(itemIdA, otherUserId)).rejects.toMatchObject({ status: 403 })
+    expect(await isPinned(itemIdA, otherUserId)).toBe(false)
+  })
+
+  it('leaves out a pinned item the user can no longer read', async () => {
+    // A pin row from before access was lost (a revoked share, a left workspace).
+    await prisma.pinItem.create({
+      data: { id: uid('PinItem'), itemId: itemIdA, pinnedById: otherUserId, position: 0 },
+    })
+    const { items } = await getPinnedItems({ userId: otherUserId })
+    expect(items.map((i) => i.id)).not.toContain(itemIdA)
+  })
+
+  it('leaves out a pinned item that is in trash', async () => {
+    await pinItem(itemIdB, userId)
+    await prisma.item.update({ where: { id: itemIdB }, data: { status: ItemStatus.trashed } })
+    try {
+      const { items } = await getPinnedItems({ userId })
+      expect(items.map((i) => i.id)).not.toContain(itemIdB)
+    } finally {
+      await prisma.item.update({ where: { id: itemIdB }, data: { status: ItemStatus.normal } })
+    }
+  })
+})

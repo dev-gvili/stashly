@@ -3,6 +3,7 @@ import { prisma } from '@/services/db'
 import { track } from '@/services/vinktar'
 import { toObjectId, getPrefixForModel } from '@/utils/converters'
 import { createActivity } from './activity-actions'
+import { assertItemsAccess, itemAccessWhere } from './permission-actions'
 import { signThumbnails } from './thumbnail-actions'
 
 function recordPinActivity(
@@ -137,6 +138,9 @@ export async function pinItem(
   pinnedById: string,
   client: Prisma.TransactionClient = prisma
 ) {
+  // A pin lists the item, signed thumbnail included, so it needs read access;
+  // a missing item is refused the same way, so ids can't be probed.
+  await assertItemsAccess(pinnedById, [itemId], 'read')
   const existing = await client.pinItem.findUnique({
     where: { pinnedById_itemId: { pinnedById, itemId } },
   })
@@ -227,7 +231,12 @@ export async function getPinnedItems({
   limit?: number
 }) {
   const rows = await prisma.pinItem.findMany({
-    where: { pinnedById: userId },
+    // A pin outlives the access it was made with (a revoked share, a left
+    // workspace) and the item's trashing; list only what is still readable.
+    where: {
+      pinnedById: userId,
+      item: { status: { not: 'trashed' }, ...itemAccessWhere(userId, 'read') },
+    },
     orderBy: [{ position: 'asc' }, { createdAt: 'desc' }, { id: 'asc' }],
     take: limit + 1,
     cursor: cursor ? { id: cursor } : undefined,
