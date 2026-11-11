@@ -14,6 +14,7 @@ import {
   revokeItemPermissionForUser,
 } from '@/services/permission-actions'
 import {
+  createThumbnail,
   getThumbnailSource,
   presignThumbnailUpload,
   updateThumbnail,
@@ -156,6 +157,7 @@ describe('a live grant still opens the item', () => {
     expect(await status(() => presignThumbnailUpload(userId, items.live))).toBe(404)
     expect(await status(() => updateThumbnail(userId, items.live, 2))).toBe(404)
     expect(await status(() => getThumbnailSource(userId, items.live))).toBe('ok')
+    expect(await status(() => createThumbnail(userId, items.live, '#000000'))).toBe('ok')
   })
 })
 
@@ -184,6 +186,13 @@ describe.each(['expired', 'deleted'] as const)('a %s grant no longer counts', (k
     expect(await status(() => presignThumbnailUpload(userId, items[kind]))).toBe(403)
     expect(await status(() => updateThumbnail(userId, items[kind], 2))).toBe(403)
     expect(await status(() => getThumbnailSource(userId, items[kind]))).toBe(403)
+    // Until item 87 it took no user: anyone wrote a row on any item.
+    expect(await status(() => createThumbnail(userId, items[kind], '#000000'))).toBe(403)
+    expect(await prisma.thumbnail.count({ where: { itemId: items[kind] } })).toBe(0)
+  })
+
+  it('a missing item is refused like a forbidden one', async () => {
+    expect(await status(() => createThumbnail(userId, uid('Item'), '#000000'))).toBe(403)
   })
 
   it('the owner is unaffected', async () => {

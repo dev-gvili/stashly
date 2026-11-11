@@ -91,6 +91,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         schema: thumbnailCreateSchema,
       }).catch(rethrowAsResponse)
       const thumbnail = await createThumbnail(
+        session.user.id,
         params.itemId || parsedData.itemId,
         parsedData.url,
         parsedData.view,

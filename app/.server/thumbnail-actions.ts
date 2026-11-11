@@ -378,19 +378,32 @@ export async function presignThumbnailUpload(
   return { uploadUrl, viewUrls: { 2: view2, 3: view3 } }
 }
 
+/**
+ * Records `itemId`'s placeholder thumbnail row (its dominant colour) for
+ * `userId`, or returns the one already there.
+ *
+ * Read access is enough, as for the stage writes (`updateThumbnail`): a viewer
+ * may backfill a missing thumbnail.
+ *
+ * @throws `FORBIDDEN` (403) when `userId` can't read the item, or it doesn't
+ *   exist, so the answer doesn't reveal which ids exist.
+ */
 export async function createThumbnail(
+  userId: string,
   itemId: string,
   hexColor: string,
   view: string = 'grid',
   size: string = 'medium'
 ) {
-  // First, validate that the item exists
-  const item = await prisma.item.findUnique({
-    where: { id: itemId },
-    select: { id: true }
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, ...itemAccessWhere(userId, 'read') },
+    select: { id: true },
   })
   if (!item) {
-    throw new Error(`Item with id ${itemId} not found`)
+    throw toRouteError(
+      StashlyErrorCode.FORBIDDEN,
+      'You do not have access to this item'
+    )
   }
 
   const existing = await prisma.thumbnail.findFirst({
