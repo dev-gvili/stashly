@@ -21,9 +21,9 @@
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**81 items** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 6 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62, 64 and 65 from item 45; 2 added 7 Nov: 66 from item 51's open list, 67 from item 66; 10 added 8 Nov: 68 from item 67, 69–76 from a review of `d3a241f..69f7da7`, 77 from fixing items 70 and 71; 4 added 9 Nov: 78–80 from the owner's report on the home page, 81 from a full-suite run) · categories: Code 46, Architecture 22, Infrastructure 4, Test 6, Documentation 2, Dependency 1
+**82 items in this list** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 6 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62, 64 and 65 from item 45; 2 added 7 Nov: 66 from item 51's open list, 67 from item 66; 10 added 8 Nov: 68 from item 67, 69–76 from a review of `d3a241f..69f7da7`, 77 from fixing items 70 and 71; 4 added 9 Nov: 78–80 from the owner's report on the home page, 81 from a full-suite run; 1 added 12 Nov: 83 from item 13's tests; 82 is the pins fix `b3736c3`, not yet listed) · categories: Code 47, Architecture 22, Infrastructure 4, Test 6, Documentation 2, Dependency 1
 
-**Status at 12 Nov 2026 (latest, item 81):** 68 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 5 new and open (19, 46, 57, 59, 68; 19, 46 and 57 deferred by the owner). Item 81 resolved (`78fd5ad`): the server-module import in the rollup start test took 363–593 ms alone, 724 ms in a full run and up to 2,490 ms beside 16 CPU-bound processes, so the test gets a 20 s timeout instead of 5 s. 1343/0 in 108 files.
+**Status at 12 Nov 2026 (latest, items 81, 13 and 83):** 68 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 6 new and open (19, 46, 57, 59, 68, 83; 19, 46 and 57 deferred by the owner). Item 13: `item-actions` create, move and copy now have tests of their own (`cba58b3`, `4c837a1`: 14 new cases, 56 in `upload-folder-tree.test.ts`); writing them found item 83, refusals in copy and move answered as 401 or 500. Item 81 resolved (`78fd5ad`): the server-module import in the rollup start test took 363–593 ms alone, 724 ms in a full run and up to 2,490 ms beside 16 CPU-bound processes, so the test gets a 20 s timeout instead of 5 s. 1343/0 in 108 files.
 
 **Status at 9 Nov 2026 (item 72):** 67 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 6 new and open (19, 46, 57, 59, 68, 81; 19, 46 and 57 deferred by the owner). Item 72 reproduced and resolved (`10f58f9`): a folder upload's tree held its root while a trash of that root, holding a subfolder whose id sorted first, waited for it, and the trash failed with a deadlock (`40P01`). The tree now locks the root and every folder it found in one statement, in id order, once it knows them, and re-reads them; resolve time unchanged within noise. 1338/0 in 108 files.
 
@@ -131,7 +131,7 @@
 
 ### What's left, in priority order
 
-*Updated 9 Nov (items 31–44 added 25 Oct, 45–57 on 30–31 Oct, 58–63 on 31 Oct–1 Nov, 64–77 on 1–8 Nov, 78–81 on 9 Nov). Listed in the order items were added; new items are marked **new**.*
+*Updated 9 Nov (items 31–44 added 25 Oct, 45–57 on 30–31 Oct, 58–63 on 31 Oct–1 Nov, 64–77 on 1–8 Nov, 78–81 on 9 Nov, 83 on 12 Nov). Listed in the order items were added; new items are marked **new**.*
 
 | # | Item | Score | What remains | Blocked on |
 |---|------|-------|--------------|------------|
@@ -155,7 +155,7 @@
 | 35 | ~~A session lookup on every request~~ | 20 | Resolved 2026-10-25: 5-minute encrypted cookie cache, refreshed by the page and upload routes; session reads per upload 12 → 0–1, measured | — |
 | 21 | ~~Embedding backfill runs in every tab~~ | 18 | Resolved 2026-10-09: model in a worker (main-thread blocking 1,279 → 0 ms, measured), one tab via a Web Lock | — |
 | 12 | Linter | 16 | All of it, plus the `as any` ban moved here from item 7 | Owner's OK on new packages |
-| 13 | Tests where the risk is | 16 | `item-actions` create, move and copy; the rest of `quota-actions`; routes and components | — |
+| 13 | Tests where the risk is | 16 | The rest of `quota-actions`; routes and components (`item-actions` create, move and copy covered 12 Nov) | — |
 | 23 | ~~Prisma calls in route modules~~ | 16 | Resolved 2026-11-01: `workspace.tsx` calls `getWorkspaceOverview`; the guard test has no exceptions left | — |
 | 24 | ~~Slow first page load~~ | 15 | Resolved 2026-10-09: server dependencies bundled; first page 4–15 s → ~1 s here, first request 1.6 → 0.57 s on Linux (CI) | — |
 | 36 | ~~Folder path resolved again for every file~~ | 15 | Resolved 2026-10-26: tree resolved once per batch, each file row one statement; 639-file upload 11,600 → 1,284 statements, 1,824 → 1 locks, measured | — |
@@ -206,6 +206,7 @@
 | 79 | ~~A freed upload slot goes to a file that already holds one~~ | 25 | Resolved 2026-11-09 (`0fb542a`): the refill skips files already in `queues.active`; the new test fails on the old filter; files in flight during a real drop not measured | — |
 | 80 | ~~Home suggestions list files that were only just uploaded~~ | 16 | Resolved 2026-11-09 (`c311f5d`): an owned item needs an open or a later edit, a shared one a live grant from another user; 0 fresh uploads in 2 users' results on the dev DB. Owner, 10 Nov: edits count | — |
 | 81 | ~~The rollup start test can time out in a full parallel run~~ | 12 | Resolved 2026-11-12 (`78fd5ad`): import measured 363–593 ms alone, 724 ms in a full run, 1,735–2,490 ms beside 16 CPU-bound processes; the test's timeout is 20 s with that reason; the 9 Nov timeout didn't recur | — |
+| 83 | **new** Copy and move answer 401 or 500 when they refuse | 15 | Answer 403 for no access and 400 for a refused destination (another drive, already there, into itself, a root folder) | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -294,6 +295,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 79 | ~~A freed upload slot goes to a file that already holds one~~ | Code | 3 | 2 | 1 | **25** (High) | 1 h | Resolved 9 Nov |
 | 80 | ~~Home suggestions list files that were only just uploaded~~ | Code | 2 | 2 | 2 | **16** (Medium) | 2 h | Resolved 9 Nov |
 | 81 | ~~The rollup start test can time out in a full parallel run~~ | Test | 1 | 2 | 2 | **12** (Low) | 2 h | Resolved 12 Nov |
+| 83 | Copy and move answer 401 or 500 when they refuse | Code | 2 | 1 | 1 | **15** (Low) | 1 h | New 12 Nov |
 
 ## Details
 
@@ -562,6 +564,13 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 - **Status 2026-10-23: open, improving.** `pnpm test` is 905 passing in 72 files (CI green on `82a878e`). New since 8 Oct: `favorite-actions` (16, live DB: access checks, duplicate rows, the usage count) and 26 more `parsers` tests (39 in all: decoding, numeric round-trip, `toUserText`, 400 on bad input), both from items 27 and 28. The favorites e2e spec went from 3 tests to 13, and the search, pinned, navigation and thumbnail specs were brought back in line with the UI (item 20). Still missing: create, move and copy in `item-actions`, and components.
 - **Status 2026-10-08 (end of day): open, improving.** Unit test files are at 68 (818 tests, all passing; CI green on `30eeeb4`). `app/.server/__tests__` has 18, adding `upload-quota-charge` (live DB: exact charge, no row without a quota, 10 parallel uploads summed exactly), `share-access` (37), `route-query-actions` (5) and `permission-live-grants` (14). Route tests went from 1 to 3: `app/routes/api/__tests__/quota.test.ts` covers the quota route item 18 named as untested, and `app/routes/__tests__/no-direct-prisma.test.ts` guards item 23. The upload e2e spec went from 1 test to 11 (`9081555`); CI still doesn't run it (item 20). Still missing: create, move and copy in `item-actions`, and components.
 - **Status 2026-10-08: open, improving.** Unit test files went from 39 at the audit to 62. `app/.server/__tests__` has 14, including upload safety, trash roots and the size trigger, and `app/machines` has 10. Still 0 component tests, 1 route test, and no test for the quota route (see item 18). The 8 Playwright specs exist but CI doesn't run them (item 20). `bcb227d` fixed the thumbnail spec's setup.
+- **Status 2026-11-12: open, `item-actions` create, move and copy covered** (`cba58b3`, `4c837a1`). 14 new cases in `upload-folder-tree.test.ts` (56 there in all), beside the guards earlier items added (subtree, trash, race, workspace, cross-drive):
+  - **Copy (6):** fields and facets come over as new rows sharing the File key, a copied folder gets its own Folder row and default view; after `flushItemSizes()` the copy has the source's size, inclusive size and child counts, nested folders too, and the destination gains exactly its bytes and one child; a collaborator with write on the owner's folder can't copy into it (a copy is paid by the copier's drive), nothing written or charged; no access to the source is refused; a source in trash is 404; a folder copy that doesn't fit is 507 with every row rolled back. These pin copy's behaviour for item 68's set-based rewrite.
+  - **Move (5):** the old folder loses and the new one gains exactly the moved bytes and children, the moved folder keeps its totals; a collaborator with write on item and destination moves within the owner's drive; read-only on the destination or on any one item refuses the whole batch; an item in trash, a missing id, one already there, a folder into itself, an empty target and a root folder are refused, moving nothing.
+  - **Create (3):** Folder row and default view, counted once in the parent; no parent uses the given drive; read-only on the parent is 403.
+  - **Mutation check:** dropping the Image facet copy and copying a folder's size instead of starting at 0 failed 4 copy tests; dropping move's per-item write check and its "already there" check failed 2 move tests.
+  - **Found:** item 83. Also noted, not a defect claim: a grant covers its own item only (`hasItemPermission`), so write on a folder doesn't let a collaborator read or copy a file inside it.
+  - **Still missing:** the rest of `quota-actions`, routes and components.
 
 ### 14. Two thumbnail orchestrators
 
@@ -1464,6 +1473,14 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Status 2026-11-09: open.**
 - **Status 2026-11-12: resolved** (`78fd5ad`). The import was timed inside the test (a temporary log, removed). Alone, 3 runs: 593, 507 and 363 ms. In one full parallel `pnpm test` (1343/1343 in 108 files): 724 ms, so the 9 Nov timeout didn't recur. Beside 16 CPU-bound node processes on this 16-core machine: 2,490 and 1,735 ms, 4–7× alone. The import is the whole server module (Express, React Router, Vinktar) and its time follows the machine's load, so the test now has a 20 s timeout, four times the worst seen, with the numbers in a comment. Making the import cheaper would mean changing the server's entry for a test; not done. Nothing is skipped.
 
+### 83. Copy and move answer 401 or 500 when they refuse
+
+*Code debt · Impact 2 · Risk 1 · Effort 1 → **15** · est. 1 h · source: item 13's tests, 12 Nov*
+
+- **Evidence:** `copyItem` answers a caller without read on the source with `toRouteError(UNAUTHORIZED)`, a 401 to a signed-in user. Its refusal of a destination on another drive is `COPY_ITEM_FAILED`, and `moveItems` refuses another drive, an item already in the target, a folder into itself and a root folder with `MOVE_ITEM_FAILED`; both codes are 500 in `api.errors.ts`, and no route remaps them. So a refused request reads as a server failure: in the network tab, and to `requestTimingMiddleware`, which reports 5xx as `route_request_failed`. Pinned by `upload-folder-tree.test.ts`, which asserts the error codes, not the statuses.
+- **Fix:** 403 for no access to the source, as for the destination; 400 (`INVALID_INPUT`) for a destination the item can't go to. The copy test for no access asserts `errorCode: 'UNAUTHORIZED'` and changes with it.
+- **Status 2026-11-12: open.**
+
 ## Changes since the audit
 
 These commits touched a register item, oldest first. Commits that don't touch any register item are left out, such as page size, the rename dialog, the search `ZodError`, and the Vite typegen watch.
@@ -1583,6 +1600,7 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-11-09 | `063e006`, `6969de5` | 78, 13 | Dropped folders keep their paths (`withEntryPath`), so `addBatch` builds their folders; 3 unit tests; skill corrected. CI green on `6969de5`, 1330/1331 locally in 108 files (item 81). |
 | 2026-11-09 | `1941759` | 73, 74, 75, 76, 13 | Trash's folder lock compares id lists, not counts (a create into an unheld folder accepted → 404; +2.5–3.3%). Move and copy check `write` before the trash check (404 → 403 for no access). A copy takes the destination folder's workspace. Writer-first tests for create, move and copy. 6 new tests; 1337/0 in 108 files. |
 | 2026-11-09 | `10f58f9` | 72, 13 | A folder upload's tree locks its root and found folders in one statement in id order, after the lookups, and re-reads them: a trash of the root deadlocked with it (`40P01`, reproduced) → trash completes, tree refused 404. Resolve time within noise. 1 new test; 1338/0 in 108 files. |
+| 2026-11-12 | `cba58b3`, `4c837a1` | 13, 83 | Tests for `copyItem` (6), `moveItems` (5) and `createFolder` (3): facets, totals after the rollup, collaborator and no-access refusals, rollback over quota; 56/56 in `upload-folder-tree.test.ts`, CI green on `cba58b3`. Found item 83. |
 | 2026-11-12 | `78fd5ad` | 81 | The rollup start test's timeout is 20 s, from measured import times (363–593 ms alone, 724 ms in a full run, up to 2,490 ms under CPU load). 1343/0 in 108 files. |
 | 2026-11-01 | `7e2e9c1`, `36eff9f` | 22, 17 | A failed onboarding runs again on the next session read: each step finds before it creates, a new bucket is written to the row at once, a complete row ends in `alreadyOnboarded`. Red 4 of 18 → 20 of 20; 1252/0 in 103 files. Workspace uploads moved to item 17. |
 
