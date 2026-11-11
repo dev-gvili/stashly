@@ -21,9 +21,11 @@
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**82 items in this list** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 6 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62, 64 and 65 from item 45; 2 added 7 Nov: 66 from item 51's open list, 67 from item 66; 10 added 8 Nov: 68 from item 67, 69–76 from a review of `d3a241f..69f7da7`, 77 from fixing items 70 and 71; 4 added 9 Nov: 78–80 from the owner's report on the home page, 81 from a full-suite run; 1 added 12 Nov: 84 from item 13's tests; 82 and 83 are the pins and invitations fixes `b3736c3` and `10a30ce`, not yet listed) · categories: Code 47, Architecture 22, Infrastructure 4, Test 6, Documentation 2, Dependency 1
+**92 items in this list** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 6 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62, 64 and 65 from item 45; 2 added 7 Nov: 66 from item 51's open list, 67 from item 66; 10 added 8 Nov: 68 from item 67, 69–76 from a review of `d3a241f..69f7da7`, 77 from fixing items 70 and 71; 4 added 9 Nov: 78–80 from the owner's report on the home page, 81 from a full-suite run; 11 added 12 Nov: 84 from item 13's tests, 82, 83 and 85–92 from the authz audit of the gallery) · categories: Code 56, Architecture 23, Infrastructure 4, Test 6, Documentation 2, Dependency 1
 
-**Status at 12 Nov 2026 (latest, items 81, 13 and 84):** 68 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 6 new and open (19, 46, 57, 59, 68, 84; 19, 46 and 57 deferred by the owner). Item 13: `item-actions` create, move and copy now have tests of their own (`cba58b3`, `4c837a1`: 14 new cases, 56 in `upload-folder-tree.test.ts`); writing them found item 84, refusals in copy and move answered as 401 or 500. Item 81 resolved (`78fd5ad`): the server-module import in the rollup start test took 363–593 ms alone, 724 ms in a full run and up to 2,490 ms beside 16 CPU-bound processes, so the test gets a 20 s timeout instead of 5 s. 1343/0 in 108 files.
+**Status at 12 Nov 2026 (latest, items 82–92):** 70 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 14 new and open (19, 46, 57, 59, 68, 84, 85–92; 19, 46 and 57 deferred by the owner). An authz audit of the gallery and everything its UI calls found ten access-control gaps. Two were High and are resolved: any signed-in user could pin any item and read it back from `/api/pins` (82, `b3736c3`), and could list any item's invitations with every email and the personal message (83, `10a30ce`). The rest are being fixed in order: the workspace gallery drops its URL filters and lists trashed media (85), a writer can revoke an owner's grant (86), thumbnail rows and signed sources ignore access or trash (87, 88), the gallery sends storage keys (89), add-to-collection skips membership and trash (90), the collections loader scopes itself (91), and the personal gallery shows trash on request (92).
+
+**Status at 12 Nov 2026 (items 81, 13 and 84):** 68 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 6 new and open (19, 46, 57, 59, 68, 84; 19, 46 and 57 deferred by the owner). Item 13: `item-actions` create, move and copy now have tests of their own (`cba58b3`, `4c837a1`: 14 new cases, 56 in `upload-folder-tree.test.ts`); writing them found item 84, refusals in copy and move answered as 401 or 500. Item 81 resolved (`78fd5ad`): the server-module import in the rollup start test took 363–593 ms alone, 724 ms in a full run and up to 2,490 ms beside 16 CPU-bound processes, so the test gets a 20 s timeout instead of 5 s. 1343/0 in 108 files.
 
 **Status at 9 Nov 2026 (item 72):** 67 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 6 new and open (19, 46, 57, 59, 68, 81; 19, 46 and 57 deferred by the owner). Item 72 reproduced and resolved (`10f58f9`): a folder upload's tree held its root while a trash of that root, holding a subfolder whose id sorted first, waited for it, and the trash failed with a deadlock (`40P01`). The tree now locks the root and every folder it found in one statement, in id order, once it knows them, and re-reads them; resolve time unchanged within noise. 1338/0 in 108 files.
 
@@ -206,7 +208,17 @@
 | 79 | ~~A freed upload slot goes to a file that already holds one~~ | 25 | Resolved 2026-11-09 (`0fb542a`): the refill skips files already in `queues.active`; the new test fails on the old filter; files in flight during a real drop not measured | — |
 | 80 | ~~Home suggestions list files that were only just uploaded~~ | 16 | Resolved 2026-11-09 (`c311f5d`): an owned item needs an open or a later edit, a shared one a live grant from another user; 0 fresh uploads in 2 users' results on the dev DB. Owner, 10 Nov: edits count | — |
 | 81 | ~~The rollup start test can time out in a full parallel run~~ | 12 | Resolved 2026-11-12 (`78fd5ad`): import measured 363–593 ms alone, 724 ms in a full run, 1,735–2,490 ms beside 16 CPU-bound processes; the test's timeout is 20 s with that reason; the 9 Nov timeout didn't recur | — |
+| 82 | ~~Anyone could pin any item and read it back~~ | 40 | Resolved 2026-11-12 (`b3736c3`): a pin needs read access; the list shows only items still readable and not in trash; 3 tests, red first | — |
+| 83 | ~~Anyone could list any item's invitations~~ | 40 | Resolved 2026-11-12 (`10a30ce`): listing needs share-manage access (owner or live write); stranger, reader and expired writer get 403, red first | — |
 | 84 | **new** Copy and move answer 401 or 500 when they refuse | 15 | Answer 403 for no access and 400 for a refused destination (another drive, already there, into itself, a root folder) | — |
+| 85 | **new** The workspace gallery ignores its URL filters and lists trashed media | 20 | Combine the scope with the URL filters instead of spreading over their `AND`; keep trash out | — |
+| 86 | **new** A writer can revoke or expire an owner-role grant | 20 | Require `owner` when the grant being revoked or expired carries `owner` | — |
+| 87 | **new** Anyone can create a thumbnail row on any item | 15 | `createThumbnail` takes the user and checks read access, like `updateThumbnail` | — |
+| 88 | **new** The thumbnail routes sign URLs for items in trash | 15 | A trashed item reaches only its owner through the thumbnail source and bucket reads | — |
+| 89 | **new** The gallery loader sends storage keys to the browser | 10 | Drop `file.key` from `getGalleryMedia`'s select and `fileKey` from the loader | — |
+| 90 | **new** Add-to-collection skips membership, trash and type checks | 15 | Items through `itemAccessSql` and not in trash; the target a live collection | — |
+| 91 | **new** The collections page loader scopes collections itself | 10 | Move the scoping into an action (`listCollectionsForUser`) | — |
+| 92 | **new** The personal gallery lists the user's trash on request | 10 | Keep trash out in `getGalleryMedia`'s scope, whatever `?status=` says | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -295,7 +307,17 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 79 | ~~A freed upload slot goes to a file that already holds one~~ | Code | 3 | 2 | 1 | **25** (High) | 1 h | Resolved 9 Nov |
 | 80 | ~~Home suggestions list files that were only just uploaded~~ | Code | 2 | 2 | 2 | **16** (Medium) | 2 h | Resolved 9 Nov |
 | 81 | ~~The rollup start test can time out in a full parallel run~~ | Test | 1 | 2 | 2 | **12** (Low) | 2 h | Resolved 12 Nov |
+| 82 | ~~Anyone could pin any item and read it back~~ | Code | 4 | 4 | 1 | **40** (High) | 1 h | Resolved 12 Nov |
+| 83 | ~~Anyone could list any item's invitations~~ | Code | 4 | 4 | 1 | **40** (High) | 1 h | Resolved 12 Nov |
 | 84 | Copy and move answer 401 or 500 when they refuse | Code | 2 | 1 | 1 | **15** (Low) | 1 h | New 12 Nov |
+| 85 | The workspace gallery ignores its URL filters and lists trashed media | Code | 2 | 2 | 1 | **20** (Medium) | 1 h | New 12 Nov |
+| 86 | A writer can revoke or expire an owner-role grant | Code | 2 | 2 | 1 | **20** (Medium) | 1 h | New 12 Nov |
+| 87 | Anyone can create a thumbnail row on any item | Code | 1 | 2 | 1 | **15** (Low) | 1 h | New 12 Nov |
+| 88 | The thumbnail routes sign URLs for items in trash | Code | 1 | 2 | 1 | **15** (Low) | 1 h | New 12 Nov |
+| 89 | The gallery loader sends storage keys to the browser | Code | 1 | 1 | 1 | **10** (Low) | 0.5 h | New 12 Nov |
+| 90 | Add-to-collection skips membership, trash and type checks | Code | 1 | 2 | 1 | **15** (Low) | 1 h | New 12 Nov |
+| 91 | The collections page loader scopes collections itself | Architecture | 1 | 1 | 1 | **10** (Low) | 0.5 h | New 12 Nov |
+| 92 | The personal gallery lists the user's trash on request | Code | 1 | 1 | 1 | **10** (Low) | 0.5 h | New 12 Nov |
 
 ## Details
 
@@ -1473,12 +1495,92 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 - **Status 2026-11-09: open.**
 - **Status 2026-11-12: resolved** (`78fd5ad`). The import was timed inside the test (a temporary log, removed). Alone, 3 runs: 593, 507 and 363 ms. In one full parallel `pnpm test` (1343/1343 in 108 files): 724 ms, so the 9 Nov timeout didn't recur. Beside 16 CPU-bound node processes on this 16-core machine: 2,490 and 1,735 ms, 4–7× alone. The import is the whole server module (Express, React Router, Vinktar) and its time follows the machine's load, so the test now has a 20 s timeout, four times the worst seen, with the numbers in a comment. Making the import cheaper would mean changing the server's entry for a test; not done. Nothing is skipped.
 
+### 82. Anyone could pin any item and read it back
+
+*Code debt · Impact 4 · Risk 4 · Effort 1 → **40** · est. 1 h · source: authz audit of the gallery, 12 Nov*
+
+- **Evidence:** `pinItem` (`pin-actions.ts`) created a row for any item id, with no access check, and `getPinnedItems` listed every pinned item through `itemListSelect` (name, size, owner, drive, workspace, the `File` row with bucket and key, parent, favoriters, pinners) with a signed thumbnail. So `POST /api/pins {intent:'pin', itemId}` on another user's id, then `GET /api/pins`, read that item; it also wrote a "pinned" activity onto it. A pin also outlived a revoked share, a left workspace and the item's trashing.
+- **Fix:** `pinItem` asserts read first (`assertItemsAccess`, so a missing id is refused like a forbidden one). `getPinnedItems` keeps only items the user can still read (`itemAccessWhere`) and that are not in trash.
+- **Status 2026-11-12: resolved** (`b3736c3`). 3 tests in `pin-actions.test.ts`, each red on the old code: a stranger's pin is refused 403 with no row, a pin row without access is left out, a trashed pinned item is left out. Not changed: `itemListSelect` still carries `file: true`, which now reaches only users who may read the item.
+
+### 83. Anyone could list any item's invitations
+
+*Code debt · Impact 4 · Risk 4 · Effort 1 → **40** · est. 1 h · source: authz audit of the gallery, 12 Nov*
+
+- **Evidence:** `GET /api/invitations?itemId=` (the share dialog's read) called `listItemInvitations(itemId)`, which took no user and queried `where: { itemId }`. Any signed-in user got the sender's and every recipient's email and role, the grantees' emails, the personal message, the item's `File` row and signed thumbnails (for a folder, up to 6 children's too).
+- **Fix:** `listItemInvitations(userId, itemId)` starts with `assertCanManageItemShares` (owner or a live `write`/`owner` grant), the guard of the dialog's share-link read. The loader answers a typed 403/404 with its status instead of a 500.
+- **Status 2026-11-12: resolved** (`10a30ce`). In `share-access.test.ts`: a stranger, a read grantee and an expired writer get 403 (red on the old code); the owner and a live writer list the invitation.
+
 ### 84. Copy and move answer 401 or 500 when they refuse
 
 *Code debt · Impact 2 · Risk 1 · Effort 1 → **15** · est. 1 h · source: item 13's tests, 12 Nov*
 
 - **Evidence:** `copyItem` answers a caller without read on the source with `toRouteError(UNAUTHORIZED)`, a 401 to a signed-in user. Its refusal of a destination on another drive is `COPY_ITEM_FAILED`, and `moveItems` refuses another drive, an item already in the target, a folder into itself and a root folder with `MOVE_ITEM_FAILED`; both codes are 500 in `api.errors.ts`, and no route remaps them. So a refused request reads as a server failure: in the network tab, and to `requestTimingMiddleware`, which reports 5xx as `route_request_failed`. Pinned by `upload-folder-tree.test.ts`, which asserts the error codes, not the statuses.
 - **Fix:** 403 for no access to the source, as for the destination; 400 (`INVALID_INPUT`) for a destination the item can't go to. The copy test for no access asserts `errorCode: 'UNAUTHORIZED'` and changes with it.
+- **Status 2026-11-12: open.**
+
+### 85. The workspace gallery ignores its URL filters and lists trashed media
+
+*Code debt · Impact 2 · Risk 2 · Effort 1 → **20** · est. 1 h · source: authz audit of the gallery, 12 Nov*
+
+- **Evidence:** `getGalleryMedia` spreads the URL filters (`buildItemFilters`, one `{ AND: [...] }`) and then, for a workspace, `itemAccessWhere(...)`, which is also `{ AND: [...] }` and replaces it. The default `status: ['normal']` goes with it, as do date, query, tag, extension and folder filters. A member's `/:me/workspaces/W/gallery` lists W's trashed media they can read, with signed thumbnails, and ignores every filter.
+- **Fix:** combine the clauses with one `AND` (media, URL filters, scope, not in trash) instead of spreading them.
+- **Status 2026-11-12: open.**
+
+### 86. A writer can revoke or expire an owner-role grant
+
+*Code debt · Impact 2 · Risk 2 · Effort 1 → **20** · est. 1 h · source: authz audit of the gallery (share dialog), 12 Nov*
+
+- **Evidence:** granting `owner` needs `owner` (`grantItemPermissionForUser`), but `revokeItemPermissionForUser` and `expirePermissionForUser` need only `write`, so a writer can remove or expire a co-owner's grant through `/api/permissions`.
+- **Fix:** require `owner` when the grant being revoked or expired carries the `owner` role.
+- **Status 2026-11-12: open.**
+
+### 87. Anyone can create a thumbnail row on any item
+
+*Code debt · Impact 1 · Risk 2 · Effort 1 → **15** · est. 1 h · source: authz audit of the gallery, 12 Nov*
+
+- **Evidence:** `POST /api/thumbnails/:itemId` calls `createThumbnail(itemId, …)`, which takes no user and checks only that the item exists. Any user writes a `Thumbnail` row (a placeholder colour) on another user's item, and the reply tells a real id (200) from a missing one (500).
+- **Fix:** pass the user and check read access, as `updateThumbnail` does; a missing item is refused like a forbidden one.
+- **Status 2026-11-12: open.**
+
+### 88. The thumbnail routes sign URLs for items in trash
+
+*Code debt · Impact 1 · Risk 2 · Effort 1 → **15** · est. 1 h · source: authz audit of the gallery, 12 Nov*
+
+- **Evidence:** `getThumbnailSource` and `resolveThumbnailBucket` check access with `itemAccessWhere`, which has no status condition. After Alice trashes a file, Bob, holding a read grant, still gets a signed GET of the original (`?intent=source`) and can presign thumbnail writes. `getDownloadUrls` refuses the same item.
+- **Fix:** a trashed item is reachable only by its owner here (the owner's Trash page still draws its thumbnails).
+- **Status 2026-11-12: open.**
+
+### 89. The gallery loader sends storage keys to the browser
+
+*Code debt · Impact 1 · Risk 1 · Effort 1 → **10** · est. 0.5 h · source: authz audit of the gallery, 12 Nov*
+
+- **Evidence:** `getGalleryMedia` selects `file.key` and the gallery loader returns it as `fileKey`. In a workspace gallery a member receives other members' S3 keys. Nothing in `app/` reads `fileKey`.
+- **Fix:** drop both.
+- **Status 2026-11-12: open.**
+
+### 90. Add-to-collection skips membership, trash and type checks
+
+*Code debt · Impact 1 · Risk 2 · Effort 1 → **15** · est. 1 h · source: authz audit of the gallery, 12 Nov*
+
+- **Evidence:** `addItemsToCollection`'s readability check is owner or any live grant, with no workspace-membership clause and no status check, and the collection check is `assertItemPermission` (no trash check, no `type = 'collection'`). A user who left a workspace still owns their uploads there and can add them to a collection, and trashed items can be added; a trashed collection can still be written to.
+- **Fix:** read the items through `itemAccessSql(userId, 'read')` and not in trash, and require the target to be a live collection.
+- **Status 2026-11-12: open.**
+
+### 91. The collections page loader scopes collections itself
+
+*Architecture debt · Impact 1 · Risk 1 · Effort 1 → **10** · est. 0.5 h · source: authz audit of the gallery, 12 Nov*
+
+- **Evidence:** `routes/stash/collections.tsx` passes `{ ownerId, status: 'normal' }` to `findAllCollections`, which "does not enforce permissions". It doesn't fail open today, but authorization belongs in actions (CLAUDE.md), and the add-to-collection menu loads this route.
+- **Fix:** an action, `listCollectionsForUser(userId, orderBy)`, owns the scope.
+- **Status 2026-11-12: open.**
+
+### 92. The personal gallery lists the user's trash on request
+
+*Code debt · Impact 1 · Risk 1 · Effort 1 → **10** · est. 0.5 h · source: authz audit of the gallery, 12 Nov*
+
+- **Evidence:** `getGalleryMedia` takes its status from the URL filters, so `/:me/stash/images?status=trashed` lists the user's own trashed media with signed thumbnails. Only their own items, so nothing leaks, but the gallery isn't meant to show trash.
+- **Fix:** keep trash out in the action's scope (with item 85's fix).
 - **Status 2026-11-12: open.**
 
 ## Changes since the audit
@@ -1602,6 +1704,8 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-11-09 | `10f58f9` | 72, 13 | A folder upload's tree locks its root and found folders in one statement in id order, after the lookups, and re-reads them: a trash of the root deadlocked with it (`40P01`, reproduced) → trash completes, tree refused 404. Resolve time within noise. 1 new test; 1338/0 in 108 files. |
 | 2026-11-12 | `cba58b3`, `4c837a1` | 13, 84 | Tests for `copyItem` (6), `moveItems` (5) and `createFolder` (3): facets, totals after the rollup, collaborator and no-access refusals, rollback over quota; 56/56 in `upload-folder-tree.test.ts`, CI green on `cba58b3`. Found item 84. |
 | 2026-11-12 | `78fd5ad` | 81 | The rollup start test's timeout is 20 s, from measured import times (363–593 ms alone, 724 ms in a full run, up to 2,490 ms under CPU load). 1343/0 in 108 files. |
+| 2026-11-12 | `b3736c3` | 82 | A pin needs read access, and the pinned list shows only readable items not in trash. 3 tests, red first. |
+| 2026-11-12 | `10a30ce` | 83 | Listing an item's invitations needs share-manage access; the loader keeps a 403/404. New `share-access.test.ts` cases, red first. |
 | 2026-11-01 | `7e2e9c1`, `36eff9f` | 22, 17 | A failed onboarding runs again on the next session read: each step finds before it creates, a new bucket is written to the row at once, a complete row ends in `alreadyOnboarded`. Red 4 of 18 → 20 of 20; 1252/0 in 103 files. Workspace uploads moved to item 17. |
 
 ## Phased remediation plan
