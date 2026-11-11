@@ -1,63 +1,54 @@
-# Stashly Docs
+# Stashly docs
 
-Architecture and design documentation for the Stashly codebase.
+How the code works, one page per subsystem. Day-to-day conventions are in
+[`CLAUDE.md`](../CLAUDE.md) and the skills in `.claude/skills/`. Pages were
+last checked against `main` on 2026-11-12.
 
-## Architecture Docs
+## Start here
 
-| File | Description |
-|------|-------------|
-| [project-overview.md](project-overview.md) | Full-stack architecture overview — tech stack, layer responsibilities, API surface, data model, key subsystems |
-| [ai-pipeline.md](ai-pipeline.md) | AI inference pipeline — Transformers.js, WebGPU, Whisper transcription, language detection, Web Worker architecture |
-| [upload-multipart.md](upload-multipart.md) | S3 multipart upload + post-upload DB item creation chain (`itemCreated` gate, `parentId` derivation) |
-| [thumbnail-pipeline.md](thumbnail-pipeline.md) | 3-stage progressive WebP thumbnail pipeline — local blur preview, 512px resize, saliency crop — plus the compute worker, on-demand backfill, and the XState scheduler that now drives all of it |
-| [markdown-reader.md](markdown-reader.md) | Markdown stage — streamed body, sanitize pipeline, relative link resolution, Monaco-tokenized code blocks, mermaid diagrams |
-| [semantic-search.md](semantic-search.md) | Chunked + hybrid (pg_trgm + pgvector) retrieval over document text — index pipeline, schema, tuning, roadmap |
-| [quota-and-machines.md](quota-and-machines.md) | Storage quota — QuotaService singleton, `toUpdatedQuota` transformer, quota state machine, backend endpoint |
-| [search.md](search.md) | Search architecture — pgvector semantic search, SearchFactory pattern, filter system |
-| [routing-and-ui.md](routing-and-ui.md) | Route handles, dual-sidebar layout, pagination helpers, `runSearch` overloads |
-| [sharing-and-invitations.md](sharing-and-invitations.md) | Share links + invitations — Permission model, link types, scopes, lifecycle, API reference |
-| [suggestions-view.md](suggestions-view.md) | Suggestions view component — data flow, SQL aggregation patterns, route integration |
-| [dev-notes.md](dev-notes.md) | TypeScript patterns, Prisma conventions, schema triggers, archived filter/search patterns |
-| [notifications-sse.md](notifications-sse.md) | Live notification feed — Postgres `LISTEN`/`NOTIFY` bridge, SSE route, reconnect/reconcile, metrics |
-| [upload-item-creation-summary.md](upload-item-creation-summary.md) | Post-upload DB chain — how an S3 key becomes an `Item`, including nested-folder resolution |
-| [code-viewer.md](code-viewer.md) | Monaco-based code viewer — language support, go-to-definition across uploaded files |
-| [code-viewer-cross-file-options.md](code-viewer-cross-file-options.md) | Decision record for cross-file navigation — the options weighed and the one that shipped |
-| [roadmap.md](roadmap.md) | Product roadmap — shipped phases, current status, future work |
-| [orphaned.md](orphaned.md) | Dead-code report — 21 orphans purged 2026-08-14; 14 unused `ui/` components remain by choice. Re-verify before deleting anything: it has gone stale in both directions before |
+| Page | What it covers |
+|---|---|
+| [project-overview.md](project-overview.md) | The stack, how a request flows, the layout of `app/`, the data model, access, the API surface, and links to every subsystem |
+| [roadmap.md](roadmap.md) | What is built, half built and missing |
+
+## Subsystems
+
+| Page | What it covers |
+|---|---|
+| [upload-multipart.md](upload-multipart.md) | Multipart upload to S3, the file and db machines, row creation, folder drops, the `itemCreated` gate |
+| [quota-and-machines.md](quota-and-machines.md) | Per-drive quota: status, where it is charged and refunded, `/api/quota`, the client actors |
+| [thumbnail-pipeline.md](thumbnail-pipeline.md) | Thumbnails made for visible cards, the scheduler lanes, stages, the compute worker, private storage and signing |
+| [search.md](search.md) | The search feature (two-pass query, rankers, RRF, match kinds, view) and the `searchFactory` list queries and filters |
+| [semantic-search.md](semantic-search.md) | The search index: text sources, chunking, embeddings, OCR, recovery, tunable parameters |
+| [ai-pipeline.md](ai-pipeline.md) | Every model that runs in the browser and where it is used, the WebGPU queue, OCR engines, embedding backfill |
+| [notifications-sse.md](notifications-sse.md) | Live notifications: Postgres `NOTIFY` → `LISTEN` bridge → SSE → client reducer; metrics and pooling |
+| [sharing-and-invitations.md](sharing-and-invitations.md) | Share links (no route serves them yet) and invitations |
+| [code-viewer.md](code-viewer.md) | The Monaco code viewer: language services, hover, outline, Go to Definition, Format Document, embedded SQL |
+| [markdown-reader.md](markdown-reader.md) | The Markdown stage: streaming, sanitising, links, Monaco-coloured code blocks, Mermaid |
+| [routing-and-ui.md](routing-and-ui.md) | Route handles, the multi-sidebar provider, `usePagination` and the server pagination helpers |
+| [dev-notes.md](dev-notes.md) | Item and its facets, trigger-kept counters, typing patterns |
 
 ## Reference
 
-| File | Description |
-|------|-------------|
-| [data_profile_stashly _prisma_schema.md](data_profile_stashly%20_prisma_schema.md) | Prisma schema deep-dive — 56 models, 24 enums, entity relationships, index analysis |
-| [stashly_structure_2026-04-01.txt](stashly_structure_2026-04-01.txt) | Full project file tree snapshot, generated 2026-04-01 — a historical artifact, not current. For today's layout see [README.md](../README.md#project-structure) |
+| Page | What it covers |
+|---|---|
+| [data_profile_stashly _prisma_schema.md](data_profile_stashly%20_prisma_schema.md) | Every model and enum, indexes, and the current definition of each database function and trigger |
+| [tech-debt.md](tech-debt.md) | The tech-debt register: each item with its evidence, fix and measurements |
 
-## Superpowers Plans & Specs
+## Records
 
-Implementation plans and design specs for significant features. Plans use checkbox syntax for task tracking.
+Dated documents kept because other pages cite them. They describe the code as
+it was on their date.
 
-### Plans
+| Page | What it is |
+|---|---|
+| [code-viewer-cross-file-options.md](code-viewer-cross-file-options.md) | Why cross-file type resolution was built the way it was |
+| [upload-call-audit.md](upload-call-audit.md) | Every call one upload made on 10 Oct 2026, re-measured 31 Oct; source of tech-debt items 31–44 |
+| [Stashly upload load audit.pdf](Stashly%20upload%20load%20audit.pdf) | Upload load audit cited by tech-debt.md; also the scanned PDF the OCR engines were measured on |
+| [project-analysis-2026-10-04.md](project-analysis-2026-10-04.md) | Read-only project analysis of 4 Oct 2026, cited by tech-debt.md |
+| [superpowers/plans/2026-10-30-size-rollup-delta-log.md](superpowers/plans/2026-10-30-size-rollup-delta-log.md) | Plan and outcome of the upload size log (tech-debt item 42) |
 
-| File | Status | Description |
-|------|--------|-------------|
-| [2026-03-20-pipeline-machine-in-worker.md](superpowers/plans/2026-03-20-pipeline-machine-in-worker.md) | Implemented | Move XState pipeline machine into `stash.worker.ts` so AI runs off the main thread |
-| [2026-03-21-pipeline-machine-extraction.md](superpowers/plans/2026-03-21-pipeline-machine-extraction.md) | Implemented | Extract pipeline machine into 6 dedicated sub-machines (+ GPU resilience, content hints, GPU load balancer) |
-| [2026-04-01-e2e-playwright.md](superpowers/plans/2026-04-01-e2e-playwright.md) | Implemented | Playwright E2E test setup — global-setup, fixtures, page object models |
-| [2026-04-02-concurrent-multipart-upload.md](superpowers/plans/2026-04-02-concurrent-multipart-upload.md) | Implemented | Concurrent multipart upload — parallel chunk uploads, ETag tracking |
-| [2026-04-04-multipart-upload-tests.md](superpowers/plans/2026-04-04-multipart-upload-tests.md) | Implemented | Contract tests for the multipart upload streaming layer |
-| [2026-04-24-living-thumbnails.md](superpowers/plans/2026-04-24-living-thumbnails.md) | Implemented | 5-stage progressive thumbnail pipeline with WebP, race-condition fix |
-| [2026-04-25-item-activities.md](superpowers/plans/2026-04-25-item-activities.md) | Implemented | Item activity timeline — create/rename/move/trash/share/comment/version events |
-| [2026-05-15-pinned-items.md](superpowers/plans/2026-05-15-pinned-items.md) | Implemented | Pinned items — PinItem model, pin-actions.ts, /api/pins route, usePinItem hook, /:me/stash/pinned page |
-| [2026-05-25-item-card-actions-compound.md](superpowers/plans/2026-05-25-item-card-actions-compound.md) | Implemented | Item card actions as a compound component — `ItemCard.Actions` with composable sub-actions |
-
-### Specs
-
-| File | Description |
-|------|-------------|
-| [2026-03-21-pipeline-machine-extraction-design.md](superpowers/specs/2026-03-21-pipeline-machine-extraction-design.md) | Design spec for pipeline machine extraction — XState 5 invocation chains, machine interfaces, error flow |
-| [2026-04-01-e2e-playwright-design.md](superpowers/specs/2026-04-01-e2e-playwright-design.md) | Design spec for Playwright E2E — session injection, fixture pattern, test structure |
-| [2026-04-02-concurrent-multipart-upload-design.md](superpowers/specs/2026-04-02-concurrent-multipart-upload-design.md) | Concurrent multipart upload design — parallel parts, completion ordering |
-| [2026-04-04-multipart-upload-tests-design.md](superpowers/specs/2026-04-04-multipart-upload-tests-design.md) | Test design for multipart upload contract suite |
-| [2026-04-24-living-thumbnails-design.md](superpowers/specs/2026-04-24-living-thumbnails-design.md) | Design spec for the 5-stage thumbnail pipeline |
-| [2026-04-25-item-activities-design.md](superpowers/specs/2026-04-25-item-activities-design.md) | Design spec for the item activity timeline + drawer UI |
-| [2026-05-25-item-card-actions-compound.md](superpowers/specs/2026-05-25-item-card-actions-compound.md) | Design spec for the item card actions compound component |
+The other files in this folder (session hand-overs, finished implementation
+plans and specs, a session transcript, design reviews, a duplicate of the
+upload audit, an April file-tree snapshot and the old suggestions-view page)
+are proposed for removal and wait for the owner's decision.
