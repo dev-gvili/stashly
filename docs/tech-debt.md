@@ -155,7 +155,7 @@
 | 28 | ~~Form and search decoders mangle typed text~~ | 25 | Resolved 2026-10-23: values decoded once, typed text kept as text, bad input is a 400 | — |
 | 19 | **new** Stripe webhook is a stub | 24 | All four event handlers. Deferred 2026-11-01: private development, no public service yet | Deferred by the owner until paid plans go live |
 | 20 | ~~Playwright specs don't run in CI~~ | 24 | Resolved 2026-11-01 (`85f85b9`, `461f7e8`): an `e2e` job runs all 8 specs on every push against a throwaway Postgres and real Tigris (65 passed, 4–6 min); teardown deletes the E2E bucket; the navigation flake fixed | — |
-| 10 | Accessibility and responsive UI | 21 | Keyboard on cards and rows, phone navigation and the seek bar done 1 Nov; icon buttons named 12 Nov (`3c34084`). Left: the toolbar below ~840px, the item panel covering the file | — |
+| 10 | Accessibility and responsive UI | 21 | Keyboard on cards and rows, phone navigation and the seek bar done 1 Nov; icon buttons named and the header made responsive 12 Nov (`3c34084`, `ee6d1d8`..`842682d`). Left: the item panel covering the file | — |
 | 22 | ~~Open decisions in upload and onboarding~~ | 20 | Resolved 2026-11-01 (`7e2e9c1`, `36eff9f`): a failed onboarding runs again on the next session read, every step reusing what the failed run made (red 4 of 18 → green 20 of 20); workspace uploads moved to item 17 | — |
 | 30 | ~~Signed cookies fall back to the secret `'secret'`~~ | 20 | Resolved 2026-10-26 (`074c06e`): production refuses to boot without `SESSION_SECRET`; set the Fly secret before the next deploy | — |
 | 33 | ~~Cancelled uploads leave parts in S3~~ | 20 | Resolved 2026-10-25 (`8a79e89`, `e4aeb0e`): cancel, retry exhaustion and a failed complete all abort the multipart upload | — |
@@ -242,7 +242,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 7 | ~~The type baseline is stale, and escape hatches are growing~~ | Code | 3 | 3 | 2 | **24** (Medium) | 1–2 days | Resolved |
 | 8 | ~~Data-integrity gaps in loaders and deletes~~ | Code | 2 | 4 | 2 | **24** (Medium) | 1–2 days | Resolved |
 | 9 | ~~Failed uploads leave S3 bytes and charged quota with no Item~~ | Architecture | 3 | 4 | 3 | **21** (Medium) | 2–3 days | Resolved |
-| 10 | UI accessibility and responsive debt | Code | 4 | 3 | 3 | **21** (Medium) | 5–8 days | Partly done (1 Nov) |
+| 10 | UI accessibility and responsive debt | Code | 4 | 3 | 3 | **21** (Medium) | 5–8 days | Partly done (12 Nov) |
 | 11 | ~~Generated and personal files in git~~ | Documentation | 2 | 2 | 1 | **20** (Medium) | 0.5 day | Resolved |
 | 12 | No linter | Code | 2 | 2 | 2 | **16** (Medium) | 1 day + fixes | Open |
 | 13 | Tests are missing where the risk is | Test | 4 | 4 | 4 | **16** (Medium) | ongoing, ~2 weeks | Open |
@@ -552,6 +552,15 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
   - **Checked:** a TypeScript-AST scan of `app/components` finds no icon-only button left unnamed except pass-through primitives in `components/ui/` that are named by their callers (Radix triggers, `InputGroupButton`, calendar days) and Radix Select scroll arrows (aria-hidden). In the browser on the signed-in dev app, light and dark: 0 unnamed controls of 318 across the stash grid, All (list), Images, Trash and an image file page, and no console errors.
   - **Not seen in a browser:** the upload panel's Pause/Resume/Cancel/Dismiss (hover-only during an upload), the error-boundary actions, and the markdown, PDF, text and audio stage toolbars.
   - **Left:** the toolbar below ~840px and the item panel covering the file.
+- **Status 2026-11-12: the header fits every width** (the owner approved a four-phase plan; one commit per phase).
+  - **Before**, measured on the signed-in dev app: the header's left group (upload, search, Filter, Sort) stayed 770px wide at every width. The layout switch slid over the Sort pill below ~1010px with the sidebar collapsed (106px over at 900px) and below ~1200px with it expanded. Below 838px the page scrolled sideways, and at 375px it was 815px wide with 11 of 15 header controls off screen.
+  - `ee6d1d8`: the header is a size container on every page, and its left group shrinks (search first) and clips on x instead of drawing over the right group.
+  - `e5ecc6b`: two named container sizes in `globals.css`. Under 60rem the filter chips and the sort label step aside. Under 48rem the search becomes a button to the search page, and Locked/Favorited move from the trigger into a "Flags" row in the Filter panel.
+  - `6ee4aa3`: below md, or with a header under 36rem, Filter, Sort and Layout fold into one "View options" popover (the owner's choice over a two-row header). On a phone the sidebar trigger is named after the sheet's state.
+  - `842682d`: `tests/e2e/header-responsive.spec.ts`. It covers stash home and All at 375, 768, 1024 and 1280px, plus 1024/1280 with the sidebar toggled, and checks for no sideways scroll, no header control off screen or overlapping another, and the phone popover. Locally: 11 passed; against the header as it was before `ee6d1d8`, 6 failed.
+  - **After**, measured: 0px overlap and nothing off screen at header widths 1212, 1024, 932, 832, 744, 644 and 375px. `scrollWidth` equals the viewport at 375 (7 controls, all visible), 700, 768, 900, 1000 and 1280px. Checked by eye in Chrome in light and dark: compact, narrow and phone layouts, the Flags row, and the nested Filter panel inside "View options".
+  - **Not the header:** stash home's search hero (`home-search-hero.tsx`, a `nowrap` truncate span inside Radix ScrollArea's `display: table`) gives that page a ~643px minimum width. With the sidebar expanded and a content area narrower than that (a viewport under ~900px), the page grows past the window by up to 11px and pushes the header's last control off screen. Not fixed here.
+  - **Left:** the item panel covering the file.
 
 ### 11. Generated and personal files in git
 
