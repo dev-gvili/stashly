@@ -145,7 +145,7 @@ export function ContextThumbnailFooter({
         <p className="truncate text-sm font-medium">{name}</p>
         {meta && <p className="text-xs text-muted-foreground">{meta}</p>}
       </div>
-      <Button variant="outline" size="icon">
+      <Button variant="outline" size="icon" aria-label={`Preview ${name}`}>
         <PreviewIcon className="size-5" />
       </Button>
     </div>

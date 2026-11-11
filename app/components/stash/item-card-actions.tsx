@@ -492,7 +492,7 @@ interface ActionsRootProps extends React.ComponentPropsWithoutRef<
 
 function ActionsRoot({ children, ...triggerProps }: ActionsRootProps) {
   const fetcher = useFetcher()
-  const { id, status, searchParams } = useItemCard()
+  const { id, name, status, searchParams } = useItemCard()
   const hasChildren = React.Children.count(children) > 0
 
   // Selection lives in the page URL, but every card mounts its own Actions, so
@@ -535,6 +535,7 @@ function ActionsRoot({ children, ...triggerProps }: ActionsRootProps) {
       <DropdownMenuTrigger
         onClick={(e) => e.stopPropagation()}
         asChild
+        aria-label={`Actions for ${name}`}
         {...triggerProps}
       >
         <Button

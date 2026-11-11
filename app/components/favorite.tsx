@@ -26,6 +26,7 @@ export const Favorite = ({
       className={cn('z-20', className)}
       variant="ghost"
       size="icon-sm"
+      aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
       {...props}
     >
       <HeartIcon

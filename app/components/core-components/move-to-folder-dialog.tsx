@@ -339,6 +339,7 @@ export function MoveToFolderDialog({
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Clear search"
                     onClick={() => setQuery('')}
                   >
                     <RemoveIcon className="size-5" />

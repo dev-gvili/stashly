@@ -215,6 +215,7 @@ export function PageToolbarPathRail({
           'font-stashly bg-card! border-none ring-2 ring-accent rounded-md!',
           !crumbs && 'hidden'
         )}
+        aria-label="Back"
         onClick={onBack}
       >
         <ArrowLeftFillIcon className="size-5" />

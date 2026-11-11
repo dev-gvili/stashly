@@ -71,6 +71,7 @@ export function AppHeader() {
           'font-stashly bg-card! border-input rounded-md! shrink-0',
           !fileId && 'hidden'
         )}
+        aria-label="Back"
         onClick={() => navigate(-1)}
       >
         <ArrowLeftFillIcon className="size-5" />
@@ -135,6 +136,7 @@ function StashlyUpload({
         onClick={toggleView}
         variant="ghost"
         size="icon"
+        aria-label="Uploads"
         // The upload panel starts hidden and this is its only opener, so E2E
         // needs a stable handle on it — the button is icon-only and otherwise
         // has no accessible name to target.
@@ -147,6 +149,7 @@ function StashlyUpload({
           <Button
             variant="ghost"
             size="icon"
+            aria-label="New and upload"
             className="hover:cursor-pointer hover:bg-muted rounded-md hover:rounded-md  items-center! flex aria-expanded:bg-accent/30 aria-expanded:text-accent-foreground  data-[state=open]:bg-accent/30 data-[state=open]:text-accent-foreground hover:last:rounded-r-md!"
           >
             <DropdownIcon className="size-5!" />

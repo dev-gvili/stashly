@@ -807,6 +807,7 @@ function DCFocusOverlay({ entry, sectionMeta, sectionOrder }: DCFocusOverlayProp
 
   const Arrow = ({ dir, onClick }: { dir: 'left' | 'right'; onClick: () => void }) => (
     <button
+      aria-label={dir === 'left' ? 'Previous' : 'Next'}
       onClick={(e) => { e.stopPropagation(); onClick() }}
       style={{
         position: 'absolute', top: '50%', [dir]: 28, transform: 'translateY(-50%)',
@@ -915,6 +916,8 @@ function DCFocusOverlay({ entry, sectionMeta, sectionOrder }: DCFocusOverlayProp
         {peers.map((p, i) => (
           <button
             key={p}
+            aria-label={`Go to ${i + 1} of ${peers.length}`}
+            aria-current={i === idx || undefined}
             onClick={() => ctx.setFocus(`${sectionId}/${p}`)}
             style={{ border: 'none', padding: 0, cursor: 'pointer', width: 6, height: 6, borderRadius: 3, background: i === idx ? '#fff' : 'rgba(255,255,255,.3)' }}
           />

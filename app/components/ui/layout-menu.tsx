@@ -82,6 +82,7 @@ export const LayoutMenuItem = ({
     <Tooltip content={tooltip} asChild>
       <ToggleGroupItem
         name="layout"
+        aria-label={tooltip}
         variant="outline"
         className={cn(
           'font-stashly bg-card text-foreground hover:bg-muted aria-checked:text-accent-foreground aria-checked:bg-muted! first-of-type:ml-0! last-of-type:mr-0! first-of-type:rounded-l-md last-of-type:rounded-r-md hover:cursor-pointer border-none ',

@@ -37,6 +37,7 @@ const Delete = (props: React.ComponentProps<typeof Button>) => {
       <Button
         variant="destructive"
         size="icon-sm"
+        aria-label="Permanently delete items"
         disabled={!selectedItems}
         onClick={() =>
           open({
@@ -68,6 +69,7 @@ const MoveToTrash = (props: React.ComponentProps<typeof Button>) => {
     <Tooltip content="Move to Trash">
       <Button
         variant="destructive"
+        aria-label="Move to Trash"
         onClick={() => {
           fetcher.submit(
             { intent: 'trash_items', selectedItems },
@@ -94,6 +96,7 @@ const Restore = (props: React.ComponentProps<typeof Button>) => {
     <Tooltip content="Restore items">
       <Button
         size="icon-sm"
+        aria-label="Restore items"
         disabled={!selectedItems}
         onClick={() => {
           fetcher.submit(
@@ -118,6 +121,7 @@ const FavoriteItems = (props: React.ComponentProps<typeof Button>) => {
       <Button
         variant="ghost"
         size="icon-sm"
+        aria-label="Favorite items"
         disabled={!selectedItems}
         onClick={() => {
           fetcher.submit(
@@ -142,6 +146,7 @@ const SelectAll = (props: React.ComponentProps<typeof Button>) => {
       <Button
         variant="ghost"
         size="icon-sm"
+        aria-label="Select all"
         aria-pressed={allSelected}
         onClick={() => toggleAll()}
         {...props}

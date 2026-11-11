@@ -121,7 +121,7 @@ function ItemCardCheckBox({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<typeof Checkbox>) {
-  const { searchParams, setSearchParams, id } = useItemCard()
+  const { searchParams, setSearchParams, id, name: itemName } = useItemCard()
   const selection = useSelection()
   const curValue = `${value ?? id}`
   const localShiftRef = React.useRef(false)
@@ -176,6 +176,7 @@ function ItemCardCheckBox({
       onClick={handleClick}
       onCheckedChange={handleCheckedChange}
       data-slot="item-checkbox"
+      aria-label={`Select ${itemName}`}
       className={cn(itemCheckboxClassName, className)}
       name={name}
       value={value || id}

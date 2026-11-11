@@ -19,6 +19,7 @@ export function Chip({
       {children}
       {onRemove && (
         <Button
+          aria-label="Remove filter"
           onClick={onRemove}
           className="opacity-60 hover:opacity-100 hover:bg-black/10 rounded-xs p-0! size-3! data-[state=open]:bg-black/10"
         >

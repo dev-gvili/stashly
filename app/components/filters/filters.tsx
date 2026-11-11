@@ -190,6 +190,7 @@ function FiltersFlagToggles({ className }: { className?: string }) {
         return (
           <Toggle
             key={f.id}
+            aria-label={f.label}
             onClick={(e) => e.stopPropagation()}
             className="data-[state=on]:bg-muted data-[state=on]:text-accent-foreground h-6 p-1.5 ml-auto rounded!"
             size="sm"

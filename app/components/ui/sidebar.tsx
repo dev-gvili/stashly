@@ -402,6 +402,9 @@ function SidebarTrigger({
       <Button
         data-sidebar="trigger"
         data-slot="sidebar-trigger"
+        // Named here so a trigger with custom children (an icon via asChild)
+        // keeps the tooltip's text as its accessible name.
+        aria-label={tooltipContent}
         variant="outline"
         size="icon-sm"
         className={cn(className)}

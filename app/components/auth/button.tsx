@@ -37,6 +37,7 @@ const AuthButton = ({
     <Button
       variant={variant}
       size="icon"
+      aria-label={`Sign in with ${provider}`}
       className={cn('border-dashed border-border', className)}
       {...props}
       onClick={() => {

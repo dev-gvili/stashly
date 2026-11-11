@@ -342,6 +342,7 @@ export function AudioStage({
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Next"
               className="border-none! bg-transparent!"
             >
               <SkipPreviousFillIcon className="rotate-180" />

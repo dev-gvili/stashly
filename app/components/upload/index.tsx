@@ -607,6 +607,7 @@ const Cancel = React.forwardRef<
           <Button
             variant="outline"
             size="icon-sm"
+            aria-label="Cancel"
             hidden={status === 'done' || isFailure(status)}
             disabled={
               status === 'aborted' || status === 'done' || isFailure(status)
@@ -645,6 +646,7 @@ const Dismiss = React.forwardRef<
     <Button
       variant="ghost"
       size="icon-lg"
+      aria-label="Dismiss"
       ref={forwardRef}
       onClick={callAll(() => dismiss(mediaFileId), onClick)}
       className={cn(
@@ -682,6 +684,7 @@ const PauseResume = React.forwardRef<
           <Button
             variant="outline"
             size="icon-sm"
+            aria-label={isPaused ? 'Resume' : 'Pause'}
             ref={forwardRef}
             onClick={callAll(
               () => (isPaused ? resume(mediaFileId) : pause(mediaFileId)),
@@ -730,6 +733,7 @@ export const UploadPanel = ({ user }: { user: User }) => {
             <Button
               variant="outline"
               size="icon-sm"
+              aria-label={isCollapsed ? 'Expand uploads' : 'Collapse uploads'}
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="hover:cursor-pointer bg-sidebar border-input"
             >
@@ -738,6 +742,7 @@ export const UploadPanel = ({ user }: { user: User }) => {
             <Button
               variant="outline"
               size="icon-sm"
+              aria-label="Close uploads"
               onClick={toggleView}
               className="hover:cursor-pointer bg-sidebar border-input"
             >

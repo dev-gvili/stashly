@@ -105,6 +105,7 @@ export const ListLayout = <T extends StashItem>({ items }: ListViewProps<T>) => 
       columns={columns}
       data={items ?? []}
       getRowId={(item) => item.id}
+      getRowLabel={(item) => item.name}
       onRowClick={(item) => navigate(hrefFor(item))}
       selectable
       selectedIds={selectedIds}

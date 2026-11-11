@@ -540,6 +540,7 @@ export function ItemPanel({
               gives pointer-events: none. */}
           <TabsTrigger
             value="details"
+            aria-label="Details"
             className="bg-card border-none! data-[state=active]:text-primary! data-[state=active]:bg-card text-muted-foreground/50! hover:text-muted-foreground/80! transition-colors duration-200 ease-in-out"
           >
             <Tooltip content="Details" side="top" align="center" asChild>
@@ -550,6 +551,7 @@ export function ItemPanel({
           </TabsTrigger>
           <TabsTrigger
             value="activity"
+            aria-label="Activity"
             className="bg-card border-none! data-[state=active]:text-primary! data-[state=active]:bg-card text-muted-foreground/50! hover:text-muted-foreground/80! transition-colors duration-200 ease-in-out"
           >
             <Tooltip content="Activity" side="top" align="center" asChild>

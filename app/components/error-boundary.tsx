@@ -60,6 +60,7 @@ export function ErrorBoundary({
               variant="ghost"
               size="icon-sm"
               className="text-xs"
+              aria-label="Reload"
               onClick={() => window.location.reload()}
             >
               <RefreshIcon className="size-5" />
@@ -68,6 +69,7 @@ export function ErrorBoundary({
               variant="ghost"
               size="icon-sm"
               className="text-xs"
+              aria-label="Go home"
               onClick={() => navigate('/')}
             >
               <HomeFillIcon className="size-5" />
@@ -78,6 +80,7 @@ export function ErrorBoundary({
                 variant="ghost"
                 size="icon-sm"
                 className="text-xs"
+                aria-label="Copy error details"
                 onClick={() => navigator.clipboard?.writeText(stack)}
               >
                 <CopyFillIcon className="size-5" />
@@ -89,6 +92,8 @@ export function ErrorBoundary({
               size="icon-sm"
               className="text-xs"
               hidden={!stack}
+              aria-label={showDetails ? 'Hide details' : 'Show details'}
+              aria-expanded={showDetails}
               onClick={() => setShowDetails((s) => !s)}
             >
               <ExpandCollapsedIcon className="size-5" />

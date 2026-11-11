@@ -72,6 +72,7 @@ function VideoItem({ src, className }: { src: string; className?: string }) {
       {hovered && (
         <button
           onClick={toggle}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
           className="absolute inset-0 flex items-center justify-center"
         >
           {isPlaying ? (

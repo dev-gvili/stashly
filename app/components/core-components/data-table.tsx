@@ -32,6 +32,8 @@ export interface DataTableProps<T> {
   data: T[]
   /** Return a stable string key for each row. Falls back to row index. */
   getRowId?: (row: T) => string
+  /** Names the row's checkbox for assistive tech: "Select {label}". */
+  getRowLabel?: (row: T) => string
   onRowClick?: (row: T) => void
   /** Show a hover-reveal checkbox column. Requires selectedIds + onSelectChange. */
   selectable?: boolean
@@ -76,6 +78,7 @@ export function DataTable<T extends object>({
   columns,
   data,
   getRowId,
+  getRowLabel,
   onRowClick,
   selectable,
   selectedIds,
@@ -168,6 +171,7 @@ export function DataTable<T extends object>({
                   <TableCell style={{ width: '40px' }} className="pr-2 pl-4 py-0">
                     <Checkbox
                       checked={isSelected}
+                      aria-label={`Select ${getRowLabel?.(row) ?? 'row'}`}
                       onClick={(e) => e.stopPropagation()}
                       onCheckedChange={(checked) =>
                         onSelectChange?.(id, !!checked)

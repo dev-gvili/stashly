@@ -21,6 +21,7 @@ export function ModeToggle() {
         <Button
           variant="outline"
           size="icon"
+          aria-label="Color mode"
           className="font-stashly bg-card! ring-2 ring-accent border-none data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground rounded-md!"
         >
           {data?.colorScheme === 'dark' && <DarkModeFillIcon className="size-5!" />}
