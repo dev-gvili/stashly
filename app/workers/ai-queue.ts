@@ -125,6 +125,57 @@ export function isDeviceLostError(err: unknown): boolean {
   )
 }
 
+/**
+ * A model loaded once and kept across jobs, dropped when its WebGPU device is
+ * lost so the next job loads it again on a fresh device.
+ *
+ * A load that fails is not kept either: the next `get` tries again rather than
+ * replaying the rejection.
+ *
+ * @param load - Builds the model. Called on first `get`, and again after a drop,
+ *   with that call's arguments (a progress callback, say).
+ * @param dispose - Frees a dropped model. Errors from it are ignored, since a
+ *   model on a lost device may refuse to be disposed.
+ *
+ * @example
+ * const cache = createModelCache(() => loadOcrModel(), (m) => m.model.dispose())
+ * try {
+ *   await run(await cache.get())
+ * } catch (err) {
+ *   if (cache.failed(err)) console.warn('device lost — reloading next time')
+ *   throw err
+ * }
+ */
+export function createModelCache<T, A extends unknown[] = []>(
+  load: (...args: A) => Promise<T>,
+  dispose: (model: T) => unknown,
+): {
+  /** The model, loading it if nothing is cached. `args` reach `load` only then. */
+  get(...args: A): Promise<T>
+  /** Drops the model if `err` is a lost device. True when it dropped one. */
+  failed(err: unknown): boolean
+} {
+  let current: Promise<T> | null = null
+  return {
+    get(...args) {
+      if (current) return current
+      const loading = load(...args)
+      current = loading
+      loading.catch(() => {
+        if (current === loading) current = null
+      })
+      return loading
+    },
+    failed(err) {
+      if (!current || !isDeviceLostError(err)) return false
+      const lost = current
+      current = null
+      void lost.then((model) => dispose(model)).catch(() => {})
+      return true
+    },
+  }
+}
+
 /** Queue depth, for status UI and diagnostics. */
 export function aiQueueDepth(): { waiting: number; running: boolean } {
   return { waiting: waiting.length, running }

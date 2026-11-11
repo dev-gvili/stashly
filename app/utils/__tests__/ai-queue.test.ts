@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { enqueue, aiQueueDepth, isDeviceLostError } from '@/workers/ai-queue'
+import { describe, it, expect, vi } from 'vitest'
+import { enqueue, aiQueueDepth, isDeviceLostError, createModelCache } from '@/workers/ai-queue'
 
 /** A job that resolves only when told to, so ordering is deterministic. */
 function gate() {
@@ -118,5 +118,81 @@ describe('isDeviceLostError', () => {
     expect(isDeviceLostError(new Error('out of memory'))).toBe(false)
     expect(isDeviceLostError(new Error('Failed to fetch'))).toBe(false)
     expect(isDeviceLostError(undefined)).toBe(false)
+  })
+})
+
+describe('createModelCache', () => {
+  const deviceLost = new Error("Failed to execute 'mapAsync' on 'GPUBuffer': [Device] is lost.")
+
+  /** A cache whose loads return numbered models, with spies on load and dispose. */
+  function counting() {
+    let loads = 0
+    const load = vi.fn(async () => ({ id: ++loads }))
+    const dispose = vi.fn()
+    return { cache: createModelCache(load, dispose), load, dispose }
+  }
+
+  it('loads once and shares the model, concurrent callers included', async () => {
+    const { cache, load } = counting()
+    const [a, b] = await Promise.all([cache.get(), cache.get()])
+    const c = await cache.get()
+    expect(load).toHaveBeenCalledTimes(1)
+    expect(a).toBe(b)
+    expect(c).toBe(a)
+  })
+
+  it('drops the model on a lost device, disposes it and reloads on next use', async () => {
+    const { cache, load, dispose } = counting()
+    const first = await cache.get()
+
+    expect(cache.failed(deviceLost)).toBe(true)
+    const second = await cache.get()
+
+    expect(load).toHaveBeenCalledTimes(2)
+    expect(second).not.toBe(first)
+    expect(dispose).toHaveBeenCalledWith(first)
+  })
+
+  it('keeps the model for any other error', async () => {
+    const { cache, load, dispose } = counting()
+    const first = await cache.get()
+
+    expect(cache.failed(new Error('shape mismatch'))).toBe(false)
+
+    expect(await cache.get()).toBe(first)
+    expect(load).toHaveBeenCalledTimes(1)
+    expect(dispose).not.toHaveBeenCalled()
+  })
+
+  it('has nothing to drop before a load', () => {
+    const { cache, dispose } = counting()
+    expect(cache.failed(deviceLost)).toBe(false)
+    expect(dispose).not.toHaveBeenCalled()
+  })
+
+  it('retries a load that failed instead of replaying the rejection', async () => {
+    const load = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockResolvedValueOnce('model')
+    const cache = createModelCache(load, () => {})
+
+    await expect(cache.get()).rejects.toThrow('Failed to fetch')
+    await expect(cache.get()).resolves.toBe('model')
+    expect(load).toHaveBeenCalledTimes(2)
+  })
+
+  it('survives a dispose that throws', async () => {
+    const cache = createModelCache(
+      async () => 'model',
+      () => {
+        throw new Error('already destroyed')
+      },
+    )
+    await cache.get()
+    expect(cache.failed(deviceLost)).toBe(true)
+    // Let the dispose run; an unhandled rejection would fail the run.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await expect(cache.get()).resolves.toBe('model')
   })
 })
