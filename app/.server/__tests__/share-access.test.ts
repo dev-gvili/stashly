@@ -13,6 +13,7 @@ import {
   updateShareLinkSettings,
   updateShareLinkType,
 } from '@/services/share-actions'
+import { listItemInvitations } from '@/services/invitation-actions'
 import { toErrorInfo } from '@/utils/api.errors'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
@@ -34,6 +35,7 @@ let readerId: string
 let expiredWriterId: string
 let itemId: string
 let linkId: string
+let invitationId: string
 const createdLinks: string[] = []
 
 /** The HTTP status a rejected action carries, or `'ok'` if it resolved. */
@@ -87,9 +89,23 @@ beforeAll(async () => {
   const link = await createViewLink(ownerId, itemId, 'anonymous')
   linkId = link.id
   createdLinks.push(link.id)
+
+  invitationId = uid('Invitation')
+  await prisma.invitation.create({
+    data: {
+      id: invitationId,
+      senderId: ownerId,
+      itemId,
+      message: 'private note',
+      recipients: {
+        create: { id: uid('InvitationRecipient'), email: `invitee-${invitationId}@test.local` },
+      },
+    },
+  })
 })
 
 afterAll(async () => {
+  await prisma.invitation.deleteMany({ where: { id: invitationId } })
   await prisma.permission.deleteMany({ where: { linkId: { in: createdLinks } } })
   await prisma.shareLink.deleteMany({ where: { id: { in: createdLinks } } })
   const others = [strangerId, writerId, readerId, expiredWriterId]
@@ -101,6 +117,9 @@ afterAll(async () => {
 describe('a user who cannot manage the item gets 403 and changes nothing', () => {
   const cases: [string, (actor: string) => Promise<unknown>][] = [
     ['list links', (a) => listShareLinksForItem(a, itemId)],
+    // The invitations carry the sender's and every recipient's email, the
+    // personal message and the item's file row.
+    ['list invitations', (a) => listItemInvitations(a, itemId)],
     ['create a view link', (a) => createViewLink(a, itemId, 'anonymous')],
     ['create an edit link', (a) => createEditLink(a, itemId, 'users')],
     ['create an embed link', (a) => createEmbedLink(a, itemId)],
@@ -131,6 +150,13 @@ describe('the owner and a live write grantee can manage links', () => {
   it('the owner lists the item’s links', async () => {
     const links = await listShareLinksForItem(ownerId, itemId)
     expect(links.map((l) => l.id)).toContain(linkId)
+  })
+
+  it('the owner and a live write grantee list the item’s invitations', async () => {
+    for (const actor of [ownerId, writerId]) {
+      const invitations = await listItemInvitations(actor, itemId)
+      expect(invitations.map((i) => i.id)).toEqual([invitationId])
+    }
   })
 
   it('a live write grantee lists, re-scopes, and creates and revokes a link', async () => {

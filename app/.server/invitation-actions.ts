@@ -27,6 +27,7 @@ import { prisma } from '@/services/db'
 import { track } from '@/services/vinktar'
 import { log } from '@/services/log'
 import { createNotification } from './notification-actions'
+import { assertCanManageItemShares } from './share-actions'
 import { signThumbnails, type WithSignedThumbnails } from './thumbnail-actions'
 
 // ---------------------------------------------------------------------------
@@ -455,9 +456,18 @@ export async function listReceivedInvitations(
   return enrichInvitations(prisma, invitations)
 }
 
+/**
+ * An item's invitations, for its share dialog. They carry the sender's and
+ * every recipient's email and the personal message, so only someone who may
+ * manage the item's sharing (owner or live `write`/`owner`) can list them.
+ *
+ * @throws `ITEM_NOT_FOUND` (404) / `FORBIDDEN` (403) as `assertCanManageItemShares`.
+ */
 export async function listItemInvitations(
+  userId: string,
   itemId: string
 ): Promise<InvitationWithDetails[]> {
+  await assertCanManageItemShares(userId, itemId)
   const invitations = await prisma.invitation.findMany({
     where: { itemId },
     include: invitationInclude,

@@ -37,7 +37,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
   try {
     if (itemId) {
-      const invitations = await listItemInvitations(itemId)
+      const invitations = await listItemInvitations(session.user.id, itemId)
       return data({ invitations })
     }
 
@@ -48,6 +48,10 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
     return data({ invitations })
   } catch (e) {
+    const err = toErrorInfo(e)
+    if (err.status) {
+      return data({ error: err.message ?? 'Error' }, { status: err.status })
+    }
     console.error('[invitations loader]', e)
     return data({ error: 'Failed to load invitations' }, { status: 500 })
   }
