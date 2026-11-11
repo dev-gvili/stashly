@@ -1403,6 +1403,87 @@ describe('copyItem', () => {
     expect(await totals(src)).toEqual(srcBefore)
   })
 
+  // Item 68: the copy inserts each table once and computes the copied folders'
+  // totals itself, then writes the destination's ancestors once, so every level
+  // must come out as the row-by-row cascade left it.
+  it('copies a deep tree with every folder’s totals, grants and views, and its ancestors charged once', async () => {
+    const src = (await createFolder('deep-src', rootId, ownerId, driveId)).id
+    const a = (await createFolder('deep-a', src, ownerId, driveId)).id
+    const b = (await createFolder('deep-b', a, ownerId, driveId)).id
+    const c = (await createFolder('deep-c', b, ownerId, driveId)).id
+    await makeFile('d0.txt', src, 1n)
+    await makeFile('d1.txt', a, 10n)
+    await makeFile('d2.txt', b, 100n)
+    await makeFile('d3.txt', c, 1000n)
+    await makeFile('d3b.txt', c, 2000n)
+    const trashedFile = await makeFile('d-gone.txt', b, 7n)
+    const trashedFolder = (await createFolder('deep-gone', a, ownerId, driveId)).id
+    await makeFile('d-gone-inner.txt', trashedFolder, 70n)
+    await trashItems([trashedFile, trashedFolder], ownerId)
+    const up = (await createFolder('deep-up', rootId, ownerId, driveId)).id
+    const dest = (await createFolder('deep-dest', up, ownerId, driveId)).id
+    await flushItemSizes()
+    const totals = (id: string) =>
+      prisma.item.findUniqueOrThrow({
+        where: { id },
+        select: { size: true, inclusiveSize: true, folder: { select: { childCount: true, inclusiveChildCount: true } } },
+      })
+    const [upBefore, destBefore] = [await totals(up), await totals(dest)]
+
+    const copy = await copyItem(ownerId, src, dest)
+    await flushItemSizes()
+
+    // Each copied folder holds what its source holds live, and no trash.
+    for (const [from, name] of [[src, 'deep-src'], [a, 'deep-a'], [b, 'deep-b'], [c, 'deep-c']] as const) {
+      const source = await totals(from)
+      const copied = await prisma.item.findFirstOrThrow({ where: { name, ownerId, id: { not: from }, type: 'folder' }, orderBy: { createdAt: 'desc' } })
+      expect(await totals(copied.id)).toEqual({
+        size: source.size,
+        inclusiveSize: source.size,
+        folder: { childCount: source.folder!.childCount, inclusiveChildCount: source.folder!.childCount },
+      })
+    }
+    expect((await totals(copy.id)).size).toBe(3111n)
+    // The destination and the folder above it take the bytes once; the
+    // destination counts one more child.
+    expect(await totals(dest)).toMatchObject({
+      size: destBefore.size + 3111n,
+      inclusiveSize: destBefore.inclusiveSize + 3111n,
+      folder: { childCount: destBefore.folder!.childCount! + 1 },
+    })
+    expect(await totals(up)).toMatchObject({ size: upBefore.size + 3111n, inclusiveSize: upBefore.inclusiveSize + 3111n })
+
+    // Every copied item: an id shaped like toObjectId's, an owner grant for the
+    // copier, and a view for each folder.
+    const copiedTree = await prisma.$queryRaw<{ id: string }[]>`
+      WITH RECURSIVE t AS (SELECT "id" FROM "Item" WHERE "id" = ${copy.id}
+        UNION ALL SELECT i."id" FROM "Item" i JOIN t ON i."parentId" = t."id")
+      SELECT "id" FROM t`
+    expect(copiedTree).toHaveLength(9) // 4 folders, 5 live files
+    const items = await prisma.item.findMany({
+      where: { id: { in: copiedTree.map((r) => r.id) } },
+      select: {
+        id: true,
+        type: true,
+        permissions: { select: { roles: true, users: { select: { id: true } } } },
+        folder: { select: { id: true, view: { select: { viewType: true } } } },
+      },
+    })
+    for (const item of items) {
+      expect(item.id).toMatch(/^item_[A-Za-z0-9_-]{22}$/)
+      expect(item.permissions).toEqual([{ roles: 'owner', users: [{ id: ownerId }] }])
+      if (item.type === 'folder') {
+        expect(item.folder!.id).toMatch(/^fld_[A-Za-z0-9_-]{22}$/)
+        expect(item.folder!.view).toEqual({ viewType: 'grid' })
+      }
+    }
+
+    // The status trigger then takes the copy out of the active totals and keeps it in the inclusive ones.
+    await trashItems([copy.id], ownerId)
+    await flushItemSizes()
+    expect(await totals(dest)).toMatchObject({ size: destBefore.size, inclusiveSize: destBefore.inclusiveSize + 3111n })
+  })
+
   it('refuses a collaborator’s copy into the owner’s folder, even with write on it, and writes and charges nothing', async () => {
     const collab = await makeCopier('collab')
     try {

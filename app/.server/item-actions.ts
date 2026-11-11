@@ -1201,80 +1201,9 @@ export async function copyItem(
     throw new StashlyError(StashlyErrorCode.COPY_ITEM_FAILED, 'targetParentId is required')
   }
 
-  const { copied, source, bytes } = await prisma.$transaction(async (tx) => {
-    const source = await tx.item.findFirst({
-      where: { id: itemId, status: { not: 'trashed' } },
-      include: { ...copyFacets, parent: { select: { name: true } } },
-    })
-    if (!source) {
-      throw new StashlyError(StashlyErrorCode.ITEM_NOT_FOUND, 'The item to copy no longer exists or is in trash.')
-    }
-    if (!(await hasItemPermission(userId, itemId, 'read', tx))) {
-      throw toRouteError(StashlyErrorCode.UNAUTHORIZED, 'You do not have access to this item')
-    }
-
-    // Access before the trash check, so a caller with no access can't tell
-    // whether the folder is in trash (item 74).
-    if (!(await hasItemPermission(userId, targetParentId, 'write', tx))) {
-      throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You do not have write access to the target folder')
-    }
-    const target = await lockDestinationFolder(tx, targetParentId)
-    // `recursiveCopy` lists a folder's contents after making its copy, so a copy
-    // into the folder or anywhere under it would find that copy among them and
-    // copy it again, until the transaction timed out. The walk is up from the
-    // destination: as many rows as it is deep.
-    if (source.type === 'folder') {
-      const [{ inside }] = await tx.$queryRaw<{ inside: boolean }[]>`
-        WITH RECURSIVE "Up" AS (
-          SELECT "id", "parentId" FROM "Item" WHERE "id" = ${target.id}
-          UNION ALL
-          SELECT i."id", i."parentId" FROM "Item" i JOIN "Up" u ON i."id" = u."parentId"
-        )
-        SELECT EXISTS (SELECT 1 FROM "Up" WHERE "id" = ${source.id}) AS "inside"`
-      if (inside) {
-        throw toRouteError(
-          StashlyErrorCode.INVALID_INPUT,
-          'A folder cannot be copied into itself or one of its subfolders.'
-        )
-      }
-    }
-
-    // The copy belongs where it lands: the destination folder's workspace, or
-    // none in a personal folder. It once kept the source's, so a copy out of a
-    // workspace into a personal folder stayed in the workspace (item 75).
-    if (source.workspaceId) {
-      await requireMembership(userId, source.workspaceId, 'You do not have access to this item')
-    }
-    if (target.workspaceId && target.workspaceId !== source.workspaceId) {
-      await requireAtLeastRole(
-        userId,
-        target.workspaceId,
-        'member',
-        'You must be a member of the target workspace to copy items.'
-      )
-    }
-
-    const userQuota = await ensureUserQuota(userId, tx)
-    if (userQuota.driveId !== target.driveId) {
-      throw new StashlyError(
-        StashlyErrorCode.COPY_ITEM_FAILED,
-        'A copy goes into your own drive, which pays for it.'
-      )
-    }
-    const { item: copied, bytes } = await recursiveCopy(tx, source, target.id, {
-      ownerId: userId,
-      driveId: target.driveId,
-      workspaceId: target.workspaceId,
-    })
-    // The bytes of the files actually copied, never the source folder's `size`:
-    // that is a trigger rollup, which trails its contents while the database is
-    // busy (it charged 143 bytes for a 150-byte copy in a full test run).
-    // The charge checks the free space in its own UPDATE, never against a figure
-    // read earlier, so two copies can't both pass on the same free space. A
-    // refusal (507) rolls the whole copy back.
-    await onItemsCopied({ userId, dataSize: bytes, client: tx })
-    return { copied: { ...copied, parentName: target.name }, source, bytes }
-  })
+  const { copied, source, bytes } = await prisma.$transaction((tx) =>
+    copyItemInTransaction(tx, userId, itemId, targetParentId)
+  )
 
   // After the commit, so a copy refused for quota or access is never counted,
   // and the activity's own write can't fail inside the copy's transaction.
@@ -1316,6 +1245,94 @@ export async function copyItem(
   )
 
   return copied
+}
+
+/**
+ * `copyItem`'s checks, copy and charge, inside the caller's transaction `tx`.
+ * Exported so the copy can be measured inside a transaction that is rolled
+ * back; everything else calls `copyItem`.
+ *
+ * @example
+ * await prisma.$transaction((tx) => copyItemInTransaction(tx, userId, itemId, folderId))
+ */
+export async function copyItemInTransaction(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  itemId: string,
+  targetParentId: string
+) {
+  const source = await tx.item.findFirst({
+    where: { id: itemId, status: { not: 'trashed' } },
+    include: { parent: { select: { name: true } } },
+  })
+  if (!source) {
+    throw new StashlyError(StashlyErrorCode.ITEM_NOT_FOUND, 'The item to copy no longer exists or is in trash.')
+  }
+  if (!(await hasItemPermission(userId, itemId, 'read', tx))) {
+    throw toRouteError(StashlyErrorCode.UNAUTHORIZED, 'You do not have access to this item')
+  }
+
+  // Access before the trash check, so a caller with no access can't tell
+  // whether the folder is in trash (item 74).
+  if (!(await hasItemPermission(userId, targetParentId, 'write', tx))) {
+    throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You do not have write access to the target folder')
+  }
+  const target = await lockDestinationFolder(tx, targetParentId)
+  // The copy walks the source's subtree, so a copy into the folder or anywhere
+  // under it would walk into its own destination. (The row-by-row copy that came
+  // before found its own copy among the contents and ran until it timed out.)
+  // The walk is up from the destination: as many rows as it is deep.
+  if (source.type === 'folder') {
+    const [{ inside }] = await tx.$queryRaw<{ inside: boolean }[]>`
+      WITH RECURSIVE "Up" AS (
+        SELECT "id", "parentId" FROM "Item" WHERE "id" = ${target.id}
+        UNION ALL
+        SELECT i."id", i."parentId" FROM "Item" i JOIN "Up" u ON i."id" = u."parentId"
+      )
+      SELECT EXISTS (SELECT 1 FROM "Up" WHERE "id" = ${source.id}) AS "inside"`
+    if (inside) {
+      throw toRouteError(
+        StashlyErrorCode.INVALID_INPUT,
+        'A folder cannot be copied into itself or one of its subfolders.'
+      )
+    }
+  }
+
+  // The copy belongs where it lands: the destination folder's workspace, or
+  // none in a personal folder. It once kept the source's, so a copy out of a
+  // workspace into a personal folder stayed in the workspace (item 75).
+  if (source.workspaceId) {
+    await requireMembership(userId, source.workspaceId, 'You do not have access to this item')
+  }
+  if (target.workspaceId && target.workspaceId !== source.workspaceId) {
+    await requireAtLeastRole(
+      userId,
+      target.workspaceId,
+      'member',
+      'You must be a member of the target workspace to copy items.'
+    )
+  }
+
+  const userQuota = await ensureUserQuota(userId, tx)
+  if (userQuota.driveId !== target.driveId) {
+    throw new StashlyError(
+      StashlyErrorCode.COPY_ITEM_FAILED,
+      'A copy goes into your own drive, which pays for it.'
+    )
+  }
+  const { item: copied, bytes } = await copySubtree(tx, source.id, target.id, {
+    ownerId: userId,
+    driveId: target.driveId,
+    workspaceId: target.workspaceId,
+  })
+  // The bytes of the files actually copied, never the source folder's `size`:
+  // that is a trigger rollup, which trails its contents while the database is
+  // busy (it charged 143 bytes for a 150-byte copy in a full test run).
+  // The charge checks the free space in its own UPDATE, never against a figure
+  // read earlier, so two copies can't both pass on the same free space. A
+  // refusal (507) rolls the whole copy back.
+  await onItemsCopied({ userId, dataSize: bytes, client: tx })
+  return { copied: { ...copied, parentName: target.name }, source, bytes }
 }
 
 // --- 5. CREATE FOLDER ---
@@ -2907,107 +2924,185 @@ export async function paginateItems<
   }
 }
 
-// --- HELPER: Recursive Copy Logic ---
+// --- HELPER: Set-based copy ---
 
-/** The facets a copy carries over: each is copied as a new row of its own. */
-const copyFacets = {
-  file: true,
-  folder: true,
-  image: true,
-  video: true,
-  audio: true,
-  pdf: true,
-  markdown: true,
-} as const satisfies Prisma.ItemInclude
-
-type CopySource = Prisma.ItemGetPayload<{ include: typeof copyFacets }>
-
-/** A facet's fields for a nested create: a new id, and no `itemId` (the nesting sets it). */
-function copiedFacet<T extends { id: string; itemId: string }>(
-  facet: T | null,
-  model: Parameters<typeof getPrefixForModel>[0]
-) {
-  if (!facet) return undefined
-  const { id: _id, itemId: _itemId, ...fields } = facet
-  return { create: { ...fields, id: toObjectId(getPrefixForModel(model)) } }
+/**
+ * A new object id in SQL, the shape `toObjectId` makes: the prefix, `_`, and 16
+ * random bytes in unpadded base64url (22 characters). `gen_random_uuid()` is
+ * the random source, so 6 of the 128 bits are fixed (122 random). `prefix`
+ * comes from `getPrefixForModel`, never from input.
+ */
+function sqlObjectId(model: Parameters<typeof getPrefixForModel>[0]) {
+  const prefix = getPrefixForModel(model)
+  if (!/^[a-z]+$/.test(prefix)) throw new Error(`Unexpected id prefix ${prefix}`)
+  return Prisma.raw(
+    `'${prefix}_' || rtrim(translate(encode(uuid_send(gen_random_uuid()), 'base64'), '+/', '-_'), '=')`
+  )
 }
 
 /**
- * Copies `sourceItem` under `parentId`, then its live contents, in `tx`.
+ * The facet tables a copy carries over, with every column but `id` and
+ * `itemId`, read from the generated client so a new facet column is copied
+ * without touching this list.
+ */
+const COPIED_FACETS = [
+  ['File', Prisma.FileScalarFieldEnum],
+  ['Image', Prisma.ImageScalarFieldEnum],
+  ['Video', Prisma.VideoScalarFieldEnum],
+  ['Audio', Prisma.AudioScalarFieldEnum],
+  ['Pdf', Prisma.PdfScalarFieldEnum],
+  ['Markdown', Prisma.MarkdownScalarFieldEnum],
+] as const
+
+/** Prisma writes UTC wall time into the `timestamp` columns; raw SQL must too. */
+const UTC_NOW = Prisma.raw(`(now() AT TIME ZONE 'UTC')`)
+
+/**
+ * Copies `sourceId` and its live contents under `parentId`, in `tx`, in a fixed
+ * number of statements whatever the size of the tree (tech-debt item 68).
  *
- * Only the source's own fields are copied: the copy belongs to `copy.ownerId`
- * (with an owner grant, as an upload has) on `copy.driveId`. A folder starts
- * empty, with size and counts 0: the triggers add each copied child as it
- * arrives, so copying the source's totals would count them twice. Contents in
- * trash are skipped. A folder gets the default view `createFolder` gives one.
+ * 1. The subtree is walked once into a temporary map, old id to new id and new
+ *    parent, with each copied folder's totals worked out from what it holds:
+ *    its live files' bytes (`size` and `inclusiveSize`, since a copy has no
+ *    trash) and its direct children (`childCount` and `inclusiveChildCount`).
+ * 2. `Item`, `Folder` (with the default view `createFolder` gives one), each
+ *    facet table and the owner grants are inserted once each. Only the source's
+ *    own fields are copied: the copy belongs to `copy.ownerId` (with an owner
+ *    grant, as an upload has) on `copy.driveId`, in `copy.workspaceId`.
+ * 3. The inserts run with `stashly.rollup` on, so `update_size()` doesn't
+ *    cascade each new row up the tree; the copied folders already hold their
+ *    totals. The destination and its ancestors take the copy's bytes in one
+ *    `stashly_apply_folder_deltas()` call, which locks them in id order: the
+ *    per-row cascade locked them bottom-up, once per row, and that order
+ *    deadlocks with a trash's status trigger (item 93). `update_child_count()`
+ *    still adds the copy to the destination's counts; the copied folders'
+ *    `Folder` rows don't exist yet when it fires for their contents.
+ *
+ * A copy gets no thumbnails: copying the `Thumbnail` rows would share objects a
+ * permanent delete removes with the original.
  *
  * @param tx - The copy's transaction.
- * @param sourceItem - The item to copy, with its facets (`copyFacets`).
- * @param parentId - The folder the copy goes into.
+ * @param sourceId - The item to copy (checked live by the caller).
+ * @param parentId - The folder the copy goes into (locked by the caller).
  * @param copy - Who owns the copy, which drive it is on, and its workspace.
+ * @returns The new top item, and the bytes of the files copied.
  *
  * @example
- * await recursiveCopy(tx, source, 'fld_target123', { ownerId, driveId, workspaceId: null })
+ * await copySubtree(tx, source.id, 'item_target123', { ownerId, driveId, workspaceId: null })
  */
-async function recursiveCopy(
+async function copySubtree(
   tx: Prisma.TransactionClient,
-  sourceItem: CopySource,
+  sourceId: string,
   parentId: string,
   copy: { ownerId: string; driveId: string; workspaceId: string | null }
 ) {
-  const newItem = await tx.item.create({
-    data: {
-      id: toObjectId(getPrefixForModel('Item')),
-      name: sourceItem.name,
-      type: sourceItem.type,
-      category: sourceItem.category,
-      status: 'normal',
-      tags: sourceItem.tags,
-      size: sourceItem.type === 'folder' ? 0n : sourceItem.size,
-      parentId,
-      ownerId: copy.ownerId,
-      driveId: copy.driveId,
-      workspaceId: copy.workspaceId,
-      permissions: {
-        create: {
-          id: toObjectId(getPrefixForModel('Permission')),
-          roles: 'owner',
-          users: { connect: { id: copy.ownerId } },
-        },
-      },
-      file: copiedFacet(sourceItem.file, 'File'),
-      image: copiedFacet(sourceItem.image, 'Image'),
-      video: copiedFacet(sourceItem.video, 'Video'),
-      audio: copiedFacet(sourceItem.audio, 'Audio'),
-      pdf: copiedFacet(sourceItem.pdf, 'Pdf'),
-      markdown: copiedFacet(sourceItem.markdown, 'Markdown'),
-      ...(sourceItem.type === 'folder'
-        ? {
-            folder: {
-              create: {
-                id: toObjectId(getPrefixForModel('Folder')),
-                view: {
-                  create: { viewType: 'grid', sortBy: 'type', sortOrder: 'ascending' },
-                },
-              },
-            },
-          }
-        : {}),
-    },
-  })
+  await tx.$executeRaw`
+    CREATE TEMP TABLE "CopyMap" (
+      "oldId" text PRIMARY KEY,
+      "oldParentId" text,
+      "newId" text NOT NULL,
+      "newParentId" text NOT NULL,
+      "isFolder" boolean NOT NULL,
+      "size" bigint NOT NULL,
+      "children" integer NOT NULL DEFAULT 0
+    ) ON COMMIT DROP`
 
-  let bytes = sourceItem.type === 'folder' ? 0n : sourceItem.size
-  if (sourceItem.type === 'folder') {
-    const children = await tx.item.findMany({
-      where: { parentId: sourceItem.id, status: { not: 'trashed' } },
-      include: copyFacets,
-    })
-    for (const child of children) {
-      bytes += (await recursiveCopy(tx, child, newItem.id, copy)).bytes
-    }
+  // The live subtree, each row with its new id. `UNION`, not `UNION ALL`, so a
+  // parent loop already in the data ends the walk. A CTE that calls a volatile
+  // function is evaluated once, so both sides of the join see the same ids.
+  await tx.$executeRaw`
+    INSERT INTO "CopyMap" ("oldId", "oldParentId", "newId", "newParentId", "isFolder", "size")
+    WITH RECURSIVE "Tree" AS (
+      SELECT s."id", s."parentId", s."type", s."size" FROM "Item" s WHERE s."id" = ${sourceId}
+      UNION
+      SELECT c."id", c."parentId", c."type", c."size"
+      FROM "Item" c JOIN "Tree" t ON c."parentId" = t."id"
+      WHERE t."type" = 'folder' AND c."status" <> 'trashed'
+    ), "Ids" AS (
+      SELECT t.*, ${sqlObjectId('Item')} AS "newId" FROM "Tree" t
+    )
+    SELECT a."id", a."parentId", a."newId",
+           CASE WHEN a."id" = ${sourceId} THEN ${parentId}::text ELSE p."newId" END,
+           a."type" = 'folder',
+           CASE WHEN a."type" = 'folder' THEN 0 ELSE a."size" END
+    FROM "Ids" a
+    LEFT JOIN "Ids" p ON p."id" = a."parentId" AND a."id" <> ${sourceId}`
+  await tx.$executeRaw`ANALYZE "CopyMap"`
+
+  // Each copied folder's totals: every file adds its bytes to each copied
+  // folder above it, and every row counts once toward its own parent.
+  await tx.$executeRaw`
+    WITH RECURSIVE "Up" AS (
+      SELECT m."oldParentId" AS "folderId", m."size"
+      FROM "CopyMap" m WHERE NOT m."isFolder" AND m."oldId" <> ${sourceId}
+      UNION ALL
+      SELECT p."oldParentId", u."size"
+      FROM "Up" u JOIN "CopyMap" p ON p."oldId" = u."folderId"
+      WHERE p."oldId" <> ${sourceId}
+    ), "Sizes" AS (
+      SELECT "folderId", SUM("size")::bigint AS "size" FROM "Up" GROUP BY "folderId"
+    ), "Counts" AS (
+      SELECT "oldParentId" AS "folderId", COUNT(*)::int AS "children"
+      FROM "CopyMap" WHERE "oldId" <> ${sourceId} GROUP BY "oldParentId"
+    )
+    UPDATE "CopyMap" m
+    SET "size" = COALESCE(s."size", 0), "children" = COALESCE(c."children", 0)
+    FROM "CopyMap" f
+    LEFT JOIN "Sizes" s ON s."folderId" = f."oldId"
+    LEFT JOIN "Counts" c ON c."folderId" = f."oldId"
+    WHERE m."oldId" = f."oldId" AND f."isFolder"`
+
+  await tx.$executeRaw`SELECT set_config('stashly.rollup', 'on', true)`
+
+  await tx.$executeRaw`
+    INSERT INTO "Item" ("id", "name", "type", "category", "status", "tags", "size", "inclusiveSize",
+                        "parentId", "ownerId", "driveId", "workspaceId", "createdAt", "updatedAt")
+    SELECT m."newId", s."name", s."type", s."category", 'normal'::"ItemStatus", s."tags", m."size",
+           CASE WHEN m."isFolder" THEN m."size" ELSE 0 END,
+           m."newParentId", ${copy.ownerId}::text, ${copy.driveId}::text, ${copy.workspaceId}::text, ${UTC_NOW}, ${UTC_NOW}
+    FROM "CopyMap" m JOIN "Item" s ON s."id" = m."oldId"`
+
+  await tx.$executeRaw`
+    WITH "NewFolder" AS (
+      INSERT INTO "Folder" ("id", "itemId", "childCount", "inclusiveChildCount")
+      SELECT ${sqlObjectId('Folder')}, m."newId", m."children", m."children"
+      FROM "CopyMap" m WHERE m."isFolder"
+      RETURNING "id"
+    )
+    INSERT INTO "View" ("id", "viewType", "sortBy", "sortOrder", "folderId", "createdAt", "updatedAt")
+    SELECT gen_random_uuid()::text, 'grid'::"ViewType", 'type'::"SortBy", 'ascending'::"SortOrder", f."id", ${UTC_NOW}, ${UTC_NOW}
+    FROM "NewFolder" f`
+
+  for (const [table, fields] of COPIED_FACETS) {
+    const columns = Object.values(fields).filter((c) => c !== 'id' && c !== 'itemId')
+    const list = Prisma.raw(columns.map((c) => `"${c}"`).join(', '))
+    const fromSource = Prisma.raw(columns.map((c) => `x."${c}"`).join(', '))
+    await tx.$executeRaw`
+      INSERT INTO ${Prisma.raw(`"${table}"`)} ("id", "itemId", ${list})
+      SELECT ${sqlObjectId(table)}, m."newId", ${fromSource}
+      FROM ${Prisma.raw(`"${table}"`)} x JOIN "CopyMap" m ON x."itemId" = m."oldId"`
   }
 
-  return { item: newItem, bytes }
+  await tx.$executeRaw`
+    WITH "Grant" AS (
+      INSERT INTO "Permission" ("id", "itemId", "roles", "createdAt", "updatedAt")
+      SELECT ${sqlObjectId('Permission')}, m."newId", 'owner'::"PermissionRole", ${UTC_NOW}, ${UTC_NOW}
+      FROM "CopyMap" m
+      RETURNING "id"
+    )
+    INSERT INTO "_PermissionToUser" ("A", "B") SELECT g."id", ${copy.ownerId}::text FROM "Grant" g`
+
+  // The copy's bytes reach the destination and every folder above it, one
+  // write per folder, rows locked in id order. Still under `stashly.rollup`,
+  // so those writes don't cascade again.
+  const [top] = await tx.$queryRaw<{ newId: string; size: bigint }[]>`
+    SELECT m."newId", m."size",
+           stashly_apply_folder_deltas(ARRAY[${parentId}::text], ARRAY[m."size"], ARRAY[m."size"], ARRAY[0], ARRAY[0])
+    FROM "CopyMap" m WHERE m."oldId" = ${sourceId}`
+  await tx.$executeRaw`SELECT set_config('stashly.rollup', 'off', true)`
+
+  const item = await tx.item.findUniqueOrThrow({ where: { id: top.newId } })
+  return { item, bytes: top.size }
 }
 /**
  * Parameters for fetching suggested items based on user activity..
