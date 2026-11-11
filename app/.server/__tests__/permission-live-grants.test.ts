@@ -232,3 +232,60 @@ describe('managing an item’s permissions checks the caller', () => {
     expect(await listItemPermissionsForUser(ownerId, items.expired)).toHaveLength(1)
   })
 })
+
+/**
+ * Handing out `owner` needs `owner`, so taking it away must too: a writer
+ * could revoke or expire a co-owner's grant (tech-debt item 86).
+ */
+describe('only an owner can revoke or expire an owner-role grant', () => {
+  let coOwnerId: string
+  let readerId: string
+  let ownerGrantId: string
+  let readGrantId: string
+
+  beforeAll(async () => {
+    ;[coOwnerId, readerId] = [uid('User'), uid('User')]
+    await prisma.user.createMany({
+      data: [coOwnerId, readerId].map((id, i) => ({
+        id,
+        name: `Owner grant ${i}`,
+        email: `ownergrant-${id}@test.local`,
+        emailVerified: true,
+      })),
+    })
+    ;[ownerGrantId, readGrantId] = [uid('Permission'), uid('Permission')]
+    await prisma.permission.createMany({
+      data: [
+        { id: ownerGrantId, itemId: items.live, roles: 'owner' },
+        { id: readGrantId, itemId: items.live, roles: 'read' },
+      ],
+    })
+    await prisma.permission.update({ where: { id: ownerGrantId }, data: { users: { connect: { id: coOwnerId } } } })
+    await prisma.permission.update({ where: { id: readGrantId }, data: { users: { connect: { id: readerId } } } })
+  })
+
+  afterAll(async () => {
+    await prisma.permission.deleteMany({ where: { id: { in: [ownerGrantId, readGrantId] } } })
+    await prisma.user.deleteMany({ where: { id: { in: [coOwnerId, readerId] } } })
+  })
+
+  it('a writer gets 403 and the co-owner keeps the grant', async () => {
+    expect(await status(() => revokeItemPermissionForUser(userId, coOwnerId, items.live))).toBe(403)
+    expect(await status(() => expirePermissionForUser(userId, ownerGrantId, new Date()))).toBe(403)
+    const grant = await prisma.permission.findUniqueOrThrow({
+      where: { id: ownerGrantId },
+      select: { expiresAt: true, users: { select: { id: true } } },
+    })
+    expect(grant).toEqual({ expiresAt: null, users: [{ id: coOwnerId }] })
+  })
+
+  it('a writer still expires and revokes a read grant', async () => {
+    const later = new Date(Date.now() + 3_600_000)
+    expect(await status(() => expirePermissionForUser(userId, readGrantId, later))).toBe('ok')
+    expect(await status(() => revokeItemPermissionForUser(userId, readerId, items.live))).toBe('ok')
+  })
+
+  it('the item’s owner revokes the co-owner', async () => {
+    expect(await status(() => revokeItemPermissionForUser(ownerId, coOwnerId, items.live))).toBe('ok')
+  })
+})

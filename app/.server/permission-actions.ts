@@ -842,7 +842,11 @@ export async function grantItemPermissionForUser(
 /**
  * Remove `granteeId`'s access to `itemId`, on behalf of `userId`.
  *
- * @throws `FORBIDDEN` (403) unless `userId` has write access to the item.
+ * Handing out `owner` needs `owner` (`grantItemPermissionForUser`), so taking
+ * an `owner` grant away needs it too.
+ *
+ * @throws `FORBIDDEN` (403) unless `userId` has write access to the item, or
+ *   owner access when `granteeId` holds an `owner` grant on it.
  *
  * @example
  * await revokeItemPermissionForUser(session.user.id, collaboratorId, itemId)
@@ -852,7 +856,11 @@ export async function revokeItemPermissionForUser(
   granteeId: string,
   itemId: string
 ): Promise<void> {
-  await assertItemPermission(userId, itemId, 'write')
+  const ownerGrant = await prisma.permission.findFirst({
+    where: { itemId, roles: 'owner', deletedAt: null, users: { some: { id: granteeId } } },
+    select: { id: true },
+  })
+  await assertItemPermission(userId, itemId, ownerGrant ? 'owner' : 'write')
   await revokeItemPermission(granteeId, itemId)
 }
 
@@ -861,7 +869,7 @@ export async function revokeItemPermissionForUser(
  *
  * @throws `SHARE_NOT_FOUND` (404) when the permission does not exist or is not
  *   tied to an item; `FORBIDDEN` (403) unless `userId` has write access to
- *   that item.
+ *   that item, or owner access when the permission carries `owner`.
  *
  * @example
  * await expirePermissionForUser(session.user.id, permissionId, nextWeek)
@@ -873,12 +881,17 @@ export async function expirePermissionForUser(
 ): Promise<Permission> {
   const permission = await prisma.permission.findUnique({
     where: { id: permissionId },
-    select: { itemId: true },
+    select: { itemId: true, roles: true },
   })
   if (!permission?.itemId) {
     throw toRouteError(StashlyErrorCode.SHARE_NOT_FOUND, 'Permission not found')
   }
-  await assertItemPermission(userId, permission.itemId, 'write')
+  // Expiring an `owner` grant takes it away, which needs `owner` like granting it.
+  await assertItemPermission(
+    userId,
+    permission.itemId,
+    permission.roles === 'owner' ? 'owner' : 'write'
+  )
   return expirePermission(permissionId, expiresAt)
 }
 
