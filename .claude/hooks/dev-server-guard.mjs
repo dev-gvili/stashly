@@ -24,6 +24,10 @@ if (killer.test(cmd) && target.test(cmd)) {
 }
 
 if (/\b(?:pnpm|npm|yarn)\s+(?:run\s+)?dev\b/.test(cmd)) {
+  // A server on its own port (PORT=8081 / $env:PORT=8081) leaves :80 alone;
+  // the Cortex Frontend Dev worktree runs one (owner decision, 12 Nov).
+  const port = cmd.match(/\bPORT\s*=\s*['"]?(\d+)/i)?.[1]
+  if (port && port !== '80') process.exit(0)
   const listening = await new Promise((resolve) => {
     const s = net.connect({ host: '127.0.0.1', port: 80 })
     const done = (v) => {
