@@ -95,6 +95,21 @@ export function thumbnailLocation(
 }
 
 /**
+ * The items `userId` may reach through the thumbnail calls: read access, as
+ * `itemAccessWhere`, and an item in trash only for its owner, whose Trash page
+ * still draws it. Without the status a grantee kept signing a trashed
+ * original (tech-debt item 88).
+ */
+function thumbnailAccessWhere(userId: string): Prisma.ItemWhereInput {
+  return {
+    AND: [
+      itemAccessWhere(userId, 'read'),
+      { OR: [{ status: { not: ItemStatus.trashed } }, { ownerId: userId }] },
+    ],
+  }
+}
+
+/**
  * The bucket an item's thumbnail is written to: the bucket holding the item's
  * file. Resolved server-side so a collaborator backfilling a shared item writes
  * next to the owner's file instead of into their own bucket.
@@ -111,7 +126,7 @@ async function resolveThumbnailBucket(
   itemId: string
 ): Promise<string> {
   const item = await prisma.item.findFirst({
-    where: { id: itemId, ...itemAccessWhere(userId, 'read') },
+    where: { id: itemId, ...thumbnailAccessWhere(userId) },
     select: { file: { select: { bucket: true } } },
   })
   if (!item) {
@@ -396,7 +411,7 @@ export async function createThumbnail(
   size: string = 'medium'
 ) {
   const item = await prisma.item.findFirst({
-    where: { id: itemId, ...itemAccessWhere(userId, 'read') },
+    where: { id: itemId, ...thumbnailAccessWhere(userId) },
     select: { id: true },
   })
   if (!item) {
@@ -583,7 +598,7 @@ export async function getThumbnailSource(
   // The read check is in the `where` (`itemAccessWhere`): one statement, where
   // `hasItemPermission` first added two. No row means no access, or no item.
   const item = await prisma.item.findFirst({
-    where: { id: itemId, ...itemAccessWhere(userId, 'read') },
+    where: { id: itemId, ...thumbnailAccessWhere(userId) },
     select: {
       id: true,
       name: true,

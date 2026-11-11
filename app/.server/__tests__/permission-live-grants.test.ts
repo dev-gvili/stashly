@@ -298,3 +298,40 @@ describe('only an owner can revoke or expire an owner-role grant', () => {
     expect(await status(() => revokeItemPermissionForUser(ownerId, coOwnerId, items.live))).toBe('ok')
   })
 })
+
+/**
+ * Trash takes an item out of everyone's reach but its owner's (their Trash
+ * page still draws it). The thumbnail reads checked access with no status, so
+ * a grantee kept getting a signed GET of a trashed original (item 88).
+ */
+describe('a trashed item reaches only its owner through the thumbnail calls', () => {
+  let trashedId: string
+
+  beforeAll(async () => {
+    trashedId = uid('Item')
+    const { driveId } = await prisma.item.findUniqueOrThrow({
+      where: { id: items.live },
+      select: { driveId: true },
+    })
+    await prisma.item.create({
+      data: { id: trashedId, name: 'trashed.txt', type: 'file', category: 'unknown', status: 'trashed', ownerId, driveId, size: 0 },
+    })
+    await prisma.permission.create({
+      data: { id: uid('Permission'), itemId: trashedId, roles: 'write', users: { connect: { id: userId } } },
+    })
+  })
+
+  it('a live grantee gets 403 and no row is written', async () => {
+    expect(await status(() => getThumbnailSource(userId, trashedId))).toBe(403)
+    expect(await status(() => presignThumbnailUpload(userId, trashedId))).toBe(403)
+    expect(await status(() => updateThumbnail(userId, trashedId, 2))).toBe(403)
+    expect(await status(() => createThumbnail(userId, trashedId, '#000000'))).toBe(403)
+    expect(await prisma.thumbnail.count({ where: { itemId: trashedId } })).toBe(0)
+  })
+
+  // No File row, so past the check the presign stops at 404 (see above).
+  it('the owner still reaches it', async () => {
+    expect(await status(() => getThumbnailSource(ownerId, trashedId))).toBe('ok')
+    expect(await status(() => presignThumbnailUpload(ownerId, trashedId))).toBe(404)
+  })
+})
