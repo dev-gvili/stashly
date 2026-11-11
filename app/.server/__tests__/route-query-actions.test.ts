@@ -218,7 +218,7 @@ describe('getGalleryMedia in a workspace', () => {
   // The URL filters are one `{ AND: [...] }`, and so is the access scope: spread
   // after them, the scope replaced the filters, the default status with them.
   it('keeps trash out with the default filters, and applies a URL filter', async () => {
-    const defaults = buildItemFilters({ status: ['normal'] })
+    const defaults = buildItemFilters({ status: ['normal'] } as never)
     const ids = (await getGalleryMedia(memberId, defaults, undefined, workspaceId)).map((m) => m.id)
     expect(ids).not.toContain(trashedWorkspaceImageId)
 
@@ -228,7 +228,7 @@ describe('getGalleryMedia in a workspace', () => {
   })
 
   it('keeps trash out of either gallery whatever the URL asks', async () => {
-    const trashed = buildItemFilters({ status: ['trashed'] })
+    const trashed = buildItemFilters({ status: ['trashed'] } as never)
     const workspace = await getGalleryMedia(memberId, trashed, undefined, workspaceId)
     const personal = await getGalleryMedia(memberId, trashed)
     expect([...workspace, ...personal]).toEqual([])
