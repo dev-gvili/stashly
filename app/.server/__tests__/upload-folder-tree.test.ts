@@ -81,6 +81,33 @@ function upload(parentId: string, name: string, userId = ownerId, size = 10n) {
   }
 }
 
+/** A file row with its File facet, as an upload leaves it (no size log: it cascades at once). */
+async function makeFile(name: string, parentId: string, size: bigint, userId = ownerId, drive = driveId) {
+  const id = uid('Item')
+  await prisma.item.create({
+    data: {
+      id,
+      name,
+      type: 'file',
+      category: 'unknown',
+      status: 'normal',
+      ownerId: userId,
+      driveId: drive,
+      parentId,
+      size,
+      file: {
+        create: {
+          id: uid('File'),
+          bucket: 'stashly-test-folder-tree',
+          key: `copy-test/${id}`,
+          uploadPath: `copy-test/${name}`,
+        },
+      },
+    },
+  })
+  return id
+}
+
 const used = async () => {
   await flushItemSizes()
   return (
@@ -862,6 +889,185 @@ describe('an upload racing a trash of its folder', () => {
   })
 })
 
+/** Size, inclusive size and child counts of a folder, read after the rollup. */
+async function totalsOf(id: string) {
+  await flushItemSizes()
+  return prisma.item.findUniqueOrThrow({
+    where: { id },
+    select: {
+      size: true,
+      inclusiveSize: true,
+      folder: { select: { childCount: true, inclusiveChildCount: true } },
+    },
+  })
+}
+
+/** A grant of `roles` on `itemId` to `userId`. Grants cover their own item only. */
+function grant(itemId: string, userId: string, roles: 'read' | 'write') {
+  return prisma.permission.create({
+    data: { id: uid('Permission'), roles, itemId, users: { connect: { id: userId } } },
+  })
+}
+
+const parentOf = async (id: string) => (await prisma.item.findUniqueOrThrow({ where: { id } })).parentId
+
+/**
+ * Tech-debt item 13: a move changes `parentId` only, so the triggers move the
+ * bytes and counts from the old folder to the new one. It needs `write` on the
+ * destination and on every item, and refuses the whole batch for any one item.
+ * (Moves between drives: upload-item-safety.test.ts; into its own subtree and
+ * into a folder in trash: above and below.)
+ */
+describe('moveItems', () => {
+  it('moves a folder and a file, taking their bytes and counts from the old folder to the new one', async () => {
+    const from = (await createFolder('move-from', rootId, ownerId, driveId)).id
+    const to = (await createFolder('move-to', rootId, ownerId, driveId)).id
+    const folder = (await createFolder('moved-folder', from, ownerId, driveId)).id
+    await makeFile('inner-1.txt', folder, 100n)
+    await makeFile('inner-2.txt', folder, 50n)
+    const file = await makeFile('moved.txt', from, 30n)
+    const stays = await makeFile('stays.txt', from, 7n)
+    const [fromBefore, toBefore, folderBefore, rootBefore] = [
+      await totalsOf(from),
+      await totalsOf(to),
+      await totalsOf(folder),
+      await totalsOf(rootId),
+    ]
+    expect(fromBefore).toMatchObject({ size: 187n, folder: { childCount: 3 } })
+
+    const moved = await moveItems([folder, file], to, ownerId)
+
+    expect(moved?.map((i) => i.id).sort()).toEqual([folder, file].sort())
+    expect([await parentOf(folder), await parentOf(file), await parentOf(stays)]).toEqual([to, to, from])
+    expect(await totalsOf(from)).toEqual({
+      size: 7n,
+      inclusiveSize: fromBefore.inclusiveSize - 180n,
+      folder: {
+        childCount: 1,
+        inclusiveChildCount: (fromBefore.folder?.inclusiveChildCount ?? 0) - 2,
+      },
+    })
+    expect(await totalsOf(to)).toEqual({
+      size: toBefore.size + 180n,
+      inclusiveSize: toBefore.inclusiveSize + 180n,
+      folder: {
+        childCount: (toBefore.folder?.childCount ?? 0) + 2,
+        inclusiveChildCount: (toBefore.folder?.inclusiveChildCount ?? 0) + 2,
+      },
+    })
+    // The moved folder keeps its own totals, and the tree above both is unchanged.
+    expect(await totalsOf(folder)).toEqual(folderBefore)
+    expect((await totalsOf(rootId)).size).toBe(rootBefore.size)
+  })
+
+  it('lets a collaborator with write on the items and the destination move them in the owner’s drive', async () => {
+    const from = await makeFolder('collab-move-from', rootId)
+    const to = await makeFolder('collab-move-to', rootId)
+    const file = await makeFile('collab-moved.txt', from, 5n)
+    await grant(file, strangerId, 'write')
+    await grant(to, strangerId, 'write')
+
+    await moveItems([file], to, strangerId)
+
+    expect(await prisma.item.findUniqueOrThrow({ where: { id: file } })).toMatchObject({
+      parentId: to,
+      ownerId,
+      driveId,
+    })
+  })
+
+  it('refuses without write on the destination, or on any one item, and moves nothing', async () => {
+    const from = await makeFolder('perm-move-from', rootId)
+    const readOnly = await makeFolder('perm-move-read-only', rootId)
+    const writable = await makeFolder('perm-move-writable', rootId)
+    const mine = await makeFile('perm-writable.txt', from, 5n)
+    const notMine = await makeFile('perm-read-only.txt', from, 5n)
+    await grant(readOnly, strangerId, 'read')
+    await grant(writable, strangerId, 'write')
+    await grant(mine, strangerId, 'write')
+    await grant(notMine, strangerId, 'read')
+
+    await expect(moveItems([mine], readOnly, strangerId)).rejects.toMatchObject({ status: 403 })
+    await expect(moveItems([mine, notMine], writable, strangerId)).rejects.toMatchObject({ status: 403 })
+    expect([await parentOf(mine), await parentOf(notMine)]).toEqual([from, from])
+  })
+
+  it('refuses an item in trash, a missing one, one already there and a folder into itself, moving nothing', async () => {
+    const from = await makeFolder('refuse-move-from', rootId)
+    const to = await makeFolder('refuse-move-to', rootId)
+    const live = await makeFile('refuse-live.txt', from, 5n)
+    const trashed = await makeFile('refuse-trashed.txt', from, 5n)
+    await trashItems([trashed], ownerId)
+    const already = await makeFile('refuse-already.txt', to, 5n)
+
+    await expect(moveItems([live, trashed], to, ownerId)).rejects.toMatchObject({ status: 404 })
+    await expect(moveItems([live, uid('Item')], to, ownerId)).rejects.toMatchObject({ status: 404 })
+    await expect(moveItems([live, already], to, ownerId)).rejects.toMatchObject({
+      errorCode: 'MOVE_ITEM_FAILED',
+    })
+    await expect(moveItems([to], to, ownerId)).rejects.toMatchObject({ errorCode: 'MOVE_ITEM_FAILED' })
+    await expect(moveItems([live], '', ownerId)).rejects.toMatchObject({ errorCode: 'MOVE_ITEM_FAILED' })
+    expect([await parentOf(live), await parentOf(trashed), await parentOf(to)]).toEqual([from, from, rootId])
+  })
+
+  it('refuses to move a root folder, and does nothing for an empty list', async () => {
+    const elsewhere = await makeFolder('root-move-target', rootId)
+
+    await expect(moveItems([rootId], elsewhere, ownerId)).rejects.toMatchObject({
+      errorCode: 'MOVE_ITEM_FAILED',
+    })
+    expect(await parentOf(rootId)).toBeNull()
+    expect(await moveItems([], elsewhere, ownerId)).toBeUndefined()
+  })
+})
+
+/**
+ * Tech-debt item 13: a folder is made with its Folder row and default view, on
+ * its parent's drive, and counted in its parent. (A collaborator's folder and
+ * one without any grant: upload-item-safety.test.ts; into a folder in trash:
+ * below.)
+ */
+describe('createFolder', () => {
+  it('makes the folder with its Folder row and default view, and counts it in its parent', async () => {
+    const parent = (await createFolder('create-parent', rootId, ownerId, driveId)).id
+    const before = await totalsOf(parent)
+
+    const made = await createFolder('created', parent, ownerId, driveId)
+
+    expect(made).toMatchObject({
+      name: 'created',
+      type: 'folder',
+      status: 'normal',
+      parentId: parent,
+      ownerId,
+      driveId,
+      size: 0n,
+    })
+    const folder = await prisma.folder.findFirstOrThrow({ where: { itemId: made.id }, include: { view: true } })
+    expect(folder).toMatchObject({ childCount: 0, view: { viewType: 'grid', sortBy: 'type', sortOrder: 'ascending' } })
+    expect(await totalsOf(parent)).toEqual({
+      ...before,
+      folder: {
+        childCount: (before.folder?.childCount ?? 0) + 1,
+        inclusiveChildCount: (before.folder?.inclusiveChildCount ?? 0) + 1,
+      },
+    })
+  })
+
+  it('makes a folder with no parent on the drive it is given', async () => {
+    const made = await createFolder('top-level', null, ownerId, driveId)
+    expect(made).toMatchObject({ parentId: null, driveId, ownerId })
+  })
+
+  it('refuses a user granted only read on the parent, and creates nothing', async () => {
+    const parent = await makeFolder('create-read-only', rootId)
+    await grant(parent, strangerId, 'read')
+
+    await expect(createFolder('not-allowed', parent, strangerId, driveId)).rejects.toMatchObject({ status: 403 })
+    expect(await prisma.item.count({ where: { parentId: parent } })).toBe(0)
+  })
+})
+
 /**
  * A copy shares its original's bytes but is the copier's: they own it, with an
  * owner grant, on their own drive, which pays for it. A folder copy takes only
@@ -902,32 +1108,6 @@ describe('moveItems into its own subtree', () => {
 })
 
 describe('copyItem', () => {
-  async function makeFile(name: string, parentId: string, size: bigint, userId = ownerId, drive = driveId) {
-    const id = uid('Item')
-    await prisma.item.create({
-      data: {
-        id,
-        name,
-        type: 'file',
-        category: 'unknown',
-        status: 'normal',
-        ownerId: userId,
-        driveId: drive,
-        parentId,
-        size,
-        file: {
-          create: {
-            id: uid('File'),
-            bucket: 'stashly-test-folder-tree',
-            key: `copy-test/${id}`,
-            uploadPath: `copy-test/${name}`,
-          },
-        },
-      },
-    })
-    return id
-  }
-
   const quotaOf = async (drive: string) => {
     await flushItemSizes()
     return (await prisma.quota.findFirstOrThrow({ where: { driveId: drive } })).used
