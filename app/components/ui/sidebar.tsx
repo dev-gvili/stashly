@@ -394,8 +394,9 @@ function SidebarTrigger({
   const { isMobile, setOpenMobile, openMobile, toggleSidebar, state } =
     useSidebar(sidebarId)
 
-  let tooltipContent =
-    tooltip || (state === 'collapsed' ? 'Open Sidebar' : 'Close Sidebar')
+  // On a phone the trigger opens the sheet, whose state is its own.
+  const isOpen = isMobile ? openMobile : state === 'expanded'
+  let tooltipContent = tooltip || (isOpen ? 'Close Sidebar' : 'Open Sidebar')
 
   return (
     <Tooltip content={tooltipContent} align="start" asChild>

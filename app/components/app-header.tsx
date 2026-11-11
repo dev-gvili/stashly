@@ -23,7 +23,11 @@ import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
 import { NotificationsPanel } from '@/components/core-components/notifications/notifications-panel'
 import type { Notification } from '@/types/notification.types'
 import { NewFolderDialog } from '@/components/core-components/new-folder-dialog'
-import { HeaderFilters, HeaderSearch } from '@/components/filters/filters'
+import {
+  hasHeaderFilters,
+  HeaderFilters,
+  HeaderSearch,
+} from '@/components/filters/filters'
 import {
   Grid,
   LayoutToggle,
@@ -43,7 +47,8 @@ export function AppHeader() {
   const layoutData = useRouteLoaderData('layout') as
     | { notifications?: Notification[]; user?: { rootId?: string } }
     | undefined
-  const isImagesPage = useLocation().pathname.endsWith('/images')
+  const { pathname } = useLocation()
+  const isImagesPage = pathname.endsWith('/images')
   const notifications = layoutData?.notifications ?? []
   // At the stash root there's no `:folderId` in the URL; fall back to the
   // user's root folder so New Folder (and uploads) have a real destination.
@@ -105,7 +110,14 @@ export function AppHeader() {
       )}
       <div className="flex items-center space-x-2 shrink-0">
         {isImagesPage && <GalleryHeaderTools />}
-        <LayoutToggle>
+        {/* On a phone the layout switch moves into "View options" with
+            Filter and Sort, on the pages that have them. */}
+        <LayoutToggle
+          className={cn(
+            hasHeaderFilters(pathname) &&
+              'max-md:hidden @max-header-phone/header:hidden'
+          )}
+        >
           <River />
           <Waterfall />
           <Grid />

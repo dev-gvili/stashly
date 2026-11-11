@@ -564,6 +564,9 @@
   /* App header: narrower than this, the search becomes a button to the
      search page and the flag toggles move into the Filter panel */
   --container-header-narrow: 48rem;
+  /* App header: narrower than this (or on a phone), Filter, Sort and Layout
+     fold into one "View options" popover */
+  --container-header-phone: 36rem;
 }
 
 /* soft primary glow from the top centre of a file-preview area */
