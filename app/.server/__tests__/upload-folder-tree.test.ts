@@ -1116,6 +1116,192 @@ describe('copyItem', () => {
       await prisma.user.deleteMany({ where: { id: tightId } })
     }
   })
+
+  // Tech-debt item 13: what a copy must keep doing however it is written (item
+  // 68 replaces the row-by-row walk with set-based statements).
+
+  /** A user with their own drive, quota and root folder; `drop` removes all of it. */
+  async function makeCopier(label: string, total = 10n ** 9n) {
+    const userId = uid('User')
+    await prisma.user.create({
+      data: { id: userId, name: `Copy ${label}`, email: `copy-${label}-${userId}@test.local`, emailVerified: true },
+    })
+    const drive = uid('Drive')
+    await prisma.drive.create({ data: { id: drive, ownerId: userId } })
+    await prisma.quota.create({ data: { id: uid('Quota'), driveId: drive, total } })
+    const root = uid('Item')
+    await prisma.item.create({
+      data: { id: root, name: `${label} root`, type: 'folder', category: 'unknown', ownerId: userId, driveId: drive },
+    })
+    const drop = async () => {
+      await wipeTestUsers([userId])
+      await prisma.user.deleteMany({ where: { id: userId } })
+    }
+    return { userId, drive, root, drop }
+  }
+
+  it('copies each item’s own fields and facets as new rows, and leaves the source as it was', async () => {
+    const src = await makeFolder('facet-src', rootId)
+    const photo = await makeFile('photo.jpg', src, 64n)
+    await prisma.item.update({
+      where: { id: photo },
+      data: {
+        category: 'image',
+        tags: ['holiday', 'beach'],
+        image: { create: { id: uid('Image'), width: 640, height: 480, cameraMake: 'Test camera' } },
+      },
+    })
+    const dest = await makeFolder('facet-dest', rootId)
+
+    const copy = await copyItem(ownerId, src, dest)
+
+    const original = await prisma.item.findUniqueOrThrow({
+      where: { id: photo },
+      include: { file: true, image: true },
+    })
+    const copies = await prisma.item.findMany({ where: { parentId: copy.id }, include: { file: true, image: true } })
+    expect(copies).toHaveLength(1)
+    const [copied] = copies
+    expect(copied).toMatchObject({
+      name: 'photo.jpg',
+      type: 'file',
+      category: 'image',
+      tags: ['holiday', 'beach'],
+      size: 64n,
+      status: 'normal',
+      ownerId,
+      driveId,
+      image: { width: 640, height: 480, cameraMake: 'Test camera' },
+      file: { bucket: original.file!.bucket, key: original.file!.key, uploadPath: original.file!.uploadPath },
+    })
+    expect(copied.id).not.toBe(photo)
+    expect(copied.file!.id).not.toBe(original.file!.id)
+    expect(copied.image!.id).not.toBe(original.image!.id)
+    // The original keeps its place and its own facet rows.
+    expect(original).toMatchObject({ parentId: src, file: { itemId: photo }, image: { itemId: photo, width: 640 } })
+
+    // A copied folder gets its own Folder row with the default view, as `createFolder` gives one.
+    const folder = await prisma.folder.findFirstOrThrow({ where: { itemId: copy.id }, include: { view: true } })
+    expect(folder.view).toMatchObject({ viewType: 'grid', sortBy: 'type', sortOrder: 'ascending' })
+  })
+
+  it('gives the copy the source’s totals and adds them to the destination’s', async () => {
+    const src = (await createFolder('totals-src', rootId, ownerId, driveId)).id
+    const sub = (await createFolder('totals-sub', src, ownerId, driveId)).id
+    await makeFile('t1.txt', src, 100n)
+    await makeFile('t2.txt', sub, 50n)
+    await makeFile('t3.txt', sub, 25n)
+    const dest = (await createFolder('totals-dest', rootId, ownerId, driveId)).id
+    await flushItemSizes()
+    const totals = (id: string) =>
+      prisma.item.findUniqueOrThrow({
+        where: { id },
+        select: {
+          size: true,
+          inclusiveSize: true,
+          folder: { select: { childCount: true, inclusiveChildCount: true } },
+        },
+      })
+    const [srcBefore, subBefore, destBefore] = [await totals(src), await totals(sub), await totals(dest)]
+    expect(srcBefore).toMatchObject({ size: 175n, folder: { childCount: 2 } })
+
+    const copy = await copyItem(ownerId, src, dest)
+    await flushItemSizes()
+
+    expect(await totals(copy.id)).toEqual(srcBefore)
+    const copiedSub = await prisma.item.findFirstOrThrow({ where: { parentId: copy.id, type: 'folder' } })
+    expect(await totals(copiedSub.id)).toEqual(subBefore)
+    expect(await totals(dest)).toEqual({
+      size: destBefore.size + 175n,
+      inclusiveSize: destBefore.inclusiveSize + 175n,
+      folder: {
+        childCount: (destBefore.folder?.childCount ?? 0) + 1,
+        inclusiveChildCount: (destBefore.folder?.inclusiveChildCount ?? 0) + 1,
+      },
+    })
+    // The source is untouched.
+    expect(await totals(src)).toEqual(srcBefore)
+  })
+
+  it('refuses a collaborator’s copy into the owner’s folder, even with write on it, and writes and charges nothing', async () => {
+    const collab = await makeCopier('collab')
+    try {
+      const shared = await makeFolder('collab-shared', rootId)
+      await prisma.permission.create({
+        data: { id: uid('Permission'), roles: 'write', itemId: shared, users: { connect: { id: collab.userId } } },
+      })
+      const file = await makeFile('collab.txt', shared, 20n)
+      // A grant covers its own item only (`hasItemPermission`), so the file gets one too.
+      await prisma.permission.create({
+        data: { id: uid('Permission'), roles: 'read', itemId: file, users: { connect: { id: collab.userId } } },
+      })
+      const [ownerBefore, collabBefore] = [await quotaOf(driveId), await quotaOf(collab.drive)]
+
+      // The owner's drive would hold it, but a copy is paid for by the copier.
+      await expect(copyItem(collab.userId, file, shared)).rejects.toMatchObject({ errorCode: 'COPY_ITEM_FAILED' })
+      expect(await prisma.item.count({ where: { parentId: shared } })).toBe(1)
+      expect(await quotaOf(driveId)).toBe(ownerBefore)
+      expect(await quotaOf(collab.drive)).toBe(collabBefore)
+
+      // Into their own drive the copy is theirs, and they pay for it.
+      const copy = await copyItem(collab.userId, file, collab.root)
+      expect(copy).toMatchObject({ ownerId: collab.userId, driveId: collab.drive, parentId: collab.root })
+      expect(await quotaOf(collab.drive)).toBe(collabBefore + 20n)
+      expect(await quotaOf(driveId)).toBe(ownerBefore)
+    } finally {
+      await collab.drop()
+    }
+  })
+
+  it('refuses a copy of an item the user has no access to, and writes and charges nothing', async () => {
+    const outsider = await makeCopier('outsider')
+    try {
+      const secret = await makeFile('secret.txt', rootId, 9n)
+      const before = await quotaOf(outsider.drive)
+
+      await expect(copyItem(outsider.userId, secret, outsider.root)).rejects.toMatchObject({
+        errorCode: 'UNAUTHORIZED',
+      })
+      expect(await prisma.item.count({ where: { parentId: outsider.root } })).toBe(0)
+      expect(await quotaOf(outsider.drive)).toBe(before)
+    } finally {
+      await outsider.drop()
+    }
+  })
+
+  it('refuses a source in trash with 404, and a missing item or destination before reading anything', async () => {
+    const file = await makeFile('trashed-src.txt', rootId, 5n)
+    await trashItems([file], ownerId)
+    const dest = await makeFolder('trashed-src-dest', rootId)
+
+    await expect(copyItem(ownerId, file, dest)).rejects.toMatchObject({ status: 404 })
+    await expect(copyItem(ownerId, file, null)).rejects.toMatchObject({ errorCode: 'COPY_ITEM_FAILED' })
+    await expect(copyItem(ownerId, '', dest)).rejects.toMatchObject({ errorCode: 'COPY_ITEM_FAILED' })
+    expect(await prisma.item.count({ where: { parentId: dest } })).toBe(0)
+  })
+
+  it('rolls the whole copy back when it doesn’t fit: 507, no rows, no charge', async () => {
+    const small = await makeCopier('small', 100n)
+    try {
+      const src = uid('Item')
+      await prisma.item.create({
+        data: {
+          id: src, name: 'too-big', type: 'folder', category: 'unknown',
+          ownerId: small.userId, driveId: small.drive, parentId: small.root,
+        },
+      })
+      await makeFile('sixty-1.txt', src, 60n, small.userId, small.drive)
+      await makeFile('sixty-2.txt', src, 60n, small.userId, small.drive)
+      const before = await quotaOf(small.drive)
+      const rowsBefore = await prisma.item.count({ where: { driveId: small.drive } })
+
+      await expect(copyItem(small.userId, src, small.root)).rejects.toMatchObject({ status: 507 })
+      expect(await prisma.item.count({ where: { driveId: small.drive } })).toBe(rowsBefore)
+      expect(await quotaOf(small.drive)).toBe(before)
+    } finally {
+      await small.drop()
+    }
+  })
 })
 
 /**
