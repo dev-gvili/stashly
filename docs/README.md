@@ -47,8 +47,9 @@ it was on their date.
 | [Stashly upload load audit.pdf](Stashly%20upload%20load%20audit.pdf) | Upload load audit cited by tech-debt.md; also the scanned PDF the OCR engines were measured on |
 | [project-analysis-2026-10-04.md](project-analysis-2026-10-04.md) | Read-only project analysis of 4 Oct 2026, cited by tech-debt.md |
 | [superpowers/plans/2026-10-30-size-rollup-delta-log.md](superpowers/plans/2026-10-30-size-rollup-delta-log.md) | Plan and outcome of the upload size log (tech-debt item 42) |
+| [design-critique/stash-browser-critique.md](design-critique/stash-browser-critique.md), [design-critique/item-page-critique.md](design-critique/item-page-critique.md) | UI reviews of 24 Sep 2026, cited by tech-debt.md |
 
 The other files in this folder (session hand-overs, finished implementation
-plans and specs, a session transcript, design reviews, a duplicate of the
+plans and specs, a session transcript, a duplicate of the
 upload audit, an April file-tree snapshot and the old suggestions-view page)
 are proposed for removal and wait for the owner's decision.
