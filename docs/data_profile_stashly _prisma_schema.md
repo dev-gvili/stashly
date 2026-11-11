@@ -1,20 +1,20 @@
 ## Data Profile: Stashly Prisma Schema
 
 ### Overview
-- **Models:** 56
+- **Models:** 58
 - **Enums:** 24
 - **Indexes:** 60+ (including Gin, SpGist, composite)
 - **PostgreSQL Extensions:** `vector` (pgvector), `pg_trgm` (trigram search)
-- **Custom DB logic:** 6 PL/pgSQL functions + 10 triggers (size/count rollups, collection size sync, user-wipe bypass, `Notification` → `pg_notify`)
+- **Custom DB logic:** 12 PL/pgSQL functions + 11 triggers (size/count rollups, the upload size and quota logs, collection size sync, user-wipe bypass, `Notification` → `pg_notify`)
 - **Generator:** `prisma-client` (ESM, `.ts` output → `app/prisma/`), preview features `nativeDistinct`, `relationJoins`, `postgresqlExtensions`
 - **Datasource:** PostgreSQL; schema split across `prisma/models/*.prisma`, merged via `prisma.config.ts`
 
-### Model Inventory (57 models)
+### Model Inventory (58 models)
 
 | Domain | Models |
 |--------|--------|
 | **Identity / auth** | `User`, `Account`, `Session`, `Verification` |
-| **Storage core** | `Item`, `LockedItem`, `Drive`, `Quota`, `Trash`, `TrashItem`, `ItemSizeDelta` (upload size log, see *Upload size log*) |
+| **Storage core** | `Item`, `LockedItem`, `Drive`, `Quota`, `QuotaDelta` (upload quota log), `Trash`, `TrashItem`, `ItemSizeDelta` (upload size log, see *Upload size log*) |
 | **Facets** | `File`, `Folder`, `Image`, `Video`, `Audio`, `Pdf`, `Markdown` |
 | **Collections** | `CollectionMember` (collection = `Item` with `type='collection'`) |
 | **Views / previews** | `View`, `Thumbnail` |
@@ -107,7 +107,7 @@ ShareLink ──── Permission[] (link-based access)
 | ~~Info~~ | ~~Duplicate unique on Item.id~~ | ~~Item has both `@id` and `@unique` on `id` — redundant~~ | **Fixed** — removed redundant `@unique` |
 | **Info** | Comment unique constraint | `@@unique([itemId, ownerId])` limits one comment per user per item — intentional design choice | By design |
 | **Warn** | Duplicate favorites are possible | `20260812030000_sync_favorite_indexes` dropped `Favorite_favoritedById_itemId_key`; nothing at the DB level stops a double-favorite | Intentional — `addFavorite`/`addFavorites` must check-then-insert |
-| **Warn** | Thumbnail unique not mirrored in the model | `Thumbnail_itemId_view_size_key` exists in the database (migration `20260424160000`) but `prisma/models/thumbnail.prisma` declares no `@@unique` | Schema drift — a `prisma db push` could drop the constraint |
+| ~~Warn~~ | ~~Thumbnail unique not mirrored in the model~~ | ~~`Thumbnail_itemId_view_size_key` was missing from `prisma/models/thumbnail.prisma`~~ | **Fixed** — the model declares `@@unique([itemId, view, size])` (`87bf54d`) |
 | ~~Warn~~ | ~~Metadata model is orphaned~~ | ~~No relations to any other model — standalone key/value store, not referenced in app code~~ | **Fixed** — model and table removed |
 | ~~Info~~ | ~~Tag model is orphaned~~ | ~~No relations; items use `tags String[]` array directly on Item, not referenced in app code~~ | **Fixed** — model and table removed |
 
@@ -122,11 +122,11 @@ ShareLink ──── Permission[] (link-based access)
 - **InvitationRecipient** — indexes on `invitationId`, `email`, `status`
 - **PinItem** — `@@unique([pinnedById, itemId])` + `[pinnedById, position]`
 - **Favorite** — 4 plain indexes (`[favoritedById, id]`, `[itemId, id]`, `[favoritedById, itemId]`, `createdAt`) and **no** unique constraint
-- **Search / SearchChunk** — `Search_vector_idx` is HNSW with `vector_cosine_ops`; `SearchChunk_vector_idx` is a plain vector index; plus temporal / `itemId` indexes and `@@unique([itemId, ord])` on chunks
+- **Search / SearchChunk** — `Search_vector_idx` and `SearchChunk_vector_idx` are both HNSW with `vector_cosine_ops` (the chunk index was rebuilt as HNSW in `20260815000000_search_query_indexes`; Prisma can't express it, so the model keeps only the name); plus temporal / `itemId` indexes and `@@unique([itemId, ord])` on chunks
 
 **Under-indexed models:**
 - **Account** — no indexes beyond PK (queries by `userId` or `providerId` would benefit)
-- **Thumbnail** — no `@@index` declared in the model; `itemId` is nullable, so multiple thumbnails hang off one item. The database *does* carry `Thumbnail_itemId_view_size_key` (unique on `(itemId, view, size)`, added by `20260424160000_add_thumbnail_unique_constraint`) — that index is not mirrored back into `prisma/models/thumbnail.prisma`
+- **Thumbnail** — only `@@unique([itemId, view, size])`; `itemId` is nullable. Stored thumbnails are located by `bucket` + `stage`; `url` is deprecated
 - **ItemVersion** — no indexes (queries by `itemId` would benefit)
 - **File** — no indexes beyond `@unique` on `itemId`
 - **Pdf / Markdown / Audio / Image / Video** — facet tables, no indexes beyond `@unique` on `itemId`
@@ -316,8 +316,9 @@ Firing at the DB level means *every* writer pushes live — `createNotification(
 | `20260826000000_defer_folder_item_fk` | Made `Folder_itemId_fkey` `DEFERRABLE INITIALLY DEFERRED` so `update_child_count()`'s DELETE branch can't race the `ON DELETE CASCADE` on the same facet row (see the ⚠️ note under `update_child_count()`). No function or trigger changed |
 | `20261002090000_fix_inclusive_size_rollup` | Rewrote `update_size()` so `inclusiveSize` follows each child's `inclusiveSize` (folders) or `size` (files) and travels up on its own; recounted every folder's `size` / `inclusiveSize` from the files beneath it, deepest level first |
 | `20261030140000_upload_size_delta_log` | `ItemSizeDelta`, `log_upload_size()` + `item_size_log_upload`, `update_size()` guards, `apply_item_size_deltas()`, `recount_folder_sizes()`: uploaded files reach their folders through a rollup instead of a per-row cascade |
-| `20261106210000_status_change_rollup` | **Current** — `update_size()` / `update_child_count()` leave a pure status change to the statement-level `item_status_change` trigger, which writes each folder once; `stashly_apply_folder_deltas()` is shared with `apply_item_size_deltas()` (tech-debt item 51) |
 | `20261030160000_upload_size_inline_when_idle` | `update_size()` cascades an upload at once while the database is idle and logs it while busy (deltas pending checked first, then the rollup lock tried); `log_upload_size()` and `item_size_log_upload` dropped |
+| `20261106120000_upload_quota_log` | `QuotaDelta`, `stashly_charge_upload()` and `stashly_quota_status()`: an upload is charged to the folder's drive inside its own statement, logged while busy and far from the limit; `update_child_count()` and `apply_item_size_deltas()` take the child count and quota through the same log |
+| `20261106210000_status_change_rollup` | **Current** — `update_size()` / `update_child_count()` leave a pure status change to the statement-level `item_status_change` trigger, which writes each folder once; `stashly_apply_folder_deltas()` is shared with `apply_item_size_deltas()` (tech-debt item 51) |
 
 ### Recommended Explorations
 
