@@ -245,14 +245,13 @@ A resource route that returns a `text/event-stream` via
 sequenceDiagram
     participant B as Browser (EventSource)
     participant R as /stream loader
-    participant A as auth
+    participant A as authMiddleware
     participant BUS as bus
 
     B->>R: GET /api/notifications/stream (session cookie)
-    R->>A: getSession(headers)
-    A-->>R: session or null
+    A->>A: resolve session (cookie cache)
     alt no session
-        R-->>B: 401 Unauthorized
+        A-->>B: redirect to /auth/sign-in
     else authenticated
         R->>R: ensureListener()
         R->>BUS: subscribe(userId, safeSend)
@@ -268,7 +267,8 @@ sequenceDiagram
 
 Guarantees:
 
-- **Auth per stream.** Cookie-based; every subscription is scoped to
+- **Auth per stream.** The route exports `middleware = [authMiddleware]` and
+  reads the session from `sessionContext`; every subscription is scoped to
   `session.user.id`, so no one can read another user's stream.
 - **`safeSend` guard.** The underlying `ReadableStream` controller can close on
   client disconnect before cleanup runs; calling `send()` then throws
@@ -417,8 +417,8 @@ Discriminated union on `intent` (`notificationsApiRouteInput`):
 
 ### `GET /api/notifications/stream` — SSE
 
-See [SSE route](#sse-route). Emits `notification` and `ping` events; `401` if
-unauthenticated.
+See [SSE route](#sse-route). Emits `notification` and `ping` events. An
+anonymous request is redirected to sign-in by `authMiddleware`.
 
 ---
 
@@ -430,7 +430,11 @@ unauthenticated.
 | --- | --- |
 | `notifications-panel.tsx` | Header bell (`Popover`), header actions, filter rail, grouped list, empty states. |
 | `notification-item.tsx` | A single notification row (glyph, message, meta, per-row actions). |
-| `notification-model.ts` | Client-side `Notification` type + presentation helpers (icon/label/tile maps, filtering, day-grouping, relative time). |
+| `notification-icons.ts` | `KIND_ICON`: the glyph for each `kind`. |
+
+The `Notification` type is in `app/types/notification.types.ts`, and the
+presentation helpers (`TYPE_TILE`, `TYPE_LABEL`, `isAlert`, `applyFilter`,
+`groupByDay`) in `app/utils/notifications.ts`.
 
 ```mermaid
 flowchart TB
@@ -455,10 +459,6 @@ Behaviour:
   Order: Today → Yesterday → This week → Earlier.
 - **Filters:** `all`, `unread`, `alerts` (warning/error). Each empty state has
   filter-specific copy.
-- **Polish** (`make-interfaces-feel-better`): staggered spring enter on popover
-  open, `layout` reflow when a row is dismissed, bell icon cross-fade
-  (scale/opacity/blur, `initial={false}`), `active:scale-[0.96]` on controls,
-  `tabular-nums` on relative time, `text-pretty` on messages.
 
 ---
 
@@ -487,8 +487,8 @@ flowchart LR
 
 | Axis | Field | Owns | Source |
 | --- | --- | --- | --- |
-| Severity | `type` | Tile background colour + `typeLabel` | `TYPE_TILE`, `TYPE_LABEL` in `notification-model.ts` |
-| Subject | `kind` | The glyph icon | `KIND_ICON` in `notification-model.ts` |
+| Severity | `type` | Tile background colour + label | `TYPE_TILE`, `TYPE_LABEL` in `app/utils/notifications.ts` |
+| Subject | `kind` | The glyph icon | `KIND_ICON` in `notification-icons.ts` |
 
 `isAlert(type)` (`warning`/`error`) backs the **Alerts** filter.
 
@@ -519,8 +519,8 @@ count into the live trigger is a follow-up.
 
 ## Operations: metrics & connection pooling
 
-Under a synchronized burst (see the earlier load analysis), the walls the system
-hits are — in order — the **DB connection pool**, the **single `LISTEN` funnel
+Under a synchronized burst (many users marking all read at once), the walls
+the system hits are — in order — the **DB connection pool**, the **single `LISTEN` funnel
 saturating the event loop**, and **`pg_notify` queue contention**. The row
 writes themselves are a non-event. Two operational pieces address the first two.
 
@@ -540,6 +540,8 @@ otherwise served only outside production.
 | `stashly_sse_connections_opened_total` | counter | Cumulative stream opens — churn vs. the steady-state gauge above. |
 | `stashly_mark_all_read_total` | counter | The burst trigger itself. |
 | `stashly_db_pool_errors_total` | counter | pg pool errors. |
+| `stashly_size_rollup_*` | counter / gauge | The upload size log (`app/.server/size-rollup.ts`): runs, deltas applied, lock timeouts, slowest run and oldest pending delta. |
+| `stashly_client_degraded_total{stage,reason}` | counter | Browser reports of an optional stage falling back (`POST /api/metrics`, session-gated, fixed label lists). |
 
 To scrape via Fly's managed Prometheus, add to the app's `fly.toml`:
 
@@ -589,10 +591,10 @@ escalate on signal.
 | `app/hooks/useNotificationStream.ts` | Client `EventSource` + reducer |
 | `app/routes/layout.tsx` | Seeds initial list; `shouldRevalidate = false` |
 | `app/components/app-header.tsx` | Mounts `NotificationsPanel` |
-| `app/components/core-components/notifications/*` | Panel, row, model/helpers |
-| `app/components/states/generic-empty-state.tsx` | Empty state (gained `className`) |
+| `app/components/core-components/notifications/*` | Panel, row, glyphs |
+| `app/utils/notifications.ts`, `app/types/notification.types.ts` | Presentation helpers, client type |
 | `server.js` | Compression carve-out for SSE |
 | `app/.server/metrics.ts` | Dependency-free Prometheus registry |
-| `app/routes/api/metrics.ts` | `GET /api/metrics` scrape endpoint |
+| `app/routes/api/metrics.ts` | `GET /api/metrics` scrape endpoint, `POST` for browser degraded reports |
 | `app/.server/db.ts` | Owns the `pg.Pool` (exposes saturation gauges) |
 | `deploy/pgbouncer/*` | PgBouncer Fly app (transaction pooling) |
