@@ -15,6 +15,8 @@ import {
   hasItemPermission,
   getItemPermissions,
   assertItemPermission,
+  itemAccessSql,
+  itemAccessWhere,
 } from '@/services/permission-actions'
 import { findFirstItem, updateItemOpenedAt } from '@/services/item-actions'
 import { requireAtLeastRole } from '@/services/workspace-actions'
@@ -565,6 +567,31 @@ const onlyFilesError = () =>
   )
 
 /**
+ * The add-to-collection target check: `write` on `collectionId`, and it must
+ * be a live collection reachable in its scope (membership for a workspace
+ * collection). `assertItemPermission` alone let a trashed collection, or a
+ * folder, take members (tech-debt item 90).
+ *
+ * @throws `FORBIDDEN` (403) without write access; `COLLECTION_NOT_FOUND` (404)
+ *   when the target is not a live collection the user can reach.
+ */
+async function assertWritableCollection(userId: string, collectionId: string) {
+  await assertItemPermission(userId, collectionId, 'write')
+  const collection = await prisma.item.findFirst({
+    where: {
+      id: collectionId,
+      type: ItemType.collection,
+      status: { not: 'trashed' },
+      ...itemAccessWhere(userId, 'write'),
+    },
+    select: { id: true },
+  })
+  if (!collection) {
+    throw toRouteError(StashlyErrorCode.COLLECTION_NOT_FOUND, 'Collection not found')
+  }
+}
+
+/**
  * Add a single Item to a Collection.
  * The DB trigger `collection_size_trigger` automatically updates the collection's size.
  *
@@ -577,14 +604,20 @@ export async function addItemToCollection(
   collectionId: string,
   itemId: string
 ) {
-  await assertItemPermission(userId, collectionId, 'write')
-  await assertItemPermission(userId, itemId, 'read')
-
-  const item = await prisma.item.findUnique({
-    where: { id: itemId },
+  await assertWritableCollection(userId, collectionId)
+  // Read access in the item's scope (membership for a workspace item), and
+  // not in trash; no row is refused like no access.
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, status: { not: 'trashed' }, ...itemAccessWhere(userId, 'read') },
     select: { type: true },
   })
-  if (item?.type !== ItemType.file) throw onlyFilesError()
+  if (!item) {
+    throw toRouteError(
+      StashlyErrorCode.FORBIDDEN,
+      'You do not have read access to this item'
+    )
+  }
+  if (item.type !== ItemType.file) throw onlyFilesError()
 
   const member = await prisma.collectionMember.create({
     data: {
@@ -688,8 +721,8 @@ export async function removeItemsFromCollection({
  * Add multiple Items to a Collection in a single transaction, skipping any
  * that are already members. Atomically updates the collection's total size.
  *
- * Requires `write` access on the collection. Items the caller cannot `read`
- * are silently skipped.
+ * Requires `write` access on a live collection. Items the caller cannot
+ * `read` in their scope, or that are in trash, are silently skipped.
  *
  * @throws A 400 `INVALID_INPUT` route error, adding nothing, when any readable
  *   item is not a file.
@@ -703,7 +736,7 @@ export async function addItemsToCollection({
   collectionId: string
   itemIds: string[]
 }) {
-  await assertItemPermission(userId, collectionId, 'write')
+  await assertWritableCollection(userId, collectionId)
   // A caller mistake, so a 400 — ADD_ITEMS_TO_COLLECTION_FAILED maps to 500.
   if (!itemIds.length)
     throw toRouteError(StashlyErrorCode.INVALID_INPUT, 'No item IDs provided')
@@ -715,18 +748,9 @@ export async function addItemsToCollection({
       SELECT i.id, i.size, i."type"
       FROM "Item" i
       WHERE i.id IN (${Prisma.join(itemIds)})
-        AND (
-          i."ownerId" = ${userId}
-          OR EXISTS (
-            SELECT 1
-            FROM "Permission" p
-            JOIN "_PermissionToUser" pu ON pu."A" = p.id
-            WHERE pu."B" = ${userId}
-              AND p."itemId" = i.id
-              AND p."deletedAt" IS NULL
-              AND (p."expiresAt" IS NULL OR p."expiresAt" > NOW())
-          )
-        )
+        AND i."status" <> 'trashed'
+        -- Read access in the item's scope: membership for a workspace item.
+        AND ${itemAccessSql(userId, 'read')}
     )
     SELECT a.id, a.size, a."type"
     FROM accessible a

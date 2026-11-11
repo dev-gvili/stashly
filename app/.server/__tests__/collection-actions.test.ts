@@ -523,6 +523,49 @@ describe('addItemsToCollection', () => {
       addItemsToCollection({ userId: otherId, collectionId: col.id, itemIds: [file.id] })
     ).rejects.toMatchObject({ errorCode: StashlyErrorCode.FORBIDDEN })
   })
+
+  // Item 90: the readability check had no status and no membership clause,
+  // and the target check no trash or type check.
+  it('silently skips a trashed item', async () => {
+    const col = await makeCollection()
+    const live = await makeItem(ownerId)
+    const trashed = await makeItem(ownerId)
+    await prisma.item.update({ where: { id: trashed.id }, data: { status: ItemStatus.trashed } })
+
+    const added = await addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [live.id, trashed.id] })
+    expect(added.map((m) => m.itemId)).toEqual([live.id])
+  })
+
+  it('silently skips an item the caller owns in a workspace they are not a member of', async () => {
+    const col = await makeCollection()
+    const leftWorkspaceId = uid('Workspace')
+    await prisma.workspace.create({ data: { id: leftWorkspaceId, name: 'Left WS' } })
+    const file = await makeItem(ownerId)
+    await prisma.item.update({ where: { id: file.id }, data: { workspaceId: leftWorkspaceId } })
+    try {
+      const added = await addItemsToCollection({ userId: ownerId, collectionId: col.id, itemIds: [file.id] })
+      expect(added).toEqual([])
+    } finally {
+      await prisma.item.update({ where: { id: file.id }, data: { workspaceId: null } })
+      await prisma.workspace.deleteMany({ where: { id: leftWorkspaceId } })
+    }
+  })
+
+  it.each([
+    ['a trashed collection', async () => {
+      const col = await makeCollection()
+      await prisma.item.update({ where: { id: col.id }, data: { status: ItemStatus.trashed } })
+      return col
+    }],
+    ['a folder', () => makeFolder()],
+  ])('refuses %s as the target and adds nothing', async (_label, make) => {
+    const target = await make()
+    const file = await makeItem(ownerId)
+    await expect(
+      addItemsToCollection({ userId: ownerId, collectionId: target.id, itemIds: [file.id] })
+    ).rejects.toMatchObject({ status: 404 })
+    expect(await prisma.collectionMember.count({ where: { collectionId: target.id } })).toBe(0)
+  })
 })
 
 // ---------------------------------------------------------------------------
