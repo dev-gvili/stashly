@@ -7,7 +7,7 @@ import { requireMembership } from '@/services/workspace-actions'
 import { getPresignedUrl } from '@/services/s3'
 import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import type { Prisma } from '@/prisma/client'
-import { ItemCategory, ItemType } from '@/prisma/enums'
+import { ItemCategory, ItemStatus, ItemType } from '@/prisma/enums'
 
 // ===================================================== //
 // ================= Thumbnail storage ================= //
@@ -690,21 +690,27 @@ export async function getGalleryMedia(
 ) {
   if (workspaceId) await requireMembership(userId, workspaceId)
   const items = await prisma.item.findMany({
+    // One `AND`, never spreads: the URL filters arrive as `{ AND: [...] }`
+    // and `itemAccessWhere` is one too, so spreading the scope after the
+    // filters replaced them (and their default status) wholesale. Each clause
+    // can only narrow, so no URL filter can widen the scope.
     where: {
-      type: ItemType.file,
-      category: {
-        in: [ItemCategory.image, ItemCategory.video],
-      },
-      thumbnails: {
-        some: { bucket: { not: null } },
-      },
-      ...where,
-      // After the spread, so a URL filter can never widen the scope.
-      ...(workspaceId
-        ? { workspaceId, ...itemAccessWhere(userId, 'read') }
-        : // `workspaceId: null`: a workspace item the user uploaded belongs to
-          // that workspace's gallery, not their personal one.
-          { ownerId: userId, workspaceId: null }),
+      AND: [
+        {
+          type: ItemType.file,
+          category: { in: [ItemCategory.image, ItemCategory.video] },
+          thumbnails: { some: { bucket: { not: null } } },
+          // The gallery never shows trash, whatever `?status=` asks.
+          status: { not: ItemStatus.trashed },
+        },
+        // `buildFiltersFactory` answers `[]` when no filter is set.
+        Array.isArray(where) ? {} : where,
+        workspaceId
+          ? { workspaceId, ...itemAccessWhere(userId, 'read') }
+          : // `workspaceId: null`: a workspace item the user uploaded belongs
+            // to that workspace's gallery, not their personal one.
+            { ownerId: userId, workspaceId: null },
+      ],
     },
     take,
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],

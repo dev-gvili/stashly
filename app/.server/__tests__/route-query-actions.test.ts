@@ -11,6 +11,7 @@ vi.mock('@/services/s3', async (importOriginal) => ({
 import { prisma } from '@/services/db'
 import { getItemsSharedWithUser } from '@/services/share-actions'
 import { getGalleryMedia } from '@/services/thumbnail-actions'
+import { buildItemFilters } from '@/utils/filters/item.filters'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
@@ -117,10 +118,10 @@ describe('getGalleryMedia', () => {
     expect(media[0].thumbnails[0].url).toBe('https://signed.test/thumbnail.webp')
   })
 
-  // The owner is written after the URL filters, so no filter can widen it.
-  it('a filter naming another owner still returns only the user’s own media', async () => {
-    const media = await getGalleryMedia(ownerId, { ownerId: viewerId })
-    expect(media.map((m) => m.id)).toEqual([ownerImageId])
+  // The owner scope is AND-ed with the URL filters, so a filter can only
+  // narrow it: naming another owner finds nothing rather than their media.
+  it('a filter naming another owner never returns their media', async () => {
+    expect(await getGalleryMedia(ownerId, { ownerId: viewerId })).toEqual([])
   })
 })
 
@@ -137,6 +138,8 @@ describe('getGalleryMedia in a workspace', () => {
   let otherWorkspaceImageId: string
   let memberPersonalImageId: string
   let hiddenWorkspaceImageId: string
+  let trashedWorkspaceImageId: string
+  let trashedPersonalImageId: string
 
   beforeAll(async () => {
     ;[memberId, outsiderId, uploaderId] = [uid('User'), uid('User'), uid('User')]
@@ -174,7 +177,21 @@ describe('getGalleryMedia in a workspace', () => {
     memberPersonalImageId = await makeItem(memberId, memberDrive, 'personal.png', 'image')
     // `memberId`'s own upload into the workspace.
     otherWorkspaceImageId = await makeItem(memberId, memberDrive, 'ws-own.png', 'image', workspaceId)
-    for (const id of [workspaceImageId, hiddenWorkspaceImageId, memberPersonalImageId, otherWorkspaceImageId]) {
+    // `memberId`'s workspace upload and personal image, both in trash.
+    trashedWorkspaceImageId = await makeItem(memberId, memberDrive, 'ws-trashed.png', 'image', workspaceId)
+    trashedPersonalImageId = await makeItem(memberId, memberDrive, 'personal-trashed.png', 'image')
+    await prisma.item.updateMany({
+      where: { id: { in: [trashedWorkspaceImageId, trashedPersonalImageId] } },
+      data: { status: 'trashed' },
+    })
+    for (const id of [
+      workspaceImageId,
+      hiddenWorkspaceImageId,
+      memberPersonalImageId,
+      otherWorkspaceImageId,
+      trashedWorkspaceImageId,
+      trashedPersonalImageId,
+    ]) {
       await storedThumbnail(id)
     }
   })
@@ -190,6 +207,25 @@ describe('getGalleryMedia in a workspace', () => {
   it('lists the workspace media the member may read, not their personal images', async () => {
     const media = await getGalleryMedia(memberId, {}, undefined, workspaceId)
     expect(media.map((m) => m.id).sort()).toEqual([workspaceImageId, otherWorkspaceImageId].sort())
+  })
+
+  // The URL filters are one `{ AND: [...] }`, and so is the access scope: spread
+  // after them, the scope replaced the filters, the default status with them.
+  it('keeps trash out with the default filters, and applies a URL filter', async () => {
+    const defaults = buildItemFilters({ status: ['normal'] })
+    const ids = (await getGalleryMedia(memberId, defaults, undefined, workspaceId)).map((m) => m.id)
+    expect(ids).not.toContain(trashedWorkspaceImageId)
+
+    const named = { AND: [{ name: 'ws-shared.png' }] }
+    const media = await getGalleryMedia(memberId, named, undefined, workspaceId)
+    expect(media.map((m) => m.id)).toEqual([workspaceImageId])
+  })
+
+  it('keeps trash out of either gallery whatever the URL asks', async () => {
+    const trashed = buildItemFilters({ status: ['trashed'] })
+    const workspace = await getGalleryMedia(memberId, trashed, undefined, workspaceId)
+    const personal = await getGalleryMedia(memberId, trashed)
+    expect([...workspace, ...personal]).toEqual([])
   })
 
   it('refuses a user who is not a member of the workspace', async () => {
