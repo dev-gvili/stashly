@@ -28,7 +28,7 @@ Both lanes take the newest request first. Retry is 800 ms with a budget of 2; le
 
 **Compute logic lives in `@/utils/thumbnail-stages/` and nowhere else** — one producer per file type (`image.ts`, `pdf.ts`, `video.ts`, `text.ts`, each `{ matches, preview, resize, salientCrop? }`), picked by `producerFor(file)` in match order (text last). The machine's actors are `fromPromise` wrappers around `generateStage1Preview`, `generateStage2Resize`, `generateStage3Salient`, `putThumbnailToS3` and `stageViewUrl` from its index. **A new type is one producer file plus one line in `PRODUCERS`** — don't add a type check to a stage function. The compute-worker RPC is `compute()` in `@/utils/compute-worker` (shared with OCR and metadata); EXIF/ID3/document metadata is `@/utils/media-metadata`, used only by indexing. `thumbnail-pipeline.ts` is gone.
 
-**Stage 0 (hex color) was removed** — every consumer already filters `url.startsWith('#')`. The pipeline starts at stage 1.
+**Stage 0 (hex color) was removed** — old rows keep their placeholder in `Thumbnail.color`, and `signStoredThumbnail` still hands it out as the `url`, so every consumer keeps filtering `url.startsWith('#')`. The pipeline starts at stage 1.
 
 ## Downloading the original
 
@@ -38,10 +38,10 @@ Both lanes take the newest request first. Retry is 800 ms with a budget of 2; le
 | Stage | What | Mechanism |
 |-------|------|-----------|
 | 1 | 8×8 blur preview | Image: `extractTinyThumbnail` · Video: `generateVideoThumbnail` · PDF: `generatePdfThumbnail` (from `@/utils/pdf`) · Text: `generateTextThumbnail` (from `@/utils/text-thumbnail`) — **local `URL.createObjectURL` only, NOT persisted to S3 or DB** |
-| 2 | 512px resize | Image: `canvasResize(file, 512)` · Video: re-encode frame · PDF: `renderPdfPageToBlob(file, 512)` · Text: `renderTextPageToBlob(file, 512)` → presign → PUT to S3, stored as the `?v=2` locator |
-| 3 | Salient crop | `generateSalientCrop` in `thumbnail.ai.ts` — **images only**, stored as the `?v=3` locator. Native `FaceDetector` (Chrome) crops on the largest face; otherwise a ViT-informed geometric center crop. Serialized through `app/workers/ai-queue.ts` at `'default'` priority, shared with embedding and OCR, because WebGPU can't take concurrent inference |
+| 2 | 512px resize | Image: `canvasResize(file, 512)` · Video: re-encode frame · PDF: `renderPdfPageToBlob(file, 512)` · Text: `renderTextPageToBlob(file, 512)` → presign → PUT to S3, recorded as `stage: 2` |
+| 3 | Salient crop | `generateSalientCrop` in `thumbnail.ai.ts` — **images only**, recorded as `stage: 3`. Native `FaceDetector` (Chrome) crops on the largest face; otherwise a ViT-informed geometric center crop. Serialized through `app/workers/ai-queue.ts` at `'default'` priority, shared with embedding and OCR, because WebGPU can't take concurrent inference |
 
-**Cache-bust**: stages 2/3 share one S3 key, so the stored locator carries `?v={stage}` and the signed URL varies per stage — see the signed-read section below.
+**Cache-bust**: stages 2/3 share one S3 key; the row's `stage` goes into the signed request, so the signed URL varies per stage — see the signed-read section below.
 
 **S3 client config**: `app/.server/s3.ts` sets `requestChecksumCalculation: 'WHEN_REQUIRED'` on `S3Client`. Without this, AWS SDK v3 signs a CRC32 checksum requirement (`x-amz-checksum-crc32=AAAAAA==`, CRC32 of empty body) into presigned `PutObject` URLs, causing browser PUTs to fail with a checksum mismatch.
 
@@ -67,21 +67,20 @@ The cap is 1 because PDF.js inside a dedicated worker falls back to **fake worke
 
 Stage 1 never leaves the browser, so only stages 2 and 3 run this:
 
-1. `GET /api/thumbnails/:itemId/presign` → `{ uploadUrl, viewUrls: { 2, 3 } }` (5-minute PUT with **no ACL**, plus one signed GET per persisted stage, from `presignThumbnailUpload`)
+1. `GET /api/thumbnails/:itemId?intent=presign` → `{ uploadUrl, viewUrls: { 2, 3 } }` (5-minute PUT with **no ACL**, plus one signed GET per persisted stage, from `presignThumbnailUpload`). The PUT targets the bucket holding the item's file, not the caller's
 2. `PUT blob` to S3 `uploadUrl` with `Content-Type: image/webp` only (`putThumbnailToS3`) — **never** an `x-amz-acl` header: Tigris applies that header even unsigned on a bucket that allows object ACLs, which would publish the thumbnail
-3. `PATCH /api/thumbnails/:itemId` with `{ stage, url, width, height }` → echoes `{ ok, stage, url, width, height }` with a freshly **signed** `url`, which is what the fetcher-signal consumer reads as `fetcher.data`. The submitted `url` is only the consumer's optimistic src — the server ignores it
+3. `PATCH /api/thumbnails/:itemId` with `{ stage, url, width, height }` → echoes `{ ok, stage, url, width, height }` with a freshly **signed** `url`. The submitted `url` is only the client's optimistic src — the server ignores it
 
-`app/routes/api/thumbnails.ts` exports **only an `action`** (POST creates, PATCH updates, anything else 405) — there is no `GET` loader on the detail route.
+`app/routes/api/thumbnails.ts` has a **loader** for the GET reads, discriminated on `?intent=presign|source`, and an **action** for the writes (POST creates, PATCH updates, anything else 405).
 
 **S3 key**: `thumbnails/{itemId}.webp` — one file per item, overwritten as stages improve.
 
 ## Thumbnails are private — every read is signed
 
-Nothing in a user bucket is public. `Thumbnail.url` stores a **locator**, not a URL:
-`s3://{bucket}/thumbnails/{itemId}.webp?v={stage}`. It can't be loaded as-is, so a read path that forgets to sign it shows a broken image rather than a working public link. Rows written before this change keep the old `https://{bucket}.t3.tigrisfiles.io/...?v=N` form and `parseThumbnailLocator` still reads them, so there was no data migration.
+Nothing in a user bucket is public. A `Thumbnail` row stores **where the object is, not a URL**: `bucket` + `stage`, with the key derived from the item id (`thumbnails/{itemId}.webp`, `thumbnailLocation`). `url` is the retired locator column and is written `null`; the stage-0 placeholder lives in `color`. A read path that forgets to sign therefore has no URL to show, rather than a working public link.
 
-- **Read path**: wrap every query result in `signThumbnails` (`thumbnail-actions.ts`). It walks the result at any depth and signs each `thumbnails[].url`, using the nearest enclosing `id` as the expected item. `getPaginatedItems`, `paginateItems`, `getFolderContent`, `getFavoritedItems`, `getFileItem`, `getSuggestedItems`, pins, locks, search, duplicates, invitations and the two raw-SQL reads all call it, so most routes inherit it. **Authorization stays with the caller** — signing happens after the loader has already scoped the rows.
-- **The server derives what it stores.** `updateThumbnail` builds the locator from the session's bucket and requires read permission on the item. A client-supplied `url` would be a read primitive: the server signs whatever is stored, with credentials that reach every user's bucket. `parseThumbnailLocator` refuses anything but `thumbnails/<itemId>.webp`, and an item id that doesn't match the row.
+- **Read path**: wrap every query result in `signThumbnails` (`thumbnail-actions.ts`). It walks the result at any depth, turns each `thumbnails[]` row into a signed `url` (`signStoredThumbnail`) and drops the `bucket`/`color` columns, using the nearest enclosing `id` as the expected item. **Select `bucket`, `stage` and `color`** on every `thumbnails` relation; a row without them signs to `null`. `getPaginatedItems`, `paginateItems`, `getFolderContent`, `getFavoritedItems`, `getFileItem`, `getSuggestedItems`, pins, locks, search, duplicates, invitations and the two raw-SQL reads all call it, so most routes inherit it. **Authorization stays with the caller** — signing happens after the loader has already scoped the rows.
+- **The server derives what it stores.** `updateThumbnail` takes the bucket from the item's file (so a collaborator's backfill lands next to the owner's file) and the key from the item id, and requires read permission on the item. A client-supplied location would be a read primitive: the server signs whatever is stored, with credentials that reach every user's bucket. A stored bucket that fails the bucket-name checks signs to `null`.
 - **Signing is local HMAC work**, no network call: 1.2–1.9 ms per URL, so a page of them is cheap (verified 2026-09-18).
 
 **Cache-bust**: the signing date is rounded to the hour and the expiry is 2 h, so every render within the window produces a byte-identical URL the browser can cache — and a URL is always valid for at least an hour after it is handed out. The stage rides in the signed `response-content-disposition`, so stages 2 and 3 differ. **Never append a param to a signed URL** (`url + '&v=2'`, `buildSrcSet`): it falls outside the signature and Tigris returns 403 (verified 2026-09-16). Responses also carry `Cache-Control: private, max-age=3600` via `response-cache-control`, since the stored objects have none.
@@ -92,14 +91,14 @@ Nothing in a user bucket is public. `Thumbnail.url` stores a **locator**, not a 
 
 ## Gallery query
 
-Always exclude hex-color stage-0 placeholders from both the item filter and the thumbnail select:
+Only rows with a stored object count, so filter on `bucket` in both the item filter and the thumbnail select (a stage-0 placeholder has no bucket):
 ```typescript
 // where (items must have a real thumbnail)
-thumbnails: { some: { url: { not: null }, NOT: { url: { startsWith: '#' } } } }
-// select (best thumbnail per item)
-thumbnails: { orderBy: { stage: 'desc' }, take: 1, where: { NOT: { url: { startsWith: '#' } } } }
+thumbnails: { some: { bucket: { not: null } } }
+// select (best thumbnail per item) — then sign with signThumbnails
+thumbnails: { orderBy: { stage: 'desc' }, take: 1, where: { bucket: { not: null } }, select: { bucket: true, stage: true, color: true, … } }
 ```
-`orderBy: { stage: 'desc' }` is what makes `take: 1` mean "highest stage" rather than "whichever row comes back first" — see `app/routes/stash/gallery.tsx`. `ItemCard.Cover` instead picks `thumbnails.find(t => t.stage === 2)` directly, since stage 3 crops are the wrong shape for a cover strip.
+`orderBy: { stage: 'desc' }` is what makes `take: 1` mean "highest stage" rather than "whichever row comes back first" — see `getGalleryMedia` in `thumbnail-actions.ts`, used by `app/routes/stash/gallery.tsx`. `ItemCard.Cover` instead picks `thumbnails.find(t => t.stage === 2)` directly, since stage 3 crops are the wrong shape for a cover strip.
 
 **Thumbnail utils** (`app/utils/thumbnail.ts`): `extractTinyThumbnail`, `canvasResize`, `blurImageBlob`, `dataUrlToBlob`, and `hashToColor` (stage 0 only; nothing calls it outside its own test). For video thumbnails: `generateVideoThumbnail(file)` from `app/utils/video.ts`.
 

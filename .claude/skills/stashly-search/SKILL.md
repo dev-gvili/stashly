@@ -51,7 +51,7 @@ The vector-nearest chunk and the chunk containing the typed words are routinely 
 
 ## View
 
-`app/components/views/search-components/` — barrel-exported. `EvidenceCard` is the unit: a result is a claim plus the evidence for it (`MatchBadge`, `ScoreBadge`/`ScoreMeter`, `SnippetBlock`, `HighlightedText`). `MatchGroup` groups by `MatchKind`, `ResultsSummary` heads the list. Pure helpers (`tokenizeQuery`, `highlightSegments`, `toEvidenceSnippet`, `passageLocator`, `scoreBand`) live in `search-helpers.ts` and are unit-tested — put new display logic there, not in a component.
+`app/components/views/search-components/` — barrel-exported. `EvidenceCard` is the unit: a result is a claim plus the evidence for it (`MatchBadge`, `ScoreBadge`/`ScoreMeter`, `SnippetBlock`, `HighlightedText`). `MatchGroup` groups by `MatchKind`, `ResultsSummary` heads the list. Pure helpers (`tokenizeQuery`, `highlightSegments`, `toEvidenceSnippet`, `passageLocator`, `scoreBand`) live in `app/utils/search-evidence.ts` and are unit-tested (`app/utils/__tests__/search-evidence.test.ts`) — put new display logic there, not in a component.
 
 ## What has a body to index
 
