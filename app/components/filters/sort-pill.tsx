@@ -158,7 +158,11 @@ export function SortPill() {
             >
               <span className="flex items-center gap-1">
                 <SortListIcon className="size-5 text-current" />
-                <span className="text-sm font-stashly">{field.label}</span>
+                {/* A narrow header keeps the icon; the label stays for
+                    screen readers. */}
+                <span className="text-sm font-stashly @max-header-compact/header:sr-only">
+                  {field.label}
+                </span>
               </span>
             </Button>
             <Button

@@ -30,8 +30,13 @@ export function Chip({
   )
 }
 
-export function DashedDiv() {
+export function DashedDiv({ className }: { className?: string }) {
   return (
-    <span className="self-stretch w-px border-l border-dashed border-border mx-1.5" />
+    <span
+      className={cn(
+        'self-stretch w-px border-l border-dashed border-border mx-1.5',
+        className
+      )}
+    />
   )
 }

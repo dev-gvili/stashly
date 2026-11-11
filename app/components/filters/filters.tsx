@@ -1,11 +1,12 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useLocation } from 'react-router'
+import { href, Link, useLocation, useParams } from 'react-router'
 import {
   DropdownIcon,
   FavoriteIcon,
   FilterIcon,
   LockFillIcon,
+  SearchIcon,
 } from '@/components/icons'
 import {
   Button,
@@ -35,6 +36,7 @@ import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
 import { Chip, DashedDiv } from './filter-primitives'
 import { SortPill } from './sort-pill'
 import { SearchInput } from '@/components/core-components/search-input'
+import { Tooltip } from '@/ui/tooltip'
 
 // ─── Context ─────────────────────────────────────────────────────────────
 
@@ -46,6 +48,9 @@ interface FiltersContextValue {
   applyDraft: () => void
   resetDraft: () => void
   popoverKey: number
+  /** The trigger's flag toggles, so the panel can tell when a header
+   *  container query has hidden them (see `FiltersFlags`). */
+  flagsRef: React.RefObject<HTMLSpanElement | null>
 }
 
 const FiltersContext = createContext<FiltersContextValue | null>(null)
@@ -69,6 +74,7 @@ interface FiltersRootProps {
 function FiltersRoot({ filters, children, className }: FiltersRootProps) {
   const [popoverKey, setPopoverKey] = useState(0)
   const [draft, setDraft] = useState<FilterState>(filters.state)
+  const flagsRef = useRef<HTMLSpanElement>(null)
 
   const closePopover = () => setPopoverKey((k) => k + 1)
   const resetDraft = () => setDraft(filters.state)
@@ -87,6 +93,7 @@ function FiltersRoot({ filters, children, className }: FiltersRootProps) {
         applyDraft,
         resetDraft,
         popoverKey,
+        flagsRef,
       }}
     >
       <div
@@ -174,12 +181,19 @@ function FiltersChips({
 
 // ─── Flag toggles (favorited / locked) ──────────────────────────────────
 
-function FiltersFlagToggles({ className }: { className?: string }) {
+function FiltersFlagToggles({
+  className,
+  ref,
+}: {
+  className?: string
+  ref?: React.Ref<HTMLSpanElement>
+}) {
   const { filters } = useFiltersContext()
   return (
     // Above the trigger's full-size button (see `FiltersTrigger`), so a toggle
     // click flips the flag instead of opening the panel.
     <span
+      ref={ref}
       className={cn(
         'pointer-events-auto relative z-10 flex items-center gap-0.5',
         className
@@ -266,22 +280,27 @@ function FiltersTrigger({ children, className }: FiltersTriggerProps) {
 }
 
 function FiltersTriggerDefault() {
-  const { filters } = useFiltersContext()
+  const { filters, flagsRef } = useFiltersContext()
   return (
     <>
       <span className="flex items-center gap-1">
         <FilterIcon className="size-5" />
         <span className="text-sm font-stashly">Filter</span>
       </span>
+      {/* A narrow header keeps the label and the panel; the chips (and below
+          that the flags, which then move into the panel) step aside. */}
       {filters.chips.length > 0 && (
-        <>
+        <span className="contents @max-header-compact/header:hidden">
           <DashedDiv />
           <FiltersChips />
-        </>
+        </span>
       )}
-      <DashedDiv />
+      <DashedDiv className="@max-header-narrow/header:hidden" />
       <div className="flex items-center justify-between gap-2">
-        <FiltersFlagToggles />
+        <FiltersFlagToggles
+          ref={flagsRef}
+          className="@max-header-narrow/header:hidden"
+        />
         <span className="h-6 flex items-center">
           <DropdownIcon className="size-5 text-current" />
         </span>
@@ -452,6 +471,29 @@ function FiltersTab({ id, label, items, children, className }: FiltersTabProps) 
 
 // ─── Footer actions ──────────────────────────────────────────────────────
 
+// ─── Flags in the panel (narrow header only) ────────────────────────────
+
+/**
+ * The Locked/Favorited toggles inside the panel, shown only while a narrow
+ * header has hidden them on the trigger. The panel renders in a portal,
+ * outside the header's size container, so it can't use the container query
+ * itself: it reads whether the trigger's toggles are hidden when it opens
+ * (the content mounts on every open).
+ */
+function FiltersFlags() {
+  const { flagsRef } = useFiltersContext()
+  const [show] = useState(
+    () => !!flagsRef.current && flagsRef.current.offsetParent === null
+  )
+  if (!show) return null
+  return (
+    <section className="flex items-center justify-between gap-2 border-t border-input px-3 py-2">
+      <span className="text-sm font-stashly text-muted-foreground">Flags</span>
+      <FiltersFlagToggles />
+    </section>
+  )
+}
+
 function FiltersActions({ children }: { children?: ReactNode }) {
   return (
     <section className="px-3 py-2 flex items-center w-full gap-2">
@@ -531,6 +573,7 @@ export const Filters = Object.assign(FiltersRoot, {
   Panel: FiltersPanel,
   Tabs: FiltersTabs,
   Tab: FiltersTab,
+  Flags: FiltersFlags,
   Actions: FiltersActions,
   Reset: FiltersReset,
   Cancel: FiltersCancel,
@@ -568,9 +611,26 @@ export function HeaderFilters() {
     return null
   }
   const filters = useFilters()
+  const { me } = useParams()
   return (
     <Filters filters={filters} className="min-w-0">
-      <Filters.Search className="min-w-40 shrink" />
+      <Filters.Search className="min-w-40 shrink @max-header-narrow/header:hidden" />
+      {/* A narrow header trades the field for a button to the search page. */}
+      {me && (
+        <Tooltip content="Search" asChild>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Search"
+            className="hidden shrink-0 bg-card! border-none ring-2 ring-accent rounded-md! @max-header-narrow/header:inline-flex"
+            asChild
+          >
+            <Link to={href('/:me/stash/search', { me })}>
+              <SearchIcon className="size-5" />
+            </Link>
+          </Button>
+        </Tooltip>
+      )}
       <Filters.Popover>
         <Filters.Trigger />
         <Filters.Panel>
@@ -579,6 +639,7 @@ export function HeaderFilters() {
             <Filters.Tab id="status" label="Status" items={STATUSES} />
             <Filters.Tab id="type" label="Type" items={TYPES} />
           </Filters.Tabs>
+          <Filters.Flags />
           <Filters.Actions />
         </Filters.Panel>
       </Filters.Popover>

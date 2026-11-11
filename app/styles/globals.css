@@ -558,6 +558,12 @@
   /* Images header: narrower than this, the view controls (By date, gap,
      size) step aside so the search and layout switch keep their room */
   --container-gallery-header: 60rem;
+  /* App header: narrower than this, the filter chips and the sort field's
+     label step aside */
+  --container-header-compact: 60rem;
+  /* App header: narrower than this, the search becomes a button to the
+     search page and the flag toggles move into the Filter panel */
+  --container-header-narrow: 48rem;
 }
 
 /* soft primary glow from the top centre of a file-preview area */
