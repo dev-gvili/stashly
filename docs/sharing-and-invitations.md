@@ -2,6 +2,8 @@
 
 This document covers the two mechanisms by which users can grant others access to their items: **Share Links** (URL-based, anonymous or scoped) and **Invitations** (email-based, direct access grants).
 
+> **Status.** Share links can be created, changed and revoked, but **no route serves a link's URL**: nothing calls `findShareLinkByUrl` / `findActiveShareLink`, and `app/routes.ts` has no `/s/:linkId` route. The link flows below describe what a link records, not access anyone can use yet. A link password is stored as given in `ShareLink.password`. Invitations work end to end.
+
 ---
 
 ## Table of Contents
@@ -67,12 +69,12 @@ All creation is handled in `app/.server/share-actions.ts` and exposed via `POST 
 
 | Intent               | Function                                    | Notes                     |
 | -------------------- | ------------------------------------------- | ------------------------- |
-| `create_view_link`   | `createViewLink(itemId, scope, options?)`   | `downloadable` optional   |
-| `create_edit_link`   | `createEditLink(itemId, scope, options?)`   |                           |
-| `create_embed_link`  | `createEmbedLink(itemId, options?)`         | scope always `anonymous`  |
-| `create_upload_link` | `createUploadLink(itemId, scope, options?)` | folder-only by convention |
+| `create_view_link`   | `createViewLink(actorId, itemId, scope, options?)`   | `downloadable` optional   |
+| `create_edit_link`   | `createEditLink(actorId, itemId, scope, options?)`   |                           |
+| `create_embed_link`  | `createEmbedLink(actorId, itemId, options?)`         | scope always `anonymous`  |
+| `create_upload_link` | `createUploadLink(actorId, itemId, scope, options?)` | folder-only by convention |
 
-All creators call `createShareLinkForItem` which runs in a `$transaction` — the `ShareLink` and its `Permission` are always created atomically.
+Every function checks the actor first (`assertCanManageItemShares`: owner or `write` on the item; `assertCanManageShareLink` for an existing link), then the creators call `createShareLinkForItem`, which runs in a `$transaction` — the `ShareLink` and its `Permission` are always created atomically.
 
 Optional properties available on all link types:
 
@@ -89,19 +91,19 @@ type ShareLinkOptions = {
 
 | Intent                     | Function                                                | What it changes                                                                                         |
 | -------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `update_link_scope`        | `updateShareLinkScope(linkId, scope)`                   | Restricts/expands who can use the URL                                                                   |
-| `update_link_type`         | `updateShareLinkType(linkId, type)`                     | Downgrades edit→view or upgrades. Atomically syncs Permission role: view/embed→read, edit/upload→write. |
-| `expire_link`              | `expireShareLink(linkId, expiresAt)`                    | Sets a future expiry                                                                                    |
-| `remove_link_expiry`       | `updateShareLink({ where, data: { expiresAt: null } })` | Removes the expiry                                                                                      |
-| `update_link_downloadable` | `updateShareLink(...)`                                  | Toggles download permission                                                                             |
-| `update_link_password`     | `updateShareLink(...)`                                  | Sets, changes, or clears the link password (omit `password` to clear)                                   |
+| `update_link_scope`        | `updateShareLinkScope(actorId, linkId, scope)`          | Restricts/expands who can use the URL                                                                   |
+| `update_link_type`         | `updateShareLinkType(actorId, linkId, type)`            | Downgrades edit→view or upgrades. Atomically syncs Permission role: view/embed→read, edit/upload→write. |
+| `expire_link`              | `expireShareLink(actorId, linkId, expiresAt)`           | Sets a future expiry                                                                                    |
+| `remove_link_expiry`       | `updateShareLinkSettings(actorId, linkId, { expiresAt: null })` | Removes the expiry                                                                                      |
+| `update_link_downloadable` | `updateShareLinkSettings(...)`                          | Toggles download permission                                                                             |
+| `update_link_password`     | `updateShareLinkSettings(...)`                          | Sets, changes, or clears the link password (omit `password` to clear)                                   |
 
 ### Revoking Links
 
 | Intent             | Function                             | What it does                                                              |
 | ------------------ | ------------------------------------ | ------------------------------------------------------------------------- |
-| `revoke_link`      | `revokeShareLink(linkId)`            | Deletes the link and all its Permission records in a `$transaction`       |
-| `revoke_all_links` | `revokeAllShareLinksForItem(itemId)` | Finds all links for the item, bulk-deletes permissions + links atomically |
+| `revoke_link`      | `revokeShareLink(actorId, linkId)`   | Deletes the link and all its Permission records in a `$transaction`       |
+| `revoke_all_links` | `revokeAllShareLinksForItem(actorId, itemId)` | Finds all links for the item, bulk-deletes permissions + links atomically |
 
 ---
 
