@@ -20,10 +20,7 @@ Upload whole folders straight to object storage, find anything with hybrid searc
 > [!NOTE]
 > Stashly is in private development and isn't a public service yet. The personal stash is the finished path; workspaces and a few other areas are still being built (see [In progress](#in-progress)).
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/folder-dark.png">
-  <img src="docs/images/folder-light.png" alt="A Stashly folder in grid view, showing six sample images as cards with their names, sizes and dates" width="1280">
-</picture>
+<img src="docs/images/stashly-folder.jpg" alt="A Stashly folder in grid view in dark mode: two folder cards, Field notes and Night skies, beside landscape photos shown as cards with their names, sizes and dates" width="1280">
 
 ## Features
 
@@ -35,16 +32,22 @@ Upload whole folders straight to object storage, find anything with hybrid searc
 - **Storage quota per drive:** a drive pays for what is on it, so a collaborator's upload counts against the folder owner's drive. Folder sizes and child counts are kept by database triggers, through a delta log while the database is busy.
 - **Duplicates** and **storage** pages to find what takes the space.
 
+<img src="docs/images/stashly-upload.jpg" alt="Six photos uploading into a Stashly folder, with the upload tray listing each file, its size and progress" width="1280">
+
 ### Viewing
 - **Viewers** for images, video, audio (with ID3 tags), PDF, Markdown (GFM) and text or code. The code viewer runs Monaco, with go-to-definition across the files you uploaded.
 - **Gallery layouts:** grid, river, waterfall and list, with view transitions into the item page and scroll restoration.
 - **Progressive WebP thumbnails** made in the browser in 3 stages (blur preview, 512 px resize, saliency crop), and only for cards on screen.
 
-<img src="docs/images/viewer-light.png" alt="The Stashly file viewer showing one sample image, with previous and next arrows and zoom controls" width="1280">
+<img src="docs/images/stashly-gallery.jpg" alt="The Stashly Images page in the waterfall layout, a masonry of landscape photos grouped under Today" width="1280">
+
+<img src="docs/images/stashly-viewer.jpg" alt="The Stashly file viewer showing a lake photo, with previous and next arrows, zoom controls and the details panel listing kind, size, dimensions and bit depth" width="1280">
 
 ### Search
 - **Hybrid retrieval:** trigram (sparse) and pgvector (dense) results fused with Reciprocal Rank Fusion, over passages stored in `SearchChunk`, with evidence cards showing why a file matched.
 - **Every model runs in the browser** on WebGPU through one priority queue: query and chunk embeddings, and PDF OCR (PaddleOCR PP-OCRv6, re-reading low-confidence pages with GLM-OCR).
+
+<img src="docs/images/stashly-search.jpg" alt="Stashly search results for lighthouse: two photos matched by filename and a Markdown journal matched in its content, with the matching passage highlighted" width="1280">
 
 ### Organising and sharing
 - Collections, favorites, pins, share links, invitations and per-item permissions (read, write, owner).
