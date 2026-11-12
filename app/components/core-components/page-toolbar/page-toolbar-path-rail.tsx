@@ -223,7 +223,11 @@ export function PageToolbarPathRail({
 
       <SelectAllCheckbox className="shrink-0" />
 
-      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+      {/* w-0: a nowrap path and badges still count their full length toward the
+          page's minimum width (min-w-0 only lets them shrink in the row), so
+          inside Radix ScrollArea's `display: table` the rail held the folder
+          page at ~530px on a 390px phone. */}
+      <div className="flex w-0 min-w-0 flex-1 items-center gap-2 overflow-hidden">
         {isTrash && !crumbs ? (
           <h1 className="font-stashly text-sm font-semibold">Trash</h1>
         ) : isTrash ? (
@@ -248,9 +252,11 @@ export function PageToolbarPathRail({
             <div className="flex min-w-0 items-start gap-2 overflow-hidden">
               <Breadcrumbs />
               <div className="flex min-w-0 items-start gap-2 ">
+                {/* Phones have room for the name or all three counts, not both;
+                    the size is also on every card. */}
                 <Badge
                   variant="outline"
-                  className="tabular-nums rounded border-none bg-card! px-2 text-sm font-medium ring-2 ring-accent"
+                  className="tabular-nums rounded border-none bg-card! px-2 text-sm font-medium ring-2 ring-accent max-sm:hidden"
                 >
                   {stats.size}
                 </Badge>
