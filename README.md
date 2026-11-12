@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/images/stashly-logo.svg" alt="Stashly logo" width="120" height="120">
+
 # Stashly
 
 **A self-hostable file platform: a personal stash today, team workspaces next.**
@@ -180,8 +182,8 @@ The dev server (Express + Vite HMR) listens on **http://localhost** (port 80; se
 
 ## Testing and quality
 
-- **Unit tests** (Vitest, Node environment) sit in a `__tests__/` folder beside the code they cover: 1,309 tests in 105 files as of 8 Nov 2026. Some need a live database (sizes, quota, trash and upload races); they run against `DATABASE_URL`.
-- **E2E tests** (Playwright) are in `tests/e2e/`: 8 specs with page objects in `tests/e2e/pages/`. `global-setup.ts` signs up a test user and stores its session, so authenticated specs skip the login UI; use the `test` fixture from `tests/e2e/fixtures.ts` for them. Playwright starts `pnpm dev` itself.
+- **Unit tests** (Vitest, Node environment) sit in a `__tests__/` folder beside the code they cover: 1,386 tests in 108 files, all passing in CI on 12 Nov 2026. Some need a live database (sizes, quota, trash and upload races); they run against `DATABASE_URL`.
+- **E2E tests** (Playwright) are in `tests/e2e/`: 10 specs with page objects in `tests/e2e/pages/`. `global-setup.ts` signs up a test user and stores its session, so authenticated specs skip the login UI; use the `test` fixture from `tests/e2e/fixtures.ts` for them. Playwright starts `pnpm dev` itself.
 - **Types:** `pnpm typecheck` still reports 11 old errors, frozen in `.claude/tsc-baseline.json`. The gate is `node .claude/hooks/check-staged-types.mjs --all`: it fails when any file goes above its baseline, and when the baseline still allows an error that has been fixed.
 
 **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push to `main` and every pull request:
