@@ -33,7 +33,10 @@ export function HomeSearchHero({ firstName, suggestions, onOpenSearch, now = new
         className="flex h-16 w-full items-center gap-3.5 rounded-2xl border border-border bg-card pr-3.5 pl-5.5 text-left shadow-stashly ring-6 ring-primary/10 transition-[border-color,box-shadow] hover:border-primary focus-visible:border-primary focus-visible:ring-primary/30 focus-visible:outline-none"
       >
         <AIFillIcon className="size-5.5 shrink-0 text-primary" />
-        <span className="min-w-0 flex-1 truncate font-stashly text-base text-muted-foreground">
+        {/* w-0: a nowrap line still counts its full length toward the
+            page's minimum width (min-w-0 only lets it shrink in the row), so
+            the hero held the home page at ~643px. */}
+        <span className="w-0 min-w-0 flex-1 truncate font-stashly text-base text-muted-foreground">
           Ask your stash — inside documents, audio and images
         </span>
         <Kbd className="h-6 bg-secondary px-2 font-stashly text-2xs">⌘K</Kbd>
