@@ -7,6 +7,7 @@ import {
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Prisma } from '@/prisma/client'
 import type { ItemForSearchEmbedding } from '@/utils/search-text'
+import { stripNulChars } from '@/utils/search-text'
 import { getObjectHead } from './s3'
 import {
   upsertAudioFacet,
@@ -280,9 +281,10 @@ export async function saveMediaMetadata(
   // per-passage chunks. Server is authoritative for chunk boundaries —
   // client only sees the resulting `{id, content}` pairs to embed.
   let chunks: { id: string; ord: number; content: string }[] = []
-  if (documentText) {
-    await upsertSearchContent(itemId, documentText)
-    chunks = await upsertSearchChunks(itemId, chunkText(documentText))
+  const bodyText = documentText ? stripNulChars(documentText) : ''
+  if (bodyText) {
+    await upsertSearchContent(itemId, bodyText)
+    chunks = await upsertSearchChunks(itemId, chunkText(bodyText))
   }
 
   // What was extracted, never the extracted text, titles or coordinates.
@@ -342,7 +344,7 @@ export async function appendSearchPage(
 ): Promise<{ id: string; ord: number; content: string }[]> {
   const { itemId, pageNum } = params
   await assertItemAccess(userId, itemId, { role: 'write' })
-  const text = params.text.trim()
+  const text = stripNulChars(params.text).trim()
   if (!text) {
     track(
       'ocr_page_saved',
@@ -661,7 +663,9 @@ export async function reindexTextItem(
     item.file.key,
     MAX_INDEXED_TEXT_CHARS * 4,
   )
-  const raw = new TextDecoder('utf-8').decode(bytes).slice(0, MAX_INDEXED_TEXT_CHARS)
+  const raw = stripNulChars(
+    new TextDecoder('utf-8').decode(bytes).slice(0, MAX_INDEXED_TEXT_CHARS),
+  )
 
   // Source, config and data files have no frontmatter to strip and no headings
   // to name a section with, so they skip the markdown parser entirely: their

@@ -25,6 +25,17 @@ export interface ItemForSearchEmbedding {
 }
 
 /**
+ * Drop NUL characters, which a Postgres `text` column refuses
+ * (`invalid byte sequence for encoding "UTF8": 0x00`): one in a file's
+ * extracted text failed the whole `Search` write, so the item was never
+ * indexed (seen in CI's e2e Postgres log, 12 Nov). Apply it before chunking,
+ * so chunk offsets index the same string that is stored.
+ */
+export function stripNulChars(text: string): string {
+  return text.includes('\0') ? text.replaceAll('\0', '') : text
+}
+
+/**
  * Strip common ASR / subtitle artifacts and normalize whitespace.
  * Use on transcript text and other raw extracted content before embedding.
  */
