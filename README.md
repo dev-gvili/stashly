@@ -20,6 +20,11 @@ Upload whole folders straight to object storage, find anything with hybrid searc
 > [!NOTE]
 > Stashly is in private development and isn't a public service yet. The personal stash is the finished path; workspaces and a few other areas are still being built (see [In progress](#in-progress)).
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/folder-dark.png">
+  <img src="docs/images/folder-light.png" alt="A Stashly folder in grid view, showing six sample images as cards with their names, sizes and dates" width="1280">
+</picture>
+
 ## Features
 
 ### Files and folders
@@ -34,6 +39,8 @@ Upload whole folders straight to object storage, find anything with hybrid searc
 - **Viewers** for images, video, audio (with ID3 tags), PDF, Markdown (GFM) and text or code. The code viewer runs Monaco, with go-to-definition across the files you uploaded.
 - **Gallery layouts:** grid, river, waterfall and list, with view transitions into the item page and scroll restoration.
 - **Progressive WebP thumbnails** made in the browser in 3 stages (blur preview, 512 px resize, saliency crop), and only for cards on screen.
+
+<img src="docs/images/viewer-light.png" alt="The Stashly file viewer showing one sample image, with previous and next arrows and zoom controls" width="1280">
 
 ### Search
 - **Hybrid retrieval:** trigram (sparse) and pgvector (dense) results fused with Reciprocal Rank Fusion, over passages stored in `SearchChunk`, with evidence cards showing why a file matched.
