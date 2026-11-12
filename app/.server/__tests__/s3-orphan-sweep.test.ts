@@ -47,6 +47,7 @@ function fakeBucket() {
           { Key: `thumbnails/${filedItemId}.webp`, LastModified: OLD, Size: 10 },
           { Key: `thumbnails/${GONE_ITEM_ID}.webp`, LastModified: OLD, Size: 7 },
         ],
+// eslint-disable-next-line no-restricted-syntax -- canned S3 output, only the fields the sweep reads exist
       } as any
     }
     if (command instanceof ListMultipartUploadsCommand) {
@@ -55,14 +56,17 @@ function fakeBucket() {
           { Key: 'fld/stale.bin', UploadId: 'up-stale', Initiated: OLD },
           { Key: 'fld/active.bin', UploadId: 'up-active', Initiated: YOUNG },
         ],
+// eslint-disable-next-line no-restricted-syntax -- canned S3 output, only the fields the sweep reads exist
       } as any
     }
     if (command instanceof DeleteObjectsCommand) {
       calls.deleted.push(...(command.input.Delete?.Objects ?? []).map((o) => o.Key!))
+// eslint-disable-next-line no-restricted-syntax -- canned S3 output, only the fields the sweep reads exist
       return { Errors: [] } as any
     }
     if (command instanceof AbortMultipartUploadCommand) {
       calls.aborted.push(command.input.UploadId!)
+// eslint-disable-next-line no-restricted-syntax -- canned S3 output, only the fields the sweep reads exist
       return {} as any
     }
     throw new Error(`unexpected command ${command.constructor.name}`)
