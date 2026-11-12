@@ -143,6 +143,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The browser download is cached by lockfile (Playwright's version is in
+      # it); `install` still runs for the system packages and is a no-op for
+      # a browser already in the cache.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
 
