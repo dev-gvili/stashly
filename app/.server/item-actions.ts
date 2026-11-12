@@ -4590,6 +4590,9 @@ export async function getMediaSiblings(
     where: {
       parentId: folderId,
       ownerId: userId,
+      // A trashed file keeps its parentId; without this the counter and the
+      // prev/next arrows included it.
+      status: 'normal',
       category: { in: [ItemCategory.image, ItemCategory.video] },
     },
     orderBy: { name: 'asc' },
