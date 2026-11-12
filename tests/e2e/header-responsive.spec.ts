@@ -107,6 +107,23 @@ test.describe('App header fits the window', () => {
       await expectHeaderFits(page)
     })
 
+  // The server can't know the width, so until hydration a phone shows the
+  // server's HTML. CI once measured that (the desktop sidebar rail made All
+  // 443px wide at 375px); without JS the race is deterministic.
+  test.describe('before hydration', () => {
+    test.use({ javaScriptEnabled: false })
+    for (const p of PAGES)
+      test(`${p.name} at 375px has no sideways scroll`, async ({ page }) => {
+        await page.setViewportSize({ width: 375, height: 800 })
+        await page.goto(p.path)
+        const m = await page.evaluate(() => ({
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+        }))
+        expect(m.scrollWidth, 'page scrolls sideways').toBeLessThanOrEqual(m.clientWidth)
+      })
+  })
+
   test('a phone gets one "View options" button for Filter, Sort and Layout', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 })
     await page.goto(PAGES[1].path)

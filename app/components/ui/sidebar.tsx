@@ -333,7 +333,10 @@ function Sidebar({
     <SidebarScopeContext.Provider value={resolvedId}>
       <div
         style={mergedStyle}
-        className="group peer text-sidebar-foreground"
+        // hidden below md: the server and the first client render can't know
+        // the width (isMobile starts false), so without this a phone painted
+        // the desktop rail until hydration and the page scrolled sideways.
+        className="group peer hidden text-sidebar-foreground md:block"
         data-state={state}
         data-collapsible={state === 'collapsed' ? collapsible : ''}
         data-variant={variant}
