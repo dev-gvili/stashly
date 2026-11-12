@@ -12,7 +12,8 @@
 # Exit:  0 success · 1 any other conclusion (failure, cancelled, …) · 2 no run appeared
 set -u
 
-sha=${1:-$(git rev-parse HEAD)}
+# Full SHA: `gh run list --commit` finds nothing for an abbreviated one.
+sha=$(git rev-parse "${1:-HEAD}")
 
 # The run can take a few seconds to exist after the push; give it up to ~5 min.
 id=""
