@@ -274,8 +274,8 @@ function Sidebar({
   // Build style that includes per-sidebar overrides for CSS variables.
   const mergedStyle = {
     ...(providedStyle as React.CSSProperties),
-    ...(width ? ({ ['--sidebar-width']: width } as any) : {}),
-    ...(widthIcon ? ({ ['--sidebar-width-icon']: widthIcon } as any) : {}),
+    ...(width ? ({ ['--sidebar-width']: width } as React.CSSProperties) : {}),
+    ...(widthIcon ? ({ ['--sidebar-width-icon']: widthIcon } as React.CSSProperties) : {}),
   } as React.CSSProperties
 
   if (collapsible === 'none') {
@@ -300,8 +300,8 @@ function Sidebar({
     const mobileStyle = {
       ...(props.style as React.CSSProperties),
       // for mobile we set the same --sidebar-width var to control the width
-      ...(widthMobile ? ({ ['--sidebar-width']: widthMobile } as any) : {}),
-      ...(widthIcon ? ({ ['--sidebar-width-icon']: widthIcon } as any) : {}),
+      ...(widthMobile ? ({ ['--sidebar-width']: widthMobile } as React.CSSProperties) : {}),
+      ...(widthIcon ? ({ ['--sidebar-width-icon']: widthIcon } as React.CSSProperties) : {}),
     } as React.CSSProperties
     return (
       <SidebarScopeContext.Provider value={resolvedId}>

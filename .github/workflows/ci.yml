@@ -71,6 +71,11 @@ jobs:
       - name: Typecheck
         run: node .claude/hooks/check-staged-types.mjs --all
 
+      # eslint.config.js: bans `as any` (tech-debt item 12). Needs no generated
+      # files, so it runs before the database steps.
+      - name: Lint
+        run: pnpm lint
+
       - name: Apply migrations to the CI database
         run: pnpm prisma migrate deploy
 

@@ -22,6 +22,7 @@ describe('callAll', () => {
   it('skips non-function values without throwing', () => {
     const fn1 = vi.fn()
     // Passing a non-function should not throw
+    // eslint-disable-next-line no-restricted-syntax -- passes an invalid value on purpose to prove the runtime guard
     expect(() => callAll(fn1, null as any, undefined as any)('test')).not.toThrow()
     expect(fn1).toHaveBeenCalledWith('test')
   })

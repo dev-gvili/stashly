@@ -83,7 +83,7 @@ export function ImageStage({
   }, [])
 
   // Reset zoom whenever the displayed image changes.
-  useEffect(() => zoom.reset(), [item.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => zoom.reset(), [item.id])
 
   // Keyboard zoom shortcuts.
   useEffect(() => {

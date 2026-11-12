@@ -166,7 +166,6 @@ export function VideoStage({
           cursorHidden && 'cursor-none'
         )}
       >
-        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
         {/* Shared element with the gallery tile (same name); see GalleryTile. */}
         <ViewTransition name={`img-${item.id}`} default="none" share="auto">
         <video

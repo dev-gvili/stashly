@@ -58,6 +58,7 @@ function mediaFile(id: string) {
 describe('created rows', () => {
   it('emits each new row to listeners', () => {
     const actor = createActor(uploadMachine).start()
+    // eslint-disable-next-line no-restricted-syntax -- partial event or config, only the fields this case reads
     actor.send({ type: 'upload.config', config: { user } } as any)
     const seen: unknown[][] = []
     actor.on('items.created', (e) => seen.push(e.items))
@@ -89,6 +90,7 @@ function startManager() {
     },
   })
   const actor = createActor(machine).start()
+  // eslint-disable-next-line no-restricted-syntax -- partial event or config, only the fields this case reads
   actor.send({ type: 'upload.config', config: { user, maxConcurrentUploads: 1 } } as any)
   return { actor, created }
 }
@@ -97,7 +99,9 @@ describe('a file that fails before uploading', () => {
   it('is marked failed with the reason, and frees its slot for the next file', async () => {
     const { actor, created } = startManager()
 
+    // eslint-disable-next-line no-restricted-syntax -- partial event or config, only the fields this case reads
     actor.send({ type: 'upload.add', mediaFile: mediaFile('refused'), skipQuotaCheck: true } as any)
+    // eslint-disable-next-line no-restricted-syntax -- partial event or config, only the fields this case reads
     actor.send({ type: 'upload.add', mediaFile: mediaFile('next'), skipQuotaCheck: true } as any)
 
     await waitFor(actor, (s) => s.context.mediaFiles.get('refused')?.status === 'failed', { timeout: 2000 })

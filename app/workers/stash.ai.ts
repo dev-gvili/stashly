@@ -354,7 +354,7 @@ const WebGPUDeviceManager = {
 
   /** Build a dedup key from adapter info */
   adapterKey(adapter: GPUAdapter): string {
-    const info = (adapter as any).info as Record<string, unknown> | undefined
+    const info = adapter.info
     return [
       info?.vendor ?? '',
       info?.architecture ?? '',
@@ -367,9 +367,7 @@ const WebGPUDeviceManager = {
 
   /** Build a display name from adapter info */
   adapterName(adapter: GPUAdapter): string {
-    const info = (adapter as any).info as
-      | { description?: string; vendor?: string; architecture?: string }
-      | undefined
+    const info = adapter.info
     // Prefer description, fall back to vendor+arch, then 'unknown'
     return (
       info?.description ||
@@ -403,7 +401,7 @@ const WebGPUDeviceManager = {
       seen.add(key)
 
       // Skip software fallback adapters — too slow for AI inference
-      if ((adapter as any).info?.isFallbackAdapter) {
+      if (adapter.info?.isFallbackAdapter) {
         throw new Error('Fallback adapter not allowed')
       }
 
@@ -610,10 +608,10 @@ export function normalizeTranscript(parts: string[]): string {
  * may return: array, plain string, or object with a generated_text field.
  */
 export function serializeSummaryPayload(payload: unknown): string {
-  if (Array.isArray(payload)) return (payload[0] as any)?.generated_text ?? ''
+  if (Array.isArray(payload)) return (payload[0] as { generated_text?: string } | undefined)?.generated_text ?? ''
   if (typeof payload === 'string') return payload
   if (payload && typeof payload === 'object') {
-    const p = payload as any
+    const p = payload as { generated_text?: string; summary?: string }
     return p.generated_text ?? p.summary ?? ''
   }
   return ''
@@ -999,7 +997,7 @@ export async function summarizeText(
     }
     return summarizedChunks.join(' ')
   } finally {
-    await (pipe as any).dispose?.()
+    await (pipe as unknown as { dispose?: () => Promise<void> }).dispose?.()
   }
 }
 
@@ -1047,7 +1045,7 @@ export async function correctTranscript(
         {
           device: 'webgpu' as const,
           dtype: (MODEL_DTYPE['onnx-community/tiny-aya-global-ONNX'] ??
-            'fp16') as any,
+            'fp16') as 'fp16',
           progress_callback: onProgress,
         }
       )
@@ -1103,7 +1101,7 @@ export async function correctTranscript(
             'onnx-community/tiny-aya-global-ONNX',
             {
               device: 'wasm' as const,
-              dtype: 'q4' as any,
+              dtype: 'q4' as const,
               progress_callback: onProgress,
             }
           )

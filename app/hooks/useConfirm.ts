@@ -37,12 +37,12 @@ export default function useConfirm(
 
   // fire-and-forget friendly API for usage in event handlers
   const open = (options?: Partial<ConfirmDialogProps>) => {
-    openConfirm({ ...(defaultOptions as any), ...(options as any) })
+    openConfirm({ ...defaultOptions, ...options })
   }
 
   // for callers that need the result
   const openAsyncWrapper = (options?: Partial<ConfirmDialogProps>) =>
-    openConfirmAsync({ ...(defaultOptions as any), ...(options as any) })
+    openConfirmAsync({ ...defaultOptions, ...options })
 
   return { open, openAsync: openAsyncWrapper }
 }

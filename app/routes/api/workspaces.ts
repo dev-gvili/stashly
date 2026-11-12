@@ -26,7 +26,7 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
   const query = parseOrRespond(() => parseSearchParams({ request, schema: workspacesLoaderInput }))
 
   // Resolve workspaceId from query params or URL params
-  const workspaceId = query.workspaceId ?? (params as any).workspaceId
+  const workspaceId = query.workspaceId ?? params.workspaceId
 
   if (workspaceId) {
     const workspace = await findWorkspaceById(workspaceId)

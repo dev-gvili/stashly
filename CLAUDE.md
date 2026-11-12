@@ -89,6 +89,7 @@ pnpm dev          # Start dev server (Express + Vite HMR), http://localhost (POR
 pnpm build        # Build for production
 pnpm start        # Run production server
 pnpm typecheck    # Generate React Router types + run tsc
+pnpm lint         # ESLint: bans `as any` (flat config in eslint.config.js); CI runs it after the typecheck
 pnpm format       # Format with Prettier
 pnpm test         # Run unit tests once (any app/**/__tests__/*.test.ts)
 pnpm test app/utils/__tests__/filters.test.ts   # Run one test file (any path or name fragment)

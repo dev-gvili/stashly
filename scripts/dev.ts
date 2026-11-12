@@ -127,7 +127,9 @@ async function main() {
         user,
         drive: user?.drive!,
         name: faker.system.directoryPath().split('/').pop()!,
+        // eslint-disable-next-line no-restricted-syntax -- faker fixture, not the full relation shape
         parent: { id: user.rootId } as any,
+      // eslint-disable-next-line no-restricted-syntax -- faker fixture, not the full relation shape
       }) as any
     }
 

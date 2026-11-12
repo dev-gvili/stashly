@@ -41,8 +41,11 @@ describe('detectLanguageActor', () => {
     await waitFor(actor, (s) => s.matches('done'), { timeout: 2000 })
 
     expect(received).toHaveLength(1)
+    // eslint-disable-next-line no-restricted-syntax -- reads fields off a loosely typed received event
     expect((received[0] as any).type).toBe('WORKER.LANGUAGE_DETECTED')
+    // eslint-disable-next-line no-restricted-syntax -- reads fields off a loosely typed received event
     expect((received[0] as any).language).toBe('en')
+    // eslint-disable-next-line no-restricted-syntax -- reads fields off a loosely typed received event
     expect((received[0] as any).confidence).toBe(0.95)
   })
 })

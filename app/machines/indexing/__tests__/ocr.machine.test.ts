@@ -25,7 +25,7 @@ function start(transcribe: (input: OcrInputStub) => Promise<number>) {
   const failures: string[] = []
   const actor = createActor(
     ocrMachine.provide({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line no-restricted-syntax -- test stub standing in for a child machine or actor, only the events this test sends exist
       actors: { transcribeScannedPdf: fromPromise(({ input }) => transcribe(input as OcrInputStub)) as any },
     }),
     { input: { itemId: 'p1', file: pdf() } }

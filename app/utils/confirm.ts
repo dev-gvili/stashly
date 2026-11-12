@@ -2,6 +2,7 @@ import { createActor } from 'xstate'
 import { confirmMachine } from '@/machines/confirm.machine'
 import type { ConfirmOptions } from '@/machines/confirm.machine'
 
+/** The legacy `labels` option some callers still pass instead of confirmText/cancelText. */type ConfirmLabels = { labels?: { confirm?: string; cancel?: string } }
 const service = createActor(confirmMachine).start()
 
 /**
@@ -15,9 +16,9 @@ function normalizeOptions(options: Partial<ConfirmOptions>): ConfirmOptions {
     description: options.description ?? options.children,
     children: options.children,
     confirmText:
-      options.confirmText ?? (options as any)?.labels?.confirm ?? 'Confirm',
+      options.confirmText ?? (options as ConfirmLabels)?.labels?.confirm ?? 'Confirm',
     cancelText:
-      options.cancelText ?? (options as any)?.labels?.cancel ?? 'Cancel',
+      options.cancelText ?? (options as ConfirmLabels)?.labels?.cancel ?? 'Cancel',
     confirmProps: options.confirmProps,
     cancelProps: options.cancelProps,
     variant: options.variant,

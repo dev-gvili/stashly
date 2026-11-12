@@ -94,6 +94,7 @@ describe('toChunkArray', () => {
   })
 
   it('returns empty array when first argument is not an array', () => {
+    // eslint-disable-next-line no-restricted-syntax -- passes an invalid value on purpose to prove the runtime guard
     expect(toChunkArray(null as any, 2)).toEqual([])
   })
 
@@ -181,10 +182,12 @@ describe('toObjectId', () => {
   })
 
   it('throws for an empty prefix', () => {
+    // eslint-disable-next-line no-restricted-syntax -- passes an invalid value on purpose to prove the runtime guard
     expect(() => toObjectId('' as any)).toThrow()
   })
 
   it('throws when prefix contains an underscore', () => {
+    // eslint-disable-next-line no-restricted-syntax -- passes an invalid value on purpose to prove the runtime guard
     expect(() => toObjectId('bad_prefix' as any)).toThrow()
   })
 })

@@ -133,7 +133,7 @@ function Waveform({ active }: { active: boolean }) {
 
 function PipelineRail({ phase }: { phase: Phase }) {
   const flow = ['detecting_language', 'transcribing', 'correcting_text', 'summarizing', 'extracting_keywords', 'generating_tags'] as const
-  const idx = flow.indexOf(phase as any)
+  const idx = (flow as readonly Phase[]).indexOf(phase)
 
   return (
     <div className="flex items-center gap-1 text-xs uppercase tracking-[0.2em]">

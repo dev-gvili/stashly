@@ -228,7 +228,9 @@ export const detectHardwareActor = fromPromise<{
         if (!gpuInfo) {
           try {
             const info = (await (
-              adapter as any
+              adapter as GPUAdapter & {
+                requestAdapterInfo?: () => Promise<GPUAdapterInfo>
+              }
             ).requestAdapterInfo?.()) as GPUAdapterInfo
             gpuInfo = info?.description || info?.vendor || null
           } catch {

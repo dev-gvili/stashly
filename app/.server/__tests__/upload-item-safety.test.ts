@@ -82,6 +82,7 @@ function interceptDeletes(failKeys: string[] = []) {
     if (command instanceof DeleteObjectsCommand) {
       const keys = (command.input.Delete?.Objects ?? []).map((o) => o.Key!)
       calls.push({ bucket: command.input.Bucket!, keys })
+      // eslint-disable-next-line no-restricted-syntax -- canned S3 answer, only the fields this test reads exist
       return { Errors: keys.filter((k) => failKeys.includes(k)).map((Key) => ({ Key, Code: 'InternalError', Message: 'simulated' })) } as any
     }
     return realSend(command)
@@ -438,6 +439,7 @@ function interceptHeads(...answers: (Record<string, unknown> | Error)[]) {
     heads.push(`${command.input.Bucket}/${command.input.Key}`)
     const answer = answers[Math.min(heads.length, answers.length) - 1]
     if (answer instanceof Error) throw answer
+    // eslint-disable-next-line no-restricted-syntax -- canned S3 answer, only the fields this test reads exist
     return answer as any
   })
   return heads

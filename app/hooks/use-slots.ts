@@ -1,6 +1,5 @@
 import React from 'react'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type SlotConfig = Record<string, React.ElementType<any>>
 
 type SlotElements<Type extends SlotConfig> = {
@@ -45,7 +44,6 @@ export function useSlots<T extends SlotConfig>(
   const keys = Object.keys(config) as Array<keyof T>
   const values = Object.values(config)
 
-  // eslint-disable-next-line github/array-foreach
   React.Children.forEach(children, (child) => {
     if (!React.isValidElement(child)) {
       rest.push(child)

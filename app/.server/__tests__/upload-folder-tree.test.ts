@@ -363,6 +363,7 @@ describe('createUploadedItem into a resolved folder', () => {
     const u = upload(folders['docs/2026'], 'report.pdf')
 
     // Count the statements the call sends: the access check and the write.
+    // eslint-disable-next-line no-restricted-syntax -- patches the pg driver's query method to count statements
     const proto = pg.Client.prototype as any
     const real = proto.query
     let statements = 0

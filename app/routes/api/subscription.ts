@@ -33,7 +33,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   try {
     if (formData.intent === 'update_plan') {
-      const driveId = (session.user as any).driveId as string
+      const driveId = session.user.driveId as string
       const plan = await updateSubscriptionPlan({
         userId: session.user.id,
         storagePlanId: formData.storagePlanId,

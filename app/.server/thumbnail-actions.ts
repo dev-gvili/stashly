@@ -7,7 +7,7 @@ import { requireMembership } from '@/services/workspace-actions'
 import { getPresignedUrl } from '@/services/s3'
 import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import type { Prisma } from '@/prisma/client'
-import { ItemCategory, ItemStatus, ItemType } from '@/prisma/enums'
+import { ItemCategory, ItemStatus, ItemType, ThumbnailSize, ViewType } from '@/prisma/enums'
 
 // ===================================================== //
 // ================= Thumbnail storage ================= //
@@ -407,8 +407,8 @@ export async function createThumbnail(
   userId: string,
   itemId: string,
   hexColor: string,
-  view: string = 'grid',
-  size: string = 'medium'
+  view: ViewType = 'grid',
+  size: ThumbnailSize = 'medium'
 ) {
   const item = await prisma.item.findFirst({
     where: { id: itemId, ...thumbnailAccessWhere(userId) },
@@ -422,7 +422,7 @@ export async function createThumbnail(
   }
 
   const existing = await prisma.thumbnail.findFirst({
-    where: { itemId, view: view as any, size: size as any },
+    where: { itemId, view: view, size: size },
   })
   if (existing) return existing
 
@@ -431,8 +431,8 @@ export async function createThumbnail(
       data: {
         id: toObjectId(getPrefixForModel('Thumbnail')),
         itemId,
-        view: view as any,
-        size: size as any,
+        view: view,
+        size: size,
         stage: 0,
         color: hexColor,
       },
@@ -441,7 +441,7 @@ export async function createThumbnail(
     // P2002 = unique constraint violation (lost race) — return the winner's record
     if ((e as { code?: string })?.code === 'P2002') {
       return prisma.thumbnail.findFirstOrThrow({
-        where: { itemId, view: view as any, size: size as any },
+        where: { itemId, view: view, size: size },
       })
     }
     throw e
@@ -481,8 +481,8 @@ export async function updateThumbnail(
   stage: ThumbnailStage,
   width?: number,
   height?: number,
-  view: string = 'grid',
-  size: string = 'medium'
+  view: ViewType = 'grid',
+  size: ThumbnailSize = 'medium'
 ): Promise<string> {
   const bucket = await resolveThumbnailBucket(userId, itemId)
   await persistThumbnailStage(itemId, stage, bucket, width, height, view, size)
@@ -518,12 +518,12 @@ async function persistThumbnailStage(
   bucket: string,
   width?: number,
   height?: number,
-  view: string = 'grid',
-  size: string = 'medium'
+  view: ViewType = 'grid',
+  size: ThumbnailSize = 'medium'
 ) {
   const data = { stage, bucket, url: null, width, height }
   const result = await prisma.thumbnail.updateMany({
-    where: { itemId, view: view as any, size: size as any },
+    where: { itemId, view: view, size: size },
     data,
   })
   if (result.count > 0) return result
@@ -534,8 +534,8 @@ async function persistThumbnailStage(
       data: {
         id: toObjectId(getPrefixForModel('Thumbnail')),
         itemId,
-        view: view as any,
-        size: size as any,
+        view: view,
+        size: size,
         ...data,
       },
     })
@@ -544,7 +544,7 @@ async function persistThumbnailStage(
     // Retry update — the winner's row now exists.
     if ((e as { code?: string })?.code === 'P2002') {
       return prisma.thumbnail.updateMany({
-        where: { itemId, view: view as any, size: size as any },
+        where: { itemId, view: view, size: size },
         data,
       })
     }
@@ -675,11 +675,11 @@ export async function getThumbnailSource(
 
 export async function getThumbnailByItemId(
   itemId: string,
-  view: string = 'grid',
-  size: string = 'medium'
+  view: ViewType = 'grid',
+  size: ThumbnailSize = 'medium'
 ) {
   return prisma.thumbnail.findFirst({
-    where: { itemId, view: view as any, size: size as any },
+    where: { itemId, view: view, size: size },
     select: { stage: true, content: true, bucket: true, color: true },
   })
 }

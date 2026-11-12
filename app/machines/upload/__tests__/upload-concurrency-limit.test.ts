@@ -41,12 +41,14 @@ describe('the upload concurrency limit', () => {
 
   it('stays 100 when the config names no limit, as useUpload sends it', () => {
     const actor = startManager()
+    // eslint-disable-next-line no-restricted-syntax -- partial event or config, only the fields this case reads
     actor.send({ type: 'upload.config', config: { user } } as any)
     expect(actor.getSnapshot().context.config.maxConcurrentUploads).toBe(100)
   })
 
   it('takes a limit the config names', () => {
     const actor = startManager()
+    // eslint-disable-next-line no-restricted-syntax -- partial event or config, only the fields this case reads
     actor.send({ type: 'upload.config', config: { user, maxConcurrentUploads: 3 } } as any)
     expect(actor.getSnapshot().context.config.maxConcurrentUploads).toBe(3)
   })
@@ -95,8 +97,10 @@ describe('a freed slot', () => {
       },
     })
     const actor = createActor(machine).start()
+    // eslint-disable-next-line no-restricted-syntax -- partial event or config, only the fields this case reads
     actor.send({ type: 'upload.config', config: { user, maxConcurrentUploads: 2 } } as any)
     for (const id of ['refused', 'creating', 'waiting']) {
+      // eslint-disable-next-line no-restricted-syntax -- partial event or config, only the fields this case reads
       actor.send({ type: 'upload.add', mediaFile: mediaFile(id), skipQuotaCheck: true } as any)
     }
 

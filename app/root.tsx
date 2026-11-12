@@ -167,6 +167,5 @@ function useRouteViews() {
     lastRoute.current = route
     navigationStartedAt.current = null
     // Only a new pathname is a new view; `matches` changes with it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
 }

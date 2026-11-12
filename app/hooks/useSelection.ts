@@ -257,7 +257,6 @@ export const useSelectionURLSync = () => {
         { replace: true }
       )
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [context.selectedIds, context.paramName, navigation.state])
 
   // URL → actor

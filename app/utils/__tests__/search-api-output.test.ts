@@ -34,6 +34,7 @@ const payload = {
 describe('searchApiRouteOutput', () => {
   it('coerces BigInt sizes at every nesting level', () => {
     const parsed = searchApiRouteOutput.parse(payload)
+    // eslint-disable-next-line no-restricted-syntax -- reads fields off the parsed output without restating its full type
     const item = parsed.items[0] as any
     expect(item.size).toBe(1234)
     expect(item.parent.size).toBe(9999)
@@ -47,6 +48,7 @@ describe('searchApiRouteOutput', () => {
   })
 
   it('passes non-declared fields through untouched', () => {
+    // eslint-disable-next-line no-restricted-syntax -- reads fields off the parsed output without restating its full type
     const item = searchApiRouteOutput.parse(payload).items[0] as any
     expect(item.name).toBe('Report.pdf')
     expect(item.passage.similarity).toBe(0.82)
@@ -60,6 +62,7 @@ describe('searchApiRouteOutput', () => {
   })
 
   it('carries the grouping fields through', () => {
+    // eslint-disable-next-line no-restricted-syntax -- reads fields off the parsed output without restating its full type
     const item = searchApiRouteOutput.parse(payload).items[0] as any
     expect(item.matchKind).toBe('content')
     expect(item.hitCount).toBe(4)

@@ -561,6 +561,7 @@ export async function getFolderContents<
   > & { client: PrismaClient }
 ): Promise<PaginationData<Prisma.ItemGetPayload<{ include: TInclude }>>> {
   const { client, ...rest } = opts
+  // eslint-disable-next-line no-restricted-syntax -- generic delegate plumbing: the model name erases the delegate's argument types (tech-debt item 7)
   return getCollectionContents({ client, model: 'item', ...rest } as any)
 }
 
@@ -635,6 +636,7 @@ export async function getCollectionContents<
       TOrderBy,
       TInclude
     >,
+    // eslint-disable-next-line no-restricted-syntax -- generic delegate plumbing: the model name erases the delegate's argument types (tech-debt item 7)
     rest as any
   ) as Promise<PaginationData<TModel>>
 }

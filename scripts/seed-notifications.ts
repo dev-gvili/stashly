@@ -4,7 +4,7 @@ import { PrismaClient } from '../app/prisma/client.js'
 import { PrismaPg } from '@prisma/adapter-pg'
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
-const prisma = new PrismaClient({ adapter } as any)
+const prisma = new PrismaClient({ adapter })
 
 const TARGET_EMAIL = 'bwvq073@outlook.com'
 

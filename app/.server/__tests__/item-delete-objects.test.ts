@@ -48,6 +48,7 @@ function interceptDeletes(failKeys: string[] = []) {
     if (command instanceof DeleteObjectsCommand) {
       const keys = (command.input.Delete?.Objects ?? []).map((o) => o.Key!)
       calls.push({ bucket: command.input.Bucket!, keys })
+      // eslint-disable-next-line no-restricted-syntax -- stands in for the SDK's DeleteObjects output, only Errors matters here
       return { Errors: keys.filter((k) => failKeys.includes(k)).map((Key) => ({ Key, Code: 'InternalError', Message: 'simulated' })) } as any
     }
     return realSend(command)

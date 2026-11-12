@@ -112,7 +112,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
   }).catch(rethrowAsResponse)
 
   if (formData.intent === 'create_collection') {
-    const driveId = formData.driveId ?? (session.user as any).driveId
+    const driveId = formData.driveId ?? session.user.driveId
     const { workspaceId, ...rest } = formData
     if (workspaceId) {
       await createWorkspaceCollection({

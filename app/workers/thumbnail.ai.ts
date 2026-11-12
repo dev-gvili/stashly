@@ -13,8 +13,12 @@ async function detectFaceCenter(
 ): Promise<{ cx: number; cy: number } | null> {
   if (!('FaceDetector' in window)) return null
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const detector = new (window as any).FaceDetector({ fastMode: false, maxDetectedFaces: 5 })
+    const { FaceDetector } = window as unknown as {
+      FaceDetector: new (options: { fastMode: boolean; maxDetectedFaces: number }) => {
+        detect(bitmap: ImageBitmap): Promise<Array<{ boundingBox: DOMRectReadOnly }>>
+      }
+    }
+    const detector = new FaceDetector({ fastMode: false, maxDetectedFaces: 5 })
     const faces: Array<{ boundingBox: DOMRectReadOnly }> = await detector.detect(bitmap)
     if (!faces.length) return null
     // Pick the largest face

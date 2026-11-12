@@ -143,6 +143,7 @@ describe('reviveCardItem', () => {
         locked: { lockedAt: '2026-10-02T00:00:00.000Z', expiresAt: null },
         parent: { size: 1, inclusiveSize: 1, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z', openedAt: null },
       },
+    // eslint-disable-next-line no-restricted-syntax -- partial row fixture, only the fields this case reads
     }) as any
     expect(revived.size).toBe(1024n)
     expect(revived.inclusiveSize).toBe(0n)
@@ -217,12 +218,14 @@ describe('growFolderCards', () => {
   it('adds each file to the listed folder it was uploaded into', () => {
     const list = [folderCard('d1', 'photos'), folderCard('d2', 'docs')]
     const next = growFolderCards(
+      // eslint-disable-next-line no-restricted-syntax -- partial row fixture, only the fields this case reads
       list as any,
       [
         file('f1', 'd1', 300, 'item_here/photos/a.jpg'),
         file('f2', 'd_inner', 200, 'item_here/photos/2026/b.jpg'),
         file('f3', 'item_here', 50, 'item_here/c.txt'),
         file('f4', 'x', 70, 'item_other/photos/d.jpg'),
+      // eslint-disable-next-line no-restricted-syntax -- partial row fixture, only the fields this case reads
       ] as any,
       'item_here'
     ) as any[]
@@ -238,6 +241,7 @@ describe('growFolderCards', () => {
 
   it('returns the list itself when no card grows', () => {
     const list = [folderCard('d1', 'photos')]
+    // eslint-disable-next-line no-restricted-syntax -- partial row fixture, only the fields this case reads
     expect(growFolderCards(list as any, [file('f3', 'item_here', 50, 'item_here/c.txt')] as any, 'item_here')).toBe(list)
   })
 })
@@ -274,6 +278,7 @@ describe('showCreatedRows', () => {
       fileRow('f1', 'a.jpg', 'd1', 'here/photos/a.jpg'),
       fileRow('f2', 'b.jpg', 'd2', 'here/photos/2026/b.jpg'),
     ]
+    // eslint-disable-next-line no-restricted-syntax -- partial row fixture, only the fields this case reads
     const r = showCreatedRows([] as any[], rows as any, { compare, hasMore: false, parentId: 'here', sortsBySize: false })
     expect(r.list.map((i: any) => i.id)).toEqual(['d1'])
     expect(shown(r)).toEqual(['d1', 'd2', 'f1', 'f2'])
@@ -283,6 +288,7 @@ describe('showCreatedRows', () => {
   // a row that sorts between the last loaded one and it.
   it('does not claim a row past the loaded window', () => {
     const list = [fileRow('f1', 'a', 'here', 'here/a')]
+    // eslint-disable-next-line no-restricted-syntax -- partial row fixture, only the fields this case reads
     const r = showCreatedRows(list as any, [fileRow('f2', 'b', 'here', 'here/b')] as any, {
       compare,
       hasMore: true,
@@ -302,6 +308,7 @@ describe('showCreatedRows', () => {
       // A folder made for this file on the server, with no card sent.
       fileRow('f3', 'c', 'd9', 'here/docs/c'),
     ]
+    // eslint-disable-next-line no-restricted-syntax -- partial row fixture, only the fields this case reads
     const r = showCreatedRows([] as any[], rows as any, { compare: null, hasMore: false, parentId: 'here', sortsBySize: false })
     expect(shown(r)).toEqual([])
   })
@@ -310,13 +317,16 @@ describe('showCreatedRows', () => {
     const list = [dirRow('d1', 'photos', 'here')]
     const rows = [fileRow('f1', 'a', 'd1', 'here/photos/a', 500)]
     const bySize = cardOrderFor(params('orderBy[size]=desc'), { foldersFirst: true })!
+    // eslint-disable-next-line no-restricted-syntax -- partial row fixture, only the fields this case reads
     const r = showCreatedRows(list as any, rows as any, { compare: bySize, hasMore: false, parentId: 'here', sortsBySize: true })
+    // eslint-disable-next-line no-restricted-syntax -- partial row fixture, only the fields this case reads
     expect((r.list[0] as any).inclusiveSize).toBe(500n)
     expect(shown(r)).toEqual([])
   })
 
   it('claims a row the page already has', () => {
     const list = [fileRow('f1', 'a', 'here', 'here/a')]
+    // eslint-disable-next-line no-restricted-syntax -- partial row fixture, only the fields this case reads
     const r = showCreatedRows(list as any, list as any, { compare, hasMore: true, parentId: 'here', sortsBySize: false })
     expect(shown(r)).toEqual(['f1'])
   })

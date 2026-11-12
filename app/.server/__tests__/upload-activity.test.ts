@@ -55,17 +55,22 @@ function watchActivityWrites(fileId: string) {
   const transaction = prisma.$transaction.bind(prisma)
   vi.spyOn(prisma, '$transaction').mockImplementation(((...args: any[]) => {
     open++
+    // eslint-disable-next-line no-restricted-syntax -- spy wrapper around a Prisma method whose overloads are not worth reproducing in a test
     return (transaction as any)(...args).finally(() => open--)
+  // eslint-disable-next-line no-restricted-syntax -- spy wrapper around a Prisma method whose overloads are not worth reproducing in a test
   }) as any)
   const create = prisma.activity.create.bind(prisma.activity)
   vi.spyOn(prisma.activity, 'create').mockImplementation(((args: any) => {
     if (args?.data?.item?.connect?.id === fileId) openAtWrite.push(open > 0)
     return create(args)
+  // eslint-disable-next-line no-restricted-syntax -- spy wrapper around a Prisma method whose overloads are not worth reproducing in a test
   }) as any)
   const executeRaw = prisma.$executeRaw.bind(prisma)
   vi.spyOn(prisma, '$executeRaw').mockImplementation(((...args: any[]) => {
     if (args.slice(1).flat().includes(fileId)) openAtWrite.push(open > 0)
+    // eslint-disable-next-line no-restricted-syntax -- spy wrapper around a Prisma method whose overloads are not worth reproducing in a test
     return (executeRaw as any)(...args)
+  // eslint-disable-next-line no-restricted-syntax -- spy wrapper around a Prisma method whose overloads are not worth reproducing in a test
   }) as any)
   return openAtWrite
 }

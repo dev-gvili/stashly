@@ -9,6 +9,7 @@
  * POST                 — create the Thumbnail row
  * PATCH                — record a completed stage
  */
+import { ThumbnailSize, ViewType } from '@/prisma/enums'
 import {
   thumbnailApiRouteQuery,
   thumbnailCreateSchema,
@@ -27,6 +28,12 @@ import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
 import { data, type ShouldRevalidateFunction } from 'react-router'
 import type { Route } from './+types/thumbnails'
+
+/** The PATCH route reads these from the query string, so check them before Prisma sees them. */
+const isViewType = (v: string): v is ViewType =>
+  (Object.values(ViewType) as string[]).includes(v)
+const isThumbnailSize = (v: string): v is ThumbnailSize =>
+  (Object.values(ThumbnailSize) as string[]).includes(v)
 
 // Resolves the session once and forwards the cache cookie it refreshed, which
 // a bare `getSession` here would drop: an upload is a long run of API calls
@@ -105,8 +112,11 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       if (!itemId) return data({ error: 'Not found' }, { status: 404 })
 
       const url = new URL(request.url)
-      const view = url.searchParams.get('view') || 'grid'
-      const size = url.searchParams.get('size') || 'medium'
+      const view = url.searchParams.get('view') || ViewType.grid
+      const size = url.searchParams.get('size') || ThumbnailSize.medium
+      if (!isViewType(view) || !isThumbnailSize(size)) {
+        return data({ error: 'Invalid view or size' }, { status: 400 })
+      }
 
       const parsedData = await parseFormData({
         request,

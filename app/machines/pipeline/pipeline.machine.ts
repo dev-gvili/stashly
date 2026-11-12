@@ -94,7 +94,7 @@ export const languageDetectionMachine = setup({
       return { language: event.language, confidence: event.confidence }
     }),
     clearInput: assign({ audio: null }),
-    forwardToParent: sendParent(({ event }) => event as any),
+    forwardToParent: sendParent(({ event }) => event),
   },
   guards: {
     hasInput: ({ context }) => context.audio !== null,
@@ -199,7 +199,7 @@ export const transcriptionMachine = setup({
       return { text: event.text }
     }),
     clearInput: assign({ audio: null }),
-    forwardToParent: sendParent(({ event }) => event as any),
+    forwardToParent: sendParent(({ event }) => event),
   },
   guards: {
     hasInput: ({ context }) => context.audio !== null,
@@ -295,7 +295,7 @@ export const textCorrectionMachine = setup({
       correctedTranscript: context.text ?? '',
     })),
     clearInput: assign({ text: null }),
-    forwardToParent: sendParent(({ event }) => event as any),
+    forwardToParent: sendParent(({ event }) => event),
   },
   guards: {
     hasInput: ({ context }) => context.text !== null && context.text.length > 0,
@@ -403,7 +403,7 @@ export const summarizationMachine = setup({
       return { summary: event.text }
     }),
     clearInput: assign({ text: null }),
-    forwardToParent: sendParent(({ event }) => event as any),
+    forwardToParent: sendParent(({ event }) => event),
   },
   guards: {
     hasInput: ({ context }) => context.text !== null && context.text.length > 0,
@@ -482,7 +482,7 @@ export const keywordExtractionMachine = setup({
       return { keywords: event.keywords }
     }),
     clearInput: assign({ text: null }),
-    forwardToParent: sendParent(({ event }) => event as any),
+    forwardToParent: sendParent(({ event }) => event),
   },
   guards: {
     hasInput: ({ context }) => context.text !== null && context.text.length > 0,
@@ -591,7 +591,7 @@ export const tagGenerationMachine = setup({
       return { tags: event.tags }
     }),
     clearInput: assign({ text: null }),
-    forwardToParent: sendParent(({ event }) => event as any),
+    forwardToParent: sendParent(({ event }) => event),
   },
   guards: {
     hasInput: ({ context }) => context.text !== null && context.text.length > 0,
@@ -652,7 +652,7 @@ export const pipelineMachine = setup({
   },
   actions: {
     assignHardwareInfo: assign(({ event }) => {
-      const output = (event as any).output as {
+      const output = (event as unknown as { output: { executionProvider: 'webgpu' | 'wasm'; gpuInfo: string | null } }).output as {
         executionProvider: 'webgpu' | 'wasm'
         gpuInfo: string | null
       }

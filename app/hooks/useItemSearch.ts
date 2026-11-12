@@ -222,7 +222,6 @@ export function useItemSearch({
       appendFilters(params, filters)
       return params
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [take, filterKey],
   )
 
@@ -268,7 +267,6 @@ export function useItemSearch({
       // would cost a second model round trip for a value already in hand.
       return { response: (await res.json()) as SearchResponse, vector }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [take, filterKey],
   )
 
@@ -398,7 +396,6 @@ export function useItemSearch({
       clearTimeout(timer)
       controller.abort()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, mode, filterKey, fetchKeyword, fetchSemantic, fetchExpansions])
 
   /**

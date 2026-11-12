@@ -115,11 +115,11 @@ function startQueue() {
   const actor = createActor(
     indexingQueueMachine.provide({
       actors: {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line no-restricted-syntax -- test stub standing in for a child machine or actor, only the events this test sends exist
         indexingItem: stubItemMachine as any,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line no-restricted-syntax -- test stub standing in for a child machine or actor, only the events this test sends exist
         embed: stubEmbedMachine as any,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line no-restricted-syntax -- test stub standing in for a child machine or actor, only the events this test sends exist
         ocr: stubOcrMachine as any,
       },
     })

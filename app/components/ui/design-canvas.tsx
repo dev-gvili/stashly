@@ -361,7 +361,7 @@ function DCViewport({ children, minScale = 0.1, maxScale = 8, style = {} }: DCVi
     }
     const onGestureChange = (e: Event) => {
       e.preventDefault()
-      const ge = e as any
+      const ge = e as Event & { clientX: number; clientY: number; scale: number }
       zoomAt(ge.clientX, ge.clientY, (gsBase * ge.scale) / tf.current.scale)
     }
     const onGestureEnd = (e: Event) => { e.preventDefault(); isGesturing = false }

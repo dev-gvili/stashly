@@ -47,21 +47,21 @@ export function useIsMobile(
 
     const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
       // Some environments pass a MediaQueryListEvent, others may pass the list.
-      const matches = (e as any)?.matches ?? mql.matches
+      const matches = e?.matches ?? mql.matches
       setIsMobile(!!matches)
     }
 
     // keep state in sync immediately
     setIsMobile(mql.matches)
 
-    if (typeof (mql as any).addEventListener === 'function') {
-      ;(mql as any).addEventListener('change', handleChange)
-      return () => (mql as any).removeEventListener('change', handleChange)
+    if (typeof mql.addEventListener === 'function') {
+      ;mql.addEventListener('change', handleChange)
+      return () => mql.removeEventListener('change', handleChange)
     }
 
-    if (typeof (mql as any).addListener === 'function') {
-      ;(mql as any).addListener(handleChange)
-      return () => (mql as any).removeListener(handleChange)
+    if (typeof mql.addListener === 'function') {
+      ;mql.addListener(handleChange)
+      return () => mql.removeListener(handleChange)
     }
 
     // Final fallback: listen for resize

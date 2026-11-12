@@ -208,7 +208,7 @@ export function searchFactory<
       default: {
         // This should be unreachable if the type system is correct, but required for exhaustive switch.
         throw new Error(
-          `Unsupported pagination strategy: ${(options as any).strategy}`
+          `Unsupported pagination strategy: ${(options as { strategy?: unknown }).strategy}`
         )
       }
     }

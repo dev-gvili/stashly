@@ -74,7 +74,7 @@ const job = (itemId: string, mode: ThumbMode): ThumbJob => ({
 function startManager() {
   const actor = createActor(
     thumbnailManagerMachine.provide({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line no-restricted-syntax -- test stub standing in for a child machine or actor, only the events this test sends exist
       actors: { item: stubItemMachine as any },
     })
   )

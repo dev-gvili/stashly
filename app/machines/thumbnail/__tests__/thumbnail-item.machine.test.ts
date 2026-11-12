@@ -51,7 +51,7 @@ function happyActors(over: Record<string, unknown> = {}) {
     putStage: fromPromise(async () => undefined),
     patchThumbnail: fromPromise(async () => undefined),
     ...over,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line no-restricted-syntax -- test stub standing in for a child machine or actor, only the events this test sends exist
   } as any
 }
 

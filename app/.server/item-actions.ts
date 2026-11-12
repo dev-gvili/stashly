@@ -1,5 +1,5 @@
 import { Prisma } from '@/prisma/client'
-import { ItemCategory, type ItemType } from '@/prisma/enums'
+import { ItemCategory, type ItemStatus, type ItemType } from '@/prisma/enums'
 import { createActivity } from '@/services/activity-actions'
 import { prisma } from '@/services/db'
 import {
@@ -3198,8 +3198,8 @@ export async function getSuggestedItems(
     id: string
     name: string
     type: 'file' | 'folder'
-    category: string
-    status: string
+    category: ItemCategory
+    status: ItemStatus
     size: bigint
     inclusiveSize: bigint
     createdAt: Date
@@ -3396,7 +3396,9 @@ export async function getSuggestedItems(
     // Raw SQL bypasses every Prisma-level hook, so the aggregated thumbnail
     // JSON is signed here like any other read.
     return await signThumbnails({
+      // eslint-disable-next-line no-restricted-syntax -- raw rows carry parent as { id, name } while StashItem says StashAncestor: the type is wrong, not the cast
       suggestedFiles: files as any,
+      // eslint-disable-next-line no-restricted-syntax -- same mismatch as suggestedFiles
       suggestedFolders: folders as any,
     })
   } catch (error) {
