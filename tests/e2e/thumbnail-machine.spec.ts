@@ -221,12 +221,24 @@ test.describe('thumbnail machine — upload pipeline', () => {
     await expect(img).toHaveAttribute('data-stage', String(published!.stage))
 
     // The browser actually decoded it — a broken URL still yields a visible node.
+    // The node is visible as soon as it is laid out, before the signed S3 GET
+    // has returned, so a single read of `complete` raced the download (CI run
+    // 43322566348: received false). Poll until the browser has finished it.
+    await expect
+      .poll(
+        () =>
+          img.evaluate((el: HTMLImageElement) => ({
+            complete: el.complete,
+            w: el.naturalWidth,
+            h: el.naturalHeight,
+          })),
+        { timeout: 30_000 }
+      )
+      .toMatchObject({ complete: true, w: expect.any(Number) })
     const natural = await img.evaluate((el: HTMLImageElement) => ({
-      complete: el.complete,
       w: el.naturalWidth,
       h: el.naturalHeight,
     }))
-    expect(natural.complete).toBe(true)
     expect(natural.w).toBeGreaterThan(0)
     expect(natural.h).toBeGreaterThan(0)
   })
