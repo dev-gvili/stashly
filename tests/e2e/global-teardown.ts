@@ -1,5 +1,5 @@
 import '@dotenvx/dotenvx/config'
-import { HeadBucketCommand } from '@aws-sdk/client-s3'
+import { DeleteBucketCommand, HeadBucketCommand } from '@aws-sdk/client-s3'
 import { PrismaClient } from '../../app/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { OTHER_USER_EMAIL, TEST_USER_EMAIL } from './constants'
@@ -49,14 +49,17 @@ export default async function globalTeardown() {
  * `DELETE_ATTEMPTS` times. Tigris can answer `BucketNotEmpty` just after the
  * last object was deleted: the first CI run (`85f85b9`) failed that way, and
  * the same bucket listed 0 objects, 0 multipart uploads and 0 versions
- * minutes later. Each attempt empties the bucket again (`deleteBucket`).
- * A failed delete is reported, not thrown: the tests have already run, and a
- * leftover bucket must not turn a green run red.
+ * minutes later. Each attempt empties the bucket again, then deletes it.
+ * The delete is sent here rather than through `deleteBucket`, which logs every
+ * failure at error level: an expected `BucketNotEmpty` that the next attempt
+ * clears printed `[error] S3 bucket delete failed` in green CI runs.
+ * Only the last attempt's failure is reported, and not thrown: the tests have
+ * already run, and a leftover bucket must not turn a green run red.
  */
 async function deleteE2eBucket(bucket: string) {
   // Imported here, not at the top: the S3 client reads its credentials from
   // the environment when the module loads, after dotenv has run.
-  const { s3, deleteBucket } = await import('../../app/.server/s3')
+  const { s3, emptyBucket } = await import('../../app/.server/s3')
 
   const exists = await s3
     .send(new HeadBucketCommand({ Bucket: bucket }))
@@ -65,7 +68,8 @@ async function deleteE2eBucket(bucket: string) {
   if (!exists) return
   for (let attempt = 1; attempt <= DELETE_ATTEMPTS; attempt++) {
     try {
-      await deleteBucket(bucket)
+      await emptyBucket(bucket)
+      await s3.send(new DeleteBucketCommand({ Bucket: bucket }))
       console.log(`[E2E] deleted bucket ${bucket} (attempt ${attempt})`)
       return
     } catch (error) {
