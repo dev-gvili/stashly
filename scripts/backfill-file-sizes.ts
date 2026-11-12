@@ -35,8 +35,8 @@ async function objectSize(bucket: string, key: string): Promise<{ size: bigint }
   try {
     const head = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }))
     return head.ContentLength == null ? { error: 'no ContentLength' } : { size: BigInt(head.ContentLength) }
-  } catch (error: any) {
-    return { error: error?.name ?? String(error) }
+  } catch (error) {
+    return { error: error instanceof Error ? error.name : String(error) }
   }
 }
 
