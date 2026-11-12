@@ -740,6 +740,24 @@ async function lockDestinationFolder(
   return folder
 }
 
+/**
+ * Keeps the size rollup out until this transaction ends: takes the rollup's
+ * advisory lock in shared mode, as the first thing the transaction does, while
+ * it holds no row (tech-debt item 93).
+ *
+ * A status change holds the changed rows' `Item` locks and then wants their
+ * `Folder` rows (`item_status_change`); the rollup takes `Folder`, then `Item`.
+ * A delta applied for a folder being trashed or restored met the status update
+ * between the two and the two deadlocked, 20 of 20. The rollup's own lock is
+ * exclusive, so it waits (or, on its timer, skips the tick) while any status
+ * change holds this one; trashes and restores share it and never wait for each
+ * other. Uploads under way log their sizes instead of applying them, as they do
+ * whenever the lock is taken, and the next tick applies them.
+ */
+async function holdRollupOff(tx: Prisma.TransactionClient) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(hashtext('stashly.item_size_rollup'))`
+}
+
 export async function trashItems(ids: string[], userId: string) {
   if (ids.length === 0) {
     return
@@ -748,6 +766,7 @@ export async function trashItems(ids: string[], userId: string) {
 
   const changed = await prisma.$transaction(
     async (tx) => {
+      await holdRollupOff(tx)
       await lockSubtreeFolders(tx, ids)
       // One statement walks the subtree, trashes what isn't trashed yet, and
       // sums the bytes of the files it changed. Only files count: a folder's
@@ -901,7 +920,9 @@ export async function restoreItems(ids: string[], userId: string) {
   //   `updatedAt`, set when the folder above them was trashed.
   // All sub-statements read the same snapshot, so the CTEs decide from the
   // pre-restore rows and from `Changed`, never from each other's writes.
-  const [changed] = await prisma.$queryRaw<SubtreeChange[]>`
+  const [changed] = await prisma.$transaction(async (tx) => {
+    await holdRollupOff(tx)
+    return tx.$queryRaw<SubtreeChange[]>`
     WITH RECURSIVE "Descendants" AS (
       SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
       UNION
@@ -956,6 +977,7 @@ export async function restoreItems(ids: string[], userId: string) {
         FILTER (WHERE "id" IN (${Prisma.join(ids)})) AS "roots"
     FROM "Changed"
   `
+  }, { timeout: 20_000 }) // as trashItems: a large restore must not hit the 5 s default
 
   for (const { driveId, dataSize } of toDriveBytes(changed)) {
     onItemsRestored({ driveId, dataSize }).catch((error) =>

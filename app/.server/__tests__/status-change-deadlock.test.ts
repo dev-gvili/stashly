@@ -23,11 +23,10 @@ import { wipeTestUsers } from './helpers/wipe-test-users'
  * blocker, and run the real `trashItems` and the real triggers. Nothing is
  * mocked: what they measure is the migration as it stands.
  *
- * DEADLOCKS_TODAY records the current behaviour, so the file passes and CI
- * stays green while the fix waits for the owner (it needs a trigger change).
- * The fix flips it to `false`: then every case must finish with no deadlock,
- * and the file guards the new lock order from then on. A fix that doesn't
- * remove a deadlock fails here until it does.
+ * DEADLOCKS_TODAY is false since the fix (item 93, migration 20261112140000 and
+ * holdRollupOff): every case must finish with no deadlock. Setting it to true
+ * asserts the old behaviour again (one side cancelled per case), kept so the
+ * cases stay documented. A regression of the lock order fails the false run.
  *
  * Each case rolls back its raw connections; a trash that wins commits on its
  * own test tree, which `afterAll` wipes. Every raw connection carries a
@@ -35,7 +34,7 @@ import { wipeTestUsers } from './helpers/wipe-test-users'
  * strand locks on a shared database (it once did, for about 10 minutes).
  * Needs a live database with migrations applied (CI provides one).
  */
-const DEADLOCKS_TODAY = true
+const DEADLOCKS_TODAY = false
 
 const uid = (model: Parameters<typeof getPrefixForModel>[0]) =>
   toObjectId(getPrefixForModel(model))
