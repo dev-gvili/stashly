@@ -14,131 +14,30 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui'
-import type { Prisma } from '@/prisma/browser'
+import { useSortOrder } from '@/hooks/useSortOrder'
+import type { SortField } from '@/utils/sort-fields'
 import { cn } from '@/utils/styles'
 import type { JSX, SVGProps } from 'react'
-import { useParams, useSearchParams } from 'react-router'
-import { CURSOR_KEY } from '@/utils/filter-data'
 
-type SortDir = Prisma.SortOrder
-
-type SortFieldDef = {
-  key: string
-  column: string | string[] | null
-  label: string
-  icon: string | ((props: SVGProps<SVGSVGElement>) => JSX.Element)
-  hint: (dir: SortDir) => string
+// A "Similarity" field (FuzzySearchIcon, Least/Most similar) was sketched here
+// and left out; the field list itself lives in `@/utils/sort-fields`.
+const FIELD_ICON: Record<
+  SortField['key'],
+  (props: SVGProps<SVGSVGElement>) => JSX.Element
+> = {
+  name: SortByTextIcon,
+  updated: SortByDateTimeIcon,
+  created: SortByDateTimeIcon,
+  size: SortByNumberIcon,
+  type: SortByTextIcon,
+  count: SortByNumberIcon,
 }
-
-const SORT_FIELDS: SortFieldDef[] = [
-  // {
-  //   key: 'similarity',
-  //   column: null,
-  //   label: 'Similarity',
-  //   icon: FuzzySearchIcon,
-  //   hint: (d) => (d === 'asc' ? 'Least similar' : 'Most similar'),
-  // },
-  {
-    key: 'name',
-    column: 'name',
-    label: 'Name',
-    icon: SortByTextIcon,
-    hint: (d) => (d === 'asc' ? 'A → Z' : 'Z → A'),
-  },
-  {
-    key: 'updated',
-    column: 'updatedAt',
-    label: 'Updated',
-    icon: SortByDateTimeIcon,
-    hint: (d) => (d === 'asc' ? 'Old → New' : 'New → Old'),
-  },
-  {
-    key: 'created',
-    column: 'createdAt',
-    label: 'Created',
-    icon: SortByDateTimeIcon,
-    hint: (d) => (d === 'asc' ? 'Old → New' : 'New → Old'),
-  },
-  {
-    key: 'size',
-    column: 'size',
-    label: 'Size',
-    icon: SortByNumberIcon,
-    hint: (d) => (d === 'asc' ? 'Smallest first' : 'Largest first'),
-  },
-  {
-    key: 'type',
-    column: 'type',
-    label: 'Type',
-    icon: SortByTextIcon,
-    hint: (d) => (d === 'asc' ? 'A → Z' : 'Z → A'),
-  },
-  {
-    key: 'count',
-    column: ['folder][childCount', 'members][_count'],
-    label: 'Count',
-    icon: SortByNumberIcon,
-    hint: (d) => (d === 'asc' ? 'Fewest first' : 'Most first'),
-  },
-]
-
-function readSortFromParams(
-  searchParams: URLSearchParams,
-  fields: SortFieldDef[]
-): {
-  field: SortFieldDef
-  dir: SortDir
-} {
-  const re = /^orderBy\[(?:\d+\]\[)?(.+)\]$/
-  for (const [k, v] of searchParams.entries()) {
-    const m = k.match(re)
-    if (m && (v === 'asc' || v === 'desc')) {
-      const col = m[1]
-      const found = fields.find((f) =>
-        Array.isArray(f.column) ? f.column.includes(col) : f.column === col
-      )
-      if (found) return { field: found, dir: v }
-    }
-  }
-  return { field: fields[0], dir: 'asc' }
-}
-
-/** Inside a collection there is nothing to count: it holds files only. */
-const COLLECTION_SORT_FIELDS = SORT_FIELDS.filter((f) => f.key !== 'count')
 
 export function SortPill() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const { collectionId } = useParams()
-  const fields = collectionId ? COLLECTION_SORT_FIELDS : SORT_FIELDS
-  const { field, dir } = readSortFromParams(searchParams, fields)
-  const dirHint = field.hint(dir)
+  const { fields, field, dir, hint: dirHint, set } = useSortOrder()
   const DirIcon = dir === 'asc' ? SortAscIcon : SortDescIcon
 
-  const update = (next: { field?: SortFieldDef; dir?: SortDir }) => {
-    setSearchParams(
-      (p) => {
-        const out = new URLSearchParams(p)
-        for (const k of Array.from(out.keys())) {
-          if (k.startsWith('orderBy[')) out.delete(k)
-        }
-        const nextField = next.field ?? field
-        const nextDir = next.dir ?? dir
-        const cols = Array.isArray(nextField.column)
-          ? nextField.column
-          : nextField.column
-            ? [nextField.column]
-            : []
-        if (cols.length > 1) {
-          cols.forEach((col, i) => out.set(`orderBy[${i}][${col}]`, nextDir))
-        } else if (cols.length === 1) {
-          out.set(`orderBy[${cols[0]}]`, nextDir)
-        }
-        out.delete(CURSOR_KEY)
-        return out
-      },
-      { replace: true }
-    )
-  }
+  const update = (next: { field?: SortField; dir?: 'asc' | 'desc' }) => set(next)
 
   const toggleDir = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
@@ -188,13 +87,14 @@ export function SortPill() {
           <div className="max-h-75 flex flex-col justify-start w-full gap-y-2">
             {fields.map((f) => {
               const on = field.key === f.key
+              const Icon = FIELD_ICON[f.key]
               return (
                 <button
                   key={f.key}
                   onClick={() => update({ field: f })}
                   className="inline-flex items-center gap-2 px-1.5 py-0"
                 >
-                  <f.icon className="size-6!" />
+                  <Icon className="size-6!" />
                   <span className="flex-1 text-left h-full align-text-bottom">
                     {f.label}
                   </span>
