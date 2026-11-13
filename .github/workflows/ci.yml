@@ -181,6 +181,9 @@ jobs:
       # (tests/e2e/constants.ts). On the private repo's 2-vCPU runner, 2 workers
       # made every test 2-3x slower and failed 5 navigation tests (run
       # 43349413318); retried here on the public repo's larger runner.
+      - name: Measure page load (temporary)
+        run: pnpm test:e2e zz-measure --reporter=list
+
       - name: E2E tests
         env:
           E2E_WORKERS: 2
