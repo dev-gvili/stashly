@@ -56,8 +56,9 @@ const runId = () => `${Date.now().toString(36)}-${Math.random().toString(36).sli
  */
 async function openEmptyFolder(page: Page) {
   const uploadPage = new UploadPage(page)
-  // The scheduler needs a page of the app before the API call can carry the session.
-  await uploadPage.goto(TEST_USER_ID)
+  // No page needs to be open first: the session cookie comes from the
+  // context's storage state, and `page.request` sends it (measured: the home
+  // page load this used to make cost 1.3-1.6 s per test).
   const folderId = await createEmptyFolder(page, `e2e-thumb-folder-${runId()}`)
   await uploadPage.gotoFolder(TEST_USER_ID, folderId)
   // Installed before the drop: the point of a progressive pipeline is the

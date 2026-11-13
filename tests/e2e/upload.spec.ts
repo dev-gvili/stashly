@@ -38,8 +38,9 @@ const runId = () => `${Date.now().toString(36)}-${Math.random().toString(36).sli
 /** Opens a fresh empty folder, ready for a drop whose cards render in view. */
 async function openEmptyFolder(page: Page) {
   const uploadPage = new UploadPage(page)
-  // A page of the app first, so the API call below carries the session.
-  await uploadPage.goto(TEST_USER_ID)
+  // No page needs to be open first: the session cookie comes from the
+  // context's storage state, and `page.request` sends it (measured: the home
+  // page load this used to make cost 1.4-1.6 s per test).
   const folderId = await createEmptyFolder(page, `e2e-upload-folder-${runId()}`)
   await uploadPage.gotoFolder(TEST_USER_ID, folderId)
   return { uploadPage, folderId }
