@@ -1,6 +1,5 @@
 import {
   ArrowLeftFillIcon,
-  ChevronRightIcon,
   CollectionFillIcon,
   DropdownIcon,
   FavoriteIcon,
@@ -9,7 +8,7 @@ import {
   FolderFillIcon,
   ImageFillIcon,
   LockFillIcon,
-  SearchIcon,
+  SearchFillIcon,
   SortAscIcon,
   SortDescIcon,
 } from '@/components/icons'
@@ -22,6 +21,8 @@ import {
   Kbd,
   Switch,
 } from '@/components/ui'
+import { Badge } from '@/ui/badge'
+import { ScrollArea } from '@/ui/scroll-area'
 import { SegmentedControl, SegmentedControlItem } from '@/components/ui/segmented-control'
 // The share dialog's parts (caption, row card, badge), so both dialogs read alike.
 import {
@@ -40,6 +41,7 @@ import {
   describeFlags,
   describeSort,
   KINDS,
+  previewCategories,
   kindOf,
   type KindValue,
   refinementParts,
@@ -74,10 +76,6 @@ const KIND_ICON: Record<KindValue, Icon> = {
 
 const COMMON = CATEGORIES.filter((c) => COMMON_CATEGORY_IDS.includes(c.id))
 const MORE = CATEGORIES.filter((c) => !COMMON_CATEGORY_IDS.includes(c.id))
-
-/** The share dialog's footer button: full width, muted, uppercase. */
-const FOOTER_BUTTON =
-  'h-11 flex-1 gap-2 rounded-md bg-muted font-stashly text-xs uppercase tracking-wide hover:bg-accent'
 
 /** A quiet uppercase text button, like the share dialog's "Copy link". */
 const TEXT_BUTTON =
@@ -132,7 +130,7 @@ export function SearchRefine({ showTrigger = true }: { showTrigger?: boolean }) 
           aria-label={parts.length ? `Search and refine: ${parts.join(', ')}` : 'Search your stash'}
           className="h-9 min-w-40 w-full max-w-150 flex items-center gap-2 rounded-md border border-input bg-card pl-2.5 pr-1.5 font-stashly text-sm text-muted-foreground transition-colors duration-200 hover:bg-muted cursor-pointer"
         >
-          <SearchIcon className="size-5 shrink-0" />
+          <SearchFillIcon className="size-5 shrink-0" />
           {parts.length ? (
             // One chip per refinement; the row fades out at its end rather than
             // wrapping when they outgrow the field.
@@ -188,13 +186,6 @@ export function SearchRefine({ showTrigger = true }: { showTrigger?: boolean }) 
                 : view === 'show'
                   ? filters.clear('flags')
                   : sort.reset()
-            }
-            summary={
-              view === 'type'
-                ? describeCategories(filters.state.category)
-                : view === 'show'
-                  ? describeFlags(filters.state.flags)
-                  : describeSort(sort.field, sort.dir)
             }
           >
             {view === 'type' && <TypePage filters={filters} />}
@@ -266,7 +257,9 @@ function Home({ filters, sort, go }: { filters: Filters; sort: Sort; go: (v: Vie
           <Question
             icon={ImageFillIcon}
             label="File type"
-            value={describeCategories(state.category)}
+            value={
+              state.category.length ? <CategoryBadges ids={state.category} /> : describeCategories(state.category)
+            }
             isSet={state.category.length > 0}
             onClick={() => go('type')}
           />
@@ -291,12 +284,12 @@ function Home({ filters, sort, go }: { filters: Filters; sort: Sort; go: (v: Vie
         <div className="border-t border-dashed border-input" />
         <div className="flex items-center gap-3">
           <label className={cn(INVITE_CAPTION, 'flex items-center gap-2 cursor-pointer hover:text-foreground')}>
-            <Switch checked={inHeader} onCheckedChange={setInHeader} className="border border-input" />
+            <Switch shape="square" checked={inHeader} onCheckedChange={setInHeader} className="border border-input" />
             Use in header
           </label>
           <span className="flex-1" />
           <span className={cn(INVITE_CAPTION, 'flex items-center gap-1.5 max-sm:hidden')}>
-            <Kbd className="font-stashly">esc</Kbd>
+            <Kbd className="font-stashly normal-case">Esc</Kbd>
             close
           </span>
           {anyActive && (
@@ -324,7 +317,7 @@ function SearchField({ filters }: { filters: Filters }) {
     // The share dialog's "add an email" field, dashed; no bright border on
     // focus (owner's call: nothing in this dialog lights up white when chosen).
     <div className="flex items-center gap-3 rounded-xl border border-dashed border-input py-2 pl-3.5 pr-2 transition-colors focus-within:bg-muted/40">
-      <SearchIcon className={cn('size-5 shrink-0 text-muted-foreground', text && 'text-foreground')} />
+      <SearchFillIcon className={cn('size-5 shrink-0 text-muted-foreground', text && 'text-foreground')} />
       <input
         type="search"
         autoFocus
@@ -343,6 +336,7 @@ function SearchField({ filters }: { filters: Filters }) {
       >
         By meaning
         <Switch
+          shape="square"
           className="border border-input"
           checked={semantic}
           onCheckedChange={(on) => filters.setSearchMode(on ? 'semantic' : 'fuzzy')}
@@ -361,7 +355,7 @@ function Question({
 }: {
   icon: Icon
   label: string
-  value: string
+  value: ReactNode
   isSet: boolean
   onClick: () => void
 }) {
@@ -384,12 +378,45 @@ function Question({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm">{label}</span>
-        <span className={cn('block truncate text-xs', isSet ? 'text-foreground' : 'text-muted-foreground')}>
+        <span
+          className={cn(
+            'flex min-w-0 items-center gap-1 overflow-hidden truncate text-xs',
+            isSet ? 'text-foreground' : 'text-muted-foreground'
+          )}
+        >
           {value}
         </span>
       </span>
-      <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-foreground" />
+      {/* The app's dropdown icon, turned to point at the page it opens. */}
+      <DropdownIcon className="size-4 shrink-0 -rotate-90 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-foreground" />
     </button>
+  )
+}
+
+/**
+ * The chosen file types as icon + name badges, the first five by name and the
+ * rest folded into "+N" (owner's call on both the badges and the five).
+ */
+function CategoryBadges({ ids }: { ids: string[] }) {
+  const { shown, more } = previewCategories(ids)
+  return (
+    <>
+      {shown.map((id) => {
+        const category = CATEGORIES.find((c) => c.id === id)
+        const CategoryIcon = category?.icon
+        return (
+          <Badge key={id} variant="outline" className="mt-0.5 border-input bg-card font-stashly">
+            {CategoryIcon && <CategoryIcon />}
+            {category?.label ?? id}
+          </Badge>
+        )
+      })}
+      {more > 0 && (
+        <Badge variant="outline" className="mt-0.5 border-input bg-card font-stashly">
+          +{more}
+        </Badge>
+      )}
+    </>
   )
 }
 
@@ -399,7 +426,6 @@ function SubPage({
   onBack,
   canClear,
   onClear,
-  summary,
   children,
 }: {
   view: Exclude<View, 'home'>
@@ -407,7 +433,6 @@ function SubPage({
   onBack: () => void
   canClear: boolean
   onClear: () => void
-  summary: string
   children: ReactNode
 }) {
   return (
@@ -432,11 +457,7 @@ function SubPage({
             <DialogTitle className="min-w-0 truncate font-stashly text-lg leading-8 tracking-wide">
               {TITLES[view]}
             </DialogTitle>
-            {count > 0 && (
-              <span className="h-5 min-w-5 shrink-0 inline-flex items-center justify-center rounded-md bg-primary px-1.5 text-xs text-primary-foreground">
-                {count}
-              </span>
-            )}
+            {count > 0 && <Badge>{count}</Badge>}
             <span className="flex-1" />
             {canClear && (
               <Button variant="ghost" onClick={onClear} className={TEXT_BUTTON}>
@@ -448,17 +469,11 @@ function SubPage({
         </div>
       </div>
 
-      <div className="max-h-[50vh] overflow-y-auto p-1 -m-1">{children}</div>
-
-      <div className="flex flex-col gap-4">
-        <div className="border-t border-dashed border-input" />
-        <div className="flex items-center gap-3">
-          <span className={cn(INVITE_CAPTION, 'min-w-0 flex-1 truncate')}>{summary}</span>
-          <Button variant="ghost" onClick={onBack} className={cn(FOOTER_BUTTON, 'flex-none px-8')}>
-            Done
-          </Button>
-        </div>
-      </div>
+      {/* Choices apply as they are made, so there is no Done: Back (or Esc)
+          is the way out (owner's call). */}
+      <ScrollArea className="-m-1 max-h-[min(calc(100svh-16rem),28rem)]">
+        <div className="p-1">{children}</div>
+      </ScrollArea>
     </div>
   )
 }

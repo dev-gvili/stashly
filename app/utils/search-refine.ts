@@ -24,11 +24,23 @@ export function kindOf(state: Pick<FilterState, 'type'>): KindValue {
   return KINDS.some((k) => k.value === t) ? (t as KindValue) : 'all'
 }
 
-/** "Any", "Image, Pdf", or "Image +2" for three or more. */
+/** How many chosen types are named before the rest fold into "+N" (owner's call: 5). */
+export const CATEGORY_PREVIEW_LIMIT = 5
+
+/** The chosen types to show by name, and how many fold into "+N". */
+export function previewCategories(ids: string[]): { shown: string[]; more: number } {
+  return {
+    shown: ids.slice(0, CATEGORY_PREVIEW_LIMIT),
+    more: Math.max(ids.length - CATEGORY_PREVIEW_LIMIT, 0),
+  }
+}
+
+/** "Any", "Image, Pdf", or the first five and "+N" past that. */
 export function describeCategories(ids: string[]): string {
   if (ids.length === 0) return 'Any'
-  const names = ids.map((id) => label(CATEGORIES, id))
-  return names.length <= 2 ? names.join(', ') : `${names[0]} +${names.length - 1}`
+  const { shown, more } = previewCategories(ids)
+  const names = shown.map((id) => label(CATEGORIES, id)).join(', ')
+  return more ? `${names} +${more}` : names
 }
 
 /** "Everything", "Favorites", "Favorites, Locked". */

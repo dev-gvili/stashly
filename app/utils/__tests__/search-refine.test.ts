@@ -25,10 +25,17 @@ describe('kindOf', () => {
 })
 
 describe('describeCategories', () => {
-  it('reads Any, a pair, or the first plus a count', () => {
+  it('reads Any, or names up to five', () => {
     expect(describeCategories([])).toBe('Any')
-    expect(describeCategories(['image', 'pdf'])).toBe('Image, Pdf')
-    expect(describeCategories(['image', 'pdf', 'video'])).toBe('Image +2')
+    expect(describeCategories(['image', 'pdf', 'video'])).toBe('Image, Pdf, Video')
+    expect(describeCategories(['audio', 'code', 'document', 'image', 'pdf'])).toBe(
+      'Audio, Code, Document, Image, Pdf'
+    )
+  })
+  it('folds the sixth type on into a count', () => {
+    expect(describeCategories(['audio', 'code', 'document', 'image', 'pdf', 'video', 'archive'])).toBe(
+      'Audio, Code, Document, Image, Pdf +2'
+    )
   })
 })
 
