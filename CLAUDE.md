@@ -195,6 +195,7 @@ shadcn/ui (source-owned, in `app/components/ui/`) built on Radix UI, styled with
 - **Load the required design/UI skills before touching a component** ([Subsystem Skills](#subsystem-skills)).
 - **Use `font-stashly`, the stashly type scale (`text-xs` is the smallest) and the design tokens.** Never use raw font classes (`font-sans`, `font-mono`) — a mockup's font classes are translated, not copied.
 - **No circular avatars unless the design shows them. Don't add UI controls (pickers, toggles) that aren't in the spec.**
+- **Never fully rounded corners (mandatory, owner's rule 13 Nov).** No `rounded-full`, and no radius that turns a short element into a pill. With `--radius` at 12px, `rounded-sm` (8px) and `rounded-md` (10px) are already pills on a 20–24px badge, chip, key or count, so those take `rounded-[4px]` (the checkbox's corner). Switches in new UI use `shape="square"`. Squarish everywhere; the only round things are ones the design draws round.
 - **After a UI change, verify in the browser via chrome-devtools in both light and dark mode before claiming done or pushing.**
 
 ## Subsystem Skills

@@ -98,6 +98,8 @@ Available sub-components: `Group`, `Item`, `Preview`, `Download`, `Copy`, `Move`
 
 **No sub-`text-xs` sizes**: never use arbitrary text sizes like `text-[10px]` / `text-[11px]`. `text-xs` is the smallest allowed scale value.
 
+**Never fully rounded corners (mandatory)**: no `rounded-full`, and no radius that turns a short element into a pill. `--radius` is 12px, so `rounded-sm` (8px) and `rounded-md` (10px) are pills on a 20–24px badge, chip, `Kbd` or count; give those `rounded-[4px]`, the checkbox's corner. Switches in new UI use `<Switch shape="square">`. The only round things are ones the design itself draws round.
+
 **AA contrast on fixed-color backgrounds**: when text sits on a fixed gradient or color (e.g. `from-black/90` overlays), use literal `text-white` / `text-white/80` — `text-foreground` and `text-muted-foreground` invert per theme and break contrast in the opposite scheme.
 
 ## Filter system layout
