@@ -6,6 +6,7 @@ import {
   describeFlags,
   describeRefinement,
   kindOf,
+  refinementParts,
 } from '@/utils/search-refine'
 
 const describe_ = (qs: string) => {
@@ -52,5 +53,21 @@ describe('describeRefinement', () => {
   })
   it('lists several types when the URL has more than one', () => {
     expect(describe_('type=file,folder')).toBe('File, Folder')
+  })
+})
+
+describe('refinementParts', () => {
+  it('gives one part per refinement, for one chip each', () => {
+    const p = new URLSearchParams('query=tax&category=pdf&locked=true&orderBy[size]=desc')
+    expect(refinementParts(readState(p), readSort(p))).toEqual([
+      '“tax”',
+      'Pdf',
+      'Locked',
+      'Size, Largest first',
+    ])
+  })
+  it('is empty when nothing is refined', () => {
+    const p = new URLSearchParams('')
+    expect(refinementParts(readState(p), readSort(p))).toEqual([])
   })
 })

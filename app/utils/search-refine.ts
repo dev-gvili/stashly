@@ -52,6 +52,14 @@ export function describeRefinement(
   state: FilterState,
   sort: { field: SortField; dir: SortDir; isDefault: boolean }
 ): string {
+  return refinementParts(state, sort).join(' · ')
+}
+
+/** The same readout as separate parts, one chip each in the header field. */
+export function refinementParts(
+  state: FilterState,
+  sort: { field: SortField; dir: SortDir; isDefault: boolean }
+): string[] {
   const parts: string[] = []
   if (state.query)
     parts.push(`“${state.query}”${state.searchMode === 'semantic' ? ' by meaning' : ''}`)
@@ -61,5 +69,5 @@ export function describeRefinement(
   if (state.category.length) parts.push(describeCategories(state.category))
   if (state.flags.length) parts.push(describeFlags(state.flags))
   if (!sort.isDefault) parts.push(describeSort(sort.field, sort.dir))
-  return parts.join(' · ')
+  return parts
 }
