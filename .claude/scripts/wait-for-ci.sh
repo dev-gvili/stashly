@@ -18,7 +18,10 @@ sha=$(git rev-parse "${1:-HEAD}")
 # The run can take a few seconds to exist after the push; give it up to ~5 min.
 id=""
 for _ in $(seq 1 30); do
-  id=$(gh run list --commit "$sha" --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null)
+  # Only the CI workflow: since the repo went public, GitHub also runs a
+  # "Dependency Graph" workflow per push, and taking any run for the commit
+  # once reported that one's success as CI's and synced main early.
+  id=$(gh run list --commit "$sha" --workflow ci.yml --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null)
   [ -n "$id" ] && break
   sleep 10
 done
