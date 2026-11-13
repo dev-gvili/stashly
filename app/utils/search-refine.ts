@@ -1,6 +1,46 @@
 import { CATEGORIES, TYPES } from '@/utils/filter-data'
 import type { FilterState } from '@/types/filter.types'
 import type { SortDir, SortField } from '@/utils/sort-fields'
+import { formatSearchScope, SEARCH_SCOPE_KEY, type SearchScope } from '@/utils/search-query'
+
+/**
+ * Where a search typed on this page looks: the folder or collection the page
+ * shows, or `null` (the whole stash) everywhere else.
+ */
+export function scopeFromRouteParams(params: {
+  folderId?: string
+  collectionId?: string
+}): SearchScope | null {
+  if (params.folderId) return { kind: 'folder', id: params.folderId }
+  if (params.collectionId) return { kind: 'collection', id: params.collectionId }
+  return null
+}
+
+/**
+ * The search page URL for a query typed somewhere else, carrying what the user
+ * already chose (meaning mode, file types, kind) and the scope.
+ *
+ * @example
+ * searchPageUrl('usr_1', { query: 'tax', searchMode: 'semantic', category: ['pdf'], type: [] },
+ *   { kind: 'folder', id: 'fol_1' })
+ * // '/usr_1/stash/search?query=tax&searchMode=semantic&category=pdf&layout=grid&in=folder%3Afol_1'
+ */
+export function searchPageUrl(
+  me: string,
+  state: Pick<FilterState, 'query' | 'searchMode' | 'category' | 'type'>,
+  scope: SearchScope | null
+): string {
+  const params = new URLSearchParams()
+  params.set('query', state.query)
+  if (state.searchMode === 'semantic') params.set('searchMode', 'semantic')
+  if (state.category.length) params.set('category', state.category.join(','))
+  if (state.type.length) params.set('type', state.type.join(','))
+  // The search page renders nothing without a layout; seed the default here
+  // rather than paying for its own redirect.
+  params.set('layout', 'grid')
+  if (scope) params.set(SEARCH_SCOPE_KEY, formatSearchScope(scope))
+  return `/${me}/stash/search?${params.toString()}`
+}
 
 /** The six file types most people reach for; the rest sit behind "more types". */
 export const COMMON_CATEGORY_IDS = ['image', 'pdf', 'document', 'video', 'audio', 'code']

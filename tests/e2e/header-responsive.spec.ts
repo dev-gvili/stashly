@@ -124,23 +124,27 @@ test.describe('App header fits the window', () => {
       })
   })
 
-  test('a phone gets one "View options" button for Filter, Sort and Layout', async ({ page }) => {
+  test('a phone gets the search field, which opens filter and sort, beside the layout switch', async ({ page }) => {
+    // The classic Filter / Sort / "View options" controls gave way to the one
+    // search-and-refine field (owner's call, 13 Nov), so the layout switch
+    // stays in the header at every width.
     await page.setViewportSize({ width: 375, height: 800 })
     await page.goto(PAGES[1].path)
     const header = page.locator('header')
-    await expect(header.getByRole('button', { name: 'View options' })).toBeVisible()
-    await expect(header.getByRole('button', { name: 'Filter', exact: true })).toBeHidden()
-    await expect(header.getByRole('radio', { name: 'Grid view' })).toBeHidden()
+    await expect(header.getByRole('button', { name: 'View options' })).toHaveCount(0)
+    await expect(header.getByRole('radio', { name: 'Grid view' })).toBeVisible()
 
-    // Retry until hydrated: a click on a server-rendered Radix trigger is lost.
-    const dialog = page.getByRole('dialog')
+    // Retry until hydrated: a click on a server-rendered trigger is lost.
+    // By name: on a phone the sidebar sheet is a dialog too.
+    const dialog = page.getByRole('dialog', { name: 'Search' })
     await expect(async () => {
-      await header.getByRole('button', { name: 'View options' }).click()
+      if (!(await dialog.isVisible())) await header.getByRole('button', { name: /^Search/ }).click()
       await expect(dialog).toBeVisible({ timeout: 1000 })
     }).toPass()
-    await expect(dialog.getByRole('button', { name: 'Filter', exact: true })).toBeVisible()
-    await expect(dialog.getByRole('button', { name: /^Toggle sort direction/ })).toBeVisible()
-    await dialog.getByRole('radio', { name: 'List view' }).click()
+    await expect(dialog.getByRole('button', { name: /^File type/ })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: /^Sort/ })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await header.getByRole('radio', { name: 'List view' }).click()
     await expect(page).toHaveURL(/[?&]layout=list/)
   })
 })

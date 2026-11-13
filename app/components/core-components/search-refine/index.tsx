@@ -44,12 +44,14 @@ import {
   kindOf,
   type KindValue,
   refinementParts,
+  scopeFromRouteParams,
+  searchPageUrl,
 } from '@/utils/search-refine'
 import type { SortDir } from '@/utils/sort-fields'
 import { cn } from '@/utils/styles'
 import type { JSX, ReactNode, SVGProps } from 'react'
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 
 type View = 'home' | 'type' | 'show' | 'sort'
 type Icon = (props: SVGProps<SVGSVGElement>) => JSX.Element
@@ -127,7 +129,7 @@ export function SearchRefine({ showTrigger = true }: { showTrigger?: boolean }) 
           }}
           aria-haspopup="dialog"
           aria-label={parts.length ? `Search and refine: ${parts.join(', ')}` : 'Search your stash'}
-          className="h-9 min-w-40 w-full max-w-150 flex items-center gap-2 rounded-md border border-input bg-card pl-2.5 pr-1.5 font-stashly text-sm text-muted-foreground transition-colors duration-200 hover:bg-muted cursor-pointer"
+          className="h-9 min-w-9 w-full max-w-150 flex items-center gap-2 rounded-md border border-input bg-card pl-2.5 pr-1.5 font-stashly text-sm text-muted-foreground transition-colors duration-200 hover:bg-muted cursor-pointer"
         >
           <SearchFillIcon className="size-5 shrink-0" />
           {parts.length ? (
@@ -146,7 +148,7 @@ export function SearchRefine({ showTrigger = true }: { showTrigger?: boolean }) 
           ) : (
             <span className="flex-1 min-w-0 truncate text-left">Search your stash</span>
           )}
-          <Kbd className="rounded-[4px] font-stashly">⌘K</Kbd>
+          <Kbd className="rounded-[4px] font-stashly @max-md/header:hidden">⌘K</Kbd>
         </button>
       )}
       <DialogContent
@@ -296,10 +298,80 @@ function Home({ filters, sort, go }: { filters: Filters; sort: Sort; go: (v: Vie
   )
 }
 
-/** Local text, URL written behind the debounce: see `FiltersSearch` in filters.tsx for why. */
+/**
+ * The search field's look, shared by the search dialog and the add-to-collection
+ * picker (owner's call: one search component): the share dialog's dashed
+ * field, the filled search icon, and an optional control at its end. No bright
+ * border on focus (owner's call: nothing lights up white when chosen).
+ *
+ * @example
+ * <SearchRefineInput value={query} onChange={setQuery} aria-label="Search your stash" />
+ */
+export function SearchRefineInput({
+  value,
+  onChange,
+  placeholder = 'Search your stash',
+  'aria-label': ariaLabel,
+  autoFocus = true,
+  className,
+  children,
+}: {
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  'aria-label': string
+  autoFocus?: boolean
+  className?: string
+  /** A control at the field's end, e.g. the "By meaning" switch. */
+  children?: ReactNode
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-3 rounded-xl border border-dashed border-input py-2 pl-3.5 pr-2 transition-colors focus-within:bg-muted/40',
+        className
+      )}
+    >
+      <SearchFillIcon className={cn('size-5 shrink-0 text-muted-foreground', value && 'text-foreground')} />
+      <input
+        type="search"
+        autoFocus={autoFocus}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        className="h-8 min-w-0 flex-1 bg-transparent font-stashly text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+      />
+      {children}
+    </div>
+  )
+}
+
+/**
+ * Local text, URL written behind the debounce: see `FiltersSearch` in
+ * filters.tsx for why.
+ *
+ * Where the query goes depends on the page. On the search page it updates in
+ * place. Anywhere else it opens the search page, since only that page runs the
+ * real (keyword + meaning) search: inside a folder or collection with `?in=`
+ * so it searches just there, and from Home, All and the other pages across the
+ * whole stash. The dialog stays open over the navigation (it lives in the
+ * header), so typing carries on.
+ */
 function SearchField({ filters }: { filters: Filters }) {
   const [text, setText] = useState(filters.state.query)
-  const { markCommitted } = useDebouncedCommit(text, filters.setQuery)
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const params = useParams()
+  const onSearchPage = pathname.endsWith('/stash/search')
+  const commit = (q: string) => {
+    if (onSearchPage || !params.me) return filters.setQuery(q)
+    if (!q.trim()) return
+    navigate(
+      searchPageUrl(params.me, { ...filters.state, query: q }, scopeFromRouteParams(params))
+    )
+  }
+  const { markCommitted } = useDebouncedCommit(text, commit)
   useEffect(() => {
     markCommitted(filters.state.query)
     setText(filters.state.query)
@@ -307,19 +379,7 @@ function SearchField({ filters }: { filters: Filters }) {
   const semantic = filters.state.searchMode === 'semantic'
 
   return (
-    // The share dialog's "add an email" field, dashed; no bright border on
-    // focus (owner's call: nothing in this dialog lights up white when chosen).
-    <div className="flex items-center gap-3 rounded-xl border border-dashed border-input py-2 pl-3.5 pr-2 transition-colors focus-within:bg-muted/40">
-      <SearchFillIcon className={cn('size-5 shrink-0 text-muted-foreground', text && 'text-foreground')} />
-      <input
-        type="search"
-        autoFocus
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Search your stash"
-        aria-label="Search"
-        className="h-8 min-w-0 flex-1 bg-transparent font-stashly text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
-      />
+    <SearchRefineInput value={text} onChange={setText} aria-label="Search">
       <label
         className={cn(
           INVITE_CAPTION,
@@ -335,7 +395,7 @@ function SearchField({ filters }: { filters: Filters }) {
           onCheckedChange={(on) => filters.setSearchMode(on ? 'semantic' : 'fuzzy')}
         />
       </label>
-    </div>
+    </SearchRefineInput>
   )
 }
 
@@ -398,14 +458,14 @@ function CategoryBadges({ ids }: { ids: string[] }) {
         const category = CATEGORIES.find((c) => c.id === id)
         const CategoryIcon = category?.icon
         return (
-          <Badge key={id} variant="outline" className="mt-0.5 rounded-[4px] border-input bg-card font-stashly">
+          <Badge key={id} variant="outline" className="mt-0.5 rounded-[4px] border-transparent bg-foreground/10 text-foreground font-stashly">
             {CategoryIcon && <CategoryIcon />}
             {category?.label ?? id}
           </Badge>
         )
       })}
       {more > 0 && (
-        <Badge variant="outline" className="mt-0.5 rounded-[4px] border-input bg-card font-stashly">
+        <Badge variant="outline" className="mt-0.5 rounded-[4px] border-transparent bg-foreground/10 text-foreground font-stashly">
           +{more}
         </Badge>
       )}

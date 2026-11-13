@@ -10,21 +10,39 @@ async function waitForContent(page: import('@playwright/test').Page) {
 }
 
 /** The search page has no input of its own: it searches through the header's
- * `Filters` box, which writes the `query` URL param (`QUERY_KEY`). */
+ * search-and-refine dialog, which writes the `query` URL param (`QUERY_KEY`). */
+// By name: on a phone the sidebar sheet is a dialog too.
+const dialog = (page: import('@playwright/test').Page) =>
+  page.getByRole('dialog', { name: 'Search' })
 const searchBox = (page: import('@playwright/test').Page) =>
-  page.getByPlaceholder('Search…', { exact: true })
+  dialog(page).getByRole('searchbox', { name: 'Search' })
 
 /**
- * Types a query once the box is live. Filling the server-rendered input before
- * hydration loses the text: hydration resets the controlled input to the URL's
- * (empty) query. The box writes `?query=` only once React's handlers are
- * attached, so the URL changing is the signal that the text actually took.
+ * Opens the dialog from the header field. A click on the server-rendered
+ * trigger before hydration does nothing, so retry until the dialog shows.
+ */
+async function openSearch(page: import('@playwright/test').Page) {
+  await expect(async () => {
+    if (!(await dialog(page).isVisible())) {
+      await page.locator('header').getByRole('button', { name: /^Search/ }).click()
+    }
+    await expect(searchBox(page)).toBeVisible({ timeout: 1000 })
+  }).toPass({ timeout: 20000 })
+}
+
+/**
+ * Types a query once the box is live. The box writes `?query=` behind its
+ * debounce only once React's handlers are attached, so the URL changing is
+ * the signal that the text actually took.
  */
 async function typeQuery(page: import('@playwright/test').Page, text: string) {
+  await openSearch(page)
   await expect(async () => {
     await searchBox(page).fill(text)
     await expect(page).toHaveURL(/[?&]query=/, { timeout: 2000 })
   }).toPass({ timeout: 20000 })
+  // Results paint behind the dialog; close it so they can be clicked.
+  await page.keyboard.press('Escape')
 }
 
 /** A result is a `FileCardDetail` card, which opens on click; it has no link role. */
@@ -36,7 +54,8 @@ test.describe('Search', () => {
     await page.goto(searchUrl)
     await waitForContent(page)
 
-    await expect(page.getByText('Search your stash')).toBeVisible({
+    // The header field says the same words, so look in the page body only.
+    await expect(page.locator('main').getByText('Search your stash')).toBeVisible({
       timeout: 10000,
     })
   })
@@ -100,12 +119,13 @@ test.describe('Search', () => {
     await page.goto(searchUrl)
     await waitForContent(page)
 
-    // Same hydration race as typing: a click on the server-rendered radio is
-    // lost, and the test would then pass in fuzzy mode without testing semantic.
-    const semantic = page.getByRole('radio', { name: 'Semantic search' })
+    // A lost click would leave fuzzy mode on and pass without testing
+    // semantic, so retry until the switch reads checked and the URL agrees.
+    await openSearch(page)
+    const semantic = dialog(page).getByRole('switch', { name: 'By meaning' })
     await expect(async () => {
-      await semantic.click()
-      await expect(semantic).toBeChecked({ timeout: 2000 })
+      if ((await semantic.getAttribute('aria-checked')) !== 'true') await semantic.click()
+      await expect(page).toHaveURL(/[?&]searchMode=semantic/, { timeout: 2000 })
     }).toPass({ timeout: 20000 })
     await typeQuery(page, E2E_ITEM_A_NAME)
 

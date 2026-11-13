@@ -7,7 +7,45 @@ import {
   describeRefinement,
   kindOf,
   refinementParts,
+  scopeFromRouteParams,
+  searchPageUrl,
 } from '@/utils/search-refine'
+
+describe('scopeFromRouteParams', () => {
+  it('scopes a folder or collection page and nothing else', () => {
+    expect(scopeFromRouteParams({ folderId: 'fol_1' })).toEqual({ kind: 'folder', id: 'fol_1' })
+    expect(scopeFromRouteParams({ collectionId: 'col_1' })).toEqual({ kind: 'collection', id: 'col_1' })
+    expect(scopeFromRouteParams({})).toBeNull()
+  })
+})
+
+describe('searchPageUrl', () => {
+  const base = { query: 'tax', searchMode: 'fuzzy', category: [], type: [] } as const
+  it('sends a global query to the search page with a layout', () => {
+    expect(searchPageUrl('usr_1', { ...base, category: [], type: [] }, null)).toBe(
+      '/usr_1/stash/search?query=tax&layout=grid'
+    )
+  })
+  it('carries meaning mode, types, kind and the scope', () => {
+    const url = new URL(
+      searchPageUrl(
+        'usr_1',
+        { query: 'tax 2024', searchMode: 'semantic', category: ['pdf', 'image'], type: ['file'] },
+        { kind: 'folder', id: 'fol_1' }
+      ),
+      'http://x'
+    )
+    expect(url.pathname).toBe('/usr_1/stash/search')
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      query: 'tax 2024',
+      searchMode: 'semantic',
+      category: 'pdf,image',
+      type: 'file',
+      layout: 'grid',
+      in: 'folder:fol_1',
+    })
+  })
+})
 
 const describe_ = (qs: string) => {
   const p = new URLSearchParams(qs)
