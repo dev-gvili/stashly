@@ -8,7 +8,7 @@ import {
   type Kind,
 } from '@/components/core-components/collection-item-card'
 import { LoadMoreItems } from '@/components/core-components/buttons'
-import { SearchFillIcon } from '@/components/icons'
+import { SearchRefineInput } from '@/components/core-components/search-refine'
 import { useCollectionMutations } from '@/hooks/useCollectionMutations'
 import type { StashPickerItem } from '@/types/stash.types'
 import { Button } from '@/ui/button'
@@ -20,11 +20,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/ui/dialog'
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from '@/ui/input-group'
 import { Label } from '@/ui/label'
 import { ScrollArea } from '@/ui/scroll-area'
 import { Switch } from '@/ui/switch'
@@ -224,19 +219,17 @@ export function AddToCollectionDialog({
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2.5 border-b border-input px-5 pb-3.5">
-          <InputGroup className="h-8.5 max-w-80 flex-1 basis-55">
-            <InputGroupAddon>
-              <SearchFillIcon className="size-4" />
-            </InputGroupAddon>
-            <InputGroupInput
-              autoFocus
-              className="font-stashly"
-              placeholder="Search your stash"
-              aria-label="Search your stash"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </InputGroup>
+          {/* The search dialog's field (owner's call: one search component).
+              It filters the loaded files by name here; there is no meaning
+              search in the picker. */}
+          <SearchRefineInput
+            value={query}
+            onChange={setQuery}
+            aria-label="Search your stash"
+            // Shorter than in the search dialog, so a smaller corner: 16px on
+            // this 33px field would make it a pill (no fully rounded corners).
+            className="max-w-80 flex-1 basis-55 rounded-md py-0"
+          />
           <KindFilter value={kind} onChange={setKind} options={KIND_OPTIONS} />
           <div className="ml-auto flex items-center gap-2">
             <Switch
