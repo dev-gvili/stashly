@@ -23,6 +23,8 @@ import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
 import { NotificationsPanel } from '@/components/core-components/notifications/notifications-panel'
 import type { Notification } from '@/types/notification.types'
 import { NewFolderDialog } from '@/components/core-components/new-folder-dialog'
+import { SearchRefine } from '@/components/core-components/search-refine'
+import { useSearchRefinePreference } from '@/hooks/useSearchRefinePreference'
 import {
   hasHeaderFilters,
   HeaderFilters,
@@ -53,6 +55,9 @@ export function AppHeader() {
   // At the stash root there's no `:folderId` in the URL; fall back to the
   // user's root folder so New Folder (and uploads) have a real destination.
   const rootId = layoutData?.user?.rootId
+  // Trial switch while both exist: the new search-and-refine field replaces
+  // the classic search / Filter / Sort controls when turned on in its dialog.
+  const [refineInHeader] = useSearchRefinePreference()
   return (
     <header
       className={cn(
@@ -105,7 +110,12 @@ export function AppHeader() {
         // narrower layouts take over.
         <div className="flex min-w-0 flex-1 gap-2 items-center overflow-x-clip">
           <StashlyUpload folderId={folderId} rootId={rootId} />
-          <HeaderFilters />
+          {/* ⌘K opens the dialog either way; its trigger only shows when it
+              stands in for the classic controls. */}
+          {hasHeaderFilters(pathname) && (
+            <SearchRefine showTrigger={refineInHeader} />
+          )}
+          {!refineInHeader && <HeaderFilters />}
         </div>
       )}
       <div className="flex items-center space-x-2 shrink-0">
@@ -115,6 +125,7 @@ export function AppHeader() {
         <LayoutToggle
           className={cn(
             hasHeaderFilters(pathname) &&
+              !refineInHeader &&
               'max-md:hidden @max-header-phone/header:hidden'
           )}
         >
