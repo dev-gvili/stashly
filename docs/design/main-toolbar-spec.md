@@ -11,7 +11,7 @@ This describes every control in the two toolbars of the Stashly web app as they 
 | **Main header** | A sticky 56px (`h-14`) bar across the top of every signed-in page, above the page content. It carries navigation, upload, search, filters, sort, layout and account-level controls. | `app/components/app-header.tsx:44` |
 | **Folder toolbar** (the "path rail") | A second sticky 56px row, shown at the top of three pages only: **All files**, **a folder**, and **Trash** (including a trashed folder). It carries the breadcrumb path, item counts, and the bulk-action buttons that appear when items are selected. | `app/components/core-components/page-toolbar/page-toolbar-path-rail.tsx:188`, mounted via `app/components/views/stash-page-toolbar.tsx:80` from `app/routes/stash/all.tsx:171`, `app/routes/stash/folder.tsx:158`, `app/routes/stash/trash.tsx:245` |
 
-Other pages (collections, favorites, search, storage, workspaces…) have only the main header.
+Other pages (collections, favorites, search, storage, workspaces…) have only the main header. Screenshots of each component and state are in section 6.
 
 There is also an old bottom bar, `app/components/app-toolbar.tsx`, that is not rendered (`app/routes/layout.tsx:97` has it commented out). Ignore it.
 
@@ -239,3 +239,158 @@ Pluralization: "1 item" / "N items" (`stash-page-toolbar.tsx:104`).
 
 ## 5. Not in either toolbar (do not add or expect)
 Paging has no control: page size is the `take` URL param (default 100 items) and the next page loads through a "load more" element at the bottom of the page content, not the toolbar. There is no Favorites or Pin button in either toolbar, no keyboard-shortcut handling for select/clear, and no per-state (empty/loading) design for the counts badges.
+
+## 6. Screenshots of components and states
+
+Captured from the running app (light theme unless noted, 2x resolution) with a seeded test user, so the content (file names, empty notifications, broken image placeholders) is test data. Only the toolbar chrome matters. Files are in `docs/design/screenshots/`.
+
+**Not captured** (would need data changes or a state not present in the test drive): the Trash page's folder toolbar with items selected (Restore / Delete forever), the collapsed breadcrumb with its "…" menu (needs 4+ nested folders), a notification list with real entries, and the confirm dialogs for Trash / Delete forever.
+
+
+### Header and folder toolbar, wide (1440px)
+
+**Light theme, All files page: header (upload group, search, Filter pill with flag toggles, Sort, layout toggle, notifications, color mode) over the folder toolbar (back, select-all, path, counts, search button). The left rail is the app sidebar, not part of either toolbar.**
+
+![Light theme, All files page](screenshots/01-header-and-rail-wide-light.png)
+
+**Same view, dark theme.**
+
+![Same view, dark theme.](screenshots/40-header-and-rail-wide-dark.png)
+
+**Folder page, nothing selected: select-all empty, counts, neutral search button.**
+
+![Folder page, nothing selected](screenshots/20-rail-folder-no-selection.png)
+
+
+### Filters and search
+
+**Active state: URL `category=image,pdf&favorited=true`. (The chips and Favorited highlight are subtle at this width; compare with 01.)**
+
+![Active state](screenshots/02-filters-active-chips-and-flag.png)
+
+**Filter panel open, Categories tab, nothing ticked. Reset (0) is disabled.**
+
+![Filter panel open, Categories tab, nothing ticked. Reset (0) is disabled.](screenshots/05-filter-panel-categories-empty.png)
+
+**Draft state: Document, Image, Pdf ticked but not yet applied.**
+
+![Draft state](screenshots/06-filter-panel-categories-draft-selected.png)
+
+**Status tab (Archived ticked in the draft).**
+
+![Status tab (Archived ticked in the draft).](screenshots/07-filter-panel-status-tab.png)
+
+**Type tab.**
+
+![Type tab.](screenshots/08-filter-panel-type-tab.png)
+
+**URL `query=report&searchMode=semantic&orderBy[size]=desc`.**
+
+![URL `query=report&searchMode=semantic&orderBy[size]=desc`.](screenshots/03-search-semantic-and-sort-size-desc.png)
+
+**Search field with text typed: the clear (×) button appears.**
+
+![Search field with text typed](screenshots/14-search-field-with-text.png)
+
+
+### Sort and layout
+
+**Sort popover open: the six fields, one ticked, and the Direction row.**
+
+![Sort popover open](screenshots/09-sort-popover.png)
+
+**`layout=list`: the second segment of the layout toggle is active.**
+
+![`layout=list`](screenshots/04-layout-list-active.png)
+
+
+### Upload, notifications, color mode
+
+**"New and upload" menu: New, Files, Folders.**
+
+!["New and upload" menu](screenshots/10-upload-menu-open.png)
+
+**New folder dialog.**
+
+![New folder dialog.](screenshots/11-new-folder-dialog.png)
+
+**Notifications panel, empty state, All tab.**
+
+![Notifications panel, empty state, All tab.](screenshots/12-notifications-panel.png)
+
+**Color mode menu: Dark, Light, System.**
+
+![Color mode menu](screenshots/13-color-mode-menu.png)
+
+
+### Folder toolbar — selection states
+
+**One item selected: "1 selected", Move to…, Share, Download, Trash.**
+
+![One item selected](screenshots/21-rail-one-selected.png)
+
+**Two selected: select-all shows the mixed (minus) state; Share is disabled.**
+
+![Two selected](screenshots/22-rail-two-selected-mixed-checkbox.png)
+
+**Hovering the disabled Share button: "Share one item at a time".**
+
+![Hovering the disabled Share button](screenshots/23-rail-share-disabled-tooltip.png)
+
+**Everything selected: select-all in its checked state.**
+
+![Everything selected](screenshots/24-rail-all-selected-checkbox-on.png)
+
+**One selected, dark theme.**
+
+![One selected, dark theme.](screenshots/41-rail-one-selected-dark.png)
+
+
+### Other pages
+
+**Images page header at full width: page name, search, then By date, gap slider (16px shown), thumbnail-size slider, layout toggle (River/Waterfall/Grid; Waterfall active), notifications, color mode.**
+
+![Images page header](screenshots/50-images-page-header-and-view-controls.png)
+
+**Images page with two images selected: selection actions in the header (Add to collection, Share, Download, Trash, Clear).**
+
+![Images page with two images selected](screenshots/51-images-page-header-selection-actions.png)
+
+**The Add to collection dropdown.**
+
+![The Add to collection dropdown.](screenshots/52-add-to-collection-menu-open.png)
+
+**Videos page header: upload group only; River/Waterfall/Grid layout toggle.**
+
+![Videos page header](screenshots/53-videos-page-header.png)
+
+**File page header: Back button and breadcrumb; no upload, filters or layout toggle.**
+
+![File page header](screenshots/54-file-page-header-with-back.png)
+
+
+### Responsive states
+
+**Window 1000px (header under 60rem): chips hidden, Sort label hidden. Active filters: category=image,pdf and favorited.**
+
+![Window 1000px (header under 60rem)](screenshots/30-header-1000px-compact-under-60rem.png)
+
+**Window 820px (header under 48rem): search field replaced by a search button; flags move into the panel.**
+
+![Window 820px (header under 48rem)](screenshots/30-header-820px-narrow-under-48rem.png)
+
+**Window 700px (under 768): sidebar becomes a sheet; Filter, Sort, Layout fold into the single View options button.**
+
+![Window 700px (under 768)](screenshots/30-header-700px-window-under-768-phone.png)
+
+**375px phone: header and folder toolbar.**
+
+![375px phone](screenshots/31-phone-375-header-and-rail.png)
+
+**View options popover: Filter, Sort, Layout rows.**
+
+![View options popover](screenshots/32-phone-view-options-popover.png)
+
+**Filter panel opened from inside View options.**
+
+![Filter panel opened from inside View options.](screenshots/33-phone-view-options-filter-panel-open.png)
