@@ -1,6 +1,6 @@
 import {
   ArrowLeftFillIcon,
-  CheckIcon,
+  DoubleCheckIcon,
   ChevronRightIcon,
   DropdownIcon,
   FavoriteIcon,
@@ -350,13 +350,19 @@ function OptionRow({
       {Icon && <Icon className="size-5 shrink-0" />}
       <span className="flex-1">{label}</span>
       {trailing ?? (
+        // The app's checkbox look (`@/ui/checkbox`, as on item cards): a
+        // square box, primary when checked. Drawn, not the primitive, because
+        // the whole row is the checkbox and a button can't hold a button.
         <span
+          aria-hidden
           className={cn(
-            'size-5 shrink-0 rounded-full border-[1.5px] flex items-center justify-center',
-            on ? 'border-foreground bg-foreground text-background' : 'border-input'
+            'size-5 shrink-0 rounded-[4px] border shadow-xs flex items-center justify-center transition-colors duration-200',
+            on
+              ? 'bg-primary border-primary text-primary-foreground'
+              : 'bg-muted border-input dark:bg-input'
           )}
         >
-          {on && <CheckIcon className="size-3.5" />}
+          {on && <DoubleCheckIcon className="size-5" />}
         </span>
       )}
     </button>
