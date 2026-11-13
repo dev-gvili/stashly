@@ -176,11 +176,18 @@ jobs:
       - name: Runner size
         run: echo "nproc=$(nproc)"; free -m | head -2
 
-      # playwright.config.ts starts the dev server and runs E2E_WORKERS workers
-      # (default 1), each signed in as its own seeded user
-      # (tests/e2e/constants.ts). On the private repo's 2-vCPU runner, 2 workers
-      # made every test 2-3x slower and failed 5 navigation tests (run
-      # 43349413318); retried here on the public repo's larger runner.
+      # CI tests the production build, not the dev server: a page load is 64
+      # requests and 0.6 MB instead of 287 and 26.5 MB, and the e2e step took
+      # 1.8 min (twice) against 2.7 and 3.4 on the dev server, build included
+      # in the comparison at 18-23 s. Local runs keep the dev server.
+      - name: Build the production server
+        run: pnpm build
+
+      # playwright.config.ts starts the server (`pnpm start` when CI is set) and
+      # runs E2E_WORKERS workers (default 1), each signed in as its own seeded
+      # user (tests/e2e/constants.ts). On the private repo's 2-vCPU runner, 2
+      # workers made every test 2-3x slower and failed 5 navigation tests (run
+      # 43349413318); the public repo's runner has 4 vCPUs.
       - name: E2E tests
         env:
           E2E_WORKERS: 2

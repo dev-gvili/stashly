@@ -26,7 +26,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm dev',
+    // CI serves the production build (the workflow builds it first); local runs
+    // use the dev server, or reuse the one already on port 80.
+    command: process.env.CI ? 'pnpm start' : 'pnpm dev',
     url: 'http://localhost',
     reuseExistingServer: true,
     timeout: 120_000,
