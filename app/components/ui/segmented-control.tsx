@@ -22,6 +22,8 @@ const segmentedControlItemVariants = cva(
         sm: 'h-6 px-2 text-xs',
         icon: 'h-6.5 w-7.5',
         'icon-sm': 'size-6',
+        /** Icon above its label, 64×56: the color-mode switch and the New panel's actions. */
+        tile: 'h-14 w-16 flex-col gap-1 px-1 text-xs [&>svg]:size-4.5',
       },
     },
     defaultVariants: { size: 'default' },
