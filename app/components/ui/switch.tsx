@@ -18,7 +18,9 @@ function Switch({
       data-slot="switch"
       className={cn(
         'peer data-[state=checked]:bg-muted! data-[state=unchecked]:bg-input focus-visible:border-ring focus-visible:ring-ring/50  inline-flex h-5 w-8 shrink-0 items-center rounded-full shadow-xs transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
-        shape === 'square' && 'rounded-sm',
+        // Smaller as well as squarer (owner's call): 28 × 16 with a 10px thumb.
+        // rounded-sm is 8px here (--radius is 12px), a pill on a 16px track.
+        shape === 'square' && 'h-4 w-7 rounded-[4px]',
         className
       )}
       {...props}
@@ -27,7 +29,7 @@ function Switch({
         data-slot="switch-thumb"
         className={cn(
           'data-[state=checked]:bg-muted-foreground! pointer-events-none block size-3 rounded-full ring-0 transition-transform data-[state=checked]:translate-x-[calc(100%+4px)] data-[state=unchecked]:translate-x-0.5 bg-current! data-[state=unchecked]:bg-background!',
-          shape === 'square' && 'rounded-[3px]'
+          shape === 'square' && 'size-2.5 rounded-[3px]'
         )}
       />
     </SwitchPrimitive.Root>

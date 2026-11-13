@@ -32,7 +32,6 @@ import {
 } from '@/components/views/invitations/invite-form-fields'
 import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
 import { useFilters } from '@/hooks/useFilters'
-import { useSearchRefinePreference } from '@/hooks/useSearchRefinePreference'
 import { useSortOrder } from '@/hooks/useSortOrder'
 import { CATEGORIES, CURSOR_KEY, FLAG_KEYS, MULTI_KEYS, QUERY_KEY, SEARCH_MODE_KEY } from '@/utils/filter-data'
 import {
@@ -138,7 +137,7 @@ export function SearchRefine({ showTrigger = true }: { showTrigger?: boolean }) 
               {parts.map((p) => (
                 <span
                   key={p}
-                  className="h-6 shrink-0 inline-flex items-center rounded-md bg-muted px-2 text-xs text-foreground whitespace-nowrap"
+                  className="h-6 shrink-0 inline-flex items-center rounded-[4px] bg-muted px-2 text-xs text-foreground whitespace-nowrap"
                 >
                   {p}
                 </span>
@@ -147,7 +146,7 @@ export function SearchRefine({ showTrigger = true }: { showTrigger?: boolean }) 
           ) : (
             <span className="flex-1 min-w-0 truncate text-left">Search your stash</span>
           )}
-          <Kbd className="font-stashly">⌘K</Kbd>
+          <Kbd className="rounded-[4px] font-stashly">⌘K</Kbd>
         </button>
       )}
       <DialogContent
@@ -203,7 +202,6 @@ type Sort = ReturnType<typeof useSortOrder>
 
 function Home({ filters, sort, go }: { filters: Filters; sort: Sort; go: (v: View) => void }) {
   const [, setSearchParams] = useSearchParams()
-  const [inHeader, setInHeader] = useSearchRefinePreference()
   const { state } = filters
   const anyActive =
     state.query !== '' ||
@@ -283,13 +281,8 @@ function Home({ filters, sort, go }: { filters: Filters; sort: Sort; go: (v: Vie
       <div className="flex flex-col gap-4">
         <div className="border-t border-dashed border-input" />
         <div className="flex items-center gap-3">
-          <label className={cn(INVITE_CAPTION, 'flex items-center gap-2 cursor-pointer hover:text-foreground')}>
-            <Switch shape="square" checked={inHeader} onCheckedChange={setInHeader} className="border border-input" />
-            Use in header
-          </label>
-          <span className="flex-1" />
-          <span className={cn(INVITE_CAPTION, 'flex items-center gap-1.5 max-sm:hidden')}>
-            <Kbd className="font-stashly normal-case">Esc</Kbd>
+          <span className={cn(INVITE_CAPTION, 'flex flex-1 items-center gap-1.5 max-sm:hidden')}>
+            <Kbd className="rounded-[4px] font-stashly normal-case">Esc</Kbd>
             close
           </span>
           {anyActive && (
@@ -405,14 +398,14 @@ function CategoryBadges({ ids }: { ids: string[] }) {
         const category = CATEGORIES.find((c) => c.id === id)
         const CategoryIcon = category?.icon
         return (
-          <Badge key={id} variant="outline" className="mt-0.5 border-input bg-card font-stashly">
+          <Badge key={id} variant="outline" className="mt-0.5 rounded-[4px] border-input bg-card font-stashly">
             {CategoryIcon && <CategoryIcon />}
             {category?.label ?? id}
           </Badge>
         )
       })}
       {more > 0 && (
-        <Badge variant="outline" className="mt-0.5 border-input bg-card font-stashly">
+        <Badge variant="outline" className="mt-0.5 rounded-[4px] border-input bg-card font-stashly">
           +{more}
         </Badge>
       )}
@@ -457,7 +450,7 @@ function SubPage({
             <DialogTitle className="min-w-0 truncate font-stashly text-lg leading-8 tracking-wide">
               {TITLES[view]}
             </DialogTitle>
-            {count > 0 && <Badge>{count}</Badge>}
+            {count > 0 && <Badge className="rounded-[4px]">{count}</Badge>}
             <span className="flex-1" />
             {canClear && (
               <Button variant="ghost" onClick={onClear} className={TEXT_BUTTON}>
