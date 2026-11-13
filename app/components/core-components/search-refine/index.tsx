@@ -207,7 +207,9 @@ function Home({ filters, sort, go }: { filters: Filters; sort: Sort; go: (v: Vie
       </div>
       <div className="flex items-center gap-3 border-t border-input bg-sidebar px-4.5 py-2.5 text-xs text-muted-foreground">
         <label className="flex items-center gap-2 cursor-pointer">
-          <Switch checked={inHeader} onCheckedChange={setInHeader} />
+          {/* The switch's checked track is bg-muted, which all but vanishes on
+              the bg-sidebar footer; the outline keeps the track visible. */}
+          <Switch checked={inHeader} onCheckedChange={setInHeader} className="border border-input" />
           Use in header
         </label>
         <span className="flex-1" />
@@ -250,6 +252,7 @@ function SearchField({ filters }: { filters: Filters }) {
       <label className={cn('flex items-center gap-2 text-xs cursor-pointer', semantic && 'text-foreground')}>
         By meaning
         <Switch
+          className="border border-input"
           checked={semantic}
           onCheckedChange={(on) => filters.setSearchMode(on ? 'semantic' : 'fuzzy')}
         />
