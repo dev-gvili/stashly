@@ -79,7 +79,7 @@ export function ActivityEntry({
         <p className="text-sm  leading-snug">{prose}</p>
         <Badge
           className={cn(
-            'rounded font-medium font-stashly w-52 flex-1',
+            'w-52 flex-1',
             passive
               ? 'bg-muted text-muted-foreground'
               : 'bg-primary/10 text-primary'

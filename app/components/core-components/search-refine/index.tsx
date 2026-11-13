@@ -458,14 +458,14 @@ function CategoryBadges({ ids }: { ids: string[] }) {
         const category = CATEGORIES.find((c) => c.id === id)
         const CategoryIcon = category?.icon
         return (
-          <Badge key={id} variant="outline" className="mt-0.5 rounded-[4px] border-transparent bg-foreground/10 text-foreground font-stashly">
+          <Badge key={id} className="mt-0.5">
             {CategoryIcon && <CategoryIcon />}
             {category?.label ?? id}
           </Badge>
         )
       })}
       {more > 0 && (
-        <Badge variant="outline" className="mt-0.5 rounded-[4px] border-transparent bg-foreground/10 text-foreground font-stashly">
+        <Badge className="mt-0.5">
           +{more}
         </Badge>
       )}
@@ -510,7 +510,7 @@ function SubPage({
             <DialogTitle className="min-w-0 truncate font-stashly text-lg leading-8 tracking-wide">
               {TITLES[view]}
             </DialogTitle>
-            {count > 0 && <Badge className="rounded-[4px]">{count}</Badge>}
+            {count > 0 && <Badge>{count}</Badge>}
             <span className="flex-1" />
             {canClear && (
               <Button variant="ghost" onClick={onClear} className={TEXT_BUTTON}>

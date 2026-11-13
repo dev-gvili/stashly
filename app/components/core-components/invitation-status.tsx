@@ -37,7 +37,7 @@ export function InvitationStatusPill({
     <Badge
       variant="default"
       className={cn(
-        'rounded font-stashly capitalize',
+        'capitalize',
         pillColors[status] ?? pillColors.pending,
         className
       )}

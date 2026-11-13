@@ -214,7 +214,7 @@ export function ReindexStatus({ className, onComplete }: ReindexStatusProps) {
               <Badge
                 key={reason}
                 variant="outline"
-                className="gap-1 tabular-nums"
+                className="tabular-nums"
               >
                 {count} {REASON_LABEL[reason]}
               </Badge>

@@ -114,8 +114,7 @@ export function EmbeddingBackfillStatus({
           {/* The single most useful diagnostic: without WebGPU the runner
               throws on its first inference no matter how often it retries. */}
           <Badge
-            variant="outline"
-            className={cn('gap-1', !webgpu && 'text-destructive')}
+            variant={webgpu ? 'default' : 'destructive'}
           >
             WebGPU {webgpu ? 'available' : 'unavailable'}
           </Badge>

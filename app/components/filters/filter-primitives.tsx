@@ -10,12 +10,7 @@ export function Chip({
   ...props
 }: React.ComponentPropsWithoutRef<typeof Badge> & { onRemove?: () => void, }) {
   return (
-    <Badge
-      variant={variant}
-      className={cn(
-        `inline-flex items-center gap-0.5 h-6! p-1.5 rounded border font-stashly`,
-      )}
-    >
+    <Badge variant={variant}>
       {children}
       {onRemove && (
         <Button

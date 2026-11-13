@@ -22,14 +22,8 @@ export interface CollectionStatProps {
  */
 export function CollectionStat({ icon: Icon, children, className }: CollectionStatProps) {
   return (
-    <Badge
-      variant="secondary"
-      className={cn(
-        'h-6 gap-1.5 rounded-sm px-2.25 font-stashly text-xs font-normal text-secondary-foreground',
-        className
-      )}
-    >
-      <Icon aria-hidden className="size-3.5! text-muted-foreground" />
+    <Badge className={className}>
+      <Icon aria-hidden />
       {children}
     </Badge>
   )

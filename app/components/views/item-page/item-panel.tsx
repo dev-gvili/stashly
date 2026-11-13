@@ -431,8 +431,6 @@ function Collections({ item }: { item: StashItemPanel }) {
       {item.collections.map((collection) => (
         <Badge
           key={collection.id}
-          variant="secondary"
-          className="rounded"
           asChild
         >
           <Link
@@ -442,7 +440,7 @@ function Collections({ item }: { item: StashItemPanel }) {
             })}${location.search}`}
             className="inline-flex items-center gap-2"
           >
-            <CollectionFillIcon className="size-3" />
+            <CollectionFillIcon />
             {collection.name}
           </Link>
         </Badge>
@@ -466,10 +464,8 @@ function Tags({ value }: { value: string | string[] | null | undefined }) {
       {tags.map((tag) => (
         <Badge
           key={tag}
-          variant="accent"
-          className="rounded font-stashly text-xs! text-accent-foreground! "
         >
-          <TagFillIcon className="size-3 rotate-90" />
+          <TagFillIcon className="rotate-90" />
           {tag}
         </Badge>
       ))}

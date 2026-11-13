@@ -802,10 +802,7 @@ export function ShareDialog({
                   <span className={cn(INVITE_CAPTION, 'flex-1')}>
                     Sent invitations
                   </span>
-                  <Badge
-                    variant="secondary"
-                    className="h-5 rounded-md px-2 font-stashly text-xs"
-                  >
+                  <Badge>
                     {pendingRecipients.length}
                   </Badge>
                   <ChevronRightIcon

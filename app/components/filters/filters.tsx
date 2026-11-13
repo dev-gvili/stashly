@@ -385,10 +385,7 @@ function FiltersTabs({ defaultTab = 'category', children }: FiltersTabsProps) {
               >
                 {t.label}
                 {count > 0 && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-primary text-primary-foreground rounded text-xs font-medium"
-                  >
+                  <Badge>
                     {count}
                   </Badge>
                 )}

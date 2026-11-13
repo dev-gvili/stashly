@@ -92,7 +92,7 @@ export function CollectionsView({ collections }: CollectionsViewProps) {
             <h1 className="font-stashly text-3xl font-semibold tracking-tighter">
               Collections
             </h1>
-            <Badge variant="secondary" className="font-stashly text-xs">
+            <Badge>
               {collections.length}
             </Badge>
           </div>

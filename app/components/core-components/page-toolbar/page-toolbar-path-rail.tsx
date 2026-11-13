@@ -256,19 +256,19 @@ export function PageToolbarPathRail({
                     the size is also on every card. */}
                 <Badge
                   variant="outline"
-                  className="tabular-nums rounded border-none bg-card! px-2 text-sm font-medium ring-2 ring-accent max-sm:hidden"
+                  className="tabular-nums max-sm:hidden"
                 >
                   {stats.size}
                 </Badge>
                 <Badge
                   variant="outline"
-                  className="tabular-nums rounded border-none bg-card! px-2 text-sm font-medium ring-2 ring-accent"
+                  className="tabular-nums"
                 >
                   {stats.files} files
                 </Badge>
                 <Badge
                   variant="outline"
-                  className="tabular-nums rounded border-none bg-card! px-2 text-sm font-medium ring-2 ring-accent"
+                  className="tabular-nums"
                 >
                   {stats.folders} folders
                 </Badge>

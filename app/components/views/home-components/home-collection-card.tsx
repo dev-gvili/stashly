@@ -29,9 +29,9 @@ export function HomeCollectionCard({ collection, className }: { collection: Home
             <Tile key={i} tile={t} large={i === 0} />
           ))}
         </div>
-        <Badge className="pointer-events-none absolute bottom-2.5 left-3 h-5.5 gap-1 rounded-md border-0 bg-background/85 px-2 font-stashly text-2xs text-foreground backdrop-blur-sm">
+        <Badge className="pointer-events-none absolute bottom-2.5 left-3">
           <CollectionFillIcon />
-          <span className="font-stashly">Collection</span>
+          Collection
         </Badge>
       </div>
       <div className="flex min-w-0 flex-col gap-1.5 px-3.5 pt-3 pb-3.5">

@@ -566,10 +566,7 @@ function KeywordsTagsGrid({
           </span>
           <div className="flex flex-wrap gap-1.5">
             {keywords.map((keyword, i) => (
-              <Badge
-                key={i}
-                variant="outline"
-              >
+              <Badge key={i}>
                 {keyword}
               </Badge>
             ))}
@@ -583,11 +580,7 @@ function KeywordsTagsGrid({
           </span>
           <div className="flex flex-wrap gap-1.5">
             {generatedTags.sort((a, b) => a.localeCompare(b)).map((tag, i) => (
-              <Badge
-                key={i}
-                variant="secondary"
-                className="font-stashly rounded! text-muted-foreground"
-              >
+              <Badge key={i}>
                 {tag}
               </Badge>
             ))}

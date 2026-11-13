@@ -4,21 +4,27 @@ import { cva, type VariantProps } from 'class-variance-authority'
 
 import { cn } from '@/utils/styles'
 
+/**
+ * The app badge. Every badge has one shape, taken from the collection
+ * header's stats (the owner's reference badge, 13 Nov): 24px tall, an 8px
+ * corner, mono `text-xs` at normal weight, a 14px muted icon, neutral fill.
+ *
+ * Variants change colour only, never the shape. `default`, `secondary`,
+ * `outline` and `accent` all draw the neutral badge (they are kept so callers
+ * need no change); `destructive` is the one signal colour. A status that
+ * needs its own colour (invitation status) passes it in `className`.
+ */
 const badgeVariants = cva(
-  'inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden',
+  'inline-flex h-6 w-fit shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-sm border border-transparent px-2.25 font-stashly text-xs font-normal whitespace-nowrap transition-[color,box-shadow] [&>svg]:pointer-events-none [&>svg]:size-3.5 [&>svg]:shrink-0 [&>svg]:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
   {
     variants: {
       variant: {
-        default:
-          'border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90',
-        secondary:
-          'border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90',
+        default: 'bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/80',
+        secondary: 'bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/80',
+        outline: 'bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/80',
+        accent: 'bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/80',
         destructive:
-          'border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
-        outline:
-          'text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
-        accent:
-          'bg-accent text-accent-foreground border-accent [a&]:hover:bg-primary/90',  
+          'bg-destructive/15 text-destructive [&>svg]:text-destructive [a&]:hover:bg-destructive/25',
       },
     },
     defaultVariants: {
