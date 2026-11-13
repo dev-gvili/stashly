@@ -1,14 +1,16 @@
 import { defineConfig, devices } from '@playwright/test'
+import { E2E_WORKERS } from './tests/e2e/constants'
 
 export default defineConfig({
   testDir: './tests/e2e',
   globalSetup: './tests/e2e/global-setup.ts',
   globalTeardown: './tests/e2e/global-teardown.ts',
   fullyParallel: false,
-  // Every spec signs in as the same seeded user, so they share one quota, one
-  // pin/favorite list and one dev server. With parallel workers, an upload in
-  // one file lands inside another file's before/after quota reading.
-  workers: 1,
+  // Each worker signs in as its own seeded user (tests/e2e/constants.ts,
+  // global-setup.ts), so workers share only the database and the dev server and
+  // an upload in one file can't land inside another file's quota reading.
+  // E2E_WORKERS (default 1) is how many; CI sets it.
+  workers: E2E_WORKERS,
   forbidOnly: !!process.env.CI,
   retries: 0,
   reporter: 'html',

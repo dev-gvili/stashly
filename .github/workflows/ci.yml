@@ -172,8 +172,11 @@ jobs:
       - name: Allow port 80
         run: sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80
 
-      # playwright.config.ts starts `pnpm dev` and runs one worker.
+      # playwright.config.ts starts the dev server and runs E2E_WORKERS workers,
+      # each signed in as its own seeded user (tests/e2e/constants.ts).
       - name: E2E tests
+        env:
+          E2E_WORKERS: 2
         run: pnpm test:e2e --reporter=list,html
 
       # Always, pass or fail: the HTML report and the traces of failed tests.

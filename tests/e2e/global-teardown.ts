@@ -2,7 +2,10 @@ import '@dotenvx/dotenvx/config'
 import { DeleteBucketCommand, HeadBucketCommand } from '@aws-sdk/client-s3'
 import { PrismaClient } from '../../app/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
-import { OTHER_USER_EMAIL, TEST_USER_EMAIL } from './constants'
+import { OTHER_USER_EMAIL, e2eIds } from './constants'
+
+/** Every worker's user, up to the 9 `e2eIds` can name: a leftover from a run with more workers goes too. */
+const WORKER_EMAILS = Array.from({ length: 9 }, (_, i) => e2eIds(i).TEST_USER_EMAIL)
 
 /** The `User.bucket` column's default, shared by every user without one. */
 const PLACEHOLDER_BUCKET = 'default-bucket'
@@ -19,11 +22,15 @@ export default async function globalTeardown() {
     // bucket behind (tech-debt item 20). Delete it first, while the row still
     // names it. Only the E2E user's: the other seeded user keeps the schema's
     // placeholder, a name a real bucket could carry.
-    const user = await prisma.user.findUnique({
-      where: { email: TEST_USER_EMAIL },
+    const users = await prisma.user.findMany({
+      where: { email: { in: WORKER_EMAILS } },
       select: { bucket: true },
     })
-    if (user && user.bucket !== PLACEHOLDER_BUCKET) await deleteE2eBucket(user.bucket)
+    await Promise.all(
+      users
+        .filter((user) => user.bucket !== PLACEHOLDER_BUCKET)
+        .map((user) => deleteE2eBucket(user.bucket))
+    )
 
     // Empty the users' collections in a statement of their own first. Left to
     // the user cascade, deleting a collection and its members in one statement
@@ -32,12 +39,12 @@ export default async function globalTeardown() {
     // gallery spec's "Add to collection" leaves a member behind.
     await prisma.collectionMember.deleteMany({
       where: {
-        collection: { owner: { email: { in: [TEST_USER_EMAIL, OTHER_USER_EMAIL] } } },
+        collection: { owner: { email: { in: [...WORKER_EMAILS, OTHER_USER_EMAIL] } } },
       },
     })
 
     await prisma.user.deleteMany({
-      where: { email: { in: [TEST_USER_EMAIL, OTHER_USER_EMAIL] } },
+      where: { email: { in: [...WORKER_EMAILS, OTHER_USER_EMAIL] } },
     })
   } finally {
     await prisma.$disconnect()
