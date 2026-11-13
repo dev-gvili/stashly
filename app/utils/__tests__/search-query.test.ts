@@ -7,12 +7,30 @@ import {
   SEARCH_VECTOR_DIM,
   buildSnippet,
   clampTake,
+  formatSearchScope,
   isSearchableQuery,
   normalizeQuery,
+  parseSearchScope,
   reciprocalRankFusion,
   shouldEmbedQuery,
   toVectorLiteral,
 } from '../search-query'
+
+describe('parseSearchScope', () => {
+  it('reads a folder or collection scope', () => {
+    expect(parseSearchScope('folder:fol_abc')).toEqual({ kind: 'folder', id: 'fol_abc' })
+    expect(parseSearchScope('collection:col_1')).toEqual({ kind: 'collection', id: 'col_1' })
+  })
+  it('treats anything else as no scope', () => {
+    for (const raw of [null, undefined, '', 'folder', 'folder:', ':fol_1', 'file:x', 'Folder:x']) {
+      expect(parseSearchScope(raw)).toBeNull()
+    }
+  })
+  it('round-trips through formatSearchScope', () => {
+    const scope = { kind: 'folder' as const, id: 'fol_9' }
+    expect(parseSearchScope(formatSearchScope(scope))).toEqual(scope)
+  })
+})
 
 describe('normalizeQuery', () => {
   it('collapses runs of whitespace and trims', () => {

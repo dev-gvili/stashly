@@ -5,7 +5,7 @@ import {
   type WithSignedThumbnails,
 } from '@/services/thumbnail-actions'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
-import type { Prisma } from '@/prisma/client'
+import { Prisma } from '@/prisma/client'
 import type { ItemForSearchEmbedding } from '@/utils/search-text'
 import { stripNulChars } from '@/utils/search-text'
 import { getObjectHead } from './s3'
@@ -36,6 +36,7 @@ import {
   normalizeQuery,
   reciprocalRankFusion,
   toVectorLiteral,
+  type SearchScope,
 } from '@/utils/search-query'
 
 /**
@@ -1210,10 +1211,41 @@ export interface SearchRanking {
  * Backed by `item_name_trgm_idx` (already migrated) and the `Search.content`
  * GIN index added alongside this function.
  */
+/**
+ * The ranking predicate that limits a search to a scope, spliced into both
+ * rankers after their owner filter (`i` is the ranked `Item`).
+ *
+ * A folder means its whole subtree. Items carry no stored path, so the subtree
+ * is a recursive walk down `parentId`, the same shape `item-actions` uses for
+ * descendants; it runs inside the ranking statement, so no id list crosses the
+ * wire. A collection means its members.
+ *
+ * It narrows *inside* the ranking, not after it: filtering the top
+ * {@link RANK_DEPTH} of the whole drive would drop in-scope matches that ranked
+ * below it.
+ */
+function scopeFilter(scope: SearchScope | null | undefined): Prisma.Sql {
+  if (!scope) return Prisma.empty
+  if (scope.kind === 'collection') {
+    return Prisma.sql`AND i."id" IN (
+      SELECT m."itemId" FROM "CollectionMember" m WHERE m."collectionId" = ${scope.id}
+    )`
+  }
+  return Prisma.sql`AND i."id" IN (
+    WITH RECURSIVE "ScopeTree" AS (
+      SELECT d."id" FROM "Item" d WHERE d."parentId" = ${scope.id}
+      UNION ALL
+      SELECT d."id" FROM "Item" d JOIN "ScopeTree" t ON d."parentId" = t."id"
+    )
+    SELECT "id" FROM "ScopeTree"
+  )`
+}
+
 async function rankByKeyword(
   ownerId: string,
   query: string,
   depth: number,
+  scope?: SearchScope | null,
 ): Promise<string[]> {
   const like = `%${query}%`
   // Individual words, so a multi-word query can match documents that contain
@@ -1248,6 +1280,7 @@ async function rankByKeyword(
     LEFT JOIN "Search" s ON s."itemId" = i."id"
     WHERE i."ownerId" = ${ownerId}
       AND i."status" = 'normal'
+      ${scopeFilter(scope)}
       AND (
         i."name" ILIKE ${like}
         OR s."content" ILIKE ${like}
@@ -1284,6 +1317,7 @@ async function rankByVector(
   ownerId: string,
   vector: number[],
   depth: number,
+  scope?: SearchScope | null,
 ): Promise<{ ids: string[]; passages: Map<string, SearchPassageRow> }> {
   const literal = toVectorLiteral(vector)
 
@@ -1315,6 +1349,10 @@ async function rankByVector(
       WHERE c."vector" IS NOT NULL
         AND i."ownerId" = ${ownerId}
         AND i."status" = 'normal'
+        -- A scope makes this an exact scan of the scope's chunks rather than
+        -- an HNSW walk of the drive: the scope is small next to the drive, and
+        -- an index walk filtered afterwards could return fewer than the limit.
+        ${scopeFilter(scope)}
       ORDER BY c."vector" <=> ${literal}::vector
       LIMIT ${CHUNK_SCAN_DEPTH}
     )
@@ -1501,8 +1539,10 @@ export async function rankSearchResults(params: {
   query: string
   vector?: number[] | null
   depth?: number
+  /** Limit to one folder's subtree or one collection. Access is the caller's to check. */
+  scope?: SearchScope | null
 }): Promise<SearchRanking> {
-  const { ownerId, vector, depth = RANK_DEPTH } = params
+  const { ownerId, vector, depth = RANK_DEPTH, scope } = params
   const query = normalizeQuery(params.query)
 
   if (!query) {
@@ -1517,9 +1557,9 @@ export async function rankSearchResults(params: {
   }
 
   const [keywordIds, dense] = await Promise.all([
-    rankByKeyword(ownerId, query, depth),
+    rankByKeyword(ownerId, query, depth, scope),
     vector?.length
-      ? rankByVector(ownerId, vector, depth)
+      ? rankByVector(ownerId, vector, depth, scope)
       : Promise.resolve({
           ids: [] as string[],
           passages: new Map<string, SearchPassageRow>(),
@@ -1648,6 +1688,22 @@ export type SearchResultRow = WithSignedThumbnails<
   }>
 >
 
+/**
+ * The name to show for a search scope ("Searching in Taxes 2024"), after the
+ * same access check the search itself makes. `null` when the item is gone.
+ */
+export async function getSearchScopeLabel(
+  userId: string,
+  scope: SearchScope,
+): Promise<{ kind: SearchScope['kind']; id: string; name: string } | null> {
+  await assertItemAccess(userId, scope.id, { role: 'read' })
+  const item = await prisma.item.findUnique({
+    where: { id: scope.id },
+    select: { name: true },
+  })
+  return item ? { ...scope, name: item.name } : null
+}
+
 export interface SearchItemsParams {
   ownerId: string
   query: string
@@ -1658,6 +1714,8 @@ export interface SearchItemsParams {
   take?: number
   /** Offset into the fused ranking. Search ranks by score, so it can't use a row cursor. */
   skip?: number
+  /** Search only this folder's subtree or this collection; the owner needs read access to it. */
+  scope?: SearchScope | null
 }
 
 export interface SearchItemsResult {
@@ -1695,13 +1753,18 @@ export interface SearchItemsResult {
 export async function searchItemsHybrid(
   params: SearchItemsParams,
 ): Promise<SearchItemsResult> {
-  const { ownerId, vector, where, take = 25, skip = 0 } = params
+  const { ownerId, vector, where, take = 25, skip = 0, scope } = params
   const startedAt = performance.now()
+
+  // The scope item is named by the URL, so access to it is checked here, in
+  // the action, before anything about its contents is ranked.
+  if (scope) await assertItemAccess(ownerId, scope.id, { role: 'read' })
 
   const ranking = await rankSearchResults({
     ownerId,
     query: params.query,
     vector,
+    scope,
   })
 
   // The query's shape, never its text: what people search for is theirs.

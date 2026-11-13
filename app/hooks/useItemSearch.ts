@@ -23,6 +23,7 @@ import type { SearchMode } from '@/types/filter.types'
 import type { SearchResponse } from '@/types/stash.types'
 import {
   SEARCH_PAGE_SIZE,
+  SEARCH_SCOPE_KEY,
   isSearchableQuery,
   normalizeQuery,
   shouldEmbedQuery,
@@ -105,6 +106,8 @@ export interface UseItemSearchParams {
   take?: number
   /** Server-rendered first page, so a shared `?q=` URL paints without a fetch. */
   initialData?: SearchResponse
+  /** Raw `?in=` value (`folder:<id>` / `collection:<id>`), sent to both passes. */
+  scope?: string | null
 }
 
 export interface UseItemSearch extends SearchResponse {
@@ -193,6 +196,7 @@ export function useItemSearch({
   filters,
   take = SEARCH_PAGE_SIZE,
   initialData,
+  scope,
 }: UseItemSearchParams): UseItemSearch {
   const [response, setResponse] = useState<SearchResponse>(initialData ?? EMPTY)
   const [status, setStatus] = useState<SearchStatus>(
@@ -211,7 +215,8 @@ export function useItemSearch({
 
   // The filter object is rebuilt every render by callers; comparing its
   // serialized form keeps the effect from re-firing on identical filters.
-  const filterKey = JSON.stringify(filters ?? {})
+  // The scope rides in the same key, so changing it re-runs the search.
+  const filterKey = JSON.stringify({ filters: filters ?? {}, scope: scope ?? null })
 
   const buildParams = useCallback(
     (q: string, skip: number) => {
@@ -220,6 +225,7 @@ export function useItemSearch({
       params.set('take', String(take))
       params.set('skip', String(skip))
       appendFilters(params, filters)
+      if (scope) params.set(SEARCH_SCOPE_KEY, scope)
       return params
     },
     [take, filterKey],
@@ -255,6 +261,7 @@ export function useItemSearch({
       fd.append('skip', String(skip))
       fd.append('vector', JSON.stringify(vector))
       appendFilters(fd, filters)
+      if (scope) fd.append(SEARCH_SCOPE_KEY, scope)
 
       const res = await fetch('/api/search/items', {
         method: 'POST',

@@ -2,6 +2,7 @@ import { sessionContext } from '@/.server/middleware/context'
 import { redirect } from 'react-router'
 import {
   getSearchIndexStats,
+  getSearchScopeLabel,
   searchItemsHybrid,
 } from '@/services/search-actions'
 import { SearchView } from '@/components/views/search-view'
@@ -9,7 +10,7 @@ import {
   buildItemFilters,
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
-import { isSearchableQuery, clampTake } from '@/utils/search-query'
+import { isSearchableQuery, parseSearchScope, SEARCH_SCOPE_KEY } from '@/utils/search-query'
 import type { SearchResponse } from '@/types/stash.types'
 import type { Route } from './+types/search'
 import { parseSearchParams } from '@/utils/parsers'
@@ -62,11 +63,17 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const filters = buildItemFilters(parsedParams)
 
   const query = parsedParams.query ?? ''
+  // `?in=folder:<id>` / `?in=collection:<id>`: search one place, not the drive.
+  // The label and the search both check access to it, in the actions.
+  const scope = parseSearchScope(searchParams.get(SEARCH_SCOPE_KEY))
 
-  const indexStats = await getSearchIndexStats(session.user.id)
+  const [indexStats, scopeLabel] = await Promise.all([
+    getSearchIndexStats(session.user.id),
+    scope ? getSearchScopeLabel(session.user.id, scope) : null,
+  ])
 
   if (!isSearchableQuery(query)) {
-    return { me: session.user.id, results: EMPTY, indexStats }
+    return { me: session.user.id, results: EMPTY, indexStats, scope: scopeLabel }
   }
 
   const results = await searchItemsHybrid({
@@ -74,19 +81,21 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     query,
     ownerId: session.user.id,
     where: filters,
+    scope: scopeLabel ? scope : null,
   })
 
-  return { me: session.user.id, results, indexStats }
+  return { me: session.user.id, results, indexStats, scope: scopeLabel }
 }
 
 export default function Search({ loaderData }: Route.ComponentProps) {
-  const { me, results, indexStats } = loaderData
+  const { me, results, indexStats, scope } = loaderData
 
   return (
     <SearchView
       me={me}
       initialResults={results as unknown as SearchResponse}
       indexStats={indexStats}
+      scope={scope}
     />
   )
 }

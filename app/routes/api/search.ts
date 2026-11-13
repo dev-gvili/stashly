@@ -25,7 +25,7 @@ import {
 import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
 import { buildItemFilters } from '@/utils/filters/item.filters'
 import { parseFormData, parseSearchParams } from '@/utils/parsers'
-import { isSearchableQuery, normalizeQuery } from '@/utils/search-query'
+import { isSearchableQuery, normalizeQuery, parseSearchScope } from '@/utils/search-query'
 import { data } from 'react-router'
 import type { Route } from './+types/search'
 
@@ -95,15 +95,22 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
     })
   )
 
-  const results = await searchItemsHybrid({
-    ownerId: session.user.id,
-    query: input.query,
-    where: filtersFor(input),
-    take: input.take,
-    skip: input.skip,
-  })
-
-  return data(searchApiRouteOutput.parse(results))
+  try {
+    const results = await searchItemsHybrid({
+      ownerId: session.user.id,
+      query: input.query,
+      where: filtersFor(input),
+      scope: parseSearchScope(input.in),
+      take: input.take,
+      skip: input.skip,
+    })
+    return data(searchApiRouteOutput.parse(results))
+  } catch (e) {
+    // A scope the user can't read is a typed 403/404 from the access check;
+    // keep its status rather than letting it escape as a 500.
+    const err = toErrorInfo(e)
+    return data({ error: err.message ?? 'Search failed' }, { status: err.status ?? 500 })
+  }
 }
 
 export async function action({ request, params, context }: Route.ActionArgs) {
@@ -135,6 +142,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
       query: normalizeQuery(input.query),
       vector: vector as number[],
       where: filtersFor(input),
+      scope: parseSearchScope(input.in),
       take: input.take,
       skip: input.skip,
     })

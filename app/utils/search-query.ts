@@ -252,6 +252,37 @@ export function buildSnippet(
   }
 }
 
+/** URL param that limits a search to one folder's subtree or one collection. */
+export const SEARCH_SCOPE_KEY = 'in'
+
+/** Where a search looks: a folder (its whole subtree) or a collection. */
+export type SearchScope = { kind: 'folder' | 'collection'; id: string }
+
+/**
+ * Read `?in=folder:<id>` / `?in=collection:<id>`. Anything else is no scope,
+ * so a malformed value widens the search to the whole stash rather than
+ * erroring: the param is a convenience, not a security boundary (the server
+ * checks access to the scope item on its own).
+ *
+ * @example
+ * parseSearchScope('folder:fol_abc') // { kind: 'folder', id: 'fol_abc' }
+ * parseSearchScope('nope')           // null
+ */
+export function parseSearchScope(raw: string | null | undefined): SearchScope | null {
+  if (!raw) return null
+  const at = raw.indexOf(':')
+  if (at < 1) return null
+  const kind = raw.slice(0, at)
+  const id = raw.slice(at + 1).trim()
+  if ((kind !== 'folder' && kind !== 'collection') || !id) return null
+  return { kind, id }
+}
+
+/** The `?in=` value for a scope; inverse of {@link parseSearchScope}. */
+export function formatSearchScope(scope: SearchScope): string {
+  return `${scope.kind}:${scope.id}`
+}
+
 /**
  * Clamp a caller-supplied page size into `[1, SEARCH_MAX_TAKE]`.
  *

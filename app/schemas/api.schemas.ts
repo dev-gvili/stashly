@@ -1060,6 +1060,8 @@ const searchCommonFields = {
   type: toZodArraySchema(z.enum(ItemType)).optional(),
   extension: toZodArraySchema(z.string().nonempty()).optional(),
   tags: toUserText(toZodArraySchema(z.string().trim().min(1)).optional()),
+  /** `folder:<id>` or `collection:<id>`; read with `parseSearchScope`. */
+  in: z.string().max(200).optional(),
 }
 
 /**

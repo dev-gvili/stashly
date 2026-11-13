@@ -11,7 +11,12 @@ import { useSearchParams } from 'react-router'
 import { Button } from '@/ui/button'
 import { ListLayout } from '@/components/views/list-view'
 import { SelectionProvider } from '@/components/stash/selection'
-import { LoaderIcon } from '@/components/icons'
+import {
+  CollectionFillIcon,
+  FolderFillIcon,
+  LoaderIcon,
+  RemoveIcon,
+} from '@/components/icons'
 import {
   EvidenceCard,
   EvidenceCardSkeleton,
@@ -32,7 +37,7 @@ import { useFilters } from '@/hooks/useFilters'
 import { useIndexStats } from '@/hooks/useIndexStats'
 import { useItemSearch } from '@/hooks/useItemSearch'
 import { isBackfillActive } from '@/utils/embedding-backfill'
-import { isSearchableQuery } from '@/utils/search-query'
+import { formatSearchScope, isSearchableQuery, SEARCH_SCOPE_KEY } from '@/utils/search-query'
 import type { SearchDegradedReason } from '@/utils/search-query'
 import { cn } from '@/utils/styles'
 import type { SearchResponse, StashItem } from '@/types/stash.types'
@@ -55,9 +60,11 @@ export interface SearchViewProps {
   initialResults: SearchResponse
   /** Index coverage at page load, refreshed live once a search runs. */
   indexStats: { indexedChunks: number; pendingChunks: number }
+  /** The folder or collection the search is limited to (`?in=`), if any. */
+  scope?: { kind: 'folder' | 'collection'; id: string; name: string } | null
 }
 
-export function SearchView({ me, initialResults, indexStats }: SearchViewProps) {
+export function SearchView({ me, initialResults, indexStats, scope }: SearchViewProps) {
   const filters = useFilters()
   const [searchParams, setSearchParams] = useSearchParams()
   const { query, searchMode } = filters.state
@@ -99,7 +106,19 @@ export function SearchView({ me, initialResults, indexStats }: SearchViewProps) 
     },
     // Only seed from the loader when the URL's query is what produced it.
     initialData: isSearchableQuery(query) ? initialResults : undefined,
+    scope: scope ? formatSearchScope(scope) : null,
   })
+
+  // Widen to the whole stash: drop `?in=` and keep everything else.
+  const clearScope = () =>
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete(SEARCH_SCOPE_KEY)
+        return next
+      },
+      { replace: true, preventScrollReset: true },
+    )
 
   const searchable = isSearchableQuery(query)
 
@@ -153,6 +172,27 @@ export function SearchView({ me, initialResults, indexStats }: SearchViewProps) 
 
   return (
     <div className="flex h-full flex-col gap-3 py-3">
+      {scope && (
+        <div className="flex items-center gap-2 font-stashly text-sm text-muted-foreground">
+          <span>Searching in</span>
+          <span className="inline-flex h-7 min-w-0 items-center gap-1.5 rounded-[4px] bg-muted pl-2 pr-1 text-foreground">
+            {scope.kind === 'folder' ? (
+              <FolderFillIcon className="size-4 shrink-0" />
+            ) : (
+              <CollectionFillIcon className="size-4 shrink-0" />
+            )}
+            <span className="truncate">{scope.name}</span>
+            <button
+              type="button"
+              onClick={clearScope}
+              aria-label="Search your whole stash instead"
+              className="flex size-5 shrink-0 items-center justify-center rounded-[4px] text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground cursor-pointer"
+            >
+              <RemoveIcon className="size-3.5" />
+            </button>
+          </span>
+        </div>
+      )}
       {searchable &&
         (isLoading ? (
           <div className="flex items-center gap-2 font-stashly text-sm text-muted-foreground">
