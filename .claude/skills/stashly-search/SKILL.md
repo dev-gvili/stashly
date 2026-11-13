@@ -22,6 +22,12 @@ Pass 2 is **best-effort**: no WebGPU, a model that won't load, a failed request,
 
 The query vector is user input (it round-trips through the browser), so `POST` must reject a malformed one as a 400 — `toVectorLiteral` enforces length and finiteness before it reaches Postgres.
 
+## Where a search runs, and its scope
+
+The header's search-and-refine dialog (`core-components/search-refine`) is the only search box. On the search page it writes `?query=` in place; on any other stash page it navigates to the search page (`searchPageUrl` in `app/utils/search-refine.ts`), adding `?in=folder:<id>` or `?in=collection:<id>` from a folder or collection page (`scopeFromRouteParams`). Home, All and the rest search the whole stash.
+
+`?in=` is read by `parseSearchScope` (`app/utils/search-query.ts`), sent by `useItemSearch` on both passes, and applied by `scopeFilter` **inside both rankers' SQL**, not after them, because filtering the top `RANK_DEPTH` of the drive would drop in-scope matches ranked below it. A folder means its whole subtree, walked down `parentId` by a recursive CTE inside the ranking statement (no stored path column exists); a collection means its `CollectionMember` rows. With a scope, the dense ranker is an exact scan of the scope's chunks instead of an HNSW walk. `searchItemsHybrid` and `getSearchScopeLabel` check read access to the scope item first, and both route handlers map that error to its status through `toErrorInfo`. The search page shows a "Searching in …" chip whose × drops `?in=`.
+
 ## Data model
 
 Two tables, both in `prisma/models/search.prisma`:
