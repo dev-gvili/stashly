@@ -1,5 +1,6 @@
 import { useMemo, type KeyboardEvent, type MouseEvent } from 'react'
 import { useRouteLoaderData, useSearchParams } from 'react-router'
+import { CollectionStat } from '@/components/collections/collection-stats'
 import { FilePreview } from '@/components/core-components/collection-cover'
 import type { ItemCategory } from '@/prisma/client'
 import type { StashItem } from '@/types/stash.types'
@@ -11,7 +12,6 @@ import {
   ImageFillIcon,
   VideoFillIcon,
 } from '@/components/icons'
-import { Badge } from '@/ui/badge'
 import { Checkbox } from '@/ui/checkbox'
 import { ToggleGroup, ToggleGroupItem } from '@/ui/toggle-group'
 import { formatSize } from '@/utils/formaters'
@@ -269,11 +269,17 @@ export function CollectionItemCard({
     </div>
   )
 
-  const shell = cn(
-    'relative flex flex-col overflow-hidden border border-border/50 bg-card text-left transition-[border-color,box-shadow] hover:border-border',
-    picker ? 'rounded-xl' : 'rounded-2xl',
-    selected && 'border-primary ring-3 ring-primary/15 hover:border-primary'
-  )
+  // The picker tile follows the search dialog's options: no border and no
+  // selection ring, a muted surface that turns accent when picked.
+  const shell = picker
+    ? cn(
+        'relative flex flex-col overflow-hidden rounded-xl bg-muted text-left transition-colors',
+        selected ? 'bg-accent' : !existing && 'hover:bg-accent/60'
+      )
+    : cn(
+        'relative flex flex-col overflow-hidden rounded-2xl border border-border/50 bg-card text-left transition-[border-color,box-shadow] hover:border-border',
+        selected && 'border-primary ring-3 ring-primary/15 hover:border-primary'
+      )
 
   if (picker) {
     const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -300,23 +306,19 @@ export function CollectionItemCard({
         {preview}
         {footer}
         {existing ? (
-          <Badge
-            variant="secondary"
-            className="font-stashly absolute top-2 left-2 gap-1 bg-popover/75 text-xs font-medium backdrop-blur-md"
-          >
-            <CheckIcon className="size-3" />
+          // The collection header's badge, the app's reference badge.
+          <CollectionStat icon={CheckIcon} className="absolute top-2 left-2">
             In collection
-          </Badge>
+          </CollectionStat>
         ) : (
-          <span
+          // The app checkbox, drawn only: the whole tile is the control, so
+          // this one takes no focus or clicks of its own.
+          <Checkbox
+            checked={selected}
+            tabIndex={-1}
             aria-hidden
-            className={cn(
-              'absolute top-2 right-2 flex size-5.5 items-center justify-center rounded-full border border-white/75 bg-black/30 text-primary-foreground backdrop-blur-xs',
-              selected && 'border-primary bg-primary'
-            )}
-          >
-            {selected && <CheckIcon className="size-3.5" />}
-          </span>
+            className="pointer-events-none absolute top-2 right-2 size-5 bg-card dark:bg-card"
+          />
         )}
       </div>
     )

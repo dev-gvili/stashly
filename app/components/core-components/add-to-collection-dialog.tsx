@@ -1,17 +1,27 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useFetcher } from 'react-router'
 import {
+  kindFilterOptions,
+  KindFilterSegments,
+  type CollectionKind,
+  type KindFilterValue,
+} from '@/components/collections/kind-filter-segments'
+import {
   CollectionItemCard,
-  KindFilter,
   kindOf,
-  KIND_LABELS,
-  type Kind,
 } from '@/components/core-components/collection-item-card'
 import { LoadMoreItems } from '@/components/core-components/buttons'
 import { SearchRefineInput } from '@/components/core-components/search-refine'
+import { DropdownIcon } from '@/components/icons'
+import { INVITE_CAPTION } from '@/components/views/invitations/invite-form-fields'
 import { useCollectionMutations } from '@/hooks/useCollectionMutations'
 import type { StashPickerItem } from '@/types/stash.types'
 import { Button } from '@/ui/button'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/ui/collapsible'
 import {
   Dialog,
   DialogContent,
@@ -23,6 +33,7 @@ import {
 import { Label } from '@/ui/label'
 import { ScrollArea } from '@/ui/scroll-area'
 import { Switch } from '@/ui/switch'
+import { cn } from '@/utils/styles'
 
 export type AddToCollectionItem = StashPickerItem
 
@@ -74,19 +85,16 @@ function groupByDay(rows: Row[]): [string, Row[]][] {
 // Dialog
 // ---------------------------------------------------------------------------
 
-const KIND_OPTIONS = [
-  { value: 'all', label: 'All' },
-  ...(Object.keys(KIND_LABELS) as Kind[]).map((k) => ({
-    value: k,
-    label: KIND_LABELS[k],
-  })),
-]
+/** The search dialog's text buttons (Clear, Select all): mono caps, muted. */
+const TEXT_BUTTON =
+  'h-7 px-1.5 font-stashly text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground'
 
 /**
  * Picker for adding files to a collection. A centred dialog (not full-screen)
- * with search, a kind filter, "Hide added", files grouped by upload day, and a
- * footer whose CTA reads "Add N files". Files already in the collection show
- * dimmed with an "In collection" badge and cannot be re-added.
+ * with search, a kind filter, "Hide added", files grouped by upload day (each
+ * group collapsible, with its own "Select all"), and a footer whose CTA reads
+ * "Add N files". Files already in the collection show dimmed with an
+ * "In collection" badge and cannot be re-added.
  *
  * @example
  * <AddToCollectionDialog collectionId={id} collectionName={name} items={available} existingItemIds={ids}>
@@ -116,8 +124,9 @@ export function AddToCollectionDialog({
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [query, setQuery] = useState('')
-  const [kind, setKind] = useState('all')
+  const [kind, setKind] = useState<KindFilterValue>('all')
   const [hideAdded, setHideAdded] = useState(false)
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
   const existingSet = useMemo(() => new Set(existingItemIds), [existingItemIds])
 
   // Seeded from the host route's loaderData; later pages are appended below.
@@ -163,6 +172,16 @@ export function AddToCollectionDialog({
     [items]
   )
 
+  // Every kind is listed, even an empty one, so the row never jumps.
+  const kindOptions = useMemo(() => {
+    const counts: Partial<Record<CollectionKind, number>> = {}
+    for (const r of rows) {
+      const k = kindOf(r.category)
+      if (k !== 'other') counts[k] = (counts[k] ?? 0) + 1
+    }
+    return kindFilterOptions(counts, { hideEmpty: false })
+  }, [rows])
+
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase()
     return groupByDay(
@@ -184,6 +203,28 @@ export function AddToCollectionDialog({
     })
   }, [])
 
+  /** Selects every file in a day group, or clears them when all are already picked. */
+  const toggleGroup = useCallback((ids: string[]) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      const all = ids.every((id) => next.has(id))
+      for (const id of ids) {
+        if (all) next.delete(id)
+        else next.add(id)
+      }
+      return next
+    })
+  }, [])
+
+  const setGroupOpen = useCallback((label: string, isOpen: boolean) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (isOpen) next.delete(label)
+      else next.add(label)
+      return next
+    })
+  }, [])
+
   function handleOpenChange(next: boolean) {
     setOpen(next)
     if (next) {
@@ -191,6 +232,7 @@ export function AddToCollectionDialog({
       setQuery('')
       setKind('all')
       setHideAdded(false)
+      setCollapsed(new Set())
     }
   }
 
@@ -207,9 +249,15 @@ export function AddToCollectionDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="h-dialog-lg flex max-w-5xl flex-col gap-0 overflow-hidden rounded-2xl bg-background p-0 sm:max-w-5xl max-sm:h-dvh max-sm:max-w-full max-sm:rounded-none">
-        <DialogHeader className="px-5 pt-5 pb-4 pr-16">
-          <DialogTitle className="font-stashly text-lg font-semibold tracking-tight">
+      {/* The search dialog's shell (owner's call: every dialog looks alike):
+          bg-card, a 24px corner, the stashly shadow, dashed rules, and no
+          close button (Cancel and Esc close it). */}
+      <DialogContent
+        showCloseButton={false}
+        className="h-dialog-lg flex max-w-5xl flex-col gap-0 overflow-hidden rounded-3xl border-input bg-card p-0 font-stashly shadow-stashly outline-none sm:max-w-5xl max-sm:h-dvh max-sm:max-w-full max-sm:rounded-none"
+      >
+        <DialogHeader className="gap-1.5 px-6 pt-6 pb-4 sm:px-8 sm:pt-8">
+          <DialogTitle className="font-stashly text-lg leading-8 font-normal tracking-wide">
             Add to “{collectionName}”
           </DialogTitle>
           <DialogDescription className="font-stashly text-sm">
@@ -218,7 +266,7 @@ export function AddToCollectionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-wrap items-center gap-2.5 border-b border-input px-5 pb-3.5">
+        <div className="flex flex-wrap items-center gap-2.5 px-6 pb-4 sm:px-8">
           {/* The search dialog's field (owner's call: one search component).
               It filters the loaded files by name here; there is no meaning
               search in the picker. */}
@@ -230,10 +278,17 @@ export function AddToCollectionDialog({
             // this 33px field would make it a pill (no fully rounded corners).
             className="max-w-80 flex-1 basis-55 rounded-md py-0"
           />
-          <KindFilter value={kind} onChange={setKind} options={KIND_OPTIONS} />
+          <KindFilterSegments
+            value={kind}
+            onValueChange={setKind}
+            options={kindOptions}
+            showIcons
+          />
           <div className="ml-auto flex items-center gap-2">
             <Switch
               id="picker-hide-added"
+              shape="square"
+              className="border border-input"
               checked={hideAdded}
               onCheckedChange={setHideAdded}
             />
@@ -243,59 +298,94 @@ export function AddToCollectionDialog({
           </div>
         </div>
 
+        <div className="mx-6 border-t border-dashed border-input sm:mx-8" />
+
         {/* Radix ScrollArea needs a definite height to scroll: the wrapper takes the flex space, the area fills it. */}
         <div className="min-h-0 flex-1">
-        <ScrollArea className="h-full">
-          <div className="flex flex-col gap-5.5 px-5 pt-4 pb-6">
-            {groups.length === 0 ? (
-              <p className="font-stashly py-12 text-center text-sm text-muted-foreground">
-                No files match. Try another search or type.
-              </p>
-            ) : (
-              groups.map(([label, group]) => (
-                <section key={label} className="flex flex-col gap-2.5">
-                  <div className="flex items-baseline gap-2.5">
-                    <h3 className="font-stashly text-sm font-semibold whitespace-nowrap">
-                      {label}
-                    </h3>
-                    <span className="font-stashly text-xs text-muted-foreground">
-                      {group.length}
-                    </span>
-                  </div>
-                  <div className="grid-cards-sm grid gap-2.5">
-                    {group.map((item) => (
-                      <CollectionItemCard
-                        key={item.id}
-                        mode="picker"
-                        item={item}
-                        selected={selected.has(item.id)}
-                        existing={existingSet.has(item.id)}
-                        onToggle={toggle}
-                      />
-                    ))}
-                  </div>
-                </section>
-              ))
-            )}
-            <LoadMoreItems
-              hasMore={hasMore}
-              isLoading={isLoading}
-              loadMore={loadMore}
-            />
-          </div>
-        </ScrollArea>
+          <ScrollArea className="h-full">
+            <div className="flex flex-col gap-5 px-6 pt-4 pb-6 sm:px-8">
+              {groups.length === 0 ? (
+                <p className="font-stashly py-12 text-center text-sm text-muted-foreground">
+                  No files match. Try another search or type.
+                </p>
+              ) : (
+                groups.map(([label, group]) => {
+                  const isOpen = !collapsed.has(label)
+                  const selectable = group
+                    .filter((r) => !existingSet.has(r.id))
+                    .map((r) => r.id)
+                  const allPicked =
+                    selectable.length > 0 && selectable.every((id) => selected.has(id))
+                  return (
+                    <Collapsible
+                      key={label}
+                      open={isOpen}
+                      onOpenChange={(o) => setGroupOpen(label, o)}
+                      className="flex flex-col gap-2.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <CollapsibleTrigger className="flex min-w-0 items-center gap-2 rounded-[4px] py-1 outline-none hover:cursor-pointer focus-visible:ring-3 focus-visible:ring-ring/50">
+                          <DropdownIcon
+                            aria-hidden
+                            className={cn(
+                              'size-3 shrink-0 text-muted-foreground transition-transform',
+                              !isOpen && '-rotate-90'
+                            )}
+                          />
+                          <h3 className={cn(INVITE_CAPTION, 'whitespace-nowrap text-foreground')}>
+                            {label}
+                          </h3>
+                          <span className="font-stashly text-xs text-muted-foreground tabular-nums">
+                            {group.length}
+                          </span>
+                        </CollapsibleTrigger>
+                        <span className="flex-1" />
+                        {selectable.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            className={TEXT_BUTTON}
+                            onClick={() => toggleGroup(selectable)}
+                          >
+                            {allPicked ? 'Deselect all' : 'Select all'}
+                          </Button>
+                        )}
+                      </div>
+                      <CollapsibleContent className="grid-cards-sm grid gap-2.5">
+                        {group.map((item) => (
+                          <CollectionItemCard
+                            key={item.id}
+                            mode="picker"
+                            item={item}
+                            selected={selected.has(item.id)}
+                            existing={existingSet.has(item.id)}
+                            onToggle={toggle}
+                          />
+                        ))}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )
+                })
+              )}
+              <LoadMoreItems
+                hasMore={hasMore}
+                isLoading={isLoading}
+                loadMore={loadMore}
+              />
+            </div>
+          </ScrollArea>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-input bg-sidebar px-5 py-3">
-          <span className="font-stashly text-sm whitespace-nowrap">
+        <div className="mx-6 border-t border-dashed border-input sm:mx-8" />
+        <div className="flex flex-wrap items-center gap-3 px-6 py-4 sm:px-8 sm:pb-6">
+          <span className={cn(INVITE_CAPTION, 'whitespace-nowrap')}>
             {count === 0
               ? 'Select files to add'
               : `${count} ${count === 1 ? 'file' : 'files'} selected`}
           </span>
           {count > 0 && (
             <Button
-              variant="link"
-              className="font-stashly h-auto p-0 text-muted-foreground hover:text-foreground hover:no-underline"
+              variant="ghost"
+              className={TEXT_BUTTON}
               onClick={() => setSelected(new Set())}
             >
               Clear
