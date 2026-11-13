@@ -1,5 +1,6 @@
 import { test as base } from '@playwright/test'
 import path from 'path'
+import { cacheModelDownloads } from './model-cache'
 
 /**
  * Use this `test` in authenticated specs (navigation.spec.ts).
@@ -19,6 +20,7 @@ export const test = base.extend({
         index === 0 ? 'session.json' : `session-${index}.json`
       ),
     })
+    await cacheModelDownloads(ctx)
     const page = await ctx.newPage()
     await use(page)
     await ctx.close()

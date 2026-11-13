@@ -172,6 +172,13 @@ jobs:
       - name: Allow port 80
         run: sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80
 
+      # The search-indexing downloads the tests would repeat in every browser
+      # context (tests/e2e/model-cache.ts). Bump `v1` to drop a stale model.
+      - uses: actions/cache@v6
+        with:
+          path: tests/e2e/.cache/net
+          key: e2e-net-v1-all-mpnet-base-v2
+
       # playwright.config.ts starts the dev server and runs E2E_WORKERS workers
       # (default 1), each signed in as its own seeded user
       # (tests/e2e/constants.ts). One here: on this 2-vCPU runner, 2 workers made

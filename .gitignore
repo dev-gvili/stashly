@@ -85,3 +85,4 @@ storybook-static
 
 # Session handoff (local only, never committed)
 handoff-stashly.md
+tests/e2e/.cache/
