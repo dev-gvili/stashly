@@ -172,12 +172,18 @@ jobs:
       - name: Allow port 80
         run: sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80
 
+      # Logged so a result can be read against the runner it ran on.
+      - name: Runner size
+        run: echo "nproc=$(nproc)"; free -m | head -2
+
       # playwright.config.ts starts the dev server and runs E2E_WORKERS workers
       # (default 1), each signed in as its own seeded user
-      # (tests/e2e/constants.ts). One here: on this 2-vCPU runner, 2 workers made
-      # every test 2-3x slower (hydration past 5 s) and failed 5 navigation tests
-      # (run 43349413318, 7.3 min against 5.4-8.6 min on one worker).
+      # (tests/e2e/constants.ts). On the private repo's 2-vCPU runner, 2 workers
+      # made every test 2-3x slower and failed 5 navigation tests (run
+      # 43349413318); retried here on the public repo's larger runner.
       - name: E2E tests
+        env:
+          E2E_WORKERS: 2
         run: pnpm test:e2e --reporter=list,html
 
       # Always, pass or fail: the HTML report and the traces of failed tests.
