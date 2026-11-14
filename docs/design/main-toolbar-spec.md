@@ -13,7 +13,7 @@ This describes every control in the two toolbars of the Stashly web app as they 
 
 Other pages (collections, favorites, search, storage, workspaces…) have only the main header. Screenshots of each component and state are in section 6.
 
-There is also an old bottom bar, `app/components/app-toolbar.tsx`, that is not rendered (`app/routes/layout.tsx:97` has it commented out). Ignore it.
+There used to be an old bottom bar, `app/components/app-toolbar.tsx`, that was never rendered; it was deleted on 15 Nov 2026.
 
 ### Visual conventions used by every control today
 Controls are pill/box shapes on a card background (`bg-card`) with a 2px accent ring (`ring-2 ring-accent`), 36px tall, icon size 20px, font "stashly" (the app's display font, small sizes only: nothing below 12px). Header surface is the page background. Both light and dark themes exist.

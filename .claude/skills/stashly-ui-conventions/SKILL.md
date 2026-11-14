@@ -45,7 +45,7 @@ Components use shadcn/ui (source-owned, in `app/components/ui/`) built on Radix 
 
 ## ItemCard & DataTable
 
-**Header vs Toolbar**: `app-header.tsx` — sticky top bar with upload, filters, layout toggle. `app-toolbar.tsx` — sticky bottom bar with breadcrumbs and bulk-action buttons (restore/trash/delete/favorite). Both use `useParams()` and `useSearchParams()` for conditional rendering.
+**Header vs Toolbar**: `app-header.tsx` — sticky top bar with the primary New button, the search/filter/sort field, layout toggle, notifications and color mode. The page toolbar is `PageToolbarPathRail` (`core-components/page-toolbar/`, drawn by `StashPageToolbar`) — back, path, stats badges, and the bulk-action group when a selection exists. The old bottom bar `app-toolbar.tsx` was deleted on 15 Nov 2026.
 
 **`DataTable` styling**: Accepts a `className` prop applied to the `<Table>` element — use it for background/border/rounding (e.g. `className="bg-card rounded-md"`).
 
