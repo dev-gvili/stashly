@@ -57,12 +57,55 @@ class OffscreenCanvasFactory {
   }
 }
 
-// Use the worker-friendly factory only when there's no `document` (i.e. inside
-// a Web Worker). In a regular page context, fall through to PDF.js's default
-// DOMCanvasFactory.
+// PDF.js's default `DOMFilterFactory` builds canvas filters as SVG elements in
+// `document` and refers to them as `url(<document.URL>#id)`. A page whose
+// graphics state has a soft mask (Chrome's "Save as PDF" output, for one)
+// calls `addLuminosityFilter`, which reads `document.URL` and, in a worker,
+// throws "Cannot read properties of undefined (reading 'URL')": the whole
+// page render fails. Answering "none" to every filter is what PDF.js's own
+// Node factory does; the canvas code then applies soft masks and transfer
+// maps pixel by pixel (`_bakeSMaskCanvas`'s `!filterApplied` branch).
+// Same method set as PDF.js's internal (unexported) BaseFilterFactory.
+class NoFilterFactory {
+  addFilter() {
+    return 'none'
+  }
+  addHCMFilter() {
+    return 'none'
+  }
+  addAlphaFilter() {
+    return 'none'
+  }
+  addLuminosityFilter() {
+    return 'none'
+  }
+  addKnockoutFilter() {
+    return 'none'
+  }
+  addHighlightHCMFilter() {
+    return 'none'
+  }
+  addSelectionHCMFilter() {
+    return 'none'
+  }
+  addSelectionFilter() {
+    return 'none'
+  }
+  createSelectionStyle() {
+    return null
+  }
+  destroy() {}
+}
+
+// Use the worker-friendly factories only when there's no `document` (i.e.
+// inside a Web Worker). In a regular page context, fall through to PDF.js's
+// default DOMCanvasFactory and DOMFilterFactory.
 const workerSafeDocOptions =
   typeof document === 'undefined'
-    ? { CanvasFactory: OffscreenCanvasFactory as unknown as never }
+    ? {
+        CanvasFactory: OffscreenCanvasFactory as unknown as never,
+        FilterFactory: NoFilterFactory as unknown as never,
+      }
     : {}
 
 // pdfjs-dist v6 removed `PDFDocumentProxy.destroy()` — teardown lives only on
