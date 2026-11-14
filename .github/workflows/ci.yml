@@ -216,10 +216,11 @@ jobs:
             echo "**E2E:** no results file (the run stopped before the report)" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-  # Trial (tech-debt task, 14 Nov): two ways to open the e2e report from the
-  # run summary; the owner keeps one. A job of its own, so the write token and
-  # the report-bucket key never reach the job that runs the tests' code. Pushes
-  # to main only (a fork's PR has neither); both keep 14 days, like the artifact.
+  # Publishes the e2e report to GitHub Pages and links it from the run summary
+  # (owner, 14 Nov; a private Tigris bucket was tried and dropped). A job of its
+  # own, so the write token never reaches the job that runs the tests' code.
+  # Pushes to main only (a fork's PR has no write token); keeps 14 days, like
+  # the artifact.
   e2e-report:
     needs: e2e
     if: always() && github.event_name == 'push'
@@ -227,8 +228,6 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
-    env:
-      AWS_ENDPOINT_URL: https://fly.storage.tigris.dev
     steps:
       # Missing when the e2e job stopped before its upload step.
       - uses: actions/download-artifact@v4
@@ -237,7 +236,7 @@ jobs:
           name: playwright-report
 
       #
-      # Option 1, GitHub Pages: the report goes to the gh-pages branch under
+      # The report goes to the gh-pages branch under
       # e2e/<run_id>/. Each publish is a single orphan commit holding the runs
       # of the last 14 days, so the branch never grows; a race with another
       # run's publish loses the lease and retries. Public, like the repo: the
@@ -281,45 +280,11 @@ jobs:
           done
           exit 1
 
-      # Option 2, the private Tigris bucket stashly-e2e-reports: the report goes
-      # under <run_id>/ and the summary links a presigned index.html (7 days,
-      # SigV4's maximum). Needs a key scoped to that bucket in the secrets
-      # E2E_REPORTS_ACCESS_KEY / E2E_REPORTS_SECRET_KEY; skipped until it exists.
-      - name: Publish the report to Tigris
-        id: tigris
-        if: always() && github.event_name == 'push' && hashFiles('playwright-report/index.html') != ''
-        env:
-          RUN_ID: ${{ github.run_id }}
-          BUCKET: stashly-e2e-reports
-          AWS_ACCESS_KEY_ID: ${{ secrets.E2E_REPORTS_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.E2E_REPORTS_SECRET_KEY }}
-          AWS_DEFAULT_REGION: auto
-        run: |
-          set -euo pipefail
-          if [ -z "$AWS_ACCESS_KEY_ID" ]; then
-            echo "No E2E_REPORTS_ACCESS_KEY secret yet; skipping."
-            exit 0
-          fi
-          start=$(date +%s)
-          s3() { aws --endpoint-url "$AWS_ENDPOINT_URL" "$@"; }
-          s3 s3 cp --recursive --only-show-errors playwright-report/ "s3://$BUCKET/$RUN_ID/"
-          url=$(s3 s3 presign "s3://$BUCKET/$RUN_ID/index.html" --expires-in 604800)
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
-          cutoff=$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%S)
-          s3 s3api list-objects-v2 --bucket "$BUCKET" \
-            --query "Contents[?LastModified<'$cutoff'].Key" --output text |
-            tr '\t' '\n' | grep -v '^None$' | while read -r key; do
-              [ -n "$key" ] && s3 s3 rm --only-show-errors "s3://$BUCKET/$key"
-            done || true
-
       - name: Link the published report
         if: always() && github.event_name == 'push'
         env:
           PAGES_URL: ${{ steps.pages.outputs.url }}
           PAGES_SECONDS: ${{ steps.pages.outputs.seconds }}
-          TIGRIS_URL: ${{ steps.tigris.outputs.url }}
-          TIGRIS_SECONDS: ${{ steps.tigris.outputs.seconds }}
         run: |
           {
             echo ""
@@ -328,11 +293,6 @@ jobs:
               echo "- [GitHub Pages]($PAGES_URL) (committed in ${PAGES_SECONDS} s; live once the e2e-report-deploy job finishes)"
             else
               echo "- GitHub Pages: not published"
-            fi
-            if [ -n "$TIGRIS_URL" ]; then
-              echo "- [Tigris, presigned for 7 days]($TIGRIS_URL) (published in ${TIGRIS_SECONDS} s)"
-            else
-              echo "- Tigris: not published (no E2E_REPORTS_ACCESS_KEY secret yet)"
             fi
             echo "- Fallback: the \`playwright-report\` artifact below"
           } >> "$GITHUB_STEP_SUMMARY"
