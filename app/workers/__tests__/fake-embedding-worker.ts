@@ -13,6 +13,8 @@ import type { EmbeddingRequest, EmbeddingResponse } from '../embedding.worker'
 export interface FakeWorkerRecord {
   /** Every batch the "model" was given, in call order. */
   calls: string[][]
+  /** Every request as posted, in call order (to check its flags). */
+  requests: EmbeddingRequest[]
   /** Workers started — each one loads the model once. */
   started: number
   /** Workers terminated — a release, or a crash. */
@@ -37,7 +39,9 @@ export class FakeEmbeddingWorker {
     record.current = this
   }
 
-  postMessage({ id, texts }: EmbeddingRequest) {
+  postMessage(request: EmbeddingRequest) {
+    const { id, texts } = request
+    this.record.requests.push(request)
     // Answer asynchronously, as a real worker does.
     queueMicrotask(() => {
       if (this.crashOnNext) {
@@ -80,7 +84,13 @@ export class FakeEmbeddingWorker {
 export function installFakeEmbeddingWorker(
   vectorFor: (text: string) => number[] = () => [0]
 ): FakeWorkerRecord {
-  const record: FakeWorkerRecord = { calls: [], started: 0, terminated: 0, current: null }
+  const record: FakeWorkerRecord = {
+    calls: [],
+    requests: [],
+    started: 0,
+    terminated: 0,
+    current: null,
+  }
   vi.stubGlobal('window', {})
   vi.stubGlobal(
     'Worker',

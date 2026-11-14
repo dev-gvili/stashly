@@ -212,7 +212,11 @@ async function embedOneBatch(
   const id = nextRequestId++
   const vectors = await new Promise<number[][]>((resolve, reject) => {
     pending.set(id, { resolve, reject, onProgress })
-    target.postMessage({ id, texts } satisfies EmbeddingRequest)
+    target.postMessage({
+      id,
+      texts,
+      wantsProgress: onProgress !== undefined,
+    } satisfies EmbeddingRequest)
   })
   lastUsedAt = Date.now()
   return vectors

@@ -101,3 +101,24 @@ describe('embedTexts when the worker fails', () => {
     expect(worker.started).toBe(before + 1)
   })
 })
+
+describe('embedTexts download progress', () => {
+  // The worker reports model download progress only when asked. It used to
+  // forward every transformers.js progress event, 1,976-3,879 messages per
+  // model load, which the page then dropped because no caller listens
+  // (grid trace, 14 Nov 2026).
+  it('asks the worker for no progress when no onProgress is passed', async () => {
+    worker.requests.length = 0
+    await embedTexts(texts(EMBED_BATCH_SIZE + 1))
+
+    expect(worker.requests).toHaveLength(2)
+    expect(worker.requests.map((r) => r.wantsProgress)).toEqual([false, false])
+  })
+
+  it('asks for progress when the caller listens', async () => {
+    worker.requests.length = 0
+    await embedTexts(texts(1), () => {})
+
+    expect(worker.requests.map((r) => r.wantsProgress)).toEqual([true])
+  })
+})

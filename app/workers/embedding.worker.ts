@@ -12,8 +12,9 @@
  * reply, so only one AI job touches a GPU at a time across the page and its
  * workers.
  *
- * Protocol: one `EmbeddingRequest` in, any number of `progress` messages, then
- * exactly one `result` or `error` with the same `id`.
+ * Protocol: one `EmbeddingRequest` in, `progress` messages only if it set
+ * `wantsProgress` and loaded the model, then exactly one `result` or `error`
+ * with the same `id`.
  */
 import {
   pipeline,
@@ -26,6 +27,13 @@ const MODEL_ID = 'Xenova/all-mpnet-base-v2'
 export interface EmbeddingRequest {
   id: number
   texts: string[]
+  /**
+   * The caller listens for model download progress. Without it the worker
+   * sends none: transformers.js reports every downloaded chunk, which was
+   * 1,976-3,879 messages per model load, all dropped on the page because no
+   * caller passed `onProgress` (grid trace, 14 Nov 2026).
+   */
+  wantsProgress?: boolean
 }
 
 export type EmbeddingResponse =
@@ -39,16 +47,21 @@ let pipelinePromise: Promise<FeatureExtractionPipeline> | null = null
 
 /**
  * Loads the model on first use. Download progress is reported against the
- * request that triggered the load.
+ * request that triggered the load, and only if that request asked for it.
  */
-function getPipeline(requestId: number): Promise<FeatureExtractionPipeline> {
+function getPipeline(
+  requestId: number,
+  wantsProgress: boolean
+): Promise<FeatureExtractionPipeline> {
   if (!pipelinePromise) {
     pipelinePromise = pipeline('feature-extraction', MODEL_ID, {
       device: 'webgpu',
       dtype: 'q4',
-      progress_callback: (progress: unknown) => {
-        post({ type: 'progress', id: requestId, progress })
-      },
+      ...(wantsProgress && {
+        progress_callback: (progress: unknown) => {
+          post({ type: 'progress', id: requestId, progress })
+        },
+      }),
     })
   }
   return pipelinePromise
@@ -62,8 +75,12 @@ function post(message: EmbeddingResponse) {
  * Runs the model once and reshapes its flat output into one vector per text.
  * Mean pooling + L2 normalisation, so vectors compare by dot product.
  */
-async function embed(id: number, texts: string[]): Promise<number[][]> {
-  const extractor = await getPipeline(id)
+async function embed(
+  id: number,
+  texts: string[],
+  wantsProgress: boolean
+): Promise<number[][]> {
+  const extractor = await getPipeline(id, wantsProgress)
   const output = await extractor(texts, { pooling: 'mean', normalize: true })
 
   // Output shape: [batchSize, 768] flattened. Reshape via dims.
@@ -83,9 +100,9 @@ async function embed(id: number, texts: string[]): Promise<number[][]> {
 }
 
 self.onmessage = async (event: MessageEvent<EmbeddingRequest>) => {
-  const { id, texts } = event.data
+  const { id, texts, wantsProgress = false } = event.data
   try {
-    post({ type: 'result', id, vectors: await embed(id, texts) })
+    post({ type: 'result', id, vectors: await embed(id, texts, wantsProgress) })
   } catch (err) {
     post({
       type: 'error',
