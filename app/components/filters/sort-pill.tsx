@@ -16,7 +16,6 @@ import {
 } from '@/components/ui'
 import { useSortOrder } from '@/hooks/useSortOrder'
 import type { SortField } from '@/utils/sort-fields'
-import { cn } from '@/utils/styles'
 import type { JSX, SVGProps } from 'react'
 
 // A "Similarity" field (FuzzySearchIcon, Least/Most similar) was sketched here
@@ -99,7 +98,7 @@ export function SortPill() {
                     {f.label}
                   </span>
                   <Checkbox
-                    className={cn('size-5 place-self-start hover:cursor-pointer bg-input')}
+                    className="place-self-start"
                     name={f.key}
                     checked={on}
                     onCheckedChange={() => update({ field: f })}

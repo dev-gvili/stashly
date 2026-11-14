@@ -48,7 +48,7 @@ export function DuplicateCopyCard({
           checked={isKept}
           tabIndex={-1}
           aria-hidden="true"
-          className="data-[state=checked]:border-primary data-[state=checked]:bg-primary pointer-events-none size-4 rounded-[5px]"
+          className="pointer-events-none"
         />
         <span className="text-muted-foreground font-stashly text-xs tracking-[0.14em] whitespace-nowrap uppercase">
           {isKept ? 'Keeping' : 'Delete'}

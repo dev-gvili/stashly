@@ -176,7 +176,7 @@ export function DataTable<T extends object>({
                       onCheckedChange={(checked) =>
                         onSelectChange?.(id, !!checked)
                       }
-                      className="size-5! opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100 transition-opacity hover:cursor-pointer last-of-type:rounded-r-md!"
+                      className="opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
                     />
                   </TableCell>
                 )}

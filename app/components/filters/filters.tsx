@@ -452,7 +452,7 @@ function FiltersTab({ id, label, items, children, className }: FiltersTabProps) 
                     {it.label}
                   </span>
                   <Checkbox
-                    className="size-5 place-self-start hover:cursor-pointer bg-input"
+                    className="place-self-start"
                     name={it.id}
                     checked={on}
                     onCheckedChange={() => toggleDraft(it.id)}

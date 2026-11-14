@@ -317,7 +317,7 @@ export function CollectionItemCard({
             checked={selected}
             tabIndex={-1}
             aria-hidden
-            className="pointer-events-none absolute top-2 right-2 size-5 bg-card dark:bg-card"
+            className="pointer-events-none absolute top-2 right-2"
           />
         )}
       </div>
@@ -341,7 +341,7 @@ export function CollectionItemCard({
           onCheckedChange ? onCheckedChange(item.id, c) : onToggle(item.id)
         }
         aria-label={`Select ${item.name}`}
-        className="absolute top-2 left-2 size-5.5 rounded-full border-white/75 bg-black/30 backdrop-blur-xs data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+        className="absolute top-2 left-2"
       />
     </div>
   )

@@ -130,7 +130,7 @@ function CollectionItemRow({
         onMouseDown={onCheckboxMouseDown}
         onCheckedChange={(c) => onCheckedChange(item.id, c)}
         aria-label={`Select ${item.name}`}
-        className="size-5.5 shrink-0 rounded-full"
+        className="shrink-0"
       />
       <button
         type="button"

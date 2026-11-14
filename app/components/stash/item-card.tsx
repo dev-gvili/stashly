@@ -192,7 +192,8 @@ ItemCardCheckBox.displayName = 'ItemCardCheckBox'
  * Images page tiles.
  */
 export const itemCheckboxClassName = cn(
-  'size-6 z-10 place-self-start hover:cursor-pointer bg-muted! aria-checked:bg-primary!',
+  // Size, colour and corner come from the app Checkbox (owner, 14 Nov).
+  'z-10 place-self-start',
   // The box is 24px; the pseudo-element lifts the pressable area to 40px
   // (dense-desktop minimum) without changing layout. Sized to 40 rather
   // than 44 so it can't reach the actions menu in the opposite corner.

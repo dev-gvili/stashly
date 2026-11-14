@@ -11,12 +11,11 @@ import { toFileKind } from '@/components/views/home-components/home-data'
 import { KIND_ICON } from '@/components/views/home-components/home-format'
 
 /**
- * The file card's selection checkbox look, layered on `itemCheckboxClassName`:
- * a ringed input-coloured box that turns foreground when checked. Shared with
- * the Images page tiles so both select with the same control.
+ * What the file card adds to the app Checkbox, whose look (24px, foreground
+ * when checked, accent ring) became the default everywhere on 14 Nov: a blur
+ * so it reads over a cover. Shared with the Images page tiles.
  */
-export const fileCardCheckboxClassName =
-  'bg-input! rounded-sm backdrop-blur-sm aria-checked:border-none! aria-checked:ring-accent/50 ring-2 aria-checked:bg-foreground! aria-checked:text-background!'
+export const fileCardCheckboxClassName = 'backdrop-blur-sm'
 
 export interface FileCardDetailProps extends FileCardVariantProps {
   /**

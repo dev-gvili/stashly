@@ -75,7 +75,7 @@ export function SelectAllCheckbox({
         }
         onCheckedChange={toggle}
         aria-label={ariaLabel}
-        className={cn('size-6 rounded-sm hover:cursor-pointer data-[state=checked]:bg-foreground! data-[state=checked]:text-background border-none', checkboxClassName)}
+        className={cn('border-none', checkboxClassName)}
       >
         {state === 'off' ? null : (
           <span className="flex items-center justify-center text-current">
