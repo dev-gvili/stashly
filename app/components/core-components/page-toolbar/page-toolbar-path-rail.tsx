@@ -29,6 +29,9 @@ import {
   FavoritesFillIcon,
   DownloadFillIcon,
   RestoreFillIcon,
+  StorageFillIcon,
+  FileFillIcon,
+  FolderFillIcon,
 } from '@/components/icons'
 import { SelectAllCheckbox } from './toolbar-stats'
 import { AddToCollectionMenu, type CollectionRef } from './add-to-collection-menu'
@@ -258,18 +261,22 @@ export function PageToolbarPathRail({
                   variant="outline"
                   className="tabular-nums max-sm:hidden"
                 >
+                  {/* Icons as on the collection header's stats (owner, 14 Nov). */}
+                  <StorageFillIcon aria-hidden />
                   {stats.size}
                 </Badge>
                 <Badge
                   variant="outline"
                   className="tabular-nums"
                 >
+                  <FileFillIcon aria-hidden />
                   {stats.files} files
                 </Badge>
                 <Badge
                   variant="outline"
                   className="tabular-nums"
                 >
+                  <FolderFillIcon aria-hidden />
                   {stats.folders} folders
                 </Badge>
               </div>
