@@ -12,7 +12,13 @@ function Checkbox({
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
-        'peer border-input dark:bg-input data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
+        // The file card's checkbox is the one look everywhere (owner, 14 Nov):
+        // 24px, an 8px corner, an input-coloured box that turns foreground
+        // with a background-coloured double check and an accent ring.
+        'peer size-6 shrink-0 rounded-sm border border-input bg-input text-foreground shadow-xs transition-shadow outline-none hover:cursor-pointer',
+        'data-[state=checked]:border-transparent data-[state=checked]:bg-foreground data-[state=checked]:text-background data-[state=checked]:ring-2 data-[state=checked]:ring-accent/50',
+        'data-[state=indeterminate]:border-transparent data-[state=indeterminate]:bg-foreground data-[state=indeterminate]:text-background',
+        'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 disabled:cursor-not-allowed disabled:opacity-50',
         className
       )}
       {...props}
