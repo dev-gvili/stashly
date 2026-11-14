@@ -27,14 +27,16 @@ export function HomeHeaderTools() {
       )
 
   return (
-    <>
+    // Hidden while the header is under 672px: on a phone the two made it
+    // 534px wide at 375 (header-responsive E2E). Its other controls come first.
+    <div className="flex items-center gap-2 @max-2xl/header:hidden">
       <SearchablePill status={data.searchable} />
       <NeedsYouPill
         entries={data.needsYou}
         onAct={respond('accept_invitation')}
         onDismiss={respond('reject_invitation')}
       />
-    </>
+    </div>
   )
 }
 
