@@ -384,6 +384,11 @@ export function useUploadCounts() {
         pending: 0,
         done: 0,
         aborted: 0,
+        // Added for the New panel's summary line: `itemCreated` is a finished
+        // upload (row written), the two failures are the ones with a reason.
+        itemCreated: 0,
+        failed: 0,
+        itemFailed: 0,
       }
       for (const mediaFile of s.context.mediaFiles.values()) {
         if (s.context.dismissed.has(mediaFile.id)) continue
