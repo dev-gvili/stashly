@@ -191,7 +191,9 @@ jobs:
       - name: E2E tests
         env:
           E2E_WORKERS: 2
-        run: pnpm test:e2e --reporter=list,html
+          # The json reporter feeds the pass/fail counts in the job summary.
+          PLAYWRIGHT_JSON_OUTPUT_FILE: e2e-results.json
+        run: pnpm test:e2e --reporter=list,html,json
 
       # Always, pass or fail: the HTML report and the traces of failed tests.
       - name: Upload the Playwright report
@@ -203,6 +205,137 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 14
+
+      - name: Summarise the e2e result
+        if: always()
+        run: |
+          if [ -f e2e-results.json ]; then
+            jq -r '.stats | "**E2E:** \(.expected) passed, \(.unexpected) failed, \(.flaky) flaky, \(.skipped) skipped in \((.duration/1000)|floor) s"' \
+              e2e-results.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "**E2E:** no results file (the run stopped before the report)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # Trial (tech-debt task, 14 Nov): two ways to open the e2e report from the
+  # run summary; the owner keeps one. A job of its own, so the write token and
+  # the report-bucket key never reach the job that runs the tests' code. Pushes
+  # to main only (a fork's PR has neither); both keep 14 days, like the artifact.
+  e2e-report:
+    needs: e2e
+    if: always() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      AWS_ENDPOINT_URL: https://fly.storage.tigris.dev
+    steps:
+      # Missing when the e2e job stopped before its upload step.
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: playwright-report
+
+      #
+      # Option 1, GitHub Pages: the report goes to the gh-pages branch under
+      # e2e/<run_id>/. Each publish is a single orphan commit holding the runs
+      # of the last 14 days, so the branch never grows; a race with another
+      # run's publish loses the lease and retries. Public, like the repo: the
+      # report holds seeded data only (checked in run 43582952953's traces).
+      - name: Publish the report to GitHub Pages
+        id: pages
+        if: always() && github.event_name == 'push' && hashFiles('playwright-report/index.html') != ''
+        env:
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+          TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          start=$(date +%s)
+          remote="https://x-access-token:${TOKEN}@github.com/${REPO}.git"
+          for attempt in 1 2 3 4 5; do
+            rm -rf site && mkdir site && cd site
+            git init -q && git config user.name ci && git config user.email ci@users.noreply.github.com
+            lease=""
+            if git fetch -q --depth 1 "$remote" gh-pages 2>/dev/null; then
+              lease=$(git rev-parse FETCH_HEAD)
+              git checkout -q FETCH_HEAD -- .
+            fi
+            now=$(date +%s)
+            for dir in e2e/*/; do
+              [ -f "$dir.published" ] || continue
+              if [ $((now - $(cat "$dir.published"))) -gt $((14 * 86400)) ]; then rm -rf "$dir"; fi
+            done
+            rm -rf "e2e/$RUN_ID" && mkdir -p "e2e/$RUN_ID"
+            cp -r ../playwright-report/. "e2e/$RUN_ID/"
+            echo "$now" > "e2e/$RUN_ID/.published"
+            touch .nojekyll
+            git add -A && git commit -q -m "e2e report for run $RUN_ID"
+            if git push -q --force-with-lease="gh-pages:${lease}" "$remote" HEAD:refs/heads/gh-pages; then
+              cd ..
+              echo "url=https://${REPO%%/*}.github.io/${REPO#*/}/e2e/${RUN_ID}/" >> "$GITHUB_OUTPUT"
+              echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            cd .. && sleep $((attempt * 3))
+          done
+          exit 1
+
+      # Option 2, the private Tigris bucket stashly-e2e-reports: the report goes
+      # under <run_id>/ and the summary links a presigned index.html (7 days,
+      # SigV4's maximum). Needs a key scoped to that bucket in the secrets
+      # E2E_REPORTS_ACCESS_KEY / E2E_REPORTS_SECRET_KEY; skipped until it exists.
+      - name: Publish the report to Tigris
+        id: tigris
+        if: always() && github.event_name == 'push' && hashFiles('playwright-report/index.html') != ''
+        env:
+          RUN_ID: ${{ github.run_id }}
+          BUCKET: stashly-e2e-reports
+          AWS_ACCESS_KEY_ID: ${{ secrets.E2E_REPORTS_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.E2E_REPORTS_SECRET_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          set -euo pipefail
+          if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+            echo "No E2E_REPORTS_ACCESS_KEY secret yet; skipping."
+            exit 0
+          fi
+          start=$(date +%s)
+          s3() { aws --endpoint-url "$AWS_ENDPOINT_URL" "$@"; }
+          s3 s3 cp --recursive --only-show-errors playwright-report/ "s3://$BUCKET/$RUN_ID/"
+          url=$(s3 s3 presign "s3://$BUCKET/$RUN_ID/index.html" --expires-in 604800)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+          cutoff=$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%S)
+          s3 s3api list-objects-v2 --bucket "$BUCKET" \
+            --query "Contents[?LastModified<'$cutoff'].Key" --output text |
+            tr '\t' '\n' | grep -v '^None$' | while read -r key; do
+              [ -n "$key" ] && s3 s3 rm --only-show-errors "s3://$BUCKET/$key"
+            done || true
+
+      - name: Link the published report
+        if: always() && github.event_name == 'push'
+        env:
+          PAGES_URL: ${{ steps.pages.outputs.url }}
+          PAGES_SECONDS: ${{ steps.pages.outputs.seconds }}
+          TIGRIS_URL: ${{ steps.tigris.outputs.url }}
+          TIGRIS_SECONDS: ${{ steps.tigris.outputs.seconds }}
+        run: |
+          {
+            echo ""
+            echo "**Report:**"
+            if [ -n "$PAGES_URL" ]; then
+              echo "- [GitHub Pages]($PAGES_URL) (published in ${PAGES_SECONDS} s; 404 until Pages is enabled on gh-pages)"
+            else
+              echo "- GitHub Pages: not published"
+            fi
+            if [ -n "$TIGRIS_URL" ]; then
+              echo "- [Tigris, presigned for 7 days]($TIGRIS_URL) (published in ${TIGRIS_SECONDS} s)"
+            else
+              echo "- Tigris: not published (no E2E_REPORTS_ACCESS_KEY secret yet)"
+            fi
+            echo "- Fallback: the \`playwright-report\` artifact below"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # The production image, run the way Fly runs it: fly.toml's release_command
   # (`prisma migrate deploy`) against a real Postgres, then the server, which
