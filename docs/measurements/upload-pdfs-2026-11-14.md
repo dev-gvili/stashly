@@ -1,4 +1,4 @@
-# Upload of `X:\pdfs` — live measurement, run 1 (14 Nov 2026)
+# Upload of `X:pdfs` — live measurement, run 1 and run 2 (14 Nov 2026)
 
 One real folder upload, measured in the browser from the moment the folder was chosen until nothing was left to do. All numbers come from a recorder injected into the page; nothing is estimated unless it says so. Times are seconds after **T0**.
 
@@ -124,6 +124,87 @@ OCR and embedding saves per 30 s (OCR / embedding): 30 s 0/9 · 60 s 29/0 · 90 
 ## Left over
 
 A probe after the run, `GET /api/items?intent=pending_search_embeddings`, answered **37 chunks** still waiting for a vector, account-wide. The response carries no item id, so the page cannot attribute them. Backend Dev's database check puts them in the first (unrecorded) pick: 22 of its files have no search row and 37 chunks have no vector, because its indexing stopped early. This run's items were all indexed (last vector at T0 + 319.87 s, server side).
+
+## Run 2 (browser side): folder chosen until the last item row is created
+
+Scope set by the owner for this run: from T0 to the moment the last `create_upload_item` was answered. Thumbnails, OCR and embeddings are not measured here (they run after this window). Same recorder, same page, same machine and account as run 1.
+
+- **T0:** 2026-11-14T03:56:43.708Z. **Exactly one pick**: the recorder logged one file-input `change` (37 files, 309,247,379 bytes, `webkitdirectory`), no drop, no second pick.
+- **End:** last `create_upload_item` answered at **T0 + 32.37 s = 03:57:16.081Z**.
+- **Destination:** fresh empty folder `item_BN9Cbvn_6EtIOQtVfOoB5w` ("Upload measurement 14 Nov run 2 (test)"), account `usr_jY94r4AQIyrd9N0xPPME5Q`. I did not touch the page during the run; the folder page was open throughout.
+- **Pane in view and the page visible** for the whole run.
+
+### Batch, run 2 (compare run 1 in brackets)
+
+| Measure | Run 2 | Run 1 |
+|---|---|---|
+| Quota pre-check (`POST /api/quota`) | sent T0 + 0.00 s, 60 ms, 200 | 1 call |
+| `resolve_upload_folders` (1 call) | T0 + 0.07 s, 136 ms, 200 | 1 call |
+| `pdfs` folder card inserted on the page | T0 + 0.24 s | not recorded |
+| `create-multipart-upload` (37) | first sent 0.21 s, last answered 1.61 s; 392–1,100 ms each | 0.1–1.2 s |
+| First part PUT started / last part PUT finished | 0.62 s / 32.01 s | 0.5 s / 30.9 s |
+| Part PUTs | 84, all 200, none repeated | 84, all 200 |
+| Peak part PUTs in flight | 83 at T0 + 1.64 s | 84 at 1.2 s |
+| Peak files uploading at once | 37 | 37 |
+| Average transfer (309,247,379 B over the PUT window) | 9.85 MB/s | 10.17 MB/s |
+| `complete-multipart-upload` (37) | first 1.37 s, last answered 32.19 s; 139–270 ms each | 1.5–31.1 s |
+| `create_upload_item` (37) | first answered 1.9 s, **last answered 32.37 s**; 108–337 ms each | 1.8–31.3 s; 111–216 ms |
+| `save_media_metadata` in this window (it starts as rows appear) | 36 sent, first at 3.6 s, last answered 31.67 s; 15–68 ms each | 37, 2.1–31.3 s |
+| Long tasks (≥ 50 ms) / loop lag (> 150 ms) in the window | one each, at T0 + 0.2 s: 325 ms long task, 338 ms lag | one each at 0.1 s: 410 ms, 424 ms |
+| Workers started | hash 0.2 s, thumbnail compute 1.92 s | same |
+| Errors, non-2xx, retries, console messages | none | none |
+
+MB finished per 5 s window (by part completion): 0–5 s 27.0 · 5–10 s 43.1 · 10–15 s 51.7 · 15–20 s 53.6 · 20–25 s 69.1 · 25–30 s 41.5 · 30–32 s 23.2 (about 5.4, 8.6, 10.3, 10.7, 13.8, 8.3 MB/s; last window partial).
+
+Requests in the window: 84 S3 part PUTs, 37 create-multipart, 37 complete-multipart, 37 `create_upload_item`, 36 `save_media_metadata`, 1 `resolve_upload_folders`, 1 quota check, 3 `GET /api/notifications` (the app's own poll) — 236 in all.
+
+Not measured: server time per request (Backend Dev's section), the S3 side of each part.
+
+### Per file, run 2 (all 37)
+
+Times in seconds after T0. CM = `create-multipart-upload` sent–answered; PUTs = first part start–last part end; Complete = `complete-multipart-upload` sent–answered; Item = `create_upload_item` sent–answered. Every request answered 200.
+
+| # | File | MB | Parts | CM s | PUTs s | Part durations (ms) | Complete s | Item s |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Cloud_Storage_Deep_Dive.pdf | 0.01 | 1 | 0.3–0.7 | 0.7–1.4 | 707 | 1.4–1.6 | 1.7–1.9 |
+| 2 | AI_Enhanced_File_Hosting.pdf | 0.02 | 1 | 0.2–0.6 | 0.6–1.6 | 1021 | 1.6–1.8 | 1.8–2.2 |
+| 3 | cloud_storage_architectures.pdf | 0.02 | 1 | 0.2–0.7 | 0.7–2.2 | 1494 | 2.2–2.4 | 2.4–2.6 |
+| 4 | edge_ai.pdf | 0.04 | 1 | 0.3–0.7 | 0.7–2.5 | 1854 | 2.5–2.8 | 2.8–2.9 |
+| 5 | Foundations of Distributed Storage Architecture.pdf | 0.32 | 1 | 0.3–0.7 | 0.7–3.0 | 2270 | 3.0–3.2 | 3.2–3.3 |
+| 6 | Getting Started.pdf | 0.07 | 1 | 0.3–0.8 | 0.8–3.1 | 2325 | 3.1–3.3 | 3.3–3.5 |
+| 7 | Getting_Started_with_Google_Drive.pdf | 0.69 | 1 | 0.3–0.8 | 0.8–3.7 | 2911 | 3.7–3.9 | 3.9–4.0 |
+| 8 | Exabyte_Architecture.pdf | 22.05 | 5 | 0.3–0.7 | 0.7–4.8 | 2415, 3023, 2639, 4081, 2206 | 4.8–4.9 | 4.9–5.1 |
+| 9 | Google_Workspace_Introduction.pdf | 0.01 | 1 | 0.3–0.9 | 0.9–5.8 | 4841 | 5.8–5.9 | 5.9–6.1 |
+| 10 | Stashly — Item Page pdf.pdf | 0.26 | 1 | 0.4–0.9 | 0.9–6.0 | 5027 | 6.0–6.1 | 6.1–6.2 |
+| 11 | Solar Icons Set (Vol.2) (Community).pdf | 14.31 | 3 | 0.3–0.9 | 0.9–6.0 | 4695, 5089, 4061 | 6.0–6.1 | 6.1–6.3 |
+| 12 | Stashly — Item Page pdf2.pdf | 0.26 | 1 | 0.4–1.0 | 1.0–6.0 | 5015 | 6.0–6.2 | 6.2–6.3 |
+| 13 | Stashly — Item Page audio.pdf | 0.27 | 1 | 0.3–0.9 | 0.9–6.1 | 5137 | 6.1–6.2 | 6.2–6.3 |
+| 14 | Stashly-page-toolbar.pdf | 0.51 | 1 | 0.4–1.0 | 1.0–6.7 | 5626 | 6.7–6.8 | 6.8–7.0 |
+| 15 | Stashly — Item Page.pdf | 0.47 | 1 | 0.4–1.0 | 1.0–7.1 | 6086 | 7.1–7.3 | 7.3–7.4 |
+| 16 | Stashly-page-toolbar_3.pdf | 2.71 | 1 | 0.4–1.0 | 1.1–8.0 | 6987 | 8.0–8.2 | 8.2–8.3 |
+| 17 | Stashly-page-toolbar_2.pdf | 2.71 | 1 | 0.4–1.1 | 1.1–8.7 | 7668 | 8.7–8.9 | 8.9–9.0 |
+| 18 | Smart_Edge_Heavy_Database_Architecture.pdf | 11.69 | 3 | 0.3–0.9 | 0.9–9.1 | 6519, 8224, 4792 | 9.1–9.3 | 9.3–9.4 |
+| 19 | Stashly_Architectural_Blueprint.pdf | 18.97 | 4 | 0.4–1.1 | 1.1–10.8 | 8002, 8600, 9691, 8294 | 10.8–11.0 | 11.0–11.1 |
+| 20 | Stashly_Architectural_Teardown.pdf | 15.75 | 4 | 0.4–1.2 | 1.2–12.6 | 10690, 10189, 11432, 8353 | 12.6–12.8 | 12.8–12.9 |
+| 21 | Stashly_Architecture_Audit.pdf | 20.45 | 4 | 0.4–1.2 | 1.2–13.7 | 10559, 10922, 12567, 12105 | 13.7–13.9 | 13.9–14.1 |
+| 22 | Stashly_Architecture_Blueprint.pdf | 14.58 | 3 | 0.4–1.2 | 1.2–15.0 | 13100, 13825, 13166 | 15.0–15.2 | 15.2–15.3 |
+| 23 | Stashly_Architecture_Report.pdf | 11.40 | 3 | 0.4–1.2 | 1.2–15.2 | 13937, 14026, 13158 | 15.2–15.4 | 15.4–15.5 |
+| 24 | Stashly_Atomic_Upload_Architecture.pdf | 14.97 | 3 | 0.5–1.2 | 1.2–17.4 | 16089, 16213, 15911 | 17.4–17.6 | 17.6–17.7 |
+| 25 | Stashly_Engineering_Intelligent_Platform.pdf | 11.67 | 3 | 0.5–1.3 | 1.3–18.6 | 17241, 15849, 14408 | 18.6–18.7 | 18.8–18.9 |
+| 26 | Stashly_Browser_IDE_Architecture.pdf | 14.33 | 3 | 0.5–1.3 | 1.3–21.1 | 16306, 19820, 17325 | 21.1–21.3 | 21.3–21.4 |
+| 27 | Stashly_Engineering_Retrospective.pdf | 12.60 | 3 | 0.5–1.3 | 1.3–21.3 | 19564, 19939, 17226 | 21.3–21.4 | 21.4–21.5 |
+| 28 | Stashly_Platform_Blueprint.pdf | 20.25 | 4 | 0.5–1.3 | 1.3–22.5 | 21139, 19321, 19437, 20997 | 22.5–22.6 | 22.6–22.8 |
+| 29 | Stashly_Reference_Architecture.pdf | 15.37 | 3 | 0.5–1.4 | 1.4–24.4 | 21369, 22827, 23036 | 24.4–24.6 | 24.6–24.7 |
+| 30 | Stashly_Technical_Debt_Audit.pdf | 12.50 | 3 | 0.5–1.5 | 1.5–24.6 | 23122, 22785, 22452 | 24.6–24.7 | 24.8–24.9 |
+| 31 | Stashly_Technical_Atlas.pdf | 13.68 | 3 | 0.5–1.5 | 1.5–27.2 | 23300, 25757, 24689 | 27.2–27.4 | 27.4–27.5 |
+| 32 | Stashly_Technical_Blueprint.pdf | 18.34 | 4 | 0.5–1.5 | 1.5–27.7 | 25063, 26118, 26240, 24438 | 27.7–27.9 | 27.9–28.1 |
+| 33 | storage_architecture.pdf | 0.02 | 1 | 0.5–1.6 | 1.6–27.9 | 26286 | 27.9–28.1 | 28.1–28.3 |
+| 34 | system_design.pdf | 0.10 | 1 | 0.5–1.6 | 1.6–28.1 | 26496 | 28.1–28.3 | 28.3–28.5 |
+| 35 | Stashly_System_Transformation_Blueprint.pdf | 12.33 | 3 | 0.5–1.5 | 1.5–29.6 | 27118, 28109, 25926 | 29.6–29.8 | 29.8–30.0 |
+| 36 | Stashly_Technical_Turnaround.pdf | 12.81 | 3 | 0.5–1.5 | 1.5–31.3 | 29762, 29018, 27978 | 31.3–31.5 | 31.5–31.6 |
+| 37 | Stashly_Upload_Architecture_Overhaul.pdf | 12.71 | 3 | 0.5–1.6 | 1.6–32.0 | 30101, 30373, 29672 | 32.0–32.2 | 32.2–32.4 |
+
+Reading it: files finish in an order set by when their parts finish, not by file size; the small files sit in the batch behind the big ones' bandwidth (a 13 KB file took 4.8 s to put in row 9, and a 20 KB file 26 s in row 33), because every part in flight shares the uplink. That is a reading of the numbers, not a separate test. One run each: run 1 and run 2 differ by about 3% on average throughput (10.17 and 9.85 MB/s) and on the end of the last item (31.3 s and 32.4 s).
 
 ## Server and database side (Backend Dev)
 
