@@ -79,15 +79,14 @@ export class UploadPage {
    * list can never satisfy a visibility assertion — which is why every upload
    * spec times out waiting for an element that is right there in the DOM.
    *
-   * Idempotent: the header button *toggles*, so clicking it on an already-open
-   * panel would close it again.
+   * Idempotent: it returns as soon as the panel shows, and "Open uploads
+   * panel" only ever opens it.
    */
   async openPanel(): Promise<void> {
     const dropArea = this.page.locator(
       '.fixed.bottom-8.right-8 [data-testid="upload-drop-area"]'
     )
     const toggle = this.page.locator('[data-testid="upload-toggle"]').first()
-    await toggle.waitFor({ state: 'visible', timeout: 15_000 })
 
     // Retry the click rather than clicking once and waiting.
     //
@@ -97,8 +96,19 @@ export class UploadPage {
     // opens, which looks exactly like a broken selector. Re-clicking until the
     // panel actually appears is the only reliable signal that the handler is
     // live.
+    // The link sits in the header's New panel (the Uploads button went), so
+    // open that popover first unless it is already open.
+    const newPanel = this.page.getByRole('button', {
+      name: 'New and upload',
+      exact: true,
+    })
     for (let attempt = 0; attempt < 6; attempt++) {
       if (await dropArea.isVisible()) return
+      if (!(await toggle.isVisible())) {
+        await newPanel.click()
+        await toggle.waitFor({ state: 'visible', timeout: 2_000 }).catch(() => {})
+        if (!(await toggle.isVisible())) continue
+      }
       await toggle.click()
       try {
         await dropArea.waitFor({ state: 'visible', timeout: 2_000 })

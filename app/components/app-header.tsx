@@ -1,14 +1,13 @@
 import {
   AddFoldersIcon,
   ArrowLeftFillIcon,
-  DropdownIcon,
   UploadFileFillIcon,
   UploadFillIcon,
   UploadFolderFillIcon,
   NotificationEmptyFillIcon,
   NotificationFullFillIcon,
 } from '@/components/icons'
-import { useUpload, useUploadFileIds } from '@/hooks/useUpload'
+import { useUpload, useUploadCounts, useUploadFileIds } from '@/hooks/useUpload'
 import { cn } from '@/utils'
 import { useState } from 'react'
 import {
@@ -141,6 +140,7 @@ function StashlyUpload({
 }) {
   let { toggleView, isVisible } = useUpload()
   const hasUploads = useUploadFileIds().length > 0
+  const { uploading } = useUploadCounts()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   /** Opens (never closes) the floating upload panel. */
@@ -155,27 +155,22 @@ function StashlyUpload({
 
   return (
     <ButtonGroup className="border-none ring-2 ring-accent rounded-md bg-card">
-      <Button
-        onClick={toggleView}
-        variant="ghost"
-        size="icon"
-        aria-label="Uploads"
-        // The upload panel starts hidden and this is its only opener, so E2E
-        // needs a stable handle on it — the button is icon-only and otherwise
-        // has no accessible name to target.
-        data-testid="upload-toggle"
-      >
-        <UploadFillIcon className="size-5! text-muted-foreground" />
-      </Button>
       <Popover modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger className="cursor-pointer" asChild>
           <Button
             variant="ghost"
             size="icon"
             aria-label="New and upload"
-            className="hover:cursor-pointer hover:bg-muted rounded-md hover:rounded-md  items-center! flex aria-expanded:bg-accent/30 aria-expanded:text-accent-foreground  data-[state=open]:bg-accent/30 data-[state=open]:text-accent-foreground hover:last:rounded-r-md!"
+            className="relative hover:cursor-pointer hover:bg-muted rounded-md hover:rounded-md  items-center! flex aria-expanded:bg-accent/30 aria-expanded:text-accent-foreground  data-[state=open]:bg-accent/30 data-[state=open]:text-accent-foreground hover:last:rounded-r-md!"
           >
-            <DropdownIcon className="size-5!" />
+            <UploadFillIcon className="size-5! text-muted-foreground" />
+            {/* Uploads running. Square-ish, not a dot: no round shapes. */}
+            {uploading > 0 && (
+              <span
+                aria-hidden
+                className="absolute top-1.5 right-1.5 size-1.5 rounded-[2px] bg-primary"
+              />
+            )}
           </Button>
         </PopoverTrigger>
         <PopoverContent
@@ -215,26 +210,30 @@ function StashlyUpload({
               Upload folder
             </Trigger>
           </div>
-          {hasUploads && (
-            <section className="flex flex-col gap-2.5">
+          <section className="flex flex-col gap-2.5">
               <div className="flex items-center gap-2">
                 <h3 className={INVITE_CAPTION}>Uploads</h3>
                 <span className="flex-1" />
                 <button
                   type="button"
                   onClick={openUploadPanel}
+                  // The floating panel's only opener since the Uploads button
+                  // went, so E2E needs a stable handle on it.
+                  data-testid="upload-toggle"
                   className="rounded-[4px] font-stashly text-xs text-primary outline-none hover:cursor-pointer hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   Open uploads panel
                 </button>
               </div>
               {/* The upload panel's own list, untouched: every row keeps its
-                  status, error tooltip, progress ring and hover controls. */}
-              <div className="rounded-xl bg-muted">
-                <FileList className="h-full" />
-              </div>
+                  status, error tooltip, progress ring and hover controls.
+                  Hidden while the session has none. */}
+              {hasUploads && (
+                <div className="rounded-xl bg-muted">
+                  <FileList className="h-full" />
+                </div>
+              )}
             </section>
-          )}
         </PopoverContent>
       </Popover>
       <NewFolderDialog
