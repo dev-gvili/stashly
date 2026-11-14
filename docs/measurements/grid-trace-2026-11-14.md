@@ -100,7 +100,22 @@ When the embedding worker boots (the search-embedding backfill, or indexing afte
 
 Evidence, Home plain loads: with the worker booted, 4,922 and 2,966 main tasks and 545.1 / 486.4 ms busy; without it, 882 tasks and 333.6 ms. That is about 2,100–4,000 extra tasks and 150–210 ms of main-thread time per boot. (Home 1 and 2 also ran the backfill's embedding work, so not all of the difference is the messages. The task count difference is.)
 
-**Proposed root-cause fix (not applied, waiting for the owner):** forward progress only when a caller asked for it. The request carries a `wantsProgress` flag set when `onProgress` is passed, and the worker posts `progress` only then, so the messages are never produced rather than thrown away on arrival. Measure the same way afterwards: main task count and busy time on a Home load that boots the worker.
+**Fix (owner approved, 15 Nov):** the request carries `wantsProgress`, set only when the caller passes `onProgress`, and the worker gives transformers.js a `progress_callback` only then. Without a listener, the messages are never produced in the first place, rather than dropped on arrival.
+
+**After the fix:** same build procedure, same runner, same account, same pages:
+
+| Run | Embedding messages to / from worker | Main tasks | Main busy |
+|---|---|---|---|
+| Home before 1 | 3 / 3,879 | 4,922 | 545.1 ms |
+| Home before 2 | 3 / 1,976 | 2,966 | 486.4 ms |
+| Home, no worker booted | n/a | 882 | 333.6 ms |
+| Home after 1 | 10 / 9 | 1,095 | 409.5 ms |
+| Home after 2 | 3 / 3 | 992 | 455.8 ms |
+| Upload before 1 | 1 / 3,565 | 14,537 | 3,234.5 ms |
+| Upload before 2 | 15 / 2,330 | 13,307 | 3,917.6 ms |
+| Upload after 1 | 14 / 14 | 12,651 | 3,454.0 ms |
+
+The worker now sends one reply per request. On Home, main-thread tasks with the worker booted fell to within 110–213 of a load with no worker at all. The busy-time change is smaller and noisy, because those loads also run the backfill's real embedding work and its writes. In "Home after 1", one of the 10 requests had not been answered when the 12 s window closed.
 
 ## Not measured, and why
 
