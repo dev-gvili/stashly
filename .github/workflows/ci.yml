@@ -325,7 +325,7 @@ jobs:
             echo ""
             echo "**Report:**"
             if [ -n "$PAGES_URL" ]; then
-              echo "- [GitHub Pages]($PAGES_URL) (published in ${PAGES_SECONDS} s; 404 until Pages is enabled on gh-pages)"
+              echo "- [GitHub Pages]($PAGES_URL) (committed in ${PAGES_SECONDS} s; live once the e2e-report-deploy job finishes)"
             else
               echo "- GitHub Pages: not published"
             fi
@@ -336,6 +336,34 @@ jobs:
             fi
             echo "- Fallback: the \`playwright-report\` artifact below"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Pages is set to deploy from Actions, so the gh-pages branch (the 14-day
+  # store above) is served by deploying its current tree. One deploy at a time;
+  # a newer run replaces an older one still waiting, and that loses nothing,
+  # because each deploy checks out gh-pages fresh with every run on it.
+  e2e-report-deploy:
+    needs: e2e-report
+    if: always() && github.event_name == 'push' && needs.e2e-report.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+      - id: deploy
+        uses: actions/deploy-pages@v4
 
   # The production image, run the way Fly runs it: fly.toml's release_command
   # (`prisma migrate deploy`) against a real Postgres, then the server, which
