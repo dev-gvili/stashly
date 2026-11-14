@@ -94,7 +94,6 @@ export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
       <SidebarProvider defaultOpen={sidebarState}>
         <AppSidebar user={user} workspaces={workspaces} />
         <AppContent>
-          {/* <AppToolbar /> */}
           <DegradedNotice />
           <Outlet />
           {/* Hands the upload machine its user; the floating upload panel

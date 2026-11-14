@@ -12,8 +12,7 @@ through `StashPageToolbar` in
 [`@/components/views/stash-page-toolbar.tsx`](../../views/stash-page-toolbar.tsx),
 which totals the selected bytes, opens `MoveToFolderDialog`, and connects the
 bulk actions to the `/api/items` and `/api/favorites` intents. Routes using it:
-`routes/stash/all.tsx` and `routes/stash/folder.tsx` — `app-toolbar.tsx` bails
-out on those paths so the two don't stack.
+`routes/stash/all.tsx`, `routes/stash/folder.tsx` and `routes/stash/trash.tsx`.
 
 The four losing variants — morph, dock, stacked and command-bar — were
 **deleted on 19 Aug 2026**. They had sat unwired since the decision: exported and
