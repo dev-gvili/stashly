@@ -1,6 +1,5 @@
 import type { JSX } from 'react'
 import { Button } from '@/ui/button'
-import { Separator } from '@/ui/separator'
 import { Badge } from '@/ui/badge'
 import { Tooltip } from '@/ui/tooltip'
 import {
@@ -20,7 +19,6 @@ import {
   ShareItemFillIcon,
   MenuDotsIcon,
   RemoveIcon,
-  SearchIcon,
   FilterIcon,
   SortAscIcon,
   FolderIcon,
@@ -44,7 +42,7 @@ import type {
   LibraryStats,
 } from '@/types/stash.types'
 import { cn } from '@/utils/styles'
-import { href, Link, useLocation, useParams } from 'react-router'
+import { useLocation } from 'react-router'
 import {
   ButtonGroup,
   ButtonGroupSeparator,
@@ -197,7 +195,6 @@ export function PageToolbarPathRail({
   ...actions
 }: Props) {
   const location = useLocation()
-  const { me } = useParams()
   const { selectedIds, unselectAll } = useSelection()
   const crumbs = useBreadcrumbs()
   const selectedCount = selectedIds.length
@@ -290,27 +287,14 @@ export function PageToolbarPathRail({
           that space. */}
       {/* {isTrash && <SelectAllCheckbox className="shrink-0" />} */}
 
-      {active ? (
+      {/* No neutral search button here: the header's search field already
+          opens search (owner, 14 Nov: "remove this redundant"). */}
+      {active && (
         <PathRailSelectionActions
           selectedCount={selectedCount}
           context={context}
           {...actions}
         />
-      ) : (
-        <div className="flex shrink-0 items-center gap-1">
-          {/* The rail's neutral action. Search is a route rather than an
-              in-place filter, so it navigates instead of toggling state. */}
-          {me && (
-            <Tooltip content="Search" asChild>
-              <Button variant="ghost" size="icon" aria-label="Search" asChild>
-                <Link to={href('/:me/stash/search', { me })}>
-                  <SearchIcon className="size-5" />
-                </Link>
-              </Button>
-            </Tooltip>
-          )}
-          <Separator orientation="vertical" className="h-5" />
-        </div>
       )}
     </nav>
   )
