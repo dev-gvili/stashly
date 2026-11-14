@@ -204,7 +204,8 @@ export function PageToolbarPathRail({
   return (
     <nav
       className={cn(
-        'sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 bg-background py-2 px-0.5',
+        // z-10: sticky toolbars stay under tooltip portals (UI conventions).
+        'sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-input bg-background py-2 px-0.5',
         className
       )}
     >
@@ -249,14 +250,21 @@ export function PageToolbarPathRail({
                   ''}
               </span>
             )}
-            <div className="flex min-w-0 items-start gap-2 overflow-hidden">
+            <div className="flex min-w-0 items-center gap-3 overflow-hidden">
               <Breadcrumbs />
-              <div className="flex min-w-0 items-start gap-2 ">
-                {/* Phones have room for the name or all three counts, not both;
-                    the size is also on every card. */}
+              <div
+                className={cn(
+                  'flex shrink-0 items-center gap-1.5 max-sm:hidden',
+                  active && 'max-lg:hidden'
+                )}
+              >
+                {/* The path wins over the counts: they hide on phones, and below
+                    lg while the selection actions take the row's right side.
+                    The row never wraps or scrolls sideways (owner kept the
+                    badges, 14 Nov). */}
                 <Badge
                   variant="outline"
-                  className="tabular-nums max-sm:hidden"
+                  className="tabular-nums"
                 >
                   {/* Icons as on the collection header's stats (owner, 14 Nov). */}
                   <StorageFillIcon aria-hidden />
