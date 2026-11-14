@@ -218,22 +218,25 @@ describe('the size rollup runs one at a time and gives way to user writes', () =
   })
 
   it('a rollup that meets a locked folder gives up after 100 ms and keeps its deltas', async () => {
-    await withSizeRollupPaused(() => upload('c2', 'C2', 4))
     await prisma.$transaction(async (tx) => {
+      // C1 is held before the delta exists, so no other rollup can apply it
+      // first: one that tries times out on C1 and rolls back, like this one.
       await tx.$queryRaw`SELECT 1 FROM "Item" WHERE "id" = ${ids.C1} FOR UPDATE`
-      // Another rollup (a dev server's loop on this database) may hold the lock
-      // for a moment; it can't apply this delta either, so try until this call
-      // is the one that runs.
-      let outcome = 'skipped'
-      for (let attempt = 0; attempt < 40 && outcome === 'skipped'; attempt++) {
-        try {
-          const [r] = await prisma.$queryRaw<{ deltas: number }[]>`SELECT * FROM apply_item_size_deltas()`
-          if (r.deltas !== 0) outcome = 'applied'
-          else await new Promise((resolve) => setTimeout(resolve, 50))
-        } catch (e) {
-          outcome = /lock timeout|55P03/.test(String(e) + JSON.stringify((e as { meta?: unknown }).meta ?? '')) ? 'timed out' : String(e)
-        }
-      }
+      await withSizeRollupPaused(() => upload('c2', 'C2', 4))
+      // Wait for the rollup's lock, then run the rollup under it (an advisory
+      // lock is re-entrant, so its own try succeeds). Polling the non-waiting
+      // call lost in CI: other test files' flushItemSizes() loops each held the
+      // lock for the 100 ms it took them to time out on C1, retried 10 ms
+      // later, and all 40 tries here found the lock taken ('skipped').
+      const outcome = await prisma
+        .$transaction(async (rollup) => {
+          await rollup.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('stashly.item_size_rollup'))`
+          const [r] = await rollup.$queryRaw<{ deltas: number }[]>`SELECT * FROM apply_item_size_deltas()`
+          return r.deltas === 0 ? 'skipped' : 'applied'
+        })
+        .catch((e: unknown) =>
+          /lock timeout|55P03/.test(String(e) + JSON.stringify((e as { meta?: unknown }).meta ?? '')) ? 'timed out' : String(e)
+        )
       expect(outcome).toBe('timed out')
       // Inside the lock: once it is released, a rollup may apply this at any time.
       expect(await pendingUnder('C2')).toBe(1)
