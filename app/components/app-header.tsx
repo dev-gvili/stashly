@@ -8,7 +8,7 @@ import {
   NotificationEmptyFillIcon,
   NotificationFullFillIcon,
 } from '@/components/icons'
-import { useUpload } from '@/hooks/useUpload'
+import { useUpload, useUploadFileIds } from '@/hooks/useUpload'
 import { cn } from '@/utils'
 import { useState } from 'react'
 import {
@@ -36,7 +36,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
 import { Button } from '@/ui/button'
 import { SidebarTrigger } from '@/ui/sidebar'
 import { ButtonGroup } from '@/ui/button-group'
-import { Trigger } from '@/components/upload'
+import { FileList, Trigger } from '@/components/upload'
+import { INVITE_CAPTION } from '@/components/views/invitations/invite-form-fields'
+import { segmentedControlItemVariants } from '@/ui/segmented-control'
 
 export function AppHeader() {
   const { folderId, fileId } = useParams()
@@ -123,6 +125,13 @@ export function AppHeader() {
   )
 }
 
+/** A New panel action, drawn as a color-mode switch tile. */
+const NEW_TILE = cn(
+  segmentedControlItemVariants({ size: 'tile' }),
+  // border-0: the upload Trigger brings its own border, which the switch has not.
+  'w-full border-0 text-foreground hover:bg-card'
+)
+
 function StashlyUpload({
   folderId,
   rootId,
@@ -130,9 +139,15 @@ function StashlyUpload({
   folderId: string | undefined
   rootId: string | undefined
 }) {
-  let { toggleView } = useUpload()
+  let { toggleView, isVisible } = useUpload()
+  const hasUploads = useUploadFileIds().length > 0
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  /** Opens (never closes) the floating upload panel. */
+  const openUploadPanel = () => {
+    if (!isVisible) toggleView()
+    setMenuOpen(false)
+  }
   const [newFolderOpen, setNewFolderOpen] = useState(false)
   if (location.pathname.includes('files')) {
     return null
@@ -165,50 +180,61 @@ function StashlyUpload({
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="flex-col flex rounded-md shadow-xl overflow-hidden font-stashly border-none ring-2 ring-accent p-2 bg-card max-w-max"
+          sideOffset={8}
+          // As in the color-mode switch: focusing the first tile on open drew
+          // the white keyboard ring. Tab still reaches the tiles.
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className="flex w-90 max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-3xl border-input bg-card p-4 font-stashly shadow-stashly"
         >
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setMenuOpen(false)
-              setNewFolderOpen(true)
-            }}
-            className="hover:cursor-pointer w-full hover:bg-transparent text-foreground border-none flex items-end justify-start"
-          >
-            <AddFoldersIcon className="size-6! text-current" />
-            New
-          </Button>
-          <Button
-            variant="ghost"
-            onSelect={(e) => e.preventDefault()}
-            className="hover:cursor-pointer w-full text-foreground hover:bg-transparent"
-            asChild
-          >
-            <Trigger
-              id="upload-files"
-              folderId={folderId}
-              className="border-none flex items-end justify-start w-full"
+          {/* The color-mode switch's track and tiles, as the owner asked. These
+              are actions, not a choice, so they stay buttons (and labels for
+              the file pickers) that only look like the switch. */}
+          <div className="grid grid-cols-3 gap-0.5 rounded-md border border-border/60 bg-muted p-0.75">
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false)
+                setNewFolderOpen(true)
+              }}
+              className={NEW_TILE}
             >
-              <UploadFileFillIcon className="size-6! text-current" />
-              <span className="place-self-start">Files</span>
+              <AddFoldersIcon aria-hidden />
+              New folder
+            </button>
+            <Trigger id="upload-files" folderId={folderId} className={NEW_TILE}>
+              <UploadFileFillIcon aria-hidden />
+              Upload files
             </Trigger>
-          </Button>
-          <Button
-            variant="ghost"
-            onSelect={(e) => e.preventDefault()}
-            className="hover:cursor-pointer w-full hover:bg-transparent text-foreground"
-            asChild
-          >
             <Trigger
               id="upload-folder"
               folderId={folderId}
               webkitdirectory=""
-              className="border-none flex items-end justify-start w-full"
+              className={NEW_TILE}
             >
-              <UploadFolderFillIcon className="size-6! text-current" />
-              <span className="place-self-start">Folders</span>
+              <UploadFolderFillIcon aria-hidden />
+              Upload folder
             </Trigger>
-          </Button>
+          </div>
+          {hasUploads && (
+            <section className="flex flex-col gap-2.5">
+              <div className="flex items-center gap-2">
+                <h3 className={INVITE_CAPTION}>Uploads</h3>
+                <span className="flex-1" />
+                <button
+                  type="button"
+                  onClick={openUploadPanel}
+                  className="rounded-[4px] font-stashly text-xs text-primary outline-none hover:cursor-pointer hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  Open uploads panel
+                </button>
+              </div>
+              {/* The upload panel's own list, untouched: every row keeps its
+                  status, error tooltip, progress ring and hover controls. */}
+              <div className="rounded-xl bg-muted">
+                <FileList className="h-full" />
+              </div>
+            </section>
+          )}
         </PopoverContent>
       </Popover>
       <NewFolderDialog
