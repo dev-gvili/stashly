@@ -129,7 +129,9 @@ export function SearchRefine({ showTrigger = true }: { showTrigger?: boolean }) 
           }}
           aria-haspopup="dialog"
           aria-label={parts.length ? `Search and refine: ${parts.join(', ')}` : 'Search your stash'}
-          className="h-9 min-w-9 w-full max-w-150 flex items-center gap-2 rounded-md border border-input bg-card pl-2.5 pr-1.5 font-stashly text-sm text-muted-foreground transition-colors duration-200 hover:bg-muted cursor-pointer"
+          // max-w-80, the Images page's header search (owner, 14 Nov: the
+          // 600px field was too large).
+          className="h-9 min-w-9 w-full max-w-80 flex items-center gap-2 rounded-md border border-input bg-card pl-2.5 pr-1.5 font-stashly text-sm text-muted-foreground transition-colors duration-200 hover:bg-muted cursor-pointer"
         >
           <SearchFillIcon className="size-5 shrink-0" />
           {parts.length ? (
