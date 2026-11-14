@@ -208,7 +208,7 @@ Times in seconds after T0. CM = `create-multipart-upload` sent–answered; PUTs 
 
 Reading it: files finish in an order set by when their parts finish, not by file size; the small files sit in the batch behind the big ones' bandwidth (a 13 KB file took 4.8 s to put in row 9, and a 20 KB file 26 s in row 33), because every part in flight shares the uplink. That is a reading of the numbers, not a separate test. One run each: run 1 and run 2 differ by about 3% on average throughput (10.17 and 9.85 MB/s) and on the end of the last item (31.3 s and 32.4 s).
 
-## Server and database side (Backend Dev)
+## Server and database side, run 1 (Backend Dev)
 
 Measured from the database and Vinktar, read-only; no logging was added and the server was not restarted. Times are seconds after the same T0 (03:20:51.993Z); negative means before T0. Server code: `X:\stashly` at `e8a5f82` in dev mode, Postgres 17.5 on the same machine.
 
@@ -350,6 +350,105 @@ The folder received two complete uploads of `X:\pdfs`, each with its own `upload
 | 36 | Stashly_Technical_Debt_Audit.pdf | 12,504,051 | 14 | -32.11 | 7 | -31.98 | none: no `Search` row | 0/0 | — | — | **not indexed** | 775 |
 | 37 | Stashly_Upload_Architecture_Overhaul.pdf | 12,706,230 | 15 | -30.55 | 4 | -30.45 | none: no `Search` row | 0/0 | — | — | **not indexed** | 786 |
 
+
+## Server and database side, run 2 (Backend Dev)
+
+Scope set by the owner for run 2: from T0 to the last file's row committed (`file_uploaded`). Thumbnails, OCR, embeddings and indexing are left out. Times are seconds after run 2's **T0 = 2026-11-14T03:56:43.708Z** (Frontend's folder pick). Measured read-only, like run 1: `Item.createdAt`, Vinktar events, the Postgres log, and a sampler polling the database every 250 ms from 03:52:16Z (192 samples between 03:56:40 and 03:57:30Z, 6–14 ms each). The same server, `X:\stashly` at `e8a5f82` in dev mode.
+
+- **Account:** `usr_jY94r4AQIyrd9N0xPPME5Q`, on the same drive as run 1.
+- **Destination folder:** `item_BN9Cbvn_6EtIOQtVfOoB5w`, new and empty. The upload filed into a new `pdfs` subfolder, `item_MSPT3kATpAAuXuX6xokfSQ`, created 03:56:43.793Z.
+- **The drive before the run:** the owner had emptied it at 03:46Z on purpose, so it held 0 files and quota `used` was 0.
+- **One pick:** a single `upload_folders_resolved` event, 37 rows for 37 distinct names, and every event came from the pane's browser.
+
+### Batch timeline (server events)
+
+| Event | Time |
+|---|---|
+| Folder tree resolved (`upload_folders_resolved`, 1 folder created) | 0.113 s |
+| 37 multipart creates answered (`upload_started`) | 0.612 – 1.605 s |
+| First multipart complete answered (`upload_transfer_completed`) | 1.620 s |
+| First row insert start / first row committed | 1.812 s / 1.886 s |
+| Last multipart complete answered | 32.186 s |
+| Last row insert start / **last row committed** (end of scope) | 32.359 s / **32.363 s** |
+
+Cross-check with the browser: the page saw the last `create_upload_item` answered at +32.37 s (03:57:16.081Z), 10 ms after the server sent `file_uploaded` for that row (03:57:16.071Z).
+
+### Per file
+
+- **Row write, every file:** insert start to commit (`Item.createdAt` → `file_uploaded`), in ms: 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 16, 17, 18, 26, 28, 74. Each is one statement that writes `Item`, `File`, the permission, the quota charge, the folder size and the child count.
+- **Multipart complete answered → row committed:** mean **147 ms**, with **139 ms** of it before the insert starts. That 139 ms is the browser's next request plus the server's HEAD of the stored object. Run 1 measured the same 147 / 140 ms. These events carry no item id, so they can't be paired per file; the means over all 37 are exact.
+- **Not separable without instrumentation:** the HEAD on its own, multipart create, part signing and complete as server time per request. The server only times requests over 1 s, and its log lines go to the dev server's terminal.
+
+### Slow or failed requests, rollup, locks
+
+- **Requests:** 0 `route_request_slow` (over 1 s), 0 `route_request_failed`, 0 `upload_refused`, `upload_aborted` or `upload_item_refused`, 03:56:30–03:57:40Z.
+- **Size, child count and quota rollup:** `ItemSizeDelta` and `QuotaDelta` were empty in all 192 samples. Every file took the idle path, so its folder size, child count and quota charge were written by its own insert, and rollup lag was 0 at 250 ms resolution. In every sample, quota `used` equalled the sum of the files filed so far.
+- **Locks:** no sample had a backend waiting on a lock. The deadlock counter stayed at 154 and rollbacks at 1,977. At most 2 app backends were active at once, with 7 connections. The Postgres log for the run (03:56:43–03:57:17Z) has only a checkpoint. After the run, at 03:57:36Z, it logs one `ERROR` and two `could not receive data from client` lines. All three are mine: a malformed read-only query of my own, and my samplers disconnecting when I stopped them.
+
+### Consistency at the end
+
+| Check | Result |
+|---|---|
+| `pdfs` size = sum of its files | 309,247,379 = 309,247,379 ✅ (`inclusiveSize` the same; destination folder size 309,247,379) |
+| `childCount` = rows | 37 = 37 ✅ (destination `childCount` 1) |
+| Quota charged once per file | `used` 0 → 309,247,379 = the 37 files once ✅. The drive holds exactly these 37 files. |
+| Delta logs drained | `ItemSizeDelta` 0, `QuotaDelta` 0 ✅ |
+| Duplicates | 37 rows, 37 names, no second pick ✅ |
+
+### Run 1 and run 2 side by side (server, to the last row committed)
+
+| | Run 1 (measured pick) | Run 2 |
+|---|---|---|
+| Folders resolved | +0.070 s | +0.113 s |
+| Multipart creates answered | +0.22 to +1.16 s | +0.61 to +1.61 s |
+| First / last row committed | +1.89 s / +31.19 s | +1.89 s / +32.36 s |
+| Insert→commit, range | 3–24 ms | 2–74 ms |
+| Complete → committed, mean | 147 ms | 147 ms |
+| Slow / failed / refused requests | 0 / 0 / 0 | 0 / 0 / 0 |
+| Delta logs used, lock waits, new deadlocks | none / 0 / 0 | none / 0 / 0 |
+| Quota charged | once per file (plus the earlier pick's 37) | once per file, exactly |
+
+#### Run 2, every file
+
+| # | File | Bytes | Row insert start s | Row committed s | Insert→commit ms |
+|---|---|---:|---:|---:|---:|
+| 1 | Cloud_Storage_Deep_Dive.pdf | 13,673 | 1.812 | 1.886 | 74 |
+| 2 | AI_Enhanced_File_Hosting.pdf | 19,153 | 2.145 | 2.171 | 26 |
+| 3 | cloud_storage_architectures.pdf | 17,358 | 2.577 | 2.582 | 5 |
+| 4 | edge_ai.pdf | 38,507 | 2.909 | 2.915 | 6 |
+| 5 | Foundations of Distributed Storage Architecture.pdf | 317,930 | 3.286 | 3.291 | 5 |
+| 6 | Getting Started.pdf | 72,705 | 3.442 | 3.446 | 4 |
+| 7 | Getting_Started_with_Google_Drive.pdf | 685,440 | 4.032 | 4.036 | 4 |
+| 8 | Exabyte_Architecture.pdf | 22,053,282 | 5.027 | 5.045 | 18 |
+| 9 | Google_Workspace_Introduction.pdf | 13,299 | 6.029 | 6.034 | 5 |
+| 10 | Stashly — Item Page pdf.pdf | 263,686 | 6.221 | 6.226 | 5 |
+| 11 | Solar Icons Set (Vol.2) (Community).pdf | 14,305,766 | 6.223 | 6.240 | 17 |
+| 12 | Stashly — Item Page pdf2.pdf | 256,433 | 6.270 | 6.286 | 16 |
+| 13 | Stashly — Item Page audio.pdf | 272,512 | 6.331 | 6.336 | 5 |
+| 14 | Stashly-page-toolbar.pdf | 507,333 | 6.943 | 6.948 | 5 |
+| 15 | Stashly — Item Page.pdf | 468,942 | 7.403 | 7.406 | 3 |
+| 16 | Stashly-page-toolbar_3.pdf | 2,710,532 | 8.314 | 8.320 | 6 |
+| 17 | Stashly-page-toolbar_2.pdf | 2,710,532 | 8.984 | 8.988 | 4 |
+| 18 | Smart_Edge_Heavy_Database_Architecture.pdf | 11,690,681 | 9.423 | 9.427 | 4 |
+| 19 | Stashly_Architectural_Blueprint.pdf | 18,973,165 | 11.066 | 11.071 | 5 |
+| 20 | Stashly_Architectural_Teardown.pdf | 15,753,877 | 12.885 | 12.888 | 3 |
+| 21 | Stashly_Architecture_Audit.pdf | 20,447,175 | 14.067 | 14.073 | 6 |
+| 22 | Stashly_Architecture_Blueprint.pdf | 14,575,890 | 15.274 | 15.278 | 4 |
+| 23 | Stashly_Architecture_Report.pdf | 11,404,882 | 15.508 | 15.511 | 3 |
+| 24 | Stashly_Atomic_Upload_Architecture.pdf | 14,967,454 | 17.724 | 17.726 | 2 |
+| 25 | Stashly_Engineering_Intelligent_Platform.pdf | 11,668,237 | 18.868 | 18.871 | 3 |
+| 26 | Stashly_Browser_IDE_Architecture.pdf | 14,327,434 | 21.420 | 21.427 | 7 |
+| 27 | Stashly_Engineering_Retrospective.pdf | 12,604,802 | 21.532 | 21.535 | 3 |
+| 28 | Stashly_Platform_Blueprint.pdf | 20,247,714 | 22.748 | 22.776 | 28 |
+| 29 | Stashly_Reference_Architecture.pdf | 15,371,041 | 24.712 | 24.715 | 3 |
+| 30 | Stashly_Technical_Debt_Audit.pdf | 12,504,051 | 24.872 | 24.878 | 6 |
+| 31 | Stashly_Technical_Atlas.pdf | 13,678,522 | 27.493 | 27.496 | 3 |
+| 32 | Stashly_Technical_Blueprint.pdf | 18,339,417 | 28.094 | 28.098 | 4 |
+| 33 | storage_architecture.pdf | 19,980 | 28.319 | 28.322 | 3 |
+| 34 | system_design.pdf | 97,014 | 28.489 | 28.493 | 4 |
+| 35 | Stashly_System_Transformation_Blueprint.pdf | 12,328,110 | 29.953 | 29.957 | 4 |
+| 36 | Stashly_Technical_Turnaround.pdf | 12,814,620 | 31.596 | 31.601 | 5 |
+| 37 | Stashly_Upload_Architecture_Overhaul.pdf | 12,706,230 | 32.359 | 32.363 | 4 |
 
 ## Appendix: part durations
 
