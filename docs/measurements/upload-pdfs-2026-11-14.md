@@ -450,6 +450,85 @@ Cross-check with the browser: the page saw the last `create_upload_item` answere
 | 36 | Stashly_Technical_Turnaround.pdf | 12,814,620 | 31.596 | 31.601 | 5 |
 | 37 | Stashly_Upload_Architecture_Overhaul.pdf | 12,706,230 | 32.359 | 32.363 | 4 |
 
+## Raw uplink to Tigris
+
+**Question (owner):** both app runs moved the 309,247,379 B in about 31 s (9.85–10.17 MB/s). Is that this machine's uplink to Tigris, or the app's scheduling?
+
+**Answer:** it is mostly the uplink. Outside the app, the same bytes in the same 5 MiB parts never went faster than **11.63 MB/s** (93 Mbit/s). The rate stops rising between 16 and 32 parts in flight:
+- 32 in flight averaged 11.55 MB/s and 84 averaged 11.54 MB/s. **Sending all 84 at once is not slower than a smaller window.**
+- At the best setting the batch's parts take **26.6–27.0 s** (27.0–27.8 s with create and complete), against about 31 s in the app.
+- So the app reaches 85–88% of what this line carries to Tigris. About 3.5–4 s, 12–15%, is spent above the raw transfer.
+
+**How it was measured** (Backend Dev, 14 Nov, 04:37–04:46Z, run after run 2 with nothing else uploading):
+- **The script:** a Node script outside the app, in the session's scratchpad, not the repo. It uses the AWS SDK with `app/.server/s3.ts`'s settings: endpoint host `fly.storage.tigris.dev`, region `auto`, `requestChecksumCalculation: 'WHEN_REQUIRED'`, credentials from `.env`.
+- **Connections:** HTTPS/1.1 keep-alive with up to 256 sockets, so the client never capped concurrency. SDK retries were off, so any failure would show.
+- **The payload:** all 37 files of `X:\pdfs`, read into memory first so disk reads were not timed, and split exactly as the app splits them: **84 parts** of 5 MiB (the last part of each file shorter).
+- **Each run:** a `CreateMultipartUpload` per file, then all 84 `UploadPart`s through a pool of N workers, then `CompleteMultipartUpload` per file.
+- **Run order:** two rounds, each going from 84 down to 1 in flight, so a slow minute on the line would show up as a round difference rather than skewing one setting.
+- **Where the objects went:** bucket `stashly-alongvili-j0o60njo` (the dev account's), under the scratch prefix `uplink-test-2026-11-14/`. Each run's objects were deleted right after it.
+- **Cleanup check:** at the end the prefix held 0 objects and 0 open multipart uploads.
+
+**Columns:**
+- **Parts wall:** first part sent → last part answered.
+- **MB/s (parts):** 309,247,379 B divided by that time.
+- **Total:** first create → last complete.
+- **Part ms:** each part's request time.
+
+### Every run
+
+| Parts in flight | Round | Started (UTC) | Parts wall s | MB/s (parts) | Total s (create→complete) | MB/s (total) | Part ms p50 / p90 / max (min) | Errors |
+|---:|---:|---|---:|---:|---:|---:|---|---:|
+| 1 | 1 | 04:40:10 | 45.44 | **6.81** | 45.76 | 6.76 | 583 / 646 / 3131 (121) | 0 |
+| 1 | 2 | 04:44:43 | 46.45 | **6.66** | 46.77 | 6.61 | 579 / 710 / 2211 (119) | 0 |
+| 2 | 1 | 04:39:31 | 37.64 | **8.22** | 37.97 | 8.15 | 919 / 1319 / 4493 (126) | 0 |
+| 2 | 2 | 04:44:06 | 36.44 | **8.49** | 36.75 | 8.41 | 1027 / 1236 / 4042 (118) | 0 |
+| 4 | 1 | 04:38:58 | 32.23 | **9.60** | 32.52 | 9.51 | 1589 / 2545 / 4923 (123) | 0 |
+| 4 | 2 | 04:43:32 | 33.11 | **9.34** | 33.45 | 9.25 | 1467 / 3026 / 5611 (119) | 0 |
+| 8 | 1 | 04:38:28 | 29.76 | **10.39** | 30.09 | 10.28 | 3039 / 4489 / 6924 (121) | 0 |
+| 8 | 2 | 04:43:02 | 28.90 | **10.70** | 29.22 | 10.58 | 3013 / 4549 / 6190 (139) | 0 |
+| 16 | 1 | 04:37:59 | 27.59 | **11.21** | 27.90 | 11.08 | 5505 / 8467 / 10557 (146) | 0 |
+| 16 | 2 | 04:42:33 | 29.00 | **10.66** | 29.32 | 10.55 | 5466 / 8799 / 10122 (115) | 0 |
+| 32 | 1 | 04:37:32 | 26.59 | **11.63** | 26.92 | 11.49 | 10864 / 14981 / 18414 (125) | 0 |
+| 32 | 2 | 04:42:05 | 26.95 | **11.47** | 27.26 | 11.34 | 10212 / 15320 / 18345 (137) | 0 |
+| 84 | 1 | 04:37:03 | 26.94 | **11.48** | 27.84 | 11.11 | 24118 / 26216 / 26935 (1026) | 0 |
+| 84 | 2 | 04:41:37 | 26.65 | **11.60** | 26.96 | 11.47 | 23707 / 25804 / 26641 (1026) | 0 |
+
+| Single-stream PUT | Round | Bytes | Seconds | MB/s | Error |
+|---|---:|---:|---:|---:|---|
+| Largest file (Exabyte_Architecture.pdf) | 1 | 22,053,282 | 2.92 | 7.56 | none |
+| All 37 files as one object | 1 | 309,247,379 | 39.17 | 7.90 | none |
+| Largest file (Exabyte_Architecture.pdf) | 2 | 22,053,282 | 2.22 | 9.93 | none |
+| All 37 files as one object | 2 | 309,247,379 | 38.68 | 8.00 | none |
+
+| Parts in flight | Mean MB/s (2 runs) |
+|---:|---:|
+| 1 | 6.73 (6.81, 6.66) |
+| 2 | 8.36 (8.22, 8.49) |
+| 4 | 9.47 (9.60, 9.34) |
+| 8 | 10.54 (10.39, 10.70) |
+| 16 | 10.94 (11.21, 10.66) |
+| 32 | 11.55 (11.63, 11.47) |
+| 84 | 11.54 (11.48, 11.60) |
+
+### Reading it
+
+- **Concurrency stops paying at 16–32 parts in flight.**
+  - Going from 1 to 8 in flight raises the rate from 6.73 to 10.54 MB/s.
+  - 16 gives 10.94, 32 gives 11.55, and 84 gives 11.54.
+  - The 84-at-once runs are within 0.15 MB/s of the 32 runs, inside the run-to-run spread, so the app's choice of sending every part at once costs nothing measurable here.
+- **Why single parts take 24–27 s at 84 in flight.** Each part's time grows with the window because all parts share one line: p50 is 0.58 s at 1 in flight, 3.0 s at 8, 10–11 s at 32 and 24 s at 84. The 30 s parts the app saw are this sharing, not a stuck request. The first 84 run's 0.7 s create step (0.13–0.15 s in every later run) includes opening the first connections.
+- **A single stream is slower than parallel parts:** one 309 MB `PutObject` took 38.7–39.2 s (7.90–8.00 MB/s), and one 22 MB `PutObject` 2.2–2.9 s (7.56–9.93 MB/s).
+- **One part at a time:** a full 5 MiB part takes about 0.58 s (≈ 9 MB/s while it runs). The short final parts take 0.12–0.15 s each, mostly request overhead, which is why 1 in flight averages only 6.73 MB/s.
+- **The X:\pdfs batch at the best setting** (32 or 84 parts in flight): **26.6–27.0 s** to move the parts, 27.0–27.8 s from the first create to the last complete. That is the floor for these bytes on this line today.
+- **The app, for comparison** (from the sections above): about 30.4 s of part transfer in run 1 (10.17 MB/s), and its last multipart complete answered at +32.19 s in run 2.
+
+### Not measured
+
+- **The browser's own connection.** These runs used Node over HTTP/1.1. Whether Chrome reached Tigris over HTTP/1.1 or HTTP/2, and how many connections it used, would need the browser's network log. That is the most likely place for the app's extra 3.5–4 s, but it is not proven here.
+- **Other times of day and other lines.** All 18 runs (14 multipart, 4 single PUTs) ran within 9 minutes (04:37–04:46Z) on this machine's connection.
+- **Where requests landed.** The endpoint is Tigris's global `fly.storage.tigris.dev`; which region served them wasn't recorded.
+- **Other part sizes.** Only 5 MiB parts were tried, matching the app.
+
 ## Appendix: part durations
 
 Each number is one S3 part PUT in milliseconds, in part order.
