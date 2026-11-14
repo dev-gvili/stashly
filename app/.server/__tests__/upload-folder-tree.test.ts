@@ -221,6 +221,46 @@ async function holdTrashEntries() {
   await blocker.query(`SELECT 1 FROM "Trash" WHERE "driveId" = $1 FOR UPDATE`, [driveId])
 }
 
+/*
+ * The holds below replace four `LOCK TABLE … IN SHARE MODE` pauses ("View",
+ * "Folder" twice, "Item"). Those were database-wide, like the TrashItem one
+ * above: each stalled every other test file's insert into that table (measured
+ * on the dev DB: an Item insert into another drive's folder waited out its
+ * 1.5 s lock timeout under the "Folder" and "Item" locks, a View insert under
+ * the "View" lock). And under the "Folder" and "Item" locks that foreign insert
+ * counted in `untilBlocked('%"Item"%')`, so a race test could go on before its
+ * own writer had reached the pause, and run its two sides in the wrong order.
+ * Each hold now takes only rows of this file's own drive.
+ */
+
+/**
+ * Holds `drive`'s Drive row on the blocker (open transaction): an Item insert
+ * into that drive waits on it in its foreign-key check, after everything the
+ * writer locked before its insert. Commit the blocker to let it go on.
+ */
+async function holdItemInserts(drive = driveId) {
+  await blocker.query('BEGIN')
+  await blocker.query(`SELECT 1 FROM "Drive" WHERE "id" = $1 FOR UPDATE`, [drive])
+}
+
+/**
+ * Gives each folder a Folder row with its counts as they stand (`makeFolder`
+ * makes none), then holds those rows on the blocker: a write that moves an item
+ * in or out of one waits in its child-count trigger, with the item already
+ * written. Commit the blocker to let it go on.
+ */
+async function holdChildCounts(...folderIds: string[]) {
+  for (const itemId of folderIds) {
+    const [childCount, inclusiveChildCount] = await Promise.all([
+      prisma.item.count({ where: { parentId: itemId, status: { not: 'trashed' } } }),
+      prisma.item.count({ where: { parentId: itemId } }),
+    ])
+    await prisma.folder.create({ data: { id: uid('Folder'), itemId, childCount, inclusiveChildCount } })
+  }
+  await blocker.query('BEGIN')
+  await blocker.query(`SELECT 1 FROM "Folder" WHERE "itemId" = ANY($1) FOR UPDATE`, [folderIds])
+}
+
 describe('resolveUploadFolders', () => {
   it('creates every missing folder once, with its Folder and View rows', async () => {
     const { folders, refused, createdFolderIds } = await resolveUploadFolders({
@@ -600,8 +640,7 @@ describe('an upload racing a trash of its folder', () => {
   it('trashes the folders a tree created while the trash started (tree first)', async () => {
     const folderId = await makeFolder('race-tree-first', rootId)
     // The tree has looked its folders up and waits to insert the new ones.
-    await blocker.query('BEGIN')
-    await blocker.query('LOCK TABLE "View" IN SHARE MODE')
+    await holdItemInserts()
     const resolving = resolveUploadFolders({
       userId: ownerId,
       rootId: folderId,
@@ -731,8 +770,7 @@ describe('an upload racing a trash of its folder', () => {
       const fileId = await makeFile('early-move.txt', folderId)
       const dest = await makeFolder('move-out-dest-3', rootId)
       // The move has updated the item and waits in its child-count trigger.
-      await blocker.query('BEGIN')
-      await blocker.query('LOCK TABLE "Folder" IN SHARE MODE')
+      await holdChildCounts(folderId, dest)
       const moving = moveItems([fileId], dest, ownerId)
       let trash: Promise<unknown> | undefined
       try {
@@ -807,8 +845,7 @@ describe('an upload racing a trash of its folder', () => {
         const folderId = await makeFolder(`${writer}-writer-first`, rootId)
         const write = await prepare()
         // The writer has its folder and waits in its child-count trigger.
-        await blocker.query('BEGIN')
-        await blocker.query('LOCK TABLE "Folder" IN SHARE MODE')
+        await holdChildCounts(folderId)
         const writing = write(folderId)
         let trash: Promise<unknown> | undefined
         try {
@@ -1299,8 +1336,7 @@ describe('copyItem', () => {
       })
       const file = await makeFile('forty.txt', tightRoot, 40n, tightId, tightDrive)
 
-      await blocker.query('BEGIN')
-      await blocker.query('LOCK TABLE "Item" IN SHARE MODE')
+      await holdItemInserts(tightDrive)
       const copies = [copyItem(tightId, file, tightRoot), copyItem(tightId, file, tightRoot)]
       let results: PromiseSettledResult<unknown>[]
       try {
