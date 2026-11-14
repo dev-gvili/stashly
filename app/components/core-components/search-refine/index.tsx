@@ -139,7 +139,7 @@ export function SearchRefine({ showTrigger = true }: { showTrigger?: boolean }) 
               {parts.map((p) => (
                 <span
                   key={p}
-                  className="h-6 shrink-0 inline-flex items-center rounded-[4px] bg-muted px-2 text-xs text-foreground whitespace-nowrap"
+                  className="h-6 shrink-0 inline-flex items-center rounded-lg bg-muted px-2 text-xs text-foreground whitespace-nowrap"
                 >
                   {p}
                 </span>
@@ -148,7 +148,7 @@ export function SearchRefine({ showTrigger = true }: { showTrigger?: boolean }) 
           ) : (
             <span className="flex-1 min-w-0 truncate text-left">Search your stash</span>
           )}
-          <Kbd className="rounded-[4px] font-stashly @max-md/header:hidden">⌘K</Kbd>
+          <Kbd className="rounded-lg font-stashly @max-md/header:hidden">⌘K</Kbd>
         </button>
       )}
       <DialogContent
@@ -284,7 +284,7 @@ function Home({ filters, sort, go }: { filters: Filters; sort: Sort; go: (v: Vie
         <div className="border-t border-dashed border-input" />
         <div className="flex items-center gap-3">
           <span className={cn(INVITE_CAPTION, 'flex flex-1 items-center gap-1.5 max-sm:hidden')}>
-            <Kbd className="rounded-[4px] font-stashly normal-case">Esc</Kbd>
+            <Kbd className="rounded-lg font-stashly normal-case">Esc</Kbd>
             close
           </span>
           {anyActive && (
