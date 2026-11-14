@@ -198,6 +198,29 @@ async function untilBlocked(pattern: string, count = 1, holder = blocker) {
   throw new Error(`fewer than ${count} statements matching ${pattern} waited on the blocker`)
 }
 
+/**
+ * Holds this test drive's `Trash` row on the blocker (open transaction), so a
+ * trash of anything in the drive stops, uncommitted, before its Trash entries:
+ * writing a `TrashItem` takes FOR KEY SHARE on that row. Commit the blocker to
+ * let it finish.
+ *
+ * Row-scoped on purpose. It used to be `LOCK TABLE "TrashItem" IN SHARE MODE`,
+ * which also stalled every other test file on the database: deleting any item
+ * cascades into `TrashItem`, so `item-size-trigger.test.ts`'s delete waited out
+ * the pause while holding the rollup lock, and both files timed out at 5 s in
+ * CI (13–14 Nov). Measured: under that table lock, a DELETE of an unrelated
+ * item waited until its 1.5 s lock timeout.
+ */
+async function holdTrashEntries() {
+  await prisma.trash.upsert({
+    where: { driveId },
+    create: { id: uid('Trash'), driveId },
+    update: {},
+  })
+  await blocker.query('BEGIN')
+  await blocker.query(`SELECT 1 FROM "Trash" WHERE "driveId" = $1 FOR UPDATE`, [driveId])
+}
+
 describe('resolveUploadFolders', () => {
   it('creates every missing folder once, with its Folder and View rows', async () => {
     const { folders, refused, createdFolderIds } = await resolveUploadFolders({
@@ -495,8 +518,7 @@ describe('an upload racing a trash of its folder', () => {
 
   /** Starts a trash of `folderId` that stops, uncommitted, after its UPDATE. */
   async function pausedTrash(folderId: string) {
-    await blocker.query('BEGIN')
-    await blocker.query('LOCK TABLE "TrashItem" IN SHARE MODE')
+    await holdTrashEntries()
     const trash = trashItems([folderId], ownerId)
     await untilWriteLocked(folderId)
     return {
@@ -863,15 +885,14 @@ describe('an upload racing a trash of its folder', () => {
         [late, ownerId, driveId, arriving]
       )
       // The trash stops, uncommitted, before its Trash entries.
-      await blocker.query('BEGIN')
-      await blocker.query('LOCK TABLE "TrashItem" IN SHARE MODE')
+      await holdTrashEntries()
       trash = trashItems([top], ownerId)
       await untilBlocked('%FOR UPDATE%', 1, mover)
       await mover.query('COMMIT')
       // The second pass finds the arriving folder and waits for the one being made.
       await untilBlocked('%FOR UPDATE%', 1, maker)
       await maker.query('COMMIT')
-      await untilBlocked('%TrashItem%')
+      await untilBlocked('%Trash%')
       creating = createFolder('lock-set-inside', late, ownerId, driveId).then(
         () => 'written',
         (error) => error
