@@ -135,10 +135,13 @@ function uploadSummary(c: ReturnType<typeof useUploadCounts>): string {
   const failed = c.failed + c.itemFailed
   // Waiting their turn (queued, validating, paused, saving): the four parts add up to the total.
   const left = total - uploaded - failed - c.uploading
+  // While anything is unfinished every part stays, zeros included: parts
+  // that came and went on each tick made the line jump (owner, 14 Nov).
+  const active = uploaded + failed < total
   return [
     `${uploaded} of ${total} uploaded`,
-    c.uploading > 0 && `${c.uploading} uploading`,
-    left > 0 && `${left} left`,
+    active && `${c.uploading} uploading`,
+    active && `${left} left`,
     failed > 0 && `${failed} failed`,
   ]
     .filter(Boolean)
@@ -238,10 +241,11 @@ function StashlyUpload({
           {/* Hidden while the session has no uploads. */}
           {hasUploads && (
             <section className="flex flex-col gap-2.5">
-              <div className="flex items-baseline gap-3">
-                <h3 className={INVITE_CAPTION}>Uploads</h3>
-                <span className="flex-1" />
-                <p className="font-stashly text-xs text-muted-foreground tabular-nums">
+              {/* Left-aligned beside the caption, so a changing count only
+                  moves the end of the line, never its start. */}
+              <div className="flex min-w-0 items-baseline gap-3">
+                <h3 className={cn(INVITE_CAPTION, 'shrink-0')}>Uploads</h3>
+                <p className="min-w-0 truncate font-stashly text-xs text-muted-foreground tabular-nums">
                   {summary}
                 </p>
               </div>
