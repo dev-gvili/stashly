@@ -1,6 +1,7 @@
 import {
   AddFoldersIcon,
   ArrowLeftFillIcon,
+  ChevronRightIcon,
   UploadFileFillIcon,
   UploadFillIcon,
   UploadFolderFillIcon,
@@ -68,12 +69,9 @@ export function AppHeader() {
         className="md:hidden bg-card! border-input rounded-md! shrink-0"
       />
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon"
-        className={cn(
-          'font-stashly bg-card! border-input rounded-md! shrink-0',
-          !fileId && 'hidden'
-        )}
+        className={cn('rounded-md! shrink-0', !fileId && 'hidden')}
         aria-label="Back"
         onClick={() => navigate(-1)}
       >
@@ -107,10 +105,16 @@ export function AppHeader() {
           {/* Search, filter and sort in one field (⌘K opens it too). It
               replaced the classic search / Filter / Sort controls as the only
               option (owner's call, 13 Nov). */}
-          {hasHeaderFilters(pathname) && <SearchRefine />}
+          {hasHeaderFilters(pathname) && (
+            <>
+              {/* After New (which renders nothing on /files). */}
+              {!pathname.includes('files') && <HeaderDivider />}
+              <SearchRefine />
+            </>
+          )}
         </div>
       )}
-      <div className="flex items-center space-x-2 shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         {isImagesPage && <GalleryHeaderTools />}
         {/* Renders only on Home (it reads the home loader's data). */}
         <HomeHeaderTools />
@@ -120,10 +124,21 @@ export function AppHeader() {
           <Grid />
           <List />
         </LayoutToggle>
+        <HeaderDivider />
         <NotificationsPanel notifications={notifications} />
         <ModeToggle />
       </div>
     </header>
+  )
+}
+
+/** A hairline between control groups; gone once the header is narrow. */
+function HeaderDivider() {
+  return (
+    <span
+      aria-hidden
+      className="h-5 w-px shrink-0 bg-input @max-md/header:hidden"
+    />
   )
 }
 
@@ -210,21 +225,26 @@ function StashlyUpload({
   }
 
   return (
-    <ButtonGroup className="border-none ring-2 ring-accent rounded-md bg-card">
+    <ButtonGroup className="rounded-md">
       <Popover modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger className="cursor-pointer" asChild>
+          {/* The one primary control in the bar (canvas 09cb5e38: "indigo
+              only on New"). Icon only once the header is narrow. */}
           <Button
-            variant="ghost"
-            size="icon"
             aria-label="New and upload"
-            className="relative hover:cursor-pointer hover:bg-muted rounded-md hover:rounded-md  items-center! flex aria-expanded:bg-accent/30 aria-expanded:text-accent-foreground  data-[state=open]:bg-accent/30 data-[state=open]:text-accent-foreground hover:last:rounded-r-md!"
+            className="relative shrink-0 gap-1.5 rounded-md hover:cursor-pointer data-[state=open]:bg-primary/90 @max-md/header:size-9 @max-md/header:px-0"
           >
-            <UploadFillIcon className="size-5! text-muted-foreground" />
+            <UploadFillIcon aria-hidden className="size-5!" />
+            <span className="@max-md/header:hidden">New</span>
+            <ChevronRightIcon
+              aria-hidden
+              className="size-4! rotate-90 @max-md/header:hidden"
+            />
             {/* Uploads running. Square-ish, not a dot: no round shapes. */}
             {uploading > 0 && (
               <span
                 aria-hidden
-                className="absolute top-1.5 right-1.5 size-1.5 rounded-[2px] bg-primary"
+                className="absolute top-1.5 right-1.5 size-1.5 rounded-[2px] bg-primary-foreground"
               />
             )}
           </Button>

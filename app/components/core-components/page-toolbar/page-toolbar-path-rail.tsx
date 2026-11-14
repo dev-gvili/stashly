@@ -209,13 +209,12 @@ export function PageToolbarPathRail({
         className
       )}
     >
+      {/* Plain ghost: the accent ring belongs to the selection group only
+          (owner, 14 Nov). */}
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon"
-        className={cn(
-          'font-stashly bg-card! border-none ring-2 ring-accent rounded-md!',
-          !crumbs && 'hidden'
-        )}
+        className={cn('rounded-md! shrink-0', !crumbs && 'hidden')}
         aria-label="Back"
         onClick={onBack}
       >
