@@ -1,4 +1,6 @@
-# Upload of `X:pdfs` — live measurement, run 1 and run 2 (14 Nov 2026)
+# Upload of `X:\pdfs` — live measurement, run 1 and run 2 (14 Nov 2026)
+
+Run 1 is below (folder chosen until everything was indexed); run 2 is its own section ("Run 2", folder chosen until the last item row was created). Backend Dev's server-side section follows. The text that follows describes run 1.
 
 One real folder upload, measured in the browser from the moment the folder was chosen until nothing was left to do. All numbers come from a recorder injected into the page; nothing is estimated unless it says so. Times are seconds after **T0**.
 
