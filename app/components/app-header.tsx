@@ -18,6 +18,7 @@ import {
 } from 'react-router'
 import { ModeToggle } from '@/components/color-mode'
 import { GalleryHeaderTools } from '@/components/gallery/gallery-view-controls'
+import { HomeHeaderTools } from '@/components/views/home-components/home-status-pills'
 import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
 import { NotificationsPanel } from '@/components/core-components/notifications/notifications-panel'
 import type { Notification } from '@/types/notification.types'
@@ -111,6 +112,8 @@ export function AppHeader() {
       )}
       <div className="flex items-center space-x-2 shrink-0">
         {isImagesPage && <GalleryHeaderTools />}
+        {/* Renders only on Home (it reads the home loader's data). */}
+        <HomeHeaderTools />
         <LayoutToggle>
           <River />
           <Waterfall />

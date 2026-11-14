@@ -1,7 +1,7 @@
 import { sessionContext } from '@/.server/middleware/context'
 import type { Route } from './+types/home'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
-import { href, useFetcher } from 'react-router'
+import { href } from 'react-router'
 import type { ShouldRevalidateFunction } from 'react-router'
 import { getQueryParamArray } from '@/utils/query-params'
 import { HomeView } from '@/components/views/home-components/home-view'
@@ -12,7 +12,6 @@ import {
   toNeedsYouEntries,
   toQueueEntries,
 } from '@/components/views/home-components/home-data'
-import type { NeedsYouEntry } from '@/types/home.types'
 import type { StashItem } from '@/types/stash.types'
 import { getSuggestedItems } from '@/services/item-actions'
 import { getPinnedItems } from '@/services/pin-actions'
@@ -158,15 +157,9 @@ export async function loader({ context }: Route.LoaderArgs) {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { me, rootId, firstName, chips, ...data } = loaderData
-  const invitations = useFetcher()
-
-  const respond = (intent: 'accept_invitation' | 'reject_invitation') =>
-    (entry: NeedsYouEntry) =>
-      invitations.submit(
-        { intent, recipientId: entry.recipientId },
-        { method: 'POST', action: '/api/invitations' }
-      )
+  // searchable and needsYou are read by the header (HomeHeaderTools).
+  const { me, rootId, firstName, chips, searchable: _s, needsYou: _n, ...data } =
+    loaderData
 
   return (
     <HomeView
@@ -180,8 +173,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         collections: href('/:me/stash/collections', { me }),
         shared: href('/:me/stash/shares', { me }),
       }}
-      onActOnNeed={respond('accept_invitation')}
-      onDismissNeed={respond('reject_invitation')}
     />
   )
 }

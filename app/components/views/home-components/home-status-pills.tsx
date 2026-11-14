@@ -1,3 +1,4 @@
+import { useFetcher, useRouteLoaderData } from 'react-router'
 import { AIFillIcon, InboxFillIcon, SuccessIcon } from '@/components/icons'
 import { KIND_ICON, initials, relativeTime } from '@/components/views/home-components/home-format'
 import type { NeedsYouEntry, SearchableStatus } from '@/types/home.types'
@@ -6,7 +7,38 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
 import { Progress } from '@/ui/progress'
 import { cn } from '@/utils/styles'
 
-/** "n/m searchable" pill → popover listing files AI hasn't processed yet. */
+/**
+ * Home's slot in the app header (owner, 14 Nov: the status pills belong in
+ * the top toolbar): reads the home loader's data by route id, as
+ * `GalleryHeaderTools` does for Images, so it renders nothing elsewhere.
+ */
+export function HomeHeaderTools() {
+  const data = useRouteLoaderData('stash-home') as
+    | { searchable: SearchableStatus; needsYou: NeedsYouEntry[] }
+    | undefined
+  const invitations = useFetcher()
+  if (!data) return null
+
+  const respond =
+    (intent: 'accept_invitation' | 'reject_invitation') => (entry: NeedsYouEntry) =>
+      invitations.submit(
+        { intent, recipientId: entry.recipientId },
+        { method: 'POST', action: '/api/invitations' }
+      )
+
+  return (
+    <>
+      <SearchablePill status={data.searchable} />
+      <NeedsYouPill
+        entries={data.needsYou}
+        onAct={respond('accept_invitation')}
+        onDismiss={respond('reject_invitation')}
+      />
+    </>
+  )
+}
+
+/** "n/m searchable" button → popover listing files AI hasn't processed yet. */
 export function SearchablePill({
   status,
   onProcess,
@@ -24,7 +56,8 @@ export function SearchablePill({
         <Button
           variant="outline"
           size="sm"
-          className="h-8 rounded-full border-border! bg-transparent! px-3 font-normal text-secondary-foreground shadow-none hover:border-input! data-[state=open]:bg-secondary!"
+          // The header's controls: h-9, rounded-md, bg-card (no pills).
+          className="h-9 rounded-md border-input bg-card! px-3 font-normal text-secondary-foreground shadow-none hover:bg-muted! data-[state=open]:bg-muted!"
         >
           <Progress value={pct} className="h-1 w-11 bg-secondary" />
           <span className="font-stashly text-2xs tabular-nums">
@@ -93,14 +126,14 @@ export function NeedsYouPill({
         <Button
           size="sm"
           className={cn(
-            'h-8 gap-2 rounded-full bg-primary/10 pr-1.5 pl-3 text-primary hover:bg-primary/20 data-[state=open]:bg-primary/20',
+            'h-9 gap-2 rounded-md bg-primary/10 pr-1.5 pl-3 text-primary hover:bg-primary/20 data-[state=open]:bg-primary/20',
             !has && 'pr-3'
           )}
         >
           <InboxFillIcon className="size-4" />
           <span className="font-stashly text-xs font-medium">{has ? 'Needs you' : 'All caught up'}</span>
           {has && (
-            <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1.5 font-stashly text-2xs text-primary-foreground tabular-nums">
+            <span className="grid h-5 min-w-5 place-items-center rounded-[4px] bg-primary px-1.5 font-stashly text-2xs text-primary-foreground tabular-nums">
               {entries.length}
             </span>
           )}
@@ -110,7 +143,7 @@ export function NeedsYouPill({
         {has ? (
           entries.map((n) => (
             <div key={n.id} className="flex items-start gap-3">
-              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 font-stashly text-2xs font-semibold text-primary">
+              <span className="grid size-7 shrink-0 place-items-center rounded-[4px] bg-primary/10 font-stashly text-2xs font-semibold text-primary">
                 {initials(n.actorName)}
               </span>
               <div className="flex min-w-0 flex-1 flex-col gap-2">

@@ -5,22 +5,13 @@ import {
   HomeSearchHero,
   type HomeSearchHeroProps,
 } from '@/components/views/home-components/home-search-hero'
-import {
-  NeedsYouPill,
-  SearchablePill,
-} from '@/components/views/home-components/home-status-pills'
 import { useUpload } from '@/hooks/useUpload'
 import { QUERY_KEY } from '@/utils/filter-data'
-import type { NeedsYouEntry, SearchableStatus } from '@/types/home.types'
 
+/** The status pills (searchable, needs you) live in the app header now. */
 export interface HomeViewProps
   extends Pick<HomeSearchHeroProps, 'firstName' | 'suggestions'>,
-    HomeFeedProps {
-  searchable: SearchableStatus
-  needsYou: NeedsYouEntry[]
-  onActOnNeed: (entry: NeedsYouEntry) => void
-  onDismissNeed: (entry: NeedsYouEntry) => void
-}
+    HomeFeedProps {}
 
 /**
  * Search-first home: the AI search hero over a mixed feed of recent files and
@@ -30,10 +21,6 @@ export interface HomeViewProps
 export function HomeView({
   firstName,
   suggestions,
-  searchable,
-  needsYou,
-  onActOnNeed,
-  onDismissNeed,
   ...feed
 }: HomeViewProps) {
   const { isDragging, dragHandlers } = useUpload()
@@ -53,10 +40,6 @@ export function HomeView({
       className="relative flex min-h-[calc(100dvh-3.5rem)] flex-col items-center px-6 pt-8 pb-30 md:px-10"
     >
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-95 bg-dots mask-fade-b" />
-      <div className="relative z-10 flex w-full max-w-7xl justify-end gap-2">
-        <SearchablePill status={searchable} />
-        <NeedsYouPill entries={needsYou} onAct={onActOnNeed} onDismiss={onDismissNeed} />
-      </div>
       <div className="mt-10 flex w-full justify-center">
         <HomeSearchHero firstName={firstName} suggestions={suggestions} onOpenSearch={openSearch} />
       </div>
