@@ -125,27 +125,21 @@ export function AppHeader() {
 }
 
 /**
- * The New panel's one-line upload status from the real per-status counts:
- * `3 of 8 uploaded · 2 uploading · 3 left · 1 failed`. Cancelled files count
- * toward neither side; empty parts are left out.
+ * The New panel's upload counts from the real per-status counts. The four
+ * parts always add up to the total; cancelled files count toward none.
  */
-function uploadSummary(c: ReturnType<typeof useUploadCounts>): string {
+function uploadStats(c: ReturnType<typeof useUploadCounts>) {
   const total = c.total - c.aborted
   const uploaded = c.itemCreated
   const failed = c.failed + c.itemFailed
-  // Waiting their turn (queued, validating, paused, saving): the four parts add up to the total.
+  // Waiting their turn (queued, validating, paused, saving).
   const left = total - uploaded - failed - c.uploading
-  // While anything is unfinished every part stays, zeros included: parts
-  // that came and went on each tick made the line jump (owner, 14 Nov).
-  const active = uploaded + failed < total
   return [
-    `${uploaded} of ${total} uploaded`,
-    active && `${c.uploading} uploading`,
-    active && `${left} left`,
-    failed > 0 && `${failed} failed`,
+    { label: 'Uploaded', value: `${uploaded}/${total}` },
+    { label: 'Uploading', value: c.uploading },
+    { label: 'Left', value: left },
+    { label: 'Failed', value: failed },
   ]
-    .filter(Boolean)
-    .join(' · ')
 }
 
 /** A New panel action, drawn as a color-mode switch tile. */
@@ -165,7 +159,7 @@ function StashlyUpload({
   const hasUploads = useUploadFileIds().length > 0
   const counts = useUploadCounts()
   const { uploading } = counts
-  const summary = uploadSummary(counts)
+  const stats = uploadStats(counts)
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [newFolderOpen, setNewFolderOpen] = useState(false)
@@ -241,14 +235,20 @@ function StashlyUpload({
           {/* Hidden while the session has no uploads. */}
           {hasUploads && (
             <section className="flex flex-col gap-2.5">
-              {/* Left-aligned beside the caption, so a changing count only
-                  moves the end of the line, never its start. */}
-              <div className="flex min-w-0 items-baseline gap-3">
-                <h3 className={cn(INVITE_CAPTION, 'shrink-0')}>Uploads</h3>
-                <p className="min-w-0 truncate font-stashly text-xs text-muted-foreground tabular-nums">
-                  {summary}
-                </p>
-              </div>
+              <h3 className={INVITE_CAPTION}>Uploads</h3>
+              {/* Four fixed columns: a count gaining a digit stays inside its
+                  cell, so nothing shifts, wraps or gets cut off (one line of
+                  text did at two- and three-digit counts, owner, 14 Nov). */}
+              <dl className="grid grid-cols-4 gap-1 rounded-xl bg-muted p-2">
+                {stats.map(({ label, value }) => (
+                  <div key={label} className="flex min-w-0 flex-col gap-0.5">
+                    <dt className="font-stashly text-xs text-muted-foreground">
+                      {label}
+                    </dt>
+                    <dd className="font-stashly text-sm tabular-nums">{value}</dd>
+                  </div>
+                ))}
+              </dl>
               {/* The upload list's own rows: each keeps its status, error
                   tooltip, progress ring and hover controls. */}
               <FileList className="h-full" />
