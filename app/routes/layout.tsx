@@ -11,7 +11,7 @@ import {
 } from '@/services/storagePlan-actions'
 import { Confirm } from '@/components/confirm-renderer'
 import { DegradedNotice } from '@/components/core-components/degraded-notice'
-import { UploadPanel } from '@/components/upload'
+import { Upload } from '@/components/upload'
 import { UploadActorContext } from '@/machines/upload/upload.context'
 import { UploadThumbnailRunner } from '@/components/upload/upload-thumbnail-runner'
 import { sessionContext } from '@/.server/middleware/context'
@@ -97,7 +97,9 @@ export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
           {/* <AppToolbar /> */}
           <DegradedNotice />
           <Outlet />
-          <UploadPanel user={user} />
+          {/* Hands the upload machine its user; the floating upload panel
+              that used to do this was retired for the header's New panel. */}
+          <Upload user={user} hidden />
           <UploadThumbnailRunner />
           <Confirm />
         </AppContent>

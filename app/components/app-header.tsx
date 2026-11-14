@@ -7,7 +7,7 @@ import {
   NotificationEmptyFillIcon,
   NotificationFullFillIcon,
 } from '@/components/icons'
-import { useUpload, useUploadCounts, useUploadFileIds } from '@/hooks/useUpload'
+import { useUploadCounts, useUploadFileIds } from '@/hooks/useUpload'
 import { cn } from '@/utils'
 import { useState } from 'react'
 import {
@@ -35,7 +35,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
 import { Button } from '@/ui/button'
 import { SidebarTrigger } from '@/ui/sidebar'
 import { ButtonGroup } from '@/ui/button-group'
-import { FileList, Trigger } from '@/components/upload'
+import { DropArea, FileList, Trigger } from '@/components/upload'
 import { INVITE_CAPTION } from '@/components/views/invitations/invite-form-fields'
 import { segmentedControlItemVariants } from '@/ui/segmented-control'
 
@@ -124,6 +124,27 @@ export function AppHeader() {
   )
 }
 
+/**
+ * The New panel's one-line upload status from the real per-status counts:
+ * `3 of 8 uploaded · 2 uploading · 3 left · 1 failed`. Cancelled files count
+ * toward neither side; empty parts are left out.
+ */
+function uploadSummary(c: ReturnType<typeof useUploadCounts>): string {
+  const total = c.total - c.aborted
+  const uploaded = c.itemCreated
+  const failed = c.failed + c.itemFailed
+  // Waiting their turn (queued, validating, paused, saving): the four parts add up to the total.
+  const left = total - uploaded - failed - c.uploading
+  return [
+    `${uploaded} of ${total} uploaded`,
+    c.uploading > 0 && `${c.uploading} uploading`,
+    left > 0 && `${left} left`,
+    failed > 0 && `${failed} failed`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
 /** A New panel action, drawn as a color-mode switch tile. */
 const NEW_TILE = cn(
   segmentedControlItemVariants({ size: 'tile' }),
@@ -138,16 +159,12 @@ function StashlyUpload({
   folderId: string | undefined
   rootId: string | undefined
 }) {
-  let { toggleView, isVisible } = useUpload()
   const hasUploads = useUploadFileIds().length > 0
-  const { uploading } = useUploadCounts()
+  const counts = useUploadCounts()
+  const { uploading } = counts
+  const summary = uploadSummary(counts)
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
-  /** Opens (never closes) the floating upload panel. */
-  const openUploadPanel = () => {
-    if (!isVisible) toggleView()
-    setMenuOpen(false)
-  }
   const [newFolderOpen, setNewFolderOpen] = useState(false)
   if (location.pathname.includes('files')) {
     return null
@@ -179,8 +196,16 @@ function StashlyUpload({
           // As in the color-mode switch: focusing the first tile on open drew
           // the white keyboard ring. Tab still reaches the tiles.
           onOpenAutoFocus={(e) => e.preventDefault()}
-          className="flex w-90 max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-3xl border-input bg-card p-4 font-stashly shadow-stashly"
+          className="w-90 max-w-[calc(100vw-2rem)] rounded-3xl border-input bg-card p-2 font-stashly shadow-stashly"
         >
+          {/* The drop target the floating upload panel used to be: files and
+              folders (several at once) dropped anywhere on this panel upload
+              into the current folder. Nowhere else changes. */}
+          <DropArea
+            folderId={folderId}
+            data-testid="upload-drop-area"
+            className="flex aspect-auto flex-col place-items-stretch gap-4 rounded-2xl border-0 p-2"
+          >
           {/* The color-mode switch's track and tiles, as the owner asked. These
               are actions, not a choice, so they stay buttons (and labels for
               the file pickers) that only look like the switch. */}
@@ -210,30 +235,22 @@ function StashlyUpload({
               Upload folder
             </Trigger>
           </div>
-          <section className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-2">
+          {/* Hidden while the session has no uploads. */}
+          {hasUploads && (
+            <section className="flex flex-col gap-2.5">
+              <div className="flex items-baseline gap-3">
                 <h3 className={INVITE_CAPTION}>Uploads</h3>
                 <span className="flex-1" />
-                <button
-                  type="button"
-                  onClick={openUploadPanel}
-                  // The floating panel's only opener since the Uploads button
-                  // went, so E2E needs a stable handle on it.
-                  data-testid="upload-toggle"
-                  className="rounded-[4px] font-stashly text-xs text-primary outline-none hover:cursor-pointer hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
-                >
-                  Open uploads panel
-                </button>
+                <p className="font-stashly text-xs text-muted-foreground tabular-nums">
+                  {summary}
+                </p>
               </div>
-              {/* The upload panel's own list, untouched: every row keeps its
-                  status, error tooltip, progress ring and hover controls.
-                  Hidden while the session has none. */}
-              {hasUploads && (
-                <div className="rounded-xl bg-muted">
-                  <FileList className="h-full" />
-                </div>
-              )}
+              {/* The upload list's own rows: each keeps its status, error
+                  tooltip, progress ring and hover controls. */}
+              <FileList className="h-full" />
             </section>
+          )}
+          </DropArea>
         </PopoverContent>
       </Popover>
       <NewFolderDialog

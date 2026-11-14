@@ -17,7 +17,7 @@ import { formatSize } from '@/utils/formaters'
 import { callAll } from '@/utils/misc'
 import { cn } from '@/utils/styles'
 import { Label as LabelPrimitive, VisuallyHidden } from 'radix-ui'
-import React, { useState } from 'react'
+import React from 'react'
 import {
   Tooltip,
   TooltipContent,
@@ -26,17 +26,14 @@ import {
   TooltipTrigger,
 } from '../ui/tooltip'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '../ui/hover-card'
-import { AnimatePresence, motion } from 'framer-motion'
 import {
   DoubleCheckIcon,
-  DropdownIcon,
   ExpandCollapsedIcon,
   PauseFillIcon,
   RemoveIcon,
   RemoveSquareIcon,
   ResumeFillIcon,
 } from '../icons'
-import { useParams } from 'react-router'
 
 // ====================================================== //
 // Styles                                                 //
@@ -50,7 +47,7 @@ const Styles = {
   Trigger:
     'rounded-md bg-inherit p-1.5 font-stashly text-xs focus:outline-background hover:cursor-pointer border border-border hover:bg-muted flex items-center justify-center',
   FileList: 'w-full space-y-2',
-  Item: 'relative overflow-hidden grid grid-cols-8 w-full rounded-lg bg-background p-1 list-none  h-auto place-content-between place-items-center gap-2 group',
+  Item: 'relative overflow-hidden grid grid-cols-8 w-full rounded-xl bg-muted p-1 list-none  h-auto place-content-between place-items-center gap-2 group',
   ItemBody: 'col-span-6 w-full',
   ItemContent: 'flex w-full justify-between',
   Progress:
@@ -85,6 +82,9 @@ const Styles = {
  */
 const STATUS_LABEL: Partial<Record<MediaFileStatus, string>> = {
   itemFailed: 'failed',
+  // The row exists and the file is in the stash; the raw state name read
+  // "ItemCreated" in the list.
+  itemCreated: 'uploaded',
 }
 
 /** Statuses that ended in a failure whose reason is on `mediafile.error`. */
@@ -709,67 +709,3 @@ const PauseResume = React.forwardRef<
   )
 })
 PauseResume.displayName = 'PauseResumeButton'
-
-export const UploadPanel = ({ user }: { user: User }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const { isVisible, toggleView } = useUpload()
-  const { uploading } = useUploadCounts()
-  const params = useParams()
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
-      hidden={!isVisible}
-      className="fixed bottom-8 right-8 w-md bg-sidebar rounded-md shadow-lg flex flex-col max-h-2/3 overflow-hidden z-50 border border-input!"
-    >
-      <Upload user={user}>
-        <div className="flex justify-between items-center h-14 px-4 bg-sidebar rounded-md-tl rounded-md-tr">
-          <Label className="font-stashly text-sm">
-            Uploading Files ({uploading})
-          </Label>
-          <div className="inline-flex gap-1">
-            <Button
-              variant="outline"
-              size="icon-sm"
-              aria-label={isCollapsed ? 'Expand uploads' : 'Collapse uploads'}
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="hover:cursor-pointer bg-sidebar border-input"
-            >
-              <DropdownIcon className={`${isCollapsed ? 'rotate-180' : ''}`} />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              aria-label="Close uploads"
-              onClick={toggleView}
-              className="hover:cursor-pointer bg-sidebar border-input"
-            >
-              <RemoveIcon className="text-current size-5" />
-            </Button>
-          </div>
-        </div>
-        <AnimatePresence>
-          {!isCollapsed && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <DropArea
-                folderId={params.folderId}
-                className="h-auto p-0"
-                data-testid="upload-drop-area"
-              >
-                <FileList className="px-2 pt-2 h-full" />
-              </DropArea>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Upload>
-    </motion.div>
-  )
-}

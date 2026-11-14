@@ -45,7 +45,7 @@ export class UploadPage {
   ): Promise<void> {
     await this.openPanel()
     await this.page.evaluate((specs) => {
-      const dropArea = document.querySelector('.fixed.bottom-8.right-8 [data-testid="upload-drop-area"]')
+      const dropArea = document.querySelector('[data-testid="upload-drop-area"]')
       if (!dropArea) throw new Error('DropArea not found')
 
       const dataTransfer = new DataTransfer()
@@ -71,45 +71,29 @@ export class UploadPage {
   }
 
   /**
-   * Opens the upload panel, which starts hidden (`isVisible` is false in the
-   * upload machine's initial context) and whose only opener is the icon button
-   * in the app header.
-   *
-   * Without this the panel's drop area is present but `hidden`, and its file
-   * list can never satisfy a visibility assertion — which is why every upload
-   * spec times out waiting for an element that is right there in the DOM.
-   *
-   * Idempotent: it returns as soon as the panel shows, and "Open uploads
-   * panel" only ever opens it.
+   * Opens the header's New panel, which holds the upload drop area and the
+   * upload list (the floating upload panel was retired). Its rows are only in
+   * the DOM while the popover is open, so a spec keeps it open while it waits
+   * on them. Idempotent: it returns as soon as the panel shows.
    */
   async openPanel(): Promise<void> {
-    const dropArea = this.page.locator(
-      '.fixed.bottom-8.right-8 [data-testid="upload-drop-area"]'
-    )
-    const toggle = this.page.locator('[data-testid="upload-toggle"]').first()
+    const dropArea = this.page.locator('[data-testid="upload-drop-area"]')
+    const newPanel = this.page.getByRole('button', {
+      name: 'New and upload',
+      exact: true,
+    })
+    await newPanel.waitFor({ state: 'visible', timeout: 15_000 })
 
     // Retry the click rather than clicking once and waiting.
     //
     // The button is server-rendered, so Playwright considers it actionable as
     // soon as it paints — which can be before React has hydrated and attached
-    // `onClick`. That first click is silently swallowed and the panel never
+    // its handler. That first click is silently swallowed and the panel never
     // opens, which looks exactly like a broken selector. Re-clicking until the
-    // panel actually appears is the only reliable signal that the handler is
-    // live.
-    // The link sits in the header's New panel (the Uploads button went), so
-    // open that popover first unless it is already open.
-    const newPanel = this.page.getByRole('button', {
-      name: 'New and upload',
-      exact: true,
-    })
+    // panel actually appears is the only reliable signal that it is live.
     for (let attempt = 0; attempt < 6; attempt++) {
       if (await dropArea.isVisible()) return
-      if (!(await toggle.isVisible())) {
-        await newPanel.click()
-        await toggle.waitFor({ state: 'visible', timeout: 2_000 }).catch(() => {})
-        if (!(await toggle.isVisible())) continue
-      }
-      await toggle.click()
+      await newPanel.click()
       try {
         await dropArea.waitFor({ state: 'visible', timeout: 2_000 })
         return
@@ -118,10 +102,9 @@ export class UploadPage {
       }
     }
 
-    throw new Error(
-      'Upload panel never opened after 6 clicks on [data-testid="upload-toggle"]'
-    )
+    throw new Error('The New panel never opened after 6 clicks on "New and upload"')
   }
+
 
   /**
    * Drops files with **real, decodable content** — the thumbnail pipeline needs
@@ -145,7 +128,7 @@ export class UploadPage {
 
     await this.page.evaluate(async (items) => {
       const dropArea = document.querySelector(
-        '.fixed.bottom-8.right-8 [data-testid="upload-drop-area"]'
+        '[data-testid="upload-drop-area"]'
       )
       if (!dropArea) throw new Error('DropArea not found')
 
