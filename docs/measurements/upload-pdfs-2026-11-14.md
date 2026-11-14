@@ -10,7 +10,7 @@ One real folder upload, measured in the browser from the moment the folder was c
 
 ## Read this first: what limits these numbers
 
-1. **The destination folder was not clean.** The `pdfs` folder holds **74 files, not 37**. 37 of them (the same file names) were created at about **T0 − 278 s (≈03:16:13Z)** by an upload this recorder did not see, apparently the owner's first attempt. The recorder counts only this page's own requests and every per-file row below is keyed by item id, so the browser-side figures are this run's alone. **Server-side figures for 03:16:13Z–03:26:12Z cover two uploads**, and any total taken from the folder (74 items, 618 MB) is double. Embedding saves cannot be attributed to a file by id.
+1. **The destination folder was not clean.** The `pdfs` folder holds **74 files, not 37**: the owner picked the folder twice. The first pick (which this recorder did not see; why is unknown) resolved its folders at 03:19:49.2Z (T0 − 62.8 s), created its rows 03:19:51.2–03:20:21.4Z (T0 − 60.8 s to T0 − 30.5 s) and its indexing stopped after the vectors of 5 files, the last at 03:20:29Z (T0 − 22 s), per Backend Dev's database and Vinktar readings. It therefore ended before T0, so it did not overlap the measured run, but its 37 items sit in the same folder: any total taken from the folder (74 items, 618,494,758 bytes charged) is double. The measured run is the **second pick (T0)**. The recorder counts only this page's own requests and every per-file row below is keyed by item id, so the browser-side figures are this run's alone. (An earlier version of this file put the first upload at 03:16:13Z; that was the parent folder's creation time, not an upload.)
 2. **Thumbnails are made only for cards that are on screen** (by design). Nothing was on screen after the upload, so none were made until I opened the `pdfs` folder at T0 + 499 s and scrolled through the cards at 2.5 s per card. Thumbnail times depend on that scroll pace and are not a pipeline throughput.
 3. **Not measured:** model downloads and inference time inside workers (Cache Storage is invisible to the page; the PaddleOCR cache was already present and no embedding-model cache was seen, so the first embedding run may have included a download); which OCR engine each page used beyond "the PaddleOCR worker started" (a GLM-OCR fallback runs on the page, not in a worker); GPU use; server time per request (Backend Dev's part); the moment the `pdfs` folder card appeared (checked at T0 + 11 s: not there; at T0 + 79 s: there).
 4. **One run.** A second run was not made; it needs a second fresh folder and the owner's pick again.
@@ -109,7 +109,7 @@ Thumbnails that were made took 0.4–1.4 s from card on screen to written (32 of
 | Folder page data loads (`.data`) | 5 |
 | `GET /api/items` (my own probe of pending embeddings, after the run) | 2 |
 
-The 61 thumbnails include the first upload's items that were also on screen, so only 33 of them are this run's files.
+The 61 thumbnails include items of the first pick that were also on screen, so only 33 of them are this run's files.
 Request durations: `create_upload_item` 111–216 ms · `save_media_metadata` 16–114 ms · `save_ocr_page` 19–189 ms · `save_search_chunk_embeddings` 19–300 ms.
 OCR and embedding saves per 30 s (OCR / embedding): 30 s 0/9 · 60 s 29/0 · 90 s 28/4 · 120 s 37/0 · 150 s 44/0 · 180 s 47/0 · 210 s 48/0 · 240 s 33/2 · 270 s 36/50 · 300 s 0/252.
 
@@ -123,7 +123,7 @@ OCR and embedding saves per 30 s (OCR / embedding): 30 s 0/9 · 60 s 29/0 · 90 
 
 ## Left over
 
-A probe after the run, `GET /api/items?intent=pending_search_embeddings`, answered **37 chunks** still waiting for a vector, account-wide. The response carries no item id, so I cannot say whether they belong to this run, the earlier upload or older files. Counting `SearchChunk` rows with a null vector for the 74 items would settle it.
+A probe after the run, `GET /api/items?intent=pending_search_embeddings`, answered **37 chunks** still waiting for a vector, account-wide. The response carries no item id, so the page cannot attribute them. Backend Dev's database check puts them in the first (unrecorded) pick: 22 of its files have no search row and 37 chunks have no vector, because its indexing stopped early. This run's items were all indexed (last vector at T0 + 319.87 s, server side).
 
 ## Appendix: part durations
 
