@@ -134,12 +134,51 @@ function uploadStats(c: ReturnType<typeof useUploadCounts>) {
   const failed = c.failed + c.itemFailed
   // Waiting their turn (queued, validating, paused, saving).
   const left = total - uploaded - failed - c.uploading
-  return [
-    { label: 'Uploaded', value: `${uploaded}/${total}` },
-    { label: 'Uploading', value: c.uploading },
-    { label: 'Left', value: left },
-    { label: 'Failed', value: failed },
-  ]
+  return { total, uploaded, uploading: c.uploading, left, failed }
+}
+
+/** Bar segment widths, as a share of the batch's files. */
+function share(part: number, total: number) {
+  return total > 0 ? `${(part / total) * 100}%` : '0%'
+}
+
+/** The legend under the bar: swatch colour matches its bar segment. */
+function UploadStat({
+  label,
+  value,
+  swatch,
+  alert = false,
+}: {
+  label: string
+  value: number
+  swatch: string
+  alert?: boolean
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <span
+        aria-hidden
+        className={cn('size-2 shrink-0 rounded-[2px]', swatch)}
+      />
+      <dt
+        className={cn(
+          'text-xs',
+          alert && value > 0 ? 'text-destructive' : 'text-muted-foreground'
+        )}
+      >
+        {label}
+      </dt>
+      <dd
+        className={cn(
+          'text-xs tabular-nums',
+          value === 0 && 'text-muted-foreground',
+          alert && value > 0 && 'text-destructive'
+        )}
+      >
+        {value}
+      </dd>
+    </div>
+  )
 }
 
 /** A New panel action, drawn as a color-mode switch tile. */
@@ -235,20 +274,60 @@ function StashlyUpload({
           {/* Hidden while the session has no uploads. */}
           {hasUploads && (
             <section className="flex flex-col gap-2.5">
-              <h3 className={INVITE_CAPTION}>Uploads</h3>
-              {/* Four fixed columns: a count gaining a digit stays inside its
-                  cell, so nothing shifts, wraps or gets cut off (one line of
-                  text did at two- and three-digit counts, owner, 14 Nov). */}
-              <dl className="grid grid-cols-4 gap-1 rounded-xl bg-muted p-2">
-                {stats.map(({ label, value }) => (
-                  <div key={label} className="flex min-w-0 flex-col gap-0.5">
-                    <dt className="font-stashly text-xs text-muted-foreground">
-                      {label}
-                    </dt>
-                    <dd className="font-stashly text-sm tabular-nums">{value}</dd>
-                  </div>
-                ))}
-              </dl>
+              {/* Batch progress by file count: caption and uploaded/total on
+                  one line, a segmented bar, then the other counts. No nested
+                  box, and no corner rounder than 2px (owner, 14 Nov). */}
+              <div className="flex flex-col gap-2 px-1">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h3 className={INVITE_CAPTION}>Uploads</h3>
+                  <span className="text-sm tabular-nums">
+                    {stats.uploaded}
+                    <span className="text-muted-foreground">
+                      {' / '}
+                      {stats.total}
+                    </span>
+                  </span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-label="Files uploaded"
+                  aria-valuemin={0}
+                  aria-valuemax={stats.total}
+                  aria-valuenow={stats.uploaded}
+                  className="flex h-1.5 w-full gap-px overflow-hidden rounded-[2px] bg-muted"
+                >
+                  <span
+                    className="bg-primary"
+                    style={{ width: share(stats.uploaded, stats.total) }}
+                  />
+                  <span
+                    className="bg-primary/40"
+                    style={{ width: share(stats.uploading, stats.total) }}
+                  />
+                  <span
+                    className="bg-destructive"
+                    style={{ width: share(stats.failed, stats.total) }}
+                  />
+                </div>
+                <dl className="flex flex-wrap gap-x-4 gap-y-1">
+                  <UploadStat
+                    label="Uploading"
+                    value={stats.uploading}
+                    swatch="bg-primary/40"
+                  />
+                  <UploadStat
+                    label="Left"
+                    value={stats.left}
+                    swatch="bg-muted-foreground/30"
+                  />
+                  <UploadStat
+                    label="Failed"
+                    value={stats.failed}
+                    swatch="bg-destructive"
+                    alert
+                  />
+                </dl>
+              </div>
               {/* The upload list's own rows: each keeps its status, error
                   tooltip, progress ring and hover controls. */}
               <FileList className="h-full" />
