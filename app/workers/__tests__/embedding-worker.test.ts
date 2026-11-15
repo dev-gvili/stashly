@@ -51,8 +51,12 @@ afterEach(() => {
 describe('embedding.worker', () => {
   it('loads the model once for every request', async () => {
     pipeline.mockResolvedValue(extractor())
-    expect(await send({ id: 1, texts: ['a'] })).toMatchObject({ type: 'result' })
-    expect(await send({ id: 2, texts: ['b'] })).toMatchObject({ type: 'result' })
+    expect(await send({ id: 1, texts: ['a'] })).toMatchObject({
+      type: 'result',
+    })
+    expect(await send({ id: 2, texts: ['b'] })).toMatchObject({
+      type: 'result',
+    })
     expect(pipeline).toHaveBeenCalledTimes(1)
   })
 
@@ -77,7 +81,9 @@ describe('embedding.worker', () => {
     const dead = extractor(new Error('[Device] is lost'))
     pipeline.mockResolvedValueOnce(dead).mockResolvedValueOnce(extractor())
     expect(await send({ id: 1, texts: ['a'] })).toMatchObject({ type: 'error' })
-    expect(await send({ id: 2, texts: ['a'] })).toMatchObject({ type: 'result' })
+    expect(await send({ id: 2, texts: ['a'] })).toMatchObject({
+      type: 'result',
+    })
     expect(pipeline).toHaveBeenCalledTimes(2)
     expect(dead.dispose).toHaveBeenCalledTimes(1)
   })
