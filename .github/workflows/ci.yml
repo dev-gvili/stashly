@@ -319,11 +319,16 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: gh-pages
+      # Named per attempt: a re-run of failed jobs keeps the first attempt's
+      # `github-pages` artifact, and deploy-pages refuses a run holding two.
       - uses: actions/upload-pages-artifact@v4
         with:
           path: .
+          name: github-pages-${{ github.run_attempt }}
       - id: deploy
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
 
   # The production image, run the way Fly runs it: fly.toml's release_command
   # (`prisma migrate deploy`) against a real Postgres, then the server, which
