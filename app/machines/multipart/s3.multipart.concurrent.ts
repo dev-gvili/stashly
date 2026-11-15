@@ -1,7 +1,7 @@
-// app/machines/multipart/s3.multipart.concurrent.ts
 import type { CompletedPart } from '@aws-sdk/client-s3'
 import type { UploadProgress } from '@/types/machine.types'
 import { parseEtag } from '@/utils/parsers'
+import { PauseController } from './pause-controller'
 
 const CHUNK_SIZE = 5 * 1024 * 1024 // 5 MB — S3 minimum part size
 const DEFAULT_CONCURRENCY = 10
@@ -11,25 +11,7 @@ const DEFAULT_CONCURRENCY = 10
  * Workers check `waitIfPaused()` before starting each new chunk, so already
  * in-flight chunk transfers complete naturally — only the next chunk waits.
  */
-export class PauseController {
-  private _paused = false
-  private _waiters: Array<() => void> = []
-
-  pause() {
-    this._paused = true
-  }
-
-  resume() {
-    this._paused = false
-    for (const resolve of this._waiters) resolve()
-    this._waiters = []
-  }
-
-  waitIfPaused(): Promise<void> {
-    if (!this._paused) return Promise.resolve()
-    return new Promise<void>((resolve) => this._waiters.push(resolve))
-  }
-}
+// removed: PauseController is now in ./pause-controller.ts
 
 async function retryFetch(
   url: RequestInfo,

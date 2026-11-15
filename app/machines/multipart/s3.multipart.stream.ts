@@ -2,7 +2,7 @@
 import type { CompletedPart } from '@aws-sdk/client-s3'
 import type { UploadProgress } from '@/types/machine.types'
 import { parseEtag } from '@/utils/parsers'
-import { PauseController } from './s3.multipart.concurrent'
+import { PauseController } from './pause-controller'
 
 const CHUNK_SIZE = 5 * 1024 * 1024 // 5 MB — S3 minimum part size
 const DEFAULT_CONCURRENCY = 10

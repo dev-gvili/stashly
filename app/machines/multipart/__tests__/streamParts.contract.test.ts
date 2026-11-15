@@ -1,10 +1,8 @@
 // app/machines/multipart/__tests__/streamParts.contract.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { CompletedPart } from '@aws-sdk/client-s3'
-import {
-  streamParts as concurrentStreamParts,
-  PauseController, // used in pause/resume tests below
-} from '../s3.multipart.concurrent'
+import { streamParts as concurrentStreamParts } from '../s3.multipart.concurrent'
+import { PauseController } from '../pause-controller'
 import { streamParts as streamStreamParts } from '../s3.multipart.stream'
 import type { StreamPartsInput } from '../s3.multipart.concurrent'
 
