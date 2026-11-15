@@ -16,6 +16,7 @@ import { UploadActorContext } from '@/machines/upload/upload.context'
 import { UploadThumbnailRunner } from '@/components/upload/upload-thumbnail-runner'
 import { sessionContext } from '@/.server/middleware/context'
 import { useEmbeddingBackfill } from '@/hooks/useEmbeddingBackfill'
+import { useMetadataBackfill } from '@/hooks/useMetadataBackfill'
 import { identifyUser } from '@/.client/vinktar'
 import { useEffect } from 'react'
 import { Outlet, type ShouldRevalidateFunction } from 'react-router'
@@ -83,6 +84,8 @@ export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
   // Re-embeds chunks whose vectors never got written because a previous
   // session ended mid-run. Idle-scheduled and once per tab.
   useEmbeddingBackfill()
+  // Reads the metadata of videos and audio whose upload-time step never ran.
+  useMetadataBackfill()
   // Every signed-in page passes here: covers sign-in, sign-up and a restored session.
   useEffect(() => identifyUser(user.id), [user.id])
   return (

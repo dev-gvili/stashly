@@ -25,6 +25,7 @@ import {
 } from '@/services/item-actions'
 import {
   appendSearchPage,
+  findMetadataBackfillCandidates,
   findReindexCandidates,
   findUnembeddedChunks,
   reindexTextItems,
@@ -76,6 +77,19 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     const limit = clampPendingLimit(url.searchParams.get('limit'))
     const chunks = await findUnembeddedChunks(user.id, limit)
     return data({ chunks })
+  }
+
+  // Video and audio files that were never given metadata (the in-tab step did
+  // not run). The client reads each file's header and saves it through
+  // `save_media_metadata`; see `useMetadataBackfill`.
+  if (intent === 'metadata_backfill_candidates') {
+    const limit = clampPendingLimit(url.searchParams.get('limit'))
+    const candidates = await findMetadataBackfillCandidates(
+      user.id,
+      url.searchParams.get('after'),
+      limit
+    )
+    return data({ candidates })
   }
 
   // Text documents whose index is missing or was truncated by an older

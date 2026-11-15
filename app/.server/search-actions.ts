@@ -8,7 +8,7 @@ import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { Prisma } from '@/prisma/client'
 import type { ItemForSearchEmbedding } from '@/utils/search-text'
 import { stripNulChars } from '@/utils/search-text'
-import { getObjectHead } from './s3'
+import { getObjectHead, getPresignedGetUrl } from './s3'
 import {
   upsertAudioFacet,
   upsertImageFacet,
@@ -21,7 +21,10 @@ import {
   assertItemsAccess,
   itemAccessWhere,
 } from './permission-actions'
-import type { MediaMetadataInput } from '@/types/api.types'
+import type {
+  MediaMetadataInput,
+  MetadataBackfillCandidate,
+} from '@/types/api.types'
 import { isMarkdownName, parseMarkdownMetadata } from '@/utils/markdown'
 import {
   MAX_INDEXED_TEXT_CHARS,
@@ -2002,4 +2005,70 @@ export async function getSearchableCoverage(ownerId: string, queueLimit = 3) {
       durationSec: row.audio?.duration ?? row.video?.duration ?? null,
     })),
   }
+}
+
+
+/**
+ * Largest audio file handed out. Audio length and bit rate need the whole
+ * file (a head alone gives a wrong duration), so it is capped; video is read
+ * from its header and has no cap.
+ */
+export const METADATA_BACKFILL_MAX_AUDIO_BYTES = 16 * 1024 * 1024
+
+/**
+ * The caller's own video and audio files that have no `Video` / `Audio` row:
+ * uploads whose in-tab metadata step never ran (a closed tab, a stalled
+ * queue), which nothing else retries. Oldest id first, `afterId` continues.
+ *
+ * @example
+ * const batch = await findMetadataBackfillCandidates(user.id, null, 20)
+ */
+export async function findMetadataBackfillCandidates(
+  ownerId: string,
+  afterId: string | null,
+  limit = 20
+): Promise<MetadataBackfillCandidate[]> {
+  const rows = await prisma.item.findMany({
+    where: {
+      ownerId,
+      status: 'normal',
+      type: 'file',
+      size: { gt: 0 },
+      file: { isNot: null },
+      ...(afterId ? { id: { gt: afterId } } : {}),
+      OR: [
+        { category: 'video', video: { is: null } },
+        {
+          category: 'audio',
+          audio: { is: null },
+          size: { gt: 0, lte: METADATA_BACKFILL_MAX_AUDIO_BYTES },
+        },
+      ],
+    },
+    orderBy: { id: 'asc' },
+    take: limit,
+    select: {
+      id: true,
+      name: true,
+      size: true,
+      category: true,
+      file: { select: { bucket: true, key: true, mimeType: true } },
+    },
+  })
+
+  const out: MetadataBackfillCandidate[] = []
+  for (const row of rows) {
+    if (!row.file?.bucket || !row.file.key) continue
+    out.push({
+      id: row.id,
+      name: row.name,
+      size: Number(row.size),
+      mimeType: row.file.mimeType ?? '',
+      kind: row.category === 'video' ? 'video' : 'audio',
+      url: await getPresignedGetUrl(row.file.bucket, row.file.key, {
+        expiresIn: 600,
+      }),
+    })
+  }
+  return out
 }

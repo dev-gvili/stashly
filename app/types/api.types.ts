@@ -14,3 +14,14 @@ export type MediaMetadataInput = Omit<
   Extract<ItemsApiRouteInput, { intent: 'save_media_metadata' }>,
   'intent'
 >
+
+/** A video or audio file with no media facet, and where to read its bytes. */
+export interface MetadataBackfillCandidate {
+  id: string
+  name: string
+  size: number
+  mimeType: string
+  kind: 'video' | 'audio'
+  /** Short-lived signed GET; it accepts `Range`. */
+  url: string
+}

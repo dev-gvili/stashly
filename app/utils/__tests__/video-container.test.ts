@@ -11,11 +11,11 @@ import {
 // Fixtures are real header bytes cut from files in the owner's stash: the
 // Matroska ones end where the first Cluster starts, the MP4 ones are the real
 // `ftyp` and `moov` boxes with the media payload left out.
-const fixture = (name: string) =>
+const fixture = (name: string): Uint8Array<ArrayBuffer> =>
   new Uint8Array(readFileSync(join(__dirname, 'fixtures', name)))
 
 /** An MP4 box header for a payload of `payloadSize` bytes. */
-function boxHeader(type: string, payloadSize: number): Uint8Array {
+function boxHeader(type: string, payloadSize: number): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(8)
   new DataView(out.buffer).setUint32(0, payloadSize + 8)
   out.set(
