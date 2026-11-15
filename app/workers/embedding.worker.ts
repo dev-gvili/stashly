@@ -20,6 +20,7 @@ import {
   pipeline,
   type FeatureExtractionPipeline,
 } from '@huggingface/transformers'
+import { createModelCache } from './ai-queue'
 
 const MODEL_ID = 'Xenova/all-mpnet-base-v2'
 
@@ -43,18 +44,15 @@ export type EmbeddingResponse =
   | { type: 'result'; id: number; vectors: number[][] }
   | { type: 'error'; id: number; message: string }
 
-let pipelinePromise: Promise<FeatureExtractionPipeline> | null = null
-
 /**
  * Loads the model on first use. Download progress is reported against the
  * request that triggered the load, and only if that request asked for it.
+ * A failed load is forgotten, so the next request retries it instead of
+ * replaying the rejection until the idle release ends this worker.
  */
-function getPipeline(
-  requestId: number,
-  wantsProgress: boolean
-): Promise<FeatureExtractionPipeline> {
-  if (!pipelinePromise) {
-    pipelinePromise = pipeline('feature-extraction', MODEL_ID, {
+const model = createModelCache(
+  (requestId: number, wantsProgress: boolean) =>
+    pipeline('feature-extraction', MODEL_ID, {
       device: 'webgpu',
       dtype: 'q4',
       ...(wantsProgress && {
@@ -62,10 +60,9 @@ function getPipeline(
           post({ type: 'progress', id: requestId, progress })
         },
       }),
-    })
-  }
-  return pipelinePromise
-}
+    }) as Promise<FeatureExtractionPipeline>,
+  (extractor) => extractor.dispose()
+)
 
 function post(message: EmbeddingResponse) {
   ;(self as unknown as Worker).postMessage(message)
@@ -80,8 +77,15 @@ async function embed(
   texts: string[],
   wantsProgress: boolean
 ): Promise<number[][]> {
-  const extractor = await getPipeline(id, wantsProgress)
-  const output = await extractor(texts, { pooling: 'mean', normalize: true })
+  const extractor = await model.get(id, wantsProgress)
+  let output
+  try {
+    output = await extractor(texts, { pooling: 'mean', normalize: true })
+  } catch (err) {
+    // A lost device drops the model; the next request loads a fresh one.
+    model.failed(err)
+    throw err
+  }
 
   // Output shape: [batchSize, 768] flattened. Reshape via dims.
   const dims = output.dims
