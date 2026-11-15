@@ -270,7 +270,7 @@ describe('the drive owner pays', () => {
       data: { id: mine, name: 'mine.bin', type: 'file', category: 'document', status: 'normal', ownerId: strangerId, driveId: strangerDriveId, parentId: null, size: 5 },
     })
 
-    await expect(moveItems([mine], shared, strangerId)).rejects.toMatchObject({ errorCode: 'MOVE_ITEM_FAILED' })
+    await expect(moveItems([mine], shared, strangerId)).rejects.toMatchObject({ errorCode: 'MOVE_ITEM_FAILED', status: 400 })
     const row = await prisma.item.findUniqueOrThrow({ where: { id: mine }, select: { parentId: true } })
     expect(row.parentId).toBeNull()
   })

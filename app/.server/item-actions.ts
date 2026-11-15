@@ -1205,7 +1205,7 @@ export async function deleteItems(ids: string[], userId: string) {
  * @param itemId - The item to copy.
  * @param targetParentId - The folder to copy into.
  * @throws `ITEM_NOT_FOUND` (404) for a source or destination that is gone or in trash;
- *   `FORBIDDEN` (403) without `write` on the destination; `COPY_ITEM_FAILED` when the
+ *   `FORBIDDEN` (403) without `read` on the source or `write` on the destination; `COPY_ITEM_FAILED` (400) when the
  *   destination is on another drive; `INSUFFICIENT_QUOTA` when the copy doesn't fit.
  *
  * @example
@@ -1291,7 +1291,7 @@ export async function copyItemInTransaction(
     throw new StashlyError(StashlyErrorCode.ITEM_NOT_FOUND, 'The item to copy no longer exists or is in trash.')
   }
   if (!(await hasItemPermission(userId, itemId, 'read', tx))) {
-    throw toRouteError(StashlyErrorCode.UNAUTHORIZED, 'You do not have access to this item')
+    throw toRouteError(StashlyErrorCode.FORBIDDEN, 'You do not have access to this item')
   }
 
   // Access before the trash check, so a caller with no access can't tell

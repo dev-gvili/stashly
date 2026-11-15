@@ -306,7 +306,9 @@ const ERROR_DETAILS: Record<
   // Item errors
   [StashlyErrorCode.COPY_ITEM_FAILED]: {
     message: 'Failed to copy the item.',
-    status: 500,
+    // Every throw of this code is a refusal (missing id, another drive, already
+    // there, into itself, a root folder), so it is the caller's 400, not a 500.
+    status: 400,
   },
   [StashlyErrorCode.CREATE_ITEM_FAILED]: {
     message: 'Failed to create the item.',
@@ -326,7 +328,9 @@ const ERROR_DETAILS: Record<
   },
   [StashlyErrorCode.MOVE_ITEM_FAILED]: {
     message: 'Failed to move the item.',
-    status: 500,
+    // Every throw of this code is a refusal (missing id, another drive, already
+    // there, into itself, a root folder), so it is the caller's 400, not a 500.
+    status: 400,
   },
   [StashlyErrorCode.RENAME_ITEM_FAILED]: {
     message: 'Failed to rename the item.',

@@ -1063,9 +1063,10 @@ describe('moveItems', () => {
     await expect(moveItems([live, uid('Item')], to, ownerId)).rejects.toMatchObject({ status: 404 })
     await expect(moveItems([live, already], to, ownerId)).rejects.toMatchObject({
       errorCode: 'MOVE_ITEM_FAILED',
+      status: 400,
     })
-    await expect(moveItems([to], to, ownerId)).rejects.toMatchObject({ errorCode: 'MOVE_ITEM_FAILED' })
-    await expect(moveItems([live], '', ownerId)).rejects.toMatchObject({ errorCode: 'MOVE_ITEM_FAILED' })
+    await expect(moveItems([to], to, ownerId)).rejects.toMatchObject({ errorCode: 'MOVE_ITEM_FAILED', status: 400 })
+    await expect(moveItems([live], '', ownerId)).rejects.toMatchObject({ errorCode: 'MOVE_ITEM_FAILED', status: 400 })
     expect([await parentOf(live), await parentOf(trashed), await parentOf(to)]).toEqual([from, from, rootId])
   })
 
@@ -1074,6 +1075,7 @@ describe('moveItems', () => {
 
     await expect(moveItems([rootId], elsewhere, ownerId)).rejects.toMatchObject({
       errorCode: 'MOVE_ITEM_FAILED',
+      status: 400,
     })
     expect(await parentOf(rootId)).toBeNull()
     expect(await moveItems([], elsewhere, ownerId)).toBeUndefined()
@@ -1557,7 +1559,7 @@ describe('copyItem', () => {
       const [ownerBefore, collabBefore] = [await quotaOf(driveId), await quotaOf(collab.drive)]
 
       // The owner's drive would hold it, but a copy is paid for by the copier.
-      await expect(copyItem(collab.userId, file, shared)).rejects.toMatchObject({ errorCode: 'COPY_ITEM_FAILED' })
+      await expect(copyItem(collab.userId, file, shared)).rejects.toMatchObject({ errorCode: 'COPY_ITEM_FAILED', status: 400 })
       expect(await prisma.item.count({ where: { parentId: shared } })).toBe(1)
       expect(await quotaOf(driveId)).toBe(ownerBefore)
       expect(await quotaOf(collab.drive)).toBe(collabBefore)
@@ -1579,7 +1581,8 @@ describe('copyItem', () => {
       const before = await quotaOf(outsider.drive)
 
       await expect(copyItem(outsider.userId, secret, outsider.root)).rejects.toMatchObject({
-        errorCode: 'UNAUTHORIZED',
+        errorCode: 'FORBIDDEN',
+        status: 403,
       })
       expect(await prisma.item.count({ where: { parentId: outsider.root } })).toBe(0)
       expect(await quotaOf(outsider.drive)).toBe(before)
@@ -1594,8 +1597,8 @@ describe('copyItem', () => {
     const dest = await makeFolder('trashed-src-dest', rootId)
 
     await expect(copyItem(ownerId, file, dest)).rejects.toMatchObject({ status: 404 })
-    await expect(copyItem(ownerId, file, null)).rejects.toMatchObject({ errorCode: 'COPY_ITEM_FAILED' })
-    await expect(copyItem(ownerId, '', dest)).rejects.toMatchObject({ errorCode: 'COPY_ITEM_FAILED' })
+    await expect(copyItem(ownerId, file, null)).rejects.toMatchObject({ errorCode: 'COPY_ITEM_FAILED', status: 400 })
+    await expect(copyItem(ownerId, '', dest)).rejects.toMatchObject({ errorCode: 'COPY_ITEM_FAILED', status: 400 })
     expect(await prisma.item.count({ where: { parentId: dest } })).toBe(0)
   })
 
