@@ -216,7 +216,7 @@
 | 81 | ~~The rollup start test can time out in a full parallel run~~ | 12 | Resolved 2026-11-12 (`78fd5ad`): import measured 363–593 ms alone, 724 ms in a full run, 1,735–2,490 ms beside 16 CPU-bound processes; the test's timeout is 20 s with that reason; the 9 Nov timeout didn't recur | — |
 | 82 | ~~Anyone could pin any item and read it back~~ | 40 | Resolved 2026-11-12 (`b3736c3`): a pin needs read access; the list shows only items still readable and not in trash; 3 tests, red first | — |
 | 83 | ~~Anyone could list any item's invitations~~ | 40 | Resolved 2026-11-12 (`10a30ce`): listing needs share-manage access (owner or live write); stranger, reader and expired writer get 403, red first | — |
-| 84 | **new** Copy and move answer 401 or 500 when they refuse | 15 | Answer 403 for no access and 400 for a refused destination (another drive, already there, into itself, a root folder) | — |
+| 84 | ~~Copy and move answer 401 or 500 when they refuse~~ | 15 | Resolved 2026-11-15 (`79f7e06`): no read on the copy source → 403 `FORBIDDEN`; `COPY_ITEM_FAILED` and `MOVE_ITEM_FAILED` → 400; 6 status assertions, red first | — |
 | 85 | ~~The workspace gallery ignores its URL filters and lists trashed media~~ | 20 | Resolved 2026-11-12 (`d12f642`): one `AND` of media, URL filters and scope; trash kept out; a member's trashed workspace image listed → not, a name filter ignored → applied, red first | — |
 | 86 | ~~A writer can revoke or expire an owner-role grant~~ | 20 | Resolved 2026-11-12 (`9689cd1`): revoking or expiring an `owner` grant needs `owner`; a writer's revoke and expire of a co-owner 'ok' → 403, red first | — |
 | 87 | ~~Anyone can create a thumbnail row on any item~~ | 15 | Resolved 2026-11-12 (`515f8aa`): `createThumbnail` takes the user and checks read; no access or no item → 403, no row, red first | — |
@@ -316,7 +316,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 81 | ~~The rollup start test can time out in a full parallel run~~ | Test | 1 | 2 | 2 | **12** (Low) | 2 h | Resolved 12 Nov |
 | 82 | ~~Anyone could pin any item and read it back~~ | Code | 4 | 4 | 1 | **40** (High) | 1 h | Resolved 12 Nov |
 | 83 | ~~Anyone could list any item's invitations~~ | Code | 4 | 4 | 1 | **40** (High) | 1 h | Resolved 12 Nov |
-| 84 | Copy and move answer 401 or 500 when they refuse | Code | 2 | 1 | 1 | **15** (Low) | 1 h | New 12 Nov |
+| 84 | ~~Copy and move answer 401 or 500 when they refuse~~ | Code | 2 | 1 | 1 | **15** (Low) | 1 h | Resolved 15 Nov |
 | 85 | ~~The workspace gallery ignores its URL filters and lists trashed media~~ | Code | 2 | 2 | 1 | **20** (Medium) | 1 h | Resolved 12 Nov |
 | 86 | ~~A writer can revoke or expire an owner-role grant~~ | Code | 2 | 2 | 1 | **20** (Medium) | 1 h | Resolved 12 Nov |
 | 87 | ~~Anyone can create a thumbnail row on any item~~ | Code | 1 | 2 | 1 | **15** (Low) | 1 h | Resolved 12 Nov |
@@ -1556,7 +1556,7 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
 
 - **Evidence:** `copyItem` answers a caller without read on the source with `toRouteError(UNAUTHORIZED)`, a 401 to a signed-in user. Its refusal of a destination on another drive is `COPY_ITEM_FAILED`, and `moveItems` refuses another drive, an item already in the target, a folder into itself and a root folder with `MOVE_ITEM_FAILED`; both codes are 500 in `api.errors.ts`, and no route remaps them. So a refused request reads as a server failure: in the network tab, and to `requestTimingMiddleware`, which reports 5xx as `route_request_failed`. Pinned by `upload-folder-tree.test.ts`, which asserts the error codes, not the statuses.
 - **Fix:** 403 for no access to the source, as for the destination; 400 (`INVALID_INPUT`) for a destination the item can't go to. The copy test for no access asserts `errorCode: 'UNAUTHORIZED'` and changes with it.
-- **Status 2026-11-12: open.**
+- **Status 2026-11-15: resolved** (`79f7e06`). `upload-folder-tree.test.ts` and `upload-item-safety.test.ts` now assert the statuses: copy with no read on the source answers 403 `FORBIDDEN` (was 401), and every `COPY_ITEM_FAILED` / `MOVE_ITEM_FAILED` refusal answers 400 (was 500); red first (6 failures). The code is 400 in the `api.errors.ts` table, since every throw of it is a refusal, so no route remap was needed.
 
 ### 85. The workspace gallery ignores its URL filters and lists trashed media
 
