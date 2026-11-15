@@ -992,9 +992,11 @@ export async function setSearchChunkVectors(
     'write',
   )
 
+  // The column has no zone and the session's is local, so a bare NOW() would
+  // store local time that Prisma reads back as UTC (hours in the future).
   const updated = await prisma.$executeRaw`
     UPDATE "SearchChunk" c
-    SET vector = v.vec::vector, "updatedAt" = NOW()
+    SET vector = v.vec::vector, "updatedAt" = (now() AT TIME ZONE 'UTC')
     FROM unnest(${ids}::text[], ${literals}::text[]) AS v(id, vec)
     WHERE c."id" = v.id
   `

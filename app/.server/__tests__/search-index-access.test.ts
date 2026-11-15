@@ -181,4 +181,18 @@ describe('setSearchChunkVectors requires write access on every chunk item', () =
       ]),
     ).toBe(1)
   })
+
+  // The column has no zone and the dev database's session zone is
+  // Asia/Jerusalem, so a bare NOW() stored local time, which Prisma reads back
+  // as UTC: 2 to 3 hours in the future. Only red on a non-UTC database (CI's is
+  // UTC).
+  it('stamps updatedAt in UTC, as Prisma writes do', async () => {
+    const chunk = await makeChunk(await makeItem('own'))
+    const before = Date.now()
+    await setSearchChunkVectors(ownerId, [{ chunkId: chunk, vector: vector() }])
+    const after = Date.now()
+    const row = await prisma.searchChunk.findUniqueOrThrow({ where: { id: chunk }, select: { updatedAt: true } })
+    expect(row.updatedAt.getTime()).toBeGreaterThanOrEqual(before - 5_000)
+    expect(row.updatedAt.getTime()).toBeLessThanOrEqual(after + 5_000)
+  })
 })
