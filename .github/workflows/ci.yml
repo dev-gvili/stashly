@@ -266,13 +266,16 @@ jobs:
               if [ $((now - $(cat "$dir.published"))) -gt $((14 * 86400)) ]; then rm -rf "$dir"; fi
             done
             rm -rf "e2e/$RUN_ID" && mkdir -p "e2e/$RUN_ID"
-            cp -r ../playwright-report/. "e2e/$RUN_ID/"
-            echo "$now" > "e2e/$RUN_ID/.published"
+            cp -r ../playwright-report/. "/"
+            # cp -r ../playwright-report/. "e2e/$RUN_ID/"
+            echo "$now" > "/.published"
+            # echo "$now" > "e2e/$RUN_ID/.published"
             touch .nojekyll
             git add -A && git commit -q -m "e2e report for run $RUN_ID"
             if git push -q --force-with-lease="gh-pages:${lease}" "$remote" HEAD:refs/heads/gh-pages; then
               cd ..
-              echo "url=https://${REPO%%/*}.github.io/${REPO#*/}/e2e/${RUN_ID}/" >> "$GITHUB_OUTPUT"
+              echo "url=https://${REPO%%/*}.github.io/${REPO#*/}" >> "$GITHUB_OUTPUT"
+              # echo "url=https://${REPO%%/*}.github.io/${REPO#*/}/e2e/${RUN_ID}/" >> "$GITHUB_OUTPUT"
               echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
               exit 0
             fi
