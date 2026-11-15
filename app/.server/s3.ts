@@ -11,7 +11,6 @@ import {
   CompleteMultipartUploadCommand,
   AbortMultipartUploadCommand,
   type CompletedPart,
-  type CompleteMultipartUploadCommandOutput,
   PutBucketVersioningCommand,
   PutBucketCorsCommand,
   GetBucketCorsCommand,
@@ -1186,44 +1185,17 @@ export async function completeMultipartUpload(
   bucket: string,
   key: string,
   uploadId: string,
-  parts: CompletedPart[],
-  retryDelaysMs: readonly number[] = COMPLETE_RETRY_DELAYS_MS
-): Promise<CompleteMultipartUploadCommandOutput> {
-  let timedOut = false
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await s3.send(
-        new CompleteMultipartUploadCommand({
-          Bucket: bucket,
-          Key: key,
-          UploadId: uploadId,
-          MultipartUpload: { Parts: parts },
-        })
-      )
-    } catch (error) {
-      const err = error as { name?: string; $metadata?: { httpStatusCode?: number } }
-      // A repeat that finds the upload gone, after a timeout, may mean the
-      // first attempt finished on the store's side: a stored object settles it.
-      if (timedOut && err.name === 'NoSuchUpload') {
-        const stored = await headUploadedObject(bucket, key).catch(() => null)
-        if (stored) {
-          log.warn('S3 complete timed out, then found the object stored', { attempt })
-          return { $metadata: {}, Bucket: bucket, Key: key, ETag: stored.etag }
-        }
-        throw error
-      }
-      // Only a 408 is retried; any other failure won't change on a repeat.
-      const isTimeout = err.name === 'RequestTimeout' || err.$metadata?.httpStatusCode === 408
-      if (!isTimeout || attempt >= retryDelaysMs.length) throw error
-      timedOut = true
-      log.warn('S3 complete answered 408, retrying', { attempt: attempt + 1 })
-      await new Promise((resolve) => setTimeout(resolve, retryDelaysMs[attempt]))
-    }
-  }
+  parts: CompletedPart[]
+) {
+  return await s3.send(
+    new CompleteMultipartUploadCommand({
+      Bucket: bucket,
+      Key: key,
+      UploadId: uploadId,
+      MultipartUpload: { Parts: parts },
+    })
+  )
 }
-
-/** Waits before the 2nd and 3rd try of a complete that answered 408 (3 tries in all). */
-const COMPLETE_RETRY_DELAYS_MS = [250, 750] as const
 
 /**
  * Cancels an in-progress multipart upload and instructs S3 to delete all
