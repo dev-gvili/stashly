@@ -192,3 +192,34 @@ describe('upsertImageFacet', () => {
     expect(row).toMatchObject({ width: 800, cameraMake: 'Apple' })
   })
 })
+
+describe('upsertVideoFacet', () => {
+  it('stores the container header fields and keeps them across a partial save', async () => {
+    const item = await makeItem('video-container')
+    await upsertVideoFacet(item, {
+      width: 1280,
+      height: 720,
+      duration: 214,
+      frameRate: 23.976,
+      codec: 'av1',
+      container: 'matroska',
+      bitrate: 1_090_000,
+      audioFormat: 'opus',
+      audioChannels: 2,
+      audioSamplesPerSecond: 48000,
+    })
+    await upsertVideoFacet(item, { width: 1920 })
+    const row = await prisma.video.findUnique({ where: { itemId: item } })
+    expect(row).toMatchObject({
+      width: 1920,
+      height: 720,
+      codec: 'av1',
+      container: 'matroska',
+      bitrate: 1_090_000,
+      audioFormat: 'opus',
+      audioChannels: 2,
+      audioSamplesPerSecond: 48000,
+    })
+    expect(row?.frameRate).toBeCloseTo(23.976, 3)
+  })
+})

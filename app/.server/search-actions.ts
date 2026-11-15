@@ -141,6 +141,14 @@ export async function saveMediaMetadata(
     videoHeight,
     duration,
     frameRate,
+    videoCodec,
+    videoContainer,
+    videoFourCC,
+    videoBitrate,
+    videoAudioFormat,
+    videoAudioChannels,
+    videoAudioSampleRate,
+    videoAudioBitDepth,
     documentText,
     documentPageCount,
     pdfTitle,
@@ -196,13 +204,21 @@ export async function saveMediaMetadata(
       latitude,
       longitude,
     })
-  } else if (videoWidth || videoHeight) {
+  } else if (videoWidth || videoHeight || videoCodec) {
     facet = 'video'
     await upsertVideoFacet(itemId, {
       width: videoWidth,
       height: videoHeight,
       duration,
       frameRate,
+      codec: videoCodec,
+      container: videoContainer,
+      fourCC: videoFourCC,
+      bitrate: videoBitrate,
+      audioFormat: videoAudioFormat,
+      audioChannels: videoAudioChannels,
+      audioSamplesPerSecond: videoAudioSampleRate,
+      audioBitsPerSample: videoAudioBitDepth,
     })
   } else if (
     documentPageCount != null ||

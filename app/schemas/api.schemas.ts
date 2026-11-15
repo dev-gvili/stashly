@@ -273,6 +273,16 @@ export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
     videoHeight: z.coerce.number().int().optional(),
     duration: z.coerce.number().optional(),
     frameRate: z.coerce.number().optional(),
+    // video container header (codec, bit rate, audio): free text goes through
+    // toUserText, the decoders turn text like 'av1' or '2024' into other types
+    videoCodec: toUserText(z.string()).optional(),
+    videoContainer: toUserText(z.string()).optional(),
+    videoFourCC: toUserText(z.string()).optional(),
+    videoBitrate: z.coerce.number().int().optional(),
+    videoAudioFormat: toUserText(z.string()).optional(),
+    videoAudioChannels: z.coerce.number().int().optional(),
+    videoAudioSampleRate: z.coerce.number().int().optional(),
+    videoAudioBitDepth: z.coerce.number().int().optional(),
     // document fields (currently PDF; extensible to other text formats)
     documentText: z.string().optional(),
     documentPageCount: z.coerce.number().int().optional(),

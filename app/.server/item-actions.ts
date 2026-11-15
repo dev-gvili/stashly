@@ -1834,6 +1834,15 @@ export async function upsertVideoFacet(
     height?: number
     duration?: number
     frameRate?: number
+    codec?: string
+    container?: string
+    fourCC?: string
+    /** Bits per second, the file's overall average. */
+    bitrate?: number
+    audioFormat?: string
+    audioChannels?: number
+    audioSamplesPerSecond?: number
+    audioBitsPerSample?: number
   }
 ) {
   return prisma.video.upsert({

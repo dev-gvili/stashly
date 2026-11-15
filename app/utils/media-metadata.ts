@@ -8,6 +8,11 @@
  */
 import { compute } from '@/utils/compute-worker'
 import { getVideoMetadata } from '@/utils/video'
+import {
+  blobSource,
+  readVideoContainer,
+  type VideoContainerInfo,
+} from '@/utils/video-container'
 import { isMarkdownFile } from '@/utils/markdown'
 import { MAX_INDEXED_TEXT_CHARS, isIndexableTextFile } from '@/utils/text-files'
 import exifr from 'exifr'
@@ -44,6 +49,16 @@ export interface MediaMetadata {
   videoWidth?: number
   videoHeight?: number
   duration?: number
+  frameRate?: number
+  videoCodec?: string
+  videoContainer?: string
+  videoFourCC?: string
+  /** Bits per second: the file's overall average (video and audio together). */
+  videoBitrate?: number
+  videoAudioFormat?: string
+  videoAudioChannels?: number
+  videoAudioSampleRate?: number
+  videoAudioBitDepth?: number
   /**
    * PDF with no extractable text layer. Client-only signal — never submitted
    * to the server — telling the caller an OCR pass is worth running after the
@@ -429,6 +444,51 @@ async function readImageBitDepth(file: File): Promise<number | undefined> {
 
 
 /**
+ * Combines what the browser measured with what the container header says.
+ * The browser's size and length win (they are what plays); the header fills
+ * in when the browser could not decode the file. The bit rate is the file's
+ * overall average, computed from its size and length: headers rarely state one.
+ *
+ * @example
+ * mergeVideoMetadata({ width: 1280, height: 720, duration: 100 }, null, 12_500_000)
+ * // → { videoWidth: 1280, videoHeight: 720, duration: 100, videoBitrate: 1_000_000 }
+ */
+export function mergeVideoMetadata(
+  browser: { width: number; height: number; duration: number } | null,
+  container: VideoContainerInfo | null,
+  fileSize: number
+): MediaMetadata {
+  const meta: MediaMetadata = {}
+  const width = browser?.width || container?.width
+  const height = browser?.height || container?.height
+  // `duration` is Infinity for a recording with no length: not a duration.
+  const duration = [browser?.duration, container?.duration].find(
+    (d): d is number => d != null && Number.isFinite(d) && d > 0
+  )
+  if (width) meta.videoWidth = width
+  if (height) meta.videoHeight = height
+  if (duration != null) meta.duration = duration
+  if (container) {
+    if (container.frameRate) meta.frameRate = container.frameRate
+    if (container.codec) meta.videoCodec = container.codec
+    meta.videoContainer = container.container
+    if (container.fourCC) meta.videoFourCC = container.fourCC
+    if (container.audioFormat) meta.videoAudioFormat = container.audioFormat
+    if (container.audioChannels) meta.videoAudioChannels = container.audioChannels
+    if (container.audioSamplesPerSecond) {
+      meta.videoAudioSampleRate = Math.round(container.audioSamplesPerSecond)
+    }
+    if (container.audioBitsPerSample) {
+      meta.videoAudioBitDepth = container.audioBitsPerSample
+    }
+  }
+  if (duration != null && fileSize > 0) {
+    meta.videoBitrate = Math.round((fileSize * 8) / duration)
+  }
+  return meta
+}
+
+/**
  * Reads a file's metadata by type. Never throws for an unreadable field: a
  * missing value is simply absent.
  *
@@ -504,12 +564,14 @@ export async function extractMediaMetadata(file: File): Promise<MediaMetadata> {
       meta.longitude = gps.longitude
     }
   } else if (file.type.startsWith('video/')) {
-    const v = await getVideoMetadata(file)
-    if (v) {
-      meta.videoWidth = v.width
-      meta.videoHeight = v.height
-      meta.duration = v.duration
-    }
+    // The browser measures size and length; the container header says the
+    // rest. Neither depends on the other, and a file the browser can't decode
+    // (HEVC, say) still has a readable header.
+    const [browser, container] = await Promise.all([
+      getVideoMetadata(file),
+      readVideoContainer(blobSource(file)).catch(() => null),
+    ])
+    Object.assign(meta, mergeVideoMetadata(browser, container, file.size))
   } else if (file.type === 'application/pdf') {
     // The compute worker serializes PDF ops internally (MAX_CONCURRENT = 1),
     // so firing both just queues them back to back.
