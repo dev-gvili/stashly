@@ -1,5 +1,5 @@
 import { fromCallback, fromPromise, type ExtractEvent } from 'xstate'
-import { PauseController } from './s3.multipart.concurrent'
+import { PauseController } from './pause-controller'
 import type { CompletedPart } from '@aws-sdk/client-s3'
 import type { MultipartEvents } from '@/types/machine.types'
 import { streamParts } from './s3.multipart.stream'
