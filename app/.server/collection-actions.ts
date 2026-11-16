@@ -934,7 +934,7 @@ export async function getCollectionItems(
           WHERE pu."B" = ${userId}
             AND p."itemId" = i.id
             AND p."deletedAt" IS NULL
-            AND (p."expiresAt" IS NULL OR p."expiresAt" > NOW())
+            AND (p."expiresAt" IS NULL OR p."expiresAt" > (now() AT TIME ZONE 'UTC'))
         )
       )
       ${after.where}
@@ -1047,7 +1047,7 @@ function readableBy(userId: string, alias: string) {
       WHERE pu."B" = ${userId}
         AND p."itemId" = ${Prisma.raw(alias)}.id
         AND p."deletedAt" IS NULL
-        AND (p."expiresAt" IS NULL OR p."expiresAt" > NOW())
+        AND (p."expiresAt" IS NULL OR p."expiresAt" > (now() AT TIME ZONE 'UTC'))
     )
   )`
 }

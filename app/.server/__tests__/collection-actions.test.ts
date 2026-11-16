@@ -22,6 +22,7 @@ import {
   addItemsToCollection,
   clearCollection,
   getCollectionItems,
+  getCollectionMosaics,
   countCollectionItems,
   getCollectionForUser,
   listCollectionPermissions,
@@ -685,6 +686,48 @@ describe('getCollectionItems', () => {
     const col = await makeCollection()
     await expect(getCollectionItems(otherId, col.id)).rejects.toMatchObject({
       errorCode: StashlyErrorCode.FORBIDDEN,
+    })
+  })
+
+  // expiresAt has no zone. Compared with a bare NOW() on a database whose
+  // session zone is local (the dev DB's is Asia/Jerusalem), it was read as local
+  // time, so a share expiring within the next 2-3 hours counted as expired
+  // already. Only red on a non-UTC database (CI's is UTC).
+  describe('honours a share that expires later today', () => {
+    const HOUR = 60 * 60 * 1000
+
+    /** A collection of the owner's holding two of `otherId`'s files, shared with the owner until +1 h and until -1 h. */
+    async function seedExpiringShares() {
+      const col = await makeCollection()
+      const live = await makeItem(otherId)
+      const expired = await makeItem(otherId)
+      for (const [item, offset] of [[live, HOUR], [expired, -HOUR]] as const) {
+        await prisma.permission.create({
+          data: {
+            id: uid('Permission'),
+            itemId: item.id,
+            roles: 'read',
+            expiresAt: new Date(Date.now() + offset),
+            users: { connect: { id: ownerId } },
+          },
+        })
+      }
+      await prisma.collectionMember.createMany({
+        data: [live, expired].map((item) => ({ id: uid('CollectionMember'), collectionId: col.id, itemId: item.id })),
+      })
+      return { col, live, expired }
+    }
+
+    it('in the collection listing', async () => {
+      const { col, live } = await seedExpiringShares()
+      const { items } = await getCollectionItems(ownerId, col.id)
+      expect(items.map((i) => i.id)).toEqual([live.id])
+    })
+
+    it('in the mosaic cover', async () => {
+      const { col } = await seedExpiringShares()
+      const mosaics = await getCollectionMosaics(ownerId, [col.id])
+      expect(mosaics[col.id] ?? []).toHaveLength(1)
     })
   })
 
