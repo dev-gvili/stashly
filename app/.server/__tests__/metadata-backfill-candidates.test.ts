@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { prisma } from '@/services/db'
 import {
   METADATA_BACKFILL_MAX_AUDIO_BYTES,
-  findMetadataBackfillCandidates,
+  findMetadataBackfillRows,
 } from '@/services/search-actions'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
@@ -121,27 +121,23 @@ afterAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: [ownerId, otherId] } } })
 })
 
-describe('findMetadataBackfillCandidates', () => {
-  it('lists the caller’s own files that have no facet, with a signed URL', async () => {
-    const found = await findMetadataBackfillCandidates(ownerId, null, 50)
+describe('findMetadataBackfillRows', () => {
+  it('lists the caller’s own files that have no facet', async () => {
+    const found = await findMetadataBackfillRows(ownerId, null, 50)
     expect(found.map((c) => c.id).sort()).toEqual(
       [ids['video-bare'], ids['audio-bare']].sort()
     )
+    // A video has no size cap: it is read from its header, not downloaded.
     const video = found.find((c) => c.id === ids['video-bare'])!
-    expect(video).toMatchObject({
-      kind: 'video',
-      size: 40_000_000,
-      mimeType: 'video/matroska',
-    })
-    // A video has no size cap (it is read from its header); the URL is signed.
-    expect(new URL(video.url).searchParams.get('X-Amz-Signature')).toBeTruthy()
+    expect(video).toMatchObject({ category: 'video', size: 40_000_000n })
+    expect(video.file).toMatchObject({ mimeType: 'video/matroska' })
   })
 
   it('continues after a cursor, oldest id first', async () => {
-    const all = await findMetadataBackfillCandidates(ownerId, null, 50)
-    const first = await findMetadataBackfillCandidates(ownerId, null, 1)
+    const all = await findMetadataBackfillRows(ownerId, null, 50)
+    const first = await findMetadataBackfillRows(ownerId, null, 1)
     expect(first.map((c) => c.id)).toEqual([all[0].id])
-    const rest = await findMetadataBackfillCandidates(ownerId, first[0].id, 50)
+    const rest = await findMetadataBackfillRows(ownerId, first[0].id, 50)
     expect(rest.map((c) => c.id)).toEqual(all.slice(1).map((c) => c.id))
   })
 })

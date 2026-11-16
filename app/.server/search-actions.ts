@@ -8,7 +8,7 @@ import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { Prisma } from '@/prisma/client'
 import type { ItemForSearchEmbedding } from '@/utils/search-text'
 import { stripNulChars } from '@/utils/search-text'
-import { getObjectHead, getPresignedGetUrl } from './s3'
+import { getObjectHead, getPresignedUrl } from './s3'
 import {
   upsertAudioFacet,
   upsertImageFacet,
@@ -2019,16 +2019,15 @@ export const METADATA_BACKFILL_MAX_AUDIO_BYTES = 16 * 1024 * 1024
  * The caller's own video and audio files that have no `Video` / `Audio` row:
  * uploads whose in-tab metadata step never ran (a closed tab, a stalled
  * queue), which nothing else retries. Oldest id first, `afterId` continues.
- *
- * @example
- * const batch = await findMetadataBackfillCandidates(user.id, null, 20)
+ * The database half of {@link findMetadataBackfillCandidates}, kept apart so it
+ * runs without storage credentials.
  */
-export async function findMetadataBackfillCandidates(
+export async function findMetadataBackfillRows(
   ownerId: string,
   afterId: string | null,
   limit = 20
-): Promise<MetadataBackfillCandidate[]> {
-  const rows = await prisma.item.findMany({
+) {
+  return prisma.item.findMany({
     where: {
       ownerId,
       status: 'normal',
@@ -2055,7 +2054,21 @@ export async function findMetadataBackfillCandidates(
       file: { select: { bucket: true, key: true, mimeType: true } },
     },
   })
+}
 
+/**
+ * {@link findMetadataBackfillRows}, each with a short-lived signed GET (it
+ * accepts `Range`) so the client can read the file from storage.
+ *
+ * @example
+ * const batch = await findMetadataBackfillCandidates(user.id, null, 20)
+ */
+export async function findMetadataBackfillCandidates(
+  ownerId: string,
+  afterId: string | null,
+  limit = 20
+): Promise<MetadataBackfillCandidate[]> {
+  const rows = await findMetadataBackfillRows(ownerId, afterId, limit)
   const out: MetadataBackfillCandidate[] = []
   for (const row of rows) {
     if (!row.file?.bucket || !row.file.key) continue
@@ -2065,9 +2078,7 @@ export async function findMetadataBackfillCandidates(
       size: Number(row.size),
       mimeType: row.file.mimeType ?? '',
       kind: row.category === 'video' ? 'video' : 'audio',
-      url: await getPresignedGetUrl(row.file.bucket, row.file.key, {
-        expiresIn: 600,
-      }),
+      url: await getPresignedUrl(row.file.bucket, 'get', row.file.key, 600),
     })
   }
   return out
