@@ -13,22 +13,6 @@ export function EmptyCollectionVector({ className }: VectorProps) {
       className={cn('h-28 w-42 shrink-0', className)}
       aria-hidden="true"
     >
-      {/* Panel frame & alignment ticks */}
-      <rect
-        x="12"
-        y="10"
-        width="144"
-        height="92"
-        rx="10"
-        className="fill-card stroke-input"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M20 18H25M20 18V23M148 18H143M148 18V23M20 94H25M20 94V89M148 94H143M148 94V89"
-        className="stroke-border"
-        strokeWidth="1"
-      />
-
       {/* Isometric tray outer walls */}
       <path
         d="M84 26L132 52L84 78L36 52L84 26Z"
@@ -73,16 +57,6 @@ export function EmptySearchVector({ className }: VectorProps) {
       className={cn('h-28 w-42 shrink-0', className)}
       aria-hidden="true"
     >
-      <rect
-        x="12"
-        y="10"
-        width="144"
-        height="92"
-        rx="10"
-        className="fill-card stroke-input"
-        strokeWidth="1.5"
-      />
-
       {/* 5x4 Unpopulated index cells */}
       {[32, 54, 76, 98, 120].map((x) =>
         [24, 41, 58, 75].map((y) => (
@@ -138,16 +112,6 @@ export function EmptyTrashVector({ className }: VectorProps) {
       className={cn('h-28 w-42 shrink-0', className)}
       aria-hidden="true"
     >
-      <rect
-        x="12"
-        y="10"
-        width="144"
-        height="92"
-        rx="10"
-        className="fill-card stroke-input"
-        strokeWidth="1.5"
-      />
-
       {/* Bin body */}
       <path
         d="M58 38L62 82C62.5 85 65 87 68 87L84 93L100 87C103 87 105.5 85 106 82L110 38"

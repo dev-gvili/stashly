@@ -10,7 +10,8 @@ interface CategoryFallbackProps {
 
 /**
  * Animated placeholder art for an item with no thumbnail, one drawing per
- * `ItemCategory` inside a shared instrument-panel frame.
+ * `ItemCategory`. The drawing has no frame or background of its own; the
+ * surface behind it comes from whatever holds it.
  *
  * @example
  * <ItemCategoryVector category={item.category} />
@@ -26,23 +27,6 @@ export function ItemCategoryVector({
       className={cn('h-21 w-30 shrink-0', className)}
       aria-hidden="true"
     >
-      {/* Shared outer instrument-panel frame */}
-      <rect
-        x="10"
-        y="10"
-        width="100"
-        height="64"
-        rx="8"
-        className="fill-muted/50 stroke-input"
-        strokeWidth="1.5"
-      />
-      {/* Corner alignment ticks */}
-      <path
-        d="M16 16H20M16 16V20M104 16H100M104 16V20M16 68H20M16 68V64M104 68H100M104 68V64"
-        className="stroke-border"
-        strokeWidth="1"
-      />
-
       {category === 'video' && (
         <>
           <rect
