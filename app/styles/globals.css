@@ -667,6 +667,79 @@
   }
 }
 
+/* Placeholder and empty-state vector art (components/states/state-vectors.tsx,
+   category-fallbacks.tsx). Each animated element sets its keyframes inline and
+   carries the matching animate-stashly-* class, which only switches the
+   animation off for reduced motion. */
+@keyframes stashly-pulse-slot {
+  0%,
+  100% {
+    opacity: 0.45;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    opacity: 1;
+    stroke-dashoffset: -12;
+  }
+}
+
+@keyframes stashly-scan-reticle {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(6px, -4px);
+  }
+  50% {
+    transform: translate(-6px, 4px);
+  }
+  75% {
+    transform: translate(4px, 4px);
+  }
+}
+
+@keyframes stashly-equalizer {
+  0%,
+  100% {
+    transform: scaleY(0.55);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes stashly-blink-cursor {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.2;
+  }
+}
+
+@keyframes stashly-float-pip {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-2.5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-stashly-slot,
+  .animate-stashly-scan,
+  .animate-stashly-eq,
+  .animate-stashly-cursor,
+  .animate-stashly-float {
+    animation: none !important;
+  }
+}
+
 @utility grid-cards-lg {
   grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
 }
