@@ -1,6 +1,7 @@
 // ItemCard.tsx
 import { Favorite } from '@/components/favorite'
 import { FolderIcon } from '@/components/icons'
+import { ItemCategoryVector } from '@/components/states/category-fallbacks'
 import { ItemCardContext, useItemCard } from '@/hooks/useItemCard'
 import { useItemDragDrop } from '@/hooks/useItemDragDrop'
 import { useItemUrl } from '@/hooks/useItemUrl'
@@ -14,7 +15,6 @@ import {
   CardTitle,
 } from '@/ui/card'
 import { Checkbox } from '@/ui/checkbox'
-import { toIcon } from '@/utils/converters'
 import { capitalize, formatMediaDate, formatSize } from '@/utils/formaters'
 import {
   addQueryParamValue,
@@ -310,7 +310,6 @@ const ItemThumbnailFallback = React.forwardRef<
 >((props, ref) => {
   const { type, category } = useItemCard()
   const { className, children, ...rest } = props
-  const Icon = type === 'folder' ? FolderIcon : toIcon(category)
   return (
     <AvatarPrimitive.Fallback
       ref={ref}
@@ -321,7 +320,15 @@ const ItemThumbnailFallback = React.forwardRef<
       )}
       {...rest}
     >
-      {children ?? (Icon && <Icon className={cn('size-14', type === 'folder' && 'fill-current')} />)}
+      {children ??
+        (type === 'folder' ? (
+          <FolderIcon className="size-14 fill-current" />
+        ) : (
+          <ItemCategoryVector
+            category={category}
+            className="size-full max-h-21 max-w-30"
+          />
+        ))}
     </AvatarPrimitive.Fallback>
   )
 })
@@ -654,7 +661,6 @@ const ItemCover = React.forwardRef<
   )
 
   const src = live?.src ?? persisted?.url ?? undefined
-  const Icon = type === 'folder' ? FolderIcon : toIcon(category)
   // Unique per card so multiple covers don't share one clipPath def. The
   // reference must be dynamic, so it lives in `style` rather than a class.
   const clipId = `stashly-cover-arch-${id}`
@@ -687,19 +693,19 @@ const ItemCover = React.forwardRef<
           className="absolute inset-0 h-full w-full object-cover rounded-4"
         />
       ) : (
-        Icon && (
-          <div
-            data-slot="item-cover-fallback"
-            className="absolute inset-0 flex items-center justify-center"
-          >
-            <Icon
-              className={cn(
-                'size-14 text-muted-foreground',
-                type === 'folder' && 'fill-current'
-              )}
+        <div
+          data-slot="item-cover-fallback"
+          className="absolute inset-0 flex items-center justify-center"
+        >
+          {type === 'folder' ? (
+            <FolderIcon className="size-14 fill-current text-muted-foreground" />
+          ) : (
+            <ItemCategoryVector
+              category={category}
+              className="size-full max-h-21 max-w-30"
             />
-          </div>
-        )
+          )}
+        </div>
       )}
     </div>
   )
