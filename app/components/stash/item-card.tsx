@@ -220,6 +220,9 @@ const ItemThumbnail = React.forwardRef<
       data-slot="item-thumbnail"
       className={cn(
         'relative flex w-full shrink-0 overflow-hidden rounded-md aspect-video',
+        // The fallback stays mounted under the image; once there is an image,
+        // its category vector must not keep animating where nobody sees it.
+        'has-[[data-slot=item-thumbnail-image]]:[&_[data-slot=item-thumbnail-fallback]_*]:animate-none!',
         className
       )}
       {...rest}
