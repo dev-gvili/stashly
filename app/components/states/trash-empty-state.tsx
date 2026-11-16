@@ -1,5 +1,5 @@
-import { TrashFillIcon } from '@/components/icons'
 import { GenericEmptyState } from './generic-empty-state'
+import { EmptyTrashVector } from './state-vectors'
 /**
  * Empty Trash, or an empty folder opened inside Trash (`inFolder`), which is
  * not the same thing: the Trash itself may hold plenty.
@@ -13,7 +13,7 @@ export const TrashEmptyState = ({ inFolder = false }: { inFolder?: boolean }) =>
           : 'Items moved to trash will appear here. Deleted items are permanently removed after 30 days.'
       }
       title={inFolder ? 'This folder is empty' : 'Trash is empty'}
-      icon={<TrashFillIcon className="size-20" />}
+      icon={<EmptyTrashVector />}
     />
   )
 }

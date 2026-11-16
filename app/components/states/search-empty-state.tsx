@@ -1,13 +1,14 @@
 import { href, Link } from 'react-router'
-import { InfoIcon, SearchFillIcon } from '@/components/icons'
+import { InfoIcon } from '@/components/icons'
 import { GenericEmptyState } from './generic-empty-state'
+import { EmptySearchVector } from './state-vectors'
 import { Button } from '@/ui/button'
 import { MIN_QUERY_LENGTH } from '@/utils/search-query'
 
 /** Nothing typed yet — the resting state of the search page. */
 export const SearchIdleState = ({ me }: { me: string }) => (
   <GenericEmptyState
-    icon={<SearchFillIcon className="size-16 text-muted-foreground" />}
+    icon={<EmptySearchVector />}
     title="Search your stash"
     description={`Type at least ${MIN_QUERY_LENGTH} characters to search by name, tag or file contents. Switch to semantic mode to search by meaning instead of wording.`}
   >
@@ -22,7 +23,7 @@ export const SearchIdleState = ({ me }: { me: string }) => (
 /** A query ran and matched nothing. */
 export const SearchNoResultsState = ({ query }: { query: string }) => (
   <GenericEmptyState
-    icon={<SearchFillIcon className="size-16 text-muted-foreground" />}
+    icon={<EmptySearchVector />}
     title="No matches"
     description={`Nothing in your stash matches “${query}”. Try fewer words, check the spelling, or clear your filters.`}
   />

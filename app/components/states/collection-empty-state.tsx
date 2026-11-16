@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { AddIcon, CollectionFillIcon } from '@/components/icons'
+import { CollectionFillIcon } from '@/components/icons'
+import { EmptyCollectionVector } from './state-vectors'
 import {
   Empty,
   EmptyContent,
@@ -33,7 +34,7 @@ const COPY = {
 
 /**
  * Empty state for the collections index and for a single empty collection.
- * The index shows a fanned stack; the collection shows a dashed "add" tile.
+ * The index shows a fanned stack; the collection shows the empty tray drawing.
  *
  * @example
  * <CollectionEmptyState variant="index"><Button>New collection</Button></CollectionEmptyState>
@@ -48,27 +49,17 @@ export function CollectionEmptyState({
     <Empty className="rounded-2xl border border-dashed border-border py-18">
       <EmptyHeader>
         <EmptyMedia>
-          <div className="relative size-16">
-            {variant === 'index' && (
-              <>
-                <span className="absolute inset-0 -translate-x-3 -rotate-10 rounded-xl border border-input bg-secondary" />
-                <span className="absolute inset-0 translate-x-3 rotate-10 rounded-xl border border-input bg-secondary" />
-              </>
-            )}
-            <span
-              className={
-                variant === 'index'
-                  ? 'absolute inset-0 flex items-center justify-center rounded-xl border border-input bg-card shadow-stashly'
-                  : 'absolute inset-0 flex items-center justify-center rounded-xl border border-dashed border-primary/40 bg-card'
-              }
-            >
-              {variant === 'index' ? (
+          {variant === 'index' ? (
+            <div className="relative size-16">
+              <span className="absolute inset-0 -translate-x-3 -rotate-10 rounded-xl border border-input bg-secondary" />
+              <span className="absolute inset-0 translate-x-3 rotate-10 rounded-xl border border-input bg-secondary" />
+              <span className="absolute inset-0 flex items-center justify-center rounded-xl border border-input bg-card shadow-stashly">
                 <CollectionFillIcon className="size-7 text-primary" />
-              ) : (
-                <AddIcon className="size-7 text-primary" />
-              )}
-            </span>
-          </div>
+              </span>
+            </div>
+          ) : (
+            <EmptyCollectionVector />
+          )}
         </EmptyMedia>
         <EmptyTitle className="font-stashly">{title}</EmptyTitle>
         <EmptyDescription className="font-stashly">{description}</EmptyDescription>
