@@ -30,7 +30,7 @@ Written 16 Nov 2026 while investigating "MKV uploads have no metadata and some h
 | Timeout | **none** | **none** |
 | Cleans up | revokes its object URL on success or error | revokes its object URL when it finishes |
 
-Neither reads a codec, bit rate, frame rate or container: a `<video>` element does not expose them. The `Video` table has columns for all of them (`codec`, `bitrate`, `container`, `frameRate`, `fourCC`, `audio*`), the item panel shows rows for `Codec` and `Bitrate`, and nothing fills them (see [Known issues](#known-issues)).
+Neither reads a codec, bit rate, frame rate or container: a `<video>` element does not expose them. Since 16 Nov `app/utils/video-container.ts` reads those from the container header and `extractMediaMetadata` merges both (see [Container header](#container-header-and-the-metadata-backfill)).
 
 ---
 
@@ -211,14 +211,56 @@ A thumbnail needs the video bytes. They come from one of two places:
 
 ---
 
+## Container header and the metadata backfill
+
+Added 16 Nov, after the MKV investigation.
+
+**`app/utils/video-container.ts`** reads what a `<video>` can't tell: codec, FourCC (MP4), frame rate, container, and the first audio track's format, channels, sample rate. Matroska/WebM (`Info` and `Tracks`, which precede the first `Cluster`) and MP4/QuickTime (`moov`). `readVideoContainer(source)` takes a `ByteSource` (a `File`, or ranged reads of a stored object); for an MP4 it walks the top-level box sizes to the `moov` wherever it sits, so a file without faststart costs one ranged read of the `moov`, not the whole file. A field the header does not carry is left out; the nominal sample size of lossy audio (Matroska writes 32 for Opus) is not kept. Verified against Chrome: durations and sizes of the owner's MKVs matched to the millisecond.
+
+`extractMediaMetadata` runs it next to `getVideoMetadata` and merges them with `mergeVideoMetadata`: the browser wins on size and length (what plays), the header fills in when the browser can't decode a file, and the bit rate is the file's overall average (size / length), since headers rarely state one. Every `video/*` file takes this path; the extension is never looked at. The fields travel through `save_media_metadata` (`videoCodec`, `videoContainer`, `videoFourCC`, `videoBitrate`, `videoAudio*`, `frameRate`) into `upsertVideoFacet`.
+
+**Backfill.** `useMetadataBackfill` (mounted in `routes/layout.tsx`) gives metadata to files whose upload-time step never ran:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant HOOK as useMetadataBackfill
+    participant API as GET /api/items
+    participant DB as Postgres
+    participant S3 as S3 (Range reads)
+    participant SAVE as POST save_media_metadata
+
+    Note over HOOK: once per tab, idle frame, one tab (Web Lock), not on a slow connection
+    HOOK->>API: intent=metadata_backfill_candidates&limit=20&after=id
+    API->>DB: own files, category video/audio, no Video/Audio row
+    DB-->>API: ids, sizes, mime types
+    API-->>HOOK: candidates + 10-minute signed GET each
+    loop one candidate at a time
+        alt video
+            HOOK->>S3: Range 0-3 MB
+            HOOK->>HOOK: getVideoMetadata(head) + readVideoContainer
+            opt MP4 with moov at the end
+                HOOK->>S3: Range moov only
+            end
+        else audio (at most 16 MiB)
+            HOOK->>S3: whole file
+            HOOK->>HOOK: extractMediaMetadata
+        end
+        HOOK->>SAVE: facet fields
+    end
+    HOOK->>HOOK: revalidate once if anything was saved
+```
+
+Audio is read whole because its length and bit rate depend on all of it; video is read from its header and has no size cap. A file that yields nothing is not asked for again in the tab (`sessionStorage`). At most 5 batches of 20 per page load; the rest continues on the next visit.
+
 ## Known issues
 
 1. **No timeout in either function.** If the element fires neither `loadedmetadata` nor `error`, both promises never settle. In the metadata path that holds one of the indexing queue's two slots for good (`indexing-queue.machine.ts` has no timeout either). I could not make any of the 31 files hang in isolation, so this is a risk, not a diagnosed cause.
 2. **No cleanup of the element.** Neither function clears `video.src` or calls `load()` afterwards; they only revoke the object URL. The element is left for garbage collection.
 3. **`getVideoMetadata` can return `duration = Infinity`** for a recording with no length (the thumbnail function guards this with `Number.isFinite`, the metadata function does not). Not checked against the zod schema.
-4. **The `Video` table has columns nothing fills:** `codec`, `bitrate`, `container`, `fourCC`, `audioFormat`, `audioChannels`, `audioSamplesPerSecond`, `audioBitsPerSample`. `frameRate` is accepted by the route and `upsertVideoFacet` but no extractor produces it. The item panel shows `Codec` and `Bitrate` rows for every video, empty for all of them. A `<video>` element cannot tell these; they need a container parser.
-5. **No "already tried" mark for metadata.** The thumbnail lane remembers failed downloads in `sessionStorage` (`attempt-store.ts`) and has a backfill for items without a thumbnail. Metadata has neither: a file whose metadata step never ran (tab closed, queue stalled) stays without a facet for good. This is why 63 of the 69 files of the 15 Nov 20:42 batch (35 mp3, 31 MKV, 2 mp4, 1 other) have no facet.
-6. **The in-tab queue is lost on reload.** The queue and held files are module state.
+4. ~~The `Video` table has columns nothing fills.~~ Fixed 16 Nov: codec, container, FourCC, frame rate, bit rate (overall average) and the audio fields are read from the header. Existing videos get them from the backfill. Still unfilled: `audioBitsPerSample` for lossy audio (by design).
+5. ~~No retry for metadata.~~ Fixed 16 Nov by `useMetadataBackfill`. This is why 63 of the 69 files of the 15 Nov 20:42 batch (35 mp3, 31 MKV, 2 mp4, 1 other) had no facet.
+6. **The in-tab queue is lost on reload.** The queue and held files are module state. The backfill recovers the metadata; thumbnails have their own backfill (and the 16 MiB cap above).
 7. **Black first frame:** fixed 13 Nov (`fdf36f9`, `56d9229`). It does not run for a video that never gets a thumbnail job, which is the 16 MiB case above.
 8. **The URL overload needs CORS** (`crossOrigin='anonymous'`), and the old `Gallery.tsx` calls it on every render of a `VideoItem` whose `src` changes, with no queue or cap.
 
@@ -241,7 +283,10 @@ A thumbnail needs the video bytes. They come from one of two places:
 | File | Role |
 |---|---|
 | `app/utils/video.ts` | `getVideoMetadata`, `generateVideoThumbnail` |
-| `app/utils/media-metadata.ts` | `extractMediaMetadata` (video branch at 506), `buildMediaMetadataFormData`, `hasMetadataToSave` |
+| `app/utils/media-metadata.ts` | `extractMediaMetadata` (video branch), `mergeVideoMetadata`, `buildMediaMetadataFormData`, `hasMetadataToSave` |
+| `app/utils/video-container.ts` | `readVideoContainer`, `parseMatroska`, `parseMoov`: codec, frame rate, audio from the header |
+| `app/utils/metadata-backfill.ts`, `app/hooks/useMetadataBackfill.ts` | ranged reads and the backfill runner |
+| `app/.server/search-actions.ts` | `findMetadataBackfillCandidates` |
 | `app/utils/thumbnail-stages/video.ts` | `videoProducer` (`preview` = frame, `resize` = 512 px WebP) |
 | `app/utils/thumbnail-backfill.ts` | `BACKFILL_MAX_BYTES`, `canBackfillThumbnail`, `canThumbnailFromMemory` |
 | `app/machines/thumbnail/` | manager, per-item machine, `hooks.ts` (`useThumbnailWhenVisible`), `held-files.ts`, `attempt-store.ts` |
