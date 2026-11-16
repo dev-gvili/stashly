@@ -6,7 +6,6 @@ import { OpenWithIcon } from '@/components/icons'
 import { cn } from '@/utils/styles'
 import type { FileCardVariantProps } from './types'
 import { formatSize } from '@/utils/formaters';
-import { HomeFilePreview } from '@/components/views/home-components/home-file-preview'
 import { toFileKind } from '@/components/views/home-components/home-data'
 import { KIND_ICON } from '@/components/views/home-components/home-format'
 
@@ -73,9 +72,7 @@ export function FileCardDetail({
         <ItemCard.Thumbnail className="absolute inset-0 h-full w-full rounded-none">
           {/* Category art (page, waveform, code lines…) until a thumbnail lands.
               Before the image: both are absolute, so the later one paints on top. */}
-          <ItemCard.ThumbnailFallback className="rounded-none p-0">
-            <HomeFilePreview kind={kind} />
-          </ItemCard.ThumbnailFallback>
+          <ItemCard.ThumbnailFallback className="rounded-none p-0" />
           <ItemCard.ThumbnailImage className="rounded-none" />
         </ItemCard.Thumbnail>
 
