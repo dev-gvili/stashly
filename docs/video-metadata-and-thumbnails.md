@@ -261,7 +261,8 @@ Audio is read whole because its length and bit rate depend on all of it; video i
 4. ~~The `Video` table has columns nothing fills.~~ Fixed 16 Nov: codec, container, FourCC, frame rate, bit rate (overall average) and the audio fields are read from the header. Existing videos get them from the backfill. Still unfilled: `audioBitsPerSample` for lossy audio (by design).
 5. ~~No retry for metadata.~~ Fixed 16 Nov by `useMetadataBackfill`. This is why 63 of the 69 files of the 15 Nov 20:42 batch (35 mp3, 31 MKV, 2 mp4, 1 other) had no facet.
 6. **The in-tab queue is lost on reload.** The queue and held files are module state. The backfill recovers the metadata; thumbnails have their own backfill (and the 16 MiB cap above).
-7. **Black first frame:** fixed 13 Nov (`fdf36f9`, `56d9229`). It does not run for a video that never gets a thumbnail job, which is the 16 MiB case above.
+7. **Black first frame:** fixed 13 Nov (`fdf36f9`, `56d9229`). It did not run for a video that never got a thumbnail job, the 16 MiB case above.
+8. **Big videos (18 Nov):** a video over the cap is no longer refused. `thumbnailSourceRange` (`thumbnail-backfill.ts`, used by client and server) makes the job read only the first 3 MiB (`rangeBytes` in the `intent=source` answer, a `Range` request in `acquireSourceActor`); a frame decodes from the head of a Matroska/WebM or fast-start MP4. Checked 18 Nov on real MKVs (36 MB and 25 MB): 206, 3 MiB, 512x288 frame. Images and PDFs keep the cap. A non-fast-start MP4 whose `moov` sits at the end can't decode from its head; that job fails and is skipped for the session.
 8. **The URL overload needs CORS** (`crossOrigin='anonymous'`), and the old `Gallery.tsx` calls it on every render of a `VideoItem` whose `src` changes, with no queue or cap.
 
 ---

@@ -14,6 +14,37 @@ import { isTextRenderableFile } from '@/utils/text-thumbnail'
  */
 export const BACKFILL_MAX_BYTES = 16 * 1024 * 1024
 
+/**
+ * How much of a video over {@link BACKFILL_MAX_BYTES} a thumbnail download
+ * reads: its first 3 MiB. A frame decodes from the head of a Matroska/WebM or
+ * a fast-start MP4 (measured 16 Nov: 31 of 31 real MKVs, 30 byte-identical to
+ * the whole-file frame). Same size as the metadata backfill's head.
+ */
+export const THUMBNAIL_HEAD_BYTES = 3 * 1024 * 1024
+
+/** How a thumbnail job reads the original: all of it, or a ranged head. */
+export type ThumbnailSourceRange = { ranged: false } | { ranged: true; bytes: number }
+
+/**
+ * What to download for a thumbnail, or null when the file is refused: empty,
+ * or over the cap and not a video (an image or PDF needs every byte).
+ * The server calls this too, so client and server cannot disagree.
+ *
+ * @example
+ * thumbnailSourceRange({ size: 40_000_000, mimeType: 'video/x-matroska' })
+ * // → { ranged: true, bytes: 3145728 }
+ */
+export function thumbnailSourceRange(item: {
+  size: number
+  mimeType?: string | null
+}): ThumbnailSourceRange | null {
+  if (!(item.size > 0)) return null
+  if (item.size <= BACKFILL_MAX_BYTES) return { ranged: false }
+  if ((item.mimeType ?? '').startsWith('video/'))
+    return { ranged: true, bytes: THUMBNAIL_HEAD_BYTES }
+  return null
+}
+
 export interface BackfillCandidate {
   type: 'file' | 'folder' | 'collection' | string
   name: string
@@ -46,7 +77,8 @@ export function hasThumbnailProducer(
 
 /**
  * Whether an item is worth a backfill attempt: a stored file, no real
- * thumbnail yet, a type we can render, and small enough to be worth fetching.
+ * thumbnail yet, a type we can render, and small enough to be worth fetching (a video over
+ * the cap is read by its head only).
  *
  * @example
  * canBackfillThumbnail({ type: 'file', name: 'db.ts', size: 1600, mimeType: 'text/plain' })
@@ -55,7 +87,7 @@ export function hasThumbnailProducer(
 export function canBackfillThumbnail(item: BackfillCandidate): boolean {
   if (item.type !== 'file') return false
   if (item.thumbnailUrls?.some(isRealThumbnailUrl)) return false
-  if (!(item.size > 0) || item.size > BACKFILL_MAX_BYTES) return false
+  if (!thumbnailSourceRange(item)) return false
   return hasThumbnailProducer(item)
 }
 

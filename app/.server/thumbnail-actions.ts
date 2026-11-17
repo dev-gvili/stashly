@@ -1,6 +1,7 @@
 import { prisma } from '@/services/db'
 import { track } from '@/services/vinktar'
 import { log } from '@/services/log'
+import { thumbnailSourceRange } from '@/utils/thumbnail-backfill'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { itemAccessWhere } from '@/services/permission-actions'
 import { requireMembership } from '@/services/workspace-actions'
@@ -564,6 +565,8 @@ export type ThumbnailSource =
   | {
       status: 'ready'
       downloadUrl: string
+      /** Set for a big video: read only this many leading bytes (a Range request). */
+      rangeBytes?: number
       mimeType: string | null
       name: string
       size: number
@@ -571,16 +574,14 @@ export type ThumbnailSource =
   | { status: 'exists'; url: string; stage: ThumbnailStage }
   | { status: 'unsupported' }
 
-/** Largest original we are willing to hand back for on-the-fly thumbnailing. */
-export const BACKFILL_MAX_BYTES = 16 * 1024 * 1024
-
 /**
  * Presigns a short-lived GET for an item's original file so the client can
  * generate a thumbnail for an item that never got one (a failed or skipped
  * upload-time run).
  *
  * Guards, in order: read permission → item is a file with storage → no real
- * thumbnail already → size is under {@link BACKFILL_MAX_BYTES}. The size cap
+ * thumbnail already → size is under the cap (16 MiB; a bigger video is read by its head,
+ * see `thumbnailSourceRange`). The size cap
  * lives here and not only on the client so a stale tab can't talk the server
  * into presigning a 4 GB video.
  *
@@ -654,7 +655,8 @@ export async function getThumbnailSource(
   if (item.type !== 'file' || !item.file?.key)
     return answer({ status: 'unsupported' }, 'not_a_file')
 
-  if (size <= 0 || size > BACKFILL_MAX_BYTES)
+  const range = thumbnailSourceRange({ size, mimeType: item.file.mimeType })
+  if (!range)
     return answer({ status: 'unsupported' }, size <= 0 ? 'empty' : 'too_large')
 
   const downloadUrl = await getPresignedUrl(
@@ -667,6 +669,7 @@ export async function getThumbnailSource(
   return answer({
     status: 'ready',
     downloadUrl,
+    ...(range.ranged ? { rangeBytes: range.bytes } : {}),
     mimeType: item.file.mimeType,
     name: item.name,
     size,

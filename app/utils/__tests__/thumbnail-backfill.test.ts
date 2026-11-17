@@ -6,6 +6,8 @@ import {
   hasThumbnailProducer,
   isConnectionTooSlow,
   isRealThumbnailUrl,
+  THUMBNAIL_HEAD_BYTES,
+  thumbnailSourceRange,
 } from '../thumbnail-backfill'
 
 describe('isRealThumbnailUrl', () => {
@@ -113,5 +115,33 @@ describe('isConnectionTooSlow', () => {
     expect(isConnectionTooSlow({ effectiveType: '4g' })).toBe(false)
     expect(isConnectionTooSlow(undefined)).toBe(false)
     expect(isConnectionTooSlow(null)).toBe(false)
+  })
+})
+
+describe('thumbnailSourceRange', () => {
+  const video = { size: 40_000_000, mimeType: 'video/x-matroska' }
+
+  it('downloads a small file whole', () => {
+    expect(thumbnailSourceRange({ size: 1_600, mimeType: 'text/plain' })).toEqual({ ranged: false })
+    expect(thumbnailSourceRange({ size: BACKFILL_MAX_BYTES, mimeType: 'video/mp4' })).toEqual({ ranged: false })
+  })
+
+  it('reads only the head of a video over the cap', () => {
+    expect(thumbnailSourceRange(video)).toEqual({ ranged: true, bytes: THUMBNAIL_HEAD_BYTES })
+    expect(thumbnailSourceRange({ ...video, mimeType: 'video/matroska' })).toEqual({ ranged: true, bytes: THUMBNAIL_HEAD_BYTES })
+  })
+
+  it('refuses a big file of any other type, and empty files', () => {
+    expect(thumbnailSourceRange({ size: 40_000_000, mimeType: 'image/png' })).toBeNull()
+    expect(thumbnailSourceRange({ size: 40_000_000, mimeType: 'application/pdf' })).toBeNull()
+    expect(thumbnailSourceRange({ size: 0, mimeType: 'video/mp4' })).toBeNull()
+  })
+})
+
+describe('canBackfillThumbnail with a big video', () => {
+  const big = { type: 'file', name: 'a.mkv', size: 40_000_000, mimeType: 'video/x-matroska' }
+  it('is allowed for video, still refused for other big types', () => {
+    expect(canBackfillThumbnail(big)).toBe(true)
+    expect(canBackfillThumbnail({ ...big, name: 'a.png', mimeType: 'image/png' })).toBe(false)
   })
 })

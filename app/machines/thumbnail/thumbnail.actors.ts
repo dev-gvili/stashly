@@ -34,6 +34,7 @@ import {
 interface SourceResponse {
   status: 'ready' | 'exists' | 'unsupported'
   downloadUrl?: string
+  rangeBytes?: number
   mimeType?: string | null
   name?: string
   url?: string
@@ -75,9 +76,17 @@ export const acquireSourceActor = fromPromise<
     return { kind: 'unavailable' }
   }
 
-  const blobRes = await fetch(source.downloadUrl, { signal })
+  // A big video: only its head, enough to decode a frame (206 Partial Content;
+  // a server that ignores Range answers 200 with the whole file, so cut it).
+  const blobRes = await fetch(source.downloadUrl, {
+    signal,
+    headers: source.rangeBytes
+      ? { Range: `bytes=0-${source.rangeBytes - 1}` }
+      : undefined,
+  })
   if (!blobRes.ok) return { kind: 'unavailable' }
-  const blob = await blobRes.blob()
+  const full = await blobRes.blob()
+  const blob = source.rangeBytes ? full.slice(0, source.rangeBytes) : full
 
   return {
     kind: 'file',

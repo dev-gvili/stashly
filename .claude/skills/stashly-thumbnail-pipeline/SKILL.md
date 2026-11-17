@@ -14,7 +14,7 @@ Client-side 3-stage progressive generation. All output is **WebP**. Read `app/ma
 | Lane | When | Cap | Paused |
 |---|---|---|---|
 | `memoryLane` (`fromMemory` jobs) | the file was uploaded in this tab and is still held in `held-files.ts` | 4 | never |
-| `downloadLane` (`fromDownload` jobs) | no file in memory; the original is downloaded (≤ 16 MB `BACKFILL_MAX_BYTES`) and stage 3 is skipped | 2 | while uploads move bytes (`pauseDownloads`/`resumeDownloads`) |
+| `downloadLane` (`fromDownload` jobs) | no file in memory; the original is downloaded (≤ 16 MiB `BACKFILL_MAX_BYTES`; a *video* over that is read by its first 3 MiB only, `thumbnailSourceRange`, a Range request) and stage 3 is skipped | 2 | while uploads move bytes (`pauseDownloads`/`resumeDownloads`) |
 
 Both lanes take the newest request first. Retry is 800 ms with a budget of 2; leaving the screen drops a *queued* job only. It calls plain `fetch`, not `useFetcher`, so it does **not** revalidate the route — the card repaints from the manager's progress map (`useLiveThumbnail`).
 
