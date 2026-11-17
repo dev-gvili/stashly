@@ -395,33 +395,13 @@ export async function getDuplicateGroups(
   })
 }
 
-/**
- * Time the wipe transaction may take: a fixed part plus a budget per item.
- *
- * Every deleted `Item` row fires about 26 per-row foreign-key triggers, one per
- * table that references `Item` plus the cascades they start, all on indexed
- * columns. That cost is per item and can't be batched away: on an account of
- * 10,066 items the delete took 5.3–10.6 s (0.5–1.1 ms per item, dev database,
- * rolled-back runs on 18 Nov), and pre-deleting the referencing tables in bulk
- * saved no more than the run-to-run noise. Prisma's default 5 s limit rolled
- * that wipe back every time, so the limit grows with the item count, at about
- * twice the slowest rate measured.
- */
-const WIPE_BASE_MS = 10_000
-const WIPE_MS_PER_ITEM = 2
-
-export function wipeTransactionTimeout(itemCount: number) {
-  return WIPE_BASE_MS + itemCount * WIPE_MS_PER_ITEM
-}
-
 export async function emptyUserBucket(userId: string) {
-  const [quota, user, itemCount] = await Promise.all([
+  const [quota, user] = await Promise.all([
     findQuotaByUserId(userId),
     prisma.user.findUnique({
       where: { id: userId },
       select: { rootId: true, bucket: true },
     }),
-    prisma.item.count({ where: { ownerId: userId } }),
   ])
   const rootId = user?.rootId ?? null
 
@@ -473,7 +453,7 @@ export async function emptyUserBucket(userId: string) {
       })
     }
     return count
-  }, { timeout: wipeTransactionTimeout(itemCount) })
+  })
 
   // Zero quota usage now that DB is committed, so the user sees fresh numbers
   // even if S3 cleanup below fails partway.
