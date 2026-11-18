@@ -2,7 +2,10 @@ import { Prisma } from '@/prisma/client'
 import { prisma } from '@/services/db'
 import { track } from '@/services/vinktar'
 import { findQuotaByUserId, toQuotaStatus } from './quota-actions'
-import { emptyBucket } from './s3'
+import { HeadBucketCommand } from '@aws-sdk/client-s3'
+import { emptyBucket, s3 } from './s3'
+import { StashlyErrorCode, toRouteError } from '@/utils/api.errors'
+import { log } from '@/services/log'
 import type { ItemCategory } from '@/prisma/enums'
 import { createActivity } from './activity-actions'
 import { signThumbnails } from './thumbnail-actions'
@@ -395,6 +398,24 @@ export async function getDuplicateGroups(
   })
 }
 
+/**
+ * Throws unless `HeadBucket` answers for the bucket: `BUCKET_NOT_FOUND` (404)
+ * when it doesn't exist, `EMPTY_BUCKET_FAILED` (500) for any other failure
+ * (credentials, network), so nothing is wiped on a bucket we can't empty.
+ */
+async function assertBucketReachable(bucket: string) {
+  try {
+    await s3.send(new HeadBucketCommand({ Bucket: bucket }))
+  } catch (error) {
+    const status = (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode
+    if (status === 404) {
+      throw toRouteError(StashlyErrorCode.BUCKET_NOT_FOUND, 'Your storage bucket is missing. Nothing was deleted.')
+    }
+    log.error('bucket check before wipe failed', { bucket, error })
+    throw toRouteError(StashlyErrorCode.EMPTY_BUCKET_FAILED, 'Could not reach your storage bucket. Nothing was deleted.')
+  }
+}
+
 export async function emptyUserBucket(userId: string) {
   const [quota, user] = await Promise.all([
     findQuotaByUserId(userId),
@@ -404,6 +425,11 @@ export async function emptyUserBucket(userId: string) {
     }),
   ])
   const rootId = user?.rootId ?? null
+
+  // Check the bucket before any row goes. The rows are deleted first and the
+  // objects last, so a bucket that was gone (dev-gvili, 17 Nov: NoSuchBucket)
+  // cost every row and still answered 500. Any failure here refuses the wipe.
+  if (user?.bucket) await assertBucketReachable(user.bucket)
 
   const deletedItems = await prisma.$transaction(async (tx) => {
     // Flag the session so the size/count triggers skip cross-row UPDATEs that

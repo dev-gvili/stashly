@@ -22,6 +22,7 @@ export enum StashlyErrorCode {
   ENABLE_BUCKET_VERSIONING_FAILED = 'ENABLE_BUCKET_VERSIONING_FAILED',
   BUCKET_CORS_NOT_FOUND = 'BUCKET_CORS_NOT_FOUND',
   EMPTY_BUCKET_FAILED = 'EMPTY_BUCKET_FAILED',
+  BUCKET_NOT_FOUND = 'BUCKET_NOT_FOUND',
 
 
   // Storage-related errors
@@ -527,6 +528,10 @@ const ERROR_DETAILS: Record<
   [StashlyErrorCode.EMPTY_BUCKET_FAILED]: {
     message: 'Failed to empty the bucket.',
     status: 500,
+  },
+  [StashlyErrorCode.BUCKET_NOT_FOUND]: {
+    message: 'The bucket does not exist.',
+    status: 404,
   },
 
 }
