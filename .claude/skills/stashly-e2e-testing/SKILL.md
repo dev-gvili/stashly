@@ -39,6 +39,7 @@ The `e2e` job in `.github/workflows/ci.yml` runs every spec on every push (tech-
 | `pinned.spec.ts` | Pinned items flow |
 | `search.spec.ts` | Search flow |
 | `thumbnail-machine.spec.ts` | Thumbnail stages for uploaded files (14 pass) |
+| `bucket-repair.spec.ts` | Sign-in bucket repair against real Tigris: a deleted bucket recreated with its rows moved, a losing race drops its duplicate bucket, the real OAuth after-hook (called with a `/callback/github` context) rewrites the session cookie with the new bucket and skips a brand-new account, and a browser PUT lands in the new bucket (CORS). Uses throwaway users and buckets, cleaned in `afterAll` |
 | `header-responsive.spec.ts` | The app header at 375/768/1024/1280px: no sideways scroll, no header control off screen or overlapping another (clipped controls measured as clipped), the phone "View options" popover. Sets the viewport per test with `page.setViewportSize` |
 
 ## Prerequisites
