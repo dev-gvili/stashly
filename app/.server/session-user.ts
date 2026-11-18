@@ -1,13 +1,34 @@
 import { prisma } from '@/services/db'
 import { log } from '@/services/log'
+import type { BucketCheck } from './storage-actions'
 
 /** The `User.bucket` column default: no bucket of the user's own yet. */
-const PLACEHOLDER_BUCKET = 'default-bucket'
+export const PLACEHOLDER_BUCKET = 'default-bucket'
 
 type OnboardingFields = {
   bucket?: string | null
   rootId?: string | null
   driveId?: string | null
+}
+
+/**
+ * The bucket a new session must carry after the sign-in bucket check, or null
+ * when the session already carries the right one.
+ *
+ * The session cookie cache holds the user row as it was read at sign-in, and
+ * uploads take the bucket from it (`api/upload.ts`), so a repaired bucket has
+ * to be written into the cookie or uploads would use the dead one for up to
+ * the cache's 5 minutes.
+ *
+ * @example
+ * sessionBucketAfterCheck({ status: 'recreated', bucket: 'b2', … }, 'b1') // → 'b2'
+ */
+export function sessionBucketAfterCheck(
+  check: BucketCheck,
+  sessionBucket: string | null | undefined
+): string | null {
+  if (check.status !== 'ok' && check.status !== 'recreated') return null
+  return check.bucket === sessionBucket ? null : check.bucket
 }
 
 /** Whether a session's user is missing what onboarding writes. */

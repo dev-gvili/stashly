@@ -3,9 +3,10 @@ import { prisma } from '@/services/db'
 import { track } from '@/services/vinktar'
 import { findQuotaByUserId, toQuotaStatus } from './quota-actions'
 import { HeadBucketCommand } from '@aws-sdk/client-s3'
-import { emptyBucket, s3 } from './s3'
+import { createUserBucket, deleteBucket, emptyBucket, s3 } from './s3'
 import { StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import { log } from '@/services/log'
+import { PLACEHOLDER_BUCKET } from './session-user'
 import type { ItemCategory } from '@/prisma/enums'
 import { createActivity } from './activity-actions'
 import { signThumbnails } from './thumbnail-actions'
@@ -514,4 +515,155 @@ export async function emptyUserBucket(userId: string) {
     },
     { userId }
   )
+}
+
+// ====================================================== //
+// =============== Missing bucket at sign-in ============ //
+// ====================================================== //
+
+export type RepointedRows = { users: number; files: number; thumbnails: number; drives: number }
+
+/**
+ * Points everything that names `oldBucket` at `newBucket`, in one statement.
+ *
+ * The user row moves only while it still names `oldBucket` (`AND bucket =
+ * old`), and every other update waits on it (`EXISTS (SELECT 1 FROM u)`): a
+ * second sign-in that repaired first leaves this call a no-op, `users: 0`.
+ * Rows are chosen by bucket, not owner, because a bucket holds one user's bytes
+ * and a copy owned by someone else names the original's bucket too
+ * (`copyItem`). `File` uses its `(bucket, key)` index; `Thumbnail` has no
+ * bucket index, so its rows are found by the moved files' item ids through
+ * `@@unique([itemId, view, size])` (a thumbnail's bucket is its file's). The
+ * drive's name was the bucket name at onboarding, so it follows when it still
+ * matches. Shares, share links and invitations name items, never buckets, so
+ * they reach the new bucket through these rows.
+ *
+ * One round trip against four: 6.5 ms p50 against 8.3 ms for 185 files and 143
+ * thumbnails on the dev database (rolled-back runs, 18 Nov).
+ *
+ * @example
+ * await repointUserBucket('usr_1', 'stashly-ann-ab12cd34', 'stashly-ann-ef56gh78')
+ * // → { users: 1, files: 185, thumbnails: 143, drives: 1 }
+ */
+export async function repointUserBucket(
+  userId: string,
+  oldBucket: string,
+  newBucket: string
+): Promise<RepointedRows> {
+  const [row] = await prisma.$queryRaw<RepointedRows[]>`
+    WITH u AS (
+      UPDATE "user" SET bucket = ${newBucket}
+      WHERE id = ${userId} AND bucket = ${oldBucket}
+      RETURNING "driveId"
+    ), f AS (
+      UPDATE "File" SET bucket = ${newBucket}
+      WHERE bucket = ${oldBucket} AND EXISTS (SELECT 1 FROM u)
+      RETURNING "itemId"
+    ), t AS (
+      UPDATE "Thumbnail" SET bucket = ${newBucket}
+      WHERE "itemId" IN (SELECT "itemId" FROM f) AND bucket = ${oldBucket}
+      RETURNING 1
+    ), d AS (
+      UPDATE "Drive" SET name = ${newBucket}
+      WHERE id = (SELECT "driveId" FROM u) AND name = ${oldBucket}
+      RETURNING 1
+    )
+    SELECT (SELECT count(*) FROM u)::int AS users,
+           (SELECT count(*) FROM f)::int AS files,
+           (SELECT count(*) FROM t)::int AS thumbnails,
+           (SELECT count(*) FROM d)::int AS drives`
+  return row
+}
+
+export type BucketCheck =
+  /** No bucket of their own yet: onboarding's job, not this one. */
+  | { status: 'skipped' }
+  /** The stored bucket answered. */
+  | { status: 'ok'; bucket: string }
+  /** S3 failed for another reason (credentials, network): sign-in goes on. */
+  | { status: 'unreachable'; bucket: string }
+  /** The bucket was gone; a new one now holds the user's rows. */
+  | { status: 'recreated'; bucket: string; previous: string; rows: RepointedRows }
+
+type BucketUser = { id: string; name: string; email: string; bucket?: string | null }
+
+/** Checks in progress, by user id: a second sign-in joins the first. */
+const checking = new Map<string, Promise<BucketCheck>>()
+
+/**
+ * Makes sure the user's stored bucket exists, recreating it when it is gone.
+ * Called at sign-in (`auth.ts`, the OAuth callback hook).
+ *
+ * A healthy sign-in costs one `HeadBucket` (72 ms p50 on Tigris, 18 Nov) and no
+ * database work. Only a 404 repairs: a new bucket through `createUserBucket`
+ * (create plus the CORS policy browser uploads need, ~1 s), then
+ * `repointUserBucket`. Any other S3 failure is logged and reported
+ * `unreachable`, never thrown: a storage outage must not block sign-in. When
+ * another process repaired first, this one deletes the empty bucket it made
+ * and reports the bucket the row names now.
+ *
+ * The bytes of a bucket that was deleted are gone with it; the repoint keeps
+ * the rows consistent and makes uploads work again, it doesn't restore files.
+ *
+ * @example
+ * const check = await ensureUserBucket(session.user)
+ * if (check.status === 'recreated') refreshSessionCache(check.bucket)
+ */
+export function ensureUserBucket(user: BucketUser): Promise<BucketCheck> {
+  const inFlight = checking.get(user.id)
+  if (inFlight) return inFlight
+  const run = checkUserBucket(user).finally(() => checking.delete(user.id))
+  checking.set(user.id, run)
+  return run
+}
+
+async function checkUserBucket(user: BucketUser): Promise<BucketCheck> {
+  const previous = user.bucket
+  if (!previous || previous === PLACEHOLDER_BUCKET) return { status: 'skipped' }
+
+  try {
+    await s3.send(new HeadBucketCommand({ Bucket: previous }))
+    return { status: 'ok', bucket: previous }
+  } catch (error) {
+    const status = (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode
+    if (status !== 404) {
+      log.warn('bucket check at sign-in failed', { user_id: user.id, bucket: previous, error })
+      return { status: 'unreachable', bucket: previous }
+    }
+  }
+
+  const started = performance.now()
+  const created = await createUserBucket({ ...user, emailVerified: true, createdAt: new Date(), updatedAt: new Date() })
+  let rows: RepointedRows
+  try {
+    rows = await repointUserBucket(user.id, previous, created)
+  } catch (error) {
+    // Nothing names the new bucket: drop it, or every failed sign-in leaves one.
+    await deleteBucket(created).catch((dropError) =>
+      log.warn('dropping an unused repaired bucket failed', { user_id: user.id, bucket: created, error: dropError })
+    )
+    throw error
+  }
+
+  if (rows.users === 0) {
+    // Another sign-in repaired first. Ours is empty: drop it, use theirs.
+    await deleteBucket(created).catch((error) =>
+      log.warn('dropping a duplicate repaired bucket failed', { user_id: user.id, bucket: created, error })
+    )
+    const current = await prisma.user.findUnique({ where: { id: user.id }, select: { bucket: true } })
+    return { status: 'ok', bucket: current?.bucket ?? previous }
+  }
+
+  log.warn('missing bucket recreated at sign-in', { user_id: user.id, bucket: created, ...rows })
+  track(
+    'user_bucket_recreated',
+    {
+      file_count: rows.files,
+      thumbnail_count: rows.thumbnails,
+      drive_renamed: rows.drives > 0,
+      duration_ms: Math.round(performance.now() - started),
+    },
+    { userId: user.id }
+  )
+  return { status: 'recreated', bucket: created, previous, rows }
 }

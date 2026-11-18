@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { forwardSetCookies, needsOnboardingFields, withOnboardingFields } from '@/services/session-user'
+import {
+  forwardSetCookies,
+  needsOnboardingFields,
+  sessionBucketAfterCheck,
+  withOnboardingFields,
+} from '@/services/session-user'
 
 /**
  * With the session cookie cache on, a new user's cached session predates
@@ -110,5 +115,27 @@ describe('forwardSetCookies', () => {
   it('leaves the response alone when nothing was refreshed', () => {
     const response = new Response('ok')
     expect(forwardSetCookies(response, new Headers())).toBe(response)
+  })
+})
+
+describe('sessionBucketAfterCheck', () => {
+  const rows = { users: 1, files: 3, thumbnails: 2, drives: 1 }
+
+  it('writes the new bucket into the session after a repair', () => {
+    expect(
+      sessionBucketAfterCheck({ status: 'recreated', bucket: 'stashly-b2', previous: 'stashly-b1', rows }, 'stashly-b1')
+    ).toBe('stashly-b2')
+  })
+
+  it('writes the bucket another sign-in repaired when the session still names the dead one', () => {
+    expect(sessionBucketAfterCheck({ status: 'ok', bucket: 'stashly-b2' }, 'stashly-b1')).toBe('stashly-b2')
+  })
+
+  it.each([
+    ['a healthy bucket', { status: 'ok', bucket: 'stashly-b1' } as const],
+    ['an unreachable S3', { status: 'unreachable', bucket: 'stashly-b1' } as const],
+    ['no bucket of their own yet', { status: 'skipped' } as const],
+  ])('leaves the session alone for %s', (_, check) => {
+    expect(sessionBucketAfterCheck(check, 'stashly-b1')).toBeNull()
   })
 })

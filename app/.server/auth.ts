@@ -5,10 +5,34 @@ import { customSession, openAPI } from 'better-auth/plugins'
 import { createAuthMiddleware } from 'better-auth/api'
 import { onboardNewUser } from './onboard'
 import { rememberAccount } from './remembered-account'
-import { withOnboardingFields } from './session-user'
+import { sessionBucketAfterCheck, withOnboardingFields } from './session-user'
+import { setSessionCookie } from 'better-auth/cookies'
+import { log } from '@/services/log'
+import type { BucketCheck } from './storage-actions'
 import { track } from '@/services/vinktar'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import type { Session, User } from '@/types/machine.types'
+
+/**
+ * `ensureUserBucket` for the sign-in hook, which must never fail a sign-in:
+ * anything it throws (a bucket create that failed) is logged and treated as
+ * no change. Imported when needed, like onboarding: storage-actions reaches
+ * the thumbnail and activity modules a session read never needs.
+ */
+async function checkBucketAtSignIn(user: {
+  id: string
+  name: string
+  email: string
+  bucket?: string | null
+}): Promise<BucketCheck> {
+  try {
+    const { ensureUserBucket } = await import('./storage-actions')
+    return await ensureUserBucket(user)
+  } catch (error) {
+    log.error('bucket check at sign-in threw', { user_id: user.id, error })
+    return { status: 'skipped' }
+  }
+}
 
 // const envs = toRequiredEnv({
 // 	env: [
@@ -118,21 +142,43 @@ export const auth = betterAuth({
     // Remember who signed in, for the sign-in page's "Continue as …". OAuth
     // callbacks are `/callback/:id`; `newSession` is only set when one succeeded.
     after: createAuthMiddleware(async (ctx) => {
-      const user = ctx.context.newSession?.user
-      if (!user || !ctx.path.startsWith('/callback/')) return
-      const cookie = await rememberAccount({
-        name: user.name,
-        email: user.email,
-        image: user.image ?? null,
-        provider: ctx.params?.id,
-      })
+      const newSession = ctx.context.newSession
+      const user = newSession?.user
+      if (!newSession || !user || !ctx.path.startsWith('/callback/')) return
+      const newAccount = Date.now() - new Date(user.createdAt).getTime() < 60_000
+      // The bucket check (one HeadBucket when healthy, 76 ms p50) runs beside
+      // the cookie work rather than after it. A new account skips it:
+      // onboarding made and checked the bucket during this same callback.
+      const [cookie, bucketCheck] = await Promise.all([
+        rememberAccount({
+          name: user.name,
+          email: user.email,
+          image: user.image ?? null,
+          provider: ctx.params?.id,
+        }),
+        newAccount
+          ? Promise.resolve<BucketCheck>({ status: 'skipped' })
+          : checkBucketAtSignIn(user as typeof user & { bucket?: string | null }),
+      ])
       if (cookie) ctx.setHeader('set-cookie', cookie)
+      // After setHeader, which replaces this hook's set-cookie list. The new
+      // session cookies are appended after the callback's own, so they win.
+      const bucket = sessionBucketAfterCheck(
+        bucketCheck,
+        (user as { bucket?: string | null }).bucket
+      )
+      if (bucket) {
+        await setSessionCookie(ctx, {
+          session: newSession.session,
+          // `bucket` is an additional user field the hook's type doesn't name.
+          user: { ...user, bucket } as typeof user,
+        })
+      }
       track(
         'signed_in',
         {
           provider: ctx.params?.id ?? null,
-          new_account:
-            Date.now() - new Date(user.createdAt).getTime() < 60_000,
+          new_account: newAccount,
         },
         { userId: user.id }
       )
