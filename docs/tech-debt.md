@@ -6,12 +6,15 @@
 
 **At the audit (24 Sep):** Stashly already had good habits: subsystem docs and skills, bugs root-caused in TASKS.md, and a type baseline. Most of the debt sat around the code rather than in it. Nothing ran automatically (no CI, lint or error tracking), the deploy path didn't build, and thumbnails of private files were publicly readable.
 
-**Now (9 Nov):** the safety net is mostly in place.
-- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, every unit test with none excluded (1338 in 108 files), and the build. Green on `1de8462` (9 Nov). A second job runs the 8 Playwright specs against the dev server, a throwaway Postgres and real Tigris storage (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
-- **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release.
+**Now (19 Nov):** the safety net is in place, and what's open waits on the owner.
+- **CI:** every push to `main` applies the migrations to a real Postgres and runs the typecheck, ESLint, every unit test with none excluded (1471 in 120 files), and the build. Green on `9f29e1b` (19 Nov). A second job runs the 8 Playwright specs against the dev server, a throwaway Postgres and real Tigris storage (item 20). It also migrates and boots the production image against that database, and checks that it answers `/api/health` 200 with a database and 503 without one. The type baseline is down from 249 errors to 11, and CI won't let it loosen.
+- **Linter:** ESLint with `typescript-eslint` since 12 Nov, `as any` banned everywhere (item 12, resolved). `react-hooks`, `jsx-a11y` and `prettier --check` each need the owner's OK on a package.
+- **Deploy:** the image builds on Node 24 with pnpm, and `fly.toml` runs migrations before each release. The first real `fly deploy` is still to happen (item 2).
 - **Thumbnails:** reads are signed and uploads are private.
 - **Errors, analytics and logs:** Vinktar on server and browser since 10 Oct; product events, route timing and a structured logger since 31 Oct (item 4, resolved).
-- **Still missing:** a linter. It needs a new package, which needs the owner's decision.
+- **Left:** the owner's steps on items 2 (first deploy) and 59 (backfill on production); items 19, 17, 46 and 57 deferred by the owner; items 10, 13 and 16 open and unblocked.
+
+**Status at 19 Nov 2026 (latest):** 82 resolved · 1 resolved in code, rollout step unconfirmed (2) · 4 partly done (10, 16, 17, 59) · 2 declined (15, 44) · 1 open from the audit (13) · 3 new and open, all deferred by the owner (19, 46, 57). Since 12 Nov: item 84 resolved (`79f7e06`): copy with no read on the source answers 403 `FORBIDDEN`, and a failed copy or move 400, not 401 or 500. Item 59's backfill script landed (`b56d9b5`) and ran on dev with 0 rows to size; running it on production is the owner's step. This summary and the register rows for items 59 and 93 were brought up to date: the summary still listed a linter as missing, and item 93's row still read "New" after its fix.
 
 **Update (25 Oct, later):** the Upload Call Audit (10 Oct, `docs/upload-call-audit.md`) was never folded into this register, and its source doc and the quota fix it came with sat on an unmerged branch (PR #26). Its findings were re-checked against `main` and added as **items 31–44**. Two are security-relevant. Item 31: uploads can go past the storage total; the fix is written and CI is green on the rebased PR, but it isn't merged (merged later that day as `059d0aa`). Item 32: the three search-index writes (`save_media_metadata`, `save_ocr_page`, `save_search_chunk_embeddings`) never receive the signed-in user, so anyone holding an item id can rewrite another user's search text, vectors or metadata. The rest are cleanup and load: cancelled uploads leave parts in S3 (33), 4xx responses are retried (34), and the per-file call counts behind items 35–44.
 
@@ -23,7 +26,7 @@
 
 **93 items in this list** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 6 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62, 64 and 65 from item 45; 2 added 7 Nov: 66 from item 51's open list, 67 from item 66; 10 added 8 Nov: 68 from item 67, 69–76 from a review of `d3a241f..69f7da7`, 77 from fixing items 70 and 71; 4 added 9 Nov: 78–80 from the owner's report on the home page, 81 from a full-suite run; 11 added 12 Nov: 84 from item 13's tests, 82, 83 and 85–92 from the authz audit of the gallery, 93 from the migration review of item 51) · categories: Code 57, Architecture 23, Infrastructure 4, Test 6, Documentation 2, Dependency 1
 
-**Status at 12 Nov 2026 (latest, item 68):** 79 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 6 new and open (19, 46, 57, 59, 84, 93; 19, 46 and 57 deferred by the owner). Item 68 resolved (`b2d3375`): a copy runs in 26 statements whatever its size, and the destination's ancestors are written once, in id order. 1,000 files 5.09 s → 0.35 s, 5,000 files 37.5 s → 1.8 s; the largest copy inside the 5 s timeout went from about 950 files to about 10,000.
+**Status at 12 Nov 2026 (item 68):** 79 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 6 new and open (19, 46, 57, 59, 84, 93; 19, 46 and 57 deferred by the owner). Item 68 resolved (`b2d3375`): a copy runs in 26 statements whatever its size, and the destination's ancestors are written once, in id order. 1,000 files 5.09 s → 0.35 s, 5,000 files 37.5 s → 1.8 s; the largest copy inside the 5 s timeout went from about 950 files to about 10,000.
 
 **Status at 12 Nov 2026 (items 85–92 resolved):** 78 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 7 new and open (19, 46, 57, 59, 68, 84, 93; 19, 46 and 57 deferred by the owner). The rest of the gallery authz audit is resolved, each with red-first tests: the workspace gallery dropped its URL filters and listed trashed media, and the personal one listed trash on request (85, 92, `d12f642`); a writer could revoke or expire an owner's grant (86, `9689cd1`); anyone could create a thumbnail row on any item (87, `515f8aa`), and a grantee kept signing a trashed original (88, `2501cef`); the gallery sent storage keys (89, `26d504b`); add-to-collection skipped membership and trash (90, `a2e8f29`); the collections loader scoped itself (91, `12df144`). CI 1379/0 in 108 files on `12df144`.
 
@@ -139,7 +142,7 @@
 
 ### What's left, in priority order
 
-*Updated 9 Nov (items 31–44 added 25 Oct, 45–57 on 30–31 Oct, 58–63 on 31 Oct–1 Nov, 64–77 on 1–8 Nov, 78–81 on 9 Nov, 84–93 on 12 Nov). Listed in the order items were added; new items are marked **new**.*
+*Updated 19 Nov (items 31–44 added 25 Oct, 45–57 on 30–31 Oct, 58–63 on 31 Oct–1 Nov, 64–77 on 1–8 Nov, 78–81 on 9 Nov, 82–93 on 12 Nov). Listed in the order items were added; new items are marked **new**.*
 
 | # | Item | Score | What remains | Blocked on |
 |---|------|-------|--------------|------------|
@@ -291,7 +294,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 56 | ~~Test cleanup deadlocks with a parallel size rollup~~ | Test | 2 | 2 | 1 | **20** (Medium) | 2 h | Resolved 31 Oct |
 | 57 | A large user's activity feed sorts its whole history | Architecture | 2 | 2 | 4 | **8** (Low) | 3–5 days | New 31 Oct |
 | 58 | ~~An upload is charged the size the client claims~~ | Code | 4 | 4 | 2 | **32** (High) | 1.5 days | Resolved 31 Oct |
-| 59 | Bytes no row pays for | Code | 2 | 3 | 3 | **15** (Low) | 1–2 days | New 31 Oct |
+| 59 | Bytes no row pays for | Code | 2 | 3 | 3 | **15** (Low) | 1–2 days | Partly done (12 Nov): sweep scheduled, production backfill is the owner's |
 | 60 | ~~Deleting a file deletes its copies' bytes~~ | Code | 4 | 4 | 2 | **32** (High) | 2 h | Resolved 1 Nov |
 | 61 | ~~`/api/permissions` had no access check~~ | Code | 5 | 5 | 1 | **50** (High) | 2 h | Resolved 1 Nov |
 | 62 | ~~19 API routes read the session themselves~~ | Code | 2 | 2 | 2 | **16** (Medium) | 0.5–1 day | Resolved 1 Nov |
@@ -325,7 +328,7 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 90 | ~~Add-to-collection skips membership, trash and type checks~~ | Code | 1 | 2 | 1 | **15** (Low) | 1 h | Resolved 12 Nov |
 | 91 | ~~The collections page loader scopes collections itself~~ | Architecture | 1 | 1 | 1 | **10** (Low) | 0.5 h | Resolved 12 Nov |
 | 92 | ~~The personal gallery lists the user's trash on request~~ | Code | 1 | 1 | 1 | **10** (Low) | 0.5 h | Resolved 12 Nov |
-| 93 | A trash or restore can deadlock with the size cascade and with the rollup | Code | 2 | 2 | 3 | **12** (Low) | 0.5–1 day | New 12 Nov |
+| 93 | ~~A trash or restore can deadlock with the size cascade and with the rollup~~ | Code | 2 | 2 | 3 | **12** (Low) | 0.5–1 day | Resolved 12 Nov |
 
 ## Details
 
@@ -1772,6 +1775,9 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-11-12 | `a2e8f29` | 90 | Add-to-collection checks membership and trash on its items and a live collection as its target. 4 tests, red first. |
 | 2026-11-12 | `12df144` | 91 | `listCollectionsForUser` owns the collections page's scope. 1 test; CI 1379/0 in 108 files on `12df144`. |
 | 2026-11-12 | `b2d3375` | 68, 93 | `copySubtree`: a copy inserts each table once with `stashly.rollup` on and writes the destination's ancestors once in id order. 26 statements for any size; 1,000 files 5.09 → 0.35 s; the largest copy inside 5 s ~950 → ~10,000 files. 1 parity test. |
+| 2026-11-12 | `2e105e0` | 12 | ESLint 10 + `typescript-eslint`, flat config; `as any` banned everywhere; `pnpm lint` runs in CI after the typecheck; its 130 findings fixed with real types. |
+| 2026-11-12 | `b56d9b5` | 59 | `scripts/backfill-file-sizes.ts`: HEAD each stored object and resize the rows that differ (dry run by default). `--apply` on dev: 0 rows, 0 bytes, 0 failures. |
+| 2026-11-15 | `79f7e06` | 84 | Copy with no read on the source answers 403 `FORBIDDEN`; `COPY_ITEM_FAILED` and `MOVE_ITEM_FAILED` answer 400. 6 status assertions, red first. |
 | 2026-11-01 | `7e2e9c1`, `36eff9f` | 22, 17 | A failed onboarding runs again on the next session read: each step finds before it creates, a new bucket is written to the row at once, a complete row ends in `alreadyOnboarded`. Red 4 of 18 → 20 of 20; 1252/0 in 103 files. Workspace uploads moved to item 17. |
 
 ## Phased remediation plan
