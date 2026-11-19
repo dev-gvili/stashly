@@ -32,6 +32,11 @@ Applies to UI redesigns, new UI, and big UI updates (small tweaks follow [Fronte
 - Never display or return fabricated/placeholder values in user-facing output (e.g. `line 1` locators, rank-derived percentage scores). If a real value isn't available, omit the field or label it explicitly as unavailable.
 - When measuring performance, report real measurements only; never emit `unknown` placeholder telemetry — instrument a real throughput test instead.
 
+## Output conventions
+
+- Local file links must use the form `file:///C:/Users/PoshI/.claude/...` with forward slashes and a separator before `.claude`.
+- README and marketing screenshots default to dark mode.
+
 ## Working Style
 
 - **Act first, explain second** — execute commits, pushes, edits, and PRs immediately; never describe what you'd do instead of doing it.
