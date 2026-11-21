@@ -3,6 +3,7 @@ import { isSearchIndexSubmission } from '@/utils/revalidation'
 import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
 import { GridLayout } from '@/components/views/grid-view'
+import { FilesEmptyState } from '@/components/states/files-empty-state'
 import { usePagination } from '@/hooks/usePagination'
 import { useCreatedItems } from '@/hooks/useUpload'
 import { sessionContext } from '@/.server/middleware/context'
@@ -162,15 +163,25 @@ export default ({ loaderData, params }: Route.ComponentProps) => {
           parentName={loaderData.folderName}
           driveId={loaderData.driveId}
         />
-        <GridLayout>
-          {items.map((item) =>
-            item.type === 'folder' ? (
-              <FolderCardTab key={item.id} {...item} />
-            ) : (
-              <FileCardDetail key={item.id} item={item} showActions />
-            )
-          )}
-        </GridLayout>
+        {/* Only a folder that really holds nothing says so: when a filter
+            hides every item, the counts are non-zero and the grid stays. */}
+        {items.length === 0 && !isLoading && stats.files + stats.folders === 0 ? (
+          <FilesEmptyState
+            variant="folder"
+            folderId={params.folderId}
+            className="h-auto py-16"
+          />
+        ) : (
+          <GridLayout>
+            {items.map((item) =>
+              item.type === 'folder' ? (
+                <FolderCardTab key={item.id} {...item} />
+              ) : (
+                <FileCardDetail key={item.id} item={item} showActions />
+              )
+            )}
+          </GridLayout>
+        )}
       </SelectionProvider>
       <div className="col-span-full flex justify-center mt-2">
         <LoadMoreItems

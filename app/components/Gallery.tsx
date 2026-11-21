@@ -7,12 +7,16 @@ import { GridLayout } from './views/grid-view'
 import { itemVariants } from './views/variants'
 import { useFileHref } from '../hooks/useFileHref'
 import { useScrollRestoration } from '@/hooks/useScrollRestoration'
-import { useCallback, useEffect, useMemo, useRef, useState, ViewTransition, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, ViewTransition, type CSSProperties, type ReactNode } from 'react'
 import { useLocation } from 'react-router'
 import { generateVideoThumbnail } from '@/utils/video'
 import { cn } from '@/utils'
 import { AIcon, MediaIcon, PauseFillIcon } from './icons'
-import { FilteredEmptyVector } from '@/components/states/vectors/empty-vectors'
+import {
+  EmptyGalleryImagesVector,
+  EmptyGalleryVideosVector,
+  FilteredEmptyVector,
+} from '@/components/states/vectors/empty-vectors'
 import { Button } from '@/ui/button'
 import { GallerySection } from '@/components/gallery/gallery-section'
 import { SelectionProvider } from '@/components/stash/selection'
@@ -124,10 +128,43 @@ function GridItem({ item, showVideo }: { item: GalleryImage; showVideo: boolean 
   )
 }
 
+/** Dashed empty box shared by the gallery pages: drawing, title, line, action. */
+function GalleryEmpty({
+  media,
+  title,
+  description,
+  children,
+}: {
+  media: ReactNode
+  title: string
+  description: string
+  children?: ReactNode
+}) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-input px-5 py-20 text-center">
+      {media}
+      <p className="text-base font-medium">{title}</p>
+      <p className="max-w-80 text-sm text-muted-foreground">{description}</p>
+      {children}
+    </div>
+  )
+}
+
 /** The videos and workspace galleries, unchanged. */
 function LegacyGallery({ images, showVideo }: { images: GalleryImage[]; showVideo: boolean }) {
   const [searchParams] = useSearchParams()
   const layoutType = searchParams.get('layout') ?? 'grid'
+  const { chips } = useFilters()
+  // Only when no filter narrows the list, or "no videos yet" would be false.
+  if (showVideo && images.length === 0 && chips.length === 0) {
+    return (
+      <GalleryEmpty
+        media={<EmptyGalleryVideosVector />}
+        title="No videos yet"
+        description="Upload videos and they show up here."
+      />
+    )
+  }
   return (
     <AnimatePresence mode="popLayout" initial={false}>
       {layoutType === 'waterfall' ? (
@@ -222,16 +259,25 @@ function ImagesGallery({ images, now }: { images: GalleryPageImage[]; now: numbe
         )}
 
         {searching && searchSettled && visible.length === 0 && (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-input px-5 py-20 text-center">
-            <FilteredEmptyVector />
-            <p className="text-base font-medium">No images match</p>
-            <p className="max-w-80 text-sm text-muted-foreground">
-              Try describing what's in the picture — people, places, objects or text.
-            </p>
+          <GalleryEmpty
+            media={<FilteredEmptyVector />}
+            title="No images match"
+            description="Try describing what's in the picture — people, places, objects or text."
+          >
             <Button variant="outline" size="sm" onClick={() => filters.setQuery('')}>
               Clear search
             </Button>
-          </div>
+          </GalleryEmpty>
+        )}
+
+        {/* Only when nothing narrows the list: under a filter, "no images yet"
+            would be false. */}
+        {!searching && images.length === 0 && filters.chips.length === 0 && (
+          <GalleryEmpty
+            media={<EmptyGalleryImagesVector />}
+            title="No images yet"
+            description="Upload photos or screenshots and they show up here, grouped by date."
+          />
         )}
 
         <GalleryBody groups={groups} layout={layout} gap={prefs.gap} zoom={prefs.zoom} />

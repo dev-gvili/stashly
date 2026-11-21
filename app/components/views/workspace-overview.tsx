@@ -1,5 +1,6 @@
 import { cn } from '@/utils/styles'
-import { WorkspaceFillIcon, ActivityFillIcon, UserIcon, FavoriteIcon, AddIcon, MoreIcon } from '@/components/icons'
+import { ActivityFillIcon, UserIcon, FavoriteIcon, AddIcon, MoreIcon } from '@/components/icons'
+import { WorkspaceEmptyVector } from '@/components/states/vectors/empty-vectors'
 import type { WorkspaceMemberRole } from '@/prisma/enums'
 import {
   formatSize,
@@ -617,12 +618,7 @@ function OverviewSplit({ workspace, members, recentItems, pinnedItems, pendingIn
 function WorkspaceEmpty({ workspace, me }: Pick<WorkspaceOverviewProps, 'workspace' | 'me'>) {
   return (
     <div className="flex flex-col items-center justify-center gap-6 py-24 px-4">
-      <div className="relative">
-        <div className="w-16 h-16 rounded-xl border-2 border-dashed border-input flex items-center justify-center">
-          <WorkspaceFillIcon className="w-7 h-7 text-muted-foreground/40" />
-        </div>
-        <Corners />
-      </div>
+      <WorkspaceEmptyVector />
       <div className="text-center space-y-1">
         <h2 className="text-sm font-stashly uppercase tracking-[0.18em]">{workspace.name}</h2>
         <p className="text-xs text-muted-foreground">No files or members yet.</p>
