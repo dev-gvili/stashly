@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { searchApiRouteOutput } from '@/schemas/api.schemas'
+import { searchApiRouteOutput, searchApiRouteQuery } from '@/schemas/api.schemas'
+import { RANK_DEPTH, SEARCH_MAX_TAKE } from '@/utils/search-query'
 
 const payload = {
   items: [
@@ -93,6 +94,23 @@ describe('searchApiRouteOutput', () => {
     const bad = { ...payload.items[0], matchKind: 'vibes' }
     expect(() =>
       searchApiRouteOutput.parse({ ...payload, items: [bad] })
+    ).toThrow()
+  })
+})
+
+// The Images page asks for the whole ranking in one page (`take: RANK_DEPTH`).
+// It used to send 200, which this schema refused with a 400, so every Images
+// search came back empty and showed "No images match".
+describe('searchApiRouteQuery take', () => {
+  it('accepts a page holding the whole fused ranking', () => {
+    expect(RANK_DEPTH).toBeLessThanOrEqual(SEARCH_MAX_TAKE)
+    const parsed = searchApiRouteQuery.parse({ query: 'png', take: String(RANK_DEPTH) })
+    expect(parsed.take).toBe(RANK_DEPTH)
+  })
+
+  it('refuses a page larger than the cap', () => {
+    expect(() =>
+      searchApiRouteQuery.parse({ query: 'png', take: String(SEARCH_MAX_TAKE + 1) })
     ).toThrow()
   })
 })

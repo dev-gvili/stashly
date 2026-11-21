@@ -23,6 +23,7 @@ import { SelectionProvider } from '@/components/stash/selection'
 import { useSelection } from '@/hooks/useSelection'
 import { useGalleryPrefs } from '@/hooks/useGalleryPrefs'
 import { useItemSearch } from '@/hooks/useItemSearch'
+import { RANK_DEPTH } from '@/utils/search-query'
 import { useFilters } from '@/hooks/useFilters'
 import { formatSize } from '@/utils/formaters'
 import {
@@ -203,11 +204,14 @@ function ImagesGallery({ images, now }: { images: GalleryPageImage[]; now: numbe
   const query = filters.state.query
 
   // --- search (the header's field) ------------------------------------------
+  // The page filters its own tiles by the match set and never pages, so it
+  // asks for the whole ranking at once: the server fuses at most RANK_DEPTH
+  // ids, and the route refuses a larger page (it answered 400 to `take: 200`).
   const search = useItemSearch({
     query,
     mode: filters.state.searchMode,
     filters: { category: ['image'] },
-    take: 200,
+    take: RANK_DEPTH,
   })
   const matchIds = useMemo(() => new Set(search.items.map((i) => i.id)), [search.items])
   const searching = query.trim().length > 0
