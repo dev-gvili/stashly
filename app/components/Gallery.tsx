@@ -11,7 +11,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, ViewTransition, type
 import { useLocation } from 'react-router'
 import { generateVideoThumbnail } from '@/utils/video'
 import { cn } from '@/utils'
-import { AIcon, ImageFillIcon, MediaIcon, PauseFillIcon } from './icons'
+import { AIcon, MediaIcon, PauseFillIcon } from './icons'
+import { FilteredEmptyVector } from '@/components/states/vectors/empty-vectors'
 import { Button } from '@/ui/button'
 import { GallerySection } from '@/components/gallery/gallery-section'
 import { SelectionProvider } from '@/components/stash/selection'
@@ -222,9 +223,7 @@ function ImagesGallery({ images, now }: { images: GalleryPageImage[]; now: numbe
 
         {searching && searchSettled && visible.length === 0 && (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-input px-5 py-20 text-center">
-            <div className="grid size-12 place-items-center rounded-xl bg-secondary text-muted-foreground">
-              <ImageFillIcon aria-hidden className="size-5.5" />
-            </div>
+            <FilteredEmptyVector />
             <p className="text-base font-medium">No images match</p>
             <p className="max-w-80 text-sm text-muted-foreground">
               Try describing what's in the picture — people, places, objects or text.

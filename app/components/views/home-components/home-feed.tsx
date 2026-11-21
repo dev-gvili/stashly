@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
-import { AIFillIcon, ChevronRightIcon, CollectionFillIcon, FolderFillIcon, PinFillIcon, ShareFillIcon } from '@/components/icons'
+import { AIFillIcon, ChevronRightIcon, PinFillIcon, ShareFillIcon } from '@/components/icons'
+import { EmptyFolderVector, NoCollectionsVector } from '@/components/states/vectors/empty-vectors'
 import { HomeCollectionCard } from '@/components/views/home-components/home-collection-card'
 import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { useHomeFeed } from '@/hooks/useHomeFeed'
@@ -13,11 +15,13 @@ const TABS: { value: HomeFeedTab; label: string; more: string }[] = [
   { value: 'shared', label: 'Shared', more: 'All shared' },
 ]
 
-const EMPTY: Record<HomeFeedTab, { icon: typeof FolderFillIcon; text: string }> = {
-  all: { icon: FolderFillIcon, text: 'Your stash is empty — drop files here to start' },
-  pinned: { icon: PinFillIcon, text: 'Pin files to keep them here' },
-  collections: { icon: CollectionFillIcon, text: 'No collections yet' },
-  shared: { icon: ShareFillIcon, text: 'Nothing has been shared with you yet' },
+// All and Collections have a drawing of their own; Pinned and Shared keep
+// their icon until one is drawn for them.
+const EMPTY: Record<HomeFeedTab, { media: ReactNode; text: string }> = {
+  all: { media: <EmptyFolderVector />, text: 'Your stash is empty — drop files here to start' },
+  pinned: { media: <PinFillIcon className="size-6 opacity-60" />, text: 'Pin files to keep them here' },
+  collections: { media: <NoCollectionsVector />, text: 'No collections yet' },
+  shared: { media: <ShareFillIcon className="size-6 opacity-60" />, text: 'Nothing has been shared with you yet' },
 }
 
 export interface HomeFeedProps {
@@ -79,7 +83,7 @@ export function HomeFeed({ recent, collections, me, moreHref }: HomeFeedProps) {
         </div>
       ) : (
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-6 py-14 text-center text-muted-foreground">
-          <empty.icon className="size-6 opacity-60" />
+          {empty.media}
           <span className="font-stashly text-sm">{empty.text}</span>
         </div>
       )}
