@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { cn } from '@/utils/styles'
 
 interface VectorProps {
@@ -156,3 +157,494 @@ export function EmptyTrashVector({ className }: VectorProps) {
     </svg>
   )
 }
+
+export function NoCollectionsVector({ className }: VectorProps) {
+  return (
+    <svg
+      className={cn('h-28 w-42 shrink-0', className)}
+      viewBox="0 0 168 112"
+
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* Base isometric grid footprint */}
+      <path
+        className="stroke-border"
+        d="M84 24L130 49L84 74L38 49L84 24Z"
+        strokeWidth="1.25"
+        strokeDasharray="2 3"
+      />
+
+      {/* Left ghosted collection folder block */}
+      <g opacity="0.55">
+        <path
+          className="stroke-muted-foreground fill-muted"
+          d="M66 37L82 45.5L64 55L48 46.5L66 37Z"
+          strokeWidth="1.25"
+          strokeLinejoin="round"
+        />
+        <path
+          className="stroke-muted-foreground fill-card"
+          d="M48 46.5V56.5L64 65L82 55.5V45.5"
+          strokeWidth="1.25"
+          strokeLinejoin="round"
+        />
+      </g>
+
+      {/* Bottom ghosted collection folder block */}
+      <g opacity="0.55">
+        <path
+          className="stroke-muted-foreground fill-muted"
+          d="M86 48L102 56.5L84 66L68 57.5L86 48Z"
+          strokeWidth="1.25"
+          strokeLinejoin="round"
+        />
+        <path
+          className="stroke-muted-foreground fill-card"
+          d="M68 57.5V67.5L84 76L102 66.5V56.5"
+          strokeWidth="1.25"
+          strokeLinejoin="round"
+        />
+      </g>
+
+      {/* Elevated animated primary collection blueprint slot */}
+      <g className="motion-safe:animate-stashly-float">
+        <path
+          className="stroke-primary fill-primary motion-safe:animate-stashly-slot"
+          fillOpacity="0.28"
+          d="M98 31L116 40.5L98 50L80 40.5L98 31Z"
+          strokeWidth="1.5"
+          strokeDasharray="3 2"
+          strokeLinejoin="round"
+        />
+        <path
+          className="stroke-primary fill-primary"
+          fillOpacity="0.14"
+          d="M80 40.5V50.5L98 60L116 50.5V40.5"
+          strokeWidth="1.5"
+          strokeDasharray="3 2"
+          strokeLinejoin="round"
+        />
+        {/* Plus glyph centered on top face */}
+        <path
+          className="stroke-foreground"
+          d="M98 36.5V44.5M91.5 40.5H104.5"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </g>
+    </svg>
+  )
+}
+
+// ============================================================================
+// 2. PLACEHOLDERS & SYSTEM FALLBACK VECTORS
+// ============================================================================
+
+export function EmptyFolderVector({ className }: VectorProps) {
+  return (
+    <svg
+      className={cn('h-28 w-42 shrink-0', className)}
+      viewBox="0 0 168 112"
+
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* Back folder tab & shell with smooth rounded corners */}
+      <path
+        className="stroke-foreground fill-muted"
+        d="M42 36Q42 30 48 30H70Q74 30 77 34L81 38H120Q126 38 126 44V78Q126 84 120 84H48Q42 84 42 78V36Z"
+        fillOpacity="0.4"
+        strokeOpacity="0.8"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Front folder flap */}
+      <path
+        className="stroke-foreground fill-card"
+        d="M38 48Q38 42 44 42H124Q130 42 130 48L126 78Q125 84 119 84H49Q43 84 42 78L38 48Z"
+        strokeOpacity="0.85"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Animated floating drop-file card slot */}
+      <g className="motion-safe:animate-stashly-float">
+        <rect
+          className="stroke-primary fill-primary motion-safe:animate-stashly-slot"
+          fillOpacity="0.25"
+          x="67"
+          y="22"
+          width="34"
+          height="28"
+          rx="6"
+          strokeWidth="1.6"
+          strokeDasharray="3.5 2.5"
+        />
+        <path
+          className="stroke-foreground"
+          d="M84 41V31M80 35L84 31L88 35"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
+    </svg>
+  )
+}
+
+export function EmptyGalleryImagesVector({ className }: VectorProps) {
+  return (
+    <svg
+      className={cn('h-28 w-42 shrink-0', className)}
+      viewBox="0 0 168 112"
+
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* Back tilted rounded polaroid frame */}
+      <rect
+        className="stroke-border fill-muted"
+        x="42"
+        y="26"
+        width="54"
+        height="46"
+        rx="8"
+        transform="rotate(-7 42 26)"
+        fillOpacity="0.5"
+        strokeWidth="1.35"
+      />
+      {/* Front rounded gallery frame */}
+      <rect
+        className="stroke-foreground fill-card"
+        x="56"
+        y="24"
+        width="64"
+        height="54"
+        rx="9"
+        strokeOpacity="0.85"
+        strokeWidth="1.5"
+      />
+      {/* Inner dashed photo aperture */}
+      <rect
+        className="stroke-primary fill-primary motion-safe:animate-stashly-slot"
+        fillOpacity="0.16"
+        x="63"
+        y="31"
+        width="50"
+        height="34"
+        rx="5"
+        strokeWidth="1.4"
+        strokeDasharray="3 2.5"
+      />
+      {/* Smooth curved horizon hill & sun */}
+      <path
+        className="stroke-primary"
+        d="M65 61Q76 47 87 56Q96 49 111 61"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <circle
+        className="stroke-primary fill-primary motion-safe:animate-stashly-sun-rise"
+        fillOpacity="0.45"
+        cx="99"
+        cy="41"
+        r="4"
+        strokeWidth="1.3"
+      />
+    </svg>
+  )
+}
+
+export function EmptyGalleryVideosVector({ className }: VectorProps) {
+  return (
+    <svg
+      className={cn('h-28 w-42 shrink-0', className)}
+      viewBox="0 0 168 112"
+
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* Rounded widescreen cinema frame */}
+      <rect
+        className="stroke-foreground fill-card"
+        x="38"
+        y="24"
+        width="92"
+        height="54"
+        rx="10"
+        strokeOpacity="0.85"
+        strokeWidth="1.5"
+      />
+      {/* Top & bottom sprocket pills */}
+      {[48, 66, 84, 102, 114].map((x) => (
+        <Fragment key={x}>
+          <rect
+            className="fill-muted-foreground"
+            opacity="0.45"
+            x={x}
+            y="29"
+            width="6"
+            height="3"
+            rx="1.5"
+          />
+          <rect
+            className="fill-muted-foreground"
+            opacity="0.45"
+            x={x}
+            y="70"
+            width="6"
+            height="3"
+            rx="1.5"
+          />
+        </Fragment>
+      ))}
+      {/* Dashed play aperture ring */}
+      <circle
+        className="stroke-primary fill-primary motion-safe:animate-stashly-slot"
+        fillOpacity="0.2"
+        cx="84"
+        cy="51"
+        r="14"
+        strokeWidth="1.5"
+        strokeDasharray="3.5 2.5"
+      />
+      {/* Rounded play wedge */}
+      <path
+        className="stroke-primary fill-primary"
+        fillOpacity="0.45"
+        d="M81 45.5L90.5 51L81 56.5V45.5Z"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function FilteredEmptyVector({ className }: VectorProps) {
+  return (
+    <svg
+      className={cn('h-28 w-42 shrink-0', className)}
+      viewBox="0 0 168 112"
+
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* Dimmed background stash card stack */}
+      <rect
+        className="stroke-border fill-muted"
+        fillOpacity="0.45"
+        x="48"
+        y="24"
+        width="64"
+        height="42"
+        rx="10"
+        strokeWidth="1.4"
+      />
+      <rect
+        className="stroke-foreground fill-card"
+        x="42"
+        y="32"
+        width="64"
+        height="42"
+        rx="10"
+        strokeOpacity="0.65"
+        strokeWidth="1.4"
+        strokeDasharray="3.5 2.5"
+      />
+      {/* Rounded placeholder content lines inside muted card */}
+      <path
+        className="stroke-muted-foreground"
+        d="M53 45H79M53 53H71"
+        strokeOpacity="0.55"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+
+      {/* Floating rounded filter pill badge with zero-result dot */}
+      <g className="motion-safe:animate-stashly-float">
+        <rect
+          className="stroke-primary fill-primary motion-safe:animate-stashly-slot"
+          fillOpacity="0.24"
+          x="74"
+          y="54"
+          width="54"
+          height="28"
+          rx="14"
+          strokeWidth="1.6"
+        />
+        {/* Filter funnel bars (all round-capped) */}
+        <path
+          className="stroke-foreground"
+          d="M86 64H98M88.5 68H95.5M91 72H93"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        {/* Zero-match indicator ring */}
+        <circle
+          className="stroke-primary fill-card"
+          cx="112"
+          cy="68"
+          r="5"
+          strokeWidth="1.5"
+        />
+        <path
+          className="stroke-primary"
+          d="M110 70L114 66"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+        />
+      </g>
+    </svg>
+  )
+}
+
+export function ItemPanelsEmptyVector({ className }: VectorProps) {
+  return (
+    <svg
+      className={cn('h-28 w-42 shrink-0', className)}
+      viewBox="0 0 168 112"
+
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* Back timeline / versions capsule */}
+      <rect
+        className="stroke-border fill-muted"
+        x="42"
+        y="24"
+        width="64"
+        height="46"
+        rx="10"
+        fillOpacity="0.5"
+        strokeWidth="1.4"
+      />
+      {/* Front comment & access drawer card */}
+      <rect
+        className="stroke-foreground fill-card"
+        x="56"
+        y="34"
+        width="70"
+        height="50"
+        rx="10"
+        strokeOpacity="0.85"
+        strokeWidth="1.5"
+      />
+      {/* Two avatar / node circles + rounded message bars */}
+      <circle
+        className="stroke-primary fill-primary"
+        fillOpacity="0.3"
+        cx="70"
+        cy="49"
+        r="5"
+        strokeWidth="1.35"
+      />
+      <path
+        className="stroke-muted-foreground"
+        d="M80 47H113M80 52H102"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      {/* Animated dashed invite / comment slot */}
+      <rect
+        className="stroke-primary fill-primary motion-safe:animate-stashly-slot"
+        fillOpacity="0.18"
+        x="65"
+        y="62"
+        width="52"
+        height="14"
+        rx="7"
+        strokeWidth="1.4"
+        strokeDasharray="3 2.5"
+      />
+      <path
+        className="stroke-foreground"
+        d="M91 66.5V71.5M88.5 69H93.5"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+export function WorkspaceEmptyVector({ className }: VectorProps) {
+  return (
+    <svg
+      className={cn('h-28 w-42 shrink-0', className)}
+      viewBox="0 0 168 112"
+
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* Outer rounded workspace hub ring */}
+      <rect
+        className="stroke-foreground fill-card"
+        x="42"
+        y="22"
+        width="84"
+        height="66"
+        rx="14"
+        strokeOpacity="0.85"
+        strokeWidth="1.5"
+      />
+      {/* Left member node */}
+      <circle
+        className="stroke-muted-foreground fill-muted"
+        cx="62"
+        cy="46"
+        r="7"
+        strokeWidth="1.4"
+      />
+      {/* Right member node */}
+      <circle
+        className="stroke-muted-foreground fill-muted"
+        cx="106"
+        cy="46"
+        r="7"
+        strokeWidth="1.4"
+      />
+      {/* Rounded connector arc */}
+      <path
+        className="stroke-border"
+        d="M69 46H99"
+        strokeWidth="1.5"
+        strokeDasharray="2.5 2.5"
+        strokeLinecap="round"
+      />
+      {/* Center active workspace hub badge */}
+      <circle
+        className="stroke-primary fill-primary motion-safe:animate-stashly-pulse"
+        fillOpacity="0.28"
+        cx="84"
+        cy="46"
+        r="10"
+        style={{ transformOrigin: '84px 46px' }}
+        strokeWidth="1.6"
+      />
+      <path
+        className="stroke-foreground"
+        d="M84 42V50M80 46H88"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      {/* Bottom shared vault capsule bar */}
+      <rect
+        className="stroke-primary fill-primary motion-safe:animate-stashly-slot"
+        fillOpacity="0.16"
+        x="56"
+        y="66"
+        width="56"
+        height="12"
+        rx="6"
+        strokeWidth="1.35"
+        strokeDasharray="3 2"
+      />
+    </svg>
+  )
+}
+
+// ============================================================================
+// 3. ALL 14 PRISMA ITEMCATEGORY VECTORS
+// ============================================================================
