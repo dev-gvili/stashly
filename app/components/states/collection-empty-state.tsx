@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
-import { CollectionFillIcon } from '@/components/icons'
-import { EmptyCollectionVector } from '@/components/states/vectors/empty-vectors'
+import {
+  EmptyCollectionVector,
+  NoCollectionsVector,
+} from '@/components/states/vectors/empty-vectors'
 import {
   Empty,
   EmptyContent,
@@ -34,7 +36,7 @@ const COPY = {
 
 /**
  * Empty state for the collections index and for a single empty collection.
- * The index shows a fanned stack; the collection shows the empty tray drawing.
+ * The index shows the no-collections drawing; a collection shows the empty tray.
  *
  * @example
  * <CollectionEmptyState variant="index"><Button>New collection</Button></CollectionEmptyState>
@@ -50,13 +52,7 @@ export function CollectionEmptyState({
       <EmptyHeader>
         <EmptyMedia>
           {variant === 'index' ? (
-            <div className="relative size-16">
-              <span className="absolute inset-0 -translate-x-3 -rotate-10 rounded-xl border border-input bg-secondary" />
-              <span className="absolute inset-0 translate-x-3 rotate-10 rounded-xl border border-input bg-secondary" />
-              <span className="absolute inset-0 flex items-center justify-center rounded-xl border border-input bg-card shadow-stashly">
-                <CollectionFillIcon className="size-7 text-primary" />
-              </span>
-            </div>
+            <NoCollectionsVector />
           ) : (
             <EmptyCollectionVector />
           )}
