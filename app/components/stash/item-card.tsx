@@ -1,7 +1,7 @@
 // ItemCard.tsx
 import { Favorite } from '@/components/favorite'
 import { FolderIcon } from '@/components/icons'
-import { ItemCategoryVector } from '@/components/states/category-fallbacks'
+import { ItemCategoryVector } from '@/components/states/vectors/category-vectors'
 import { ItemCardContext, useItemCard } from '@/hooks/useItemCard'
 import { useItemDragDrop } from '@/hooks/useItemDragDrop'
 import { useItemUrl } from '@/hooks/useItemUrl'

@@ -667,76 +667,406 @@
   }
 }
 
-/* Placeholder and empty-state vector art (components/states/state-vectors.tsx,
-   category-fallbacks.tsx). Each animated element sets its keyframes inline and
-   carries the matching animate-stashly-* class, which only switches the
-   animation off for reduced motion. */
-@keyframes stashly-pulse-slot {
-  0%,
-  100% {
-    opacity: 0.45;
-    stroke-dashoffset: 0;
-  }
-  50% {
-    opacity: 1;
-    stroke-dashoffset: -12;
-  }
-}
+/* Placeholder and empty-state vector art (components/states/vectors/).
+   Each token becomes an animate-stashly-* utility. Drawings use it as
+   motion-safe:animate-stashly-*, so reduced motion turns it off, and Tailwind
+   emits a keyframe only when its utility is used. Per-element geometry
+   (transform-origin in drawing units, stagger delays) stays inline on the SVG. */
+@theme {
+  --animate-stashly-slot: stashly-pulse-slot 2.4s ease-in-out infinite;
+  --animate-stashly-scan: stashly-scan-reticle 4s ease-in-out infinite;
+  --animate-stashly-eq: stashly-equalizer 1.6s ease-in-out infinite;
+  --animate-stashly-cursor: stashly-blink-cursor 1.1s steps(2, start) infinite;
+  --animate-stashly-float: stashly-float-pip 2.4s ease-in-out infinite;
+  --animate-stashly-arc: stashly-arc-sweep 3s ease-in-out infinite;
+  --animate-stashly-pulse: stashly-node-pulse 2.2s ease-in-out infinite;
+  --animate-stashly-flow: stashly-data-flow 1.8s linear infinite;
+  --animate-stashly-keycard: stashly-keycard-hover 2.8s ease-in-out infinite;
+  --animate-stashly-blink: stashly-status-blink 1.5s ease-in-out infinite;
+  --animate-stashly-cell: stashly-cell-shift 3.6s ease-in-out infinite;
+  --animate-stashly-carousel-a: stashly-carousel-a 3.8s cubic-bezier(0.25, 1, 0.35, 1) infinite;
+  --animate-stashly-carousel-b: stashly-carousel-b 3.8s cubic-bezier(0.25, 1, 0.35, 1) infinite;
+  --animate-stashly-pip-a: stashly-pip-a 3.8s ease-in-out infinite;
+  --animate-stashly-pip-b: stashly-pip-b 3.8s ease-in-out infinite;
+  --animate-stashly-draw-primary: stashly-draw-primary 3.2s ease-in-out infinite;
+  --animate-stashly-draw-secondary: stashly-draw-secondary 3.2s ease-in-out infinite;
+  --animate-stashly-sun-rise: stashly-sun-rise 3.2s ease-in-out infinite;
+  --animate-stashly-dogear: stashly-dogear-fold 2.6s ease-in-out infinite;
+  --animate-stashly-doc-scan: stashly-doc-scan 2.6s ease-in-out infinite;
+  --animate-stashly-video-progress: stashly-video-progress 2.6s linear infinite;
+  --animate-stashly-video-head: stashly-video-head 2.6s linear infinite;
+  --animate-stashly-pdf-stamp: stashly-pdf-stamp 2.6s ease-in-out infinite;
+  --animate-stashly-bracket-left: stashly-bracket-left 2.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  --animate-stashly-bracket-right: stashly-bracket-right 2.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  --animate-stashly-fault-jitter: stashly-fault-jitter 3s ease-in-out infinite;
+  --animate-stashly-laser-scan: stashly-laser-scan 2.8s ease-in-out infinite;
 
-@keyframes stashly-scan-reticle {
-  0%,
-  100% {
-    transform: translate(0, 0);
+  @keyframes stashly-pulse-slot {
+    0%,
+    100% {
+      opacity: 0.4;
+      stroke-dashoffset: 0;
+    }
+    50% {
+      opacity: 1;
+      stroke-dashoffset: -12;
+    }
   }
-  25% {
-    transform: translate(6px, -4px);
-  }
-  50% {
-    transform: translate(-6px, 4px);
-  }
-  75% {
-    transform: translate(4px, 4px);
-  }
-}
 
-@keyframes stashly-equalizer {
-  0%,
-  100% {
-    transform: scaleY(0.55);
+  @keyframes stashly-scan-reticle {
+    0%,
+    100% {
+      transform: translate(0px, 0px);
+    }
+    25% {
+      transform: translate(7px, -5px);
+    }
+    50% {
+      transform: translate(-7px, 5px);
+    }
+    75% {
+      transform: translate(5px, 5px);
+    }
   }
-  50% {
-    transform: scaleY(1);
-  }
-}
 
-@keyframes stashly-blink-cursor {
-  0%,
-  49% {
-    opacity: 1;
+  @keyframes stashly-equalizer {
+    0%,
+    100% {
+      transform: scaleY(0.45);
+    }
+    50% {
+      transform: scaleY(1.1);
+    }
   }
-  50%,
-  100% {
-    opacity: 0.2;
-  }
-}
 
-@keyframes stashly-float-pip {
-  0%,
-  100% {
-    transform: translateY(0px);
+  @keyframes stashly-blink-cursor {
+    0%,
+    49% {
+      opacity: 1;
+    }
+    50%,
+    100% {
+      opacity: 0.15;
+    }
   }
-  50% {
-    transform: translateY(-2.5px);
-  }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .animate-stashly-slot,
-  .animate-stashly-scan,
-  .animate-stashly-eq,
-  .animate-stashly-cursor,
-  .animate-stashly-float {
-    animation: none !important;
+  @keyframes stashly-float-pip {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-3px);
+    }
+  }
+
+  @keyframes stashly-arc-sweep {
+    0%,
+    100% {
+      transform: rotate(-22deg);
+    }
+    50% {
+      transform: rotate(18deg);
+    }
+  }
+
+  @keyframes stashly-node-pulse {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: scale(0.92);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.12);
+    }
+  }
+
+  @keyframes stashly-data-flow {
+    to {
+      stroke-dashoffset: -12;
+    }
+  }
+
+  @keyframes stashly-keycard-hover {
+    0%,
+    100% {
+      transform: translateX(0px);
+    }
+    50% {
+      transform: translateX(6px);
+    }
+  }
+
+  @keyframes stashly-status-blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.2;
+    }
+  }
+
+  @keyframes stashly-cell-shift {
+    0%,
+    100% {
+      transform: translate(0px, 0px);
+    }
+    33% {
+      transform: translate(20px, 0px);
+    }
+    66% {
+      transform: translate(20px, 13px);
+    }
+  }
+
+  @keyframes stashly-carousel-a {
+    0%,
+    36% {
+      transform: translateX(0px);
+      opacity: 1;
+    }
+    50%,
+    86% {
+      transform: translateX(11px);
+      opacity: 0.45;
+    }
+    100% {
+      transform: translateX(0px);
+      opacity: 1;
+    }
+  }
+
+  @keyframes stashly-carousel-b {
+    0%,
+    36% {
+      transform: translateX(0px);
+      opacity: 0.55;
+    }
+    50%,
+    86% {
+      transform: translateX(-11px);
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(0px);
+      opacity: 0.55;
+    }
+  }
+
+  @keyframes stashly-pip-a {
+    0%,
+    42%,
+    92%,
+    100% {
+      opacity: 1;
+    }
+    48%,
+    88% {
+      opacity: 0.3;
+    }
+  }
+
+  @keyframes stashly-pip-b {
+    0%,
+    42%,
+    92%,
+    100% {
+      opacity: 0.3;
+    }
+    48%,
+    88% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes stashly-draw-primary {
+    0% {
+      stroke-dashoffset: 60;
+      opacity: 0.35;
+    }
+    45%,
+    80% {
+      stroke-dashoffset: 0;
+      opacity: 1;
+    }
+    100% {
+      stroke-dashoffset: 0;
+      opacity: 0.45;
+    }
+  }
+
+  @keyframes stashly-draw-secondary {
+    0%,
+    18% {
+      stroke-dashoffset: 55;
+      opacity: 0.25;
+    }
+    60%,
+    85% {
+      stroke-dashoffset: 0;
+      opacity: 0.9;
+    }
+    100% {
+      stroke-dashoffset: 0;
+      opacity: 0.35;
+    }
+  }
+
+  @keyframes stashly-sun-rise {
+    0%,
+    15% {
+      transform: translateY(3px) scale(0.85);
+      opacity: 0.35;
+    }
+    55%,
+    85% {
+      transform: translateY(0px) scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(2px) scale(0.9);
+      opacity: 0.45;
+    }
+  }
+
+  @keyframes stashly-dogear-fold {
+    0%,
+    100% {
+      transform: scale(1) translate(0px, 0px);
+      fill-opacity: 0.35;
+    }
+    50% {
+      transform: scale(1.18) translate(-1px, 1px);
+      fill-opacity: 0.7;
+    }
+  }
+
+  @keyframes stashly-doc-scan {
+    0%,
+    100% {
+      transform: translateY(0px);
+      opacity: 0.95;
+    }
+    33% {
+      transform: translateY(6px);
+      opacity: 1;
+    }
+    66% {
+      transform: translateY(12px);
+      opacity: 1;
+    }
+    85% {
+      transform: translateY(18px);
+      opacity: 0.75;
+    }
+  }
+
+  @keyframes stashly-video-progress {
+    0% {
+      stroke-dashoffset: 56;
+    }
+    85% {
+      stroke-dashoffset: 0;
+    }
+    100% {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes stashly-video-head {
+    0% {
+      transform: translateX(0px);
+    }
+    85% {
+      transform: translateX(56px);
+    }
+    100% {
+      transform: translateX(56px);
+    }
+  }
+
+  @keyframes stashly-pdf-stamp {
+    0%,
+    100% {
+      transform: scale(1) translateY(0px);
+      opacity: 1;
+    }
+    45% {
+      transform: scale(1.22) translateY(-2.5px);
+      opacity: 0.7;
+    }
+    65% {
+      transform: scale(0.94) translateY(0.5px);
+      opacity: 1;
+    }
+  }
+
+  @keyframes stashly-bracket-left {
+    0%,
+    12% {
+      transform: translateX(14px);
+      opacity: 0;
+    }
+    45%,
+    78% {
+      transform: translateX(0px);
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(14px);
+      opacity: 0;
+    }
+  }
+
+  @keyframes stashly-bracket-right {
+    0%,
+    12% {
+      transform: translateX(-14px);
+      opacity: 0;
+    }
+    45%,
+    78% {
+      transform: translateX(0px);
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(-14px);
+      opacity: 0;
+    }
+  }
+
+  @keyframes stashly-fault-jitter {
+    0%,
+    84%,
+    100% {
+      transform: translateX(0px);
+    }
+    87% {
+      transform: translateX(-2.5px);
+    }
+    90% {
+      transform: translateX(2.5px);
+    }
+    93% {
+      transform: translateX(-1.5px);
+    }
+    96% {
+      transform: translateX(1.5px);
+    }
+  }
+
+  @keyframes stashly-laser-scan {
+    0%,
+    100% {
+      transform: translateY(-14px);
+      opacity: 0.45;
+    }
+    50% {
+      transform: translateY(14px);
+      opacity: 1;
+    }
   }
 }
 

@@ -1,7 +1,7 @@
 import { href, Link } from 'react-router'
 import { InfoIcon } from '@/components/icons'
 import { GenericEmptyState } from './generic-empty-state'
-import { EmptySearchVector } from './state-vectors'
+import { EmptySearchVector } from '@/components/states/vectors/empty-vectors'
 import { Button } from '@/ui/button'
 import { MIN_QUERY_LENGTH } from '@/utils/search-query'
 

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { CollectionFillIcon } from '@/components/icons'
-import { EmptyCollectionVector } from './state-vectors'
+import { EmptyCollectionVector } from '@/components/states/vectors/empty-vectors'
 import {
   Empty,
   EmptyContent,

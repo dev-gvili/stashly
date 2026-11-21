@@ -2,8 +2,8 @@ export {
   EmptyCollectionVector,
   EmptySearchVector,
   EmptyTrashVector,
-} from './state-vectors'
-export { ItemCategoryVector, type ItemCategory } from './category-fallbacks'
+} from '@/components/states/vectors/empty-vectors'
+export { ItemCategoryVector, type ItemCategory } from '@/components/states/vectors/category-vectors'
 export { CollectionEmptyState } from './collection-empty-state'
 export {
   SearchIdleState,

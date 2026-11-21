@@ -1,5 +1,5 @@
 import { GenericEmptyState } from './generic-empty-state'
-import { EmptyTrashVector } from './state-vectors'
+import { EmptyTrashVector } from '@/components/states/vectors/empty-vectors'
 /**
  * Empty Trash, or an empty folder opened inside Trash (`inFolder`), which is
  * not the same thing: the Trash itself may hold plenty.
