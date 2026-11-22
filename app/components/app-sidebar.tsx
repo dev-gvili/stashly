@@ -183,7 +183,7 @@ export const AppSidebar = ({
       variant="floating"
       widthIcon="4rem"
     >
-      <SidebarHeader className="bg-card">
+      <SidebarHeader className="bg-card py-4">
         <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col">
           <Link to={'/'} aria-label="Home" className="rounded-lg">
             <Logo className="size-8! text-foreground" />
