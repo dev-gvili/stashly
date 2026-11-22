@@ -389,7 +389,10 @@ export async function setSubscriptionCanceled(stripeSubscriptionId: string, canc
 // ---------------------------------------------------------------------------
 
 export interface PlanSummary {
+  id: string
   name: string
+  description: string | null
+  features: string[]
   type: StoragePlanType
   storageLimit: number
   /** Null on a free plan. */
@@ -414,7 +417,18 @@ export async function getPlanSummary(userId: string): Promise<PlanSummary> {
   const plan =
     (planId && (await prisma.storagePlan.findUnique({ where: { id: planId } }))) ||
     (await prisma.storagePlan.findFirstOrThrow({ where: { type: 'free' } }))
+  return summarizePlan(plan)
+}
 
+/** Every plan, cheapest first (free plans first), each with its Stripe price and interval. */
+export async function listPlanSummaries(): Promise<PlanSummary[]> {
+  const plans = await prisma.storagePlan.findMany({
+    orderBy: [{ priceCents: { sort: 'asc', nulls: 'first' } }, { storageLimit: 'asc' }],
+  })
+  return Promise.all(plans.map(summarizePlan))
+}
+
+async function summarizePlan(plan: StoragePlan): Promise<PlanSummary> {
   let price: PlanSummary['price'] =
     plan.priceCents && plan.currency ? { amountCents: plan.priceCents, currency: plan.currency } : null
   let interval: PlanSummary['interval'] = null
@@ -435,10 +449,62 @@ export async function getPlanSummary(userId: string): Promise<PlanSummary> {
   }
 
   return {
+    id: plan.id,
     name: plan.name,
     type: plan.type,
+    description: plan.description,
+    features: plan.features,
     storageLimit: Number(plan.storageLimit),
     price,
     interval,
   }
+}
+
+/**
+ * Moves the user to another storage plan: the user row, the drive's quota
+ * total, an active subscription's plan and the drive's plan. Moved unchanged
+ * from the old plan picker route. It takes no payment: a paid plan is
+ * granted without Stripe, which is a known gap, not settled here.
+ */
+export async function changeStoragePlan({
+  userId,
+  driveId,
+  planId,
+}: {
+  userId: string
+  driveId: string
+  planId: string
+}) {
+  const plan = await prisma.storagePlan.findUnique({ where: { id: planId } })
+  if (!plan) throw toRouteError(StashlyErrorCode.STORAGE_PLAN_NOT_FOUND, 'Storage plan not found')
+
+  await prisma.user.update({ where: { id: userId }, data: { storagePlanId: plan.id } })
+
+  try {
+    await updateTotalQuota({ userId, dataSize: plan.storageLimit })
+  } catch {
+    // No quota row yet: create one on this plan (quietly, as before).
+    try {
+      await createQuota({
+        id: toObjectId(getPrefixForModel('Quota')),
+        driveId,
+        storagePlanId: plan.id,
+      })
+    } catch {}
+  }
+
+  const subscription = await findActiveSubscriptionByOwner(userId)
+  if (subscription) {
+    await updateSubscriptionRecord({
+      where: { id: subscription.id },
+      data: { storagePlanId: plan.id },
+    })
+  }
+
+  await prisma.drive.update({
+    where: { id: driveId },
+    data: { storage: { connect: { id: plan.id } } },
+  })
+  track('storage_plan_changed', { plan_type: plan.type }, { userId })
+  return plan.id
 }

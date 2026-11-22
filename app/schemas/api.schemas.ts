@@ -841,6 +841,11 @@ export const settingsAiInput = z.discriminatedUnion('intent', [
   z.object({ intent: z.literal('set_ai_pref'), key: aiPrefKeys, value: z.boolean() }),
 ])
 
+/** `/:me/settings/billing`: switch to another storage plan from its card. */
+export const settingsBillingInput = z.discriminatedUnion('intent', [
+  z.object({ intent: z.literal('change_plan'), storagePlanId: z.string().nonempty() }),
+])
+
 export const linkProviders = z.enum(['github', 'google', 'microsoft'])
 
 export const settingsAccountsInput = z.discriminatedUnion('intent', [

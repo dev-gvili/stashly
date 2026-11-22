@@ -271,8 +271,6 @@ export default [
         route('notifications', 'routes/settings/notifications.tsx'),
         route('ai', 'routes/settings/ai.tsx'),
         route('billing', 'routes/settings/billing.tsx'),
-        // The plan picker the billing CTA hands off to (moved, not redesigned).
-        route('billing/plans', 'routes/settings/plans.tsx'),
         route('accounts', 'routes/settings/accounts.tsx'),
       ]),
     ]),
