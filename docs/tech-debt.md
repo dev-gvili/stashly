@@ -14,7 +14,9 @@
 - **Errors, analytics and logs:** Vinktar on server and browser since 10 Oct; product events, route timing and a structured logger since 31 Oct (item 4, resolved).
 - **Left:** the owner's first deploy (item 2); items 19, 17, 46 and 57 deferred by the owner; items 10, 13 and 16 open and unblocked.
 
-**Status at 19 Nov 2026 (latest, item 59):** 83 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 1 open from the audit (13) · 3 new and open, all deferred by the owner (19, 46, 57). Item 59 resolved: the owner decided production needs no size backfill; the orphan sweep runs every 6 h.
+**Status at 22 Nov 2026 (latest, items 94–102):** 92 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 1 open from the audit (13) · 3 new and open, all deferred by the owner (19, 46, 57). A check of the git history for 12–22 Nov found nine fixed bugs the register missed, all resolved: emptying a bucket deleted 10,066 rows before finding the bucket gone, and a lost bucket was never repaired (94, `b1b92f3`, `32eb7f3`); a resumed upload failed and pause kept sending (95, `0a9d9f2`), and nothing capped parts across files (96, `9643ba9`), both from the owner's report; every Images search answered 400 (97, `2128ebf`); untyped media was filed as unknown (98), trashed files sat in the viewer's arrows (99), raw SQL used local-time `NOW()` (100), NUL characters blocked indexing (101) and the embedding worker kept a failed model (102).
+
+**Status at 19 Nov 2026 (item 59):** 83 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 1 open from the audit (13) · 3 new and open, all deferred by the owner (19, 46, 57). Item 59 resolved: the owner decided production needs no size backfill; the orphan sweep runs every 6 h.
 
 **Status at 19 Nov 2026 (summary refresh):** 82 resolved · 1 resolved in code, rollout step unconfirmed (2) · 4 partly done (10, 16, 17, 59) · 2 declined (15, 44) · 1 open from the audit (13) · 3 new and open, all deferred by the owner (19, 46, 57). Since 12 Nov: item 84 resolved (`79f7e06`): copy with no read on the source answers 403 `FORBIDDEN`, and a failed copy or move 400, not 401 or 500. Item 59's backfill script landed (`b56d9b5`) and ran on dev with 0 rows to size; running it on production is the owner's step. This summary and the register rows for items 59 and 93 were brought up to date: the summary still listed a linter as missing, and item 93's row still read "New" after its fix.
 
@@ -26,7 +28,7 @@
 
 **Re-audit (8 Oct):** 109 commits since the audit. Item 14 is now resolved: `935a923` deleted the legacy thumbnail hooks (1,389 lines). Item 10 has its first fix: the Filter toggles are no longer nested inside the trigger (`eaf71e4`). The re-scan also found **7 new items (18–24)**. The most urgent is item 18: `/api/quota` lets any signed-in user set their own storage limit. Item 19 is next: the Stripe webhook acknowledges every event and saves nothing.
 
-**93 items in this list** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 6 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62, 64 and 65 from item 45; 2 added 7 Nov: 66 from item 51's open list, 67 from item 66; 10 added 8 Nov: 68 from item 67, 69–76 from a review of `d3a241f..69f7da7`, 77 from fixing items 70 and 71; 4 added 9 Nov: 78–80 from the owner's report on the home page, 81 from a full-suite run; 11 added 12 Nov: 84 from item 13's tests, 82, 83 and 85–92 from the authz audit of the gallery, 93 from the migration review of item 51) · categories: Code 57, Architecture 23, Infrastructure 4, Test 6, Documentation 2, Dependency 1
+**102 items in this list** (17 from the audit, 9 added 8 Oct, 2 added 23 Oct, 2 added 25 Oct from git history, 14 added 25 Oct from the upload call audit, 7 added 30 Oct: 45–47 from item 42, 48 from clearing its test folders, 49–51 from an external critique of item 42; 6 added 31 Oct: 52 from item 45's measurements, 53 and 54 from the owner's report of missing metadata, 55 from re-running the upload call audit, 56 from full-suite runs, 57 from item 55, 58 and 59 from a review of the upload's trust in the client; 6 added 1 Nov: 60 from making each upload its own object, 61 and 62 from the handoff's next task, `/api/permissions`, 63 from checking item 62, 64 and 65 from item 45; 2 added 7 Nov: 66 from item 51's open list, 67 from item 66; 10 added 8 Nov: 68 from item 67, 69–76 from a review of `d3a241f..69f7da7`, 77 from fixing items 70 and 71; 4 added 9 Nov: 78–80 from the owner's report on the home page, 81 from a full-suite run; 11 added 12 Nov: 84 from item 13's tests, 82, 83 and 85–92 from the authz audit of the gallery, 93 from the migration review of item 51; 9 added 22 Nov: 94–102 from a check of the git history for 12–22 Nov) · categories: Code 65, Architecture 24, Infrastructure 4, Test 6, Documentation 2, Dependency 1
 
 **Status at 12 Nov 2026 (item 68):** 79 resolved · 1 resolved in code, rollout step unconfirmed (2) · 3 partly done (10, 16, 17) · 2 declined (15, 44) · 2 open from the audit (12, 13) · 6 new and open (19, 46, 57, 59, 84, 93; 19, 46 and 57 deferred by the owner). Item 68 resolved (`b2d3375`): a copy runs in 26 statements whatever its size, and the destination's ancestors are written once, in id order. 1,000 files 5.09 s → 0.35 s, 5,000 files 37.5 s → 1.8 s; the largest copy inside the 5 s timeout went from about 950 files to about 10,000.
 
@@ -231,6 +233,15 @@
 | 91 | ~~The collections page loader scopes collections itself~~ | 10 | Resolved 2026-11-12 (`12df144`): `listCollectionsForUser` owns the scope; behaviour unchanged | — |
 | 92 | ~~The personal gallery lists the user's trash on request~~ | 10 | Resolved 2026-11-12 (`d12f642`): trash kept out whatever `?status=` says (with item 85); red first | — |
 | 93 | ~~A trash or restore can deadlock with the size cascade and with the rollup~~ | 12 | Resolved 2026-11-12 (`0bcc713`): the folder walk locks ancestors by absolute depth, deepest first (migration `20261112140000`), and trash and restore hold the rollup's advisory lock shared first (`holdRollupOff`); QA's test flipped, 4 of 4 pass | — |
+| 94 | ~~Emptying a bucket deletes its rows before checking the bucket, and a lost bucket is never repaired~~ | 32 | Resolved 2026-11-18 (`b1b92f3`, `32eb7f3`): `HeadBucket` before any row is deleted; a missing bucket is recreated at sign-in and its rows repointed in one statement | — |
+| 95 | ~~A resumed upload fails, and pause keeps sending~~ | 24 | Resolved 2026-11-22 (`0a9d9f2`): no part handed out past the end after a pause; pause cancels the parts in flight and resume re-sends them; real upload 57/57, 0 PUTs while paused | — |
+| 96 | ~~Nothing caps the parts sending at once across files~~ | 20 | Resolved 2026-11-22 (`9643ba9`): 12 part slots shared by all files, first file first; part median 157 → 5.8 s on the same files | — |
+| 97 | ~~Every search on the Images page failed~~ | 30 | Resolved 2026-11-21 (`2128ebf`): asks for `RANK_DEPTH` (100), within the route's cap; unit test | — |
+| 98 | ~~Untyped audio, video and image files are filed as unknown~~ | 20 | Resolved 2026-11-22 (`e45dd99`): `normalizeFile` types them from the extension; 3 tests, real `.m4a` upload | — |
+| 99 | ~~The file viewer's previous/next arrows step onto trashed files~~ | 15 | Resolved 2026-11-13 (`8ec6e63`): siblings filtered to `normal`; DB test | — |
+| 100 | ~~Raw SQL compares and stamps `timestamp` columns in local time~~ | 20 | Resolved 2026-11-16 (`773b3d6`, `9ac4296`): share expiry and chunk stamps use UTC now; tests. No sweep of the other `NOW()` sites | — |
+| 101 | ~~A NUL character in extracted text stops a file being indexed~~ | 20 | Resolved 2026-11-12 (`11a8aeb`): NULs stripped at the three entry points; tests | — |
+| 102 | ~~The embedding worker keeps a failed model load and a lost device~~ | 20 | Resolved 2026-11-15 (`fa2e0e2`): model in `createModelCache`; 3 of 6 new cases red first | — |
 
 Items marked *TASKS.md* are already root-caused in your backlog; this register scores them alongside new findings so they can be sequenced together.
 
@@ -331,6 +342,15 @@ Items marked *TASKS.md* are already root-caused in your backlog; this register s
 | 91 | ~~The collections page loader scopes collections itself~~ | Architecture | 1 | 1 | 1 | **10** (Low) | 0.5 h | Resolved 12 Nov |
 | 92 | ~~The personal gallery lists the user's trash on request~~ | Code | 1 | 1 | 1 | **10** (Low) | 0.5 h | Resolved 12 Nov |
 | 93 | ~~A trash or restore can deadlock with the size cascade and with the rollup~~ | Code | 2 | 2 | 3 | **12** (Low) | 0.5–1 day | Resolved 12 Nov |
+| 94 | ~~Emptying a bucket deletes its rows before checking the bucket, and a lost bucket is never repaired~~ | Code | 5 | 3 | 2 | **32** (High) | 0.5 day | Resolved 18 Nov |
+| 95 | ~~A resumed upload fails, and pause keeps sending~~ | Code | 3 | 3 | 2 | **24** (Medium) | 0.5 day | Resolved 22 Nov |
+| 96 | ~~Nothing caps the parts sending at once across files~~ | Architecture | 3 | 2 | 2 | **20** (Medium) | 0.5 day | Resolved 22 Nov |
+| 97 | ~~Every search on the Images page failed~~ | Code | 4 | 2 | 1 | **30** (High) | 1 h | Resolved 21 Nov |
+| 98 | ~~Untyped audio, video and image files are filed as unknown~~ | Code | 2 | 2 | 1 | **20** (Medium) | 1 h | Resolved 22 Nov |
+| 99 | ~~The file viewer's previous/next arrows step onto trashed files~~ | Code | 2 | 1 | 1 | **15** (Low) | 0.5 h | Resolved 13 Nov |
+| 100 | ~~Raw SQL compares and stamps `timestamp` columns in local time~~ | Code | 2 | 2 | 1 | **20** (Medium) | 1 h | Resolved 16 Nov |
+| 101 | ~~A NUL character in extracted text stops a file being indexed~~ | Code | 2 | 2 | 1 | **20** (Medium) | 1 h | Resolved 12 Nov |
+| 102 | ~~The embedding worker keeps a failed model load and a lost device~~ | Code | 2 | 2 | 1 | **20** (Medium) | 1 h | Resolved 15 Nov |
 
 ## Details
 
@@ -1647,6 +1667,78 @@ Items 31–44 come from the Upload Call Audit (10 Oct, `docs/upload-call-audit.m
   - **Lock order, A** (X holds `Item` B; W = a copied row into S; T = the trash of TF): W takes `Item` S, `Folder` S, `Item` C (cascade, bottom-up), then waits on `Item` B. T takes `Item` TF `FOR UPDATE` (`lockSubtreeFolders`), runs the status update, and the trigger takes `Folder` root, A, B, C, then `Item` root, A (id order), then waits on `Item` B. X commits; W gets `Item` B and waits on `Item` A, held by T. Cycle: W → T (`Item` A), T → W (`Item` B). Postgres's report agrees: a cancelled copy fails `while updating tuple … in relation "Item"` four `update_size()` levels up from S, which is A.
   - **Lock order, B** (K holds file f1 `FOR SHARE`; R = the rollup applying a delta for TF): T takes `Item` TF `FOR UPDATE`, then its status update waits on f1. R takes `Folder` TF, then waits on `Item` TF, held by T. K lets go; T's trigger wants `Folder` TF, held by R. Cycle: T → R (`Folder` TF), R → T (`Item` TF). The cancelled rollup fails `while locking tuple … in relation "Item"` in `stashly_apply_folder_deltas` line 48, its `Item` step, so it already held the `Folder` row.
 
+### 94. Emptying a bucket deletes its rows before checking the bucket, and a lost bucket is never repaired
+
+*Code debt · Impact 5 · Risk 3 · Effort 2 → **32** · est. 0.5 day · source: the dev-gvili bucket loss, 17 Nov*
+
+- **Evidence:** `emptyUserBucket` deleted the user's rows first and the bucket's objects last. When the bucket was already gone (dev-gvili, 17 Nov: `NoSuchBucket`), the S3 step failed after 10,066 items had been deleted, and the caller still got a 500. Separately, nothing checked that a user's bucket still existed: every upload reads the bucket name from the session cookie cache, so a user whose bucket was deleted outside the app could sign in but never upload.
+- **Fix:** the wipe runs `HeadBucket` before it touches a row: a 404 answers `BUCKET_NOT_FOUND`, any other failure `EMPTY_BUCKET_FAILED`, and nothing is deleted. At sign-in, `ensureUserBucket` runs one `HeadBucket`; on a 404 it creates a new bucket, `repointUserBucket` moves the user row, every `File` and `Thumbnail` row and the drive name in one statement, and the session cookie is rewritten.
+- **Status 2026-11-18: resolved** (`b1b92f3`, `32eb7f3`). A first attempt that only raised the wipe's transaction limit (`9c98a35`) was reverted (`46eb0ca`). `empty-user-bucket.test.ts` and `user-bucket-repair.test.ts` run on the real database and S3 client, plus `tests/e2e/bucket-repair.spec.ts`. Measured on dev and Tigris: sign-in hook 0.5 → 76.3 ms p50 (one `HeadBucket`); a missing bucket repaired in 1,431 ms p50; the repoint 6.5 ms p50 for 185 files and 143 thumbnails.
+
+### 95. A resumed upload fails, and pause keeps sending
+
+*Code debt · Impact 3 · Risk 3 · Effort 2 → **24** · est. 0.5 day · source: owner's report, 22 Nov*
+
+- **Evidence:** a file paused at 45% later showed 98%, and resuming it ended in "failed". Two causes in `streamParts` (`s3.multipart.stream.ts`). Each worker waiting in `waitIfPaused()` took the next part number on resume without checking one was left, so a 22-part file paused at 46% handed 29 parts to complete, 7 of them empty PUTs past the end, and S3 refused the complete. And pause only stopped new parts: up to 10 parts of 5 MB already sending carried on.
+- **Fix:** a worker re-checks the part index after the wait. `PauseController` holds a signal that aborts on pause; each part PUT runs on `AbortSignal.any([upload, pause])`, and a part cancelled by a pause is sent again on resume.
+- **Status 2026-11-22: resolved** (`0a9d9f2`). Two contract tests in `streamParts.contract.test.ts` (one part per chunk when paused near the end; in-flight parts cancelled and re-sent). Real upload of 57 audio files to Tigris: paused files sent 0 PUTs while paused, a file resumed at 10 of 18 parts sent only 11–18, all 57 rows created at their disk sizes, 0 failed.
+
+### 96. Nothing caps the parts sending at once across files
+
+*Architecture debt · Impact 3 · Risk 2 · Effort 2 → **20** · est. 0.5 day · source: owner's report, 22 Nov*
+
+- **Evidence:** about 15 uploads froze between 45% and 55% while later ones finished. Not pause: the manager runs up to 100 files and each file runs 10 part workers, so up to 458 parts were sending at once over a 9.8 MB/s uplink. A part's median time was 157 s, and each file moved in 10-part jumps.
+- **Fix:** `createPartSlots(12)`, one set of slots shared by every file. A free slot goes to the file that started first, so early files finish instead of all advancing together.
+- **Status 2026-11-22: resolved** (`9643ba9`). Contract test: two files on 2 slots peak at 2 PUTs, and every part of the first starts before any of the second. Same real files before and after: 9.8 → 10.1 MB/s, part median 157 → 5.8 s, files done by 60/120/180/240 s 9/10/20/26 → 12/19/25/31, last file at 361 → 367 s. Left: a file waiting for a slot shows as uploading at 0%.
+
+### 97. Every search on the Images page failed
+
+*Code debt · Impact 4 · Risk 2 · Effort 1 → **30** · est. 1 h · source: git history, 21 Nov*
+
+- **Evidence:** the Images page called `useItemSearch` with `take: 200`, but the search route caps `take` at 100, so `GET /api/search/items` answered 400 for every query and the page showed "No images match" even when images matched.
+- **Fix:** ask for `take: RANK_DEPTH` (100). Raising the cap would buy nothing: the server fuses at most 100 ids per search, so `skip=100` always returns 0 rows (measured on the dev drive).
+- **Status 2026-11-21: resolved** (`2128ebf`). A unit test pins that the route accepts that page size and refuses one above `SEARCH_MAX_TAKE`.
+
+### 98. Untyped audio, video and image files are filed as unknown
+
+*Code debt · Impact 2 · Risk 2 · Effort 1 → **20** · est. 1 h · source: owner's question, 22 Nov*
+
+- **Evidence:** Chrome takes a file's type from the OS; a Windows machine with nothing registered for `.m4a` (or a drag from some apps) hands over `''`. `toCategory` reads media from the type alone, so such a file was filed as unknown with no stored type and no metadata read: 114 untyped `.m4a` copies on the dev drive, all unknown.
+- **Fix:** `normalizeFile` (`utils/sniff.ts`), which every upload passes through, gives an untyped or `application/octet-stream` file its type from the extension (`MEDIA_TYPES`: audio, video and image extensions).
+- **Status 2026-11-22: resolved** (`e45dd99`). 3 tests in `converters.test.ts`. A real upload of 3 untyped `.m4a` files stored them as audio, `audio/mp4`.
+
+### 99. The file viewer's previous/next arrows step onto trashed files
+
+*Code debt · Impact 2 · Risk 1 · Effort 1 → **15** · est. 0.5 h · source: git history, 13 Nov*
+
+- **Evidence:** `getMediaSiblings` feeds the viewer's arrows and its "n of N" counter. A trashed file keeps its `parentId`, and the query had no status filter, so it counted the file and pointed an arrow at it.
+- **Fix:** filter to `status: 'normal'`.
+- **Status 2026-11-13: resolved** (`8ec6e63`). `media-siblings.test.ts` trashes through the real `trashItems` and checks the arrows step over the trashed image.
+
+### 100. Raw SQL compares and stamps `timestamp` columns in local time
+
+*Code debt · Impact 2 · Risk 2 · Effort 1 → **20** · est. 1 h · source: git history, 15–16 Nov*
+
+- **Evidence:** the columns are `timestamp without time zone` holding UTC, and the dev database's session zone is Asia/Jerusalem. Two raw-SQL sites used `NOW()`, which is local. The collection listing and covers kept a share live while `expiresAt > NOW()`, so a share expiring later today already counted as expired and its files dropped out of the collection. `setSearchChunkVectors` stamped `SearchChunk.updatedAt` 2–3 hours ahead (measured in a rolled-back transaction: `NOW()` +120 min), which could hide a newer `Search` row from the reindex check.
+- **Fix:** `(now() AT TIME ZONE 'UTC')` at both sites, as `permission-actions`, `trashItems` and `restoreItems` already do.
+- **Status 2026-11-16: resolved** (`773b3d6`, `9ac4296`). Tests for a share expiring in an hour and one that expired an hour ago, and one in `search-index-access.test.ts` that fails on a non-UTC database. Not done: a sweep of every remaining `NOW()` in raw SQL.
+
+### 101. A NUL character in extracted text stops a file being indexed
+
+*Code debt · Impact 2 · Risk 2 · Effort 1 → **20** · est. 1 h · source: CI's e2e Postgres log, 12 Nov*
+
+- **Evidence:** Postgres refuses a NUL in a text column ("invalid byte sequence for encoding UTF8: 0x00"), so a file whose extracted text held one failed the whole `Search` upsert and was never indexed. CI's e2e Postgres log showed six such failed INSERTs on 12 Nov while the run stayed green.
+- **Fix:** strip NULs at the three entry points (`saveMediaMetadata`, `appendSearchPage`, reindex) before chunking, so chunk offsets index the stored string.
+- **Status 2026-11-12: resolved** (`11a8aeb`). Tests in `search-text.test.ts`.
+
+### 102. The embedding worker keeps a failed model load and a lost device
+
+*Code debt · Impact 2 · Risk 2 · Effort 1 → **20** · est. 1 h · source: git history, 15 Nov*
+
+- **Evidence:** `embedding.worker.ts` cached its pipeline promise once and never cleared it, so a rejected load (a network blip during the download) failed every later embed until the 60 s idle release ended the worker, and a lost device kept the dead model.
+- **Fix:** the worker keeps its model in `createModelCache` from `ai-queue.ts`, as GLM-OCR and Florence-2 do: a failed load is forgotten and retried, and a lost-device error drops and disposes the model.
+- **Status 2026-11-15: resolved** (`fa2e0e2`). `embedding-worker.test.ts` runs the worker module with transformers.js mocked; 3 of its 6 cases fail before.
+
 ## Changes since the audit
 
 These commits touched a register item, oldest first. Commits that don't touch any register item are left out, such as page size, the rename dialog, the search `ZodError`, and the Vite typegen watch.
@@ -1782,6 +1874,16 @@ These commits touched a register item, oldest first. Commits that don't touch an
 | 2026-11-12 | `b56d9b5` | 59 | `scripts/backfill-file-sizes.ts`: HEAD each stored object and resize the rows that differ (dry run by default). `--apply` on dev: 0 rows, 0 bytes, 0 failures. |
 | 2026-11-15 | `79f7e06` | 84 | Copy with no read on the source answers 403 `FORBIDDEN`; `COPY_ITEM_FAILED` and `MOVE_ITEM_FAILED` answer 400. 6 status assertions, red first. |
 | 2026-11-01 | `7e2e9c1`, `36eff9f` | 22, 17 | A failed onboarding runs again on the next session read: each step finds before it creates, a new bucket is written to the row at once, a complete row ends in `alreadyOnboarded`. Red 4 of 18 → 20 of 20; 1252/0 in 103 files. Workspace uploads moved to item 17. |
+| 2026-11-12 | `11a8aeb` | 101 | NUL characters stripped from extracted text before the `Search` upsert. Tests. |
+| 2026-11-13 | `8ec6e63` | 99 | The viewer's siblings leave trashed files out. DB test. |
+| 2026-11-15 | `fa2e0e2` | 102 | The embedding worker forgets a failed load and drops a lost-device model. 3 of 6 cases red first. |
+| 2026-11-15 | `773b3d6` | 100 | `SearchChunk.updatedAt` stamped in UTC. Test fails on a non-UTC DB. |
+| 2026-11-16 | `9ac4296` | 100 | Collection share expiry compared with UTC now. 2 tests. |
+| 2026-11-18 | `b1b92f3`, `32eb7f3` | 94 | The bucket wipe checks the bucket before deleting rows; sign-in recreates a missing bucket and repoints its rows. Real DB and S3 tests, one E2E spec. |
+| 2026-11-21 | `2128ebf` | 97 | Images search asks for 100 results, within the route's cap. Unit test. |
+| 2026-11-22 | `0a9d9f2` | 95 | Pause cancels the parts in flight; a resumed file no longer sends parts past its end. 2 contract tests, real upload 57/57. |
+| 2026-11-22 | `9643ba9` | 96 | 12 part slots shared across files. Contract test; part median 157 → 5.8 s. |
+| 2026-11-22 | `e45dd99` | 98 | Untyped media files typed from their extension. 3 tests, real `.m4a` upload. |
 
 ## Phased remediation plan
 
