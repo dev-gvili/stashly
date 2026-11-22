@@ -183,10 +183,10 @@ export const AppSidebar = ({
       variant="floating"
       widthIcon="4rem"
     >
-      <SidebarHeader className="bg-card pt-0">
+      <SidebarHeader className="bg-card">
         <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col">
           <Link to={'/'} aria-label="Home" className="rounded-lg">
-            <Logo className="size-10! text-primary" />
+            <Logo className="size-8! text-foreground" />
           </Link>
           <SidebarTrigger variant="ghost" size="icon-sm" />
         </div>
