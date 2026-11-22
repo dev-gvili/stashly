@@ -2116,7 +2116,7 @@ export { AiTagsIcon }
 // ─── AI Feature Icons (sparkle duotone) ──────────────────────────────────────
 // Solid sparkle + muted (0.4) body + solid key detail, matching the AI icon set.
 
-// Transcribe audio — microphone with transcript lines on the capsule
+// Transcribe audio — a muted waveform becoming solid lines of text
 const AiTranscribeAudioIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -2128,14 +2128,20 @@ const AiTranscribeAudioIcon = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M5 2.5c.42 2.24 1.26 3.08 3.5 3.5-2.24.42-3.08 1.26-3.5 3.5-.42-2.24-1.26-3.08-3.5-3.5 2.24-.42 3.08-1.26 3.5-3.5Z"
+      d="M19.5 1c.42 2.24 1.26 3.08 3.5 3.5-2.24.42-3.08 1.26-3.5 3.5-.42-2.24-1.26-3.08-3.5-3.5 2.24-.42 3.08-1.26 3.5-3.5Z"
     />
-    <rect x={12} y={2} width={6} height={13} rx={3} fill="currentColor" opacity={0.4} />
     <path
       stroke="currentColor"
       strokeLinecap="round"
-      strokeWidth={1.5}
-      d="M13.75 6.5h2.5M13.75 9.5h2.5M9.5 11.5a5.5 5.5 0 0 0 11 0M15 17v4M12.5 21.25h5"
+      strokeWidth={1.75}
+      d="M2.5 12.5v3M5.5 8.5v11M8.5 11v6"
+      opacity={0.4}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.75}
+      d="M12 11h9M12 14.5h9M12 18h5.5"
     />
   </svg>
 )
