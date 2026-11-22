@@ -20,7 +20,8 @@ import type { Breadcrumb as BreadcrumbData } from '@/services/breadcrumbs'
 import { removeQueryParam } from '@/utils'
 import { toItemUrl } from '@/utils/converters'
 import { Fragment } from 'react'
-import { Link, useMatches, useParams, useSearchParams } from 'react-router'
+import { Link, useMatches, useParams, useRouteLoaderData, useSearchParams } from 'react-router'
+import { activeSettingsSection } from '@/components/settings/settings-sections'
 
 export interface StashBreadcrumbsProps {
   crumbs: BreadcrumbData[]
@@ -211,6 +212,54 @@ export function Breadcrumbs() {
             {last?.name}
           </BreadcrumbPage>
         </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  )
+}
+
+/**
+ * The trail on a settings page: "{name}'s stash / Settings / {section}". The
+ * section comes from the deepest route `handle` naming one (settings-sections).
+ */
+export function SettingsBreadcrumbs() {
+  let { me } = useParams()
+  let matches = useMatches()
+  let layout = useRouteLoaderData('layout') as { user?: { name?: string } } | undefined
+  let section = activeSettingsSection(matches)
+  if (!me) return null
+  let name = layout?.user?.name
+  return (
+    <Breadcrumb className="min-w-0 flex-1">
+      <BreadcrumbList className="flex-nowrap">
+        <BreadcrumbItem className="min-w-0">
+          <BreadcrumbLink asChild>
+            <Link to={`/${me}/stash`} className="block truncate text-muted-foreground">
+              {name ? `${name}'s stash` : 'Stash'}
+            </Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator className="shrink-0">/</BreadcrumbSeparator>
+        <BreadcrumbItem className="shrink-0">
+          {section ? (
+            <BreadcrumbLink asChild>
+              <Link to={`/${me}/settings`} className="text-muted-foreground">
+                Settings
+              </Link>
+            </BreadcrumbLink>
+          ) : (
+            <BreadcrumbPage className="text-foreground">Settings</BreadcrumbPage>
+          )}
+        </BreadcrumbItem>
+        {section && (
+          <>
+            <BreadcrumbSeparator className="shrink-0">/</BreadcrumbSeparator>
+            <BreadcrumbItem className="min-w-0">
+              <BreadcrumbPage className="block truncate text-foreground">
+                {section.label}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+          </>
+        )}
       </BreadcrumbList>
     </Breadcrumb>
   )

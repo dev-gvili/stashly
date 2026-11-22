@@ -262,13 +262,18 @@ export default [
       ]),
 
       // Settings routes
-      ...prefix('settings', [
+      // One layout (header, section nav, heading) around six sections; the
+      // index redirects to Profile. Sections come from settings-sections.ts.
+      route('settings', 'routes/settings/layout.tsx', { id: 'settings' }, [
+        index('routes/settings/index.tsx'),
         route('profile', 'routes/settings/profile.tsx'),
-        route('account', 'routes/settings/account.tsx'),
-        route('security', 'routes/settings/security.tsx'),
-        route('billing', 'routes/settings/billing.tsx'),
-        route('notifications', 'routes/settings/notifications.tsx'),
         route('appearance', 'routes/settings/appearance.tsx'),
+        route('notifications', 'routes/settings/notifications.tsx'),
+        route('ai', 'routes/settings/ai.tsx'),
+        route('billing', 'routes/settings/billing.tsx'),
+        // The plan picker the billing CTA hands off to (moved, not redesigned).
+        route('billing/plans', 'routes/settings/plans.tsx'),
+        route('accounts', 'routes/settings/accounts.tsx'),
       ]),
     ]),
 

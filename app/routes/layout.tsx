@@ -4,6 +4,8 @@ import { SidebarProvider } from '@/components/ui/sidebar'
 import { authMiddleware, meMiddleware } from '@/services/middleware/auth'
 import { listNotifications } from '@/services/notification-actions'
 import { findAllMemberWorkspaces } from '@/services/workspace-actions'
+import { getAiPreferences } from '@/services/settings-actions'
+import { setAiGates } from '@/machines/indexing/ai-gates'
 import { sidebarCookie } from '@/services/sidebar'
 import {
   findDefaultStoragePlan,
@@ -45,10 +47,12 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   // on every `.data` request, and this loader never revalidates, so a query
   // there ran on every navigation for a result nothing read (20 navigations,
   // 20 `WorkspaceMember` scans). This loader runs once per document load.
-  const [sidebarCookieValue, notificationsPage, workspaces] = await Promise.all([
+  const [sidebarCookieValue, notificationsPage, workspaces, aiPrefs] = await Promise.all([
     sidebarCookie.parse(request.headers.get('cookie')),
     listNotifications({ userId: session.user.id, limit: 30 }),
     findAllMemberWorkspaces(session.user.id),
+    // The AI & privacy switches, so this tab's indexing queue honours them.
+    getAiPreferences(session.user.id),
   ])
 
   return {
@@ -71,6 +75,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       priceCents: plan.priceCents,
     },
     sidebarState: sidebarCookieValue,
+    aiPrefs,
   }
 }
 
@@ -80,7 +85,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 export const shouldRevalidate: ShouldRevalidateFunction = () => false
 
 export default function StashlyLayout({ loaderData }: Route.ComponentProps) {
-  const { user, sidebarState, workspaces } = loaderData
+  const { user, sidebarState, workspaces, aiPrefs } = loaderData
+  // Seeds the AI gates the indexing queue reads (Settings → AI keeps them current).
+  useEffect(() => setAiGates(aiPrefs), [aiPrefs])
   // Re-embeds chunks whose vectors never got written because a previous
   // session ended mid-run. Idle-scheduled and once per tab.
   useEmbeddingBackfill()

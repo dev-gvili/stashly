@@ -1091,6 +1091,11 @@
   height: min(47.5rem, calc(100dvh - 3rem));
 }
 
+/* Settings → Appearance: the System theme card's light half, corner to corner. */
+@utility clip-diagonal {
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
 @utility clip-ridge-back {
   clip-path: polygon(
     0% 45%,

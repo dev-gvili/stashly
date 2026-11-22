@@ -13,6 +13,7 @@ import { cn } from '@/utils'
 import { useState } from 'react'
 import {
   useLocation,
+  useMatches,
   useNavigate,
   useParams,
   useRouteLoaderData,
@@ -20,7 +21,10 @@ import {
 import { ModeToggle } from '@/components/color-mode'
 import { GalleryHeaderTools } from '@/components/gallery/gallery-view-controls'
 import { HomeHeaderTools } from '@/components/views/home-components/home-status-pills'
-import { Breadcrumbs } from '@/components/core-components/breadcrumb-navigation'
+import {
+  Breadcrumbs,
+  SettingsBreadcrumbs,
+} from '@/components/core-components/breadcrumb-navigation'
 import { NotificationsPanel } from '@/components/core-components/notifications/notifications-panel'
 import type { Notification } from '@/types/notification.types'
 import { NewFolderDialog } from '@/components/core-components/new-folder-dialog'
@@ -49,6 +53,7 @@ export function AppHeader() {
     | undefined
   const { pathname } = useLocation()
   const isImagesPage = pathname.endsWith('/images')
+  const isSettingsPage = useMatches().some((m) => m.id === 'settings')
   const notifications = layoutData?.notifications ?? []
   // At the stash root there's no `:folderId` in the URL; fall back to the
   // user's root folder so New Folder (and uploads) have a real destination.
@@ -83,6 +88,9 @@ export function AppHeader() {
           against. */}
       {fileId ? (
         <Breadcrumbs />
+      ) : isSettingsPage ? (
+        // Settings has no uploads or search: its trail takes the slot.
+        <SettingsBreadcrumbs />
       ) : isImagesPage ? (
         // Images: the page's trail plus the app search — no upload menu, and
         // no filter/sort popover (the gallery has its own view controls).

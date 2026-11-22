@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/ui/avatar'
-import { Link, useLoaderData, useSubmit } from 'react-router'
+import { Link, useLoaderData, useMatches, useSubmit } from 'react-router'
 import { LogoutFillIcon, SettingsFillIcon, UserFillIcon, UserIcon } from '@/components/icons'
 import { toUserInitial } from '@/utils/converters'
 import type { Route } from '../routes/+types/layout'
@@ -18,6 +18,8 @@ export function UserMenu() {
   const user = data.user
   if (!user) return null
   let { isMobile } = useSidebar()
+  // The row reads as the current page anywhere under Settings.
+  let inSettings = useMatches().some((m) => m.id === 'settings')
   const _onClick = () => {
     submit(null, { method: 'POST', action: '/auth/sign-out', replace: true })
   }
@@ -27,6 +29,7 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild className="cursor-pointer">
         <SidebarMenuButton
           size="lg"
+          isActive={inSettings}
           className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
         >
           <Avatar className="h-8 w-8 rounded-md shadow-stashly">
@@ -61,7 +64,7 @@ export function UserMenu() {
         </DropdownMenuLabel>
 
         <DropdownMenuItem className="hover:cursor-pointer" asChild>
-          <Link to={`/${user.id}/profile`}>
+          <Link to={`/${user.id}/settings/profile`}>
             <UserFillIcon className="size-5! text-current" />
             <span>Profile</span>
           </Link>

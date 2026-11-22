@@ -5,20 +5,14 @@ import {
 } from '@/components/icons'
 import { Button } from '@/ui/button'
 import { SegmentedControl, SegmentedControlItem } from '@/ui/segmented-control'
-import { useFetcher, useRouteLoaderData } from 'react-router'
-import type { loader } from '../root'
+import { isColorScheme, useColorScheme } from '@/hooks/useColorScheme'
 import { Popover, PopoverContent, PopoverTrigger } from './ui'
-
-type ColorScheme = 'dark' | 'light' | 'system'
 
 const MODES = [
   { value: 'dark', label: 'Dark', Icon: DarkModeFillIcon },
   { value: 'light', label: 'Light', Icon: LightModeFillIcon },
   { value: 'system', label: 'System', Icon: ColorModeFillIcon },
 ] as const
-
-const isScheme = (v: unknown): v is ColorScheme =>
-  v === 'dark' || v === 'light' || v === 'system'
 
 /**
  * The header's color-mode button. Its popover is one three-way switch,
@@ -27,16 +21,7 @@ const isScheme = (v: unknown): v is ColorScheme =>
  * the switch can be seen moving; outside click or Esc closes it.
  */
 export function ModeToggle() {
-  const fetcher = useFetcher<{ colorScheme: ColorScheme | null }>({
-    key: 'color-scheme',
-  })
-  const root = useRouteLoaderData<typeof loader>('root')
-  const pending = fetcher.formData?.get('color-scheme')
-  const current: ColorScheme =
-    (isScheme(pending) && pending) ||
-    fetcher.data?.colorScheme ||
-    root?.colorScheme ||
-    'system'
+  const [current, setColorScheme] = useColorScheme()
 
   return (
     <Popover modal={false}>
@@ -66,11 +51,7 @@ export function ModeToggle() {
           aria-label="Color mode"
           value={current}
           onValueChange={(v) => {
-            if (!isScheme(v) || v === current) return
-            fetcher.submit(
-              { 'color-scheme': v },
-              { method: 'post', action: '/api/theme' }
-            )
+            if (isColorScheme(v)) setColorScheme(v)
           }}
           className="border-none"
         >

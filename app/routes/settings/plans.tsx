@@ -14,7 +14,12 @@ import { createQuota, updateTotalQuota } from '@/services/quota-actions'
 import { findAllStoragePlans, findStoragePlanById } from '@/services/storagePlan-actions'
 import { findActiveSubscriptionByOwner, updateSubscriptionRecord } from '@/services/subscription-actions'
 import { findUserById, updateUser } from '@/services/user-actions'
-import type { Route } from './+types/billing'
+import type { Route } from './+types/plans'
+import { settingsHandle, settingsMeta } from '@/components/settings/settings-sections'
+
+// The plan picker the Plan & billing CTA links to; it sits under that section.
+export const handle = settingsHandle('billing')
+export const meta = () => settingsMeta('billing')
 
 function formatBytes(b: bigint | number) {
   const bytes = typeof b === 'bigint' ? Number(b) : b
@@ -96,10 +101,9 @@ export default function BillingRoute({ loaderData }: Route.ComponentProps) {
   const { plans = [], currentPlanId } = loaderData ?? {}
 
   return (
-    <div className="p-6">
+    <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Billing & Storage</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground">
           Choose a plan that fits your needs. Changing plans updates your quota
           immediately.
         </p>
