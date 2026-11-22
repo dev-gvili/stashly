@@ -12,6 +12,8 @@ import { redirect, type ShouldRevalidateFunction } from 'react-router'
 import type { Route } from './+types/favorites'
 import { SelectionProvider } from '../../components/stash/selection'
 import { FileCardDetail } from '@/components/core-components/file-card-variants';
+import { GenericEmptyState } from '@/components/states/generic-empty-state'
+import { EmptyFavoritesVector } from '@/components/states/vectors/empty-vectors'
 
 
 
@@ -79,9 +81,12 @@ export default function Favorites() {
         </GridLayout>
       </SelectionProvider>
       {items.length === 0 && (
-        <p className="text-muted-foreground text-sm text-center py-16">
-          No favorites yet. Heart an item to see it here.
-        </p>
+        <GenericEmptyState
+          icon={<EmptyFavoritesVector />}
+          title="No favorites yet"
+          description="Heart an item to see it here."
+          className="h-auto py-16"
+        />
       )}
       <div className="col-span-full flex justify-center mt-2">
         <LoadMoreItems loadMore={loadMore} isLoading={isLoading} hasMore={hasMore} />

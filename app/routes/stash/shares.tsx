@@ -12,7 +12,7 @@ import { Fragment } from 'react/jsx-runtime'
 import { SelectionProvider } from '../../components/stash/selection'
 import { LoadMoreItems } from '../../components/core-components/buttons'
 import { useId } from 'react'
-import { ShareIcon } from '@/components/icons'
+import { EmptySharesVector } from '@/components/states/vectors/empty-vectors'
 import { GenericEmptyState } from '@/components/states/generic-empty-state'
 
 // ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ export default ({ loaderData }: Route.ComponentProps) => {
   if (items.length === 0 && !isLoading) {
     return (
       <GenericEmptyState
-        icon={<ShareIcon className="size-20" />}
+        icon={<EmptySharesVector />}
         title="Nothing shared with you yet"
         description="Items shared with you via links or direct invitations will appear here."
       />

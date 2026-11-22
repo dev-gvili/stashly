@@ -11,6 +11,8 @@ import { motion } from 'framer-motion'
 import { redirect } from 'react-router'
 import type { Route } from './+types/pinned'
 import { SelectionProvider } from '../../components/stash/selection'
+import { GenericEmptyState } from '@/components/states/generic-empty-state'
+import { EmptyPinsVector } from '@/components/states/vectors/empty-vectors'
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const session = context.get(sessionContext)
@@ -46,9 +48,12 @@ export default function Pinned() {
         </GridLayout>
       </SelectionProvider>
       {items.length === 0 && (
-        <p className="text-muted-foreground text-sm text-center py-16">
-          No pins yet. Pin an item from its menu to see it here.
-        </p>
+        <GenericEmptyState
+          icon={<EmptyPinsVector />}
+          title="No pins yet"
+          description="Pin an item from its menu to see it here."
+          className="h-auto py-16"
+        />
       )}
       <div className="col-span-full flex justify-center mt-2">
         <LoadMoreItems loadMore={loadMore} isLoading={isLoading} hasMore={hasMore} />

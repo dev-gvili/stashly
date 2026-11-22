@@ -645,6 +645,191 @@ export function WorkspaceEmptyVector({ className }: VectorProps) {
   )
 }
 
-// ============================================================================
-// 3. ALL 14 PRISMA ITEMCATEGORY VECTORS
-// ============================================================================
+/** Favorites view with nothing hearted: a stash card with a floating heart slot. */
+export function EmptyFavoritesVector({ className }: VectorProps) {
+  return (
+    <svg
+      className={cn('h-28 w-42 shrink-0', className)}
+      viewBox="0 0 168 112"
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* Back dimmed stash card */}
+      <rect
+        className="fill-muted stroke-border"
+        fillOpacity="0.45"
+        x="46"
+        y="24"
+        width="64"
+        height="48"
+        rx="10"
+        strokeWidth="1.4"
+      />
+      {/* Front stash card */}
+      <rect
+        className="fill-card stroke-foreground"
+        strokeOpacity="0.82"
+        x="54"
+        y="32"
+        width="68"
+        height="52"
+        rx="11"
+        strokeWidth="1.5"
+      />
+      <path
+        className="stroke-muted-foreground"
+        strokeOpacity="0.55"
+        d="M66 66H96M66 73H86"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      {/* Floating heart badge */}
+      <g className="motion-safe:animate-stashly-float">
+        <circle
+          className="fill-primary stroke-primary motion-safe:animate-stashly-slot"
+          fillOpacity="0.2"
+          cx="88"
+          cy="48"
+          r="13"
+          strokeWidth="1.4"
+          strokeDasharray="3 2.5"
+        />
+        <path
+          className="fill-primary stroke-primary"
+          fillOpacity="0.36"
+          d="M88 54.5C88 54.5 81.2 50.1 81.2 45.4C81.2 43.3 82.8 41.7 84.8 41.7C86.2 41.7 87.4 42.5 88 43.6C88.6 42.5 89.8 41.7 91.2 41.7C93.2 41.7 94.8 43.3 94.8 45.4C94.8 50.1 88 54.5 88 54.5Z"
+          strokeWidth="1.45"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
+    </svg>
+  )
+}
+
+/** Pinned view with nothing pinned: a quick-access dock with an empty centre slot. */
+export function EmptyPinsVector({ className }: VectorProps) {
+  return (
+    <svg
+      className={cn('h-28 w-42 shrink-0', className)}
+      viewBox="0 0 168 112"
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* Quick-access dock rail */}
+      <rect
+        className="fill-card stroke-foreground"
+        strokeOpacity="0.82"
+        x="42"
+        y="36"
+        width="84"
+        height="46"
+        rx="12"
+        strokeWidth="1.5"
+      />
+      {/* Two unpinned slots */}
+      {[51, 99].map((x) => (
+        <rect
+          key={x}
+          className="fill-muted stroke-border"
+          fillOpacity="0.55"
+          x={x}
+          y="50"
+          width="18"
+          height="22"
+          rx="5"
+          strokeWidth="1.25"
+        />
+      ))}
+      {/* Centre pin target slot */}
+      <rect
+        className="fill-primary stroke-primary motion-safe:animate-stashly-slot"
+        fillOpacity="0.22"
+        x="75"
+        y="50"
+        width="18"
+        height="22"
+        rx="5"
+        strokeWidth="1.5"
+        strokeDasharray="3 2"
+      />
+      {/* Pin hovering over the centre slot */}
+      <g className="motion-safe:animate-stashly-float">
+        <rect
+          className="fill-primary stroke-primary"
+          fillOpacity="0.35"
+          x="78"
+          y="22"
+          width="12"
+          height="11"
+          rx="4"
+          strokeWidth="1.5"
+        />
+        <path
+          className="stroke-foreground"
+          d="M76 33H92M84 33V42"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+      </g>
+    </svg>
+  )
+}
+
+/** Shared view with nothing shared: an origin node bridged to an empty recipient slot. */
+export function EmptySharesVector({ className }: VectorProps) {
+  return (
+    <svg
+      className={cn('h-28 w-42 shrink-0', className)}
+      viewBox="0 0 168 112"
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* Origin node */}
+      <rect
+        className="fill-card stroke-foreground"
+        strokeOpacity="0.85"
+        x="38"
+        y="38"
+        width="34"
+        height="36"
+        rx="10"
+        strokeWidth="1.5"
+      />
+      <circle
+        className="fill-primary stroke-primary"
+        fillOpacity="0.38"
+        cx="55"
+        cy="56"
+        r="5"
+        strokeWidth="1.4"
+      />
+      {/* Share bridge */}
+      <path
+        className="stroke-primary motion-safe:animate-stashly-flow"
+        d="M72 56H96"
+        strokeWidth="1.6"
+        strokeDasharray="3.5 3"
+        strokeLinecap="round"
+      />
+      {/* Empty recipient slot */}
+      <rect
+        className="fill-primary stroke-primary motion-safe:animate-stashly-slot"
+        fillOpacity="0.16"
+        x="96"
+        y="38"
+        width="34"
+        height="36"
+        rx="10"
+        strokeWidth="1.5"
+        strokeDasharray="3.5 2.5"
+      />
+      <path
+        className="stroke-foreground"
+        d="M113 51V61M108 56H118"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}

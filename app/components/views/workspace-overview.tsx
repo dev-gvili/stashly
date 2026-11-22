@@ -1,6 +1,6 @@
 import { cn } from '@/utils/styles'
-import { ActivityFillIcon, UserIcon, FavoriteIcon, AddIcon, MoreIcon } from '@/components/icons'
-import { WorkspaceEmptyVector } from '@/components/states/vectors/empty-vectors'
+import { ActivityFillIcon, UserIcon, AddIcon, MoreIcon } from '@/components/icons'
+import { EmptyPinsVector, WorkspaceEmptyVector } from '@/components/states/vectors/empty-vectors'
 import type { WorkspaceMemberRole } from '@/prisma/enums'
 import {
   formatSize,
@@ -246,7 +246,7 @@ function OverviewOps({ workspace, members, pendingInvites, recentItems, pinnedIt
           </section>
         ) : (
           <section className="col-span-7 border border-dashed border-input rounded-md bg-card p-3 flex flex-col items-center justify-center gap-2 text-center">
-            <FavoriteIcon className="w-5 h-5 text-muted-foreground/40" />
+            <EmptyPinsVector />
             <p className="text-xs text-muted-foreground uppercase tracking-[0.15em]">No pinned items</p>
           </section>
         )}
