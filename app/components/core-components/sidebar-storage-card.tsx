@@ -1,0 +1,97 @@
+import { ChevronRightIcon } from '@/components/icons'
+import { UploadActorContext } from '@/machines/upload/upload.context'
+import type { QuotaApiRouteOutput } from '@/types/api.types'
+import { createDebouncer } from '@/utils/debounce'
+import { formatSize } from '@/utils/formaters'
+import { basisForPercent, cn } from '@/utils/styles'
+import { useEffect, useState } from 'react'
+import { href, Link, useLocation } from 'react-router'
+
+/**
+ * Storage usage card at the bottom of the app sidebar: used of total, a meter,
+ * and a link to the billing page.
+ *
+ * Reads `/api/quota` with a plain `fetch`, not a fetcher: a fetcher submission
+ * would revalidate every active loader. The layout loader never revalidates,
+ * so the quota is re-read on each navigation (deletes, trash, restore) and a
+ * second after the upload actor's last `items.created` (uploads).
+ * Renders nothing until the first answer arrives, rather than a made-up figure.
+ */
+export function SidebarStorageCard({ userId }: { userId: string }) {
+  const { pathname } = useLocation()
+  const [quota, setQuota] = useState<QuotaApiRouteOutput | null>(null)
+  // Bumped after uploads land, so the figure follows them without a navigation.
+  const [uploadTick, setUploadTick] = useState(0)
+  const upload = UploadActorContext.useActorRef()
+
+  useEffect(() => {
+    // A folder upload emits a batch per create, and under load the charge
+    // trails the rows by up to ~0.7 s: wait for the burst to settle, then read once.
+    const refresh = createDebouncer()
+    const subscription = upload.on('items.created', () =>
+      refresh.call(() => setUploadTick((n) => n + 1), 1000)
+    )
+    return () => {
+      subscription.unsubscribe()
+      refresh.cancel()
+    }
+  }, [upload])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch('/api/quota', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'find-quota' }),
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? (res.json() as Promise<QuotaApiRouteOutput>) : null))
+      .then((next) => {
+        if (next) setQuota(next)
+      })
+      .catch(() => {
+        // Aborted or offline: keep the last figure.
+      })
+    return () => controller.abort()
+  }, [pathname, uploadTick])
+
+  if (!quota) return null
+
+  const percent = quota.total ? (quota.used / quota.total) * 100 : 0
+
+  return (
+    <div className="font-stashly border-border/50 bg-background flex flex-col gap-3 rounded-2xl border p-4 group-data-[collapsible=icon]:hidden">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-foreground text-sm font-medium">Storage</span>
+        <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">
+          {formatSize('byte', 'unit', quota.used)} / {formatSize('byte', 'unit', quota.total)}
+        </span>
+      </div>
+      <div
+        role="meter"
+        aria-label="Storage used"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(percent)}
+        className="bg-muted flex h-1.5 overflow-hidden rounded-xs"
+      >
+        <span
+          className={cn(
+            'h-full rounded-xs',
+            quota.status === 'critical' || quota.status === 'exceeded'
+              ? 'bg-destructive'
+              : 'bg-primary',
+            basisForPercent(percent)
+          )}
+        />
+      </div>
+      <Link
+        to={href('/:me/settings/billing', { me: userId })}
+        className="text-primary flex items-center gap-1.5 text-sm hover:underline"
+      >
+        Get more space
+        <ChevronRightIcon className="size-4" />
+      </Link>
+    </div>
+  )
+}

@@ -24,6 +24,7 @@ import {
   StorageFillIcon,
   TrashFillIcon,
 } from '@/components/icons'
+import { SidebarStorageCard } from '@/components/core-components/sidebar-storage-card'
 import { NavMedia } from '@/components/navigation/nav-media'
 import { NavWorkspaces } from '@/components/navigation/nav-workspaces'
 import type { WorkspacesSidebarItem } from '@/types/stash.types'
@@ -246,6 +247,7 @@ export const AppSidebar = ({
         </ScrollArea>
       </SidebarContent>
       <SidebarFooter className="bg-card rounded-b-md">
+        <SidebarStorageCard userId={user.id} />
         <div className="flex items-center gap-2 group-data-[collapsible=icon]:flex-col">
           <div className="min-w-0 flex-1">
             <SidebarMenu>
