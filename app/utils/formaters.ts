@@ -367,3 +367,29 @@ export function expiryLabel(link: SharedLink, state: LinkState) {
   if (!link.expiresAt) return 'no expiry'
   return `expires ${toRelativeTime(link.expiresAt) ?? ''}`.trim()
 }
+
+/**
+ * Settings → Plan & billing's plan line: "50 GB · free forever", or the price
+ * and its billing interval, "500 GB · $80 / year". The interval is left out
+ * when it isn't known, never assumed.
+ */
+export function formatPlanLine({
+  storageLimit,
+  price,
+  interval,
+}: {
+  storageLimit: number
+  price: { amountCents: number; currency: string } | null
+  interval: { unit: string; count: number } | null
+}): string {
+  const size = formatSize('byte', 'unit', storageLimit)
+  if (!price) return `${size} · free forever`
+  const amount = new Intl.NumberFormat('en', {
+    style: 'currency',
+    currency: price.currency.toUpperCase(),
+    minimumFractionDigits: price.amountCents % 100 === 0 ? 0 : 2,
+  }).format(price.amountCents / 100)
+  if (!interval) return `${size} · ${amount}`
+  const per = interval.count === 1 ? interval.unit : `${interval.count} ${interval.unit}s`
+  return `${size} · ${amount} / ${per}`
+}

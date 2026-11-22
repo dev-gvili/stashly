@@ -817,6 +817,37 @@ export const settingsApiRouteInput = z.discriminatedUnion('intent', [
 ])
 
 // ====================================================== //
+// ================ Settings page routes ================ //
+// ====================================================== //
+
+/** `/:me/settings/profile`. The name is trimmed and length-checked in the action. */
+export const settingsProfileInput = z.discriminatedUnion('intent', [
+  z.object({ intent: z.literal('update_profile'), name: toUserText(z.string()) }),
+])
+
+export const notificationPrefKeys = z.enum(['comments', 'shares', 'ai', 'weekly'])
+export const aiPrefKeys = z.enum(['transcribe', 'caption', 'index'])
+
+/** A switch posts `value` as "true" / "false"; the form decoder makes those booleans. */
+export const settingsNotificationsInput = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('set_notification_pref'),
+    key: notificationPrefKeys,
+    value: z.boolean(),
+  }),
+])
+
+export const settingsAiInput = z.discriminatedUnion('intent', [
+  z.object({ intent: z.literal('set_ai_pref'), key: aiPrefKeys, value: z.boolean() }),
+])
+
+export const linkProviders = z.enum(['github', 'google', 'microsoft'])
+
+export const settingsAccountsInput = z.discriminatedUnion('intent', [
+  z.object({ intent: z.literal('unlink_account'), providerId: linkProviders }),
+])
+
+// ====================================================== //
 // ================= Members Api Route ================== //
 // ====================================================== //
 

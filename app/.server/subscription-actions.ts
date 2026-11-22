@@ -383,3 +383,62 @@ export async function setSubscriptionCanceled(stripeSubscriptionId: string, canc
     })
   })
 }
+
+// ---------------------------------------------------------------------------
+// Settings → Plan & billing
+// ---------------------------------------------------------------------------
+
+export interface PlanSummary {
+  name: string
+  type: StoragePlanType
+  storageLimit: number
+  /** Null on a free plan. */
+  price: { amountCents: number; currency: string } | null
+  /** Null when the plan is free or Stripe can't be read (the line then omits it). */
+  interval: { unit: string; count: number } | null
+}
+
+/**
+ * The plan the user is on (an active subscription's plan, else
+ * `user.storagePlanId`, else the free plan) with its Stripe price and billing
+ * interval. Stripe is read only for a paid plan with a price id; when it
+ * can't be reached the stored price stands and the interval is left out
+ * rather than guessed.
+ */
+export async function getPlanSummary(userId: string): Promise<PlanSummary> {
+  const [user, subscription] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { storagePlanId: true } }),
+    findActiveSubscriptionByOwner(userId),
+  ])
+  const planId = subscription?.storagePlanId ?? user?.storagePlanId
+  const plan =
+    (planId && (await prisma.storagePlan.findUnique({ where: { id: planId } }))) ||
+    (await prisma.storagePlan.findFirstOrThrow({ where: { type: 'free' } }))
+
+  let price: PlanSummary['price'] =
+    plan.priceCents && plan.currency ? { amountCents: plan.priceCents, currency: plan.currency } : null
+  let interval: PlanSummary['interval'] = null
+
+  if (plan.priceCents && plan.stripePriceId) {
+    try {
+      const stripePrice = await stripe.prices.retrieve(plan.stripePriceId)
+      if (stripePrice.unit_amount != null)
+        price = { amountCents: stripePrice.unit_amount, currency: stripePrice.currency }
+      if (stripePrice.recurring)
+        interval = {
+          unit: stripePrice.recurring.interval,
+          count: stripePrice.recurring.interval_count,
+        }
+    } catch {
+      // Stripe unreachable or the key unset (dev, CI): keep the stored price.
+    }
+  }
+
+  return {
+    name: plan.name,
+    type: plan.type,
+    storageLimit: Number(plan.storageLimit),
+    price,
+    interval,
+  }
+}

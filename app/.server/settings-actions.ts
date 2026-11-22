@@ -1,6 +1,6 @@
 import { prisma } from '@/services/db'
 import { track } from '@/services/vinktar'
-import { StashlyError, StashlyErrorCode, toRouteError } from '@/utils/api.errors'
+import { StashlyErrorCode, toRouteError } from '@/utils/api.errors'
 import type { Prisma } from '@/prisma/client'
 
 /**
@@ -78,4 +78,182 @@ export async function updateUserSettings({
     { userId }
   )
   return updated
+}
+
+/** `User.name` is `VarChar(50)`. */
+export const PROFILE_NAME_MAX = 50
+
+/**
+ * Trims a submitted full name and checks it fits `User.name`. Returns the
+ * value to store, or the message the Profile form shows under the field.
+ */
+export function validateProfileName(
+  raw: string
+): { ok: true; name: string } | { ok: false; error: string } {
+  const name = raw.trim()
+  if (!name) return { ok: false, error: 'Enter your name.' }
+  if (name.length > PROFILE_NAME_MAX)
+    return { ok: false, error: `Use ${PROFILE_NAME_MAX} characters or fewer.` }
+  return { ok: true, name }
+}
+
+// ---------------------------------------------------------------------------
+// Connected accounts
+// ---------------------------------------------------------------------------
+
+export const LINK_PROVIDERS = ['github', 'google', 'microsoft'] as const
+export type LinkProvider = (typeof LINK_PROVIDERS)[number]
+
+/**
+ * The email in an OIDC id token's payload, or null. Google and Microsoft sign
+ * in with one; GitHub has no id token, so its accounts show no address. The
+ * token was stored by better-auth from the provider, so only its claims are
+ * read here, not its signature.
+ */
+export function emailFromIdToken(idToken: string | null | undefined): string | null {
+  const payload = idToken?.split('.')[1]
+  if (!payload) return null
+  try {
+    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'))
+    return typeof claims?.email === 'string' && claims.email ? claims.email : null
+  } catch {
+    return null
+  }
+}
+
+/** One row per provider: linked (with the account's email when known) or not. */
+export async function listLinkedAccounts(userId: string) {
+  const accounts = await prisma.account.findMany({
+    where: { userId, providerId: { in: [...LINK_PROVIDERS] } },
+    select: { providerId: true, idToken: true },
+  })
+  return LINK_PROVIDERS.map((providerId) => {
+    const account = accounts.find((a) => a.providerId === providerId)
+    return {
+      providerId,
+      connected: Boolean(account),
+      email: account ? emailFromIdToken(account.idToken) : null,
+    }
+  })
+}
+
+/**
+ * Unlinks a sign-in provider. Refused when it is the user's only account,
+ * since they could then never sign in again; the Settings UI disables the
+ * button too, but this is the check that holds.
+ */
+export async function unlinkAccount({
+  userId,
+  providerId,
+}: {
+  userId: string
+  providerId: LinkProvider
+}) {
+  const removed = await prisma.$transaction(async (tx) => {
+    // Two unlinks at once would each count two accounts and leave none:
+    // the user row lock makes the count and the delete one step per user.
+    await tx.$queryRaw`SELECT id FROM "user" WHERE id = ${userId} FOR UPDATE`
+    const accounts = await tx.account.findMany({
+      where: { userId },
+      select: { id: true, providerId: true },
+    })
+    const target = accounts.find((a) => a.providerId === providerId)
+    if (!target) return false
+    if (accounts.length <= 1)
+      throw toRouteError(
+        StashlyErrorCode.CONFLICT,
+        'Connect another provider first — this is your only way to sign in.'
+      )
+    await tx.account.delete({ where: { id: target.id } })
+    return true
+  })
+  if (removed) track('account_unlinked', { provider: providerId }, { userId })
+  return removed
+}
+
+// ---------------------------------------------------------------------------
+// Notification and AI preferences (UserPreference, one row per user)
+// ---------------------------------------------------------------------------
+
+export const NOTIFICATION_PREF_COLUMNS = {
+  comments: 'notifyComments',
+  shares: 'notifyShares',
+  ai: 'notifyAi',
+  weekly: 'notifyWeekly',
+} as const
+
+export const AI_PREF_COLUMNS = {
+  transcribe: 'aiTranscribe',
+  caption: 'aiCaption',
+  index: 'aiIndex',
+} as const
+
+export type NotificationPrefKey = keyof typeof NOTIFICATION_PREF_COLUMNS
+export type AiPrefKey = keyof typeof AI_PREF_COLUMNS
+type PrefColumn =
+  | (typeof NOTIFICATION_PREF_COLUMNS)[NotificationPrefKey]
+  | (typeof AI_PREF_COLUMNS)[AiPrefKey]
+
+/** The schema defaults; a user with no `UserPreference` row has exactly these. */
+export const PREFERENCE_DEFAULTS: Record<PrefColumn, boolean> = {
+  notifyComments: true,
+  notifyShares: true,
+  notifyAi: false,
+  notifyWeekly: true,
+  aiTranscribe: true,
+  aiCaption: true,
+  aiIndex: true,
+}
+
+async function readPreferenceRow(userId: string) {
+  const row = await prisma.userPreference.findUnique({ where: { userId } })
+  return { ...PREFERENCE_DEFAULTS, ...(row ?? {}) }
+}
+
+export async function getNotificationPreferences(userId: string) {
+  const row = await readPreferenceRow(userId)
+  return Object.fromEntries(
+    Object.entries(NOTIFICATION_PREF_COLUMNS).map(([key, column]) => [key, row[column]])
+  ) as Record<NotificationPrefKey, boolean>
+}
+
+export async function getAiPreferences(userId: string) {
+  const row = await readPreferenceRow(userId)
+  return Object.fromEntries(
+    Object.entries(AI_PREF_COLUMNS).map(([key, column]) => [key, row[column]])
+  ) as Record<AiPrefKey, boolean>
+}
+
+async function writePreference(userId: string, column: PrefColumn, value: boolean) {
+  await prisma.userPreference.upsert({
+    where: { userId },
+    create: { userId, [column]: value },
+    update: { [column]: value },
+  })
+}
+
+export async function setNotificationPreference({
+  userId,
+  key,
+  value,
+}: {
+  userId: string
+  key: NotificationPrefKey
+  value: boolean
+}) {
+  await writePreference(userId, NOTIFICATION_PREF_COLUMNS[key], value)
+  track('preference_updated', { group: 'notifications', key, enabled: value }, { userId })
+}
+
+export async function setAiPreference({
+  userId,
+  key,
+  value,
+}: {
+  userId: string
+  key: AiPrefKey
+  value: boolean
+}) {
+  await writePreference(userId, AI_PREF_COLUMNS[key], value)
+  track('preference_updated', { group: 'ai', key, enabled: value }, { userId })
 }

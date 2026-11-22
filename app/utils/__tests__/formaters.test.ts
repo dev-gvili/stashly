@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { capitalize, formatTime, formatSize, datetime, currency } from '../formaters'
+import { capitalize, formatTime, formatSize, datetime, currency, formatPlanLine } from '../formaters'
 
 describe('capitalize', () => {
   it('capitalizes the first letter of a word', () => {
@@ -115,5 +115,34 @@ describe('currency', () => {
   it('formats zero as currency', () => {
     const result = currency('en-US', 'USD', 0)
     expect(result).toContain('0')
+  })
+})
+
+describe('formatPlanLine', () => {
+  const GB50 = 50 * 1000 ** 3
+  it('says free forever on a free plan', () => {
+    expect(formatPlanLine({ storageLimit: GB50, price: null, interval: null })).toBe(
+      `${formatSize('byte', 'unit', GB50)} · free forever`
+    )
+  })
+
+  it('shows the price per interval, and a count when it is more than one', () => {
+    const price = { amountCents: 8000, currency: 'usd' }
+    expect(
+      formatPlanLine({ storageLimit: GB50, price, interval: { unit: 'year', count: 1 } })
+    ).toMatch(/ · \$80 \/ year$/)
+    expect(
+      formatPlanLine({ storageLimit: GB50, price, interval: { unit: 'month', count: 3 } })
+    ).toMatch(/ · \$80 \/ 3 months$/)
+  })
+
+  it('leaves the interval out when it is unknown, and keeps cents', () => {
+    expect(
+      formatPlanLine({
+        storageLimit: GB50,
+        price: { amountCents: 499, currency: 'usd' },
+        interval: null,
+      })
+    ).toMatch(/ · \$4\.99$/)
   })
 })

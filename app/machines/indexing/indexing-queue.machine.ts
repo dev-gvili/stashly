@@ -26,6 +26,7 @@ import { setup, assign, raise, type AnyActorRef } from 'xstate'
 import { indexingItemMachine } from './indexing-item.machine'
 import { embedMachine } from './embed.machine'
 import { ocrMachine } from './ocr.machine'
+import { getAiGates } from './ai-gates'
 import type {
   DeferredJob,
   IndexItemOutput,
@@ -143,7 +144,8 @@ export const indexingQueueMachine = setup({
           job: { itemId, chunks },
         })
       }
-      if (needsOcr) {
+      // Settings → AI & privacy → "Read PDFs for search" off: no OCR pass.
+      if (needsOcr && getAiGates().index) {
         added.push({ kind: 'ocr', key: `ocr-${itemId}`, job: { itemId, file } })
       }
       if (added.length === 0) return {}
