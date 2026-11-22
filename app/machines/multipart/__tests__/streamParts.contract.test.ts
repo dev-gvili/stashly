@@ -4,6 +4,7 @@ import type { CompletedPart } from '@aws-sdk/client-s3'
 import { streamParts as concurrentStreamParts } from '../s3.multipart.concurrent'
 import { PauseController } from '../pause-controller'
 import {
+  createPartSlots,
   streamParts as streamStreamParts,
   streamParts,
 } from '../s3.multipart.stream'
@@ -292,6 +293,63 @@ describe.each([
 
     expect(onDone).toHaveBeenCalledOnce()
     expect(putAttempts).toBe(2) // first attempt 429, second attempt 200
+  })
+})
+
+// ─── Parts sending at once, across files ─────────────────────────────────────
+
+describe('stream implementation, shared part slots', () => {
+  const CHUNK = 5 * 1024 * 1024
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('caps parts sending at once across files and finishes the earlier file first', async () => {
+    // Uncapped, 57 files sent up to 458 parts at once over a 9.8 MB/s link:
+    // every part took ~157 s and every file crawled in 10-part jumps.
+    const slots = createPartSlots(2)
+    let inFlight = 0
+    let peak = 0
+    const events: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (!url.startsWith(PRESIGN_URL)) {
+          const body = JSON.parse(init!.body as string)
+          const urls = Array.from(
+            { length: body.count },
+            (_, i) => `${PRESIGN_URL}/${body.key}/${body.from + i}`
+          )
+          return { ok: true, status: 200, json: async () => ({ urls }) }
+        }
+        const file = url.split('/').at(-2)
+        inFlight++
+        peak = Math.max(peak, inFlight)
+        events.push(`start ${file}`)
+        await new Promise((r) => setTimeout(r, 5))
+        inFlight--
+        return putResponse()
+      })
+    )
+
+    const run = (key: string) =>
+      streamParts({
+        ...makeInput({
+          key,
+          file: makeFile(2 * CHUNK + 100), // 3 parts
+          concurrency: 10,
+          onDone: () => events.push(`done ${key}`),
+        }),
+        partSlots: slots,
+      })
+    await Promise.all([run('a'), run('b')])
+
+    expect(peak).toBe(2)
+    // a's last part takes a slot before b's first, though b queued while a
+    // was sending; b only gets the slot a no longer needs.
+    expect(events.lastIndexOf('start a')).toBeLessThan(events.indexOf('start b'))
   })
 })
 

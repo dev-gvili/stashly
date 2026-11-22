@@ -11,6 +11,82 @@ const PART_URL_WINDOW = 100
 /** How far ahead of the part being sent the next window is requested. */
 const PART_URL_PREFETCH = 20
 
+/**
+ * Parts sending at once across every file in the tab. Each file still runs
+ * `concurrency` workers, but a PUT waits for one of these slots, and the
+ * earliest-started file gets them first. Uncapped, 100 files × 10 workers
+ * shared one link: a real 57-file drop sent up to 458 parts at once over
+ * 9.8 MB/s, each 5 MB part took a median 157 s, and every file advanced in
+ * 10-part jumps minutes apart, so most looked frozen at ~50%.
+ */
+const PART_SLOTS = 12
+
+export interface PartSlots {
+  /**
+   * Waits for a slot; `seq` orders files (lower first), then arrival. Rejects
+   * with an AbortError, and leaves the queue, when `signal` aborts. Resolves
+   * with the release, which is safe to call twice.
+   */
+  acquire(seq: number, signal: AbortSignal): Promise<() => void>
+}
+
+export function createPartSlots(size: number): PartSlots {
+  let free = size
+  let arrivals = 0
+  const waiting: { seq: number; order: number; grant: () => void }[] = []
+
+  function grantNext() {
+    while (free > 0 && waiting.length > 0) {
+      let best = 0
+      for (let i = 1; i < waiting.length; i++) {
+        const w = waiting[i]
+        const b = waiting[best]
+        if (w.seq < b.seq || (w.seq === b.seq && w.order < b.order)) best = i
+      }
+      const [next] = waiting.splice(best, 1)
+      free--
+      next.grant()
+    }
+  }
+
+  return {
+    acquire(seq, signal) {
+      return new Promise((resolve, reject) => {
+        if (signal.aborted) {
+          return reject(new DOMException('Upload aborted', 'AbortError'))
+        }
+        let released = false
+        const release = () => {
+          if (released) return
+          released = true
+          free++
+          grantNext()
+        }
+        const onAbort = () => {
+          const i = waiting.indexOf(entry)
+          if (i >= 0) waiting.splice(i, 1)
+          reject(new DOMException('Upload aborted', 'AbortError'))
+        }
+        const entry = {
+          seq,
+          order: arrivals++,
+          grant: () => {
+            signal.removeEventListener('abort', onAbort)
+            resolve(release)
+          },
+        }
+        signal.addEventListener('abort', onAbort, { once: true })
+        waiting.push(entry)
+        grantNext()
+      })
+    },
+  }
+}
+
+const sharedPartSlots = createPartSlots(PART_SLOTS)
+/** Start order of `streamParts` calls: the earlier file takes free slots first. */
+let fileSeq = 0
+
 /** How many parts `streamParts` cuts a file of `size` bytes into. */
 export function partCountFor(size: number): number {
   return Math.ceil(size / CHUNK_SIZE)
@@ -240,6 +316,8 @@ export interface StreamPartsInput {
   abortController: AbortController
   pauseController?: PauseController
   concurrency?: number
+  /** Slots shared with other files; tests pass their own. */
+  partSlots?: PartSlots
 }
 
 /**
@@ -261,10 +339,12 @@ export async function streamParts({
   abortController,
   pauseController,
   concurrency = DEFAULT_CONCURRENCY,
+  partSlots = sharedPartSlots,
 }: StreamPartsInput): Promise<void> {
   if (file.size === 0) {
     throw new Error('Cannot upload an empty file')
   }
+  const seq = fileSeq++
 
   const totalParts = partCountFor(file.size)
   const results: CompletedPart[] = new Array(totalParts)
@@ -296,7 +376,10 @@ export async function streamParts({
       const signal = pauseSignal
         ? AbortSignal.any([abortController.signal, pauseSignal])
         : abortController.signal
+      // Held only while the PUT runs. A pause or abort drops the wait too.
+      let release: (() => void) | undefined
       try {
+        release = await partSlots.acquire(seq, signal)
         try {
           return await putPart(url, blob, signal)
         } catch (error) {
@@ -309,6 +392,8 @@ export async function streamParts({
       } catch (error) {
         if (!abortController.signal.aborted && pauseSignal?.aborted) continue
         throw error
+      } finally {
+        release?.()
       }
     }
   }
