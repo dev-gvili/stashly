@@ -275,15 +275,43 @@ export async function streamParts({
     initial: initialPartUrls,
     signal: abortController.signal,
   })
-  const putPart = (url: string, blob: Blob) =>
-    retryFetch(
-      url,
-      { method: 'PUT', body: blob, signal: abortController.signal },
-      5,
-      2500,
-      2,
-      abortController.signal
-    )
+  const putPart = (url: string, blob: Blob, signal: AbortSignal) =>
+    retryFetch(url, { method: 'PUT', body: blob, signal }, 5, 2500, 2, signal)
+
+  const abortError = () => new DOMException('Upload aborted', 'AbortError')
+
+  /**
+   * Sends one part. A pause cancels the send, and the part goes again from
+   * its start after resume; only a user abort or a real failure ends it.
+   */
+  async function sendPart(
+    partNumber: number,
+    blob: Blob,
+    url: string
+  ): Promise<Response> {
+    while (true) {
+      if (pauseController) await pauseController.waitIfPaused()
+      if (abortController.signal.aborted) throw abortError()
+      const pauseSignal = pauseController?.signal
+      const signal = pauseSignal
+        ? AbortSignal.any([abortController.signal, pauseSignal])
+        : abortController.signal
+      try {
+        try {
+          return await putPart(url, blob, signal)
+        } catch (error) {
+          // An expired URL answers 403. Sign this part again, once: a 403
+          // that isn't expiry (access gone, upload aborted) fails the retry too.
+          if ((error as { status?: number }).status !== 403) throw error
+          url = await partUrls.refresh(partNumber)
+          return await putPart(url, blob, signal)
+        }
+      } catch (error) {
+        if (!abortController.signal.aborted && pauseSignal?.aborted) continue
+        throw error
+      }
+    }
+  }
 
   // Shared across all concurrent chunk-streams so progress reflects the whole file
   const sharedState: SharedProgressState = {
@@ -299,9 +327,12 @@ export async function streamParts({
   async function worker(): Promise<void> {
     while (taskIndex < totalParts) {
       if (pauseController) await pauseController.waitIfPaused()
-      if (abortController.signal.aborted) {
-        throw new DOMException('Upload aborted', 'AbortError')
-      }
+      if (abortController.signal.aborted) throw abortError()
+      // Checked again: a worker that waited out a pause saw a part left before
+      // it, and the others may have taken the last ones meanwhile. Without
+      // this every waiting worker took a part number past the end, complete
+      // got empty extra parts, and S3 refused it, so a resumed file failed.
+      if (taskIndex >= totalParts) return
 
       const i = taskIndex++
       const offset = i * CHUNK_SIZE
@@ -311,9 +342,7 @@ export async function streamParts({
       // 1. This part's presigned URL, usually signed already
       const presignedUrl = await partUrls.get(partNumber)
 
-      if (abortController.signal.aborted) {
-        throw new DOMException('Upload aborted', 'AbortError')
-      }
+      if (abortController.signal.aborted) throw abortError()
 
       // 2. Upload the chunk to S3.
       // NOTE: S3 requires a Content-Length header on every PUT. Browsers treat
@@ -322,15 +351,7 @@ export async function streamParts({
       // browser set Content-Length automatically from blob.size.
       // ProgressReportingTransformStream is therefore used outside the fetch body
       // (see the class definition above) and progress is reported post-upload below.
-      let uploadResponse: Response
-      try {
-        uploadResponse = await putPart(presignedUrl, blob)
-      } catch (error) {
-        // An expired URL answers 403. Sign this part again, once: a 403 that
-        // isn't expiry (access gone, upload aborted) fails the retry too.
-        if ((error as { status?: number }).status !== 403) throw error
-        uploadResponse = await putPart(await partUrls.refresh(partNumber), blob)
-      }
+      const uploadResponse = await sendPart(partNumber, blob, presignedUrl)
 
       const etag = uploadResponse.headers.get('ETag')
       if (!etag) {

@@ -3,7 +3,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { CompletedPart } from '@aws-sdk/client-s3'
 import { streamParts as concurrentStreamParts } from '../s3.multipart.concurrent'
 import { PauseController } from '../pause-controller'
-import { streamParts as streamStreamParts } from '../s3.multipart.stream'
+import {
+  streamParts as streamStreamParts,
+  streamParts,
+} from '../s3.multipart.stream'
 import type { StreamPartsInput } from '../s3.multipart.concurrent'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -289,5 +292,117 @@ describe.each([
 
     expect(onDone).toHaveBeenCalledOnce()
     expect(putAttempts).toBe(2) // first attempt 429, second attempt 200
+  })
+})
+
+// ─── Pause in the live implementation ────────────────────────────────────────
+
+describe('stream implementation, pause', () => {
+  const CHUNK = 5 * 1024 * 1024
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  /** A PUT that rejects like `fetch` does once its signal aborts. */
+  function abortable(init: RequestInit | undefined, answer: () => unknown) {
+    return new Promise((resolve, reject) => {
+      const signal = init?.signal
+      if (signal?.aborted) return reject(new DOMException('aborted', 'AbortError'))
+      signal?.addEventListener('abort', () =>
+        reject(new DOMException('aborted', 'AbortError'))
+      )
+      queueMicrotask(() => resolve(answer()))
+    })
+  }
+
+  it('hands complete exactly one part per chunk when paused near the end', async () => {
+    // 5 parts, 4 workers: a pause while the first 4 are in flight leaves 1
+    // part for 4 waiting workers. Each used to take a part number on resume,
+    // so complete got parts 6–8 as empty extras and S3 refused it.
+    const file = makeFile(4 * CHUNK + 100)
+    const pauseController = new PauseController()
+    const sent: number[] = []
+    let paused = false
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit) => {
+        if (!url.startsWith(PRESIGN_URL)) {
+          const body = JSON.parse(init!.body as string)
+          const urls = Array.from(
+            { length: body.count },
+            (_, i) => `${PRESIGN_URL}/${body.from + i}`
+          )
+          return Promise.resolve({ ok: true, status: 200, json: async () => ({ urls }) })
+        }
+        if (!paused) {
+          paused = true
+          pauseController.pause()
+          setTimeout(() => pauseController.resume(), 20)
+        }
+        return abortable(init, () => {
+          sent.push(Number(url.split('/').pop()))
+          return putResponse(`"e"`)
+        })
+      })
+    )
+
+    const onDone = vi.fn()
+    await streamParts(
+      makeInput({ file, onDone, pauseController, concurrency: 4 })
+    )
+
+    const [parts] = onDone.mock.calls[0] as [CompletedPart[]]
+    expect(parts.map((p) => p.PartNumber)).toEqual([1, 2, 3, 4, 5])
+    expect(Math.max(...sent)).toBe(5)
+  })
+
+  it('cancels the parts in flight on pause and sends them again on resume', async () => {
+    const file = makeFile(2 * CHUNK + 100) // 3 parts
+    const pauseController = new PauseController()
+    const signals: AbortSignal[] = []
+    let release!: () => void
+    const released = new Promise<void>((r) => (release = r))
+    let twoInFlight!: () => void
+    const inFlight = new Promise<void>((r) => (twoInFlight = r))
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit) => {
+        if (url !== PRESIGN_URL) return presignResponse(init)
+        signals.push(init!.signal!)
+        if (signals.length === 2) twoInFlight()
+        return new Promise((resolve, reject) => {
+          init!.signal!.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError'))
+          )
+          released.then(() => resolve(putResponse()))
+        })
+      })
+    )
+
+    const onProgress = vi.fn()
+    const onDone = vi.fn()
+    const upload = streamParts(
+      makeInput({ file, onProgress, onDone, pauseController, concurrency: 2 })
+    )
+
+    await inFlight
+    pauseController.pause()
+    await new Promise((r) => setTimeout(r, 10))
+
+    // The pause stopped the bytes, not only the next part.
+    expect(signals.slice(0, 2).every((s) => s.aborted)).toBe(true)
+    expect(onProgress).not.toHaveBeenCalled()
+    expect(signals).toHaveLength(2)
+
+    pauseController.resume()
+    release()
+    await upload
+
+    const [parts] = onDone.mock.calls[0] as [CompletedPart[]]
+    expect(parts.map((p) => p.PartNumber)).toEqual([1, 2, 3])
+    expect(onProgress.mock.calls.at(-1)![0].percentage).toBe(100)
   })
 })
