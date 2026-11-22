@@ -67,22 +67,70 @@ export function isAmbiguousTsFile(nameOrKey: string): boolean {
  * corrected value.
  */
 export async function normalizeFile(file: File): Promise<File> {
-  if (!isAmbiguousTsFile(file.name)) return file
+  if (!isAmbiguousTsFile(file.name)) {
+    const mediaType = untypedMediaType(file)
+    return mediaType ? retype(file, mediaType) : file
+  }
 
   const head = new Uint8Array(await file.slice(0, 1024).arrayBuffer())
   const { contentType } = sniffTsBytes(head)
   if (contentType === file.type) return file
+  return retype(file, contentType)
+}
 
+/**
+ * Media types by extension, for a file that reaches us untyped. Chrome takes
+ * the type from the OS, and a Windows machine with nothing registered for
+ * `.m4a` (or a drag from some apps) hands over `''`. `toCategory` reads media
+ * from the type alone, so such a file was filed as unknown with no stored
+ * type, and its metadata was never read.
+ */
+const MEDIA_TYPES: Record<string, string> = {
+  m4a: 'audio/mp4',
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  flac: 'audio/flac',
+  aac: 'audio/aac',
+  ogg: 'audio/ogg',
+  oga: 'audio/ogg',
+  opus: 'audio/opus',
+  weba: 'audio/webm',
+  mp4: 'video/mp4',
+  m4v: 'video/mp4',
+  mkv: 'video/x-matroska',
+  mov: 'video/quicktime',
+  webm: 'video/webm',
+  avi: 'video/x-msvideo',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  avif: 'image/avif',
+  heic: 'image/heic',
+  heif: 'image/heif',
+  svg: 'image/svg+xml',
+}
+
+/** The extension's media type when the browser gave none, else `undefined`. */
+function untypedMediaType(file: File): string | undefined {
+  if (file.type !== '' && file.type !== 'application/octet-stream') return
+  const dot = file.name.lastIndexOf('.')
+  if (dot === -1) return
+  return MEDIA_TYPES[file.name.slice(dot + 1).toLowerCase()]
+}
+
+function retype(file: File, type: string): File {
   const normalized = new File([file], file.name, {
-    type: contentType,
+    type,
     lastModified: file.lastModified,
   })
 
   // `webkitRelativePath` carries the folder hierarchy for directory uploads,
   // but it's read-only and the `File` constructor has no way to set it — so a
   // reconstructed file comes back with it empty and uploads flat, losing its
-  // parent folders. Reinstate it explicitly. (Only `.ts`/`.tsx` files hit this
-  // path, which is exactly why a source-tree upload flattened.)
+  // parent folders. Reinstate it explicitly. (`.ts`/`.tsx` files hit this path
+  // first, which is exactly why a source-tree upload flattened.)
   if (file.webkitRelativePath) {
     Object.defineProperty(normalized, 'webkitRelativePath', {
       value: file.webkitRelativePath,

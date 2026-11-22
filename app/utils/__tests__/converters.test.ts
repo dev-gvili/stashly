@@ -13,7 +13,9 @@ import {
   toZodArraySchema,
   toZodOrderBySchema,
   toTypedObjects,
+  toCategory,
 } from '../converters'
+import { normalizeFile } from '../sniff'
 import type { ItemType } from '@/prisma/browser'
 import { z } from 'zod'
 
@@ -455,5 +457,33 @@ describe('toMediaFile', () => {
     const media = toMediaFile(new File(['x'], 'b.pdf'), 'item_root')
     expect(media.uploadPath).toBe('item_root/b.pdf')
     expect(media.key).toBe(`item_root/${media.id}/b.pdf`)
+  })
+})
+
+describe('normalizeFile media types', () => {
+  it('types a media file that arrives with no type from its extension', async () => {
+    // Chrome hands a File no type when the OS has none registered for the
+    // extension; toCategory reads media from the type only, so an .m4a was
+    // filed as unknown with no stored type.
+    const file = new File(['x'], 'talk.M4A')
+    Object.defineProperty(file, 'webkitRelativePath', { value: 'audios/talk.M4A' })
+    const normalized = await normalizeFile(file)
+    expect(normalized.type).toBe('audio/mp4')
+    expect(toCategory(normalized)).toBe('audio')
+    expect(normalized.webkitRelativePath).toBe('audios/talk.M4A')
+  })
+
+  it('types an octet-stream video and image by extension', async () => {
+    const mkv = await normalizeFile(new File(['x'], 'clip.mkv', { type: 'application/octet-stream' }))
+    const heic = await normalizeFile(new File(['x'], 'photo.heic'))
+    expect(toCategory(mkv)).toBe('video')
+    expect(toCategory(heic)).toBe('image')
+  })
+
+  it('leaves a file the browser typed, or an unknown extension, as it is', async () => {
+    const typed = new File(['x'], 'a.m4a', { type: 'audio/x-m4a' })
+    const other = new File(['x'], 'notes.xyz')
+    expect(await normalizeFile(typed)).toBe(typed)
+    expect(await normalizeFile(other)).toBe(other)
   })
 })
