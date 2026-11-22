@@ -2113,6 +2113,119 @@ const AiTagsIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 export { AiTagsIcon }
 
+// ─── AI Feature Icons (sparkle duotone) ──────────────────────────────────────
+// Solid sparkle + muted (0.4) body + solid key detail, matching the AI icon set.
+
+// Transcribe audio — microphone with transcript lines on the capsule
+const AiTranscribeAudioIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M5 2.5c.42 2.24 1.26 3.08 3.5 3.5-2.24.42-3.08 1.26-3.5 3.5-.42-2.24-1.26-3.08-3.5-3.5 2.24-.42 3.08-1.26 3.5-3.5Z"
+    />
+    <rect x={12} y={2} width={6} height={13} rx={3} fill="currentColor" opacity={0.4} />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M13.75 6.5h2.5M13.75 9.5h2.5M9.5 11.5a5.5 5.5 0 0 0 11 0M15 17v4M12.5 21.25h5"
+    />
+  </svg>
+)
+export { AiTranscribeAudioIcon }
+
+// Transcribe video — camera whose body holds transcript lines
+const AiTranscribeVideoIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M5.5 1c.42 2.24 1.26 3.08 3.5 3.5-2.24.42-3.08 1.26-3.5 3.5-.42-2.24-1.26-3.08-3.5-3.5 2.24-.42 3.08-1.26 3.5-3.5Z"
+    />
+    <rect x={2} y={9} width={14} height={12} rx={3} fill="currentColor" opacity={0.4} />
+    <path
+      fill="currentColor"
+      d="m17 13 3.48-2.03A1 1 0 0 1 22 11.83v6.34a1 1 0 0 1-1.52.86L17 17z"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M5.5 13.5h5M5.5 16.75h7"
+    />
+  </svg>
+)
+export { AiTranscribeVideoIcon }
+
+// OCR — scan frame (sparkle in the open corner) around a text glyph
+const AiOcrIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M5.5 2c.42 2.24 1.26 3.08 3.5 3.5-2.24.42-3.08 1.26-3.5 3.5-.42-2.24-1.26-3.08-3.5-3.5 2.24-.42 3.08-1.26 3.5-3.5Z"
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.5}
+      d="M15.5 3H18a3 3 0 0 1 3 3v2.5M21 15.5V18a3 3 0 0 1-3 3h-2.5M8.5 21H6a3 3 0 0 1-3-3v-2.5"
+      opacity={0.4}
+    />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.75}
+      d="M8.5 9h7M12 9v7.5"
+    />
+  </svg>
+)
+export { AiOcrIcon }
+
+// Captions — screen with subtitle bars along the bottom
+const AiCaptionsIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    fill="none"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path
+      fill="currentColor"
+      d="M19.5 1c.42 2.24 1.26 3.08 3.5 3.5-2.24.42-3.08 1.26-3.5 3.5-.42-2.24-1.26-3.08-3.5-3.5 2.24-.42 3.08-1.26 3.5-3.5Z"
+    />
+    <rect x={2} y={9} width={18} height={12} rx={3} fill="currentColor" opacity={0.4} />
+    <path
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.75}
+      d="M5.5 14.5h3M11.5 14.5h5M5.5 17.75h8"
+    />
+  </svg>
+)
+export { AiCaptionsIcon }
+
 // Sentiment — emotional spectrum: smile arc / frown arc / needle reading
 
 // Generate — branching tree: single root expanding into many outputs
