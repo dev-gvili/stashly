@@ -44,10 +44,11 @@ export function ProfileSettings({ user }: { user: ProfileUser }) {
         <input type="hidden" name="intent" value="update_profile" />
 
         <div className="flex items-center gap-4">
-          {/* Round because the design draws it round. */}
-          <Avatar className="size-14 rounded-full">
+          {/* Squarish like the sidebar's avatar: project rules win over the
+              mockup's circle (no rounded-full, owner's rule 13 Nov). */}
+          <Avatar className="size-14 rounded-md">
             {user.image && <AvatarImage src={user.image} alt="" />}
-            <AvatarFallback className="bg-secondary text-lg text-secondary-foreground">
+            <AvatarFallback className="rounded-md bg-secondary text-lg text-secondary-foreground">
               {toUserInitial(user.name)}
             </AvatarFallback>
           </Avatar>
