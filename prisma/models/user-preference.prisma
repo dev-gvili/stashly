@@ -1,0 +1,19 @@
+/// One row per user for the Settings switches (Notifications, AI & privacy).
+/// A missing row means every default; it is created on the first change.
+model UserPreference {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Notifications
+  notifyComments Boolean @default(true) // Comments on my files
+  notifyShares   Boolean @default(true) // Shares & invitations
+  notifyAi       Boolean @default(false) // AI processing finished
+  notifyWeekly   Boolean @default(true) // Weekly storage summary (email)
+
+  // AI & privacy: which in-browser pipelines run on new uploads
+  aiTranscribe Boolean @default(true) // Whisper on audio and video
+  aiCaption    Boolean @default(true) // Image captions (no captioning pipeline yet)
+  aiIndex      Boolean @default(true) // PDF OCR into the search index
+
+  updatedAt DateTime @updatedAt
+}

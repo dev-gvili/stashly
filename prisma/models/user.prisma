@@ -18,6 +18,9 @@ model User {
   // Monitoring and Auditing
   notifications Notification[]
 
+  // Settings switches (Notifications, AI & privacy)
+  preference UserPreference?
+
   // Authentication and Authorization 
   permissions Permission[]
   accounts    Account[]
