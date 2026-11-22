@@ -20,7 +20,8 @@ const PROVIDERS: Record<ProviderId, { name: string; icon: ComponentType<SVGProps
 interface LinkedAccount {
   providerId: ProviderId
   connected: boolean
-  email: string | null
+  /** "@login" for GitHub, the email for Google and Microsoft, when known. */
+  handle: string | null
 }
 
 /**
@@ -121,8 +122,8 @@ function AccountRow({
     })
 
   const status = account.connected
-    ? account.email
-      ? `Connected as ${account.email}`
+    ? account.handle
+      ? `Connected as ${account.handle}`
       : 'Connected'
     : 'Not connected'
 

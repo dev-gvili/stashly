@@ -121,20 +121,51 @@ export function emailFromIdToken(idToken: string | null | undefined): string | n
   }
 }
 
-/** One row per provider: linked (with the account's email when known) or not. */
+/**
+ * The GitHub username for a stored access token, from GitHub's `/user`, or
+ * null when GitHub doesn't answer in 2 s or refuses the token. GitHub signs in
+ * without an id token, so this is the only way to name the account.
+ */
+async function githubLogin(accessToken: string | null): Promise<string | null> {
+  if (!accessToken) return null
+  try {
+    const res = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'stashly',
+      },
+      signal: AbortSignal.timeout(2000),
+    })
+    if (!res.ok) return null
+    const body = (await res.json()) as { login?: unknown }
+    return typeof body.login === 'string' && body.login ? body.login : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * One row per provider: linked or not, and who it is linked as when that is
+ * known: the email in a Google or Microsoft id token, the GitHub username.
+ */
 export async function listLinkedAccounts(userId: string) {
   const accounts = await prisma.account.findMany({
     where: { userId, providerId: { in: [...LINK_PROVIDERS] } },
-    select: { providerId: true, idToken: true },
+    select: { providerId: true, idToken: true, accessToken: true },
   })
-  return LINK_PROVIDERS.map((providerId) => {
-    const account = accounts.find((a) => a.providerId === providerId)
-    return {
-      providerId,
-      connected: Boolean(account),
-      email: account ? emailFromIdToken(account.idToken) : null,
-    }
-  })
+  return Promise.all(
+    LINK_PROVIDERS.map(async (providerId) => {
+      const account = accounts.find((a) => a.providerId === providerId)
+      if (!account) return { providerId, connected: false, handle: null }
+      const login = providerId === 'github' ? await githubLogin(account.accessToken) : null
+      return {
+        providerId,
+        connected: true,
+        handle: login ? `@${login}` : emailFromIdToken(account.idToken),
+      }
+    })
+  )
 }
 
 /**
