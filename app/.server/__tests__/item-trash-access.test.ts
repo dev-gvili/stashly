@@ -1,6 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/services/db'
-import { deleteItem, deleteItems, restoreItem, restoreItems, trashItem, trashItems } from '@/services/item-actions'
+import {
+  deleteItem,
+  deleteItems,
+  renameItem,
+  restoreItem,
+  restoreItems,
+  trashItem,
+  trashItems,
+} from '@/services/item-actions'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
@@ -129,6 +137,28 @@ describe('restore requires write access', () => {
     await expect(restoreItems([mine, theirs], strangerId)).rejects.toMatchObject({ errorCode: 'FORBIDDEN', status: 403 })
     expect(await statusOf(mine)).toBe('trashed')
     expect(await statusOf(theirs)).toBe('trashed')
+  })
+})
+
+// Rename once checked nothing either: any signed-in user could rename any item by id.
+describe('rename requires write access', () => {
+  const nameOf = async (id: string) => (await prisma.item.findUniqueOrThrow({ where: { id } })).name
+
+  it('refuses a user with no access, or only read: 403, name untouched', async () => {
+    const item = await makeItem('keep-this-name')
+    await expect(renameItem(item, 'taken', strangerId)).rejects.toMatchObject({ errorCode: 'FORBIDDEN', status: 403 })
+    await grant(strangerId, item, 'read')
+    await expect(renameItem(item, 'taken', strangerId)).rejects.toMatchObject({ errorCode: 'FORBIDDEN', status: 403 })
+    expect(await nameOf(item)).toBe('keep-this-name')
+  })
+
+  it('allows the owner and a user granted write access', async () => {
+    const item = await makeItem('before')
+    await renameItem(item, 'by-owner', ownerId)
+    expect(await nameOf(item)).toBe('by-owner')
+    await grant(strangerId, item, 'write')
+    await renameItem(item, 'by-collaborator', strangerId)
+    expect(await nameOf(item)).toBe('by-collaborator')
   })
 })
 

@@ -212,20 +212,24 @@ export async function getItemWithPermissions(userId: string, itemId: string) {
 /**
  * Renames an item.
  * If the item is a folder, this triggers a path update for all descendants.
- * A rename activity entry is recorded in the background.
+ * A rename activity entry is recorded in the background. Needs `write` on
+ * the item (403 otherwise): it once checked nothing, so any signed-in user
+ * could rename any item whose id they knew.
  *
  * @param itemId - The ID of the item to rename.
  * @param newName - The new display name for the item.
+ * @param userId - The user renaming it.
  *
  * @example
  * // Rename a file
- * const item = await renameItem('item_123', 'vacation-photos.zip');
+ * const item = await renameItem('item_123', 'vacation-photos.zip', user.id);
  */
 export async function renameItem(
   itemId: string,
   newName: string,
-  userId?: string
+  userId: string
 ) {
+  await assertItemAccess(userId, itemId, { role: 'write' })
   const renamed = await prisma.$transaction(async (tx) => {
     const existing = await tx.item.findUniqueOrThrow({
       where: { id: itemId },
@@ -273,7 +277,7 @@ export async function renameItem(
       workspace_id: renamed.workspaceId ?? null,
       name_length: newName.length,
     },
-    { userId: userId ?? renamed.ownerId }
+    { userId }
   )
 
   return renamed
