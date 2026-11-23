@@ -1,4 +1,9 @@
-import { cardItemOutput, itemsApiRouteInput } from '@/schemas/api.schemas'
+import {
+  cardItemOutput,
+  countSelectionLoaderInput,
+  itemsApiRouteInput,
+} from '@/schemas/api.schemas'
+import { countSelection } from '@/services/selection-actions'
 import { authMiddleware } from '@/services/middleware/auth'
 import { sessionContext } from '@/services/middleware/context'
 import { track } from '@/services/vinktar'
@@ -32,10 +37,14 @@ import {
   saveMediaMetadata,
   setSearchChunkVectors,
 } from '@/services/search-actions'
-import { rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
+import {
+  parseOrRespond,
+  rethrowAsResponse,
+  toErrorInfo,
+} from '@/utils/api.errors'
 import { toTrashRedirectUrl } from '@/utils/trash-urls'
 import { clampPendingLimit } from '@/utils/embedding-backfill'
-import { parseFormData } from '@/utils/parsers'
+import { parseFormData, parseSearchParams } from '@/utils/parsers'
 import { removeQueryParam, removeQueryParamValue } from '@/utils/query-params'
 import { data, redirect } from 'react-router'
 import type { Route } from './+types/items'
@@ -98,6 +107,23 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     const limit = clampPendingLimit(url.searchParams.get('limit'))
     const candidates = await findReindexCandidates(user.id, limit)
     return data({ candidates })
+  }
+
+  // How many rows a "select all" over a listing stands for. Read on demand
+  // (when the select menu opens), never added to the listing loader itself.
+  if (intent === 'count_selection') {
+    const { scope } = parseOrRespond(() =>
+      parseSearchParams({ schema: countSelectionLoaderInput, searchParams: url.searchParams })
+    )
+    try {
+      return data({ count: await countSelection(user.id, scope) })
+    } catch (e) {
+      const err = toErrorInfo(e)
+      return data(
+        { error: err.message ?? 'Count failed' },
+        { status: err.status ?? 500 }
+      )
+    }
   }
 
   if (intent === 'search_folders') {

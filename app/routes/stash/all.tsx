@@ -8,13 +8,10 @@ import { toLibraryStats } from '@/utils/library-stats'
 import { StashPageToolbar } from '@/components/views/stash-page-toolbar'
 import type { LibraryStats } from '@/types/stash.types'
 import {
-  buildItemFilters,
-  itemFilterSchema,
-} from '@/utils/filters/item.filters'
-import { parseSearchParams } from '@/utils/parsers'
+  listingWhere,
+  parseListingParams,
+} from '@/services/selection-actions'
 import { parseOrRespond } from '@/utils/api.errors'
-import { toSearchSchema } from '@/utils'
-import type { Prisma } from '@/prisma/client'
 import { GridLayout } from '@/components/views/grid-view'
 import { FileCardDetail } from '@/components/core-components/file-card-variants'
 import { FolderCardTab } from '@/components/views/folder-card-components/folder-card-tab'
@@ -98,26 +95,23 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
 export async function loader({ request, params, context }: Route.ActionArgs) {
   const session = context.get(sessionContext)
 
-  let searchParams = new URL(request.url).searchParams
-  searchParams.set('currentUserId', session.user.id)
-  searchParams.set('parentId', session.user.rootId)
-  let parsedParams = parseOrRespond(() => parseSearchParams({
-    schema: toSearchSchema<
-      typeof itemFilterSchema,
-      Prisma.ItemOrderByWithRelationInput,
-      Prisma.ItemInclude
-    >({ schema: itemFilterSchema }),
-    searchParams,
-  }), 'text')
-
-  let filters = buildItemFilters(parsedParams)
+  // All files is the root folder's children, not a recursive list.
+  const scope = {
+    kind: 'folder',
+    folderId: session.user.rootId,
+    filters: '',
+  } as const
+  let parsedParams = parseOrRespond(
+    () => parseListingParams(session.user.id, scope, new URL(request.url).searchParams),
+    'text'
+  )
 
   let [folderContent, stats, crumbs] = await Promise.all([
     getFolderContent({
       userId: session.user.id,
       cursor: parsedParams.cursor,
       limit: parsedParams.take,
-      where: { ...filters, parentId: session.user.rootId },
+      where: listingWhere(session.user.id, scope, parsedParams),
       orderBy: parsedParams.orderBy,
       foldersFirst: true,
     }),

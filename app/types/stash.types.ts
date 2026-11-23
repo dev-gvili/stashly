@@ -21,6 +21,8 @@ import type {
 import type { ActivityWithRelations } from '@/utils/activity'
 import type { MarkdownHeading } from '@/utils/markdown'
 import type { SearchMode } from './filter.types'
+import type { z } from 'zod'
+import type { selectionInput, selectionScope } from '@/schemas/api.schemas'
 
 // ---------------------------------------------------------------------------
 // Sub-types
@@ -765,3 +767,9 @@ export interface WorkspacesSidebarItem {
   icon?: React.ReactNode
   action?: React.ReactNode
 }
+
+/** A "select all" scope: a listing the server rebuilds (`selection-actions.ts`). */
+export type SelectionScope = z.infer<typeof selectionScope>
+
+/** What a bulk action acts on: ticked ids, or a scope minus unticked rows. */
+export type Selection = z.infer<typeof selectionInput>

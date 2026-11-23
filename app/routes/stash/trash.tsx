@@ -6,16 +6,14 @@ import { FolderCardTab } from '@/components/views/folder-card-components/folder-
 import { GridLayout } from '@/components/views/grid-view'
 import { usePagination } from '@/hooks/usePagination'
 import {
-  buildItemFilters,
-  itemFilterSchema,
-} from '@/utils/filters/item.filters'
+  listingWhere,
+  parseListingParams,
+} from '@/services/selection-actions'
 import {
   getPaginatedItems,
   getTrashFolderTrail,
   retrieveUserUsageMetrics,
-  TRASH_ROOTS,
 } from '@/services/item-actions'
-import { parseSearchParams } from '@/utils/parsers'
 import { parseOrRespond } from '@/utils/api.errors'
 import { toLibraryStats } from '@/utils/library-stats'
 import { isSearchIndexSubmission } from '@/utils/revalidation'
@@ -24,8 +22,6 @@ import { redirect, type ShouldRevalidateFunction } from 'react-router'
 import { Fragment } from 'react/jsx-runtime'
 import type { Route } from './+types/trash'
 import { LoadMoreItems } from '@/components/core-components/buttons'
-import { toSearchSchema } from '@/utils'
-import type { Prisma } from '@/prisma/client'
 
 /** Intents that actually change what this page lists. */
 const TRASH_MUTATION_INTENTS: ReadonlySet<string> = new Set([
@@ -96,37 +92,25 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     ? await getTrashFolderTrail(session.user.id, folderId)
     : undefined
   let searchParams = new URL(request.url).searchParams
-  searchParams.set('currentUserId', session.user.id)
-  searchParams.set('status', 'trashed')
   // `Thumbnail.view` is non-nullable: a clean URL (no `?layout=`) must not
   // reach Prisma as `view: null`. Same default the grid/card views use.
   let layout = searchParams.get('layout') ?? 'grid'
-  let parsedParams = parseOrRespond(() => parseSearchParams({
-    schema: toSearchSchema<
-      typeof itemFilterSchema,
-      Prisma.ItemOrderByWithRelationInput,
-      Prisma.ItemInclude
-    >({ schema: itemFilterSchema }),
-    searchParams,
-  }), 'text')
-  let filters = buildItemFilters(parsedParams)
+  const scope = { kind: 'trash', folderId, filters: '' } as const
+  let parsedParams = parseOrRespond(
+    () => parseListingParams(session.user.id, scope, searchParams),
+    'text'
+  )
 
   let [page, stats] = await Promise.all([
     getPaginatedItems({
-      // Always the signed-in user's own items: `currentUserId` above is not a
+      // Always the signed-in user's own items (`listingWhere`): `currentUserId` is not a
       // scoping filter (see item.filters.ts), and without this Trash listed
       // every user's trashed items.
       //
       // At the top, only what was trashed directly: a trashed folder is one
       // entry, not the folder plus every file inside it. Inside a folder, its
       // trashed contents.
-      where: {
-        AND: [
-          filters,
-          { ownerId: session.user.id },
-          folderId ? { parentId: folderId, status: 'trashed' } : TRASH_ROOTS,
-        ],
-      },
+      where: listingWhere(session.user.id, scope, parsedParams),
       ...parsedParams,
       orderBy: parsedParams.orderBy ?? { name: 'asc' },
       include: {

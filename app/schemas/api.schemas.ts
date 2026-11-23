@@ -194,6 +194,81 @@ export const createUploadItemFields = z.object({
   uploadId: z.string(),
 })
 
+/**
+ * Reads one form or query field as JSON, then validates it with `schema`.
+ * One JSON field rather than repeated ones: the form and search-param decoders
+ * would turn a folder id or filter value of "2024" or "true" into a number or
+ * boolean, and split "a,b".
+ */
+const jsonField = <T extends z.ZodType>(schema: T, what: string) =>
+  z
+    .string()
+    .max(64 * 1024)
+    .transform((text, ctx) => {
+      try {
+        return JSON.parse(text) as unknown
+      } catch {
+        ctx.addIssue({ code: 'custom', message: `${what} must be JSON` })
+        return z.NEVER
+      }
+    })
+    .pipe(schema)
+
+/**
+ * The set a "select all" stands for: a listing the server can rebuild,
+ * never a list of ids. `filters` is the listing's query string (filter keys
+ * only; pagination and sort are dropped by the server). Resolved by
+ * `listingWhere` in `selection-actions.ts`, the same builder the folder, All
+ * files and Trash loaders use, so the listing and the action set can't drift.
+ */
+export const selectionScope = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('folder'),
+    folderId: z.string().nonempty(),
+    workspaceId: z.string().nonempty().optional(),
+    filters: z.string().max(2048).default(''),
+  }),
+  z.object({
+    kind: z.literal('trash'),
+    folderId: z.string().nonempty().optional(),
+    filters: z.string().max(2048).default(''),
+  }),
+])
+
+/** At most this many unticked rows travel with a "select all". */
+export const SELECTION_EXCLUDED_MAX = 1000
+
+/**
+ * What a bulk action acts on: the ids the user ticked, or a scope minus the
+ * rows they unticked. `expectedCount` is the count the user confirmed; the
+ * server refuses with 409 `SELECTION_CHANGED` when the scope no longer
+ * resolves to it.
+ */
+export const selectionInput = z.discriminatedUnion('by', [
+  z.object({
+    by: z.literal('ids'),
+    selectedItems: z.array(z.string().nonempty()).min(1),
+  }),
+  z.object({
+    by: z.literal('scope'),
+    scope: selectionScope,
+    excluded: z
+      .array(z.string().nonempty())
+      .max(SELECTION_EXCLUDED_MAX)
+      .default([]),
+    expectedCount: z.number().int().nonnegative(),
+  }),
+])
+
+/** `selectionInput` sent as one JSON form field named `selection`. */
+export const selectionField = jsonField(selectionInput, 'selection')
+
+/** `GET /api/items?intent=count_selection&scope=<json>` → `{ count }`. */
+export const countSelectionLoaderInput = z.object({
+  intent: z.literal('count_selection'),
+  scope: jsonField(selectionScope, 'scope'),
+})
+
 export const  itemsApiRouteInput = z.discriminatedUnion('intent', [
   itemSchema,
   itemsSchema,
