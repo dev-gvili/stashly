@@ -667,7 +667,7 @@ async function lockSubtreeFolders(tx: Prisma.TransactionClient, ids: string[]) {
   for (;;) {
     const [{ folders }] = await tx.$queryRaw<{ folders: string | null }[]>`
       WITH RECURSIVE "Folders" AS (
-        SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)}) AND "type" = 'folder'
+        SELECT "id" FROM "Item" WHERE "id" = ANY(${ids}::text[]) AND "type" = 'folder'
         UNION
         SELECT i."id" FROM "Item" i JOIN "Folders" f ON i."parentId" = f."id"
         WHERE i."type" = 'folder'
@@ -776,7 +776,7 @@ export async function trashItems(ids: string[], userId: string) {
       // reached through two selected items from counting twice.
       const [result] = await tx.$queryRaw<SubtreeChange[]>`
         WITH RECURSIVE "Subtree" AS (
-          SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
+          SELECT "id" FROM "Item" WHERE "id" = ANY(${ids}::text[])
           UNION
           SELECT i."id" FROM "Item" i JOIN "Subtree" s ON i."parentId" = s."id"
         ), "Changed" AS (
@@ -792,7 +792,7 @@ export async function trashItems(ids: string[], userId: string) {
           COALESCE(SUM("size") FILTER (WHERE "type" = 'file'), 0)::bigint AS "bytes",
           ${bytesPerDrive(Prisma.raw(`"Changed"`))},
           json_agg(json_build_object('id', "id", 'name', "name", 'type', "type"))
-            FILTER (WHERE "id" IN (${Prisma.join(ids)})) AS "roots"
+            FILTER (WHERE "id" = ANY(${ids}::text[])) AS "roots"
         FROM "Changed"
       `
       await recordDirectlyTrashed(ids, userId, tx)
@@ -924,12 +924,12 @@ export async function restoreItems(ids: string[], userId: string) {
     await holdRollupOff(tx)
     return tx.$queryRaw<SubtreeChange[]>`
     WITH RECURSIVE "Descendants" AS (
-      SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
+      SELECT "id" FROM "Item" WHERE "id" = ANY(${ids}::text[])
       UNION
       SELECT i."id" FROM "Item" i JOIN "Descendants" d ON i."parentId" = d."id"
       WHERE NOT EXISTS (SELECT 1 FROM "TrashItem" t WHERE t."itemId" = i."id")
     ), "Ancestors" AS (
-      SELECT "id", "parentId" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
+      SELECT "id", "parentId" FROM "Item" WHERE "id" = ANY(${ids}::text[])
       UNION
       SELECT i."id", i."parentId" FROM "Item" i JOIN "Ancestors" a ON a."parentId" = i."id"
     ), "Related" AS (
@@ -974,7 +974,7 @@ export async function restoreItems(ids: string[], userId: string) {
       COALESCE(SUM("size") FILTER (WHERE "type" = 'file'), 0)::bigint AS "bytes",
       ${bytesPerDrive(Prisma.raw(`"Changed"`))},
       json_agg(json_build_object('id', "id", 'name', "name", 'type', "type"))
-        FILTER (WHERE "id" IN (${Prisma.join(ids)})) AS "roots"
+        FILTER (WHERE "id" = ANY(${ids}::text[])) AS "roots"
     FROM "Changed"
   `
   }, { timeout: 20_000 }) // as trashItems: a large restore must not hit the 5 s default
@@ -1085,12 +1085,12 @@ async function deleteFromTrash(ids: string[], userId: string) {
     >
   >`
     WITH RECURSIVE "Subtree" AS (
-      SELECT "id" FROM "Item" WHERE "id" IN (${Prisma.join(ids)})
+      SELECT "id" FROM "Item" WHERE "id" = ANY(${ids}::text[])
       UNION
       SELECT i."id" FROM "Item" i JOIN "Subtree" s ON i."parentId" = s."id"
     ), "Blocked" AS (
       SELECT 1 FROM "Item"
-      WHERE "id" IN (${Prisma.join(ids)}) AND "status" <> 'trashed'
+      WHERE "id" = ANY(${ids}::text[]) AND "status" <> 'trashed'
       LIMIT 1
     ), "Objects" AS (
       -- A copy points at its original's object instead of duplicating it, so
@@ -1118,7 +1118,7 @@ async function deleteFromTrash(ids: string[], userId: string) {
       (SELECT COALESCE(SUM("size") FILTER (WHERE "type" = 'file' AND "status" = 'trashed'), 0)::bigint
          FROM "Deleted") AS "bytes",
       (SELECT json_agg(json_build_object('id', "id", 'name', "name", 'type', "type"))
-         FROM "Deleted" WHERE "id" IN (${Prisma.join(ids)})) AS "roots",
+         FROM "Deleted" WHERE "id" = ANY(${ids}::text[])) AS "roots",
       (SELECT json_agg(json_build_object('bucket', "bucket", 'key', "key", 'itemId', "itemId"))
          FROM "Objects" WHERE NOT EXISTS (SELECT 1 FROM "Blocked")) AS "objects"
   `

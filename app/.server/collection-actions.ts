@@ -762,7 +762,7 @@ export async function addItemsToCollection({
     WITH accessible AS (
       SELECT i.id, i.size, i."type"
       FROM "Item" i
-      WHERE i.id IN (${Prisma.join(itemIds)})
+      WHERE i.id = ANY(${itemIds}::text[])
         AND i."status" <> 'trashed'
         -- Read access in the item's scope: membership for a workspace item.
         AND ${itemAccessSql(userId, 'read')}

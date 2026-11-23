@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/services/db'
-import { deleteItem, restoreItem, restoreItems, trashItem, trashItems } from '@/services/item-actions'
+import { deleteItem, deleteItems, restoreItem, restoreItems, trashItem, trashItems } from '@/services/item-actions'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { wipeTestUsers } from './helpers/wipe-test-users'
 
@@ -44,7 +44,7 @@ afterAll(async () => {
   await prisma.permission.deleteMany({ where: { users: { some: { id: strangerId } } } })
   await wipeTestUsers([ownerId, strangerId])
   await prisma.user.deleteMany({ where: { id: { in: [ownerId, strangerId] } } })
-})
+}, 120_000) // the 22,000-item test leaves rows the wipe takes longer than 10 s to remove
 
 describe('trash requires write access', () => {
   it('refuses a user with no access: 403, item untouched', async () => {
@@ -248,4 +248,39 @@ describe('trash and restore record one activity per changed item, in one stateme
     await new Promise((r) => setTimeout(r, 300))
     expect(await activitiesOf([a])).toHaveLength(0)
   })
+})
+
+// Ids reach the trash, restore and delete statements as one array parameter.
+// Spliced in one placeholder per id per use, restore (three uses) failed above
+// 21,845 ids: Postgres takes at most 65,535 parameters, and 25,000 answered
+// `bind message has 9464 parameter formats` (measured 23 Nov). A select-all
+// over a large folder sends that many.
+describe('a selection larger than the parameter limit', () => {
+  it('trashes, restores and checks 22,000 ids in one statement each', async () => {
+    const ids = Array.from({ length: 22_000 }, () => uid('Item'))
+    await prisma.item.createMany({
+      data: ids.map((id, i) => ({
+        id, name: `bulk-${i}`, type: 'file' as const, category: 'unknown', status: 'normal' as const,
+        ownerId, driveId, parentId: null, size: 0,
+      })),
+    })
+
+    await trashItems(ids, ownerId)
+    expect(await prisma.item.count({ where: { id: { in: ids }, status: 'trashed' } })).toBe(ids.length)
+
+    await restoreItems(ids, ownerId)
+    expect(await prisma.item.count({ where: { id: { in: ids }, status: 'normal' } })).toBe(ids.length)
+
+    // Not in trash, so the statement runs over every id and refuses them all.
+    await expect(deleteItems(ids, ownerId)).rejects.toMatchObject({ errorCode: 'INVALID_INPUT' })
+    expect(await prisma.item.count({ where: { id: { in: ids } } })).toBe(ids.length)
+
+    // Activities are written after each commit; let the trash and restore ones
+    // land before afterAll deletes the items they name.
+    await vi.waitFor(
+      async () =>
+        expect(await prisma.activity.count({ where: { itemId: { in: ids } } })).toBe(2 * ids.length),
+      { timeout: 60_000, interval: 500 }
+    )
+  }, 180_000)
 })
