@@ -119,11 +119,20 @@ describe('currency', () => {
 })
 
 describe('formatPlanLine', () => {
-  const GB50 = 50 * 1000 ** 3
+  const GB50 = 50 * 1024 ** 3
   it('says free forever on a free plan', () => {
     expect(formatPlanLine({ storageLimit: GB50, price: null, interval: null })).toBe(
-      `${formatSize('byte', 'unit', GB50)} · free forever`
+      '50 GB · free forever'
     )
+  })
+
+  it('shows the limit in the binary units plans are named in', () => {
+    const line = (storageLimit: number) =>
+      formatPlanLine({ storageLimit, price: null, interval: null }).split(' · ')[0]
+    expect(line(15 * 1024 ** 3)).toBe('15 GB')
+    expect(line(200 * 1024 ** 3)).toBe('200 GB')
+    expect(line(2 * 1024 ** 4)).toBe('2 TB')
+    expect(line(1.5 * 1024 ** 3)).toBe('1.5 GB')
   })
 
   it('shows the price per interval, and a count when it is more than one', () => {

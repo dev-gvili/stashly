@@ -368,6 +368,23 @@ export function expiryLabel(link: SharedLink, state: LinkState) {
   return `expires ${toRelativeTime(link.expiresAt) ?? ''}`.trim()
 }
 
+const PLAN_SIZE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+
+/**
+ * A plan's storage limit in binary units, the way plans are named and seeded
+ * (15 GB = 15 × 1024³ bytes). `formatSize` is decimal and showed it as "16 GB".
+ */
+function formatPlanSize(bytes: number): string {
+  let value = bytes
+  let unit = 0
+  while (value >= 1024 && unit < PLAN_SIZE_UNITS.length - 1) {
+    value /= 1024
+    unit++
+  }
+  const amount = new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(value)
+  return `${amount} ${PLAN_SIZE_UNITS[unit]}`
+}
+
 /**
  * Settings → Plan & billing's plan line: "50 GB · free forever", or the price
  * and its billing interval, "500 GB · $80 / year". The interval is left out
@@ -382,7 +399,7 @@ export function formatPlanLine({
   price: { amountCents: number; currency: string } | null
   interval: { unit: string; count: number } | null
 }): string {
-  const size = formatSize('byte', 'unit', storageLimit)
+  const size = formatPlanSize(storageLimit)
   if (!price) return `${size} · free forever`
   const amount = new Intl.NumberFormat('en', {
     style: 'currency',
