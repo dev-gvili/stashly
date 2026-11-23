@@ -18,6 +18,8 @@ describe('producerFor', () => {
   it.each([
     ['photo.png', 'image/png', 'image'],
     ['scan.jpg', 'image/jpeg', 'image'],
+    ['logo.svg', 'image/svg+xml', 'svg'],
+    ['logo.svg', 'application/octet-stream', 'svg'],
     ['report.pdf', 'application/pdf', 'pdf'],
     ['clip.mp4', 'video/mp4', 'video'],
     ['notes.md', 'text/markdown', 'text'],

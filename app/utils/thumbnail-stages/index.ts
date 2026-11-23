@@ -9,6 +9,7 @@
  * Browser-only at call time (compute worker, `<video>`, WebGPU), import-safe
  * anywhere.
  */
+import { svgProducer } from './svg'
 import { imageProducer } from './image'
 import { pdfProducer } from './pdf'
 import { videoProducer } from './video'
@@ -21,8 +22,10 @@ export { putThumbnailToS3, stageViewUrl } from './upload'
 /**
  * In match order, the same order the old ladders checked. Text goes last: a
  * type-specific producer must win over the broad "renders as text" check.
+ * SVG goes before image: it is `image/*` but needs its own decode.
  */
 const PRODUCERS: readonly ThumbnailProducer[] = [
+  svgProducer,
   imageProducer,
   pdfProducer,
   videoProducer,
