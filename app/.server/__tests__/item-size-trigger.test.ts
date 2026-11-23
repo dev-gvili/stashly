@@ -388,3 +388,90 @@ describe('a status change writes each folder once', () => {
     await expectExact()
   })
 })
+
+/**
+ * A permanent delete writes each surviving folder once, through the
+ * statement-level `item_delete_rollup` (`20261123170000_delete_rollup`). The
+ * per-row triggers it replaced rewrote the parent once per deleted row: 20,000
+ * files from one folder spent 40 s of a 54.5 s delete there (23 Nov). Checks
+ * bytes and both child counts against a recount, for live and trashed rows in
+ * one statement, a delete that takes a folder with its contents, and the
+ * parentId cascade.
+ */
+describe('a bulk delete keeps sizes and child counts equal to a recount', () => {
+  /** Folders whose stored child counts differ from their children, as "name stored want". */
+  async function wrongCounts() {
+    const rows = await prisma.$queryRaw<{ name: string; c: number; ic: number; wc: number; wic: number }[]>`
+      SELECT i."name", f."childCount" AS c, f."inclusiveChildCount" AS ic,
+        (SELECT COUNT(*)::int FROM "Item" k WHERE k."parentId" = i."id" AND k."status" <> 'trashed') AS wc,
+        (SELECT COUNT(*)::int FROM "Item" k WHERE k."parentId" = i."id") AS wic
+      FROM "Item" i JOIN "Folder" f ON f."itemId" = i."id"
+      WHERE i."ownerId" = ${ownerId}`
+    return rows.filter((r) => r.c !== r.wc || r.ic !== r.wic).map((r) => `${r.name} ${r.c}/${r.ic} want ${r.wc}/${r.wic}`)
+  }
+  const expectExact = async () => {
+    expect(await wrongFolders()).toEqual([])
+    expect(await wrongCounts()).toEqual([])
+  }
+  async function folder(name: string, parent: string | null, status: 'normal' | 'trashed' = 'normal') {
+    ids[name] = uid('Item')
+    await prisma.item.create({
+      data: {
+        id: ids[name], name, type: 'folder', category: 'unknown', status, ownerId, driveId,
+        parentId: parent ? ids[parent] : null, size: 0, folder: { create: { id: uid('Folder') } },
+      },
+    })
+  }
+  async function files(parent: string, n: number, status: 'normal' | 'trashed', size: number) {
+    await prisma.item.createMany({
+      data: Array.from({ length: n }, (_, i) => ({
+        id: uid('Item'), name: `${parent}-${status}-${i}`, type: 'file' as const, category: 'document',
+        status, ownerId, driveId, parentId: ids[parent], size,
+      })),
+    })
+  }
+
+  beforeAll(async () => {
+    // R ─ M ─ B(400 live × 3, 40 trashed × 5, Z ─ 6 live × 2)   K(3 live × 7)   X(trashed, 4 × 11)
+    await folder('R', null)
+    await folder('M', 'R')
+    await folder('B', 'M')
+    await folder('Z', 'B')
+    await folder('K', 'M')
+    await folder('X', 'M', 'trashed')
+    await files('B', 400, 'normal', 3)
+    await files('B', 40, 'trashed', 5)
+    await files('Z', 6, 'normal', 2)
+    await files('K', 3, 'normal', 7)
+    await files('X', 4, 'trashed', 11)
+  })
+
+  it('starts exact', expectExact)
+
+  it("deletes B's live and trashed files in one statement", async () => {
+    await prisma.$executeRaw`DELETE FROM "Item" WHERE "parentId" = ${ids.B} AND "type" = 'file'`
+    await expectExact()
+  })
+
+  it('deletes Z with its contents in one statement', async () => {
+    await prisma.$executeRaw`${subtree(ids.Z)} DELETE FROM "Item" i USING "Subtree" s WHERE i."id" = s."id"`
+    await expectExact()
+  })
+
+  it('deletes the trashed folder X through the parentId cascade', async () => {
+    await prisma.$executeRaw`DELETE FROM "Item" WHERE "id" = ${ids.X}`
+    await expectExact()
+  })
+
+  it('deletes M through the cascade, leaving R empty', async () => {
+    await prisma.$executeRaw`DELETE FROM "Item" WHERE "id" = ${ids.M}`
+    await expectExact()
+    expect(await sizeOfRow(ids.R)).toBe('0/0')
+    expect(await prisma.folder.findFirstOrThrow({ where: { itemId: ids.R } })).toMatchObject({ childCount: 0, inclusiveChildCount: 0 })
+  })
+
+  async function sizeOfRow(id: string) {
+    const { size, inclusiveSize } = await prisma.item.findUniqueOrThrow({ where: { id } })
+    return `${size}/${inclusiveSize}`
+  }
+})
