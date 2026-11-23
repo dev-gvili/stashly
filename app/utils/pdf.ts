@@ -549,7 +549,7 @@ export async function renderPdfPageAt(
       page.cleanup()
     }
   } catch (err) {
-    console.error(`[pdf] renderPdfPageAt: page ${pageNum} failed`, err)
+    console.error('[pdf] renderPdfPageAt: page %s failed', pageNum, err)
     return null
   } finally {
     destroyPdfDocument(doc)
