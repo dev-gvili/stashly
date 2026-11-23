@@ -17,14 +17,17 @@ import { formatSize } from '@/utils/formaters'
 import { StashPageToolbar } from '@/components/views/stash-page-toolbar'
 import type { LibraryStats } from '@/types/stash.types'
 import {
-  listingWhere,
-  parseListingParams,
-} from '@/services/selection-actions'
+  buildItemFilters,
+  itemFilterSchema,
+} from '@/utils/filters/item.filters'
+import { parseSearchParams } from '@/utils/parsers'
 import { parseOrRespond } from '@/utils/api.errors'
 import { getQueryParamArray } from '@/utils/query-params'
 import { type ShouldRevalidateFunction } from 'react-router'
 import { SelectionProvider } from '../../components/stash/selection'
 import type { Route } from './+types/folder'
+import { toSearchSchema } from '@/utils'
+import type { Prisma } from '@/prisma/client'
 export async function loader({ request, params, context }: Route.LoaderArgs) {
   // Set by the layout middleware, which redirects anonymous requests before any
   // loader runs — so there is nothing to re-check here.
@@ -36,16 +39,21 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
   // actions decide authority.
   const workspaceId = params.workspaceId
 
-  const scope = {
-    kind: 'folder',
-    folderId: params.folderId,
-    workspaceId,
-    filters: '',
-  } as const
-  let parsedParams = parseOrRespond(
-    () => parseListingParams(session.user.id, scope, new URL(request.url).searchParams),
-    'text'
-  )
+  let url = new URL(request.url)
+  let searchParams = url.searchParams
+  searchParams.set('currentUserId', session.user.id)
+  searchParams.set('parentId', params.folderId)
+
+  let parsedParams = parseOrRespond(() => parseSearchParams({
+    schema: toSearchSchema<
+      typeof itemFilterSchema,
+      Prisma.ItemOrderByWithRelationInput,
+      Prisma.ItemInclude
+    >({ schema: itemFilterSchema }),
+    searchParams,
+  }), 'text')
+
+  let filters = buildItemFilters(parsedParams)
 
   const [folder, folderContent, crumbs, stats] = await Promise.all([
     getFolder(params.folderId, session.user.id, workspaceId),
@@ -54,7 +62,11 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
       workspaceId,
       cursor: parsedParams.cursor,
       limit: 50,
-      where: listingWhere(session.user.id, scope, parsedParams),
+      where: {
+        ...filters,
+        parentId: params.folderId,
+        ...(workspaceId ? { workspaceId } : {}),
+      },
       orderBy: parsedParams.orderBy,
       foldersFirst: true,
     }),

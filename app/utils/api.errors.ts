@@ -124,10 +124,6 @@ export enum StashlyErrorCode {
   FORBIDDEN = 'FORBIDDEN',
   NOT_FOUND = 'NOT_FOUND',
   CONFLICT = 'CONFLICT',
-  // A "select all" scope that resolves to more roots than one request takes.
-  SELECTION_TOO_LARGE = 'SELECTION_TOO_LARGE',
-  // A "select all" scope whose rows changed after the user confirmed its count.
-  SELECTION_CHANGED = 'SELECTION_CHANGED',
   GONE = 'GONE',
   INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR',
   BAD_GATEWAY = 'BAD_GATEWAY',
@@ -164,14 +160,6 @@ const ERROR_DETAILS: Record<
   },
   [StashlyErrorCode.CONFLICT]: {
     message: 'The request conflicts with the current state of the resource.',
-    status: 409,
-  },
-  [StashlyErrorCode.SELECTION_TOO_LARGE]: {
-    message: 'Too many items are selected for one action.',
-    status: 400,
-  },
-  [StashlyErrorCode.SELECTION_CHANGED]: {
-    message: 'The selection changed since you confirmed it.',
     status: 409,
   },
   [StashlyErrorCode.GONE]: {
