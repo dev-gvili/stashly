@@ -314,7 +314,7 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.deploy-retry.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -325,7 +325,19 @@ jobs:
         with:
           path: .
           name: github-pages-${{ github.run_attempt }}
+      # deploy-pages lists the run's artifacts once, right after the upload, and
+      # that list can lag it: 4 of 15 first attempts (23 Nov) saw only
+      # playwright-report ("Found 1 artifact(s)") and failed. It fails before
+      # creating a deployment, so one retry after the list catches up is safe.
       - id: deploy
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
+      - if: steps.deploy.outcome == 'failure'
+        run: sleep 15
+      - id: deploy-retry
+        if: steps.deploy.outcome == 'failure'
         uses: actions/deploy-pages@v4
         with:
           artifact_name: github-pages-${{ github.run_attempt }}
