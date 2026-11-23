@@ -6,15 +6,16 @@
  *
  * Only `index` gates a pipeline today (scanned-PDF OCR in
  * `indexing-queue.machine.ts`). Uploads run no Whisper or captioning yet, so
- * `transcribe` and `caption` are stored for when they do.
+ * `transcribe` (audio), `transcribeVideo` and `caption` are stored for when they do.
  */
 export interface AiGates {
   transcribe: boolean
+  transcribeVideo: boolean
   caption: boolean
   index: boolean
 }
 
-let gates: AiGates = { transcribe: true, caption: true, index: true }
+let gates: AiGates = { transcribe: true, transcribeVideo: true, caption: true, index: true }
 
 export function getAiGates(): Readonly<AiGates> {
   return gates

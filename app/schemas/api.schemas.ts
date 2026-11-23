@@ -826,7 +826,7 @@ export const settingsProfileInput = z.discriminatedUnion('intent', [
 ])
 
 export const notificationPrefKeys = z.enum(['comments', 'shares', 'ai', 'weekly'])
-export const aiPrefKeys = z.enum(['transcribe', 'caption', 'index'])
+export const aiPrefKeys = z.enum(['transcribe', 'transcribeVideo', 'caption', 'index'])
 
 /** A switch posts `value` as "true" / "false"; the form decoder makes those booleans. */
 export const settingsNotificationsInput = z.discriminatedUnion('intent', [

@@ -104,6 +104,7 @@ describe('connected accounts and preferences (database)', () => {
     })
     expect(await getAiPreferences(userId)).toEqual({
       transcribe: true,
+      transcribeVideo: true,
       caption: true,
       index: false,
     })

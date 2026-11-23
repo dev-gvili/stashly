@@ -215,6 +215,7 @@ export const NOTIFICATION_PREF_COLUMNS = {
 
 export const AI_PREF_COLUMNS = {
   transcribe: 'aiTranscribe',
+  transcribeVideo: 'aiTranscribeVideo',
   caption: 'aiCaption',
   index: 'aiIndex',
 } as const
@@ -232,6 +233,7 @@ export const PREFERENCE_DEFAULTS: Record<PrefColumn, boolean> = {
   notifyAi: false,
   notifyWeekly: true,
   aiTranscribe: true,
+  aiTranscribeVideo: true,
   aiCaption: true,
   aiIndex: true,
 }
