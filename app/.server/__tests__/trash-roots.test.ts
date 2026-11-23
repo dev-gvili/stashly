@@ -115,6 +115,9 @@ describe('a trashed folder is one entry', () => {
     expect(Math.abs(project.updatedAt!.getTime() - Date.now())).toBeLessThan(tolerance)
     const entry = await prisma.trashItem.findUniqueOrThrow({ where: { itemId: project.id } })
     expect(Math.abs(entry.trashedAt.getTime() - Date.now())).toBeLessThan(tolerance)
+    // Made in SQL, in toObjectId's shape: prefix, then 22 base64url characters.
+    expect(entry.id).toMatch(/^ti_[A-Za-z0-9_-]{22}$/)
+    expect((await prisma.trash.findUniqueOrThrow({ where: { id: entry.trashId } })).id).toMatch(/^trsh_[A-Za-z0-9_-]{22}$/)
     // The trash activity is written by the same kind of raw statement, after
     // the commit and without awaiting, so wait for it.
     await vi.waitFor(async () => {

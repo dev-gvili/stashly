@@ -845,29 +845,29 @@ async function recordDirectlyTrashed(
   userId: string,
   tx: Prisma.TransactionClient
 ) {
-  const items = await tx.item.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, driveId: true },
-  })
-  const trashByDrive = new Map<string, string>()
-  for (const driveId of new Set(items.map((i) => i.driveId))) {
-    const trash = await tx.trash.upsert({
-      where: { driveId },
-      create: { id: toObjectId(getPrefixForModel('Trash')), driveId },
-      update: {},
-      select: { id: true },
-    })
-    trashByDrive.set(driveId, trash.id)
-  }
-  await tx.trashItem.createMany({
-    data: items.map((item) => ({
-      id: toObjectId(getPrefixForModel('TrashItem')),
-      itemId: item.id,
-      trashId: trashByDrive.get(item.driveId)!,
-      trashedById: userId,
-    })),
-    skipDuplicates: true,
-  })
+  // Two statements in SQL, not rows through the client: findMany + createMany
+  // took 3.2–3.6 s of a 6.5 s trash of 20,000 items (23 Nov). Ids keep
+  // toObjectId's shape (prefix + 22 base64url characters of 16 random bytes).
+  // The Trash row goes first, in a statement of its own: one made by another
+  // trash meanwhile is then visible to the second statement, which a single
+  // statement's snapshot would miss, leaving those entries out.
+  const randomId = (prefix: string) =>
+    Prisma.sql`${prefix} || '_' || translate(encode(uuid_send(gen_random_uuid()), 'base64'), '+/=', '-_')`
+  await tx.$executeRaw`
+    INSERT INTO "Trash" ("id", "driveId", "updatedAt")
+    SELECT ${randomId(getPrefixForModel('Trash'))}, d."driveId", (now() AT TIME ZONE 'UTC')
+    FROM (SELECT DISTINCT "driveId" FROM "Item" WHERE "id" = ANY(${ids}::text[])) d
+    ON CONFLICT ("driveId") DO NOTHING
+  `
+  // An id that already has a row keeps it, with its original trashedAt. UTC,
+  // for the reason given in trashItems.
+  await tx.$executeRaw`
+    INSERT INTO "TrashItem" ("id", "itemId", "trashId", "trashedById", "trashedAt")
+    SELECT ${randomId(getPrefixForModel('TrashItem'))}, i."id", t."id", ${userId}, (now() AT TIME ZONE 'UTC')
+    FROM "Item" i JOIN "Trash" t ON t."driveId" = i."driveId"
+    WHERE i."id" = ANY(${ids}::text[])
+    ON CONFLICT ("itemId") DO NOTHING
+  `
 }
 
 /**
