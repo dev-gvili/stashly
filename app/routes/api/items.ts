@@ -140,10 +140,9 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         return redirect(`${url.pathname}`)
       } catch (e) {
         const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Rename failed' },
-          { status: err.status ?? 500 }
-        )
+        const status = err.status ?? 500
+        if (status >= 500) log.error('item rename failed', { itemId: parsedData.itemId, error: e })
+        return data({ success: false, error: err.message ?? 'Rename failed' }, { status })
       }
     }
     case 'trash_item': {
@@ -152,10 +151,9 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         return redirect(`${url.pathname}${url.search}`)
       } catch (e) {
         const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Trash failed' },
-          { status: err.status ?? 500 }
-        )
+        const status = err.status ?? 500
+        if (status >= 500) log.error('item trash failed', { itemId: parsedData.selectedItem, error: e })
+        return data({ success: false, error: err.message ?? 'Trash failed' }, { status })
       }
     }
     case 'restore_item': {
@@ -172,10 +170,9 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         return redirect(toTrashRedirectUrl(url))
       } catch (e) {
         const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Restore failed' },
-          { status: err.status ?? 500 }
-        )
+        const status = err.status ?? 500
+        if (status >= 500) log.error('item restore failed', { itemId: parsedData.selectedItem, error: e })
+        return data({ success: false, error: err.message ?? 'Restore failed' }, { status })
       }
     }
     case 'delete_item':
@@ -189,10 +186,9 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         return redirect(`${url.pathname}${url.search}`)
       } catch (e) {
         const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Delete failed' },
-          { status: err.status ?? 500 }
-        )
+        const status = err.status ?? 500
+        if (status >= 500) log.error('item delete failed', { itemId: parsedData.selectedItem, error: e })
+        return data({ success: false, error: err.message ?? 'Delete failed' }, { status })
       }
     case 'trash_items':
       try {
@@ -201,10 +197,9 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
         const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Trash failed' },
-          { status: err.status ?? 500 }
-        )
+        const status = err.status ?? 500
+        if (status >= 500) log.error('items trash failed', { count: parsedData.selectedItems.length, error: e })
+        return data({ success: false, error: err.message ?? 'Trash failed' }, { status })
       }
     case 'download_urls':
       try {
@@ -229,10 +224,9 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
         const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Move failed' },
-          { status: err.status ?? 500 }
-        )
+        const status = err.status ?? 500
+        if (status >= 500) log.error('items move failed', { count: parsedData.selectedItems.length, targetFolderId: parsedData.targetFolderId, error: e })
+        return data({ success: false, error: err.message ?? 'Move failed' }, { status })
       }
     case 'restore_items':
       try {
@@ -243,10 +237,9 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         return redirect(toTrashRedirectUrl(url))
       } catch (e) {
         const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Restore failed' },
-          { status: err.status ?? 500 }
-        )
+        const status = err.status ?? 500
+        if (status >= 500) log.error('items restore failed', { count: parsedData.selectedItems.length, error: e })
+        return data({ success: false, error: err.message ?? 'Restore failed' }, { status })
       }
     case 'delete_items':
       try {
@@ -255,10 +248,9 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         return redirect(`${url.pathname}${url.search}`)
       } catch (e) {
         const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Delete failed' },
-          { status: err.status ?? 500 }
-        )
+        const status = err.status ?? 500
+        if (status >= 500) log.error('items delete failed', { count: parsedData.selectedItems.length, error: e })
+        return data({ success: false, error: err.message ?? 'Delete failed' }, { status })
       }
     case 'move_item':
       try {
@@ -272,10 +264,9 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
         const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Move failed' },
-          { status: err.status ?? 500 }
-        )
+        const status = err.status ?? 500
+        if (status >= 500) log.error('item move failed', { itemId: parsedData.selectedItem, targetFolderId: parsedData.targetFolderId, error: e })
+        return data({ success: false, error: err.message ?? 'Move failed' }, { status })
       }
     case 'create_folder': {
       try {
