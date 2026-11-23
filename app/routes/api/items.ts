@@ -145,6 +145,18 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   return null
 }
 
+/**
+ * A failed intent's answer: its real status (403 when access is refused, 404
+ * for a missing item), never a 200 carrying `{ success: false }`. Logged only
+ * when the failure is the server's own (5xx), so a refusal raises no issue.
+ */
+function failed(intent: string, e: unknown, fallback: string) {
+  const err = toErrorInfo(e)
+  const status = err.status ?? 500
+  if (status >= 500) log.error('items action failed', { intent, error: e })
+  return data({ success: false, error: err.message ?? fallback }, { status })
+}
+
 export async function action({ request, params, context }: Route.ActionArgs) {
   const session = context.get(sessionContext)
   let { user } = session
@@ -163,26 +175,17 @@ export async function action({ request, params, context }: Route.ActionArgs) {
     case 'rename_item': {
       try {
         await renameItem(parsedData.itemId, parsedData.newName, user.id)
-        console.log({ referer, url: url.pathname })
         return redirect(`${url.pathname}`)
       } catch (e) {
-        console.error(e)
-        return { success: false, error: e }
+        return failed(parsedData.intent, e, 'Rename failed')
       }
     }
-    // Trash, restore and delete failures answer with their real status (403 when
-    // access is refused) rather than a 200 carrying `{ success: false }`.
     case 'trash_item': {
       try {
         await trashItem(parsedData.selectedItem, user.id)
         return redirect(`${url.pathname}${url.search}`)
       } catch (e) {
-        console.error(e)
-        const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Trash failed' },
-          { status: err.status ?? 500 }
-        )
+        return failed(parsedData.intent, e, 'Trash failed')
       }
     }
     case 'restore_item': {
@@ -198,12 +201,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         // took the folder out of Trash too, and its view would 404.
         return redirect(toTrashRedirectUrl(url))
       } catch (e) {
-        console.error(e)
-        const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Restore failed' },
-          { status: err.status ?? 500 }
-        )
+        return failed(parsedData.intent, e, 'Restore failed')
       }
     }
     case 'delete_item':
@@ -216,26 +214,15 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         )
         return redirect(`${url.pathname}${url.search}`)
       } catch (e) {
-        console.error(e)
-        const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Delete failed' },
-          { status: err.status ?? 500 }
-        )
+        return failed(parsedData.intent, e, 'Delete failed')
       }
     case 'trash_items':
       try {
         await trashItems(parsedData.selectedItems, user.id)
-        console.log('searchParams before:', `${url.pathname}${url.search}`)
         searchParams = removeQueryParam(searchParams, 'selectedItems')
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
-        console.error(e)
-        const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Trash failed' },
-          { status: err.status ?? 500 }
-        )
+        return failed(parsedData.intent, e, 'Trash failed')
       }
     case 'download_urls':
       try {
@@ -259,8 +246,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         searchParams = removeQueryParam(searchParams, 'selectedItems')
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
-        console.error(e)
-        return { success: false, error: e }
+        return failed(parsedData.intent, e, 'Move failed')
       }
     case 'restore_items':
       try {
@@ -270,12 +256,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         // Same as `restore_item`: from inside a trashed folder, back to Trash.
         return redirect(toTrashRedirectUrl(url))
       } catch (e) {
-        console.error(e)
-        const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Restore failed' },
-          { status: err.status ?? 500 }
-        )
+        return failed(parsedData.intent, e, 'Restore failed')
       }
     case 'delete_items':
       try {
@@ -283,12 +264,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         searchParams = removeQueryParam(searchParams, 'selectedItems')
         return redirect(`${url.pathname}${url.search}`)
       } catch (e) {
-        console.error(e)
-        const err = toErrorInfo(e)
-        return data(
-          { success: false, error: err.message ?? 'Delete failed' },
-          { status: err.status ?? 500 }
-        )
+        return failed(parsedData.intent, e, 'Delete failed')
       }
     case 'move_item':
       try {
@@ -301,8 +277,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
         searchParams = removeQueryParam(searchParams, 'selectedItem')
         return redirect(`${url.pathname}?${searchParams.toString()}`)
       } catch (e) {
-        console.error(e)
-        return { success: false, error: e }
+        return failed(parsedData.intent, e, 'Move failed')
       }
     case 'create_folder': {
       try {

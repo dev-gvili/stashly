@@ -236,3 +236,17 @@ describe('create_upload_item', () => {
     expect(discardUploadedObject).not.toHaveBeenCalled()
   })
 })
+
+// A refused action answers its real status, never a 200 carrying
+// `{ success: false }` (move and rename once did, with the raw error object).
+describe('POST /api/items answers a refused action with its real status', () => {
+  it.each([
+    ['move_items', [['selectedItems', 'item_missing'], ['targetFolderId', 'item_missing_folder']]],
+    ['move_item', [['selectedItem', 'item_missing'], ['targetFolderId', 'item_missing_folder']]],
+    ['rename_item', [['itemId', 'item_missing'], ['newName', 'renamed']]],
+  ] as const)('%s on items the caller cannot reach', async (intent, fields) => {
+    const status = await statusOf([['intent', intent], ...fields.map(([k, v]) => [k, v] as [string, string])])
+    expect(status).toBeGreaterThanOrEqual(400)
+    expect(status).toBeLessThan(500)
+  })
+})
