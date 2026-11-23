@@ -213,7 +213,7 @@ export const generateMockStoragePlans = () => {
       name: 'Premium - 2 TB',
       tag: 'premium',
       description: 'Full-featured enterprise-ready plan',
-      storageLimit: BigInt(2 * 1024 * 1024 * 1024), // 2 TB
+      storageLimit: BigInt(2 * 1024 * 1024 * 1024 * 1024), // 2 TB
       workspaceLimit: 1000,
       memberLimit: 1000,
       priceCents: 2999,
