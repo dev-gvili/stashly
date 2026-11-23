@@ -1,11 +1,11 @@
 import { cn } from '@/utils/styles'
 import { Switch } from '@/ui/switch'
-import { useEffect, useId, type ComponentType, type SVGProps } from 'react'
+import { useEffect, useId, type ComponentType, type ReactNode, type SVGProps } from 'react'
 import { useFetcher } from 'react-router'
 
 /**
- * One settings switch row: optional icon tile, label, description and a
- * square switch. The switch shows a pending value at once (read from the
+ * One settings switch row: optional icon tile (or a larger `visual` in its
+ * place), label, description and a square switch. The switch shows a pending value at once (read from the
  * fetcher's submission); a failed write drops it back to the saved value and
  * calls `onError`. The row text labels and describes the switch but is not a
  * second click target.
@@ -17,6 +17,7 @@ export function SettingsSwitchRow({
   description,
   checked,
   icon: Icon,
+  visual,
   onError,
 }: {
   intent: string
@@ -25,6 +26,8 @@ export function SettingsSwitchRow({
   description: string
   checked: boolean
   icon?: ComponentType<SVGProps<SVGSVGElement>>
+  /** Replaces the icon tile, e.g. an animated vector. */
+  visual?: ReactNode
   onError: (failed: boolean) => void
 }) {
   const fetcher = useFetcher<{ ok: true } | { error: string }>()
@@ -41,7 +44,9 @@ export function SettingsSwitchRow({
 
   return (
     <div className="flex items-center gap-4 border-b border-input px-5 py-4 last:border-b-0">
-      {Icon && (
+      {visual ? (
+        <div className="flex shrink-0 items-center gap-1">{visual}</div>
+      ) : Icon && (
         <div className="grid size-8.5 shrink-0 place-items-center rounded-md bg-secondary text-secondary-foreground">
           <Icon aria-hidden className="size-4" />
         </div>
