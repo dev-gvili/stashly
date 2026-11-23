@@ -7,6 +7,8 @@
  * only user. It moved here from `thumbnail-pipeline.ts`.
  */
 import { compute } from '@/utils/compute-worker'
+import { isSvgFile } from '@/utils/svg-raster'
+import { svgIntrinsicSize } from '@/utils/thumbnail-stages/svg'
 import { getVideoMetadata } from '@/utils/video'
 import {
   blobSource,
@@ -503,10 +505,16 @@ export async function extractMediaMetadata(file: File): Promise<MediaMetadata> {
   const meta: MediaMetadata = {}
 
   if (file.type.startsWith('image/')) {
-    const dimsRes = await compute({ kind: 'imageDimensions', file })
-    if (dimsRes.kind === 'imageDimensions' && dimsRes.result) {
-      meta.imageWidth = dimsRes.result.width
-      meta.imageHeight = dimsRes.result.height
+    // createImageBitmap (the compute worker's decoder) rejects SVG, so an
+    // SVG's size comes from resvg in the SVG worker instead.
+    const dims = isSvgFile(file)
+      ? await svgIntrinsicSize(file)
+      : await compute({ kind: 'imageDimensions', file }).then((res) =>
+          res.kind === 'imageDimensions' ? res.result : null
+        )
+    if (dims) {
+      meta.imageWidth = dims.width
+      meta.imageHeight = dims.height
     }
     const exif = await exifr
       .parse(file, {

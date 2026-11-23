@@ -134,6 +134,26 @@ function renderOnce(file: File): Promise<Rendered | null> {
 }
 
 /**
+ * An SVG's own size, for the image facet (`extractMediaMetadata`), where the
+ * compute worker's `createImageBitmap` can't read it. Shares the render with
+ * the thumbnail: indexing and the thumbnail get the same uploaded `File`.
+ *
+ * @returns Null when resvg can't parse the file (or it timed out); never a
+ *   made-up size.
+ *
+ * @example
+ * const size = await svgIntrinsicSize(file) // → { width: 1024, height: 1024 }
+ */
+export async function svgIntrinsicSize(
+  file: File
+): Promise<{ width: number; height: number } | null> {
+  const r = await renderOnce(file)
+  return r && r.naturalWidth > 0 && r.naturalHeight > 0
+    ? { width: Math.round(r.naturalWidth), height: Math.round(r.naturalHeight) }
+    : null
+}
+
+/**
  * SVG: rendered by resvg in its own worker (`svg-raster.worker.ts`). Ahead of
  * the image producer, whose compute worker decodes with `createImageBitmap`,
  * which rejects SVG, so every SVG used to get no thumbnail. No salient crop:

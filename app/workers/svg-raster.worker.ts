@@ -41,6 +41,9 @@ export interface SvgRasterResponse {
     width: number
     height: number
     preview: Blob
+    /** The SVG's own size (width/height attributes, else its viewBox). */
+    naturalWidth: number
+    naturalHeight: number
   } | null
   error?: string
 }
@@ -60,8 +63,10 @@ async function render(req: SvgRasterRequest): Promise<SvgRasterResponse['result'
   // Parse once for the intrinsic size, then again fitted to the box: resvg
   // fixes the output size at construction.
   const probe = new Resvg(svg, opts)
-  const { width, height } = svgRasterSize(probe.width, probe.height, req.maxSize)
+  const naturalWidth = probe.width
+  const naturalHeight = probe.height
   probe.free()
+  const { width, height } = svgRasterSize(naturalWidth, naturalHeight, req.maxSize)
 
   const resvg = new Resvg(svg, {
     ...opts,
@@ -85,7 +90,7 @@ async function render(req: SvgRasterRequest): Promise<SvgRasterResponse['result'
   tiny.getContext('2d')!.drawImage(canvas, 0, 0, req.previewSize, req.previewSize)
   const preview = await tiny.convertToBlob({ type: 'image/webp', quality: 0.5 })
 
-  return { blob, width: w, height: h, preview }
+  return { blob, width: w, height: h, preview, naturalWidth, naturalHeight }
 }
 
 function post(msg: SvgRasterResponse | SvgRasterReady) {
