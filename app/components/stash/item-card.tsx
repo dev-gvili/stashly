@@ -202,6 +202,16 @@ export const itemCheckboxClassName = cn(
   'transition-[box-shadow,scale] duration-150 ease-out active:scale-[0.96]'
 )
 
+/**
+ * Whether the thumbnail's image has painted. The fallback unmounts once it
+ * has: a transparent image (an SVG, a PNG with alpha) would otherwise show the
+ * category art through it, and a hidden fallback still costs DOM.
+ */
+const ThumbnailShownContext = React.createContext<{
+  imageShown: boolean
+  setImageShown: (shown: boolean) => void
+}>({ imageShown: false, setImageShown: () => {} })
+
 const ItemThumbnail = React.forwardRef<
   React.ComponentRef<typeof AvatarPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
@@ -214,26 +224,30 @@ const ItemThumbnail = React.forwardRef<
     () => composeRefs<React.ComponentRef<typeof AvatarPrimitive.Root>>(ref, thumbnailRef),
     [ref, thumbnailRef]
   )
+  const [imageShown, setImageShown] = React.useState(false)
+  const shown = React.useMemo(() => ({ imageShown, setImageShown }), [imageShown])
   return (
-    <AvatarPrimitive.Root
-      ref={setRef}
-      data-slot="item-thumbnail"
-      className={cn(
-        'relative flex w-full shrink-0 overflow-hidden rounded-md aspect-video',
-        // The fallback stays mounted under the image; once there is an image,
-        // its category vector must not keep animating where nobody sees it.
-        'has-[[data-slot=item-thumbnail-image]]:[&_[data-slot=item-thumbnail-fallback]_*]:animate-none!',
-        className
-      )}
-      {...rest}
-    >
-      {children ?? (
-        <>
-          <ItemThumbnailImage />
-          <ItemThumbnailFallback />
-        </>
-      )}
-    </AvatarPrimitive.Root>
+    <ThumbnailShownContext.Provider value={shown}>
+      <AvatarPrimitive.Root
+        ref={setRef}
+        data-slot="item-thumbnail"
+        className={cn(
+          'relative flex w-full shrink-0 overflow-hidden rounded-md aspect-video',
+          // While the first stage loads, the fallback sits under the image; its
+          // category vector must not animate there. It unmounts once it loads.
+          'has-[[data-slot=item-thumbnail-image]]:[&_[data-slot=item-thumbnail-fallback]_*]:animate-none!',
+          className
+        )}
+        {...rest}
+      >
+        {children ?? (
+          <>
+            <ItemThumbnailImage />
+            <ItemThumbnailFallback />
+          </>
+        )}
+      </AvatarPrimitive.Root>
+    </ThumbnailShownContext.Provider>
   )
 })
 ItemThumbnail.displayName = 'ItemThumbnail'
@@ -267,20 +281,34 @@ const ItemThumbnailImage = React.forwardRef<
   const { id, thumbnails, name } = useItemCard()
   const live = useLiveThumbnail(id)
   const persisted = thumbnails?.find((t) => t.url && !t.url.startsWith('#'))
-  const { className, alt, onError, ...rest } = props
+  const { className, alt, onError, onLoad, ...rest } = props
   const recoverExpired = useThumbnailRecovery()
+  const { setImageShown } = React.useContext(ThumbnailShownContext)
+  const imageRef = React.useRef<HTMLImageElement>(null)
+  const setRef = React.useMemo(() => composeRefs<HTMLImageElement>(ref, imageRef), [ref])
 
   const src = live?.src ?? persisted?.url
   const width = live?.width ?? persisted?.width ?? undefined
   const height = live?.height ?? persisted?.height ?? undefined
+
+  // A server-rendered image can finish loading before hydration attaches
+  // `onLoad`, so read `complete` too. A src swap between stages never resets
+  // it (the browser holds the prior frame); only losing the src does.
+  React.useLayoutEffect(() => {
+    const img = imageRef.current
+    if (!src) setImageShown(false)
+    else if (img?.complete && img.naturalWidth > 0) setImageShown(true)
+  }, [src, setImageShown])
+
   if (!src) return null
   // Plain <img> (not Radix Avatar.Image) so progressive src swaps don't
   // flash the Fallback during each stage's load. The browser holds the
   // prior frame until the new src decodes. Absolute-positioned over the
-  // sibling Fallback, which shows through only on the very first load.
+  // sibling Fallback, which shows only until the first stage has loaded and
+  // then unmounts.
   return (
     <img
-      ref={ref}
+      ref={setRef}
       src={src}
       alt={alt ?? name}
       width={width}
@@ -288,7 +316,12 @@ const ItemThumbnailImage = React.forwardRef<
       decoding="async"
       data-slot="item-thumbnail-image"
       data-stage={live?.stage}
+      onLoad={(event) => {
+        setImageShown(true)
+        onLoad?.(event)
+      }}
       onError={(event) => {
+        setImageShown(false)
         recoverExpired()
         onError?.(event)
       }}
@@ -312,7 +345,9 @@ const ItemThumbnailFallback = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
 >((props, ref) => {
   const { type, category } = useItemCard()
+  const { imageShown } = React.useContext(ThumbnailShownContext)
   const { className, children, ...rest } = props
+  if (imageShown) return null
   return (
     <AvatarPrimitive.Fallback
       ref={ref}
