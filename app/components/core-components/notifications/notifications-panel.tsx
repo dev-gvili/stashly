@@ -158,7 +158,7 @@ export function NotificationsPanel({
         <Button
           variant="outline"
           size="icon"
-          className="relative border rounded-md! items-center justify-center font-stashly bg-card! border-none active:scale-[0.96] data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground ring-2 ring-accent "
+          className="relative border rounded-md! items-center justify-center font-stashly bg-card! border-none shadow-none text-muted-foreground hover:text-foreground active:scale-[0.96] data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground"
           aria-label={
             unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'
           }

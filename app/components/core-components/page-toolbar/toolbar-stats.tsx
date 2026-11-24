@@ -65,7 +65,7 @@ export function SelectAllCheckbox({
   return (
     <span
       className={cn(
-        'inline-grid size-9 shrink-0 place-items-center rounded-md bg-card! border-none ring-2 ring-accent ',
+        'inline-grid size-9 shrink-0 place-items-center rounded-md bg-card! border-none',
         className
       )}
     >

@@ -30,7 +30,7 @@ export function ModeToggle() {
           variant="outline"
           size="icon"
           aria-label="Color mode"
-          className="font-stashly bg-card! ring-2 ring-accent border-none data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground rounded-md!"
+          className="font-stashly bg-card! border-none shadow-none text-muted-foreground hover:text-foreground data-[state=open]:bg-muted/30 data-[state=open]:text-accent-foreground rounded-md!"
         >
           {current === 'dark' && <DarkModeFillIcon className="size-5!" />}
           {current === 'light' && <LightModeFillIcon className="size-5!" />}

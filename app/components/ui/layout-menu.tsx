@@ -64,7 +64,7 @@ export const LayoutMenu = ({
       loop
       variant="outline"
       size="default"
-      className={cn('max-w-max rounded-md ring-2 ring-accent', className)}
+      className={cn('max-w-max rounded-md', className)}
       {...props}
     >
       {children}

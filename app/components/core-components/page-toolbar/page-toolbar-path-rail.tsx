@@ -114,7 +114,7 @@ export function PathRailSelectionActions({
   return (
     <div
       className={cn(
-        'flex shrink-0 items-center gap-1 rounded-md ring-2 ring-accent bg-card pl-2',
+        'flex shrink-0 items-center gap-1 rounded-md bg-card pl-2',
         className
       )}
     >
@@ -205,7 +205,7 @@ export function PageToolbarPathRail({
     <nav
       className={cn(
         // z-10: sticky toolbars stay under tooltip portals (UI conventions).
-        'sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-input bg-background py-2 px-0.5',
+        'sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 bg-background py-2 px-0.5',
         className
       )}
     >

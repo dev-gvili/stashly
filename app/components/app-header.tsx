@@ -1,7 +1,6 @@
 import {
   AddFoldersIcon,
   ArrowLeftFillIcon,
-  ChevronRightIcon,
   UploadFileFillIcon,
   UploadFillIcon,
   UploadFolderFillIcon,
@@ -113,13 +112,7 @@ export function AppHeader() {
           {/* Search, filter and sort in one field (⌘K opens it too). It
               replaced the classic search / Filter / Sort controls as the only
               option (owner's call, 13 Nov). */}
-          {hasHeaderFilters(pathname) && (
-            <>
-              {/* After New (which renders nothing on /files). */}
-              {!pathname.includes('files') && <HeaderDivider />}
-              <SearchRefine />
-            </>
-          )}
+          {hasHeaderFilters(pathname) && <SearchRefine />}
         </div>
       )}
       <div className="flex items-center gap-2 shrink-0">
@@ -132,21 +125,10 @@ export function AppHeader() {
           <Grid />
           <List />
         </LayoutToggle>
-        <HeaderDivider />
         <NotificationsPanel notifications={notifications} />
         <ModeToggle />
       </div>
     </header>
-  )
-}
-
-/** A hairline between control groups; gone once the header is narrow. */
-function HeaderDivider() {
-  return (
-    <span
-      aria-hidden
-      className="h-5 w-px shrink-0 bg-input @max-md/header:hidden"
-    />
   )
 }
 
@@ -244,10 +226,6 @@ function StashlyUpload({
           >
             <UploadFillIcon aria-hidden className="size-5!" />
             <span className="@max-md/header:hidden">New</span>
-            <ChevronRightIcon
-              aria-hidden
-              className="size-4! rotate-90 @max-md/header:hidden"
-            />
             {/* Uploads running. Square-ish, not a dot: no round shapes. */}
             {uploading > 0 && (
               <span
