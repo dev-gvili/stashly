@@ -29,7 +29,13 @@ function Switch({
         data-slot="switch-thumb"
         className={cn(
           'data-[state=checked]:bg-muted-foreground! pointer-events-none block size-3 rounded-full ring-0 transition-transform data-[state=checked]:translate-x-[calc(100%+4px)] data-[state=unchecked]:translate-x-0.5 bg-current! data-[state=unchecked]:bg-background!',
-          shape === 'square' && 'size-2.5 rounded-[3px]'
+          // A plain 16 × 12 key on a 2px inset, muted in both states. The
+          // checked colour stays the base muted-foreground: the default
+          // checked track is bg-muted, where a primary-foreground key all but
+          // disappears (oklch 0.99 on 0.945 light, 0.15 on 0.23 dark). A caller
+          // that colours the checked track lightens the key with it.
+          shape === 'square' &&
+            'h-3 w-4 rounded-[3px] shadow-xs data-[state=unchecked]:translate-x-0.5 data-[state=checked]:translate-x-2.5 data-[state=unchecked]:bg-muted-foreground!'
         )}
       />
     </SwitchPrimitive.Root>
