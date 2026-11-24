@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { ItemCard } from '@/components/stash/item-card'
-import { Badge } from '@/ui/badge'
 import { Button } from '@/ui/button'
 import { OpenWithIcon } from '@/components/icons'
 import { cn } from '@/utils/styles'
@@ -75,18 +74,6 @@ export function FileCardDetail({
           <ItemCard.ThumbnailFallback className="rounded-none p-0" />
           <ItemCard.ThumbnailImage className="rounded-none" />
         </ItemCard.Thumbnail>
-
-        {/* The app badge in the primary colour (owner, 14 Nov: the round chip
-            didn't match the app's badges). Hidden while the checkbox row
-            shows, which takes the same corner. */}
-        {item.file?.extension && (
-          <Badge
-            asChild
-            className="absolute top-2.5 left-2.5 bg-primary text-primary-foreground group-hover/card:hidden group-has-[[data-slot=item-checkbox][data-state=checked]]/card:hidden"
-          >
-            <ItemCard.Kind />
-          </Badge>
-        )}
 
         {overlay}
         {/* Scrim: the name/kind/Open row sits on a fixed dark ground, so the

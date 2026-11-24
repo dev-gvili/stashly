@@ -31,7 +31,7 @@ function FolderTabText() {
       </div>
       <div className="absolute bottom-[7.5%] left-[6.5%] right-[6.5%] flex items-end justify-between">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-3xl font-bold leading-none tracking-tight text-card-foreground">
+          <span className="text-xl font-bold leading-none tracking-tight text-card-foreground">
             {sizeNum}
           </span>
           <span className="text-sm text-muted-foreground">{sizeUnit}</span>
@@ -56,16 +56,16 @@ export function FolderCardTab({ className, children, ...item }: ItemCardProps) {
     <ItemCard
       {...item}
       className={cn(
-        'h-full border-none! bg-card flex flex-col gap-0 rounded-3xl!  p-2 has-[[data-slot=item-checkbox][data-state=checked]]:ring-inset has-[[data-slot=item-checkbox][data-state=checked]]:ring-primary/50',
+        'h-full border-none! bg-card flex flex-col gap-0 rounded-2xl! p-2 has-[[data-slot=item-checkbox][data-state=checked]]:ring-inset has-[[data-slot=item-checkbox][data-state=checked]]:ring-primary/50',
         className
       )}
     >
       {/* h-full stretches to match sibling ItemCards in the row; aspect-square
           only kicks in as the intrinsic size when the row has no file cards.
-          rounded-2xl = the card's 24px minus its p-2 (8px) gutter, matching
-          FileCardDetail's hero. The ring lives here, on the square wrapper —
+          rounded-sm (8px) = the card's 16px (FileCardDetail's corner) minus
+          its p-2 (8px) gutter. The ring lives here, on the square wrapper —
           not on the <svg>, which only draws the folder path. */}
-      <div className="relative aspect-square h-full w-full overflow-hidden rounded-2xl border-none! bg-card">
+      <div className="relative aspect-square h-full w-full overflow-hidden rounded-sm border-none! bg-card">
         {/* Accent cover strip. Only the area above the folder body (y < 100/300)
             is ever exposed — keep the bright layer out of the lower card so
             sub-pixel seams from the non-uniformly scaled SVG can't bleed white
