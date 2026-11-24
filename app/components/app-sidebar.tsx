@@ -292,7 +292,7 @@ export function SidebarItem({
         size="sm"
         tooltip={tooltip}
         className={cn(
-          'w-full hover:text-current! hover:bg-sidebar-primary/30',
+          'w-full text-muted-foreground hover:text-sidebar-foreground! hover:bg-sidebar-primary/30',
           isActive &&
             'w-full bg-sidebar-accent! font-bold! text-sidebar-accent-foreground! hover:bg-sidebar-accent! hover:text-sidebar-accent-foreground! [&_svg]:text-primary'
         )}
