@@ -392,7 +392,7 @@ function SearchField({ filters }: { filters: Filters }) {
         By meaning
         <Switch
           shape="square"
-          className="border border-input"
+          className="border border-input data-[state=checked]:border-primary data-[state=checked]:bg-primary! data-[state=checked]:[&>span]:bg-primary-foreground!"
           checked={semantic}
           onCheckedChange={(on) => filters.setSearchMode(on ? 'semantic' : 'fuzzy')}
         />

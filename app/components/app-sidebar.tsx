@@ -184,7 +184,7 @@ export const AppSidebar = ({
       variant="floating"
       widthIcon="4rem"
     >
-      <SidebarHeader className="bg-card py-4">
+      <SidebarHeader className="bg-sidebar dark:bg-card/50 py-4">
         <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col">
           <Link to={'/'} aria-label="Home" className="rounded-lg">
             <Logo className="size-8! text-foreground" />
@@ -192,7 +192,7 @@ export const AppSidebar = ({
           <SidebarTrigger variant="ghost" size="icon-sm" />
         </div>
       </SidebarHeader>
-      <SidebarContent className="bg-card border-none!">
+      <SidebarContent className="bg-sidebar dark:bg-card/50 border-none!">
         <ScrollArea className="h-full" type="hidden">
           <NavMedia media={mediaItems} basePath={url} />
           <SidebarGroup>
@@ -246,7 +246,7 @@ export const AppSidebar = ({
           <NavWorkspaces workspaces={workspaces} />
         </ScrollArea>
       </SidebarContent>
-      <SidebarFooter className="bg-card rounded-b-md">
+      <SidebarFooter className="bg-sidebar dark:bg-card/50 rounded-b-md">
         <SidebarStorageCard userId={user.id} />
         <div className="flex items-center gap-2 group-data-[collapsible=icon]:flex-col">
           <div className="min-w-0 flex-1">
