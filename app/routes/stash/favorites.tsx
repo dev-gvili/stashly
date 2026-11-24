@@ -84,8 +84,9 @@ export default function Favorites() {
         <GenericEmptyState
           icon={<EmptyFavoritesVector />}
           title="No favorites yet"
-          description="Heart an item to see it here."
-          className="h-auto py-16"
+          description="Favorite files or collections to keep them one click away"
+          // Centred on the visible content area, like the collections empty state.
+          className="absolute inset-x-0 top-0 h-[calc(100dvh-3.5rem)] [&_[data-slot=empty-title]]:uppercase"
         />
       )}
       <div className="col-span-full flex justify-center mt-2">

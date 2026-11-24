@@ -85,7 +85,7 @@ export function HomeFeed({ recent, collections, me, moreHref }: HomeFeedProps) {
           )}
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-6 py-14 text-center text-muted-foreground">
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-6 py-14 text-center text-muted-foreground [&>svg]:h-28 [&>svg]:w-42">
           {empty.media}
           <span className="font-stashly text-sm">{empty.text}</span>
         </div>

@@ -8,7 +8,8 @@ import {
 import { NewCollectionDialog } from '@/components/core-components/collection-dialogs'
 import { LayoutSegments, type CollectionLayout } from '@/components/collections'
 import { AddIcon, SearchFillIcon, SortListIcon } from '@/components/icons'
-import { CollectionEmptyState } from '@/components/states/collection-empty-state'
+import { GenericEmptyState } from '@/components/states/generic-empty-state'
+import { NoCollectionsVector } from '@/components/states/vectors/empty-vectors'
 import { Badge } from '@/ui/badge'
 import { Button } from '@/ui/button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/ui/input-group'
@@ -84,8 +85,8 @@ export function CollectionsView({ collections }: CollectionsViewProps) {
 
   return (
     <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-6 px-10 pt-9 pb-30 max-sm:px-4">
-      <div className="bg-dots mask-fade-b pointer-events-none absolute inset-x-0 top-0 h-72" />
 
+      {hasCollections && (
       <div className="relative flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-3">
@@ -101,13 +102,12 @@ export function CollectionsView({ collections }: CollectionsViewProps) {
             collections.
           </p>
         </div>
-        {hasCollections && (
-          <Button className="font-stashly" onClick={() => setNewOpen(true)}>
-            <AddIcon className="size-5" />
-            New collection
-          </Button>
-        )}
+        <Button className="font-stashly" onClick={() => setNewOpen(true)}>
+          <AddIcon className="size-5" />
+          New collection
+        </Button>
       </div>
+      )}
 
       {hasCollections ? (
         <>
@@ -158,12 +158,19 @@ export function CollectionsView({ collections }: CollectionsViewProps) {
           )}
         </>
       ) : (
-        <CollectionEmptyState variant="index">
+        <GenericEmptyState
+          title="No collections yet"
+          description="Create a collection to group related files together"
+          icon={<NoCollectionsVector />}
+          // Spans the visible content area (viewport minus the 3.5rem app
+          // header) from the page top, so it centres on screen, not below
+          // the page's top padding.
+          className="absolute inset-x-0 top-0 h-[calc(100dvh-3.5rem)]"
+        >
           <Button className="font-stashly" onClick={() => setNewOpen(true)}>
-            <AddIcon className="size-5" />
             New collection
           </Button>
-        </CollectionEmptyState>
+        </GenericEmptyState>
       )}
 
       <NewCollectionDialog open={newOpen} onOpenChange={setNewOpen} />

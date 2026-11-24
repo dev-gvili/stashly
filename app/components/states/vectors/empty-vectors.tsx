@@ -8,7 +8,7 @@ interface VectorProps {
 export function EmptyCollectionVector({ className }: VectorProps) {
   return (
     <svg
-      className={cn('h-28 w-42 shrink-0', className)}
+      className={cn('h-48 w-72 shrink-0', className)}
       viewBox="0 0 168 112"
 
       fill="none"
@@ -76,7 +76,7 @@ export function EmptyCollectionVector({ className }: VectorProps) {
 export function EmptySearchVector({ className }: VectorProps) {
   return (
     <svg
-      className={cn('h-28 w-42 shrink-0', className)}
+      className={cn('h-48 w-72 shrink-0', className)}
       viewBox="0 0 168 112"
 
       fill="none"
@@ -119,7 +119,7 @@ export function EmptySearchVector({ className }: VectorProps) {
 export function EmptyTrashVector({ className }: VectorProps) {
   return (
     <svg
-      className={cn('h-28 w-42 shrink-0', className)}
+      className={cn('h-48 w-72 shrink-0', className)}
       viewBox="0 0 168 112"
 
       fill="none"
@@ -161,75 +161,73 @@ export function EmptyTrashVector({ className }: VectorProps) {
 export function NoCollectionsVector({ className }: VectorProps) {
   return (
     <svg
-      className={cn('h-28 w-42 shrink-0', className)}
-      viewBox="0 0 168 112"
-
+      className={cn('h-48 w-72 shrink-0', className)}
+      viewBox="-12 -8 168 112"
       fill="none"
       aria-hidden="true"
     >
-      {/* Base isometric grid footprint */}
+      {/* Back left stack card */}
+      <rect
+        x="24"
+        y="30"
+        width="38"
+        height="46"
+        rx="7"
+        className="fill-card stroke-muted-foreground"
+        strokeOpacity="0.75"
+        strokeWidth="1.4"
+      />
       <path
-        className="stroke-border"
-        d="M84 24L130 49L84 74L38 49L84 24Z"
-        strokeWidth="1.25"
-        strokeDasharray="2 3"
+        d="M24 38H44L47 34H62"
+        className="stroke-muted-foreground"
+        strokeOpacity="0.75"
+        strokeWidth="1.4"
       />
 
-      {/* Left ghosted collection folder block */}
-      <g opacity="0.55">
-        <path
-          className="stroke-muted-foreground fill-muted"
-          d="M66 37L82 45.5L64 55L48 46.5L66 37Z"
-          strokeWidth="1.25"
-          strokeLinejoin="round"
-        />
-        <path
-          className="stroke-muted-foreground fill-card"
-          d="M48 46.5V56.5L64 65L82 55.5V45.5"
-          strokeWidth="1.25"
-          strokeLinejoin="round"
-        />
-      </g>
+      {/* Back right stack card */}
+      <rect
+        x="82"
+        y="30"
+        width="38"
+        height="46"
+        rx="7"
+        className="fill-card stroke-muted-foreground"
+        strokeOpacity="0.75"
+        strokeWidth="1.4"
+      />
+      <path
+        d="M82 38H102L105 34H120"
+        className="stroke-muted-foreground"
+        strokeOpacity="0.75"
+        strokeWidth="1.4"
+      />
 
-      {/* Bottom ghosted collection folder block */}
-      <g opacity="0.55">
-        <path
-          className="stroke-muted-foreground fill-muted"
-          d="M86 48L102 56.5L84 66L68 57.5L86 48Z"
-          strokeWidth="1.25"
-          strokeLinejoin="round"
-        />
-        <path
-          className="stroke-muted-foreground fill-card"
-          d="M68 57.5V67.5L84 76L102 66.5V56.5"
-          strokeWidth="1.25"
-          strokeLinejoin="round"
-        />
-      </g>
+      {/* Center dashed blueprint binder */}
+      <rect
+        x="48"
+        y="20"
+        width="48"
+        height="58"
+        rx="8"
+        className="fill-primary stroke-primary motion-safe:animate-stashly-slot"
+        fillOpacity="0.14"
+        strokeWidth="1.65"
+        strokeDasharray="4 3"
+      />
 
-      {/* Elevated animated primary collection blueprint slot */}
+      {/* Center cross trigger */}
       <g className="motion-safe:animate-stashly-float">
-        <path
-          className="stroke-primary fill-primary motion-safe:animate-stashly-slot"
-          fillOpacity="0.28"
-          d="M98 31L116 40.5L98 50L80 40.5L98 31Z"
+        <circle
+          cx="72"
+          cy="49"
+          r="11"
+          className="fill-card stroke-primary"
           strokeWidth="1.5"
-          strokeDasharray="3 2"
-          strokeLinejoin="round"
         />
         <path
-          className="stroke-primary fill-primary"
-          fillOpacity="0.14"
-          d="M80 40.5V50.5L98 60L116 50.5V40.5"
-          strokeWidth="1.5"
-          strokeDasharray="3 2"
-          strokeLinejoin="round"
-        />
-        {/* Plus glyph centered on top face */}
-        <path
-          className="stroke-foreground"
-          d="M98 36.5V44.5M91.5 40.5H104.5"
-          strokeWidth="1.5"
+          d="M72 44.5V53.5M67.5 49H76.5"
+          className="stroke-primary"
+          strokeWidth="1.75"
           strokeLinecap="round"
         />
       </g>
@@ -244,7 +242,7 @@ export function NoCollectionsVector({ className }: VectorProps) {
 export function EmptyFolderVector({ className }: VectorProps) {
   return (
     <svg
-      className={cn('h-28 w-42 shrink-0', className)}
+      className={cn('h-48 w-72 shrink-0', className)}
       viewBox="0 0 168 112"
 
       fill="none"
@@ -297,7 +295,7 @@ export function EmptyFolderVector({ className }: VectorProps) {
 export function EmptyGalleryImagesVector({ className }: VectorProps) {
   return (
     <svg
-      className={cn('h-28 w-42 shrink-0', className)}
+      className={cn('h-48 w-72 shrink-0', className)}
       viewBox="0 0 168 112"
 
       fill="none"
@@ -360,7 +358,7 @@ export function EmptyGalleryImagesVector({ className }: VectorProps) {
 export function EmptyGalleryVideosVector({ className }: VectorProps) {
   return (
     <svg
-      className={cn('h-28 w-42 shrink-0', className)}
+      className={cn('h-48 w-72 shrink-0', className)}
       viewBox="0 0 168 112"
 
       fill="none"
@@ -426,7 +424,7 @@ export function EmptyGalleryVideosVector({ className }: VectorProps) {
 export function FilteredEmptyVector({ className }: VectorProps) {
   return (
     <svg
-      className={cn('h-28 w-42 shrink-0', className)}
+      className={cn('h-48 w-72 shrink-0', className)}
       viewBox="0 0 168 112"
 
       fill="none"
@@ -504,7 +502,7 @@ export function FilteredEmptyVector({ className }: VectorProps) {
 export function ItemPanelsEmptyVector({ className }: VectorProps) {
   return (
     <svg
-      className={cn('h-28 w-42 shrink-0', className)}
+      className={cn('h-48 w-72 shrink-0', className)}
       viewBox="0 0 168 112"
 
       fill="none"
@@ -572,7 +570,7 @@ export function ItemPanelsEmptyVector({ className }: VectorProps) {
 export function WorkspaceEmptyVector({ className }: VectorProps) {
   return (
     <svg
-      className={cn('h-28 w-42 shrink-0', className)}
+      className={cn('h-48 w-72 shrink-0', className)}
       viewBox="0 0 168 112"
 
       fill="none"
@@ -649,7 +647,7 @@ export function WorkspaceEmptyVector({ className }: VectorProps) {
 export function EmptyFavoritesVector({ className }: VectorProps) {
   return (
     <svg
-      className={cn('h-28 w-42 shrink-0', className)}
+      className={cn('h-48 w-72 shrink-0', className)}
       viewBox="0 0 168 112"
       fill="none"
       aria-hidden="true"
@@ -711,7 +709,7 @@ export function EmptyFavoritesVector({ className }: VectorProps) {
 export function EmptyPinsVector({ className }: VectorProps) {
   return (
     <svg
-      className={cn('h-28 w-42 shrink-0', className)}
+      className={cn('h-48 w-72 shrink-0', className)}
       viewBox="0 0 168 112"
       fill="none"
       aria-hidden="true"
@@ -780,7 +778,7 @@ export function EmptyPinsVector({ className }: VectorProps) {
 export function EmptySharesVector({ className }: VectorProps) {
   return (
     <svg
-      className={cn('h-28 w-42 shrink-0', className)}
+      className={cn('h-48 w-72 shrink-0', className)}
       viewBox="0 0 168 112"
       fill="none"
       aria-hidden="true"

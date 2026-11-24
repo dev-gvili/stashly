@@ -246,7 +246,7 @@ function OverviewOps({ workspace, members, pendingInvites, recentItems, pinnedIt
           </section>
         ) : (
           <section className="col-span-7 border border-dashed border-input rounded-md bg-card p-3 flex flex-col items-center justify-center gap-2 text-center">
-            <EmptyPinsVector />
+            <EmptyPinsVector className="h-28 w-42" />
             <p className="text-xs text-muted-foreground uppercase tracking-[0.15em]">No pinned items</p>
           </section>
         )}
