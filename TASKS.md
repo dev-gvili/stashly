@@ -16,6 +16,8 @@
 - [ ] Home Searchable queue can't transcribe *(added 2026-11-06)* — the pill lists audio and video files search can't see yet, but `/api/ai/transcribe` is a 501 stub, so its button reads "Unavailable". Wire the route (or the browser Whisper path), then pass `onProcess` to `SearchablePill`.
 - [ ] Home search hero has no ⌘K palette *(added 2026-11-06)* — the mockup's hero opens a command palette; none exists, so the hero and its chips navigate to `/:me/stash/search?query=…`. Build the palette or keep the link.
 - [ ] Stale `?q=` comment in `app/routes/stash/search.tsx` *(added 2026-11-06)* — the loader doc says a shared `?q=…` link paints results, but the page reads `?query=` (`QUERY_KEY`, `app/utils/filter-data.ts`). Fix the comment.
+- [ ] Select-all, phase 3 onward *(added 2026-11-24)* — the phase-2 selection layer (`selection-actions.ts`, selection schemas, `count_selection`) was reverted in `d85856d` as over-engineered; the inline loaders in `routes/stash/folder.tsx`, `all.tsx` and `trash.tsx` are back. Any further select-all work is a simple design with no scope layer and no wrappers over existing loader/action code, **proposed to the owner before any code**. Open questions for that proposal: the caps (10,000 / 200), add-to-collection for a select-all, the chevron icon. Handoff: `handoff-stashly-select-all.md` (untracked, don't commit).
+- [ ] Drop the throwaway database `stashly_p51` *(added 2026-11-24; only when the owner says so)* — made for the select-all phase work; no longer needed after the revert. A DB mutation, so it waits for the owner's word.
 
 ## Someday / Low Priority
 
