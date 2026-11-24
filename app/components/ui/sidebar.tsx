@@ -424,7 +424,7 @@ function SidebarTrigger({
           <>
             <SidebarFillIcon
               className={cn(
-                'size-5',
+                'size-4',
                 state === 'expanded' ? 'rotate-180 duration-200' : ''
               )}
             />
