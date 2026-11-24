@@ -29,9 +29,9 @@ function FolderTabText() {
           {formatMediaDate(createdAt)}
         </div>
       </div>
-      <div className="absolute bottom-[7.5%] left-[6.5%] right-[6.5%] flex items-end justify-between">
+      <div className="absolute bottom-[7.5%] left-[6.5%] right-[6.5%] flex items-baseline justify-between">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-xl font-bold leading-none tracking-tight text-card-foreground">
+          <span className="text-sm font-bold leading-none tracking-tight text-card-foreground">
             {sizeNum}
           </span>
           <span className="text-sm text-muted-foreground">{sizeUnit}</span>
