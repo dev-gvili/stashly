@@ -209,6 +209,13 @@ export function PageToolbarPathRail({
         className
       )}
     >
+      {/* The main content's dot field (app-content.tsx) continues behind the
+          toolbar's opaque ground: same viewport-fixed dots, and the 18rem fade
+          offset by the toolbar's 3.5rem distance from the top. */}
+      <div
+        aria-hidden
+        className="bg-dots bg-fixed mask-fade-b pointer-events-none absolute inset-0 -z-10 [mask-position:0_-3.5rem] [mask-repeat:no-repeat] [mask-size:100%_18rem]"
+      />
       {/* Plain ghost: the accent ring belongs to the selection group only
           (owner, 14 Nov). */}
       <Button

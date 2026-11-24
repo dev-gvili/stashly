@@ -341,7 +341,6 @@ export function CollectionView({
   return (
     <SelectionProvider items={ids}>
     <div className="relative mx-auto flex w-full max-w-screen-2xl flex-col gap-5 px-8 pt-6 pb-30 max-sm:px-4">
-      <div className="bg-dots mask-fade-b pointer-events-none absolute inset-x-0 top-0 h-72" />
 
       <Button
         variant="ghost"

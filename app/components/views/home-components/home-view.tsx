@@ -39,7 +39,6 @@ export function HomeView({
       data-slot="home-view"
       className="relative flex min-h-[calc(100dvh-3.5rem)] flex-col items-center px-6 pt-8 pb-30 md:px-10"
     >
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-95 bg-dots mask-fade-b" />
       <div className="mt-10 flex w-full justify-center">
         <HomeSearchHero firstName={firstName} suggestions={suggestions} onOpenSearch={openSearch} />
       </div>
