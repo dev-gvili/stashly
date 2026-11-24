@@ -294,7 +294,7 @@ export function SidebarItem({
         className={cn(
           'w-full hover:text-current! hover:bg-sidebar-primary/30',
           isActive &&
-            'w-full border-2 border-sidebar-primary! bg-sidebar-primary/30 text-accent-foreground! hover:text-accent-foreground!'
+            'w-full bg-sidebar-accent! font-bold! text-sidebar-accent-foreground! hover:bg-sidebar-accent! hover:text-sidebar-accent-foreground! [&_svg]:text-primary'
         )}
       >
         <NavLink
