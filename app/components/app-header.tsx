@@ -52,7 +52,10 @@ export function AppHeader() {
     | undefined
   const { pathname } = useLocation()
   const isImagesPage = pathname.endsWith('/images')
-  const isSettingsPage = useMatches().some((m) => m.id === 'settings')
+  const matches = useMatches()
+  const isSettingsPage = matches.some((m) => m.id === 'settings')
+  // Home has its own search field in the page, so the header's would repeat it.
+  const isHomePage = matches.some((m) => m.id === 'stash-home')
   const notifications = layoutData?.notifications ?? []
   // At the stash root there's no `:folderId` in the URL; fall back to the
   // user's root folder so New Folder (and uploads) have a real destination.
@@ -112,7 +115,8 @@ export function AppHeader() {
           {/* Search, filter and sort in one field (⌘K opens it too). It
               replaced the classic search / Filter / Sort controls as the only
               option (owner's call, 13 Nov). */}
-          {hasHeaderFilters(pathname) && <SearchRefine />}
+          {/* Home keeps ⌘K, without a trigger beside the page's own field. */}
+          {hasHeaderFilters(pathname) && <SearchRefine showTrigger={!isHomePage} />}
         </div>
       )}
       <div className="flex items-center gap-2 shrink-0">
