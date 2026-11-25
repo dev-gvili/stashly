@@ -58,7 +58,7 @@ When the user pastes errors or a list of items, address ALL of them unless told 
 
 **Commit and push without asking.** Finished work ships ([Development Workflow](#development-workflow) step 3) without waiting for permission; this overrides the global default of committing only when asked.
 
-When committing, actually run `git add` and `git commit` — don't just generate messages or describe what you would commit. Use conventional prefixes (`feat:`, `fix:`, `refactor:`) with a body explaining the *why*. Group large changes into logical commits rather than one mega-commit when staging >50 files. **Assume a dirty tree**: it often carries 50+ uncommitted files of unrelated in-progress work, so never `git add -A` expecting your edits to be isolated — stage explicitly and scope by concern. Interactive `git add -p` is unavailable, so a shared file's hunks can't be split; assign each file to one commit by its dominant concern. Set `GITHUB_TOKEN` before using `gh`; if auth fails, ask the user to run `gh auth login` interactively rather than retrying with env vars.
+When committing, actually run `git add` and `git commit` — don't just generate messages or describe what you would commit. Use conventional prefixes (`feat:`, `fix:`, `refactor:`) with a body explaining the *why*. Group large changes into logical commits rather than one mega-commit when staging >50 files. **Assume a dirty tree**: it often carries 50+ uncommitted files of unrelated in-progress work, so never `git add -A` expecting your edits to be isolated — stage explicitly and scope by concern. Interactive `git add -p` is unavailable, so a shared file's hunks can't be split; assign each file to one commit by its dominant concern. Set `GITHUB_TOKEN` before using `gh`.
 
 ## Development
 
@@ -171,7 +171,7 @@ Routes are defined centrally in `app/routes.ts` using `prefix`, `layout`, and `r
 - Keep Zod schemas and derived types co-located — don't scatter them across feature files.
 - **A resource route parses a payload holding a `BigInt` column through an output schema before sending it** (`quotaApiRouteOutput`, `collectionsLoaderOutput`, `subscriptionLoaderOutput`, with `z.coerce.number()` for bytes). An API route's `data()` goes out as JSON, which has no BigInt, so a bare `size` or `storageLimit` answers 500 (tech-debt item 63).
 - **Wrap free-text request fields in `toUserText(...)`** (`@/utils/converters`). The form and search-param decoders turn `"42"`, `"true"`, `"false"` and `"null"` into values, so a bare `z.string()` rejected a file renamed to "2024" or a search for "true". The decoders keep a number only when it writes back as the same text (`"007"` stays a string).
-- `buildFiltersFactory` applies a param only when `key in filters` (`app/utils/filters.ts:127`). A schema key with no filter, or a filter whose key drifted from the schema, contributes **no constraint** — no error, and the query returns *more* rows than intended. `app/utils/__tests__/item-filters-coverage.test.ts` fails the build if the two key sets diverge; extend that pattern rather than trusting a read.
+- `buildFiltersFactory` applies a param only when `key in filters` (`app/utils/filters.ts`). A schema key with no filter, or a filter whose key drifted from the schema, contributes **no constraint** — no error, and the query returns *more* rows than intended. `app/utils/__tests__/item-filters-coverage.test.ts` fails the build if the two key sets diverge; extend that pattern rather than trusting a read.
 
 ### Path Aliases
 
@@ -201,8 +201,6 @@ shadcn/ui (source-owned, in `app/components/ui/`) built on Radix UI, styled with
 - **Use `font-stashly`, the stashly type scale (`text-xs` is the smallest) and the design tokens.** Never use raw font classes (`font-sans`, `font-mono`) — a mockup's font classes are translated, not copied.
 - **No circular avatars unless the design shows them. Don't add UI controls (pickers, toggles) that aren't in the spec.**
 - **Never fully rounded corners (mandatory, owner's rule 13 Nov).** No `rounded-full`, and no radius that turns a short element into a pill. A pill is a corner of half the height or more: with `--radius` at 12px, `rounded-lg` (12px) is a pill on anything 24px tall. A badge is the `Badge` component as it stands (24px tall, `rounded-sm` 8px, the collection header's look, owner's reference 13 Nov); don't override its shape. A checkbox is the `Checkbox` component as it stands (24px, `rounded-sm` 8px, foreground fill and accent ring when checked, the file card's look, owner's reference 14 Nov); don't override its size, colour or corner. Smaller chips, keys and counts (20px or less) take `rounded-[4px]`. Switches in new UI use `shape="square"`. Squarish everywhere; the only round things are ones the design draws round.
-- **After a UI change, verify in the browser via chrome-devtools in both light and dark mode before claiming done or pushing.**
-
 ## Subsystem Skills
 
 Detailed conventions for these areas live in on-demand project skills (`.claude/skills/`). Loading the matching skill is **mandatory** before touching the area — reading, planning, or editing. Don't proceed until every skill the task needs is loaded; a task spanning two areas loads both (a schema rename that also edits a component loads `stashly-prisma-data` **and** `stashly-ui-conventions`).
@@ -217,6 +215,8 @@ Detailed conventions for these areas live in on-demand project skills (`.claude/
 | `stashly-ai-inference` | Browser AI — the WebGPU `ai-queue` and its priorities, PDF OCR engines, the search-embedding backfill |
 | `stashly-gallery-views` | Gallery layouts (grid/river/waterfall), view transitions into the item page, scroll restoration, theme blocks |
 | `stashly-activity-recording` | Activity tracking, new action kinds, pins/favorites, `openedAt`, `StashlyPrefixMap` |
+| `stashly-item-lifecycle` | Trash, restore, permanent delete — quota refunds, size triggers, S3 object cleanup, the Trash page, the orphan sweep |
+| `new-stage` (`stashly-file-viewer-stage`) | Adding a viewer stage for a new file type |
 | `stashly-e2e-testing` | Writing/debugging Playwright E2E tests in `tests/e2e/` |
 
 ## Development Workflow
