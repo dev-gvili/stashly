@@ -81,6 +81,19 @@ const MORE = CATEGORIES.filter((c) => !COMMON_CATEGORY_IDS.includes(c.id))
 const TEXT_BUTTON =
   'h-8 gap-2 px-1.5 font-stashly text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground'
 
+const OPEN_EVENT = 'stashly:open-search-refine'
+
+/**
+ * Opens the header's search dialog from elsewhere on the page (Home's search
+ * field), the same as ⌘K. Does nothing on a page without the dialog.
+ *
+ * @example
+ * <button onClick={openSearchRefine}>Ask your stash</button>
+ */
+export function openSearchRefine() {
+  window.dispatchEvent(new Event(OPEN_EVENT))
+}
+
 /**
  * Search, filter and sort in one place: a search box, the item kind, and three
  * plain questions (file type, show only, sort), each answered on a page of its
@@ -114,8 +127,16 @@ export function SearchRefine({
         setOpen((o) => !o)
       }
     }
+    const onOpen = () => {
+      setView('home')
+      setOpen(true)
+    }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener(OPEN_EVENT, onOpen)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener(OPEN_EVENT, onOpen)
+    }
   }, [])
 
   return (

@@ -1,4 +1,5 @@
 import { href, useNavigate } from 'react-router'
+import { openSearchRefine } from '@/components/core-components/search-refine'
 import { DropOverlay } from '@/components/views/home-components/drop-overlay'
 import { HomeFeed, type HomeFeedProps } from '@/components/views/home-components/home-feed'
 import {
@@ -26,12 +27,12 @@ export function HomeView({
   const { isDragging, dragHandlers } = useUpload()
   const navigate = useNavigate()
 
+  // The field opens the header's search dialog; a recent-query chip runs that
+  // search straight away.
   const openSearch = (query?: string) =>
-    navigate(
-      query
-        ? `${href('/:me/stash/search', { me: feed.me })}?${QUERY_KEY}=${encodeURIComponent(query)}`
-        : href('/:me/stash/search', { me: feed.me })
-    )
+    query
+      ? navigate(`${href('/:me/stash/search', { me: feed.me })}?${QUERY_KEY}=${encodeURIComponent(query)}`)
+      : openSearchRefine()
 
   return (
     <div
