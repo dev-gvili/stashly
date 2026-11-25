@@ -64,17 +64,19 @@ test.describe('Search', () => {
     await page.goto(searchUrl)
     await waitForContent(page)
 
-    await typeQuery(page, E2E_ITEM_A_NAME)
-
     // The keyword pass is a plain GET — no embedding model involved, so this
-    // is the path that must work in every browser.
-    await page.waitForResponse(
+    // is the path that must work in every browser. Listen before typing: the
+    // GET fires the moment `?query=` commits, and can finish before
+    // `typeQuery` returns.
+    const keywordResponse = page.waitForResponse(
       (res) =>
         res.url().includes('/api/search/items') &&
         res.request().method() === 'GET' &&
         res.status() === 200,
-      { timeout: 15000 }
+      { timeout: 30000 }
     )
+    await typeQuery(page, E2E_ITEM_A_NAME)
+    await keywordResponse
 
     await expect(
       resultCard(page, E2E_ITEM_A_NAME)
@@ -86,7 +88,10 @@ test.describe('Search', () => {
   })
 
   test('a query matching nothing shows the empty state', async ({ page }) => {
-    await page.goto(searchUrl)
+    // Keyword only: by meaning (the default), "No matches" waits for the
+    // semantic pass, which here downloads the model and can run up to its
+    // 45 s ceiling. This test is about the empty state, not that wait.
+    await page.goto(`${searchUrl}?searchMode=fuzzy`)
     await waitForContent(page)
 
     await typeQuery(page, 'zzzzz-no-such-item-zzzzz')

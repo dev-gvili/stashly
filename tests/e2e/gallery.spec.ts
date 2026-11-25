@@ -231,7 +231,9 @@ test.describe('Images gallery', () => {
   })
 
   test('the header search with no match shows the empty state, and Clear search resets it', async ({ page }) => {
-    await openGallery(page, '?query=zzqxnomatchzzqx')
+    // Keyword only: by meaning (the default), the empty state waits for the
+    // semantic pass, which here downloads the model and can run up to 45 s.
+    await openGallery(page, '?query=zzqxnomatchzzqx&searchMode=fuzzy')
     await expect(page.getByText('No images match')).toBeVisible({ timeout: 15000 })
     await page.getByRole('main').getByRole('button', { name: 'Clear search' }).click()
     await expect(page).not.toHaveURL(/query=/)
