@@ -11,5 +11,6 @@ export {
   pauseDownloads,
   resumeDownloads,
 } from './hooks'
+export { refreshExpiredThumbnail } from './client'
 
 export type { ThumbProgress, ThumbJob, ThumbMode } from './thumbnail.types'

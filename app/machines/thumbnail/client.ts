@@ -85,6 +85,32 @@ export function hasPaintedThumbnail(itemId: string): boolean {
 }
 
 /**
+ * How long a painted signed URL is certain to keep working. The server rounds
+ * the signing time down to the hour and signs for 2 h (`signStoredThumbnail`),
+ * so a URL handed out at 10:59 expires at 12:00: one hour is the guarantee.
+ */
+export const SIGNED_THUMBNAIL_MIN_LIFETIME_MS = 60 * 60 * 1000
+
+/**
+ * Called when a card's image failed to load. If the URL this tab painted for
+ * the item is old enough to have expired, the same job runs again and paints
+ * a freshly signed URL. A younger URL failed for another reason (offline, a
+ * deleted object), which a new signature would not fix.
+ *
+ * @returns Whether a new URL was asked for.
+ *
+ * @example
+ * <img onError={() => refreshExpiredThumbnail(itemId)} />
+ */
+export function refreshExpiredThumbnail(itemId: string): boolean {
+  const painted = thumbnailManager.getSnapshot().context.progress.get(itemId)
+  if (!painted || painted.stage === 1 || painted.paintedAt === undefined) return false
+  if (Date.now() - painted.paintedAt < SIGNED_THUMBNAIL_MIN_LIFETIME_MS) return false
+  thumbnailManager.send({ type: 'expired', itemId })
+  return true
+}
+
+/**
  * Drops the item's queued job because its card left the screen. A job that
  * has started finishes anyway: its work is already paid for.
  */

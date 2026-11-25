@@ -265,7 +265,56 @@ describe('thumbnailManager — progress', () => {
     expect(m.getSnapshot().context.progress.get('u1')).toEqual({
       stage: 2,
       src: 'https://s3.test/u1.webp?v=2',
+      paintedAt: expect.any(Number),
     })
+  })
+})
+
+describe('thumbnailManager — expired signed URLs', () => {
+  async function paintedAndSettled(itemId: string) {
+    const m = startManager()
+    enqueue(m, itemId, 'fromDownload')
+    await tick()
+    m.getSnapshot().context.running.get(itemId)!.ref.send({
+      type: 'EMIT_PROGRESS',
+      src: `https://s3.test/${itemId}.webp?sig=old`,
+    })
+    finish(m, itemId, true)
+    return m
+  }
+
+  it('forgets the old URL and runs the job again, even though it was tried', async () => {
+    const m = await paintedAndSettled('x1')
+    expect(shouldSkip('x1', 'fromDownload')).toBe(true)
+
+    m.send({ type: 'expired', itemId: 'x1' })
+    expect(m.getSnapshot().context.progress.has('x1')).toBe(false)
+    await tick()
+    expect(runningIds(m)).toEqual(['x1'])
+
+    m.getSnapshot().context.running.get('x1')!.ref.send({
+      type: 'EMIT_PROGRESS',
+      src: 'https://s3.test/x1.webp?sig=new',
+    })
+    expect(m.getSnapshot().context.progress.get('x1')?.src).toBe(
+      'https://s3.test/x1.webp?sig=new'
+    )
+  })
+
+  it('leaves a running job alone: it paints a fresh URL anyway', async () => {
+    const m = startManager()
+    enqueue(m, 'x2', 'fromDownload')
+    await tick()
+    m.getSnapshot().context.running.get('x2')!.ref.send({
+      type: 'EMIT_PROGRESS',
+      src: 'https://s3.test/x2.webp?sig=a',
+    })
+
+    m.send({ type: 'expired', itemId: 'x2' })
+    expect(m.getSnapshot().context.progress.get('x2')?.src).toBe(
+      'https://s3.test/x2.webp?sig=a'
+    )
+    expect(queuedIds(m)).toEqual([])
   })
 })
 

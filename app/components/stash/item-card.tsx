@@ -32,7 +32,11 @@ import {
 } from 'react-router'
 import type { Route } from '../../routes/+types/layout'
 import { Actions as ItemCardActions } from './item-card-actions'
-import { useLiveThumbnail, useThumbnailWhenVisible } from '@/machines/thumbnail'
+import {
+  refreshExpiredThumbnail,
+  useLiveThumbnail,
+  useThumbnailWhenVisible,
+} from '@/machines/thumbnail'
 
 /**
  * Whether a card's item is in the trash. It never opens its live route: a
@@ -322,7 +326,9 @@ const ItemThumbnailImage = React.forwardRef<
       }}
       onError={(event) => {
         setImageShown(false)
-        recoverExpired()
+        // A URL this tab painted outranks the loader's, so only a new
+        // signature from the same job replaces it; reloading the page can't.
+        if (!(live && refreshExpiredThumbnail(id))) recoverExpired()
         onError?.(event)
       }}
       className={cn(
@@ -736,6 +742,7 @@ const ItemCover = React.forwardRef<
           className="absolute inset-0 flex items-center justify-center"
         >
           {type === 'folder' ? (
+          onError={() => refreshExpiredThumbnail(id)}
             <FolderIcon className="size-14 fill-current text-muted-foreground" />
           ) : (
             <ItemCategoryVector

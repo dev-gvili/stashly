@@ -14,6 +14,11 @@ export interface ThumbProgress {
   src: string
   width?: number
   height?: number
+  /**
+   * When the manager recorded it (`Date.now()`). Stages 2 and 3 are signed
+   * URLs that expire, so this dates the signature (see `refreshExpiredThumbnail`).
+   */
+  paintedAt?: number
 }
 
 /**
@@ -113,6 +118,12 @@ export type ThumbManagerEvent =
   | { type: 'fileHeld'; itemId: string; file: File }
   /** The card left the screen: drop its *queued* job. A running one finishes. */
   | { type: 'cancel'; itemId: string }
+  /**
+   * The item's painted URL failed to load after its signature could have
+   * expired: forget it and run a download job again, whose `intent=source`
+   * answers with a freshly signed URL for the stored thumbnail.
+   */
+  | { type: 'expired'; itemId: string }
   /** Uploads are moving bytes: stop starting downloads until they finish. */
   | { type: 'pauseDownloads' }
   /** No upload is moving bytes any more: downloads may start again. */

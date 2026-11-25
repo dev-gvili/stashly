@@ -122,11 +122,26 @@ export const thumbnailManagerMachine = setup({
       return { queue: context.queue.filter((q) => q.itemId !== event.itemId) }
     }),
 
-    /** Stores the stage a child just painted; `useLiveThumbnail` reads it. */
+    /**
+     * Stores the stage a child just painted; `useLiveThumbnail` reads it.
+     * Stamped with the time, because a signed URL stops working after a while.
+     */
     recordProgress: assign(({ context, event }) => {
       if (event.type !== 'child.progress') return {}
       const progress = new Map(context.progress)
-      progress.set(event.itemId, event.progress)
+      progress.set(event.itemId, { ...event.progress, paintedAt: Date.now() })
+      return { progress }
+    }),
+
+    /**
+     * Forgets an expired URL, so the card falls back to its loader's URL until
+     * the new job paints a freshly signed one.
+     */
+    forgetExpiredProgress: assign(({ context, event }) => {
+      if (event.type !== 'expired') return {}
+      if (context.running.has(event.itemId)) return {}
+      const progress = new Map(context.progress)
+      progress.delete(event.itemId)
       return { progress }
     }),
 
@@ -196,6 +211,17 @@ export const thumbnailManagerMachine = setup({
       actions: ['switchQueuedJobToMemory', 'startQueuedMemoryJobs'],
     },
     cancel: { actions: 'dropQueuedJob' },
+    expired: {
+      // A running job will paint a fresh URL anyway.
+      guard: ({ context, event }) => !context.running.has(event.itemId),
+      actions: [
+        'forgetExpiredProgress',
+        raise(({ event }) => ({
+          type: 'enqueue' as const,
+          job: { itemId: event.itemId, mode: 'fromDownload' as const, file: null },
+        })),
+      ],
+    },
     'child.progress': { actions: 'recordProgress' },
     'child.settled': {
       actions: [
