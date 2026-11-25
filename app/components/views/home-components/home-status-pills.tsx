@@ -31,11 +31,15 @@ export function HomeHeaderTools() {
     // 534px wide at 375 (header-responsive E2E). Its other controls come first.
     <div className="flex items-center gap-2 @max-2xl/header:hidden">
       <SearchablePill status={data.searchable} />
-      <NeedsYouPill
-        entries={data.needsYou}
-        onAct={respond('accept_invitation')}
-        onDismiss={respond('reject_invitation')}
-      />
+      {/* Only when something waits on the user: an "All caught up" button
+          said nothing worth a header slot (owner, 26 Nov). */}
+      {data.needsYou.length > 0 && (
+        <NeedsYouPill
+          entries={data.needsYou}
+          onAct={respond('accept_invitation')}
+          onDismiss={respond('reject_invitation')}
+        />
+      )}
     </div>
   )
 }
