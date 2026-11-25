@@ -28,7 +28,7 @@ import { NotificationsPanel } from '@/components/core-components/notifications/n
 import type { Notification } from '@/types/notification.types'
 import { NewFolderDialog } from '@/components/core-components/new-folder-dialog'
 import { SearchRefine } from '@/components/core-components/search-refine'
-import { hasHeaderFilters, HeaderSearch } from '@/components/filters/filters'
+import { hasHeaderFilters } from '@/components/filters/filters'
 import {
   Grid,
   LayoutToggle,
@@ -100,7 +100,7 @@ export function AppHeader() {
           <div className="shrink-0 @max-md/header:hidden">
             <Breadcrumbs />
           </div>
-          <HeaderSearch className="w-full max-w-80 min-w-40 shrink @max-md/header:min-w-0" />
+          <SearchRefine searchOnly />
         </div>
       ) : (
         // The group gives way to the right-hand controls instead of drawing

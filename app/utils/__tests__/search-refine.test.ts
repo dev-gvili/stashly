@@ -20,17 +20,17 @@ describe('scopeFromRouteParams', () => {
 })
 
 describe('searchPageUrl', () => {
-  const base = { query: 'tax', searchMode: 'fuzzy', category: [], type: [] } as const
+  const base = { query: 'tax', searchMode: 'semantic', category: [], type: [] } as const
   it('sends a global query to the search page with a layout', () => {
     expect(searchPageUrl('usr_1', { ...base, category: [], type: [] }, null)).toBe(
       '/usr_1/stash/search?query=tax&layout=grid'
     )
   })
-  it('carries meaning mode, types, kind and the scope', () => {
+  it('carries keyword-only mode, types, kind and the scope', () => {
     const url = new URL(
       searchPageUrl(
         'usr_1',
-        { query: 'tax 2024', searchMode: 'semantic', category: ['pdf', 'image'], type: ['file'] },
+        { query: 'tax 2024', searchMode: 'fuzzy', category: ['pdf', 'image'], type: ['file'] },
         { kind: 'folder', id: 'fol_1' }
       ),
       'http://x'
@@ -38,7 +38,7 @@ describe('searchPageUrl', () => {
     expect(url.pathname).toBe('/usr_1/stash/search')
     expect(Object.fromEntries(url.searchParams)).toEqual({
       query: 'tax 2024',
-      searchMode: 'semantic',
+      searchMode: 'fuzzy',
       category: 'pdf,image',
       type: 'file',
       layout: 'grid',
@@ -90,8 +90,8 @@ describe('describeRefinement', () => {
   })
   it('reads every refinement in order, leaving out the default sort', () => {
     expect(
-      describe_('query=report&searchMode=semantic&type=file&category=image,pdf&favorited=true')
-    ).toBe('“report” by meaning · Files · Image, Pdf · Favorites')
+      describe_('query=report&searchMode=fuzzy&type=file&category=image,pdf&favorited=true')
+    ).toBe('“report” by name only · Files · Image, Pdf · Favorites')
   })
   it('mentions a non-default sort', () => {
     expect(describe_('orderBy[size]=desc')).toBe('Size, Largest first')

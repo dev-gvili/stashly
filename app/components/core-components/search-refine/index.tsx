@@ -30,7 +30,6 @@ import {
   INVITE_CAPTION,
   INVITE_CARD,
 } from '@/components/views/invitations/invite-form-fields'
-import { useDebouncedCommit } from '@/hooks/useDebouncedCommit'
 import { useFilters } from '@/hooks/useFilters'
 import { useSortOrder } from '@/hooks/useSortOrder'
 import { CATEGORIES, CURSOR_KEY, FLAG_KEYS, MULTI_KEYS, QUERY_KEY, SEARCH_MODE_KEY } from '@/utils/filter-data'
@@ -50,7 +49,7 @@ import {
 import type { SortDir } from '@/utils/sort-fields'
 import { cn } from '@/utils/styles'
 import type { JSX, ReactNode, SVGProps } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 
 type View = 'home' | 'type' | 'show' | 'sort'
@@ -93,7 +92,14 @@ const TEXT_BUTTON =
  *
  * Opens from the trigger or ⌘K / Ctrl+K anywhere on the page.
  */
-export function SearchRefine({ showTrigger = true }: { showTrigger?: boolean }) {
+export function SearchRefine({
+  showTrigger = true,
+  searchOnly = false,
+}: {
+  showTrigger?: boolean
+  /** Just the search field, searching the current page in place (Images). */
+  searchOnly?: boolean
+}) {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<View>('home')
   const filters = useFilters()
@@ -163,7 +169,7 @@ export function SearchRefine({ showTrigger = true }: { showTrigger?: boolean }) 
             <DialogDescription className="sr-only">
               Search your stash and refine the results. Changes apply as you choose.
             </DialogDescription>
-            <Home filters={filters} sort={sort} go={setView} />
+            <Home filters={filters} sort={sort} go={setView} searchOnly={searchOnly} />
           </>
         ) : (
           <SubPage
@@ -204,12 +210,22 @@ export function SearchRefine({ showTrigger = true }: { showTrigger?: boolean }) 
 type Filters = ReturnType<typeof useFilters>
 type Sort = ReturnType<typeof useSortOrder>
 
-function Home({ filters, sort, go }: { filters: Filters; sort: Sort; go: (v: View) => void }) {
+function Home({
+  filters,
+  sort,
+  go,
+  searchOnly,
+}: {
+  filters: Filters
+  sort: Sort
+  go: (v: View) => void
+  searchOnly: boolean
+}) {
   const [, setSearchParams] = useSearchParams()
   const { state } = filters
   const anyActive =
     state.query !== '' ||
-    state.searchMode === 'semantic' ||
+    state.searchMode === 'fuzzy' ||
     state.category.length + state.type.length + state.flags.length > 0 ||
     !sort.isDefault
 
@@ -230,57 +246,61 @@ function Home({ filters, sort, go }: { filters: Filters; sort: Sort; go: (v: Vie
     // min-w-0: DialogContent is a grid, and a grid item won't shrink below its
     // content, so a long value would widen the dialog instead of truncating.
     <div className="flex min-w-0 flex-col gap-6">
-      <SearchField filters={filters} />
+      <SearchField filters={filters} inPlace={searchOnly} />
 
-      <section className="flex flex-col gap-2.5">
-        <h3 className={INVITE_CAPTION}>Show</h3>
-        <SegmentedControl
-          aria-label="Show"
-          value={kindOf(state)}
-          onValueChange={(v) => filters.setMulti('type', v === 'all' ? [] : [v as KindValue])}
-          className="w-full grid grid-cols-4"
-        >
-          {KINDS.map((k) => {
-            const KindIcon = KIND_ICON[k.value]
-            return (
-              <SegmentedControlItem key={k.value} value={k.value} className="w-full min-w-0 gap-1.5 px-1">
-                {/* On a phone the four labels fill the row on their own. */}
-                <KindIcon className="size-4 shrink-0 max-sm:hidden" />
-                {k.label}
-              </SegmentedControlItem>
-            )
-          })}
-        </SegmentedControl>
-      </section>
-
-      <section className="flex flex-col gap-2.5">
-        <h3 className={INVITE_CAPTION}>Refine</h3>
-        <div className="flex flex-col gap-2">
-          <Question
-            icon={ImageFillIcon}
-            label="File type"
-            value={
-              state.category.length ? <CategoryBadges ids={state.category} /> : describeCategories(state.category)
-            }
-            isSet={state.category.length > 0}
-            onClick={() => go('type')}
-          />
-          <Question
-            icon={FavoriteIcon}
-            label="Show only"
-            value={describeFlags(state.flags)}
-            isSet={state.flags.length > 0}
-            onClick={() => go('show')}
-          />
-          <Question
-            icon={sort.dir === 'asc' ? SortAscIcon : SortDescIcon}
-            label="Sort"
-            value={describeSort(sort.field, sort.dir)}
-            isSet={!sort.isDefault}
-            onClick={() => go('sort')}
-          />
-        </div>
-      </section>
+      {!searchOnly && (
+        <>
+          <section className="flex flex-col gap-2.5">
+            <h3 className={INVITE_CAPTION}>Show</h3>
+            <SegmentedControl
+              aria-label="Show"
+              value={kindOf(state)}
+              onValueChange={(v) => filters.setMulti('type', v === 'all' ? [] : [v as KindValue])}
+              className="w-full grid grid-cols-4"
+            >
+              {KINDS.map((k) => {
+                const KindIcon = KIND_ICON[k.value]
+                return (
+                  <SegmentedControlItem key={k.value} value={k.value} className="w-full min-w-0 gap-1.5 px-1">
+                    {/* On a phone the four labels fill the row on their own. */}
+                    <KindIcon className="size-4 shrink-0 max-sm:hidden" />
+                    {k.label}
+                  </SegmentedControlItem>
+                )
+              })}
+            </SegmentedControl>
+          </section>
+    
+          <section className="flex flex-col gap-2.5">
+            <h3 className={INVITE_CAPTION}>Refine</h3>
+            <div className="flex flex-col gap-2">
+              <Question
+                icon={ImageFillIcon}
+                label="File type"
+                value={
+                  state.category.length ? <CategoryBadges ids={state.category} /> : describeCategories(state.category)
+                }
+                isSet={state.category.length > 0}
+                onClick={() => go('type')}
+              />
+              <Question
+                icon={FavoriteIcon}
+                label="Show only"
+                value={describeFlags(state.flags)}
+                isSet={state.flags.length > 0}
+                onClick={() => go('show')}
+              />
+              <Question
+                icon={sort.dir === 'asc' ? SortAscIcon : SortDescIcon}
+                label="Sort"
+                value={describeSort(sort.field, sort.dir)}
+                isSet={!sort.isDefault}
+                onClick={() => go('sort')}
+              />
+            </div>
+          </section>
+        </>
+      )}
 
       <div className="flex flex-col gap-4">
         <div className="border-t border-dashed border-input" />
@@ -349,35 +369,60 @@ export function SearchRefineInput({
   )
 }
 
+/** How long the field must sit untouched before its text is sent. */
+const SEND_AFTER_IDLE_MS = 750
+
 /**
- * Local text, URL written behind the debounce: see `FiltersSearch` in
- * filters.tsx for why.
+ * The typed text is the field's own state and is never overwritten by the
+ * query it sent. A watcher sends the text once nothing has been typed for
+ * {@link SEND_AFTER_IDLE_MS}.
  *
- * Where the query goes depends on the page. On the search page it updates in
- * place. Anywhere else it opens the search page, since only that page runs the
- * real (keyword + meaning) search: inside a folder or collection with `?in=`
- * so it searches just there, and from Home, All and the other pages across the
+ * The URL only writes back into the field when it holds a query this field
+ * did not send (back/forward, "Clear all"). The previous debounce adopted
+ * every URL change, and the URL commits only after the route's loader
+ * resolves (1–3 s on search), so the field was reset to an older query while
+ * the user kept typing — letters dropped and reappeared out of order.
+ *
+ * Where the query goes depends on the page. On the search page and the Images
+ * page (which searches its own gallery) it updates in place. Anywhere else it
+ * opens the search page: inside a folder or collection with `?in=` so it
+ * searches just there, and from Home, All and the other pages across the
  * whole stash. The dialog stays open over the navigation (it lives in the
  * header), so typing carries on.
  */
-function SearchField({ filters }: { filters: Filters }) {
+function SearchField({ filters, inPlace }: { filters: Filters; inPlace?: boolean }) {
   const [text, setText] = useState(filters.state.query)
+  const sent = useRef(filters.state.query)
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const params = useParams()
   const onSearchPage = pathname.endsWith('/stash/search')
-  const commit = (q: string) => {
-    if (onSearchPage || !params.me) return filters.setQuery(q)
+  const commitRef = useRef<(q: string) => void>(() => {})
+  commitRef.current = (q: string) => {
+    if (inPlace || onSearchPage || !params.me) return filters.setQuery(q)
     if (!q.trim()) return
     navigate(
       searchPageUrl(params.me, { ...filters.state, query: q }, scopeFromRouteParams(params))
     )
   }
-  const { markCommitted } = useDebouncedCommit(text, commit)
+
+  // The watcher: every keystroke restarts the idle clock.
   useEffect(() => {
-    markCommitted(filters.state.query)
-    setText(filters.state.query)
-  }, [filters.state.query, markCommitted])
+    if (text === sent.current) return
+    const timer = setTimeout(() => {
+      sent.current = text
+      commitRef.current(text)
+    }, SEND_AFTER_IDLE_MS)
+    return () => clearTimeout(timer)
+  }, [text])
+
+  // Adopt only a query this field didn't send.
+  useEffect(() => {
+    const q = filters.state.query
+    if (q === sent.current) return
+    sent.current = q
+    setText(q)
+  }, [filters.state.query])
   const semantic = filters.state.searchMode === 'semantic'
 
   return (

@@ -1,6 +1,7 @@
 /**
- * Drives the search page: debounce, keyword-first retrieval, and the optional
- * upgrade to semantic ranking.
+ * Drives the search page: keyword-first retrieval and the optional upgrade to
+ * semantic ranking. The query arrives already settled (the search field sends
+ * it after 750 ms without typing), so this hook adds no delay of its own.
  *
  * The shape of this hook follows from where embedding happens. Vectors are
  * produced in the browser on WebGPU (`app/workers/embedding.ai.ts`), and the
@@ -36,9 +37,6 @@ import {
   pickExpandedTerms,
   queryWords,
 } from '@/utils/search-expansion'
-
-/** Keystroke settle time before a request goes out. */
-const DEBOUNCE_MS = 250
 
 /**
  * Longest a semantic upgrade may run before the view gives up and keeps the
@@ -164,7 +162,7 @@ function appendFilters(
  * run.
  *
  * @param params - Search inputs.
- * @param params.query - The raw query text; normalized and debounced internally.
+ * @param params.query - The raw query text; normalized internally; it should arrive settled.
  * @param params.mode - `'fuzzy'` for keyword only, `'semantic'` to attempt the
  *   embedding upgrade.
  * @param params.filters - Structured filters forwarded to both passes.
@@ -212,6 +210,10 @@ export function useItemSearch({
   // "rep" could land after the keyword response for "report" and overwrite it.
   const controllerRef = useRef<AbortController | null>(null)
   const skipRef = useRef(0)
+  // The query vector behind the list on screen, when semantic ranking
+  // produced it. Load more pages the same fused ranking with it rather than
+  // re-embedding, and null means the list is keyword-ranked.
+  const vectorRef = useRef<number[] | null>(null)
 
   // The filter object is rebuilt every render by callers; comparing its
   // serialized form keeps the effect from re-firing on identical filters.
@@ -249,9 +251,12 @@ export function useItemSearch({
    * doesn't pull in the model wrapper — or trigger its weight download.
    */
   const fetchSemantic = useCallback(
-    async (q: string, skip: number, signal: AbortSignal) => {
-      const { embedText } = await import('@/workers/embedding.ai')
-      const vector = await embedText(q)
+    async (q: string, skip: number, signal: AbortSignal, known?: number[]) => {
+      let vector = known
+      if (!vector) {
+        const { embedText } = await import('@/workers/embedding.ai')
+        vector = await embedText(q)
+      }
       if (signal.aborted) return null
 
       const fd = new FormData()
@@ -312,6 +317,7 @@ export function useItemSearch({
     const q = normalizeQuery(query)
     controllerRef.current?.abort()
     skipRef.current = 0
+    vectorRef.current = null
 
     // Expansions belong to the query that produced them. Clearing here rather
     // than when the new ones arrive stops the previous search's dotted marks
@@ -329,7 +335,7 @@ export function useItemSearch({
     controllerRef.current = controller
     const { signal } = controller
 
-    const timer = setTimeout(async () => {
+    void (async () => {
       const wantsSemantic = mode === 'semantic'
       setStatus(wantsSemantic ? 'upgrading' : 'keyword')
       setDegradedReason(null)
@@ -366,6 +372,7 @@ export function useItemSearch({
           SEMANTIC_TIMEOUT_MS
         )
         if (signal.aborted || !semantic) return
+        vectorRef.current = semantic.vector
         setResponse(semantic.response)
         setStatus('ready')
 
@@ -397,12 +404,9 @@ export function useItemSearch({
         }
         setStatus('ready')
       }
-    }, DEBOUNCE_MS)
+    })()
 
-    return () => {
-      clearTimeout(timer)
-      controller.abort()
-    }
+    return () => controller.abort()
   }, [query, mode, filterKey, fetchKeyword, fetchSemantic, fetchExpansions])
 
   /**
@@ -410,9 +414,11 @@ export function useItemSearch({
    *
    * Offset-based rather than cursor-based: results are ordered by a fused
    * relevance score that exists only for the duration of the request, so
-   * there is no row to anchor a cursor to. Deliberately keyword-only — paging
-   * would otherwise re-embed the same query per page for a ranking the server
-   * already truncated at `RANK_DEPTH`.
+   * there is no row to anchor a cursor to. The next page must come from the
+   * same ranking as the first: a semantic list pages with the vector it was
+   * ranked by (no re-embedding), a keyword list with the keyword pass. Paging
+   * a semantic list with keyword offsets repeated items already on screen
+   * (duplicate React keys) and reported the list as keyword-only.
    */
   const loadMore = useCallback(() => {
     const q = normalizeQuery(query)
@@ -422,22 +428,36 @@ export function useItemSearch({
     const nextSkip = skipRef.current + take
     const controller = new AbortController()
 
-    fetchKeyword(q, nextSkip, controller.signal)
+    const generation = controllerRef.current
+    const vector = vectorRef.current
+    const next = vector
+      ? fetchSemantic(q, nextSkip, controller.signal, vector).then((r) => r?.response ?? null)
+      : fetchKeyword(q, nextSkip, controller.signal)
+
+    next
       .then((page) => {
+        // A new query started meanwhile: this page belongs to the old list.
+        if (!page || controllerRef.current !== generation) return
         skipRef.current = nextSkip
-        setResponse((current) => ({
-          ...page,
-          items: [...current.items, ...page.items],
-          // The freshly-fetched page is authoritative about what follows it.
-          hasMore: page.hasMore,
-        }))
+        setResponse((current) => {
+          // Index changes between requests can still shift an item across a
+          // page boundary; it stays where it was first shown.
+          const seen = new Set(current.items.map((item) => item.id))
+          return {
+            ...current,
+            items: [...current.items, ...page.items.filter((item) => !seen.has(item.id))],
+            total: page.total,
+            // The freshly-fetched page is authoritative about what follows it.
+            hasMore: page.hasMore,
+          }
+        })
       })
       .catch((e) => {
         if (controller.signal.aborted) return
         console.error('[search] load more failed', e)
       })
       .finally(() => setIsLoadingMore(false))
-  }, [query, take, isLoadingMore, response.hasMore, fetchKeyword])
+  }, [query, take, isLoadingMore, response.hasMore, fetchKeyword, fetchSemantic])
 
   return {
     ...response,

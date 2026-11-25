@@ -21,9 +21,9 @@ export function scopeFromRouteParams(params: {
  * already chose (meaning mode, file types, kind) and the scope.
  *
  * @example
- * searchPageUrl('usr_1', { query: 'tax', searchMode: 'semantic', category: ['pdf'], type: [] },
+ * searchPageUrl('usr_1', { query: 'tax', searchMode: 'fuzzy', category: ['pdf'], type: [] },
  *   { kind: 'folder', id: 'fol_1' })
- * // '/usr_1/stash/search?query=tax&searchMode=semantic&category=pdf&layout=grid&in=folder%3Afol_1'
+ * // '/usr_1/stash/search?query=tax&searchMode=fuzzy&category=pdf&layout=grid&in=folder%3Afol_1'
  */
 export function searchPageUrl(
   me: string,
@@ -32,7 +32,7 @@ export function searchPageUrl(
 ): string {
   const params = new URLSearchParams()
   params.set('query', state.query)
-  if (state.searchMode === 'semantic') params.set('searchMode', 'semantic')
+  if (state.searchMode === 'fuzzy') params.set('searchMode', 'fuzzy')
   if (state.category.length) params.set('category', state.category.join(','))
   if (state.type.length) params.set('type', state.type.join(','))
   // The search page renders nothing without a layout; seed the default here
@@ -97,7 +97,7 @@ export function describeSort(field: SortField, dir: SortDir): string {
 
 /**
  * The words the header field reads back when the dialog is closed, e.g.
- * `"report" by meaning · Files · Image, Pdf · Favorites · Size, Largest first`.
+ * `"report" by name only · Files · Image, Pdf · Favorites · Size, Largest first`.
  * Empty when nothing is refined (the default sort is not mentioned).
  */
 export function describeRefinement(
@@ -114,7 +114,8 @@ export function refinementParts(
 ): string[] {
   const parts: string[] = []
   if (state.query)
-    parts.push(`“${state.query}”${state.searchMode === 'semantic' ? ' by meaning' : ''}`)
+    // Meaning is the default, so only the keyword-only exception is named.
+    parts.push(`“${state.query}”${state.searchMode === 'fuzzy' ? ' by name only' : ''}`)
   const kind = kindOf(state)
   if (kind !== 'all') parts.push(KINDS.find((k) => k.value === kind)!.label)
   else if (state.type.length > 1) parts.push(state.type.map((t) => label(TYPES, t)).join(', '))

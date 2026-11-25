@@ -119,14 +119,11 @@ test.describe('Search', () => {
     await page.goto(searchUrl)
     await waitForContent(page)
 
-    // A lost click would leave fuzzy mode on and pass without testing
-    // semantic, so retry until the switch reads checked and the URL agrees.
+    // Meaning is the default: the switch is on with no `searchMode` param.
     await openSearch(page)
     const semantic = dialog(page).getByRole('switch', { name: 'By meaning' })
-    await expect(async () => {
-      if ((await semantic.getAttribute('aria-checked')) !== 'true') await semantic.click()
-      await expect(page).toHaveURL(/[?&]searchMode=semantic/, { timeout: 2000 })
-    }).toPass({ timeout: 20000 })
+    await expect(semantic).toHaveAttribute('aria-checked', 'true')
+    await expect(page).not.toHaveURL(/[?&]searchMode=/)
     await typeQuery(page, E2E_ITEM_A_NAME)
 
     // Whether this browser can run WebGPU or not, the keyword pass has already

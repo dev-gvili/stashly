@@ -41,12 +41,12 @@ const SOURCE_LOOKUP: Record<FilterSourceKey, typeof CATEGORIES> = {
  *
  * @example
  * readState(new URLSearchParams('category=image,pdf&favorited=true'))
- * // → { category: ['image', 'pdf'], status: [], type: [], flags: ['favorited'], query: '', searchMode: 'fuzzy' }
+ * // → { category: ['image', 'pdf'], status: [], type: [], flags: ['favorited'], query: '', searchMode: 'semantic' }
  *
  * @example
  * // Anything unrecognised is ignored; missing keys come back empty
  * readState(new URLSearchParams('cursor=abc'))
- * // → { category: [], status: [], type: [], flags: [], query: '', searchMode: 'fuzzy' }
+ * // → { category: [], status: [], type: [], flags: [], query: '', searchMode: 'semantic' }
  *
  * @example
  * // Read filters server-side in a loader, without the hook
@@ -59,7 +59,7 @@ export function readState(searchParams: URLSearchParams): FilterState {
     type: [],
     flags: [],
     query: '',
-    searchMode: 'fuzzy',
+    searchMode: 'semantic',
   }
   MULTI_KEYS.forEach((k) => {
     const param = searchParams.get(k)
@@ -70,7 +70,9 @@ export function readState(searchParams: URLSearchParams): FilterState {
   })
   state.query = searchParams.get(QUERY_KEY) ?? ''
   const mode = searchParams.get(SEARCH_MODE_KEY)
-  state.searchMode = mode === 'semantic' ? 'semantic' : 'fuzzy'
+  // Search is hybrid by design, so meaning is the default and only an explicit
+  // `?searchMode=fuzzy` turns it off. Name matches are returned either way.
+  state.searchMode = mode === 'fuzzy' ? 'fuzzy' : 'semantic'
   return state
 }
 
@@ -167,7 +169,7 @@ export function useFilters(): UseFilters {
 
   const setSearchMode = (mode: SearchMode) =>
     mutate((p) => {
-      if (mode === 'fuzzy') p.delete(SEARCH_MODE_KEY)
+      if (mode === 'semantic') p.delete(SEARCH_MODE_KEY)
       else p.set(SEARCH_MODE_KEY, mode)
     })
 
