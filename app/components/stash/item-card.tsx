@@ -734,6 +734,7 @@ const ItemCover = React.forwardRef<
           decoding="async"
           data-slot="item-cover-image"
           data-stage={live?.stage}
+          onError={() => refreshExpiredThumbnail(id)}
           className="absolute inset-0 h-full w-full object-cover rounded-4"
         />
       ) : (
@@ -742,7 +743,6 @@ const ItemCover = React.forwardRef<
           className="absolute inset-0 flex items-center justify-center"
         >
           {type === 'folder' ? (
-          onError={() => refreshExpiredThumbnail(id)}
             <FolderIcon className="size-14 fill-current text-muted-foreground" />
           ) : (
             <ItemCategoryVector
