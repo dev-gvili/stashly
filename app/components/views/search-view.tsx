@@ -6,10 +6,9 @@
  * wired to `useFilters`. That state lives entirely in the URL, so this view
  * reads the same `?q=` / `?searchMode=` params the header writes.
  */
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { Button } from '@/ui/button'
-import { ListLayout } from '@/components/views/list-view'
 import { SelectionProvider } from '@/components/stash/selection'
 import {
   CollectionFillIcon,
@@ -20,7 +19,12 @@ import {
 import {
   EvidenceCard,
   EvidenceCardSkeleton,
+  EvidenceInspector,
+  EvidenceRow,
   MatchGroup,
+  SearchFilterBar,
+  type MatchTier,
+  type ResultSort,
   ResultsSummary,
   MATCH_KIND_ORDER,
   tokenizeQuery,
@@ -40,7 +44,7 @@ import { isBackfillActive } from '@/utils/embedding-backfill'
 import { formatSearchScope, isSearchableQuery, SEARCH_SCOPE_KEY } from '@/utils/search-query'
 import type { SearchDegradedReason } from '@/utils/search-query'
 import { cn } from '@/utils/styles'
-import type { SearchResponse, StashItem } from '@/types/stash.types'
+import type { SearchResponse } from '@/types/stash.types'
 
 /** Human-readable explanation for each way semantic ranking can be skipped. */
 const DEGRADED_COPY: Record<SearchDegradedReason, string> = {
@@ -91,7 +95,6 @@ export function SearchView({ me, initialResults, indexStats, scope }: SearchView
     total,
     hasMore,
     semantic,
-    status,
     degradedReason,
     isLoading,
     loadMore,
@@ -161,14 +164,41 @@ export function SearchView({ me, initialResults, indexStats, scope }: SearchView
 
   // Grouped by *why* each result matched. Within a group the server's fused
   // order already holds, so this only partitions — it never re-sorts.
+  // Sorting reorders within a group only: a group's order is part of what
+  // it says (why these matched), and scores on different groups are on
+  // different scales. It applies to the loaded results; Load more re-sorts.
+  const [sort, setSort] = useState<ResultSort>('score')
   const groups = useMemo(
     () =>
-      MATCH_KIND_ORDER.map((kind) => ({
-        kind,
-        items: items.filter((item) => item.matchKind === kind),
-      })).filter((group) => group.items.length > 0),
-    [items],
+      MATCH_KIND_ORDER.map((kind) => {
+        const inGroup = items.filter((item) => item.matchKind === kind)
+        return {
+          kind,
+          // `sort` is stable, so equal hit counts keep the server's order;
+          // `inGroup` is a fresh array from `filter`, so sorting it in place is safe.
+          items: sort === 'hits' ? inGroup.sort((a, b) => b.hitCount - a.hitCount) : inGroup,
+        }
+      }).filter((group) => group.items.length > 0),
+    [items, sort],
   )
+
+  // The tier narrows the loaded results to one match group. A tier whose
+  // group a new search no longer has falls back to all, rather than showing
+  // an empty page for a filter the bar no longer offers.
+  const [tier, setTier] = useState<MatchTier>('all')
+  const effectiveTier = groups.some((g) => g.kind === tier) ? tier : 'all'
+  const visibleGroups =
+    effectiveTier === 'all' ? groups : groups.filter((g) => g.kind === effectiveTier)
+  const resetRefinements = () => {
+    setTier('all')
+    filters.clear('category')
+  }
+
+  // The result open in the inspector, by id, so it survives the list
+  // re-rendering (Load more, the semantic upgrade) and closes when it leaves.
+  const [inspectId, setInspectId] = useState<string | null>(null)
+  const inspected = inspectId ? (items.find((item) => item.id === inspectId) ?? null) : null
+  const listLayout = layout === 'list'
 
   return (
     <div className="flex h-full flex-col gap-3 py-3">
@@ -193,22 +223,32 @@ export function SearchView({ me, initialResults, indexStats, scope }: SearchView
           </span>
         </div>
       )}
+      {/* While loading, the skeleton cards below are the only signal: what
+          the search is doing under the hood is no concern of the reader's
+          (owner, 26 Nov). */}
       {searchable &&
-        (isLoading ? (
-          <div className="flex items-center gap-2 font-stashly text-sm text-muted-foreground">
-            <LoaderIcon className="size-4 animate-spin" />
-            <span>
-              {status === 'upgrading' ? 'Ranking by meaning…' : 'Searching…'}
-            </span>
-          </div>
-        ) : (
+        !isLoading && (
           <ResultsSummary
             state={{ query, mode: searchMode, expandedTerms }}
             totalCount={total}
-            terms={terms}
             semanticRan={semantic}
+            scoped={!!scope}
+            indexedPassages={liveStats.indexedChunks}
           />
-        ))}
+        )}
+
+      {searchable && (groups.length > 0 || filters.state.category.length > 0) && (
+        <SearchFilterBar
+          tier={effectiveTier}
+          onTierChange={setTier}
+          tierCounts={groups.map((g) => ({ kind: g.kind, count: g.items.length }))}
+          categories={filters.state.category}
+          onToggleCategory={(id) => filters.toggleMulti('category', id)}
+          onReset={resetRefinements}
+          sort={sort}
+          onSortChange={setSort}
+        />
+      )}
 
       {degradedReason && (
         <div
@@ -248,38 +288,51 @@ export function SearchView({ me, initialResults, indexStats, scope }: SearchView
         <SearchNoResultsState query={query} />
       ) : (
         <>
-          {/* `ListLayout` still self-gates on `?layout=list`. The grid half
-              can't reuse `GridLayout` — each group owns its own grid, and
-              nesting sections inside a CSS grid would lay them out as cells. */}
           <SelectionProvider items={items.map((item) => item.id)}>
-            <ListLayout items={items as StashItem[]} />
-            <GroupedResults>
+            <div className="flex flex-col gap-8">
               {isLoading && items.length === 0
                 ? // Same geometry as `MatchGroup`'s grid, so the placeholders
                   // sit exactly where the cards will land.
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]">
+                  <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(min(100%,max(15rem,calc((100%_-_4rem)/5))),1fr))]">
                     {Array.from({ length: 8 }).map((_, index) => (
                       <EvidenceCardSkeleton key={index} />
                     ))}
                   </div>
-                : groups.map((group) => (
+                : visibleGroups.map((group) => (
                     <MatchGroup
                       key={group.kind}
                       kind={group.kind}
                       count={group.items.length}
+                      layout={listLayout ? 'list' : 'grid'}
                     >
-                      {group.items.map((item) => (
-                        <EvidenceCard
-                          key={item.id}
-                          result={item}
-                          query={query}
-                          terms={terms}
-                          expandedTerms={expandedTerms}
-                        />
-                      ))}
+                      {group.items.map((item) =>
+                        listLayout ? (
+                          <EvidenceRow
+                            key={item.id}
+                            result={item}
+                            query={query}
+                            terms={terms}
+                            expandedTerms={expandedTerms}
+                            inspected={item.id === inspectId}
+                            onPeek={() => setInspectId(item.id)}
+                          />
+                        ) : (
+                          <EvidenceCard
+                            key={item.id}
+                            result={item}
+                            query={query}
+                            terms={terms}
+                            expandedTerms={expandedTerms}
+                            inspected={item.id === inspectId}
+                            onPeek={
+                              item.type === 'folder' ? undefined : () => setInspectId(item.id)
+                            }
+                          />
+                        )
+                      )}
                     </MatchGroup>
                   ))}
-            </GroupedResults>
+            </div>
           </SelectionProvider>
           {hasMore && (
             <div className="col-span-full flex justify-center py-4">
@@ -302,17 +355,15 @@ export function SearchView({ me, initialResults, indexStats, scope }: SearchView
           )}
         </>
       )}
+
+      <EvidenceInspector
+        result={inspected}
+        me={me}
+        query={query}
+        terms={terms}
+        expandedTerms={expandedTerms}
+        onClose={() => setInspectId(null)}
+      />
     </div>
   )
-}
-
-/**
- * The grid half of the layout, gated on `?layout=grid` exactly as `GridLayout`
- * is — search groups its results, so it stacks sections instead of cells, but
- * the two halves must still agree on which one the URL is asking for.
- */
-function GroupedResults({ children }: { children: ReactNode }) {
-  const [searchParams] = useSearchParams()
-  if (!searchParams.has('layout', 'grid')) return null
-  return <div className="flex flex-col gap-8">{children}</div>
 }

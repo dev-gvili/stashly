@@ -10,11 +10,14 @@ export function HighlightedText({
   terms,
   expandedTerms,
   className,
+  markClassName,
 }: {
   text: string
   terms: string[]
   expandedTerms?: string[]
   className?: string
+  /** Replaces the query-term mark's look (passages use a tinted, bordered mark). */
+  markClassName?: string
 }) {
   const segments = highlightSegments(text, terms, expandedTerms)
   return (
@@ -24,7 +27,7 @@ export function HighlightedText({
           return (
             <mark
               key={index}
-              className="bg-primary text-primary-foreground -mx-px rounded-xs px-[2px]"
+              className={markClassName ?? 'bg-primary text-primary-foreground -mx-px rounded-xs px-[2px]'}
             >
               {segment.text}
             </mark>

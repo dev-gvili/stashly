@@ -400,6 +400,8 @@ export type SearchPassage = {
    * breaks were preserved, until that item is re-indexed.
    */
   lineNum: number | null
+  /** 1-based column of the literal hit on `lineNum`; absent for a dense passage. */
+  column?: number | null
   /**
    * Nearest preceding heading — how a document with structure but no pages
    * says where a passage came from. Null for formats without headings, and for

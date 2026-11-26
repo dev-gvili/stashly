@@ -6,6 +6,10 @@ import {
   SEARCH_PAGE_SIZE,
   SEARCH_VECTOR_DIM,
   buildSnippet,
+  buildSentenceSnippet,
+  SENTENCE_SNIPPET_MAX_LENGTH,
+  findHitOffsets,
+  hitPassageWindow,
   clampTake,
   formatSearchScope,
   isSearchableQuery,
@@ -267,5 +271,132 @@ describe('buildSnippet — word-boundary highlighting', () => {
   it('matches a term following punctuation, not just a space', () => {
     const snippet = buildSnippet('(WebGPU) and [AI]', 'webgpu')
     expect(snippet.matches).toHaveLength(1)
+  })
+})
+
+describe('buildSentenceSnippet', () => {
+  // ~50 characters: two fit under the 128-character cap, three don't.
+  const s = (n: number, word = 'filler') => `Sentence ${n} has ${word} ${'text '.repeat(5).trim()}.`
+
+  it('opens on the sentence holding the hit and adds the next one when it fits', () => {
+    const passage = [s(1), s(2, 'vector'), s(3), s(4)].join(' ')
+    const snippet = buildSentenceSnippet(passage, 'vector')
+    expect(snippet.text).toBe(`${s(2, 'vector')} ${s(3)}`)
+    expect(snippet.truncatedStart).toBe(true)
+    expect(snippet.truncatedEnd).toBe(true)
+  })
+
+  it('never shows more than two sentences', () => {
+    const short = (n: number) => `Hit ${n} vector.`
+    const snippet = buildSentenceSnippet([1, 2, 3, 4, 5].map(short).join(' '), 'vector')
+    expect(snippet.text).toBe('Hit 1 vector. Hit 2 vector.')
+  })
+
+  it('keeps one sentence when a second would pass the length cap', () => {
+    const long = `The vector ${'word '.repeat(15).trim()}.`
+    const snippet = buildSentenceSnippet(`${long} ${long}`, 'vector')
+    expect(snippet.text).toBe(long)
+    expect(snippet.text.length).toBeLessThanOrEqual(SENTENCE_SNIPPET_MAX_LENGTH)
+  })
+
+  it('cuts a single sentence longer than the cap at a word, around the hit', () => {
+    const passage = `${'lead '.repeat(120)}vector ${'tail '.repeat(120)}`.trim() + '.'
+    const snippet = buildSentenceSnippet(passage, 'vector')
+    expect(snippet.text.length).toBeLessThanOrEqual(SENTENCE_SNIPPET_MAX_LENGTH)
+    expect(snippet.text).toContain('vector')
+    expect(snippet.truncatedStart).toBe(true)
+    expect(snippet.truncatedEnd).toBe(true)
+  })
+
+  it('opens on the first sentence when nothing matches literally', () => {
+    const passage = [s(1), s(2), s(3)].join(' ')
+    expect(buildSentenceSnippet(passage, 'meaning').text).toBe(`${s(1)} ${s(2)}`)
+  })
+
+  it('does not split on decimals or a dot inside a word', () => {
+    const passage = 'Version 3.5 ships the vector index in search.prisma today. Next one.'
+    expect(buildSentenceSnippet(passage, 'vector').text).toBe(passage)
+  })
+
+  it('locates the matches inside the window', () => {
+    const snippet = buildSentenceSnippet('One vector here. Another vector there.', 'vector')
+    expect(snippet.matches).toHaveLength(2)
+  })
+
+  // The OCR'd slide from the Platform Blueprint PDF, as indexed.
+  const slide = [
+    'Exact keyword matching,   Browser WebGPU embeds',
+    'Standard indexed   Conceptual mapping\r\nStorage   columns   Target   (Cosine similarity on\r\n768-dim vectors)',
+    'SearchChunk (passages of\r\nM   Storage   ~300 tokens) to allow\r\nhighlighted matches',
+    'Gemini Notebo',
+    'The progressive thumbnail engine degrades gracefully without server compute',
+  ].join('\r\n\r\n')
+
+  it('keeps to the paragraph holding the hit', () => {
+    const snippet = buildSentenceSnippet(slide, 'vectors')
+    expect(snippet.text).toBe(
+      'Standard indexed Conceptual mapping Storage columns Target (Cosine similarity on 768-dim vectors)',
+    )
+    expect(snippet.truncatedStart).toBe(true)
+    expect(snippet.truncatedEnd).toBe(true)
+  })
+})
+
+describe('findHitOffsets', () => {
+  it('finds every occurrence of every term, case-insensitively, in order', () => {
+    expect(findHitOffsets('Vector one, vector two. A VECTOR.', ['vector'])).toEqual([0, 12, 26])
+  })
+
+  it('merges terms and drops a repeat at the same offset', () => {
+    // "vector" and "vectors" both start at 4: one place to jump to, not two.
+    expect(findHitOffsets('The vectors and a vector', ['vector', 'vectors'])).toEqual([4, 18])
+  })
+
+  it('skips a hit inside a word, which the excerpt cannot highlight', () => {
+    // From tech-debt.md line 866.
+    const body = 'calls setSearchChunkVectors(entries) to overwrite chunk vectors by id'
+    expect(findHitOffsets(body, ['vectors'])).toEqual([body.indexOf('chunk vectors') + 6])
+  })
+
+  it('returns nothing for an empty body or no terms', () => {
+    expect(findHitOffsets('', ['vector'])).toEqual([])
+    expect(findHitOffsets('vector', [])).toEqual([])
+  })
+})
+
+describe('hitPassageWindow', () => {
+  const body = `${'a'.repeat(500)}HIT${'b'.repeat(1000)}`
+
+  it('cuts the same window as the first-hit query: 250 before, 500 long', () => {
+    const w = hitPassageWindow(body, 500)
+    expect(w.content).toBe(body.slice(250, 750))
+    expect(w.content).toContain('HIT')
+  })
+
+  it('gives the same excerpt as the first-hit window, leading "…" included', () => {
+    const text = `${'x'.repeat(300)} wording here. The HIT is in this sentence.`
+    const offset = text.indexOf('HIT')
+    const sql = text.slice(offset - 250, offset + 250)
+    expect(hitPassageWindow(text, offset).content).toBe(sql)
+    expect(buildSentenceSnippet(hitPassageWindow(text, offset).content, 'hit')).toEqual(
+      buildSentenceSnippet(sql, 'hit'),
+    )
+  })
+
+  it('clamps at the start of the body', () => {
+    expect(hitPassageWindow(body, 10).content).toBe(body.slice(0, 500))
+  })
+
+  it('reports the 1-based column of the hit on its line', () => {
+    const NL = String.fromCharCode(10)
+    const text = ['first', '  calls HIT here'].join(NL)
+    expect(hitPassageWindow(text, text.indexOf('HIT'))).toMatchObject({ lineNum: 2, column: 9 })
+    expect(hitPassageWindow(['HIT', 'x'].join(NL), 0)).toMatchObject({ lineNum: 1, column: 1 })
+    expect(hitPassageWindow('no lines HIT', 9).column).toBeNull()
+  })
+
+  it('reports a 1-based line only when the body has lines', () => {
+    expect(hitPassageWindow(['one', 'two', 'three HIT'].join(String.fromCharCode(10)), 14).lineNum).toBe(3)
+    expect(hitPassageWindow('no lines HIT', 9).lineNum).toBeNull()
   })
 })

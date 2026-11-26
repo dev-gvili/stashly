@@ -1,5 +1,5 @@
 import { cn } from '@/utils/styles'
-import { scoreBand } from '@/utils/search-evidence'
+import { scoreBand, type ScoreBand } from '@/utils/search-evidence'
 import type { MatchKind } from '@/types/stash.types'
 
 /**
@@ -17,7 +17,17 @@ function scoreTitle(kind?: MatchKind): string {
     : 'Relevance compared with the best match for this query — the top result is always 100%.'
 }
 
-/** The score as a pill that rides the thumbnail, so it never floats free of its result. */
+/**
+ * Tone per band: a strong match is solid primary, a related one a primary
+ * tint, a distant one stays quiet. Literal classes so Tailwind compiles them.
+ */
+const SCORE_BAND_TONE: Record<ScoreBand, string> = {
+  strong: 'bg-primary text-primary-foreground',
+  related: 'border border-primary/40 bg-primary/15 text-foreground backdrop-blur-sm',
+  distant: 'border border-input bg-background/80 text-muted-foreground backdrop-blur-sm',
+}
+
+/** The score as a chip that rides the thumbnail, so it never floats free of its result. */
 export function ScoreBadge({
   score,
   kind,
@@ -32,7 +42,8 @@ export function ScoreBadge({
     <span
       title={`${scoreBand(score)} match. ${scoreTitle(kind)}`}
       className={cn(
-        'bg-background/80 text-foreground font-stashly inline-flex h-5 items-center rounded-full px-2 text-xs tabular-nums backdrop-blur-sm',
+        // 20px tall, so a 4px corner (owner's rule: no pills).
+        'font-stashly inline-flex h-5 items-center rounded-[4px] px-1.5 text-xs font-semibold tabular-nums bg-primary text-primary-foreground',
         className
       )}
     >

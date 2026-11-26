@@ -10,7 +10,12 @@ import {
   MATCH_KIND_ORDER,
   highlightSegments,
   scoreBand,
+  fileLineOf,
+  landingFromParams,
+  landingWordEnd,
+  passageLinkSearch,
   toEvidenceSnippet,
+  toHitStops,
   tokenizeQuery,
 } from '@/utils/search-evidence'
 import { widthForPercent } from '@/utils/styles'
@@ -201,6 +206,84 @@ describe('toEvidenceSnippet', () => {
   it('carries the windowed text through', () => {
     const snippet = toEvidenceSnippet(passage(), 'refund')
     expect(snippet.text).toContain('refund')
+  })
+})
+
+describe('toHitStops', () => {
+  const at = (content: string, lineNum: number): SearchPassage => ({
+    chunkId: null,
+    content,
+    pageNum: null,
+    lineNum,
+    section: null,
+    charStart: 0,
+    charEnd: content.length,
+    similarity: 0,
+  })
+  // From semantic-search.md: hits 3 and 4 sit in one sentence pair.
+  const shared =
+    'Vectors and OCR wait in a deferred lane while any upload is moving bytes. The server owns chunk text: the client only sends vectors back.'
+
+  it('merges hits that cut the same excerpt into one stop', () => {
+    const stops = toHitStops(
+      [at('Chunk vectors are 768-dim.', 10), at(`Earlier text. ${shared}`, 52), at(shared, 53), at('Last vectors line.', 80)],
+      'vectors'
+    )
+    expect(stops.map((s) => [s.from, s.to])).toEqual([
+      [1, 1],
+      [2, 3],
+      [4, 4],
+    ])
+    expect(stops[1].snippet.locator).toBe('line 52')
+  })
+
+  it('keeps distinct excerpts apart', () => {
+    expect(toHitStops([at('One vectors.', 1), at('Two vectors.', 2)], 'vectors')).toHaveLength(2)
+  })
+})
+
+describe('search permalinks', () => {
+  const passage = (over: Partial<SearchPassage>): SearchPassage => ({
+    chunkId: null,
+    content: 'x',
+    pageNum: null,
+    lineNum: null,
+    section: null,
+    charStart: 0,
+    charEnd: 1,
+    similarity: null,
+    ...over,
+  })
+
+  it('links to the hit line and column, counted in the index', () => {
+    expect(passageLinkSearch(passage({ lineNum: 866, column: 12 }))).toBe('line=866&col=12&lines=index')
+  })
+
+  it('adds the page when the document has pages, and nothing it does not know', () => {
+    expect(passageLinkSearch(passage({ lineNum: 1, pageNum: 13 }))).toBe('line=1&lines=index&page=13')
+    expect(passageLinkSearch(passage({}))).toBe('')
+    expect(passageLinkSearch(null)).toBe('')
+  })
+
+  it('maps an index line back past the blank lines the indexer trimmed', () => {
+    // From the session log .txt: the file opens with a blank line.
+    const NL = String.fromCharCode(10)
+    expect(fileLineOf(`${NL}> one${NL}two`, 2, 4)).toEqual({ line: 3, column: 4 })
+    expect(fileLineOf(`${NL}${NL}  export x`, 1, 1)).toEqual({ line: 3, column: 3 })
+    expect(fileLineOf('no lead', 5, 2)).toEqual({ line: 5, column: 2 })
+  })
+
+  it('maps only links that count the index; a definition jump counts the file', () => {
+    const NL = String.fromCharCode(10)
+    const text = `${NL}a${NL}b`
+    expect(landingFromParams(new URLSearchParams('line=2&col=1&lines=index'), text)).toEqual({ line: 3, column: 1 })
+    expect(landingFromParams(new URLSearchParams('line=2&col=1'), text)).toEqual({ line: 2, column: 1 })
+    expect(landingFromParams(new URLSearchParams('line=abc'), text)).toEqual({})
+  })
+
+  it('ends the landing word at the first character that is not a letter or digit', () => {
+    expect(landingWordEnd('calls vectors(x)', 6)).toBe(13)
+    expect(landingWordEnd('(x)', 0)).toBe(1)
   })
 })
 

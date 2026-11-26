@@ -15,11 +15,12 @@ import { sessionContext } from '@/services/middleware/context'
  *
  * @see docs/semantic-search.md
  */
-import { getSearchIndexStats, searchItemsHybrid } from '@/services/search-actions'
+import { getHitPassages, getSearchIndexStats, searchItemsHybrid } from '@/services/search-actions'
 import {
   searchApiRouteInput,
   searchApiRouteOutput,
   searchApiRouteQuery,
+  searchHitPassagesQuery,
   searchScope,
 } from '@/schemas/api.schemas'
 import { parseOrRespond, rethrowAsResponse, toErrorInfo } from '@/utils/api.errors'
@@ -80,6 +81,20 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
   // query typed yet.
   if (url.searchParams.get('intent') === 'index_stats') {
     return data(await getSearchIndexStats(session.user.id))
+  }
+
+  // Every hit's passage in one item, fetched when the card's stepper is first
+  // used. Access is checked in the action; its typed 403/404 keeps its status.
+  if (url.searchParams.get('intent') === 'hit_passages') {
+    const input = parseOrRespond(() =>
+      parseSearchParams({ schema: searchHitPassagesQuery, searchParams: url.searchParams })
+    )
+    try {
+      return data(await getHitPassages({ userId: session.user.id, ...input }))
+    } catch (e) {
+      const err = toErrorInfo(e)
+      return data({ error: err.message ?? 'Could not load passages' }, { status: err.status ?? 500 })
+    }
   }
 
   // An absent or one-character `query` is the normal state of a search page, not

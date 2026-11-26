@@ -1,4 +1,7 @@
 export { EvidenceCard, EvidenceCardSkeleton } from './evidence-card'
+export { EvidenceRow } from './evidence-row'
+export { EvidenceInspector } from './evidence-inspector'
+export { SearchFilterBar, type MatchTier, type ResultSort } from './search-filter-bar'
 export { MatchGroup } from './match-group'
 export { ResultsSummary } from './results-summary'
 export { SnippetBlock } from './snippet-block'

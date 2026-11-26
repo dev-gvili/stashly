@@ -15,28 +15,49 @@ export function MatchGroup({
   kind,
   count,
   children,
+  layout = 'grid',
   className,
 }: {
   kind: MatchKind
   count: number
   children: ReactNode
+  /** `list` stacks rows (`?layout=list`); `grid` lays out cards. */
+  layout?: 'grid' | 'list'
   className?: string
 }) {
+  // Semantic neighbours carry no literal hit, so their heading takes the
+  // accent: it marks a different kind of answer, not a lesser one.
+  const semantic = kind === 'semantic'
   return (
-    <section className={cn('flex flex-col gap-3', className)}>
-      <div className="flex items-baseline gap-3">
-        <h2 className="font-stashly text-sm whitespace-nowrap uppercase">
+    <section className={cn('flex flex-col gap-3.5', className)}>
+      <div className="flex items-center gap-2.5">
+        <h2
+          className={cn(
+            'font-stashly text-xs font-semibold tracking-wider whitespace-nowrap uppercase',
+            semantic ? 'text-primary' : 'text-foreground'
+          )}
+        >
           {MATCH_KIND_LABEL[kind]}
         </h2>
-        <span className="text-muted-foreground font-stashly text-sm tabular-nums">
+        <span
+          className={cn(
+            'font-stashly inline-flex h-5 items-center rounded-lg px-1.5 text-xs tabular-nums',
+            semantic ? 'border-primary/30 bg-primary/15 text-foreground border' : 'bg-muted text-foreground'
+          )}
+        >
           {count}
         </span>
-        <span className="text-muted-foreground font-stashly hidden text-sm whitespace-nowrap sm:inline">
+        <span className="text-muted-foreground font-stashly hidden truncate text-xs sm:inline">
           — {MATCH_KIND_NOTE[kind]}
         </span>
-        <span className="bg-border ml-1 h-px flex-1" />
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]">
+      <div
+        className={
+          layout === 'list'
+            ? 'flex flex-col gap-2.5'
+            : 'grid gap-4 grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] grid-rows-[repeat(auto-fill,minmax(10rem,1fr))]'
+        }
+      >
         {children}
       </div>
     </section>

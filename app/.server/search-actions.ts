@@ -36,6 +36,8 @@ import {
 import {
   RANK_DEPTH,
   SEARCH_VECTOR_DIM,
+  findHitOffsets,
+  hitPassageWindow,
   normalizeQuery,
   reciprocalRankFusion,
   toVectorLiteral,
@@ -1174,6 +1176,8 @@ interface LiteralHit {
    * Returning 1 for all of them would be a fabricated locator.
    */
   lineNum: number | null
+  /** 1-based column of the hit on that line; null wherever `lineNum` is. */
+  column: number | null
   /** Page the hit falls on, for formats that have pages at all. */
   pageNum: number | null
   /** Heading the hit sits under, for formats with structure instead of pages. */
@@ -1188,6 +1192,8 @@ export interface SearchPassageRow {
   pageNum: number | null
   /** 1-based line. Resolvable for anything indexed since line breaks were kept. */
   lineNum: number | null
+  /** 1-based column of the literal hit on `lineNum`; absent for a dense passage. */
+  column?: number | null
   /** Nearest preceding heading, for documents with sections rather than pages. */
   section: string | null
   charStart: number
@@ -1449,8 +1455,16 @@ async function fetchMatchDetails(
   // The whole query still counts as a term: a single-word query survives the
   // split, and a phrase that appears verbatim should register as a hit even
   // when its individual words are too short to make the list.
-  const countable = terms.length > 0 ? terms : [query]
+  // Deduped case-folded: the count below matches case-insensitively and sums
+  // per term, so "AI ai" would otherwise count every hit twice.
+  const countable = [
+    ...new Set((terms.length > 0 ? terms : [query]).map((t) => t.toLowerCase())),
+  ]
   const patterns = countable.map((t) => `%${t}%`)
+  // A hit counts only where it starts a word, the rule the excerpt highlighter
+  // uses (`findMatches`) and the hit arrows step by (`findHitOffsets`): "ai"
+  // inside "chain" is no hit to show. Regex-escaped, case-insensitive below.
+  const wordStarts = countable.map((t) => `(?<![[:alnum:]])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
 
   const rows = await prisma.$queryRaw<
     {
@@ -1459,6 +1473,7 @@ async function fetchMatchDetails(
       hitCount: number
       hitText: string | null
       hitLine: number | null
+      hitColumn: number | null
       hitPage: number | null
       hitSection: string | null
     }[]
@@ -1474,20 +1489,25 @@ async function fetchMatchDetails(
           )
         ) AS "nameHit",
         COALESCE((
-          SELECT SUM(
-            (length(lower(COALESCE(s."content", '')))
-              - length(replace(lower(COALESCE(s."content", '')), lower(term), '')))
-            / NULLIF(length(term), 0)
-          )
-          FROM unnest(${countable}::text[]) AS term
+          SELECT SUM(regexp_count(COALESCE(s."content", ''), pat, 1, 'i'))
+          FROM unnest(${wordStarts}::text[]) AS pat
         ), 0)::int AS "hitCount",
-        -- Earliest occurrence of any term. strpos returns 0 for "not found",
-        -- so the filter is what keeps MIN from collapsing to zero whenever a
-        -- single term is missing.
-        (
-          SELECT MIN(strpos(lower(COALESCE(s."content", '')), lower(term)))
-          FROM unnest(${countable}::text[]) AS term
-          WHERE strpos(lower(COALESCE(s."content", '')), lower(term)) > 0
+        -- Earliest hit that starts a word. Failing that, the earliest
+        -- occurrence anywhere: the sparse ranker admits a body that holds the
+        -- query mid-word, and without a row here it would be labelled a
+        -- similar *name*. It stays a content match, with no hits to count.
+        -- 0 means "not found", hence the filters that keep MIN off it.
+        COALESCE(
+          (
+            SELECT MIN(regexp_instr(COALESCE(s."content", ''), pat, 1, 1, 0, 'i'))
+            FROM unnest(${wordStarts}::text[]) AS pat
+            WHERE regexp_instr(COALESCE(s."content", ''), pat, 1, 1, 0, 'i') > 0
+          ),
+          (
+            SELECT MIN(strpos(lower(COALESCE(s."content", '')), lower(term)))
+            FROM unnest(${countable}::text[]) AS term
+            WHERE strpos(lower(COALESCE(s."content", '')), lower(term)) > 0
+          )
         ) AS "offset"
       FROM "Item" i
       LEFT JOIN "Search" s ON s."itemId" = i."id"
@@ -1497,8 +1517,10 @@ async function fetchMatchDetails(
     SELECT h."id", h."nameHit", h."hitCount",
       -- A window around the hit rather than the whole body: enough to read,
       -- small enough that the payload doesn't carry a novel per result.
-      -- \`buildSnippet\` narrows it further client-side.
-      substring(h."body" FROM GREATEST(h."offset" - 220, 1) FOR 700) AS "hitText",
+      -- The excerpt (\`buildSentenceSnippet\`) is at most 250 characters, so
+      -- 250 either side of the hit holds any sentence it can show. Same
+      -- window as \`hitPassageWindow\`, so the hit arrows' first stop matches.
+      substring(h."body" FROM GREATEST(h."offset" - 250, 1) FOR 500) AS "hitText",
       -- Lines before the hit, +1 — but only when the body has lines at all.
       -- Anything indexed before line breaks were preserved collapsed to a
       -- single line, and counting there would make every such result claim
@@ -1507,6 +1529,12 @@ async function fetchMatchDetails(
         (length(left(h."body", h."offset" - 1))
           - length(replace(left(h."body", h."offset" - 1), E'\n', '')) + 1)::int
       END AS "hitLine",
+      -- Column of the hit on its line: characters back to the newline before
+      -- it (strpos on the reversed prefix), or the offset itself on line 1.
+      -- What the result card's link opens the code viewer at.
+      CASE WHEN position(E'\n' IN h."body") > 0 THEN
+        COALESCE(NULLIF(strpos(reverse(left(h."body", h."offset" - 1)), E'\n'), 0), h."offset")::int
+      END AS "hitColumn",
       -- Page and section both come from the chunk spanning the hit, so one
       -- lookup answers both. Ordered by ord because overlapping chunks mean
       -- more than one can contain the offset; the earliest is the one whose
@@ -1532,12 +1560,15 @@ async function fetchMatchDetails(
       // A name hit outranks a body hit even when the body has more of them —
       // the user searching a file manager for "invoice" means the file called
       // invoice, not the one that says the word forty times.
-      matchKind: row.nameHit ? 'name' : row.hitCount > 0 ? 'content' : 'semantic',
+      // A body that holds the query only mid-word has a hit text but no
+      // countable hits: still a content match, never "semantic".
+      matchKind: row.nameHit ? 'name' : row.hitCount > 0 || row.hitText ? 'content' : 'semantic',
       hitCount: row.hitCount,
       hit: row.hitText
         ? {
             text: row.hitText,
             lineNum: row.hitLine,
+            column: row.hitColumn,
             pageNum: row.hitPage,
             section: row.hitSection,
           }
@@ -1545,6 +1576,78 @@ async function fetchMatchDetails(
     })
   }
   return details
+}
+
+/** Most hit passages one request returns; the stepper shows "k / N" over these. */
+const MAX_HIT_PASSAGES = 50
+
+/**
+ * The passage around each literal hit in one item, for the result card's
+ * hit stepper. `fetchMatchDetails` returns only the first; this returns them
+ * all (up to {@link MAX_HIT_PASSAGES}), cut the same way and located the same
+ * way: line from the body, page and section from the chunk spanning the hit.
+ *
+ * Needs read access to the item. Reads the indexed body once and every chunk's
+ * span, both bounded by one item.
+ *
+ * @example
+ * const { passages, total } = await getHitPassages({ userId, itemId, query: 'vectors' })
+ */
+export async function getHitPassages({
+  userId,
+  itemId,
+  query,
+}: {
+  userId: string
+  itemId: string
+  query: string
+}): Promise<{
+  total: number
+  passages: {
+    chunkId: null
+    content: string
+    pageNum: number | null
+    lineNum: number | null
+    column: number | null
+    section: string | null
+  }[]
+}> {
+  await assertItemAccess(userId, itemId)
+
+  const q = normalizeQuery(query)
+  const terms = splitQueryTerms(q)
+  // Same terms as the hit counter, so the stepper finds what the count counted.
+  const countable = terms.length > 0 ? terms : [q]
+
+  const [search, chunks] = await Promise.all([
+    prisma.search.findUnique({ where: { itemId }, select: { content: true } }),
+    prisma.searchChunk.findMany({
+      where: { itemId },
+      select: { charStart: true, charEnd: true, pageNum: true, section: true },
+      orderBy: { ord: 'asc' },
+    }),
+  ])
+  const body = search?.content ?? ''
+  const offsets = findHitOffsets(body, countable)
+
+  const passages = offsets.slice(0, MAX_HIT_PASSAGES).map((offset) => {
+    const { content, lineNum, column } = hitPassageWindow(body, offset)
+    // `fetchMatchDetails` compares Postgres' 1-based `strpos` to the chunk
+    // span; +1 keeps both picking the same chunk. The earliest (by ord) wins
+    // where overlapping chunks both contain it.
+    const at = offset + 1
+    const chunk = chunks.find((c) => c.charStart <= at && c.charEnd >= at)
+    return {
+      chunkId: null,
+      content,
+      pageNum: chunk?.pageNum ?? null,
+      lineNum,
+      column,
+      section: chunk?.section ?? null,
+    }
+  })
+
+  return { total: offsets.length, passages }
 }
 
 /**
@@ -1889,6 +1992,7 @@ export async function searchItemsHybrid(
               content: hit.text,
               pageNum: hit.pageNum,
               lineNum: hit.lineNum,
+              column: hit.column,
               section: hit.section,
               charStart: 0,
               charEnd: hit.text.length,

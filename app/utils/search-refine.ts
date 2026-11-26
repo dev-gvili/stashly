@@ -97,7 +97,7 @@ export function describeSort(field: SortField, dir: SortDir): string {
 
 /**
  * The words the header field reads back when the dialog is closed, e.g.
- * `"report" by name only · Files · Image, Pdf · Favorites · Size, Largest first`.
+ * `report by name only · Files · Image, Pdf · Favorites · Size, Largest first`.
  * Empty when nothing is refined (the default sort is not mentioned).
  */
 export function describeRefinement(
@@ -115,7 +115,7 @@ export function refinementParts(
   const parts: string[] = []
   if (state.query)
     // Meaning is the default, so only the keyword-only exception is named.
-    parts.push(`“${state.query}”${state.searchMode === 'fuzzy' ? ' by name only' : ''}`)
+    parts.push(`${state.query}${state.searchMode === 'fuzzy' ? ' by name only' : ''}`)
   const kind = kindOf(state)
   if (kind !== 'all') parts.push(KINDS.find((k) => k.value === kind)!.label)
   else if (state.type.length > 1) parts.push(state.type.map((t) => label(TYPES, t)).join(', '))

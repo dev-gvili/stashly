@@ -252,6 +252,159 @@ export function buildSnippet(
   }
 }
 
+/**
+ * A sentence ends at `.`, `!`, `?` or `…` (with any closing quote or bracket)
+ * followed by whitespace. Requiring the whitespace keeps `3.5`, `search.prisma`
+ * and `e.g.x` whole; an abbreviation followed by a space still splits, which
+ * only ever shortens the window.
+ */
+const SENTENCE_END = /[.!?…]["'”’)\]]*\s+/g
+
+/**
+ * Longest excerpt a result card shows, in characters. Short enough to sit in
+ * the card's fixed-height snippet box (owner, 26 Nov: 250 overflowed it).
+ */
+export const SENTENCE_SNIPPET_MAX_LENGTH = 128
+
+/**
+ * Cut whole sentences out of a matched passage, within the paragraph holding
+ * the first hit (paragraphs split on blank lines):
+ * the sentence holding the hit, then the following one while the two stay within `maxLength`
+ * ({@link SENTENCE_SNIPPET_MAX_LENGTH}). At most `maxSentences` (2), so the evidence reads as a
+ * statement rather than a slab.
+ *
+ * A sentence longer than the cap on its own falls back to `buildSnippet`'s
+ * word-boundary window around the hit. With no literal hit (a semantic match)
+ * it opens on the first sentence.
+ *
+ * @example
+ * buildSentenceSnippet('Intro. The vector index is HNSW. It is fast. More.', 'vector')
+ * // → { text: 'The vector index is HNSW. It is fast.', truncatedStart: true, truncatedEnd: true, … }
+ */
+export function buildSentenceSnippet(
+  passage: string,
+  query: string,
+  options: { maxLength?: number; maxSentences?: number } = {},
+): SearchSnippet {
+  const { maxLength = SENTENCE_SNIPPET_MAX_LENGTH, maxSentences = 2 } = options
+  const terms = queryTerms(query)
+
+  // Stay inside the paragraph holding the hit, so an excerpt never runs on
+  // into unrelated blocks (OCR'd slides, tables, headings).
+  const paragraphs = passage
+    .split(PARAGRAPH_BREAK)
+    .map((p) => p.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+  if (paragraphs.length === 0) return buildSnippet('', query, { maxLength })
+  const at = Math.max(0, paragraphs.findIndex((p) => findMatches(p.toLowerCase(), terms).length > 0))
+  const scoped = sentenceWindow(paragraphs[at], terms, query, maxLength, maxSentences)
+  return {
+    ...scoped,
+    truncatedStart: scoped.truncatedStart || at > 0,
+    truncatedEnd: scoped.truncatedEnd || at < paragraphs.length - 1,
+  }
+}
+
+/** A blank line: what separates paragraphs in extracted and OCR'd text. */
+const PARAGRAPH_BREAK = /\r?\n[ \t]*\r?\n/
+
+function sentenceWindow(
+  text: string,
+  terms: string[],
+  query: string,
+  maxLength: number,
+  maxSentences: number,
+): SearchSnippet {
+  const firstHit = findMatches(text.toLowerCase(), terms)[0]
+
+  const spans: { start: number; end: number }[] = []
+  let from = 0
+  for (const m of text.matchAll(SENTENCE_END)) {
+    spans.push({ start: from, end: m.index + m[0].trimEnd().length })
+    from = m.index + m[0].length
+  }
+  if (from < text.length) spans.push({ start: from, end: text.length })
+  if (spans.length === 0) return buildSnippet(text, query, { maxLength })
+
+  const at = firstHit?.start ?? 0
+  let index = 0
+  for (let i = 0; i < spans.length; i++) if (spans[i].start <= at) index = i
+
+  const first = spans[index]
+  if (first.end - first.start > maxLength) {
+    return buildSnippet(text, query, { maxLength, leading: 80 })
+  }
+
+  let end = first.end
+  for (let k = 1; k < maxSentences && index + k < spans.length; k++) {
+    const next = spans[index + k]
+    if (next.end - first.start > maxLength) break
+    end = next.end
+  }
+
+  const windowed = text.slice(first.start, end)
+  return {
+    text: windowed,
+    truncatedStart: first.start > 0,
+    truncatedEnd: end < text.length,
+    matches: findMatches(windowed.toLowerCase(), terms),
+  }
+}
+
+/**
+ * Where each literal hit starts in a document body: every occurrence of every
+ * term, case-insensitively, sorted, with a repeat at the same offset dropped
+ * (`vector` and `vectors` starting together are one place to jump to).
+ *
+ * A hit must start a word, the rule the excerpt highlighter uses
+ * (`findMatches`), so every stop has a highlighted hit: `vectors` inside
+ * `setSearchChunkVectors` is skipped. The server's hit counter
+ * (`fetchMatchDetails`) counts by the same rule, so the arrows' "k/N" agrees
+ * with the card's count before and after they load.
+ *
+ * @example
+ * findHitOffsets('The vectors and a vector', ['vector', 'vectors']) // → [4, 18]
+ */
+export function findHitOffsets(body: string, terms: string[]): number[] {
+  if (!body || terms.length === 0) return []
+  const needles = terms.map((t) => t.toLowerCase()).filter(Boolean)
+  return findMatches(body.toLowerCase(), needles).map((m) => m.start)
+}
+
+/**
+ * Characters kept before a hit, and the window's length (as `fetchMatchDetails`).
+ * The excerpt cut from it is at most 250 characters, so 250 either side of the
+ * hit holds any sentence the excerpt can show.
+ */
+const HIT_WINDOW_LEAD = 250
+const HIT_WINDOW_LENGTH = 500
+const NEWLINE = String.fromCharCode(10)
+
+/**
+ * The text around one hit, cut the way the first-hit query cuts it (250
+ * before, 500 long), so a stepped-to passage reads like the first one. The
+ * line is 1-based and reported only when the body has line breaks at all; the
+ * column, 1-based too, with it (as `fetchMatchDetails` computes `hitColumn`).
+ *
+ * @example
+ * hitPassageWindow(body, body.indexOf('HIT')) // → { content: '…HIT…', lineNum: 3, column: 7 }
+ */
+export function hitPassageWindow(
+  body: string,
+  offset: number,
+): { content: string; lineNum: number | null; column: number | null } {
+  // No snapping to a sentence here: `buildSentenceSnippet` finds the sentence,
+  // and a window cut differently from the SQL one would show the first stop
+  // with a different leading "…" than the result arrived with.
+  const start = Math.max(0, offset - HIT_WINDOW_LEAD)
+  const content = body.slice(start, start + HIT_WINDOW_LENGTH)
+  const lined = body.includes(NEWLINE)
+  const lineNum = lined ? body.slice(0, offset).split(NEWLINE).length : null
+  // Characters since the newline before the hit; -1 (none) gives offset + 1.
+  const column = lined ? offset - body.lastIndexOf(NEWLINE, offset - 1) : null
+  return { content, lineNum, column }
+}
+
 /** URL param that limits a search to one folder's subtree or one collection. */
 export const SEARCH_SCOPE_KEY = 'in'
 

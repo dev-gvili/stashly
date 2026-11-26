@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { prisma } from '@/services/db'
-import { appendSearchPage, saveMediaMetadata, setSearchChunkVectors } from '@/services/search-actions'
+import {
+  appendSearchPage,
+  getHitPassages,
+  saveMediaMetadata,
+  searchItemsHybrid,
+  setSearchChunkVectors,
+} from '@/services/search-actions'
 import { getPrefixForModel, toObjectId } from '@/utils/converters'
 import { SEARCH_VECTOR_DIM } from '@/utils/search-query'
 import { wipeTestUsers } from './helpers/wipe-test-users'
@@ -194,5 +200,84 @@ describe('setSearchChunkVectors requires write access on every chunk item', () =
     const row = await prisma.searchChunk.findUniqueOrThrow({ where: { id: chunk }, select: { updatedAt: true } })
     expect(row.updatedAt.getTime()).toBeGreaterThanOrEqual(before - 5_000)
     expect(row.updatedAt.getTime()).toBeLessThanOrEqual(after + 5_000)
+  })
+})
+
+describe('getHitPassages', () => {
+  const NL = String.fromCharCode(10)
+  // Three hits on three lines; the second sits in a chunk that knows its page.
+  const body = ['A vector here.', 'Filler line.', 'Second vector line.', 'Third Vector line.'].join(NL)
+
+  async function indexed() {
+    const item = await makeItem('hits')
+    await prisma.search.create({ data: { id: uid('Search'), itemId: item, content: body } })
+    const second = body.indexOf('vector', 20)
+    await prisma.searchChunk.create({
+      data: { id: uid('SearchChunk'), itemId: item, ord: 0, content: 'x', charStart: second - 5, charEnd: second + 10, pageNum: 4, section: 'Results' },
+    })
+    return item
+  }
+
+  it('returns the passage around every hit, in order, with real locators', async () => {
+    const item = await indexed()
+    const { total, passages } = await getHitPassages({ userId: ownerId, itemId: item, query: 'vector' })
+    expect(total).toBe(3)
+    expect(passages.map((p) => p.lineNum)).toEqual([1, 3, 4])
+    expect(passages.map((p) => p.pageNum)).toEqual([null, 4, null])
+    expect(passages[1].section).toBe('Results')
+    // 'Second vector line.' → the hit starts at column 8.
+    expect(passages.map((p) => p.column)).toEqual([3, 8, 7])
+    expect(passages.every((p) => /vector/i.test(p.content))).toBe(true)
+  })
+
+  it('answers a reader too: it only reads', async () => {
+    const item = await indexed()
+    await grant(strangerId, item, 'read')
+    const { total } = await getHitPassages({ userId: strangerId, itemId: item, query: 'vector' })
+    expect(total).toBe(3)
+  })
+
+  it('refuses a user with no access', async () => {
+    const item = await indexed()
+    await expect(getHitPassages({ userId: strangerId, itemId: item, query: 'vector' })).rejects.toMatchObject(FORBIDDEN)
+  })
+
+  it('returns nothing for an item with no index', async () => {
+    const item = await makeItem('unindexed')
+    expect(await getHitPassages({ userId: ownerId, itemId: item, query: 'vector' })).toEqual({ total: 0, passages: [] })
+  })
+})
+
+describe('searchItemsHybrid hit column', () => {
+  it('reports the line and column of the first hit, as the arrows do', async () => {
+    const NL = String.fromCharCode(10)
+    const item = await makeItem('gamma notes')
+    const content = ['intro line', '', '  calls vectors here'].join(NL)
+    await prisma.search.create({ data: { id: uid('Search'), itemId: item, content } })
+    const { items } = await searchItemsHybrid({ ownerId, query: 'vectors' })
+    const hit = items.find((i) => i.id === item)?.passage
+    expect(hit).toMatchObject({ lineNum: 3, column: 9 })
+    const arrows = await getHitPassages({ userId: ownerId, itemId: item, query: 'vectors' })
+    expect(arrows.passages[0]).toMatchObject({ lineNum: 3, column: 9 })
+  })
+})
+
+describe('searchItemsHybrid hit count', () => {
+  // From tech-debt.md line 866: "Vectors" inside an identifier is no hit to show.
+  it('counts only hits that start a word, as the highlighter and arrows do', async () => {
+    const both = await makeItem('alpha notes')
+    await prisma.search.create({
+      data: { id: uid('Search'), itemId: both, content: 'calls setSearchChunkVectors(entries). Chunk vectors by id. VECTORS again.' },
+    })
+    const midOnly = await makeItem('beta notes')
+    await prisma.search.create({ data: { id: uid('Search'), itemId: midOnly, content: 'only setSearchChunkVectors(entries) here' } })
+
+    const { items } = await searchItemsHybrid({ ownerId, query: 'vectors' })
+    const row = (id: string) => items.find((i) => i.id === id)
+    expect(row(both)).toMatchObject({ matchKind: 'content', hitCount: 2 })
+    expect(row(both)?.passage?.content).toContain('Chunk vectors')
+    expect(row(both)?.passage?.lineNum).toBeNull() // one line: no locator to invent
+    // Admitted by the body's substring match; still a content match, not a similar name.
+    expect(row(midOnly)).toMatchObject({ matchKind: 'content', hitCount: 0 })
   })
 })

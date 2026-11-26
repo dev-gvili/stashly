@@ -1120,6 +1120,16 @@ const searchCommonFields = {
 export const searchApiRouteQuery = z.object(searchCommonFields)
 
 /**
+ * `GET /api/search/:type?intent=hit_passages` — the passage around every
+ * literal hit in one item, for the result card's hit stepper.
+ */
+export const searchHitPassagesQuery = z.object({
+  intent: z.literal('hit_passages'),
+  itemId: z.string().min(1).max(64),
+  query: toUserText(z.string().min(1).max(512)),
+})
+
+/**
  * `POST /api/search/:type` — hybrid retrieval.
  *
  * A POST for a read because the query embedding is 768 floats (~10KB as text)

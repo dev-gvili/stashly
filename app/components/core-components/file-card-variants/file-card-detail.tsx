@@ -24,8 +24,14 @@ export interface FileCardDetailProps extends FileCardVariantProps {
   name?: ReactNode
   /** Extra content on the spec line, right of the size. */
   meta?: ReactNode
+  /** Replaces the kind icon at the start of the spec line (search puts the extension chip there). */
+  leading?: ReactNode
   /** Pinned onto the hero, above the thumbnail. Position it yourself. */
   overlay?: ReactNode
+  /** Classes for the cover, e.g. a different aspect ratio (search uses 16:10). */
+  coverClassName?: string
+  /** Where in the file the card opens, as a query string (search: the hit's line). */
+  linkSearch?: string
   /**
    * A third concentric block welded below the spec line, inside the card's own
    * gutter — search puts the matching passage here so the evidence can never
@@ -51,7 +57,10 @@ export function FileCardDetail({
   actions,
   name,
   meta,
+  leading,
   overlay,
+  coverClassName,
+  linkSearch,
   children,
 }: FileCardDetailProps) {
   const size = formatSize('byte', 'unit', item.size)
@@ -61,13 +70,14 @@ export function FileCardDetail({
   return (
     <ItemCard
       {...item}
+      linkSearch={linkSearch}
       className={cn(
         'group flex min-w-0 flex-col gap-0 overflow-hidden rounded-2xl! border border-border/50 bg-card p-0 shadow-none transition-[border-color,box-shadow] hover:border-border hover:shadow-stashly',
         className
       )}
     >
       {/* Tile pattern: a 4:3 cover over the body, split by a hairline. */}
-      <div className="relative aspect-4/3 w-full overflow-hidden border-b border-border/50 bg-muted">
+      <div className={cn('relative aspect-4/3 w-full overflow-hidden border-b border-border/50 bg-muted', coverClassName)}>
         <ItemCard.Thumbnail className="absolute inset-0 h-full w-full rounded-none">
           {/* Category art (page, waveform, code lines…) until a thumbnail lands.
               Before the image: both are absolute, so the later one paints on top. */}
@@ -118,7 +128,7 @@ export function FileCardDetail({
           <ItemCard.Name className="h-auto w-full max-w-full truncate text-left font-stashly text-sm font-medium tracking-tight text-foreground" />
         )}
         <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-          <KindIcon className="size-3.5 shrink-0" />
+          {leading ?? <KindIcon className="size-3.5 shrink-0" />}
           <span className="flex min-w-0 items-center gap-1 truncate font-stashly text-2xs tabular-nums">
             {size} ·
             <ItemCard.Date className="truncate text-2xs" />

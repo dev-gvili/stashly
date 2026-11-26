@@ -91,7 +91,7 @@ describe('describeRefinement', () => {
   it('reads every refinement in order, leaving out the default sort', () => {
     expect(
       describe_('query=report&searchMode=fuzzy&type=file&category=image,pdf&favorited=true')
-    ).toBe('“report” by name only · Files · Image, Pdf · Favorites')
+    ).toBe('report by name only · Files · Image, Pdf · Favorites')
   })
   it('mentions a non-default sort', () => {
     expect(describe_('orderBy[size]=desc')).toBe('Size, Largest first')
@@ -105,7 +105,7 @@ describe('refinementParts', () => {
   it('gives one part per refinement, for one chip each', () => {
     const p = new URLSearchParams('query=tax&category=pdf&locked=true&orderBy[size]=desc')
     expect(refinementParts(readState(p), readSort(p))).toEqual([
-      '“tax”',
+      'tax',
       'Pdf',
       'Locked',
       'Size, Largest first',

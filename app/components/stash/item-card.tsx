@@ -73,6 +73,11 @@ export interface ItemCardProps extends StashItem {
   asChild?: boolean
   children?: React.ReactNode
   className?: string
+  /**
+   * Query string for a file's link, without the `?`: where in the file to
+   * open (search sends `line=866&col=12` so the viewer lands on the hit).
+   */
+  linkSearch?: string
 }
 
 const ItemHeader = React.forwardRef<
@@ -510,6 +515,7 @@ const ItemCardRoot = ({
   children,
   className,
   asChild = false,
+  linkSearch,
   ...props
 }: ItemCardProps) => {
   let user =
@@ -552,6 +558,8 @@ const ItemCardRoot = ({
 
   if(rest.type === 'folder'){
     to = `${to}?layout=${layout}&take=${take}`
+  } else if (linkSearch) {
+    to = `${to}?${linkSearch}`
   }
 
   const Comp = asChild ? Slot : 'div'
