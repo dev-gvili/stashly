@@ -6,18 +6,19 @@
  * The shape of this hook follows from where embedding happens. Vectors are
  * produced in the browser on WebGPU (`app/workers/embedding.ai.ts`), and the
  * first call has to download and warm up MPNet — seconds, not milliseconds.
- * Waiting for that before showing anything would make every search feel
- * broken, so each query runs in two passes:
+ * Each query runs in two passes, started together:
  *
- *   1. **Keyword** — a `GET` that needs no model. Results paint immediately.
- *   2. **Semantic** — embed the query, `POST` the vector, replace the list
- *      with the fused ranking. Only when the user asked for semantic mode and
- *      the query is long enough to be worth embedding.
+ *   1. **Keyword** — a `GET` that needs no model. In "by name only" mode it is
+ *      the answer and paints at once.
+ *   2. **Semantic** — embed the query, `POST` the vector, get the fused
+ *      ranking. In meaning mode the page shows a loader until this lands and
+ *      then paints once (owner, 26 Nov): showing pass 1 first and replacing it
+ *      wholesale read as broken.
  *
- * Pass 2 is best-effort by design: no WebGPU, a model that won't load, or a
- * failed request all leave pass 1's results on screen and set
- * `degradedReason`, so the view can say *why* it stayed keyword-only instead
- * of silently ranking worse.
+ * Pass 2 is best-effort by design: no WebGPU, a model that won't load, a
+ * failed request, a query too short to embed, or the 45 s ceiling all show
+ * pass 1's results instead and set `degradedReason`, so the view can say
+ * *why* it stayed keyword-only instead of silently ranking worse.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SearchMode } from '@/types/filter.types'
@@ -196,9 +197,15 @@ export function useItemSearch({
   initialData,
   scope,
 }: UseItemSearchParams): UseItemSearch {
-  const [response, setResponse] = useState<SearchResponse>(initialData ?? EMPTY)
+  // In meaning mode the server's first page is keyword-ranked, and the list
+  // shows once, ranked (owner, 26 Nov): start empty and loading instead, so
+  // the page doesn't paint one order and swap it for another.
+  const holdsForRanking = mode === 'semantic' && isSearchableQuery(normalizeQuery(query))
+  const [response, setResponse] = useState<SearchResponse>(
+    holdsForRanking ? EMPTY : (initialData ?? EMPTY),
+  )
   const [status, setStatus] = useState<SearchStatus>(
-    initialData?.items.length ? 'ready' : 'idle',
+    holdsForRanking ? 'upgrading' : initialData?.items.length ? 'ready' : 'idle',
   )
   const [degradedReason, setDegradedReason] =
     useState<SearchDegradedReason | null>(null)
@@ -340,24 +347,47 @@ export function useItemSearch({
       setStatus(wantsSemantic ? 'upgrading' : 'keyword')
       setDegradedReason(null)
 
-      try {
-        const keyword = await fetchKeyword(q, 0, signal)
-        if (signal.aborted) return
-        setResponse(keyword)
-        setStatus(wantsSemantic ? 'upgrading' : 'ready')
-      } catch (e) {
-        if (signal.aborted) return
-        console.error('[search] keyword pass failed', e)
-        setStatus('error')
+      if (!wantsSemantic) {
+        try {
+          const keyword = await fetchKeyword(q, 0, signal)
+          if (signal.aborted) return
+          setResponse(keyword)
+          setStatus('ready')
+        } catch (e) {
+          if (signal.aborted) return
+          console.error('[search] keyword pass failed', e)
+          setStatus('error')
+        }
         return
       }
 
-      if (!wantsSemantic) return
+      // Meaning mode shows one list, the ranked one: the previous query's
+      // results and this query's keyword pass stay off screen while it ranks
+      // (owner, 26 Nov: the keyword list appearing and then being replaced
+      // wholesale read as broken). The keyword pass still starts now, as the
+      // fallback when ranking can't run.
+      setResponse(EMPTY)
+      const keywordPass = fetchKeyword(q, 0, signal)
+      // Handled where it is awaited; this keeps an unused failure quiet.
+      keywordPass.catch(() => {})
+      /** Shows the keyword results, saying why ranking didn't run. */
+      const fallBackToKeyword = async (reason: SearchDegradedReason) => {
+        try {
+          const keyword = await keywordPass
+          if (signal.aborted) return
+          setResponse(keyword)
+          setDegradedReason(reason)
+          setStatus('ready')
+        } catch (e) {
+          if (signal.aborted) return
+          console.error('[search] keyword pass failed', e)
+          setStatus('error')
+        }
+      }
 
       if (!shouldEmbedQuery(q)) {
         // Long enough to search, too short to embed usefully.
-        setDegradedReason('query_too_short')
-        setStatus('ready')
+        await fallBackToKeyword('query_too_short')
         return
       }
 
@@ -365,8 +395,8 @@ export function useItemSearch({
         // Hard ceiling on the upgrade. The embedding runs on a queue shared
         // with background AI work, and the first call of a session also
         // downloads model weights — so "slow" is normal and "never" is
-        // possible. Without this the view sits on "Ranking by meaning…"
-        // forever with keyword results already on screen behind it.
+        // possible. Without this the view would sit on "Ranking by meaning…"
+        // forever; at the ceiling it shows the keyword results instead.
         const semantic = await withTimeout(
           fetchSemantic(q, 0, signal),
           SEMANTIC_TIMEOUT_MS
@@ -389,20 +419,19 @@ export function useItemSearch({
           })
       } catch (e) {
         if (signal.aborted) return
-        // Keyword results are already on screen — this downgrades the
-        // ranking, it doesn't fail the search.
+        // Ranking couldn't run: the keyword results show instead, with the
+        // reason. That downgrades the ranking; it doesn't fail the search.
         const timedOut = e instanceof Error && /timed out/.test(e.message)
         if (timedOut) {
           console.warn('[search] semantic upgrade timed out', e)
-          setDegradedReason('request_failed')
+          await fallBackToKeyword('request_failed')
         } else {
           const reason = classifyDegradation(e)
           reportDegraded('search_query', reason)
-          setDegradedReason(
+          await fallBackToKeyword(
             reason === 'webgpu_unavailable' ? 'no_webgpu' : 'embedding_failed',
           )
         }
-        setStatus('ready')
       }
     })()
 

@@ -61,7 +61,9 @@ test.describe('Search', () => {
   })
 
   test('keyword search finds an item by name', async ({ page }) => {
-    await page.goto(searchUrl)
+    // By name only: in meaning mode (the default) the list waits for the
+    // ranked pass, which here downloads the model first.
+    await page.goto(`${searchUrl}?searchMode=fuzzy`)
     await waitForContent(page)
 
     // The keyword pass is a plain GET — no embedding model involved, so this
@@ -100,10 +102,11 @@ test.describe('Search', () => {
   })
 
   test('a shared ?query= URL server-renders its results', async ({ page }) => {
-    // The loader runs the keyword half, so a pasted search link paints
-    // results without waiting on client JS.
+    // The loader runs the keyword half, so a pasted by-name search link
+    // paints results without waiting on client JS. A meaning-mode link shows
+    // skeletons until its ranked list lands, so it isn't server-rendered.
     await page.goto(
-      `${searchUrl}?query=${encodeURIComponent(E2E_ITEM_A_NAME)}`
+      `${searchUrl}?query=${encodeURIComponent(E2E_ITEM_A_NAME)}&searchMode=fuzzy`
     )
     await waitForContent(page)
 
@@ -131,9 +134,9 @@ test.describe('Search', () => {
     await expect(page).not.toHaveURL(/[?&]searchMode=/)
     await typeQuery(page, E2E_ITEM_A_NAME)
 
-    // Whether this browser can run WebGPU or not, the keyword pass has already
-    // landed — semantic ranking is an upgrade, never a precondition for
-    // getting results.
+    // Whether this browser can run WebGPU or not, results arrive: ranked
+    // ones when the model runs, the keyword pass when it can't — ranking is
+    // never a precondition for getting results.
     await expect(
       resultCard(page, E2E_ITEM_A_NAME)
     ).toBeVisible({ timeout: 30000 })

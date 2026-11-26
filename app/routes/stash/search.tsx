@@ -11,6 +11,7 @@ import {
   itemFilterSchema,
 } from '@/utils/filters/item.filters'
 import { isSearchableQuery, parseSearchScope, SEARCH_SCOPE_KEY } from '@/utils/search-query'
+import { readState } from '@/hooks/useFilters'
 import type { SearchResponse } from '@/types/stash.types'
 import type { Route } from './+types/search'
 import { parseSearchParams } from '@/utils/parsers'
@@ -38,10 +39,10 @@ const EMPTY: SearchResponse = {
 }
 
 /**
- * Server-renders the keyword half so a shared `?q=…` link paints results
- * without waiting on client JS. The semantic upgrade can't happen here — the
- * embedding model runs in the browser — so `useItemSearch` layers it on after
- * hydration when the user is in semantic mode.
+ * Server-renders a by-name-only search (`?searchMode=fuzzy`), so a shared link
+ * paints results without waiting on client JS. Meaning mode can't be ranked
+ * here — the embedding model runs in the browser — so its page renders
+ * skeletons and `useItemSearch` fills them after hydration.
  */
 export async function loader({ request, context }: Route.LoaderArgs) {
   const session = context.get(sessionContext)
@@ -72,7 +73,12 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     scope ? getSearchScopeLabel(session.user.id, scope) : null,
   ])
 
-  if (!isSearchableQuery(query)) {
+  // Meaning mode (the default) shows only the ranked list, which the browser
+  // fetches once it has the query vector; a keyword result rendered here would
+  // never be shown (owner, 26 Nov), and the browser runs its own fallback.
+  // `readState` is the hook's own reading of the URL, so the two can't disagree.
+  const byNameOnly = readState(searchParams).searchMode === 'fuzzy'
+  if (!isSearchableQuery(query) || !byNameOnly) {
     return { me: session.user.id, results: EMPTY, indexStats, scope: scopeLabel }
   }
 
