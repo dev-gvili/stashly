@@ -32,3 +32,9 @@ onlyBuiltDependencies:
   - prisma
   - protobufjs
   - sharp
+# Parents that pin a vulnerable version exactly (Dependabot alerts, 26 Nov):
+# monaco-editor 0.56 pins dompurify 3.4.8; @prisma/config 7.10 pins effect 3.20.0.
+# Drop each line once its parent ships the fixed version.
+overrides:
+  dompurify: ^3.5.0
+  effect: ^3.22.5
