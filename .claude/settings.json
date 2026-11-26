@@ -30,6 +30,12 @@
             "shell": "bash",
             "timeout": 10,
             "statusMessage": "Checking dev-server rules"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/bugfix-commit-gate.mjs",
+            "shell": "bash",
+            "timeout": 20
           }
         ]
       },
