@@ -20,6 +20,7 @@ import {
 } from '@/components/icons'
 import { Button, SidebarTrigger, useSidebar } from '@/components/ui'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useMarkdownLanding } from '@/hooks/useMarkdownLanding'
 import type { MarkdownDoc, StashItemMarkdown } from '@/types/stash.types'
 import type { MarkdownHeading } from '@/utils/markdown'
 import { cn } from '@/utils/styles'
@@ -37,7 +38,9 @@ const sanitizeSchema = {
   ...defaultSchema,
   attributes: {
     ...defaultSchema.attributes,
-    '*': [...(defaultSchema.attributes?.['*'] ?? []), 'className'],
+    // `dataLine`: the source line `rehypeSourceLines` stamps on each block,
+    // which a search permalink lands on. A bare number, nothing executable.
+    '*': [...(defaultSchema.attributes?.['*'] ?? []), 'className', 'dataLine'],
     a: [...(defaultSchema.attributes?.a ?? []), 'target', 'rel'],
     img: [...(defaultSchema.attributes?.img ?? []), 'loading'],
     td: [...(defaultSchema.attributes?.td ?? []), 'style'],
@@ -236,8 +239,37 @@ function MarkdownPre({
 }
 
 const REMARK_PLUGINS = [remarkGfm]
-// rehype-sanitize first (cleans the tree), then rehype-slug (adds heading ids).
-const REHYPE_PLUGINS = [[rehypeSanitize, sanitizeSchema], rehypeSlug] as never
+
+/** Blocks a landing can sit on: the smallest units a source line opens. */
+const LANDING_BLOCKS = new Set(['p', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'tr', 'dt', 'dd'])
+
+type HastNode = {
+  type: string
+  tagName?: string
+  properties?: Record<string, unknown>
+  position?: { start: { line: number } }
+  children?: HastNode[]
+}
+
+/**
+ * Stamp each block element with the source line it starts on (`data-line`),
+ * so a search permalink can find the block holding its line. Runs before
+ * sanitize, which keeps the attribute (see `sanitizeSchema`) but may drop the
+ * positions it reads.
+ */
+function rehypeSourceLines() {
+  const stamp = (node: HastNode) => {
+    if (node.type === 'element' && node.tagName && LANDING_BLOCKS.has(node.tagName) && node.position) {
+      node.properties = { ...node.properties, dataLine: node.position.start.line }
+    }
+    node.children?.forEach(stamp)
+  }
+  return (tree: HastNode) => stamp(tree)
+}
+
+// Source lines first (they need the parser's positions), then rehype-sanitize
+// (cleans the tree), then rehype-slug (adds heading ids).
+const REHYPE_PLUGINS = [rehypeSourceLines, [rehypeSanitize, sanitizeSchema], rehypeSlug] as never
 
 // ---------------------------------------------------------------------------
 // MarkdownStage — exported main component
@@ -299,6 +331,8 @@ function MarkdownReader({ text, headings }: MarkdownDoc) {
   let activeId: string | null = null
   const hasOutline = useMemo(() => headings.length > 0, [headings])
   const actId = useMemo(() => activeId, [activeId])
+
+  useMarkdownLanding(scrollRef, text)
 
   // Index rendered heading elements by id once the HTML mounts.
   useEffect(() => {

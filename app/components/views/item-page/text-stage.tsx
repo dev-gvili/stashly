@@ -18,8 +18,9 @@ import {
 import { Button, SidebarTrigger } from '@/components/ui'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useClipboard } from '@/hooks/useClipboard'
+import { useLandingScroll } from '@/hooks/useLandingScroll'
 import type { StashItemText, TextDoc } from '@/types/stash.types'
-import { parseNumberParam } from '@/utils/parsers'
+import { landingFromParams, landingWordEnd } from '@/utils/search-evidence'
 import { countLines, isMonoFile, splitLines } from '@/utils/text-thumbnail'
 import type { OutlineSymbol } from '@/.client/monaco-outline'
 import { CodeOutline, CODE_OUTLINE_SIDEBAR_ID } from './code-outline'
@@ -146,6 +147,9 @@ function CodeReader({
   const navigate = useNavigate()
   const params = useParams()
   const [searchParams] = useSearchParams()
+  // A definition jump's `?line=` counts the file; a search link's counts the
+  // index (`lines=index`) and is mapped back to the file here.
+  const landing = useMemo(() => landingFromParams(searchParams, text), [searchParams, text])
 
   return (
     <div className="relative flex h-full min-h-0 w-full min-w-0 gap-2 overflow-hidden">
@@ -177,8 +181,8 @@ function CodeReader({
             )
           }
           onOutline={setSymbols}
-          revealColumn={parseNumberParam(searchParams.get('col'))}
-          revealLine={parseNumberParam(searchParams.get('line'))}
+          revealColumn={landing.column}
+          revealLine={landing.line}
           text={text}
         />
         <StageToolbar
@@ -210,6 +214,14 @@ function ProseReader({ text }: { text: string }) {
   const lines = useMemo(() => splitLines(text), [text])
   const truncated = lines.length > MAX_RENDER_LINES
   const shown = truncated ? lines.slice(0, MAX_RENDER_LINES) : lines
+
+  // A search permalink (`?line=&col=`): that line is tinted for a moment and
+  // its hit word marked, and the reading column scrolls to it.
+  const [searchParams] = useSearchParams()
+  const { line, column } = useMemo(() => landingFromParams(searchParams, text), [searchParams, text])
+  const landing = line != null && line >= 1 && line <= shown.length ? line : undefined
+  const landingRef = useRef<HTMLSpanElement>(null)
+  useLandingScroll(landingRef, landing)
   const label = truncated
     ? `${MAX_RENDER_LINES.toLocaleString()} / ${lines.length.toLocaleString()} lines`
     : `${lines.length.toLocaleString()} ${lines.length === 1 ? 'line' : 'lines'}`
@@ -218,7 +230,24 @@ function ProseReader({ text }: { text: string }) {
     <div className="relative h-full min-h-0 w-full min-w-0 overflow-hidden rounded-md border-2 border-input bg-card! shadow-stashly">
       <ScrollArea key="text" type="hover" className="h-[calc(100vh-4rem)]">
         <pre className="mx-auto w-full max-w-3xl whitespace-pre-wrap wrap-break-word px-4 py-8 font-stashly text-sm leading-7">
-          {shown.join('\n')}
+          {landing == null ? (
+            shown.join('\n')
+          ) : (
+            // Three runs rather than a node per line: one element is enough to
+            // scroll to and tint, and a 10,000-line file stays one text node
+            // either side of it.
+            <>
+              {landing > 1 && `${shown.slice(0, landing - 1).join('\n')}\n`}
+              <span
+                ref={landingRef}
+                key={`${landing}:${column ?? ''}`}
+                className="animate-stashly-line-flash -mx-1 rounded-[4px] px-1"
+              >
+                <LandingLine text={shown[landing - 1]} column={column} />
+              </span>
+              {landing < shown.length && `\n${shown.slice(landing).join('\n')}`}
+            </>
+          )}
         </pre>
 
         {truncated && (
@@ -240,6 +269,26 @@ function ProseReader({ text }: { text: string }) {
         />
       </ScrollArea>
     </div>
+  )
+}
+
+/**
+ * A landing line with its hit word marked: the word that starts at `column`
+ * (1-based), as the search card highlighted it. Without a usable column the
+ * line shows plain, tinted by its parent.
+ */
+function LandingLine({ text, column }: { text: string; column?: number }) {
+  if (column == null || column < 1 || column > text.length) return <>{text}</>
+  const start = column - 1
+  const end = landingWordEnd(text, start)
+  return (
+    <>
+      {text.slice(0, start)}
+      <mark className="border-primary/40 bg-primary/20 text-foreground rounded-[4px] border px-0.5 font-semibold">
+        {text.slice(start, end)}
+      </mark>
+      {text.slice(end)}
+    </>
   )
 }
 

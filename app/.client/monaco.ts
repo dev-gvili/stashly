@@ -1541,8 +1541,12 @@ function bindModel(
 /** What React holds onto after mounting a viewer. */
 export type CodeViewerHandle = {
   dispose: () => void
-  /** Scroll a symbol into view and select its name — the outline rail's click. */
-  reveal: (target: OutlineTarget) => void
+  /**
+   * Scroll a symbol into view and select its name — the outline rail's click.
+   * `flash` (a link's landing spot) also selects the word at the position and
+   * tints the line for a moment.
+   */
+  reveal: (target: OutlineTarget, options?: { flash?: boolean }) => void
   /**
    * Return from a definition detour to the file the page is about. No-op when
    * there was none. Same thing Alt+← does, for a button to hang off.
@@ -1832,15 +1836,33 @@ export function createCodeViewer(
     // theme already styles an inactive selection legibly. Reads the *live*
     // model, so the rail keeps working after a jump to another file — by then
     // it is listing that file's symbols.
-    reveal: ({ line, column, endColumn }) => {
+    reveal: ({ line, column, endColumn }, options) => {
       const current = editor.getModel()
       if (!current || current.isDisposed()) return
-      const range = new monaco.Range(line, column, line, endColumn)
+      // A link names a position, not a span: select the word that starts there
+      // (the search hit), so the landing reads as the match it came from.
+      let end = endColumn
+      if (options?.flash && end === column) {
+        const word = current.getWordAtPosition({ lineNumber: line, column })
+        if (word && word.startColumn === column) end = word.endColumn
+      }
+      const range = new monaco.Range(line, column, line, end)
       editor.setSelection(range)
       editor.revealRangeInCenterIfOutsideViewport(
         range,
         monaco.editor.ScrollType.Smooth
       )
+      if (options?.flash) {
+        // Arriving from a link (a search hit, a definition jump): tint the
+        // whole line briefly so the eye finds it, then drop the decoration.
+        const flash = editor.createDecorationsCollection([
+          {
+            range: new monaco.Range(line, 1, line, 1),
+            options: { isWholeLine: true, className: 'animate-stashly-line-flash' },
+          },
+        ])
+        window.setTimeout(() => flash.clear(), 2400)
+      }
     },
     goBack,
     dispose: () => {

@@ -429,6 +429,13 @@
     @apply box-border font-stashly transition-colors duration-200 ease-in-out  selection:bg-primary/50 selection:text-foreground;
   }
 
+  /* A search permalink's hit word in rendered markdown (`useMarkdownLanding`),
+     the search card's mark colours. A highlight can't take a border or radius. */
+  ::highlight(stashly-hit) {
+    background-color: color-mix(in oklch, var(--color-primary) 35%, transparent);
+    color: var(--color-foreground);
+  }
+
   /* Monaco (code viewer) manages fonts itself: it stamps font-family inline
      on .view-lines etc., but the universal font-stashly rule above re-stamps
      every descendant span — silently swapping JetBrains Mono for Share Tech,
@@ -700,6 +707,21 @@
   --animate-stashly-bracket-right: stashly-bracket-right 2.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
   --animate-stashly-fault-jitter: stashly-fault-jitter 3s ease-in-out infinite;
   --animate-stashly-laser-scan: stashly-laser-scan 2.8s ease-in-out infinite;
+  /* A search permalink's landing line: tinted on arrival, fading out. The
+     delay covers the smooth scroll that brings it on screen. */
+  --animate-stashly-line-flash: stashly-line-flash 2s ease-out 0.2s both;
+  /* Its hit word, in rendered markdown, is a `::highlight(stashly-hit)` (see
+     the rule after @theme): painted by the CSS Custom Highlight API. */
+
+  @keyframes stashly-line-flash {
+    0%,
+    40% {
+      background-color: color-mix(in oklch, var(--color-primary) 35%, transparent);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
 
   @keyframes stashly-pulse-slot {
     0%,

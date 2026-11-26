@@ -301,6 +301,52 @@ function toPlainText(body: string): { text: string; sections: MarkdownSection[] 
   return { text, sections: remapped }
 }
 
+/**
+ * The indexed text's lines, each with the source line it came from: the same
+ * steps `parseMarkdownMetadata` takes to build `Search.content` (frontmatter
+ * dropped, fenced code dropped, syntax stripped per line, runs of blank lines
+ * collapsed to one, trimmed), replayed with the source line kept.
+ *
+ * A search hit's line counts that text, not the file, so this is how the
+ * viewer turns "line 53" back into the line to show. `text` is the indexed
+ * line itself, for finding the hit word on it.
+ *
+ * @example
+ * markdownIndexLines('---\ntitle: x\n---\n# Intro\n\n\n\nBody')
+ * // → [{ text: 'Intro', sourceLine: 4 }, { text: '', sourceLine: 5 }, { text: 'Body', sourceLine: 8 }]
+ */
+export function markdownIndexLines(raw: string): { text: string; sourceLine: number }[] {
+  const fm = raw.match(/^﻿?---\r?\n([\s\S]*?)\r?\n---\r?\n?/)
+  const body = fm ? raw.slice(fm[0].length) : raw.replace(/^﻿/, '')
+  const firstLine = fm ? (fm[0].match(/\n/g)?.length ?? 0) + 1 : 1
+
+  const stripped: { text: string; sourceLine: number }[] = []
+  let fence: string | null = null
+  body.split(/\r?\n/).forEach((line, i) => {
+    // Same fence rule as `stripFencedCode`.
+    const open = line.match(/^\s*(```+|~~~+)/)
+    if (fence) {
+      if (open && line.trim().startsWith(fence)) fence = null
+      return
+    }
+    if (open) {
+      fence = open[1].slice(0, 3)
+      return
+    }
+    stripped.push({ text: stripLineSyntax(line), sourceLine: firstLine + i })
+  })
+
+  // `\n{3,}` → `\n\n` keeps one blank line of any run, then `trim()` drops
+  // the blank lines at either end.
+  const kept: { text: string; sourceLine: number }[] = []
+  for (const line of stripped) {
+    if (line.text === '' && (kept.length === 0 || kept[kept.length - 1].text === '')) continue
+    kept.push(line)
+  }
+  while (kept.length > 0 && kept[kept.length - 1].text === '') kept.pop()
+  return kept
+}
+
 // ---------------------------------------------------------------------------
 // Rendering (for MarkdownStage)
 // ---------------------------------------------------------------------------

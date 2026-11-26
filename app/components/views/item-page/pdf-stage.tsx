@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
+import { useSearchParams } from 'react-router'
 import {
   AddIcon,
   MinusFillIcon,
@@ -15,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/utils/styles'
+import { PAGE_PARAM } from '@/utils/search-evidence'
 import { SidebarTrigger, useSidebar } from '@/components/ui'
 import { usePdfDocument } from '@/hooks/usePdfDocument'
 import { useLazyPageCanvas } from '@/hooks/useLazyPageCanvas'
@@ -108,12 +110,15 @@ function PdfPageView({
   scale,
   estimate,
   registerEl,
+  landing = false,
 }: {
   doc: PDFDocumentProxy
   pageNumber: number
   scale: number
   estimate: { width: number; height: number }
   registerEl: (pageNumber: number, el: HTMLDivElement | null) => void
+  /** The page a search permalink (`?page=`) opened: tinted for a moment. */
+  landing?: boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const { canvasRef, rendered } = useLazyPageCanvas({
@@ -158,6 +163,10 @@ function PdfPageView({
         <span className="absolute inset-0 flex items-center justify-center font-stashly text-xs text-muted-foreground">
           {pageNumber}
         </span>
+      )}
+      {/* Over the canvas, which would hide a background tint on the page. */}
+      {landing && (
+        <div aria-hidden className="animate-stashly-line-flash pointer-events-none absolute inset-0 rounded-md" />
       )}
     </div>
   )
@@ -285,6 +294,23 @@ export function PdfStage({ item, src }: { item: StashItemPdf; src: string }) {
     []
   )
 
+  // A search permalink names the page its hit is on (`?page=`). Once the
+  // document has its layout, scroll there, once per link.
+  const [searchParams] = useSearchParams()
+  const linkedPage = Number(searchParams.get(PAGE_PARAM))
+  const landingPage =
+    Number.isInteger(linkedPage) && linkedPage >= 1 && linkedPage <= numPages ? linkedPage : undefined
+  const landedRef = useRef<number | undefined>(undefined)
+  // Set only once the scroll starts, so the tint plays where the eye arrives
+  // rather than on a page still off screen.
+  const [flashPage, setFlashPage] = useState<number>()
+  useEffect(() => {
+    if (!doc || stageWidth === 0 || landingPage == null || landedRef.current === landingPage) return
+    landedRef.current = landingPage
+    goToPage(landingPage)
+    setFlashPage(landingPage)
+  })
+
   // Scroll only the viewer's own viewport. scrollIntoView would also scroll
   // every scrollable ancestor (the document included), shoving the whole
   // stage under the sticky app header.
@@ -375,6 +401,7 @@ export function PdfStage({ item, src }: { item: StashItemPdf; src: string }) {
                 scale={baseSize ? scale : 1}
                 estimate={baseSize}
                 registerEl={registerPageEl}
+                landing={flashPage === i + 1}
               />
             ))}
           </div>

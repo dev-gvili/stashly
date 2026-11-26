@@ -8,7 +8,8 @@
  * than none at all.
  */
 import { describe, it, expect } from 'vitest'
-import { parseMarkdownMetadata } from '../markdown'
+import { readFileSync } from 'node:fs'
+import { markdownIndexLines, parseMarkdownMetadata } from '../markdown'
 import { assignChunkSections, chunkText } from '@/services/search-actions'
 
 const DOC = `# Title
@@ -131,5 +132,38 @@ describe('assignChunkSections', () => {
     expect(chunks.length).toBeGreaterThan(1)
     expect(chunks.every((c) => c.section != null)).toBe(true)
     expect(chunks.at(-1)?.section).toBe('Refunds')
+  })
+})
+
+describe('markdownIndexLines', () => {
+  const NL = String.fromCharCode(10)
+
+  it('replays the indexed text line for line, with source lines', () => {
+    const raw = ['---', 'title: x', '---', '# Intro', '', '', '', 'Body **bold**', '```ts', 'const a = 1', '```', '- item', ''].join(NL)
+    const lines = markdownIndexLines(raw)
+    expect(lines.map((l) => l.text).join(NL)).toBe(parseMarkdownMetadata(raw).text)
+    expect(lines).toEqual([
+      { text: 'Intro', sourceLine: 4 },
+      { text: '', sourceLine: 5 },
+      { text: 'Body bold', sourceLine: 8 },
+      { text: 'item', sourceLine: 12 },
+    ])
+  })
+
+  it('agrees with the indexer on real documents', () => {
+    for (const name of ['docs/semantic-search.md', 'docs/search.md', 'docs/code-viewer.md', 'CLAUDE.md']) {
+      const raw = readFileSync(name, 'utf8')
+      expect(markdownIndexLines(raw).map((l) => l.text).join(NL), name).toBe(parseMarkdownMetadata(raw).text)
+    }
+  })
+
+  it('points each indexed line at the source line holding the same words', () => {
+    const raw = readFileSync('docs/semantic-search.md', 'utf8')
+    const source = raw.split(/\r?\n/)
+    for (const line of markdownIndexLines(raw).filter((l) => l.text.length > 20).slice(0, 40)) {
+      // A plain word from the line: link targets and markup differ, words don't.
+      const word = line.text.split(' ').find((w) => /^[A-Za-z]{5,}$/.test(w))
+      if (word) expect(source[line.sourceLine - 1].replace(/[*_~`]/g, '')).toContain(word)
+    }
   })
 })

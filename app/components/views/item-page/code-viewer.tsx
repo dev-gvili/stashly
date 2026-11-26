@@ -164,7 +164,7 @@ export function CodeViewer({
         // *this navigation*, not of the document.
         if (revealLine) {
           const column = revealColumn ?? 1
-          viewer.reveal({ line: revealLine, column, endColumn: column })
+          viewer.reveal({ line: revealLine, column, endColumn: column }, { flash: true })
         }
         setState('ready')
       } catch (err) {
