@@ -247,13 +247,14 @@ export function SearchView({ me, initialResults, indexStats, scope }: SearchView
           onReset={resetRefinements}
           sort={sort}
           onSortChange={setSort}
+          className={cn(!degradedReason && 'mb-12')}
         />
       )}
 
       {degradedReason && (
         <div
           className={cn(
-            'rounded-md border border-input bg-card p-3',
+            'mb-12 rounded-md border border-input bg-card p-3',
             'font-stashly text-sm text-muted-foreground',
           )}
         >
