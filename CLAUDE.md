@@ -36,6 +36,8 @@ Applies to UI redesigns, new UI, and big UI updates (small tweaks follow [Fronte
 
 - Local file links must use the form `file:///C:/Users/PoshI/.claude/...` with forward slashes and a separator before `.claude`.
 - README and marketing screenshots default to dark mode.
+- When the owner asks for a markdown file, write a `.md` file into the repo, not a Claude Doc artifact.
+- This is Windows. For anything with complex quoting, write a script file instead of an inline PowerShell or Git Bash command. Watch for Git Bash rewriting paths in env vars (MSYS path conversion turns `/foo` into `C:/Program Files/Git/foo`).
 
 ## Working Style
 
